@@ -13,15 +13,14 @@
 </head>
 <body>
    <css-doodle grid="1, 16">
-    --size: @rand(10%, 80%);
-    --color: hsla(@rand(100), 80%, 40%, @rand(.4, .9));
-
-    width: var(--size);
+    width: @rand(10%, 80%);
     height: 50%;
     left: @rand(32%);
     border-radius: 5px 0 0 5px;
     background-image: linear-gradient(
-      to right, var(--color) 20%, transparent 80%
+      to right,
+      hsla(@rand(100), 80%, 40%, @rand(.4, .9)) 20%,
+      transparent 80%
     );
   </css-doodle>
 </body>
