@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>demo</title>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0;}
+    body { overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center }
+    css-doodle { width: 80vh; height: 50vh; overflow: hidden; }
+  </style>
+  <script src="../css-doodle.js"></script>
+</head>
+<body>
+   <css-doodle grid="1, 16">
+    --size: @rand(10%, 80%);
+    --color: hsla(@rand(100), 80%, 40%, @rand(.4, .9));
+
+    width: var(--size);
+    height: 50%;
+    left: @rand(32%);
+    border-radius: 5px 0 0 5px;
+    background-image: linear-gradient(
+      to right, var(--color) 20%, transparent 80%
+    );
+  </css-doodle>
+</body>
+</html>

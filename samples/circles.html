@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>demo</title>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0;}
+    body { background: #666; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center }
+    css-doodle { width: 100vw; height: 100vw; background: #fff; overflow: hidden; }
+  </style>
+  <script src="../css-doodle.js"></script>
+</head>
+<body>
+  <div>
+    <css-doodle grid="8">
+      --size: @rand(200%);
+      width: var(--size);
+      height: var(--size);
+      background: hsla(@rand(100), 80%, 50%, @rand(.8));
+      border-radius: @rand(50%, 100%);
+      transform: translate(
+        @any(-50%, 50%),
+        @any(-50%, 50%)
+      );
+    </css-doodle>
+
+  </div>
+</body>
+</html>
