@@ -1,4 +1,3 @@
-
 export function nth(x, y, count) {
   return n => n == count;
 }
@@ -22,4 +21,3 @@ export function even(x, y, count) {
 export function odd(x, y, count) {
   return _ => !!(count % 2);
 }
-

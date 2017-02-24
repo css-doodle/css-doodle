@@ -1,4 +1,3 @@
-
 import * as cond from './cond';
 import * as func from './function';
 
@@ -106,4 +105,3 @@ function generator(tokens, size) {
 }
 
 export default generator;
-

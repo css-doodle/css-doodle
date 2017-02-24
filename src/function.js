@@ -1,4 +1,3 @@
-
 export function index(x, y, count) {
   return _ => count;
 }
@@ -83,4 +82,3 @@ function remove_unit(str) {
   let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
-

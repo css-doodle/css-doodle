@@ -1,4 +1,3 @@
-
 import compile from './compiler';
 
 function clamp(num, min, max) {
@@ -81,4 +80,3 @@ class Doodle extends HTMLElement {
 }
 
 customElements.define('css-doodle', Doodle);
-

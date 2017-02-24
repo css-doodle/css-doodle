@@ -1,15 +1,9 @@
-
 const struct = {
-  func:  () =>
-    ({ type: 'function', name: '', arguments: [] }),
-  text:  () =>
-    ({ type: 'text', value: '' }),
-  psudo: () =>
-    ({ type: 'psudo', selector: '', styles: [] }),
-  cond:  () =>
-    ({ type: 'cond', name: '', styles: [], arguments: [] }),
-  rule:  () =>
-    ({ type: 'rule', property: '', value: [] })
+  func:  () => ({ type: 'function', name: '', arguments: [] }),
+  text:  () => ({ type: 'text', value: '' }),
+  psudo: () => ({ type: 'psudo', selector: '', styles: [] }),
+  cond:  () => ({ type: 'cond', name: '', styles: [], arguments: [] }),
+  rule:  () => ({ type: 'rule', property: '', value: [] })
 };
 
 const bracket_pair = {
@@ -261,4 +255,3 @@ function tokenizer(input) {
 }
 
 export default tokenizer;
-
