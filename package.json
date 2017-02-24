@@ -1,0 +1,27 @@
+{
+  "name": "@yuanchuan/css-doodle",
+  "version": "0.0.1",
+  "description": "A web component for drawing patterns with css.",
+  "main": "css-doodle.js",
+  "scripts": {
+    "build": "rollup --format=umd --output=css-doodle.js -- src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuanchuan/css-doodle.git"
+  },
+  "devDependencies": {
+    "rollup": "^0.36.3"
+  },
+  "keywords": [
+    "css",
+    "web-components"
+  ],
+  "author": "yuanchuan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yuanchuan/css-doodle/issues"
+  },
+  "homepage": "https://github.com/yuanchuan/css-doodle#readme"
+}
