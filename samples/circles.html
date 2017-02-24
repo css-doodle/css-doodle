@@ -5,15 +5,19 @@
   <title>demo</title>
   <style>
     html, body { height: 100%; margin: 0; padding: 0;}
-    body { background: #666; overflow: hidden; }
+    body { overflow: hidden; }
     body { display: flex; align-items: center; justify-content: center }
-    css-doodle { width: 100vw; height: 100vw; background: #fff; overflow: hidden; }
   </style>
   <script src="../css-doodle.js"></script>
 </head>
 <body>
   <div>
     <css-doodle grid="8">
+      :host {
+        width: 100vw;
+        height: 100vw;
+      }
+
       --size: @rand(200%);
       width: var(--size);
       height: var(--size);
