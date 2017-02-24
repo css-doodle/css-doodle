@@ -32,7 +32,6 @@ class Doodle extends HTMLElement {
     const basic_styles = `
       *, *:after, *:before {
         box-sizing: border-box;
-        background: blue;
       }
       :host {
         display: inline-block;
