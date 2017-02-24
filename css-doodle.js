@@ -29,7 +29,6 @@ function odd(x, y, count) {
 }
 
 
-
 var cond = Object.freeze({
 	nth: nth,
 	at: at,
@@ -123,7 +122,6 @@ function remove_unit(str) {
   let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
-
 
 
 var func = Object.freeze({
@@ -238,16 +236,11 @@ function generator(tokens, size) {
 }
 
 const struct = {
-  func:  () =>
-    ({ type: 'function', name: '', arguments: [] }),
-  text:  () =>
-    ({ type: 'text', value: '' }),
-  psudo: () =>
-    ({ type: 'psudo', selector: '', styles: [] }),
-  cond:  () =>
-    ({ type: 'cond', name: '', styles: [], arguments: [] }),
-  rule:  () =>
-    ({ type: 'rule', property: '', value: [] })
+  func:  () => ({ type: 'function', name: '', arguments: [] }),
+  text:  () => ({ type: 'text', value: '' }),
+  psudo: () => ({ type: 'psudo', selector: '', styles: [] }),
+  cond:  () => ({ type: 'cond', name: '', styles: [], arguments: [] }),
+  rule:  () => ({ type: 'rule', property: '', value: [] })
 };
 
 const bracket_pair = {
@@ -522,62 +515,69 @@ function parse_size(size) {
   };
 }
 
-const basic_styles = (size) => `
-  :host {
-    display: inline-block;
-    width: 1em;
-    height: 1em;
-  }
-  .container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-  }
-  .container:after {
-    content: '';
-    display: block;
-    clear: both;
-    visibility: hidden;
-  }
-  .cell {
-    position: relative;
-    width: ${ 100 / size.x + '%' };
-    height: ${ 100 / size.y + '%' };
-    float: left;
-    line-height: 0;
-  }
-  .shape {
-    line-height: 0;
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    transform-origin: center center;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-`;
-
 class Doodle extends HTMLElement {
   constructor() {
     super();
   }
   connectedCallback() {
-    this.size = parse_size(this.getAttribute('grid') || '1x1');
+    this.size = parse_size(
+      this.getAttribute('grid') || '1x1'
+    );
     const cell_styles = compile(this.innerHTML, this.size);
-    this.attachShadow({ mode: 'open' }).innerHTML = `
-      <style> ${ basic_styles(this.size)} </style>
-      <style> ${ cell_styles } </style>
-      <div class="container">
-        ${
-          `<div class="cell">
-            <div class="shape"></div>
-           </div>
-          `.repeat(this.size.count)
-        }
+    const basic_styles = `
+      *, *:after, *:before {
+        box-sizing: border-box;
+        background: blue;
+      }
+      :host {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+      }
+      .container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      .container:after {
+        content: '';
+        display: block;
+        clear: both;
+        visibility: hidden;
+      }
+      .cell {
+        position: relative;
+        width: ${ 100 / this.size.x + '%' };
+        height: ${ 100 / this.size.y + '%' };
+        float: left;
+        line-height: 0;
+      }
+      .shape {
+        line-height: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        transform-origin: center center;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    `;
+    const cell =  `
+      <div class="cell">
+        <div class="shape"></div>
       </div>
     `;
+
+    this.attachShadow({ mode: 'open' })
+      .innerHTML = `
+        <style> ${ basic_styles } </style>
+        <style> ${ cell_styles } </style>
+        <div class="container">
+          ${ cell.repeat(this.size.count) }
+        </div>
+      `;
   }
 }
 
