@@ -64,6 +64,7 @@ function compose_rule(token, coords) {
 
 function compose_tokens(tokens, set, coords) {
   tokens.forEach((token, i) => {
+    if (token.skip) return false;
     switch (token.type) {
       case 'rule':
         set.add(
@@ -72,9 +73,9 @@ function compose_tokens(tokens, set, coords) {
         );
         break;
 
-      case 'psudo':
+      case 'psudo': {
         let is_host_selector =
-          token.selector.startsWith(':host');
+          !!token.selector.startsWith(':host');
 
         let psudo_rules =
           token.styles.map(s => compose_rule(s, coords));
@@ -86,9 +87,10 @@ function compose_tokens(tokens, set, coords) {
         set.add(selector, psudo_rules);
 
         if (is_host_selector) {
-          tokens.splice(i, 1);
+          token.skip = true;
         }
         break;
+      }
 
       case 'cond':
         let fn = cond[token.name.substr(1)];
