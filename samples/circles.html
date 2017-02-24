@@ -12,23 +12,20 @@
 </head>
 <body>
   <div>
-    <css-doodle grid="8">
+    <css-doodle grid="5">
       :host {
-        width: 100vw;
-        height: 100vw;
+        width: 50vh;
+        height: 50vh;
+        border-radius: 50%;
+        overflow: hidden;
+        background: #f1ffd9;
       }
-
       --size: @rand(200%);
       width: var(--size);
       height: var(--size);
       background: hsla(@rand(100), 80%, 50%, @rand(.8));
-      border-radius: @rand(50%, 100%);
-      transform: translate(
-        @any(-50%, 50%),
-        @any(-50%, 50%)
-      );
+      border-radius: 50%;
     </css-doodle>
-
   </div>
 </body>
 </html>
