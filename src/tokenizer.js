@@ -135,6 +135,7 @@ function read_value(it) {
     }
     else if (/[;}]/.test(c)) {
       if (text.value.length) value.push(text);
+      text = struct.text();
       break;
     }
     else if (c == '@') {
@@ -147,6 +148,7 @@ function read_value(it) {
     }
     it.next();
   }
+  if (text.value.length) value.push(text);
   return value;
 }
 
