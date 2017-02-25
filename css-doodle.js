@@ -206,6 +206,10 @@ function compose_tokens(tokens, set, coords) {
         break;
 
       case 'psudo': {
+        if (token.selector.startsWith(':doodle')) {
+          token.selector = token.selector.replace(/^\:+doodle/, ':host');
+        }
+
         let is_host_selector =
           token.selector.startsWith(':host');
 
