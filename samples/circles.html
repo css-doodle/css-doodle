@@ -12,19 +12,22 @@
 </head>
 <body>
   <div>
-    <css-doodle grid="5">
-      :host {
+    <css-doodle grid="6">
+      :doodle {
         width: 50vh;
         height: 50vh;
         border-radius: 50%;
         overflow: hidden;
-        background: #f1ffd9;
+        background: #fafff1;
       }
+
       --size: @rand(200%);
       width: var(--size);
       height: var(--size);
-      background: hsla(@rand(100), 80%, 50%, @rand(.8));
       border-radius: 50%;
+      background: hsla(
+        @rand(360), 80%, 50%, @rand(.8)
+      );
     </css-doodle>
   </div>
 </body>

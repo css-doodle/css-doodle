@@ -4,28 +4,33 @@ A web component for drawing patterns with css.
 
 ![circles](screenshot/circles.png)
 
+## Example
+
+include [css-doodle.js](css-doodle.js) in your html:
+
 ```html
-<css-doodle grid="5">
+<script src="./css-doodle.js"></script>
+```
+
+drawing the above circles with css:
+
+```html
+<css-doodle grid="6">
   :doodle {
+    width: 50vh;
+    height: 50vh;
     border-radius: 50%;
     overflow: hidden;
-    background: #f1ffd9;
+    background: #fafff1;
   }
 
   --size: @rand(200%);
   width: var(--size);
   height: var(--size);
   border-radius: 50%;
-  background-color: hsla(
-    @rand(100), 80%, 50%, @rand(.8)
+  background: hsla(
+    @rand(360), 80%, 50%, @rand(.8)
   );
 </css-doodle>
 ```
 
-## Usage
-
-include css-doodle.js in your html:
-
-```
-<script src="./css-doodle.js"></script>
-```
