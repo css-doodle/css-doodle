@@ -67,7 +67,6 @@ function read_property(it) {
     else if (!is.white_space(c)) prop += c;
     it.next();
   }
-  it.next();
   return prop;
 }
 
