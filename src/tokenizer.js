@@ -33,7 +33,7 @@ function iterator(input) {
   return {
     curr:  (n = 0) => input[index + n],
     next:  () => input[index++],
-    end:   () => input.length - 1 <= index,
+    end:   () => input.length <= index,
     index: () => index
   };
 }
