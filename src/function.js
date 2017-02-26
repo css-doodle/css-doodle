@@ -37,9 +37,10 @@ function memo(fn) {
 }
 
 function range(start, stop, step) {
+  let initial = n => (n > 0 && n < 1) ? .1 : 1;
   let length = arguments.length;
-  if (length == 1) [start, stop] = [0, start];
-  if (length < 3) step = (stop > 0 && stop < 1) ? .1 : 1;
+  if (length == 1) [start, stop] = [initial(start), start];
+  if (length < 3) step = initial(stop);
   let range = [];
   while ((step > 0 && start < stop)
     || (step < 0 && start > stop)) {
