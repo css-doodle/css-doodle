@@ -4,23 +4,8 @@ import parse_size from './parse-size';
 class Doodle extends HTMLElement {
   constructor() {
     super();
-  }
-
-  static get observedAttributes() {
-    return ['grid'];
-  }
-
-  attributeChangedCallback(name, old_val, new_val) {
-    if (old_val && old_val !== new_val) {
-      this.grid = new_val;
-    }
-  }
-
-  connectedCallback() {
-    this.size = parse_size(
-      this.getAttribute('grid') || '1x1'
-    );
-    const basic_styles = `
+    this.doodle = this.attachShadow({ mode: 'open' });
+    this.basic_styles = `
       *, *:after, *:before {
         box-sizing: border-box;
       }
@@ -28,6 +13,7 @@ class Doodle extends HTMLElement {
         display: inline-block;
         width: 1em;
         height: 1em;
+        will-change: transform;
       }
       .container {
         position: relative;
@@ -57,74 +43,102 @@ class Doodle extends HTMLElement {
         justify-content: center;
       }
     `;
-
-    this.attachShadow({ mode: 'open' })
-      .innerHTML = `
-        <style>
-          ${ basic_styles }
-        </style>
-        <style class="cell-size-styles">
-          ${ this.cells_size_styles(this.size) }
-        </style>
-        <style class="cell-styles">
-          ${ this.cells_styles(this.innerHTML, this.size) }
-        </style>
-        <div class="container">
-          ${ this.cells(this.size) }
-        </div>
-      `;
   }
 
-  cells_styles(styles, size) {
-    return compile(styles, size);
+  connectedCallback() {
+    let compiled;
+
+    this.size = parse_size(
+      this.getAttribute('grid') || '1x1'
+    );
+
+    // clear content before throwing error
+    try {
+      compiled = compile(this.innerHTML, this.size);
+    } catch (e) {
+      this.innerHTML = '';
+      throw new Error(e);
+    }
+
+    const { has_transition } = compiled.props;
+    this.doodle.innerHTML = `
+      <style>${ this.basic_styles }</style>
+      <style class="style-container">
+        ${ this.style_size() }
+        ${ compiled.styles.host }
+      </style>
+      <style class="style-cells">
+        ${ has_transition ? '' : compiled.styles.cells }
+      </style>
+      <div class="container">
+        ${ this.html_cells() }
+      </div>
+    `;
+
+    has_transition && setTimeout(() => {
+      this.set_style(
+        '.style-cells',
+        compiled.styles.cells
+      );
+    }, 50);
   }
 
-  cells_size_styles({ x, y }) {
+  style_size() {
     return `
       .cell {
-        width: ${ 100 / x + '%' };
-        height: ${ 100 / y + '%' };
+        width: ${ 100 / this.size.x + '%' };
+        height: ${ 100 / this.size.y + '%' };
       }
     `;
   }
 
-  cells({ count }) {
+  html_cells() {
     const cell = `
       <div class="cell">
         <div class="shape"></div>
       </div>
     `;
-    return cell.repeat(count);
+    return cell.repeat(this.size.count);
   }
 
-  set_style(el, styles) {
-    if (el) {
-      el.styleSheet
-        ? (el.styleSheet.cssText = styles )
-        : (el.innerHTML = styles);
-    }
+  set_style(selector, styles) {
+    const el = this.shadowRoot.querySelector(selector);
+    el && (el.styleSheet
+      ? (el.styleSheet.cssText = styles )
+      : (el.innerHTML = styles));
+  }
+
+  update(styles) {
+    if (!styles) return false;
+    const compiled = compile(styles, this.size);
+    this.set_style('.style-container',
+      this.style_size() + compiled.styles.host
+    );
+    this.set_style('.style-cells',
+      compiled.styles.cells
+    );
+    this.innerHTML = styles;
   }
 
   get grid() {
     return Object.assign({}, this.size);
   }
 
-  set grid(size) {
-    this.size = parse_size(size || '1x1');
-    this.shadowRoot.querySelector('.container')
-      .innerHTML = this.cells(this.size);
-    this.update();
+  set grid(grid) {
+    this.setAttribute('grid', grid);
+    this.connectedCallback();
   }
 
-  update(styles) {
-    this.set_style(
-      this.shadowRoot.querySelector('.cell-size-styles'),
-      this.cells_size_styles(this.size)
-    );
-    this.set_style(
-      this.shadowRoot.querySelector('.cell-styles'),
-      this.cells_styles(styles || this.innerHTML, this.size)
-    );
+  static get observedAttributes() {
+    return ['grid'];
+  }
+
+  attributeChangedCallback(name, old_val, new_val) {
+    if (name == 'grid' && old_val) {
+      if (old_val !== new_val) {
+        this.grid = new_val;
+      }
+    }
   }
 }
 

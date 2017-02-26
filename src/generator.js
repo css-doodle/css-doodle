@@ -16,7 +16,14 @@ function join_line(arr) {
 
 function rule_set() {
   const set = {};
+  const props = {};
+  const styles = {
+    host: '', cells: ''
+  };
   return {
+    prop(name, value) {
+      props[name] = value;
+    },
     add(selector, rule) {
       let rules = set[selector];
       if (!rules) rules = set[selector] = [];
@@ -26,11 +33,15 @@ function rule_set() {
       );
     },
     output() {
-      return join_line(Object.keys(set).map(selector => `
-        ${ selector } {
-          ${ join_line(set[selector]) }
-        }
-      `));
+      Object.keys(set).forEach(selector => {
+        let is_host = selector.startsWith(':host');
+        styles[is_host ? 'host': 'cells'] += `
+          ${ selector } {
+            ${ join_line(set[selector]) }
+          }
+        `;
+      });
+      return { props, styles }
     }
   }
 }
@@ -56,9 +67,12 @@ function compose_value(value, coords) {
   }).join('');
 }
 
-function compose_rule(token, coords) {
+function compose_rule(token, set, coords) {
   let property = token.property;
   let value = compose_value(token.value, coords);
+  if (property == 'transition') {
+    set.prop('has_transition', true);
+  }
   return `${ property }: ${ value };`;
 }
 
@@ -70,7 +84,7 @@ function compose_tokens(tokens, set, coords) {
       case 'rule':
         set.add(
           compose_selector(coords.count),
-          compose_rule(token, coords)
+          compose_rule(token, set, coords)
         );
         break;
 
@@ -87,8 +101,9 @@ function compose_tokens(tokens, set, coords) {
           token.skip = true;
         }
 
-        let psudo_rules =
-          token.styles.map(s => compose_rule(s, coords));
+        let psudo_rules = token.styles.map(s =>
+          compose_rule(s, set, coords)
+        );
 
         let selector = is_host_selector
           ? token.selector
