@@ -602,6 +602,8 @@ class Doodle extends HTMLElement {
       this.getAttribute('grid') || '1x1'
     );
 
+    if (!this.innerHTML.trim()) return false;
+
     // clear content before throwing error
     try {
       compiled = compile(this.innerHTML, this.size);
