@@ -12,7 +12,7 @@
     "url": "git+https://github.com/yuanchuan/css-doodle.git"
   },
   "devDependencies": {
-    "rollup": "^0.36.3"
+    "rollup": "^0.41.4"
   },
   "keywords": [
     "css",
