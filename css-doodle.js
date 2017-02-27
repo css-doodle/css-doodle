@@ -77,6 +77,7 @@ function memo(fn) {
 }
 
 function range(start, stop, step) {
+  let count = 0;
   let initial = n => (n > 0 && n < 1) ? .1 : 1;
   let length = arguments.length;
   if (length == 1) [start, stop] = [initial(start), start];
@@ -86,6 +87,7 @@ function range(start, stop, step) {
     || (step < 0 && start > stop)) {
     range.push(start);
     start += step;
+    if (count++ >= 1000) break;
   }
   return range;
 }
