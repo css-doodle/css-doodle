@@ -122,6 +122,10 @@ class Doodle extends HTMLElement {
     this.innerHTML = styles;
   }
 
+  refresh() {
+    this.update(this.innerHTML);
+  }
+
   get grid() {
     return Object.assign({}, this.size);
   }
