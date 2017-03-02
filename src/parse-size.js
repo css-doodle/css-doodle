@@ -1,7 +1,3 @@
-function clamp(num, min, max) {
-  return (num <= min) ? min : ((num >= max) ? max : num);
-}
-
 export default function parse(size) {
   const split = (size + '')
     .replace(/\s+/g, '')
@@ -16,4 +12,8 @@ export default function parse(size) {
     y: ret.y,
     count: ret.x * ret.y
   };
+}
+
+function clamp(num, min, max) {
+  return (num <= min) ? min : ((num >= max) ? max : num);
 }

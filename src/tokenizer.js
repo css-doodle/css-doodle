@@ -29,13 +29,24 @@ const is = {
 };
 
 function iterator(input) {
-  let index = 0;
+  let index = 0, col = 1, line = 1;
   return {
     curr:  (n = 0) => input[index + n],
-    next:  () => input[index++],
     end:   () => input.length <= index,
-    index: () => index
+    info:  () => ({ index, col, line }),
+    next:  () => {
+      let next = input[index++];
+      if (next == '\n') line++, col = 0;
+      else col++;
+      return next;
+    }
   };
+}
+
+function throw_error(msg, { col, line }) {
+  throw new Error(
+    `(at line ${ line }, column ${ col }) ${ msg }`
+  );
 }
 
 function skip_block(it) {
@@ -62,7 +73,7 @@ function read_property(it) {
   while (!it.end()) {
     if ((c = it.curr()) == ':') break;
     else if (!/[a-zA-Z\-]/.test(c)) {
-      throw new Error('Syntax error: Bad property name.');
+      throw_error('Syntax error: Bad property name.', it.info());
     }
     else if (!is.white_space(c)) prop += c;
     it.next();
@@ -143,6 +154,9 @@ function read_value(it) {
       value.push(read_func(it));
     }
     else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
+      if (c == ':') {
+        throw_error('Syntax error: Bad property name.', it.info());
+      }
       text.value += c;
     }
     it.next();
