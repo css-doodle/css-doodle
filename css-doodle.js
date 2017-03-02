@@ -273,11 +273,12 @@ function generator(tokens, size) {
 }
 
 const struct = {
-  func:  () => ({ type: 'function', name: '', arguments: [] }),
-  text:  () => ({ type: 'text', value: '' }),
-  psudo: () => ({ type: 'psudo', selector: '', styles: [] }),
-  cond:  () => ({ type: 'cond', name: '', styles: [], arguments: [] }),
-  rule:  () => ({ type: 'rule', property: '', value: [] })
+  func:    () => ({ type: 'function', name: '', arguments: [] }),
+  text:    () => ({ type: 'text', value: '' }),
+  psudo:   () => ({ type: 'psudo', selector: '', styles: [] }),
+  cond:    () => ({ type: 'cond', name: '', styles: [], arguments: [] }),
+  rule:    () => ({ type: 'rule', property: '', value: [] }),
+  comment: () => ({ type: 'comment', value: ''})
 };
 
 const bracket_pair = {
@@ -340,6 +341,18 @@ function skip_block(it) {
     it.next();
   }
   return skipped;
+}
+
+function read_comments(it) {
+  let comment = struct.comment(), c;
+  it.next(); it.next();
+  while (!it.end()) {
+    if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
+    else comment.value += c;
+    it.next();
+  }
+  it.next(); it.next();
+  return comment;
 }
 
 function read_property(it) {
@@ -525,6 +538,9 @@ function tokenizer(input) {
     if (is.white_space(c)) {
       it.next();
       continue;
+    }
+    else if (c == '/' && it.curr(1) == '*') {
+      tokens.push(read_comments(it));
     }
     else if (c == ':') {
       let psudo = read_psudo(it);
