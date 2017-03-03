@@ -1,15 +1,16 @@
 # for saving keystrokes
 
+TARGET := ./css-doodle.js
 LIB := ./node_modules
 
 build: $(LIB)
 	@npm run build
-	@sed -i "" $$'s/\t/  /' css-doodle.js
-	@cp css-doodle.js docs/
+	@sed -i "" $$'s/\t/  /' $(TARGET)
+	@cp $(TARGET) docs/
 
 $(LIB):
 	@npm install
 
 docs:
-	@npm run docs
+	@git subtree push --prefix docs/ origin gh-pages
 .PHONY: docs
