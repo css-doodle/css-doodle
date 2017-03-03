@@ -1,7 +1,7 @@
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(factory());
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  (factory());
 }(this, (function () { 'use strict';
 
 const is = {
@@ -35,12 +35,12 @@ function odd(x, y, count) {
 
 
 var cond = Object.freeze({
-	nth: nth,
-	at: at,
-	row: row,
-	col: col,
-	even: even,
-	odd: odd
+  nth: nth,
+  at: at,
+  row: row,
+  col: col,
+  even: even,
+  odd: odd
 });
 
 function index(x, y, count) {
@@ -133,11 +133,11 @@ function remove_unit(str) {
 
 
 var func = Object.freeze({
-	index: index,
-	row: row$1,
-	col: col$1,
-	any: any,
-	rand: rand
+  index: index,
+  row: row$1,
+  col: col$1,
+  any: any,
+  rand: rand
 });
 
 function values(obj) {
