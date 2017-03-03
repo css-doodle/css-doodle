@@ -4,6 +4,11 @@
 	(factory());
 }(this, (function () { 'use strict';
 
+const is = {
+  even: (n) => !!(n % 2),
+  odd:  (n) => !(n % 2)
+};
+
 function nth(x, y, count) {
   return n => n == count;
 }
@@ -13,35 +18,19 @@ function at(x, y) {
 }
 
 function row(x) {
-  return n => {
-    if (n == 'odd') return is_odd(x);
-    else if (n == 'even') is_even(x);
-    return n == x;
-  }
+  return n => /^(even|odd)$/.test(n) ? is[n](x) : (n == x)
 }
 
 function col(x, y) {
-  return n => {
-    if (n == 'odd') return is_odd(y)
-    else if (n == 'even') is_even(y);
-    return n == y;
-  }
+  return n => /^(even|odd)$/.test(n) ? is[n](y) : (n == y);
 }
 
 function even(x, y, count) {
-  return _ => is_even(count);
+  return _ => is.even(count);
 }
 
 function odd(x, y, count) {
-  return _ => is_odd(count);
-}
-
-function is_even(n) {
-  return !!(n % 2);
-}
-
-function is_odd(n) {
-  return !is_even(n);
+  return _ => is.odd(count);
 }
 
 
@@ -303,7 +292,7 @@ const bracket_pair = {
   '{': '}'
 };
 
-const is = {
+const is$1 = {
   white_space(c) {
     return /[\s\n\t]/.test(c);
   },
@@ -342,14 +331,14 @@ function throw_error(msg, { col, line }) {
 
 function skip_block(it) {
   let [skipped, c] = [it.curr(), it.curr()];
-  let is_close_bracket = is.close_bracket_of(c);
+  let is_close_bracket = is$1.close_bracket_of(c);
   it.next();
   while (!it.end()) {
     if (is_close_bracket(c = it.curr())) {
       skipped += c;
       break;
     }
-    else if (is.open_bracket(c)) {
+    else if (is$1.open_bracket(c)) {
       skipped += skip_block(it);
     } else {
       skipped += c;
@@ -378,7 +367,7 @@ function read_property(it) {
     else if (!/[a-zA-Z\-]/.test(c)) {
       throw_error('Syntax error: Bad property name.', it.info());
     }
-    else if (!is.white_space(c)) prop += c;
+    else if (!is$1.white_space(c)) prop += c;
     it.next();
   }
   return prop;
@@ -401,7 +390,7 @@ function read_quote_block(it, quote) {
 function read_arguments(it) {
   let args = [], arg = '', c;
   while (!it.end()) {
-    if (is.open_bracket(c = it.curr())) {
+    if (is$1.open_bracket(c = it.curr())) {
       arg += skip_block(it);
     }
     else if (/['"]/.test(c)) {
@@ -409,12 +398,12 @@ function read_arguments(it) {
     }
     else if (/[,)]/.test(c)) {
       if (arg.length) {
-        args.push(is.number(+arg) ? +arg : arg);
+        args.push(is$1.number(+arg) ? +arg : arg);
         arg = '';
       }
       if (c == ')') break;
     }
-    else if (!is.white_space(c)) {
+    else if (!is$1.white_space(c)) {
       arg += c;
     }
     it.next();
@@ -456,7 +445,7 @@ function read_value(it) {
       text = struct.text();
       value.push(read_func(it));
     }
-    else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
+    else if (!is$1.white_space(c) || !is$1.white_space(it.curr(-1))) {
       if (c == ':') {
         throw_error('Syntax error: Bad property name.', it.info());
       }
@@ -472,7 +461,7 @@ function read_selector(it) {
   let selector = '', c;
   while (!it.end()) {
     if ((c = it.curr())== '{') break;
-    else if (!is.white_space(c)) selector += c;
+    else if (!is$1.white_space(c)) selector += c;
     it.next();
   }
   return selector;
@@ -486,7 +475,7 @@ function read_cond_selector(it) {
       selector.arguments = read_arguments(it);
     }
     else if (/[){]/.test(c)) break;
-    else if (!is.white_space(c)) selector.name += c;
+    else if (!is$1.white_space(c)) selector.name += c;
     it.next();
   }
   return selector;
@@ -496,7 +485,7 @@ function read_psudo(it) {
   let psudo = struct.psudo(), c;
   while (!it.end()) {
     if ((c = it.curr())== '}') break;
-    if (is.white_space(c)) {
+    if (is$1.white_space(c)) {
       it.next();
       continue;
     }
@@ -537,7 +526,7 @@ function read_cond(it) {
     else if (c == '@') {
       cond.styles.push(read_cond(it));
     }
-    else if (!is.white_space(c)) {
+    else if (!is$1.white_space(c)) {
       let rule = read_rule(it);
       if (rule.property) cond.styles.push(rule);
     }
@@ -551,7 +540,7 @@ function tokenizer(input) {
   const tokens = [];
   while (!it.end()) {
     let c = it.curr();
-    if (is.white_space(c)) {
+    if (is$1.white_space(c)) {
       it.next();
       continue;
     }
@@ -566,7 +555,7 @@ function tokenizer(input) {
       let cond = read_cond(it);
       if (cond.name.length) tokens.push(cond);
     }
-    else if (!is.white_space(c)) {
+    else if (!is$1.white_space(c)) {
       let rule = read_rule(it);
       if (rule.property) tokens.push(rule);
     }
