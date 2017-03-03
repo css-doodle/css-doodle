@@ -13,19 +13,35 @@ function at(x, y) {
 }
 
 function row(x) {
-  return n => n == x;
+  return n => {
+    if (n == 'odd') return is_odd(x);
+    else if (n == 'even') is_even(x);
+    return n == x;
+  }
 }
 
 function col(x, y) {
-  return n => n == y;
+  return n => {
+    if (n == 'odd') return is_odd(y)
+    else if (n == 'even') is_even(y);
+    return n == y;
+  }
 }
 
 function even(x, y, count) {
-  return _ => !(count % 2);
+  return _ => is_even(count);
 }
 
 function odd(x, y, count) {
-  return _ => !!(count % 2);
+  return _ => is_odd(count);
+}
+
+function is_even(n) {
+  return !!(n % 2);
+}
+
+function is_odd(n) {
+  return !is_even(n);
 }
 
 
