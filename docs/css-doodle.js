@@ -348,12 +348,19 @@ function skip_block(it) {
   return skipped;
 }
 
-function read_comments(it) {
-  let comment = struct.comment(), c;
-  it.next(); it.next();
+function read_comments(it, flag = {}) {
+  let comment = struct.comment();
+  let c = it.curr();
+  if (c != '#') it.next();
+  it.next();
   while (!it.end()) {
-    if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
-    else comment.value += c;
+    c = it.curr();
+    if (flag.inline) {
+      if (c == '\n') return comment;
+    } else {
+      if (c == '*' && it.curr(1) == '/') break;
+    }
+    comment.value += c;
     it.next();
   }
   it.next(); it.next();
@@ -547,6 +554,9 @@ function tokenizer(input) {
     else if (c == '/' && it.curr(1) == '*') {
       tokens.push(read_comments(it));
     }
+    else if (c == '#' || (c == '/' && it.curr(1) == '/')) {
+      tokens.push(read_comments(it, { inline: true }));
+    }
     else if (c == ':') {
       let psudo = read_psudo(it);
       if (psudo.selector) tokens.push(psudo);
@@ -568,7 +578,7 @@ function compile(input, size) {
   return generator(tokenizer(input), size);
 }
 
-function parse(size) {
+function parse_size(size) {
   const split = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
@@ -585,7 +595,7 @@ function parse(size) {
 }
 
 function clamp(num, min, max) {
-  return (num <= min) ? min : ((num >= max) ? max : num);
+  return Math.max(min, Math.min(max, num));
 }
 
 class Doodle extends HTMLElement {
@@ -593,9 +603,6 @@ class Doodle extends HTMLElement {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
     this.basic_styles = `
-      *, *:after, *:before {
-        box-sizing: border-box;
-      }
       :host {
         display: inline-block;
         width: 1em;
@@ -617,8 +624,10 @@ class Doodle extends HTMLElement {
         position: relative;
         float: left;
         line-height: 0;
+        box-sizing: border-box;
       }
       .shape {
+        box-sizing: border-box;
         line-height: 0;
         position: absolute;
         width: 100%;
@@ -635,7 +644,7 @@ class Doodle extends HTMLElement {
   connectedCallback() {
     let compiled;
 
-    this.size = parse(
+    this.size = parse_size(
       this.getAttribute('grid') || '1x1'
     );
 
