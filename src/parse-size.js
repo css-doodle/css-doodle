@@ -1,4 +1,4 @@
-export default function parse(size) {
+export default function parse_size(size) {
   const split = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
@@ -15,5 +15,5 @@ export default function parse(size) {
 }
 
 function clamp(num, min, max) {
-  return (num <= min) ? min : ((num >= max) ? max : num);
+  return Math.max(min, Math.min(max, num));
 }
