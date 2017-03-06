@@ -6,9 +6,6 @@ class Doodle extends HTMLElement {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
     this.basic_styles = `
-      *, *:after, *:before {
-        box-sizing: border-box;
-      }
       :host {
         display: inline-block;
         width: 1em;
@@ -30,8 +27,10 @@ class Doodle extends HTMLElement {
         position: relative;
         float: left;
         line-height: 0;
+        box-sizing: border-box;
       }
       .shape {
+        box-sizing: border-box;
         line-height: 0;
         position: absolute;
         width: 100%;
