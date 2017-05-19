@@ -12,7 +12,7 @@ build: $(LIB)
 
 minify: $(TARGET)
 	@npm run minify
-	@node ./tools/trim
+	@./tools/trim
 	@cp $(TARGET_MIN) docs/
 
 $(LIB):

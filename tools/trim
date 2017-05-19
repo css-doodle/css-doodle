@@ -1,4 +1,4 @@
-#!/usr/local/bin/env node
+#!/usr/bin/env node
 
 const fs = require('fs');
 const path = require('path');
@@ -15,5 +15,3 @@ try {
 } catch (e) {
   // it's ok
 }
-
-
