@@ -7,7 +7,7 @@ class Doodle extends HTMLElement {
     this.doodle = this.attachShadow({ mode: 'open' });
     this.basic_styles = `
       :host {
-        display: inline-block;
+        display: inline-block !important;
         width: 1em;
         height: 1em;
         will-change: transform;

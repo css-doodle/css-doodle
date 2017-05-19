@@ -1,0 +1,19 @@
+#!/usr/local/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+const target = path.join(__dirname, '../css-doodle.min.js');
+
+try {
+  const content = fs.readFileSync(target, 'utf8')
+    .replace(/\n/g, '')
+    .replace(/\s{2,}/g, '');
+
+  if (content) {
+    fs.writeFileSync(target, content, 'utf8');
+  }
+} catch (e) {
+  // it's ok
+}
+
+

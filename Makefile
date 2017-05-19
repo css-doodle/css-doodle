@@ -1,12 +1,19 @@
 # for saving keystrokes
 
 TARGET := ./css-doodle.js
+TARGET_MIN := ./css-doodle.min.js
 LIB := ./node_modules
 
-build: $(LIB)
+all: compose minify
+
+compose: $(LIB)
 	@npm run build
 	@sed -i "" $$'s/\t/  /' $(TARGET)
-	@cp $(TARGET) docs/
+
+minify: $(TARGET)
+	@npm run minify
+	@node ./tools/trim
+	@cp $(TARGET_MIN) docs/
 
 $(LIB):
 	@npm install
