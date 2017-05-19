@@ -4,9 +4,9 @@ TARGET := ./css-doodle.js
 TARGET_MIN := ./css-doodle.min.js
 LIB := ./node_modules
 
-all: compose minify
+all: build minify
 
-compose: $(LIB)
+build: $(LIB)
 	@npm run build
 	@sed -i "" $$'s/\t/  /' $(TARGET)
 

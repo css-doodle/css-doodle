@@ -13,8 +13,8 @@
     "url": "git+https://github.com/yuanchuan/css-doodle.git"
   },
   "devDependencies": {
-    "rollup": "^0.41.6",
-    "rollup-plugin-butternut": "^0.1.0"
+    "butternut": "^0.4.6",
+    "rollup": "^0.41.6"
   },
   "keywords": [
     "css",
