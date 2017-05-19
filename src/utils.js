@@ -16,3 +16,7 @@ export function join_line(arr) {
 export function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
+
+export function clamp(num, min, max) {
+  return Math.max(min, Math.min(max, num));
+}

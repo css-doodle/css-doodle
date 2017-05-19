@@ -159,6 +159,10 @@ function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
 
+function clamp(num, min, max) {
+  return Math.max(min, Math.min(max, num));
+}
+
 class Rules {
   constructor(tokens) {
     this.tokens = tokens;
@@ -358,6 +362,8 @@ function read_comments(it, flag = {}) {
   if (c != '#') it.next();
   it.next();
   while (!it.end()) {
+    if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
+    else comment.value += c;
     c = it.curr();
     if (flag.inline) {
       if (c == '\n') return comment;
@@ -596,10 +602,6 @@ function parse_size(size) {
     y: ret.y,
     count: ret.x * ret.y
   };
-}
-
-function clamp(num, min, max) {
-  return Math.max(min, Math.min(max, num));
 }
 
 class Doodle extends HTMLElement {

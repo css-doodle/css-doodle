@@ -1,3 +1,5 @@
+import { clamp } from './utils';
+
 export default function parse_size(size) {
   const split = (size + '')
     .replace(/\s+/g, '')
@@ -12,8 +14,4 @@ export default function parse_size(size) {
     y: ret.y,
     count: ret.x * ret.y
   };
-}
-
-function clamp(num, min, max) {
-  return Math.max(min, Math.min(max, num));
 }
