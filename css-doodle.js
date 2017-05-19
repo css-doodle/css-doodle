@@ -588,103 +588,113 @@ function compile(input, size) {
   return generator(tokenizer(input), size);
 }
 
+const MIN = 1;
+const MAX = 16;
+
 function parse_size(size) {
-  const split = (size + '')
+  let [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
-    .split('x');
+    .split('x')
+    .map(Number);
+
   const ret = {
-    x: clamp(parseInt(split[0], 10), 1, 16),
-    y: clamp(parseInt(split[1] || split[0]), 1, 16)
+    x: clamp(x || MIN, 1, MAX),
+    y: clamp(y || x || MIN, 1, MAX)
   };
-  return {
-    x: ret.x,
-    y: ret.y,
-    count: ret.x * ret.y
-  };
+
+  return Object.assign({}, ret,
+    { count: ret.x * ret.y }
+  );
 }
+
+const basic = `
+  :host {
+    display: block;
+    visibility: visible;
+    width: 1em;
+    height: 1em;
+    will-change: transform;
+  }
+  .container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .container:after {
+    content: '';
+    display: block;
+    clear: both;
+    visibility: hidden;
+  }
+  .cell {
+    position: relative;
+    float: left;
+    line-height: 0;
+    box-sizing: border-box;
+  }
+  .shape {
+    box-sizing: border-box;
+    line-height: 0;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform-origin: center center;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+`;
 
 class Doodle extends HTMLElement {
   constructor() {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
-    this.basic_styles = `
-      :host {
-        display: inline-block !important;
-        width: 1em;
-        height: 1em;
-        will-change: transform;
-      }
-      .container {
-        position: relative;
-        width: 100%;
-        height: 100%;
-      }
-      .container:after {
-        content: '';
-        display: block;
-        clear: both;
-        visibility: hidden;
-      }
-      .cell {
-        position: relative;
-        float: left;
-        line-height: 0;
-        box-sizing: border-box;
-      }
-      .shape {
-        box-sizing: border-box;
-        line-height: 0;
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        transform-origin: center center;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-    `;
   }
-
   connectedCallback() {
-    let compiled;
+    setTimeout(() => {
+      if (!this.innerHTML.trim()) {
+        return false;
+      }
 
-    this.size = parse_size(
-      this.getAttribute('grid') || '1x1'
-    );
+      let compiled;
 
-    if (!this.innerHTML.trim()) return false;
+      try {
+        compiled = compile(
+          this.innerHTML,
+          this.size = parse_size(this.getAttribute('grid'))
+        );
+      } catch (e) {
+        // clear content before throwing error
+        this.innerHTML = '';
+        throw new Error(e);
+      }
 
-    // clear content before throwing error
-    try {
-      compiled = compile(this.innerHTML, this.size);
-    } catch (e) {
-      this.innerHTML = '';
-      throw new Error(e);
-    }
+      const { has_transition } = compiled.props;
 
-    const { has_transition } = compiled.props;
-    this.doodle.innerHTML = `
-      <style>${ this.basic_styles }</style>
-      <style class="style-container">
-        ${ this.style_size() }
-        ${ compiled.styles.host }
-      </style>
-      <style class="style-cells">
-        ${ has_transition ? '' : compiled.styles.cells }
-      </style>
-      <div class="container">
-        ${ this.html_cells() }
-      </div>
-    `;
+      this.doodle.innerHTML = `
+        <style>${ basic }</style>
+        <style class="style-container">
+          ${ this.style_size() }
+          ${ compiled.styles.host }
+        </style>
+        <style class="style-cells">
+          ${ has_transition ? '' : compiled.styles.cells }
+        </style>
+        <div class="container">
+          ${ this.html_cells() }
+        </div>
+      `;
 
-    has_transition && setTimeout(() => {
-      this.set_style(
-        '.style-cells',
-        compiled.styles.cells
-      );
-    }, 50);
+      if (has_transition) {
+        setTimeout(() => {
+          this.set_style('.style-cells',
+            compiled.styles.cells
+          );
+        }, 50);
+      }
+    });
   }
 
   style_size() {
@@ -713,7 +723,12 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
-    if (!styles) return false;
+    if (!styles) {
+      return false;
+    }
+    if (!this.size) {
+      this.size = parse_size(this.getAttribute('grid'));
+    }
     const compiled = compile(styles, this.size);
     this.set_style('.style-container',
       this.style_size() + compiled.styles.host
