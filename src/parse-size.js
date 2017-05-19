@@ -1,17 +1,22 @@
 import { clamp } from './utils';
 
-export default function parse_size(size) {
-  const split = (size + '')
+const MIN = 1;
+const MAX = 16;
+
+export default
+function parse_size(size) {
+  let [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
-    .split('x');
+    .split('x')
+    .map(Number);
+
   const ret = {
-    x: clamp(parseInt(split[0], 10), 1, 16),
-    y: clamp(parseInt(split[1] || split[0]), 1, 16)
+    x: clamp(x || MIN, 1, MAX),
+    y: clamp(y || x || MIN, 1, MAX)
   };
-  return {
-    x: ret.x,
-    y: ret.y,
-    count: ret.x * ret.y
-  };
+
+  return Object.assign({}, ret,
+    { count: ret.x * ret.y }
+  );
 }
