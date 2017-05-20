@@ -7,24 +7,24 @@ const basic = `
     visibility: visible;
     width: 1em;
     height: 1em;
-    will-change: transform;
+    will-change: transform
   }
   .container {
     position: relative;
     width: 100%;
-    height: 100%;
+    height: 100%
   }
   .container:after {
     content: '';
     display: block;
     clear: both;
-    visibility: hidden;
+    visibility: hidden
   }
   .cell {
     position: relative;
     float: left;
     line-height: 0;
-    box-sizing: border-box;
+    box-sizing: border-box
   }
   .shape {
     box-sizing: border-box;
@@ -36,7 +36,7 @@ const basic = `
     z-index: 1;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: center
   }
 `;
 

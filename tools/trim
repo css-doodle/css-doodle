@@ -7,7 +7,12 @@ const target = path.join(__dirname, '../css-doodle.min.js');
 try {
   const content = fs.readFileSync(target, 'utf8')
     .replace(/\n/g, '')
-    .replace(/\s{2,}/g, '');
+    .replace(/([>;{}])\\n/g, '$1')
+    .replace(/([:;><}{\`])\s+/g, '$1')
+    .replace(/\s+([:;><}{\`])/g, '$1')
+    .replace(/\s+([{}])\s+/g, '$1')
+    .replace(/>\s+</g, '><')
+    .replace(/\s{2,}/g, ' ');
 
   if (content) {
     fs.writeFileSync(target, content, 'utf8');
