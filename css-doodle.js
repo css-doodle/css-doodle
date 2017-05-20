@@ -4,7 +4,7 @@
   (factory());
 }(this, (function () { 'use strict';
 
-const is = {
+var is = {
   even: (n) => !!(n % 2),
   odd:  (n) => !(n % 2)
 };
@@ -173,7 +173,7 @@ class Rules {
     };
   }
   add_rule(selector, rule) {
-    let rules = this.rules[selector];
+    var rules = this.rules[selector];
     if (!rules) {
       rules = this.rules[selector] = [];
     }
@@ -190,7 +190,7 @@ class Rules {
           break;
         }
         case 'function': {
-          let fn = func[val.name.substr(1)];
+          var fn = func[val.name.substr(1)];
           if (fn) {
             result += apply_args(
               fn, coords, val.arguments
@@ -202,8 +202,8 @@ class Rules {
     }, '');
   }
   compose_rule(token, coords) {
-    let property = token.property;
-    let value = this.compose_value(token.value, coords);
+    var property = token.property;
+    var value = this.compose_value(token.value, coords);
     if (property == 'transition') {
       this.props.has_transition = true;
     }
@@ -226,18 +226,18 @@ class Rules {
               token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          let is_host_selector =
+          var is_host_selector =
             token.selector.startsWith(':host');
 
           if (is_host_selector) {
             token.skip = true;
           }
 
-          let psudo_rules = token.styles.map(s =>
+          var psudo_rules = token.styles.map(s =>
             this.compose_rule(s, coords)
           );
 
-          let selector = is_host_selector
+          var selector = is_host_selector
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -246,9 +246,9 @@ class Rules {
         }
 
         case 'cond':
-          let fn = cond[token.name.substr(1)];
+          var fn = cond[token.name.substr(1)];
           if (fn) {
-            let result = apply_args(fn, coords, token.arguments);
+            var result = apply_args(fn, coords, token.arguments);
             if (result) {
               this.compose(coords, token.styles);
             }
@@ -260,7 +260,7 @@ class Rules {
 
   output() {
     Object.keys(this.rules).forEach(selector => {
-      let is_host = selector.startsWith(':host');
+      var is_host = selector.startsWith(':host');
       const target = is_host ? 'host': 'cells';
       this.styles[target] += `
         ${ selector } {
@@ -276,9 +276,9 @@ class Rules {
 }
 
 function generator(tokens, size) {
-  let rules = new Rules(tokens);
-  for (let x = 1, count = 0; x <= size.x; ++x) {
-    for (let y = 1; y <= size.y; ++y) {
+  var rules = new Rules(tokens);
+  for (var x = 1, count = 0; x <= size.x; ++x) {
+    for (var y = 1; y <= size.y; ++y) {
       rules.compose({ x, y, count: ++count});
     }
   }
@@ -308,7 +308,7 @@ const is$1 = {
     return bracket_pair.hasOwnProperty(c);
   },
   close_bracket_of(c) {
-    let pair = bracket_pair[c];
+    var pair = bracket_pair[c];
     return p => p == pair;
   },
   number(n) {
@@ -317,13 +317,13 @@ const is$1 = {
 };
 
 function iterator(input) {
-  let index = 0, col = 1, line = 1;
+  var index = 0, col = 1, line = 1;
   return {
     curr:  (n = 0) => input[index + n],
     end:   () => input.length <= index,
     info:  () => ({ index, col, line }),
     next:  () => {
-      let next = input[index++];
+      var next = input[index++];
       if (next == '\n') line++, col = 0;
       else col++;
       return next;
@@ -338,8 +338,8 @@ function throw_error(msg, { col, line }) {
 }
 
 function skip_block(it) {
-  let [skipped, c] = [it.curr(), it.curr()];
-  let is_close_bracket = is$1.close_bracket_of(c);
+  var [skipped, c] = [it.curr(), it.curr()];
+  var is_close_bracket = is$1.close_bracket_of(c);
   it.next();
   while (!it.end()) {
     if (is_close_bracket(c = it.curr())) {
@@ -357,8 +357,8 @@ function skip_block(it) {
 }
 
 function read_comments(it, flag = {}) {
-  let comment = struct.comment();
-  let c = it.curr();
+  var comment = struct.comment();
+  var c = it.curr();
   if (c != '#') it.next();
   it.next();
   while (!it.end()) {
@@ -378,7 +378,7 @@ function read_comments(it, flag = {}) {
 }
 
 function read_property(it) {
-  let prop = '', c;
+  var prop = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ':') break;
     else if (!/[a-zA-Z\-]/.test(c)) {
@@ -391,7 +391,7 @@ function read_property(it) {
 }
 
 function read_quote_block(it, quote) {
-  let block = '', c;
+  var block = '', c;
   it.next();
   while (!it.end()) {
     if ((c = it.curr()) == quote) {
@@ -405,7 +405,7 @@ function read_quote_block(it, quote) {
 }
 
 function read_arguments(it) {
-  let args = [], arg = '', c;
+  var args = [], arg = '', c;
   while (!it.end()) {
     if (is$1.open_bracket(c = it.curr())) {
       arg += skip_block(it);
@@ -429,7 +429,7 @@ function read_arguments(it) {
 }
 
 function read_func(it) {
-  let func = struct.func(), name = '', c;
+  var func = struct.func(), name = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ')') break;
     if (c == '(') {
@@ -445,7 +445,7 @@ function read_func(it) {
 }
 
 function read_value(it) {
-  let text = struct.text(), c;
+  var text = struct.text(), c;
   const value = [];
   while (!it.end()) {
     if ((c = it.curr()) == '\n') {
@@ -475,7 +475,7 @@ function read_value(it) {
 }
 
 function read_selector(it) {
-  let selector = '', c;
+  var selector = '', c;
   while (!it.end()) {
     if ((c = it.curr())== '{') break;
     else if (!is$1.white_space(c)) selector += c;
@@ -485,7 +485,7 @@ function read_selector(it) {
 }
 
 function read_cond_selector(it) {
-  let selector = { name: '', arguments: [] }, c;
+  var selector = { name: '', arguments: [] }, c;
   while (!it.end()) {
     if ((c = it.curr()) == '(') {
       it.next();
@@ -499,7 +499,7 @@ function read_cond_selector(it) {
 }
 
 function read_psudo(it) {
-  let psudo = struct.psudo(), c;
+  var psudo = struct.psudo(), c;
   while (!it.end()) {
     if ((c = it.curr())== '}') break;
     if (is$1.white_space(c)) {
@@ -514,7 +514,7 @@ function read_psudo(it) {
 }
 
 function read_rule(it) {
-  let rule = struct.rule(), c;
+  var rule = struct.rule(), c;
   while (!it.end()) {
     if ((c = it.curr()) == ';') break;
     else if (!rule.property.length) {
@@ -530,21 +530,21 @@ function read_rule(it) {
 }
 
 function read_cond(it) {
-  let cond = struct.cond(), c;
+  var cond = struct.cond(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     else if (!cond.name.length) {
       Object.assign(cond, read_cond_selector(it));
     }
     else if (c == ':') {
-      let psudo = read_psudo(it);
+      var psudo = read_psudo(it);
       if (psudo.selector) cond.styles.push(psudo);
     }
     else if (c == '@') {
       cond.styles.push(read_cond(it));
     }
     else if (!is$1.white_space(c)) {
-      let rule = read_rule(it);
+      var rule = read_rule(it);
       if (rule.property) cond.styles.push(rule);
     }
     it.next();
@@ -556,7 +556,7 @@ function tokenizer(input) {
   const it = iterator(input);
   const tokens = [];
   while (!it.end()) {
-    let c = it.curr();
+    var c = it.curr();
     if (is$1.white_space(c)) {
       it.next();
       continue;
@@ -568,15 +568,15 @@ function tokenizer(input) {
       tokens.push(read_comments(it, { inline: true }));
     }
     else if (c == ':') {
-      let psudo = read_psudo(it);
+      var psudo = read_psudo(it);
       if (psudo.selector) tokens.push(psudo);
     }
     else if (c == '@') {
-      let cond = read_cond(it);
+      var cond = read_cond(it);
       if (cond.name.length) tokens.push(cond);
     }
     else if (!is$1.white_space(c)) {
-      let rule = read_rule(it);
+      var rule = read_rule(it);
       if (rule.property) tokens.push(rule);
     }
     it.next();

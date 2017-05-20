@@ -1,4 +1,4 @@
-const is = {
+var is = {
   even: (n) => !!(n % 2),
   odd:  (n) => !(n % 2)
 };

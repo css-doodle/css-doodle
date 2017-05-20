@@ -13,7 +13,7 @@ build: $(LIB)
 minify: $(TARGET)
 	@npm run minify
 	@./tools/trim
-	@cp $(TARGET_MIN) docs/
+	@cp $(TARGET_MIN) docs/components/
 
 $(LIB):
 	@npm install

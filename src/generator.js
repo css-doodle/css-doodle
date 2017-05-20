@@ -12,7 +12,7 @@ class Rules {
     }
   }
   add_rule(selector, rule) {
-    let rules = this.rules[selector];
+    var rules = this.rules[selector];
     if (!rules) {
       rules = this.rules[selector] = [];
     }
@@ -29,7 +29,7 @@ class Rules {
           break;
         }
         case 'function': {
-          let fn = func[val.name.substr(1)];
+          var fn = func[val.name.substr(1)];
           if (fn) {
             result += utils.apply_args(
               fn, coords, val.arguments
@@ -41,8 +41,8 @@ class Rules {
     }, '');
   }
   compose_rule(token, coords) {
-    let property = token.property;
-    let value = this.compose_value(token.value, coords);
+    var property = token.property;
+    var value = this.compose_value(token.value, coords);
     if (property == 'transition') {
       this.props.has_transition = true;
     }
@@ -65,18 +65,18 @@ class Rules {
               token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          let is_host_selector =
+          var is_host_selector =
             token.selector.startsWith(':host');
 
           if (is_host_selector) {
             token.skip = true;
           }
 
-          let psudo_rules = token.styles.map(s =>
+          var psudo_rules = token.styles.map(s =>
             this.compose_rule(s, coords)
           );
 
-          let selector = is_host_selector
+          var selector = is_host_selector
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -85,9 +85,9 @@ class Rules {
         }
 
         case 'cond':
-          let fn = cond[token.name.substr(1)];
+          var fn = cond[token.name.substr(1)];
           if (fn) {
-            let result = utils.apply_args(fn, coords, token.arguments);
+            var result = utils.apply_args(fn, coords, token.arguments);
             if (result) {
               this.compose(coords, token.styles);
             }
@@ -99,7 +99,7 @@ class Rules {
 
   output() {
     Object.keys(this.rules).forEach(selector => {
-      let is_host = selector.startsWith(':host');
+      var is_host = selector.startsWith(':host');
       const target = is_host ? 'host': 'cells';
       this.styles[target] += `
         ${ selector } {
@@ -116,9 +116,9 @@ class Rules {
 
 export default
 function generator(tokens, size) {
-  let rules = new Rules(tokens);
-  for (let x = 1, count = 0; x <= size.x; ++x) {
-    for (let y = 1; y <= size.y; ++y) {
+  var rules = new Rules(tokens);
+  for (var x = 1, count = 0; x <= size.x; ++x) {
+    for (var y = 1; y <= size.y; ++y) {
       rules.compose({ x, y, count: ++count});
     }
   }
