@@ -77,7 +77,7 @@
             <script src="css-doodle.js"></script>
           </textarea>
         </p>
-        <p>You can also install from <em>npm</em> and then require the module into your javascript:
+        <p>You can also install from <em>npm</em> and require the module in javascript:
         <p>
           <textarea code>
             npm install css-doodle
@@ -126,8 +126,7 @@
             <textarea code>
               <css-doodle grid="5, 3">
                 :doodle {
-                  width: 10em;
-                  height: 6em;
+                  width: 7em; height: 4em;
                 }
                 background: rebeccapurple;
                 border: 1px solid #fff;
@@ -135,8 +134,8 @@
             </textarea>
             <css-doodle grid="5, 3">
               :doodle {
-                width: 10em;
-                height: 6em;
+                width: 7em;
+                height: 4em;
               }
               background: rebeccapurple;
               border: 1px solid #fff;
@@ -147,36 +146,42 @@
         <article>
           <h3>:doodle</h3>
           <p>The <code>:doodle</code> or <code>:host</code> is a special selector indicates to the component element itself. The styles can be over-written by your normal css files outside.
+          <span class="tip">(try to hover on the doodle)</span>
+          </p>
           <p class="has-preview">
             <textarea code>
               :doodle {
-                width: 8em; height: 8em;
+                width: 7em; height: 7em;
                 transition: all .2s ease 100ms;
               }
               :doodle(:hover) {
-                transform: rotate(10deg) scale(.9);
+                --radius: 50%;
+                transform: rotate(45deg) scale(.9);
               }
               background: rebeccapurple;
               border: 1px solid #fff;
+              border-radius: var(--radius, 0);
+              transition: all .2s ease @rand(500ms);
             </textarea>
             <css-doodle grid="4">
               :doodle {
-                width: 8em; height: 8em;
+                width: 7em; height: 7em;
                 transition: all .2s ease 100ms;
               }
               :doodle(:hover) {
-                transform: rotate(10deg) scale(.9);
-                --scale: .8;
+                --radius: 50%;
+                transform: rotate(45deg) scale(.9);
               }
               background: rebeccapurple;
               border: 1px solid #fff;
-              transform: scale(var(--scale));
+              border-radius: var(--radius, 0);
+              transition: all .2s ease @rand(500ms);
             </css-doodle>
           </p>
         </article>
 
         <article>
-          <h3>Condition Selectors</h3>
+          <h3>Conditional Selectors</h3>
 
           <section>
             <h4>@even</h4>
@@ -189,8 +194,8 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 6em;
-                  height: 6em;
+                  width: 7em;
+                  height: 7em;
                 }
                 @even {
                   background: rebeccapurple;
@@ -210,8 +215,8 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 6em;
-                  height: 6em;
+                  width: 7em;
+                  height: 7em;
                 }
                 @odd {
                   background: rebeccapurple;
@@ -231,8 +236,8 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 6em;
-                  height: 6em;
+                  width: 7em;
+                  height: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -254,8 +259,8 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 6em;
-                  height: 6em;
+                  width: 7em;
+                  height: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -277,8 +282,8 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 6em;
-                  height: 6em;
+                  width: 7em;
+                  height: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -300,8 +305,8 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 6em;
-                  height: 6em;
+                  width: 7em;
+                  height: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -453,7 +458,7 @@
               <textarea code>
                 background: rebeccapurple;
                 transform: scale(@rand(.8)) rotate(@rand(360deg));
-                opacity: @rand(.1, 1, .1)
+                opacity: @rand(.1, 1, .1);
               </textarea>
               <css-doodle grid="5" class="click-to-update">
                 :doodle {
