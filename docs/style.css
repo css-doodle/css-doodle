@@ -1,0 +1,473 @@
+/**
+ * Reset CSS v2.0
+ * http: //meyerweb.com/eric/tools/css/reset/
+ * License: none (public domain)
+ */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size:  100%;
+  font: inherit;
+  vertical-align:  baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+  display:  block;
+}
+body {
+  line-height:  1;
+}
+ol, ul {
+  list-style:  none;
+}
+blockquote, q {
+  quotes:  none;
+}
+blockquote: before, blockquote:after,
+q:before, q:after {
+  content: '';
+  content:  none;
+}
+table {
+  border-collapse:  collapse;
+  border-spacing:  0;
+}
+
+html, body, h1, ul, li {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: .6em 0;
+}
+
+
+body {
+  background-color: #fff;
+  font-size: 100%;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  font-family:
+    -apple-system,
+    "Helvetica Neue", Helvetica,
+    "Nimbus Sans L", Arial,
+    "Liberation Sans",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Source Han Sans CN", "Source Han Sans SC",
+    "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei",
+    "ST Heiti", SimHei,
+    "WenQuanYi Zen Hei Sharp",
+    sans-serif;
+}
+
+.wrap {
+  max-width: 53.125em;
+  margin: 0 auto;
+  padding: 0 2em;
+}
+
+
+css-doodle {
+  color: transparent;
+}
+  css-doodle:not(:defined) {
+    visibility: hidden;
+  }
+  css-doodle[flags] {
+    display: block;
+    width: 100%;
+    height: 18vh;
+    max-height: 15em;
+    overflow: hidden;
+  }
+  css-doodle[docs-bg] {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 100vw;
+    height: 100%;
+  }
+
+
+textarea[code] {
+  width: 100%;
+  font-size: 1em;
+  font-family: monospace;
+  resize: none;
+  border: none;
+}
+
+.code-sample .CodeMirror {
+  height: auto;
+  padding: 1em;
+  cursor: default;
+  background: #f9fcfa;
+  border: 1px solid #dee8e2;
+  border-radius: 3px;
+}
+.code-sample .CodeMirror-cursor {
+  display: none;
+}
+.cm-s-3024-day span.cm-string {
+  color: #FF9800;
+}
+.cm-s-3024-day span.cm-def {
+  color: #673AB7;
+}
+
+
+.cover {
+  background-color: rgba(246, 255, 237, 0.5);
+  padding-bottom: 2em;
+}
+  .cover header {
+    text-align: center;
+    overflow: hidden;
+  }
+  .cover h1 {
+    margin-top: 1em;
+    color: rgba(0, 150, 136, 0.5);
+    font-size: 3em;
+    font-weight: normal;
+    line-height: 1;
+  }
+  .cover em {
+    color: #009688;
+    font-style: normal;
+  }
+  .cover p {
+    color: rgba(0, 150, 136, 0.5);
+    font-size: 1.2em;
+    padding: 0 2em;
+  }
+  .cover nav {
+    padding: 1em 0 0;
+    margin-top: 1em;
+  }
+    .cover nav a {
+      margin: 0 .2em;
+      color: rgba(0, 150, 136, 0.43);
+      text-decoration: none;
+      min-width: 5em;
+      display: inline-block;
+      border: 1px solid rgba(0, 150, 136, 0.43);
+      padding: 8px 10px;
+      border-radius: 3px;
+      position: relative;
+      transition: all .2s ease-in-out;
+    }
+      .cover nav a:hover {
+        color: #009688;
+        border-color: #009688;
+      }
+
+
+.playground {
+  transition: all .2s ease;
+  width: 100%;
+  max-width: 900px;
+  margin: 4em auto;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 0 50px rgb(194, 199, 199);
+  height: 420px;
+}
+  .playground .doodle {
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+  }
+    .playground .doodle:before {
+      content: 'click to refresh';
+      position: absolute;
+      right: 5px;
+      bottom: 5px;
+      padding: 2px 5px;
+      font-size: .8em;
+      background: rgba(1, 160, 228, 0.1);
+      color: rgba(1, 160, 228, 0.57);
+      z-index: 1;
+    }
+  .playground .doodle,
+  .playground .source {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    background: #fff;
+    transition: all .2s ease;
+    flex: 1;
+    height: 100%;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .playground css-doodle {
+    width: 350px;
+    height: 350px;
+  }
+  .playground .source {
+    background: #fafafa;
+    box-shadow: inset 13px 0 20px -14px rgba(125, 125, 125, .2);
+    padding: .5em 0 .5em 1em;
+    max-width: 50%;
+  }
+    .playground .source .CodeMirror {
+      font-size: 120%;
+      line-height: 1.2;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      background: transparent;
+    }
+
+
+@media (max-width: 55.625em) {
+  .playground  {
+    position: relative;
+    display: block;
+    width: 400px;
+  }
+  .playground {
+    transform: translate(-15%, 0);
+  }
+  .playground .source {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+    background: rgba(255, 255, 255, .9);
+    max-width: 100%;
+  }
+
+  .playground .source:not([front]):after,
+  .playground .css-doodle:not([front]):after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0);
+    z-index: 8;
+  }
+
+  .playground [front] {
+    transform: translate(30%, 20%);
+    box-shadow: 0 0 50px rgb(194, 199, 199);
+    z-index: 3;
+  }
+}
+
+@media (max-width: 34.0625em) {
+  .playground {
+    transform: translate(-15%, 0);
+    width: 340px;
+    height: 340px;
+  }
+  .playground .doodle css-doodle {
+    width: 280px;
+    height: 280px;
+  }
+}
+
+@media (max-width: 28.125em) {
+  .cover h1 {
+    font-size: 2em;
+  }
+  .playground {
+    width: 300px;
+    height: 300px;
+    transform:  translate(-5%, 0);
+  }
+  .playground .doodle css-doodle {
+    width: 280px;
+    height: 280px;
+  }
+  .playground [front] {
+    transform: translate(10%, 15%);
+  }
+}
+
+@media (max-width: 22em) {
+  .playground {
+    width: 240px;
+    height: 240px;
+    transform:  translate(-5%, 0);
+  }
+  .playground .doodle css-doodle {
+    width: 220px;
+    height: 220px;
+  }
+  .playground [front] {
+    transform: translate(10%, 15%);
+  }
+}
+
+
+.docs {
+  padding: 4em 0;
+  position: relative;
+  overflow: hidden;
+}
+  .docs .wrap {
+    position: relative;
+    z-index: 2;
+  }
+  .docs p  {
+    font-size: 120%;
+    line-height: 1.6;
+    color: #7b8078;
+    margin-bottom: 1em;
+  }
+    .docs p code {
+      font-family: monospace;
+      margin: 0 2px;
+    }
+    .docs p.has-preview {
+      display: flex;
+    }
+      .docs .has-preview .code-sample {
+        width: 61.8%;
+      }
+      .docs .has-preview css-doodle {
+        margin-left: 1em;
+      }
+
+      @media (max-width: 34.0625em) {
+        .docs p.has-preview {
+          display: block;
+        }
+        .docs .has-preview .code-sample {
+          width: 100%;
+        }
+        .docs .has-preview css-doodle {
+          margin: 0;
+          margin-top: 1em;
+        }
+      }
+    .docs > section {
+      margin-bottom: 4em;
+    }
+    .docs article {
+      margin-bottom: 4em;
+    }
+
+    .docs article > section {
+      margin-bottom: 3em;
+    }
+  .docs .list-items {
+    padding-left: 1em;
+    font-size: 1.1em;
+    line-height: 1.4;
+    color: #666;
+  }
+  .docs em {
+    font-weight: normal;
+    color: #444;
+  }
+  .docs a:link,
+  .docs a:visited {
+    color: rgba(46, 169, 156, 0.9);
+  }
+  .docs a:hover {
+    background: #f6ffed;
+  }
+  .docs h2 {
+    font-size: 2em;
+    color: #333;
+    margin-bottom: 1.5em;
+  }
+  .docs h3 {
+    font-size: 1.5em;
+    margin-bottom: 2em;
+  }
+  .docs h4 {
+    font-size: 1.2em;
+    margin-bottom: 1em;
+  }
+  .docs .sep {
+    margin: 3em 0;
+    height: 1px;
+    width: 37%;
+    background: rgba(46, 169, 156, 0.5);
+  }
+
+
+.example {
+  width: 100vw;
+  height: 100vh;
+  min-height: 380px;
+  overflow: hidden;
+  z-index: 2;
+  position: relative;
+}
+  .example .code-sample {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 3;
+    max-width: 90%;
+    transform: translate(-50%, -50%);
+    line-height: 1.4;
+    font-size: 1.2em;
+    overflow: hidden;
+  }
+    .code-sample:after  {
+      --bg: rgba(255, 255, 255, .9);
+      content: '';
+      position: absolute;
+      width: 50px;
+      height: 1px;
+      right: 0;
+      top: 0;
+      border: 0;
+      transform-origin: 0 0;
+      transform: translate(12px) rotate(45deg);
+      box-shadow:
+        0 -5px 0 0 rgba(255, 255, 255, .8),
+        0 -8px 0 0 rgba(255, 255, 255, .6),
+        0 -12px 0 0 rgba(255, 255, 255, .4),
+        0 -17px 0 0 rgba(255, 255, 255, .2),
+        0 -22px 0 0 rgba(255, 255, 255, .2);
+    }
+    .example .code-sample .CodeMirror {
+      background: rgba(255, 255, 255, .9);
+      border-radius: 0;
+      border: 0;
+      --polygon: polygon(
+        0 0,
+        calc(100% - 35px) 0,
+        100% 35px,
+        100% 100%,
+        0 100%
+      );
+      -webkit-clip-path: var(--polygon);
+              clip-path: var(--polygon);
+    }
+
+.about {
+  color: #aaa;
+  line-height: 1.4;
+}
+
+.about a {
+  color: #8ac1bc;
+}
