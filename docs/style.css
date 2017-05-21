@@ -82,7 +82,7 @@ body.oldie:after {
   color: #FD6563;
   top: 0;
   width: 100%;
-  padding: 1em;
+  padding: 1.2em 0;
   line-height: 1.4;
   text-align: center;
   z-index: 99;
@@ -134,6 +134,13 @@ textarea[code] {
   border: 1px solid #dee8e2;
   border-radius: 3px;
 }
+
+.code-sample .CodeMirror-scroll,
+.CodeMirror-scroll {
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 .code-sample .CodeMirror-cursor {
   display: none;
 }
@@ -309,6 +316,10 @@ textarea[code] {
     width: 300px;
     height: 300px;
     transform:  translate(-5%, 0);
+  }
+  .source {
+    font-size: .9em;
+    padding: .2em;
   }
   .playground .doodle css-doodle {
     width: 280px;

@@ -31,7 +31,8 @@
     block.parentNode.replaceChild(sample, block);
     CodeMirror(sample, {
       value: content,
-      readOnly: true,
+      readOnly: 'nocursor',
+      cursorBlinkRate: -1,
       theme: '3024-day',
       tabSize: 2
     });
