@@ -69,15 +69,11 @@
   var playground = document.querySelector('.playground');
   var source = document.querySelector('.playground .source');
 
-  function isFlat() {
-    return getComputedStyle(playground).transform == 'none';
-  }
-
   var container = document.querySelector('.playground .doodle')
   container.appendChild(doodle);
   container.addEventListener('click', function(e) {
     e.preventDefault();
-    if (isFlat() || container.hasAttribute('front')) {
+    if (container.hasAttribute('front')) {
       doodle.refresh();
     }
   });
@@ -105,21 +101,22 @@
 
   document.querySelector('.docs').addEventListener('click', function(e) {
     if (e.target.matches('css-doodle.click-to-update')) {
-      console.log(e.target);
       e.target.refresh();
     }
   });
 
   container.addEventListener('click', function() {
-    if (!isFlat()) {
-      source.removeAttribute('front');
-      container.setAttribute('front', '');
-    }
+    source.removeAttribute('front');
+    container.setAttribute('front', '');
   });
   source.addEventListener('click', function() {
-    if(!isFlat()) {
-      container.removeAttribute('front');
-      source.setAttribute('front', '');
+    var back = !source.hasAttribute('front');
+    container.removeAttribute('front');
+    source.setAttribute('front', '');
+    if (back) {
+      setTimeout(function() {
+        editor.refresh();
+      }, 200);
     }
   });
 

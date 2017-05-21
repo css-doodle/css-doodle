@@ -265,10 +265,11 @@ textarea[code] {
   .playground  {
     position: relative;
     display: block;
-    width: 400px;
+    width: 500px;
+    box-shadow: none;
   }
   .playground {
-    transform: translate(-15%, 0);
+    background: transparent;
   }
   .playground .source {
     position: absolute;
@@ -276,51 +277,64 @@ textarea[code] {
     left: 0;
     width: 100%;
     z-index: 2;
-    background: rgba(255, 255, 255, .9);
+    background: rgba(255, 255, 255, .8);
     max-width: 100%;
+    transition-duration: 250ms;
+  }
+  .playground .doodle {
+    transition-duration: 300ms;
+  }
+  .playground .source,
+  .playground .doodle {
+    box-shadow: 0 0 50px rgb(194, 199, 199);
+    will-change: transform;
   }
 
   .playground .source:not([front]):after,
-  .playground .css-doodle:not([front]):after {
+  .playground .doodle:not([front]):after {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0);
-    z-index: 8;
+    background: rgba(255, 255, 255, .5);
+    z-index: 2;
+    cursor: pointer;
+  }
+
+  .playground .source:not([front]) .CodeMirror-scroll {
+    overflow: hidden !important;
+    -webkit-overflow-scrolling: none;
+  }
+
+  .playground .source:not([front]),
+  .playground .doodle:not([front]) {
+    transform: translate(-15%) scale(.8) rotateZ(-5deg);
   }
 
   .playground [front] {
-    transform: translate(30%, 20%);
-    box-shadow: 0 0 50px rgb(194, 199, 199);
-    z-index: 3;
+    transform: translate(7%, 20%);
+    z-index: 4;
   }
 }
 
-@media (max-width: 34.0625em) {
+@media (max-width: 37.5em) {
   .playground {
-    transform: translate(-15%, 0);
-    width: 340px;
-    height: 340px;
-  }
-  .playground .doodle css-doodle {
-    width: 280px;
-    height: 280px;
+    width: 400px;
+    height: 400px;
   }
 }
 
-@media (max-width: 28.125em) {
+@media (max-width: 30.125em) {
   .cover h1 {
     font-size: 2em;
   }
   .playground {
-    width: 300px;
-    height: 300px;
-    transform:  translate(-5%, 0);
+    width: 320px;
+    height: 320px;
   }
-  .source {
+  .playground .source .CodeMirror {
     font-size: .9em;
     padding: .2em;
   }
@@ -328,23 +342,30 @@ textarea[code] {
     width: 280px;
     height: 280px;
   }
+  .playground .source:not([front]),
+  .playground .doodle:not([front]) {
+    transform: translate(-10%, -5%) scale(.8) rotateZ(-5deg);
+  }
   .playground [front] {
-    transform: translate(10%, 15%);
+    transform: translate(0%, 20%);
   }
 }
 
 @media (max-width: 22em) {
   .playground {
-    width: 240px;
-    height: 240px;
-    transform:  translate(-5%, 0);
+    width: 280px;
+    height: 280px;
   }
   .playground .doodle css-doodle {
     width: 220px;
     height: 220px;
   }
+  .playground .source:not([front]),
+  .playground .doodle:not([front]) {
+    transform: translate(-10%, -5%) scale(.8) rotateZ(-5deg);
+  }
   .playground [front] {
-    transform: translate(10%, 15%);
+    transform: translate(-4%, 20%);
   }
 }
 
