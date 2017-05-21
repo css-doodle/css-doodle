@@ -1,0 +1,21 @@
+{
+  "name": "css-doodle",
+  "description": "A web component for drawing patterns with css.",
+  "main": "css-doodle.js",
+  "authors": [
+    "yuanchuan"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "css",
+    "web-components"
+  ],
+  "homepage": "https://yuanchuan.github.io/css-doodle/",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
