@@ -20,9 +20,9 @@ export function col(x, y) {
 }
 
 export function even(x, y, count) {
-  return _ => is.even(count);
+  return _ => is.even(count - 1);
 }
 
 export function odd(x, y, count) {
-  return _ => is.odd(count);
+  return _ => is.odd(count - 1);
 }
