@@ -2,8 +2,8 @@
 
 A web component for drawing patterns with css.
 
-![circles](screenshot/sample.png)
+<img src="screenshot/sample.png" width="720px"/>
 
-For more info please check:
+For more info please visit:
 
 [https://yuanchuan.github.io/css-doodle/](https://yuanchuan.github.io/css-doodle/)
