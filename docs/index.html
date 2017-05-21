@@ -77,7 +77,7 @@
             <script src="css-doodle.js"></script>
           </textarea>
         </p>
-        <p>You can also install from <em>npm</em>:
+        <p>You can also install from <em>npm</em> and then require the module into your javascript:
         <p>
           <textarea code>
             npm install css-doodle
@@ -122,53 +122,61 @@
 
           <p>The size of the grid is defined by the <em>"grid"</em> attribute on the element. Range from <em>1</em> to <em>16</em>. If no size or 0 is given,
           the size is set to 1x1.
-          <p>
+          <p class="has-preview">
             <textarea code>
-              <css-doodle grid="5, 2">
-                /* styles */
+              <css-doodle grid="5, 3">
+                :doodle {
+                  width: 10em;
+                  height: 6em;
+                }
+                background: rebeccapurple;
+                border: 1px solid #fff;
               </css-doodle>
             </textarea>
+            <css-doodle grid="5, 3">
+              :doodle {
+                width: 10em;
+                height: 6em;
+              }
+              background: rebeccapurple;
+              border: 1px solid #fff;
+            </css-doodle>
           </p>
-          <p>
-            Recognizable formats are:
-          </p>
-          <div class="list-items">
-            <ul>
-              <li>grid = "0"</li>
-              <li>grid = "5"</li>
-              <li>grid = "20"</li>
-              <li>grid = "5x7"</li>
-              <li>grid = "5 x 7"</li>
-              <li>grid = "5，7"</li>
-              <li>grid = "5,7"</li>
-            </ul>
-          </div>
         </article>
 
         <article>
           <h3>:doodle</h3>
           <p>The <code>:doodle</code> or <code>:host</code> is a special selector indicates to the component element itself. The styles can be over-written by your normal css files outside.
-          <p>
+          <p class="has-preview">
             <textarea code>
               :doodle {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vmax;
-                height: 100vmax;
+                width: 8em; height: 8em;
+                transition: all .2s ease 100ms;
               }
-              /* on hover */
               :doodle(:hover) {
-                transform: scale(.5);
+                transform: rotate(10deg) scale(.9);
               }
+              background: rebeccapurple;
+              border: 1px solid #fff;
             </textarea>
-          </p>
-          <p>
+            <css-doodle grid="4">
+              :doodle {
+                width: 8em; height: 8em;
+                transition: all .2s ease 100ms;
+              }
+              :doodle(:hover) {
+                transform: rotate(10deg) scale(.9);
+                --scale: .8;
+              }
+              background: rebeccapurple;
+              border: 1px solid #fff;
+              transform: scale(var(--scale));
+            </css-doodle>
           </p>
         </article>
 
         <article>
-          <h3>Selectors</h3>
+          <h3>Condition Selectors</h3>
 
           <section>
             <h4>@even</h4>
@@ -510,8 +518,6 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="lib/codemirror/lang/shell.js"></script>
-  <script src="lib/codemirror/lang/html.js"></script>
   <script src="main.js"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){

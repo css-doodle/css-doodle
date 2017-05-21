@@ -258,6 +258,9 @@ textarea[code] {
 
 
 @media (max-width: 55.625em) {
+  .cover {
+    padding-bottom: 4em;
+  }
   .playground  {
     position: relative;
     display: block;
