@@ -116,6 +116,9 @@ css-doodle {
     width: 100vw;
     height: 100%;
   }
+  css-doodle.click-to-update {
+    cursor: pointer;
+  }
 
 
 textarea[code] {
@@ -365,6 +368,10 @@ textarea[code] {
       font-family: monospace;
       margin: 0 2px;
     }
+    .docs p .tip {
+      font-size: .8em;
+      color: #aaa;
+    }
     .docs p.has-preview {
       display: flex;
     }
@@ -418,7 +425,12 @@ textarea[code] {
     font-size: 2em;
     color: #333;
     margin-bottom: 1.5em;
+    position: relative;
   }
+    .docs h2 a[name] {
+      position: absolute;
+      top: -1.9em;
+    }
   .docs h3 {
     font-size: 1.5em;
     margin-bottom: 2em;
@@ -487,11 +499,14 @@ textarea[code] {
               clip-path: var(--polygon);
     }
 
+
 .about {
   color: #aaa;
   line-height: 1.4;
 }
-
-.about a {
-  color: #8ac1bc;
-}
+  .about a {
+    color: #8ac1bc;
+  }
+    .about a:hover {
+      background: #f6ffed;
+    }

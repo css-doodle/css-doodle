@@ -103,6 +103,13 @@
     }
   });
 
+  document.querySelector('.docs').addEventListener('click', function(e) {
+    if (e.target.matches('css-doodle.click-to-update')) {
+      console.log(e.target);
+      e.target.refresh();
+    }
+  });
+
   container.addEventListener('click', function() {
     if (!isFlat()) {
       source.removeAttribute('front');

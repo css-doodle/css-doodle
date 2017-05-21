@@ -380,7 +380,7 @@
             </p>
 
             <p>
-              These number can be used to generate dynamic values with <code>calc()</code>.
+              These numbers can be used to generate dynamic values together with <code>calc()</code>.
             </p>
             <p class="has-preview">
               <textarea code>
@@ -406,7 +406,10 @@
 
           <section>
             <h4>@any(v1, v2,...)</h4>
-            <p> Randomly pick a value from given list.</p>
+            <p>
+              Randomly pick a value from given list.
+              <br/><span class="tip">(try to click on the doodle)</span>
+            </p>
             <p class="has-preview">
               <textarea code>
                 :after {
@@ -414,7 +417,7 @@
                   color: rebeccapurple;
                 }
               </textarea>
-              <css-doodle grid="5">
+              <css-doodle grid="5" class="click-to-update">
                 :doodle {
                   width: 7em;
                   height: 7em;
@@ -429,20 +432,25 @@
 
           <section>
             <h4>@rand(start [,stop] [,step])</h4>
-            <p> Returns a random value from the range of numbers.</p>
+            <p>
+              Returns a random value from the range of numbers.
+              <br/><span class="tip">(try to click on the doodle)</span>
+            </p>
             <p class="has-preview">
               <textarea code>
                 background: rebeccapurple;
                 transform: scale(@rand(.8)) rotate(@rand(360deg));
                 opacity: @rand(.1, 1, .1)
               </textarea>
-              <css-doodle grid="5">
+              <css-doodle grid="5" class="click-to-update">
                 :doodle {
                   width: 7em;
                   height: 7em;
                 }
                 background: rebeccapurple;
                 opacity: @rand(.1, 1, .1);
+                transition: all .2s ease @rand(200ms);
+                will-change: transform;
                 transform:
                   scale(@rand(.9))
                   rotate( @rand(360deg))
