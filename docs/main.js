@@ -30,6 +30,7 @@
     sample.className = 'code-sample';
     block.parentNode.replaceChild(sample, block);
     CodeMirror(sample, {
+      mode: block.getAttribute('code') || 'css',
       value: content,
       readOnly: 'nocursor',
       cursorBlinkRate: -1,
@@ -56,7 +57,7 @@
     );
 
     background: hsla(
-      calc(5*@index()), 70%, 61.8%, @rand(.8)
+      calc(5*@index()), 70%, 60%, @rand(.8)
     );
   `);
 
@@ -105,18 +106,28 @@
     }
   });
 
+  function toggled() {
+    var front = playground.querySelector('[front]');
+    return getComputedStyle(front).transform != 'none';
+  }
+
   container.addEventListener('click', function() {
-    source.removeAttribute('front');
-    container.setAttribute('front', '');
+    if (toggled()) {
+      source.removeAttribute('front');
+      container.setAttribute('front', '');
+    }
   });
   source.addEventListener('click', function() {
-    var back = !source.hasAttribute('front');
-    container.removeAttribute('front');
-    source.setAttribute('front', '');
-    if (back) {
-      setTimeout(function() {
-        editor.refresh();
-      }, 200);
+    if (toggled()) {
+      var back = !source.hasAttribute('front');
+      container.removeAttribute('front');
+      source.setAttribute('front', '');
+      if (back) {
+        setTimeout(function() {
+          editor.setValue(editor.getValue().trim());
+          editor.refresh();
+        }, 200);
+      }
     }
   });
 

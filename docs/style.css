@@ -63,15 +63,10 @@ body {
   -webkit-text-size-adjust: 100%;
   font-family:
     -apple-system,
-    "Helvetica Neue", Helvetica,
-    "Nimbus Sans L", Arial,
-    "Liberation Sans",
-    "PingFang SC",
-    "Hiragino Sans GB",
-    "Source Han Sans CN", "Source Han Sans SC",
-    "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei",
-    "ST Heiti", SimHei,
-    "WenQuanYi Zen Hei Sharp",
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Helvetica,
+    Arial,
     sans-serif;
 }
 
@@ -178,6 +173,7 @@ textarea[code] {
     color: rgba(0, 150, 136, 0.5);
     font-size: 1.2em;
     padding: 0 2em;
+    line-height: 1.4;
   }
   .cover nav {
     padding: 1em 0 0;
@@ -248,7 +244,7 @@ textarea[code] {
   .playground .source {
     background: #fafafa;
     box-shadow: inset 13px 0 20px -14px rgba(125, 125, 125, .2);
-    padding: .5em 0 .5em 1em;
+    padding: .5em 1em;
     max-width: 50%;
   }
     .playground .source .CodeMirror {
@@ -306,6 +302,10 @@ textarea[code] {
   .playground .source:not([front]) .CodeMirror-scroll {
     overflow: hidden !important;
     -webkit-overflow-scrolling: none;
+  }
+
+  .playground .source:not([front]) .CodeMirror-vscrollbar {
+    display: none !important;
   }
 
   .playground .source:not([front]),
