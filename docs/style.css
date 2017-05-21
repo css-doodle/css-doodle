@@ -75,6 +75,19 @@ body {
     sans-serif;
 }
 
+body.oldie:after {
+  content: 'Sorry! Your browser does not support web components!';
+  position: fixed;
+  background: #fbfbc8;
+  color: #FD6563;
+  top: 0;
+  width: 100%;
+  padding: 1em;
+  line-height: 1.4;
+  text-align: center;
+  z-index: 99;
+}
+
 .wrap {
   max-width: 53.125em;
   margin: 0 auto;

@@ -1,5 +1,9 @@
 (function() {
 
+  if (!window.customElements || !document.head.attachShadow) {
+    document.body.className += 'oldie';
+  }
+
   function removeSpaces(input) {
     return input.replace(/[\s\n\t]/g, '');
   }
