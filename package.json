@@ -1,5 +1,5 @@
 {
-  "name": "@yuanchuan/css-doodle",
+  "name": "css-doodle",
   "version": "0.1.0",
   "description": "A web component for drawing patterns with css.",
   "main": "css-doodle.js",
