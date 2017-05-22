@@ -1,8 +1,18 @@
-# css-doodle
+# &lt;css-doodle /&gt;
 
 A web component for drawing patterns with css.
 
-<img src="screenshot/sample.png" width="720px"/>
+![screenshot](screenshot/sample.png)
+
+
+## Installation
+
+```bash
+npm install css-doodle
+```
+
+
+## Usage
 
 For more info please visit:
 
