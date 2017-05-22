@@ -152,30 +152,28 @@
             <textarea code>
               :doodle {
                 width: 7em; height: 7em;
-                transition: all .2s ease 100ms;
+                transition: .2s ease;
               }
               :doodle(:hover) {
-                --radius: 50%;
-                transform: rotate(45deg) scale(.9);
+                border-radius: 50%;
+                overflow: hidden;
+                transform: rotate(45deg);
               }
               background: rebeccapurple;
               border: 1px solid #fff;
-              border-radius: var(--radius, 0);
-              transition: all .2s ease @rand(500ms);
             </textarea>
-            <css-doodle grid="4">
+            <css-doodle grid="5">
               :doodle {
                 width: 7em; height: 7em;
                 transition: all .2s ease 100ms;
               }
               :doodle(:hover) {
-                --radius: 50%;
-                transform: rotate(45deg) scale(.9);
+                border-radius: 50%;
+                overflow: hidden;
+                transform: rotate(45deg);
               }
               background: rebeccapurple;
               border: 1px solid #fff;
-              border-radius: var(--radius, 0);
-              transition: all .2s ease @rand(500ms);
             </css-doodle>
           </p>
         </article>
@@ -232,6 +230,7 @@
               <textarea code>
                 @nth(9) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -243,6 +242,8 @@
                 border: 1px solid #fff;
                 @nth(9) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
+                  border: none;
                 }
               </css-doodle>
             </p>
@@ -255,6 +256,7 @@
               <textarea code>
                 @row(3) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -266,6 +268,8 @@
                 border: 1px solid #fff;
                 @row(3) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
+                  border: none;
                 }
               </css-doodle>
             </p>
@@ -278,6 +282,7 @@
               <textarea code>
                 @col(3) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -289,6 +294,8 @@
                 border: 1px solid #fff;
                 @col(3) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
+                  border: none;
                 }
               </css-doodle>
             </p>
@@ -301,6 +308,7 @@
               <textarea code>
                 @at(3, 3) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -312,6 +320,8 @@
                 border: 1px solid #fff;
                 @at(3, 3) {
                   background: rebeccapurple;
+                  transform: rotate(45deg) scale(.6);
+                  border: none;
                 }
               </css-doodle>
             </p>
@@ -425,7 +435,7 @@
           <section>
             <h4>@any(v1, v2,...)</h4>
             <p>
-              Randomly pick a value from given list.
+              Randomly pick a value from the given list.
               <br/><span class="tip">(try to click on the doodle)</span>
             </p>
             <p class="has-preview">
@@ -458,6 +468,7 @@
               <textarea code>
                 background: rebeccapurple;
                 transform: scale(@rand(.8)) rotate(@rand(360deg));
+                border-radius: @rand(100%);
                 opacity: @rand(.1, 1, .1);
               </textarea>
               <css-doodle grid="5" class="click-to-update">
@@ -468,7 +479,8 @@
                 background: rebeccapurple;
                 opacity: @rand(.1, 1, .1);
                 transition: all .2s ease @rand(200ms);
-                will-change: transform;
+                will-change: border-radius, transform;
+                border-radius: @rand(100%);
                 transform:
                   scale(@rand(.9))
                   rotate( @rand(360deg))
