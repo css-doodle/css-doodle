@@ -12,8 +12,8 @@ function parse_size(size) {
     .map(Number);
 
   const ret = {
-    x: clamp(x || MIN, 1, MAX),
-    y: clamp(y || x || MIN, 1, MAX)
+    y: clamp(x || MIN, 1, MAX),
+    x: clamp(y || x || MIN, 1, MAX)
   };
 
   return Object.assign({}, ret,

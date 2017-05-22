@@ -13,7 +13,7 @@
 <body>
 
   <div class="cover">
-    <css-doodle grid="12, 1" flags>
+    <css-doodle grid="1, 12" flags>
       transition: all 3s cubic-bezier(0.075, 0.82, 0.165, 1) @rand(800ms);
       transform: scaleX(@rand(1, 4, .1));
       background-color: hsla(
@@ -70,7 +70,7 @@
       <div class="wrap">
         <h2>Getting Started</h2>
         <p>
-          Download <a href="https://raw.githubusercontent.com/yuanchuan/css-doodle/master/css-doodle.min.js">css-doodle.js (0.1.0)</a> and put it into your web page.
+          Download <a href="https://raw.githubusercontent.com/yuanchuan/css-doodle/master/css-doodle.min.js">css-doodle.js</a> and put it into your web page.
         </p>
         <p>
           <textarea code>
@@ -124,7 +124,7 @@
           the size is set to 1x1.
           <p class="has-preview">
             <textarea code>
-              <css-doodle grid="5, 3">
+              <css-doodle grid="3, 5">
                 :doodle {
                   width: 7em; height: 4em;
                 }
@@ -132,7 +132,7 @@
                 border: 1px solid #fff;
               </css-doodle>
             </textarea>
-            <css-doodle grid="5, 3">
+            <css-doodle grid="3, 5">
               :doodle {
                 width: 7em;
                 height: 4em;
@@ -524,7 +524,7 @@
   </div></div>
 
   <footer>
-    <css-doodle grid="12, 1" flags>
+    <css-doodle grid="1, 12" flags>
       transform: scaleX(@rand(1, 4, .1));
       background-color: hsla(@rand(120, 180, 10), 70%, 61.8%, @rand(.2, .8));
       --polygon: polygon(0 100%, 100% 100%, @rand(40%, 60%) @rand(40%, 80%));
