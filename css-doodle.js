@@ -614,7 +614,6 @@ const basic = `
     visibility: visible;
     width: 1em;
     height: 1em;
-    will-change: transform
   }
   .container {
     position: relative;
