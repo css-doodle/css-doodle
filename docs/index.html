@@ -152,12 +152,11 @@
             <textarea code>
               :doodle {
                 width: 7em; height: 7em;
-                transition: .2s ease;
+                transition: all .2s ease;
               }
               :doodle(:hover) {
                 border-radius: 50%;
-                overflow: hidden;
-                transform: rotate(45deg);
+                transform: scale(.9);
               }
               background: rebeccapurple;
               border: 1px solid #fff;
@@ -165,12 +164,11 @@
             <css-doodle grid="5">
               :doodle {
                 width: 7em; height: 7em;
-                transition: all .2s ease 100ms;
+                transition: all .2s ease;
               }
               :doodle(:hover) {
                 border-radius: 50%;
-                overflow: hidden;
-                transform: rotate(45deg);
+                transform: scale(.9);
               }
               background: rebeccapurple;
               border: 1px solid #fff;
@@ -230,7 +228,6 @@
               <textarea code>
                 @nth(9) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -242,8 +239,6 @@
                 border: 1px solid #fff;
                 @nth(9) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
-                  border: none;
                 }
               </css-doodle>
             </p>
@@ -256,7 +251,6 @@
               <textarea code>
                 @row(3) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -268,8 +262,6 @@
                 border: 1px solid #fff;
                 @row(3) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
-                  border: none;
                 }
               </css-doodle>
             </p>
@@ -282,7 +274,6 @@
               <textarea code>
                 @col(3) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -294,8 +285,6 @@
                 border: 1px solid #fff;
                 @col(3) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
-                  border: none;
                 }
               </css-doodle>
             </p>
@@ -308,7 +297,6 @@
               <textarea code>
                 @at(3, 3) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
                 }
               </textarea>
               <css-doodle grid="5">
@@ -320,8 +308,6 @@
                 border: 1px solid #fff;
                 @at(3, 3) {
                   background: rebeccapurple;
-                  transform: rotate(45deg) scale(.6);
-                  border: none;
                 }
               </css-doodle>
             </p>
@@ -413,7 +399,7 @@
             <p class="has-preview">
               <textarea code>
                 background: hsla(
-                  calc(180 + @row() * @col() * 4),
+                  calc(180 + @row() * @col() * 5),
                   80%, 80%, 1
                 );
               </textarea>
@@ -422,8 +408,9 @@
                   width: 7em;
                   height: 7em;
                 }
+                border: 1px solid #fff;
                 background: hsla(
-                  calc(180 + @row() * @col() * 4),
+                  calc(180 + @row() * @col() * 5),
                   80%,
                   80%,
                   1
@@ -466,24 +453,29 @@
             </p>
             <p class="has-preview">
               <textarea code>
-                background: rebeccapurple;
-                transform: scale(@rand(.8)) rotate(@rand(360deg));
-                border-radius: @rand(100%);
-                opacity: @rand(.1, 1, .1);
+                background: rgba(102, 51, 153, @rand(.9));
+                transform: rotate(@rand(360deg));
+                transition: .2s ease @rand(200ms);
+                transform: rotate(@rand(360deg));
+                clip-path: polygon(
+                  @rand(100%) 0, 100% @rand(100%), 0 @rand(100%)
+                );
               </textarea>
               <css-doodle grid="5" class="click-to-update">
                 :doodle {
                   width: 7em;
                   height: 7em;
                 }
-                background: rebeccapurple;
-                opacity: @rand(.1, 1, .1);
-                transition: all .2s ease @rand(200ms);
-                will-change: border-radius, transform;
-                border-radius: @rand(100%);
-                transform:
-                  scale(@rand(.9))
-                  rotate( @rand(360deg))
+                background: rgba(102, 51, 153, @rand(.9));
+                transition: .2s ease @rand(200ms);
+                --polygon: polygon(
+                  @rand(100%) 0, 100% @rand(100%), 0 @rand(100%)
+                );
+                will-change: transform;
+                -webkit-clip-path: var(--polygon);
+                        clip-path: var(--polygon);
+                transform: scale(@rand(.3, .9))
+                           rotate( @rand(360deg))
               </css-doodle>
             </p>
           </section>

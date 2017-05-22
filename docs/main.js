@@ -14,9 +14,7 @@
     var result = input.split('\n').map(n => (
       n.replace(new RegExp(`^\\s{${len}}`, 'g'), '')
     ));
-    result[result.length - 2] =
-      result[result.length - 2].trim();
-    return result.join('\n')
+    return result.join('\n');
   }
 
   var example = document.querySelector('.example');
