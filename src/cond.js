@@ -11,12 +11,12 @@ export function at(x, y) {
   return (x1, y1) => (x == x1 && y == y1);
 }
 
-export function row(x) {
-  return n => /^(even|odd)$/.test(n) ? is[n](x) : (n == x)
+export function row(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is[n](x - 1) : (n == x)
 }
 
-export function col(x, y) {
-  return n => /^(even|odd)$/.test(n) ? is[n](y) : (n == y);
+export function col(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is[n](y - 1) : (n == y);
 }
 
 export function even(x, y, count) {

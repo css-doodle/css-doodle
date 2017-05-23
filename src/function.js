@@ -2,11 +2,11 @@ export function index(x, y, count) {
   return _ => count;
 }
 
-export function row(x) {
+export function row(x, y, count) {
   return _ => x;
 }
 
-export function col(x, y) {
+export function col(x, y, count) {
   return _ => y;
 }
 

@@ -92,8 +92,8 @@ class Doodle extends HTMLElement {
   style_size() {
     return `
       .cell {
-        width: ${ 100 / this.size.x + '%' };
-        height: ${ 100 / this.size.y + '%' };
+        width: ${ 100 / this.size.y + '%' };
+        height: ${ 100 / this.size.x + '%' };
       }
     `;
   }

@@ -17,12 +17,12 @@ function at(x, y) {
   return (x1, y1) => (x == x1 && y == y1);
 }
 
-function row(x) {
-  return n => /^(even|odd)$/.test(n) ? is[n](x) : (n == x)
+function row(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is[n](x - 1) : (n == x)
 }
 
-function col(x, y) {
-  return n => /^(even|odd)$/.test(n) ? is[n](y) : (n == y);
+function col(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is[n](y - 1) : (n == y);
 }
 
 function even(x, y, count) {
@@ -47,11 +47,11 @@ function index(x, y, count) {
   return _ => count;
 }
 
-function row$1(x) {
+function row$1(x, y, count) {
   return _ => x;
 }
 
-function col$1(x, y) {
+function col$1(x, y, count) {
   return _ => y;
 }
 
@@ -599,8 +599,8 @@ function parse_size(size) {
     .map(Number);
 
   const ret = {
-    y: clamp(x || MIN, 1, MAX),
-    x: clamp(y || x || MIN, 1, MAX)
+    x: clamp(x || MIN, 1, MAX),
+    y: clamp(y || x || MIN, 1, MAX)
   };
 
   return Object.assign({}, ret,
@@ -699,8 +699,8 @@ class Doodle extends HTMLElement {
   style_size() {
     return `
       .cell {
-        width: ${ 100 / this.size.x + '%' };
-        height: ${ 100 / this.size.y + '%' };
+        width: ${ 100 / this.size.y + '%' };
+        height: ${ 100 / this.size.x + '%' };
       }
     `;
   }
