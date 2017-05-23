@@ -193,6 +193,11 @@
                 }
                 @even {
                   background: rebeccapurple;
+                  :after {
+                    content: '@index()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
                 }
               </css-doodle>
             </p>
@@ -214,6 +219,11 @@
                 }
                 @odd {
                   background: rebeccapurple;
+                  :after {
+                    content: '@index()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
                 }
               </css-doodle>
             </p>
@@ -237,6 +247,39 @@
                 border: 1px solid #fff;
                 @nth(9) {
                   background: rebeccapurple;
+                  :after {
+                    content: '@index()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
+                }
+              </css-doodle>
+            </p>
+          </section>
+
+          <section>
+            <h4>@at(x, y)</h4>
+            <p> Select by coordinate.</p>
+            <p class="has-preview">
+              <textarea code>
+                @at(4, 2) {
+                  background: rebeccapurple;
+                }
+              </textarea>
+              <css-doodle grid="5">
+                :doodle {
+                  width: 7em;
+                  height: 7em;
+                }
+                background: #f5f5f5;
+                border: 1px solid #fff;
+                @at(4, 2) {
+                  background: rebeccapurple;
+                  :after {
+                    content: '@row(), @col()';
+                    font-size: .5em;
+                    color: #fff;
+                  }
                 }
               </css-doodle>
             </p>
@@ -260,6 +303,44 @@
                 border: 1px solid #fff;
                 @row(3) {
                   background: rebeccapurple;
+                  :after {
+                    content: '@row()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
+                }
+              </css-doodle>
+            </p>
+            <p>
+              The <code>odd</code> and <code>even</code> is supported.
+            </p>
+            <p class="has-preview">
+              <textarea code>
+                @row(even) {
+                  background: rebeccapurple;
+                }
+              </textarea>
+              <css-doodle grid="5">
+                :doodle {
+                  width: 7em;
+                  height: 7em;
+                }
+                background: #f5f5f5;
+                border: 1px solid #fff;
+                @row(even) {
+                  background: rebeccapurple;
+                  :after {
+                    content: '@row()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
+                }
+                @row(even) {
+                  :after {
+                    content: '@row()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
                 }
               </css-doodle>
             </p>
@@ -283,17 +364,20 @@
                 border: 1px solid #fff;
                 @col(3) {
                   background: rebeccapurple;
+                  :after {
+                    content: '@col()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
                 }
               </css-doodle>
             </p>
-          </section>
-
-          <section>
-            <h4>@at(x, y)</h4>
-            <p> Select by coordinate.</p>
+            <p>
+              You can use <code>odd</code> and <code>even</code> too.
+            </p>
             <p class="has-preview">
               <textarea code>
-                @at(3, 3) {
+                @col(odd) {
                   background: rebeccapurple;
                 }
               </textarea>
@@ -304,8 +388,13 @@
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
-                @at(3, 3) {
+                @col(odd) {
                   background: rebeccapurple;
+                  :after {
+                    content: '@col()';
+                    font-size: .7em;
+                    color: #fff;
+                  }
                 }
               </css-doodle>
             </p>
@@ -328,11 +417,11 @@
                   width: 7em;
                   height: 7em;
                 }
-                background: #f5f5f5;
+                background: rebeccapurple;
                 border: 1px solid #fff;
                 :after {
                   content: '@index()';
-                  color: rebeccapurple;
+                  color: #fff;
                   font-size: .7em;
                 }
               </css-doodle>
@@ -353,11 +442,11 @@
                   width: 7em;
                   height: 7em;
                 }
-                background: #f5f5f5;
+                background: rebeccapurple;
                 border: 1px solid #fff;
                 :after {
                   content: '@row()';
-                  color: rebeccapurple;
+                  color: #fff;
                   font-size: .7em;
                 }
               </css-doodle>
@@ -378,11 +467,11 @@
                   width: 7em;
                   height: 7em;
                 }
-                background: #f5f5f5;
+                background: rebeccapurple;
                 border: 1px solid #fff;
                 :after {
                   content: '@col()';
-                  color: rebeccapurple;
+                  color: #fff;
                   font-size: .7em;
                 }
               </css-doodle>
