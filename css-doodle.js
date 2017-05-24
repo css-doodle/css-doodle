@@ -159,7 +159,7 @@ function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
 
-function clamp(num, min, max) {
+function minmax(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
 
@@ -599,8 +599,8 @@ function parse_size(size) {
     .map(Number);
 
   const ret = {
-    x: clamp(x || MIN, 1, MAX),
-    y: clamp(y || x || MIN, 1, MAX)
+    x: minmax(x || MIN, 1, MAX),
+    y: minmax(y || x || MIN, 1, MAX)
   };
 
   return Object.assign({}, ret,

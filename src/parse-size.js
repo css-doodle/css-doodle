@@ -1,4 +1,4 @@
-import { clamp } from './utils';
+import { minmax } from './utils';
 
 const MIN = 1;
 const MAX = 16;
@@ -12,8 +12,8 @@ function parse_size(size) {
     .map(Number);
 
   const ret = {
-    x: clamp(x || MIN, 1, MAX),
-    y: clamp(y || x || MIN, 1, MAX)
+    x: minmax(x || MIN, 1, MAX),
+    y: minmax(y || x || MIN, 1, MAX)
   };
 
   return Object.assign({}, ret,

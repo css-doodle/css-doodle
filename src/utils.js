@@ -17,6 +17,6 @@ export function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
 
-export function clamp(num, min, max) {
+export function minmax(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
