@@ -46,7 +46,11 @@ class Rules {
     if (property == 'transition') {
       this.props.has_transition = true;
     }
-    return `${ property }: ${ value };`;
+    var rule = `${ property }: ${ value };`
+    if (property == 'clip-path') {
+      return utils.prefix(rule);
+    }
+    return rule;
   }
   compose(coords, tokens) {
     (tokens || this.tokens).forEach((token, i) => {

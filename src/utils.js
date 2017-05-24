@@ -20,3 +20,7 @@ export function make_array(arr) {
 export function minmax(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
+
+export function prefix(rule) {
+  return `-webkit-${ rule } ${rule}`;
+}
