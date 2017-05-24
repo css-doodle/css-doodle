@@ -39,23 +39,21 @@
 
   var doodleStyle = indent(`
     :doodle {
-      border-radius: 50%;
-      overflow: hidden;
+      clip-path: circle(50% at 50% 50%);
       background-color: #f6ffed;
     }
 
-    --size: @rand(25%, 125%);
-    width: var(--size);
-    height: var(--size);
+    transition: .2s ease @rand(.6s);
 
-    transition: all .2s ease @rand(.6s);
+    will-change: transform;
+    transform: scale(@rand(.25, 1.25, .1));
 
     border-radius: @any(
       '100% 0', '0 100%'
     );
 
     background: hsla(
-      calc(5*@index()), 70%, 60%, @rand(.8)
+      calc(5 * @index()), 70%, 60%, @rand(.8)
     );
   `);
 
@@ -72,7 +70,7 @@
   container.appendChild(doodle);
   container.addEventListener('click', function(e) {
     e.preventDefault();
-    if (container.hasAttribute('front')) {
+    if (!toggled() || container.hasAttribute('front')) {
       doodle.refresh();
     }
   });
@@ -115,6 +113,7 @@
       container.setAttribute('front', '');
     }
   });
+
   source.addEventListener('click', function() {
     if (toggled()) {
       var back = !source.hasAttribute('front');
