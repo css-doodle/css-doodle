@@ -76,7 +76,7 @@ function add_unit(fn, unit) {
 
 function get_unit(str) {
   if (!str) return '';
-  let unit = /(%|cm|em|ex|in|mm|pc|pt|px|vh|vw|vmin|deg|ms|s)$/;
+  let unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|ms|s)$/;
   let matched = ''.trim.call(str).match(unit);
   return matched ? matched[0] : '';
 }
