@@ -61,6 +61,10 @@ function any() {
   }
 }
 
+function pick() {
+  return any.apply(null, arguments);
+}
+
 function rand() {
   return function(...args) {
     return random(memo(unitify(range)).apply(null, args));
@@ -121,7 +125,7 @@ function add_unit(fn, unit) {
 
 function get_unit(str) {
   if (!str) return '';
-  let unit = /(%|cm|em|ex|in|mm|pc|pt|px|vh|vw|vmin|deg|ms|s)$/;
+  let unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|ms|s)$/;
   let matched = ''.trim.call(str).match(unit);
   return matched ? matched[0] : '';
 }
@@ -137,6 +141,7 @@ var func = Object.freeze({
   row: row$1,
   col: col$1,
   any: any,
+  pick: pick,
   rand: rand
 });
 

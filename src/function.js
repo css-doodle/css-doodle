@@ -16,6 +16,10 @@ export function any() {
   }
 }
 
+export function pick() {
+  return any.apply(null, arguments);
+}
+
 export function rand() {
   return function(...args) {
     return random(memo(unitify(range)).apply(null, args));
