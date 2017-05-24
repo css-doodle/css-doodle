@@ -168,6 +168,10 @@ function minmax(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
 
+function prefix(rule) {
+  return `-webkit-${ rule } ${rule}`;
+}
+
 class Rules {
   constructor(tokens) {
     this.tokens = tokens;
@@ -212,7 +216,14 @@ class Rules {
     if (property == 'transition') {
       this.props.has_transition = true;
     }
-    return `${ property }: ${ value };`;
+    var rule = `${ property }: ${ value };`;
+    if (property == 'clip-path') {
+      rule = prefix(rule);
+    }
+    if (property == 'size') {
+      rule = `width: ${ value }; height: ${ value };`;
+    }
+    return rule;
   }
   compose(coords, tokens) {
     (tokens || this.tokens).forEach((token, i) => {

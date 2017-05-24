@@ -48,7 +48,10 @@ class Rules {
     }
     var rule = `${ property }: ${ value };`
     if (property == 'clip-path') {
-      return utils.prefix(rule);
+      rule = utils.prefix(rule);
+    }
+    if (property == 'size') {
+      rule = `width: ${ value }; height: ${ value };`;
     }
     return rule;
   }
