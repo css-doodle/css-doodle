@@ -46,7 +46,7 @@
     transition: .2s ease @rand(.6s);
 
     will-change: transform;
-    transform: scale(@rand(.25, 1.25, .1));
+    transform: scale(@rand(.25, 1.25));
 
     border-radius: @any(
       '100% 0', '0 100%'
