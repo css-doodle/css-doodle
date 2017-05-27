@@ -191,6 +191,24 @@ class Rules {
   compose_selector(count, psudo = '') {
     return `.cell:nth-of-type(${ count }) .shape${ psudo }`;
   }
+  compose_argument(argument, coords) {
+    var result = argument.map(arg => {
+      if (arg.type == 'text') {
+        return arg.value;
+      }
+      else if (arg.type == 'func') {
+        var fn = func[arg.name.substr(1)];
+        if (fn) {
+          var args = arg.arguments.map(n => {
+            return this.compose_argument(n, coords);
+          });
+          return apply_args(fn, coords, args);
+        }
+      }
+    });
+    return (result.length > 2)
+      ? result.join('') : result[0];
+  }
   compose_value(value, coords) {
     return value.reduce((result, val) => {
       switch (val.type) {
@@ -198,12 +216,13 @@ class Rules {
           result += val.value;
           break;
         }
-        case 'function': {
+        case 'func': {
           var fn = func[val.name.substr(1)];
           if (fn) {
-            result += apply_args(
-              fn, coords, val.arguments
-            );
+            var args = val.arguments.map(arg => {
+              return this.compose_argument(arg, coords);
+            });
+            result += apply_args(fn, coords, args);
           }
         }
       }
@@ -302,19 +321,70 @@ function generator(tokens, size) {
 }
 
 const struct = {
-  func:    () => ({ type: 'function', name: '', arguments: [] }),
-  text:    () => ({ type: 'text', value: '' }),
-  psudo:   () => ({ type: 'psudo', selector: '', styles: [] }),
-  cond:    () => ({ type: 'cond', name: '', styles: [], arguments: [] }),
-  rule:    () => ({ type: 'rule', property: '', value: [] }),
-  comment: () => ({ type: 'comment', value: ''})
+
+  func(name = '') {
+    return {
+      type: 'func',
+      name,
+      arguments: []
+    };
+  },
+
+  argument() {
+    return {
+      type: 'argument',
+      value: []
+    };
+  },
+
+  text(value = '') {
+    return {
+      type: 'text',
+      value
+    };
+  },
+
+  comment(value) {
+    return {
+      type: 'comment',
+      value
+    }
+  },
+
+  psudo(selector = '') {
+    return {
+      type: 'psudo',
+      selector,
+      styles: []
+    };
+  },
+
+  cond(name = '') {
+    return {
+      type: 'cond',
+      name,
+      styles: [],
+      arguments: []
+    };
+  },
+
+  rule(property = '') {
+    return {
+      type: 'rule',
+      property,
+      value: []
+    };
+  }
+
 };
+
 
 const bracket_pair = {
   '(': ')',
   '[': ']',
   '{': '}'
 };
+
 
 const is$1 = {
   white_space(c) {
@@ -332,13 +402,14 @@ const is$1 = {
   }
 };
 
+
 function iterator(input) {
   var index = 0, col = 1, line = 1;
   return {
-    curr:  (n = 0) => input[index + n],
-    end:   () => input.length <= index,
-    info:  () => ({ index, col, line }),
-    next:  () => {
+    curr: (n = 0) => input[index + n],
+    end:  () => input.length <= index,
+    info: () => ({ index, col, line }),
+    next: () => {
       var next = input[index++];
       if (next == '\n') line++, col = 0;
       else col++;
@@ -351,6 +422,14 @@ function throw_error(msg, { col, line }) {
   throw new Error(
     `(at line ${ line }, column ${ col }) ${ msg }`
   );
+}
+
+function get_text_value(input) {
+  if (input.trim().length) {
+    return is$1.number(+input) ? +input : input;
+  } else {
+    return input;
+  }
 }
 
 function skip_block(it) {
@@ -421,7 +500,7 @@ function read_quote_block(it, quote) {
 }
 
 function read_arguments(it) {
-  var args = [], arg = '', c;
+  var args = [], group = [], arg = '', c;
   while (!it.end()) {
     if (is$1.open_bracket(c = it.curr())) {
       arg += skip_block(it);
@@ -429,18 +508,40 @@ function read_arguments(it) {
     else if (/['"]/.test(c)) {
       arg += read_quote_block(it, c);
     }
-    else if (/[,)]/.test(c)) {
+    else if (c == '@') {
+      if (!group.length) {
+        arg = arg.trimLeft();
+      }
       if (arg.length) {
-        args.push(is$1.number(+arg) ? +arg : arg);
+        group.push(struct.text(arg));
         arg = '';
       }
+      group.push(read_func(it));
+    }
+    else if (/[,)]/.test(c)) {
+      if (arg.length) {
+        if (!group.length) {
+          group.push(struct.text(get_text_value(arg)));
+        } else {
+          arg = arg.trimRight();
+          if (arg.length) {
+            group.push(struct.text(arg));
+          }
+        }
+      }
+
+      args.push(group.slice());
+      [group, arg] = [[], ''];
+
       if (c == ')') break;
     }
-    else if (!is$1.white_space(c)) {
+    else {
       arg += c;
     }
+
     it.next();
   }
+
   return args;
 }
 
@@ -487,6 +588,11 @@ function read_value(it) {
     it.next();
   }
   if (text.value.length) value.push(text);
+
+  if (value.length) {
+    value[0].value = value[0].value.trimLeft();
+  }
+
   return value;
 }
 

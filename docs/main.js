@@ -49,7 +49,7 @@
     transform: scale(@rand(.25, 1.25));
 
     border-radius: @any(
-      '100% 0', '0 100%'
+      100% 0, 0 100%
     );
 
     background: hsla(

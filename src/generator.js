@@ -21,6 +21,24 @@ class Rules {
   compose_selector(count, psudo = '') {
     return `.cell:nth-of-type(${ count }) .shape${ psudo }`;
   }
+  compose_argument(argument, coords) {
+    var result = argument.map(arg => {
+      if (arg.type == 'text') {
+        return arg.value;
+      }
+      else if (arg.type == 'func') {
+        var fn = func[arg.name.substr(1)];
+        if (fn) {
+          var args = arg.arguments.map(n => {
+            return this.compose_argument(n, coords);
+          });
+          return utils.apply_args(fn, coords, args);
+        }
+      }
+    });
+    return (result.length > 2)
+      ? result.join('') : result[0];
+  }
   compose_value(value, coords) {
     return value.reduce((result, val) => {
       switch (val.type) {
@@ -28,12 +46,13 @@ class Rules {
           result += val.value;
           break;
         }
-        case 'function': {
+        case 'func': {
           var fn = func[val.name.substr(1)];
           if (fn) {
-            result += utils.apply_args(
-              fn, coords, val.arguments
-            );
+            var args = val.arguments.map(arg => {
+              return this.compose_argument(arg, coords);
+            });
+            result += utils.apply_args(fn, coords, args);
           }
         }
       }
