@@ -153,7 +153,7 @@ function circle() {
 }
 
 function siogon(sides) {
-  return polygon(minmax(sides, 3, 24));
+  return polygon(minmax(sides, 3, 12));
 }
 
 function triangle() {
@@ -411,7 +411,10 @@ class Rules {
         case 'cond':
           var fn = cond[token.name.substr(1)];
           if (fn) {
-            var result = apply_args(fn, coords, token.arguments);
+            var args = token.arguments.map(arg => {
+              return this.compose_argument(arg, coords);
+            });
+            var result = apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }

@@ -115,7 +115,10 @@ class Rules {
         case 'cond':
           var fn = cond[token.name.substr(1)];
           if (fn) {
-            var result = utils.apply_args(fn, coords, token.arguments);
+            var args = token.arguments.map(arg => {
+              return this.compose_argument(arg, coords);
+            });
+            var result = utils.apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }
