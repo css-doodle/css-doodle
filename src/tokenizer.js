@@ -104,7 +104,7 @@ function throw_error(msg, { col, line }) {
 
 function get_text_value(input) {
   if (input.trim().length) {
-    return is.number(+input) ? +input : input;
+    return is.number(+input) ? +input : input.trim()
   } else {
     return input;
   }
