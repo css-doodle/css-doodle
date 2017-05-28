@@ -72,3 +72,25 @@ export const hypocycloid = memo('hypocycloid', function(k = 3) {
 export function astroid() {
   return hypocycloid(4);
 }
+
+export const clover = memo('clover', function(k = 3) {
+  switch (k) {
+    case 4: k = 2; break;
+    case 5: k = 5; break;
+    case 3: k = 3;
+    default: {
+      if (k > 5) k = 5;
+      else if (k < 3) k = 3;
+    }
+  }
+  var split = 240;
+  var deg = Math.PI / (split / 2);
+  var points = [];
+  for (var i = 0; i < split; ++i) {
+    var theta = deg * i;
+    var x = Math.cos(k * theta) * Math.cos(theta);
+    var y = Math.cos(k * theta) * Math.sin(theta);
+    points.push((x * 50 + 50 + '% ') +  (y * 50 + 50+ '%'));
+  }
+  return `polygon(${ points.join(',') })`;
+});
