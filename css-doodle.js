@@ -43,46 +43,45 @@ var cond = Object.freeze({
   odd: odd
 });
 
-function index(x, y, count) {
-  return _ => count;
+function values(obj) {
+  if (Array.isArray(obj)) return obj;
+  return Object.keys(obj).map(k => obj[k]);
 }
 
-function row$1(x, y, count) {
-  return _ => x;
+function apply_args(fn, ...args) {
+  return args.reduce((f, arg) =>
+    f.apply(null, values(arg)), fn
+  );
 }
 
-function col$1(x, y, count) {
-  return _ => y;
+function join_line(arr) {
+  return (arr || []).join('\n');
 }
 
-function any() {
+function make_array(arr) {
+  return Array.isArray(arr) ? arr : [arr];
+}
+
+function minmax(num, min, max) {
+  return Math.max(min, Math.min(max, num));
+}
+
+function prefix(rule) {
+  return `-webkit-${ rule } ${rule}`;
+}
+
+function memo(prefix, fn) {
+  const memo = {};
   return function(...args) {
-    return random.apply(null, args);
-  }
-}
-
-function pick() {
-  return any.apply(null, arguments);
-}
-
-function rand() {
-  return function(...args) {
-    return random(memo(unitify(range)).apply(null, args));
+    let key = prefix + args.join('-');
+    if (memo[key]) return memo[key];
+    return (memo[key] = fn.apply(null, args));
   }
 }
 
 function random(...items) {
   let args = items.reduce((ret, n) => ret.concat(n), []);
   return args[Math.floor(Math.random() * args.length)];
-}
-
-function memo(fn) {
-  return function(...args) {
-    const memo = {};
-    let key = args.join('-');
-    if (memo[key]) return memo[key];
-    return (memo[key] = fn.apply(null, args));
-  }
 }
 
 function range(start, stop, step) {
@@ -135,6 +134,157 @@ function remove_unit(str) {
   return unit ? +(str.replace(unit, '')) : str;
 }
 
+const DEG = Math.PI / 180;
+
+const polygon = memo(function polygon(sides, start = 0, radius) {
+  radius = radius || (Math.PI / (sides / 2));
+  var points = [];
+  for (var i = 0; i < sides; ++i) {
+    var theta = start + 3 * i;
+    points.push(`
+      ${ Math.cos(theta) * 50 + 50 }%  ${ Math.sin(theta) * 50 + 50}%
+    `);
+  }
+  return `polygon(${ points.join(',') })`;
+});
+
+function circle() {
+  return 'circle(50%)';
+}
+
+function siogon(sides) {
+  return polygon(minmax(sides, 3, 24));
+}
+
+function triangle() {
+  return polygon(3, DEG * -90);
+}
+
+function rhombus() {
+  return siogon(4);
+}
+
+function pentagon() {
+  return polygon(5, DEG * 54);
+}
+
+function hexgon() {
+  return polygon(6, DEG * 30);
+}
+
+function star() {
+  return polygon(5, DEG * 54, DEG * 144);
+}
+
+function diamond() {
+  return 'polygon(50% 5%, 80% 50%, 50% 95%, 20% 50%)';
+}
+
+function cross() {
+  return `polygon(
+    5% 35%,  35% 35%, 35% 5%,  65% 5%,
+    65% 35%, 95% 35%, 95% 65%, 65% 65%,
+    65% 95%, 35% 95%, 35% 65%, 5% 65%
+  )`;
+}
+
+const hypocycloid = memo('hypocycloid', function(k = 3) {
+  k = minmax(k, 3, 6);
+  var split = 120;
+  var deg = Math.PI / (split / 2);
+  var R = 50;
+  var r = R / k;
+  var points = [];
+  for (var i = 0; i < split; ++i) {
+    var theta = deg * i + Math.PI;
+    var x = r * (1 - k) * Math.cos(theta) + r * Math.cos((1 - k) * (theta - Math.PI));
+    var y = r * (1 - k) * Math.sin(theta) + r * Math.sin((1 - k) * (theta - Math.PI));
+    points.push((x + 50 + '% ') +  (y + 50+ '%'));
+  }
+  return `polygon(${ points.join(',') })`;
+});
+
+function astroid() {
+  return hypocycloid(4);
+}
+
+const clover = memo('clover', function(k = 3) {
+  switch (k) {
+    case 4: k = 2; break;
+    case 5: k = 5; break;
+    case 3: k = 3;
+    default: {
+      if (k > 5) k = 5;
+      else if (k < 3) k = 3;
+    }
+  }
+  var split = 240;
+  var deg = Math.PI / (split / 2);
+  var points = [];
+  for (var i = 0; i < split; ++i) {
+    var theta = deg * i;
+    var x = Math.cos(k * theta) * Math.cos(theta);
+    var y = Math.cos(k * theta) * Math.sin(theta);
+    points.push((x * 50 + 50 + '% ') +  (y * 50 + 50+ '%'));
+  }
+  return `polygon(${ points.join(',') })`;
+});
+
+
+var shapes = Object.freeze({
+  circle: circle,
+  siogon: siogon,
+  triangle: triangle,
+  rhombus: rhombus,
+  pentagon: pentagon,
+  hexgon: hexgon,
+  star: star,
+  diamond: diamond,
+  cross: cross,
+  hypocycloid: hypocycloid,
+  astroid: astroid,
+  clover: clover
+});
+
+function index(x, y, count) {
+  return _ => count;
+}
+
+function row$1(x, y, count) {
+  return _ => x;
+}
+
+function col$1(x, y, count) {
+  return _ => y;
+}
+
+function any() {
+  return function(...args) {
+    return random.apply(null, args);
+  }
+}
+
+function pick() {
+  return any.apply(null, arguments);
+}
+
+function rand() {
+  return function(...args) {
+    return random(
+      memo('range', unitify(range)).apply(null, args)
+    );
+  }
+}
+
+function shape(x, y, count) {
+  return function(type, ...args) {
+    type = type.trim();
+    if (shapes[type]) {
+      return shapes[type].apply(null, args);
+    }
+  }
+}
+
 
 var func = Object.freeze({
   index: index,
@@ -142,35 +292,9 @@ var func = Object.freeze({
   col: col$1,
   any: any,
   pick: pick,
-  rand: rand
+  rand: rand,
+  shape: shape
 });
-
-function values(obj) {
-  if (Array.isArray(obj)) return obj;
-  return Object.keys(obj).map(k => obj[k]);
-}
-
-function apply_args(fn, ...args) {
-  return args.reduce((f, arg) =>
-    f.apply(null, values(arg)), fn
-  );
-}
-
-function join_line(arr) {
-  return (arr || []).join('\n');
-}
-
-function make_array(arr) {
-  return Array.isArray(arr) ? arr : [arr];
-}
-
-function minmax(num, min, max) {
-  return Math.max(min, Math.min(max, num));
-}
-
-function prefix(rule) {
-  return `-webkit-${ rule } ${rule}`;
-}
 
 class Rules {
   constructor(tokens) {
@@ -238,6 +362,8 @@ class Rules {
     var rule = `${ property }: ${ value };`;
     if (property == 'clip-path') {
       rule = prefix(rule);
+      // fix clip bug
+      rule += ';overflow: hidden;';
     }
     if (property == 'size') {
       rule = `width: ${ value }; height: ${ value };`;
