@@ -1,24 +1,24 @@
 import { minmax, memo } from './utils';
 const DEG = Math.PI / 180;
 
-const polygon = memo(function polygon(sides, start = 0, radius) {
-  radius = radius || (Math.PI / (sides / 2));
+const polygon = function(sides, start = 0, deg) {
+  deg = deg || (Math.PI / (sides / 2));
   var points = [];
   for (var i = 0; i < sides; ++i) {
-    var theta = start + 3 * i;
+    var theta = start + deg * i;
     points.push(`
       ${ Math.cos(theta) * 50 + 50 }%  ${ Math.sin(theta) * 50 + 50}%
     `);
   }
   return `polygon(${ points.join(',') })`;
-});
+};
 
 export function circle() {
   return 'circle(50%)';
 }
 
 export function siogon(sides) {
-  return polygon(minmax(sides, 3, 24));
+  return polygon(minmax(sides, 3, 12));
 }
 
 export function triangle() {

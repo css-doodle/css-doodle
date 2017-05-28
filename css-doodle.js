@@ -136,17 +136,17 @@ function remove_unit(str) {
 
 const DEG = Math.PI / 180;
 
-const polygon = memo(function polygon(sides, start = 0, radius) {
-  radius = radius || (Math.PI / (sides / 2));
+const polygon = function(sides, start = 0, deg) {
+  deg = deg || (Math.PI / (sides / 2));
   var points = [];
   for (var i = 0; i < sides; ++i) {
-    var theta = start + 3 * i;
+    var theta = start + deg * i;
     points.push(`
       ${ Math.cos(theta) * 50 + 50 }%  ${ Math.sin(theta) * 50 + 50}%
     `);
   }
   return `polygon(${ points.join(',') })`;
-});
+};
 
 function circle() {
   return 'circle(50%)';
@@ -278,9 +278,11 @@ function rand() {
 
 function shape(x, y, count) {
   return function(type, ...args) {
-    type = type.trim();
-    if (shapes[type]) {
-      return shapes[type].apply(null, args);
+    if (type) {
+      type = type.trim();
+      if (shapes[type]) {
+        return shapes[type].apply(null, args);
+      }
     }
   }
 }
@@ -552,7 +554,7 @@ function throw_error(msg, { col, line }) {
 
 function get_text_value(input) {
   if (input.trim().length) {
-    return is$1.number(+input) ? +input : input;
+    return is$1.number(+input) ? +input : input.trim()
   } else {
     return input;
   }

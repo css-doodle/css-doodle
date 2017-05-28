@@ -33,9 +33,11 @@ export function rand() {
 
 export function shape(x, y, count) {
   return function(type, ...args) {
-    type = type.trim();
-    if (shapes[type]) {
-      return shapes[type].apply(null, args);
+    if (type) {
+      type = type.trim();
+      if (shapes[type]) {
+        return shapes[type].apply(null, args);
+      }
     }
   }
 }
