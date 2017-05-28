@@ -1,18 +1,28 @@
-import { minmax } from './utils';
+import { minmax, memo } from './utils';
 const DEG = Math.PI / 180;
+
+const polygon = memo(function polygon(sides, start = 0, radius) {
+  radius = radius || (Math.PI / (sides / 2));
+  var points = [];
+  for (var i = 0; i < sides; ++i) {
+    var theta = start + 3 * i;
+    points.push(`
+      ${ Math.cos(theta) * 50 + 50 }%  ${ Math.sin(theta) * 50 + 50}%
+    `);
+  }
+  return `polygon(${ points.join(',') })`;
+});
 
 export function circle() {
   return 'circle(50%)';
 }
 
 export function siogon(sides) {
-  sides = minmax(sides, 3, 24);
-  return `polygon(${ points(sides).join(',') })`;
+  return polygon(minmax(sides, 3, 24));
 }
 
 export function triangle() {
-  var start = DEG * -90;
-  return `polygon(${ points(3, start).join(',') })`;
+  return polygon(3, DEG * -90);
 }
 
 export function rhombus() {
@@ -20,19 +30,15 @@ export function rhombus() {
 }
 
 export function pentagon() {
-  var start = DEG * 54;
-  return `polygon(${ points(5, start).join(',') })`;
+  return polygon(5, DEG * 54);
 }
 
 export function hexgon() {
-  var start = DEG * 30;
-  return `polygon(${ points(6, start).join(',') })`;
+  return polygon(6, DEG * 30);
 }
 
 export function star() {
-  var start = DEG * 54;
-  var radius = DEG * 144;
-  return `polygon(${ points(5, start, radius).join(',') })`;
+  return polygon(5, DEG * 54, DEG * 144);
 }
 
 export function diamond() {
@@ -47,14 +53,18 @@ export function cross() {
   )`;
 }
 
-function points(sides, start = 0, radius) {
-  radius = radius || (Math.PI / (sides / 2));
+export const hypocycloid = memo('hypocycloid', function(k = 3) {
+  k = minmax(k, 3, 6);
+  var split = 120;
+  var deg = Math.PI / (split / 2);
+  var R = 50;
+  var r = R / k;
   var points = [];
-  for (var i = 0; i < sides; ++i) {
-    var theta = start + radius * i;
-    points.push(`
-      ${ Math.cos(theta) * 50 + 50 }%  ${ Math.sin(theta) * 50 + 50}%
-    `);
+  for (var i = 0; i < split; ++i) {
+    var theta = deg * i;
+    var x = r * (1 - k) * Math.cos(theta) + r * Math.cos((1 - k) * theta);
+    var y = r * (1 - k) * Math.sin(theta) + r * Math.sin((1 - k) * theta);
+    points.push((x + 50 + '% ') +  (y + 50+ '%'));
   }
-  return points;
-}
+  return `polygon(${ points.join(',') })`;
+});
