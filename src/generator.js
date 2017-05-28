@@ -68,6 +68,8 @@ class Rules {
     var rule = `${ property }: ${ value };`
     if (property == 'clip-path') {
       rule = utils.prefix(rule);
+      // fix clip bug
+      rule += ';overflow: hidden;';
     }
     if (property == 'size') {
       rule = `width: ${ value }; height: ${ value };`;
