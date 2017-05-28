@@ -1,3 +1,5 @@
+import * as shapes from './shapes';
+
 export function index(x, y, count) {
   return _ => count;
 }
@@ -23,6 +25,15 @@ export function pick() {
 export function rand() {
   return function(...args) {
     return random(memo(unitify(range)).apply(null, args));
+  }
+}
+
+export function shape(x, y, count) {
+  return function(type, ...args) {
+    type = type.trim();
+    if (shapes[type]) {
+      return shapes[type].apply(null, args);
+    }
   }
 }
 
