@@ -61,10 +61,14 @@ export const hypocycloid = memo('hypocycloid', function(k = 3) {
   var r = R / k;
   var points = [];
   for (var i = 0; i < split; ++i) {
-    var theta = deg * i;
-    var x = r * (1 - k) * Math.cos(theta) + r * Math.cos((1 - k) * theta);
-    var y = r * (1 - k) * Math.sin(theta) + r * Math.sin((1 - k) * theta);
+    var theta = deg * i + Math.PI;
+    var x = r * (1 - k) * Math.cos(theta) + r * Math.cos((1 - k) * (theta - Math.PI));
+    var y = r * (1 - k) * Math.sin(theta) + r * Math.sin((1 - k) * (theta - Math.PI));
     points.push((x + 50 + '% ') +  (y + 50+ '%'));
   }
   return `polygon(${ points.join(',') })`;
 });
+
+export function astroid() {
+  return hypocycloid(4);
+}
