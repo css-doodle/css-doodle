@@ -171,7 +171,7 @@ function circle() {
 }
 
 function siogon(sides = 3) {
-  return polygon({ split: minmax(sides, 3, 12) });
+  return polygon({ split: minmax(sides, 3, 8) });
 }
 
 function triangle() {
