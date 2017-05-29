@@ -57,7 +57,7 @@
     );
 
     background: hsla(
-      calc(5 * @index()), 70%, 60%, @rand(.8)
+      calc(5 * @index()), 70%, 60%,@rand(.8)
     );
   `);
 
