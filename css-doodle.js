@@ -134,30 +134,48 @@ function remove_unit(str) {
   return unit ? +(str.replace(unit, '')) : str;
 }
 
-const DEG = Math.PI / 180;
+const { cos, sin, PI } = Math;
+const DEG = PI / 180;
 
-const polygon = function(sides, start = 0, deg) {
-  deg = deg || (Math.PI / (sides / 2));
-  var points = [];
-  for (var i = 0; i < sides; ++i) {
-    var theta = start + deg * i;
-    points.push(`
-      ${ Math.cos(theta) * 50 + 50 }%  ${ Math.sin(theta) * 50 + 50}%
-    `);
+function polygon(option, fn) {
+  if (typeof arguments[0] == 'function') {
+    fn = option;
+    option = {};
   }
+
+  if (!fn) {
+    fn = theta => [ cos(theta), sin(theta) ];
+  }
+
+  var split = option.split || 120;
+  var scale = option.scale || 1;
+  var start = DEG * (option.start || 0);
+  var deg = option.deg ? (option.deg * DEG) : (PI / (split / 2));
+  var points = [];
+
+  for (var i = 0; i < split; ++i) {
+    var theta = start + deg * i;
+    var [x, y] = fn(theta);
+    points.push(
+      ((x * 50 * scale) + 50 + '% ') +
+      ((y * 50 * scale) + 50 + '%')
+    );
+  }
+
   return `polygon(${ points.join(',') })`;
-};
+}
+
 
 function circle() {
   return 'circle(49.5%)';
 }
 
-function siogon(sides) {
-  return polygon(minmax(sides, 3, 12));
+function siogon(sides = 3) {
+  return polygon({ split: minmax(sides, 3, 12) });
 }
 
 function triangle() {
-  return polygon(3, DEG * -90);
+  return polygon({ split: 3, start: -90 });
 }
 
 function rhombus() {
@@ -165,15 +183,15 @@ function rhombus() {
 }
 
 function pentagon() {
-  return polygon(5, DEG * 54);
+  return polygon({ split: 5, start: 54 });
 }
 
 function hexgon() {
-  return polygon(6, DEG * 30);
+  return polygon({ split: 6, start: 30 });
 }
 
 function star() {
-  return polygon(5, DEG * 54, DEG * 144);
+  return polygon({ split: 5, start: 54, deg: 144 });
 }
 
 function diamond() {
@@ -188,47 +206,27 @@ function cross() {
   )`;
 }
 
-const hypocycloid = memo('hypocycloid', function(k = 3) {
+function clover(k = 3) {
+  k = minmax(k, 3, 5);
+  if (k == 4) k = 2;
+  return polygon({ split: 240 }, theta => [
+    cos(k * theta) * cos(theta),
+    cos(k * theta) * sin(theta)
+  ]);
+}
+
+function hypocycloid(k = 3) {
   k = minmax(k, 3, 6);
-  var split = 120;
-  var deg = Math.PI / (split / 2);
-  var R = 50;
-  var r = R / k;
-  var points = [];
-  for (var i = 0; i < split; ++i) {
-    var theta = deg * i + Math.PI;
-    var x = r * (1 - k) * Math.cos(theta) + r * Math.cos((1 - k) * (theta - Math.PI));
-    var y = r * (1 - k) * Math.sin(theta) + r * Math.sin((1 - k) * (theta - Math.PI));
-    points.push((x + 50 + '% ') +  (y + 50+ '%'));
-  }
-  return `polygon(${ points.join(',') })`;
-});
+  var m = 1 - k;
+  return polygon({ scale: 1 / k  }, theta => [
+    m * cos(theta) + cos(m * (theta - PI)),
+    m * sin(theta) + sin(m * (theta - PI))
+  ]);
+}
 
 function astroid() {
   return hypocycloid(4);
 }
-
-const clover = memo('clover', function(k = 3) {
-  switch (k) {
-    case 4: k = 2; break;
-    case 5: k = 5; break;
-    case 3: k = 3;
-    default: {
-      if (k > 5) k = 5;
-      else if (k < 3) k = 3;
-    }
-  }
-  var split = 240;
-  var deg = Math.PI / (split / 2);
-  var points = [];
-  for (var i = 0; i < split; ++i) {
-    var theta = deg * i;
-    var x = Math.cos(k * theta) * Math.cos(theta);
-    var y = Math.cos(k * theta) * Math.sin(theta);
-    points.push((x * 50 + 50 + '% ') +  (y * 50 + 50+ '%'));
-  }
-  return `polygon(${ points.join(',') })`;
-});
 
 
 var shapes = Object.freeze({
@@ -241,9 +239,9 @@ var shapes = Object.freeze({
   star: star,
   diamond: diamond,
   cross: cross,
+  clover: clover,
   hypocycloid: hypocycloid,
-  astroid: astroid,
-  clover: clover
+  astroid: astroid
 });
 
 function index(x, y, count) {
