@@ -1,4 +1,4 @@
-import { minmax, memo } from './utils';
+import { minmax } from './utils';
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;

@@ -70,12 +70,12 @@ function prefix(rule) {
   return `-webkit-${ rule } ${rule}`;
 }
 
+const store = {};
 function memo(prefix, fn) {
-  const memo = {};
   return function(...args) {
     let key = prefix + args.join('-');
-    if (memo[key]) return memo[key];
-    return (memo[key] = fn.apply(null, args));
+    if (store[key]) return store[key];
+    return (store[key] = fn.apply(null, args));
   }
 }
 
@@ -236,6 +236,7 @@ function tie() {
 }
 
 function eternity() {
+  console.log('compute eterity');
   return polygon(t => {
     var a = .7 * sqrt(2) * cos(t);
     var b = (pow(sin(t), 2) + 1);
@@ -247,6 +248,7 @@ function eternity() {
 }
 
 function heart() {
+  console.log('compute heaert');
   return polygon(t => {
     var x = .75 * pow(sin(t), 3);
     var y =
@@ -311,14 +313,14 @@ function rand() {
 }
 
 function shape(x, y, count) {
-  return function(type, ...args) {
+  return memo('shape', function(type, ...args) {
     if (type) {
       type = type.trim();
       if (shapes[type]) {
         return shapes[type].apply(null, args);
       }
     }
-  }
+  });
 }
 
 

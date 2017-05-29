@@ -25,12 +25,12 @@ export function prefix(rule) {
   return `-webkit-${ rule } ${rule}`;
 }
 
+const store = {};
 export function memo(prefix, fn) {
-  const memo = {};
   return function(...args) {
     let key = prefix + args.join('-');
-    if (memo[key]) return memo[key];
-    return (memo[key] = fn.apply(null, args));
+    if (store[key]) return store[key];
+    return (store[key] = fn.apply(null, args));
   }
 }
 
