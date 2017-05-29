@@ -1,6 +1,6 @@
 import { minmax, memo } from './utils';
 
-const { cos, sin, PI } = Math;
+const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
 
 function polygon(option, fn) {
@@ -10,7 +10,7 @@ function polygon(option, fn) {
   }
 
   if (!fn) {
-    fn = theta => [ cos(theta), sin(theta) ];
+    fn = t => [ cos(t), sin(t) ];
   }
 
   var split = option.split || 120;
@@ -20,8 +20,8 @@ function polygon(option, fn) {
   var points = [];
 
   for (var i = 0; i < split; ++i) {
-    var theta = start + deg * i;
-    var [x, y] = fn(theta);
+    var t = start + deg * i;
+    var [x, y] = fn(t);
     points.push(
       ((x * 50 * scale) + 50 + '% ') +
       ((y * 50 * scale) + 50 + '%')
@@ -75,18 +75,18 @@ export function cross() {
 export function clover(k = 3) {
   k = minmax(k, 3, 5);
   if (k == 4) k = 2;
-  return polygon({ split: 240 }, theta => [
-    cos(k * theta) * cos(theta),
-    cos(k * theta) * sin(theta)
+  return polygon({ split: 240 }, t => [
+    cos(k * t) * cos(t),
+    cos(k * t) * sin(t)
   ]);
 }
 
 export function hypocycloid(k = 3) {
   k = minmax(k, 3, 6);
   var m = 1 - k;
-  return polygon({ scale: 1 / k  }, theta => [
-    m * cos(theta) + cos(m * (theta - PI)),
-    m * sin(theta) + sin(m * (theta - PI))
+  return polygon({ scale: 1 / k  }, t => [
+    m * cos(t) + cos(m * (t - PI)),
+    m * sin(t) + sin(m * (t - PI))
   ]);
 }
 
@@ -95,7 +95,32 @@ export function astroid() {
 }
 
 export function tie() {
-  return polygon(theta => [
-    cos(theta), sin(theta * 2) / 2
+  return polygon(t => [
+    cos(t), sin(t * 2) / 2
   ]);
+}
+
+export function eternity() {
+  return polygon(t => {
+    var a = .7 * sqrt(2) * cos(t);
+    var b = (pow(sin(t), 2) + 1);
+    return [
+      a / b, a * sin(t) / b
+    ]
+  });
+}
+
+export function heart() {
+  return polygon(t => {
+    var x = .75 * pow(sin(t), 3);
+    var y =
+        cos(1 * t) * (13 / 18)
+      - cos(2 * t) * (5 / 18)
+      - cos(3 * t) / 18
+      - cos(4 * t) / 18;
+    return [
+      (-x - y * sin(PI)),
+      (-y + x * sin(PI)) - .2
+    ];
+  });
 }
