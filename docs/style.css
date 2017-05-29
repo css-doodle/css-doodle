@@ -462,7 +462,12 @@ textarea[code] {
   .docs h3 {
     font-size: 1.5em;
     margin-bottom: 2em;
+    position: relative;
   }
+    .docs h3 a[name] {
+      position: absolute;
+      top: -2em;
+    }
   .docs h4 {
     font-size: 1.2em;
     margin-bottom: 1em;
