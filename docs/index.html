@@ -7,8 +7,8 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?323d48a1ea67">
-  <script src="lib/css-doodle.min.js?323d48a1ea67"></script>
+  <link rel="stylesheet" href="style.css?5f4c68ef6d474">
+  <script src="lib/css-doodle.min.js?5f4c68ef6d474"></script>
 </head>
 <body>
 
@@ -19,12 +19,9 @@
       background-color: hsla(
         @rand(120, 180, 10), 70%, 61.8%, @rand(.2, .8)
       );
-      --polygon: polygon(
-        0 0, 100% 0, @rand(40%, 60%) @rand(30%, 100%)
-      );
-      -webkit-clip-path: var(--polygon);
-              clip-path: var(--polygon);
+      clip-path: polygon(0 0, 100% 0, @rand(40%, 60%) @rand(30%, 100%));
     </css-doodle>
+
     <header>
       <h1>&lt; <em>css-doodle</em> /&gt; </h1>
       <p>A web component for drawing patterns with css.</p>
@@ -75,9 +72,13 @@
         <p>
           <textarea code>
             <script src="css-doodle.js"></script>
+
+            <css-doodle>
+              /* it's ready to use */
+            </css-doodle>
           </textarea>
         </p>
-        <p>You can also install from <em>npm</em> and require the module in javascript:
+        <p>You can also install from <em><a href="http://npmjs.org/package/css-doodle">npm</a></em> and import the module in javascript:
         <p>
           <textarea code>
             npm install css-doodle
@@ -91,8 +92,7 @@
       <div class="container">
         <css-doodle grid="8">
           :doodle {
-            width: 100vmax;
-            height: 100vmax;
+            size: 100vmax;
             background: #2a2e31;
             overflow: hidden;
           }
@@ -101,7 +101,7 @@
           border: 1px solid hsla(
             calc(36 * @index()), 80%, 80%, .7
           );
-          transform: rotate(@any(60deg, -60deg)) scale(1.2);
+          transform: rotate(@pick(60deg, -60deg)) scale(1.2);
         </css-doodle>
       </div>
       <textarea code></textarea>
@@ -115,67 +115,91 @@
           The syntax of css-doodle is no different from CSS, except for convenience sake, it provided several extra utility functions.
         </p>
 
+        <ul class="nav">
+          <li> <a href="#">Grid</a></li>
+          <li> <a href="#">Selectors</a></li>
+          <li> <a href="#">Functions</a> </li>
+        </ul>
+
         <div class="sep"></div>
 
         <article>
-          <h3>Grid size</h3>
+          <h3>Grid</h3>
 
-          <p>The size of the grid is defined by the <em>"grid"</em> attribute on the element. Range from <em>1</em> to <em>16</em>. If no size or 0 is given,
+          <p>The size of the grid is defined by the <em>"grid"</em> attribute on the element, range from <em>1</em> to <em>16</em>. If no size or 0 is given,
           the size is set to 1x1.
           <p class="has-preview">
             <textarea code>
-              <css-doodle grid="3, 5">
+              <css-doodle grid="5">
                 :doodle {
-                  width: 7em; height: 4em;
+                  size: 7em;
                 }
                 background: rebeccapurple;
                 border: 1px solid #fff;
               </css-doodle>
             </textarea>
-            <css-doodle grid="3, 5">
-              :doodle {
-                width: 7em;
-                height: 4em;
-              }
-              background: rebeccapurple;
-              border: 1px solid #fff;
-            </css-doodle>
-          </p>
-        </article>
-
-        <article>
-          <h3>:doodle</h3>
-          <p>The <code>:doodle</code> or <code>:host</code> is a special selector indicates to the component element itself. The styles can be over-written by your normal css files outside.
-          <span class="tip">(try to hover on the doodle)</span>
-          </p>
-          <p class="has-preview">
-            <textarea code>
-              :doodle {
-                width: 7em; height: 7em;
-                transition: .2s ease;
-              }
-              :doodle(:hover) {
-                transform: scale(.9);
-              }
-              background: rebeccapurple;
-              border: 1px solid #fff;
-            </textarea>
             <css-doodle grid="5">
               :doodle {
-                width: 7em; height: 7em;
-                transition: .2s ease;
-              }
-              :doodle(:hover) {
-                transform: scale(.9);
+                size: 7em;
               }
               background: rebeccapurple;
               border: 1px solid #fff;
             </css-doodle>
           </p>
+
+          <p>
+       			The following formats of size are recognizable:
+      		</p>
+					<div class="list-items">
+						<ul>
+							<li><code>grid = "0"</code></li>
+							<li><code>grid = "5"</code></li>
+							<li><code>grid = "20"</code></li>
+							<li><code>grid = "5x7"</code></li>
+							<li><code>grid = "5 x 7"</code></li>
+							<li><code>grid = "5，7"</code></li>
+							<li><code>grid = "5,7"</code></li>
+						</ul>
+					</div>
+
         </article>
 
+        <div class="sep"></div>
+
         <article>
-          <h3>Conditional Selectors</h3>
+          <h3>Selectors</h3>
+
+          <section>
+            <h4>:doodle</h4>
+            <p>The <code>:doodle</code> or <code>:host</code> is a special selector indicates to the component element itself. The styles can be over-written by your normal css files outside.
+            <span class="tip">(try to hover on the doodle)</span>
+            </p>
+            <p class="has-preview">
+              <textarea code>
+                :doodle {
+                  size: 7em;
+                  transition: .2s ease;
+                }
+                :doodle(:hover) {
+                  transform: scale(.9);
+                }
+                background: rebeccapurple;
+                border: 1px solid #fff;
+              </textarea>
+              <css-doodle grid="5">
+                :doodle {
+                  size: 7em;
+                  transition: .2s ease;
+                }
+                :doodle(:hover) {
+                  transform: scale(.9);
+                }
+                background: rebeccapurple;
+                border: 1px solid #fff;
+              </css-doodle>
+            </p>
+
+          </section>
 
           <section>
             <h4>@even</h4>
@@ -188,8 +212,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 @even {
                   background: rebeccapurple;
@@ -214,8 +237,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 @odd {
                   background: rebeccapurple;
@@ -240,8 +262,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -268,8 +289,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -296,8 +316,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -322,8 +341,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -357,8 +375,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -383,8 +400,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: #f5f5f5;
                 border: 1px solid #fff;
@@ -401,6 +417,8 @@
           </section>
         </article>
 
+        <div class="sep"></div>
+
         <article>
           <h3>Functions</h3>
           <section>
@@ -414,8 +432,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: rebeccapurple;
                 border: 1px solid #fff;
@@ -439,8 +456,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: rebeccapurple;
                 border: 1px solid #fff;
@@ -464,8 +480,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 background: rebeccapurple;
                 border: 1px solid #fff;
@@ -489,8 +504,7 @@
               </textarea>
               <css-doodle grid="5">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 border: 1px solid #fff;
                 background: hsla(
@@ -504,7 +518,7 @@
           </section>
 
           <section>
-            <h4>@any(v1, v2,...)</h4>
+            <h4>@pick(v1, v2,...)</h4>
             <p>
               Randomly pick a value from the given list.
               <br/><span class="tip">(try to click on the doodle)</span>
@@ -512,23 +526,22 @@
             <p class="has-preview">
               <textarea code>
                 :after {
-                  content: '@any(+, *, ., -)';
+                  content: '@pick(+, *, ., -)';
                   color: rebeccapurple;
                 }
               </textarea>
               <css-doodle grid="5" class="click-to-update">
                 :doodle {
-                  width: 7em;
-                  height: 7em;
+                  size: 7em;
                 }
                 :after {
-                  content: '@any(+, *, ., -)';
+                  content: '@pick(+, *, ., -)';
                   color: rebeccapurple;
                 }
               </css-doodle>
             </p>
             <p>
-              Alias: <code>@pick</code>
+              Alias: <code>@any</code>
             </p>
           </section>
 
@@ -554,16 +567,46 @@
                 }
                 background: rgba(102, 51, 153, @rand(.9));
                 transition: .2s ease @rand(200ms);
-                --polygon: polygon(
+                will-change: transform;
+                transform: rotate(@rand(360deg));
+                clip-path: polygon(
                   @rand(100%) 0, 100% @rand(100%), 0 @rand(100%)
                 );
-                will-change: transform;
-                -webkit-clip-path: var(--polygon);
-                        clip-path: var(--polygon);
-                transform:
-                           rotate( @rand(360deg))
               </css-doodle>
             </p>
+          </section>
+
+          <section>
+            <h4>@shape(name [,v1, v2,...])</h4>
+            <p>
+              Return a css shape based on <code> polygon() </code>
+            </p>
+            <p class="has-preview">
+              <textarea code>
+                clip-path: @shape(
+                  hypocycloid, @pick(3, 4, 5, 6)
+                );
+              </textarea>
+              <css-doodle grid="2" class="click-to-update">
+                :doodle {
+                  size: 7em;
+                }
+                transition: .2s ease @rand(200ms);
+                transform: rotate(@rand(-90deg, 90deg));
+                will-change: transform;
+                background: rgba(102, 51, 153, @rand(.3, .9));
+                clip-path: @shape(
+                  hypocycloid, @pick(3, 4, 5, 6)
+                );
+              </css-doodle>
+            </p>
+
+            <div class="shapes-list">
+              <h5> All shapes </h5>
+              <div class="shapes">
+                <!-- shapes -->
+              </div>
+            </div>
           </section>
         </article>
       </div>
@@ -574,15 +617,7 @@
       width: .8em;
       height: .8em;
       background: hsla(calc(360 / 60 * @index()), 80%, 80%, .4);
-
-      --polygon: polygon(
-        50% 0,
-        100% 100%,
-        0 100%
-      );
-      -webkit-clip-path: var(--polygon);
-              clip-path: var(--polygon);
-
+      clip-path: polygon( 50% 0, 100% 100%, 0 100%);
       transform:
         rotate(@rand(360deg))
         scale(@rand(.6, 1, .1))
@@ -596,7 +631,17 @@
 
   <div class="about"><div class="wrap">
     <p>
-      Made with ♥ by <a href="http://yuanchuan.name">yuanchuan</a>. <br />
+      Made with
+      <css-doodle>
+        :doodle {
+          vertical-align: middle;
+          display: inline-block;
+          size: .8em;
+          background: rgba(255, 87, 34, 0.6);
+          clip-path: @shape(heart);
+        }
+      </css-doodle>
+      by <a href="http://yuanchuan.name">yuanchuan</a>. <br />
       MIT Licensed.
     </p>
   </div></div>
@@ -605,15 +650,13 @@
     <css-doodle grid="1, 12" flags>
       transform: scaleX(@rand(1, 4, .1));
       background-color: hsla(@rand(120, 180, 10), 70%, 61.8%, @rand(.2, .8));
-      --polygon: polygon(0 100%, 100% 100%, @rand(40%, 60%) @rand(40%, 80%));
-      -webkit-clip-path: var(--polygon);
-              clip-path: var(--polygon);
+      clip-path: polygon(0 100%, 100% 100%, @rand(40%, 60%) @rand(40%, 80%));
     </css-doodle>
   </footer>
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?323d48a1ea67"></script>
+  <script src="main.js?5f4c68ef6d474"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),

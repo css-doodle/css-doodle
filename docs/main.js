@@ -39,7 +39,7 @@
 
   var doodleStyle = indent(`
     :doodle {
-      clip-path: circle(50% at 50% 50%);
+      clip-path: @shape(circle);
       background-color: #f6ffed;
     }
 
@@ -48,7 +48,7 @@
     will-change: transform;
     transform: scale(@rand(.25, 1.25));
 
-    border-radius: @any(
+    border-radius: @pick(
       100% 0, 0 100%
     );
 
@@ -121,11 +121,61 @@
       source.setAttribute('front', '');
       if (back) {
         setTimeout(function() {
-          editor.setValue(editor.getValue().trim());
+          editor.setValue(editor.getValue().trimRight());
           editor.refresh();
         }, 200);
       }
     }
   });
+
+  var shapes = [
+    { name: 'triangle' },
+    { name: 'rhombus' },
+    { name: 'pentagon' },
+    { name: 'hexgon' },
+    { name: 'circle' },
+    { name: 'star' },
+    { name: 'diamond' },
+    { name: 'cross' },
+
+    { name: 'siogon', param: 3 },
+    { name: 'siogon', param: 4 },
+    { name: 'siogon', param: 5 },
+    { name: 'siogon', param: 6 },
+    { name: 'siogon', param: 7 },
+    { name: 'siogon', param: 8 },
+
+    { name: 'tie' },
+    { name: 'eternity' },
+
+    { name: 'hypocycloid', param: 3 },
+    { name: 'hypocycloid', param: 4 },
+    { name: 'hypocycloid', param: 5 },
+    { name: 'hypocycloid', param: 6 },
+
+    { name: 'clover', param: 3 },
+    { name: 'clover', param: 4 },
+    { name: 'clover', param: 5 },
+    { name: 'heart' }
+
+  ];
+
+  var doodleShapes = shapes.map(n => {
+    return `
+      <div class="shape">
+        <css-doodle>
+          :doodle {
+            clip-path: @shape(${ n.name }, ${ n.param || 1 });
+            background: rebeccapurple;
+          }
+        </css-doodle>
+        <p class="title">
+          (${ n.name }${ n.param ? ', ' + n.param : '' })
+        </p>
+      </div>
+    `
+  }).join('');
+
+  document.querySelector('.shapes').innerHTML = doodleShapes;
 
 }());

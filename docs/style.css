@@ -51,10 +51,9 @@ html, body, h1, ul, li {
   box-sizing: border-box;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  margin: .6em 0;
+h1, h2, h3 {
+  font-weight: bold;
 }
-
 
 body {
   background-color: #fff;
@@ -160,6 +159,7 @@ textarea[code] {
   }
   .cover h1 {
     margin-top: 1em;
+    margin-bottom: .5em;
     color: rgba(0, 150, 136, 0.5);
     font-size: 3em;
     font-weight: normal;
@@ -430,10 +430,14 @@ textarea[code] {
     }
   .docs .list-items {
     padding-left: 1em;
-    font-size: 1.1em;
+    font-size: 1em;
     line-height: 1.4;
     color: #666;
   }
+    .docs .list-items li {
+      padding: 2px 5px;
+      border-radius: 2px;
+    }
   .docs em {
     font-weight: normal;
     color: #444;
@@ -463,13 +467,80 @@ textarea[code] {
     font-size: 1.2em;
     margin-bottom: 1em;
   }
+  .docs .nav {
+    list-style: disc;
+    padding: 1em 1.5em 0;
+  }
+  .nav li {
+    line-height: 1.4;
+    font-size: 1.2em;
+  }
+  .nav > li {
+    margin-bottom: .5em;
+  }
+  .nav li a {
+    text-decoration: none;
+    font-size: 1em;
+  }
+  .nav li code {
+    border: 1px solid #eee;
+    padding: 2px 6px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .nav ul {
+    padding: .5em 1.5em;
+    list-style: disc;
+  }
+  .nav ul li {
+    margin-bottom: .5em;
+  }
   .docs .sep {
-    margin: 3em 0;
+    margin: 4em 0;
     height: 1px;
     width: 37%;
     background: rgba(46, 169, 156, 0.5);
   }
+  .docs h5 {
+    color: #000;
+    font-size: 1.2em;
+    margin-bottom: 2em;
+  }
+  .shapes-list {
+    margin-top: 2em;
+  }
 
+  .shapes-list .shapes {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .shapes-list .shape {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    width: 25%;
+    margin-bottom: .5em;
+  }
+  @media (max-width: 695px) {
+    .shapes-list .shape {
+      width: 33.33%;
+    }
+  }
+
+  @media (max-width: 568px) {
+    .shapes-list .shape {
+      flex-flow: column;
+    }
+  }
+  .shapes-list .title {
+    font-size: .6em;
+  }
+  .shapes-list css-doodle {
+    background: rebeccapurple;
+    width: 3em;
+    height: 3em;
+    margin: .5em;
+  }
 
 .example {
   width: 100vw;
