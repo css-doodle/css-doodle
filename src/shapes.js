@@ -96,7 +96,8 @@ export function astroid() {
 
 export function tie() {
   return polygon(t => [
-    cos(t), sin(t * 2) / 2
+    cos(t),
+    sin(t * 2) / 2
   ]);
 }
 
@@ -105,7 +106,8 @@ export function eternity() {
     var a = .7 * sqrt(2) * cos(t);
     var b = (pow(sin(t), 2) + 1);
     return [
-      a / b, a * sin(t) / b
+      a / b,
+      a * sin(t) / b
     ]
   });
 }
