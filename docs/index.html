@@ -549,7 +549,7 @@
             <h4>@rand(start [,stop] [,step])</h4>
             <p>
               Returns a random value from the range of numbers.
-              <br/><span class="tip">(try to click on the doodle)</span>
+              <br/><span class="tip">(try to click the doodle)</span>
             </p>
             <p class="has-preview">
               <textarea code>
@@ -580,6 +580,7 @@
             <h4>@shape(name [,v1, v2,...])</h4>
             <p>
               Return a css shape based on <code> polygon() </code>
+              <br/><span class="tip">(try to click the doodle)</span>
             </p>
             <p class="has-preview">
               <textarea code>
@@ -628,25 +629,46 @@
     </css-doodle>
   </div>
 
-
-  <div class="about"><div class="wrap">
-    <p>
-      Made with
-      <css-doodle>
-        :doodle {
-          vertical-align: middle;
-          display: inline-block;
-          size: .8em;
-          background: rgba(255, 87, 34, 0.6);
-          clip-path: @shape(heart);
-        }
-      </css-doodle>
-      by <a href="http://yuanchuan.name">yuanchuan</a>. <br />
-      MIT Licensed.
-    </p>
-  </div></div>
-
   <footer>
+    <!-- example -->
+    <section class="example">
+      <div class="container">
+        <css-doodle grid="8">
+          :doodle {
+            size: 100vmax;
+            background: #000;
+            overflow: hidden;
+          }
+          clip-path: @shape(clover, @pick(3, 4));
+          background: hsla(
+            calc(5 * @index()), 70%, 60%, @rand(.5)
+          );
+          transform:
+            rotate(@rand(360deg))
+            scale(@rand(.5, 2.4))
+            translate(@rand(-50%, 50%), @rand(-50%, 50%));
+        </css-doodle>
+      </div>
+      <textarea code></textarea>
+    </section>
+
+    <div class="about"><div class="wrap">
+      <p>
+        Made with
+        <css-doodle>
+          :doodle {
+            vertical-align: middle;
+            display: inline-block;
+            size: .8em;
+            background: rgba(255, 87, 34, 0.6);
+            clip-path: @shape(heart);
+          }
+        </css-doodle>
+        by <a href="http://yuanchuan.name">yuanchuan</a>. <br />
+        MIT Licensed.
+      </p>
+    </div></div>
+
     <css-doodle grid="1, 12" flags>
       transform: scaleX(@rand(1, 4, .1));
       background-color: hsla(@rand(120, 180, 10), 70%, 61.8%, @rand(.2, .8));

@@ -374,7 +374,7 @@ textarea[code] {
 
 
 .docs {
-  padding: 4em 0;
+  padding: 4em 0 0;
   position: relative;
   overflow: hidden;
 }
@@ -599,14 +599,18 @@ textarea[code] {
               clip-path: var(--polygon);
     }
 
-
-.about {
-  color: #aaa;
-  line-height: 1.4;
+footer {
+  background: rgba(246, 255, 237, 0.5);
 }
-  .about a {
-    color: #8ac1bc;
+  .about {
+    color: #aaa;
+    line-height: 1.4;
+    background: rgba(246, 255, 237, 0.5);
+    margin-top: 6em;
   }
-    .about a:hover {
-      background: #f6ffed;
+    .about a {
+      color: #8ac1bc;
     }
+      .about a:hover {
+        background: #f6ffed;
+      }

@@ -17,9 +17,13 @@
     return result.join('\n');
   }
 
-  var example = document.querySelector('.example');
-  example.querySelector('textarea').value =
-    example.querySelector('.container').innerHTML;
+  var examples = document.querySelectorAll('.example');
+  [].forEach.call(examples, example => {
+    var textarea = example.querySelector('textarea');
+    if (textarea) {
+      textarea.value = example.querySelector('.container').innerHTML;
+    }
+  });
 
   var codeBlocks = document.querySelectorAll('textarea[code]');
   [].forEach.call(codeBlocks, block => {
