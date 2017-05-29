@@ -149,7 +149,7 @@ const polygon = function(sides, start = 0, deg) {
 };
 
 function circle() {
-  return 'circle(50%)';
+  return 'circle(49.5%)';
 }
 
 function siogon(sides) {

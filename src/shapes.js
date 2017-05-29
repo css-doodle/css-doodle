@@ -14,7 +14,7 @@ const polygon = function(sides, start = 0, deg) {
 };
 
 export function circle() {
-  return 'circle(50%)';
+  return 'circle(49.5%)';
 }
 
 export function siogon(sides) {
