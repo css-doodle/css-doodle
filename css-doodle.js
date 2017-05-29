@@ -236,7 +236,6 @@ function tie() {
 }
 
 function eternity() {
-  console.log('compute eterity');
   return polygon(t => {
     var a = .7 * sqrt(2) * cos(t);
     var b = (pow(sin(t), 2) + 1);
@@ -248,7 +247,6 @@ function eternity() {
 }
 
 function heart() {
-  console.log('compute heaert');
   return polygon(t => {
     var x = .75 * pow(sin(t), 3);
     var y =
