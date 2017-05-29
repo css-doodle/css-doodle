@@ -93,3 +93,9 @@ export function hypocycloid(k = 3) {
 export function astroid() {
   return hypocycloid(4);
 }
+
+export function tie() {
+  return polygon(theta => [
+    cos(theta), sin(theta * 2) / 2
+  ]);
+}

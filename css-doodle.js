@@ -228,6 +228,13 @@ function astroid() {
   return hypocycloid(4);
 }
 
+function tie() {
+  return polygon(theta => [
+    cos(theta),
+    sin(theta * 2) / 2
+  ])
+}
+
 
 var shapes = Object.freeze({
   circle: circle,
@@ -241,7 +248,8 @@ var shapes = Object.freeze({
   cross: cross,
   clover: clover,
   hypocycloid: hypocycloid,
-  astroid: astroid
+  astroid: astroid,
+  tie: tie
 });
 
 function index(x, y, count) {
