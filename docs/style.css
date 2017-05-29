@@ -601,6 +601,7 @@ textarea[code] {
 
 footer {
   background: rgba(246, 255, 237, 0.5);
+  overflow: hidden;
 }
   .about {
     color: #aaa;
