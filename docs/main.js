@@ -61,6 +61,29 @@
     );
   `);
 
+  if (Math.random() < .5) {
+    doodleStyle = indent(`
+			:doodle {
+				clip-path: @shape(circle);
+				background-color: #f6ffed;
+			}
+
+			clip-path: @shape(bicorn);
+
+			transform:
+				rotate(@rand(360deg))
+				scale(@rand(.5, 2.4))
+				translate(
+					@rand(-50%, 50%),
+					@rand(-50%, 50%)
+				);
+
+			background: hsla(
+				calc(5 * @index()), 70%, 60%,@rand(.8)
+			);
+    `)
+  }
+
   var doodle = document.createElement('css-doodle');
   doodle.grid = '7, 7';
   if (doodle.update) {
