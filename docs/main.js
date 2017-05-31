@@ -90,7 +90,7 @@
       clip-path: @shape(bicorn);
 
       background: hsla(
-        calc(180 + 4 * @index()),
+        calc(200 + 2 * @index()),
         70%, 60%,
         @rand(.8)
       );
