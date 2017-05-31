@@ -206,23 +206,23 @@ textarea[code] {
   display: flex;
   align-items: center;
   box-shadow: 0 0 50px rgb(194, 199, 199);
-  height: 420px;
+  height: 440px;
 }
   .playground .doodle {
     overflow: hidden;
     position: relative;
-    cursor: pointer;
   }
-    .playground .doodle:before {
-      content: 'click to refresh';
+    .doodle select {
+      cursor: pointer;
       position: absolute;
-      right: 5px;
-      bottom: 5px;
-      padding: 2px 5px;
-      font-size: .8em;
-      background: rgba(1, 160, 228, 0.1);
-      color: rgba(1, 160, 228, 0.57);
-      z-index: 1;
+      left: 1em;
+      top: 1em;
+      background: #E5F5FC;
+      color: #00BCD4;
+      border: 0;
+      border-radius: 0;
+      font-size: .9em;
+      z-index: 2;
     }
   .playground .doodle,
   .playground .source {
@@ -240,6 +240,7 @@ textarea[code] {
   .playground css-doodle {
     width: 350px;
     height: 350px;
+    cursor: pointer;
   }
   .playground .source {
     background: #fafafa;

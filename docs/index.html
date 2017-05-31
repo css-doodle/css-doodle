@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?b0aa4878c23ec">
+  <link rel="stylesheet" href="style.css?c9e9b69256749">
   <script src="lib/css-doodle.min.js?b0aa4878c23ec"></script>
 </head>
 <body>
@@ -33,7 +33,14 @@
 
     <div class="wrap">
       <div class="playground">
-        <div class="doodle" front> <!-- insert dynamicly --> </div>
+          <div class="doodle" front>
+            <select>
+              <option value="leaves">Leaves</option>
+              <option value="flames">Flames</option>
+              <option value="fish">Fish</option>
+            </select>
+          <!-- insert dynamicly -->
+        </div>
         <div class="source"> <!-- insert dynamicly --> </div>
       </div>
     </div>
@@ -148,20 +155,19 @@
           </p>
 
           <p>
-       			The following formats of size are recognizable:
-      		</p>
-					<div class="list-items">
-						<ul>
-							<li><code>grid = "0"</code></li>
-							<li><code>grid = "5"</code></li>
-							<li><code>grid = "20"</code></li>
-							<li><code>grid = "5x7"</code></li>
-							<li><code>grid = "5 x 7"</code></li>
-							<li><code>grid = "5，7"</code></li>
-							<li><code>grid = "5,7"</code></li>
-						</ul>
-					</div>
-
+             The following formats of size are recognizable:
+          </p>
+          <div class="list-items">
+            <ul>
+              <li><code>grid = "0"</code></li>
+              <li><code>grid = "5"</code></li>
+              <li><code>grid = "20"</code></li>
+              <li><code>grid = "5x7"</code></li>
+              <li><code>grid = "5 x 7"</code></li>
+              <li><code>grid = "5，7"</code></li>
+              <li><code>grid = "5,7"</code></li>
+            </ul>
+          </div>
         </article>
 
         <div class="sep"></div>
@@ -678,7 +684,7 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?3683e0447f0e"></script>
+  <script src="main.js?c9e9b69256749"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
