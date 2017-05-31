@@ -42,24 +42,23 @@
   });
 
   var doodleStyle = indent(`
-		:doodle {
-			clip-path: @shape(circle);
-			background-color: #f6ffed;
-		}
+    :doodle {
+      clip-path: @shape(circle);
+      background-color: #f6ffed;
+    }
 
-		clip-path: @shape(bicorn);
+    transition: .2s ease @rand(.6s);
 
-		transform:
-			rotate(@rand(360deg))
-			scale(@rand(.5, 2.4))
-			translate(
-				@rand(-50%, 50%),
-				@rand(-50%, 50%)
-			);
+    will-change: transform;
+    transform: scale(@rand(.25, 1.25));
 
-		background: hsla(
-			calc(5 * @index()), 70%, 60%,@rand(.8)
-		);
+    border-radius: @pick(
+      100% 0, 0 100%
+    );
+
+    background: hsla(
+      calc(5 * @index()), 70%, 60%,@rand(.8)
+    );
   `);
 
   var doodle = document.createElement('css-doodle');
