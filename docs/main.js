@@ -133,34 +133,35 @@
   });
 
   var shapes = [
+    { name: 'circle' },
     { name: 'triangle' },
     { name: 'rhombus' },
     { name: 'pentagon' },
     { name: 'hexgon' },
-    { name: 'circle' },
-    { name: 'star' },
-    { name: 'diamond' },
+    { name: 'heptagon' },
+    { name: 'octagon' },
     { name: 'cross' },
 
-    { name: 'siogon', param: 3 },
-    { name: 'siogon', param: 4 },
-    { name: 'siogon', param: 5 },
-    { name: 'siogon', param: 6 },
-    { name: 'siogon', param: 7 },
-    { name: 'siogon', param: 8 },
+    { name: 'star' },
+    { name: 'diamond' },
 
-    { name: 'tie' },
-    { name: 'eternity' },
+    { name: 'infinity' },
+    { name: 'heart' },
+
+    { name: 'fish' },
+    { name: 'whale' },
+    { name: 'pear' },
+    { name: 'bean' },
 
     { name: 'hypocycloid', param: 3 },
     { name: 'hypocycloid', param: 4 },
     { name: 'hypocycloid', param: 5 },
     { name: 'hypocycloid', param: 6 },
 
+    { name: 'bicorn' },
     { name: 'clover', param: 3 },
     { name: 'clover', param: 4 },
-    { name: 'clover', param: 5 },
-    { name: 'heart' }
+    { name: 'clover', param: 5 }
 
   ];
 
@@ -174,7 +175,9 @@
           }
         </css-doodle>
         <p class="title">
-          (${ n.name }${ n.param ? ', ' + n.param : '' })
+          ${
+            (n.param ? '(' + n.name  +', ' + n.param + ')' : n.name)
+          }
         </p>
       </div>
     `

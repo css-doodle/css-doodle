@@ -31,21 +31,27 @@ function polygon(option, fn) {
   return `polygon(${ points.join(',') })`;
 }
 
-
-export function circle() {
-  return 'circle(49.5%)';
+function rotate(x, y, deg) {
+  var rad = DEG * deg;
+  return [
+    x * cos(rad) - y * sin(rad),
+    y * cos(rad) + x * sin(rad)
+  ];
 }
 
-export function siogon(sides = 3) {
-  return polygon({ split: minmax(sides, 3, 8) });
+export function circle() {
+  return 'circle(49%)';
 }
 
 export function triangle() {
-  return polygon({ split: 3, start: -90 });
+  return polygon({ split: 3, start: -90 }, t => [
+    cos(t) * 1.1,
+    sin(t) * 1.1 + .2
+  ]);
 }
 
 export function rhombus() {
-  return siogon(4);
+  return polygon({ split: 4 });
 }
 
 export function pentagon() {
@@ -54,6 +60,14 @@ export function pentagon() {
 
 export function hexgon() {
   return polygon({ split: 6, start: 30 });
+}
+
+export function heptagon() {
+  return polygon({ split: 7, start: -90});
+}
+
+export function octagon() {
+  return polygon({ split: 8});
 }
 
 export function star() {
@@ -75,33 +89,37 @@ export function cross() {
 export function clover(k = 3) {
   k = minmax(k, 3, 5);
   if (k == 4) k = 2;
-  return polygon({ split: 240 }, t => [
-    cos(k * t) * cos(t),
-    cos(k * t) * sin(t)
-  ]);
+  return polygon({ split: 240 }, t => {
+    var x = cos(k * t) * cos(t);
+    var y = cos(k * t) * sin(t);
+    if (k == 3) x -= .2;
+    if (k == 2) {
+      x /= 1.1;
+      y /= 1.1;
+    }
+    return [x, y];
+  });
 }
 
 export function hypocycloid(k = 3) {
   k = minmax(k, 3, 6);
   var m = 1 - k;
-  return polygon({ scale: 1 / k  }, t => [
-    m * cos(t) + cos(m * (t - PI)),
-    m * sin(t) + sin(m * (t - PI))
-  ]);
+  return polygon({ scale: 1 / k  }, t => {
+    var x = m * cos(t) + cos(m * (t - PI));
+    var y = m * sin(t) + sin(m * (t - PI));
+    if (k == 3) {
+      x = x * 1.1 - .6;
+      y = y * 1.1
+    }
+    return [x, y];
+  });
 }
 
 export function astroid() {
   return hypocycloid(4);
 }
 
-export function tie() {
-  return polygon(t => [
-    cos(t),
-    sin(t * 2) / 2
-  ]);
-}
-
-export function eternity() {
+export function infinity() {
   return polygon(t => {
     var a = .7 * sqrt(2) * cos(t);
     var b = (pow(sin(t), 2) + 1);
@@ -120,9 +138,54 @@ export function heart() {
       - cos(2 * t) * (5 / 18)
       - cos(3 * t) / 18
       - cos(4 * t) / 18;
-    return [
-      (-x - y * sin(PI)),
-      (-y + x * sin(PI)) - .2
-    ];
+    return rotate(
+      x * 1.2,
+      (y + .2) * 1.1,
+      180
+    );
+  });
+}
+
+export function bean() {
+  return polygon(t => {
+    var [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
+    return rotate(
+      (a + b) * cos(t) * 1.3 - .45,
+      (a + b) * sin(t) * 1.3 - .45,
+      -90
+    );
+  });
+}
+
+export function bicorn() {
+  return polygon(t => rotate(
+    cos(t),
+    pow(sin(t), 2) / (2 + sin(t)) - .5,
+    180
+  ));
+}
+
+export function pear() {
+  return polygon(t => [
+    sin(t),
+    (1 + sin(t)) * cos(t) / 1.4
+  ]);
+}
+
+export function fish() {
+  return polygon(t => [
+    cos(t) - pow(sin(t), 2) / sqrt(2),
+    sin(2 * t) / 2
+  ]);
+}
+
+export function whale() {
+  return polygon({ split: 240 }, t => {
+    var r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
+    return rotate(
+      cos(t) * r + .75,
+      sin(t) * r * 1.2,
+      180
+    );
   });
 }
