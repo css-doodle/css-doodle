@@ -213,6 +213,7 @@ textarea[code] {
     position: relative;
   }
     .doodle select {
+      -webkit-appearance: none;
       cursor: pointer;
       position: absolute;
       left: 1em;
@@ -222,8 +223,10 @@ textarea[code] {
       border: 0;
       border-radius: 0;
       font-size: .9em;
+      padding: 5px 8px;
       z-index: 2;
       opacity: .5;
+      border-radius: 3px;
     }
     .doodle select:hover {
       opacity: 1;
