@@ -515,6 +515,10 @@ textarea[code] {
     margin-top: 2em;
   }
 
+  .shapes-list p {
+    margin-bottom: 0;
+  }
+
   .shapes-list .shapes {
     display: flex;
     flex-wrap: wrap;
