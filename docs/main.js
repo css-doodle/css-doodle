@@ -179,19 +179,18 @@
     }
   });
 
-  var select = document.querySelector('.playground select');
-  select.addEventListener('change', function(e) {
-    var newStyle = doodles[e.target.value];
-    if (newStyle) {
-      doodle.style.display = 'none';
-      select.blur();
-      editor.setValue(newStyle);
-      doodle.style.display = '';
+  var nav = document.querySelector('.playground .nav');
+  nav.addEventListener('click', function(e) {
+    if (e.target.matches('li[data-name]')) {
+      var name = e.target.getAttribute('data-name');
+      nav.setAttribute('data-current', name);
+      var newStyle = doodles[name];
+      if (newStyle) {
+        doodle.style.display = 'none';
+        editor.setValue(newStyle);
+        doodle.style.display = '';
+      }
     }
-  });
-
-  select.addEventListener('click', function(e) {
-    e.stopPropagation();
   });
 
   var shapes = [
