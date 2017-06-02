@@ -134,7 +134,7 @@ function remove_unit(str) {
   return unit ? +(str.replace(unit, '')) : str;
 }
 
-const { cos, sin, tan, sqrt, pow, PI } = Math;
+const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
 
 function polygon(option, fn) {
@@ -273,8 +273,10 @@ function heart() {
       - cos(3 * t) / 18
       - cos(4 * t) / 18;
     return rotate(
-      x * 1.2, (y + .2) * 1.1, 180
-    )
+      x * 1.2,
+      (y + .2) * 1.1,
+      180
+    );
   });
 }
 
@@ -318,7 +320,7 @@ function whale() {
       cos(t) * r + .75,
       sin(t) * r * 1.2,
       180
-    )
+    );
   });
 }
 
@@ -398,6 +400,25 @@ var func = Object.freeze({
   shape: shape
 });
 
+var shortcuts = {
+
+  ['size'](value) {
+    var [w, h = w] = value.split(/[,，\/\s]+\s*/);
+    return `width: ${ w }; height: ${ h };`;
+  },
+
+  ['min-size'](value) {
+    var [w, h = w] = value.split(/[,，\/\s]+\s*/);
+    return `min-width: ${ w }; min-height: ${ h };`;
+  },
+
+  ['max-size'](value) {
+    var [w, h = w] = value.split(/[,，\/\s]+\s*/);
+    return `max-width: ${ w }; max-height: ${ h };`;
+  }
+
+};
+
 class Rules {
   constructor(tokens) {
     this.tokens = tokens;
@@ -467,9 +488,11 @@ class Rules {
       // fix clip bug
       rule += ';overflow: hidden;';
     }
-    if (property == 'size') {
-      rule = `width: ${ value }; height: ${ value };`;
+
+    if (shortcuts[property]) {
+      rule = shortcuts[property](value);
     }
+
     return rule;
   }
   compose(coords, tokens) {

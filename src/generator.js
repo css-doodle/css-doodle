@@ -1,6 +1,7 @@
 import * as cond from './cond';
 import * as func from './function';
 import * as utils from './utils';
+import shortcuts from './shortcuts';
 
 class Rules {
   constructor(tokens) {
@@ -71,9 +72,11 @@ class Rules {
       // fix clip bug
       rule += ';overflow: hidden;';
     }
-    if (property == 'size') {
-      rule = `width: ${ value }; height: ${ value };`;
+
+    if (shortcuts[property]) {
+      rule = shortcuts[property](value);
     }
+
     return rule;
   }
   compose(coords, tokens) {
