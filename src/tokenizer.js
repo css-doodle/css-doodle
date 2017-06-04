@@ -267,7 +267,7 @@ function read_value(it) {
   }
   if (text.value.length) value.push(text);
 
-  if (value.length) {
+  if (value.length && value[0].value) {
     value[0].value = value[0].value.trimLeft();
   }
 
