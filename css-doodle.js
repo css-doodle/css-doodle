@@ -400,20 +400,22 @@ var func = Object.freeze({
   shape: shape
 });
 
+const reg_size = /[,，\/\s]+\s*/;
+
 var shortcuts = {
 
   ['size'](value) {
-    var [w, h = w] = value.split(/[,，\/\s]+\s*/);
+    var [w, h = w] = value.split(reg_size);
     return `width: ${ w }; height: ${ h };`;
   },
 
   ['min-size'](value) {
-    var [w, h = w] = value.split(/[,，\/\s]+\s*/);
+    var [w, h = w] = value.split(reg_size);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
 
   ['max-size'](value) {
-    var [w, h = w] = value.split(/[,，\/\s]+\s*/);
+    var [w, h = w] = value.split(reg_size);
     return `max-width: ${ w }; max-height: ${ h };`;
   }
 
@@ -843,7 +845,7 @@ function read_value(it) {
   }
   if (text.value.length) value.push(text);
 
-  if (value.length) {
+  if (value.length && value[0].value) {
     value[0].value = value[0].value.trimLeft();
   }
 
