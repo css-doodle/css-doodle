@@ -34,7 +34,7 @@
     CodeMirror(sample, {
       mode: block.getAttribute('code') || 'css',
       value: content,
-      readOnly: true,
+      readOnly: ('ontouchstart' in window) ? 'nocursor' : true,
       cursorBlinkRate: -1,
       theme: '3024-day',
       tabSize: 2
