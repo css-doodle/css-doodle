@@ -189,3 +189,11 @@ export function whale() {
     );
   });
 }
+
+export function bud(n = 3) {
+  n = minmax(n, 3, 10);
+  return polygon({ split: 240 }, t => [
+    ((1 + .2 * cos(n * t)) * cos(t)) * .8,
+    ((1 + .2 * cos(n * t)) * sin(t)) * .8
+  ]);
+}
