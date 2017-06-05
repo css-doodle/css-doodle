@@ -222,7 +222,12 @@
     { name: 'bicorn' },
     { name: 'clover', param: 3 },
     { name: 'clover', param: 4 },
-    { name: 'clover', param: 5 }
+    { name: 'clover', param: 5 },
+
+    { name: 'bud', param: 3 },
+    { name: 'bud', param: 4 },
+    { name: 'bud', param: 5 },
+    { name: 'bud', param: 10 }
 
   ];
 

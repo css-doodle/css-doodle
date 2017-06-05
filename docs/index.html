@@ -590,7 +590,7 @@
             <p class="has-preview">
               <textarea code>
                 clip-path: @shape(
-                  hypocycloid, @pick(3, 4, 5, 6)
+                  bud, @rand(3, 10)
                 );
               </textarea>
               <css-doodle grid="2" class="click-to-update">
@@ -598,11 +598,11 @@
                   size: 7em;
                 }
                 transition: .2s ease @rand(200ms);
-                transform: rotate(@rand(-90deg, 90deg));
+                transform: rotate(@rand(-30deg, 30deg));
                 will-change: transform;
                 background: rgba(102, 51, 153, @rand(.3, .9));
                 clip-path: @shape(
-                  hypocycloid, @pick(3, 4, 5, 6)
+                  bud, @rand(3, 10)
                 );
               </css-doodle>
             </p>
@@ -683,7 +683,7 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?95c06573d835c"></script>
+  <script src="main.js?085135f91e1d"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
