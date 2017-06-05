@@ -86,21 +86,26 @@
         );
     `),
 
-    flames: indent(`
-      clip-path: @shape(bicorn);
+    star: indent(`
+      :doodle {
+        clip-path: @shape(bud, 5);
+        background: #673AB7;
+      }
+
+      clip-path: @shape(bud, 5);
 
       background: hsla(
-        calc(200 + 2 * @index()),
-        70%, 60%,
-        @rand(.8)
+        calc(300 + 3 * @index()),
+        75%, 70%, @rand(.8)
       );
 
+      transition: .2s ease @rand(300ms);
       transform:
-        rotate(@rand(360deg))
-        scale(@rand(.5, 3))
-        translate(
-          @rand(-100%, 100%),
-          @rand(-100%, 100%)
+        scale(@rand(.2, 1.5))
+        translate3d(
+          @rand(-50%, 50%),
+          @rand(-50%, 50%),
+          0
         );
     `)
   }

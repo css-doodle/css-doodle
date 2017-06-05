@@ -233,8 +233,8 @@ textarea[code] {
       background: #E5F5FC;
       display: none;
     }
-    .doodle [data-current="leaves"] [data-name="flames"],
-    .doodle [data-current="flames"] [data-name="leaves"] {
+    .doodle [data-current="leaves"] [data-name="star"],
+    .doodle [data-current="star"] [data-name="leaves"] {
       display: block;
     }
   .playground .doodle,
