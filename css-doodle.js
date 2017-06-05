@@ -324,6 +324,14 @@ function whale() {
   });
 }
 
+function bud(n = 3) {
+  n = minmax(n, 3, 10);
+  return polygon({ split: 240 }, t => [
+    ((1 + .2 * cos(n * t)) * cos(t)) * .8,
+    ((1 + .2 * cos(n * t)) * sin(t)) * .8
+  ]);
+}
+
 
 var shapes = Object.freeze({
   circle: circle,
@@ -345,7 +353,8 @@ var shapes = Object.freeze({
   bicorn: bicorn,
   pear: pear,
   fish: fish,
-  whale: whale
+  whale: whale,
+  bud: bud
 });
 
 function index(x, y, count) {
