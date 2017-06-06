@@ -8,7 +8,7 @@ all: build minify
 
 build: $(LIB)
 	@npm run build
-	@sed -i "" $$'s/\t/  /' $(TARGET)
+	@./tools/tab2spaces
 
 minify: $(TARGET)
 	@npm run minify
