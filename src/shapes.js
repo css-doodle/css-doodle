@@ -61,6 +61,9 @@ export function pentagon() {
 export function hexgon() {
   return polygon({ split: 6, start: 30 });
 }
+export function hexagon() {
+  return polygon({ split: 6, start: 30 });
+}
 
 export function heptagon() {
   return polygon({ split: 7, start: -90});

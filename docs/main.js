@@ -203,7 +203,7 @@
     { name: 'triangle' },
     { name: 'rhombus' },
     { name: 'pentagon' },
-    { name: 'hexgon' },
+    { name: 'hexagon' },
     { name: 'heptagon' },
     { name: 'octagon' },
     { name: 'cross' },
