@@ -8,11 +8,11 @@ all: build minify
 
 build: $(LIB)
 	@npm run build
-	@./tools/tab2spaces
+	@./tools/tab2spaces $(TARGET)
 
 minify: $(TARGET)
 	@npm run minify
-	@./tools/trim
+	@./tools/trim $(TARGET_MIN)
 	@cp $(TARGET_MIN) docs/lib/
 
 $(LIB):

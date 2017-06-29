@@ -2,7 +2,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const target = path.join(__dirname, '../css-doodle.min.js');
+
+const target = process.argv[2];
+if (!target) {
+  console.log('missing <target>');
+  process.exit(0);
+}
 
 try {
   const content = fs.readFileSync(target, 'utf8')
