@@ -195,6 +195,9 @@ function pentagon() {
 function hexgon() {
   return polygon({ split: 6, start: 30 });
 }
+function hexagon() {
+  return polygon({ split: 6, start: 30 });
+}
 
 function heptagon() {
   return polygon({ split: 7, start: -90});
@@ -339,6 +342,7 @@ var shapes = Object.freeze({
   rhombus: rhombus,
   pentagon: pentagon,
   hexgon: hexgon,
+  hexagon: hexagon,
   heptagon: heptagon,
   octagon: octagon,
   star: star,
@@ -852,6 +856,7 @@ function read_value(it) {
     }
     it.next();
   }
+
   if (text.value.length) value.push(text);
 
   if (value.length && value[0].value) {
@@ -893,8 +898,13 @@ function read_psudo(it) {
       it.next();
       continue;
     }
-    else if (!psudo.selector) psudo.selector = read_selector(it);
-    else psudo.styles.push(read_rule(it));
+    else if (!psudo.selector) {
+      psudo.selector = read_selector(it);
+    }
+    else {
+      psudo.styles.push(read_rule(it));
+      if (it.curr() == '}') break;
+    }
     it.next();
   }
   return psudo;
@@ -933,6 +943,7 @@ function read_cond(it) {
     else if (!is$1.white_space(c)) {
       var rule = read_rule(it);
       if (rule.property) cond.styles.push(rule);
+      if (it.curr() == '}') break;
     }
     it.next();
   }
