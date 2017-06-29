@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+
+const target = process.argv[2];
+if (!target) {
+  console.log('missing <target>');
+  process.exit(0);
+}
+
+const matches = [
+  /"(style\.css\?)(\w+)"/,
+  /"(lib\/css-doodle.min.js\?)(\w+)"/,
+  /"(main\.js\?)(\w+)"/
+];
+
+try {
+  let content = fs.readFileSync(target, 'utf8');
+  const hash = Math.random().toString(36).substr(2);
+  matches.forEach(m => {
+    content = content.replace(m, (_, a, b) => `"${a + hash}"`);
+  });
+
+  if (content) {
+    fs.writeFileSync(target, content, 'utf8');
+  }
+} catch (e) {
+  // it's ok
+}
