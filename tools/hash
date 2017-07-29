@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const target = process.argv[2];
 if (!target) {
@@ -9,19 +10,32 @@ if (!target) {
   process.exit(0);
 }
 
+const makeHash = file => {
+	let content = fs.readFileSync(
+    path.join(path.resolve(target, '..'), file)
+  );
+  return crypto.createHash('md5')
+    .update(content)
+    .digest('hex')
+}
+
+const makeReg = file => (
+	new RegExp(`"(${file}\\?)(\\w+)"`, 'g')
+);
+
 const matches = [
-  /"(style\.css\?)(\w+)"/,
-  /"(lib\/css-doodle.min.js\?)(\w+)"/,
-  /"(main\.js\?)(\w+)"/
+	'style.css',
+  'lib/css-doodle.min.js',
+  'main.js'
 ];
 
 try {
   let content = fs.readFileSync(target, 'utf8');
-  const hash = Math.random().toString(36).substr(2);
   matches.forEach(m => {
-    content = content.replace(m, (_, a, b) => `"${a + hash}"`);
+    content = content.replace(
+			makeReg(m), (_, n) => `"${n + makeHash(m)}"`
+		);
   });
-
   if (content) {
     fs.writeFileSync(target, content, 'utf8');
   }

@@ -4,8 +4,9 @@ TARGET := ./css-doodle.js
 TARGET_MIN := ./css-doodle.min.js
 LIB := ./node_modules
 DOC := ./docs/index.html
+DOC_LIB := ./docs/lib/
 
-all: build minify
+all: build minify hash
 
 build: $(LIB)
 	@npm run build
@@ -14,7 +15,7 @@ build: $(LIB)
 minify: $(TARGET)
 	@npm run minify
 	@./tools/trim $(TARGET_MIN)
-	@cp $(TARGET_MIN) docs/lib/
+	@cp $(TARGET_MIN) ${DOC_LIB}
 
 hash:
 	@./tools/hash $(DOC)
