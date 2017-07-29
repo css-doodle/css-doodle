@@ -9,26 +9,26 @@
   }
 
   function indent(input) {
-    var temp = input.replace(/^\n+/g, '');
-    var len = temp.length - temp.replace(/^\s+/g, '').length;
-    var result = input.split('\n').map(n => (
+    let temp = input.replace(/^\n+/g, '');
+    let len = temp.length - temp.replace(/^\s+/g, '').length;
+    let result = input.split('\n').map(n => (
       n.replace(new RegExp(`^\\s{${len}}`, 'g'), '')
     ));
     return result.join('\n');
   }
 
-  var examples = document.querySelectorAll('.example');
+  let examples = document.querySelectorAll('.example');
   [].forEach.call(examples, example => {
-    var textarea = example.querySelector('textarea');
+    let textarea = example.querySelector('textarea');
     if (textarea) {
       textarea.value = example.querySelector('.container').innerHTML;
     }
   });
 
-  var codeBlocks = document.querySelectorAll('textarea[code]');
+  let codeBlocks = document.querySelectorAll('textarea[code]');
   [].forEach.call(codeBlocks, block => {
-    var content = indent(block.value).trim();
-    var sample = document.createElement('div');
+    let content = indent(block.value).trim();
+    let sample = document.createElement('div');
     sample.className = 'code-sample';
     block.parentNode.replaceChild(sample, block);
     CodeMirror(sample, {
@@ -41,7 +41,7 @@
     });
   });
 
-  var doodles = {
+  const doodles = {
     'leaves': indent(`
       :doodle {
         clip-path: @shape(circle);
@@ -60,30 +60,6 @@
       background: hsla(
         calc(5 * @index()), 70%, 60%,@rand(.8)
       );
-    `),
-
-    fish: indent(`
-      :doodle {
-        clip-path: @shape(pear);
-        transform: rotate(90deg);
-        background-image: linear-gradient(
-          to left, #03a9f4,
-          rgba(156, 39, 176, .02)
-        );
-      }
-
-      clip-path: @shape(fish);
-      transition: .24s ease;
-      background: hsla(
-        calc(190 + 2 * @index()),
-        70%, 60%,@rand(.8)
-      );
-      transform:
-        scale(@rand(.3, 2))
-        rotate(-90deg)
-        translate(
-          @rand(-50%, 50%), @rand(-50%, 50%)
-        );
     `),
 
     star: indent(`
@@ -110,17 +86,17 @@
     `)
   }
 
-  var doodle = document.createElement('css-doodle');
+  let doodle = document.createElement('css-doodle');
   doodle.title = 'Click to update';
   doodle.grid = '7, 7';
   if (doodle.update) {
     doodle.update(doodles.leaves);
   }
 
-  var playground = document.querySelector('.playground');
-  var source = document.querySelector('.playground .source');
+  let playground = document.querySelector('.playground');
+  let source = document.querySelector('.playground .source');
 
-  var container = document.querySelector('.playground .doodle')
+  let container = document.querySelector('.playground .doodle')
   container.appendChild(doodle);
   container.addEventListener('click', function(e) {
     e.preventDefault();
@@ -131,7 +107,7 @@
     }
   });
 
-  var config = {
+  let config = {
     value: doodles.leaves,
     mode: 'css',
     insertSoftTab: true,
@@ -141,8 +117,8 @@
     tabSize: 2
   }
 
-  var editor = CodeMirror(source, config);
-  var old = removeSpaces(editor.getValue());
+  let editor = CodeMirror(source, config);
+  let old = removeSpaces(editor.getValue());
   editor.on('change', function(_, obj) {
     if (old != removeSpaces(editor.getValue())) {
       if (doodle.update) {
@@ -159,7 +135,7 @@
   });
 
   function toggled() {
-    var front = playground.querySelector('[front]');
+    let front = playground.querySelector('[front]');
     return getComputedStyle(front).transform != 'none';
   }
 
@@ -172,7 +148,7 @@
 
   source.addEventListener('click', function() {
     if (toggled()) {
-      var back = !source.hasAttribute('front');
+      let back = !source.hasAttribute('front');
       container.removeAttribute('front');
       source.setAttribute('front', '');
       if (back) {
@@ -184,12 +160,12 @@
     }
   });
 
-  var nav = document.querySelector('.playground .nav');
+  let nav = document.querySelector('.playground .nav');
   nav.addEventListener('click', function(e) {
     if (e.target.matches('li[data-name]')) {
-      var name = e.target.getAttribute('data-name');
+      let name = e.target.getAttribute('data-name');
       nav.setAttribute('data-current', name);
-      var newStyle = doodles[name];
+      let newStyle = doodles[name];
       if (newStyle) {
         doodle.style.display = 'none';
         editor.setValue(newStyle);
@@ -198,62 +174,34 @@
     }
   });
 
-  var shapes = [
-    { name: 'circle' },
-    { name: 'triangle' },
-    { name: 'rhombus' },
-    { name: 'pentagon' },
-    { name: 'hexagon' },
-    { name: 'heptagon' },
-    { name: 'octagon' },
-    { name: 'cross' },
-
-    { name: 'star' },
-    { name: 'diamond' },
-
-    { name: 'infinity' },
-    { name: 'heart' },
-
-    { name: 'fish' },
-    { name: 'whale' },
-    { name: 'pear' },
-    { name: 'bean' },
-
-    { name: 'hypocycloid', param: 3 },
-    { name: 'hypocycloid', param: 4 },
-    { name: 'hypocycloid', param: 5 },
-    { name: 'hypocycloid', param: 6 },
-
-    { name: 'bicorn' },
-    { name: 'clover', param: 3 },
-    { name: 'clover', param: 4 },
-    { name: 'clover', param: 5 },
-
-    { name: 'bud', param: 3 },
-    { name: 'bud', param: 4 },
-    { name: 'bud', param: 5 },
-    { name: 'bud', param: 10 }
-
+  const allShapes = document.querySelector('.shapes');
+  const shapes = [
+    'circle',        'triangle',      'rhombus',       'pentagon',
+    'hexagon',       'heptagon',      'octagon',       'cross',
+    'star',          'diamond',       'infinity',      'heart',
+    'fish',          'whale',         'pear',          'bean',
+    'hypocycloid:3', 'hypocycloid:4', 'hypocycloid:5', 'hypocycloid:6',
+    'bicorn',        'clover:3',      'clover:4',      'clover:5',
+    'bud:3',         'bud:4',         'bud:5',         'bud:10'
   ];
 
-  var doodleShapes = shapes.map(n => {
-    return `
-      <div class="shape">
-        <css-doodle>
-          :doodle {
-            clip-path: @shape(${ n.name }, ${ n.param || 1 });
-            background: rebeccapurple;
-          }
-        </css-doodle>
-        <p class="title">
-          ${
-            (n.param ? '(' + n.name  +', ' + n.param + ')' : n.name)
-          }
-        </p>
-      </div>
-    `
-  }).join('');
-
-  document.querySelector('.shapes').innerHTML = doodleShapes;
+  if (allShapes) {
+    allShapes.innerHTML = shapes.map(shape => {
+      let [name, param] = shape.split(':').map(n => n.trim());
+      return `
+        <div class="shape">
+          <css-doodle>
+            :doodle {
+              clip-path: @shape(${ name }, ${ param || 1});
+              background: rebeccapurple;
+            }
+          </css-doodle>
+          <p class="title">
+            ${ param ? `(${ name }, ${ param })` : name }
+          </p>
+        </div>
+      `
+    }).join('');
+  }
 
 }());
