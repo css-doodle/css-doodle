@@ -20,7 +20,7 @@ class Rules {
     rules.push.apply(rules, utils.make_array(rule));
   }
   compose_selector(count, psudo = '') {
-    return `.cell:nth-of-type(${ count }) .shape${ psudo }`;
+    return `.cell:nth-of-type(${ count })${ psudo }`;
   }
   compose_argument(argument, coords) {
     var result = argument.map(arg => {

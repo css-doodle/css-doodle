@@ -451,7 +451,7 @@ class Rules {
     rules.push.apply(rules, make_array(rule));
   }
   compose_selector(count, psudo = '') {
-    return `.cell:nth-of-type(${ count }) .shape${ psudo }`;
+    return `.cell:nth-of-type(${ count })${ psudo }`;
   }
   compose_argument(argument, coords) {
     var result = argument.map(arg => {
@@ -1016,31 +1016,14 @@ const basic = `
   .container {
     position: relative;
     width: 100%;
-    height: 100%
-  }
-  .container:after {
-    content: '';
-    display: block;
-    clear: both;
-    visibility: hidden
+    height: 100%;
+    display: grid;
   }
   .cell {
     position: relative;
-    float: left;
-    line-height: 0;
-    box-sizing: border-box
-  }
-  .shape {
+    line-height: 1;
     box-sizing: border-box;
-    line-height: 0;
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    transform-origin: center center;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center
+    text-align: center;
   }
 `;
 
@@ -1096,20 +1079,16 @@ class Doodle extends HTMLElement {
 
   style_size() {
     return `
-      .cell {
-        width: ${ 100 / this.size.y + '%' };
-        height: ${ 100 / this.size.x + '%' };
+      .container {
+        grid-template-rows: repeat(${ this.size.x }, 1fr);
+        grid-template-columns: repeat(${ this.size.y }, 1fr);
       }
     `;
   }
 
   html_cells() {
-    const cell = `
-      <div class="cell">
-        <div class="shape"></div>
-      </div>
-    `;
-    return cell.repeat(this.size.count);
+    return '<div class="cell"></div>'
+      .repeat(this.size.count);
   }
 
   set_style(selector, styles) {
