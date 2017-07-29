@@ -5,7 +5,7 @@
   "main": "css-doodle.js",
   "scripts": {
     "build": "rollup --format=umd --output=css-doodle.js -- src/index.js",
-    "minify": "butternut --input=css-doodle.js --output=css-doodle.min.js",
+    "minify": "uglifyjs --compress --mangle --output=css-doodle.min.js -- css-doodle.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -13,8 +13,8 @@
     "url": "git+https://github.com/yuanchuan/css-doodle.git"
   },
   "devDependencies": {
-    "butternut": "^0.4.6",
-    "rollup": "^0.41.6"
+    "rollup": "^0.41.6",
+    "uglify-es": "^3.0.26"
   },
   "keywords": [
     "css",
