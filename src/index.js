@@ -18,7 +18,9 @@ const basic = `
     position: relative;
     line-height: 1;
     box-sizing: border-box;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 `;
 
