@@ -119,13 +119,17 @@
 
   let editor = CodeMirror(source, config);
   let old = removeSpaces(editor.getValue());
+  let timer = null;
   editor.on('change', function(_, obj) {
-    if (old != removeSpaces(editor.getValue())) {
-      if (doodle.update) {
-        doodle.update(editor.getValue());
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+      if (old != removeSpaces(editor.getValue())) {
+        if (doodle.update) {
+          doodle.update(editor.getValue());
+        }
+        old = removeSpaces(editor.getValue());
       }
-      old = removeSpaces(editor.getValue());
-    }
+    }, 500);
   });
 
   document.querySelector('.docs').addEventListener('click', function(e) {
