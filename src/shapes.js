@@ -66,11 +66,11 @@ export function hexagon() {
 }
 
 export function heptagon() {
-  return polygon({ split: 7, start: -90});
+  return polygon({ split: 7, start: -90 });
 }
 
 export function octagon() {
-  return polygon({ split: 8});
+  return polygon({ split: 8, start: 22.5 });
 }
 
 export function star() {
