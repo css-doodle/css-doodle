@@ -1,4 +1,4 @@
-import * as shapes from './shapes';
+import shapes from './shapes';
 import { memo, random, range, unitify } from './utils';
 
 export function index(x, y, count) {
@@ -40,4 +40,8 @@ export function shape(x, y, count) {
       }
     }
   });
+}
+
+export default {
+  index, row, col, any, pick, rand, shape
 }

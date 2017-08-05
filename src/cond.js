@@ -1,4 +1,4 @@
-var is = {
+const is = {
   even: (n) => !!(n % 2),
   odd:  (n) => !(n % 2)
 };
@@ -25,4 +25,8 @@ export function even(x, y, count) {
 
 export function odd(x, y, count) {
   return _ => is.odd(count - 1);
+}
+
+export default {
+  nth, at, row, col, even, odd
 }

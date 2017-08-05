@@ -1,7 +1,12 @@
-import * as cond from './cond';
-import * as func from './function';
-import * as utils from './utils';
+import cond from './cond';
+import func from './function';
+import math from './math';
+import utils from './utils';
 import shortcuts from './shortcuts';
+
+function pick_func(name) {
+  return func[name] || math[name];
+}
 
 class Rules {
   constructor(tokens) {
@@ -28,7 +33,7 @@ class Rules {
         return arg.value;
       }
       else if (arg.type == 'func') {
-        var fn = func[arg.name.substr(1)];
+        var fn = pick_func(arg.name.substr(1));
         if (fn) {
           var args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
@@ -48,7 +53,7 @@ class Rules {
           break;
         }
         case 'func': {
-          var fn = func[val.name.substr(1)];
+          var fn = pick_func(val.name.substr(1));
           if (fn) {
             var args = val.arguments.map(arg => {
               return this.compose_argument(arg, coords);

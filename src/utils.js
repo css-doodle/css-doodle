@@ -88,3 +88,8 @@ function remove_unit(str) {
   let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
+
+export default {
+  values, apply_args, join_line, make_array,
+  minmax, prefix, random, range, unitify
+}

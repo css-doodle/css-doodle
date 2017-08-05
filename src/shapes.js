@@ -200,3 +200,11 @@ export function bud(n = 3) {
     ((1 + .2 * cos(n * t)) * sin(t)) * .8
   ]);
 }
+
+export default {
+  circle, triangle, rhombus, pentagon,
+  hexagon, heptagon, octagon, star,
+  diamond, cross, clover, hypocycloid,
+  astroid, infinity, heart, bean,
+  bicorn, pear, fish, whale, bud
+}

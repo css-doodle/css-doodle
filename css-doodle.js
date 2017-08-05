@@ -4,7 +4,7 @@
   (factory());
 }(this, (function () { 'use strict';
 
-var is = {
+const is = {
   even: (n) => !!(n % 2),
   odd:  (n) => !(n % 2)
 };
@@ -33,15 +33,9 @@ function odd(x, y, count) {
   return _ => is.odd(count - 1);
 }
 
-
-var cond = Object.freeze({
-  nth: nth,
-  at: at,
-  row: row,
-  col: col,
-  even: even,
-  odd: odd
-});
+var cond = {
+  nth, at, row, col, even, odd
+};
 
 function values(obj) {
   if (Array.isArray(obj)) return obj;
@@ -134,6 +128,11 @@ function remove_unit(str) {
   return unit ? +(str.replace(unit, '')) : str;
 }
 
+var utils = {
+  values, apply_args, join_line, make_array,
+  minmax, prefix, random, range, unitify
+};
+
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
 
@@ -192,9 +191,7 @@ function pentagon() {
   return polygon({ split: 5, start: 54 });
 }
 
-function hexgon() {
-  return polygon({ split: 6, start: 30 });
-}
+
 function hexagon() {
   return polygon({ split: 6, start: 30 });
 }
@@ -335,31 +332,13 @@ function bud(n = 3) {
   ]);
 }
 
-
-var shapes = Object.freeze({
-  circle: circle,
-  triangle: triangle,
-  rhombus: rhombus,
-  pentagon: pentagon,
-  hexgon: hexgon,
-  hexagon: hexagon,
-  heptagon: heptagon,
-  octagon: octagon,
-  star: star,
-  diamond: diamond,
-  cross: cross,
-  clover: clover,
-  hypocycloid: hypocycloid,
-  astroid: astroid,
-  infinity: infinity,
-  heart: heart,
-  bean: bean,
-  bicorn: bicorn,
-  pear: pear,
-  fish: fish,
-  whale: whale,
-  bud: bud
-});
+var shapes = {
+  circle, triangle, rhombus, pentagon,
+  hexagon, heptagon, octagon, star,
+  diamond, cross, clover, hypocycloid,
+  astroid, infinity, heart, bean,
+  bicorn, pear, fish, whale, bud
+};
 
 function index(x, y, count) {
   return _ => count;
@@ -402,16 +381,19 @@ function shape(x, y, count) {
   });
 }
 
+var func = {
+  index, row: row$1, col: col$1, any, pick, rand, shape
+};
 
-var func = Object.freeze({
-  index: index,
-  row: row$1,
-  col: col$1,
-  any: any,
-  pick: pick,
-  rand: rand,
-  shape: shape
-});
+var math = Object.getOwnPropertyNames(Math).reduce((expose, n) => {
+  expose[n] = function() {
+    return function(...args) {
+      if (typeof Math[n] === 'number') return Math[n];
+      return Math[n].apply(null, args.map(eval));
+    }
+  };
+  return expose;
+}, {});
 
 const reg_size = /[,，\/\s]+\s*/;
 
@@ -434,6 +416,10 @@ var shortcuts = {
 
 };
 
+function pick_func(name) {
+  return func[name] || math[name];
+}
+
 class Rules {
   constructor(tokens) {
     this.tokens = tokens;
@@ -448,7 +434,7 @@ class Rules {
     if (!rules) {
       rules = this.rules[selector] = [];
     }
-    rules.push.apply(rules, make_array(rule));
+    rules.push.apply(rules, utils.make_array(rule));
   }
   compose_selector(count, psudo = '') {
     return `.cell:nth-of-type(${ count })${ psudo }`;
@@ -459,12 +445,12 @@ class Rules {
         return arg.value;
       }
       else if (arg.type == 'func') {
-        var fn = func[arg.name.substr(1)];
+        var fn = pick_func(arg.name.substr(1));
         if (fn) {
           var args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
           });
-          return apply_args(fn, coords, args);
+          return utils.apply_args(fn, coords, args);
         }
       }
     });
@@ -479,12 +465,12 @@ class Rules {
           break;
         }
         case 'func': {
-          var fn = func[val.name.substr(1)];
+          var fn = pick_func(val.name.substr(1));
           if (fn) {
             var args = val.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            result += apply_args(fn, coords, args);
+            result += utils.apply_args(fn, coords, args);
           }
         }
       }
@@ -499,7 +485,7 @@ class Rules {
     }
     var rule = `${ property }: ${ value };`;
     if (property == 'clip-path') {
-      rule = prefix(rule);
+      rule = utils.prefix(rule);
       // fix clip bug
       rule += ';overflow: hidden;';
     }
@@ -552,7 +538,7 @@ class Rules {
             var args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            var result = apply_args(fn, coords, args);
+            var result = utils.apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }
@@ -568,7 +554,7 @@ class Rules {
       const target = is_host ? 'host': 'cells';
       this.styles[target] += `
         ${ selector } {
-          ${ join_line(this.rules[selector]) }
+          ${ utils.join_line(this.rules[selector]) }
         }
       `;
     });
