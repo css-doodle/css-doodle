@@ -4,7 +4,7 @@
   "description": "A web component for drawing patterns with css.",
   "main": "css-doodle.js",
   "scripts": {
-    "build": "rollup --format=umd --output=css-doodle.js -- src/index.js",
+    "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
     "minify": "uglifyjs --compress --mangle --output=css-doodle.min.js -- css-doodle.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,8 +13,8 @@
     "url": "git+https://github.com/yuanchuan/css-doodle.git"
   },
   "devDependencies": {
-    "rollup": "^0.45.2",
-    "uglify-es": "^3.0.26"
+    "rollup": "^0.48.2",
+    "uglify-es": "^3.0.28"
   },
   "keywords": [
     "css",
