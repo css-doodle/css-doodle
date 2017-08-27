@@ -1,50 +1,69 @@
 import cond from './cond';
 import func from './function';
 import math from './math';
-import utils from './utils';
 import shortcuts from './shortcuts';
 
-function pick_func(name) {
-  return func[name] || math[name];
-}
+import {
+  join_line,
+  make_array,
+  apply_args,
+  only_if,
+  prefix
+} from './utils';
 
 class Rules {
+
   constructor(tokens) {
     this.tokens = tokens;
     this.rules = {};
     this.props = {};
+    this.keyframes = {};
     this.styles = {
-      host: '', cells: ''
+      host: '', cells: '', keyframes: ''
     }
   }
+
   add_rule(selector, rule) {
     var rules = this.rules[selector];
     if (!rules) {
       rules = this.rules[selector] = [];
     }
-    rules.push.apply(rules, utils.make_array(rule));
+    rules.push.apply(rules, make_array(rule));
   }
-  compose_selector(count, psudo = '') {
-    return `.cell:nth-of-type(${ count })${ psudo }`;
+
+  pick_func(name) {
+    return func[name] || math[name];
   }
+
+  compose_aname(...args) {
+    return args.join('-');
+  }
+
+  compose_selector(count, psuedo = '') {
+    return `.cell:nth-of-type(${ count })${ psuedo }`;
+  }
+
   compose_argument(argument, coords) {
     var result = argument.map(arg => {
       if (arg.type == 'text') {
         return arg.value;
       }
       else if (arg.type == 'func') {
-        var fn = pick_func(arg.name.substr(1));
+        var fn = this.pick_func(arg.name.substr(1));
         if (fn) {
           var args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
           });
-          return utils.apply_args(fn, coords, args);
+          return apply_args(fn, coords, args);
         }
       }
     });
+
     return (result.length > 2)
-      ? result.join('') : result[0];
+      ? result.join('')
+      : result[0];
   }
+
   compose_value(value, coords) {
     return value.reduce((result, val) => {
       switch (val.type) {
@@ -53,37 +72,59 @@ class Rules {
           break;
         }
         case 'func': {
-          var fn = pick_func(val.name.substr(1));
+          var fn = this.pick_func(val.name.substr(1));
           if (fn) {
             var args = val.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            result += utils.apply_args(fn, coords, args);
+            result += apply_args(fn, coords, args);
           }
         }
       }
       return result;
     }, '');
   }
+
   compose_rule(token, coords) {
-    var property = token.property;
+    var prop = token.property;
     var value = this.compose_value(token.value, coords);
-    if (property == 'transition') {
+    var rule = `${ prop }: ${ value };`
+
+    if (prop == 'transition') {
       this.props.has_transition = true;
     }
-    var rule = `${ property }: ${ value };`
-    if (property == 'clip-path') {
-      rule = utils.prefix(rule);
+
+    if (prop == 'clip-path') {
+      rule = prefix(rule);
       // fix clip bug
       rule += ';overflow: hidden;';
     }
 
-    if (shortcuts[property]) {
-      rule = shortcuts[property](value);
+    if (/^animation(\-name)?$/.test(prop)) {
+      this.props.has_animation = true;
+      if (coords.count > 1) {
+        var { count } = coords;
+        switch (prop) {
+          case 'animation-name': {
+            rule = `${ prop }: ${ this.compose_aname(value, count) };`;
+            break;
+          }
+          case 'animation': {
+            var group = (value || '').split(/\s+/);
+            group[0] = this.compose_aname(group[0], count);
+            rule = `${ prop }: ${ group.join(' ') };`;
+          }
+        }
+      }
+    }
+
+    if (shortcuts[prop]) {
+      rule = shortcuts[prop](value);
     }
 
     return rule;
   }
+
   compose(coords, tokens) {
     (tokens || this.tokens).forEach((token, i) => {
       if (token.skip) return false;
@@ -95,7 +136,7 @@ class Rules {
           );
           break;
 
-        case 'psudo': {
+        case 'psuedo': {
           if (token.selector.startsWith(':doodle')) {
             token.selector =
               token.selector.replace(/^\:+doodle/, ':host');
@@ -108,7 +149,7 @@ class Rules {
             token.skip = true;
           }
 
-          var psudo_rules = token.styles.map(s =>
+          var psuedo = token.styles.map(s =>
             this.compose_rule(s, coords)
           );
 
@@ -116,36 +157,64 @@ class Rules {
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
-          this.add_rule(selector, psudo_rules);
+          this.add_rule(selector, psuedo);
           break;
         }
 
-        case 'cond':
+        case 'cond': {
           var fn = cond[token.name.substr(1)];
           if (fn) {
             var args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            var result = utils.apply_args(fn, coords, args);
+            var result = apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }
           }
           break;
+        }
+
+        case 'keyframes': {
+          if (this.keyframes[token.name]) return false;
+          this.keyframes[token.name] = () => `
+            ${ join_line(token.steps.map(step => `
+              ${ step.name } {
+                ${ join_line(
+                  step.styles.map(s => this.compose_rule(s, coords))
+                )}
+              }
+            `)) }
+          `;
+        }
       }
     });
   }
 
   output() {
-    Object.keys(this.rules).forEach(selector => {
-      var is_host = selector.startsWith(':host');
-      const target = is_host ? 'host': 'cells';
+    Object.keys(this.rules).forEach((selector, i) => {
+      var target = selector.startsWith(':host') ? 'host': 'cells';
       this.styles[target] += `
         ${ selector } {
-          ${ utils.join_line(this.rules[selector]) }
+          ${ join_line(this.rules[selector]) }
         }
       `;
+
+      Object.keys(this.keyframes).forEach(name => {
+        var aname = this.compose_aname(name, i + 1);
+        this.styles.keyframes += `
+          ${ only_if(i == 0,
+            `@keyframes ${ name } {
+              ${ this.keyframes[name]() }
+            }`
+          )}
+          @keyframes ${ aname } {
+            ${ this.keyframes[name]() }
+          }
+        `;
+      });
     });
+
     return {
       props: this.props,
       styles: this.styles

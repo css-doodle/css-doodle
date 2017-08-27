@@ -61,7 +61,11 @@ function minmax(num, min, max) {
 }
 
 function prefix(rule) {
-  return `-webkit-${ rule } ${rule}`;
+  return `-webkit-${ rule } ${ rule }`;
+}
+
+function only_if(cond, value) {
+  return cond ? value : '';
 }
 
 const store = {};
@@ -127,11 +131,6 @@ function remove_unit(str) {
   let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
-
-var utils = {
-  values, apply_args, join_line, make_array,
-  minmax, prefix, random, range, unitify
-};
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
@@ -416,47 +415,59 @@ var shortcuts = {
 
 };
 
-function pick_func(name) {
-  return func[name] || math[name];
-}
-
 class Rules {
+
   constructor(tokens) {
     this.tokens = tokens;
     this.rules = {};
     this.props = {};
+    this.keyframes = {};
     this.styles = {
-      host: '', cells: ''
+      host: '', cells: '', keyframes: ''
     };
   }
+
   add_rule(selector, rule) {
     var rules = this.rules[selector];
     if (!rules) {
       rules = this.rules[selector] = [];
     }
-    rules.push.apply(rules, utils.make_array(rule));
+    rules.push.apply(rules, make_array(rule));
   }
-  compose_selector(count, psudo = '') {
-    return `.cell:nth-of-type(${ count })${ psudo }`;
+
+  pick_func(name) {
+    return func[name] || math[name];
   }
+
+  compose_aname(...args) {
+    return args.join('-');
+  }
+
+  compose_selector(count, psuedo = '') {
+    return `.cell:nth-of-type(${ count })${ psuedo }`;
+  }
+
   compose_argument(argument, coords) {
     var result = argument.map(arg => {
       if (arg.type == 'text') {
         return arg.value;
       }
       else if (arg.type == 'func') {
-        var fn = pick_func(arg.name.substr(1));
+        var fn = this.pick_func(arg.name.substr(1));
         if (fn) {
           var args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
           });
-          return utils.apply_args(fn, coords, args);
+          return apply_args(fn, coords, args);
         }
       }
     });
+
     return (result.length > 2)
-      ? result.join('') : result[0];
+      ? result.join('')
+      : result[0];
   }
+
   compose_value(value, coords) {
     return value.reduce((result, val) => {
       switch (val.type) {
@@ -465,37 +476,59 @@ class Rules {
           break;
         }
         case 'func': {
-          var fn = pick_func(val.name.substr(1));
+          var fn = this.pick_func(val.name.substr(1));
           if (fn) {
             var args = val.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            result += utils.apply_args(fn, coords, args);
+            result += apply_args(fn, coords, args);
           }
         }
       }
       return result;
     }, '');
   }
+
   compose_rule(token, coords) {
-    var property = token.property;
+    var prop = token.property;
     var value = this.compose_value(token.value, coords);
-    if (property == 'transition') {
+    var rule = `${ prop }: ${ value };`;
+
+    if (prop == 'transition') {
       this.props.has_transition = true;
     }
-    var rule = `${ property }: ${ value };`;
-    if (property == 'clip-path') {
-      rule = utils.prefix(rule);
+
+    if (prop == 'clip-path') {
+      rule = prefix(rule);
       // fix clip bug
       rule += ';overflow: hidden;';
     }
 
-    if (shortcuts[property]) {
-      rule = shortcuts[property](value);
+    if (/^animation(\-name)?$/.test(prop)) {
+      this.props.has_animation = true;
+      if (coords.count > 1) {
+        var { count } = coords;
+        switch (prop) {
+          case 'animation-name': {
+            rule = `${ prop }: ${ this.compose_aname(value, count) };`;
+            break;
+          }
+          case 'animation': {
+            var group = (value || '').split(/\s+/);
+            group[0] = this.compose_aname(group[0], count);
+            rule = `${ prop }: ${ group.join(' ') };`;
+          }
+        }
+      }
+    }
+
+    if (shortcuts[prop]) {
+      rule = shortcuts[prop](value);
     }
 
     return rule;
   }
+
   compose(coords, tokens) {
     (tokens || this.tokens).forEach((token, i) => {
       if (token.skip) return false;
@@ -507,7 +540,7 @@ class Rules {
           );
           break;
 
-        case 'psudo': {
+        case 'psuedo': {
           if (token.selector.startsWith(':doodle')) {
             token.selector =
               token.selector.replace(/^\:+doodle/, ':host');
@@ -520,7 +553,7 @@ class Rules {
             token.skip = true;
           }
 
-          var psudo_rules = token.styles.map(s =>
+          var psuedo = token.styles.map(s =>
             this.compose_rule(s, coords)
           );
 
@@ -528,36 +561,64 @@ class Rules {
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
-          this.add_rule(selector, psudo_rules);
+          this.add_rule(selector, psuedo);
           break;
         }
 
-        case 'cond':
+        case 'cond': {
           var fn = cond[token.name.substr(1)];
           if (fn) {
             var args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            var result = utils.apply_args(fn, coords, args);
+            var result = apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }
           }
           break;
+        }
+
+        case 'keyframes': {
+          if (this.keyframes[token.name]) return false;
+          this.keyframes[token.name] = () => `
+            ${ join_line(token.steps.map(step => `
+              ${ step.name } {
+                ${ join_line(
+                  step.styles.map(s => this.compose_rule(s, coords))
+                )}
+              }
+            `)) }
+          `;
+        }
       }
     });
   }
 
   output() {
-    Object.keys(this.rules).forEach(selector => {
-      var is_host = selector.startsWith(':host');
-      const target = is_host ? 'host': 'cells';
+    Object.keys(this.rules).forEach((selector, i) => {
+      var target = selector.startsWith(':host') ? 'host': 'cells';
       this.styles[target] += `
         ${ selector } {
-          ${ utils.join_line(this.rules[selector]) }
+          ${ join_line(this.rules[selector]) }
         }
       `;
+
+      Object.keys(this.keyframes).forEach(name => {
+        var aname = this.compose_aname(name, i + 1);
+        this.styles.keyframes += `
+          ${ only_if(i == 0,
+            `@keyframes ${ name } {
+              ${ this.keyframes[name]() }
+            }`
+          )}
+          @keyframes ${ aname } {
+            ${ this.keyframes[name]() }
+          }
+        `;
+      });
     });
+
     return {
       props: this.props,
       styles: this.styles
@@ -606,9 +667,9 @@ const struct = {
     }
   },
 
-  psudo(selector = '') {
+  psuedo(selector = '') {
     return {
-      type: 'psudo',
+      type: 'psuedo',
       selector,
       styles: []
     };
@@ -629,17 +690,31 @@ const struct = {
       property,
       value: []
     };
+  },
+
+  keyframes(name = '') {
+    return {
+      type: 'keyframes',
+      name,
+      steps: []
+    }
+  },
+
+  step(name = '') {
+    return {
+      type: 'step',
+      name,
+      styles: []
+    }
   }
 
 };
-
 
 const bracket_pair = {
   '(': ')',
   '[': ']',
   '{': '}'
 };
-
 
 const is$1 = {
   white_space(c) {
@@ -657,14 +732,14 @@ const is$1 = {
   }
 };
 
-
 function iterator(input) {
   var index = 0, col = 1, line = 1;
   return {
-    curr: (n = 0) => input[index + n],
-    end:  () => input.length <= index,
-    info: () => ({ index, col, line }),
-    next: () => {
+    curr:  (n = 0) => input[index + n],
+    end:   ()  => input.length <= index,
+    info:  ()  => ({ index, col, line }),
+    index: (n) => (n === undefined ? index : index = n),
+    next:  ()  => {
       var next = input[index++];
       if (next == '\n') line++, col = 0;
       else col++;
@@ -704,6 +779,78 @@ function skip_block(it) {
     it.next();
   }
   return skipped;
+}
+
+function read_word(it, reset) {
+  var index = it.index();
+  var word = '';
+  while (!it.end()) {
+    var c = it.next();
+    if (is$1.white_space(c)) break;
+    else word += c;
+  }
+  if (reset) {
+    it.index(index);
+  }
+  return word;
+}
+
+function read_step(it) {
+  var c, step = struct.step();
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    if (is$1.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else if (!step.name.length) {
+      step.name = read_selector(it);
+    } else {
+      step.styles.push(read_rule(it));
+      if (it.curr() == '}') break;
+    }
+    it.next();
+  }
+  return step;
+}
+
+function read_steps(it) {
+  const steps = [];
+  var c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (is$1.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else {
+      steps.push(read_step(it));
+    }
+    it.next();
+  }
+  return steps;
+}
+
+function read_keyframes(it) {
+  var keyframes = struct.keyframes(), c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (!keyframes.name.length) {
+      read_word(it);
+      keyframes.name = read_word(it);
+      if (keyframes.name == '{') {
+        throw_error('missing keyframes name', it.info());
+        break;
+      }
+      continue;
+    } else if (c == '{') {
+      it.next();
+      keyframes.steps = read_steps(it);
+      break;
+    }
+    it.next();
+  }
+  return keyframes;
 }
 
 function read_comments(it, flag = {}) {
@@ -855,8 +1002,10 @@ function read_value(it) {
 function read_selector(it) {
   var selector = '', c;
   while (!it.end()) {
-    if ((c = it.curr())== '{') break;
-    else if (!is$1.white_space(c)) selector += c;
+    if ((c = it.curr()) == '{') break;
+    else if (!is$1.white_space(c)) {
+      selector += c;
+    }
     it.next();
   }
   return selector;
@@ -876,24 +1025,24 @@ function read_cond_selector(it) {
   return selector;
 }
 
-function read_psudo(it) {
-  var psudo = struct.psudo(), c;
+function read_psuedo(it) {
+  var psuedo = struct.psuedo(), c;
   while (!it.end()) {
     if ((c = it.curr())== '}') break;
     if (is$1.white_space(c)) {
       it.next();
       continue;
     }
-    else if (!psudo.selector) {
-      psudo.selector = read_selector(it);
+    else if (!psuedo.selector) {
+      psuedo.selector = read_selector(it);
     }
     else {
-      psudo.styles.push(read_rule(it));
+      psuedo.styles.push(read_rule(it));
       if (it.curr() == '}') break;
     }
     it.next();
   }
-  return psudo;
+  return psuedo;
 }
 
 function read_rule(it) {
@@ -920,8 +1069,8 @@ function read_cond(it) {
       Object.assign(cond, read_cond_selector(it));
     }
     else if (c == ':') {
-      var psudo = read_psudo(it);
-      if (psudo.selector) cond.styles.push(psudo);
+      var psuedo = read_psuedo(it);
+      if (psuedo.selector) cond.styles.push(psuedo);
     }
     else if (c == '@') {
       cond.styles.push(read_cond(it));
@@ -952,12 +1101,17 @@ function tokenizer(input) {
       tokens.push(read_comments(it, { inline: true }));
     }
     else if (c == ':') {
-      var psudo = read_psudo(it);
-      if (psudo.selector) tokens.push(psudo);
+      var psuedo = read_psuedo(it);
+      if (psuedo.selector) tokens.push(psuedo);
     }
     else if (c == '@') {
-      var cond = read_cond(it);
-      if (cond.name.length) tokens.push(cond);
+      if (read_word(it, true) === '@keyframes') {
+        var keyframes = read_keyframes(it);
+        tokens.push(keyframes);
+      } else {
+        var cond = read_cond(it);
+        if (cond.name.length) tokens.push(cond);
+      }
     }
     else if (!is$1.white_space(c)) {
       var rule = read_rule(it);
@@ -1039,29 +1193,33 @@ class Doodle extends HTMLElement {
         throw new Error(e);
       }
 
-      const { has_transition } = compiled.props;
+      const { has_transition, has_animation } = compiled.props;
 
       this.doodle.innerHTML = `
         <style>${ basic }</style>
+        <style class="style-keyframes">
+          ${ compiled.styles.keyframes }
+        </style>
         <style class="style-container">
           ${ this.style_size() }
           ${ compiled.styles.host }
         </style>
         <style class="style-cells">
-          ${ has_transition ? '' : compiled.styles.cells }
+          ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
         </style>
         <div class="container">
           ${ this.html_cells() }
         </div>
       `;
 
-      if (has_transition) {
+      if (has_transition || has_animation) {
         setTimeout(() => {
           this.set_style('.style-cells',
             compiled.styles.cells
           );
         }, 50);
       }
+
     });
   }
 
@@ -1094,6 +1252,10 @@ class Doodle extends HTMLElement {
       this.size = parse_size(this.getAttribute('grid'));
     }
     const compiled = compile(styles, this.size);
+
+    this.set_style('.style-keyframes',
+      compiled.styles.keyframes
+    );
     this.set_style('.style-container',
       this.style_size() + compiled.styles.host
     );

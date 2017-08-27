@@ -48,29 +48,33 @@ class Doodle extends HTMLElement {
         throw new Error(e);
       }
 
-      const { has_transition } = compiled.props;
+      const { has_transition, has_animation } = compiled.props;
 
       this.doodle.innerHTML = `
         <style>${ basic }</style>
+        <style class="style-keyframes">
+          ${ compiled.styles.keyframes }
+        </style>
         <style class="style-container">
           ${ this.style_size() }
           ${ compiled.styles.host }
         </style>
         <style class="style-cells">
-          ${ has_transition ? '' : compiled.styles.cells }
+          ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
         </style>
         <div class="container">
           ${ this.html_cells() }
         </div>
       `;
 
-      if (has_transition) {
+      if (has_transition || has_animation) {
         setTimeout(() => {
           this.set_style('.style-cells',
             compiled.styles.cells
           );
         }, 50);
       }
+
     });
   }
 
@@ -103,6 +107,10 @@ class Doodle extends HTMLElement {
       this.size = parse_size(this.getAttribute('grid'));
     }
     const compiled = compile(styles, this.size);
+
+    this.set_style('.style-keyframes',
+      compiled.styles.keyframes
+    );
     this.set_style('.style-container',
       this.style_size() + compiled.styles.host
     );

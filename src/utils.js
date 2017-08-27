@@ -22,7 +22,11 @@ export function minmax(num, min, max) {
 }
 
 export function prefix(rule) {
-  return `-webkit-${ rule } ${rule}`;
+  return `-webkit-${ rule } ${ rule }`;
+}
+
+export function only_if(cond, value) {
+  return cond ? value : '';
 }
 
 const store = {};
@@ -91,5 +95,5 @@ function remove_unit(str) {
 
 export default {
   values, apply_args, join_line, make_array,
-  minmax, prefix, random, range, unitify
+  minmax, prefix, only_if, random, range, unitify
 }

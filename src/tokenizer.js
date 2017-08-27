@@ -29,9 +29,9 @@ const struct = {
     }
   },
 
-  psudo(selector = '') {
+  psuedo(selector = '') {
     return {
-      type: 'psudo',
+      type: 'psuedo',
       selector,
       styles: []
     };
@@ -52,17 +52,31 @@ const struct = {
       property,
       value: []
     };
+  },
+
+  keyframes(name = '') {
+    return {
+      type: 'keyframes',
+      name,
+      steps: []
+    }
+  },
+
+  step(name = '') {
+    return {
+      type: 'step',
+      name,
+      styles: []
+    }
   }
 
 };
-
 
 const bracket_pair = {
   '(': ')',
   '[': ']',
   '{': '}'
 };
-
 
 const is = {
   white_space(c) {
@@ -80,14 +94,14 @@ const is = {
   }
 };
 
-
 function iterator(input) {
   var index = 0, col = 1, line = 1;
   return {
-    curr: (n = 0) => input[index + n],
-    end:  () => input.length <= index,
-    info: () => ({ index, col, line }),
-    next: () => {
+    curr:  (n = 0) => input[index + n],
+    end:   ()  => input.length <= index,
+    info:  ()  => ({ index, col, line }),
+    index: (n) => (n === undefined ? index : index = n),
+    next:  ()  => {
       var next = input[index++];
       if (next == '\n') line++, col = 0;
       else col++;
@@ -127,6 +141,78 @@ function skip_block(it) {
     it.next();
   }
   return skipped;
+}
+
+function read_word(it, reset) {
+  var index = it.index();
+  var word = '';
+  while (!it.end()) {
+    var c = it.next();
+    if (is.white_space(c)) break;
+    else word += c;
+  }
+  if (reset) {
+    it.index(index);
+  }
+  return word;
+}
+
+function read_step(it) {
+  var c, step = struct.step();
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else if (!step.name.length) {
+      step.name = read_selector(it);
+    } else {
+      step.styles.push(read_rule(it));
+      if (it.curr() == '}') break;
+    }
+    it.next();
+  }
+  return step;
+}
+
+function read_steps(it) {
+  const steps = [];
+  var c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else {
+      steps.push(read_step(it));
+    }
+    it.next();
+  }
+  return steps;
+}
+
+function read_keyframes(it) {
+  var keyframes = struct.keyframes(), c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (!keyframes.name.length) {
+      read_word(it);
+      keyframes.name = read_word(it);
+      if (keyframes.name == '{') {
+        throw_error('missing keyframes name', it.info());
+        break;
+      }
+      continue;
+    } else if (c == '{') {
+      it.next();
+      keyframes.steps = read_steps(it);
+      break;
+    }
+    it.next();
+  }
+  return keyframes;
 }
 
 function read_comments(it, flag = {}) {
@@ -278,8 +364,10 @@ function read_value(it) {
 function read_selector(it) {
   var selector = '', c;
   while (!it.end()) {
-    if ((c = it.curr())== '{') break;
-    else if (!is.white_space(c)) selector += c;
+    if ((c = it.curr()) == '{') break;
+    else if (!is.white_space(c)) {
+      selector += c;
+    }
     it.next();
   }
   return selector;
@@ -299,24 +387,24 @@ function read_cond_selector(it) {
   return selector;
 }
 
-function read_psudo(it) {
-  var psudo = struct.psudo(), c;
+function read_psuedo(it) {
+  var psuedo = struct.psuedo(), c;
   while (!it.end()) {
     if ((c = it.curr())== '}') break;
     if (is.white_space(c)) {
       it.next();
       continue;
     }
-    else if (!psudo.selector) {
-      psudo.selector = read_selector(it);
+    else if (!psuedo.selector) {
+      psuedo.selector = read_selector(it);
     }
     else {
-      psudo.styles.push(read_rule(it));
+      psuedo.styles.push(read_rule(it));
       if (it.curr() == '}') break;
     }
     it.next();
   }
-  return psudo;
+  return psuedo;
 }
 
 function read_rule(it) {
@@ -343,8 +431,8 @@ function read_cond(it) {
       Object.assign(cond, read_cond_selector(it));
     }
     else if (c == ':') {
-      var psudo = read_psudo(it);
-      if (psudo.selector) cond.styles.push(psudo);
+      var psuedo = read_psuedo(it);
+      if (psuedo.selector) cond.styles.push(psuedo);
     }
     else if (c == '@') {
       cond.styles.push(read_cond(it));
@@ -375,12 +463,17 @@ function tokenizer(input) {
       tokens.push(read_comments(it, { inline: true }));
     }
     else if (c == ':') {
-      var psudo = read_psudo(it);
-      if (psudo.selector) tokens.push(psudo);
+      var psuedo = read_psuedo(it);
+      if (psuedo.selector) tokens.push(psuedo);
     }
     else if (c == '@') {
-      var cond = read_cond(it);
-      if (cond.name.length) tokens.push(cond);
+      if (read_word(it, true) === '@keyframes') {
+        var keyframes = read_keyframes(it);
+        tokens.push(keyframes);
+      } else {
+        var cond = read_cond(it);
+        if (cond.name.length) tokens.push(cond);
+      }
     }
     else if (!is.white_space(c)) {
       var rule = read_rule(it);
