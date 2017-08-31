@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?44d97c23f708ec57c6a471cc389edea4">
+  <link rel="stylesheet" href="style.css?7e97b3828c0c16f54ccc12e7ade76c5d">
   <script src="lib/css-doodle.min.js?ae958fcaaf90ec23846e42c8adcee9c5"></script>
 </head>
 <body>
@@ -96,24 +96,21 @@
     <!-- example -->
     <section class="example">
       <div class="container">
-        <css-doodle grid="8">
-          :doodle {
-            background: #2a2e31; size: 100vmax;
-          }
+        <css-doodle grid="7">
+          :doodle { background: #2a2e31; size: 100vmax; }
 
           margin: -2em;
           border-radius: 50%;
           will-change: transform;
-          animation: cycle @rand(8s, 20s, .1) linear infinite;
+          animation: rt @rand(10s, 40s, .1) linear infinite;
           border: 1px solid hsla(
             calc(36 * @index()), 80%, 80%, @rand(.1, .8)
           );
-
-          @keyframes cycle {
+          @keyframes rt {
             to { transform:
-              rotateX(calc(@rand(1turn, 5) * @pick(-1, 1)))
-              rotateY(calc(@rand(1turn, 5) * @pick(-1, 1)))
-              rotateZ(calc(@rand(1turn, 5) * @pick(-1, 1)));
+              rotateX(@pick(2turn, -2turn))
+              rotateY(@pick(2turn, -2turn))
+              rotateZ(@pick(2turn, -2turn));
             }
           }
         </css-doodle>

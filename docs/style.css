@@ -579,7 +579,7 @@ textarea[code] {
     left: 50%;
     z-index: 3;
     max-width: 90%;
-    transform: translate(-50%, -50%);
+    transform: translate3d(-50%, -50%, 1000px);
     line-height: 1.4;
     font-size: 1.2em;
     overflow: hidden;
