@@ -27,6 +27,10 @@ export function odd(x, y, count) {
   return _ => is.odd(count - 1);
 }
 
+export function random() {
+  return _ => Math.random() < .5
+}
+
 export default {
-  nth, at, row, col, even, odd
+  nth, at, row, col, even, odd, random
 }
