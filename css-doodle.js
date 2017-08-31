@@ -33,8 +33,12 @@ function odd(x, y, count) {
   return _ => is.odd(count - 1);
 }
 
+function random() {
+  return _ => Math.random() < .5
+}
+
 var cond = {
-  nth, at, row, col, even, odd
+  nth, at, row, col, even, odd, random
 };
 
 function values(obj) {
@@ -77,7 +81,7 @@ function memo(prefix, fn) {
   }
 }
 
-function random(...items) {
+function random$1(...items) {
   let args = items.reduce((ret, n) => ret.concat(n), []);
   return args[Math.floor(Math.random() * args.length)];
 }
@@ -122,7 +126,7 @@ function add_unit(fn, unit) {
 
 function get_unit(str) {
   if (!str) return '';
-  let unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|ms|s)$/;
+  let unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|grad|rad|turn|ms|s)$/;
   let matched = ''.trim.call(str).match(unit);
   return matched ? matched[0] : '';
 }
@@ -353,7 +357,7 @@ function col$1(x, y, count) {
 
 function any() {
   return function(...args) {
-    return random.apply(null, args);
+    return random$1.apply(null, args);
   }
 }
 
@@ -363,7 +367,7 @@ function pick() {
 
 function rand() {
   return function(...args) {
-    return random(
+    return random$1(
       memo('range', unitify(range)).apply(null, args)
     );
   }
