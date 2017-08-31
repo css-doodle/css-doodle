@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
   <link rel="stylesheet" href="style.css?44d97c23f708ec57c6a471cc389edea4">
-  <script src="lib/css-doodle.min.js?6e25d9e1e8e1049b0142cf30a528e7ab"></script>
+  <script src="lib/css-doodle.min.js?ae958fcaaf90ec23846e42c8adcee9c5"></script>
 </head>
 <body>
 
@@ -98,16 +98,24 @@
       <div class="container">
         <css-doodle grid="8">
           :doodle {
-            size: 100vmax;
-            background: #2a2e31;
-            overflow: hidden;
+            background: #2a2e31; size: 100vmax;
           }
-          transition: .2s ease @rand(500ms);
-          border-radius: 24%;
+
+          margin: -2em;
+          border-radius: 50%;
+          will-change: transform;
+          animation: cycle @rand(8s, 20s, .1) linear infinite;
           border: 1px solid hsla(
-            calc(36 * @index()), 80%, 80%, .7
+            calc(36 * @index()), 80%, 80%, @rand(.1, .8)
           );
-          transform: rotate(@pick(60deg, -60deg)) scale(1.2);
+
+          @keyframes cycle {
+            to { transform:
+              rotateX(calc(@rand(1turn, 5) * @pick(-1, 1)))
+              rotateY(calc(@rand(1turn, 5) * @pick(-1, 1)))
+              rotateZ(calc(@rand(1turn, 5) * @pick(-1, 1)));
+            }
+          }
         </css-doodle>
       </div>
       <textarea code></textarea>
