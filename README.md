@@ -3,7 +3,7 @@
 A web component for drawing patterns with css.
 
 <a href="https://codepen.io/collection/XyVkpQ/">
-  ![screenshot](screenshot/codepen.png)
+  <img src="screenshot/codepen.png" />
 </a>
 
 
