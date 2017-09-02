@@ -2,7 +2,9 @@
 
 A web component for drawing patterns with css.
 
-![screenshot](screenshot/sample.png)
+<a href="https://codepen.io/collection/XyVkpQ/">
+  ![screenshot](screenshot/codepen.png)
+</a>
 
 
 ## Usage
