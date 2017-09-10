@@ -58,6 +58,7 @@ class Doodle extends HTMLElement {
         <style class="style-container">
           ${ this.style_size() }
           ${ compiled.styles.host }
+          ${ compiled.styles.container }
         </style>
         <style class="style-cells">
           ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
@@ -77,7 +78,6 @@ class Doodle extends HTMLElement {
 
     });
   }
-
   style_size() {
     return `
       .container {
@@ -112,7 +112,9 @@ class Doodle extends HTMLElement {
       compiled.styles.keyframes
     );
     this.set_style('.style-container',
-      this.style_size() + compiled.styles.host
+        this.style_size()
+      + compiled.styles.host
+      + compiled.styles.container
     );
     this.set_style('.style-cells',
       compiled.styles.cells

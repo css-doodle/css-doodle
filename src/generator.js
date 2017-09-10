@@ -19,7 +19,10 @@ class Rules {
     this.props = {};
     this.keyframes = {};
     this.styles = {
-      host: '', cells: '', keyframes: ''
+      host: '',
+      container: '',
+      cells: '',
+      keyframes: ''
     }
   }
 
@@ -138,14 +141,13 @@ class Rules {
 
         case 'psuedo': {
           if (token.selector.startsWith(':doodle')) {
-            token.selector =
-              token.selector.replace(/^\:+doodle/, ':host');
+            token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var is_host_selector =
-            token.selector.startsWith(':host');
+          var is_special_selector = /^\:(host|container|parent)/
+            .test(token.selector);
 
-          if (is_host_selector) {
+          if (is_special_selector) {
             token.skip = true;
           }
 
@@ -153,7 +155,7 @@ class Rules {
             this.compose_rule(s, coords)
           );
 
-          var selector = is_host_selector
+          var selector = is_special_selector
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -176,16 +178,17 @@ class Rules {
         }
 
         case 'keyframes': {
-          if (this.keyframes[token.name]) return false;
-          this.keyframes[token.name] = () => `
-            ${ join_line(token.steps.map(step => `
-              ${ step.name } {
-                ${ join_line(
-                  step.styles.map(s => this.compose_rule(s, coords))
-                )}
-              }
-            `)) }
-          `;
+          if (!this.keyframes[token.name]) {
+            this.keyframes[token.name] = () => `
+              ${ join_line(token.steps.map(step => `
+                ${ step.name } {
+                  ${ join_line(
+                    step.styles.map(s => this.compose_rule(s, coords))
+                  )}
+                }
+              `)) }
+            `;
+          }
         }
       }
     });
@@ -193,12 +196,20 @@ class Rules {
 
   output() {
     Object.keys(this.rules).forEach((selector, i) => {
-      var target = selector.startsWith(':host') ? 'host': 'cells';
-      this.styles[target] += `
-        ${ selector } {
-          ${ join_line(this.rules[selector]) }
-        }
-      `;
+      if (/^\:(container|parent)/.test(selector)) {
+        this.styles.container += `
+          .container {
+            ${ join_line(this.rules[selector]) }
+          }
+        `;
+      } else {
+        var target = selector.startsWith(':host') ? 'host' : 'cells';
+        this.styles[target] += `
+          ${ selector } {
+            ${ join_line(this.rules[selector]) }
+          }
+        `;
+      }
 
       Object.keys(this.keyframes).forEach(name => {
         var aname = this.compose_aname(name, i + 1);

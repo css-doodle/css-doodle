@@ -427,7 +427,10 @@ class Rules {
     this.props = {};
     this.keyframes = {};
     this.styles = {
-      host: '', cells: '', keyframes: ''
+      host: '',
+      container: '',
+      cells: '',
+      keyframes: ''
     };
   }
 
@@ -550,10 +553,10 @@ class Rules {
               token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var is_host_selector =
-            token.selector.startsWith(':host');
+          var is_special_selector = /^\:(host|container|parent)/.test(token.selector);
+          console.log(is_special_selector, token.selector);
 
-          if (is_host_selector) {
+          if (is_special_selector) {
             token.skip = true;
           }
 
@@ -561,7 +564,7 @@ class Rules {
             this.compose_rule(s, coords)
           );
 
-          var selector = is_host_selector
+          var selector = is_special_selector
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -584,16 +587,17 @@ class Rules {
         }
 
         case 'keyframes': {
-          if (this.keyframes[token.name]) return false;
-          this.keyframes[token.name] = () => `
-            ${ join_line(token.steps.map(step => `
-              ${ step.name } {
-                ${ join_line(
-                  step.styles.map(s => this.compose_rule(s, coords))
-                )}
-              }
-            `)) }
-          `;
+          if (!this.keyframes[token.name]) {
+            this.keyframes[token.name] = () => `
+              ${ join_line(token.steps.map(step => `
+                ${ step.name } {
+                  ${ join_line(
+                    step.styles.map(s => this.compose_rule(s, coords))
+                  )}
+                }
+              `)) }
+            `;
+          }
         }
       }
     });
@@ -601,12 +605,20 @@ class Rules {
 
   output() {
     Object.keys(this.rules).forEach((selector, i) => {
-      var target = selector.startsWith(':host') ? 'host': 'cells';
-      this.styles[target] += `
-        ${ selector } {
-          ${ join_line(this.rules[selector]) }
-        }
-      `;
+      if (/^\:(container|parent)/.test(selector)) {
+        this.styles.container += `
+          .container {
+            ${ join_line(this.rules[selector]) }
+          }
+        `;
+      } else {
+        var target = selector.startsWith(':host') ? 'host' : 'cells';
+        this.styles[target] += `
+          ${ selector } {
+            ${ join_line(this.rules[selector]) }
+          }
+        `;
+      }
 
       Object.keys(this.keyframes).forEach(name => {
         var aname = this.compose_aname(name, i + 1);
@@ -1207,6 +1219,7 @@ class Doodle extends HTMLElement {
         <style class="style-container">
           ${ this.style_size() }
           ${ compiled.styles.host }
+          ${ compiled.styles.container }
         </style>
         <style class="style-cells">
           ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
@@ -1226,7 +1239,6 @@ class Doodle extends HTMLElement {
 
     });
   }
-
   style_size() {
     return `
       .container {
@@ -1261,7 +1273,9 @@ class Doodle extends HTMLElement {
       compiled.styles.keyframes
     );
     this.set_style('.style-container',
-      this.style_size() + compiled.styles.host
+        this.style_size()
+      + compiled.styles.host
+      + compiled.styles.container
     );
     this.set_style('.style-cells',
       compiled.styles.cells
