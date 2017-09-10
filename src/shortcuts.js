@@ -15,7 +15,15 @@ export default {
   ['max-size'](value) {
     var [w, h = w] = value.split(reg_size);
     return `max-width: ${ w }; max-height: ${ h };`;
+  },
+
+  ['place-absolute'](value) {
+    if (value !== 'center') return value;
+    return `
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 0; right: 0;
+      margin: auto !important;
+    `;
   }
-
 }
-
