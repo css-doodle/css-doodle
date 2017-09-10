@@ -524,24 +524,24 @@ function only_if(cond, value) {
 const store = {};
 function memo(prefix, fn) {
   return function(...args) {
-    let key = prefix + args.join('-');
+    var key = prefix + args.join('-');
     if (store[key]) return store[key];
     return (store[key] = fn.apply(null, args));
   }
 }
 
 function random(...items) {
-  let args = items.reduce((ret, n) => ret.concat(n), []);
+  var args = items.reduce((ret, n) => ret.concat(n), []);
   return args[Math.floor(Math.random() * args.length)];
 }
 
 function range(start, stop, step) {
-  let count = 0;
-  let initial = n => (n > 0 && n < 1) ? .1 : 1;
-  let length = arguments.length;
+  var count = 0;
+  var initial = n => (n > 0 && n < 1) ? .1 : 1;
+  var length = arguments.length;
   if (length == 1) [start, stop] = [initial(start), start];
   if (length < 3) step = initial(start);
-  let range = [];
+  var range = [];
   while ((step > 0 && start < stop)
     || (step < 0 && start > stop)) {
     range.push(start);
@@ -553,7 +553,7 @@ function range(start, stop, step) {
 
 function unitify(fn) {
   return function(...args) {
-    let unit = get_unit(args[0]);
+    var unit = get_unit(args[0]);
     if (unit) {
       args = args.map(remove_unit);
       return add_unit(fn, unit).apply(null, args);
@@ -565,7 +565,7 @@ function unitify(fn) {
 function add_unit(fn, unit) {
   return function(...args) {
     args = args.map(remove_unit);
-    let result = fn.apply(null, args);
+    var result = fn.apply(null, args);
     if (unit) {
       result = result.map(n => n + unit);
     }
@@ -575,20 +575,20 @@ function add_unit(fn, unit) {
 
 function get_unit(str) {
   if (!str) return '';
-  let unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|grad|rad|turn|ms|s)$/;
-  let matched = ''.trim.call(str).match(unit);
+  var unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|grad|rad|turn|ms|s)$/;
+  var matched = ''.trim.call(str).match(unit);
   return matched ? matched[0] : '';
 }
 
 function remove_unit(str) {
-  let unit = get_unit(str);
+  var unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
 
 const [ min, max, total ] = [ 1, 16, 16 * 16 ];
 
 function parse_size(size) {
-  let [x, y] = (size + '')
+  var [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
     .split('x')
@@ -905,27 +905,78 @@ var math = Object.getOwnPropertyNames(Math).reduce((expose, n) => {
   return expose;
 }, {});
 
-const reg_size = /[,，\/\s]+\s*/;
+const is_seperator = c => /[,，\/\s]/.test(c);
+
+function skip_pair(it) {
+  var text = it.curr(), c;
+  it.next();
+  while (!it.end()) {
+    text += (c = it.curr());
+    if (c == ')') break;
+    else if (c == '(') {
+      text += skip_pair(it);
+    }
+    it.next();
+  }
+  return text;
+}
+
+function skip_seperator(it) {
+  while (!it.end()) {
+    if (!is_seperator(it.curr(1))) break;
+    else it.next();
+  }
+}
+
+function parse$1(input) {
+  const it = iterator(input);
+  const result = [];
+  var group = '';
+
+  while (!it.end()) {
+    var c = it.curr();
+    if (c == '(') {
+      group += skip_pair(it);
+    }
+
+    else if (is_seperator(c)) {
+      result.push(group);
+      group = '';
+      skip_seperator(it);
+    } else {
+      group += c;
+    }
+
+    it.next();
+  }
+
+  if (group) {
+    result.push(group);
+  }
+
+  return result;
+}
 
 var shortcuts = {
 
   ['size'](value) {
-    var [w, h = w] = value.split(reg_size);
+    var [w, h = w] = parse$1(value);
     return `width: ${ w }; height: ${ h };`;
   },
 
   ['min-size'](value) {
-    var [w, h = w] = value.split(reg_size);
+    var [w, h = w] = parse$1(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
 
   ['max-size'](value) {
-    var [w, h = w] = value.split(reg_size);
+    var [w, h = w] = parse$1(value);
     return `max-width: ${ w }; max-height: ${ h };`;
   },
 
   ['place-absolute'](value) {
-    if (value !== 'center') return value;
+    var parsed = parse$1(value);
+    if (parsed[0] !== 'center') return value;
     return `
       position: absolute;
       top: 0; bottom: 0;
