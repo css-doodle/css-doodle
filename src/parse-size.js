@@ -1,7 +1,6 @@
 import { minmax } from './utils';
 
-const MIN = 1;
-const MAX = 16;
+const [ min, max, total ] = [ 1, 16, 16 * 16 ];
 
 export default
 function parse_size(size) {
@@ -11,9 +10,11 @@ function parse_size(size) {
     .split('x')
     .map(Number);
 
+  const max_val = (x == 1 || y == 1) ? total : max;
+
   const ret = {
-    x: minmax(x || MIN, 1, MAX),
-    y: minmax(y || x || MIN, 1, MAX)
+    x: minmax(x || min, 1, max_val),
+    y: minmax(y || x || min, 1, max_val)
   };
 
   return Object.assign({}, ret,
