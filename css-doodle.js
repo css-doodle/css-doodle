@@ -4,42 +4,491 @@
   (factory());
 }(this, (function () { 'use strict';
 
+function iterator(input) {
+  var index = 0, col = 1, line = 1;
+  return {
+    curr:  (n = 0) => input[index + n],
+    end:   ()  => input.length <= index,
+    info:  ()  => ({ index, col, line }),
+    index: (n) => (n === undefined ? index : index = n),
+    next:  ()  => {
+      var next = input[index++];
+      if (next == '\n') line++, col = 0;
+      else col++;
+      return next;
+    }
+  };
+}
+
+const Tokens = {
+
+  func(name = '') {
+    return {
+      type: 'func',
+      name,
+      arguments: []
+    };
+  },
+
+  argument() {
+    return {
+      type: 'argument',
+      value: []
+    };
+  },
+
+  text(value = '') {
+    return {
+      type: 'text',
+      value
+    };
+  },
+
+  comment(value) {
+    return {
+      type: 'comment',
+      value
+    }
+  },
+
+  psuedo(selector = '') {
+    return {
+      type: 'psuedo',
+      selector,
+      styles: []
+    };
+  },
+
+  cond(name = '') {
+    return {
+      type: 'cond',
+      name,
+      styles: [],
+      arguments: []
+    };
+  },
+
+  rule(property = '') {
+    return {
+      type: 'rule',
+      property,
+      value: []
+    };
+  },
+
+  keyframes(name = '') {
+    return {
+      type: 'keyframes',
+      name,
+      steps: []
+    }
+  },
+
+  step(name = '') {
+    return {
+      type: 'step',
+      name,
+      styles: []
+    }
+  }
+
+};
+
+const bracket_pair = {
+  '(': ')',
+  '[': ']',
+  '{': '}'
+};
+
 const is = {
-  even: (n) => !!(n % 2),
-  odd:  (n) => !(n % 2)
+  white_space(c) {
+    return /[\s\n\t]/.test(c);
+  },
+  open_bracket(c) {
+    return bracket_pair.hasOwnProperty(c);
+  },
+  close_bracket_of(c) {
+    var pair = bracket_pair[c];
+    return p => p == pair;
+  },
+  number(n) {
+    return !isNaN(n);
+  }
 };
 
-function nth(x, y, count) {
-  return n => n == count;
+function throw_error(msg, { col, line }) {
+  throw new Error(
+    `(at line ${ line }, column ${ col }) ${ msg }`
+  );
 }
 
-function at(x, y) {
-  return (x1, y1) => (x == x1 && y == y1);
+function get_text_value(input) {
+  if (input.trim().length) {
+    return is.number(+input) ? +input : input.trim()
+  } else {
+    return input;
+  }
 }
 
-function row(x, y, count) {
-  return n => /^(even|odd)$/.test(n) ? is[n](x - 1) : (n == x)
+function skip_block(it) {
+  var [skipped, c] = [it.curr(), it.curr()];
+  var is_close_bracket = is.close_bracket_of(c);
+  it.next();
+  while (!it.end()) {
+    if (is_close_bracket(c = it.curr())) {
+      skipped += c;
+      break;
+    }
+    else if (is.open_bracket(c)) {
+      skipped += skip_block(it);
+    } else {
+      skipped += c;
+    }
+    it.next();
+  }
+  return skipped;
 }
 
-function col(x, y, count) {
-  return n => /^(even|odd)$/.test(n) ? is[n](y - 1) : (n == y);
+function read_word(it, reset) {
+  var index = it.index();
+  var word = '';
+  while (!it.end()) {
+    var c = it.next();
+    if (is.white_space(c)) break;
+    else word += c;
+  }
+  if (reset) {
+    it.index(index);
+  }
+  return word;
 }
 
-function even(x, y, count) {
-  return _ => is.even(count - 1);
+function read_step(it) {
+  var c, step = Tokens.step();
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else if (!step.name.length) {
+      step.name = read_selector(it);
+    } else {
+      step.styles.push(read_rule(it));
+      if (it.curr() == '}') break;
+    }
+    it.next();
+  }
+  return step;
 }
 
-function odd(x, y, count) {
-  return _ => is.odd(count - 1);
+function read_steps(it) {
+  const steps = [];
+  var c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else {
+      steps.push(read_step(it));
+    }
+    it.next();
+  }
+  return steps;
 }
 
-function random() {
-  return _ => Math.random() < .5
+function read_keyframes(it) {
+  var keyframes = Tokens.keyframes(), c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (!keyframes.name.length) {
+      read_word(it);
+      keyframes.name = read_word(it);
+      if (keyframes.name == '{') {
+        throw_error('missing keyframes name', it.info());
+        break;
+      }
+      continue;
+    } else if (c == '{') {
+      it.next();
+      keyframes.steps = read_steps(it);
+      break;
+    }
+    it.next();
+  }
+  return keyframes;
 }
 
-var cond = {
-  nth, at, row, col, even, odd, random
-};
+function read_comments(it, flag = {}) {
+  var comment = Tokens.comment();
+  var c = it.curr();
+  if (c != '#') it.next();
+  it.next();
+  while (!it.end()) {
+    if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
+    else comment.value += c;
+    c = it.curr();
+    if (flag.inline) {
+      if (c == '\n') return comment;
+    } else {
+      if (c == '*' && it.curr(1) == '/') break;
+    }
+    comment.value += c;
+    it.next();
+  }
+  it.next(); it.next();
+  return comment;
+}
+
+function read_property(it) {
+  var prop = '', c;
+  while (!it.end()) {
+    if ((c = it.curr()) == ':') break;
+    else if (!/[a-zA-Z\-]/.test(c)) {
+      throw_error('Syntax error: Bad property name.', it.info());
+    }
+    else if (!is.white_space(c)) prop += c;
+    it.next();
+  }
+  return prop;
+}
+
+function read_quote_block(it, quote) {
+  var block = '', c;
+  it.next();
+  while (!it.end()) {
+    if ((c = it.curr()) == quote) {
+      if (it.curr(-1) !== '\\') break;
+      else block += c;
+    }
+    else block += c;
+    it.next();
+  }
+  return block;
+}
+
+function read_arguments(it) {
+  var args = [], group = [], arg = '', c;
+  while (!it.end()) {
+    if (is.open_bracket(c = it.curr())) {
+      arg += skip_block(it);
+    }
+    else if (/['"]/.test(c)) {
+      arg += read_quote_block(it, c);
+    }
+    else if (c == '@') {
+      if (!group.length) {
+        arg = arg.trimLeft();
+      }
+      if (arg.length) {
+        group.push(Tokens.text(arg));
+        arg = '';
+      }
+      group.push(read_func(it));
+    }
+    else if (/[,)]/.test(c)) {
+      if (arg.length) {
+        if (!group.length) {
+          group.push(Tokens.text(get_text_value(arg)));
+        } else {
+          arg = arg.trimRight();
+          if (arg.length) {
+            group.push(Tokens.text(arg));
+          }
+        }
+      }
+
+      args.push(group.slice());
+      [group, arg] = [[], ''];
+
+      if (c == ')') break;
+    }
+    else {
+      arg += c;
+    }
+
+    it.next();
+  }
+
+  return args;
+}
+
+function read_func(it) {
+  var func = Tokens.func(), name = '', c;
+  while (!it.end()) {
+    if ((c = it.curr()) == ')') break;
+    if (c == '(') {
+      it.next();
+      func.name = name;
+      func.arguments = read_arguments(it);
+      break;
+    }
+    else name += c;
+    it.next();
+  }
+  return func;
+}
+
+function read_value(it) {
+  var text = Tokens.text(), c;
+  const value = [];
+  while (!it.end()) {
+    if ((c = it.curr()) == '\n') {
+      it.next();
+      continue;
+    }
+    else if (/[;}]/.test(c)) {
+      if (text.value.length) value.push(text);
+      text = Tokens.text();
+      break;
+    }
+    else if (c == '@') {
+      if (text.value.length) value.push(text);
+      text = Tokens.text();
+      value.push(read_func(it));
+    }
+    else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
+      if (c == ':') {
+        throw_error('Syntax error: Bad property name.', it.info());
+      }
+      text.value += c;
+    }
+    it.next();
+  }
+
+  if (text.value.length) value.push(text);
+
+  if (value.length && value[0].value) {
+    value[0].value = value[0].value.trimLeft();
+  }
+
+  return value;
+}
+
+function read_selector(it) {
+  var selector = '', c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '{') break;
+    else if (!is.white_space(c)) {
+      selector += c;
+    }
+    it.next();
+  }
+  return selector;
+}
+
+function read_cond_selector(it) {
+  var selector = { name: '', arguments: [] }, c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '(') {
+      it.next();
+      selector.arguments = read_arguments(it);
+    }
+    else if (/[){]/.test(c)) break;
+    else if (!is.white_space(c)) selector.name += c;
+    it.next();
+  }
+  return selector;
+}
+
+function read_psuedo(it) {
+  var psuedo = Tokens.psuedo(), c;
+  while (!it.end()) {
+    if ((c = it.curr())== '}') break;
+    if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else if (!psuedo.selector) {
+      psuedo.selector = read_selector(it);
+    }
+    else {
+      psuedo.styles.push(read_rule(it));
+      if (it.curr() == '}') break;
+    }
+    it.next();
+  }
+  return psuedo;
+}
+
+function read_rule(it) {
+  var rule = Tokens.rule(), c;
+  while (!it.end()) {
+    if ((c = it.curr()) == ';') break;
+    else if (!rule.property.length) {
+      rule.property = read_property(it);
+    }
+    else {
+      rule.value = read_value(it);
+      break;
+    }
+    it.next();
+  }
+  return rule;
+}
+
+function read_cond(it) {
+  var cond = Tokens.cond(), c;
+  while (!it.end()) {
+    if ((c = it.curr()) == '}') break;
+    else if (!cond.name.length) {
+      Object.assign(cond, read_cond_selector(it));
+    }
+    else if (c == ':') {
+      var psuedo = read_psuedo(it);
+      if (psuedo.selector) cond.styles.push(psuedo);
+    }
+    else if (c == '@') {
+      cond.styles.push(read_cond(it));
+    }
+    else if (!is.white_space(c)) {
+      var rule = read_rule(it);
+      if (rule.property) cond.styles.push(rule);
+      if (it.curr() == '}') break;
+    }
+    it.next();
+  }
+  return cond;
+}
+
+function parse(input) {
+  const it = iterator(input);
+  const Tokens = [];
+  while (!it.end()) {
+    var c = it.curr();
+    if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
+    else if (c == '/' && it.curr(1) == '*') {
+      Tokens.push(read_comments(it));
+    }
+    else if (c == '#' || (c == '/' && it.curr(1) == '/')) {
+      Tokens.push(read_comments(it, { inline: true }));
+    }
+    else if (c == ':') {
+      var psuedo = read_psuedo(it);
+      if (psuedo.selector) Tokens.push(psuedo);
+    }
+    else if (c == '@') {
+      if (read_word(it, true) === '@keyframes') {
+        var keyframes = read_keyframes(it);
+        Tokens.push(keyframes);
+      } else {
+        var cond = read_cond(it);
+        if (cond.name.length) Tokens.push(cond);
+      }
+    }
+    else if (!is.white_space(c)) {
+      var rule = read_rule(it);
+      if (rule.property) Tokens.push(rule);
+    }
+    it.next();
+  }
+  return Tokens;
+}
 
 function values(obj) {
   if (Array.isArray(obj)) return obj;
@@ -81,7 +530,7 @@ function memo(prefix, fn) {
   }
 }
 
-function random$1(...items) {
+function random(...items) {
   let args = items.reduce((ret, n) => ret.concat(n), []);
   return args[Math.floor(Math.random() * args.length)];
 }
@@ -135,6 +584,64 @@ function remove_unit(str) {
   let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
+
+const [ min, max, total ] = [ 1, 16, 16 * 16 ];
+
+function parse_size(size) {
+  let [x, y] = (size + '')
+    .replace(/\s+/g, '')
+    .replace(/[,，xX]+/, 'x')
+    .split('x')
+    .map(Number);
+
+  const max_val = (x == 1 || y == 1) ? total : max;
+
+  const ret = {
+    x: minmax(x || min, 1, max_val),
+    y: minmax(y || x || min, 1, max_val)
+  };
+
+  return Object.assign({}, ret,
+    { count: ret.x * ret.y }
+  );
+}
+
+const is$1 = {
+  even: (n) => !!(n % 2),
+  odd:  (n) => !(n % 2)
+};
+
+function nth(x, y, count) {
+  return n => n == count;
+}
+
+function at(x, y) {
+  return (x1, y1) => (x == x1 && y == y1);
+}
+
+function row(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
+}
+
+function col(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
+}
+
+function even(x, y, count) {
+  return _ => is$1.even(count - 1);
+}
+
+function odd(x, y, count) {
+  return _ => is$1.odd(count - 1);
+}
+
+function random$1() {
+  return _ => Math.random() < .5
+}
+
+var cond = {
+  nth, at, row, col, even, odd, random: random$1
+};
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
@@ -357,7 +864,7 @@ function col$1(x, y, count) {
 
 function any() {
   return function(...args) {
-    return random$1.apply(null, args);
+    return random.apply(null, args);
   }
 }
 
@@ -367,7 +874,7 @@ function pick() {
 
 function rand() {
   return function(...args) {
-    return random$1(
+    return random(
       memo('range', unitify(range)).apply(null, args)
     );
   }
@@ -415,8 +922,17 @@ var shortcuts = {
   ['max-size'](value) {
     var [w, h = w] = value.split(reg_size);
     return `max-width: ${ w }; max-height: ${ h };`;
-  }
+  },
 
+  ['place-absolute'](value) {
+    if (value !== 'center') return value;
+    return `
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 0; right: 0;
+      margin: auto !important;
+    `;
+  }
 };
 
 class Rules {
@@ -549,12 +1065,11 @@ class Rules {
 
         case 'psuedo': {
           if (token.selector.startsWith(':doodle')) {
-            token.selector =
-              token.selector.replace(/^\:+doodle/, ':host');
+            token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var is_special_selector = /^\:(host|container|parent)/.test(token.selector);
-          console.log(is_special_selector, token.selector);
+          var is_special_selector = /^\:(host|container|parent)/
+            .test(token.selector);
 
           if (is_special_selector) {
             token.skip = true;
@@ -652,516 +1167,6 @@ function generator(tokens, size) {
   return rules.output();
 }
 
-const struct = {
-
-  func(name = '') {
-    return {
-      type: 'func',
-      name,
-      arguments: []
-    };
-  },
-
-  argument() {
-    return {
-      type: 'argument',
-      value: []
-    };
-  },
-
-  text(value = '') {
-    return {
-      type: 'text',
-      value
-    };
-  },
-
-  comment(value) {
-    return {
-      type: 'comment',
-      value
-    }
-  },
-
-  psuedo(selector = '') {
-    return {
-      type: 'psuedo',
-      selector,
-      styles: []
-    };
-  },
-
-  cond(name = '') {
-    return {
-      type: 'cond',
-      name,
-      styles: [],
-      arguments: []
-    };
-  },
-
-  rule(property = '') {
-    return {
-      type: 'rule',
-      property,
-      value: []
-    };
-  },
-
-  keyframes(name = '') {
-    return {
-      type: 'keyframes',
-      name,
-      steps: []
-    }
-  },
-
-  step(name = '') {
-    return {
-      type: 'step',
-      name,
-      styles: []
-    }
-  }
-
-};
-
-const bracket_pair = {
-  '(': ')',
-  '[': ']',
-  '{': '}'
-};
-
-const is$1 = {
-  white_space(c) {
-    return /[\s\n\t]/.test(c);
-  },
-  open_bracket(c) {
-    return bracket_pair.hasOwnProperty(c);
-  },
-  close_bracket_of(c) {
-    var pair = bracket_pair[c];
-    return p => p == pair;
-  },
-  number(n) {
-    return !isNaN(n);
-  }
-};
-
-function iterator(input) {
-  var index = 0, col = 1, line = 1;
-  return {
-    curr:  (n = 0) => input[index + n],
-    end:   ()  => input.length <= index,
-    info:  ()  => ({ index, col, line }),
-    index: (n) => (n === undefined ? index : index = n),
-    next:  ()  => {
-      var next = input[index++];
-      if (next == '\n') line++, col = 0;
-      else col++;
-      return next;
-    }
-  };
-}
-
-function throw_error(msg, { col, line }) {
-  throw new Error(
-    `(at line ${ line }, column ${ col }) ${ msg }`
-  );
-}
-
-function get_text_value(input) {
-  if (input.trim().length) {
-    return is$1.number(+input) ? +input : input.trim()
-  } else {
-    return input;
-  }
-}
-
-function skip_block(it) {
-  var [skipped, c] = [it.curr(), it.curr()];
-  var is_close_bracket = is$1.close_bracket_of(c);
-  it.next();
-  while (!it.end()) {
-    if (is_close_bracket(c = it.curr())) {
-      skipped += c;
-      break;
-    }
-    else if (is$1.open_bracket(c)) {
-      skipped += skip_block(it);
-    } else {
-      skipped += c;
-    }
-    it.next();
-  }
-  return skipped;
-}
-
-function read_word(it, reset) {
-  var index = it.index();
-  var word = '';
-  while (!it.end()) {
-    var c = it.next();
-    if (is$1.white_space(c)) break;
-    else word += c;
-  }
-  if (reset) {
-    it.index(index);
-  }
-  return word;
-}
-
-function read_step(it) {
-  var c, step = struct.step();
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    if (is$1.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else if (!step.name.length) {
-      step.name = read_selector(it);
-    } else {
-      step.styles.push(read_rule(it));
-      if (it.curr() == '}') break;
-    }
-    it.next();
-  }
-  return step;
-}
-
-function read_steps(it) {
-  const steps = [];
-  var c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    else if (is$1.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else {
-      steps.push(read_step(it));
-    }
-    it.next();
-  }
-  return steps;
-}
-
-function read_keyframes(it) {
-  var keyframes = struct.keyframes(), c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    else if (!keyframes.name.length) {
-      read_word(it);
-      keyframes.name = read_word(it);
-      if (keyframes.name == '{') {
-        throw_error('missing keyframes name', it.info());
-        break;
-      }
-      continue;
-    } else if (c == '{') {
-      it.next();
-      keyframes.steps = read_steps(it);
-      break;
-    }
-    it.next();
-  }
-  return keyframes;
-}
-
-function read_comments(it, flag = {}) {
-  var comment = struct.comment();
-  var c = it.curr();
-  if (c != '#') it.next();
-  it.next();
-  while (!it.end()) {
-    if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
-    else comment.value += c;
-    c = it.curr();
-    if (flag.inline) {
-      if (c == '\n') return comment;
-    } else {
-      if (c == '*' && it.curr(1) == '/') break;
-    }
-    comment.value += c;
-    it.next();
-  }
-  it.next(); it.next();
-  return comment;
-}
-
-function read_property(it) {
-  var prop = '', c;
-  while (!it.end()) {
-    if ((c = it.curr()) == ':') break;
-    else if (!/[a-zA-Z\-]/.test(c)) {
-      throw_error('Syntax error: Bad property name.', it.info());
-    }
-    else if (!is$1.white_space(c)) prop += c;
-    it.next();
-  }
-  return prop;
-}
-
-function read_quote_block(it, quote) {
-  var block = '', c;
-  it.next();
-  while (!it.end()) {
-    if ((c = it.curr()) == quote) {
-      if (it.curr(-1) !== '\\') break;
-      else block += c;
-    }
-    else block += c;
-    it.next();
-  }
-  return block;
-}
-
-function read_arguments(it) {
-  var args = [], group = [], arg = '', c;
-  while (!it.end()) {
-    if (is$1.open_bracket(c = it.curr())) {
-      arg += skip_block(it);
-    }
-    else if (/['"]/.test(c)) {
-      arg += read_quote_block(it, c);
-    }
-    else if (c == '@') {
-      if (!group.length) {
-        arg = arg.trimLeft();
-      }
-      if (arg.length) {
-        group.push(struct.text(arg));
-        arg = '';
-      }
-      group.push(read_func(it));
-    }
-    else if (/[,)]/.test(c)) {
-      if (arg.length) {
-        if (!group.length) {
-          group.push(struct.text(get_text_value(arg)));
-        } else {
-          arg = arg.trimRight();
-          if (arg.length) {
-            group.push(struct.text(arg));
-          }
-        }
-      }
-
-      args.push(group.slice());
-      [group, arg] = [[], ''];
-
-      if (c == ')') break;
-    }
-    else {
-      arg += c;
-    }
-
-    it.next();
-  }
-
-  return args;
-}
-
-function read_func(it) {
-  var func = struct.func(), name = '', c;
-  while (!it.end()) {
-    if ((c = it.curr()) == ')') break;
-    if (c == '(') {
-      it.next();
-      func.name = name;
-      func.arguments = read_arguments(it);
-      break;
-    }
-    else name += c;
-    it.next();
-  }
-  return func;
-}
-
-function read_value(it) {
-  var text = struct.text(), c;
-  const value = [];
-  while (!it.end()) {
-    if ((c = it.curr()) == '\n') {
-      it.next();
-      continue;
-    }
-    else if (/[;}]/.test(c)) {
-      if (text.value.length) value.push(text);
-      text = struct.text();
-      break;
-    }
-    else if (c == '@') {
-      if (text.value.length) value.push(text);
-      text = struct.text();
-      value.push(read_func(it));
-    }
-    else if (!is$1.white_space(c) || !is$1.white_space(it.curr(-1))) {
-      if (c == ':') {
-        throw_error('Syntax error: Bad property name.', it.info());
-      }
-      text.value += c;
-    }
-    it.next();
-  }
-
-  if (text.value.length) value.push(text);
-
-  if (value.length && value[0].value) {
-    value[0].value = value[0].value.trimLeft();
-  }
-
-  return value;
-}
-
-function read_selector(it) {
-  var selector = '', c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '{') break;
-    else if (!is$1.white_space(c)) {
-      selector += c;
-    }
-    it.next();
-  }
-  return selector;
-}
-
-function read_cond_selector(it) {
-  var selector = { name: '', arguments: [] }, c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '(') {
-      it.next();
-      selector.arguments = read_arguments(it);
-    }
-    else if (/[){]/.test(c)) break;
-    else if (!is$1.white_space(c)) selector.name += c;
-    it.next();
-  }
-  return selector;
-}
-
-function read_psuedo(it) {
-  var psuedo = struct.psuedo(), c;
-  while (!it.end()) {
-    if ((c = it.curr())== '}') break;
-    if (is$1.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else if (!psuedo.selector) {
-      psuedo.selector = read_selector(it);
-    }
-    else {
-      psuedo.styles.push(read_rule(it));
-      if (it.curr() == '}') break;
-    }
-    it.next();
-  }
-  return psuedo;
-}
-
-function read_rule(it) {
-  var rule = struct.rule(), c;
-  while (!it.end()) {
-    if ((c = it.curr()) == ';') break;
-    else if (!rule.property.length) {
-      rule.property = read_property(it);
-    }
-    else {
-      rule.value = read_value(it);
-      break;
-    }
-    it.next();
-  }
-  return rule;
-}
-
-function read_cond(it) {
-  var cond = struct.cond(), c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    else if (!cond.name.length) {
-      Object.assign(cond, read_cond_selector(it));
-    }
-    else if (c == ':') {
-      var psuedo = read_psuedo(it);
-      if (psuedo.selector) cond.styles.push(psuedo);
-    }
-    else if (c == '@') {
-      cond.styles.push(read_cond(it));
-    }
-    else if (!is$1.white_space(c)) {
-      var rule = read_rule(it);
-      if (rule.property) cond.styles.push(rule);
-      if (it.curr() == '}') break;
-    }
-    it.next();
-  }
-  return cond;
-}
-
-function tokenizer(input) {
-  const it = iterator(input);
-  const tokens = [];
-  while (!it.end()) {
-    var c = it.curr();
-    if (is$1.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else if (c == '/' && it.curr(1) == '*') {
-      tokens.push(read_comments(it));
-    }
-    else if (c == '#' || (c == '/' && it.curr(1) == '/')) {
-      tokens.push(read_comments(it, { inline: true }));
-    }
-    else if (c == ':') {
-      var psuedo = read_psuedo(it);
-      if (psuedo.selector) tokens.push(psuedo);
-    }
-    else if (c == '@') {
-      if (read_word(it, true) === '@keyframes') {
-        var keyframes = read_keyframes(it);
-        tokens.push(keyframes);
-      } else {
-        var cond = read_cond(it);
-        if (cond.name.length) tokens.push(cond);
-      }
-    }
-    else if (!is$1.white_space(c)) {
-      var rule = read_rule(it);
-      if (rule.property) tokens.push(rule);
-    }
-    it.next();
-  }
-  return tokens;
-}
-
-function compile(input, size) {
-  return generator(tokenizer(input), size);
-}
-
-const MIN = 1;
-const MAX = 16;
-
-function parse_size(size) {
-  let [x, y] = (size + '')
-    .replace(/\s+/g, '')
-    .replace(/[,，xX]+/, 'x')
-    .split('x')
-    .map(Number);
-
-  const ret = {
-    x: minmax(x || MIN, 1, MAX),
-    y: minmax(y || x || MIN, 1, MAX)
-  };
-
-  return Object.assign({}, ret,
-    { count: ret.x * ret.y }
-  );
-}
-
 const basic = `
   :host {
     display: block;
@@ -1199,10 +1204,9 @@ class Doodle extends HTMLElement {
       let compiled;
 
       try {
-        compiled = compile(
-          this.innerHTML,
-          this.size = parse_size(this.getAttribute('grid'))
-        );
+        let parsed = parse(this.innerHTML);
+        this.size = parse_size(this.getAttribute('grid'));
+        compiled = generator(parsed, this.size);
       } catch (e) {
         // clear content before throwing error
         this.innerHTML = '';
@@ -1267,7 +1271,8 @@ class Doodle extends HTMLElement {
     if (!this.size) {
       this.size = parse_size(this.getAttribute('grid'));
     }
-    const compiled = compile(styles, this.size);
+
+    const compiled = generator(parse(styles), this.size);
 
     this.set_style('.style-keyframes',
       compiled.styles.keyframes

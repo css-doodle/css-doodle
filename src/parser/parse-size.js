@@ -1,4 +1,4 @@
-import { minmax } from './utils';
+import { minmax } from '../utils';
 
 const [ min, max, total ] = [ 1, 16, 16 * 16 ];
 

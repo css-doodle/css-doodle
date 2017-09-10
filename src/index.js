@@ -1,5 +1,6 @@
-import compile from './compiler';
-import parse_size from './parse-size';
+import parse_css from './parser/parse-css';
+import parse_size from './parser/parse-size';
+import generator from './generator';
 
 const basic = `
   :host {
@@ -38,10 +39,9 @@ class Doodle extends HTMLElement {
       let compiled;
 
       try {
-        compiled = compile(
-          this.innerHTML,
-          this.size = parse_size(this.getAttribute('grid'))
-        );
+        let parsed = parse_css(this.innerHTML);
+        this.size = parse_size(this.getAttribute('grid'));
+        compiled = generator(parsed, this.size);
       } catch (e) {
         // clear content before throwing error
         this.innerHTML = '';
@@ -106,7 +106,8 @@ class Doodle extends HTMLElement {
     if (!this.size) {
       this.size = parse_size(this.getAttribute('grid'));
     }
-    const compiled = compile(styles, this.size);
+
+    const compiled = generator(parse_css(styles), this.size);
 
     this.set_style('.style-keyframes',
       compiled.styles.keyframes

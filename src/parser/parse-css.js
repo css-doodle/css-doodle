@@ -1,4 +1,6 @@
-const struct = {
+import iterator from './iterator';
+
+const Tokens = {
 
   func(name = '') {
     return {
@@ -94,22 +96,6 @@ const is = {
   }
 };
 
-function iterator(input) {
-  var index = 0, col = 1, line = 1;
-  return {
-    curr:  (n = 0) => input[index + n],
-    end:   ()  => input.length <= index,
-    info:  ()  => ({ index, col, line }),
-    index: (n) => (n === undefined ? index : index = n),
-    next:  ()  => {
-      var next = input[index++];
-      if (next == '\n') line++, col = 0;
-      else col++;
-      return next;
-    }
-  };
-}
-
 function throw_error(msg, { col, line }) {
   throw new Error(
     `(at line ${ line }, column ${ col }) ${ msg }`
@@ -158,7 +144,7 @@ function read_word(it, reset) {
 }
 
 function read_step(it) {
-  var c, step = struct.step();
+  var c, step = Tokens.step();
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     if (is.white_space(c)) {
@@ -194,7 +180,7 @@ function read_steps(it) {
 }
 
 function read_keyframes(it) {
-  var keyframes = struct.keyframes(), c;
+  var keyframes = Tokens.keyframes(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     else if (!keyframes.name.length) {
@@ -216,7 +202,7 @@ function read_keyframes(it) {
 }
 
 function read_comments(it, flag = {}) {
-  var comment = struct.comment();
+  var comment = Tokens.comment();
   var c = it.curr();
   if (c != '#') it.next();
   it.next();
@@ -277,7 +263,7 @@ function read_arguments(it) {
         arg = arg.trimLeft();
       }
       if (arg.length) {
-        group.push(struct.text(arg));
+        group.push(Tokens.text(arg));
         arg = '';
       }
       group.push(read_func(it));
@@ -285,11 +271,11 @@ function read_arguments(it) {
     else if (/[,)]/.test(c)) {
       if (arg.length) {
         if (!group.length) {
-          group.push(struct.text(get_text_value(arg)));
+          group.push(Tokens.text(get_text_value(arg)));
         } else {
           arg = arg.trimRight();
           if (arg.length) {
-            group.push(struct.text(arg));
+            group.push(Tokens.text(arg));
           }
         }
       }
@@ -310,7 +296,7 @@ function read_arguments(it) {
 }
 
 function read_func(it) {
-  var func = struct.func(), name = '', c;
+  var func = Tokens.func(), name = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ')') break;
     if (c == '(') {
@@ -326,7 +312,7 @@ function read_func(it) {
 }
 
 function read_value(it) {
-  var text = struct.text(), c;
+  var text = Tokens.text(), c;
   const value = [];
   while (!it.end()) {
     if ((c = it.curr()) == '\n') {
@@ -335,12 +321,12 @@ function read_value(it) {
     }
     else if (/[;}]/.test(c)) {
       if (text.value.length) value.push(text);
-      text = struct.text();
+      text = Tokens.text();
       break;
     }
     else if (c == '@') {
       if (text.value.length) value.push(text);
-      text = struct.text();
+      text = Tokens.text();
       value.push(read_func(it));
     }
     else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
@@ -388,7 +374,7 @@ function read_cond_selector(it) {
 }
 
 function read_psuedo(it) {
-  var psuedo = struct.psuedo(), c;
+  var psuedo = Tokens.psuedo(), c;
   while (!it.end()) {
     if ((c = it.curr())== '}') break;
     if (is.white_space(c)) {
@@ -408,7 +394,7 @@ function read_psuedo(it) {
 }
 
 function read_rule(it) {
-  var rule = struct.rule(), c;
+  var rule = Tokens.rule(), c;
   while (!it.end()) {
     if ((c = it.curr()) == ';') break;
     else if (!rule.property.length) {
@@ -424,7 +410,7 @@ function read_rule(it) {
 }
 
 function read_cond(it) {
-  var cond = struct.cond(), c;
+  var cond = Tokens.cond(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     else if (!cond.name.length) {
@@ -447,9 +433,9 @@ function read_cond(it) {
   return cond;
 }
 
-function tokenizer(input) {
+export default function parse(input) {
   const it = iterator(input);
-  const tokens = [];
+  const Tokens = [];
   while (!it.end()) {
     var c = it.curr();
     if (is.white_space(c)) {
@@ -457,31 +443,29 @@ function tokenizer(input) {
       continue;
     }
     else if (c == '/' && it.curr(1) == '*') {
-      tokens.push(read_comments(it));
+      Tokens.push(read_comments(it));
     }
     else if (c == '#' || (c == '/' && it.curr(1) == '/')) {
-      tokens.push(read_comments(it, { inline: true }));
+      Tokens.push(read_comments(it, { inline: true }));
     }
     else if (c == ':') {
       var psuedo = read_psuedo(it);
-      if (psuedo.selector) tokens.push(psuedo);
+      if (psuedo.selector) Tokens.push(psuedo);
     }
     else if (c == '@') {
       if (read_word(it, true) === '@keyframes') {
         var keyframes = read_keyframes(it);
-        tokens.push(keyframes);
+        Tokens.push(keyframes);
       } else {
         var cond = read_cond(it);
-        if (cond.name.length) tokens.push(cond);
+        if (cond.name.length) Tokens.push(cond);
       }
     }
     else if (!is.white_space(c)) {
       var rule = read_rule(it);
-      if (rule.property) tokens.push(rule);
+      if (rule.property) Tokens.push(rule);
     }
     it.next();
   }
-  return tokens;
+  return Tokens;
 }
-
-export default tokenizer;
