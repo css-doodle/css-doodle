@@ -11,7 +11,7 @@ if (!target) {
 }
 
 const makeHash = file => {
-	let content = fs.readFileSync(
+  let content = fs.readFileSync(
     path.join(path.resolve(target, '..'), file)
   );
   return crypto.createHash('md5')
@@ -20,11 +20,11 @@ const makeHash = file => {
 }
 
 const makeReg = file => (
-	new RegExp(`"(${file}\\?)(\\w+)"`, 'g')
+  new RegExp(`"(${file}\\?)(\\w+)"`, 'g')
 );
 
 const matches = [
-	'style.css',
+  'style.css',
   'lib/css-doodle.min.js',
   'main.js'
 ];
@@ -33,8 +33,8 @@ try {
   let content = fs.readFileSync(target, 'utf8');
   matches.forEach(m => {
     content = content.replace(
-			makeReg(m), (_, n) => `"${n + makeHash(m)}"`
-		);
+      makeReg(m), (_, n) => `"${n + makeHash(m)}"`
+    );
   });
   if (content) {
     fs.writeFileSync(target, content, 'utf8');
