@@ -26,6 +26,10 @@ class Rules {
     this.props = {};
     this.keyframes = {};
     this.size = null;
+    this.reset();
+  }
+
+  reset() {
     this.styles = {
       host: '',
       container: '',
@@ -253,6 +257,7 @@ function generator(tokens, grid_size) {
   rules.compose({ x : 1, y: 1, count: 1 });
   var { size } = rules.output();
   if (size) grid_size = size;
+  rules.reset();
   for (var x = 1, count = 0; x <= grid_size.x; ++x) {
     for (var y = 1; y <= grid_size.y; ++y) {
       rules.compose({ x, y, count: ++count});

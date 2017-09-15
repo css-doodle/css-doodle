@@ -52,18 +52,20 @@ class Doodle extends HTMLElement {
 
   build_grid(compiled) {
     const { has_transition, has_animation } = compiled.props;
+    const { keyframes, host, container, cells } = compiled.styles;
+
     this.doodle.innerHTML = `
       <style>${ basic }</style>
       <style class="style-keyframes">
-        ${ compiled.styles.keyframes }
+        ${ keyframes }
       </style>
       <style class="style-container">
         ${ this.style_size() }
-        ${ compiled.styles.host }
-        ${ compiled.styles.container }
+        ${ host }
+        ${ container }
       </style>
       <style class="style-cells">
-        ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
+        ${ (has_transition || has_animation) ? '' : cells }
       </style>
       <div class="container">
         ${ this.html_cells() }
@@ -72,9 +74,7 @@ class Doodle extends HTMLElement {
 
     if (has_transition || has_animation) {
       setTimeout(() => {
-        this.set_style('.style-cells',
-          compiled.styles.cells
-        );
+        this.set_style('.style-cells', cells);
       }, 50);
     }
   }
@@ -108,13 +108,25 @@ class Doodle extends HTMLElement {
     }
 
     const compiled = generator(parse_css(styles), this.size);
+
     if (compiled.size) {
-      let { x, y } = compiled.size;
+      var { x, y } = compiled.size;
       if (this.size.x !== x || this.size.y !== y) {
         Object.assign(this.size, compiled.size);
         return this.build_grid(compiled);
       }
       Object.assign(this.size, compiled.size);
+    }
+
+    else {
+      var grid_size = parse_size(this.getAttribute('grid'));
+      var { x, y } = grid_size;
+      if (this.size.x !== x || this.size.y !== y) {
+        Object.assign(this.size, grid_size);
+        return this.build_grid(
+          generator(parse_css(styles), this.size)
+        );
+      }
     }
 
     this.set_style('.style-keyframes',
