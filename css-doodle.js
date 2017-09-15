@@ -924,7 +924,7 @@ function parse$1(input) {
   return result;
 }
 
-var Property = {
+const property = {
 
   ['@size'](value) {
     var [w, h = w] = parse$1(value);
@@ -957,6 +957,10 @@ var Property = {
   }
 
 };
+
+property['size'] = property['@size'];
+property['min-size'] = property['@min-size'];
+property['max-size'] = property['@max-size'];
 
 const is$1 = {
   even: (n) => !!(n % 2),
@@ -1129,8 +1133,8 @@ class Rules {
       }
     }
 
-    if (Property[prop]) {
-      var transformed = Property[prop](value);
+    if (property[prop]) {
+      var transformed = property[prop](value);
       if (prop !== '@grid') rule = transformed;
       else if (is_host_selector(selector)) {
         this.size = transformed;

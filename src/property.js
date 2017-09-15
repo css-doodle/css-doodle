@@ -1,7 +1,7 @@
 import parse_value_group from './parser/parse-value-group';
 import parse_size  from './parser/parse-size';
 
-export default {
+const property = {
 
   ['@size'](value) {
     var [w, h = w] = parse_value_group(value);
@@ -34,3 +34,9 @@ export default {
   }
 
 }
+
+property['size'] = property['@size'];
+property['min-size'] = property['@min-size'];
+property['max-size'] = property['@max-size'];
+
+export default property;
