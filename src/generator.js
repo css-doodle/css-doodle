@@ -1,15 +1,22 @@
-import cond from './cond';
-import func from './function';
-import math from './math';
-import shortcuts from './shortcuts';
-
+import Func from './function';
+import Property from './property';
+import Selector from './selector';
+import MathFunc from './math';
 import {
-  join_line,
-  make_array,
-  apply_args,
-  only_if,
-  prefix
+  join_line, make_array, apply_args, only_if, prefix
 } from './utils';
+
+function is_host_selector(s) {
+  return /^\:(host|doodle)/.test(s);
+}
+
+function is_parent_selector(s) {
+  return /^\:(container|parent)/.test(s);
+}
+
+function is_special_selector(s) {
+  return is_host_selector(s) || is_parent_selector(s);
+}
 
 class Rules {
 
@@ -18,6 +25,7 @@ class Rules {
     this.rules = {};
     this.props = {};
     this.keyframes = {};
+    this.size = null;
     this.styles = {
       host: '',
       container: '',
@@ -35,7 +43,7 @@ class Rules {
   }
 
   pick_func(name) {
-    return func[name] || math[name];
+    return Func[name] || MathFunc[name];
   }
 
   compose_aname(...args) {
@@ -88,7 +96,7 @@ class Rules {
     }, '');
   }
 
-  compose_rule(token, coords) {
+  compose_rule(token, coords, selector) {
     var prop = token.property;
     var value = this.compose_value(token.value, coords);
     var rule = `${ prop }: ${ value };`
@@ -110,6 +118,7 @@ class Rules {
         switch (prop) {
           case 'animation-name': {
             rule = `${ prop }: ${ this.compose_aname(value, count) };`;
+
             break;
           }
           case 'animation': {
@@ -121,8 +130,13 @@ class Rules {
       }
     }
 
-    if (shortcuts[prop]) {
-      rule = shortcuts[prop](value);
+    if (Property[prop]) {
+      var transformed = Property[prop](value);
+      if (prop !== '@grid') rule = transformed;
+      else if (is_host_selector(selector)) {
+        this.size = transformed;
+        rule = '';
+      }
     }
 
     return rule;
@@ -144,18 +158,17 @@ class Rules {
             token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var is_special_selector = /^\:(host|container|parent)/
-            .test(token.selector);
+          var special = is_special_selector(token.selector);
 
-          if (is_special_selector) {
+          if (special) {
             token.skip = true;
           }
 
           var psuedo = token.styles.map(s =>
-            this.compose_rule(s, coords)
+            this.compose_rule(s, coords, token.selector)
           );
 
-          var selector = is_special_selector
+          var selector = special
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -164,7 +177,7 @@ class Rules {
         }
 
         case 'cond': {
-          var fn = cond[token.name.substr(1)];
+          var fn = Selector[token.name.substr(1)];
           if (fn) {
             var args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
@@ -196,14 +209,14 @@ class Rules {
 
   output() {
     Object.keys(this.rules).forEach((selector, i) => {
-      if (/^\:(container|parent)/.test(selector)) {
+      if (is_parent_selector(selector)) {
         this.styles.container += `
           .container {
             ${ join_line(this.rules[selector]) }
           }
         `;
       } else {
-        var target = selector.startsWith(':host') ? 'host' : 'cells';
+        var target = is_host_selector(selector) ? 'host' : 'cells';
         this.styles[target] += `
           ${ selector } {
             ${ join_line(this.rules[selector]) }
@@ -228,16 +241,20 @@ class Rules {
 
     return {
       props: this.props,
-      styles: this.styles
+      styles: this.styles,
+      size: this.size
     }
   }
 }
 
 export default
-function generator(tokens, size) {
+function generator(tokens, grid_size) {
   var rules = new Rules(tokens);
-  for (var x = 1, count = 0; x <= size.x; ++x) {
-    for (var y = 1; y <= size.y; ++y) {
+  rules.compose({ x : 1, y: 1, count: 1 });
+  var { size } = rules.output();
+  if (size) grid_size = size;
+  for (var x = 1, count = 0; x <= grid_size.x; ++x) {
+    for (var y = 1; y <= grid_size.y; ++y) {
       rules.compose({ x, y, count: ++count});
     }
   }

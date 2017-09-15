@@ -84,6 +84,9 @@ const is = {
   white_space(c) {
     return /[\s\n\t]/.test(c);
   },
+  line_break(c) {
+    return /\n/.test(c);
+  },
   open_bracket(c) {
     return bracket_pair.hasOwnProperty(c);
   },
@@ -129,18 +132,28 @@ function skip_block(it) {
   return skipped;
 }
 
+function read_until(fn) {
+  return function(it, reset) {
+    var index = it.index();
+    var word = '';
+    while (!it.end()) {
+      var c = it.next();
+      if (fn(c)) break;
+      else word += c;
+    }
+    if (reset) {
+      it.index(index);
+    }
+    return word;
+  }
+}
+
 function read_word(it, reset) {
-  var index = it.index();
-  var word = '';
-  while (!it.end()) {
-    var c = it.next();
-    if (is.white_space(c)) break;
-    else word += c;
-  }
-  if (reset) {
-    it.index(index);
-  }
-  return word;
+  return read_until(c => is.white_space(c))(it, reset);
+}
+
+function read_line(it, reset) {
+  return read_until(c => is.line_break(c))(it, reset);
 }
 
 function read_step(it) {
@@ -153,7 +166,8 @@ function read_step(it) {
     }
     else if (!step.name.length) {
       step.name = read_selector(it);
-    } else {
+    }
+    else {
       step.styles.push(read_rule(it));
       if (it.curr() == '}') break;
     }
@@ -191,7 +205,8 @@ function read_keyframes(it) {
         break;
       }
       continue;
-    } else if (c == '{') {
+    }
+    else if (c == '{') {
       it.next();
       keyframes.steps = read_steps(it);
       break;
@@ -226,7 +241,7 @@ function read_property(it) {
   var prop = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ':') break;
-    else if (!/[a-zA-Z\-]/.test(c)) {
+    else if (!/[a-zA-Z\-@]/.test(c)) {
       throw_error('Syntax error: Bad property name.', it.info());
     }
     else if (!is.white_space(c)) prop += c;
@@ -420,7 +435,7 @@ function read_cond(it) {
       var psuedo = read_psuedo(it);
       if (psuedo.selector) cond.styles.push(psuedo);
     }
-    else if (c == '@') {
+    else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
     }
     else if (!is.white_space(c)) {
@@ -452,14 +467,13 @@ export default function parse(input) {
       var psuedo = read_psuedo(it);
       if (psuedo.selector) Tokens.push(psuedo);
     }
-    else if (c == '@') {
-      if (read_word(it, true) === '@keyframes') {
-        var keyframes = read_keyframes(it);
-        Tokens.push(keyframes);
-      } else {
-        var cond = read_cond(it);
-        if (cond.name.length) Tokens.push(cond);
-      }
+    else if (c == '@' && read_word(it, true) === '@keyframes') {
+      var keyframes = read_keyframes(it);
+      Tokens.push(keyframes);
+    }
+    else if (c == '@' && !read_line(it, true).includes(':')) {
+      var cond = read_cond(it);
+      if (cond.name.length) Tokens.push(cond);
     }
     else if (!is.white_space(c)) {
       var rule = read_rule(it);

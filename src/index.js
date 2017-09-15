@@ -32,52 +32,53 @@ class Doodle extends HTMLElement {
   }
   connectedCallback() {
     setTimeout(() => {
+      let compiled;
       if (!this.innerHTML.trim()) {
         return false;
       }
-
-      let compiled;
-
       try {
         let parsed = parse_css(this.innerHTML);
         this.size = parse_size(this.getAttribute('grid'));
         compiled = generator(parsed, this.size);
+        compiled.size && (this.size = compiled.size);
       } catch (e) {
         // clear content before throwing error
         this.innerHTML = '';
         throw new Error(e);
       }
-
-      const { has_transition, has_animation } = compiled.props;
-
-      this.doodle.innerHTML = `
-        <style>${ basic }</style>
-        <style class="style-keyframes">
-          ${ compiled.styles.keyframes }
-        </style>
-        <style class="style-container">
-          ${ this.style_size() }
-          ${ compiled.styles.host }
-          ${ compiled.styles.container }
-        </style>
-        <style class="style-cells">
-          ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
-        </style>
-        <div class="container">
-          ${ this.html_cells() }
-        </div>
-      `;
-
-      if (has_transition || has_animation) {
-        setTimeout(() => {
-          this.set_style('.style-cells',
-            compiled.styles.cells
-          );
-        }, 50);
-      }
-
+      this.build_grid(compiled);
     });
   }
+
+  build_grid(compiled) {
+    const { has_transition, has_animation } = compiled.props;
+    this.doodle.innerHTML = `
+      <style>${ basic }</style>
+      <style class="style-keyframes">
+        ${ compiled.styles.keyframes }
+      </style>
+      <style class="style-container">
+        ${ this.style_size() }
+        ${ compiled.styles.host }
+        ${ compiled.styles.container }
+      </style>
+      <style class="style-cells">
+        ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
+      </style>
+      <div class="container">
+        ${ this.html_cells() }
+      </div>
+    `;
+
+    if (has_transition || has_animation) {
+      setTimeout(() => {
+        this.set_style('.style-cells',
+          compiled.styles.cells
+        );
+      }, 50);
+    }
+  }
+
   style_size() {
     return `
       .container {
@@ -100,14 +101,21 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
-    if (!styles) {
-      return false;
-    }
+    if (!styles) return false;
+
     if (!this.size) {
       this.size = parse_size(this.getAttribute('grid'));
     }
 
     const compiled = generator(parse_css(styles), this.size);
+    if (compiled.size) {
+      let { x, y } = compiled.size;
+      if (this.size.x !== x || this.size.y !== y) {
+        Object.assign(this.size, compiled.size);
+        return this.build_grid(compiled);
+      }
+      Object.assign(this.size, compiled.size);
+    }
 
     this.set_style('.style-keyframes',
       compiled.styles.keyframes

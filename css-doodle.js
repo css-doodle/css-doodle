@@ -104,6 +104,9 @@ const is = {
   white_space(c) {
     return /[\s\n\t]/.test(c);
   },
+  line_break(c) {
+    return /\n/.test(c);
+  },
   open_bracket(c) {
     return bracket_pair.hasOwnProperty(c);
   },
@@ -149,18 +152,28 @@ function skip_block(it) {
   return skipped;
 }
 
+function read_until(fn) {
+  return function(it, reset) {
+    var index = it.index();
+    var word = '';
+    while (!it.end()) {
+      var c = it.next();
+      if (fn(c)) break;
+      else word += c;
+    }
+    if (reset) {
+      it.index(index);
+    }
+    return word;
+  }
+}
+
 function read_word(it, reset) {
-  var index = it.index();
-  var word = '';
-  while (!it.end()) {
-    var c = it.next();
-    if (is.white_space(c)) break;
-    else word += c;
-  }
-  if (reset) {
-    it.index(index);
-  }
-  return word;
+  return read_until(c => is.white_space(c))(it, reset);
+}
+
+function read_line(it, reset) {
+  return read_until(c => is.line_break(c))(it, reset);
 }
 
 function read_step(it) {
@@ -173,7 +186,8 @@ function read_step(it) {
     }
     else if (!step.name.length) {
       step.name = read_selector(it);
-    } else {
+    }
+    else {
       step.styles.push(read_rule(it));
       if (it.curr() == '}') break;
     }
@@ -211,7 +225,8 @@ function read_keyframes(it) {
         break;
       }
       continue;
-    } else if (c == '{') {
+    }
+    else if (c == '{') {
       it.next();
       keyframes.steps = read_steps(it);
       break;
@@ -246,7 +261,7 @@ function read_property(it) {
   var prop = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ':') break;
-    else if (!/[a-zA-Z\-]/.test(c)) {
+    else if (!/[a-zA-Z\-@]/.test(c)) {
       throw_error('Syntax error: Bad property name.', it.info());
     }
     else if (!is.white_space(c)) prop += c;
@@ -440,7 +455,7 @@ function read_cond(it) {
       var psuedo = read_psuedo(it);
       if (psuedo.selector) cond.styles.push(psuedo);
     }
-    else if (c == '@') {
+    else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
     }
     else if (!is.white_space(c)) {
@@ -472,14 +487,13 @@ function parse(input) {
       var psuedo = read_psuedo(it);
       if (psuedo.selector) Tokens.push(psuedo);
     }
-    else if (c == '@') {
-      if (read_word(it, true) === '@keyframes') {
-        var keyframes = read_keyframes(it);
-        Tokens.push(keyframes);
-      } else {
-        var cond = read_cond(it);
-        if (cond.name.length) Tokens.push(cond);
-      }
+    else if (c == '@' && read_word(it, true) === '@keyframes') {
+      var keyframes = read_keyframes(it);
+      Tokens.push(keyframes);
+    }
+    else if (c == '@' && !read_line(it, true).includes(':')) {
+      var cond = read_cond(it);
+      if (cond.name.length) Tokens.push(cond);
     }
     else if (!is.white_space(c)) {
       var rule = read_rule(it);
@@ -605,43 +619,6 @@ function parse_size(size) {
     { count: ret.x * ret.y }
   );
 }
-
-const is$1 = {
-  even: (n) => !!(n % 2),
-  odd:  (n) => !(n % 2)
-};
-
-function nth(x, y, count) {
-  return n => n == count;
-}
-
-function at(x, y) {
-  return (x1, y1) => (x == x1 && y == y1);
-}
-
-function row(x, y, count) {
-  return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
-}
-
-function col(x, y, count) {
-  return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
-}
-
-function even(x, y, count) {
-  return _ => is$1.even(count - 1);
-}
-
-function odd(x, y, count) {
-  return _ => is$1.odd(count - 1);
-}
-
-function random$1() {
-  return _ => Math.random() < .5
-}
-
-var cond = {
-  nth, at, row, col, even, odd, random: random$1
-};
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
@@ -842,7 +819,7 @@ function bud(n = 3) {
   ]);
 }
 
-var shapes = {
+var Shapes = {
   circle, triangle, rhombus, pentagon,
   hexagon, heptagon, octagon, star,
   diamond, cross, clover, hypocycloid,
@@ -854,11 +831,11 @@ function index(x, y, count) {
   return _ => count;
 }
 
-function row$1(x, y, count) {
+function row(x, y, count) {
   return _ => x;
 }
 
-function col$1(x, y, count) {
+function col(x, y, count) {
   return _ => y;
 }
 
@@ -884,26 +861,16 @@ function shape(x, y, count) {
   return memo('shape', function(type, ...args) {
     if (type) {
       type = type.trim();
-      if (shapes[type]) {
-        return shapes[type].apply(null, args);
+      if (Shapes[type]) {
+        return Shapes[type].apply(null, args);
       }
     }
   });
 }
 
-var func = {
-  index, row: row$1, col: col$1, any, pick, rand, shape
+var Func = {
+  index, row, col, any, pick, rand, shape
 };
-
-var math = Object.getOwnPropertyNames(Math).reduce((expose, n) => {
-  expose[n] = function() {
-    return function(...args) {
-      if (typeof Math[n] === 'number') return Math[n];
-      return Math[n].apply(null, args.map(eval));
-    }
-  };
-  return expose;
-}, {});
 
 const is_seperator = c => /[,，\/\s]/.test(c);
 
@@ -957,24 +924,24 @@ function parse$1(input) {
   return result;
 }
 
-var shortcuts = {
+var Property = {
 
-  ['size'](value) {
+  ['@size'](value) {
     var [w, h = w] = parse$1(value);
     return `width: ${ w }; height: ${ h };`;
   },
 
-  ['min-size'](value) {
+  ['@min-size'](value) {
     var [w, h = w] = parse$1(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
 
-  ['max-size'](value) {
+  ['@max-size'](value) {
     var [w, h = w] = parse$1(value);
     return `max-width: ${ w }; max-height: ${ h };`;
   },
 
-  ['place-absolute'](value) {
+  ['@place-absolute'](value) {
     var parsed = parse$1(value);
     if (parsed[0] !== 'center') return value;
     return `
@@ -983,8 +950,72 @@ var shortcuts = {
       left: 0; right: 0;
       margin: auto !important;
     `;
+  },
+
+  ['@grid'](value) {
+    return parse_size(value);
   }
+
 };
+
+const is$1 = {
+  even: (n) => !!(n % 2),
+  odd:  (n) => !(n % 2)
+};
+
+function nth(x, y, count) {
+  return n => n == count;
+}
+
+function at(x, y) {
+  return (x1, y1) => (x == x1 && y == y1);
+}
+
+function row$1(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
+}
+
+function col$1(x, y, count) {
+  return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
+}
+
+function even(x, y, count) {
+  return _ => is$1.even(count - 1);
+}
+
+function odd(x, y, count) {
+  return _ => is$1.odd(count - 1);
+}
+
+function random$1() {
+  return _ => Math.random() < .5
+}
+
+var Selector = {
+  nth, at, row: row$1, col: col$1, even, odd, random: random$1
+};
+
+var MathFunc = Object.getOwnPropertyNames(Math).reduce((expose, n) => {
+  expose[n] = function() {
+    return function(...args) {
+      if (typeof Math[n] === 'number') return Math[n];
+      return Math[n].apply(null, args.map(eval));
+    }
+  };
+  return expose;
+}, {});
+
+function is_host_selector(s) {
+  return /^\:(host|doodle)/.test(s);
+}
+
+function is_parent_selector(s) {
+  return /^\:(container|parent)/.test(s);
+}
+
+function is_special_selector(s) {
+  return is_host_selector(s) || is_parent_selector(s);
+}
 
 class Rules {
 
@@ -993,6 +1024,7 @@ class Rules {
     this.rules = {};
     this.props = {};
     this.keyframes = {};
+    this.size = null;
     this.styles = {
       host: '',
       container: '',
@@ -1010,7 +1042,7 @@ class Rules {
   }
 
   pick_func(name) {
-    return func[name] || math[name];
+    return Func[name] || MathFunc[name];
   }
 
   compose_aname(...args) {
@@ -1063,7 +1095,7 @@ class Rules {
     }, '');
   }
 
-  compose_rule(token, coords) {
+  compose_rule(token, coords, selector) {
     var prop = token.property;
     var value = this.compose_value(token.value, coords);
     var rule = `${ prop }: ${ value };`;
@@ -1085,6 +1117,7 @@ class Rules {
         switch (prop) {
           case 'animation-name': {
             rule = `${ prop }: ${ this.compose_aname(value, count) };`;
+
             break;
           }
           case 'animation': {
@@ -1096,8 +1129,13 @@ class Rules {
       }
     }
 
-    if (shortcuts[prop]) {
-      rule = shortcuts[prop](value);
+    if (Property[prop]) {
+      var transformed = Property[prop](value);
+      if (prop !== '@grid') rule = transformed;
+      else if (is_host_selector(selector)) {
+        this.size = transformed;
+        rule = '';
+      }
     }
 
     return rule;
@@ -1119,18 +1157,17 @@ class Rules {
             token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var is_special_selector = /^\:(host|container|parent)/
-            .test(token.selector);
+          var special = is_special_selector(token.selector);
 
-          if (is_special_selector) {
+          if (special) {
             token.skip = true;
           }
 
           var psuedo = token.styles.map(s =>
-            this.compose_rule(s, coords)
+            this.compose_rule(s, coords, token.selector)
           );
 
-          var selector = is_special_selector
+          var selector = special
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -1139,7 +1176,7 @@ class Rules {
         }
 
         case 'cond': {
-          var fn = cond[token.name.substr(1)];
+          var fn = Selector[token.name.substr(1)];
           if (fn) {
             var args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
@@ -1171,14 +1208,14 @@ class Rules {
 
   output() {
     Object.keys(this.rules).forEach((selector, i) => {
-      if (/^\:(container|parent)/.test(selector)) {
+      if (is_parent_selector(selector)) {
         this.styles.container += `
           .container {
             ${ join_line(this.rules[selector]) }
           }
         `;
       } else {
-        var target = selector.startsWith(':host') ? 'host' : 'cells';
+        var target = is_host_selector(selector) ? 'host' : 'cells';
         this.styles[target] += `
           ${ selector } {
             ${ join_line(this.rules[selector]) }
@@ -1203,15 +1240,19 @@ class Rules {
 
     return {
       props: this.props,
-      styles: this.styles
+      styles: this.styles,
+      size: this.size
     }
   }
 }
 
-function generator(tokens, size) {
+function generator(tokens, grid_size) {
   var rules = new Rules(tokens);
-  for (var x = 1, count = 0; x <= size.x; ++x) {
-    for (var y = 1; y <= size.y; ++y) {
+  rules.compose({ x : 1, y: 1, count: 1 });
+  var { size } = rules.output();
+  if (size) grid_size = size;
+  for (var x = 1, count = 0; x <= grid_size.x; ++x) {
+    for (var y = 1; y <= grid_size.y; ++y) {
       rules.compose({ x, y, count: ++count});
     }
   }
@@ -1248,52 +1289,53 @@ class Doodle extends HTMLElement {
   }
   connectedCallback() {
     setTimeout(() => {
+      let compiled;
       if (!this.innerHTML.trim()) {
         return false;
       }
-
-      let compiled;
-
       try {
         let parsed = parse(this.innerHTML);
         this.size = parse_size(this.getAttribute('grid'));
         compiled = generator(parsed, this.size);
+        compiled.size && (this.size = compiled.size);
       } catch (e) {
         // clear content before throwing error
         this.innerHTML = '';
         throw new Error(e);
       }
-
-      const { has_transition, has_animation } = compiled.props;
-
-      this.doodle.innerHTML = `
-        <style>${ basic }</style>
-        <style class="style-keyframes">
-          ${ compiled.styles.keyframes }
-        </style>
-        <style class="style-container">
-          ${ this.style_size() }
-          ${ compiled.styles.host }
-          ${ compiled.styles.container }
-        </style>
-        <style class="style-cells">
-          ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
-        </style>
-        <div class="container">
-          ${ this.html_cells() }
-        </div>
-      `;
-
-      if (has_transition || has_animation) {
-        setTimeout(() => {
-          this.set_style('.style-cells',
-            compiled.styles.cells
-          );
-        }, 50);
-      }
-
+      this.build_grid(compiled);
     });
   }
+
+  build_grid(compiled) {
+    const { has_transition, has_animation } = compiled.props;
+    this.doodle.innerHTML = `
+      <style>${ basic }</style>
+      <style class="style-keyframes">
+        ${ compiled.styles.keyframes }
+      </style>
+      <style class="style-container">
+        ${ this.style_size() }
+        ${ compiled.styles.host }
+        ${ compiled.styles.container }
+      </style>
+      <style class="style-cells">
+        ${ (has_transition || has_animation) ? '' : compiled.styles.cells }
+      </style>
+      <div class="container">
+        ${ this.html_cells() }
+      </div>
+    `;
+
+    if (has_transition || has_animation) {
+      setTimeout(() => {
+        this.set_style('.style-cells',
+          compiled.styles.cells
+        );
+      }, 50);
+    }
+  }
+
   style_size() {
     return `
       .container {
@@ -1316,14 +1358,21 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
-    if (!styles) {
-      return false;
-    }
+    if (!styles) return false;
+
     if (!this.size) {
       this.size = parse_size(this.getAttribute('grid'));
     }
 
     const compiled = generator(parse(styles), this.size);
+    if (compiled.size) {
+      let { x, y } = compiled.size;
+      if (this.size.x !== x || this.size.y !== y) {
+        Object.assign(this.size, compiled.size);
+        return this.build_grid(compiled);
+      }
+      Object.assign(this.size, compiled.size);
+    }
 
     this.set_style('.style-keyframes',
       compiled.styles.keyframes

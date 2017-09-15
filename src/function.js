@@ -1,4 +1,4 @@
-import shapes from './shapes';
+import Shapes from './shapes';
 import { memo, random, range, unitify } from './utils';
 
 export function index(x, y, count) {
@@ -35,8 +35,8 @@ export function shape(x, y, count) {
   return memo('shape', function(type, ...args) {
     if (type) {
       type = type.trim();
-      if (shapes[type]) {
-        return shapes[type].apply(null, args);
+      if (Shapes[type]) {
+        return Shapes[type].apply(null, args);
       }
     }
   });
