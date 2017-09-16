@@ -74,7 +74,7 @@ class Rules {
       }
     });
 
-    return (result.length > 2)
+    return (result.length >= 2)
       ? result.join('')
       : result[0];
   }
