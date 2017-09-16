@@ -1,5 +1,5 @@
 import parse_value_group from './parser/parse-value-group';
-import parse_size  from './parser/parse-size';
+import parse_grid  from './parser/parse-grid';
 
 const property = {
 
@@ -30,9 +30,14 @@ const property = {
   },
 
   ['@grid'](value) {
-    return parse_size(value);
+    var [ grid, size ] = value.split('/').map(s => s.trim());
+    var ret = { grid: parse_grid(grid) };
+    if (size) {
+      var [w, h = w] = parse_value_group(size);
+      ret.size = `width: ${ w }; height: ${ h };`
+    }
+    return ret;
   }
-
 }
 
 property['size'] = property['@size'];

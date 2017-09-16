@@ -3,7 +3,7 @@ import { minmax } from '../utils';
 const [ min, max, total ] = [ 1, 16, 16 * 16 ];
 
 export default
-function parse_size(size) {
+function parse_grid(size) {
   var [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')

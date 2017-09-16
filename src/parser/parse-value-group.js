@@ -1,6 +1,6 @@
 import iterator from './iterator';
 
-const is_seperator = c => /[,，\/\s]/.test(c);
+const is_seperator = c => /[,，\s]/.test(c);
 
 function skip_pair(it) {
   var text = it.curr(), c;

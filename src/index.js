@@ -1,5 +1,5 @@
 import parse_css from './parser/parse-css';
-import parse_size from './parser/parse-size';
+import parse_grid from './parser/parse-grid';
 import generator from './generator';
 
 const basic = `
@@ -38,9 +38,9 @@ class Doodle extends HTMLElement {
       }
       try {
         let parsed = parse_css(this.innerHTML);
-        this.size = parse_size(this.getAttribute('grid'));
-        compiled = generator(parsed, this.size);
-        compiled.size && (this.size = compiled.size);
+        this.grid_size = parse_grid(this.getAttribute('grid'));
+        compiled = generator(parsed, this.grid_size);
+        compiled.grid && (this.grid_size = compiled.grid);
       } catch (e) {
         // clear content before throwing error
         this.innerHTML = '';
@@ -82,15 +82,15 @@ class Doodle extends HTMLElement {
   style_size() {
     return `
       .container {
-        grid-template-rows: repeat(${ this.size.x }, 1fr);
-        grid-template-columns: repeat(${ this.size.y }, 1fr);
+        grid-template-rows: repeat(${ this.grid_size.x }, 1fr);
+        grid-template-columns: repeat(${ this.grid_size.y }, 1fr);
       }
     `;
   }
 
   html_cells() {
     return '<div class="cell"></div>'
-      .repeat(this.size.count);
+      .repeat(this.grid_size.count);
   }
 
   set_style(selector, styles) {
@@ -103,28 +103,28 @@ class Doodle extends HTMLElement {
   update(styles) {
     if (!styles) return false;
 
-    if (!this.size) {
-      this.size = parse_size(this.getAttribute('grid'));
+    if (!this.grid_size) {
+      this.grid_size = parse_grid(this.getAttribute('grid'));
     }
 
-    const compiled = generator(parse_css(styles), this.size);
+    const compiled = generator(parse_css(styles), this.grid_size);
 
-    if (compiled.size) {
-      var { x, y } = compiled.size;
-      if (this.size.x !== x || this.size.y !== y) {
-        Object.assign(this.size, compiled.size);
+    if (compiled.grid) {
+      var { x, y } = compiled.grid;
+      if (this.grid_size.x !== x || this.grid_size.y !== y) {
+        Object.assign(this.grid_size, compiled.grid);
         return this.build_grid(compiled);
       }
-      Object.assign(this.size, compiled.size);
+      Object.assign(this.grid_size, compiled.grid);
     }
 
     else {
-      var grid_size = parse_size(this.getAttribute('grid'));
-      var { x, y } = grid_size;
-      if (this.size.x !== x || this.size.y !== y) {
-        Object.assign(this.size, grid_size);
+      var grid = parse_grid(this.getAttribute('grid'));
+      var { x, y } = grid;
+      if (this.grid_size.x !== x || this.grid_size.y !== y) {
+        Object.assign(this.grid_size, grid);
         return this.build_grid(
-          generator(parse_css(styles), this.size)
+          generator(parse_css(styles), this.grid_size)
         );
       }
     }
@@ -148,7 +148,7 @@ class Doodle extends HTMLElement {
   }
 
   get grid() {
-    return Object.assign({}, this.size);
+    return Object.assign({}, this.grid_size);
   }
 
   set grid(grid) {
@@ -163,7 +163,7 @@ class Doodle extends HTMLElement {
   attributeChangedCallback(name, old_val, new_val) {
     if (name == 'grid' && old_val) {
       if (old_val !== new_val) {
-        this.grid = new_val;
+        this.grid_size = new_val;
       }
     }
   }

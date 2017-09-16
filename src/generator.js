@@ -25,7 +25,7 @@ class Rules {
     this.rules = {};
     this.props = {};
     this.keyframes = {};
-    this.size = null;
+    this.grid = null;
     this.reset();
   }
 
@@ -138,8 +138,8 @@ class Rules {
       var transformed = Property[prop](value);
       if (prop !== '@grid') rule = transformed;
       else if (is_host_selector(selector)) {
-        this.size = transformed;
-        rule = '';
+        this.grid = transformed.grid;
+        rule = transformed.size || '';
       }
     }
 
@@ -246,7 +246,7 @@ class Rules {
     return {
       props: this.props,
       styles: this.styles,
-      size: this.size
+      grid: this.grid
     }
   }
 }
@@ -255,8 +255,8 @@ export default
 function generator(tokens, grid_size) {
   var rules = new Rules(tokens);
   rules.compose({ x : 1, y: 1, count: 1 });
-  var { size } = rules.output();
-  if (size) grid_size = size;
+  var { grid } = rules.output();
+  if (grid) grid_size = grid;
   rules.reset();
   for (var x = 1, count = 0; x <= grid_size.x; ++x) {
     for (var y = 1; y <= grid_size.y; ++y) {
