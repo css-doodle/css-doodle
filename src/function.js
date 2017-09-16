@@ -42,6 +42,12 @@ export function shape(x, y, count) {
   });
 }
 
+export function calc(x, y, count) {
+  return function(value) {
+    return new Function(`return ${ value }`)();
+  }
+}
+
 export default {
-  index, row, col, any, pick, rand, shape
+  index, row, col, any, pick, rand, shape, calc
 }

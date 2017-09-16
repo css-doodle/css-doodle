@@ -868,8 +868,14 @@ function shape(x, y, count) {
   });
 }
 
+function calc(x, y, count) {
+  return function(value) {
+    return new Function(`return ${ value }`)();
+  }
+}
+
 var Func = {
-  index, row, col, any, pick, rand, shape
+  index, row, col, any, pick, rand, shape, calc
 };
 
 const is_seperator = c => /[,，\s]/.test(c);
