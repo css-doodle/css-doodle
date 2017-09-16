@@ -31,12 +31,10 @@ const property = {
 
   ['@grid'](value) {
     var [ grid, size ] = value.split('/').map(s => s.trim());
-    var ret = { grid: parse_grid(grid) };
-    if (size) {
-      var [w, h = w] = parse_value_group(size);
-      ret.size = `width: ${ w }; height: ${ h };`
-    }
-    return ret;
+    return {
+      grid: parse_grid(grid),
+      size: size ? this['@size'](size) : ''
+    };
   }
 }
 
