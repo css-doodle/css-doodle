@@ -508,6 +508,7 @@ const units = `
   % cm fr rem em ex in mm pc pt px
   vh vw vmax vmin
   deg grad rad turn
+  dpi dpcm dppx
   ms s
 `;
 const reg_match_unit = new RegExp(
