@@ -1,53 +1,41 @@
 import Shapes from './shapes';
 import { memo, random, range, unitify } from './utils';
 
-export function index(x, y, count) {
-  return _ => count;
-}
+export default {
 
-export function row(x, y, count) {
-  return _ => x;
-}
+  index(x, y, count) {
+    return _ => count;
+  },
 
-export function col(x, y, count) {
-  return _ => y;
-}
+  row(x, y, count) {
+    return _ => x;
+  },
 
-export function any() {
-  return function(...args) {
-    return random.apply(null, args);
-  }
-}
+  col(x, y, count) {
+    return _ => y;
+  },
 
-export function pick() {
-  return any.apply(null, arguments);
-}
+  pick() {
+    return (...args) => random(args);
+  },
 
-export function rand() {
-  return function(...args) {
-    return random(
+  rand() {
+    return (...args) => random(
       memo('range', unitify(range)).apply(null, args)
     );
-  }
-}
+  },
 
-export function shape(x, y, count) {
-  return memo('shape', function(type, ...args) {
-    if (type) {
+  shape() {
+    return memo('shape', (type = '', ...args) => {
       type = type.trim();
       if (Shapes[type]) {
         return Shapes[type].apply(null, args);
       }
-    }
-  });
-}
+    });
+  },
 
-export function calc(x, y, count) {
-  return function(value) {
-    return new Function(`return ${ value }`)();
+  calc() {
+    return value => new Function(`return ${ value }`)();
   }
-}
 
-export default {
-  index, row, col, any, pick, rand, shape, calc
 }

@@ -3,21 +3,30 @@ import parse_grid  from './parser/parse-grid';
 import Shapes from './shapes';
 import { memo } from './utils';
 
-const property = {
+export default {
 
   ['@size'](value) {
     var [w, h = w] = parse_value_group(value);
     return `width: ${ w }; height: ${ h };`;
+  },
+  ['size'](value) {
+    return this['@size'](value);
   },
 
   ['@min-size'](value) {
     var [w, h = w] = parse_value_group(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
+  ['min-size'](value) {
+    return this['@min-size'](value);
+  },
 
   ['@max-size'](value) {
     var [w, h = w] = parse_value_group(value);
     return `max-width: ${ w }; max-height: ${ h };`;
+  },
+  ['max-size'](value) {
+    return this['@max-size'](value);
   },
 
   ['@place-absolute'](value) {
@@ -47,9 +56,3 @@ const property = {
   })
 
 }
-
-property['size'] = property['@size'];
-property['min-size'] = property['@min-size'];
-property['max-size'] = property['@max-size'];
-
-export default property;

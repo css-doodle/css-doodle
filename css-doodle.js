@@ -504,6 +504,40 @@ function parse(input) {
   return Tokens;
 }
 
+const units = `
+  % cm fr rem em ex in mm pc pt px
+  vh vw vmax vmin
+  deg grad rad turn
+  ms s h
+`.trim().split(/[\s\n]+/);
+
+const memo_store = {};
+const reg_match_unit = new RegExp(
+  `(${ units.join('|') })$`
+);
+
+function add_unit(fn, unit) {
+  return (...args) => {
+    args = args.map(remove_unit);
+    var result = fn.apply(null, args);
+    if (unit) {
+      result = result.map(n => n + unit);
+    }
+    return result;
+  }
+}
+
+function get_unit(str) {
+  if (!str) return '';
+  var matched = ''.trim.call(str).match(reg_match_unit);
+  return matched ? matched[0] : '';
+}
+
+function remove_unit(str) {
+  var unit = get_unit(str);
+  return unit ? +(str.replace(unit, '')) : str;
+}
+
 function values(obj) {
   if (Array.isArray(obj)) return obj;
   return Object.keys(obj).map(k => obj[k]);
@@ -535,12 +569,11 @@ function only_if(cond, value) {
   return cond ? value : '';
 }
 
-const store = {};
-function memo(prefix, fn) {
-  return function(...args) {
+function  memo(prefix, fn) {
+  return (...args) => {
     var key = prefix + args.join('-');
-    if (store[key]) return store[key];
-    return (store[key] = fn.apply(null, args));
+    if (memo_store[key]) return memo_store[key];
+    return (memo_store[key] = fn.apply(null, args));
   }
 }
 
@@ -566,7 +599,7 @@ function range(start, stop, step) {
 }
 
 function unitify(fn) {
-  return function(...args) {
+  return (...args) => {
     var unit = get_unit(args[0]);
     if (unit) {
       args = args.map(remove_unit);
@@ -574,29 +607,6 @@ function unitify(fn) {
     }
     return fn.apply(null, args);
   }
-}
-
-function add_unit(fn, unit) {
-  return function(...args) {
-    args = args.map(remove_unit);
-    var result = fn.apply(null, args);
-    if (unit) {
-      result = result.map(n => n + unit);
-    }
-    return result;
-  }
-}
-
-function get_unit(str) {
-  if (!str) return '';
-  var unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|grad|rad|turn|ms|s)$/;
-  var matched = ''.trim.call(str).match(unit);
-  return matched ? matched[0] : '';
-}
-
-function remove_unit(str) {
-  var unit = get_unit(str);
-  return unit ? +(str.replace(unit, '')) : str;
 }
 
 const [ min, max, total ] = [ 1, 16, 16 * 16 ];
@@ -659,223 +669,210 @@ function rotate(x, y, deg) {
   ];
 }
 
-function circle() {
-  return 'circle(49%)';
-}
+const shapes =  {
 
-function triangle() {
-  return polygon({ split: 3, start: -90 }, t => [
-    cos(t) * 1.1,
-    sin(t) * 1.1 + .2
-  ]);
-}
+  circle() {
+    return 'circle(49%)';
+  },
 
-function rhombus() {
-  return polygon({ split: 4 });
-}
+  triangle() {
+    return polygon({ split: 3, start: -90 }, t => [
+      cos(t) * 1.1,
+      sin(t) * 1.1 + .2
+    ]);
+  },
 
-function pentagon() {
-  return polygon({ split: 5, start: 54 });
-}
+  rhombus() {
+    return polygon({ split: 4 });
+  },
 
+  pentagon() {
+    return polygon({ split: 5, start: 54 });
+  },
 
-function hexagon() {
-  return polygon({ split: 6, start: 30 });
-}
+  hexgon() {
+    return polygon({ split: 6, start: 30 });
+  },
 
-function heptagon() {
-  return polygon({ split: 7, start: -90 });
-}
+  hexagon() {
+    return polygon({ split: 6, start: 30 });
+  },
 
-function octagon() {
-  return polygon({ split: 8, start: 22.5 });
-}
+  heptagon() {
+    return polygon({ split: 7, start: -90 });
+  },
 
-function star() {
-  return polygon({ split: 5, start: 54, deg: 144 });
-}
+  octagon() {
+    return polygon({ split: 8, start: 22.5 });
+  },
 
-function diamond() {
-  return 'polygon(50% 5%, 80% 50%, 50% 95%, 20% 50%)';
-}
+  star() {
+    return polygon({ split: 5, start: 54, deg: 144 });
+  },
 
-function cross() {
-  return `polygon(
-    5% 35%,  35% 35%, 35% 5%,  65% 5%,
-    65% 35%, 95% 35%, 95% 65%, 65% 65%,
-    65% 95%, 35% 95%, 35% 65%, 5% 65%
-  )`;
-}
+  diamond() {
+    return 'polygon(50% 5%, 80% 50%, 50% 95%, 20% 50%)';
+  },
 
-function clover(k = 3) {
-  k = minmax(k, 3, 5);
-  if (k == 4) k = 2;
-  return polygon({ split: 240 }, t => {
-    var x = cos(k * t) * cos(t);
-    var y = cos(k * t) * sin(t);
-    if (k == 3) x -= .2;
-    if (k == 2) {
-      x /= 1.1;
-      y /= 1.1;
-    }
-    return [x, y];
-  });
-}
+  cross() {
+    return `polygon(
+      5% 35%,  35% 35%, 35% 5%,  65% 5%,
+      65% 35%, 95% 35%, 95% 65%, 65% 65%,
+      65% 95%, 35% 95%, 35% 65%, 5% 65%
+    )`;
+  },
 
-function hypocycloid(k = 3) {
-  k = minmax(k, 3, 6);
-  var m = 1 - k;
-  return polygon({ scale: 1 / k  }, t => {
-    var x = m * cos(t) + cos(m * (t - PI));
-    var y = m * sin(t) + sin(m * (t - PI));
-    if (k == 3) {
-      x = x * 1.1 - .6;
-      y = y * 1.1;
-    }
-    return [x, y];
-  });
-}
+  clover(k = 3) {
+    k = minmax(k, 3, 5);
+    if (k == 4) k = 2;
+    return polygon({ split: 240 }, t => {
+      var x = cos(k * t) * cos(t);
+      var y = cos(k * t) * sin(t);
+      if (k == 3) x -= .2;
+      if (k == 2) {
+        x /= 1.1;
+        y /= 1.1;
+      }
+      return [x, y];
+    });
+  },
 
-function astroid() {
-  return hypocycloid(4);
-}
+  hypocycloid(k = 3) {
+    k = minmax(k, 3, 6);
+    var m = 1 - k;
+    return polygon({ scale: 1 / k  }, t => {
+      var x = m * cos(t) + cos(m * (t - PI));
+      var y = m * sin(t) + sin(m * (t - PI));
+      if (k == 3) {
+        x = x * 1.1 - .6;
+        y = y * 1.1;
+      }
+      return [x, y];
+    });
+  },
 
-function infinity() {
-  return polygon(t => {
-    var a = .7 * sqrt(2) * cos(t);
-    var b = (pow(sin(t), 2) + 1);
-    return [
-      a / b,
-      a * sin(t) / b
-    ]
-  });
-}
+  astroid() {
+    return shapes.hypocycloid(4);
+  },
 
-function heart() {
-  return polygon(t => {
-    var x = .75 * pow(sin(t), 3);
-    var y =
-        cos(1 * t) * (13 / 18)
-      - cos(2 * t) * (5 / 18)
-      - cos(3 * t) / 18
-      - cos(4 * t) / 18;
-    return rotate(
-      x * 1.2,
-      (y + .2) * 1.1,
+  infinity() {
+    return polygon(t => {
+      var a = .7 * sqrt(2) * cos(t);
+      var b = (pow(sin(t), 2) + 1);
+      return [
+        a / b,
+        a * sin(t) / b
+      ]
+    });
+  },
+
+  heart() {
+    return polygon(t => {
+      var x = .75 * pow(sin(t), 3);
+      var y =
+          cos(1 * t) * (13 / 18)
+        - cos(2 * t) * (5 / 18)
+        - cos(3 * t) / 18
+        - cos(4 * t) / 18;
+      return rotate(
+        x * 1.2,
+        (y + .2) * 1.1,
+        180
+      );
+    });
+  },
+
+  bean() {
+    return polygon(t => {
+      var [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
+      return rotate(
+        (a + b) * cos(t) * 1.3 - .45,
+        (a + b) * sin(t) * 1.3 - .45,
+        -90
+      );
+    });
+  },
+
+  bicorn() {
+    return polygon(t => rotate(
+      cos(t),
+      pow(sin(t), 2) / (2 + sin(t)) - .5,
       180
-    );
-  });
-}
+    ));
+  },
 
-function bean() {
-  return polygon(t => {
-    var [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
-    return rotate(
-      (a + b) * cos(t) * 1.3 - .45,
-      (a + b) * sin(t) * 1.3 - .45,
-      -90
-    );
-  });
-}
+  pear() {
+    return polygon(t => [
+      sin(t),
+      (1 + sin(t)) * cos(t) / 1.4
+    ]);
+  },
 
-function bicorn() {
-  return polygon(t => rotate(
-    cos(t),
-    pow(sin(t), 2) / (2 + sin(t)) - .5,
-    180
-  ));
-}
+  fish() {
+    return polygon(t => [
+      cos(t) - pow(sin(t), 2) / sqrt(2),
+      sin(2 * t) / 2
+    ]);
+  },
 
-function pear() {
-  return polygon(t => [
-    sin(t),
-    (1 + sin(t)) * cos(t) / 1.4
-  ]);
-}
+  whale() {
+    return polygon({ split: 240 }, t => {
+      var r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
+      return rotate(
+        cos(t) * r + .75,
+        sin(t) * r * 1.2,
+        180
+      );
+    });
+  },
 
-function fish() {
-  return polygon(t => [
-    cos(t) - pow(sin(t), 2) / sqrt(2),
-    sin(2 * t) / 2
-  ]);
-}
+  bud(n = 3) {
+    n = minmax(n, 3, 10);
+    return polygon({ split: 240 }, t => [
+      ((1 + .2 * cos(n * t)) * cos(t)) * .8,
+      ((1 + .2 * cos(n * t)) * sin(t)) * .8
+    ]);
+  }
 
-function whale() {
-  return polygon({ split: 240 }, t => {
-    var r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
-    return rotate(
-      cos(t) * r + .75,
-      sin(t) * r * 1.2,
-      180
-    );
-  });
-}
-
-function bud(n = 3) {
-  n = minmax(n, 3, 10);
-  return polygon({ split: 240 }, t => [
-    ((1 + .2 * cos(n * t)) * cos(t)) * .8,
-    ((1 + .2 * cos(n * t)) * sin(t)) * .8
-  ]);
-}
-
-var Shapes = {
-  circle, triangle, rhombus, pentagon,
-  hexagon, heptagon, octagon, star,
-  diamond, cross, clover, hypocycloid,
-  astroid, infinity, heart, bean,
-  bicorn, pear, fish, whale, bud
 };
 
-function index(x, y, count) {
-  return _ => count;
-}
+var Func = {
 
-function row(x, y, count) {
-  return _ => x;
-}
+  index(x, y, count) {
+    return _ => count;
+  },
 
-function col(x, y, count) {
-  return _ => y;
-}
+  row(x, y, count) {
+    return _ => x;
+  },
 
-function any() {
-  return function(...args) {
-    return random.apply(null, args);
-  }
-}
+  col(x, y, count) {
+    return _ => y;
+  },
 
-function pick() {
-  return any.apply(null, arguments);
-}
+  pick() {
+    return (...args) => random(args);
+  },
 
-function rand() {
-  return function(...args) {
-    return random(
+  rand() {
+    return (...args) => random(
       memo('range', unitify(range)).apply(null, args)
     );
-  }
-}
+  },
 
-function shape(x, y, count) {
-  return memo('shape', function(type, ...args) {
-    if (type) {
+  shape() {
+    return memo('shape', (type = '', ...args) => {
       type = type.trim();
-      if (Shapes[type]) {
-        return Shapes[type].apply(null, args);
+      if (shapes[type]) {
+        return shapes[type].apply(null, args);
       }
-    }
-  });
-}
+    });
+  },
 
-function calc(x, y, count) {
-  return function(value) {
-    return new Function(`return ${ value }`)();
+  calc() {
+    return value => new Function(`return ${ value }`)();
   }
-}
 
-var Func = {
-  index, row, col, any, pick, rand, shape, calc
 };
 
 const is_seperator = c => /[,，\s]/.test(c);
@@ -930,21 +927,30 @@ function parse$1(input) {
   return result;
 }
 
-const property = {
+var Property = {
 
   ['@size'](value) {
     var [w, h = w] = parse$1(value);
     return `width: ${ w }; height: ${ h };`;
+  },
+  ['size'](value) {
+    return this['@size'](value);
   },
 
   ['@min-size'](value) {
     var [w, h = w] = parse$1(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
+  ['min-size'](value) {
+    return this['@min-size'](value);
+  },
 
   ['@max-size'](value) {
     var [w, h = w] = parse$1(value);
     return `max-width: ${ w }; max-height: ${ h };`;
+  },
+  ['max-size'](value) {
+    return this['@max-size'](value);
   },
 
   ['@place-absolute'](value) {
@@ -968,60 +974,57 @@ const property = {
 
   ['@shape']: memo('shape-property', function(value) {
     var [type, ...args] = parse$1(value);
-    if (!Shapes[type]) return 'x';
-    return `
-      clip-path: ${ Shapes[type].apply(null, args) };
-    `;
+    return shapes[type]
+      ? `clip-path: ${ shapes[type].apply(null, args) };`
+      : '';
   })
-};
 
-property['size'] = property['@size'];
-property['min-size'] = property['@min-size'];
-property['max-size'] = property['@max-size'];
+};
 
 const is$1 = {
   even: (n) => !!(n % 2),
   odd:  (n) => !(n % 2)
 };
 
-function nth(x, y, count) {
-  return n => n == count;
-}
-
-function at(x, y) {
-  return (x1, y1) => (x == x1 && y == y1);
-}
-
-function row$1(x, y, count) {
-  return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
-}
-
-function col$1(x, y, count) {
-  return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
-}
-
-function even(x, y, count) {
-  return _ => is$1.even(count - 1);
-}
-
-function odd(x, y, count) {
-  return _ => is$1.odd(count - 1);
-}
-
-function random$1() {
-  return _ => Math.random() < .5
-}
-
 var Selector = {
-  nth, at, row: row$1, col: col$1, even, odd, random: random$1
+
+  nth(x, y, count) {
+    return n => n == count;
+  },
+
+  at(x, y) {
+    return (x1, y1) => (x == x1 && y == y1);
+  },
+
+  row(x, y) {
+    return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
+  },
+
+  col(x, y) {
+    return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
+  },
+
+  even(x, y, count) {
+    return _ => is$1.even(count - 1);
+  },
+
+  odd(x, y, count) {
+    return _ => is$1.odd(count - 1);
+  },
+
+  random() {
+    return _ => Math.random() < .5
+  }
+
 };
 
-var MathFunc = Object.getOwnPropertyNames(Math).reduce((expose, n) => {
-  expose[n] = function() {
-    return function(...args) {
-      if (typeof Math[n] === 'number') return Math[n];
-      return Math[n].apply(null, args.map(eval));
-    }
+// Expose all Math functions and constants.
+const methods = Object.getOwnPropertyNames(Math);
+
+var MathFunc = methods.reduce((expose, n) => {
+  expose[n] = () => (...args) => {
+    if (typeof Math[n] === 'number') return Math[n];
+    return Math[n].apply(null, args.map(eval));
   };
   return expose;
 }, {});
@@ -1154,8 +1157,8 @@ class Rules {
       }
     }
 
-    if (property[prop]) {
-      var transformed = property[prop](value);
+    if (Property[prop]) {
+      var transformed = Property[prop](value);
       if (prop !== '@grid') rule = transformed;
       else if (is_host_selector(selector)) {
         this.grid = transformed.grid;

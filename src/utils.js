@@ -1,3 +1,37 @@
+const units = `
+  % cm fr rem em ex in mm pc pt px
+  vh vw vmax vmin
+  deg grad rad turn
+  ms s h
+`.trim().split(/[\s\n]+/);
+
+const memo_store = {};
+const reg_match_unit = new RegExp(
+  `(${ units.join('|') })$`
+);
+
+function add_unit(fn, unit) {
+  return (...args) => {
+    args = args.map(remove_unit);
+    var result = fn.apply(null, args);
+    if (unit) {
+      result = result.map(n => n + unit);
+    }
+    return result;
+  }
+}
+
+function get_unit(str) {
+  if (!str) return '';
+  var matched = ''.trim.call(str).match(reg_match_unit);
+  return matched ? matched[0] : '';
+}
+
+function remove_unit(str) {
+  var unit = get_unit(str);
+  return unit ? +(str.replace(unit, '')) : str;
+}
+
 export function values(obj) {
   if (Array.isArray(obj)) return obj;
   return Object.keys(obj).map(k => obj[k]);
@@ -29,12 +63,11 @@ export function only_if(cond, value) {
   return cond ? value : '';
 }
 
-const store = {};
-export function memo(prefix, fn) {
-  return function(...args) {
+export function  memo(prefix, fn) {
+  return (...args) => {
     var key = prefix + args.join('-');
-    if (store[key]) return store[key];
-    return (store[key] = fn.apply(null, args));
+    if (memo_store[key]) return memo_store[key];
+    return (memo_store[key] = fn.apply(null, args));
   }
 }
 
@@ -60,7 +93,7 @@ export function range(start, stop, step) {
 }
 
 export function unitify(fn) {
-  return function(...args) {
+  return (...args) => {
     var unit = get_unit(args[0]);
     if (unit) {
       args = args.map(remove_unit);
@@ -68,32 +101,4 @@ export function unitify(fn) {
     }
     return fn.apply(null, args);
   }
-}
-
-function add_unit(fn, unit) {
-  return function(...args) {
-    args = args.map(remove_unit);
-    var result = fn.apply(null, args);
-    if (unit) {
-      result = result.map(n => n + unit);
-    }
-    return result;
-  }
-}
-
-function get_unit(str) {
-  if (!str) return '';
-  var unit = /(%|cm|fr|rem|em|ex|in|mm|pc|pt|px|vh|vw|vmax|vmin|deg|grad|rad|turn|ms|s)$/;
-  var matched = ''.trim.call(str).match(unit);
-  return matched ? matched[0] : '';
-}
-
-function remove_unit(str) {
-  var unit = get_unit(str);
-  return unit ? +(str.replace(unit, '')) : str;
-}
-
-export default {
-  values, apply_args, join_line, make_array,
-  minmax, prefix, only_if, random, range, unitify
 }
