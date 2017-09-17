@@ -964,7 +964,15 @@ const property = {
       grid: parse_grid(grid),
       size: size ? this['@size'](size) : ''
     };
-  }
+  },
+
+  ['@shape']: memo('shape-property', function(value) {
+    var [type, ...args] = parse$1(value);
+    if (!Shapes[type]) return 'x';
+    return `
+      clip-path: ${ Shapes[type].apply(null, args) };
+    `;
+  })
 };
 
 property['size'] = property['@size'];

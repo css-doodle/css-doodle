@@ -1,5 +1,7 @@
 import parse_value_group from './parser/parse-value-group';
 import parse_grid  from './parser/parse-grid';
+import Shapes from './shapes';
+import { memo } from './utils';
 
 const property = {
 
@@ -35,7 +37,15 @@ const property = {
       grid: parse_grid(grid),
       size: size ? this['@size'](size) : ''
     };
-  }
+  },
+
+  ['@shape']: memo('shape-property', function(value) {
+    var [type, ...args] = parse_value_group(value);
+    return Shapes[type]
+      ? `clip-path: ${ Shapes[type].apply(null, args) };`
+      : '';
+  })
+
 }
 
 property['size'] = property['@size'];
