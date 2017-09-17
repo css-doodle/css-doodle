@@ -508,12 +508,10 @@ const units = `
   % cm fr rem em ex in mm pc pt px
   vh vw vmax vmin
   deg grad rad turn
-  ms s h
-`.trim().split(/[\s\n]+/);
-
-const memo_store = {};
+  ms s
+`;
 const reg_match_unit = new RegExp(
-  `(${ units.join('|') })$`
+  `(${ units.trim().split(/[\s\n]+/).join('|') })$`
 );
 
 function add_unit(fn, unit) {
@@ -569,6 +567,7 @@ function only_if(cond, value) {
   return cond ? value : '';
 }
 
+const memo_store = {};
 function  memo(prefix, fn) {
   return (...args) => {
     var key = prefix + args.join('-');
@@ -1318,12 +1317,12 @@ class Doodle extends HTMLElement {
   }
   connectedCallback() {
     setTimeout(() => {
-      let compiled;
+      var compiled;
       if (!this.innerHTML.trim()) {
         return false;
       }
       try {
-        let parsed = parse(this.innerHTML);
+        var parsed = parse(this.innerHTML);
         this.grid_size = parse_grid(this.getAttribute('grid'));
         compiled = generator(parsed, this.grid_size);
         compiled.grid && (this.grid_size = compiled.grid);

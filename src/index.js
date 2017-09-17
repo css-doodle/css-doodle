@@ -32,12 +32,12 @@ class Doodle extends HTMLElement {
   }
   connectedCallback() {
     setTimeout(() => {
-      let compiled;
+      var compiled;
       if (!this.innerHTML.trim()) {
         return false;
       }
       try {
-        let parsed = parse_css(this.innerHTML);
+        var parsed = parse_css(this.innerHTML);
         this.grid_size = parse_grid(this.getAttribute('grid'));
         compiled = generator(parsed, this.grid_size);
         compiled.grid && (this.grid_size = compiled.grid);
