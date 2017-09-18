@@ -975,7 +975,7 @@ var Property = {
   ['@shape']: memo('shape-property', function(value) {
     var [type, ...args] = parse$1(value);
     return shapes[type]
-      ? `clip-path: ${ shapes[type].apply(null, args) };`
+      ? prefix(`clip-path: ${ shapes[type].apply(null, args) };`)
       : '';
   })
 
