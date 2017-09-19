@@ -976,6 +976,7 @@ var Property = {
     var [type, ...args] = parse$1(value);
     return shapes[type]
       ? prefix(`clip-path: ${ shapes[type].apply(null, args) };`)
+        + 'overflow: hidden;'
       : '';
   })
 
@@ -1141,11 +1142,11 @@ class Rules {
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
       if (coords.count > 1) {
+
         var { count } = coords;
         switch (prop) {
           case 'animation-name': {
             rule = `${ prop }: ${ this.compose_aname(value, count) };`;
-
             break;
           }
           case 'animation': {

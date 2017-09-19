@@ -122,7 +122,6 @@ class Rules {
         switch (prop) {
           case 'animation-name': {
             rule = `${ prop }: ${ this.compose_aname(value, count) };`;
-
             break;
           }
           case 'animation': {

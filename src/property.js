@@ -52,6 +52,7 @@ export default {
     var [type, ...args] = parse_value_group(value);
     return Shapes[type]
       ? prefix(`clip-path: ${ Shapes[type].apply(null, args) };`)
+        + 'overflow: hidden;'
       : '';
   })
 
