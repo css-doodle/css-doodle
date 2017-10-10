@@ -1142,7 +1142,6 @@ class Rules {
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
       if (coords.count > 1) {
-
         var { count } = coords;
         switch (prop) {
           case 'animation-name': {
