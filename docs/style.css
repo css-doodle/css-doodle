@@ -37,14 +37,15 @@ ol, ul {
 blockquote, q {
   quotes:  none;
 }
-blockquote: before, blockquote:after,
+blockquote:before,
+blockquote:after,
 q:before, q:after {
   content: '';
-  content:  none;
+  content: none;
 }
 table {
-  border-collapse:  collapse;
-  border-spacing:  0;
+  border-collapse: collapse;
+  border-spacing: 0;
 }
 
 html, body, h1, ul, li {
@@ -64,12 +65,13 @@ body {
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
+    "Helvetica Neue",
     Helvetica,
     Arial,
     sans-serif;
 }
 
-body.oldie:after {
+.oldie body:after {
   content: 'Sorry! Your browser does not support web components!';
   position: fixed;
   background: #fbfbc8;
@@ -80,6 +82,14 @@ body.oldie:after {
   line-height: 1.4;
   text-align: center;
   z-index: 99;
+}
+
+.oldie css-doodle {
+  visibility: hidden;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
 }
 
 .wrap {
@@ -98,9 +108,11 @@ css-doodle {
   css-doodle[flags] {
     display: block;
     width: 100%;
-    height: 18vh;
-    max-height: 15em;
+    height: 20vh;
+    max-height: 10em;
     overflow: hidden;
+    min-width: 900px;
+    margin: 0 auto;
   }
   css-doodle[docs-bg] {
     position: absolute;
@@ -141,36 +153,47 @@ textarea[code] {
 .code-sample .CodeMirror-cursor {
   display: none;
 }
+.cm-s-3024-day span.cm-tag {
+  color: #E91E63;
+}
 .cm-s-3024-day span.cm-string {
   color: #FF9800;
 }
 .cm-s-3024-day span.cm-def {
-  color: #673AB7;
+  color: #512DA8;
+}
+.cm-s-3024-day span.cm-comment {
+  color: #4CAF50;
+}
+.cm-s-3024-day span.cm-atom,
+.cm-s-3024-day span.cm-number {
+  color: #2196f3;
 }
 
 
 .cover {
-  background-color: rgba(246, 255, 237, 0.5);
-  padding-bottom: 2em;
+  background-color: #150d17;
+  overflow: hidden;
+  position: relative;
 }
   .cover header {
     text-align: center;
     overflow: hidden;
   }
   .cover h1 {
-    margin-top: 1em;
+    margin-top: 2em;
     margin-bottom: .5em;
-    color: rgba(0, 150, 136, 0.5);
+    color: rgba(174, 172, 251, .62);
     font-size: 3em;
     font-weight: normal;
     line-height: 1;
   }
   .cover em {
-    color: #009688;
+    color: rgba(174, 172, 251, 1);
     font-style: normal;
   }
   .cover p {
-    color: rgba(0, 150, 136, 0.5);
+    color: rgba(174, 172, 251, .62);
     font-size: 1.2em;
     padding: 0 2em;
     line-height: 1.4;
@@ -181,19 +204,19 @@ textarea[code] {
   }
     .cover nav a {
       margin: 0 .2em;
-      color: rgba(0, 150, 136, 0.43);
+      color: rgba(174, 172, 251, .62);
       text-decoration: none;
       min-width: 5em;
       display: inline-block;
-      border: 1px solid rgba(0, 150, 136, 0.43);
-      padding: 8px 10px;
-      border-radius: 3px;
+      padding: 10px 15px;
       position: relative;
-      transition: all .2s ease-in-out;
+      transition: all .2s;
+      border-radius: 4px;
+      border: 1px solid currentColor;
     }
       .cover nav a:hover {
-        color: #009688;
-        border-color: #009688;
+        color: rgba(174, 172, 251, .9);
+        background: rgba(174, 172, 251, .05);
       }
 
 
@@ -201,194 +224,87 @@ textarea[code] {
   transition: all .2s ease;
   width: 100%;
   max-width: 900px;
-  margin: 4em auto;
-  background: #fff;
+  margin: 6em auto;
   display: flex;
   align-items: center;
-  box-shadow: 0 0 50px rgb(194, 199, 199);
   height: 420px;
 }
+
   .playground .doodle {
     overflow: hidden;
     position: relative;
+    background: #1c131f;
   }
-    .doodle .nav {
-      cursor: pointer;
-      position: absolute;
-      display: flex;
-      right: 0;
-      bottom: 0;
-      color: #03a9f4;
-      font-size: .9em;
-      z-index: 2;
-      opacity: .6;
-    }
-    .doodle .nav:hover {
-      opacity: 1;
-    }
-    .doodle .nav li {
-      margin: 0;
-      font-size: .9em;
-      padding: 5px 8px;
-      background: #E5F5FC;
-      display: none;
-    }
-    .doodle [data-current="leaves"] [data-name="star"],
-    .doodle [data-current="star"] [data-name="leaves"] {
-      display: block;
-    }
   .playground .doodle,
   .playground .source {
     display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    background: #fff;
     transition: all .2s ease;
     flex: 1;
     height: 100%;
     position: relative;
+    overflow: hidden;
     -webkit-tap-highlight-color: transparent;
   }
   .playground css-doodle {
-    width: 350px;
-    height: 350px;
     cursor: pointer;
   }
   .playground .source {
-    background: #fafafa;
-    box-shadow: inset 13px 0 20px -14px rgba(125, 125, 125, .2);
-    padding: .5em 1em;
     max-width: 50%;
   }
+    .playground .source:empty {
+      background: rgba(231, 231, 251, .06);
+    }
+      .playground .source:empty:after {
+        content: none;
+      }
     .playground .source .CodeMirror {
       font-size: 120%;
       line-height: 1.2;
+      padding: .5em 1em;
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      background: transparent;
+      background: #e7e7fb;
     }
 
 
 @media (max-width: 55.625em) {
-  .cover {
-    padding-bottom: 4em;
-  }
   .playground  {
     position: relative;
     display: block;
-    width: 500px;
+    width: 80vw;
+    height: 80vw;
+    max-width: 400px;
+    max-height: 400px;
+    margin: 3em auto;
     box-shadow: none;
   }
   .playground {
     background: transparent;
   }
   .playground .source {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 2;
-    background: rgba(255, 255, 255, .8);
-    max-width: 100%;
-    transition-duration: 250ms;
+    display: none;
   }
   .playground .doodle {
-    transition-duration: 300ms;
-  }
-  .playground .source,
-  .playground .doodle {
-    box-shadow: 0 0 50px rgb(194, 199, 199);
-    will-change: transform;
-  }
-
-  .playground .source:not([front]):after,
-  .playground .doodle:not([front]):after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, .5);
-    z-index: 2;
-    cursor: pointer;
-  }
-
-  .playground .source:not([front]) .CodeMirror-scroll {
-    overflow: hidden !important;
-    -webkit-overflow-scrolling: none;
-  }
-
-  .playground .source:not([front]) .CodeMirror-vscrollbar {
-    display: none !important;
-  }
-
-  .playground .source:not([front]),
-  .playground .doodle:not([front]) {
-    transform: translate(-15%) scale(.8) rotateZ(-5deg);
-  }
-
-  .playground [front] {
-    transform: translate(7%, 20%);
-    z-index: 4;
+    background: none;
   }
 }
 
-@media (max-width: 37.5em) {
-  .playground {
-    width: 400px;
-    height: 400px;
-  }
-}
 
 @media (max-width: 30.125em) {
   .cover h1 {
-    font-size: 2em;
+    font-size: 2.2em;
   }
-  .playground {
-    width: 320px;
-    height: 320px;
-  }
-  .playground .source .CodeMirror {
-    font-size: .9em;
-    padding: .2em;
-  }
-  .playground .doodle css-doodle {
-    width: 280px;
-    height: 280px;
-  }
-  .playground .source:not([front]),
-  .playground .doodle:not([front]) {
-    transform: translate(-10%, -5%) scale(.8) rotateZ(-5deg);
-  }
-  .playground [front] {
-    transform: translate(0%, 20%);
+  css-doodle[flags] {
+    transform: translateX(-40%);
   }
 }
-
-@media (max-width: 22em) {
-  .playground {
-    width: 280px;
-    height: 280px;
-  }
-  .playground .doodle css-doodle {
-    width: 220px;
-    height: 220px;
-  }
-  .playground .source:not([front]),
-  .playground .doodle:not([front]) {
-    transform: translate(-10%, -5%) scale(.8) rotateZ(-5deg);
-  }
-  .playground [front] {
-    transform: translate(-4%, 20%);
-  }
-}
-
 
 .docs {
-  padding: 4em 0 0;
+  padding: 5em 0 0;
   position: relative;
   overflow: hidden;
 }
@@ -399,7 +315,7 @@ textarea[code] {
   .docs p  {
     font-size: 120%;
     line-height: 1.6;
-    color: #7b8078;
+    color: #6c6079;
     margin-bottom: 1em;
   }
     .docs p code {
@@ -453,15 +369,17 @@ textarea[code] {
       border-radius: 2px;
     }
   .docs em {
-    font-weight: normal;
-    color: #444;
+    font-weight: 500;
+    color: #333;
   }
   .docs a:link,
   .docs a:visited {
-    color: rgba(46, 169, 156, 0.9);
+    text-decoration: none;
+    color: #3f51b5;
+    border-bottom: 2px solid;
   }
   .docs a:hover {
-    background: #f6ffed;
+    background: rgba(63, 81, 181, .1);
   }
   .docs h2 {
     font-size: 2em;
@@ -469,7 +387,26 @@ textarea[code] {
     margin-bottom: 1.5em;
     position: relative;
   }
-    .docs h2 a[name] {
+    .docs h2 a[href^="#"],
+    .docs h3 a[href^="#"],
+    .docs h4 a[href^="#"] {
+      position: absolute;
+      left: -1em;
+      width: 1em;
+      padding: 1px .2em;
+      border-bottom: none;
+      opacity: 0;
+    }
+
+    .docs h2:hover a[href^="#"] ,
+    .docs h3:hover a[href^="#"],
+    .docs h4:hover a[href^="#"] {
+      opacity: 1;
+      background: none;
+    }
+
+    .docs h2 a[name],
+    .docs h4 a[name] {
       position: absolute;
       top: -1.9em;
     }
@@ -483,14 +420,17 @@ textarea[code] {
       top: -2em;
     }
   .docs h4 {
+    position: relative;
     font-size: 1.2em;
     margin-bottom: 1em;
   }
   .docs .nav {
-    list-style: disc;
+    list-style: square;
+    color: #3f51b5;
     padding: 1em 1.5em 0;
+    margin-bottom: 4em;
   }
-  .nav li {
+  .nav > li {
     line-height: 1.4;
     font-size: 1.2em;
   }
@@ -501,24 +441,60 @@ textarea[code] {
     text-decoration: none;
     font-size: 1em;
   }
+  .nav li a:link, .nav li a:visited {
+    border-bottom: none;
+  }
   .nav li code {
     border: 1px solid #eee;
     padding: 2px 6px;
     border-radius: 2px;
     display: inline-block;
   }
-  .nav ul {
+  .nav > ul {
     padding: .5em 1.5em;
     list-style: disc;
   }
-  .nav ul li {
+  .nav > ul li {
     margin-bottom: .5em;
+  }
+  .nav li ul {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: .5em;
+    list-style: none;
+    padding: 1em 0;
+    margin: 0;
+  }
+  @media (max-width: 35em) {
+    .nav li ul {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  @media (max-width: 28.5em) {
+    .nav li ul {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .nav li ul li {
+    font-size: .8em;
+    display: inline-block;
+  }
+  .nav li ul a {
+    display: block;
+    padding: .5em;
+    background: rgba(240, 240, 240, .6);
+  }
+  .nav li ul a:link, .nav li ul:visited {
+    color: rgba(63, 81, 181, .85);
+  }
+  .usage .example {
+    margin-bottom: 4em;
   }
   .docs .sep {
     margin: 4em 0;
+    width: 40%;
     height: 1px;
-    width: 37%;
-    background: rgba(46, 169, 156, 0.5);
+    background: rgba(119, 165, 222, .4);
   }
   .docs h5 {
     color: #000;
@@ -528,7 +504,6 @@ textarea[code] {
   .shapes-list {
     margin-top: 2em;
   }
-
   .shapes-list p {
     margin-bottom: 0;
   }
@@ -559,7 +534,6 @@ textarea[code] {
     font-size: .6em;
   }
   .shapes-list css-doodle {
-    background: rebeccapurple;
     width: 3em;
     height: 3em;
     margin: .5em;
@@ -579,13 +553,13 @@ textarea[code] {
     left: 50%;
     z-index: 3;
     max-width: 90%;
-    transform: translate3d(-50%, -50%, 1000px);
+    transform: translate3d(-50%, -50%, 0);
     line-height: 1.4;
     font-size: 1.2em;
     overflow: hidden;
   }
+    .source:after,
     .code-sample:after  {
-      --bg: rgba(255, 255, 255, .9);
       content: '';
       position: absolute;
       width: 50px;
@@ -602,6 +576,15 @@ textarea[code] {
         0 -17px 0 0 rgba(255, 255, 255, .2),
         0 -22px 0 0 rgba(255, 255, 255, .2);
     }
+    .source:after {
+      box-shadow:
+        0 -5px 0 0 rgba(231, 231, 252, .8),
+        0 -8px 0 0 rgba(231, 231, 252, .6),
+        0 -12px 0 0 rgba(231, 231, 252, .4),
+        0 -17px 0 0 rgba(231, 231, 252, .2),
+        0 -22px 0 0 rgba(231, 231, 252, .2);
+    }
+    .source .CodeMirror,
     .example .code-sample .CodeMirror {
       background: rgba(255, 255, 255, .9);
       border-radius: 0;
@@ -618,18 +601,33 @@ textarea[code] {
     }
 
 footer {
-  background: rgba(246, 255, 237, 0.5);
+  background-color: #150d17;
   overflow: hidden;
+  padding: 5em 0 9em;
+  position: relative;
 }
-  .about {
-    color: #aaa;
-    line-height: 1.4;
-    background: rgba(246, 255, 237, 0.5);
-    margin-top: 6em;
+  footer > css-doodle {
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
+  .about {
+    color: #e0ddf3;
+    line-height: 1.4;
+    position: relative;
+    z-index: 1;
+  }
+    .about p {
+      display: inline-block;
+      font-size: 1.2em;
+    }
     .about a {
-      color: #8ac1bc;
+      color: #aeacdc;
+      text-decoration: none;
+      border-bottom: 2px solid currentColor;
     }
       .about a:hover {
-        background: #f6ffed;
+        background: rgba(174, 172, 220, .2);
       }
