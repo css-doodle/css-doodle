@@ -1387,7 +1387,8 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
-    if (!styles) return false;
+    if (!styles) styles = this.innerHTML;
+    this.innerHTML = styles;
 
     if (!this.grid_size) {
       this.grid_size = parse_grid(this.getAttribute('grid'));
@@ -1426,11 +1427,6 @@ class Doodle extends HTMLElement {
     this.set_style('.style-cells',
       compiled.styles.cells
     );
-    this.innerHTML = styles;
-  }
-
-  refresh() {
-    this.update(this.innerHTML);
   }
 
   get grid() {
