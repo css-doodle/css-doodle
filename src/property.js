@@ -5,12 +5,19 @@ import { memo, prefix } from './utils';
 
 export default {
 
-  ['@size'](value) {
+  ['@size'](value, { is_special_selector }) {
     var [w, h = w] = parse_value_group(value);
-    return `width: ${ w }; height: ${ h };`;
+    return `
+      width: ${ w };
+      height: ${ h };
+      ${ is_special_selector ? `
+        --internal-cell-width: ${ w };
+        --internal-cell-height: ${ h };
+      ` : ''}
+    `;
   },
-  ['size'](value) {
-    return this['@size'](value);
+  ['size'](value, options) {
+    return this['@size'](value, options);
   },
 
   ['@min-size'](value) {
@@ -29,22 +36,29 @@ export default {
     return this['@max-size'](value);
   },
 
-  ['@place-absolute'](value) {
-    var parsed = parse_value_group(value);
-    if (parsed[0] !== 'center') return value;
+  ['@place-cell'](value) {
+    var [left, top = left] = parse_value_group(value);
+    const map = ({ 'center': '50%', '0': '0%' });
+    const bound = '-100vmax';
+    left = map[left] || left;
+    top = map[top] || top;
     return `
       position: absolute;
-      top: 0; bottom: 0;
-      left: 0; right: 0;
+      right: ${ bound }; bottom: ${ bound };
+      left: calc(${ bound } - 100% + ${ left } * 2);
+      top: calc(${ bound } - 100% + ${ top } * 2);
+      width: var(--internal-cell-width, 25%);
+      height: var(--internal-cell-height, 25%);
+      grid-area: unset !important;
       margin: auto !important;
     `;
   },
 
-  ['@grid'](value) {
-    var [ grid, size ] = value.split('/').map(s => s.trim());
+  ['@grid'](value, options) {
+    var [grid, size] = value.split('/').map(s => s.trim());
     return {
       grid: parse_grid(grid),
-      size: size ? this['@size'](size) : ''
+      size: size ? this['@size'](size, options) : ''
     };
   },
 

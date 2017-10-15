@@ -115,6 +115,12 @@ class Rules {
       rule += ';overflow: hidden;';
     }
 
+    if (prop == 'width' || prop == 'height') {
+      if (!is_special_selector(selector)) {
+        rule += `--internal-cell-${ prop }: ${ value };`;
+      }
+    }
+
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
       if (coords.count > 1) {
@@ -134,11 +140,25 @@ class Rules {
     }
 
     if (Property[prop]) {
-      var transformed = Property[prop](value);
-      if (prop !== '@grid') rule = transformed;
-      else if (is_host_selector(selector)) {
-        this.grid = transformed.grid;
-        rule = transformed.size || '';
+      var transformed = Property[prop](value, {
+        is_special_selector: is_special_selector(selector)
+      });
+      switch (prop) {
+        case '@grid': {
+          if (is_host_selector(selector)) {
+            this.grid = transformed.grid;
+            rule = transformed.size || '';
+          }
+          break;
+        }
+        case '@place-cell': {
+          if (!is_host_selector(selector)) {
+            rule = transformed;
+          }
+        }
+        default: {
+          rule = transformed;
+        }
       }
     }
 
