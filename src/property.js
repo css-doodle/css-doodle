@@ -10,10 +10,10 @@ export default {
     return `
       width: ${ w };
       height: ${ h };
-      ${ is_special_selector ? `
+      ${ is_special_selector ? '' : `
         --internal-cell-width: ${ w };
         --internal-cell-height: ${ h };
-      ` : ''}
+      `}
     `;
   },
   ['size'](value, options) {
