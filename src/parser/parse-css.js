@@ -153,7 +153,7 @@ function read_word(it, reset) {
 }
 
 function read_line(it, reset) {
-  return read_until(c => is.line_break(c))(it, reset);
+  return read_until(c => is.line_break(c) || c == '{')(it, reset);
 }
 
 function read_step(it) {
