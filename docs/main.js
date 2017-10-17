@@ -1,13 +1,5 @@
 (function() {
 
-  const nameLinks = document.querySelectorAll('a[name]');
-  [].forEach.call(nameLinks, link => {
-    let a = document.createElement('a');
-    a.innerHTML = '#';
-    a.href = '#' + link.name;
-    link.parentNode.insertBefore(a, link);
-  });
-
   function removeSpaces(input) {
     return input.replace(/[\s\n\t]/g, '');
   }
@@ -21,7 +13,15 @@
     return result.join('\n');
   }
 
-  let examples = document.querySelectorAll('.example');
+  const nameLinks = document.querySelectorAll('a[name]');
+  [].forEach.call(nameLinks, link => {
+    let a = document.createElement('a');
+    a.innerHTML = '#';
+    a.href = '#' + link.name;
+    link.parentNode.insertBefore(a, link);
+  });
+
+  const examples = document.querySelectorAll('.example');
   [].forEach.call(examples, example => {
     let textarea = example.querySelector('textarea');
     if (textarea) {
@@ -29,7 +29,7 @@
     }
   });
 
-  let codeBlocks = document.querySelectorAll('textarea[code]');
+  const codeBlocks = document.querySelectorAll('textarea[code]');
   [].forEach.call(codeBlocks, block => {
     let content = indent(block.value).trim();
     let sample = document.createElement('div');
@@ -64,25 +64,25 @@
       );
     `),
     lines: indent(`
-			:doodle {
-				@grid: 7 / 100%;
-			}
+      :doodle {
+        @grid: 7 / 100%;
+      }
 
-			@place-cell: center;
-			@size: calc(@index() * 1.55%);
+      @place-cell: center;
+      @size: calc(@index() * 1.55%);
 
-			transition: .2s ease;
-			transform: rotate(calc(@index() * 3deg));
+      transition: .2s ease;
+      transform: rotate(calc(@index() * 3deg));
 
-			border-radius: 30%;
-			border: 1px solid hsla(
-				calc(120 + 3 * @index()), 70%, 68%,
-				@rand(.8)
-			);
+      border-radius: 30%;
+      border: 1px solid hsla(
+        calc(120 + 3 * @index()), 70%, 68%,
+        @rand(.8)
+      );
     `)
   }
 
- 	let config = {
+  const config = {
     value: doodles[Math.random() < .5 ? 'lines' : 'leaves'],
     mode: 'css',
     insertSoftTab: true,
@@ -105,9 +105,9 @@
   container.appendChild(doodle);
   container.addEventListener('click', function(e) {
     e.preventDefault();
-		if (e.target.matches('css-doodle')) {
-			doodle.update();
-		}
+    if (e.target.matches('css-doodle')) {
+      doodle.update();
+    }
   });
 
   let editor = CodeMirror(source, config);
