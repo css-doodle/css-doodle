@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?98528092b5209755f1dc7ba86211fbf4">
+  <link rel="stylesheet" href="style.css?6f2dfbc5ea42d0d1d38c8595dd3690a5">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
   <script src="lib/css-doodle.min.js?023966ce57ab4c30a6b65cc394f6a55c"></script>
 </head>
@@ -65,7 +65,7 @@
         You can use it on latest <em>Chrome</em> and <em>Safari</em> right now without polyfills.
       </p>
       <p>
-        The component will generate a grid of divs by the rules(almost plain CSS) inside it.
+        The component will generate a grid of divs by the rules (plain CSS) inside it.
         You can easily manipulate those cells using CSS to come up with a graphic pattern or an animated graph.
         The limit is the limit of CSS itself.
       </p>
@@ -166,8 +166,11 @@
       <article class="wrap">
         <h3><a name="grid"></a>Grid</h3>
 
-        <p>The size of the grid is defined by the <em>"grid"</em> attribute on the element, range from <em>1</em> to <em>16</em>. If no size or 0 is given,
-        the size is set to be 1x1.
+        <p>
+          The number of rows and columns in the grid is defined by the <em>"grid"</em> attribute on the element,
+          ranged from <em>1</em> to <em>16</em>. It's default to be <em>1x1</em> when no value or 0 is given,
+        </p>
+
         <p class="has-preview">
           <textarea code>
             <css-doodle grid="5">
@@ -185,7 +188,7 @@
         </p>
 
         <p>
-           The following formats of grid size are recognizable:
+           The following formats of <em>"grid"</em> value are recognizable:
         </p>
         <div class="list-items">
           <ul>
@@ -209,7 +212,7 @@
           <p>
             The <code>:doodle</code> or <code>:host</code>
             is a special selector indicates to the component element itself.
-            The styles can be over-written by your normal css files outside.
+            Its styles will be over-written by your normal css files outside.
             <span class="tip">(try to hover on the doodle)</span>
           </p>
           <p class="has-preview">
@@ -492,7 +495,7 @@
 
         <section>
           <h4><a name="property-@grid"></a>@grid</h4>
-          <p>Another way to set grid size by using the <code>@grid</code> property:
+          <p>Another way to set the <em>"grid"</em> attribute but has higher priority.</p>
           <p class="has-preview">
             <textarea code>
               <css-doodle>
@@ -528,7 +531,7 @@
             </css-doodle>
           </p>
 
-          <p>The row or column is limitted up to <em>256</em> only when the grid is 1-demenstional: </p>
+          <p>The row or column is limitted up to <em>256</em> only when the grid is 1-dimensional: </p>
           <p class="has-preview">
             <textarea code>
               <css-doodle>
@@ -664,12 +667,12 @@
           <css-doodle>
             :doodle {
               @grid: 8x8 / 100vmax;
-              background: #2c1752;
+              background: #271929;
             }
 
             clip-path: @shape(bud, 5);
             background: hsla(
-              calc(280 - 2 * @index()), 70%, 70%, @rand(.8)
+              calc(1.5 * @index()), 70%, 70%, @rand(.8)
             );
 
             transform:
@@ -836,26 +839,32 @@
                   @abs(@row() - 3)
                 + @abs(@col() - 3) - 5) / 5
               );
-              transform: scale(var(--num));
-              opacity: var(--num);
+
+              background: rgba(
+                96, 86, 158, calc(var(--num) / 5)
+              );
             </textarea>
             <css-doodle grid="5">
               :doodle { @size: 7em; }
               --num: @abs(@abs(@row() - 3) + @abs(@col() - 3) - 5);
+              background: rgba(
+                96, 86, 158, calc(var(--num) / 5)
+              );
+              will-change: transform;
               transform: rotate(15deg) scale(calc(var(--num) / 5));
-              opacity: calc(var(--num) / 5);
-              background: #60569e;
             </css-doodle>
           </p>
 
           <p class="has-preview">
             <textarea code>
               :doodle { @grid: 60x1 / 7em 15em; }
-
               @size: 75.8% 1px;
               justify-self: center;
-              background: #60569e;
-              opacity: calc(1 - @index() / 60);
+
+              background: rgba(
+                96, 86, 158, calc(1 - @index() / 60)
+              );
+
               transform:
                 rotate(15deg)
                 translateX(
@@ -868,9 +877,10 @@
               }
               @size: 75.8% 1px;
               justify-self: center;
-              background: #60569e;
-              opacity: calc(1 - @index() / 60);
-              position: relative;
+              background: rgba(
+                96, 86, 158, calc(1 - @index() / 60)
+              );
+              will-change: transform;
               transform:
                 rotate(-15deg)
                 translateX(
@@ -945,7 +955,7 @@
 
     <css-doodle footer-bg>
       :doodle {
-        @grid: 1x20 / 100vmax;
+        @grid: 1x30 / 100vmax;
       }
       @place-cell: center;
       border: 1px solid hsla(
@@ -959,7 +969,7 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?7595ab706b82d5f8256a94d750785a40"></script>
+  <script src="main.js?4eab1df9d258d138224f7b1ae89a3940"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
