@@ -1,4 +1,5 @@
 import Shapes from './shapes';
+import calculator from './calculator';
 import { memo, random, range, unitify } from './utils';
 
 export default {
@@ -35,7 +36,7 @@ export default {
   },
 
   calc() {
-    return value => new Function(`return ${ value }`)();
+    return value => calculator(value);
   }
 
 }
