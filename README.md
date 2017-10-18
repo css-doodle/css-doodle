@@ -2,13 +2,7 @@
 
 A web component for drawing patterns with css.
 
-<a href="https://codepen.io/collection/XyVkpQ/">
-  <img src="screenshot/codepen.png" />
-</a>
+<img src="screenshot/doodle.png" width="800px" />
 
-
-## Usage
-
-For more info please visit:
-
+## Documents
 [https://yuanchuan.github.io/css-doodle/](https://yuanchuan.github.io/css-doodle/)
