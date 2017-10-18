@@ -45,7 +45,11 @@ function infix_to_postfix(input) {
     expr.push(tc);
   }
 
-  return [...expr, ...op_stack.reverse()];
+  while (op_stack.length) {
+    expr.push(op_stack.pop());
+  }
+
+  return expr;
 }
 
 function compute(op, a, b) {
