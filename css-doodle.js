@@ -5,14 +5,14 @@
 }(this, (function () { 'use strict';
 
 function iterator(input) {
-  var index = 0, col = 1, line = 1;
+  let index = 0, col = 1, line = 1;
   return {
     curr:  (n = 0) => input[index + n],
     end:   ()  => input.length <= index,
     info:  ()  => ({ index, col, line }),
     index: (n) => (n === undefined ? index : index = n),
     next:  ()  => {
-      var next = input[index++];
+      let next = input[index++];
       if (next == '\n') line++, col = 0;
       else col++;
       return next;
@@ -111,7 +111,7 @@ const is = {
     return bracket_pair.hasOwnProperty(c);
   },
   close_bracket_of(c) {
-    var pair = bracket_pair[c];
+    let pair = bracket_pair[c];
     return p => p == pair;
   },
   number(n) {
@@ -134,8 +134,8 @@ function get_text_value(input) {
 }
 
 function skip_block(it) {
-  var [skipped, c] = [it.curr(), it.curr()];
-  var is_close_bracket = is.close_bracket_of(c);
+  let [skipped, c] = [it.curr(), it.curr()];
+  let is_close_bracket = is.close_bracket_of(c);
   it.next();
   while (!it.end()) {
     if (is_close_bracket(c = it.curr())) {
@@ -154,10 +154,10 @@ function skip_block(it) {
 
 function read_until(fn) {
   return function(it, reset) {
-    var index = it.index();
-    var word = '';
+    let index = it.index();
+    let word = '';
     while (!it.end()) {
-      var c = it.next();
+      let c = it.next();
       if (fn(c)) break;
       else word += c;
     }
@@ -177,7 +177,7 @@ function read_line(it, reset) {
 }
 
 function read_step(it) {
-  var c, step = Tokens.step();
+  let c, step = Tokens.step();
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     if (is.white_space(c)) {
@@ -198,7 +198,7 @@ function read_step(it) {
 
 function read_steps(it) {
   const steps = [];
-  var c;
+  let c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     else if (is.white_space(c)) {
@@ -214,7 +214,7 @@ function read_steps(it) {
 }
 
 function read_keyframes(it) {
-  var keyframes = Tokens.keyframes(), c;
+  let keyframes = Tokens.keyframes(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     else if (!keyframes.name.length) {
@@ -237,8 +237,8 @@ function read_keyframes(it) {
 }
 
 function read_comments(it, flag = {}) {
-  var comment = Tokens.comment();
-  var c = it.curr();
+  let comment = Tokens.comment();
+  let c = it.curr();
   if (c != '#') it.next();
   it.next();
   while (!it.end()) {
@@ -258,7 +258,7 @@ function read_comments(it, flag = {}) {
 }
 
 function read_property(it) {
-  var prop = '', c;
+  let prop = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ':') break;
     else if (!/[a-zA-Z\-@]/.test(c)) {
@@ -271,7 +271,7 @@ function read_property(it) {
 }
 
 function read_quote_block(it, quote) {
-  var block = '', c;
+  let block = '', c;
   it.next();
   while (!it.end()) {
     if ((c = it.curr()) == quote) {
@@ -285,7 +285,7 @@ function read_quote_block(it, quote) {
 }
 
 function read_arguments(it) {
-  var args = [], group = [], arg = '', c;
+  let args = [], group = [], arg = '', c;
   while (!it.end()) {
     if (is.open_bracket(c = it.curr())) {
       arg += skip_block(it);
@@ -331,7 +331,7 @@ function read_arguments(it) {
 }
 
 function read_func(it) {
-  var func = Tokens.func(), name = '', c;
+  let func = Tokens.func(), name = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ')') break;
     if (c == '(') {
@@ -347,7 +347,7 @@ function read_func(it) {
 }
 
 function read_value(it) {
-  var text = Tokens.text(), c;
+  let text = Tokens.text(), c;
   const value = [];
   while (!it.end()) {
     if ((c = it.curr()) == '\n') {
@@ -383,7 +383,7 @@ function read_value(it) {
 }
 
 function read_selector(it) {
-  var selector = '', c;
+  let selector = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == '{') break;
     else if (!is.white_space(c)) {
@@ -395,7 +395,7 @@ function read_selector(it) {
 }
 
 function read_cond_selector(it) {
-  var selector = { name: '', arguments: [] }, c;
+  let selector = { name: '', arguments: [] }, c;
   while (!it.end()) {
     if ((c = it.curr()) == '(') {
       it.next();
@@ -409,7 +409,7 @@ function read_cond_selector(it) {
 }
 
 function read_psuedo(it) {
-  var psuedo = Tokens.psuedo(), c;
+  let psuedo = Tokens.psuedo(), c;
   while (!it.end()) {
     if ((c = it.curr())== '}') break;
     if (is.white_space(c)) {
@@ -429,7 +429,7 @@ function read_psuedo(it) {
 }
 
 function read_rule(it) {
-  var rule = Tokens.rule(), c;
+  let rule = Tokens.rule(), c;
   while (!it.end()) {
     if ((c = it.curr()) == ';') break;
     else if (!rule.property.length) {
@@ -445,21 +445,21 @@ function read_rule(it) {
 }
 
 function read_cond(it) {
-  var cond = Tokens.cond(), c;
+  let cond = Tokens.cond(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     else if (!cond.name.length) {
       Object.assign(cond, read_cond_selector(it));
     }
     else if (c == ':') {
-      var psuedo = read_psuedo(it);
+      let psuedo = read_psuedo(it);
       if (psuedo.selector) cond.styles.push(psuedo);
     }
     else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
     }
     else if (!is.white_space(c)) {
-      var rule = read_rule(it);
+      let rule = read_rule(it);
       if (rule.property) cond.styles.push(rule);
       if (it.curr() == '}') break;
     }
@@ -472,7 +472,7 @@ function parse(input) {
   const it = iterator(input);
   const Tokens = [];
   while (!it.end()) {
-    var c = it.curr();
+    let c = it.curr();
     if (is.white_space(c)) {
       it.next();
       continue;
@@ -484,19 +484,19 @@ function parse(input) {
       Tokens.push(read_comments(it, { inline: true }));
     }
     else if (c == ':') {
-      var psuedo = read_psuedo(it);
+      let psuedo = read_psuedo(it);
       if (psuedo.selector) Tokens.push(psuedo);
     }
     else if (c == '@' && read_word(it, true) === '@keyframes') {
-      var keyframes = read_keyframes(it);
+      let keyframes = read_keyframes(it);
       Tokens.push(keyframes);
     }
     else if (c == '@' && !read_line(it, true).includes(':')) {
-      var cond = read_cond(it);
+      let cond = read_cond(it);
       if (cond.name.length) Tokens.push(cond);
     }
     else if (!is.white_space(c)) {
-      var rule = read_rule(it);
+      let rule = read_rule(it);
       if (rule.property) Tokens.push(rule);
     }
     it.next();
@@ -612,7 +612,7 @@ function unitify(fn) {
 const [ min, max, total ] = [ 1, 16, 16 * 16 ];
 
 function parse_grid(size) {
-  var [x, y] = (size + '')
+  let [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
     .split('x')
@@ -957,7 +957,7 @@ var Func = {
 const is_seperator = c => /[,，\s]/.test(c);
 
 function skip_pair(it) {
-  var text = it.curr(), c;
+  let text = it.curr(), c;
   it.next();
   while (!it.end()) {
     text += (c = it.curr());
@@ -980,10 +980,10 @@ function skip_seperator(it) {
 function parse$1(input) {
   const it = iterator(input);
   const result = [];
-  var group = '';
+  let group = '';
 
   while (!it.end()) {
-    var c = it.curr();
+    let c = it.curr();
     if (c == '(') {
       group += skip_pair(it);
     }
