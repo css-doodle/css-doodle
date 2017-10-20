@@ -6,7 +6,7 @@ import { memo, prefix } from './utils';
 export default {
 
   ['@size'](value, { is_special_selector }) {
-    var [w, h = w] = parse_value_group(value);
+    let [w, h = w] = parse_value_group(value);
     return `
       width: ${ w };
       height: ${ h };
@@ -21,7 +21,7 @@ export default {
   },
 
   ['@min-size'](value) {
-    var [w, h = w] = parse_value_group(value);
+    let [w, h = w] = parse_value_group(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
   ['min-size'](value) {
@@ -29,7 +29,7 @@ export default {
   },
 
   ['@max-size'](value) {
-    var [w, h = w] = parse_value_group(value);
+    let [w, h = w] = parse_value_group(value);
     return `max-width: ${ w }; max-height: ${ h };`;
   },
   ['max-size'](value) {
@@ -37,7 +37,7 @@ export default {
   },
 
   ['@place-cell'](value) {
-    var [left, top = left] = parse_value_group(value);
+    let [left, top = left] = parse_value_group(value);
     const map = ({ 'center': '50%', '0': '0%' });
     const bound = '-100vmax';
     left = map[left] || left;
@@ -55,7 +55,7 @@ export default {
   },
 
   ['@grid'](value, options) {
-    var [grid, size] = value.split('/').map(s => s.trim());
+    let [grid, size] = value.split('/').map(s => s.trim());
     return {
       grid: parse_grid(grid),
       size: size ? this['@size'](size, options) : ''
@@ -63,7 +63,7 @@ export default {
   },
 
   ['@shape']: memo('shape-property', function(value) {
-    var [type, ...args] = parse_value_group(value);
+    let [type, ...args] = parse_value_group(value);
     return Shapes[type]
       ? prefix(`clip-path: ${ Shapes[type].apply(null, args) };`)
         + 'overflow: hidden;'

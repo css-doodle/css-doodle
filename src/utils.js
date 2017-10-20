@@ -12,7 +12,7 @@ const reg_match_unit = new RegExp(
 function add_unit(fn, unit) {
   return (...args) => {
     args = args.map(remove_unit);
-    var result = fn.apply(null, args);
+    let result = fn.apply(null, args);
     if (unit) {
       result = result.map(n => n + unit);
     }
@@ -22,12 +22,12 @@ function add_unit(fn, unit) {
 
 function get_unit(str) {
   if (!str) return '';
-  var matched = ''.trim.call(str).match(reg_match_unit);
+  let matched = ''.trim.call(str).match(reg_match_unit);
   return matched ? matched[0] : '';
 }
 
 function remove_unit(str) {
-  var unit = get_unit(str);
+  let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
 
@@ -65,24 +65,24 @@ export function only_if(cond, value) {
 const memo_store = {};
 export function  memo(prefix, fn) {
   return (...args) => {
-    var key = prefix + args.join('-');
+    let key = prefix + args.join('-');
     if (memo_store[key]) return memo_store[key];
     return (memo_store[key] = fn.apply(null, args));
   }
 }
 
 export function random(...items) {
-  var args = items.reduce((ret, n) => ret.concat(n), []);
+  let args = items.reduce((ret, n) => ret.concat(n), []);
   return args[Math.floor(Math.random() * args.length)];
 }
 
 export function range(start, stop, step) {
-  var count = 0;
-  var initial = n => (n > 0 && n < 1) ? .1 : 1;
-  var length = arguments.length;
+  let count = 0;
+  let initial = n => (n > 0 && n < 1) ? .1 : 1;
+  let length = arguments.length;
   if (length == 1) [start, stop] = [initial(start), start];
   if (length < 3) step = initial(start);
-  var range = [];
+  let range = [];
   while ((step > 0 && start < stop)
     || (step < 0 && start > stop)) {
     range.push(start);
@@ -94,7 +94,7 @@ export function range(start, stop, step) {
 
 export function unitify(fn) {
   return (...args) => {
-    var unit = get_unit(args[0]);
+    let unit = get_unit(args[0]);
     if (unit) {
       args = args.map(remove_unit);
       return add_unit(fn, unit).apply(null, args);

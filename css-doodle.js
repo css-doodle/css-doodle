@@ -518,7 +518,7 @@ const reg_match_unit = new RegExp(
 function add_unit(fn, unit) {
   return (...args) => {
     args = args.map(remove_unit);
-    var result = fn.apply(null, args);
+    let result = fn.apply(null, args);
     if (unit) {
       result = result.map(n => n + unit);
     }
@@ -528,12 +528,12 @@ function add_unit(fn, unit) {
 
 function get_unit(str) {
   if (!str) return '';
-  var matched = ''.trim.call(str).match(reg_match_unit);
+  let matched = ''.trim.call(str).match(reg_match_unit);
   return matched ? matched[0] : '';
 }
 
 function remove_unit(str) {
-  var unit = get_unit(str);
+  let unit = get_unit(str);
   return unit ? +(str.replace(unit, '')) : str;
 }
 
@@ -571,24 +571,24 @@ function only_if(cond, value) {
 const memo_store = {};
 function  memo(prefix, fn) {
   return (...args) => {
-    var key = prefix + args.join('-');
+    let key = prefix + args.join('-');
     if (memo_store[key]) return memo_store[key];
     return (memo_store[key] = fn.apply(null, args));
   }
 }
 
 function random(...items) {
-  var args = items.reduce((ret, n) => ret.concat(n), []);
+  let args = items.reduce((ret, n) => ret.concat(n), []);
   return args[Math.floor(Math.random() * args.length)];
 }
 
 function range(start, stop, step) {
-  var count = 0;
-  var initial = n => (n > 0 && n < 1) ? .1 : 1;
-  var length = arguments.length;
+  let count = 0;
+  let initial = n => (n > 0 && n < 1) ? .1 : 1;
+  let length = arguments.length;
   if (length == 1) [start, stop] = [initial(start), start];
   if (length < 3) step = initial(start);
-  var range = [];
+  let range = [];
   while ((step > 0 && start < stop)
     || (step < 0 && start > stop)) {
     range.push(start);
@@ -600,7 +600,7 @@ function range(start, stop, step) {
 
 function unitify(fn) {
   return (...args) => {
-    var unit = get_unit(args[0]);
+    let unit = get_unit(args[0]);
     if (unit) {
       args = args.map(remove_unit);
       return add_unit(fn, unit).apply(null, args);
@@ -643,15 +643,15 @@ function polygon(option, fn) {
     fn = t => [ cos(t), sin(t) ];
   }
 
-  var split = option.split || 120;
-  var scale = option.scale || 1;
-  var start = DEG * (option.start || 0);
-  var deg = option.deg ? (option.deg * DEG) : (PI / (split / 2));
-  var points = [];
+  let split = option.split || 120;
+  let scale = option.scale || 1;
+  let start = DEG * (option.start || 0);
+  let deg = option.deg ? (option.deg * DEG) : (PI / (split / 2));
+  let points = [];
 
-  for (var i = 0; i < split; ++i) {
-    var t = start + deg * i;
-    var [x, y] = fn(t);
+  for (let i = 0; i < split; ++i) {
+    let t = start + deg * i;
+    let [x, y] = fn(t);
     points.push(
       ((x * 50 * scale) + 50 + '% ') +
       ((y * 50 * scale) + 50 + '%')
@@ -662,7 +662,7 @@ function polygon(option, fn) {
 }
 
 function rotate(x, y, deg) {
-  var rad = DEG * deg;
+  let rad = DEG * deg;
   return [
     x * cos(rad) - y * sin(rad),
     y * cos(rad) + x * sin(rad)
@@ -726,8 +726,8 @@ const shapes =  {
     k = minmax(k, 3, 5);
     if (k == 4) k = 2;
     return polygon({ split: 240 }, t => {
-      var x = cos(k * t) * cos(t);
-      var y = cos(k * t) * sin(t);
+      let x = cos(k * t) * cos(t);
+      let y = cos(k * t) * sin(t);
       if (k == 3) x -= .2;
       if (k == 2) {
         x /= 1.1;
@@ -739,10 +739,10 @@ const shapes =  {
 
   hypocycloid(k = 3) {
     k = minmax(k, 3, 6);
-    var m = 1 - k;
+    let m = 1 - k;
     return polygon({ scale: 1 / k  }, t => {
-      var x = m * cos(t) + cos(m * (t - PI));
-      var y = m * sin(t) + sin(m * (t - PI));
+      let x = m * cos(t) + cos(m * (t - PI));
+      let y = m * sin(t) + sin(m * (t - PI));
       if (k == 3) {
         x = x * 1.1 - .6;
         y = y * 1.1;
@@ -757,8 +757,8 @@ const shapes =  {
 
   infinity() {
     return polygon(t => {
-      var a = .7 * sqrt(2) * cos(t);
-      var b = (pow(sin(t), 2) + 1);
+      let a = .7 * sqrt(2) * cos(t);
+      let b = (pow(sin(t), 2) + 1);
       return [
         a / b,
         a * sin(t) / b
@@ -768,8 +768,8 @@ const shapes =  {
 
   heart() {
     return polygon(t => {
-      var x = .75 * pow(sin(t), 3);
-      var y =
+      let x = .75 * pow(sin(t), 3);
+      let y =
           cos(1 * t) * (13 / 18)
         - cos(2 * t) * (5 / 18)
         - cos(3 * t) / 18
@@ -784,7 +784,7 @@ const shapes =  {
 
   bean() {
     return polygon(t => {
-      var [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
+      let [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
       return rotate(
         (a + b) * cos(t) * 1.3 - .45,
         (a + b) * sin(t) * 1.3 - .45,
@@ -817,7 +817,7 @@ const shapes =  {
 
   whale() {
     return polygon({ split: 240 }, t => {
-      var r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
+      let r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
       return rotate(
         cos(t) * r + .75,
         sin(t) * r * 1.2,
@@ -838,7 +838,7 @@ const shapes =  {
 
 function infix_to_postfix(input) {
   const op_stack = [], expr = [];
-  var tc = '';
+  let tc = '';
 
   const operator = {
     '*': 3, '/': 3,
@@ -871,7 +871,7 @@ function infix_to_postfix(input) {
 
       else {
         while (op_stack.length && operator[peek(op_stack)] >= operator[c]) {
-          var op = op_stack.pop();
+          let op = op_stack.pop();
           if (!/[()]/.test(op)) expr.push(op);
         }
         op_stack.push(c);
@@ -902,11 +902,11 @@ function compute(op, a, b) {
 function calculate(input) {
   const expr = infix_to_postfix(input), stack = [];
   while (expr.length) {
-    var top = expr.shift();
+    let top = expr.shift();
     if (/\d+/.test(top)) stack.push(top);
     else {
-      var right = stack.pop();
-      var left = stack.pop();
+      let right = stack.pop();
+      let left = stack.pop();
       stack.push(compute(
         top, Number(left), Number(right)
       ));
@@ -1009,7 +1009,7 @@ function parse$1(input) {
 var Property = {
 
   ['@size'](value, { is_special_selector }) {
-    var [w, h = w] = parse$1(value);
+    let [w, h = w] = parse$1(value);
     return `
       width: ${ w };
       height: ${ h };
@@ -1024,7 +1024,7 @@ var Property = {
   },
 
   ['@min-size'](value) {
-    var [w, h = w] = parse$1(value);
+    let [w, h = w] = parse$1(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
   ['min-size'](value) {
@@ -1032,7 +1032,7 @@ var Property = {
   },
 
   ['@max-size'](value) {
-    var [w, h = w] = parse$1(value);
+    let [w, h = w] = parse$1(value);
     return `max-width: ${ w }; max-height: ${ h };`;
   },
   ['max-size'](value) {
@@ -1040,7 +1040,7 @@ var Property = {
   },
 
   ['@place-cell'](value) {
-    var [left, top = left] = parse$1(value);
+    let [left, top = left] = parse$1(value);
     const map = ({ 'center': '50%', '0': '0%' });
     const bound = '-100vmax';
     left = map[left] || left;
@@ -1058,7 +1058,7 @@ var Property = {
   },
 
   ['@grid'](value, options) {
-    var [grid, size] = value.split('/').map(s => s.trim());
+    let [grid, size] = value.split('/').map(s => s.trim());
     return {
       grid: parse_grid(grid),
       size: size ? this['@size'](size, options) : ''
@@ -1066,7 +1066,7 @@ var Property = {
   },
 
   ['@shape']: memo('shape-property', function(value) {
-    var [type, ...args] = parse$1(value);
+    let [type, ...args] = parse$1(value);
     return shapes[type]
       ? prefix(`clip-path: ${ shapes[type].apply(null, args) };`)
         + 'overflow: hidden;'
@@ -1156,7 +1156,7 @@ class Rules {
   }
 
   add_rule(selector, rule) {
-    var rules = this.rules[selector];
+    let rules = this.rules[selector];
     if (!rules) {
       rules = this.rules[selector] = [];
     }
@@ -1176,14 +1176,14 @@ class Rules {
   }
 
   compose_argument(argument, coords) {
-    var result = argument.map(arg => {
+    let result = argument.map(arg => {
       if (arg.type == 'text') {
         return arg.value;
       }
       else if (arg.type == 'func') {
-        var fn = this.pick_func(arg.name.substr(1));
+        let fn = this.pick_func(arg.name.substr(1));
         if (fn) {
-          var args = arg.arguments.map(n => {
+          let args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
           });
           return apply_args(fn, coords, args);
@@ -1204,9 +1204,9 @@ class Rules {
           break;
         }
         case 'func': {
-          var fn = this.pick_func(val.name.substr(1));
+          let fn = this.pick_func(val.name.substr(1));
           if (fn) {
-            var args = val.arguments.map(arg => {
+            let args = val.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
             result += apply_args(fn, coords, args);
@@ -1218,9 +1218,9 @@ class Rules {
   }
 
   compose_rule(token, coords, selector) {
-    var prop = token.property;
-    var value = this.compose_value(token.value, coords);
-    var rule = `${ prop }: ${ value };`;
+    let prop = token.property;
+    let value = this.compose_value(token.value, coords);
+    let rule = `${ prop }: ${ value };`;
 
     if (prop == 'transition') {
       this.props.has_transition = true;
@@ -1241,14 +1241,14 @@ class Rules {
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
       if (coords.count > 1) {
-        var { count } = coords;
+        let { count } = coords;
         switch (prop) {
           case 'animation-name': {
             rule = `${ prop }: ${ this.compose_aname(value, count) };`;
             break;
           }
           case 'animation': {
-            var group = (value || '').split(/\s+/);
+            let group = (value || '').split(/\s+/);
             group[0] = this.compose_aname(group[0], count);
             rule = `${ prop }: ${ group.join(' ') };`;
           }
@@ -1257,7 +1257,7 @@ class Rules {
     }
 
     if (Property[prop]) {
-      var transformed = Property[prop](value, {
+      let transformed = Property[prop](value, {
         is_special_selector: is_special_selector(selector)
       });
       switch (prop) {
@@ -1298,17 +1298,17 @@ class Rules {
             token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var special = is_special_selector(token.selector);
+          let special = is_special_selector(token.selector);
 
           if (special) {
             token.skip = true;
           }
 
-          var psuedo = token.styles.map(s =>
+          let psuedo = token.styles.map(s =>
             this.compose_rule(s, coords, token.selector)
           );
 
-          var selector = special
+          let selector = special
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -1317,12 +1317,12 @@ class Rules {
         }
 
         case 'cond': {
-          var fn = Selector[token.name.substr(1)];
+          let fn = Selector[token.name.substr(1)];
           if (fn) {
-            var args = token.arguments.map(arg => {
+            let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            var result = apply_args(fn, coords, args);
+            let result = apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }
@@ -1356,7 +1356,7 @@ class Rules {
           }
         `;
       } else {
-        var target = is_host_selector(selector) ? 'host' : 'cells';
+        let target = is_host_selector(selector) ? 'host' : 'cells';
         this.styles[target] += `
           ${ selector } {
             ${ join_line(this.rules[selector]) }
@@ -1365,7 +1365,7 @@ class Rules {
       }
 
       Object.keys(this.keyframes).forEach(name => {
-        var aname = this.compose_aname(name, i + 1);
+        let aname = this.compose_aname(name, i + 1);
         this.styles.keyframes += `
           ${ only_if(i == 0,
             `@keyframes ${ name } {
@@ -1388,13 +1388,13 @@ class Rules {
 }
 
 function generator(tokens, grid_size) {
-  var rules = new Rules(tokens);
+  let rules = new Rules(tokens);
   rules.compose({ x : 1, y: 1, count: 1 });
-  var { grid } = rules.output();
+  let { grid } = rules.output();
   if (grid) grid_size = grid;
   rules.reset();
-  for (var x = 1, count = 0; x <= grid_size.x; ++x) {
-    for (var y = 1; y <= grid_size.y; ++y) {
+  for (let x = 1, count = 0; x <= grid_size.x; ++x) {
+    for (let y = 1; y <= grid_size.y; ++y) {
       rules.compose({ x, y, count: ++count});
     }
   }
@@ -1431,12 +1431,12 @@ class Doodle extends HTMLElement {
   }
   connectedCallback() {
     setTimeout(() => {
-      var compiled;
+      let compiled;
       if (!this.innerHTML.trim()) {
         return false;
       }
       try {
-        var parsed = parse(this.innerHTML);
+        let parsed = parse(this.innerHTML);
         this.grid_size = parse_grid(this.getAttribute('grid'));
         compiled = generator(parsed, this.grid_size);
         compiled.grid && (this.grid_size = compiled.grid);
@@ -1510,7 +1510,7 @@ class Doodle extends HTMLElement {
     const compiled = generator(parse(styles), this.grid_size);
 
     if (compiled.grid) {
-      var { x, y } = compiled.grid;
+      let { x, y } = compiled.grid;
       if (this.grid_size.x !== x || this.grid_size.y !== y) {
         Object.assign(this.grid_size, compiled.grid);
         return this.build_grid(compiled);
@@ -1519,8 +1519,8 @@ class Doodle extends HTMLElement {
     }
 
     else {
-      var grid = parse_grid(this.getAttribute('grid'));
-      var { x, y } = grid;
+      let grid = parse_grid(this.getAttribute('grid'));
+      let { x, y } = grid;
       if (this.grid_size.x !== x || this.grid_size.y !== y) {
         Object.assign(this.grid_size, grid);
         return this.build_grid(

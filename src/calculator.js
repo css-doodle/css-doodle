@@ -1,6 +1,6 @@
 function infix_to_postfix(input) {
   const op_stack = [], expr = [];
-  var tc = '';
+  let tc = '';
 
   const operator = {
     '*': 3, '/': 3,
@@ -33,7 +33,7 @@ function infix_to_postfix(input) {
 
       else {
         while (op_stack.length && operator[peek(op_stack)] >= operator[c]) {
-          var op = op_stack.pop();
+          let op = op_stack.pop();
           if (!/[()]/.test(op)) expr.push(op);
         }
         op_stack.push(c);
@@ -64,11 +64,11 @@ function compute(op, a, b) {
 export default function calculate(input) {
   const expr = infix_to_postfix(input), stack = [];
   while (expr.length) {
-    var top = expr.shift();
+    let top = expr.shift();
     if (/\d+/.test(top)) stack.push(top);
     else {
-      var right = stack.pop();
-      var left = stack.pop();
+      let right = stack.pop();
+      let left = stack.pop();
       stack.push(compute(
         top, Number(left), Number(right)
       ));

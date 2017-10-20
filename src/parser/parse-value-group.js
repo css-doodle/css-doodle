@@ -3,7 +3,7 @@ import iterator from './iterator';
 const is_seperator = c => /[,，\s]/.test(c);
 
 function skip_pair(it) {
-  var text = it.curr(), c;
+  let text = it.curr(), c;
   it.next();
   while (!it.end()) {
     text += (c = it.curr());
@@ -26,10 +26,10 @@ function skip_seperator(it) {
 export default function parse(input) {
   const it = iterator(input);
   const result = [];
-  var group = '';
+  let group = '';
 
   while (!it.end()) {
-    var c = it.curr();
+    let c = it.curr();
     if (c == '(') {
       group += skip_pair(it);
     }

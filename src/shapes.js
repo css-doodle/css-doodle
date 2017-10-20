@@ -13,15 +13,15 @@ function polygon(option, fn) {
     fn = t => [ cos(t), sin(t) ];
   }
 
-  var split = option.split || 120;
-  var scale = option.scale || 1;
-  var start = DEG * (option.start || 0);
-  var deg = option.deg ? (option.deg * DEG) : (PI / (split / 2));
-  var points = [];
+  let split = option.split || 120;
+  let scale = option.scale || 1;
+  let start = DEG * (option.start || 0);
+  let deg = option.deg ? (option.deg * DEG) : (PI / (split / 2));
+  let points = [];
 
-  for (var i = 0; i < split; ++i) {
-    var t = start + deg * i;
-    var [x, y] = fn(t);
+  for (let i = 0; i < split; ++i) {
+    let t = start + deg * i;
+    let [x, y] = fn(t);
     points.push(
       ((x * 50 * scale) + 50 + '% ') +
       ((y * 50 * scale) + 50 + '%')
@@ -32,7 +32,7 @@ function polygon(option, fn) {
 }
 
 function rotate(x, y, deg) {
-  var rad = DEG * deg;
+  let rad = DEG * deg;
   return [
     x * cos(rad) - y * sin(rad),
     y * cos(rad) + x * sin(rad)
@@ -96,8 +96,8 @@ const shapes =  {
     k = minmax(k, 3, 5);
     if (k == 4) k = 2;
     return polygon({ split: 240 }, t => {
-      var x = cos(k * t) * cos(t);
-      var y = cos(k * t) * sin(t);
+      let x = cos(k * t) * cos(t);
+      let y = cos(k * t) * sin(t);
       if (k == 3) x -= .2;
       if (k == 2) {
         x /= 1.1;
@@ -109,10 +109,10 @@ const shapes =  {
 
   hypocycloid(k = 3) {
     k = minmax(k, 3, 6);
-    var m = 1 - k;
+    let m = 1 - k;
     return polygon({ scale: 1 / k  }, t => {
-      var x = m * cos(t) + cos(m * (t - PI));
-      var y = m * sin(t) + sin(m * (t - PI));
+      let x = m * cos(t) + cos(m * (t - PI));
+      let y = m * sin(t) + sin(m * (t - PI));
       if (k == 3) {
         x = x * 1.1 - .6;
         y = y * 1.1
@@ -127,8 +127,8 @@ const shapes =  {
 
   infinity() {
     return polygon(t => {
-      var a = .7 * sqrt(2) * cos(t);
-      var b = (pow(sin(t), 2) + 1);
+      let a = .7 * sqrt(2) * cos(t);
+      let b = (pow(sin(t), 2) + 1);
       return [
         a / b,
         a * sin(t) / b
@@ -138,8 +138,8 @@ const shapes =  {
 
   heart() {
     return polygon(t => {
-      var x = .75 * pow(sin(t), 3);
-      var y =
+      let x = .75 * pow(sin(t), 3);
+      let y =
           cos(1 * t) * (13 / 18)
         - cos(2 * t) * (5 / 18)
         - cos(3 * t) / 18
@@ -154,7 +154,7 @@ const shapes =  {
 
   bean() {
     return polygon(t => {
-      var [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
+      let [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
       return rotate(
         (a + b) * cos(t) * 1.3 - .45,
         (a + b) * sin(t) * 1.3 - .45,
@@ -187,7 +187,7 @@ const shapes =  {
 
   whale() {
     return polygon({ split: 240 }, t => {
-      var r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
+      let r = 3.4 * (pow(sin(t), 2) - .5) * cos(t);
       return rotate(
         cos(t) * r + .75,
         sin(t) * r * 1.2,

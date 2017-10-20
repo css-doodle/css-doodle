@@ -4,7 +4,7 @@ const [ min, max, total ] = [ 1, 16, 16 * 16 ];
 
 export default
 function parse_grid(size) {
-  var [x, y] = (size + '')
+  let [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')
     .split('x')

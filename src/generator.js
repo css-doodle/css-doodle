@@ -39,7 +39,7 @@ class Rules {
   }
 
   add_rule(selector, rule) {
-    var rules = this.rules[selector];
+    let rules = this.rules[selector];
     if (!rules) {
       rules = this.rules[selector] = [];
     }
@@ -59,14 +59,14 @@ class Rules {
   }
 
   compose_argument(argument, coords) {
-    var result = argument.map(arg => {
+    let result = argument.map(arg => {
       if (arg.type == 'text') {
         return arg.value;
       }
       else if (arg.type == 'func') {
-        var fn = this.pick_func(arg.name.substr(1));
+        let fn = this.pick_func(arg.name.substr(1));
         if (fn) {
-          var args = arg.arguments.map(n => {
+          let args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
           });
           return apply_args(fn, coords, args);
@@ -87,9 +87,9 @@ class Rules {
           break;
         }
         case 'func': {
-          var fn = this.pick_func(val.name.substr(1));
+          let fn = this.pick_func(val.name.substr(1));
           if (fn) {
-            var args = val.arguments.map(arg => {
+            let args = val.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
             result += apply_args(fn, coords, args);
@@ -101,9 +101,9 @@ class Rules {
   }
 
   compose_rule(token, coords, selector) {
-    var prop = token.property;
-    var value = this.compose_value(token.value, coords);
-    var rule = `${ prop }: ${ value };`
+    let prop = token.property;
+    let value = this.compose_value(token.value, coords);
+    let rule = `${ prop }: ${ value };`
 
     if (prop == 'transition') {
       this.props.has_transition = true;
@@ -124,14 +124,14 @@ class Rules {
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
       if (coords.count > 1) {
-        var { count } = coords;
+        let { count } = coords;
         switch (prop) {
           case 'animation-name': {
             rule = `${ prop }: ${ this.compose_aname(value, count) };`;
             break;
           }
           case 'animation': {
-            var group = (value || '').split(/\s+/);
+            let group = (value || '').split(/\s+/);
             group[0] = this.compose_aname(group[0], count);
             rule = `${ prop }: ${ group.join(' ') };`;
           }
@@ -140,7 +140,7 @@ class Rules {
     }
 
     if (Property[prop]) {
-      var transformed = Property[prop](value, {
+      let transformed = Property[prop](value, {
         is_special_selector: is_special_selector(selector)
       });
       switch (prop) {
@@ -181,17 +181,17 @@ class Rules {
             token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
 
-          var special = is_special_selector(token.selector);
+          let special = is_special_selector(token.selector);
 
           if (special) {
             token.skip = true;
           }
 
-          var psuedo = token.styles.map(s =>
+          let psuedo = token.styles.map(s =>
             this.compose_rule(s, coords, token.selector)
           );
 
-          var selector = special
+          let selector = special
             ? token.selector
             : this.compose_selector(coords.count, token.selector);
 
@@ -200,12 +200,12 @@ class Rules {
         }
 
         case 'cond': {
-          var fn = Selector[token.name.substr(1)];
+          let fn = Selector[token.name.substr(1)];
           if (fn) {
-            var args = token.arguments.map(arg => {
+            let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            var result = apply_args(fn, coords, args);
+            let result = apply_args(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }
@@ -239,7 +239,7 @@ class Rules {
           }
         `;
       } else {
-        var target = is_host_selector(selector) ? 'host' : 'cells';
+        let target = is_host_selector(selector) ? 'host' : 'cells';
         this.styles[target] += `
           ${ selector } {
             ${ join_line(this.rules[selector]) }
@@ -248,7 +248,7 @@ class Rules {
       }
 
       Object.keys(this.keyframes).forEach(name => {
-        var aname = this.compose_aname(name, i + 1);
+        let aname = this.compose_aname(name, i + 1);
         this.styles.keyframes += `
           ${ only_if(i == 0,
             `@keyframes ${ name } {
@@ -272,13 +272,13 @@ class Rules {
 
 export default
 function generator(tokens, grid_size) {
-  var rules = new Rules(tokens);
+  let rules = new Rules(tokens);
   rules.compose({ x : 1, y: 1, count: 1 });
-  var { grid } = rules.output();
+  let { grid } = rules.output();
   if (grid) grid_size = grid;
   rules.reset();
-  for (var x = 1, count = 0; x <= grid_size.x; ++x) {
-    for (var y = 1; y <= grid_size.y; ++y) {
+  for (let x = 1, count = 0; x <= grid_size.x; ++x) {
+    for (let y = 1; y <= grid_size.y; ++y) {
       rules.compose({ x, y, count: ++count});
     }
   }
