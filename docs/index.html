@@ -140,6 +140,12 @@
               <li> <a href="#function-@calc">@calc</a></li>
             </ul>
           </li>
+          <li>
+            <a href="#js-api">JS API</a>
+            <ul>
+              <li> <a href="#js-api-update">update</a></li>
+            </ul>
+          </li>
         </ul>
       </div>
 
@@ -151,13 +157,14 @@
               @grid: 6 / 100vmax;
               background: #271929;
             }
+
             border-radius: 24%;
             border: 1px solid hsla(
               calc(@index() * 10), 80%, 80%, .5
             );
+
             transform:
-              rotate(@pick(60deg, -60deg))
-              scale(1.2);
+              rotate(@pick(60deg, -60deg)) scale(1.2);
           </css-doodle>
         </div>
         <textarea code></textarea>
@@ -915,6 +922,31 @@
                 transform: scale(.75);
               }
             </css-doodle>
+          </p>
+        </section>
+        <div class="sep"></div>
+      </article>
+
+      <article class="wrap">
+        <h3><a name="js-api"></a>JS API </h3>
+
+        <section>
+          <h4><a name="js-api-update"></a>update([styles])</h4>
+          <p>Re-render the component (with given styles).</p>
+          <p>
+            <textarea code>
+              const doodle = document.querySelector('css-doodle');
+
+              /* Update styles and refresh */
+              doodle.update(`
+                :doodle { @grid: 6 / 7em }
+                background: rebeccapurple;
+                margin: .5px;
+              `);
+
+              /* just refresh */
+              doodle.update();
+            </textarea>
           </p>
         </section>
       </article>

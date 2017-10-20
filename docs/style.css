@@ -479,7 +479,7 @@ textarea[code] {
     }
     .nav li ul a {
       display: block;
-      padding: .5em;
+      padding: .7em;
       background: rgba(240, 240, 240, .6);
     }
     .nav li ul a:link, .nav li ul:visited {
@@ -527,6 +527,9 @@ textarea[code] {
         .shapes-list .shape {
           flex-flow: column;
         }
+          .shapes-list .shape:last-child {
+            display: none;
+          }
       }
 
   .shapes-list .title {
