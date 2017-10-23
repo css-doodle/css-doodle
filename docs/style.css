@@ -521,15 +521,15 @@ textarea[code] {
         .shapes-list .shape {
           width: 33.33%;
         }
+        .shapes-list .shape:last-child {
+          display: none;
+        }
       }
 
       @media (max-width: 568px) {
         .shapes-list .shape {
           flex-flow: column;
         }
-          .shapes-list .shape:last-child {
-            display: none;
-          }
       }
 
   .shapes-list .title {

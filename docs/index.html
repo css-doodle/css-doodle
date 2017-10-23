@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?027fe0a17fda7ed39210941dff4d9639">
+  <link rel="stylesheet" href="style.css?96e533484d6d7745687447f13ead990e">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
   <script src="lib/css-doodle.min.js?a8a293d29bafd3fbf352ac0f29b809c0"></script>
 </head>
@@ -143,6 +143,7 @@
           <li>
             <a href="#js-api">JS API</a>
             <ul>
+              <li> <a href="#js-api-grid">grid</a></li>
               <li> <a href="#js-api-update">update</a></li>
             </ul>
           </li>
@@ -677,7 +678,7 @@
               background: #271929;
             }
 
-            clip-path: @shape(bud, 5);
+            @shape: bud 5;
             background: hsla(
               calc(1.5 * @index()), 70%, 70%, @rand(.8)
             );
@@ -929,7 +930,23 @@
 
       <article class="wrap">
         <h3><a name="js-api"></a>JS API </h3>
+        <section>
+          <h4><a name="js-api-grid"></a>grid</h4>
+          <p>Getter/setter for the grid attribute on the element. </p>
+          <p>
+            <textarea code>
+              const doodle = document.querySelector('css-doodle');
 
+              /* Note that the grid value inside the :doodle selector has higher
+                 priority than the attribute value on the element. So this setter
+                 operation may not have an affect on the final grid value. */
+              doodle.grid = "5";
+
+              console.log(doodle.grid);
+              /* { x: 5, y: 5, count: 25 } */
+            </textarea>
+          </p>
+        </section>
         <section>
           <h4><a name="js-api-update"></a>update([styles])</h4>
           <p>Re-render the component (with given styles).</p>
@@ -937,7 +954,7 @@
             <textarea code>
               const doodle = document.querySelector('css-doodle');
 
-              /* Update styles and refresh */
+              /* update styles and refresh */
               doodle.update(`
                 :doodle { @grid: 6 / 7em }
                 background: rebeccapurple;
