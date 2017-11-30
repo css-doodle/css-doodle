@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?96e533484d6d7745687447f13ead990e">
+  <link rel="stylesheet" href="style.css?0c4b3fce7af78517175226f831f79047">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
   <script src="lib/css-doodle.min.js?a8a293d29bafd3fbf352ac0f29b809c0"></script>
 </head>
@@ -1007,9 +1007,10 @@
         @grid: 1x30 / 100vmax;
       }
       @place-cell: center;
+      border-radius: 37%;
       border: 1px solid hsla(
         calc(3.5 * @index() + 180), 80%, 70%,
-        @rand(.6)
+        calc(@index() * .3)
       );
       transform: rotate(calc(@index() * 11deg));
       @size: calc(@index() * 4%);
@@ -1018,7 +1019,7 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?4eab1df9d258d138224f7b1ae89a3940"></script>
+  <script src="main.js?30c450e28b0bace9ea017afd67b61b86"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),

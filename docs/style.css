@@ -168,7 +168,7 @@ textarea[code] {
 
 
 .cover {
-  background-color: #150d17;
+  background-color: #0a0c27;
   overflow: hidden;
   position: relative;
 }
@@ -237,7 +237,7 @@ textarea[code] {
   .playground .doodle {
     overflow: hidden;
     position: relative;
-    background: #1c131f;
+    background: rgba(255, 255, 255, .03);
   }
   .playground .doodle,
   .playground .source {
@@ -373,7 +373,7 @@ textarea[code] {
     border-bottom: 2px solid;
   }
   .docs a:hover {
-    background: rgba(63, 81, 181, .1);
+    background: rgb(213, 231, 255);
   }
   .docs h2 {
     font-size: 2em;
@@ -603,10 +603,11 @@ textarea[code] {
     }
 
 footer {
-  background-color: #150d17;
+  background-color: #0a0c27;
   overflow: hidden;
-  padding: 5em 0 8em;
+  padding: 5em 0;
   position: relative;
+  font-family: cursive, serif;
 }
   footer > css-doodle {
     position: absolute;
@@ -616,20 +617,22 @@ footer {
     transform: translate(-50%, -50%);
   }
   .about {
-    color: #e0ddf3;
-    line-height: 1.4;
+    color: rgba(170, 201, 255, .8);
+    line-height: 1.8;
+    font-size: 120%;
     position: relative;
     z-index: 1;
+    text-align: center;
   }
     .about p {
       display: inline-block;
       font-size: 1.2em;
     }
     .about a {
-      color: #aeacdc;
+      color: #8fafe0;
       text-decoration: none;
       border-bottom: 2px solid currentColor;
     }
       .about a:hover {
-        background: rgba(174, 172, 220, .2);
+        background: rgba(143, 175, 224, .28);
       }

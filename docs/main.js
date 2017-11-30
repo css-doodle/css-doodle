@@ -59,7 +59,8 @@
       transform: scale(@rand(.25, 1.25));
 
       background: hsla(
-        calc(120 + 3 * @index()), 70%, 68%,
+        calc(240 - 6 * @row() * @col()),
+        70%, 68%,
         @rand(.8)
       );
     `),
@@ -72,18 +73,58 @@
       @size: calc(@index() * 1.55%);
 
       transition: .2s ease;
-      transform: rotate(calc(@index() * 3deg));
+      transform: rotate(calc(@index() * 5deg));
 
       border-radius: 30%;
       border: 1px solid hsla(
-        calc(120 + 3 * @index()), 70%, 68%,
+        calc(10 + 4 * @index()), 70%, 68%,
         @rand(.8)
+      );
+    `),
+    triangles: indent(`
+      :doodle {
+        @grid: 11 / 90%;
+        @shape: circle;
+      }
+
+      will-change: transform;
+      transition: .4s @rand(.6s);
+      transform: rotate(@rand(360deg));
+      @shape: triangle;
+
+      --n: calc(
+          @abs(@abs(@row() - 6)
+        + @abs(@col() - 6) - 11) / 11
+      );
+
+      background: hsla(
+        calc(var(--n) * 360 + 120),
+        60%, 60%, var(--n)
       );
     `)
   }
 
+  function getDoodleFromUrl() {
+    try {
+      return decodeURIComponent(
+        (window.location.search.substr(1)
+          .split('&')
+          .filter(n => n.startsWith('d='))[0] || ''
+        ).split('=')[1] || ''
+      );
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getDoodle() {
+    let candidates = ['lines', 'leaves', 'triangles'];
+    let name = candidates[~~(Math.random() * candidates.length)];
+    return getDoodleFromUrl() || doodles[name];
+  }
+
   const config = {
-    value: doodles[Math.random() < .5 ? 'lines' : 'leaves'],
+    value: getDoodle(),
     mode: 'css',
     insertSoftTab: true,
     theme: '3024-day',
