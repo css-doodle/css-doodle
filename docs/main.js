@@ -101,6 +101,24 @@
         calc(var(--n) * 360 + 120),
         60%, 68%, var(--n)
       );
+    `),
+    circles: indent(`
+      :doodle {
+        @grid: 1x100 / 90%;
+      }
+
+      @place-cell: center;
+      @size: calc(@index() * 1%);
+
+      will-change: transform;
+      transition: .2s ease @rand(600ms);
+      transform: rotate(@rand(360deg));
+
+      border-radius: 50%;
+      border: 1px solid transparent;
+      border-left-color: hsl(
+        calc(100 + 1.5 * @index()), 70%, 68%
+      );
     `)
   }
 
@@ -118,7 +136,7 @@
   }
 
   function getDoodle() {
-    let candidates = ['lines', 'leaves', 'triangles'];
+    let candidates = Object.keys(doodles);
     let name = candidates[~~(Math.random() * candidates.length)];
     return getDoodleFromUrl() || doodles[name];
   }
