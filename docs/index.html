@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?0c4b3fce7af78517175226f831f79047">
+  <link rel="stylesheet" href="style.css?7258156a264a4f4a3a0262f01205bf34">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
   <script src="lib/css-doodle.min.js?a8a293d29bafd3fbf352ac0f29b809c0"></script>
 </head>
@@ -85,7 +85,7 @@
           </css-doodle>
         </textarea>
       </p>
-      <p>You can also install from <a href="http://npmjs.org/package/css-doodle">npm</a> and import the module in javascript:
+      <p>You can also install it from <a href="http://npmjs.org/package/css-doodle">npm</a> and import the module in javascript:
       <p>
         <textarea code>
           npm install css-doodle
@@ -218,18 +218,19 @@
         <section>
           <h4><a name="selector-:doodle"></a>:doodle</h4>
           <p>
-            The <code>:doodle</code> or <code>:host</code>
+            The <code>:doodle</code>
             is a special selector indicates to the component element itself.
-            Its styles will be over-written by your normal css files outside.
+            Note that the styles would be over-written by your normal css files outside.
             <span class="tip">(try to hover on the doodle)</span>
           </p>
           <p class="has-preview">
             <textarea code>
-              :doodle { @grid: 5x5 / 7em; --s: 0; }
-              :doodle(:hover) { --s: 1; }
+              :doodle { --s: 0 }
+              :doodle(:hover) { --s: 1 }
 
-              background: #60569e;
-              transform: translateY(calc(var(--s) * 100%));
+              --offset: calc(var(--s) * 100%);
+              transform: translateY(var(--offset));
+
               transition:
                 .5s cubic-bezier(.175, .885, .32, 1.275)
                 @rand(500ms);
@@ -242,9 +243,10 @@
               :doodle(:hover) {
                 --s: 1;
               }
+              --offset: calc(var(--s) * 100%);
+              transform: translateY(var(--offset));
               will-change: transform;
               transition: .5s cubic-bezier(.175, .885, .32, 1.275) @rand(500ms);
-              transform: translateY(calc(var(--s) * 100%));
 
               transform-origin: 50% 50%;
               background: #60569e;
@@ -503,7 +505,7 @@
 
         <section>
           <h4><a name="property-@grid"></a>@grid</h4>
-          <p>Another way to set the <em>"grid"</em> attribute but has higher priority.</p>
+          <p>Another way to set the <em>"grid"</em> attribute and the rule has higher priority.</p>
           <p class="has-preview">
             <textarea code>
               <css-doodle>
@@ -674,13 +676,15 @@
         <div class="container">
           <css-doodle>
             :doodle {
-              @grid: 8x8 / 100vmax;
-              background: #271929;
+              @grid: 7 / 100vmax;
+              background: #0a0c27;
             }
 
             @shape: bud 5;
             background: hsla(
-              calc(1.5 * @index()), 70%, 70%, @rand(.8)
+              calc(140 + 4 * @row() * @col()),
+              70%, 68%,
+              @rand(.8)
             );
 
             transform:
@@ -1010,16 +1014,16 @@
       border-radius: 37%;
       border: 1px solid hsla(
         calc(3.5 * @index() + 180), 80%, 70%,
-        calc(@index() * .3)
+        calc(@index() * .04)
       );
-      transform: rotate(calc(@index() * 11deg));
-      @size: calc(@index() * 4%);
+      transform: rotate(calc(@index() * 13deg));
+      @size: calc(@index() * 6%);
     </css-doodle>
   </footer>
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?30c450e28b0bace9ea017afd67b61b86"></script>
+  <script src="main.js?ff2b346404bfaf2d987a1a17b6524906"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),

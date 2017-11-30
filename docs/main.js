@@ -83,7 +83,7 @@
     `),
     triangles: indent(`
       :doodle {
-        @grid: 11 / 90%;
+        @grid: 9 / 85%;
         @shape: circle;
       }
 
@@ -93,13 +93,13 @@
       @shape: triangle;
 
       --n: calc(
-          @abs(@abs(@row() - 6)
-        + @abs(@col() - 6) - 11) / 11
+          @abs(@abs(@row() - 5)
+        + @abs(@col() - 5) - 10) / 10
       );
 
       background: hsla(
         calc(var(--n) * 360 + 120),
-        60%, 60%, var(--n)
+        60%, 68%, var(--n)
       );
     `)
   }

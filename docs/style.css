@@ -373,7 +373,7 @@ textarea[code] {
     border-bottom: 2px solid;
   }
   .docs a:hover {
-    background: rgb(213, 231, 255);
+    background: rgba(213, 231, 255, .7);
   }
   .docs h2 {
     font-size: 2em;
@@ -619,7 +619,7 @@ footer {
   .about {
     color: rgba(170, 201, 255, .8);
     line-height: 1.8;
-    font-size: 120%;
+    font-size: 110%;
     position: relative;
     z-index: 1;
     text-align: center;
