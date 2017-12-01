@@ -115,8 +115,8 @@
 
       border-radius: 50%;
       border: 1px solid transparent;
-      will-change: transform;
       border-top-color: hsl(var(--h),70%,68%);
+      will-change: transform;
       animation: spin var(--d) linear infinite;
 
       @keyframes spin {

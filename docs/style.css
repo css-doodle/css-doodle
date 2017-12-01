@@ -63,12 +63,14 @@ body {
   -webkit-text-size-adjust: 100%;
   font-family:
     -apple-system,
-    "Helvetica Neue",
-    Helvetica,
     BlinkMacSystemFont,
     "Segoe UI",
+    Helvetica,
     Arial,
-    sans-serif;
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol";
 }
 
 .oldie body:after {
@@ -605,7 +607,6 @@ textarea[code] {
 footer {
   padding: 3em 0;
   position: relative;
-  font-family: cursive, serif;
   overflow: hidden;
 }
   .about {
@@ -614,10 +615,6 @@ footer {
     position: relative;
     text-align: center;
   }
-    .about p {
-      display: inline-block;
-      font-size: 1.2em;
-    }
     .about a {
       color: #60569e;
       text-decoration: none;
