@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?793ebafb98af35c6e550c05f72dd35a6">
+  <link rel="stylesheet" href="style.css?4888e8ff304e2b927dd01ad04cf508d8">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
   <script src="lib/css-doodle.min.js?a8a293d29bafd3fbf352ac0f29b809c0"></script>
 </head>
@@ -989,6 +989,21 @@
   </div>
 
   <footer>
+    <css-doodle class="footer-bg">
+      :doodle {
+        @grid: 6 / 100%;
+      }
+      @size: .8em;
+      background: hsla(calc(10 * @index()), 60%, 60%, .2);
+      clip-path: polygon( 50% 0, 100% 100%, 0 100%);
+      transform:
+        rotate(@rand(360deg))
+        scale(@rand(.6, 1, .1))
+        translate(
+          @rand(-10em, 10em),
+          @rand(-10em, 10em)
+        )
+    </css-doodle>
     <div class="about wrap">
       <p>
         Made with
@@ -1005,25 +1020,11 @@
         MIT Licensed.
       </p>
     </div>
-
-    <css-doodle footer-bg>
-      :doodle {
-        @grid: 1x30 / 100vmax;
-      }
-      @place-cell: center;
-      border-radius: 37%;
-      border: 1px solid hsla(
-        calc(3.5 * @index() + 180), 80%, 70%,
-        calc(@index() * .04)
-      );
-      transform: rotate(calc(@index() * 13deg));
-      @size: calc(@index() * 6%);
-    </css-doodle>
   </footer>
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?edc70646027678d3c48e2f57c6d91250"></script>
+  <script src="main.js?827fc46488d374844947691cf5ed723d"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),

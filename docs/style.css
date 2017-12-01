@@ -603,25 +603,15 @@ textarea[code] {
     }
 
 footer {
-  background-color: #0a0c27;
-  overflow: hidden;
-  padding: 5em 0;
+  padding: 3em 0;
   position: relative;
   font-family: cursive, serif;
+  overflow: hidden;
 }
-  footer > css-doodle {
-    position: absolute;
-    z-index: 0;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
   .about {
-    color: rgba(170, 201, 255, .8);
+    color: #9ba2af;
     line-height: 1.8;
-    font-size: 110%;
     position: relative;
-    z-index: 1;
     text-align: center;
   }
     .about p {
@@ -629,10 +619,10 @@ footer {
       font-size: 1.2em;
     }
     .about a {
-      color: #8fafe0;
+      color: #60569e;
       text-decoration: none;
       border-bottom: 2px solid currentColor;
     }
       .about a:hover {
-        background: rgba(143, 175, 224, .28);
+        background: rgba(96, 86, 158, .11);
       }
