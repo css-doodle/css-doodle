@@ -94,7 +94,7 @@
 
       --n: calc(
           @abs(@abs(@row() - 5)
-        + @abs(@col() - 5) - 10) / 10
+        + @abs(@col() - 5) - 9) / 9
       );
 
       background: hsla(
@@ -103,22 +103,26 @@
       );
     `),
     circles: indent(`
-      :doodle {
-        @grid: 1x100 / 90%;
-      }
+      :doodle { @grid: 1x50 / 50% }
 
       @place-cell: center;
-      @size: calc(@index() * 1%);
+      @size: calc(@index() * 3.4%);
 
-      will-change: transform;
-      transition: .2s ease @rand(600ms);
-      transform: rotate(@rand(360deg));
+      --h: calc(100 + 5 * @index());
+      --d: calc(@index() * .3s);
+      --f: @rand(360deg);
+      --t: calc(var(--f) + 1turn);
 
       border-radius: 50%;
       border: 1px solid transparent;
-      border-left-color: hsl(
-        calc(100 + 1.5 * @index()), 70%, 68%
-      );
+      will-change: transform;
+      border-top-color: hsl(var(--h),70%,68%);
+      animation: spin var(--d) linear infinite;
+
+      @keyframes spin {
+        from { transform: rotate(var(--f)) }
+        to   { transform: rotate(var(--t)) }
+      }
     `)
   }
 
