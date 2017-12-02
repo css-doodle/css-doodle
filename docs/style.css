@@ -615,11 +615,12 @@ footer {
     position: relative;
     text-align: center;
   }
-    .about a {
-      color: #60569e;
+    .about a:link,
+    .about a:visited {
       text-decoration: none;
-      border-bottom: 2px solid currentColor;
+      color: #3f51b5;
+      border-bottom: 2px solid;
     }
-      .about a:hover {
-        background: rgba(96, 86, 158, .11);
-      }
+    .about a:hover {
+      background: rgba(213, 231, 255, .7);
+    }

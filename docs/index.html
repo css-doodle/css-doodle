@@ -7,7 +7,7 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?873f94cd63b454386fccd9ef1948bc98">
+  <link rel="stylesheet" href="style.css?8716c2c21ac37ee5722ce2eef6774340">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
   <script src="lib/css-doodle.min.js?a8a293d29bafd3fbf352ac0f29b809c0"></script>
 </head>
@@ -155,17 +155,21 @@
         <div class="container">
           <css-doodle>
             :doodle {
-              @grid: 6 / 100vmax;
-              background: #271929;
+              @grid: 11 / 100vmax;
+              background: #0a0c27;
             }
 
-            border-radius: 24%;
-            border: 1px solid hsla(
-              calc(@index() * 10), 80%, 80%, .5
+            --ratio: calc(
+                @abs(@abs(@row() - 6)
+              + @abs(@col() - 6) - 11) / 11
             );
+            --hue: calc(var(--ratio) * 360 + 120);
 
-            transform:
-              rotate(@pick(60deg, -60deg)) scale(1.2);
+            transform: rotate(45deg);
+            margin: -10%;
+            border: 1px solid hsla(
+              var(--hue), 60%, 68%, var(--ratio)
+            );
           </css-doodle>
         </div>
         <textarea code></textarea>
@@ -680,16 +684,16 @@
               background: #0a0c27;
             }
 
-            @shape: bud 5;
+            @shape: clover 5;
             background: hsla(
-              calc(140 + 4 * @row() * @col()),
-              70%, 68%,
-              @rand(.8)
+              calc(360 - @index() * 4),
+              70%, 68%, @rand(.8)
             );
-
             transform:
               scale(@rand(.2, 1.5))
-              translate(@rand(-50%, 50%), @rand(-50%, 50%));
+              translate(
+                @rand(-50%, 50%), @rand(-50%, 50%)
+              );
           </css-doodle>
         </div>
         <textarea code></textarea>
@@ -1024,7 +1028,7 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?837bb5fd00c84f968732c67bf15d5531"></script>
+  <script src="main.js?0b6443617950f17ee33cbfbb4f41bd7e"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
