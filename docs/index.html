@@ -158,17 +158,16 @@
               @grid: 11 / 100vmax;
               background: #0a0c27;
             }
-
-            --ratio: calc(
+            --n: calc(
                 @abs(@abs(@row() - 6)
               + @abs(@col() - 6) - 11) / 11
             );
-            --hue: calc(var(--ratio) * 360 + 120);
-
-            transform: rotate(45deg);
             margin: -10%;
-            border: 1px solid hsla(
-              var(--hue), 60%, 68%, var(--ratio)
+            transform: rotate(45deg);
+            border: 1px solid;
+            border-color: hsla(
+              calc(var(--n) * 360 + 120), 60%, 68%,
+              var(--n)
             );
           </css-doodle>
         </div>
@@ -803,14 +802,14 @@
             <textarea code>
               :after {
                 content: '@pick(+, *, -, #)';
-                color: #60569e;
+                color: @pick(#60569e, #e91e63);
               }
             </textarea>
             <css-doodle grid="5" class="click-to-update">
               :doodle { @size: 7em; }
               :after {
                 content: '@pick(+, *, -, #)';
-                color: #60569e;
+                color: @pick(#60569e, #e91e63);
               }
             </css-doodle>
           </p>
