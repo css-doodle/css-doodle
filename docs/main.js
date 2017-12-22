@@ -213,7 +213,7 @@
     }
   });
 
-  const allShapes = document.querySelector('.shapes');
+  const allShapes = document.querySelector('.basic-shapes .shapes');
   const shapes = [
     'circle',        'triangle',      'rhombus',       'pentagon',
     'hexagon',       'heptagon',      'octagon',       'cross',
@@ -241,6 +241,28 @@
         </div>
       `
     }).join('');
+  }
+
+  const alienPreview = document.querySelector('.alien-shapes-preview');
+  if (alienPreview) {
+    let doodle = alienPreview.querySelector('css-doodle');
+    let span = alienPreview.querySelector('span');
+    function update() {
+      let a = 1 + Math.floor(Math.random() * 5);
+      let b = 1 + Math.floor(Math.random() * 5);
+      let c = 1 + Math.floor(Math.random() * 3);
+      let args = `(alien, ${ a } ${ b } ${ c } 1 1)`;
+      doodle.update(`
+        :doodle { @grid: 1 / 7em; }
+        background: #60569e;
+        transition: .2s;
+        transform: rotate(@rand(-180deg, 180deg));
+        @shape: alien ${ a } ${ b } ${ c };
+      `);
+      span.innerHTML = args;
+    }
+    doodle.addEventListener('click', update);
+    update();
   }
 
 }());

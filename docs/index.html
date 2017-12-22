@@ -7,9 +7,9 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?8716c2c21ac37ee5722ce2eef6774340">
+  <link rel="stylesheet" href="style.css?46f44d7c2b2c22369d1fc777841647ae">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
-  <script src="lib/css-doodle.min.js?a8a293d29bafd3fbf352ac0f29b809c0"></script>
+  <script src="lib/css-doodle.min.js?8e3ec3591b94ddf74ba198d8a3831e0b"></script>
 </head>
 <body>
 
@@ -641,7 +641,7 @@
 
         <section>
           <h4><a name="property-@shape"></a>@shape</h4>
-          <p>Return a shape based on <code>clip-path</code> and <code>polygon()</code>.</p>
+          <p>Return a css shape generated with <code>clip-path</code> and <code>polygon()</code>.</p>
           <p class="has-preview">
             <textarea code>
               :doodle {
@@ -666,10 +666,55 @@
               }
             </css-doodle>
           </p>
-          <div class="shapes-list">
-            <h5> All shapes </h5>
+          <div class="basic-shapes">
+            <h5><a name="basic-shape"></a>Basic shapes</h5>
             <div class="shapes">
               <!-- shapes -->
+            </div>
+          </div>
+
+          <div class="alien-shapes">
+            <h5><a name="alien-shape"></a>Alien shapes</h5>
+            <div class="has-preview">
+              <textarea code>
+                :doodle { @grid: 1 / 7em; }
+                background: #60569e;
+                transition: .2s;
+                transform: rotate(@rand(-180deg, 180deg));
+                @shape: alien @rand(6) @rand(6) @rand(4);
+              </textarea>
+              <div class="alien-shapes-preview">
+                <css-doodle>
+                  :doodle {
+                    @grid: 1 / 7em;
+                  }
+                  background: #60569e;
+                  transition: .2s;
+                  @shape: alien @rand(5) @rand(5) @rand(3);
+                </css-doodle>
+                <span></span>
+              </div>
+            </div>
+
+            <p class="tip">
+              You can explore new shapes using params inside shape name:
+            </p>
+
+            <div class="shapes">
+              <css-doodle>
+                :doodle {
+                  @grid: 6x10 / 100% 30em;
+                  --size: 4em;
+                }
+                :after {
+                  content: '';
+                  display: block;
+                  @size: var(--size);
+                  background: #60569e;
+                  @shape: alien @rand(2, 8) @rand(5) @rand(5) @rand(3);
+                  transform: rotate(@rand(360deg));
+                }
+              </css-doodle>
             </div>
           </div>
         </section>
@@ -1027,7 +1072,7 @@
 
   <script src="lib/codemirror/core.js"></script>
   <script src="lib/codemirror/lang/css.js"></script>
-  <script src="main.js?0b6443617950f17ee33cbfbb4f41bd7e"></script>
+  <script src="main.js?ccb55a693940d0fa0e6800f513bbf771"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),

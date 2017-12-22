@@ -322,7 +322,7 @@ textarea[code] {
       font-size: .8em;
       color: #aaa;
     }
-    .docs p.has-preview {
+    .docs .has-preview {
       display: flex;
     }
       .docs .has-preview .code-sample {
@@ -333,7 +333,7 @@ textarea[code] {
       }
 
       @media (max-width: 34.0625em) {
-        .docs p.has-preview {
+        .docs .has-preview {
           display: block;
         }
         .docs .has-preview .code-sample {
@@ -400,7 +400,8 @@ textarea[code] {
 
     .docs h2 a[href^="#"],
     .docs h3 a[href^="#"],
-    .docs h4 a[href^="#"] {
+    .docs h4 a[href^="#"],
+    .docs h5 a[href^="#"] {
       position: absolute;
       left: -1em;
       width: 1em;
@@ -409,15 +410,18 @@ textarea[code] {
       opacity: 0;
     }
 
-    .docs h2:hover a[href^="#"] ,
+    .docs h2:hover a[href^="#"],
     .docs h3:hover a[href^="#"],
-    .docs h4:hover a[href^="#"] {
+    .docs h4:hover a[href^="#"],
+    .docs h5:hover a[href^="#"] {
       opacity: 1;
       background: none;
     }
 
     .docs h2 a[name],
-    .docs h4 a[name] {
+    .docs h3 a[name],
+    .docs h4 a[name],
+    .docs h5 a[name] {
       position: absolute;
       top: -1.9em;
     }
@@ -501,18 +505,19 @@ textarea[code] {
       color: #000;
       font-size: 1.2em;
       margin-bottom: 2em;
+      position: relative;
     }
-    .shapes-list {
+    .basic-shapes {
       margin-top: 2em;
     }
-    .shapes-list p {
+    .basic-shapes p {
       margin-bottom: 0;
     }
-    .shapes-list .shapes {
+    .basic-shapes .shapes {
       display: flex;
       flex-wrap: wrap;
     }
-    .shapes-list .shape {
+    .basic-shapes .shape {
       text-align: center;
       display: flex;
       align-items: center;
@@ -520,28 +525,68 @@ textarea[code] {
       margin-bottom: .5em;
     }
       @media (max-width: 695px) {
-        .shapes-list .shape {
+        .basic-shapes .shape {
           width: 33.33%;
         }
-        .shapes-list .shape:last-child {
+        .basic-shapes .shape:last-child {
           display: none;
         }
       }
 
       @media (max-width: 568px) {
-        .shapes-list .shape {
+        .basic-shapes .shape {
           flex-flow: column;
         }
       }
 
-  .shapes-list .title {
+  .basic-shapes .title {
     font-size: .6em;
   }
-  .shapes-list css-doodle {
+  .basic-shapes css-doodle {
     width: 3em;
     height: 3em;
     margin: .5em;
   }
+
+  .alien-shapes {
+    margin-top: 2em;
+  }
+    .alien-shapes:after {
+      content: '......';
+      display: block;
+      width: 100%;
+      text-align: center;
+      margin: 2em 0;
+      color: #60569e;
+    }
+    .alien-shapes .tip {
+      margin: 1em 0 2em;
+    }
+    .alien-shapes .code-sample {
+      font-size: 120%;
+      line-height: 1.6;
+      color: #6c6079;
+      margin-bottom: 1em;
+    }
+      .alien-shapes-preview css-doodle {
+        cursor: pointer;
+      }
+      .alien-shapes-preview span {
+        display: block;
+        margin-left: 1.4em;
+        margin-top: 1em;
+        color: #666;
+      }
+      @media (max-width: 34.0625em) {
+        .alien-shapes-preview span {
+          margin-left: 0;
+        }
+        .alien-shapes .shapes css-doodle {
+          --size: 2em;
+          height: 20em;
+        }
+      }
+
 
 .example {
   width: 100vw;

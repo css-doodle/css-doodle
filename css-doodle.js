@@ -658,7 +658,9 @@ function polygon(option, fn) {
     );
   }
 
-  return `polygon(${ points.join(',') })`;
+  return option.type
+    ? `polygon(${ option.type }, ${ points.join(',') })`
+    : `polygon(${ points.join(',') })`;
 }
 
 function rotate(x, y, deg) {
@@ -831,6 +833,15 @@ const shapes =  {
     return polygon({ split: 240 }, t => [
       ((1 + .2 * cos(n * t)) * cos(t)) * .8,
       ((1 + .2 * cos(n * t)) * sin(t)) * .8
+    ]);
+  },
+
+  alien(...args) {
+    let [a = 1, b = 1, c = 1, d = 1, e = 1]
+      = args.map(n => minmax(n, 1, 9));
+    return polygon({ split: 480, type: 'evenodd' }, t => [
+      (cos(t * a) + cos(t * c) + cos(t * e)) * .31,
+      (sin(t * b) + sin(t * d) + sin(t)) * .31
     ]);
   }
 
