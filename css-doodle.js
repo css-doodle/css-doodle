@@ -963,7 +963,7 @@ var Func = {
     return value => calculate(value);
   }
 
-};
+}
 
 const is_seperator = c => /[,，\s]/.test(c);
 
@@ -1084,7 +1084,7 @@ var Property = {
       : '';
   })
 
-};
+}
 
 const is$1 = {
   even: (n) => !!(n % 2),
@@ -1121,7 +1121,7 @@ var Selector = {
     return _ => Math.random() < .5
   }
 
-};
+}
 
 // Expose all Math functions and constants.
 const methods = Object.getOwnPropertyNames(Math);
