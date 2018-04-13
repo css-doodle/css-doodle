@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A web component for drawing patterns with css.",
   "main": "css-doodle.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "url": "git+https://github.com/yuanchuan/css-doodle.git"
   },
   "devDependencies": {
-    "rollup": "^0.56.3",
+    "rollup": "^0.57.1",
     "uglify-es": "^3.3.9"
   },
   "keywords": [
