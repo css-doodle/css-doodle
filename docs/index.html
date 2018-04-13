@@ -672,51 +672,6 @@
               <!-- shapes -->
             </div>
           </div>
-
-          <div class="alien-shapes">
-            <h5><a name="alien-shape"></a>Alien shapes</h5>
-            <div class="has-preview">
-              <textarea code>
-                :doodle { @grid: 1 / 7em; }
-                background: #60569e;
-                transition: .2s;
-                transform: rotate(@rand(-180deg, 180deg));
-                @shape: alien @rand(6) @rand(6) @rand(4);
-              </textarea>
-              <div class="alien-shapes-preview">
-                <css-doodle>
-                  :doodle {
-                    @grid: 1 / 7em;
-                  }
-                  background: #60569e;
-                  transition: .2s;
-                  @shape: alien @rand(5) @rand(5) @rand(3);
-                </css-doodle>
-                <span></span>
-              </div>
-            </div>
-
-            <p class="tip">
-              You can explore new shapes using params inside shape name:
-            </p>
-
-            <div class="shapes">
-              <css-doodle>
-                :doodle {
-                  @grid: 6x10 / 100% 30em;
-                  --size: 4em;
-                }
-                :after {
-                  content: '';
-                  display: block;
-                  @size: var(--size);
-                  background: #60569e;
-                  @shape: alien @rand(2, 8) @rand(5) @rand(5) @rand(3);
-                  transform: rotate(@rand(360deg));
-                }
-              </css-doodle>
-            </div>
-          </div>
         </section>
       </article>
 
