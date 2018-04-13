@@ -135,6 +135,10 @@ textarea[code] {
   border: none;
 }
 
+.gettting-started .CodeMirror-line:first-child {
+  letter-spacing: -1px;
+}
+
 .code-sample .CodeMirror {
   height: auto;
   padding: 1em;
