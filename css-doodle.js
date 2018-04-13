@@ -609,7 +609,7 @@ function unitify(fn) {
   }
 }
 
-const [ min, max, total ] = [ 1, 16, 16 * 16 ];
+const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
 function parse_grid(size) {
   let [x, y] = (size + '')
