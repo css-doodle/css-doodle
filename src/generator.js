@@ -26,6 +26,7 @@ class Rules {
     this.props = {};
     this.keyframes = {};
     this.grid = null;
+    this.coords = [];
     this.reset();
   }
 
@@ -36,6 +37,7 @@ class Rules {
       cells: '',
       keyframes: ''
     }
+    this.coords = [];
   }
 
   add_rule(selector, rule) {
@@ -166,6 +168,7 @@ class Rules {
   }
 
   compose(coords, tokens) {
+    this.coords.push(coords);
     (tokens || this.tokens).forEach((token, i) => {
       if (token.skip) return false;
       switch (token.type) {
@@ -215,7 +218,7 @@ class Rules {
 
         case 'keyframes': {
           if (!this.keyframes[token.name]) {
-            this.keyframes[token.name] = () => `
+            this.keyframes[token.name] = coords => `
               ${ join_line(token.steps.map(step => `
                 ${ step.name } {
                   ${ join_line(
@@ -246,17 +249,20 @@ class Rules {
           }
         `;
       }
+    });
 
-      Object.keys(this.keyframes).forEach(name => {
-        let aname = this.compose_aname(name, i + 1);
+    let keyframes = Object.keys(this.keyframes);
+    this.coords.forEach((coords, i) => {
+      keyframes.forEach(name => {
+        let aname = this.compose_aname(name, coords.count);
         this.styles.keyframes += `
           ${ only_if(i == 0,
             `@keyframes ${ name } {
-              ${ this.keyframes[name]() }
+              ${ this.keyframes[name](coords) }
             }`
           )}
           @keyframes ${ aname } {
-            ${ this.keyframes[name]() }
+            ${ this.keyframes[name](coords) }
           }
         `;
       });
