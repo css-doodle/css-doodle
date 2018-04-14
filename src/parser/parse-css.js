@@ -1,7 +1,6 @@
 import iterator from './iterator';
 
 const Tokens = {
-
   func(name = '') {
     return {
       type: 'func',
@@ -9,28 +8,24 @@ const Tokens = {
       arguments: []
     };
   },
-
   argument() {
     return {
       type: 'argument',
       value: []
     };
   },
-
   text(value = '') {
     return {
       type: 'text',
       value
     };
   },
-
   comment(value) {
     return {
       type: 'comment',
       value
     }
   },
-
   psuedo(selector = '') {
     return {
       type: 'psuedo',
@@ -38,7 +33,6 @@ const Tokens = {
       styles: []
     };
   },
-
   cond(name = '') {
     return {
       type: 'cond',
@@ -47,7 +41,6 @@ const Tokens = {
       arguments: []
     };
   },
-
   rule(property = '') {
     return {
       type: 'rule',
@@ -55,7 +48,6 @@ const Tokens = {
       value: []
     };
   },
-
   keyframes(name = '') {
     return {
       type: 'keyframes',
@@ -71,7 +63,6 @@ const Tokens = {
       styles: []
     }
   }
-
 };
 
 const bracket_pair = {
@@ -241,9 +232,6 @@ function read_property(it) {
   let prop = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == ':') break;
-    else if (!/[a-zA-Z\-@]/.test(c)) {
-      throw_error('Syntax error: Bad property name.', it.info());
-    }
     else if (!is.white_space(c)) prop += c;
     it.next();
   }
