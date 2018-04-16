@@ -111,8 +111,11 @@ class Rules {
       this.props.has_transition = true;
     }
 
-    if (prop == 'clip-path') {
+    if (prop == 'mask' || prop == 'clip-path') {
       rule = prefix(rule);
+    }
+
+    if (prop == 'clip-path') {
       // fix clip bug
       rule += ';overflow: hidden;';
     }
