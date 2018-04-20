@@ -21,7 +21,6 @@
   }
 
   const Tokens = {
-
     func(name = '') {
       return {
         type: 'func',
@@ -29,28 +28,24 @@
         arguments: []
       };
     },
-
     argument() {
       return {
         type: 'argument',
         value: []
       };
     },
-
     text(value = '') {
       return {
         type: 'text',
         value
       };
     },
-
     comment(value) {
       return {
         type: 'comment',
         value
       }
     },
-
     psuedo(selector = '') {
       return {
         type: 'psuedo',
@@ -58,7 +53,6 @@
         styles: []
       };
     },
-
     cond(name = '') {
       return {
         type: 'cond',
@@ -67,7 +61,6 @@
         arguments: []
       };
     },
-
     rule(property = '') {
       return {
         type: 'rule',
@@ -75,7 +68,6 @@
         value: []
       };
     },
-
     keyframes(name = '') {
       return {
         type: 'keyframes',
@@ -91,7 +83,6 @@
         styles: []
       }
     }
-
   };
 
   const bracket_pair = {
@@ -261,9 +252,6 @@
     let prop = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == ':') break;
-      else if (!/[a-zA-Z\-@]/.test(c)) {
-        throw_error('Syntax error: Bad property name.', it.info());
-      }
       else if (!is.white_space(c)) prop += c;
       it.next();
     }
@@ -940,6 +928,18 @@
       return _ => y;
     },
 
+    count(x, y, count, grid) {
+      return _ => grid.count
+    },
+
+    maxrow(x, y, count, grid) {
+      return _ => grid.x
+    },
+
+    maxcol(x, y, count, grid) {
+      return _ => grid.y
+    },
+
     pick() {
       return (...args) => random(args);
     },
@@ -1239,8 +1239,11 @@
         this.props.has_transition = true;
       }
 
-      if (prop == 'clip-path') {
+      if (prop == 'mask' || prop == 'clip-path') {
         rule = prefix(rule);
+      }
+
+      if (prop == 'clip-path') {
         // fix clip bug
         rule += ';overflow: hidden;';
       }
@@ -1406,13 +1409,16 @@
 
   function generator(tokens, grid_size) {
     let rules = new Rules(tokens);
-    rules.compose({ x : 1, y: 1, count: 1 });
+    rules.compose({
+      x : 1, y: 1, count: 1,
+      grid: { x : 1, y: 1, count: 1 }
+    });
     let { grid } = rules.output();
     if (grid) grid_size = grid;
     rules.reset();
     for (let x = 1, count = 0; x <= grid_size.x; ++x) {
       for (let y = 1; y <= grid_size.y; ++y) {
-        rules.compose({ x, y, count: ++count});
+        rules.compose({ x, y, count: ++count, grid: grid_size });
       }
     }
     return rules.output();
