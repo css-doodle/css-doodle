@@ -16,6 +16,18 @@ export default {
     return _ => y;
   },
 
+  count(x, y, count, grid) {
+    return _ => grid.count
+  },
+
+  maxrow(x, y, count, grid) {
+    return _ => grid.x
+  },
+
+  maxcol(x, y, count, grid) {
+    return _ => grid.y
+  },
+
   pick() {
     return (...args) => random(args);
   },
