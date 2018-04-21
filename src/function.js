@@ -2,6 +2,12 @@ import Shapes from './shapes';
 import calculator from './calculator';
 import { memo, random, range, unitify } from './utils';
 
+function Lazy(fn) {
+  let wrap = () => fn;
+  wrap.lazy = true;
+  return wrap;
+}
+
 export default {
 
   index(x, y, count) {
@@ -32,15 +38,15 @@ export default {
     return (...args) => random(args);
   },
 
-  repeat() {
-    return (n, action) => {
-      let result = '', count = n();
-      for (let i = 0; i < count; ++i) {
-        result += action();
-      }
-      return result;
+  repeat: Lazy((n, action) => {
+    let result = '';
+    if (!action || !n) return result;
+    let count = n();
+    for (let i = 0; i < count; ++i) {
+      result += action();
     }
-  },
+    return result;
+  }),
 
   rand() {
     return (...args) => random(

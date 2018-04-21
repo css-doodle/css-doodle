@@ -93,7 +93,7 @@ class Rules {
           let fn = this.pick_func(fname);
           if (fn) {
             let args = val.arguments.map(arg => {
-              if (val.lazy) {
+              if (fn.lazy) {
                 return () => this.compose_argument(arg, coords);
               } else {
                 return this.compose_argument(arg, coords);

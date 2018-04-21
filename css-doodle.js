@@ -326,9 +326,6 @@
         it.next();
         func.name = name;
         func.arguments = read_arguments(it);
-        if (func.name == '@repeat') {
-          func.lazy = true;
-        }
         break;
       }
       else name += c;
@@ -918,6 +915,12 @@
     return stack[0];
   }
 
+  function Lazy(fn) {
+    let wrap = () => fn;
+    wrap.lazy = true;
+    return wrap;
+  }
+
   var Func = {
 
     index(x, y, count) {
@@ -948,15 +951,15 @@
       return (...args) => random(args);
     },
 
-    repeat() {
-      return (n, action) => {
-        let result = '', count = n();
-        for (let i = 0; i < count; ++i) {
-          result += action();
-        }
-        return result;
+    repeat: Lazy((n, action) => {
+      let result = '';
+      if (!action || !n) return result;
+      let count = n();
+      for (let i = 0; i < count; ++i) {
+        result += action();
       }
-    },
+      return result;
+    }),
 
     rand() {
       return (...args) => random(
@@ -1235,7 +1238,7 @@
             let fn = this.pick_func(fname);
             if (fn) {
               let args = val.arguments.map(arg => {
-                if (val.lazy) {
+                if (fn.lazy) {
                   return () => this.compose_argument(arg, coords);
                 } else {
                   return this.compose_argument(arg, coords);
