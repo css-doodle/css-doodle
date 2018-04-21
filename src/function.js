@@ -32,6 +32,16 @@ export default {
     return (...args) => random(args);
   },
 
+  repeat() {
+    return (n, action) => {
+      let result = '', count = n();
+      for (let i = 0; i < count; ++i) {
+        result += action();
+      }
+      return result;
+    }
+  },
+
   rand() {
     return (...args) => random(
       memo('range', unitify(range)).apply(null, args)

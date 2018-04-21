@@ -326,6 +326,9 @@
         it.next();
         func.name = name;
         func.arguments = read_arguments(it);
+        if (func.name == '@repeat') {
+          func.lazy = true;
+        }
         break;
       }
       else name += c;
@@ -944,6 +947,16 @@
       return (...args) => random(args);
     },
 
+    repeat() {
+      return (n, action) => {
+        let result = '', count = n();
+        for (let i = 0; i < count; ++i) {
+          result += action();
+        }
+        return result;
+      }
+    },
+
     rand() {
       return (...args) => random(
         memo('range', unitify(range)).apply(null, args)
@@ -1217,10 +1230,15 @@
             break;
           }
           case 'func': {
-            let fn = this.pick_func(val.name.substr(1));
+            let fname = val.name.substr(1);
+            let fn = this.pick_func(fname);
             if (fn) {
               let args = val.arguments.map(arg => {
-                return this.compose_argument(arg, coords);
+                if (val.lazy) {
+                  return () => this.compose_argument(arg, coords);
+                } else {
+                  return this.compose_argument(arg, coords);
+                }
               });
               result += apply_args(fn, coords, args);
             }

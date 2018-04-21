@@ -89,10 +89,15 @@ class Rules {
           break;
         }
         case 'func': {
-          let fn = this.pick_func(val.name.substr(1));
+          let fname = val.name.substr(1);
+          let fn = this.pick_func(fname);
           if (fn) {
             let args = val.arguments.map(arg => {
-              return this.compose_argument(arg, coords);
+              if (val.lazy) {
+                return () => this.compose_argument(arg, coords);
+              } else {
+                return this.compose_argument(arg, coords);
+              }
             });
             result += apply_args(fn, coords, args);
           }

@@ -306,6 +306,9 @@ function read_func(it) {
       it.next();
       func.name = name;
       func.arguments = read_arguments(it);
+      if (func.name == '@repeat') {
+        func.lazy = true;
+      }
       break;
     }
     else name += c;
