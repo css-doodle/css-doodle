@@ -2,7 +2,7 @@ import Shapes from './shapes';
 import calculator from './calculator';
 
 import {
-  memo, random, range, unitify, by_charcode
+  memo, random, range, unitify, by_charcode, by_hex
 } from './utils';
 
 function Lazy(fn) {
@@ -54,8 +54,9 @@ export default {
   rand() {
     return (...args) => {
       let [ start, stop ] = args;
+      let fn = unitify;
       let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
-      let fn = is_letter ? by_charcode : unitify;
+      if (is_letter) fn = by_charcode;
       return random(
         memo('range', fn(range)).apply(null, args)
       );
@@ -73,6 +74,10 @@ export default {
 
   calc() {
     return value => calculator(value);
+  },
+
+  hex() {
+    return value => Number(value).toString(16);
   }
 
 }

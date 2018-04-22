@@ -590,11 +590,7 @@
   function unitify(fn) {
     return (...args) => {
       let unit = get_unit(args[0]);
-      if (unit) {
-        args = args.map(remove_unit);
-        return add_unit(fn, unit).apply(null, args);
-      }
-      return fn.apply(null, args);
+      return add_unit(fn, unit).apply(null, args);
     }
   }
 
@@ -972,8 +968,9 @@
     rand() {
       return (...args) => {
         let [ start, stop ] = args;
+        let fn = unitify;
         let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
-        let fn = is_letter ? by_charcode : unitify;
+        if (is_letter) fn = by_charcode;
         return random(
           memo('range', fn(range)).apply(null, args)
         );
@@ -991,6 +988,10 @@
 
     calc() {
       return value => calculate(value);
+    },
+
+    hex() {
+      return value => Number(value).toString(16);
     }
 
   }

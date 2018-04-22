@@ -96,11 +96,7 @@ export function range(start, stop, step) {
 export function unitify(fn) {
   return (...args) => {
     let unit = get_unit(args[0]);
-    if (unit) {
-      args = args.map(remove_unit);
-      return add_unit(fn, unit).apply(null, args);
-    }
-    return fn.apply(null, args);
+    return add_unit(fn, unit).apply(null, args);
   }
 }
 
