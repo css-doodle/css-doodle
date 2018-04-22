@@ -7,9 +7,9 @@
   <meta name="description" content="A web component for drawing patterns with css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="lib/codemirror/style.css">
-  <link rel="stylesheet" href="style.css?27b8bbf0b9506d44bfc4fab24c22ae80">
+  <link rel="stylesheet" href="style.css?fde125675da139878b123468c9e0da47">
   <script>(window.customElements && document.head.attachShadow) || (document.querySelector('html').className += ' oldie')</script>
-  <script src="lib/css-doodle.min.js?fcc22d8072ec3920f993b3c23d7f7194"></script>
+  <script src="lib/css-doodle.min.js?aaddf1aebe6e2e5d5b4a0dc2cfeccddc"></script>
 </head>
 <body>
 
@@ -40,6 +40,7 @@
       <h1>&lt; <em>css-doodle</em> /&gt; </h1>
       <p>A web component for drawing patterns with CSS</p>
       <nav>
+        <a href="#usage">Usage</a>
         <a href="https://codepen.io/collection/XyVkpQ/">Codepen</a>
         <a href="https://github.com/yuanchuan/css-doodle">Github</a>
       </nav>
@@ -77,7 +78,7 @@
       <p>
         Include the script directly from <a href="https://cdnjs.com/libraries/css-doodle">cdnjs</a> and everything is ready:
       </p>
-      <p>
+      <p class="first-code-sample">
         <textarea code>
           <script src="https://cdnjs.cloudflare.com/ajax/libs/css-doodle/0.2.2/css-doodle.min.js"></script>
 
@@ -134,11 +135,16 @@
             <ul>
               <li> <a href="#function-@index">@index</a></li>
               <li> <a href="#function-@row">@row</a></li>
+              <li> <a href="#function-@max-row">@max-row</a></li>
               <li> <a href="#function-@col">@col</a></li>
+              <li> <a href="#function-@max-col">@max-col</a></li>
+              <li> <a href="#function-@size">@size</a></li>
               <li> <a href="#function-@pick">@pick</a></li>
               <li> <a href="#function-@rand">@rand</a></li>
+              <li> <a href="#function-@repeat">@repeat</a></li>
               <li> <a href="#function-@Math">@&lt;Math&gt;</a></li>
               <li> <a href="#function-@calc">@calc</a></li>
+              <li> <a href="#function-@hex">@hex</a></li>
             </ul>
           </li>
           <li>
@@ -750,6 +756,33 @@
         </section>
 
         <section>
+          <h4><a name="function-@max-row"></a>@max-row</h4>
+          <p> Returns the max row number of the grid.</p>
+          <p class="has-preview">
+            <textarea code>
+              :doodle {
+                @grid: 4x2 / 7em 9em;
+              }
+              :after {
+                content: '@row() / @max-row()';
+              }
+            </textarea>
+            <css-doodle>
+              :doodle {
+                @grid: 4x2 / 7em 9em;
+              }
+              background: #60569e;
+              margin: .5px;
+              :after {
+                content: '@row() / @max-row()';
+                color: #fff;
+                font-size: .7em;
+              }
+            </css-doodle>
+          </p>
+        </section>
+
+        <section>
           <h4><a name="function-@col"></a>@col</h4>
           <p> Returns the current column number of the cell.</p>
           <p class="has-preview">
@@ -769,7 +802,60 @@
               }
             </css-doodle>
           </p>
+        </section>
 
+        <section>
+          <h4><a name="function-@max-col"></a>@max-col</h4>
+          <p> Returns the max column number of the grid.</p>
+          <p class="has-preview">
+            <textarea code>
+              :doodle {
+                @grid: 2x4 / 7em 9em;
+              }
+              :after {
+                content: '@col()/@max-col()';
+              }
+            </textarea>
+            <css-doodle>
+              :doodle {
+                @grid: 2x4 / 7em 9em;
+              }
+              background: #60569e;
+              margin: .5px;
+              :after {
+                content: '@col()/@max-col()';
+                color: #fff;
+                font-size: .7em;
+              }
+            </css-doodle>
+          </p>
+        </section>
+
+        <section>
+          <h4><a name="function-@size"></a>@size</h4>
+          <p> Returns the total cells number of the grid.</p>
+          <p class="has-preview">
+            <textarea code>
+              :doodle {
+                @grid: 3 / 7em;
+              }
+              :after {
+                content: '@index() / @size()';
+              }
+            </textarea>
+            <css-doodle>
+              :doodle {
+                @grid: 3 / 7em;
+              }
+              background: #60569e;
+              margin: .5px;
+              :after {
+                content: '@index() / @size()';
+                color: #fff;
+                font-size: .7em;
+              }
+            </css-doodle>
+          </p>
           <p>
             These numbers can be used to generate dynamic values together with <code>calc()</code>.
           </p>
@@ -777,12 +863,12 @@
             <textarea code>
               background: rgba(
                 96, 86, 158,
-                calc(@row() * @col() / 25)
+                calc(@row() * @col() / @size())
               );
             </textarea>
             <css-doodle grid="5">
               :doodle { @size: 7em; }
-              --alpha: calc(@row() * @col() / 25);
+              --alpha: calc(@row() * @col() / @size());
               background: rgba(96, 86, 158, var(--alpha));
               :after {
                 content: '@calc(@row() * @col())';
@@ -842,6 +928,43 @@
               );
             </css-doodle>
           </p>
+          <p>It also recognizes the letter range: </p>
+          <p class="has-preview">
+            <textarea code>
+              :after {
+                content: '@rand(a, z)';
+              }
+            </textarea>
+            <css-doodle grid="5" class="click-to-update">
+              :doodle { @size: 7em; }
+              background: rgba(96, 86, 158, @rand(.9));
+              margin: .5px;
+              :after {
+                content: '@rand(a, z)';
+                color: #fff;
+              }
+            </css-doodle>
+          </p>
+        </section>
+
+        <section>
+          <h4><a name="function-@repeat"></a>@repeat(times, value)</h4>
+          <p>
+            Duplicate the given value:
+            <br/><span class="tip">(try to click the doodle)</span>
+          </p>
+          <p class="has-preview">
+            <textarea code>
+              background:
+                #@repeat(6, @pick(@rand(0, 9), @rand(a, f)));
+            </textarea>
+            <css-doodle grid="5" class="click-to-update">
+              :doodle { @size: 7em; }
+              background: #@repeat(6, @pick(@rand(0, 9), @rand(a, f)));
+              margin: .5px;
+              @shape: star;
+            </css-doodle>
+          </p>
         </section>
 
         <section>
@@ -878,7 +1001,7 @@
               justify-self: center;
 
               background: rgba(
-                96, 86, 158, calc(1 - @index() / 60)
+                96, 86, 158, calc(1 - @index() / @size())
               );
 
               transform:
@@ -907,7 +1030,7 @@
         </section>
 
         <section>
-          <h4><a name="function-@calc"></a>@calc</h4>
+          <h4><a name="function-@calc"></a>@calc(expr)</h4>
           <p>
             Evaluate calculations.
           </p>
@@ -933,8 +1056,49 @@
             </css-doodle>
           </p>
         </section>
-        <div class="sep"></div>
+
+        <section>
+          <h4><a name="function-@hex"></a>@hex(num)</h4>
+          <p>
+            Transform a number to the hex format.
+          </p>
+          <p class="has-preview">
+            <textarea code>
+              :after {
+                content: '\@hex(@rand(9632, 9687))';
+              }
+            </textarea>
+            <css-doodle grid="5" class="click-to-update">
+              :doodle { @size: 7em; }
+              margin: .5px;
+              :after {
+                content: '\@hex(@rand(9632, 9687))';
+                color: #60569e;
+              }
+            </css-doodle>
+          </p>
+        </section>
       </article>
+
+      <section class="example">
+        <div class="container">
+          <css-doodle>
+            :doodle {
+              @grid: 20 / 100vmax;
+              background: #12152f;
+            }
+            :after {
+              content: '\@hex(@rand(0x2500, 0x257f))';
+              font-size: 4em;
+              color: hsla(
+                @rand(360), 70%, 70%,
+                @rand(.9)
+              );
+            }
+          </css-doodle>
+        </div>
+        <textarea code></textarea>
+      </section>
 
       <article class="wrap">
         <h3><a name="js-api"></a>JS API </h3>
@@ -951,7 +1115,7 @@
               doodle.grid = "5";
 
               console.log(doodle.grid);
-              /* { x: 5, y: 5, count: 25 } */
+              /* { x: 5, y: 5, size: 25 } */
             </textarea>
           </p>
         </section>
