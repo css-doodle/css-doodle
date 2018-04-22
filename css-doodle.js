@@ -598,6 +598,14 @@
     }
   }
 
+  function by_charcode(fn) {
+    return (...args) => {
+      let codes = args.map(n => String(n).charCodeAt(0));
+      let result = fn.apply(null, codes);
+      return result.map(n => String.fromCharCode(n));
+    }
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -936,15 +944,15 @@
     },
 
     count(x, y, count, grid) {
-      return _ => grid.count
+      return _ => grid.count;
     },
 
     maxrow(x, y, count, grid) {
-      return _ => grid.x
+      return _ => grid.x;
     },
 
     maxcol(x, y, count, grid) {
-      return _ => grid.y
+      return _ => grid.y;
     },
 
     pick() {
@@ -962,9 +970,14 @@
     }),
 
     rand() {
-      return (...args) => random(
-        memo('range', unitify(range)).apply(null, args)
-      );
+      return (...args) => {
+        let [ start, stop ] = args;
+        let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
+        let fn = is_letter ? by_charcode : unitify;
+        return random(
+          memo('range', fn(range)).apply(null, args)
+        );
+      };
     },
 
     shape() {

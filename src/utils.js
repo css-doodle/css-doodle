@@ -103,3 +103,11 @@ export function unitify(fn) {
     return fn.apply(null, args);
   }
 }
+
+export function by_charcode(fn) {
+  return (...args) => {
+    let codes = args.map(n => String(n).charCodeAt(0));
+    let result = fn.apply(null, codes);
+    return result.map(n => String.fromCharCode(n));
+  }
+}

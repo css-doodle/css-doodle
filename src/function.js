@@ -1,6 +1,9 @@
 import Shapes from './shapes';
 import calculator from './calculator';
-import { memo, random, range, unitify } from './utils';
+
+import {
+  memo, random, range, unitify, by_charcode
+} from './utils';
 
 function Lazy(fn) {
   let wrap = () => fn;
@@ -23,15 +26,15 @@ export default {
   },
 
   count(x, y, count, grid) {
-    return _ => grid.count
+    return _ => grid.count;
   },
 
   maxrow(x, y, count, grid) {
-    return _ => grid.x
+    return _ => grid.x;
   },
 
   maxcol(x, y, count, grid) {
-    return _ => grid.y
+    return _ => grid.y;
   },
 
   pick() {
@@ -49,9 +52,14 @@ export default {
   }),
 
   rand() {
-    return (...args) => random(
-      memo('range', unitify(range)).apply(null, args)
-    );
+    return (...args) => {
+      let [ start, stop ] = args;
+      let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
+      let fn = is_letter ? by_charcode : unitify;
+      return random(
+        memo('range', fn(range)).apply(null, args)
+      );
+    };
   },
 
   shape() {
