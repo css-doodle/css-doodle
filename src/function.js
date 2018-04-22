@@ -2,7 +2,7 @@ import Shapes from './shapes';
 import calculator from './calculator';
 
 import {
-  memo, random, range, unitify, by_charcode, by_hex
+  memo, random, range, unitify, by_charcode
 } from './utils';
 
 function Lazy(fn) {
