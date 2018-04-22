@@ -25,15 +25,15 @@ export default {
     return _ => y;
   },
 
-  count(x, y, count, grid) {
+  size(x, y, count, grid) {
     return _ => grid.count;
   },
 
-  maxrow(x, y, count, grid) {
+  ['max-row'](x, y, count, grid) {
     return _ => grid.x;
   },
 
-  maxcol(x, y, count, grid) {
+  ['max-col'](x, y, count, grid) {
     return _ => grid.y;
   },
 
