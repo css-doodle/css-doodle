@@ -937,7 +937,7 @@
             </textarea>
             <css-doodle grid="5" class="click-to-update">
               :doodle { @size: 7em; }
-              background: rgba(96, 86, 158, @rand(.9));
+              background: #60569e;
               margin: .5px;
               :after {
                 content: '@rand(a, z)';
@@ -955,14 +955,23 @@
           </p>
           <p class="has-preview">
             <textarea code>
-              background:
-                #@repeat(6, @pick(@rand(0, 9), @rand(a, f)));
+              background: #@repeat(6,
+                @pick(@rand(0, 9), @rand(a, f))
+              );
             </textarea>
             <css-doodle grid="5" class="click-to-update">
               :doodle { @size: 7em; }
-              background: #@repeat(6, @pick(@rand(0, 9), @rand(a, f)));
+              background: #60569e;
               margin: .5px;
-              @shape: star;
+              :after {
+                content: '';
+                position: absolute;
+                left: @rand(20%, 80%);
+                top: @rand(20%, 80%);
+                @size: 5px;
+                border-radius: 50%;
+                background: #@repeat(6, @pick(@rand(0, 9), @rand(a, f)));
+              }
             </css-doodle>
           </p>
         </section>
