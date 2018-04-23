@@ -889,14 +889,14 @@
             <textarea code>
               :after {
                 content: '@pick(+, *, -, #)';
-                color: @pick(#60569e, #e91e63);
+                color: @pick(#60569e, #2196f3);
               }
             </textarea>
             <css-doodle grid="5" class="click-to-update">
               :doodle { @size: 7em; }
               :after {
                 content: '@pick(+, *, -, #)';
-                color: @pick(#60569e, #e91e63);
+                color: @pick(#60569e, #2196f3);
               }
             </css-doodle>
           </p>
@@ -940,6 +940,7 @@
               background: #60569e;
               margin: .5px;
               :after {
+                font-size: .7em;
                 content: '@rand(a, z)';
                 color: #fff;
               }
@@ -955,6 +956,7 @@
           </p>
           <p class="has-preview">
             <textarea code>
+              /* little circles */
               background: #@repeat(6,
                 @pick(@rand(0, 9), @rand(a, f))
               );
@@ -1098,7 +1100,7 @@
             }
             :after {
               content: '\@hex(@rand(0x2500, 0x257f))';
-              font-size: 4em;
+              font-size: 5vmax;
               color: hsla(
                 @rand(360), 70%, 70%,
                 @rand(.9)
