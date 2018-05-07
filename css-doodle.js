@@ -1160,7 +1160,7 @@
   var MathFunc = methods.reduce((expose, n) => {
     expose[n] = () => (...args) => {
       if (typeof Math[n] === 'number') return Math[n];
-      return Math[n].apply(null, args.map(eval));
+      return Math[n].apply(null, args.map(calculate));
     };
     return expose;
   }, {});
