@@ -203,10 +203,11 @@ textarea[code] {
   .cover nav {
     padding: 1em 0 0;
     margin-top: 1em;
+    display: flex;
+    justify-content: center;
   }
     .cover nav a {
       font-size: .8em;
-      margin: 0 .2em;
       color: rgba(174, 172, 251, .62);
       text-decoration: none;
       min-width: 5em;
@@ -214,12 +215,20 @@ textarea[code] {
       padding: 8px 12px;
       position: relative;
       transition: all .2s;
-      border-radius: 4px;
       border: 1px solid currentColor;
     }
       .cover nav a:hover {
         color: rgba(174, 172, 251, .9);
         background: rgba(174, 172, 251, .05);
+      }
+      .cover nav a + a {
+        border-left: none;
+      }
+      .cover nav a:first-child {
+        border-radius: 4px 0 0 4px;
+      }
+      .cover nav a:last-child {
+        border-radius: 0 4px 4px 0;
       }
 
   @media (max-width: 30.125em) {
