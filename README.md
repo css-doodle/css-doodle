@@ -8,3 +8,16 @@ A web component for drawing patterns with CSS.
 
 ## Docs
 [https://css-doodle.com](http://css-doodle.com)
+
+## Build
+
+```bash
+# build css-doodle.js
+yarn build
+
+# generate css-doodle.min.js
+yarn minify
+
+# or using make
+make
+```
