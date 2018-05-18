@@ -1,5 +1,7 @@
 # &lt;css-doodle /&gt;
 
+[![Build Status](https://travis-ci.org/css-doodle/css-doodle.svg?branch=master)](https://travis-ci.org/css-doodle/css-doodle)
+
 A web component for drawing patterns with CSS.
 
 <a href="https://css-doodle.com/">
@@ -32,7 +34,7 @@ If you would like to contribute enhancements or fixes, please do the following:
 
 3. When in the `css-doodle` directory, run `npm install` or `yarn install` to install dependencies.
 
-4. To begin active development, run `npm start` or `yarn start`. This does several things for you:
+4. To begin active development, run `npm start` or `yarn start`.
 
 ## Running tests from the command line
 
