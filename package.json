@@ -6,13 +6,20 @@
   "scripts": {
     "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
     "minify": "uglifyjs --compress --mangle --output=css-doodle.min.js --ecma 6 -- css-doodle.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "karma start",
+    "test": "karma start --single-run"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yuanchuan/css-doodle.git"
   },
   "devDependencies": {
+    "jasmine-core": "^3.1.0",
+    "karma": "^2.0.2",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-jasmine": "^1.1.2",
+    "karma-rollup-preprocessor": "^6.0.0",
     "rollup": "^0.58.1",
     "uglify-es": "^3.3.9"
   },
