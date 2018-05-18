@@ -1,0 +1,23 @@
+sudo: true
+dist: trusty
+language: node_js
+node_js: 8.9
+
+cache:
+  directories:
+    - node_modules
+
+addons:
+  firefox: latest
+  chrome: stable
+
+install:
+  - yarn install
+
+script:
+  # xvfb-run is needed for headless testing with real browsers
+  - xvfb-run yarn test
+
+notifications:
+  email:
+    on_success: never
