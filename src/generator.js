@@ -287,13 +287,6 @@ class Rules {
 export default
 function generator(tokens, grid_size) {
   let rules = new Rules(tokens);
-  rules.compose({
-    x : 1, y: 1, count: 1,
-    grid: { x : 1, y: 1, count: 1 }
-  });
-  let { grid } = rules.output();
-  if (grid) grid_size = grid;
-  rules.reset();
   for (let x = 1, count = 1; x <= grid_size.x; ++x) {
     for (let y = 1; y <= grid_size.y; ++y) {
       rules.compose({ x, y, count: ++count, grid: grid_size });
