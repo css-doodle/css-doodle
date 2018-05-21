@@ -14,5 +14,9 @@ minify: $(TARGET)
 	@npm run minify
 	@./tools/trim $(TARGET_MIN)
 
+test:
+	@npm run test
+.PHONY: test
+
 $(LIB):
 	@npm install
