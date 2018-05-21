@@ -1,7 +1,8 @@
-sudo: true
+sudo: faslse
 dist: trusty
 language: node_js
-node_js: 8.9
+node_js:
+  - "stable"
 
 cache:
   directories:
@@ -19,5 +20,4 @@ script:
   - xvfb-run yarn test
 
 notifications:
-  email:
-    on_success: never
+  email: false
