@@ -20,7 +20,7 @@
     "karma-firefox-launcher": "^1.1.0",
     "karma-jasmine": "^1.1.2",
     "karma-rollup-preprocessor": "^6.0.0",
-    "rollup": "^0.51.1",
+    "rollup": "^0.59.1",
     "uglify-es": "^3.3.9"
   },
   "keywords": [
