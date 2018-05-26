@@ -1,8 +1,7 @@
-import parse_css from '../src/parser/parse-css';
-import generator from '../src/generator';
+import parse_css from '../../src/parser/parse-css';
+import generator from '../../src/generator';
 
-// issue #16
-describe('rules', () => {
+describe('issues', () => {
   let input = `
     :doodle { @grid: 2 / 10em; }
     color: red;
