@@ -29,6 +29,9 @@ class Doodle extends HTMLElement {
   constructor() {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
+    this.extra = {
+      get_custom_property_value: this.get_custom_property_value.bind(this)
+    }
   }
   connectedCallback() {
     setTimeout(() => {
@@ -37,7 +40,7 @@ class Doodle extends HTMLElement {
         return false;
       }
       try {
-        let parsed = parse_css(this.innerHTML);
+        let parsed = parse_css(this.innerHTML, this.extra);
         this.grid_size = parse_grid(this.getAttribute('grid'));
         compiled = generator(parsed, this.grid_size);
         compiled.grid && (this.grid_size = compiled.grid);
@@ -48,6 +51,12 @@ class Doodle extends HTMLElement {
       }
       this.build_grid(compiled);
     });
+  }
+
+  get_custom_property_value(name) {
+    return getComputedStyle(this).getPropertyValue(name)
+      .trim()
+      .replace(/^\(|\)$/g, '');
   }
 
   build_grid(compiled) {
@@ -108,7 +117,7 @@ class Doodle extends HTMLElement {
       this.grid_size = parse_grid(this.getAttribute('grid'));
     }
 
-    const compiled = generator(parse_css(styles), this.grid_size);
+    const compiled = generator(parse_css(styles, this.extra), this.grid_size);
 
     if (compiled.grid) {
       let { x, y } = compiled.grid;
@@ -125,7 +134,7 @@ class Doodle extends HTMLElement {
       if (this.grid_size.x !== x || this.grid_size.y !== y) {
         Object.assign(this.grid_size, grid);
         return this.build_grid(
-          generator(parse_css(styles), this.grid_size)
+          generator(parse_css(styles, this.extra), this.grid_size)
         );
       }
     }

@@ -1,5 +1,5 @@
 import parse_value_group from './parser/parse-value-group';
-import parse_grid  from './parser/parse-grid';
+import parse_grid from './parser/parse-grid';
 import Shapes from './shapes';
 import { memo, prefix } from './utils';
 
@@ -68,6 +68,10 @@ export default {
       ? prefix(`clip-path: ${ Shapes[type].apply(null, args) };`)
         + 'overflow: hidden;'
       : '';
-  })
+  }),
+
+  ['@use'](rules) {
+    return rules;
+  }
 
 }

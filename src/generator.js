@@ -37,7 +37,12 @@ class Rules {
       cells: '',
       keyframes: ''
     }
-    this.rules = {};
+    let host = this.rules[':host'];
+    let container = this.rules[':container'];
+    this.rules = {
+      ':host': host,
+      ':container': container
+    };
     this.coords = [];
   }
 
@@ -46,6 +51,7 @@ class Rules {
     if (!rules) {
       rules = this.rules[selector] = [];
     }
+
     rules.push.apply(rules, make_array(rule));
   }
 
@@ -83,6 +89,7 @@ class Rules {
   }
 
   compose_value(value, coords) {
+    if (!value) return '';
     return value.reduce((result, val) => {
       switch (val.type) {
         case 'text': {
@@ -166,6 +173,12 @@ class Rules {
           if (!is_host_selector(selector)) {
             rule = transformed;
           }
+        }
+        case '@use': {
+          if (token.value.length) {
+            this.compose(coords, token.value);
+          }
+          rule = Property[prop](token.value);
         }
         default: {
           rule = transformed;
