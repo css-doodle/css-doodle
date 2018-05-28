@@ -46,7 +46,11 @@
         }
 
         if (c == ')') {
-          marks.pop();
+          if (marks[marks.length - 1] == '(') {
+            marks.pop();
+          } else {
+            throw new Error('bad match');
+          }
         }
 
         if (c == ',') {
@@ -63,6 +67,11 @@
       }
       it.next();
     }
+
+    if (marks.length) {
+      return [];
+    }
+
     if (result.name) {
       groups.push(result);
     }
@@ -71,11 +80,20 @@
 
   var parse_var = input => {
     input = input.trim();
+    let result = [];
+
     if (!/^var\(/.test(input)) {
-      return [];
+      return result;
     }
+
     let it = iterator(input);
-    return parse(it);
+    try {
+      result = parse(it);
+    } catch (e) {
+      //
+    }
+
+    return result;
   }
 
   const Tokens = {
@@ -1632,7 +1650,6 @@
         let compiled;
         let use = this.getAttribute('use') || '';
         if (use) use = `@use:${ use };`;
-        console.log(use);
         if (!this.innerHTML.trim() && !use) {
           return false;
         }

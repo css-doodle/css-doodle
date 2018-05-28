@@ -26,7 +26,11 @@ function parse(it) {
       }
 
       if (c == ')') {
-        marks.pop();
+        if (marks[marks.length - 1] == '(') {
+          marks.pop();
+        } else {
+          throw new Error('bad match');
+        }
       }
 
       if (c == ',') {
@@ -43,6 +47,11 @@ function parse(it) {
     }
     it.next();
   }
+
+  if (marks.length) {
+    return [];
+  }
+
   if (result.name) {
     groups.push(result);
   }
@@ -51,9 +60,18 @@ function parse(it) {
 
 export default input => {
   input = input.trim();
+  let result = [];
+
   if (!/^var\(/.test(input)) {
-    return [];
+    return result;
   }
+
   let it = iterator(input);
-  return parse(it);
+  try {
+    result = parse(it);
+  } catch (e) {
+    //
+  }
+
+  return result;
 }

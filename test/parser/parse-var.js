@@ -15,7 +15,7 @@ describe('parse_var', () => {
 
   it('should get its alternatives', () => {
     test(
-      'var(--a, var(--b)',
+      'var(--a, var(--b))',
       [{ name: '--a', alternative: [{ name: '--b'}] }]
     );
   });
@@ -32,6 +32,12 @@ describe('parse_var', () => {
     test(
       'var(--)', []
     );
+  });
+
+  it('should ignore bad vars', () => {
+    test('xvar(--a)', []);
+    test('--a', []);
+    test('color red', []);
   });
 
 });
