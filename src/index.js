@@ -31,16 +31,19 @@ class Doodle extends HTMLElement {
     this.doodle = this.attachShadow({ mode: 'open' });
     this.extra = {
       get_custom_property_value: this.get_custom_property_value.bind(this)
-    }
+    };
   }
   connectedCallback() {
     setTimeout(() => {
       let compiled;
-      if (!this.innerHTML.trim()) {
+      let use = this.getAttribute('use') || '';
+      if (use) use = '@use:' + use;
+      if (!this.innerHTML.trim() && !use) {
         return false;
       }
+
       try {
-        let parsed = parse_css(this.innerHTML, this.extra);
+        let parsed = parse_css(use + this.innerHTML, this.extra);
         this.grid_size = parse_grid(this.getAttribute('grid'));
         compiled = generator(parsed, this.grid_size);
         compiled.grid && (this.grid_size = compiled.grid);
@@ -110,6 +113,9 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
+    let use = this.getAttribute('use') || '';
+    if (use) use = '@use:' + use;
+
     if (!styles) styles = this.innerHTML;
     this.innerHTML = styles;
 
@@ -117,7 +123,7 @@ class Doodle extends HTMLElement {
       this.grid_size = parse_grid(this.getAttribute('grid'));
     }
 
-    const compiled = generator(parse_css(styles, this.extra), this.grid_size);
+    const compiled = generator(parse_css(use + styles, this.extra), this.grid_size);
 
     if (compiled.grid) {
       let { x, y } = compiled.grid;
@@ -134,7 +140,7 @@ class Doodle extends HTMLElement {
       if (this.grid_size.x !== x || this.grid_size.y !== y) {
         Object.assign(this.grid_size, grid);
         return this.build_grid(
-          generator(parse_css(styles, this.extra), this.grid_size)
+          generator(parse_css(use + styles, this.extra), this.grid_size)
         );
       }
     }
@@ -161,15 +167,28 @@ class Doodle extends HTMLElement {
     this.connectedCallback();
   }
 
+  get use() {
+    return this.getAttribute('use');
+  }
+
+  set use(use) {
+    this.setAttribute('use', use);
+    this.connectedCallback();
+  }
+
   static get observedAttributes() {
-    return ['grid'];
+    return ['grid', 'use'];
   }
 
   attributeChangedCallback(name, old_val, new_val) {
+    if (old_val == new_val) {
+      return false;
+    }
     if (name == 'grid' && old_val) {
-      if (old_val !== new_val) {
-        this.grid_size = new_val;
-      }
+      this.grid_size = new_val;
+    }
+    if (name == 'use' && old_val) {
+      this.use = new_val;
     }
   }
 }
