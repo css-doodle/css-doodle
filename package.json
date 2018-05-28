@@ -6,6 +6,7 @@
   "scripts": {
     "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
     "minify": "uglifyjs --compress --mangle --output=css-doodle.min.js --ecma 6 -- css-doodle.js",
+    "trim": "./tools/trim css-doodle.min.js",
     "start": "karma start",
     "test": "karma start --single-run"
   },
