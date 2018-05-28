@@ -28,8 +28,8 @@ make
 
 ## Resources
 
-* [https://alligator.io/css/patterns-css-doodle/](https://alligator.io/css/patterns-css-doodle/)
-* [https://www.timothyellison.com/2018/05/27/bokeh-backgrounds-with-css-doodle/](https://www.timothyellison.com/2018/05/27/bokeh-backgrounds-with-css-doodle/)
+* [Creating Patterns Using CSS & the &lt;css-doodle /&gt; Web Component](https://alligator.io/css/patterns-css-doodle/)
+* [Bokeh Backgrounds with CSS-Doodle by Tim Ellison](https://www.timothyellison.com/2018/05/27/bokeh-backgrounds-with-css-doodle/)
 
 ## Contributing
 
