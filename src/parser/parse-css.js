@@ -1,4 +1,5 @@
 import iterator from './iterator';
+import parse_var from './parse-var';
 
 const Tokens = {
   func(name = '') {
@@ -147,7 +148,7 @@ function read_line(it, reset) {
   return read_until(c => is.line_break(c) || c == '{')(it, reset);
 }
 
-function read_step(it) {
+function read_step(it, extra) {
   let c, step = Tokens.step();
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
@@ -159,7 +160,7 @@ function read_step(it) {
       step.name = read_selector(it);
     }
     else {
-      step.styles.push(read_rule(it));
+      step.styles.push(read_rule(it, extra));
       if (it.curr() == '}') break;
     }
     it.next();
@@ -167,7 +168,7 @@ function read_step(it) {
   return step;
 }
 
-function read_steps(it) {
+function read_steps(it, extra) {
   const steps = [];
   let c;
   while (!it.end()) {
@@ -177,14 +178,14 @@ function read_steps(it) {
       continue;
     }
     else {
-      steps.push(read_step(it));
+      steps.push(read_step(it, extra));
     }
     it.next();
   }
   return steps;
 }
 
-function read_keyframes(it) {
+function read_keyframes(it, extra) {
   let keyframes = Tokens.keyframes(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
@@ -199,7 +200,7 @@ function read_keyframes(it) {
     }
     else if (c == '{') {
       it.next();
-      keyframes.steps = read_steps(it);
+      keyframes.steps = read_steps(it, extra);
       break;
     }
     it.next();
@@ -376,10 +377,10 @@ function read_cond_selector(it) {
   return selector;
 }
 
-function read_psuedo(it) {
+function read_psuedo(it, extra) {
   let psuedo = Tokens.psuedo(), c;
   while (!it.end()) {
-    if ((c = it.curr())== '}') break;
+    if ((c = it.curr()) == '}') break;
     if (is.white_space(c)) {
       it.next();
       continue;
@@ -388,7 +389,14 @@ function read_psuedo(it) {
       psuedo.selector = read_selector(it);
     }
     else {
-      psuedo.styles.push(read_rule(it));
+      let rule = read_rule(it, extra);
+      if (rule.property == '@use') {
+        psuedo.styles = psuedo.styles.concat(
+          rule.value
+        );
+      } else {
+        psuedo.styles.push(rule);
+      }
       if (it.curr() == '}') break;
     }
     it.next();
@@ -396,12 +404,16 @@ function read_psuedo(it) {
   return psuedo;
 }
 
-function read_rule(it) {
+function read_rule(it, extra) {
   let rule = Tokens.rule(), c;
   while (!it.end()) {
     if ((c = it.curr()) == ';') break;
     else if (!rule.property.length) {
       rule.property = read_property(it);
+      if (rule.property == '@use') {
+        rule.value = read_var(it, extra);
+        break;
+      }
     }
     else {
       rule.value = read_value(it);
@@ -412,7 +424,7 @@ function read_rule(it) {
   return rule;
 }
 
-function read_cond(it) {
+function read_cond(it, extra) {
   let cond = Tokens.cond(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
@@ -427,7 +439,7 @@ function read_cond(it) {
       cond.styles.push(read_cond(it));
     }
     else if (!is.white_space(c)) {
-      let rule = read_rule(it);
+      let rule = read_rule(it, extra);
       if (rule.property) cond.styles.push(rule);
       if (it.curr() == '}') break;
     }
@@ -436,7 +448,59 @@ function read_cond(it) {
   return cond;
 }
 
-export default function parse(input) {
+function read_property_value(extra, name) {
+  let rule = '';
+  if (extra && extra.get_custom_property_value) {
+    rule = extra.get_custom_property_value(name);
+  }
+  return rule;
+}
+
+function evaluate_value(values, extra) {
+  values.forEach(v => {
+    if (v.type == 'text' && v.value) {
+      let vars = parse_var(v.value);
+      v.value = vars.reduce((ret, p) => {
+        let rule = '', other = '', parsed;
+        rule = read_property_value(extra, p.name);
+        if (!rule && p.alternative) {
+          p.alternative.every(n => {
+            other = read_property_value(extra, n.name);
+            if (other) {
+              rule = other;
+              return false;
+            }
+          });
+        }
+        try {
+          parsed = parse(rule, extra);
+        } catch (e) { }
+        if (parsed) {
+          ret.push.apply(ret, parsed);
+        }
+        return ret;
+      }, []);
+    }
+
+    if (v.type == 'func' && v.arguments) {
+      v.arguments.forEach(arg => {
+        evaluate_value(arg, extra);
+      });
+    }
+  });
+}
+
+function read_var(it, extra) {
+  it.next();
+  let values = read_value(it);
+  evaluate_value(values, extra);
+  if (values.length > 1) {
+    // Todo: support function call
+  }
+  return values[0].value || [];
+}
+
+export default function parse(input, extra) {
   const it = iterator(input);
   const Tokens = [];
   while (!it.end()) {
@@ -452,19 +516,19 @@ export default function parse(input) {
       Tokens.push(read_comments(it, { inline: true }));
     }
     else if (c == ':') {
-      let psuedo = read_psuedo(it);
+      let psuedo = read_psuedo(it, extra);
       if (psuedo.selector) Tokens.push(psuedo);
     }
     else if (c == '@' && read_word(it, true) === '@keyframes') {
-      let keyframes = read_keyframes(it);
+      let keyframes = read_keyframes(it, extra);
       Tokens.push(keyframes);
     }
     else if (c == '@' && !read_line(it, true).includes(':')) {
-      let cond = read_cond(it);
+      let cond = read_cond(it, extra);
       if (cond.name.length) Tokens.push(cond);
     }
     else if (!is.white_space(c)) {
-      let rule = read_rule(it);
+      let rule = read_rule(it, extra);
       if (rule.property) Tokens.push(rule);
     }
     it.next();
