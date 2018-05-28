@@ -14,7 +14,7 @@ function parse(it) {
     else if (c == ')' || c == ',') {
       if (/^\-\-.+/.test(word)) {
         if (!result.name) {
-          result.name = word;;
+          result.name = word;
         } else {
           if (!result.alternative) {
             result.alternative = [];
@@ -50,6 +50,10 @@ function parse(it) {
 }
 
 export default input => {
+  input = input.trim();
+  if (!/^var\(/.test(input)) {
+    return [];
+  }
   let it = iterator(input);
   return parse(it);
 }

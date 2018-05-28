@@ -34,7 +34,8 @@
       else if (c == ')' || c == ',') {
         if (/^\-\-.+/.test(word)) {
           if (!result.name) {
-            result.name = word;        } else {
+            result.name = word;
+          } else {
             if (!result.alternative) {
               result.alternative = [];
             }
@@ -69,6 +70,10 @@
   }
 
   var parse_var = input => {
+    input = input.trim();
+    if (!/^var\(/.test(input)) {
+      return [];
+    }
     let it = iterator(input);
     return parse(it);
   }
@@ -1626,7 +1631,8 @@
       setTimeout(() => {
         let compiled;
         let use = this.getAttribute('use') || '';
-        if (use) use = '@use:' + use;
+        if (use) use = `@use:${ use };`;
+        console.log(use);
         if (!this.innerHTML.trim() && !use) {
           return false;
         }
@@ -1703,7 +1709,7 @@
 
     update(styles) {
       let use = this.getAttribute('use') || '';
-      if (use) use = '@use:' + use;
+      if (use) use = `@use:${ use };`;
 
       if (!styles) styles = this.innerHTML;
       this.innerHTML = styles;

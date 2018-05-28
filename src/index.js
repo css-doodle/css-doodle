@@ -37,7 +37,7 @@ class Doodle extends HTMLElement {
     setTimeout(() => {
       let compiled;
       let use = this.getAttribute('use') || '';
-      if (use) use = '@use:' + use;
+      if (use) use = `@use:${ use };`;
       if (!this.innerHTML.trim() && !use) {
         return false;
       }
@@ -114,7 +114,7 @@ class Doodle extends HTMLElement {
 
   update(styles) {
     let use = this.getAttribute('use') || '';
-    if (use) use = '@use:' + use;
+    if (use) use = `@use:${ use };`;
 
     if (!styles) styles = this.innerHTML;
     this.innerHTML = styles;
