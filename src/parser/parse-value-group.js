@@ -6,11 +6,11 @@ function skip_pair(it) {
   let text = it.curr(), c;
   it.next();
   while (!it.end()) {
-    text += (c = it.curr());
     if (c == ')') break;
     else if (c == '(') {
       text += skip_pair(it);
     }
+    text += (c = it.curr());
     it.next();
   }
   return text;
