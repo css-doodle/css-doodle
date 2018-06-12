@@ -10,7 +10,7 @@ function infix_to_postfix(input) {
 
   const peek = s => s[s.length - 1];
 
-  for (let c of input) {
+  for (let c of String(input)) {
     if (/[\d.]/.test(c)) {
       tc += c; continue;
     }
