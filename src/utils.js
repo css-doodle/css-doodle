@@ -1,9 +1,13 @@
 const units = `
-  % cm fr rem em ex in mm pc pt px
-  vh vw vmax vmin
+  % cm ch fr rem em ex in mm pc pt px
+  vh vw vmax vmin vi vb
   deg grad rad turn
   dpi dpcm dppx
   ms s
+  ic cap
+  Hz kHz
+  lh rlh
+  Q
 `;
 const reg_match_unit = new RegExp(
   `(${ units.trim().split(/[\s\n]+/).join('|') })$`
