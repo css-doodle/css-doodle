@@ -629,11 +629,15 @@
   }
 
   const units = `
-  % cm fr rem em ex in mm pc pt px
-  vh vw vmax vmin
+  % cm ch fr rem em ex in mm pc pt px
+  vh vw vmax vmin vi vb
   deg grad rad turn
   dpi dpcm dppx
   ms s
+  ic cap
+  Hz kHz
+  lh rlh
+  Q
 `;
   const reg_match_unit = new RegExp(
     `(${ units.trim().split(/[\s\n]+/).join('|') })$`
@@ -988,7 +992,7 @@
 
     const peek = s => s[s.length - 1];
 
-    for (let c of input) {
+    for (let c of String(input)) {
       if (/[\d.]/.test(c)) {
         tc += c; continue;
       }
@@ -1138,11 +1142,11 @@
     let text = it.curr(), c;
     it.next();
     while (!it.end()) {
-      text += (c = it.curr());
       if (c == ')') break;
       else if (c == '(') {
         text += skip_pair(it);
       }
+      text += (c = it.curr());
       it.next();
     }
     return text;
@@ -1219,7 +1223,15 @@
 
     ['@place-cell'](value) {
       let [left, top = left] = parse$2(value);
-      const map = ({ 'center': '50%', '0': '0%' });
+      if (/^(top|bottom)$/.test(left) || /^(left|right)$/.test(top)) [left, top] = [top, left];
+      const map = ({
+        'center': '50%',
+        '0': '0%',
+        'left': '0%',
+        'right': '100%',
+        'top': '0%',
+        'bottom': '100%'
+      });
       const bound = '-100vmax';
       left = map[left] || left;
       top = map[top] || top;
@@ -1336,13 +1348,12 @@
         cells: '',
         keyframes: ''
       };
-      let host = this.rules[':host'];
-      let container = this.rules[':container'];
-      this.rules = {
-        ':host': host,
-        ':container': container
-      };
       this.coords = [];
+      for (let key in this.rules) {
+        if (key.startsWith('.cell')) {
+          delete this.rules[key];
+        }
+      }
     }
 
     add_rule(selector, rule) {
