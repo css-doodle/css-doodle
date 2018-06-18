@@ -2,3 +2,4 @@ node_modules
 npm-debug.log
 *.bak
 docs/test*
+.DS_Store

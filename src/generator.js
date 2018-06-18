@@ -37,13 +37,12 @@ class Rules {
       cells: '',
       keyframes: ''
     }
-    let host = this.rules[':host'];
-    let container = this.rules[':container'];
-    this.rules = {
-      ':host': host,
-      ':container': container
-    };
     this.coords = [];
+    for (let key in this.rules) {
+      if (key.startsWith('.cell')) {
+        delete this.rules[key];
+      }
+    }
   }
 
   add_rule(selector, rule) {
