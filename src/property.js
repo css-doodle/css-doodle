@@ -38,7 +38,15 @@ export default {
 
   ['@place-cell'](value) {
     let [left, top = left] = parse_value_group(value);
-    const map = ({ 'center': '50%', '0': '0%' });
+    if (/^(top|bottom)$/.test(left) || /^(left|right)$/.test(top)) [left, top] = [top, left]
+    const map = ({
+      'center': '50%',
+      '0': '0%',
+      'left': '0%',
+      'right': '100%',
+      'top': '0%',
+      'bottom': '100%'
+    });
     const bound = '-100vmax';
     left = map[left] || left;
     top = map[top] || top;
