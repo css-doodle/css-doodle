@@ -78,6 +78,22 @@ export default {
 
   hex() {
     return value => Number(value).toString(16);
+  },
+
+  svg() {
+    return value => {
+      if (!value.includes('xmlns')) {
+        value = value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+      }
+      let base64 = '';
+      try {
+        base64 = window.btoa(value);
+      } catch (e) { }
+      let result = 'url("data:image/svg+xml;base64,' + base64 + '")';
+      if (base64) {
+        return result;
+      }
+    }
   }
 
 }

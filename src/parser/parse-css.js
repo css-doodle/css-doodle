@@ -253,14 +253,18 @@ function read_quote_block(it, quote) {
   return block;
 }
 
-function read_arguments(it) {
+function read_arguments(it, keep_quotes) {
   let args = [], group = [], arg = '', c;
   while (!it.end()) {
     if (is.open_bracket(c = it.curr())) {
       arg += skip_block(it);
     }
     else if (/['"]/.test(c)) {
-      arg += read_quote_block(it, c);
+      if (keep_quotes) {
+        arg += (c + read_quote_block(it, c) + c);
+      } else {
+        arg += read_quote_block(it, c);
+      }
     }
     else if (c == '@') {
       if (!group.length) {
@@ -306,7 +310,7 @@ function read_func(it) {
     if (c == '(') {
       it.next();
       func.name = name;
-      func.arguments = read_arguments(it);
+      func.arguments = read_arguments(it, name == '@svg');
       break;
     }
     else name += c;

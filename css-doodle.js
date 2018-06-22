@@ -348,14 +348,18 @@
     return block;
   }
 
-  function read_arguments(it) {
+  function read_arguments(it, keep_quotes) {
     let args = [], group = [], arg = '', c;
     while (!it.end()) {
       if (is.open_bracket(c = it.curr())) {
         arg += skip_block(it);
       }
       else if (/['"]/.test(c)) {
-        arg += read_quote_block(it, c);
+        if (keep_quotes) {
+          arg += (c + read_quote_block(it, c) + c);
+        } else {
+          arg += read_quote_block(it, c);
+        }
       }
       else if (c == '@') {
         if (!group.length) {
@@ -401,7 +405,7 @@
       if (c == '(') {
         it.next();
         func.name = name;
-        func.arguments = read_arguments(it);
+        func.arguments = read_arguments(it, name == '@svg');
         break;
       }
       else name += c;
@@ -1132,25 +1136,27 @@
 
     hex() {
       return value => Number(value).toString(16);
+    },
+
+    svg() {
+      return value => {
+        if (!value.includes('xmlns')) {
+          value = value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+        }
+        let base64 = '';
+        try {
+          base64 = window.btoa(value);
+        } catch (e) { }
+        let result = 'url("data:image/svg+xml;base64,' + base64 + '")';
+        if (base64) {
+          return result;
+        }
+      }
     }
 
   }
 
   const is_seperator = c => /[,，\s]/.test(c);
-
-  function skip_pair(it) {
-    let text = it.curr(), c;
-    it.next();
-    while (!it.end()) {
-      if (c == ')') break;
-      else if (c == '(') {
-        text += skip_pair(it);
-      }
-      text += (c = it.curr());
-      it.next();
-    }
-    return text;
-  }
 
   function skip_seperator(it) {
     while (!it.end()) {
@@ -1161,20 +1167,34 @@
 
   function parse$2(input) {
     const it = iterator(input);
-    const result = [];
+    const result = [], stack = [];
     let group = '';
 
     while (!it.end()) {
       let c = it.curr();
       if (c == '(') {
-        group += skip_pair(it);
+        group += c;
+        stack.push(c);
+      }
+
+      else if (c == ')') {
+        group += c;
+        if (stack.length) {
+          stack.pop();
+        }
+      }
+
+      else if (stack.length) {
+        group += c;
       }
 
       else if (is_seperator(c)) {
         result.push(group);
         group = '';
         skip_seperator(it);
-      } else {
+      }
+
+      else {
         group += c;
       }
 
