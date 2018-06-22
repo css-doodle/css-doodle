@@ -1,3 +1,13 @@
+## 0.3.2
+
+### Fixes
+
+* Fix parse error
+
+### Features
+* Add experimental `@svg()` function to use svg as background
+
+
 ## 0.3.1
 
 ### Fixes
