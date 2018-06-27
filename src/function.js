@@ -11,6 +11,10 @@ function Lazy(fn) {
   return wrap;
 }
 
+const Last = {
+  pick: '', rand: ''
+};
+
 export default {
 
   index(x, y, count) {
@@ -38,7 +42,11 @@ export default {
   },
 
   pick() {
-    return (...args) => random(args);
+    return (...args) => Last.pick = random(args);
+  },
+
+  ['last-pick']() {
+    return () => Last.pick;
   },
 
   repeat: Lazy((n, action) => {
@@ -57,10 +65,14 @@ export default {
       let fn = unitify;
       let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
       if (is_letter) fn = by_charcode;
-      return random(
+      return Last.rand = random(
         memo('range', fn(range)).apply(null, args)
       );
     };
+  },
+
+  ['last-rand']() {
+    return () => Last.rand;
   },
 
   shape() {
