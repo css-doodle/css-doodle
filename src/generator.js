@@ -66,7 +66,7 @@ class Rules {
     return `.cell:nth-of-type(${ count })${ psuedo }`;
   }
 
-  compose_argument(argument, coords) {
+  compose_argument(argument, coords, idx) {
     let result = argument.map(arg => {
       if (arg.type == 'text') {
         return arg.value;
@@ -74,6 +74,7 @@ class Rules {
       else if (arg.type == 'func') {
         let fn = this.pick_func(arg.name.substr(1));
         if (fn) {
+          coords.idx = idx;
           let args = arg.arguments.map(n => {
             return this.compose_argument(n, coords);
           });
@@ -101,7 +102,7 @@ class Rules {
           if (fn) {
             let args = val.arguments.map(arg => {
               if (fn.lazy) {
-                return () => this.compose_argument(arg, coords);
+                return idx => this.compose_argument(arg, coords, idx);
               } else {
                 return this.compose_argument(arg, coords);
               }

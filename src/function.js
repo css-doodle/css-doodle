@@ -41,6 +41,10 @@ export default {
     return _ => grid.y;
   },
 
+  n(x, y, count, grid, idx) {
+    return _ => idx || 0;
+  },
+
   pick() {
     return (...args) => Last.pick = random(args);
   },
@@ -48,6 +52,16 @@ export default {
   ['last-pick']() {
     return () => Last.pick;
   },
+
+  multiple: Lazy((n, action) => {
+    let result = [];
+    if (!action || !n) return result;
+    let count = n();
+    for (let i = 0; i < count; ++i) {
+      result.push(action(i + 1));
+    }
+    return result.join(',');
+  }),
 
   repeat: Lazy((n, action) => {
     let result = '';
