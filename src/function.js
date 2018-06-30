@@ -49,6 +49,14 @@ export default {
     return (...args) => Last.pick = random(args);
   },
 
+  ['pick-by-turn'](x, y, count) {
+    return (...args) => {
+      let max = args.length;
+      let idx = (count - 1) % max;
+      return Last.pick = args[idx];
+    }
+  },
+
   ['last-pick']() {
     return () => Last.pick;
   },
