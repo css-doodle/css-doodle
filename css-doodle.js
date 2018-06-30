@@ -200,25 +200,6 @@
     }
   }
 
-  function skip_block(it) {
-    let [skipped, c] = [it.curr(), it.curr()];
-    let is_close_bracket = is.close_bracket_of(c);
-    it.next();
-    while (!it.end()) {
-      if (is_close_bracket(c = it.curr())) {
-        skipped += c;
-        break;
-      }
-      else if (is.open_bracket(c)) {
-        skipped += skip_block(it);
-      } else {
-        skipped += c;
-      }
-      it.next();
-    }
-    return skipped;
-  }
-
   function read_until(fn) {
     return function(it, reset) {
       let index = it.index();
@@ -236,11 +217,13 @@
   }
 
   function read_word(it, reset) {
-    return read_until(c => is.white_space(c))(it, reset);
+    let check = c => /[^\w@]/.test(c);
+    return read_until(check)(it, reset);
   }
 
   function read_line(it, reset) {
-    return read_until(c => is.line_break(c) || c == '{')(it, reset);
+    let check = c => is.line_break(c) || c == '{';
+    return read_until(check)(it, reset);
   }
 
   function read_step(it, extra) {
@@ -334,33 +317,24 @@
     return prop;
   }
 
-  function read_quote_block(it, quote) {
-    let block = '', c;
-    it.next();
-    while (!it.end()) {
-      if ((c = it.curr()) == quote) {
-        if (it.curr(-1) !== '\\') break;
-        else block += c;
-      }
-      else block += c;
-      it.next();
-    }
-    return block;
-  }
-
   function read_arguments(it, keep_quotes) {
-    let args = [], group = [], arg = '', c;
+    let args = [], group = [], stack = [], arg = '', c;
     while (!it.end()) {
-      if (is.open_bracket(c = it.curr())) {
-        arg += skip_block(it);
-      }
-      else if (/['"]/.test(c)) {
-        if (keep_quotes) {
-          arg += (c + read_quote_block(it, c) + c);
+      c = it.curr();
+      if (/['"]/.test(c) && it.curr(-1) !== '\\') {
+        if (stack.length && c == stack[stack.length - 1]) {
+          stack.pop();
+          if (keep_quotes) {
+            arg += c;
+          }
         } else {
-          arg += read_quote_block(it, c);
+          stack.push(c);
+          if (keep_quotes) {
+            arg += c;
+          }
         }
       }
+
       else if (c == '@') {
         if (!group.length) {
           arg = arg.trimLeft();
@@ -371,7 +345,8 @@
         }
         group.push(read_func(it));
       }
-      else if (/[,)]/.test(c)) {
+
+      else if (/[,)]/.test(c) && !stack.length) {
         if (arg.length) {
           if (!group.length) {
             group.push(Tokens.text(get_text_value(arg)));
@@ -394,7 +369,6 @@
 
       it.next();
     }
-
     return args;
   }
 
@@ -433,9 +407,6 @@
         value.push(read_func(it));
       }
       else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
-        if (c == ':') {
-          throw_error('Syntax error: Bad property name.', it.info());
-        }
         text.value += c;
       }
       it.next();
@@ -1069,6 +1040,10 @@
     return wrap;
   }
 
+  const Last = {
+    pick: '', rand: ''
+  };
+
   var Func = {
 
     index(x, y, count) {
@@ -1095,9 +1070,35 @@
       return _ => grid.y;
     },
 
-    pick() {
-      return (...args) => random(args);
+    n(x, y, count, grid, idx) {
+      return _ => idx || 0;
     },
+
+    pick() {
+      return (...args) => Last.pick = random(args);
+    },
+
+    ['pick-by-turn'](x, y, count) {
+      return (...args) => {
+        let max = args.length;
+        let idx = (count - 1) % max;
+        return Last.pick = args[idx];
+      }
+    },
+
+    ['last-pick']() {
+      return () => Last.pick;
+    },
+
+    multiple: Lazy((n, action) => {
+      let result = [];
+      if (!action || !n) return result;
+      let count = n();
+      for (let i = 0; i < count; ++i) {
+        result.push(action(i + 1));
+      }
+      return result.join(',');
+    }),
 
     repeat: Lazy((n, action) => {
       let result = '';
@@ -1115,10 +1116,14 @@
         let fn = unitify;
         let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
         if (is_letter) fn = by_charcode;
-        return random(
+        return Last.rand = random(
           memo('range', fn(range)).apply(null, args)
         );
       };
+    },
+
+    ['last-rand']() {
+      return () => Last.rand;
     },
 
     shape() {
@@ -1144,6 +1149,8 @@
           value = value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
         }
         let base64 = '';
+        value = value.trim();
+        console.log(value);
         try {
           base64 = window.btoa(value);
         } catch (e) { }
@@ -1152,6 +1159,10 @@
           return result;
         }
       }
+    },
+
+    var() {
+      return value => `var(${ value })`;
     }
 
   }
@@ -1397,7 +1408,7 @@
       return `.cell:nth-of-type(${ count })${ psuedo }`;
     }
 
-    compose_argument(argument, coords) {
+    compose_argument(argument, coords, idx) {
       let result = argument.map(arg => {
         if (arg.type == 'text') {
           return arg.value;
@@ -1405,6 +1416,7 @@
         else if (arg.type == 'func') {
           let fn = this.pick_func(arg.name.substr(1));
           if (fn) {
+            coords.idx = idx;
             let args = arg.arguments.map(n => {
               return this.compose_argument(n, coords);
             });
@@ -1432,7 +1444,7 @@
             if (fn) {
               let args = val.arguments.map(arg => {
                 if (fn.lazy) {
-                  return () => this.compose_argument(arg, coords);
+                  return idx => this.compose_argument(arg, coords, idx);
                 } else {
                   return this.compose_argument(arg, coords);
                 }

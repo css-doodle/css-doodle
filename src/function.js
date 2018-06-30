@@ -120,6 +120,8 @@ export default {
         value = value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
       }
       let base64 = '';
+      value = value.trim();
+      console.log(value);
       try {
         base64 = window.btoa(value);
       } catch (e) { }

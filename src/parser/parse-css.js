@@ -241,33 +241,24 @@ function read_property(it) {
   return prop;
 }
 
-function read_quote_block(it, quote) {
-  let block = '', c;
-  it.next();
-  while (!it.end()) {
-    if ((c = it.curr()) == quote) {
-      if (it.curr(-1) !== '\\') break;
-      else block += c;
-    }
-    else block += c;
-    it.next();
-  }
-  return block;
-}
-
 function read_arguments(it, keep_quotes) {
-  let args = [], group = [], arg = '', c;
+  let args = [], group = [], stack = [], arg = '', c;
   while (!it.end()) {
-    if (is.open_bracket(c = it.curr())) {
-      arg += skip_block(it);
-    }
-    else if (/['"]/.test(c)) {
-      if (keep_quotes) {
-        arg += (c + read_quote_block(it, c) + c);
+    c = it.curr();
+    if (/['"]/.test(c) && it.curr(-1) !== '\\') {
+      if (stack.length && c == stack[stack.length - 1]) {
+        stack.pop();
+        if (keep_quotes) {
+          arg += c;
+        }
       } else {
-        arg += read_quote_block(it, c);
+        stack.push(c);
+        if (keep_quotes) {
+          arg += c;
+        }
       }
     }
+
     else if (c == '@') {
       if (!group.length) {
         arg = arg.trimLeft();
@@ -278,7 +269,8 @@ function read_arguments(it, keep_quotes) {
       }
       group.push(read_func(it));
     }
-    else if (/[,)]/.test(c)) {
+
+    else if (/[,)]/.test(c) && !stack.length) {
       if (arg.length) {
         if (!group.length) {
           group.push(Tokens.text(get_text_value(arg)));
@@ -301,7 +293,6 @@ function read_arguments(it, keep_quotes) {
 
     it.next();
   }
-
   return args;
 }
 
@@ -340,9 +331,6 @@ function read_value(it) {
       value.push(read_func(it));
     }
     else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
-      if (c == ':') {
-        throw_error('Syntax error: Bad property name.', it.info());
-      }
       text.value += c;
     }
     it.next();
