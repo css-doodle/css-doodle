@@ -141,11 +141,13 @@ function read_until(fn) {
 }
 
 function read_word(it, reset) {
-  return read_until(c => is.white_space(c))(it, reset);
+  let check = c => /[^\w@]/.test(c);
+  return read_until(check)(it, reset);
 }
 
 function read_line(it, reset) {
-  return read_until(c => is.line_break(c) || c == '{')(it, reset);
+  let check = c => is.line_break(c) || c == '{';
+  return read_until(check)(it, reset);
 }
 
 function read_step(it, extra) {
