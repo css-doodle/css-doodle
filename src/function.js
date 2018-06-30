@@ -120,6 +120,10 @@ export default {
         return result;
       }
     }
+  },
+
+  var() {
+    return value => `var(${ value })`;
   }
 
 }
