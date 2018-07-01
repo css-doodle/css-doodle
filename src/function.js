@@ -114,23 +114,21 @@ export default {
     return value => Number(value).toString(16);
   },
 
-  svg() {
-    return value => {
-      if (!value.includes('xmlns')) {
-        value = value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-      }
-      let base64 = '';
-      value = value.trim();
-      console.log(value);
-      try {
-        base64 = window.btoa(value);
-      } catch (e) { }
-      let result = 'url("data:image/svg+xml;base64,' + base64 + '")';
-      if (base64) {
-        return result;
-      }
+  svg: Lazy(input => {
+    let value = input().trim(), encoded = '';
+    if (!value.includes('xmlns')) {
+      value = value.replace(
+        '<svg ',
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+      );
     }
-  },
+    try {
+      encoded = encodeURIComponent(value);
+    } catch (e) {
+      // just ignore
+    }
+    return 'url("data:image/svg+xml;utf8,' + encoded + '")'
+  }),
 
   var() {
     return value => `var(${ value })`;

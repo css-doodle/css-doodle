@@ -275,7 +275,6 @@ function read_arguments(it, keep_quotes) {
         if (!group.length) {
           group.push(Tokens.text(get_text_value(arg)));
         } else {
-          arg = arg.trimRight();
           if (arg.length) {
             group.push(Tokens.text(arg));
           }

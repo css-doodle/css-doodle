@@ -76,7 +76,9 @@ class Rules {
         if (fn) {
           coords.idx = idx;
           let args = arg.arguments.map(n => {
-            return this.compose_argument(n, coords);
+            return fn.lazy
+              ? idx => this.compose_argument(n, coords)
+              : this.compose_argument(n, coords);
           });
           return apply_args(fn, coords, args);
         }
