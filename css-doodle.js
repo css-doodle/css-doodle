@@ -1260,31 +1260,35 @@
       return this['@max-size'](value);
     },
 
-    ['@place-cell'](value) {
-      let [left, top = left] = parse$2(value);
-      if (/^(top|bottom)$/.test(left) || /^(left|right)$/.test(top)) [left, top] = [top, left];
-      const map = ({
-        'center': '50%',
-        '0': '0%',
-        'left': '0%',
-        'right': '100%',
-        'top': '0%',
-        'bottom': '100%'
-      });
+    ['@place-cell']: (() => {
       const bound = '-100vmax';
-      left = map[left] || left;
-      top = map[top] || top;
-      return `
-      position: absolute;
-      right: ${ bound }; bottom: ${ bound };
-      left: calc(${ bound } - 100% + ${ left } * 2);
-      top: calc(${ bound } - 100% + ${ top } * 2);
-      width: var(--internal-cell-width, 25%);
-      height: var(--internal-cell-height, 25%);
-      grid-area: unset !important;
-      margin: auto !important;
-    `;
-    },
+      let map_left_right = {
+        'center': '50%', '0': '0%',
+        'left': '0%', 'right': '100%',
+        'top': '50%', 'bottom': '50%'
+      };
+      let map_top_bottom = {
+        'center': '50%', '0': '0%',
+        'top': '0%', 'bottom': '100%',
+        'left': '50%', 'right': '50%',
+      };
+
+      return value => {
+        let [left, top = '50%'] = parse$2(value);
+        left = map_left_right[left] || left;
+        top = map_top_bottom[top] || top;
+        return `
+        position: absolute;
+        right: ${ bound }; bottom: ${ bound };
+        left: calc(${ bound } - 100% + ${ left } * 2);
+        top: calc(${ bound } - 100% + ${ top } * 2);
+        width: var(--internal-cell-width, 25%);
+        height: var(--internal-cell-height, 25%);
+        grid-area: unset !important;
+        margin: auto !important;
+      `;
+      }
+    })(),
 
     ['@grid'](value, options) {
       let [grid, size] = value.split('/').map(s => s.trim());
