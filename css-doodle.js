@@ -94,7 +94,7 @@
     }
 
     return result;
-  }
+  };
 
   const Tokens = {
     func(name = '') {
@@ -574,6 +574,7 @@
     it.next();
     let values = read_value(it);
     evaluate_value(values, extra);
+    if (values.length > 1) ;
     return values[0].value || [];
   }
 
@@ -1173,7 +1174,7 @@
       return value => `var(${ value })`;
     }
 
-  }
+  };
 
   const is_seperator = c => /[,，\s]/.test(c);
 
@@ -1310,7 +1311,7 @@
       return rules;
     }
 
-  }
+  };
 
   const is$1 = {
     even: (n) => !!(n % 2),
@@ -1347,7 +1348,7 @@
       return _ => Math.random() < .5
     }
 
-  }
+  };
 
   // Expose all Math functions and constants.
   const methods = Object.getOwnPropertyNames(Math);
