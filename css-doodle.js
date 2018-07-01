@@ -317,22 +317,17 @@
     return prop;
   }
 
-  function read_arguments(it, keep_quotes) {
+  function read_arguments(it) {
     let args = [], group = [], stack = [], arg = '', c;
     while (!it.end()) {
       c = it.curr();
       if (/['"]/.test(c) && it.curr(-1) !== '\\') {
         if (stack.length && c == stack[stack.length - 1]) {
           stack.pop();
-          if (keep_quotes) {
-            arg += c;
-          }
         } else {
           stack.push(c);
-          if (keep_quotes) {
-            arg += c;
-          }
         }
+        arg += c;
       }
 
       else if (c == '@') {
@@ -351,14 +346,14 @@
           if (!group.length) {
             group.push(Tokens.text(get_text_value(arg)));
           } else {
-            arg = arg.trimRight();
             if (arg.length) {
               group.push(Tokens.text(arg));
             }
           }
         }
 
-        args.push(group.slice());
+        let this_group = remove_arg_quotes(group);
+        args.push(this_group);
         [group, arg] = [[], ''];
 
         if (c == ')') break;
@@ -372,6 +367,21 @@
     return args;
   }
 
+  function remove_arg_quotes(array) {
+    let group = array.slice();
+
+    let first = group[0];
+    if (first && first.type == 'text' && /^['"]/.test(first.value))  {
+      first.value = first.value.substr(1);
+    }
+
+    let last = group[group.length - 1];
+    if (last && last.type == 'text' && /['"]$/.test(last.value)) {
+      last.value = last.value.substr(0, last.value.length - 1);
+    }
+    return group;
+  }
+
   function read_func(it) {
     let func = Tokens.func(), name = '', c;
     while (!it.end()) {
@@ -379,7 +389,7 @@
       if (c == '(') {
         it.next();
         func.name = name;
-        func.arguments = read_arguments(it, name == '@svg');
+        func.arguments = read_arguments(it);
         break;
       }
       else name += c;
@@ -1143,23 +1153,21 @@
       return value => Number(value).toString(16);
     },
 
-    svg() {
-      return value => {
-        if (!value.includes('xmlns')) {
-          value = value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-        }
-        let base64 = '';
-        value = value.trim();
-        console.log(value);
-        try {
-          base64 = window.btoa(value);
-        } catch (e) { }
-        let result = 'url("data:image/svg+xml;base64,' + base64 + '")';
-        if (base64) {
-          return result;
-        }
+    svg: Lazy(input => {
+      let value = input().trim(), encoded = '';
+      if (!value.includes('xmlns')) {
+        value = value.replace(
+          '<svg ',
+          '<svg xmlns="http://www.w3.org/2000/svg" '
+        );
       }
-    },
+      try {
+        encoded = encodeURIComponent(value);
+      } catch (e) {
+        // just ignore
+      }
+      return 'url("data:image/svg+xml;utf8,' + encoded + '")'
+    }),
 
     var() {
       return value => `var(${ value })`;
@@ -1418,7 +1426,9 @@
           if (fn) {
             coords.idx = idx;
             let args = arg.arguments.map(n => {
-              return this.compose_argument(n, coords);
+              return fn.lazy
+                ? idx => this.compose_argument(n, coords)
+                : this.compose_argument(n, coords);
             });
             return apply_args(fn, coords, args);
           }
