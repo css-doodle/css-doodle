@@ -137,15 +137,13 @@ const Expose = {
 
 }
 
-alias_for(Expose, {
-  'multi': 'multiple',
+export default alias_for(Expose, {
+  'multi':  'multiple',
   'pick-n': 'pick-by-turn',
-  'pn': 'pick-by-turn',
-  'r': 'rand',
-  'p': 'pick',
-  'lp': 'last-pick',
-  'lr': 'last-rand',
-  'i': 'index',
+  'pn':     'pick-by-turn',
+  'r':      'rand',
+  'p':      'pick',
+  'lp':     'last-pick',
+  'lr':     'last-rand',
+  'i':      'index'
 });
-
-export default Expose;

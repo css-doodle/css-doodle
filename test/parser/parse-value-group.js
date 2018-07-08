@@ -1,6 +1,6 @@
 import parse_value_group from '../../src/parser/parse-value-group.js';
 
-describe('parse-value-group', () => {
+describe('parse_value_group', () => {
 
   it('should recognize width', () => {
     const input = '100%';

@@ -278,7 +278,7 @@ function read_arguments(it) {
 
 function normalize_argument(group) {
   let result = group.map(arg => {
-    if (arg.type == 'text') {
+    if (arg.type == 'text' && typeof arg.value == 'string') {
       let value = String(arg.value);
       if (value.includes('`')) {
         arg.value = value = value.replace(/`/g, '"');
@@ -293,9 +293,11 @@ function normalize_argument(group) {
   if (ft.type == 'text' && ed.type == 'text') {
     let cf = first(ft.value);
     let ce  = last(ed.value);
-    if (is.pair(cf) && is.pair_of(cf, ce)) {
-      ft.value = ft.value.slice(1);
-      ed.value = ed.value.slice(0, ed.value.length - 1);
+    if (typeof ft.value == 'string' && typeof ed.value == 'string') {
+      if (is.pair(cf) && is.pair_of(cf, ce)) {
+        ft.value = ft.value.slice(1);
+        ed.value = ed.value.slice(0, ed.value.length - 1);
+      }
     }
   }
   return result;

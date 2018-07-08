@@ -222,6 +222,7 @@
     Object.keys(names).forEach(n => {
       obj[n] = obj[names[n]];
     });
+    return obj;
   }
 
   const Tokens = {
@@ -500,7 +501,7 @@
 
   function normalize_argument(group) {
     let result = group.map(arg => {
-      if (arg.type == 'text') {
+      if (arg.type == 'text' && typeof arg.value == 'string') {
         let value = String(arg.value);
         if (value.includes('`')) {
           arg.value = value = value.replace(/`/g, '"');
@@ -515,9 +516,11 @@
     if (ft.type == 'text' && ed.type == 'text') {
       let cf = first(ft.value);
       let ce  = last(ed.value);
-      if (is.pair(cf) && is.pair_of(cf, ce)) {
-        ft.value = ft.value.slice(1);
-        ed.value = ed.value.slice(0, ed.value.length - 1);
+      if (typeof ft.value == 'string' && typeof ed.value == 'string') {
+        if (is.pair(cf) && is.pair_of(cf, ce)) {
+          ft.value = ft.value.slice(1);
+          ed.value = ed.value.slice(0, ed.value.length - 1);
+        }
       }
     }
     return result;
@@ -1211,15 +1214,15 @@
 
   };
 
-  alias_for(Expose, {
-    'multi': 'multiple',
+  var Func = alias_for(Expose, {
+    'multi':  'multiple',
     'pick-n': 'pick-by-turn',
-    'pn': 'pick-by-turn',
-    'r': 'rand',
-    'p': 'pick',
-    'lp': 'last-pick',
-    'lr': 'last-rand',
-    'i': 'index',
+    'pn':     'pick-by-turn',
+    'r':      'rand',
+    'p':      'pick',
+    'lp':     'last-pick',
+    'lr':     'last-rand',
+    'i':      'index'
   });
 
   const is_seperator = c => /[,，\s]/.test(c);
@@ -1456,7 +1459,7 @@
     }
 
     pick_func(name) {
-      return Expose[name] || MathFunc[name];
+      return Func[name] || MathFunc[name];
     }
 
     compose_aname(...args) {

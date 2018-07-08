@@ -124,4 +124,5 @@ export function alias_for(obj, names) {
   Object.keys(names).forEach(n => {
     obj[n] = obj[names[n]];
   });
+  return obj;
 }
