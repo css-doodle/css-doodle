@@ -1,4 +1,4 @@
-import { minmax } from './utils';
+import { clamp } from './utils';
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
@@ -95,7 +95,7 @@ const shapes =  {
   },
 
   clover(k = 3) {
-    k = minmax(k, 3, 5);
+    k = clamp(k, 3, 5);
     if (k == 4) k = 2;
     return polygon({ split: 240 }, t => {
       let x = cos(k * t) * cos(t);
@@ -110,7 +110,7 @@ const shapes =  {
   },
 
   hypocycloid(k = 3) {
-    k = minmax(k, 3, 6);
+    k = clamp(k, 3, 6);
     let m = 1 - k;
     return polygon({ scale: 1 / k  }, t => {
       let x = m * cos(t) + cos(m * (t - PI));
@@ -199,7 +199,7 @@ const shapes =  {
   },
 
   bud(n = 3) {
-    n = minmax(n, 3, 10);
+    n = clamp(n, 3, 10);
     return polygon({ split: 240 }, t => [
       ((1 + .2 * cos(n * t)) * cos(t)) * .8,
       ((1 + .2 * cos(n * t)) * sin(t)) * .8
@@ -208,7 +208,7 @@ const shapes =  {
 
   alien(...args) {
     let [a = 1, b = 1, c = 1, d = 1, e = 1]
-      = args.map(n => minmax(n, 1, 9));
+      = args.map(n => clamp(n, 1, 9));
     return polygon({ split: 480, type: 'evenodd' }, t => [
       (cos(t * a) + cos(t * c) + cos(t * e)) * .31,
       (sin(t * b) + sin(t * d) + sin(t)) * .31

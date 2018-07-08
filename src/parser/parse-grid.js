@@ -1,4 +1,4 @@
-import { minmax } from '../utils';
+import { clamp } from '../utils';
 
 const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
@@ -13,8 +13,8 @@ function parse_grid(size) {
   const max_val = (x == 1 || y == 1) ? total : max;
 
   const ret = {
-    x: minmax(x || min, 1, max_val),
-    y: minmax(y || x || min, 1, max_val)
+    x: clamp(x || min, 1, max_val),
+    y: clamp(y || x || min, 1, max_val)
   };
 
   return Object.assign({}, ret,

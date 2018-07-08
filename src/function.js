@@ -1,6 +1,6 @@
 import Shapes from './shapes';
 import calculator from './calculator';
-import { minmax } from './utils';
+import { clamp } from './utils';
 
 import {
   memo, random, range, unitify, by_charcode
@@ -65,7 +65,7 @@ export default {
   multiple: Lazy((n, action) => {
     let result = [];
     if (!action || !n) return result;
-    let count = minmax(n(), 1, 1024);
+    let count = clamp(n(), 1, 1024);
     for (let i = 0; i < count; ++i) {
       result.push(action(i + 1));
     }
@@ -75,7 +75,7 @@ export default {
   repeat: Lazy((n, action) => {
     let result = '';
     if (!action || !n) return result;
-    let count = minmax(n(), 1, 1024);
+    let count = clamp(n(), 1, 1024);
     for (let i = 0; i < count; ++i) {
       result += action(i + 1);
     }
