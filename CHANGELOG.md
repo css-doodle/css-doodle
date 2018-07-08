@@ -1,3 +1,20 @@
+## 0.4.1
+
+### Fixes
+
+* Fix parse error to read arguments
+* Fix context called by `@n()` an @pick-by-turn
+
+### Changes
+* Remove legacy functions and properties: `size()`, `min-size()`, `max-size()` and `@shape()` .
+
+### Features
+
+* Add aliases for frequently used functions.
+
+
+
+
 ## 0.4.0
 
 ### Fixes
