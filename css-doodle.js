@@ -96,6 +96,134 @@
     return result;
   };
 
+  const units = `
+  % cm ch fr rem em ex in mm pc pt px
+  vh vw vmax vmin vi vb
+  deg grad rad turn
+  dpi dpcm dppx
+  ms s
+  ic cap
+  Hz kHz
+  lh rlh
+  Q
+`;
+  const reg_match_unit = new RegExp(
+    `(${ units.trim().split(/[\s\n]+/).join('|') })$`
+  );
+
+  function add_unit(fn, unit) {
+    return (...args) => {
+      args = args.map(remove_unit);
+      let result = fn.apply(null, args);
+      if (unit) {
+        result = result.map(n => n + unit);
+      }
+      return result;
+    }
+  }
+
+  function get_unit(str) {
+    if (!str) return '';
+    let matched = ''.trim.call(str).match(reg_match_unit);
+    return matched ? matched[0] : '';
+  }
+
+  function remove_unit(str) {
+    let unit = get_unit(str);
+    return unit ? +(str.replace(unit, '')) : str;
+  }
+
+  function values(obj) {
+    if (Array.isArray(obj)) return obj;
+    return Object.keys(obj).map(k => obj[k]);
+  }
+
+  function apply_args(fn, ...args) {
+    return args.reduce((f, arg) =>
+      f.apply(null, values(arg)), fn
+    );
+  }
+
+  function join_line(arr) {
+    return (arr || []).join('\n');
+  }
+
+  function make_array(arr) {
+    return Array.isArray(arr) ? arr : [arr];
+  }
+
+  function clamp(num, min, max) {
+    return Math.max(min, Math.min(max, num));
+  }
+
+  function prefix(rule) {
+    return `-webkit-${ rule } ${ rule }`;
+  }
+
+  function only_if(cond, value) {
+    return cond ? value : '';
+  }
+
+  const memo_store = {};
+  function  memo(prefix, fn) {
+    return (...args) => {
+      let key = prefix + args.join('-');
+      if (memo_store[key]) return memo_store[key];
+      return (memo_store[key] = fn.apply(null, args));
+    }
+  }
+
+  function random(...items) {
+    let args = items.reduce((ret, n) => ret.concat(n), []);
+    return args[Math.floor(Math.random() * args.length)];
+  }
+
+  function range(start, stop, step) {
+    let count = 0, old = start;
+    let initial = n => (n > 0 && n < 1) ? .1 : 1;
+    let length = arguments.length;
+    if (length == 1) [start, stop] = [initial(start), start];
+    if (length < 3) step = initial(start);
+    let range = [];
+    while ((step >= 0 && start <= stop)
+      || (step < 0 && start > stop)) {
+      range.push(start);
+      start += step;
+      if (count++ >= 1000) break;
+    }
+    if (!range.length) range.push(old);
+    return range;
+  }
+
+  function unitify(fn) {
+    return (...args) => {
+      let unit = get_unit(args[0]);
+      return add_unit(fn, unit).apply(null, args);
+    }
+  }
+
+  function by_charcode(fn) {
+    return (...args) => {
+      let codes = args.map(n => String(n).charCodeAt(0));
+      let result = fn.apply(null, codes);
+      return result.map(n => String.fromCharCode(n));
+    }
+  }
+
+  function last(container) {
+    return container[container.length - 1];
+  }
+
+  function first(container) {
+    return container[0];
+  }
+
+  function alias_for(obj, names) {
+    Object.keys(names).forEach(n => {
+      obj[n] = obj[names[n]];
+    });
+  }
+
   const Tokens = {
     func(name = '') {
       return {
@@ -161,12 +289,6 @@
     }
   };
 
-  const bracket_pair = {
-    '(': ')',
-    '[': ']',
-    '{': '}'
-  };
-
   const is = {
     white_space(c) {
       return /[\s\n\t]/.test(c);
@@ -174,15 +296,14 @@
     line_break(c) {
       return /\n/.test(c);
     },
-    open_bracket(c) {
-      return bracket_pair.hasOwnProperty(c);
-    },
-    close_bracket_of(c) {
-      let pair = bracket_pair[c];
-      return p => p == pair;
-    },
     number(n) {
       return !isNaN(n);
+    },
+    pair(n) {
+      return ['"', '(', ')', "'"].includes(n);
+    },
+    pair_of(c, n) {
+      return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
     }
   };
 
@@ -321,15 +442,19 @@
     let args = [], group = [], stack = [], arg = '', c;
     while (!it.end()) {
       c = it.curr();
-      if (/['"]/.test(c) && it.curr(-1) !== '\\') {
-        if (stack.length && c == stack[stack.length - 1]) {
-          stack.pop();
+
+      if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
+        if (stack.length) {
+          if (c != '(' && c === last(stack)) {
+            stack.pop();
+          } else {
+            stack.push(c);
+          }
         } else {
           stack.push(c);
         }
         arg += c;
       }
-
       else if (c == '@') {
         if (!group.length) {
           arg = arg.trimLeft();
@@ -340,46 +465,62 @@
         }
         group.push(read_func(it));
       }
-
-      else if (/[,)]/.test(c) && !stack.length) {
-        if (arg.length) {
-          if (!group.length) {
-            group.push(Tokens.text(get_text_value(arg)));
-          } else {
-            if (arg.length) {
-              group.push(Tokens.text(arg));
-            }
+      else if (/[,)]/.test(c)) {
+        if (stack.length) {
+          if (c == ')') {
+            stack.pop();
           }
+          arg += c;
         }
 
-        let this_group = remove_arg_quotes(group);
-        args.push(this_group);
-        [group, arg] = [[], ''];
+        else {
+          if (arg.length) {
+            if (!group.length) {
+              group.push(Tokens.text(get_text_value(arg)));
+            } else {
+              if (arg.length) {
+                group.push(Tokens.text(arg));
+              }
+            }
+          }
 
-        if (c == ')') break;
+          args.push(normalize_argument(group));
+          [group, arg] = [[], ''];
+
+          if (c == ')') break;
+        }
       }
       else {
         arg += c;
       }
-
       it.next();
     }
     return args;
   }
 
-  function remove_arg_quotes(array) {
-    let group = array.slice();
+  function normalize_argument(group) {
+    let result = group.map(arg => {
+      if (arg.type == 'text') {
+        let value = String(arg.value);
+        if (value.includes('`')) {
+          arg.value = value = value.replace(/`/g, '"');
+        }
+        arg.value = value.replace(/\n+|\s+/g, ' ');
+      }
+      return arg;
+    });
 
-    let first = group[0];
-    if (first && first.type == 'text' && /^['"]/.test(first.value))  {
-      first.value = first.value.substr(1);
+    let ft = first(result) || {};
+    let ed = last(result) || {};
+    if (ft.type == 'text' && ed.type == 'text') {
+      let cf = first(ft.value);
+      let ce  = last(ed.value);
+      if (is.pair(cf) && is.pair_of(cf, ce)) {
+        ft.value = ft.value.slice(1);
+        ed.value = ed.value.slice(0, ed.value.length - 1);
+      }
     }
-
-    let last = group[group.length - 1];
-    if (last && last.type == 'text' && /['"]$/.test(last.value)) {
-      last.value = last.value.substr(0, last.value.length - 1);
-    }
-    return group;
+    return result;
   }
 
   function read_func(it) {
@@ -399,12 +540,20 @@
   }
 
   function read_value(it) {
-    let text = Tokens.text(), c;
+    let text = Tokens.text(), skip = true, c;
     const value = [];
     while (!it.end()) {
-      if ((c = it.curr()) == '\n') {
+      c = it.curr();
+
+      if (skip && is.white_space(c)) {
         it.next();
         continue;
+      } else {
+        skip = false;
+      }
+
+      if (c == '\n' && !is.white_space(it.curr(-1))) {
+        text.value += ' ';
       }
       else if (/[;}]/.test(c)) {
         if (text.value.length) value.push(text);
@@ -536,8 +685,8 @@
     return rule;
   }
 
-  function evaluate_value(values, extra) {
-    values.forEach(v => {
+  function evaluate_value(values$$1, extra) {
+    values$$1.forEach(v => {
       if (v.type == 'text' && v.value) {
         let vars = parse_var(v.value);
         v.value = vars.reduce((ret, p) => {
@@ -572,10 +721,10 @@
 
   function read_var(it, extra) {
     it.next();
-    let values = read_value(it);
-    evaluate_value(values, extra);
-    if (values.length > 1) ;
-    return values[0].value || [];
+    let values$$1 = read_value(it);
+    evaluate_value(values$$1, extra);
+    if (values$$1.length > 1) ;
+    return values$$1[0].value || [];
   }
 
   function parse$1(input, extra) {
@@ -614,120 +763,6 @@
     return Tokens;
   }
 
-  const units = `
-  % cm ch fr rem em ex in mm pc pt px
-  vh vw vmax vmin vi vb
-  deg grad rad turn
-  dpi dpcm dppx
-  ms s
-  ic cap
-  Hz kHz
-  lh rlh
-  Q
-`;
-  const reg_match_unit = new RegExp(
-    `(${ units.trim().split(/[\s\n]+/).join('|') })$`
-  );
-
-  function add_unit(fn, unit) {
-    return (...args) => {
-      args = args.map(remove_unit);
-      let result = fn.apply(null, args);
-      if (unit) {
-        result = result.map(n => n + unit);
-      }
-      return result;
-    }
-  }
-
-  function get_unit(str) {
-    if (!str) return '';
-    let matched = ''.trim.call(str).match(reg_match_unit);
-    return matched ? matched[0] : '';
-  }
-
-  function remove_unit(str) {
-    let unit = get_unit(str);
-    return unit ? +(str.replace(unit, '')) : str;
-  }
-
-  function values(obj) {
-    if (Array.isArray(obj)) return obj;
-    return Object.keys(obj).map(k => obj[k]);
-  }
-
-  function apply_args(fn, ...args) {
-    return args.reduce((f, arg) =>
-      f.apply(null, values(arg)), fn
-    );
-  }
-
-  function join_line(arr) {
-    return (arr || []).join('\n');
-  }
-
-  function make_array(arr) {
-    return Array.isArray(arr) ? arr : [arr];
-  }
-
-  function minmax(num, min, max) {
-    return Math.max(min, Math.min(max, num));
-  }
-
-  function prefix(rule) {
-    return `-webkit-${ rule } ${ rule }`;
-  }
-
-  function only_if(cond, value) {
-    return cond ? value : '';
-  }
-
-  const memo_store = {};
-  function  memo(prefix, fn) {
-    return (...args) => {
-      let key = prefix + args.join('-');
-      if (memo_store[key]) return memo_store[key];
-      return (memo_store[key] = fn.apply(null, args));
-    }
-  }
-
-  function random(...items) {
-    let args = items.reduce((ret, n) => ret.concat(n), []);
-    return args[Math.floor(Math.random() * args.length)];
-  }
-
-  function range(start, stop, step) {
-    let count = 0, old = start;
-    let initial = n => (n > 0 && n < 1) ? .1 : 1;
-    let length = arguments.length;
-    if (length == 1) [start, stop] = [initial(start), start];
-    if (length < 3) step = initial(start);
-    let range = [];
-    while ((step >= 0 && start <= stop)
-      || (step < 0 && start > stop)) {
-      range.push(start);
-      start += step;
-      if (count++ >= 1000) break;
-    }
-    if (!range.length) range.push(old);
-    return range;
-  }
-
-  function unitify(fn) {
-    return (...args) => {
-      let unit = get_unit(args[0]);
-      return add_unit(fn, unit).apply(null, args);
-    }
-  }
-
-  function by_charcode(fn) {
-    return (...args) => {
-      let codes = args.map(n => String(n).charCodeAt(0));
-      let result = fn.apply(null, codes);
-      return result.map(n => String.fromCharCode(n));
-    }
-  }
-
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -740,8 +775,8 @@
     const max_val = (x == 1 || y == 1) ? total : max;
 
     const ret = {
-      x: minmax(x || min, 1, max_val),
-      y: minmax(y || x || min, 1, max_val)
+      x: clamp(x || min, 1, max_val),
+      y: clamp(y || x || min, 1, max_val)
     };
 
     return Object.assign({}, ret,
@@ -844,7 +879,7 @@
     },
 
     clover(k = 3) {
-      k = minmax(k, 3, 5);
+      k = clamp(k, 3, 5);
       if (k == 4) k = 2;
       return polygon({ split: 240 }, t => {
         let x = cos(k * t) * cos(t);
@@ -859,7 +894,7 @@
     },
 
     hypocycloid(k = 3) {
-      k = minmax(k, 3, 6);
+      k = clamp(k, 3, 6);
       let m = 1 - k;
       return polygon({ scale: 1 / k  }, t => {
         let x = m * cos(t) + cos(m * (t - PI));
@@ -948,7 +983,7 @@
     },
 
     bud(n = 3) {
-      n = minmax(n, 3, 10);
+      n = clamp(n, 3, 10);
       return polygon({ split: 240 }, t => [
         ((1 + .2 * cos(n * t)) * cos(t)) * .8,
         ((1 + .2 * cos(n * t)) * sin(t)) * .8
@@ -957,7 +992,7 @@
 
     alien(...args) {
       let [a = 1, b = 1, c = 1, d = 1, e = 1]
-        = args.map(n => minmax(n, 1, 9));
+        = args.map(n => clamp(n, 1, 9));
       return polygon({ split: 480, type: 'evenodd' }, t => [
         (cos(t * a) + cos(t * c) + cos(t * e)) * .31,
         (sin(t * b) + sin(t * d) + sin(t)) * .31
@@ -1055,7 +1090,7 @@
     pick: '', rand: ''
   };
 
-  var Func = {
+  const Expose = {
 
     index(x, y, count) {
       return _ => count;
@@ -1089,11 +1124,11 @@
       return (...args) => Last.pick = random(args);
     },
 
-    ['pick-by-turn'](x, y, count) {
+    ['pick-by-turn'](x, y, count, grid, idx) {
       return (...args) => {
         let max = args.length;
-        let idx = (count - 1) % max;
-        return Last.pick = args[idx];
+        let pos = ((idx == undefined ? count : idx) - 1) % max;
+        return Last.pick = args[pos];
       }
     },
 
@@ -1104,7 +1139,7 @@
     multiple: Lazy((n, action) => {
       let result = [];
       if (!action || !n) return result;
-      let count = minmax(n(), 1, 1024);
+      let count = clamp(n(), 1, 1024);
       for (let i = 0; i < count; ++i) {
         result.push(action(i + 1));
       }
@@ -1114,7 +1149,7 @@
     repeat: Lazy((n, action) => {
       let result = '';
       if (!action || !n) return result;
-      let count = minmax(n(), 1, 1024);
+      let count = clamp(n(), 1, 1024);
       for (let i = 0; i < count; ++i) {
         result += action(i + 1);
       }
@@ -1175,6 +1210,17 @@
     }
 
   };
+
+  alias_for(Expose, {
+    'multi': 'multiple',
+    'pick-n': 'pick-by-turn',
+    'pn': 'pick-by-turn',
+    'r': 'rand',
+    'p': 'pick',
+    'lp': 'last-pick',
+    'lr': 'last-rand',
+    'i': 'index',
+  });
 
   const is_seperator = c => /[,，\s]/.test(c);
 
@@ -1410,7 +1456,7 @@
     }
 
     pick_func(name) {
-      return Func[name] || MathFunc[name];
+      return Expose[name] || MathFunc[name];
     }
 
     compose_aname(...args) {
@@ -1432,7 +1478,7 @@
             coords.idx = idx;
             let args = arg.arguments.map(n => {
               return fn.lazy
-                ? idx => this.compose_argument(n, coords)
+                ? idx => this.compose_argument(n, coords, idx)
                 : this.compose_argument(n, coords);
             });
             return apply_args(fn, coords, args);
