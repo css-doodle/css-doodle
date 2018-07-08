@@ -16,24 +16,15 @@ export default {
       `}
     `;
   },
-  ['size'](value, options) {
-    return this['@size'](value, options);
-  },
 
   ['@min-size'](value) {
     let [w, h = w] = parse_value_group(value);
     return `min-width: ${ w }; min-height: ${ h };`;
   },
-  ['min-size'](value) {
-    return this['@min-size'](value);
-  },
 
   ['@max-size'](value) {
     let [w, h = w] = parse_value_group(value);
     return `max-width: ${ w }; max-height: ${ h };`;
-  },
-  ['max-size'](value) {
-    return this['@max-size'](value);
   },
 
   ['@place-cell']: (() => {

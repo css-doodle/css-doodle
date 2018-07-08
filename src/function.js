@@ -98,15 +98,6 @@ const Expose = {
     return () => Last.rand;
   },
 
-  shape() {
-    return memo('shape', (type = '', ...args) => {
-      type = type.trim();
-      if (Shapes[type]) {
-        return Shapes[type].apply(null, args);
-      }
-    });
-  },
-
   calc() {
     return value => calculator(value);
   },
