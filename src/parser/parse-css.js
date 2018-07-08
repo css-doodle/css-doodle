@@ -1,5 +1,6 @@
 import iterator from './iterator';
 import parse_var from './parse-var';
+import { first, last } from '../utils';
 
 const Tokens = {
   func(name = '') {
@@ -66,12 +67,6 @@ const Tokens = {
   }
 };
 
-const bracket_pair = {
-  '(': ')',
-  '[': ']',
-  '{': '}'
-};
-
 const is = {
   white_space(c) {
     return /[\s\n\t]/.test(c);
@@ -79,15 +74,14 @@ const is = {
   line_break(c) {
     return /\n/.test(c);
   },
-  open_bracket(c) {
-    return bracket_pair.hasOwnProperty(c);
-  },
-  close_bracket_of(c) {
-    let pair = bracket_pair[c];
-    return p => p == pair;
-  },
   number(n) {
     return !isNaN(n);
+  },
+  pair(n) {
+    return ['"', '(', ')', "'"].includes(n);
+  },
+  pair_of(c, n) {
+    return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
   }
 };
 
@@ -103,25 +97,6 @@ function get_text_value(input) {
   } else {
     return input;
   }
-}
-
-function skip_block(it) {
-  let [skipped, c] = [it.curr(), it.curr()];
-  let is_close_bracket = is.close_bracket_of(c);
-  it.next();
-  while (!it.end()) {
-    if (is_close_bracket(c = it.curr())) {
-      skipped += c;
-      break;
-    }
-    else if (is.open_bracket(c)) {
-      skipped += skip_block(it);
-    } else {
-      skipped += c;
-    }
-    it.next();
-  }
-  return skipped;
 }
 
 function read_until(fn) {
@@ -245,15 +220,19 @@ function read_arguments(it) {
   let args = [], group = [], stack = [], arg = '', c;
   while (!it.end()) {
     c = it.curr();
-    if (/['"]/.test(c) && it.curr(-1) !== '\\') {
-      if (stack.length && c == stack[stack.length - 1]) {
-        stack.pop();
+
+    if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
+      if (stack.length) {
+        if (c != '(' && c === last(stack)) {
+          stack.pop();
+        } else {
+          stack.push(c);
+        }
       } else {
         stack.push(c);
       }
       arg += c;
     }
-
     else if (c == '@') {
       if (!group.length) {
         arg = arg.trimLeft();
@@ -264,46 +243,62 @@ function read_arguments(it) {
       }
       group.push(read_func(it));
     }
-
-    else if (/[,)]/.test(c) && !stack.length) {
-      if (arg.length) {
-        if (!group.length) {
-          group.push(Tokens.text(get_text_value(arg)));
-        } else {
-          if (arg.length) {
-            group.push(Tokens.text(arg));
-          }
+    else if (/[,)]/.test(c)) {
+      if (stack.length) {
+        if (c == ')') {
+          stack.pop();
         }
+        arg += c;
       }
 
-      let this_group = remove_arg_quotes(group);
-      args.push(this_group);
-      [group, arg] = [[], ''];
+      else {
+        if (arg.length) {
+          if (!group.length) {
+            group.push(Tokens.text(get_text_value(arg)));
+          } else {
+            if (arg.length) {
+              group.push(Tokens.text(arg));
+            }
+          }
+        }
 
-      if (c == ')') break;
+        args.push(normalize_argument(group));
+        [group, arg] = [[], ''];
+
+        if (c == ')') break;
+      }
     }
     else {
       arg += c;
     }
-
     it.next();
   }
   return args;
 }
 
-function remove_arg_quotes(array) {
-  let group = array.slice();
+function normalize_argument(group) {
+  let result = group.map(arg => {
+    if (arg.type == 'text') {
+      let value = String(arg.value);
+      if (value.includes('`')) {
+        arg.value = value = value.replace(/`/g, '"');
+      }
+      arg.value = value.replace(/\n+|\s+/g, ' ')
+    }
+    return arg;
+  });
 
-  let first = group[0];
-  if (first && first.type == 'text' && /^['"]/.test(first.value))  {
-    first.value = first.value.substr(1);
+  let ft = first(result) || {};
+  let ed = last(result) || {};
+  if (ft.type == 'text' && ed.type == 'text') {
+    let cf = first(ft.value);
+    let ce  = last(ed.value);
+    if (is.pair(cf) && is.pair_of(cf, ce)) {
+      ft.value = ft.value.slice(1);
+      ed.value = ed.value.slice(0, ed.value.length - 1);
+    }
   }
-
-  let last = group[group.length - 1];
-  if (last && last.type == 'text' && /['"]$/.test(last.value)) {
-    last.value = last.value.substr(0, last.value.length - 1);
-  }
-  return group;
+  return result;
 }
 
 function read_func(it) {
@@ -323,12 +318,20 @@ function read_func(it) {
 }
 
 function read_value(it) {
-  let text = Tokens.text(), c;
+  let text = Tokens.text(), skip = true, c;
   const value = [];
   while (!it.end()) {
-    if ((c = it.curr()) == '\n') {
+    c = it.curr();
+
+    if (skip && is.white_space(c)) {
       it.next();
       continue;
+    } else {
+      skip = false;
+    }
+
+    if (c == '\n' && !is.white_space(it.curr(-1))) {
+      text.value += ' ';
     }
     else if (/[;}]/.test(c)) {
       if (text.value.length) value.push(text);

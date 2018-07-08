@@ -111,3 +111,11 @@ export function by_charcode(fn) {
     return result.map(n => String.fromCharCode(n));
   }
 }
+
+export function last(container) {
+  return container[container.length - 1];
+}
+
+export function first(container) {
+  return container[0];
+}
