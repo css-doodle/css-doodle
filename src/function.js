@@ -1,6 +1,6 @@
 import Shapes from './shapes';
 import calculator from './calculator';
-import { clamp } from './utils';
+import { clamp, alias_for } from './utils';
 
 import {
   memo, random, range, unitify, by_charcode
@@ -16,7 +16,7 @@ const Last = {
   pick: '', rand: ''
 };
 
-export default {
+const Expose = {
 
   index(x, y, count) {
     return _ => count;
@@ -136,3 +136,16 @@ export default {
   }
 
 }
+
+alias_for(Expose, {
+  'multi': 'multiple',
+  'pick-n': 'pick-by-turn',
+  'pn': 'pick-by-turn',
+  'r': 'rand',
+  'p': 'pick',
+  'lp': 'last-pick',
+  'lr': 'last-rand',
+  'i': 'index',
+});
+
+export default Expose;
