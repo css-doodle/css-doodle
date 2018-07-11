@@ -65,7 +65,7 @@ const Expose = {
   multiple: Lazy((n, action) => {
     let result = [];
     if (!action || !n) return result;
-    let count = clamp(n(), 1, 1024);
+    let count = clamp(n(), 1, 65536);
     for (let i = 0; i < count; ++i) {
       result.push(action(i + 1));
     }
@@ -75,7 +75,7 @@ const Expose = {
   repeat: Lazy((n, action) => {
     let result = '';
     if (!action || !n) return result;
-    let count = clamp(n(), 1, 1024);
+    let count = clamp(n(), 1, 65536);
     for (let i = 0; i < count; ++i) {
       result += action(i + 1);
     }
