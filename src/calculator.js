@@ -1,9 +1,13 @@
+/**
+ * Base on the Shunting-yard algorithm.
+ */
+
 function infix_to_postfix(input) {
   const op_stack = [], expr = [];
   let tc = '';
 
   const operator = {
-    '*': 3, '/': 3,
+    '*': 3, '/': 3, '%': 3,
     '+': 2, '-': 2,
     '(': 1, ')': 1
   };
@@ -58,6 +62,7 @@ function compute(op, a, b) {
     case '-': return a - b;
     case '*': return a * b;
     case '/': return a / b;
+    case '%': return a % b;
   }
 }
 
