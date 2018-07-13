@@ -1014,21 +1014,22 @@
     '(': 1, ')': 1
   };
 
-  function peek(container) {
-    return container[container.length - 1];
+  function last$1(arr) {
+    return arr[arr.length - 1];
   }
 
   function get_tokens(input) {
-    let it = iterator(input), tokens = [];
-    let num = '';
-    while (!it.end()) {
-      let c = it.curr();
+    let expr = String(input);
+    let tokens = [], num = '';
+
+    for (let i = 0; i < expr.length; ++i) {
+      let c = expr[i];
 
       if (operator[c]) {
         if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = peek(tokens) || {};
+          let { type, value } = last$1(tokens) || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1047,8 +1048,6 @@
       else if (/\S/.test(c)) {
         num += c;
       }
-
-      it.next();
     }
 
     if (num.length) {
@@ -1075,14 +1074,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && peek(op_stack) != '(') {
+          while (op_stack.length && last$1(op_stack) != '(') {
             expr.push(op_stack.pop());
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[peek(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push(op);
           }
@@ -1744,29 +1743,6 @@
     return rules.output();
   }
 
-  const basic = `
-  :host {
-    display: block;
-    visibility: visible;
-    width: 1em;
-    height: 1em;
-  }
-  .container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: grid;
-  }
-  .cell {
-    position: relative;
-    line-height: 1;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-`;
-
   class Doodle extends HTMLElement {
     constructor() {
       super();
@@ -1809,7 +1785,9 @@
       const { keyframes, host, container, cells } = compiled.styles;
 
       this.doodle.innerHTML = `
-      <style>${ basic }</style>
+      <style>
+        ${ this.style_basic() }
+      </style>
       <style class="style-keyframes">
         ${ keyframes }
       </style>
@@ -1831,6 +1809,49 @@
           this.set_style('.style-cells', cells);
         }, 50);
       }
+    }
+
+    style_basic() {
+      return `
+      :host {
+        display: block;
+        visibility: visible;
+        width: 1em;
+        height: 1em;
+      }
+      .container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid: inherit;
+        grid-area: inherit;
+        grid-auto-columns: inherit;
+        grid-auto-flow: inherit;
+        grid-auto-rows: inherit;
+        grid-column: inherit;
+        grid-column-end: inherit;
+        grid-column-gap: inherit;
+        grid-column-start: inherit;
+        grid-gap:inherit;
+        grid-row: inherit;
+        grid-row-end: inherit;
+        grid-row-gap: inherit;
+        grid-row-start: inherit;
+        grid-template: inherit;
+        grid-template-areas: inherit;
+        grid-template-columns: inherit;
+        grid-template-rows: inherit;
+      }
+      .cell {
+        position: relative;
+        line-height: 1;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    `;
     }
 
     style_size() {
