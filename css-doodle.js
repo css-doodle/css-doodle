@@ -1004,33 +1004,77 @@
 
   };
 
-  function infix_to_postfix(input) {
-    const op_stack = [], expr = [];
-    let tc = '';
+  /**
+   * Base on the Shunting-yard algorithm.
+   */
 
-    const operator = {
-      '*': 3, '/': 3,
-      '+': 2, '-': 2,
-      '(': 1, ')': 1
-    };
+  const operator = {
+    '*': 3, '/': 3, '%': 3,
+    '+': 2, '-': 2,
+    '(': 1, ')': 1
+  };
 
-    const peek = s => s[s.length - 1];
+  function peek(container) {
+    return container[container.length - 1];
+  }
 
-    for (let c of String(input)) {
-      if (/[\d.]/.test(c)) {
-        tc += c; continue;
-      }
-
-      if (tc.length) {
-        expr.push(tc); tc = '';
-      }
+  function get_tokens(input) {
+    let it = iterator(input), tokens = [];
+    let num = '';
+    while (!it.end()) {
+      let c = it.curr();
 
       if (operator[c]) {
-        if (c == '(') {
-          op_stack.push(c);
+        if (!tokens.length && !num.length && /[+-]/.test(c)) {
+          num += c;
+        } else {
+          let { type, value } = peek(tokens) || {};
+          if (type == 'operator'
+              && !num.length
+              && /[^()]/.test(c)
+              && /[^()]/.test(value)) {
+            num += c;
+          } else {
+            if (num.length) {
+              tokens.push({ type: 'number', value: num });
+              num = '';
+            }
+            tokens.push({ type: 'operator', value: c });
+          }
+        }
+      }
+
+      else if (/\S/.test(c)) {
+        num += c;
+      }
+
+      it.next();
+    }
+
+    if (num.length) {
+      tokens.push({ type: 'number', value: num });
+    }
+
+    return tokens;
+  }
+
+
+  function infix_to_postfix(input) {
+    let tokens = get_tokens(input);
+    const op_stack = [], expr = [];
+
+    for (let i = 0; i < tokens.length; ++i) {
+      let { type, value } = tokens[i];
+      if (type == 'number') {
+        expr.push(value);
+      }
+
+      else if (type == 'operator') {
+        if (value == '(') {
+          op_stack.push(value);
         }
 
-        else if (c == ')') {
+        else if (value == ')') {
           while (op_stack.length && peek(op_stack) != '(') {
             expr.push(op_stack.pop());
           }
@@ -1038,17 +1082,13 @@
         }
 
         else {
-          while (op_stack.length && operator[peek(op_stack)] >= operator[c]) {
+          while (op_stack.length && operator[peek(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push(op);
           }
-          op_stack.push(c);
+          op_stack.push(value);
         }
       }
-    }
-
-    if (tc.length) {
-      expr.push(tc);
     }
 
     while (op_stack.length) {
@@ -1064,6 +1104,7 @@
       case '-': return a - b;
       case '*': return a * b;
       case '/': return a / b;
+      case '%': return a % b;
     }
   }
 
@@ -1142,7 +1183,7 @@
     multiple: Lazy((n, action) => {
       let result = [];
       if (!action || !n) return result;
-      let count = clamp(n(), 1, 1024);
+      let count = clamp(n(), 1, 65536);
       for (let i = 0; i < count; ++i) {
         result.push(action(i + 1));
       }
@@ -1152,7 +1193,7 @@
     repeat: Lazy((n, action) => {
       let result = '';
       if (!action || !n) return result;
-      let count = clamp(n(), 1, 1024);
+      let count = clamp(n(), 1, 65536);
       for (let i = 0; i < count; ++i) {
         result += action(i + 1);
       }
@@ -1464,7 +1505,7 @@
             let args = arg.arguments.map(n => {
               return fn.lazy
                 ? idx => this.compose_argument(n, coords, idx)
-                : this.compose_argument(n, coords);
+                : this.compose_argument(n, coords, idx);
             });
             return apply_args(fn, coords, args);
           }
