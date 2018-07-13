@@ -1,7 +1,7 @@
 {
   "name": "css-doodle",
-  "version": "0.4.1",
-  "description": "A web component for drawing patterns with css.",
+  "version": "0.4.2",
+  "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
     "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
