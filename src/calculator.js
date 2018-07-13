@@ -2,29 +2,28 @@
  * Base on the Shunting-yard algorithm.
  */
 
-import iterator from './parser/iterator';
-
 const operator = {
   '*': 3, '/': 3, '%': 3,
   '+': 2, '-': 2,
   '(': 1, ')': 1
 }
 
-function peek(container) {
-  return container[container.length - 1];
+function last(arr) {
+  return arr[arr.length - 1];
 }
 
 function get_tokens(input) {
-  let it = iterator(input), tokens = [];
-  let num = '';
-  while (!it.end()) {
-    let c = it.curr();
+  let expr = String(input);
+  let tokens = [], num = '';
+
+  for (let i = 0; i < expr.length; ++i) {
+    let c = expr[i];
 
     if (operator[c]) {
       if (!tokens.length && !num.length && /[+-]/.test(c)) {
         num += c;
       } else {
-        let { type, value } = peek(tokens) || {};
+        let { type, value } = last(tokens) || {};
         if (type == 'operator'
             && !num.length
             && /[^()]/.test(c)
@@ -43,8 +42,6 @@ function get_tokens(input) {
     else if (/\S/.test(c)) {
       num += c;
     }
-
-    it.next();
   }
 
   if (num.length) {
@@ -71,14 +68,14 @@ function infix_to_postfix(input) {
       }
 
       else if (value == ')') {
-        while (op_stack.length && peek(op_stack) != '(') {
+        while (op_stack.length && last(op_stack) != '(') {
           expr.push(op_stack.pop());
         }
         op_stack.pop();
       }
 
       else {
-        while (op_stack.length && operator[peek(op_stack)] >= operator[value]) {
+        while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
           let op = op_stack.pop();
           if (!/[()]/.test(op)) expr.push(op);
         }
