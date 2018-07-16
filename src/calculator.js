@@ -2,14 +2,12 @@
  * Base on the Shunting-yard algorithm.
  */
 
+import { last } from './utils';
+
 const operator = {
   '*': 3, '/': 3, '%': 3,
   '+': 2, '-': 2,
   '(': 1, ')': 1
-}
-
-function last(arr) {
-  return arr[arr.length - 1];
 }
 
 function get_tokens(input) {

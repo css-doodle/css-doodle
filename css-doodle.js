@@ -1014,10 +1014,6 @@
     '(': 1, ')': 1
   };
 
-  function last$1(arr) {
-    return arr[arr.length - 1];
-  }
-
   function get_tokens(input) {
     let expr = String(input);
     let tokens = [], num = '';
@@ -1029,7 +1025,7 @@
         if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = last$1(tokens) || {};
+          let { type, value } = last(tokens) || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1074,14 +1070,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && last$1(op_stack) != '(') {
+          while (op_stack.length && last(op_stack) != '(') {
             expr.push(op_stack.pop());
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push(op);
           }
