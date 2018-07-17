@@ -1220,6 +1220,7 @@
     },
 
     svg: Lazy(input => {
+      if (input === undefined) return '';
       let value = input().trim(), encoded = '';
       if (!value.includes('xmlns')) {
         value = value.replace(
