@@ -22,7 +22,7 @@
     "karma-jasmine": "^1.1.2",
     "karma-mocha-reporter": "^2.2.5",
     "karma-rollup-preprocessor": "^6.0.0",
-    "rollup": "^0.62.0",
+    "rollup": "^0.63.2",
     "uglify-es": "^3.3.9"
   },
   "keywords": [

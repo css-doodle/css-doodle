@@ -2348,9 +2348,9 @@ rimraf@^2.6.0, rimraf@^2.6.1:
   dependencies:
     glob "^7.0.5"
 
-rollup@^0.62.0:
-  version "0.62.0"
-  resolved "http://registry.npm.taobao.org/rollup/download/rollup-0.62.0.tgz#4ca8b3c9582195dc9341ff8a1375f58319b95bfc"
+rollup@^0.63.2:
+  version "0.63.2"
+  resolved "http://registry.npm.taobao.org/rollup/download/rollup-0.63.2.tgz#d27619204cd025c948d740972fb1d0da6aa64481"
   dependencies:
     "@types/estree" "0.0.39"
     "@types/node" "*"
