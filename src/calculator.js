@@ -18,7 +18,10 @@ function get_tokens(input) {
     let c = expr[i];
 
     if (operator[c]) {
-      if (!tokens.length && !num.length && /[+-]/.test(c)) {
+      if (c == '-' && expr[i - 1] == 'e') {
+        num += c;
+      }
+      else if (!tokens.length && !num.length && /[+-]/.test(c)) {
         num += c;
       } else {
         let { type, value } = last(tokens) || {};

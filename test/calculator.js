@@ -21,6 +21,10 @@ describe('calcucator', () => {
     test('-2 / 4', -.5);
   })
 
+  it('should be able to handle the scientific notation', () => {
+    test('8.045977011494252e-8 + 2', 2.00000008045977)
+  });
+
   it('should work properly with parathesis', () => {
     test('4 * (2 + 3)', 20);
     test('4 / (2 - 3)', -4);
