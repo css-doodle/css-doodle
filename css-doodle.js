@@ -96,21 +96,6 @@
     return result;
   };
 
-  const units = `
-  % cm ch fr rem em ex in mm pc pt px
-  vh vw vmax vmin vi vb
-  deg grad rad turn
-  dpi dpcm dppx
-  ms s
-  ic cap
-  Hz kHz
-  lh rlh
-  Q
-`;
-  const reg_match_unit = new RegExp(
-    `(${ units.trim().split(/[\s\n]+/).join('|') })$`
-  );
-
   function add_unit(fn, unit) {
     return (...args) => {
       args = args.map(remove_unit);
@@ -123,14 +108,14 @@
   }
 
   function get_unit(str) {
-    if (!str) return '';
-    let matched = ''.trim.call(str).match(reg_match_unit);
-    return matched ? matched[0] : '';
+    let input = String(str).trim();
+    if (!input) return '';
+    let matched = input.match(/\d(\D+)$/);
+    return matched ? matched[1] : '';
   }
 
   function remove_unit(str) {
-    let unit = get_unit(str);
-    return unit ? +(str.replace(unit, '')) : str;
+    return String(str).replace(/\D+/g, '');
   }
 
   function apply_args(fn, ...args) {
@@ -192,7 +177,7 @@
 
   function unitify(fn) {
     return (...args) => {
-      let unit = get_unit(args[0]);
+      let unit = get_unit(args[0]) || get_unit(args[1]);
       return add_unit(fn, unit).apply(null, args);
     }
   }
