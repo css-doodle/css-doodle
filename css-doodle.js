@@ -133,15 +133,10 @@
     return unit ? +(str.replace(unit, '')) : str;
   }
 
-  function values(obj) {
-    if (Array.isArray(obj)) return obj;
-    return Object.keys(obj).map(k => obj[k]);
-  }
-
   function apply_args(fn, ...args) {
-    return args.reduce((f, arg) =>
-      f.apply(null, values(arg)), fn
-    );
+    return args.reduce((f, arg) => {
+      return f[Array.isArray(arg) ? 'apply': 'call'](null, arg);
+    }, fn);
   }
 
   function join_line(arr) {
@@ -210,12 +205,12 @@
     }
   }
 
-  function last(container) {
-    return container[container.length - 1];
+  function last(arr) {
+    return arr[arr.length - 1];
   }
 
-  function first(container) {
-    return container[0];
+  function first(arr) {
+    return arr[0];
   }
 
   function alias_for(obj, names) {
@@ -223,6 +218,18 @@
       obj[n] = obj[names[n]];
     });
     return obj;
+  }
+
+  function shuffle(arr) {
+    let len = this.length + 1;
+    let ret = Array.from ? Array.from(arr) : arr.slice();
+    while (len--) {
+      let i = ~~(Math.random() * len);
+      let old = ret[r];
+      ret[i] = ret[0];
+      ret[0] = old;
+    }
+    return ret;
   }
 
   const Tokens = {
@@ -688,8 +695,8 @@
     return rule;
   }
 
-  function evaluate_value(values$$1, extra) {
-    values$$1.forEach(v => {
+  function evaluate_value(values, extra) {
+    values.forEach(v => {
       if (v.type == 'text' && v.value) {
         let vars = parse_var(v.value);
         v.value = vars.reduce((ret, p) => {
@@ -724,10 +731,10 @@
 
   function read_var(it, extra) {
     it.next();
-    let values$$1 = read_value(it);
-    evaluate_value(values$$1, extra);
-    if (values$$1.length > 1) ;
-    return values$$1[0].value || [];
+    let values = read_value(it);
+    evaluate_value(values, extra);
+    if (values.length > 1) ;
+    return values[0].value || [];
   }
 
   function parse$1(input, extra) {
@@ -1134,31 +1141,31 @@
 
   const Expose = {
 
-    index(x, y, count) {
+    index({ count }) {
       return _ => count;
     },
 
-    row(x, y, count) {
+    row({ x }) {
       return _ => x;
     },
 
-    col(x, y, count) {
+    col({ y }) {
       return _ => y;
     },
 
-    size(x, y, count, grid) {
+    size({ grid }) {
       return _ => grid.count;
     },
 
-    ['max-row'](x, y, count, grid) {
+    ['max-row']({ grid }) {
       return _ => grid.x;
     },
 
-    ['max-col'](x, y, count, grid) {
+    ['max-col']({ grid }) {
       return _ => grid.y;
     },
 
-    n(x, y, count, grid, idx) {
+    n({ idx }) {
       return _ => idx || 0;
     },
 
@@ -1166,11 +1173,22 @@
       return (...args) => Last.pick = random(args);
     },
 
-    ['pick-by-turn'](x, y, count, grid, idx) {
+    ['pick-n']({ count, idx }) {
       return (...args) => {
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
         return Last.pick = args[pos];
+      }
+    },
+
+    ['pick-d']({ count, idx, context }) {
+      return (...args) => {
+        if (!context.prn) {
+          context.pd = shuffle(args);
+        }
+        let max = args.length;
+        let pos = ((idx == undefined ? count : idx) - 1) % max;
+        return Last.pick = context.prn[pos];
       }
     },
 
@@ -1246,14 +1264,16 @@
   };
 
   var Func = alias_for(Expose, {
-    'multi':  'multiple',
-    'pick-n': 'pick-by-turn',
-    'pn':     'pick-by-turn',
-    'r':      'rand',
-    'p':      'pick',
-    'lp':     'last-pick',
-    'lr':     'last-rand',
-    'i':      'index'
+    'multi': 'multiple',
+    'pn':    'pick-n',
+    'pd':    'pick-d',
+    'r':     'rand',
+    'p':     'pick',
+    'lp':    'last-pick',
+    'lr':    'last-rand',
+    'i':     'index',
+
+    'pick-by-turn': 'pick-n'
   });
 
   const is_seperator = c => /[,，\s]/.test(c);
@@ -1391,27 +1411,27 @@
 
   var Selector = {
 
-    nth(x, y, count) {
+    nth({ count }) {
       return n => n == count;
     },
 
-    at(x, y) {
+    at({ x, y }) {
       return (x1, y1) => (x == x1 && y == y1);
     },
 
-    row(x, y) {
+    row({ x, y }) {
       return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
     },
 
-    col(x, y) {
+    col({ x, y }) {
       return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
     },
 
-    even(x, y, count) {
+    even({ count }) {
       return _ => is$1.even(count - 1);
     },
 
-    odd(x, y, count) {
+    odd({ count }) {
       return _ => is$1.odd(count - 1);
     },
 
@@ -1728,8 +1748,9 @@
 
   function generator(tokens, grid_size) {
     let rules = new Rules(tokens);
+    let context = {};
     rules.compose({
-      x : 1, y: 1, count: 1,
+      x : 1, y: 1, count: 1, context,
       grid: { x : 1, y: 1, count: 1 }
     });
     let { grid } = rules.output();
@@ -1737,7 +1758,7 @@
     rules.reset();
     for (let x = 1, count = 0; x <= grid_size.x; ++x) {
       for (let y = 1; y <= grid_size.y; ++y) {
-        rules.compose({ x, y, count: ++count, grid: grid_size });
+        rules.compose({ x, y, count: ++count, grid: grid_size, context });
       }
     }
     return rules.output();

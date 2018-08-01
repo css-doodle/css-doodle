@@ -35,15 +35,10 @@ function remove_unit(str) {
   return unit ? +(str.replace(unit, '')) : str;
 }
 
-export function values(obj) {
-  if (Array.isArray(obj)) return obj;
-  return Object.keys(obj).map(k => obj[k]);
-}
-
 export function apply_args(fn, ...args) {
-  return args.reduce((f, arg) =>
-    f.apply(null, values(arg)), fn
-  );
+  return args.reduce((f, arg) => {
+    return f[Array.isArray(arg) ? 'apply': 'call'](null, arg);
+  }, fn);
 }
 
 export function join_line(arr) {
@@ -112,12 +107,12 @@ export function by_charcode(fn) {
   }
 }
 
-export function last(container) {
-  return container[container.length - 1];
+export function last(arr) {
+  return arr[arr.length - 1];
 }
 
-export function first(container) {
-  return container[0];
+export function first(arr) {
+  return arr[0];
 }
 
 export function alias_for(obj, names) {
@@ -125,4 +120,16 @@ export function alias_for(obj, names) {
     obj[n] = obj[names[n]];
   });
   return obj;
+}
+
+export function shuffle(arr) {
+  let len = this.length + 1;
+  let ret = Array.from ? Array.from(arr) : arr.slice();
+  while (len--) {
+    let i = ~~(Math.random() * len);
+    let old = ret[r];
+    ret[i] = ret[0];
+    ret[0] = old;
+  }
+  return ret;
 }

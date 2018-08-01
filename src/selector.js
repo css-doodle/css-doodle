@@ -5,27 +5,27 @@ const is = {
 
 export default {
 
-  nth(x, y, count) {
+  nth({ count }) {
     return n => n == count;
   },
 
-  at(x, y) {
+  at({ x, y }) {
     return (x1, y1) => (x == x1 && y == y1);
   },
 
-  row(x, y) {
+  row({ x, y }) {
     return n => /^(even|odd)$/.test(n) ? is[n](x - 1) : (n == x)
   },
 
-  col(x, y) {
+  col({ x, y }) {
     return n => /^(even|odd)$/.test(n) ? is[n](y - 1) : (n == y);
   },
 
-  even(x, y, count) {
+  even({ count }) {
     return _ => is.even(count - 1);
   },
 
-  odd(x, y, count) {
+  odd({ count }) {
     return _ => is.odd(count - 1);
   },
 

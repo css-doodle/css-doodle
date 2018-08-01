@@ -3,7 +3,8 @@ import calculator from './calculator';
 import { clamp, alias_for } from './utils';
 
 import {
-  memo, random, range, unitify, by_charcode
+  memo, random, range, unitify,
+  by_charcode, shuffle
 } from './utils';
 
 function Lazy(fn) {
@@ -18,31 +19,31 @@ const Last = {
 
 const Expose = {
 
-  index(x, y, count) {
+  index({ count }) {
     return _ => count;
   },
 
-  row(x, y, count) {
+  row({ x }) {
     return _ => x;
   },
 
-  col(x, y, count) {
+  col({ y }) {
     return _ => y;
   },
 
-  size(x, y, count, grid) {
+  size({ grid }) {
     return _ => grid.count;
   },
 
-  ['max-row'](x, y, count, grid) {
+  ['max-row']({ grid }) {
     return _ => grid.x;
   },
 
-  ['max-col'](x, y, count, grid) {
+  ['max-col']({ grid }) {
     return _ => grid.y;
   },
 
-  n(x, y, count, grid, idx) {
+  n({ idx }) {
     return _ => idx || 0;
   },
 
@@ -50,11 +51,22 @@ const Expose = {
     return (...args) => Last.pick = random(args);
   },
 
-  ['pick-by-turn'](x, y, count, grid, idx) {
+  ['pick-n']({ count, idx }) {
     return (...args) => {
       let max = args.length;
       let pos = ((idx == undefined ? count : idx) - 1) % max;
       return Last.pick = args[pos];
+    }
+  },
+
+  ['pick-d']({ count, idx, context }) {
+    return (...args) => {
+      if (!context.prn) {
+        context.pd = shuffle(args);
+      }
+      let max = args.length;
+      let pos = ((idx == undefined ? count : idx) - 1) % max;
+      return Last.pick = context.prn[pos];
     }
   },
 
@@ -130,12 +142,14 @@ const Expose = {
 }
 
 export default alias_for(Expose, {
-  'multi':  'multiple',
-  'pick-n': 'pick-by-turn',
-  'pn':     'pick-by-turn',
-  'r':      'rand',
-  'p':      'pick',
-  'lp':     'last-pick',
-  'lr':     'last-rand',
-  'i':      'index'
+  'multi': 'multiple',
+  'pn':    'pick-n',
+  'pd':    'pick-d',
+  'r':     'rand',
+  'p':     'pick',
+  'lp':    'last-pick',
+  'lr':    'last-rand',
+  'i':     'index',
+
+  'pick-by-turn': 'pick-n'
 });
