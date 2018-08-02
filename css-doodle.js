@@ -1168,12 +1168,12 @@
 
     ['pick-d']({ count, idx, context }) {
       return (...args) => {
-        if (!context.prn) {
+        if (!context.pd) {
           context.pd = shuffle(args);
         }
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
-        return Last.pick = context.prn[pos];
+        return Last.pick = context.pd[pos];
       }
     },
 
