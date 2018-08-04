@@ -1389,27 +1389,51 @@
 
   };
 
+  function nth(input, curr, max) {
+    let expr = build_expr(input);
+    for (let i = 0; i <= max; ++i) {
+      if (calculate(expr(i)) == curr) return true;
+    }
+    return false;
+  }
+
+  function build_expr(expr) {
+    return n => String(expr)
+      .replace(/(\d+)(n)/g, '$1*' + n)
+      .replace(/n/g, n);
+  }
+
   const is$1 = {
     even: (n) => !!(n % 2),
     odd:  (n) => !(n % 2)
   };
 
-  var Selector = {
+  function even_or_odd(expr) {
+    return /^(even|odd)$/.test(expr);
+  }
 
-    nth({ count }) {
-      return n => n == count;
-    },
+  var Selector = {
 
     at({ x, y }) {
       return (x1, y1) => (x == x1 && y == y1);
     },
 
-    row({ x, y }) {
-      return n => /^(even|odd)$/.test(n) ? is$1[n](x - 1) : (n == x)
+    nth({ count, grid }) {
+      return expr => even_or_odd(expr)
+        ? is$1[expr](count - 1)
+        : nth(expr, count, grid.count);
     },
 
-    col({ x, y }) {
-      return n => /^(even|odd)$/.test(n) ? is$1[n](y - 1) : (n == y);
+    row({ x, grid }) {
+      return expr => even_or_odd(expr)
+        ? is$1[expr](x - 1)
+        : nth(expr, x, grid.x);
+    },
+
+    col({ y, grid }) {
+      return expr => even_or_odd(expr)
+        ? is$1[expr](y - 1)
+        : nth(expr, y, grid.y);
     },
 
     even({ count }) {

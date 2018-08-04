@@ -1,24 +1,36 @@
+import nth from './nth';
+
 const is = {
   even: (n) => !!(n % 2),
   odd:  (n) => !(n % 2)
 };
 
-export default {
+function even_or_odd(expr) {
+  return /^(even|odd)$/.test(expr);
+}
 
-  nth({ count }) {
-    return n => n == count;
-  },
+export default {
 
   at({ x, y }) {
     return (x1, y1) => (x == x1 && y == y1);
   },
 
-  row({ x, y }) {
-    return n => /^(even|odd)$/.test(n) ? is[n](x - 1) : (n == x)
+  nth({ count, grid }) {
+    return expr => even_or_odd(expr)
+      ? is[expr](count - 1)
+      : nth(expr, count, grid.count);
   },
 
-  col({ x, y }) {
-    return n => /^(even|odd)$/.test(n) ? is[n](y - 1) : (n == y);
+  row({ x, grid }) {
+    return expr => even_or_odd(expr)
+      ? is[expr](x - 1)
+      : nth(expr, x, grid.x);
+  },
+
+  col({ y, grid }) {
+    return expr => even_or_odd(expr)
+      ? is[expr](y - 1)
+      : nth(expr, y, grid.y);
   },
 
   even({ count }) {
