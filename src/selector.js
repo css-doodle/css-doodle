@@ -30,7 +30,10 @@ export default {
   },
 
   random() {
-    return _ => Math.random() < .5
+    return (ratio = .5) => {
+      if (ratio >= 1 && ratio <= 0) ratio = .5;
+      return Math.random() < ratio;
+    }
   }
 
 }

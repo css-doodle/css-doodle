@@ -1,5 +1,5 @@
 /**
- * Base on the Shunting-yard algorithm.
+ * Based on the Shunting-yard algorithm.
  */
 
 import { last } from './utils';
