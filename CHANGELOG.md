@@ -1,3 +1,16 @@
+## 0.4.3
+
+### Fixes
+
+* Fix scientific notation in `@calc()`.
+
+### Features
+
+* `@nth()` now behaves like nth-child.
+* Add `@pick-d()` function.
+* Accept any unit.
+
+
 ## 0.4.2
 
 ### Fixes
