@@ -108,11 +108,11 @@ export function alias_for(obj, names) {
 }
 
 export function shuffle(arr) {
-  let len = this.length + 1;
+  let len = arr.length + 1;
   let ret = Array.from ? Array.from(arr) : arr.slice();
   while (len--) {
     let i = ~~(Math.random() * len);
-    let old = ret[r];
+    let old = ret[i];
     ret[i] = ret[0];
     ret[0] = old;
   }
