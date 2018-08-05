@@ -115,7 +115,7 @@
   }
 
   function remove_unit(str) {
-    return String(str).replace(/\D+/g, '');
+    return Number(String(str).replace(/\D+$/g, ''));
   }
 
   function apply_args(fn, ...args) {
