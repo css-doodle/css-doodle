@@ -5,7 +5,6 @@ export default function nth(input, curr, max) {
   for (let i = 0; i <= max; ++i) {
     if (calculator(expr(i)) == curr) return true;
   }
-  return false;
 }
 
 function build_expr(expr) {

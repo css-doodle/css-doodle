@@ -1142,11 +1142,11 @@
       return _ => grid.count;
     },
 
-    ['max-row']({ grid }) {
+    ['size-row']({ grid }) {
       return _ => grid.x;
     },
 
-    ['max-col']({ grid }) {
+    ['size-col']({ grid }) {
       return _ => grid.y;
     },
 
@@ -1258,7 +1258,10 @@
     'lr':    'last-rand',
     'i':     'index',
 
-    'pick-by-turn': 'pick-n'
+    // legacy names
+    'pick-by-turn': 'pick-n',
+    'max-row': 'size-row',
+    'max-col': 'size-col'
   });
 
   const is_seperator = c => /[,，\s]/.test(c);
@@ -1394,7 +1397,6 @@
     for (let i = 0; i <= max; ++i) {
       if (calculate(expr(i)) == curr) return true;
     }
-    return false;
   }
 
   function build_expr(expr) {

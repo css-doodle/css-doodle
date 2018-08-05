@@ -35,11 +35,11 @@ const Expose = {
     return _ => grid.count;
   },
 
-  ['max-row']({ grid }) {
+  ['size-row']({ grid }) {
     return _ => grid.x;
   },
 
-  ['max-col']({ grid }) {
+  ['size-col']({ grid }) {
     return _ => grid.y;
   },
 
@@ -151,5 +151,8 @@ export default alias_for(Expose, {
   'lr':    'last-rand',
   'i':     'index',
 
-  'pick-by-turn': 'pick-n'
+  // legacy names
+  'pick-by-turn': 'pick-n',
+  'max-row': 'size-row',
+  'max-col': 'size-col'
 });
