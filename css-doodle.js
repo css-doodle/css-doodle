@@ -1846,6 +1846,23 @@
       }
     }
 
+    inherit_props(p) {
+      return `
+      , area gap
+      auto-columns auto-flow auto-rows
+      column -end -gap -start
+      row -end -gap -start
+      template -areas -columns -rows
+    `.trim()
+       .split(/[\s,]+/).map(n => `
+        ${ /^\-/.test(n)
+          ? `grid-${ p }${ n }`
+          : (p = n, `grid${ n ? `-${ n }` : '' }`)
+        }: inherit;
+      `)
+       .join('');
+    }
+
     style_basic() {
       return `
       :host {
@@ -1859,24 +1876,7 @@
         width: 100%;
         height: 100%;
         display: grid;
-        grid: inherit;
-        grid-area: inherit;
-        grid-auto-columns: inherit;
-        grid-auto-flow: inherit;
-        grid-auto-rows: inherit;
-        grid-column: inherit;
-        grid-column-end: inherit;
-        grid-column-gap: inherit;
-        grid-column-start: inherit;
-        grid-gap:inherit;
-        grid-row: inherit;
-        grid-row-end: inherit;
-        grid-row-gap: inherit;
-        grid-row-start: inherit;
-        grid-template: inherit;
-        grid-template-areas: inherit;
-        grid-template-columns: inherit;
-        grid-template-rows: inherit;
+        ${ this.inherit_props() }
       }
       .cell {
         position: relative;
@@ -1890,10 +1890,11 @@
     }
 
     style_size() {
+      let { x, y } = this.grid_size;
       return `
       .container {
-        grid-template-rows: repeat(${ this.grid_size.x }, 1fr);
-        grid-template-columns: repeat(${ this.grid_size.y }, 1fr);
+        grid-template-rows: repeat(${ x }, 1fr);
+        grid-template-columns: repeat(${ y }, 1fr);
       }
     `;
     }
