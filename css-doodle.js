@@ -1250,6 +1250,7 @@
 
   var Func = alias_for(Expose, {
     'multi': 'multiple',
+    'm':     'multiple',
     'pn':    'pick-n',
     'pd':    'pick-d',
     'r':     'rand',

@@ -143,6 +143,7 @@ const Expose = {
 
 export default alias_for(Expose, {
   'multi': 'multiple',
+  'm':     'multiple',
   'pn':    'pick-n',
   'pd':    'pick-d',
   'r':     'rand',
