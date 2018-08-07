@@ -17,13 +17,13 @@ describe('comments', () => {
       color: red;
     `);
     expect(parsed).toEqual([{
-			"type": "rule",
-			"property": "color",
-			"value": [{
-				"type": "text",
-				"value": "red"
-			}]
-		}]);
+      "type": "rule",
+      "property": "color",
+      "value": [{
+        "type": "text",
+        "value": "red"
+      }]
+    }]);
   });
 
 });
