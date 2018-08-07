@@ -237,12 +237,6 @@
         value
       };
     },
-    comment(value) {
-      return {
-        type: 'comment',
-        value
-      }
-    },
     psuedo(selector = '') {
       return {
         type: 'psuedo',
@@ -401,24 +395,20 @@
   }
 
   function read_comments(it, flag = {}) {
-    let comment = Tokens.comment();
-    let c = it.curr();
-    if (c != '#') it.next();
     it.next();
     while (!it.end()) {
-      if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
-      else comment.value += c;
-      c = it.curr();
+      let c = it.curr();
       if (flag.inline) {
-        if (c == '\n') return comment;
-      } else {
-        if (c == '*' && it.curr(1) == '/') break;
+        if (c == '\n') break;
       }
-      comment.value += c;
+      else {
+        if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
+      }
       it.next();
     }
-    it.next(); it.next();
-    return comment;
+    if (!flag.inline) {
+      it.next(); it.next();
+    }
   }
 
   function read_property(it) {
@@ -732,10 +722,10 @@
         continue;
       }
       else if (c == '/' && it.curr(1) == '*') {
-        Tokens.push(read_comments(it));
+        read_comments(it);
       }
-      else if (c == '#' || (c == '/' && it.curr(1) == '/')) {
-        Tokens.push(read_comments(it, { inline: true }));
+      else if (c == '/' && it.curr(1) == '/') {
+        read_comments(it, { inline: true });
       }
       else if (c == ':') {
         let psuedo = read_psuedo(it, extra);
