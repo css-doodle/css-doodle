@@ -5,7 +5,7 @@
   "main": "css-doodle.js",
   "scripts": {
     "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
-    "minify": "uglifyjs --compress --mangle --output=css-doodle.min.js --ecma 6 -- css-doodle.js",
+    "minify": "terser --compress --mangle --output=css-doodle.min.js --ecma 6 -- css-doodle.js",
     "trim": "./tools/trim css-doodle.min.js",
     "start": "karma start",
     "test": "karma start --single-run"
@@ -18,12 +18,11 @@
     "jasmine-core": "^3.1.0",
     "karma": "^2.0.2",
     "karma-chrome-launcher": "^2.2.0",
-    "karma-firefox-launcher": "^1.1.0",
     "karma-jasmine": "^1.1.2",
     "karma-mocha-reporter": "^2.2.5",
     "karma-rollup-preprocessor": "^6.0.0",
-    "rollup": "^0.63.2",
-    "uglify-es": "^3.3.9"
+    "rollup": "^0.63.5",
+    "terser": "^3.8.1"
   },
   "keywords": [
     "css",

@@ -3,3 +3,5 @@ npm-debug.log
 *.bak
 .DS_Store
 test*.html
+*.log
+package-lock.json
