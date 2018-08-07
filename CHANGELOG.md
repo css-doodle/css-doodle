@@ -1,3 +1,18 @@
+## 0.4.4
+
+### Fixes
+
+* Fix error in `@pick-d()`.
+* Fix type error of units handling.
+
+### Changes
+
+* Rename `@max-row()` to `@size-row()` and `@max-col()` to `@size-col()`.
+* Replace uglify-es with terser.
+
+<br /> <br />
+
+
 ## 0.4.3
 
 ### Fixes
@@ -9,6 +24,8 @@
 * `@nth()` now behaves like nth-child.
 * Add `@pick-d()` function.
 * Accept any unit.
+
+<br /> <br />
 
 
 ## 0.4.2
@@ -22,6 +39,8 @@
 
 * Increase iterating limit for `@repeat()` and `@multiple()`.
 * Make `:container` inherits all the grid properties from `:doodle` element.
+
+<br /> <br />
 
 
 ## 0.4.1
@@ -38,6 +57,7 @@
 
 * Add aliases for frequently used functions.
 
+<br /> <br />
 
 
 ## 0.4.0
@@ -57,6 +77,7 @@
 * Add `@last-pick()` and `last-rand()` to reference the last generated value.
 * Add `@var()` to replace the use of `var()` inside the styles which passed to the `@use` property.
 
+<br /> <br />
 
 
 ## 0.3.2
@@ -68,6 +89,7 @@
 ### Features
 * Add experimental `@svg()` function to use svg as background
 
+<br /> <br />
 
 
 ## 0.3.1
@@ -82,6 +104,7 @@
 ### Features
 * Support `left/right`, `top/bottom` keywords for `@place-cell`
 
+<br /> <br />
 
 
 ## 0.3.0
