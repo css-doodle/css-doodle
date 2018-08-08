@@ -72,7 +72,7 @@ class Doodle extends HTMLElement {
   }
 
   inherit_props(p) {
-    return get_props('grid')
+    return get_props(/grid/)
       .map(n => `${ n }: inherit;`).join('');
   }
 

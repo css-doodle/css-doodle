@@ -213,12 +213,19 @@
     return ret;
   }
 
-  const all_props = Object.keys(document.head.style)
-    .map(n => n.replace(/[A-Z]/g, '-$&').toLowerCase());
+  const all_props = (() => {
+    let props = new Set();
+    for (let n in document.head.style) {
+      if (!n.startsWith('-')) {
+        props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+      }
+    }
+    return Array.from(props);
+  })();
 
   function get_props(arg) {
-    return (typeof arg == 'string')
-      ? all_props.filter(n => n.startsWith(arg))
+    return (arg && arg.test)
+      ? all_props.filter(n => arg.test(n))
       : all_props;
   }
 
@@ -1312,19 +1319,24 @@
     return result;
   }
 
-  function build_mapping(items) {
-    return items.reduce((obj, n) => {
-      return obj[n] = n, obj;
-    }, {});
+  function build_mapping(prefix) {
+    let reg = new RegExp(`\\-?${ prefix }\\-?`);
+    return get_props(reg)
+      .map(n => n.replace(reg, ''))
+      .reduce((obj, n) => { return obj[n] = n, obj }, {});
   }
 
-  const props_mapping = build_mapping(
-    get_props('webkit').map(n => n.replace('webkit-', ''))
-  );
+  const props_webkit_mapping = build_mapping('webkit');
+  const props_moz_mapping = build_mapping('moz');
 
   function prefixer(prop, rule) {
-    return props_mapping[prop]
-      ? `-webkit-${ rule } ${ rule }` : rule;
+    if (props_webkit_mapping[prop]) {
+      return `-webkit-${ rule } ${ rule }`;
+    }
+    else if (props_moz_mapping[prop]) {
+      return `-moz-${ rule } ${ rule }`;
+    }
+    return rule;
   }
 
   var Property = {
@@ -1855,7 +1867,7 @@
     }
 
     inherit_props(p) {
-      return get_props('grid')
+      return get_props(/grid/)
         .map(n => `${ n }: inherit;`).join('');
     }
 

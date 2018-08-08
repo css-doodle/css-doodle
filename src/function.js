@@ -1,8 +1,8 @@
 import Shapes from './shapes';
 import calculator from './calculator';
-import { clamp, alias_for } from './utils';
 
 import {
+  clamp, alias_for,
   memo, random, range, unitify,
   by_charcode, shuffle
 } from './utils';

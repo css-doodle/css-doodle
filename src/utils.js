@@ -115,11 +115,18 @@ export function shuffle(arr) {
   return ret;
 }
 
-const all_props = Object.keys(document.head.style)
-  .map(n => n.replace(/[A-Z]/g, '-$&').toLowerCase());
+const all_props = (() => {
+  let props = new Set();
+  for (let n in document.head.style) {
+    if (!n.startsWith('-')) {
+      props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+    }
+  }
+  return Array.from(props);
+})();
 
 export function get_props(arg) {
-  return (typeof arg == 'string')
-    ? all_props.filter(n => n.startsWith(arg))
+  return (arg && arg.test)
+    ? all_props.filter(n => arg.test(n))
     : all_props;
 }
