@@ -114,3 +114,12 @@ export function shuffle(arr) {
   }
   return ret;
 }
+
+const all_props = Object.keys(document.head.style)
+  .map(n => n.replace(/[A-Z]/g, '-$&').toLowerCase());
+
+export function get_props(arg) {
+  return (typeof arg == 'string')
+    ? all_props.filter(n => n.startsWith(arg))
+    : all_props;
+}

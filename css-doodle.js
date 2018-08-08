@@ -213,6 +213,15 @@
     return ret;
   }
 
+  const all_props = Object.keys(document.head.style)
+    .map(n => n.replace(/[A-Z]/g, '-$&').toLowerCase());
+
+  function get_props(arg) {
+    return (typeof arg == 'string')
+      ? all_props.filter(n => n.startsWith(arg))
+      : all_props;
+  }
+
   const Tokens = {
     func(name = '') {
       return {
@@ -1303,25 +1312,19 @@
     return result;
   }
 
-  const props_mapping = build_mapping(get_props());
-
-  function prefixer(prop, rule) {
-    return props_mapping[prop]
-      ? `-webkit-${ rule } ${ rule }` : rule;
-  }
-
   function build_mapping(items) {
     return items.reduce((obj, n) => {
       return obj[n] = n, obj;
     }, {});
   }
 
-  function get_props() {
-    return Object.keys(document.head.style)
-      .filter(n => n.startsWith('webkit'))
-      .map(n => n.replace(/[A-Z]/g, "-$&")
-        .toLowerCase()
-        .replace('webkit-', ''));
+  const props_mapping = build_mapping(
+    get_props('webkit').map(n => n.replace('webkit-', ''))
+  );
+
+  function prefixer(prop, rule) {
+    return props_mapping[prop]
+      ? `-webkit-${ rule } ${ rule }` : rule;
   }
 
   var Property = {
@@ -1852,20 +1855,8 @@
     }
 
     inherit_props(p) {
-      return `
-      , area gap
-      auto-columns auto-flow auto-rows
-      column -end -gap -start
-      row -end -gap -start
-      template -areas -columns -rows
-    `.trim()
-       .split(/[\s,]+/).map(n => `
-        ${ /^\-/.test(n)
-          ? `grid-${ p }${ n }`
-          : (p = n, `grid${ n ? `-${ n }` : '' }`)
-        }: inherit;
-      `)
-       .join('');
+      return get_props('grid')
+        .map(n => `${ n }: inherit;`).join('');
     }
 
     style_basic() {

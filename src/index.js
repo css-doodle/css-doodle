@@ -1,6 +1,7 @@
 import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
+import { get_props } from './utils';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -71,20 +72,8 @@ class Doodle extends HTMLElement {
   }
 
   inherit_props(p) {
-    return `
-      , area gap
-      auto-columns auto-flow auto-rows
-      column -end -gap -start
-      row -end -gap -start
-      template -areas -columns -rows
-    `.trim()
-     .split(/[\s,]+/).map(n => `
-        ${ /^\-/.test(n)
-          ? `grid-${ p }${ n }`
-          : (p = n, `grid${ n ? `-${ n }` : '' }`)
-        }: inherit;
-      `)
-     .join('');
+    return get_props('grid')
+      .map(n => `${ n }: inherit;`).join('');
   }
 
   style_basic() {
