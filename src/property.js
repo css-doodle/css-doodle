@@ -29,7 +29,6 @@ export default {
   },
 
   ['@place-cell']: (() => {
-    const bound = '-100vmax';
     let map_left_right = {
       'center': '50%', '0': '0%',
       'left': '0%', 'right': '100%',
@@ -47,13 +46,13 @@ export default {
       top = map_top_bottom[top] || top;
       return `
         position: absolute;
-        right: ${ bound }; bottom: ${ bound };
-        left: calc(${ bound } - 100% + ${ left } * 2);
-        top: calc(${ bound } - 100% + ${ top } * 2);
+        left: ${ left };
+        top: ${ top };
         width: var(--internal-cell-width, 25%);
         height: var(--internal-cell-height, 25%);
+        margin-left: calc(var(--internal-cell-width, 25%) / -2) !important;
+        margin-top: calc(var(--internal-cell-height, 25%) / -2) !important;
         grid-area: unset !important;
-        margin: auto !important;
       `;
     }
   })(),
