@@ -2,8 +2,10 @@ import Func from './function';
 import Property from './property';
 import Selector from './selector';
 import MathFunc from './math';
+import prefixer from './prefixer';
+
 import {
-  join_line, make_array, apply_args, only_if, prefix
+  join_line, make_array, apply_args, only_if
 } from './utils';
 
 function is_host_selector(s) {
@@ -126,9 +128,7 @@ class Rules {
       this.props.has_transition = true;
     }
 
-    if (prop == 'mask' || prop == 'clip-path') {
-      rule = prefix(rule);
-    }
+    rule = prefixer(prop, rule);
 
     if (prop == 'clip-path') {
       // fix clip bug

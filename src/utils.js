@@ -38,10 +38,6 @@ export function clamp(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
 
-export function prefix(rule) {
-  return `-webkit-${ rule } ${ rule }`;
-}
-
 export function only_if(cond, value) {
   return cond ? value : '';
 }

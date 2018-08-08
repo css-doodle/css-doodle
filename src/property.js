@@ -1,7 +1,8 @@
 import parse_value_group from './parser/parse-value-group';
 import parse_grid from './parser/parse-grid';
 import Shapes from './shapes';
-import { memo, prefix } from './utils';
+import prefixer from './prefixer';
+import { memo } from './utils';
 
 export default {
 
@@ -67,10 +68,10 @@ export default {
 
   ['@shape']: memo('shape-property', function(value) {
     let [type, ...args] = parse_value_group(value);
-    return Shapes[type]
-      ? prefix(`clip-path: ${ Shapes[type].apply(null, args) };`)
-        + 'overflow: hidden;'
-      : '';
+    let prop = 'clip-path';
+    let rules = `${ prop }: ${ Shapes[type].apply(null, args) };`;
+    rules = prefixer(prop, rules) + 'overflow: hidden;';
+    return Shapes[type] ? rules : '';
   }),
 
   ['@use'](rules) {

@@ -136,10 +136,6 @@
     return Math.max(min, Math.min(max, num));
   }
 
-  function prefix(rule) {
-    return `-webkit-${ rule } ${ rule }`;
-  }
-
   function only_if(cond, value) {
     return cond ? value : '';
   }
@@ -1307,6 +1303,31 @@
     return result;
   }
 
+  const props_mapping = build_mapping(get_props());
+
+  function prefixer(prop, rule) {
+    if (props_mapping[prop]) {
+      return `-webkit-${ rule } ${ rule }`;
+    }
+    return rule;
+  }
+
+  function build_mapping(items) {
+    return items.reduce((obj, n) => { return obj[n] = n, obj }, {});
+  }
+
+  function get_props() {
+    const props = Object.keys(document.head.style)
+      .filter(n => n.startsWith('webkit'))
+      .map(n => n.replace(/[A-Z]/g, "-$&")
+        .toLowerCase()
+        .replace('webkit-', ''));
+
+    // for safari
+    props.push('clip-path');
+    return props;
+  }
+
   var Property = {
 
     ['@size'](value, { is_special_selector }) {
@@ -1371,10 +1392,10 @@
 
     ['@shape']: memo('shape-property', function(value) {
       let [type, ...args] = parse$2(value);
-      return shapes[type]
-        ? prefix(`clip-path: ${ shapes[type].apply(null, args) };`)
-          + 'overflow: hidden;'
-        : '';
+      let prop = 'clip-path';
+      let rules = `${ prop }: ${ shapes[type].apply(null, args) };`;
+      rules = prefixer(prop, rules) + 'overflow: hidden;';
+      return shapes[type] ? rules : '';
     }),
 
     ['@use'](rules) {
@@ -1577,9 +1598,7 @@
         this.props.has_transition = true;
       }
 
-      if (prop == 'mask' || prop == 'clip-path') {
-        rule = prefix(rule);
-      }
+      rule = prefixer(prop, rule);
 
       if (prop == 'clip-path') {
         // fix clip bug
