@@ -82,14 +82,15 @@ const Expose = {
     }
   },
 
-  ['pick-d']({ count, idx, context }) {
+  ['pick-d']({ count, idx, context, position }) {
+    let name = 'pd-' + position;
     return (...args) => {
-      if (!context.pd) {
-        context.pd = shuffle(args);
+      if (!context[name]) {
+        context[name] = shuffle(args);
       }
       let max = args.length;
       let pos = ((idx == undefined ? count : idx) - 1) % max;
-      return Last.pick = context.pd[pos];
+      return Last.pick = context[name][pos];
     }
   },
 

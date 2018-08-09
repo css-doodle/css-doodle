@@ -77,6 +77,7 @@ class Rules {
         let fn = this.pick_func(arg.name.substr(1));
         if (fn) {
           coords.idx = idx;
+          coords.position = arg.position;
           let args = arg.arguments.map(n => {
             return fn.lazy
               ? idx => this.compose_argument(n, coords, idx)
@@ -104,6 +105,7 @@ class Rules {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
           if (fn) {
+            coords.position = val.position;
             let args = val.arguments.map(arg => {
               if (fn.lazy) {
                 return idx => this.compose_argument(arg, coords, idx);

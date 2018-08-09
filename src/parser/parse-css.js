@@ -301,6 +301,7 @@ function read_func(it) {
       it.next();
       func.name = name;
       func.arguments = read_arguments(it);
+      func.position = it.info().index;
       break;
     }
     else name += c;

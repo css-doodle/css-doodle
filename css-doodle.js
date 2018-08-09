@@ -532,6 +532,7 @@
         it.next();
         func.name = name;
         func.arguments = read_arguments(it);
+        func.position = it.info().index;
         break;
       }
       else name += c;
@@ -1195,14 +1196,15 @@
       }
     },
 
-    ['pick-d']({ count, idx, context }) {
+    ['pick-d']({ count, idx, context, position }) {
+      let name = 'pd-' + position;
       return (...args) => {
-        if (!context.pd) {
-          context.pd = shuffle(args);
+        if (!context[name]) {
+          context[name] = shuffle(args);
         }
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
-        return Last.pick = context.pd[pos];
+        return Last.pick = context[name][pos];
       }
     },
 
@@ -1584,6 +1586,7 @@
           let fn = this.pick_func(arg.name.substr(1));
           if (fn) {
             coords.idx = idx;
+            coords.position = arg.position;
             let args = arg.arguments.map(n => {
               return fn.lazy
                 ? idx => this.compose_argument(n, coords, idx)
@@ -1611,6 +1614,7 @@
             let fname = val.name.substr(1);
             let fn = this.pick_func(fname);
             if (fn) {
+              coords.position = val.position;
               let args = val.arguments.map(arg => {
                 if (fn.lazy) {
                   return idx => this.compose_argument(arg, coords, idx);
