@@ -115,21 +115,25 @@ export function shuffle(arr) {
   return ret;
 }
 
-const all_props = (() => {
-  let props = new Set();
-  for (let n in document.head.style) {
-    if (!n.startsWith('-')) {
-      props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+export const get_props = (() => {
+  let all_props;
+  return arg => {
+    if (!all_props) {
+      let props = new Set();
+      for (let n in document.head.style) {
+        if (!n.startsWith('-')) {
+          props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+        }
+      }
+      if (!props.has('grid-gap')) {
+        props.add('grid-gap'); }
+      all_props = Array.from(props);
     }
+    return (arg && arg.test)
+      ? all_props.filter(n => arg.test(n))
+      : all_props;
   }
-  return Array.from(props);
 })();
-
-export function get_props(arg) {
-  return (arg && arg.test)
-    ? all_props.filter(n => arg.test(n))
-    : all_props;
-}
 
 export function unique_id(prefix = '') {
   return prefix + Math.random().toString(32).substr(2);
