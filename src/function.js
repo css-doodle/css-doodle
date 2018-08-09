@@ -1,5 +1,6 @@
 import Shapes from './shapes';
 import calculator from './calculator';
+import { create_svg_url, normalize_svg } from './svg';
 
 import {
   clamp, alias_for,
@@ -11,29 +12,6 @@ function Lazy(fn) {
   let wrap = () => fn;
   wrap.lazy = true;
   return wrap;
-}
-
-function create_svg_url(svg, id) {
-  if (id) {
-    let blob = new Blob([svg], { type: 'image/svg+xml' });
-    let url = URL.createObjectURL(blob);
-    return `url(${ url }#${ id })`;
-  }
-  else {
-    let encoded = encodeURIComponent(svg);
-    return `url("data:image/svg+xml;utf8,${ encoded }")`;
-  }
-}
-
-function normalize_svg(input) {
-  const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
-  if (!input.includes('<svg')) {
-    input = `<svg ${ xmlns }>${ input }</svg>`;
-  }
-  if (!input.includes('xmlns')) {
-    input = input.replace('<svg ', `<svg ${ xmlns } `);
-  }
-  return input;
 }
 
 const Last = {

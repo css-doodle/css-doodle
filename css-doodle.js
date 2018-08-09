@@ -1121,12 +1121,6 @@
     return stack[0];
   }
 
-  function Lazy(fn) {
-    let wrap = () => fn;
-    wrap.lazy = true;
-    return wrap;
-  }
-
   function create_svg_url(svg, id) {
     if (id) {
       let blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -1145,9 +1139,15 @@
       input = `<svg ${ xmlns }>${ input }</svg>`;
     }
     if (!input.includes('xmlns')) {
-      input = input.replace('<svg ', `<svg ${ xmlns } `);
+      input = input.replace(/<svg([\s>])/, `<svg ${ xmlns }$1`);
     }
     return input;
+  }
+
+  function Lazy(fn) {
+    let wrap = () => fn;
+    wrap.lazy = true;
+    return wrap;
   }
 
   const Last = {
