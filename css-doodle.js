@@ -141,7 +141,7 @@
   }
 
   const memo_store = {};
-  function  memo(prefix, fn) {
+  function memo(prefix, fn) {
     return (...args) => {
       let key = prefix + args.join('-');
       if (memo_store[key]) return memo_store[key];
@@ -150,8 +150,8 @@
   }
 
   function random(...items) {
-    let args = items.reduce((ret, n) => ret.concat(n), []);
-    return args[Math.floor(Math.random() * args.length)];
+    let args = items.reduce((acc, n) => acc.concat(n), []);
+    return args[~~(Math.random() * args.length)];
   }
 
   function range(start, stop, step) {
@@ -235,6 +235,11 @@
 
   function unique_id(prefix = '') {
     return prefix + Math.random().toString(32).substr(2);
+  }
+
+  function flat_map(arr, fn) {
+    if (Array.prototype.flatMap) return arr.flatMap(fn);
+    return arr.reduce((acc, x) => acc.concat(fn(x)), []);
   }
 
   const Tokens = {
@@ -1189,41 +1194,26 @@
     return tokens;
   }
 
-  function build_range(input) {
+  const build_range = memo('build_range', (input) => {
     let tokens = get_tokens$1(input);
-    let ret = [];
-    tokens.forEach(({ type, value }) => {
-      if (type == 'range') {
-        let [ from, to ] = value;
-        let reverse = false;
-        if (from > to) {
-          [from, to] = [ to, from ];
-          reverse = true;
-        }
-        let result = by_charcode(range)(from, to);
-        if (result) {
-          if (reverse) result.reverse();
-          ret = ret.concat(result);
-        }
-      } else {
-        ret.push(value);
+    return flat_map(tokens, ({ type, value }) => {
+      if (type == 'char') return value;
+      let [ from, to ] = value;
+      let reverse = false;
+      if (from > to) {
+        [from, to] = [ to, from ];
+        reverse = true;
       }
+      let result = by_charcode(range)(from, to);
+      if (reverse) result.reverse();
+      return result;
     });
-    return ret;
-  }
+  });
 
   function expand(fn) {
-    return (...args) => {
-      let arg_list = [];
-      args.forEach(n => {
-        if (String(n).startsWith('[')) {
-          arg_list = arg_list.concat(build_range(n));
-        } else {
-          arg_list.push(n);
-        }
-      });
-      return fn.apply(null, arg_list);
-    }
+    return (...args) => fn.apply(null, flat_map(args, n =>
+      String(n).startsWith('[') ? build_range(n) : n
+    ));
   }
 
   function Lazy(fn) {

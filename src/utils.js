@@ -43,7 +43,7 @@ export function only_if(cond, value) {
 }
 
 const memo_store = {};
-export function  memo(prefix, fn) {
+export function memo(prefix, fn) {
   return (...args) => {
     let key = prefix + args.join('-');
     if (memo_store[key]) return memo_store[key];
@@ -52,8 +52,8 @@ export function  memo(prefix, fn) {
 }
 
 export function random(...items) {
-  let args = items.reduce((ret, n) => ret.concat(n), []);
-  return args[Math.floor(Math.random() * args.length)];
+  let args = items.reduce((acc, n) => acc.concat(n), []);
+  return args[~~(Math.random() * args.length)];
 }
 
 export function range(start, stop, step) {
@@ -137,4 +137,9 @@ export const get_props = (() => {
 
 export function unique_id(prefix = '') {
   return prefix + Math.random().toString(32).substr(2);
+}
+
+export function flat_map(arr, fn) {
+  if (Array.prototype.flatMap) return arr.flatMap(fn);
+  return arr.reduce((acc, x) => acc.concat(fn(x)), []);
 }

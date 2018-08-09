@@ -1,4 +1,6 @@
-import { range, by_charcode, last } from './utils';
+import {
+  range, by_charcode, memo, last, flat_map
+} from './utils';
 
 function Type(type, value) {
   return { type, value };
@@ -41,39 +43,24 @@ function get_tokens(input) {
   return tokens;
 }
 
-function build_range(input) {
+const build_range = memo('build_range', (input) => {
   let tokens = get_tokens(input);
-  let ret = [];
-  tokens.forEach(({ type, value }) => {
-    if (type == 'range') {
-      let [ from, to ] = value;
-      let reverse = false;
-      if (from > to) {
-        [from, to] = [ to, from ];
-        reverse = true;
-      }
-      let result = by_charcode(range)(from, to);
-      if (result) {
-        if (reverse) result.reverse();
-        ret = ret.concat(result);
-      }
-    } else {
-      ret.push(value);
+  return flat_map(tokens, ({ type, value }) => {
+    if (type == 'char') return value;
+    let [ from, to ] = value;
+    let reverse = false;
+    if (from > to) {
+      [from, to] = [ to, from ];
+      reverse = true;
     }
+    let result = by_charcode(range)(from, to);
+    if (reverse) result.reverse();
+    return result;
   });
-  return ret;
-}
+});
 
 export default function expand(fn) {
-  return (...args) => {
-    let arg_list = [];
-    args.forEach(n => {
-      if (String(n).startsWith('[')) {
-        arg_list = arg_list.concat(build_range(n));
-      } else {
-        arg_list.push(n);
-      }
-    });
-    return fn.apply(null, arg_list);
-  }
+  return (...args) => fn.apply(null, flat_map(args, n =>
+    String(n).startsWith('[') ? build_range(n) : n
+  ));
 }
