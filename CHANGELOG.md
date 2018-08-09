@@ -1,3 +1,20 @@
+## 0.4.5
+
+### Fixes
+
+* Fix context bug for `@pick-d()`.
+* Prevent scrollbars caused by `@place-cell()`.
+
+### Features
+
+* Automatically add vender prefixes for properties.
+* Automatically add quotes for pseudo content.
+* Support char range in `@pick` functions.
+* Add experimental `@svg-filter()` function.
+
+<br /> <br />
+
+
 ## 0.4.4
 
 ### Fixes
