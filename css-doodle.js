@@ -202,15 +202,6 @@
   }
 
   function shuffle(arr) {
-<<<<<<< HEAD
-    let len = arr.length + 1;
-    let ret = Array.from ? Array.from(arr) : arr.slice();
-    while (len--) {
-      let i = ~~(Math.random() * len);
-      let old = ret[i];
-      ret[i] = ret[0];
-      ret[0] = old;
-=======
     let ret = Array.from ? Array.from(arr) : arr.slice();
     let len = arr.length;
     while (len--) {
@@ -218,7 +209,6 @@
       let t = ret[len];
       ret[len] = ret[i];
       ret[i] = t;
->>>>>>> d881bfd... Implement Fisher–Yates Shuffle
     }
     return ret;
   }
