@@ -130,3 +130,7 @@ export function get_props(arg) {
     ? all_props.filter(n => arg.test(n))
     : all_props;
 }
+
+export function unique_id(prefix = '') {
+  return prefix + Math.random().toString(32).substr(2);
+}

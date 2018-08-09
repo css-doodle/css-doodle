@@ -229,6 +229,10 @@
       : all_props;
   }
 
+  function unique_id(prefix = '') {
+    return prefix + Math.random().toString(32).substr(2);
+  }
+
   const Tokens = {
     func(name = '') {
       return {
@@ -1122,6 +1126,29 @@
     return wrap;
   }
 
+  function create_svg_url(svg, id) {
+    if (id) {
+      let blob = new Blob([svg], { type: 'image/svg+xml' });
+      let url = URL.createObjectURL(blob);
+      return `url(${ url }#${ id })`;
+    }
+    else {
+      let encoded = encodeURIComponent(svg);
+      return `url("data:image/svg+xml;utf8,${ encoded }")`;
+    }
+  }
+
+  function normalize_svg(input) {
+    const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
+    if (!input.includes('<svg')) {
+      input = `<svg ${ xmlns }>${ input }</svg>`;
+    }
+    if (!input.includes('xmlns')) {
+      input = input.replace('<svg ', `<svg ${ xmlns } `);
+    }
+    return input;
+  }
+
   const Last = {
     pick: '', rand: ''
   };
@@ -1229,19 +1256,19 @@
 
     svg: Lazy(input => {
       if (input === undefined) return '';
-      let value = input().trim(), encoded = '';
-      if (!value.includes('xmlns')) {
-        value = value.replace(
-          '<svg ',
-          '<svg xmlns="http://www.w3.org/2000/svg" '
+      let svg = normalize_svg(input().trim());
+      return create_svg_url(svg);
+    }),
+
+    ['svg-filter']: Lazy(input => {
+      if (input === undefined) return '';
+      let id = unique_id('filter-');
+      let svg = normalize_svg(input().trim())
+        .replace(
+          /<filter([\s>])/,
+          `<filter id="${ id }"$1`
         );
-      }
-      try {
-        encoded = encodeURIComponent(value);
-      } catch (e) {
-        // just ignore
-      }
-      return 'url("data:image/svg+xml;utf8,' + encoded + '")'
+      return create_svg_url(svg, id);
     }),
 
     var() {

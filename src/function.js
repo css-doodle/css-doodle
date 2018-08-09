@@ -4,13 +4,36 @@ import calculator from './calculator';
 import {
   clamp, alias_for,
   memo, random, range, unitify,
-  by_charcode, shuffle
+  by_charcode, shuffle, unique_id
 } from './utils';
 
 function Lazy(fn) {
   let wrap = () => fn;
   wrap.lazy = true;
   return wrap;
+}
+
+function create_svg_url(svg, id) {
+  if (id) {
+    let blob = new Blob([svg], { type: 'image/svg+xml' });
+    let url = URL.createObjectURL(blob);
+    return `url(${ url }#${ id })`;
+  }
+  else {
+    let encoded = encodeURIComponent(svg);
+    return `url("data:image/svg+xml;utf8,${ encoded }")`;
+  }
+}
+
+function normalize_svg(input) {
+  const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
+  if (!input.includes('<svg')) {
+    input = `<svg ${ xmlns }>${ input }</svg>`;
+  }
+  if (!input.includes('xmlns')) {
+    input = input.replace('<svg ', `<svg ${ xmlns } `);
+  }
+  return input;
 }
 
 const Last = {
@@ -120,19 +143,19 @@ const Expose = {
 
   svg: Lazy(input => {
     if (input === undefined) return '';
-    let value = input().trim(), encoded = '';
-    if (!value.includes('xmlns')) {
-      value = value.replace(
-        '<svg ',
-        '<svg xmlns="http://www.w3.org/2000/svg" '
+    let svg = normalize_svg(input().trim());
+    return create_svg_url(svg);
+  }),
+
+  ['svg-filter']: Lazy(input => {
+    if (input === undefined) return '';
+    let id = unique_id('filter-');
+    let svg = normalize_svg(input().trim())
+      .replace(
+        /<filter([\s>])/,
+        `<filter id="${ id }"$1`
       );
-    }
-    try {
-      encoded = encodeURIComponent(value);
-    } catch (e) {
-      // just ignore
-    }
-    return 'url("data:image/svg+xml;utf8,' + encoded + '")'
+    return create_svg_url(svg, id);
   }),
 
   var() {
