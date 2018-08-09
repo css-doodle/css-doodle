@@ -124,12 +124,17 @@ class Rules {
   compose_rule(token, coords, selector) {
     let prop = token.property;
     let value = this.compose_value(token.value, coords);
-    let rule = `${ prop }: ${ value };`
 
+    if (prop == 'content') {
+      if (!/^(counter\(|attr\(|["'])/.test(value)) {
+        value = `'${ value }'`;
+      }
+    }
     if (prop == 'transition') {
       this.props.has_transition = true;
     }
 
+    let rule = `${ prop }: ${ value };`
     rule = prefixer(prop, rule);
 
     if (prop == 'clip-path') {
