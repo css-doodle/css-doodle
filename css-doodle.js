@@ -213,21 +213,25 @@
     return ret;
   }
 
-  const all_props = (() => {
-    let props = new Set();
-    for (let n in document.head.style) {
-      if (!n.startsWith('-')) {
-        props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+  const get_props = (() => {
+    let all_props;
+    return arg => {
+      if (!all_props) {
+        let props = new Set();
+        for (let n in document.head.style) {
+          if (!n.startsWith('-')) {
+            props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+          }
+        }
+        if (!props.has('grid-gap')) {
+          props.add('grid-gap'); }
+        all_props = Array.from(props);
       }
+      return (arg && arg.test)
+        ? all_props.filter(n => arg.test(n))
+        : all_props;
     }
-    return Array.from(props);
   })();
-
-  function get_props(arg) {
-    return (arg && arg.test)
-      ? all_props.filter(n => arg.test(n))
-      : all_props;
-  }
 
   function unique_id(prefix = '') {
     return prefix + Math.random().toString(32).substr(2);
@@ -1144,6 +1148,84 @@
     return input;
   }
 
+  function Type(type, value) {
+    return { type, value };
+  }
+
+  function get_tokens$1(input) {
+    let expr = String(input);
+    let tokens = [], stack = [];
+    if (!expr.startsWith('[') || !expr.endsWith(']')) {
+      return tokens;
+    }
+
+    for (let i = 1; i < expr.length - 1; ++i) {
+      let c = expr[i];
+      if (c == '-' && expr[i - 1] == '-') {
+        continue;
+      }
+      if (c == '-') {
+        stack.push(c);
+        continue;
+      }
+      if (last(stack) == '-') {
+        stack.pop();
+        let from = stack.pop();
+        if (from) {
+          tokens.push(Type('range', [ from, c ]));
+        } else {
+          tokens.push(Type('char', c));
+        }
+        continue;
+      }
+      if (stack.length) {
+        tokens.push(Type('char', stack.pop()));
+      }
+      stack.push(c);
+    }
+    if (stack.length) {
+      tokens.push(Type('char', stack.pop()));
+    }
+    return tokens;
+  }
+
+  function build_range(input) {
+    let tokens = get_tokens$1(input);
+    let ret = [];
+    tokens.forEach(({ type, value }) => {
+      if (type == 'range') {
+        let [ from, to ] = value;
+        let reverse = false;
+        if (from > to) {
+          [from, to] = [ to, from ];
+          reverse = true;
+        }
+        let result = by_charcode(range)(from, to);
+        if (result) {
+          if (reverse) result.reverse();
+          ret = ret.concat(result);
+        }
+      } else {
+        ret.push(value);
+      }
+    });
+    return ret;
+  }
+
+  function expand(fn) {
+    return (...args) => {
+      let arg_list = [];
+      args.forEach(n => {
+        if (String(n).startsWith('[')) {
+          arg_list = arg_list.concat(build_range(n));
+        } else {
+          arg_list.push(n);
+        }
+      });
+      return fn.apply(null, arg_list);
+    }
+  }
+
   function Lazy(fn) {
     let wrap = () => fn;
     wrap.lazy = true;
@@ -1185,27 +1267,27 @@
     },
 
     pick() {
-      return (...args) => Last.pick = random(args);
+      return expand((...args) => Last.pick = random(args));
     },
 
     ['pick-n']({ count, idx }) {
-      return (...args) => {
+      return expand((...args) => {
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
         return Last.pick = args[pos];
-      }
+      });
     },
 
     ['pick-d']({ count, idx, context, position }) {
       let name = 'pd-' + position;
-      return (...args) => {
+      return expand((...args) => {
         if (!context[name]) {
           context[name] = shuffle(args);
         }
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
         return Last.pick = context[name][pos];
-      }
+      });
     },
 
     ['last-pick']() {

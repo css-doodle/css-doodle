@@ -1,6 +1,7 @@
 import Shapes from './shapes';
 import calculator from './calculator';
 import { create_svg_url, normalize_svg } from './svg';
+import expand from './expand';
 
 import {
   clamp, alias_for,
@@ -49,27 +50,27 @@ const Expose = {
   },
 
   pick() {
-    return (...args) => Last.pick = random(args);
+    return expand((...args) => Last.pick = random(args));
   },
 
   ['pick-n']({ count, idx }) {
-    return (...args) => {
+    return expand((...args) => {
       let max = args.length;
       let pos = ((idx == undefined ? count : idx) - 1) % max;
       return Last.pick = args[pos];
-    }
+    });
   },
 
   ['pick-d']({ count, idx, context, position }) {
     let name = 'pd-' + position;
-    return (...args) => {
+    return expand((...args) => {
       if (!context[name]) {
         context[name] = shuffle(args);
       }
       let max = args.length;
       let pos = ((idx == undefined ? count : idx) - 1) % max;
       return Last.pick = context[name][pos];
-    }
+    });
   },
 
   ['last-pick']() {
