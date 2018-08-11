@@ -58,20 +58,17 @@ function parse(it) {
   return groups;
 }
 
-export default input => {
+export default function parse_var(input) {
   input = input.trim();
   let result = [];
-
   if (!/^var\(/.test(input)) {
     return result;
   }
-
   let it = iterator(input);
   try {
     result = parse(it);
   } catch (e) {
     //
   }
-
   return result;
 }

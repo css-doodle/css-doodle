@@ -2,8 +2,7 @@ import { clamp } from '../utils';
 
 const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
-export default
-function parse_grid(size) {
+export default function parse_grid(size) {
   let [x, y] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/, 'x')

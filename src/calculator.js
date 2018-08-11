@@ -52,7 +52,6 @@ function get_tokens(input) {
   return tokens;
 }
 
-
 function infix_to_postfix(input) {
   let tokens = get_tokens(input);
   const op_stack = [], expr = [];

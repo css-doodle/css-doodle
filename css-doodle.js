@@ -7,11 +7,19 @@
   function iterator(input) {
     let index = 0, col = 1, line = 1;
     return {
-      curr:  (n = 0) => input[index + n],
-      end:   ()  => input.length <= index,
-      info:  ()  => ({ index, col, line }),
-      index: (n) => (n === undefined ? index : index = n),
-      next:  ()  => {
+      curr(n = 0) {
+        return input[index + n];
+      },
+      end() {
+        return input.length <= index;
+      },
+      info() {
+        return { index, col, line };
+      },
+      index(n) {
+        return (n === undefined ? index : index = n);
+      },
+      next() {
         let next = input[index++];
         if (next == '\n') line++, col = 0;
         else col++;
@@ -78,23 +86,20 @@
     return groups;
   }
 
-  var parse_var = input => {
+  function parse_var(input) {
     input = input.trim();
     let result = [];
-
     if (!/^var\(/.test(input)) {
       return result;
     }
-
     let it = iterator(input);
     try {
       result = parse(it);
     } catch (e) {
       //
     }
-
     return result;
-  };
+  }
 
   function add_unit(fn, unit) {
     return (...args) => {
@@ -1176,11 +1181,10 @@
       if (last(stack) == '-') {
         stack.pop();
         let from = stack.pop();
-        if (from) {
-          tokens.push(Type('range', [ from, c ]));
-        } else {
-          tokens.push(Type('char', c));
-        }
+        tokens.push(from
+          ? Type('range', [ from, c ])
+          : Type('char', c)
+        );
         continue;
       }
       if (stack.length) {
