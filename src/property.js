@@ -44,14 +44,16 @@ export default {
       let [left, top = '50%'] = parse_value_group(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
+      const cw = 'var(--internal-cell-width, 25%)';
+      const ch = 'var(--internal-cell-height, 25%)';
       return `
         position: absolute;
         left: ${ left };
         top: ${ top };
-        width: var(--internal-cell-width, 25%);
-        height: var(--internal-cell-height, 25%);
-        margin-left: calc(var(--internal-cell-width, 25%) / -2) !important;
-        margin-top: calc(var(--internal-cell-height, 25%) / -2) !important;
+        width: ${ cw };
+        height: ${ ch };
+        margin-left: calc(${ cw } / -2) !important;
+        margin-top: calc(${ ch } / -2) !important;
         grid-area: unset !important;
       `;
     }
@@ -65,7 +67,7 @@ export default {
     };
   },
 
-  ['@shape']: memo('shape-property', function(value) {
+  ['@shape']: memo('shape-property', value => {
     let [type, ...args] = parse_value_group(value);
     let prop = 'clip-path';
     let rules = `${ prop }: ${ Shapes[type].apply(null, args) };`;

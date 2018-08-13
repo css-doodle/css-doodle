@@ -1069,7 +1069,6 @@
     return tokens;
   }
 
-
   function infix_to_postfix(input) {
     let tokens = get_tokens(input);
     const op_stack = [], expr = [];
@@ -1484,14 +1483,16 @@
         let [left, top = '50%'] = parse$2(value);
         left = map_left_right[left] || left;
         top = map_top_bottom[top] || top;
+        const cw = 'var(--internal-cell-width, 25%)';
+        const ch = 'var(--internal-cell-height, 25%)';
         return `
         position: absolute;
         left: ${ left };
         top: ${ top };
-        width: var(--internal-cell-width, 25%);
-        height: var(--internal-cell-height, 25%);
-        margin-left: calc(var(--internal-cell-width, 25%) / -2) !important;
-        margin-top: calc(var(--internal-cell-height, 25%) / -2) !important;
+        width: ${ cw };
+        height: ${ ch };
+        margin-left: calc(${ cw } / -2) !important;
+        margin-top: calc(${ ch } / -2) !important;
         grid-area: unset !important;
       `;
       }
@@ -1505,7 +1506,7 @@
       };
     },
 
-    ['@shape']: memo('shape-property', function(value) {
+    ['@shape']: memo('shape-property', value => {
       let [type, ...args] = parse$2(value);
       let prop = 'clip-path';
       let rules = `${ prop }: ${ shapes[type].apply(null, args) };`;
@@ -1519,6 +1520,12 @@
 
   };
 
+  function build_expr(expr) {
+    return n => String(expr)
+      .replace(/(\d+)(n)/g, '$1*' + n)
+      .replace(/n/g, n);
+  }
+
   function nth(input, curr, max) {
     let expr = build_expr(input);
     for (let i = 0; i <= max; ++i) {
@@ -1526,15 +1533,9 @@
     }
   }
 
-  function build_expr(expr) {
-    return n => String(expr)
-      .replace(/(\d+)(n)/g, '$1*' + n)
-      .replace(/n/g, n);
-  }
-
   const is$1 = {
-    even: (n) => !!(n % 2),
-    odd:  (n) => !(n % 2)
+    even: n => !!(n % 2),
+    odd:  n => !(n % 2)
   };
 
   function even_or_odd(expr) {

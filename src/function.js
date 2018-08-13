@@ -6,7 +6,7 @@ import expand from './expand';
 import {
   clamp, alias_for,
   memo, random, range, unitify,
-  by_charcode, shuffle, unique_id
+  shuffle, by_charcode, unique_id
 } from './utils';
 
 function Lazy(fn) {

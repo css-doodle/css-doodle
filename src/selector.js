@@ -1,8 +1,8 @@
 import nth from './nth';
 
 const is = {
-  even: (n) => !!(n % 2),
-  odd:  (n) => !(n % 2)
+  even: n => !!(n % 2),
+  odd:  n => !(n % 2)
 };
 
 function even_or_odd(expr) {
