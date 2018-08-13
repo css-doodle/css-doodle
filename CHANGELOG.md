@@ -1,3 +1,12 @@
+## 0.4.6
+
+### Fixes
+
+* Fix the shuffle algorithm.
+
+<br /> <br />
+
+
 ## 0.4.5
 
 ### Fixes
