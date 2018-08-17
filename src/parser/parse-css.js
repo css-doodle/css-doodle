@@ -114,6 +114,10 @@ function read_word(it, reset) {
   return read_until(check)(it, reset);
 }
 
+function read_keyframe_name(it) {
+  return read_until(c => /[\s\{]/.test(c))(it);
+}
+
 function read_line(it, reset) {
   let check = c => is.line_break(c) || c == '{';
   return read_until(check)(it, reset);
@@ -162,8 +166,8 @@ function read_keyframes(it, extra) {
     if ((c = it.curr()) == '}') break;
     else if (!keyframes.name.length) {
       read_word(it);
-      keyframes.name = read_word(it);
-      if (keyframes.name == '{') {
+      keyframes.name = read_keyframe_name(it);
+      if (keyframes.name == '') {
         throw_error('missing keyframes name', it.info());
         break;
       }
