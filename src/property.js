@@ -70,9 +70,9 @@ export default {
   ['@shape']: memo('shape-property', value => {
     let [type, ...args] = parse_value_group(value);
     let prop = 'clip-path';
+    if (!Shapes[type]) return '';
     let rules = `${ prop }: ${ Shapes[type].apply(null, args) };`;
-    rules = prefixer(prop, rules) + 'overflow: hidden;';
-    return Shapes[type] ? rules : '';
+    return prefixer(prop, rules) + 'overflow: hidden;';
   }),
 
   ['@use'](rules) {

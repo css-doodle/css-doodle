@@ -1,4 +1,3 @@
-import Shapes from './shapes';
 import calculator from './calculator';
 import { create_svg_url, normalize_svg } from './svg';
 import expand from './expand';
