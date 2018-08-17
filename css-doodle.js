@@ -96,7 +96,7 @@
     try {
       result = parse(it);
     } catch (e) {
-      //
+      console.error(e && e.message || 'Bad variables.');
     }
     return result;
   }
@@ -325,7 +325,7 @@
   };
 
   function throw_error(msg, { col, line }) {
-    throw new Error(
+    throw console.error(
       `(at line ${ line }, column ${ col }) ${ msg }`
     );
   }
@@ -357,6 +357,10 @@
   function read_word(it, reset) {
     let check = c => /[^\w@]/.test(c);
     return read_until(check)(it, reset);
+  }
+
+  function read_keyframe_name(it) {
+    return read_until(c => /[\s\{]/.test(c))(it);
   }
 
   function read_line(it, reset) {
@@ -407,8 +411,8 @@
       if ((c = it.curr()) == '}') break;
       else if (!keyframes.name.length) {
         read_word(it);
-        keyframes.name = read_word(it);
-        if (keyframes.name == '{') {
+        keyframes.name = read_keyframe_name(it);
+        if (keyframes.name == '') {
           throw_error('missing keyframes name', it.info());
           break;
         }
@@ -1924,21 +1928,16 @@
         let compiled;
         let use = this.getAttribute('use') || '';
         if (use) use = `@use:${ use };`;
-        if (!this.innerHTML.trim() && !use) {
-          return false;
-        }
-
+        if (!this.innerHTML.trim() && !use) return false;
         try {
           let parsed = parse$1(use + this.innerHTML, this.extra);
           this.grid_size = parse_grid(this.getAttribute('grid'));
           compiled = generator(parsed, this.grid_size);
           compiled.grid && (this.grid_size = compiled.grid);
+          this.build_grid(compiled);
         } catch (e) {
-          // clear content before throwing error
           this.innerHTML = '';
-          throw new Error(e);
         }
-        this.build_grid(compiled);
       });
     }
 

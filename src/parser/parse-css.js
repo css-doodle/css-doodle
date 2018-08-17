@@ -80,7 +80,7 @@ const is = {
 };
 
 function throw_error(msg, { col, line }) {
-  throw new Error(
+  throw console.error(
     `(at line ${ line }, column ${ col }) ${ msg }`
   );
 }

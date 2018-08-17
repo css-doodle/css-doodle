@@ -16,21 +16,16 @@ class Doodle extends HTMLElement {
       let compiled;
       let use = this.getAttribute('use') || '';
       if (use) use = `@use:${ use };`;
-      if (!this.innerHTML.trim() && !use) {
-        return false;
-      }
-
+      if (!this.innerHTML.trim() && !use) return false;
       try {
         let parsed = parse_css(use + this.innerHTML, this.extra);
         this.grid_size = parse_grid(this.getAttribute('grid'));
         compiled = generator(parsed, this.grid_size);
         compiled.grid && (this.grid_size = compiled.grid);
+        this.build_grid(compiled);
       } catch (e) {
-        // clear content before throwing error
         this.innerHTML = '';
-        throw new Error(e);
       }
-      this.build_grid(compiled);
     });
   }
 
