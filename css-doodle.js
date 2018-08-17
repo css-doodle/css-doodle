@@ -412,7 +412,7 @@
       else if (!keyframes.name.length) {
         read_word(it);
         keyframes.name = read_keyframe_name(it);
-        if (keyframes.name == '') {
+        if (!keyframes.name.length) {
           throw_error('missing keyframes name', it.info());
           break;
         }
@@ -1724,6 +1724,31 @@
         this.props.has_transition = true;
       }
 
+      if (/^animation(\-name)?$/.test(prop)) {
+        this.props.has_animation = true;
+        let value_group = value.split(/,/).map(n => n.trim());
+        if (coords.count > 1) {
+          let { count } = coords;
+          switch (prop) {
+            case 'animation-name': {
+              value = value_group
+                .map(n => this.compose_aname(n, count))
+                .join(', ');
+              break;
+            }
+            case 'animation': {
+              value = value_group
+                .map(n => {
+                  let group = (n || '').split(/\s+/);
+                  group[0] = this.compose_aname(group[0], count);
+                  return group.join(' ');
+                })
+                .join(', ');
+            }
+          }
+        }
+      }
+
       let rule = `${ prop }: ${ value };`;
       rule = prefixer(prop, rule);
 
@@ -1735,33 +1760,6 @@
       if (prop == 'width' || prop == 'height') {
         if (!is_special_selector(selector)) {
           rule += `--internal-cell-${ prop }: ${ value };`;
-        }
-      }
-
-      if (/^animation(\-name)?$/.test(prop)) {
-        this.props.has_animation = true;
-        let value_group = value.split(/,/).map(n => n.trim());
-        if (coords.count > 1) {
-          let { count } = coords;
-          switch (prop) {
-            case 'animation-name': {
-              let composed_value = value_group
-                .map(n => this.compose_aname(n, count))
-                .join(', ');
-              rule = `${ prop }: ${ composed_value };`;
-              break;
-            }
-            case 'animation': {
-              let composed_value = value_group
-                .map(n => {
-                  let group = (n || '').split(/\s+/);
-                  group[0] = this.compose_aname(group[0], count);
-                  return group.join(' ');
-                })
-                .join(', ');
-              rule = `${ prop }: ${ composed_value };`;
-            }
-          }
         }
       }
 

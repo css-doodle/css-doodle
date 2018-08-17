@@ -167,7 +167,7 @@ function read_keyframes(it, extra) {
     else if (!keyframes.name.length) {
       read_word(it);
       keyframes.name = read_keyframe_name(it);
-      if (keyframes.name == '') {
+      if (!keyframes.name.length) {
         throw_error('missing keyframes name', it.info());
         break;
       }
