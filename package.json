@@ -15,13 +15,13 @@
     "url": "git+https://github.com/css-doodle/css-doodle.git"
   },
   "devDependencies": {
-    "jasmine-core": "^3.1.0",
-    "karma": "^2.0.2",
+    "jasmine-core": "^3.2.1",
+    "karma": "^3.0.0",
     "karma-chrome-launcher": "^2.2.0",
     "karma-jasmine": "^1.1.2",
     "karma-mocha-reporter": "^2.2.5",
-    "karma-rollup-preprocessor": "^6.0.0",
-    "rollup": "^0.63.5",
+    "karma-rollup-preprocessor": "^6.0.1",
+    "rollup": "^0.64.1",
     "terser": "^3.8.1"
   },
   "keywords": [
