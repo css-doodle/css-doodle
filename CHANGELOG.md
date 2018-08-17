@@ -1,3 +1,18 @@
+## 0.4.7
+
+### Fixes
+
+* Fix parse error on keyframe names.
+* Fix generated multiple animation names.
+* Prevent error on empty or unknown shapes.
+
+### Changes
+
+* Don't throw JS errors.
+
+<br /> <br />
+
+
 ## 0.4.6
 
 ### Fixes
@@ -16,8 +31,8 @@
 
 ### Features
 
-* Automatically add vender prefixes for properties.
-* Automatically add quotes for pseudo content.
+* Automatically add vendor prefixes for properties.
+* Automatically add quotes for pseudo-content.
 * Support char range in `@pick` functions.
 * Add experimental `@svg-filter()` function.
 
