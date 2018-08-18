@@ -75,5 +75,5 @@ describe('parse_css', () => {
 
 
 function get_arguments(parsed) {
-  return parsed[0].value[0].arguments;
+  return parsed[0].value[0][0].arguments;
 }

@@ -80,7 +80,7 @@ const is = {
 };
 
 function throw_error(msg, { col, line }) {
-  throw console.error(
+  console.error(
     `(at line ${ line }, column ${ col }) ${ msg }`
   );
 }
@@ -315,8 +315,10 @@ function read_func(it) {
 }
 
 function read_value(it) {
-  let text = Tokens.text(), skip = true, c;
-  const value = [];
+  let text = Tokens.text(), idx = 0, skip = true, c;
+  const value = [], stack = [];
+  value[idx] = [];
+
   while (!it.end()) {
     c = it.curr();
 
@@ -330,28 +332,38 @@ function read_value(it) {
     if (c == '\n' && !is.white_space(it.curr(-1))) {
       text.value += ' ';
     }
+    else if (c == ',' && !stack.length) {
+      if (text.value.length) {
+        value[idx].push(text);
+        text = Tokens.text();
+      }
+      value[++idx] = [];
+      skip = true;
+    }
     else if (/[;}]/.test(c)) {
-      if (text.value.length) value.push(text);
-      text = Tokens.text();
+      if (text.value.length) {
+        value[idx].push(text);
+        text = Tokens.text();
+      }
       break;
     }
     else if (c == '@') {
-      if (text.value.length) value.push(text);
-      text = Tokens.text();
-      value.push(read_func(it));
+      if (text.value.length) {
+        value[idx].push(text);
+        text = Tokens.text();
+      }
+      value[idx].push(read_func(it));
     }
     else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
+      if (c == '(') stack.push(c);
+      if (c == ')') stack.pop();
       text.value += c;
     }
     it.next();
   }
-
-  if (text.value.length) value.push(text);
-
-  if (value.length && value[0].value) {
-    value[0].value = value[0].value.trimLeft();
+  if (text.value.length) {
+    value[idx].push(text);
   }
-
   return value;
 }
 
@@ -461,7 +473,7 @@ function read_property_value(extra, name) {
 }
 
 function evaluate_value(values, extra) {
-  values.forEach(v => {
+  values.forEach && values.forEach(v => {
     if (v.type == 'text' && v.value) {
       let vars = parse_var(v.value);
       v.value = vars.reduce((ret, p) => {
@@ -485,7 +497,6 @@ function evaluate_value(values, extra) {
         return ret;
       }, []);
     }
-
     if (v.type == 'func' && v.arguments) {
       v.arguments.forEach(arg => {
         evaluate_value(arg, extra);
@@ -496,12 +507,15 @@ function evaluate_value(values, extra) {
 
 function read_var(it, extra) {
   it.next();
-  let values = read_value(it);
-  evaluate_value(values, extra);
-  if (values.length > 1) {
-    // Todo: support function call
-  }
-  return values[0].value || [];
+  let groups = read_value(it) || [];
+  return groups.reduce((ret, group) => {
+    evaluate_value(group, extra);
+    let [token] = group;
+    if (token.value && token.value.length) {
+      ret.push(...token.value);
+    }
+    return ret;
+  }, []);
 }
 
 export default function parse(input, extra) {

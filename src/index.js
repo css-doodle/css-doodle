@@ -25,6 +25,7 @@ class Doodle extends HTMLElement {
         this.build_grid(compiled);
       } catch (e) {
         this.innerHTML = '';
+        console.error(e && e.message || 'Error in css-doodle.');
       }
     });
   }

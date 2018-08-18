@@ -94,7 +94,7 @@ class Rules {
   }
 
   compose_value(value, coords) {
-    if (!value) return '';
+    if (!value || !value.reduce) return '';
     return value.reduce((result, val) => {
       switch (val.type) {
         case 'text': {
@@ -123,20 +123,13 @@ class Rules {
 
   compose_rule(token, coords, selector) {
     let prop = token.property;
-    let value = this.compose_value(token.value, coords);
-
-    if (prop == 'content') {
-      if (!/^(counter\(|attr\(|["'])/.test(value)) {
-        value = `'${ value }'`;
-      }
-    }
-    if (prop == 'transition') {
-      this.props.has_transition = true;
-    }
+    let value_group = token.value.map(v =>
+      this.compose_value(v, coords)
+    );
+    let value = value_group.join(', ');
 
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
-      let value_group = value.split(/,/).map(n => n.trim());
       if (coords.count > 1) {
         let { count } = coords;
         switch (prop) {
@@ -157,6 +150,16 @@ class Rules {
           }
         }
       }
+    }
+
+    if (prop == 'content') {
+      if (!/^(counter\(|attr\(|["'])/.test(value)) {
+        value = `'${ value }'`;
+      }
+    }
+
+    if (prop == 'transition') {
+      this.props.has_transition = true;
     }
 
     let rule = `${ prop }: ${ value };`

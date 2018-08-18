@@ -9,7 +9,7 @@ describe('parse_css', () => {
         v2;
     `);
 
-    expect(parsed[0].value).toEqual(
+    expect(parsed[0].value[0]).toEqual(
       [{ "type": "text", "value": "v1 v2" }]
     );
   });

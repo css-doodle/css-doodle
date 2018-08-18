@@ -19,10 +19,10 @@ describe('comments', () => {
     expect(parsed).toEqual([{
       "type": "rule",
       "property": "color",
-      "value": [{
+      "value": [[{
         "type": "text",
         "value": "red"
-      }]
+      }]]
     }]);
   });
 
