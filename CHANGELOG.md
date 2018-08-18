@@ -1,3 +1,13 @@
+## 0.4.8
+
+### Fixes
+
+* Support multitple pseudo selectors on one rule.
+* Fix bug on multitple animation names.
+
+<br /> <br />
+
+
 ## 0.4.7
 
 ### Fixes
