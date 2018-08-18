@@ -22,9 +22,9 @@ const Tokens = {
       value
     };
   },
-  psuedo(selector = '') {
+  pseudo(selector = '') {
     return {
-      type: 'psuedo',
+      type: 'pseudo',
       selector,
       styles: []
     };
@@ -393,31 +393,31 @@ function read_cond_selector(it) {
   return selector;
 }
 
-function read_psuedo(it, extra) {
-  let psuedo = Tokens.psuedo(), c;
+function read_pseudo(it, extra) {
+  let pseudo = Tokens.pseudo(), c;
   while (!it.end()) {
     if ((c = it.curr()) == '}') break;
     if (is.white_space(c)) {
       it.next();
       continue;
     }
-    else if (!psuedo.selector) {
-      psuedo.selector = read_selector(it);
+    else if (!pseudo.selector) {
+      pseudo.selector = read_selector(it);
     }
     else {
       let rule = read_rule(it, extra);
       if (rule.property == '@use') {
-        psuedo.styles = psuedo.styles.concat(
+        pseudo.styles = pseudo.styles.concat(
           rule.value
         );
       } else {
-        psuedo.styles.push(rule);
+        pseudo.styles.push(rule);
       }
       if (it.curr() == '}') break;
     }
     it.next();
   }
-  return psuedo;
+  return pseudo;
 }
 
 function read_rule(it, extra) {
@@ -448,8 +448,8 @@ function read_cond(it, extra) {
       Object.assign(cond, read_cond_selector(it));
     }
     else if (c == ':') {
-      let psuedo = read_psuedo(it);
-      if (psuedo.selector) cond.styles.push(psuedo);
+      let pseudo = read_pseudo(it);
+      if (pseudo.selector) cond.styles.push(pseudo);
     }
     else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
@@ -534,8 +534,8 @@ export default function parse(input, extra) {
       read_comments(it, { inline: true });
     }
     else if (c == ':') {
-      let psuedo = read_psuedo(it, extra);
-      if (psuedo.selector) Tokens.push(psuedo);
+      let pseudo = read_pseudo(it, extra);
+      if (pseudo.selector) Tokens.push(pseudo);
     }
     else if (c == '@' && read_word(it, true) === '@keyframes') {
       let keyframes = read_keyframes(it, extra);

@@ -64,8 +64,8 @@ class Rules {
     return args.join('-');
   }
 
-  compose_selector(count, psuedo = '') {
-    return `.cell:nth-of-type(${ count })${ psuedo }`;
+  compose_selector(count, pseudo = '') {
+    return `.cell:nth-of-type(${ count })${ pseudo }`;
   }
 
   compose_argument(argument, coords, idx) {
@@ -220,7 +220,7 @@ class Rules {
           );
           break;
 
-        case 'psuedo': {
+        case 'pseudo': {
           if (token.selector.startsWith(':doodle')) {
             token.selector = token.selector.replace(/^\:+doodle/, ':host');
           }
@@ -229,13 +229,13 @@ class Rules {
             token.skip = true;
           }
           token.selector.split(',').forEach(selector => {
-            let psuedo = token.styles.map(s =>
+            let pseudo = token.styles.map(s =>
               this.compose_rule(s, coords, selector)
             );
             let composed = special
               ? selector
               : this.compose_selector(coords.count, selector);
-            this.add_rule(composed, psuedo);
+            this.add_rule(composed, pseudo);
           });
 
           break;
