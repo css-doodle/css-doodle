@@ -1830,22 +1830,20 @@
             if (token.selector.startsWith(':doodle')) {
               token.selector = token.selector.replace(/^\:+doodle/, ':host');
             }
-
             let special = is_special_selector(token.selector);
-
             if (special) {
               token.skip = true;
             }
+            token.selector.split(',').forEach(selector => {
+              let psuedo = token.styles.map(s =>
+                this.compose_rule(s, coords, selector)
+              );
+              let composed = special
+                ? selector
+                : this.compose_selector(coords.count, selector);
+              this.add_rule(composed, psuedo);
+            });
 
-            let psuedo = token.styles.map(s =>
-              this.compose_rule(s, coords, token.selector)
-            );
-
-            let selector = special
-              ? token.selector
-              : this.compose_selector(coords.count, token.selector);
-
-            this.add_rule(selector, psuedo);
             break;
           }
 
