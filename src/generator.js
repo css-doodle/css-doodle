@@ -121,7 +121,8 @@ class Rules {
     }, '');
   }
 
-  compose_rule(token, coords, selector) {
+  compose_rule(token, _coords, selector) {
+    let coords = Object.assign({}, _coords);
     let prop = token.property;
     let value_group = token.value.map(v =>
       this.compose_value(v, coords)
