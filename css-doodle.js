@@ -1535,7 +1535,9 @@
     }),
 
     ['@use'](rules) {
-      return rules;
+      if (rules.length > 2) {
+        return rules;
+      }
     }
 
   };
@@ -1727,7 +1729,8 @@
       }, '');
     }
 
-    compose_rule(token, coords, selector) {
+    compose_rule(token, _coords, selector) {
+      let coords = Object.assign({}, _coords);
       let prop = token.property;
       let value_group = token.value.map(v =>
         this.compose_value(v, coords)
@@ -1759,7 +1762,7 @@
       }
 
       if (prop == 'content') {
-        if (!/^(counter\(|attr\(|["'])/.test(value)) {
+        if (!/["']|^(var|counter|attr)\(/.test(value)) {
           value = `'${ value }'`;
         }
       }
