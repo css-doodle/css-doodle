@@ -76,7 +76,9 @@ export default {
   }),
 
   ['@use'](rules) {
-    return rules;
+    if (rules.length > 2) {
+      return rules;
+    }
   }
 
 }
