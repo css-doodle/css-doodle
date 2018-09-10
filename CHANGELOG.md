@@ -1,3 +1,14 @@
+## 0.4.9
+
+### Fixes
+
+* Fix coords reference.
+* Fix pseudo content value with `var()`.
+* Fix empty value for `@use()`.
+
+<br /> <br />
+
+
 ## 0.4.8
 
 ### Fixes

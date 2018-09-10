@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
@@ -21,8 +21,8 @@
     "karma-jasmine": "^1.1.2",
     "karma-mocha-reporter": "^2.2.5",
     "karma-rollup-preprocessor": "^6.0.1",
-    "rollup": "^0.64.1",
-    "terser": "^3.8.1"
+    "rollup": "^0.65.2",
+    "terser": "^3.8.2"
   },
   "keywords": [
     "css",
@@ -31,7 +31,7 @@
   "author": "yuanchuan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/yuanchuan/css-doodle/issues"
+    "url": "https://github.com/css-doodle/css-doodle/issues"
   },
-  "homepage": "https://github.com/yuanchuan/css-doodle#readme"
+  "homepage": "https://github.com/css-doodle/css-doodle#readme"
 }
