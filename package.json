@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
@@ -22,8 +22,8 @@
     "karma-jasmine": "^1.1.2",
     "karma-mocha-reporter": "^2.2.5",
     "karma-rollup-preprocessor": "^6.0.1",
-    "rollup": "^0.66.2",
-    "terser": "^3.9.2"
+    "rollup": "^0.67.3",
+    "terser": "^3.10.11"
   },
   "keywords": [
     "css",
