@@ -193,7 +193,7 @@ class Doodle extends HTMLElement {
       return false;
     }
     if (name == 'grid' && old_val) {
-      this.grid_size = new_val;
+      this.grid = new_val;
     }
     if (name == 'use' && old_val) {
       this.use = new_val;

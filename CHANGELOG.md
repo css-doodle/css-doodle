@@ -1,3 +1,13 @@
+## 0.4.10
+
+### Fixes
+
+* Fix bug on attribute changing
+
+<br /> <br />
+
+
+
 ## 0.4.9
 
 ### Fixes
