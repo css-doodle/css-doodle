@@ -154,7 +154,7 @@ class Rules {
     }
 
     if (prop == 'content') {
-      if (!/["']|^(var|counter|attr)\(/.test(value)) {
+      if (!/["']|^(none|var|counter|counters|attr)\(/.test(value)) {
         value = `'${ value }'`;
       }
     }
