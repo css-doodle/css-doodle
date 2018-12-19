@@ -16,21 +16,27 @@ export default {
   },
 
   nth({ count, grid }) {
-    return expr => even_or_odd(expr)
-      ? is[expr](count - 1)
-      : nth(expr, count, grid.count);
+    return (...exprs) => exprs.some(expr =>
+      even_or_odd(expr)
+        ? is[expr](count - 1)
+        : nth(expr, count, grid.count)
+    );
   },
 
   row({ x, grid }) {
-    return expr => even_or_odd(expr)
-      ? is[expr](x - 1)
-      : nth(expr, x, grid.x);
+    return (...exprs) => exprs.some(expr =>
+      even_or_odd(expr)
+        ? is[expr](x - 1)
+        : nth(expr, x, grid.x)
+    );
   },
 
   col({ y, grid }) {
-    return expr => even_or_odd(expr)
-      ? is[expr](y - 1)
-      : nth(expr, y, grid.y);
+    return (...expr) => exprs.some(expr =>
+      even_or_odd(expr)
+        ? is[expr](y - 1)
+        : nth(expr, y, grid.y)
+    );
   },
 
   even({ count }) {
