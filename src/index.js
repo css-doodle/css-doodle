@@ -1,7 +1,7 @@
 import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
-import { get_props } from './utils';
+import get_props from './utils/get-props';
 
 class Doodle extends HTMLElement {
   constructor() {

@@ -1,4 +1,4 @@
-import { unitify } from '../../src/utils';
+import by_unit from '../../src/utils/by_unit';
 
 function transform(...args) {
   return args;
@@ -10,12 +10,15 @@ function test(a, b) {
 
 describe('unitify', () => {
   it('should normalize any unit', () => {
-    let fn = unitify(transform);
+    let fn = by_unit(transform);
     test(
       fn('10px', '20'), ['10px', '20px']
     );
     test(
       fn('10px', '20px'), ['10px', '20px']
+    );
+    test(
+      fn('0', '100%'), ['0%', '100%']
     );
   });
 });

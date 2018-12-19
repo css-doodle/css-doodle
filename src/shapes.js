@@ -1,4 +1,4 @@
-import { clamp } from './utils';
+import { clamp } from './utils/index';
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;

@@ -2,7 +2,23 @@
  * Based on the Shunting-yard algorithm.
  */
 
-import { last } from './utils';
+import { last } from './list';
+
+export default function(input) {
+  const expr = infix_to_postfix(input), stack = [];
+  while (expr.length) {
+    let top = expr.shift();
+    if (/\d+/.test(top)) stack.push(top);
+    else {
+      let right = stack.pop();
+      let left = stack.pop();
+      stack.push(compute(
+        top, Number(left), Number(right)
+      ));
+    }
+  }
+  return stack[0];
+}
 
 const operator = {
   '*': 3, '/': 3, '%': 3,
@@ -99,20 +115,4 @@ function compute(op, a, b) {
     case '/': return a / b;
     case '%': return a % b;
   }
-}
-
-export default function calculate(input) {
-  const expr = infix_to_postfix(input), stack = [];
-  while (expr.length) {
-    let top = expr.shift();
-    if (/\d+/.test(top)) stack.push(top);
-    else {
-      let right = stack.pop();
-      let left = stack.pop();
-      stack.push(compute(
-        top, Number(left), Number(right)
-      ));
-    }
-  }
-  return stack[0];
 }

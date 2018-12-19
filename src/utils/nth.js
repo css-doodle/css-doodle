@@ -1,4 +1,4 @@
-import calculator from './calculator';
+import calc from './calc';
 
 function build_expr(expr) {
   return n => String(expr)
@@ -9,6 +9,6 @@ function build_expr(expr) {
 export default function nth(input, curr, max) {
   let expr = build_expr(input);
   for (let i = 0; i <= max; ++i) {
-    if (calculator(expr(i)) == curr) return true;
+    if (calc(expr(i)) == curr) return true;
   }
 }

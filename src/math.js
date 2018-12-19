@@ -1,4 +1,4 @@
-import calc from './calculator';
+import calc from './utils/calc';
 
 // Expose all Math functions and constants.
 const methods = Object.getOwnPropertyNames(Math);

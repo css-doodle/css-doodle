@@ -17,13 +17,13 @@
   "devDependencies": {
     "esm": "^3.0.84",
     "jasmine-core": "^3.2.1",
-    "karma": "^3.0.0",
+    "karma": "^3.1.4",
     "karma-chrome-launcher": "^2.2.0",
     "karma-jasmine": "^1.1.2",
     "karma-mocha-reporter": "^2.2.5",
-    "karma-rollup-preprocessor": "^6.0.1",
-    "rollup": "^0.67.3",
-    "terser": "^3.10.11"
+    "karma-rollup-preprocessor": "^6.1.1",
+    "rollup": "^0.68.0",
+    "terser": "^3.11.0"
   },
   "keywords": [
     "css",

@@ -1,7 +1,7 @@
-import calculate from '../src/calculator'
+import calc from '../../src/utils/calc'
 
 function test(expr, result) {
-  expect(calculate(expr)).toBe(result);
+  expect(calc(expr)).toBe(result);
 }
 
 describe('calcucator', () => {

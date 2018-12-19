@@ -1,4 +1,4 @@
-import nth from './nth';
+import nth from './utils/nth';
 
 const is = {
   even: n => !!(n % 2),

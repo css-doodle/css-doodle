@@ -1,22 +1,13 @@
-import calculator from './calculator';
 import { create_svg_url, normalize_svg } from './svg';
-import expand from './expand';
 
-import {
-  clamp, alias_for,
-  memo, random, range, unitify,
-  shuffle, by_charcode, unique_id
-} from './utils';
+import { pick, rand, unique_id } from './utils/random';
+import { shuffle } from './utils/list';
+import { is_letter, lazy, alias_for, clamp } from './utils/index';
 
-function Lazy(fn) {
-  let wrap = () => fn;
-  wrap.lazy = true;
-  return wrap;
-}
-
-const Last = {
-  pick: '', rand: ''
-};
+import by_unit from './utils/by_unit';
+import by_charcode from './utils/by_charcode';
+import calc from './utils/calc';
+import expand from './utils/expand';
 
 const Expose = {
 
@@ -48,15 +39,17 @@ const Expose = {
     return _ => idx || 0;
   },
 
-  pick() {
-    return expand((...args) => Last.pick = random(args));
+  pick({ context }) {
+    return expand((...args) => (
+      context.last_pick = pick(args)
+    ));
   },
 
-  ['pick-n']({ count, idx }) {
+  ['pick-n']({ count, idx, context }) {
     return expand((...args) => {
       let max = args.length;
       let pos = ((idx == undefined ? count : idx) - 1) % max;
-      return Last.pick = args[pos];
+      return context.last_pick = args[pos];
     });
   },
 
@@ -68,15 +61,15 @@ const Expose = {
       }
       let max = args.length;
       let pos = ((idx == undefined ? count : idx) - 1) % max;
-      return Last.pick = context[name][pos];
+      return context.last_pick = context[name][pos];
     });
   },
 
-  ['last-pick']() {
-    return () => Last.pick;
+  ['last-pick']({ context }) {
+    return () => context.last_pick;
   },
 
-  multiple: Lazy((n, action) => {
+  multiple: lazy((n, action) => {
     let result = [];
     if (!action || !n) return result;
     let count = clamp(n(), 1, 65536);
@@ -86,7 +79,7 @@ const Expose = {
     return result.join(',');
   }),
 
-  repeat: Lazy((n, action) => {
+  repeat: lazy((n, action) => {
     let result = '';
     if (!action || !n) return result;
     let count = clamp(n(), 1, 65536);
@@ -96,37 +89,40 @@ const Expose = {
     return result;
   }),
 
-  rand() {
+  rand({ context }) {
+    let initial = n => (n > 0 && n < 1) ? .1 : 1;
     return (...args) => {
-      let [ start, stop ] = args;
-      let fn = unitify;
-      let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
-      if (is_letter) fn = by_charcode;
-      return Last.rand = random(
-        memo('range', fn(range)).apply(null, args)
-      );
+      let [ start, end ] = args;
+      let transform_type = [start, end].every(is_letter)
+        ? by_charcode
+        : by_unit;
+      if (args.length == 1) {
+        [start, end] = [initial(start), start];
+      }
+      let value = transform_type(rand).apply(null, [start, end]);
+      return context.last_rand = value;
     };
   },
 
-  ['last-rand']() {
-    return () => Last.rand;
+  ['last-rand']({ context }) {
+    return () => context.last_rand;
   },
 
   calc() {
-    return value => calculator(value);
+    return value => calc(value);
   },
 
   hex() {
-    return value => Number(value).toString(16);
+    return value => parseInt(value).toString(16);
   },
 
-  svg: Lazy(input => {
+  svg: lazy(input => {
     if (input === undefined) return '';
     let svg = normalize_svg(input().trim());
     return create_svg_url(svg);
   }),
 
-  ['svg-filter']: Lazy(input => {
+  ['svg-filter']: lazy(input => {
     if (input === undefined) return '';
     let id = unique_id('filter-');
     let svg = normalize_svg(input().trim())

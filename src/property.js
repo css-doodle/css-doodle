@@ -2,7 +2,7 @@ import parse_value_group from './parser/parse-value-group';
 import parse_grid from './parser/parse-grid';
 import Shapes from './shapes';
 import prefixer from './prefixer';
-import { memo } from './utils';
+import memo from './utils/memo';
 
 export default {
 

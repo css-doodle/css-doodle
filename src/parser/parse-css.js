@@ -1,6 +1,6 @@
 import iterator from './iterator';
 import parse_var from './parse-var';
-import { first, last } from '../utils';
+import { first, last } from '../utils/list';
 
 const Tokens = {
   func(name = '') {

@@ -4,9 +4,9 @@ import Selector from './selector';
 import MathFunc from './math';
 import prefixer from './prefixer';
 
-import {
-  join_line, make_array, apply_args, only_if
-} from './utils';
+import { apply_args, maybe } from './utils/index.js';
+import { join, make_array } from './utils/list';
+import get_props from './utils/get-props';
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -259,9 +259,9 @@ class Rules {
         case 'keyframes': {
           if (!this.keyframes[token.name]) {
             this.keyframes[token.name] = coords => `
-              ${ join_line(token.steps.map(step => `
+              ${ join(token.steps.map(step => `
                 ${ step.name } {
-                  ${ join_line(
+                  ${ join(
                     step.styles.map(s => this.compose_rule(s, coords))
                   )}
                 }
@@ -278,14 +278,14 @@ class Rules {
       if (is_parent_selector(selector)) {
         this.styles.container += `
           .container {
-            ${ join_line(this.rules[selector]) }
+            ${ join(this.rules[selector]) }
           }
         `;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         this.styles[target] += `
           ${ selector } {
-            ${ join_line(this.rules[selector]) }
+            ${ join(this.rules[selector]) }
           }
         `;
       }
@@ -296,7 +296,7 @@ class Rules {
       keyframes.forEach(name => {
         let aname = this.compose_aname(name, coords.count);
         this.styles.keyframes += `
-          ${ only_if(i == 0,
+          ${ maybe(i == 0,
             `@keyframes ${ name } {
               ${ this.keyframes[name](coords) }
             }`

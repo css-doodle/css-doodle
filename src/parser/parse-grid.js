@@ -1,4 +1,4 @@
-import { clamp } from '../utils';
+import { clamp } from '../utils/index';
 
 const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 

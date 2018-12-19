@@ -1,6 +1,13 @@
-import {
-  range, memo, last, by_charcode, flat_map
-} from './utils';
+import { last, flat_map } from './list';
+import { range } from './index';
+import memo from './memo';
+import by_charcode from './by_charcode';
+
+export default function expand(fn) {
+  return (...args) => fn.apply(null, flat_map(args, n =>
+    String(n).startsWith('[') ? build_range(n) : n
+  ));
+}
 
 function Type(type, value) {
   return { type, value };
@@ -57,9 +64,3 @@ const build_range = memo('build_range', (input) => {
     return result;
   });
 });
-
-export default function expand(fn) {
-  return (...args) => fn.apply(null, flat_map(args, n =>
-    String(n).startsWith('[') ? build_range(n) : n
-  ));
-}

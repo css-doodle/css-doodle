@@ -1,8 +1,7 @@
-(function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
+(function (factory) {
   typeof define === 'function' && define.amd ? define(factory) :
-  (factory());
-}(this, (function () { 'use strict';
+  factory();
+}(function () { 'use strict';
 
   function iterator(input) {
     let index = 0, col = 1, line = 1;
@@ -101,94 +100,12 @@
     return result;
   }
 
-  function add_unit(fn, unit) {
-    return (...args) => {
-      args = args.map(remove_unit);
-      let result = fn.apply(null, args);
-      if (unit) {
-        result = result.map(n => n + unit);
-      }
-      return result;
-    }
-  }
-
-  function get_unit(str) {
-    let input = String(str).trim();
-    if (!input) return '';
-    let matched = input.match(/\d(\D+)$/);
-    return matched ? matched[1] : '';
-  }
-
-  function remove_unit(str) {
-    return Number(String(str).replace(/\D+$/g, ''));
-  }
-
-  function apply_args(fn, ...args) {
-    return args.reduce((f, arg) => {
-      return f[Array.isArray(arg) ? 'apply': 'call'](null, arg);
-    }, fn);
-  }
-
-  function join_line(arr) {
-    return (arr || []).join('\n');
-  }
-
   function make_array(arr) {
     return Array.isArray(arr) ? arr : [arr];
   }
 
-  function clamp(num, min, max) {
-    return Math.max(min, Math.min(max, num));
-  }
-
-  function only_if(cond, value) {
-    return cond ? value : '';
-  }
-
-  const memo_store = {};
-  function memo(prefix, fn) {
-    return (...args) => {
-      let key = prefix + args.join('-');
-      if (memo_store[key]) return memo_store[key];
-      return (memo_store[key] = fn.apply(null, args));
-    }
-  }
-
-  function random(...items) {
-    let args = items.reduce((acc, n) => acc.concat(n), []);
-    return args[~~(Math.random() * args.length)];
-  }
-
-  function range(start, stop, step) {
-    let count = 0, old = start;
-    let initial = n => (n > 0 && n < 1) ? .1 : 1;
-    let length = arguments.length;
-    if (length == 1) [start, stop] = [initial(start), start];
-    if (length < 3) step = initial(start);
-    let range = [];
-    while ((step >= 0 && start <= stop)
-      || (step < 0 && start > stop)) {
-      range.push(start);
-      start += step;
-      if (count++ >= 1000) break;
-    }
-    if (!range.length) range.push(old);
-    return range;
-  }
-
-  function unitify(fn) {
-    return (...args) => {
-      let unit = get_unit(args[0]) || get_unit(args[1]);
-      return add_unit(fn, unit).apply(null, args);
-    }
-  }
-
-  function by_charcode(fn) {
-    return (...args) => {
-      let codes = args.map(n => String(n).charCodeAt(0));
-      let result = fn.apply(null, codes);
-      return result.map(n => String.fromCharCode(n));
-    }
+  function join(arr, spliter = '\n') {
+    return (arr || []).join(spliter);
   }
 
   function last(arr) {
@@ -197,13 +114,6 @@
 
   function first(arr) {
     return arr[0];
-  }
-
-  function alias_for(obj, names) {
-    Object.keys(names).forEach(n => {
-      obj[n] = obj[names[n]];
-    });
-    return obj;
   }
 
   function shuffle(arr) {
@@ -216,30 +126,6 @@
       ret[i] = t;
     }
     return ret;
-  }
-
-  const get_props = (() => {
-    let all_props;
-    return arg => {
-      if (!all_props) {
-        let props = new Set();
-        for (let n in document.head.style) {
-          if (!n.startsWith('-')) {
-            props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
-          }
-        }
-        if (!props.has('grid-gap')) {
-          props.add('grid-gap'); }
-        all_props = Array.from(props);
-      }
-      return (arg && arg.test)
-        ? all_props.filter(n => arg.test(n))
-        : all_props;
-    }
-  })();
-
-  function unique_id(prefix = '') {
-    return prefix + Math.random().toString(32).substr(2);
   }
 
   function flat_map(arr, fn) {
@@ -799,6 +685,65 @@
     return Tokens;
   }
 
+  function apply_args(fn, ...args) {
+    return args.reduce((f, arg) =>
+      f.apply(null, make_array(arg)), fn
+    );
+  }
+
+  function clamp(num, min, max) {
+    return Math.max(min, Math.min(max, num));
+  }
+
+  function maybe(cond, value) {
+    if (!cond) return '';
+    return (typeof value === 'function') ? value() : value;
+  }
+
+  function range(start, stop, step) {
+    let count = 0, old = start;
+    let initial = n => (n > 0 && n < 1) ? .1 : 1;
+    let length = arguments.length;
+    if (length == 1) [start, stop] = [initial(start), start];
+    if (length < 3) step = initial(start);
+    let range = [];
+    while ((step >= 0 && start <= stop)
+      || (step < 0 && start > stop)) {
+      range.push(start);
+      start += step;
+      if (count++ >= 1000) break;
+    }
+    if (!range.length) range.push(old);
+    return range;
+  }
+
+  function by_charcode(fn) {
+    return (...args) => {
+      let codes = args.map(n => String(n).charCodeAt(0));
+      let result = fn.apply(null, codes);
+      return Array.isArray(result)
+        ? result.map(n => String.fromCharCode(n))
+        : String.fromCharCode(result);
+    }
+  }
+
+  function alias_for(obj, names) {
+    Object.keys(names).forEach(n => {
+      obj[n] = obj[names[n]];
+    });
+    return obj;
+  }
+
+  function is_letter(c) {
+    return /^[a-zA-Z]$/.test(c);
+  }
+
+  function lazy(fn) {
+    let wrap = () => fn;
+    wrap.lazy = true;
+    return wrap;
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -820,9 +765,103 @@
     );
   }
 
+  function create_svg_url(svg, id) {
+    if (id) {
+      let blob = new Blob([svg], { type: 'image/svg+xml' });
+      let url = URL.createObjectURL(blob);
+      return `url(${ url }#${ id })`;
+    }
+    else {
+      let encoded = encodeURIComponent(svg);
+      return `url("data:image/svg+xml;utf8,${ encoded }")`;
+    }
+  }
+
+  function normalize_svg(input) {
+    const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
+    if (!input.includes('<svg')) {
+      input = `<svg ${ xmlns }>${ input }</svg>`;
+    }
+    if (!input.includes('xmlns')) {
+      input = input.replace(/<svg([\s>])/, `<svg ${ xmlns }$1`);
+    }
+    return input;
+  }
+
+  function lerp(start, end, t) {
+    return start * (1 - t) + end * t;
+  }
+
+  function rand(start, end) {
+    return lerp(start, end, Math.random());
+  }
+
+  function pick(...items) {
+    let args = items.reduce((acc, n) => acc.concat(n), []);
+    return args[~~(Math.random() * args.length)];
+  }
+
+  function unique_id(prefix = '') {
+    return prefix + Math.random().toString(32).substr(2);
+  }
+
+  function unitify(fn) {
+    return (...args) => {
+      let unit = '';
+      args.some(n => unit = get_unit(n));
+      return add_unit(fn, unit)
+        .apply(null, args);
+    }
+  }
+
+  function add_unit(fn, unit) {
+    return (...args) => {
+      args = args.map(remove_unit);
+      let result = fn.apply(null, args);
+      if (!unit.length) {
+        return result;
+      }
+
+      if (Array.isArray(result)) {
+        return result.map(n => n + unit);
+      }
+
+      return result + unit;
+    }
+  }
+
+  function get_unit(str) {
+    let input = String(str).trim();
+    if (!input) return '';
+    let matched = input.match(/\d(\D+)$/);
+    return matched ? matched[1] : '';
+  }
+
+  function remove_unit(str) {
+    return Number(
+      String(str).replace(/\D+$/g, '')
+    );
+  }
+
   /**
    * Based on the Shunting-yard algorithm.
    */
+
+  function calc(input) {
+    const expr = infix_to_postfix(input), stack = [];
+    while (expr.length) {
+      let top = expr.shift();
+      if (/\d+/.test(top)) stack.push(top);
+      else {
+        let right = stack.pop();
+        let left = stack.pop();
+        stack.push(compute(
+          top, Number(left), Number(right)
+        ));
+      }
+    }
+    return stack[0];
+  }
 
   const operator = {
     '*': 3, '/': 3, '%': 3,
@@ -921,43 +960,20 @@
     }
   }
 
-  function calculate(input) {
-    const expr = infix_to_postfix(input), stack = [];
-    while (expr.length) {
-      let top = expr.shift();
-      if (/\d+/.test(top)) stack.push(top);
-      else {
-        let right = stack.pop();
-        let left = stack.pop();
-        stack.push(compute(
-          top, Number(left), Number(right)
-        ));
-      }
-    }
-    return stack[0];
-  }
+  const store = {};
 
-  function create_svg_url(svg, id) {
-    if (id) {
-      let blob = new Blob([svg], { type: 'image/svg+xml' });
-      let url = URL.createObjectURL(blob);
-      return `url(${ url }#${ id })`;
-    }
-    else {
-      let encoded = encodeURIComponent(svg);
-      return `url("data:image/svg+xml;utf8,${ encoded }")`;
+  function memo(prefix, fn) {
+    return (...args) => {
+      let key = prefix + args.join('-');
+      if (store[key]) return store[key];
+      return (store[key] = fn.apply(null, args));
     }
   }
 
-  function normalize_svg(input) {
-    const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
-    if (!input.includes('<svg')) {
-      input = `<svg ${ xmlns }>${ input }</svg>`;
-    }
-    if (!input.includes('xmlns')) {
-      input = input.replace(/<svg([\s>])/, `<svg ${ xmlns }$1`);
-    }
-    return input;
+  function expand(fn) {
+    return (...args) => fn.apply(null, flat_map(args, n =>
+      String(n).startsWith('[') ? build_range(n) : n
+    ));
   }
 
   function Type(type, value) {
@@ -1016,22 +1032,6 @@
     });
   });
 
-  function expand(fn) {
-    return (...args) => fn.apply(null, flat_map(args, n =>
-      String(n).startsWith('[') ? build_range(n) : n
-    ));
-  }
-
-  function Lazy(fn) {
-    let wrap = () => fn;
-    wrap.lazy = true;
-    return wrap;
-  }
-
-  const Last = {
-    pick: '', rand: ''
-  };
-
   const Expose = {
 
     index({ count }) {
@@ -1062,15 +1062,17 @@
       return _ => idx || 0;
     },
 
-    pick() {
-      return expand((...args) => Last.pick = random(args));
+    pick({ context }) {
+      return expand((...args) => (
+        context.last_pick = pick(args)
+      ));
     },
 
-    ['pick-n']({ count, idx }) {
+    ['pick-n']({ count, idx, context }) {
       return expand((...args) => {
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
-        return Last.pick = args[pos];
+        return context.last_pick = args[pos];
       });
     },
 
@@ -1082,15 +1084,15 @@
         }
         let max = args.length;
         let pos = ((idx == undefined ? count : idx) - 1) % max;
-        return Last.pick = context[name][pos];
+        return context.last_pick = context[name][pos];
       });
     },
 
-    ['last-pick']() {
-      return () => Last.pick;
+    ['last-pick']({ context }) {
+      return () => context.last_pick;
     },
 
-    multiple: Lazy((n, action) => {
+    multiple: lazy((n, action) => {
       let result = [];
       if (!action || !n) return result;
       let count = clamp(n(), 1, 65536);
@@ -1100,7 +1102,7 @@
       return result.join(',');
     }),
 
-    repeat: Lazy((n, action) => {
+    repeat: lazy((n, action) => {
       let result = '';
       if (!action || !n) return result;
       let count = clamp(n(), 1, 65536);
@@ -1110,37 +1112,40 @@
       return result;
     }),
 
-    rand() {
+    rand({ context }) {
+      let initial = n => (n > 0 && n < 1) ? .1 : 1;
       return (...args) => {
-        let [ start, stop ] = args;
-        let fn = unitify;
-        let is_letter = /^[a-zA-Z]$/.test(start) && /^[a-zA-Z]$/.test(stop);
-        if (is_letter) fn = by_charcode;
-        return Last.rand = random(
-          memo('range', fn(range)).apply(null, args)
-        );
+        let [ start, end ] = args;
+        let fn = [start, end].every(is_letter)
+          ? by_charcode
+          : unitify;
+        if (args.length == 1) {
+          [start, end] = [initial(start), start];
+        }
+        let value = fn(rand).apply(null, [start, end]);
+        return context.last_rand = value;
       };
     },
 
-    ['last-rand']() {
-      return () => Last.rand;
+    ['last-rand']({ context }) {
+      return () => context.last_rand;
     },
 
     calc() {
-      return value => calculate(value);
+      return value => calc(value);
     },
 
     hex() {
-      return value => Number(value).toString(16);
+      return value => parseInt(value).toString(16);
     },
 
-    svg: Lazy(input => {
+    svg: lazy(input => {
       if (input === undefined) return '';
       let svg = normalize_svg(input().trim());
       return create_svg_url(svg);
     }),
 
-    ['svg-filter']: Lazy(input => {
+    ['svg-filter']: lazy(input => {
       if (input === undefined) return '';
       let id = unique_id('filter-');
       let svg = normalize_svg(input().trim())
@@ -1443,6 +1448,26 @@
 
   };
 
+  let all = [];
+
+  function get_props(arg) {
+    if (!all.length) {
+      let props = new Set();
+      for (let n in document.head.style) {
+        if (!n.startsWith('-')) {
+          props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+        }
+      }
+      if (!props.has('grid-gap')) {
+        props.add('grid-gap');
+      }
+      all = Array.from(props);
+    }
+    return (arg && arg.test)
+      ? all.filter(n => arg.test(n))
+      : all;
+  }
+
   function build_mapping(prefix) {
     let reg = new RegExp(`\\-?${ prefix }\\-?`);
     return get_props(reg)
@@ -1551,7 +1576,7 @@
   function nth(input, curr, max) {
     let expr = build_expr(input);
     for (let i = 0; i <= max; ++i) {
-      if (calculate(expr(i)) == curr) return true;
+      if (calc(expr(i)) == curr) return true;
     }
   }
 
@@ -1587,7 +1612,7 @@
     },
 
     col({ y, grid }) {
-      return (...expr) => exprs.some(expr =>
+      return (...exprs) => exprs.some(expr =>
         even_or_odd(expr)
           ? is$1[expr](y - 1)
           : nth(expr, y, grid.y)
@@ -1617,7 +1642,7 @@
   var MathFunc = methods.reduce((expose, n) => {
     expose[n] = () => (...args) => {
       if (typeof Math[n] === 'number') return Math[n];
-      return Math[n].apply(null, args.map(calculate));
+      return Math[n].apply(null, args.map(calc));
     };
     return expose;
   }, {});
@@ -1873,9 +1898,9 @@
           case 'keyframes': {
             if (!this.keyframes[token.name]) {
               this.keyframes[token.name] = coords => `
-              ${ join_line(token.steps.map(step => `
+              ${ join(token.steps.map(step => `
                 ${ step.name } {
-                  ${ join_line(
+                  ${ join(
                     step.styles.map(s => this.compose_rule(s, coords))
                   )}
                 }
@@ -1892,14 +1917,14 @@
         if (is_parent_selector(selector)) {
           this.styles.container += `
           .container {
-            ${ join_line(this.rules[selector]) }
+            ${ join(this.rules[selector]) }
           }
         `;
         } else {
           let target = is_host_selector(selector) ? 'host' : 'cells';
           this.styles[target] += `
           ${ selector } {
-            ${ join_line(this.rules[selector]) }
+            ${ join(this.rules[selector]) }
           }
         `;
         }
@@ -1910,7 +1935,7 @@
         keyframes.forEach(name => {
           let aname = this.compose_aname(name, coords.count);
           this.styles.keyframes += `
-          ${ only_if(i == 0,
+          ${ maybe(i == 0,
             `@keyframes ${ name } {
               ${ this.keyframes[name](coords) }
             }`
@@ -2046,7 +2071,7 @@
     style_size() {
       let { x, y } = this.grid_size;
       return `
-      .container {
+      :host {
         grid-template-rows: repeat(${ x }, 1fr);
         grid-template-columns: repeat(${ y }, 1fr);
       }
@@ -2148,4 +2173,4 @@
 
   customElements.define('css-doodle', Doodle);
 
-})));
+}));

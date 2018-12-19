@@ -25,10 +25,10 @@ A web component for drawing patterns with CSS.
 
 ```bash
 # build css-doodle.js
-yarn build
+npm run build
 
 # generate css-doodle.min.js
-yarn minify && yarn trim
+npm run minify && npm run trim
 
 # or just use make
 make

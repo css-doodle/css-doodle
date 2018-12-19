@@ -3,5 +3,7 @@ npm-debug.log
 *.bak
 .DS_Store
 test*.html
+_test/
 *.log
 package-lock.json
+yarn.lock
