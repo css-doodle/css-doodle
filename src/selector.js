@@ -32,7 +32,7 @@ export default {
   },
 
   col({ y, grid }) {
-    return (...expr) => exprs.some(expr =>
+    return (...exprs) => exprs.some(expr =>
       even_or_odd(expr)
         ? is[expr](y - 1)
         : nth(expr, y, grid.y)

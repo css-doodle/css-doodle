@@ -101,7 +101,7 @@ class Doodle extends HTMLElement {
   style_size() {
     let { x, y } = this.grid_size;
     return `
-      .container {
+      :host {
         grid-template-rows: repeat(${ x }, 1fr);
         grid-template-columns: repeat(${ y }, 1fr);
       }
