@@ -1571,21 +1571,27 @@
     },
 
     nth({ count, grid }) {
-      return expr => even_or_odd(expr)
-        ? is$1[expr](count - 1)
-        : nth(expr, count, grid.count);
+      return (...exprs) => exprs.some(expr =>
+        even_or_odd(expr)
+          ? is$1[expr](count - 1)
+          : nth(expr, count, grid.count)
+      );
     },
 
     row({ x, grid }) {
-      return expr => even_or_odd(expr)
-        ? is$1[expr](x - 1)
-        : nth(expr, x, grid.x);
+      return (...exprs) => exprs.some(expr =>
+        even_or_odd(expr)
+          ? is$1[expr](x - 1)
+          : nth(expr, x, grid.x)
+      );
     },
 
     col({ y, grid }) {
-      return expr => even_or_odd(expr)
-        ? is$1[expr](y - 1)
-        : nth(expr, y, grid.y);
+      return (...expr) => exprs.some(expr =>
+        even_or_odd(expr)
+          ? is$1[expr](y - 1)
+          : nth(expr, y, grid.y)
+      );
     },
 
     even({ count }) {
@@ -1762,7 +1768,7 @@
       }
 
       if (prop == 'content') {
-        if (!/["']|^(var|counter|attr)\(/.test(value)) {
+        if (!/["']|^(none|var|counter|counters|attr)\(/.test(value)) {
           value = `'${ value }'`;
         }
       }
