@@ -2,7 +2,10 @@ export function lerp(start, end, t) {
   return start * (1 - t) + end * t;
 }
 
-export function rand(start, end) {
+export function rand(start = 0, end = start) {
+  if (arguments.length == 1) {
+    start = start < 1 ? .1 : 1;
+  }
   return lerp(start, end, Math.random());
 }
 

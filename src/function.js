@@ -90,16 +90,11 @@ const Expose = {
   }),
 
   rand({ context }) {
-    let initial = n => (n > 0 && n < 1) ? .1 : 1;
     return (...args) => {
-      let [ start, end ] = args;
-      let transform_type = [start, end].every(is_letter)
+      let transform_type = args.every(is_letter)
         ? by_charcode
         : by_unit;
-      if (args.length == 1) {
-        [start, end] = [initial(start), start];
-      }
-      let value = transform_type(rand).apply(null, [start, end]);
+      let value = transform_type(rand).apply(null, args);
       return context.last_rand = value;
     };
   },
