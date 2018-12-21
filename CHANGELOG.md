@@ -1,8 +1,27 @@
+## 0.5.0
+
+### Features
+
+* Support multiple arguments for `@nth()`, `@row()` and `@col()`.
+* The range of `@rand()` is now unlimited.
+
+### Changes
+
+* Remove step value for `@rand()`.
+
+### Fixes
+
+* Fix native content values.
+
+<br /> <br />
+
+
+
 ## 0.4.11
 
 ### Fixes
 
-* Fix bug on attribute changing
+* Fix bug on attribute changing.
 
 <br /> <br />
 

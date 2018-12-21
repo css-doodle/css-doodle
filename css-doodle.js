@@ -717,16 +717,6 @@
     return range;
   }
 
-  function by_charcode(fn) {
-    return (...args) => {
-      let codes = args.map(n => String(n).charCodeAt(0));
-      let result = fn.apply(null, codes);
-      return Array.isArray(result)
-        ? result.map(n => String.fromCharCode(n))
-        : String.fromCharCode(result);
-    }
-  }
-
   function alias_for(obj, names) {
     Object.keys(names).forEach(n => {
       obj[n] = obj[names[n]];
@@ -805,42 +795,48 @@
     return prefix + Math.random().toString(32).substr(2);
   }
 
-  function unitify(fn) {
+  function by_unit(fn) {
     return (...args) => {
-      let unit = '';
-      args.some(n => unit = get_unit(n));
-      return add_unit(fn, unit)
-        .apply(null, args);
+      let unit = get_unit(args);
+      return restore(fn, unit).apply(null, args);
     }
   }
 
-  function add_unit(fn, unit) {
+  function restore(fn, unit) {
     return (...args) => {
-      args = args.map(remove_unit);
+      args = args.map(str => Number(
+        String(str).replace(/\D+$/g, '')
+      ));
       let result = fn.apply(null, args);
       if (!unit.length) {
         return result;
       }
-
       if (Array.isArray(result)) {
         return result.map(n => n + unit);
       }
-
       return result + unit;
     }
   }
 
-  function get_unit(str) {
-    let input = String(str).trim();
-    if (!input) return '';
-    let matched = input.match(/\d(\D+)$/);
-    return matched ? matched[1] : '';
+  function get_unit(values) {
+    let unit = '';
+    values.some(str => {
+      let input = String(str).trim();
+      if (!input) return '';
+      let matched = input.match(/\d(\D+)$/);
+      return (unit = matched ? matched[1] : '');
+    });
+    return unit;
   }
 
-  function remove_unit(str) {
-    return Number(
-      String(str).replace(/\D+$/g, '')
-    );
+  function by_charcode(fn) {
+    return (...args) => {
+      let codes = args.map(n => String(n).charCodeAt(0));
+      let result = fn.apply(null, codes);
+      return Array.isArray(result)
+        ? result.map(n => String.fromCharCode(n))
+        : String.fromCharCode(result);
+    }
   }
 
   /**
@@ -1116,13 +1112,13 @@
       let initial = n => (n > 0 && n < 1) ? .1 : 1;
       return (...args) => {
         let [ start, end ] = args;
-        let fn = [start, end].every(is_letter)
+        let transform_type = [start, end].every(is_letter)
           ? by_charcode
-          : unitify;
+          : by_unit;
         if (args.length == 1) {
           [start, end] = [initial(start), start];
         }
-        let value = fn(rand).apply(null, [start, end]);
+        let value = transform_type(rand).apply(null, [start, end]);
         return context.last_rand = value;
       };
     },
