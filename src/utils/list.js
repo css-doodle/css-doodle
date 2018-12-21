@@ -16,11 +16,11 @@ export function first(arr) {
 
 export function shuffle(arr) {
   let ret = Array.from ? Array.from(arr) : arr.slice();
-  let len = arr.length;
-  while (len--) {
-    let i = ~~(Math.random() * len);
-    let t = ret[len];
-    ret[len] = ret[i];
+  let m = arr.length;
+  while (m) {
+    let i = ~~(Math.random() * m--);
+    let t = ret[m];
+    ret[m] = ret[i];
     ret[i] = t;
   }
   return ret;
