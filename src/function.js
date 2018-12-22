@@ -45,23 +45,29 @@ const Expose = {
     ));
   },
 
-  ['pick-n']({ count, idx, context }) {
+  ['pick-n']({ idx, context, position }) {
+    let counter = 'pn-counter' + position;
     return expand((...args) => {
+      if (!context[counter]) context[counter] = 0;
+      context[counter] += 1;
       let max = args.length;
-      let pos = ((idx == undefined ? count : idx) - 1) % max;
+      let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
       return context.last_pick = args[pos];
     });
   },
 
-  ['pick-d']({ count, idx, context, position }) {
-    let name = 'pd-' + position;
+  ['pick-d']({ idx, context, position }) {
+    let counter = 'pd-counter' + position;
+    let values = 'pd-values' + position;
     return expand((...args) => {
-      if (!context[name]) {
-        context[name] = shuffle(args);
+      if (!context[counter]) context[counter] = 0;
+      context[counter] += 1;
+      if (!context[values]) {
+        context[values] = shuffle(args);
       }
       let max = args.length;
-      let pos = ((idx == undefined ? count : idx) - 1) % max;
-      return context.last_pick = context[name][pos];
+      let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+      return context.last_pick = context[values][pos];
     });
   },
 

@@ -118,11 +118,11 @@
 
   function shuffle(arr) {
     let ret = Array.from ? Array.from(arr) : arr.slice();
-    let len = arr.length;
-    while (len--) {
-      let i = ~~(Math.random() * len);
-      let t = ret[len];
-      ret[len] = ret[i];
+    let m = arr.length;
+    while (m) {
+      let i = ~~(Math.random() * m--);
+      let t = ret[m];
+      ret[m] = ret[i];
       ret[i] = t;
     }
     return ret;
@@ -1067,23 +1067,29 @@
       ));
     },
 
-    ['pick-n']({ count, idx, context }) {
+    ['pick-n']({ idx, context, position }) {
+      let counter = 'pn-counter' + position;
       return expand((...args) => {
+        if (!context[counter]) context[counter] = 0;
+        context[counter] += 1;
         let max = args.length;
-        let pos = ((idx == undefined ? count : idx) - 1) % max;
+        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
         return context.last_pick = args[pos];
       });
     },
 
-    ['pick-d']({ count, idx, context, position }) {
-      let name = 'pd-' + position;
+    ['pick-d']({ idx, context, position }) {
+      let counter = 'pd-counter' + position;
+      let values = 'pd-values' + position;
       return expand((...args) => {
-        if (!context[name]) {
-          context[name] = shuffle(args);
+        if (!context[counter]) context[counter] = 0;
+        context[counter] += 1;
+        if (!context[values]) {
+          context[values] = shuffle(args);
         }
         let max = args.length;
-        let pos = ((idx == undefined ? count : idx) - 1) % max;
-        return context.last_pick = context[name][pos];
+        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+        return context.last_pick = context[values][pos];
       });
     },
 
@@ -1953,12 +1959,13 @@
     let rules = new Rules(tokens);
     let context = {};
     rules.compose({
-      x : 1, y: 1, count: 1, context,
+      x : 1, y: 1, count: 1, context: {},
       grid: { x : 1, y: 1, count: 1 }
     });
     let { grid } = rules.output();
     if (grid) grid_size = grid;
     rules.reset();
+
     for (let x = 1, count = 0; x <= grid_size.x; ++x) {
       for (let y = 1; y <= grid_size.y; ++y) {
         rules.compose({ x, y, count: ++count, grid: grid_size, context });
