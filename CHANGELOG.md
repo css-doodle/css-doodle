@@ -1,3 +1,15 @@
+## 0.5.1
+
+### Fixes
+
+* Fix type error in `@rand()`.
+* Fix the shuffle algorithm.
+* Improve the behaviours of `@pd()` and `@pn()`.
+
+<br /> <br />
+
+
+
 ## 0.5.0
 
 ### Features
