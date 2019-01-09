@@ -9,6 +9,8 @@ import by_charcode from './utils/by_charcode';
 import calc from './utils/calc';
 import expand from './utils/expand';
 
+import Shapes from './shapes';
+
 const Expose = {
 
   index({ count }) {
@@ -136,6 +138,16 @@ const Expose = {
 
   var() {
     return value => `var(${ value })`;
+  },
+
+  shape() {
+    return memo('shape-function', (type = '', ...args) => {
+      type = type.trim();
+		  if (typeof Shapes[type] === 'function') {
+        return Shapes[type](args);
+      }
+      return '';
+    });
   }
 
 }

@@ -961,7 +961,7 @@
 
   const store = {};
 
-  function memo(prefix, fn) {
+  function memo$1(prefix, fn) {
     return (...args) => {
       let key = prefix + args.join('-');
       if (store[key]) return store[key];
@@ -1015,7 +1015,7 @@
     return tokens;
   }
 
-  const build_range = memo('build_range', (input) => {
+  const build_range = memo$1('build_range', (input) => {
     let tokens = get_tokens$1(input);
     return flat_map(tokens, ({ type, value }) => {
       if (type == 'char') return value;
@@ -1030,206 +1030,6 @@
       return result;
     });
   });
-
-  const Expose = {
-
-    index({ count }) {
-      return _ => count;
-    },
-
-    row({ x }) {
-      return _ => x;
-    },
-
-    col({ y }) {
-      return _ => y;
-    },
-
-    size({ grid }) {
-      return _ => grid.count;
-    },
-
-    ['size-row']({ grid }) {
-      return _ => grid.x;
-    },
-
-    ['size-col']({ grid }) {
-      return _ => grid.y;
-    },
-
-    n({ idx }) {
-      return _ => idx || 0;
-    },
-
-    pick({ context }) {
-      return expand((...args) => (
-        context.last_pick = pick(args)
-      ));
-    },
-
-    ['pick-n']({ idx, context, position }) {
-      let counter = 'pn-counter' + position;
-      return expand((...args) => {
-        if (!context[counter]) context[counter] = 0;
-        context[counter] += 1;
-        let max = args.length;
-        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
-        return context.last_pick = args[pos];
-      });
-    },
-
-    ['pick-d']({ idx, context, position }) {
-      let counter = 'pd-counter' + position;
-      let values = 'pd-values' + position;
-      return expand((...args) => {
-        if (!context[counter]) context[counter] = 0;
-        context[counter] += 1;
-        if (!context[values]) {
-          context[values] = shuffle(args);
-        }
-        let max = args.length;
-        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
-        return context.last_pick = context[values][pos];
-      });
-    },
-
-    ['last-pick']({ context }) {
-      return () => context.last_pick;
-    },
-
-    multiple: lazy((n, action) => {
-      let result = [];
-      if (!action || !n) return result;
-      let count = clamp(n(), 1, 65536);
-      for (let i = 0; i < count; ++i) {
-        result.push(action(i + 1));
-      }
-      return result.join(',');
-    }),
-
-    repeat: lazy((n, action) => {
-      let result = '';
-      if (!action || !n) return result;
-      let count = clamp(n(), 1, 65536);
-      for (let i = 0; i < count; ++i) {
-        result += action(i + 1);
-      }
-      return result;
-    }),
-
-    rand({ context }) {
-      return (...args) => {
-        let transform_type = args.every(is_letter)
-          ? by_charcode
-          : by_unit;
-        let value = transform_type(rand).apply(null, args);
-        return context.last_rand = value;
-      };
-    },
-
-    ['last-rand']({ context }) {
-      return () => context.last_rand;
-    },
-
-    calc() {
-      return value => calc(value);
-    },
-
-    hex() {
-      return value => parseInt(value).toString(16);
-    },
-
-    svg: lazy(input => {
-      if (input === undefined) return '';
-      let svg = normalize_svg(input().trim());
-      return create_svg_url(svg);
-    }),
-
-    ['svg-filter']: lazy(input => {
-      if (input === undefined) return '';
-      let id = unique_id('filter-');
-      let svg = normalize_svg(input().trim())
-        .replace(
-          /<filter([\s>])/,
-          `<filter id="${ id }"$1`
-        );
-      return create_svg_url(svg, id);
-    }),
-
-    var() {
-      return value => `var(${ value })`;
-    }
-
-  };
-
-  var Func = alias_for(Expose, {
-    'multi': 'multiple',
-    'm':     'multiple',
-    'pn':    'pick-n',
-    'pd':    'pick-d',
-    'r':     'rand',
-    'p':     'pick',
-    'lp':    'last-pick',
-    'lr':    'last-rand',
-    'i':     'index',
-
-    // legacy names
-    'pick-by-turn': 'pick-n',
-    'max-row': 'size-row',
-    'max-col': 'size-col'
-  });
-
-  const is_seperator = c => /[,，\s]/.test(c);
-
-  function skip_seperator(it) {
-    while (!it.end()) {
-      if (!is_seperator(it.curr(1))) break;
-      else it.next();
-    }
-  }
-
-  function parse$2(input) {
-    const it = iterator(input);
-    const result = [], stack = [];
-    let group = '';
-
-    while (!it.end()) {
-      let c = it.curr();
-      if (c == '(') {
-        group += c;
-        stack.push(c);
-      }
-
-      else if (c == ')') {
-        group += c;
-        if (stack.length) {
-          stack.pop();
-        }
-      }
-
-      else if (stack.length) {
-        group += c;
-      }
-
-      else if (is_seperator(c)) {
-        result.push(group);
-        group = '';
-        skip_seperator(it);
-      }
-
-      else {
-        group += c;
-      }
-
-      it.next();
-    }
-
-    if (group) {
-      result.push(group);
-    }
-
-    return result;
-  }
 
   const { cos, sin, sqrt, pow, PI } = Math;
   const DEG = PI / 180;
@@ -1448,6 +1248,216 @@
 
   };
 
+  const Expose = {
+
+    index({ count }) {
+      return _ => count;
+    },
+
+    row({ x }) {
+      return _ => x;
+    },
+
+    col({ y }) {
+      return _ => y;
+    },
+
+    size({ grid }) {
+      return _ => grid.count;
+    },
+
+    ['size-row']({ grid }) {
+      return _ => grid.x;
+    },
+
+    ['size-col']({ grid }) {
+      return _ => grid.y;
+    },
+
+    n({ idx }) {
+      return _ => idx || 0;
+    },
+
+    pick({ context }) {
+      return expand((...args) => (
+        context.last_pick = pick(args)
+      ));
+    },
+
+    ['pick-n']({ idx, context, position }) {
+      let counter = 'pn-counter' + position;
+      return expand((...args) => {
+        if (!context[counter]) context[counter] = 0;
+        context[counter] += 1;
+        let max = args.length;
+        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+        return context.last_pick = args[pos];
+      });
+    },
+
+    ['pick-d']({ idx, context, position }) {
+      let counter = 'pd-counter' + position;
+      let values = 'pd-values' + position;
+      return expand((...args) => {
+        if (!context[counter]) context[counter] = 0;
+        context[counter] += 1;
+        if (!context[values]) {
+          context[values] = shuffle(args);
+        }
+        let max = args.length;
+        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+        return context.last_pick = context[values][pos];
+      });
+    },
+
+    ['last-pick']({ context }) {
+      return () => context.last_pick;
+    },
+
+    multiple: lazy((n, action) => {
+      let result = [];
+      if (!action || !n) return result;
+      let count = clamp(n(), 1, 65536);
+      for (let i = 0; i < count; ++i) {
+        result.push(action(i + 1));
+      }
+      return result.join(',');
+    }),
+
+    repeat: lazy((n, action) => {
+      let result = '';
+      if (!action || !n) return result;
+      let count = clamp(n(), 1, 65536);
+      for (let i = 0; i < count; ++i) {
+        result += action(i + 1);
+      }
+      return result;
+    }),
+
+    rand({ context }) {
+      return (...args) => {
+        let transform_type = args.every(is_letter)
+          ? by_charcode
+          : by_unit;
+        let value = transform_type(rand).apply(null, args);
+        return context.last_rand = value;
+      };
+    },
+
+    ['last-rand']({ context }) {
+      return () => context.last_rand;
+    },
+
+    calc() {
+      return value => calc(value);
+    },
+
+    hex() {
+      return value => parseInt(value).toString(16);
+    },
+
+    svg: lazy(input => {
+      if (input === undefined) return '';
+      let svg = normalize_svg(input().trim());
+      return create_svg_url(svg);
+    }),
+
+    ['svg-filter']: lazy(input => {
+      if (input === undefined) return '';
+      let id = unique_id('filter-');
+      let svg = normalize_svg(input().trim())
+        .replace(
+          /<filter([\s>])/,
+          `<filter id="${ id }"$1`
+        );
+      return create_svg_url(svg, id);
+    }),
+
+    var() {
+      return value => `var(${ value })`;
+    },
+
+    shape() {
+      return memo('shape-function', (type = '', ...args) => {
+        type = type.trim();
+        if (typeof shapes[type] === 'function') {
+          return shapes[type](args);
+        }
+        return '';
+      });
+    }
+
+  };
+
+  var Func = alias_for(Expose, {
+    'multi': 'multiple',
+    'm':     'multiple',
+    'pn':    'pick-n',
+    'pd':    'pick-d',
+    'r':     'rand',
+    'p':     'pick',
+    'lp':    'last-pick',
+    'lr':    'last-rand',
+    'i':     'index',
+
+    // legacy names
+    'pick-by-turn': 'pick-n',
+    'max-row': 'size-row',
+    'max-col': 'size-col'
+  });
+
+  const is_seperator = c => /[,，\s]/.test(c);
+
+  function skip_seperator(it) {
+    while (!it.end()) {
+      if (!is_seperator(it.curr(1))) break;
+      else it.next();
+    }
+  }
+
+  function parse$2(input) {
+    const it = iterator(input);
+    const result = [], stack = [];
+    let group = '';
+
+    while (!it.end()) {
+      let c = it.curr();
+      if (c == '(') {
+        group += c;
+        stack.push(c);
+      }
+
+      else if (c == ')') {
+        group += c;
+        if (stack.length) {
+          stack.pop();
+        }
+      }
+
+      else if (stack.length) {
+        group += c;
+      }
+
+      else if (is_seperator(c)) {
+        result.push(group);
+        group = '';
+        skip_seperator(it);
+      }
+
+      else {
+        group += c;
+      }
+
+      it.next();
+    }
+
+    if (group) {
+      result.push(group);
+    }
+
+    return result;
+  }
+
   let all = [];
 
   function get_props(arg) {
@@ -1551,7 +1561,7 @@
       };
     },
 
-    ['@shape']: memo('shape-property', value => {
+    ['@shape']: memo$1('shape-property', value => {
       let [type, ...args] = parse$2(value);
       let prop = 'clip-path';
       if (!shapes[type]) return '';
