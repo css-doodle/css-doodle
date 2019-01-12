@@ -1317,7 +1317,7 @@
     multiple: lazy((n, action) => {
       let result = [];
       if (!action || !n) return result;
-      let count = clamp(n(), 1, 65536);
+      let count = clamp(n(), 0, 65536);
       for (let i = 0; i < count; ++i) {
         result.push(action(i + 1));
       }
@@ -1327,7 +1327,7 @@
     repeat: lazy((n, action) => {
       let result = '';
       if (!action || !n) return result;
-      let count = clamp(n(), 1, 65536);
+      let count = clamp(n(), 0, 65536);
       for (let i = 0; i < count; ++i) {
         result += action(i + 1);
       }
