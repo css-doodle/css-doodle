@@ -4,8 +4,8 @@ import { pick, rand, unique_id } from './utils/random';
 import { shuffle } from './utils/list';
 import { is_letter, lazy, alias_for, clamp } from './utils/index';
 
-import by_unit from './utils/by_unit';
-import by_charcode from './utils/by_charcode';
+import by_unit from './utils/by-unit';
+import by_charcode from './utils/by-charcode';
 import calc from './utils/calc';
 import expand from './utils/expand';
 
@@ -143,7 +143,7 @@ const Expose = {
   shape() {
     return memo('shape-function', (type = '', ...args) => {
       type = type.trim();
-		  if (typeof Shapes[type] === 'function') {
+      if (typeof Shapes[type] === 'function') {
         return Shapes[type](args);
       }
       return '';

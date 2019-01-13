@@ -1,4 +1,4 @@
-import by_unit from '../../src/utils/by_unit';
+import by_unit from '../../src/utils/by-unit';
 
 function transform(...args) {
   return args;

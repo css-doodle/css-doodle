@@ -1,7 +1,7 @@
 import { last, flat_map } from './list';
 import { range } from './index';
 import memo from './memo';
-import by_charcode from './by_charcode';
+import by_charcode from './by-charcode';
 
 export default function expand(fn) {
   return (...args) => fn.apply(null, flat_map(args, n =>
