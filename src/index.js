@@ -2,6 +2,7 @@ import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
+import { sequence } from './utils/index';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -109,11 +110,9 @@ class Doodle extends HTMLElement {
   }
 
   html_cells() {
-    let ret = [];
-    for (let i = 0; i < this.grid_size.count; ++i) {
-      ret.push(`<div class="cell" id="${ i + 1 }"></div>`);
-    }
-    return ret.join('');
+    return sequence(this.grid_size.count, i => `
+      <div class="cell" id="${ i + 1 }"></div>
+    `).join('');
   }
 
   set_style(selector, styles) {

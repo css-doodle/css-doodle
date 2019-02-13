@@ -48,3 +48,11 @@ export function lazy(fn) {
   wrap.lazy = true;
   return wrap;
 }
+
+export function sequence(count, fn) {
+  let ret = [];
+  for (let i = 0; i < count; ++i) {
+    ret.push(fn(i));
+  }
+  return ret;
+}

@@ -734,6 +734,14 @@
     return wrap;
   }
 
+  function sequence(count, fn) {
+    let ret = [];
+    for (let i = 0; i < count; ++i) {
+      ret.push(fn(i));
+    }
+    return ret;
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -1315,23 +1323,15 @@
     },
 
     multiple: lazy((n, action) => {
-      let result = [];
-      if (!action || !n) return result;
+      if (!action || !n) return '';
       let count = clamp(n(), 0, 65536);
-      for (let i = 0; i < count; ++i) {
-        result.push(action(i + 1));
-      }
-      return result.join(',');
+      return sequence(count, i => action(i + 1)).join(',');
     }),
 
     repeat: lazy((n, action) => {
-      let result = '';
-      if (!action || !n) return result;
+      if (!action || !n) return '';
       let count = clamp(n(), 0, 65536);
-      for (let i = 0; i < count; ++i) {
-        result += action(i + 1);
-      }
-      return result;
+      return sequence(count, i => action(i + 1)).join('');
     }),
 
     rand({ context }) {
@@ -2090,11 +2090,9 @@
     }
 
     html_cells() {
-      let ret = [];
-      for (let i = 0; i < this.grid_size.count; ++i) {
-        ret.push(`<div class="cell" id="${ i + 1 }"></div>`);
-      }
-      return ret.join('');
+      return sequence(this.grid_size.count, i => `
+      <div class="cell" id="${ i + 1 }"></div>
+    `).join('');
     }
 
     set_style(selector, styles) {

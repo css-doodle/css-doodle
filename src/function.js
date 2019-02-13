@@ -2,7 +2,7 @@ import { create_svg_url, normalize_svg } from './svg';
 
 import { pick, rand, unique_id } from './utils/random';
 import { shuffle } from './utils/list';
-import { is_letter, lazy, alias_for, clamp } from './utils/index';
+import { is_letter, lazy, alias_for, clamp, sequence } from './utils/index';
 
 import by_unit from './utils/by-unit';
 import by_charcode from './utils/by-charcode';
@@ -78,23 +78,15 @@ const Expose = {
   },
 
   multiple: lazy((n, action) => {
-    let result = [];
-    if (!action || !n) return result;
+    if (!action || !n) return '';
     let count = clamp(n(), 0, 65536);
-    for (let i = 0; i < count; ++i) {
-      result.push(action(i + 1));
-    }
-    return result.join(',');
+    return sequence(count, i => action(i + 1)).join(',');
   }),
 
   repeat: lazy((n, action) => {
-    let result = '';
-    if (!action || !n) return result;
+    if (!action || !n) return '';
     let count = clamp(n(), 0, 65536);
-    for (let i = 0; i < count; ++i) {
-      result += action(i + 1);
-    }
-    return result;
+    return sequence(count, i => action(i + 1)).join('');
   }),
 
   rand({ context }) {
