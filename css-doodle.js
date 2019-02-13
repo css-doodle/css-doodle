@@ -2090,8 +2090,11 @@
     }
 
     html_cells() {
-      return '<div class="cell"></div>'
-        .repeat(this.grid_size.count);
+      let ret = [];
+      for (let i = 0; i < this.grid_size.count; ++i) {
+        ret.push(`<div class="cell" id="${ i + 1 }"></div>`);
+      }
+      return ret.join('');
     }
 
     set_style(selector, styles) {
