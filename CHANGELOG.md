@@ -1,3 +1,17 @@
+## 0.6.0
+
+### Features
+
+* Experiment for new dimension z.
+
+### Fixes
+
+* Fix the clamped min value.
+
+<br /> <br />
+
+
+
 ## 0.5.1
 
 ### Fixes
