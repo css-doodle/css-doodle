@@ -15,15 +15,15 @@
     "url": "git+https://github.com/css-doodle/css-doodle.git"
   },
   "devDependencies": {
-    "esm": "^3.0.84",
+    "esm": "^3.2.4",
     "jasmine-core": "^3.2.1",
-    "karma": "^3.1.4",
+    "karma": "^4.0.0",
     "karma-chrome-launcher": "^2.2.0",
-    "karma-jasmine": "^1.1.2",
+    "karma-jasmine": "^2.0.1",
     "karma-mocha-reporter": "^2.2.5",
-    "karma-rollup-preprocessor": "^6.1.1",
-    "rollup": "^0.68.0",
-    "terser": "^3.11.0"
+    "karma-rollup-preprocessor": "^7.0.0",
+    "rollup": "^1.1.2",
+    "terser": "^3.16.1"
   },
   "keywords": [
     "css",
@@ -34,5 +34,5 @@
   "bugs": {
     "url": "https://github.com/css-doodle/css-doodle/issues"
   },
-  "homepage": "https://github.com/css-doodle/css-doodle#readme"
+  "homepage": "https://css-doodle.com"
 }

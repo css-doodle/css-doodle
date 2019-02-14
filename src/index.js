@@ -143,8 +143,9 @@ class Doodle extends HTMLElement {
     const compiled = generator(parse_css(use + styles, this.extra), this.grid_size);
 
     if (compiled.grid) {
-      let { x, y } = compiled.grid;
-      if (this.grid_size.x !== x || this.grid_size.y !== y) {
+      let { x, y, z } = compiled.grid;
+      let { x: gx, y: gy, z: gz } = this.grid_size;
+      if (gx !== x || gy !== y || gz !== z) {
         Object.assign(this.grid_size, compiled.grid);
         return this.build_grid(compiled);
       }
@@ -154,7 +155,8 @@ class Doodle extends HTMLElement {
     else {
       let grid = parse_grid(this.getAttribute('grid'));
       let { x, y } = grid;
-      if (this.grid_size.x !== x || this.grid_size.y !== y) {
+      let { x: gx, y: gy, z: gz } = this.grid_size;
+      if (gx !== x || gy !== y || gz !== z) {
         Object.assign(this.grid_size, grid);
         return this.build_grid(
           generator(parse_css(use + styles, this.extra), this.grid_size)
