@@ -41,7 +41,7 @@ class Rules {
     }
     this.coords = [];
     for (let key in this.rules) {
-      if (key.startsWith('.cell')) {
+      if (key.startsWith('[cell]')) {
         delete this.rules[key];
       }
     }
@@ -65,7 +65,7 @@ class Rules {
   }
 
   compose_selector(count, pseudo = '') {
-    return `.cell:nth-of-type(${ count })${ pseudo }`;
+    return `[cell]:nth-of-type(${ count })${ pseudo }`;
   }
 
   compose_argument(argument, coords, idx) {

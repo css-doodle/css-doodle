@@ -81,14 +81,14 @@ class Doodle extends HTMLElement {
         width: 1em;
         height: 1em;
       }
-      .container {
+      .container, [cell]:not(:empty) {
         position: relative;
         width: 100%;
         height: 100%;
         display: grid;
         ${ this.inherit_props() }
       }
-      .cell {
+      [cell]:empty {
         position: relative;
         line-height: 1;
         box-sizing: border-box;
@@ -110,9 +110,16 @@ class Doodle extends HTMLElement {
   }
 
   html_cells() {
-    return sequence(this.grid_size.count, i => `
-      <div class="cell" id="${ i + 1 }"></div>
-    `).join('');
+    let block = '<div cell></div>';
+    let cells = block.repeat(this.grid_size.count);
+    let depth = this.grid_size.z;
+
+    while (depth--) {
+      block = block.replace(/<div\scell><\/div>/g,
+        '<div cell>' + cells + '</div>'
+      );
+    }
+    return block.replace(/^<div\scell>|<\/div>$/g, '')
   }
 
   set_style(selector, styles) {

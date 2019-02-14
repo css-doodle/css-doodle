@@ -745,9 +745,9 @@
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
-    let [x, y] = (size + '')
+    let [x, y, z] = (size + '')
       .replace(/\s+/g, '')
-      .replace(/[,，xX]+/, 'x')
+      .replace(/[,，xX]+/g, 'x')
       .split('x')
       .map(Number);
 
@@ -755,7 +755,8 @@
 
     const ret = {
       x: clamp(x || min, 1, max_val),
-      y: clamp(y || x || min, 1, max_val)
+      y: clamp(y || x || min, 1, max_val),
+      z: clamp(z || min, 1, max_val)
     };
 
     return Object.assign({}, ret,
@@ -1690,7 +1691,7 @@
       };
       this.coords = [];
       for (let key in this.rules) {
-        if (key.startsWith('.cell')) {
+        if (key.startsWith('[cell]')) {
           delete this.rules[key];
         }
       }
@@ -1714,7 +1715,7 @@
     }
 
     compose_selector(count, pseudo = '') {
-      return `.cell:nth-of-type(${ count })${ pseudo }`;
+      return `[cell]:nth-of-type(${ count })${ pseudo }`;
     }
 
     compose_argument(argument, coords, idx) {
@@ -2061,14 +2062,14 @@
         width: 1em;
         height: 1em;
       }
-      .container {
+      .container, [cell]:not(:empty) {
         position: relative;
         width: 100%;
         height: 100%;
         display: grid;
         ${ this.inherit_props() }
       }
-      .cell {
+      [cell]:empty {
         position: relative;
         line-height: 1;
         box-sizing: border-box;
@@ -2090,9 +2091,16 @@
     }
 
     html_cells() {
-      return sequence(this.grid_size.count, i => `
-      <div class="cell" id="${ i + 1 }"></div>
-    `).join('');
+      let block = '<div cell></div>';
+      let cells = block.repeat(this.grid_size.count);
+      let depth = this.grid_size.z;
+
+      while (depth--) {
+        block = block.replace(/<div\scell><\/div>/g,
+          '<div cell>' + cells + '</div>'
+        );
+      }
+      return block.replace(/^<div\scell>|<\/div>$/g, '')
     }
 
     set_style(selector, styles) {
