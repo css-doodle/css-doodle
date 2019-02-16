@@ -2135,7 +2135,7 @@
 
       else {
         let grid = parse_grid(this.getAttribute('grid'));
-        let { x, y } = grid;
+        let { x, y, z } = grid;
         let { x: gx, y: gy, z: gz } = this.grid_size;
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, grid);
