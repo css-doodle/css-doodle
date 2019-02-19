@@ -124,9 +124,12 @@ class Rules {
   compose_rule(token, _coords, selector) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
-    let value_group = token.value.map(v =>
-      this.compose_value(v, coords)
-    );
+    let value_group = token.value.reduce((ret, v) => {
+      let composed = this.compose_value(v, coords);
+      if (composed) ret.push(composed);
+      return ret;
+    }, []);
+
     let value = value_group.join(', ');
 
     if (/^animation(\-name)?$/.test(prop)) {
