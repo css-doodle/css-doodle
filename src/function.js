@@ -99,6 +99,18 @@ const Expose = {
     };
   },
 
+  ['rand-int']({ context }) {
+    return (...args) => {
+      let transform_type = args.every(is_letter)
+        ? by_charcode
+        : by_unit;
+      let value = parseInt(
+        transform_type(rand).apply(null, args)
+      );
+      return context.last_rand = value;
+    }
+  },
+
   ['last-rand']({ context }) {
     return () => context.last_rand;
   },
@@ -150,6 +162,7 @@ export default alias_for(Expose, {
   'pn':    'pick-n',
   'pd':    'pick-d',
   'r':     'rand',
+  'ri':    'rand-int',
   'p':     'pick',
   'lp':    'last-pick',
   'lr':    'last-rand',
