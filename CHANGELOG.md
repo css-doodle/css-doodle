@@ -1,3 +1,17 @@
+## 0.6.1
+
+### Features
+
+* Add `@rand-int()`.
+
+### Fixes
+
+* Ignore empty composed values.
+* Fix the missing varaible for dimension `z`.
+
+<br /> <br />
+
+
 ## 0.6.0
 
 ### Features
