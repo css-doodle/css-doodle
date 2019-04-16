@@ -429,13 +429,24 @@
   }
 
   function read_func(it) {
-    let func = Tokens.func(), name = '', c;
+    let func = Tokens.func();
+    let extra = '', name = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == ')') break;
       if (c == '(') {
         it.next();
         func.name = name;
         func.arguments = read_arguments(it);
+        if (/\d$/.test(name)) {
+          func.name = name.split(/\d+/)[0];
+          extra = name.split(/\D+/)[1];
+        }
+        if (extra.length) {
+          func.arguments.unshift([{
+            type: 'text',
+            value: extra
+          }]);
+        }
         func.position = it.info().index;
         break;
       }
