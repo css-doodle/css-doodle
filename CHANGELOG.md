@@ -1,3 +1,19 @@
+## 0.6.2
+
+### Features
+
+* Add `@ms()` multitple values seperated with space.
+* Add support for dynamic functions with numeric parameters.
+
+
+### Fixes
+
+* Fix for `content: none`
+
+<br /> <br />
+
+
+
 ## 0.6.1
 
 ### Features
