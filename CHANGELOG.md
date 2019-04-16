@@ -2,7 +2,7 @@
 
 ### Features
 
-* Add `@ms()` multitple values seperated with space.
+* Add `@ms()` multiple values separated with space.
 * Add support for dynamic functions with numeric parameters.
 
 
