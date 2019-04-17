@@ -1,6 +1,6 @@
 import parse_css from '../../../src/parser/parse-css';
 
-describe('parse_css', () => {
+describe('value', () => {
 
   it('should treat break lines as a single space', () => {
     let parsed = parse_css(`

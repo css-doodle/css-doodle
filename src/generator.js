@@ -6,7 +6,6 @@ import prefixer from './prefixer';
 
 import { apply_args, maybe } from './utils/index.js';
 import { join, make_array } from './utils/list';
-import get_props from './utils/get-props';
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);

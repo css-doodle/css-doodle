@@ -1,6 +1,6 @@
 import parse_css from '../../../src/parser/parse-css';
 
-describe('parse_css', () => {
+describe('arguments', () => {
   it('should parse basic arguments', () => {
     let parsed = parse_css(`
       prop: @fun(v1, v2);

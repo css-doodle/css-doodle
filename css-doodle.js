@@ -1340,7 +1340,7 @@
       return sequence(count, i => action(i + 1)).join(',');
     }),
 
-    ['multitple-with-space']: lazy((n, action) => {
+    ['multiple-with-space']: lazy((n, action) => {
       if (!action || !n) return '';
       let count = clamp(n(), 0, 65536);
       return sequence(count, i => action(i + 1)).join(' ');
