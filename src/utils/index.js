@@ -56,3 +56,7 @@ export function sequence(count, fn) {
   }
   return ret;
 }
+
+export function cell_id(x, y, z) {
+  return 'cell-' + x + '-' + y + '-' + z;
+}

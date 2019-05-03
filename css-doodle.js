@@ -753,6 +753,10 @@
     return ret;
   }
 
+  function cell_id(x, y, z) {
+    return 'cell-' + x + '-' + y + '-' + z;
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -762,16 +766,17 @@
       .split('x')
       .map(Number);
 
-    const max_val = (x == 1 || y == 1) ? total : max;
+    const max_xy = (x == 1 || y == 1) ? total : max;
+    const max_z = (x == 1 && y == 1) ? total : min;
 
     const ret = {
-      x: clamp(x || min, 1, max_val),
-      y: clamp(y || x || min, 1, max_val),
-      z: clamp(z || min, 1, max_val)
+      x: clamp(x || min, 1, max_xy),
+      y: clamp(y || x || min, 1, max_xy),
+      z: clamp(z || min, 1, max_z)
     };
 
     return Object.assign({}, ret,
-      { count: ret.x * ret.y }
+      { count: ret.x * ret.y * ret.z }
     );
   }
 
@@ -1282,6 +1287,10 @@
       return _ => y;
     },
 
+    depth({ z }) {
+      return _ => z;
+    },
+
     size({ grid }) {
       return _ => grid.count;
     },
@@ -1310,7 +1319,7 @@
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
-        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+        let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         return context.last_pick = args[pos];
       });
     },
@@ -1325,7 +1334,7 @@
           context[values] = shuffle(args);
         }
         let max = args.length;
-        let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+        let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         return context.last_pick = context[values][pos];
       });
     },
@@ -1420,19 +1429,22 @@
   };
 
   var Func = alias_for(Expose, {
-    'multi': 'multiple',
-    'm':     'multiple',
-    'ms':    'multiple-with-space',
-    'pn':    'pick-n',
-    'pd':    'pick-d',
-    'r':     'rand',
-    'ri':    'rand-int',
-    'p':     'pick',
-    'lp':    'last-pick',
-    'lr':    'last-rand',
-    'i':     'index',
+    'm':  'multiple',
+    'ms': 'multiple-with-space',
+    'pn': 'pick-n',
+    'pd': 'pick-d',
+    'r':  'rand',
+    'ri': 'rand-int',
+    'p':  'pick',
+    'lp': 'last-pick',
+    'lr': 'last-rand',
+    'i':  'index',
+    'x':  'row',
+    'y':  'col',
+    'z':  'depth',
 
     // legacy names
+    'multi': 'multiple',
     'pick-by-turn': 'pick-n',
     'max-row': 'size-row',
     'max-col': 'size-col'
@@ -1722,7 +1734,7 @@
       };
       this.coords = [];
       for (let key in this.rules) {
-        if (key.startsWith('[cell]')) {
+        if (key.startsWith('#cell')) {
           delete this.rules[key];
         }
       }
@@ -1745,8 +1757,8 @@
       return args.join('-');
     }
 
-    compose_selector(count, pseudo = '') {
-      return `[cell]:nth-of-type(${ count })${ pseudo }`;
+    compose_selector({ x, y, z}, pseudo = '') {
+      return `#${ cell_id(x, y, z) }${ pseudo }`;
     }
 
     compose_argument(argument, coords, idx) {
@@ -1900,7 +1912,7 @@
         switch (token.type) {
           case 'rule':
             this.add_rule(
-              this.compose_selector(coords.count),
+              this.compose_selector(coords),
               this.compose_rule(token, coords)
             );
             break;
@@ -1919,7 +1931,7 @@
               );
               let composed = special
                 ? selector
-                : this.compose_selector(coords.count, selector);
+                : this.compose_selector(coords, selector);
               this.add_rule(composed, pseudo);
             });
 
@@ -2004,18 +2016,32 @@
     let rules = new Rules(tokens);
     let context = {};
     rules.compose({
-      x : 1, y: 1, count: 1, context: {},
-      grid: { x : 1, y: 1, count: 1 }
+      x: 1, y: 1, z: 1, count: 1, context: {},
+      grid: { x: 1, y: 1, z: 1, count: 1 }
     });
     let { grid } = rules.output();
     if (grid) grid_size = grid;
     rules.reset();
 
-    for (let x = 1, count = 0; x <= grid_size.x; ++x) {
-      for (let y = 1; y <= grid_size.y; ++y) {
-        rules.compose({ x, y, count: ++count, grid: grid_size, context });
+    if (grid_size.z == 1) {
+      for (let x = 1, count = 0; x <= grid_size.x; ++x) {
+        for (let y = 1; y <= grid_size.y; ++y) {
+          rules.compose({
+            x, y, z: 1,
+            count: ++count, grid: grid_size, context
+          });
+        }
       }
     }
+    else {
+      for (let z = 1, count = 0; z <= grid_size.z; ++z) {
+        rules.compose({
+          x: 1, y: 1, z,
+          count: ++count, grid: grid_size, context
+        });
+      }
+    }
+
     return rules.output();
   }
 
@@ -2085,7 +2111,8 @@
 
     inherit_props(p) {
       return get_props(/grid/)
-        .map(n => `${ n }: inherit;`).join('');
+        .map(n => `${ n }: inherit;`)
+        .join('');
     }
 
     style_basic() {
@@ -2096,14 +2123,14 @@
         width: 1em;
         height: 1em;
       }
-      .container, [cell]:not(:empty) {
+      .container {
         position: relative;
         width: 100%;
         height: 100%;
         display: grid;
         ${ this.inherit_props() }
       }
-      [cell]:empty {
+      .container div:empty {
         position: relative;
         line-height: 1;
         box-sizing: border-box;
@@ -2125,16 +2152,22 @@
     }
 
     html_cells() {
-      let block = '<div cell></div>';
-      let cells = block.repeat(this.grid_size.count);
-      let depth = this.grid_size.z;
-
-      while (depth--) {
-        block = block.replace(/<div\scell><\/div>/g,
-          '<div cell>' + cells + '</div>'
-        );
+      let { x, y, z } = this.grid_size;
+      let cells = [];
+      if (z == 1) {
+        for (let i = 1; i <= x; ++i) {
+          for (let j = 1; j <= y; ++j) {
+            cells.push(`<div id="${ cell_id(i, j, 1) }"></div>`);
+          }
+        }
       }
-      return block.replace(/^<div\scell>|<\/div>$/g, '')
+      else {
+        for (let i = 1; i <= z; ++i) {
+          cells.push(`<div id="${ cell_id(1, 1, i) }">`);
+        }
+        cells.push('</div>'.repeat(z));
+      }
+      return cells.join('');
     }
 
     set_style(selector, styles) {

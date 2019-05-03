@@ -25,6 +25,10 @@ const Expose = {
     return _ => y;
   },
 
+  depth({ z }) {
+    return _ => z;
+  },
+
   size({ grid }) {
     return _ => grid.count;
   },
@@ -35,6 +39,10 @@ const Expose = {
 
   ['size-col']({ grid }) {
     return _ => grid.y;
+  },
+
+  ['size-depth']({ grid }) {
+    return _ => grid.z;
   },
 
   n({ idx }) {
@@ -53,7 +61,7 @@ const Expose = {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
       let max = args.length;
-      let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+      let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       return context.last_pick = args[pos];
     });
   },
@@ -68,7 +76,7 @@ const Expose = {
         context[values] = shuffle(args);
       }
       let max = args.length;
-      let pos = ((idx == undefined ? context[counter] : idx) - 1) % max;
+      let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       return context.last_pick = context[values][pos];
     });
   },
@@ -163,19 +171,29 @@ const Expose = {
 }
 
 export default alias_for(Expose, {
-  'multi': 'multiple',
-  'm':     'multiple',
-  'ms':    'multiple-with-space',
-  'pn':    'pick-n',
-  'pd':    'pick-d',
-  'r':     'rand',
-  'ri':    'rand-int',
-  'p':     'pick',
-  'lp':    'last-pick',
-  'lr':    'last-rand',
-  'i':     'index',
+  'm':  'multiple',
+  'ms': 'multiple-with-space',
+
+  'r':  'rand',
+  'ri': 'rand-int',
+  'lr': 'last-rand',
+
+  'p':  'pick',
+  'pn': 'pick-n',
+  'pd': 'pick-d',
+  'lp': 'last-pick',
+
+  'i':  'index',
+  'x':  'row',
+  'y':  'col',
+  'z':  'depth',
+
+  'size-x': 'size-row',
+  'size-y': 'size-col',
+  'size-z': 'size-depth',
 
   // legacy names
+  'multi': 'multiple',
   'pick-by-turn': 'pick-n',
   'max-row': 'size-row',
   'max-col': 'size-col'

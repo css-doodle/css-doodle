@@ -4,7 +4,7 @@ import Selector from './selector';
 import MathFunc from './math';
 import prefixer from './prefixer';
 
-import { apply_args, maybe } from './utils/index.js';
+import { apply_args, maybe, cell_id } from './utils/index.js';
 import { join, make_array } from './utils/list';
 
 function is_host_selector(s) {
@@ -40,7 +40,7 @@ class Rules {
     }
     this.coords = [];
     for (let key in this.rules) {
-      if (key.startsWith('[cell]')) {
+      if (key.startsWith('#cell')) {
         delete this.rules[key];
       }
     }
@@ -63,8 +63,8 @@ class Rules {
     return args.join('-');
   }
 
-  compose_selector(count, pseudo = '') {
-    return `[cell]:nth-of-type(${ count })${ pseudo }`;
+  compose_selector({ x, y, z}, pseudo = '') {
+    return `#${ cell_id(x, y, z) }${ pseudo }`;
   }
 
   compose_argument(argument, coords, idx) {
@@ -218,7 +218,7 @@ class Rules {
       switch (token.type) {
         case 'rule':
           this.add_rule(
-            this.compose_selector(coords.count),
+            this.compose_selector(coords),
             this.compose_rule(token, coords)
           );
           break;
@@ -237,7 +237,7 @@ class Rules {
             );
             let composed = special
               ? selector
-              : this.compose_selector(coords.count, selector);
+              : this.compose_selector(coords, selector);
             this.add_rule(composed, pseudo);
           });
 
@@ -323,17 +323,31 @@ function generator(tokens, grid_size) {
   let rules = new Rules(tokens);
   let context = {};
   rules.compose({
-    x : 1, y: 1, count: 1, context: {},
-    grid: { x : 1, y: 1, count: 1 }
+    x: 1, y: 1, z: 1, count: 1, context: {},
+    grid: { x: 1, y: 1, z: 1, count: 1 }
   });
   let { grid } = rules.output();
   if (grid) grid_size = grid;
   rules.reset();
 
-  for (let x = 1, count = 0; x <= grid_size.x; ++x) {
-    for (let y = 1; y <= grid_size.y; ++y) {
-      rules.compose({ x, y, count: ++count, grid: grid_size, context });
+  if (grid_size.z == 1) {
+    for (let x = 1, count = 0; x <= grid_size.x; ++x) {
+      for (let y = 1; y <= grid_size.y; ++y) {
+        rules.compose({
+          x, y, z: 1,
+          count: ++count, grid: grid_size, context
+        });
+      }
     }
   }
+  else {
+    for (let z = 1, count = 0; z <= grid_size.z; ++z) {
+      rules.compose({
+        x: 1, y: 1, z,
+        count: ++count, grid: grid_size, context
+      });
+    }
+  }
+
   return rules.output();
 }

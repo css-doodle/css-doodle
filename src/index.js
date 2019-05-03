@@ -2,7 +2,7 @@ import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
-import { sequence } from './utils/index';
+import { sequence, cell_id } from './utils/index';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -70,7 +70,8 @@ class Doodle extends HTMLElement {
 
   inherit_props(p) {
     return get_props(/grid/)
-      .map(n => `${ n }: inherit;`).join('');
+      .map(n => `${ n }: inherit;`)
+      .join('');
   }
 
   style_basic() {
@@ -81,14 +82,14 @@ class Doodle extends HTMLElement {
         width: 1em;
         height: 1em;
       }
-      .container, [cell]:not(:empty) {
+      .container {
         position: relative;
         width: 100%;
         height: 100%;
         display: grid;
         ${ this.inherit_props() }
       }
-      [cell]:empty {
+      .container div:empty {
         position: relative;
         line-height: 1;
         box-sizing: border-box;
@@ -110,16 +111,22 @@ class Doodle extends HTMLElement {
   }
 
   html_cells() {
-    let block = '<div cell></div>';
-    let cells = block.repeat(this.grid_size.count);
-    let depth = this.grid_size.z;
-
-    while (depth--) {
-      block = block.replace(/<div\scell><\/div>/g,
-        '<div cell>' + cells + '</div>'
-      );
+    let { x, y, z } = this.grid_size;
+    let cells = [];
+    if (z == 1) {
+      for (let i = 1; i <= x; ++i) {
+        for (let j = 1; j <= y; ++j) {
+          cells.push(`<div id="${ cell_id(i, j, 1) }"></div>`);
+        }
+      }
     }
-    return block.replace(/^<div\scell>|<\/div>$/g, '')
+    else {
+      for (let i = 1; i <= z; ++i) {
+        cells.push(`<div id="${ cell_id(1, 1, i) }">`);
+      }
+      cells.push('</div>'.repeat(z));
+    }
+    return cells.join('');
   }
 
   set_style(selector, styles) {
