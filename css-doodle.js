@@ -1303,6 +1303,10 @@
       return _ => grid.y;
     },
 
+    ['size-depth']({ grid }) {
+      return _ => grid.z;
+    },
+
     n({ idx }) {
       return _ => idx || 0;
     },
@@ -1431,17 +1435,24 @@
   var Func = alias_for(Expose, {
     'm':  'multiple',
     'ms': 'multiple-with-space',
-    'pn': 'pick-n',
-    'pd': 'pick-d',
+
     'r':  'rand',
     'ri': 'rand-int',
-    'p':  'pick',
-    'lp': 'last-pick',
     'lr': 'last-rand',
+
+    'p':  'pick',
+    'pn': 'pick-n',
+    'pd': 'pick-d',
+    'lp': 'last-pick',
+
     'i':  'index',
     'x':  'row',
     'y':  'col',
     'z':  'depth',
+
+    'size-x': 'size-row',
+    'size-y': 'size-col',
+    'size-z': 'size-depth',
 
     // legacy names
     'multi': 'multiple',
