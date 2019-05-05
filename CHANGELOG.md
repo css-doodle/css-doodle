@@ -1,3 +1,23 @@
+## 0.7.0
+
+### Features
+* Add `depth` dimension.
+* Add alias for `row` and `col`.
+
+### Fixes
+
+* Fix typo for multiple-with-space.
+
+### Changes
+
+* The third dimension now based on `1x1`.
+  That is to say, the `1x2x8` will not work, but `1x1x8` does.
+
+* Deprecated the `@multi` alias.
+
+<br /> <br />
+
+
 ## 0.6.2
 
 ### Features
