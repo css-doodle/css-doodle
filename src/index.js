@@ -174,14 +174,22 @@ class Doodle extends HTMLElement {
     this.set_style('.style-keyframes',
       compiled.styles.keyframes
     );
-    this.set_style('.style-container',
-        this.style_size()
-      + compiled.styles.host
-      + compiled.styles.container
-    );
-    this.set_style('.style-cells',
-      compiled.styles.cells
-    );
+
+    if (compiled.props.has_animation) {
+      this.set_style('.style-cells', '');
+      this.set_style('.style-container', '');
+    }
+
+    setTimeout(() => {
+      this.set_style('.style-container',
+          this.style_size()
+        + compiled.styles.host
+        + compiled.styles.container
+      );
+      this.set_style('.style-cells',
+        compiled.styles.cells
+      );
+    });
   }
 
   get grid() {
