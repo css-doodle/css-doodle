@@ -37,6 +37,12 @@ class Doodle extends HTMLElement {
       .replace(/^\(|\)$/g, '');
   }
 
+  cell(x, y, z) {
+    let cell = document.createElement('div');
+    cell.id = cell_id(x, y, z);
+    return cell;
+  }
+
   build_grid(compiled) {
     const { has_transition, has_animation } = compiled.props;
     const { keyframes, host, container, cells } = compiled.styles;
@@ -56,10 +62,11 @@ class Doodle extends HTMLElement {
       <style class="style-cells">
         ${ (has_transition || has_animation) ? '' : cells }
       </style>
-      <div class="container">
-        ${ this.html_cells() }
-      </div>
+      <div class="container"></div>
     `;
+
+    this.doodle.querySelector('.container')
+      .appendChild(this.html_cells());
 
     if (has_transition || has_animation) {
       setTimeout(() => {
@@ -112,21 +119,24 @@ class Doodle extends HTMLElement {
 
   html_cells() {
     let { x, y, z } = this.grid_size;
-    let cells = [];
+    let root = document.createDocumentFragment();
     if (z == 1) {
       for (let i = 1; i <= x; ++i) {
         for (let j = 1; j <= y; ++j) {
-          cells.push(`<div id="${ cell_id(i, j, 1) }"></div>`);
+          root.appendChild(this.cell(i, j, 1));
         }
       }
     }
     else {
+      let temp = null;
       for (let i = 1; i <= z; ++i) {
-        cells.push(`<div id="${ cell_id(1, 1, i) }">`);
+        let cell = this.cell(1, 1, i);
+        (temp || root).appendChild(cell);
+        temp = cell;
       }
-      cells.push('</div>'.repeat(z));
+      temp = null;
     }
-    return cells.join('');
+    return root;
   }
 
   set_style(selector, styles) {
