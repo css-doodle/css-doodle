@@ -1,3 +1,11 @@
+## 0.7.1
+
+### Fixes
+* Fix the nesting limit inside shadowDOM.
+
+<br /> <br />
+
+
 ## 0.7.0
 
 ### Features
@@ -6,7 +14,7 @@
 
 ### Fixes
 
-* Fix typo for multiple-with-space.
+* Fix typo for `multiple-with-space`.
 
 ### Changes
 
@@ -31,7 +39,6 @@
 * Fix for `content: none`
 
 <br /> <br />
-
 
 
 ## 0.6.1
