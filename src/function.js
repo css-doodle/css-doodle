@@ -2,7 +2,8 @@ import { create_svg_url, normalize_svg } from './svg';
 
 import { pick, rand, unique_id } from './utils/random';
 import { shuffle } from './utils/list';
-import { is_letter, lazy, alias_for, clamp, sequence } from './utils/index';
+import { cell_id, is_letter, alias_for } from './utils/index';
+import { lazy, clamp, sequence } from './utils/index';
 
 import by_unit from './utils/by-unit';
 import by_charcode from './utils/by-charcode';
@@ -43,6 +44,10 @@ const Expose = {
 
   ['size-depth']({ grid }) {
     return _ => grid.z;
+  },
+
+  id({ x, y, z }) {
+    return _ => cell_id(x, y, z);
   },
 
   n({ idx }) {

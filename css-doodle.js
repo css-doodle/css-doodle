@@ -1307,6 +1307,10 @@
       return _ => grid.z;
     },
 
+    id({ x, y, z }) {
+      return _ => cell_id(x, y, z);
+    },
+
     n({ idx }) {
       return _ => idx || 0;
     },
