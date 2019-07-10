@@ -12,7 +12,7 @@ class Doodle extends HTMLElement {
       get_custom_property_value: this.get_custom_property_value.bind(this)
     };
   }
-  connectedCallback() {
+  connectedCallback(again) {
     setTimeout(() => {
       let compiled;
       let use = this.getAttribute('use') || '';
@@ -27,6 +27,9 @@ class Doodle extends HTMLElement {
       } catch (e) {
         this.innerHTML = '';
         console.error(e && e.message || 'Error in css-doodle.');
+      }
+      if (!again && this.hasAttribute('click-to-update')) {
+        this.addEventListener('click', e => this.update());
       }
     });
   }
@@ -208,7 +211,7 @@ class Doodle extends HTMLElement {
 
   set grid(grid) {
     this.setAttribute('grid', grid);
-    this.connectedCallback();
+    this.connectedCallback(true);
   }
 
   get use() {
@@ -217,7 +220,7 @@ class Doodle extends HTMLElement {
 
   set use(use) {
     this.setAttribute('use', use);
-    this.connectedCallback();
+    this.connectedCallback(true);
   }
 
   static get observedAttributes() {

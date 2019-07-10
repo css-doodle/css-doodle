@@ -2068,7 +2068,7 @@
         get_custom_property_value: this.get_custom_property_value.bind(this)
       };
     }
-    connectedCallback() {
+    connectedCallback(again) {
       setTimeout(() => {
         let compiled;
         let use = this.getAttribute('use') || '';
@@ -2083,6 +2083,9 @@
         } catch (e) {
           this.innerHTML = '';
           console.error(e && e.message || 'Error in css-doodle.');
+        }
+        if (!again && this.hasAttribute('click-to-update')) {
+          this.addEventListener('click', e => this.update());
         }
       });
     }
@@ -2264,7 +2267,7 @@
 
     set grid(grid) {
       this.setAttribute('grid', grid);
-      this.connectedCallback();
+      this.connectedCallback(true);
     }
 
     get use() {
@@ -2273,7 +2276,7 @@
 
     set use(use) {
       this.setAttribute('use', use);
-      this.connectedCallback();
+      this.connectedCallback(true);
     }
 
     static get observedAttributes() {
