@@ -1,3 +1,13 @@
+## 0.7.2
+
+### Features
+
+* Add `click-to-update` attribute for demo stuff.
+* Add `@id()` function.
+
+<br /> <br />
+
+
 ## 0.7.1
 
 ### Fixes
