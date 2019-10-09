@@ -1,3 +1,12 @@
+## 0.7.3
+
+### Features
+
+* Expand the '±' symbol to '-' and '+' in one place.
+
+<br /> <br />
+
+
 ## 0.7.2
 
 ### Features
