@@ -1,6 +1,6 @@
 import iterator from './iterator';
 import parse_var from './parse-var';
-import { first, last } from '../utils/list';
+import { first, last, clone } from '../utils/list';
 
 const Tokens = {
   func(name = '') {
@@ -250,9 +250,15 @@ function read_arguments(it) {
           if (!group.length) {
             group.push(Tokens.text(get_text_value(arg)));
           } else {
-            if (arg.length) {
-              group.push(Tokens.text(arg));
-            }
+            group.push(Tokens.text(arg));
+          }
+
+          if (arg.startsWith('±')) {
+            let raw = arg.substr(1);
+            let cloned = clone(group);
+            last(cloned).value = '-' + raw;
+            args.push(normalize_argument(cloned));
+            last(group).value = raw;
           }
         }
 

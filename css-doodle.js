@@ -116,6 +116,10 @@
     return arr[0];
   }
 
+  function clone(arr) {
+    return JSON.parse(JSON.stringify(arr));
+  }
+
   function shuffle(arr) {
     let ret = Array.from ? Array.from(arr) : arr.slice();
     let m = arr.length;
@@ -381,9 +385,15 @@
             if (!group.length) {
               group.push(Tokens.text(get_text_value(arg)));
             } else {
-              if (arg.length) {
-                group.push(Tokens.text(arg));
-              }
+              group.push(Tokens.text(arg));
+            }
+
+            if (arg.startsWith('±')) {
+              let raw = arg.substr(1);
+              let cloned = clone(group);
+              last(cloned).value = '-' + raw;
+              args.push(normalize_argument(cloned));
+              last(group).value = raw;
             }
           }
 

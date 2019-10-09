@@ -14,6 +14,10 @@ export function first(arr) {
   return arr[0];
 }
 
+export function clone(arr) {
+  return JSON.parse(JSON.stringify(arr));
+}
+
 export function shuffle(arr) {
   let ret = Array.from ? Array.from(arr) : arr.slice();
   let m = arr.length;
