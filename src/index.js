@@ -240,4 +240,6 @@ class Doodle extends HTMLElement {
   }
 }
 
-customElements.define('css-doodle', Doodle);
+if (!customElements.get('css-doodle')) {
+  customElements.define('css-doodle', Doodle);
+}
