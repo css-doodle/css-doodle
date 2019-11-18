@@ -14,6 +14,10 @@
     "type": "git",
     "url": "git+https://github.com/css-doodle/css-doodle.git"
   },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/css-doodle"
+  },
   "devDependencies": {
     "esm": "^3.2.4",
     "jasmine-core": "^3.2.1",
