@@ -3,11 +3,15 @@ import parse_grid from './parser/parse-grid';
 import Shapes from './shapes';
 import prefixer from './prefixer';
 import memo from './utils/memo';
+import { is_preset, get_preset } from './preset-size';
 
 export default {
 
   ['@size'](value, { is_special_selector }) {
     let [w, h = w] = parse_value_group(value);
+    if (is_preset(w)) {
+      [w, h] = get_preset(w, h);
+    }
     return `
       width: ${ w };
       height: ${ h };
