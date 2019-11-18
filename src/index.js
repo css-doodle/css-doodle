@@ -86,6 +86,12 @@ class Doodle extends HTMLElement {
 
   style_basic() {
     return `
+      * {
+        box-sizing: border-box;
+      }
+      *::after, *::before {
+        box-sizing: inherit;
+      }
       :host {
         display: block;
         visibility: visible;
@@ -102,7 +108,6 @@ class Doodle extends HTMLElement {
       .container div:empty {
         position: relative;
         line-height: 1;
-        box-sizing: border-box;
         display: flex;
         justify-content: center;
         align-items: center;
