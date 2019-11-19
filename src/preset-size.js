@@ -60,9 +60,7 @@ const presets = {
   postcard:        [ 100, 148 ],
   'business-card': [ 54, 90 ],
 
-  // posters
-  '大度对开': [ 570, 840 ],
-  '大度四开': [ 420, 570 ],
+  poster: [ 390, 540 ],
 }
 
 const modes = {
