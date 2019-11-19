@@ -108,9 +108,8 @@ class Doodle extends HTMLElement {
       .container div:empty {
         position: relative;
         line-height: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        display: grid;
+        place-content: center;
       }
     `;
   }
