@@ -1,3 +1,24 @@
+## 0.7.4
+
+### Features
+
+* Add shorthand for common standard paper sizes.
+
+### Fixes
+
+* Prevent duplicated definition when more than one css-doodle
+  source being included in the page.
+
+### Update
+
+* Set all elements inside the component to be `border-box`.
+* Use `place-content` insteaad of `flexbox` alignment.
+* Add opencollective funding to package.
+
+
+<br /> <br />
+
+
 ## 0.7.3
 
 ### Features

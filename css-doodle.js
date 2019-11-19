@@ -1,7 +1,7 @@
 (function (factory) {
   typeof define === 'function' && define.amd ? define(factory) :
   factory();
-}(function () { 'use strict';
+}((function () { 'use strict';
 
   function iterator(input) {
     let index = 0, col = 1, line = 1;
@@ -2413,4 +2413,4 @@
     customElements.define('css-doodle', Doodle);
   }
 
-}));
+})));
