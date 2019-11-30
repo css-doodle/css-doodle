@@ -1,3 +1,15 @@
+## 0.7.5
+
+### Features
+
+* Add `π` symbol.
+* Recongize function without parentheses
+* Add `rep` for `repeat` and several others for personal usage.
+
+<br /> <br />
+
+
+
 ## 0.7.4
 
 ### Features
