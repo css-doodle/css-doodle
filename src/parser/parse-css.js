@@ -312,9 +312,26 @@ function normalize_argument(group) {
   return result;
 }
 
+function seperate_func_name(name) {
+  let fname = '', extra = '';
+  if (/\D$/.test(name)) {
+    return { fname: name, extra }
+  }
+  for (let i = name.length - 1; i >= 0; i--) {
+    let c = name[i];
+    if (/[\d.]/.test(c)) {
+      extra = c + extra;
+    } else {
+      fname = name.substring(0, i + 1);
+      break;
+    }
+  }
+  return { fname, extra };
+}
+
 function read_func(it) {
   let func = Tokens.func();
-  let extra = '', name = '@', c;
+  let name = '@', c;
   let has_argument = false;
   it.next();
 
@@ -326,7 +343,7 @@ function read_func(it) {
       it.next();
       func.arguments = read_arguments(it);
       break;
-    } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-]/.test(next)) {
+    } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
       name += c;
       break;
     }
@@ -336,12 +353,9 @@ function read_func(it) {
     it.next();
   }
 
-  if (/\d$/.test(name)) {
-    func.name = name.split(/\d+/)[0];
-    extra = name.split(/\D+/)[1];
-  } else {
-    func.name = name;
-  }
+  let { fname, extra } = seperate_func_name(name);
+  func.name = fname;
+
   if (extra.length) {
     func.arguments.unshift([{
       type: 'text',
