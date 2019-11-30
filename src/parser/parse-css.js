@@ -79,6 +79,13 @@ const is = {
   }
 };
 
+// This should not be in the parser
+// but I'll leave it here until the rewriting
+const symbols = {
+  'π': Math.PI,
+  '∏': Math.PI
+};
+
 function throw_error(msg, { col, line }) {
   console.error(
     `(at line ${ line }, column ${ col }) ${ msg }`
@@ -269,6 +276,9 @@ function read_arguments(it) {
       }
     }
     else {
+      if (symbols[c]) {
+        c = symbols[c];
+      }
       arg += c;
     }
     it.next();
@@ -325,7 +335,9 @@ function read_func(it) {
       func.position = it.info().index;
       break;
     }
-    else name += c;
+    else {
+      name += c;
+    }
     it.next();
   }
   return func;
@@ -374,6 +386,11 @@ function read_value(it) {
     else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
       if (c == '(') stack.push(c);
       if (c == ')') stack.pop();
+
+      if (symbols[c]) {
+        c = symbols[c];
+      }
+
       text.value += c;
     }
     it.next();
