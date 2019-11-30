@@ -356,7 +356,6 @@
     let args = [], group = [], stack = [], arg = '', c;
     while (!it.end()) {
       c = it.curr();
-
       if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
         if (stack.length) {
           if (c != '(' && c === last(stack)) {
@@ -450,24 +449,20 @@
 
   function read_func(it) {
     let func = Tokens.func();
-    let extra = '', name = '', c;
+    let extra = '', name = '@', c;
+    let has_argument = false;
+    it.next();
+
     while (!it.end()) {
-      if ((c = it.curr()) == ')') break;
+      c = it.curr();
+      let next = it.curr(1);
       if (c == '(') {
+        has_argument = true;
         it.next();
-        func.name = name;
         func.arguments = read_arguments(it);
-        if (/\d$/.test(name)) {
-          func.name = name.split(/\d+/)[0];
-          extra = name.split(/\D+/)[1];
-        }
-        if (extra.length) {
-          func.arguments.unshift([{
-            type: 'text',
-            value: extra
-          }]);
-        }
-        func.position = it.info().index;
+        break;
+      } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-]/.test(next)) {
+        name += c;
         break;
       }
       else {
@@ -475,6 +470,21 @@
       }
       it.next();
     }
+
+    if (/\d$/.test(name)) {
+      func.name = name.split(/\d+/)[0];
+      extra = name.split(/\D+/)[1];
+    } else {
+      func.name = name;
+    }
+    if (extra.length) {
+      func.arguments.unshift([{
+        type: 'text',
+        value: extra
+      }]);
+    }
+
+    func.position = it.info().index;
     return func;
   }
 
