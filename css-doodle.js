@@ -1461,16 +1461,22 @@
     'pd': 'pick-d',
     'lp': 'last-pick',
 
+    'rep': 'repeat',
+
     'i':  'index',
     'x':  'row',
     'y':  'col',
     'z':  'depth',
 
+    's': 'size',
+    'sx': 'size-row',
+    'sy': 'size-col',
+    'sz': 'size-depth',
+
+    // legacy names
     'size-x': 'size-row',
     'size-y': 'size-col',
     'size-z': 'size-depth',
-
-    // legacy names
     'multi': 'multiple',
     'pick-by-turn': 'pick-n',
     'max-row': 'size-row',
