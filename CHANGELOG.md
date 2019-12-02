@@ -1,9 +1,24 @@
+## 0.7.6
+
+### Features
+
+* Add max iteration count `@N`.
+* Support last n value for `@lp()` and `@lr()`.
+
+### Fixes
+
+* Ignore null or undefined values.
+
+<br /> <br />
+
+
+
 ## 0.7.5
 
 ### Features
 
 * Add `π` symbol.
-* Recongize function without parentheses
+* Recongize function without parentheses.
 * Add `rep` for `repeat` and several others for personal usage.
 
 <br /> <br />
