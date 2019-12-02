@@ -1364,8 +1364,12 @@
       return _ => cell_id(x, y, z);
     },
 
-    n({ idx }) {
-      return _ => idx || 0;
+    n({ extra }) {
+      return _ => extra[0] || 0;
+    },
+
+    N({ extra }) {
+      return _ => extra[1] || 0;
     },
 
     pick({ context }) {
@@ -1374,18 +1378,19 @@
       ));
     },
 
-    ['pick-n']({ idx, context, position }) {
+    ['pick-n']({ context, extra, position }) {
       let counter = 'pn-counter' + position;
       return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
+        let [ idx ] = extra;
         let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         return context.last_pick = args[pos];
       });
     },
 
-    ['pick-d']({ idx, context, position }) {
+    ['pick-d']({ context, extra, position }) {
       let counter = 'pd-counter' + position;
       let values = 'pd-values' + position;
       return expand((...args) => {
@@ -1395,6 +1400,7 @@
           context[values] = shuffle(args);
         }
         let max = args.length;
+        let [ idx ] = extra;
         let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         return context.last_pick = context[values][pos];
       });
@@ -1407,19 +1413,19 @@
     multiple: lazy((n, action) => {
       if (!action || !n) return '';
       let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1)).join(',');
+      return sequence(count, i => action(i + 1, count)).join(',');
     }),
 
     ['multiple-with-space']: lazy((n, action) => {
       if (!action || !n) return '';
       let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1)).join(' ');
+      return sequence(count, i => action(i + 1, count)).join(' ');
     }),
 
     repeat: lazy((n, action) => {
       if (!action || !n) return '';
       let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1)).join('');
+      return sequence(count, i => action(i + 1, count)).join('');
     }),
 
     rand({ context }) {
@@ -1932,7 +1938,7 @@
       return `#${ cell_id(x, y, z) }${ pseudo }`;
     }
 
-    compose_argument(argument, coords, idx) {
+    compose_argument(argument, coords, extra = []) {
       let result = argument.map(arg => {
         if (arg.type == 'text') {
           return arg.value;
@@ -1940,12 +1946,12 @@
         else if (arg.type == 'func') {
           let fn = this.pick_func(arg.name.substr(1));
           if (fn) {
-            coords.idx = idx;
+            coords.extra = extra;
             coords.position = arg.position;
             let args = arg.arguments.map(n => {
               return fn.lazy
-                ? idx => this.compose_argument(n, coords, idx)
-                : this.compose_argument(n, coords, idx);
+                ? (...extra) => this.compose_argument(n, coords, extra)
+                : this.compose_argument(n, coords, extra);
             });
             return apply_args(fn, coords, args);
           }
@@ -1972,7 +1978,7 @@
               coords.position = val.position;
               let args = val.arguments.map(arg => {
                 if (fn.lazy) {
-                  return idx => this.compose_argument(arg, coords, idx);
+                  return (...extra) => this.compose_argument(arg, coords, extra);
                 } else {
                   return this.compose_argument(arg, coords);
                 }

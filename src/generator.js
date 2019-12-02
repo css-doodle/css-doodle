@@ -67,7 +67,7 @@ class Rules {
     return `#${ cell_id(x, y, z) }${ pseudo }`;
   }
 
-  compose_argument(argument, coords, idx) {
+  compose_argument(argument, coords, extra = []) {
     let result = argument.map(arg => {
       if (arg.type == 'text') {
         return arg.value;
@@ -75,12 +75,12 @@ class Rules {
       else if (arg.type == 'func') {
         let fn = this.pick_func(arg.name.substr(1));
         if (fn) {
-          coords.idx = idx;
+          coords.extra = extra;
           coords.position = arg.position;
           let args = arg.arguments.map(n => {
             return fn.lazy
-              ? idx => this.compose_argument(n, coords, idx)
-              : this.compose_argument(n, coords, idx);
+              ? (...extra) => this.compose_argument(n, coords, extra)
+              : this.compose_argument(n, coords, extra);
           });
           return apply_args(fn, coords, args);
         }
@@ -107,7 +107,7 @@ class Rules {
             coords.position = val.position;
             let args = val.arguments.map(arg => {
               if (fn.lazy) {
-                return idx => this.compose_argument(arg, coords, idx);
+                return (...extra) => this.compose_argument(arg, coords, extra);
               } else {
                 return this.compose_argument(arg, coords);
               }

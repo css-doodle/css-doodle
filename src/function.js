@@ -50,8 +50,12 @@ const Expose = {
     return _ => cell_id(x, y, z);
   },
 
-  n({ idx }) {
-    return _ => idx || 0;
+  n({ extra }) {
+    return _ => extra[0] || 0;
+  },
+
+  N({ extra }) {
+    return _ => extra[1] || 0;
   },
 
   pick({ context }) {
@@ -60,18 +64,19 @@ const Expose = {
     ));
   },
 
-  ['pick-n']({ idx, context, position }) {
+  ['pick-n']({ context, extra, position }) {
     let counter = 'pn-counter' + position;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
       let max = args.length;
+      let [ idx ] = extra;
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       return context.last_pick = args[pos];
     });
   },
 
-  ['pick-d']({ idx, context, position }) {
+  ['pick-d']({ context, extra, position }) {
     let counter = 'pd-counter' + position;
     let values = 'pd-values' + position;
     return expand((...args) => {
@@ -81,6 +86,7 @@ const Expose = {
         context[values] = shuffle(args);
       }
       let max = args.length;
+      let [ idx ] = extra;
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       return context.last_pick = context[values][pos];
     });
@@ -93,19 +99,19 @@ const Expose = {
   multiple: lazy((n, action) => {
     if (!action || !n) return '';
     let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1)).join(',');
+    return sequence(count, i => action(i + 1, count)).join(',');
   }),
 
   ['multiple-with-space']: lazy((n, action) => {
     if (!action || !n) return '';
     let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1)).join(' ');
+    return sequence(count, i => action(i + 1, count)).join(' ');
   }),
 
   repeat: lazy((n, action) => {
     if (!action || !n) return '';
     let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1)).join('');
+    return sequence(count, i => action(i + 1, count)).join('');
   }),
 
   rand({ context }) {
