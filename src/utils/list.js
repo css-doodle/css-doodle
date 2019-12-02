@@ -6,8 +6,8 @@ export function join(arr, spliter = '\n') {
   return (arr || []).join(spliter);
 }
 
-export function last(arr) {
-  return arr[arr.length - 1];
+export function last(arr, n = 1) {
+  return arr[arr.length - n];
 }
 
 export function first(arr) {

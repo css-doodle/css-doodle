@@ -1,7 +1,7 @@
 import { create_svg_url, normalize_svg } from './svg';
 
 import { pick, rand, unique_id } from './utils/random';
-import { shuffle } from './utils/list';
+import { shuffle, last } from './utils/list';
 import { cell_id, is_letter, alias_for } from './utils/index';
 import { lazy, clamp, sequence } from './utils/index';
 
@@ -59,9 +59,12 @@ const Expose = {
   },
 
   pick({ context }) {
-    return expand((...args) => (
-      context.last_pick = pick(args)
-    ));
+    return expand((...args) => {
+      let value = pick(args);
+      if (!context.last_pick) context.last_pick = [];
+      context.last_pick.push(value);
+      return value;
+    });
   },
 
   ['pick-n']({ context, extra, position }) {
@@ -70,9 +73,12 @@ const Expose = {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
       let max = args.length;
-      let [ idx ] = extra;
+      let [ idx ] = extra || [];
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
-      return context.last_pick = args[pos];
+      let value = args[pos];
+      if (!context.last_pick) context.last_pick = [];
+      context.last_pick.push(value);
+      return value;
     });
   },
 
@@ -86,14 +92,17 @@ const Expose = {
         context[values] = shuffle(args);
       }
       let max = args.length;
-      let [ idx ] = extra;
+      let [ idx ] = extra || [];
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
-      return context.last_pick = context[values][pos];
+      let value = context[values][pos];
+      if (!context.last_pick) context.last_pick = [];
+      context.last_pick.push(value);
+      return value;
     });
   },
 
   ['last-pick']({ context }) {
-    return () => context.last_pick;
+    return (n = 1) => last(context.last_pick, n)
   },
 
   multiple: lazy((n, action) => {
@@ -120,7 +129,9 @@ const Expose = {
         ? by_charcode
         : by_unit;
       let value = transform_type(rand).apply(null, args);
-      return context.last_rand = value;
+      if (!context.last_rand) context.last_rand = [];
+      context.last_rand.push(value);
+      return value;
     };
   },
 
@@ -132,12 +143,14 @@ const Expose = {
       let value = parseInt(
         transform_type(rand).apply(null, args)
       );
-      return context.last_rand = value;
+      if (!context.last_rand) context.last_rand = [];
+      context.last_rand.push(value);
+      return value;
     }
   },
 
   ['last-rand']({ context }) {
-    return () => context.last_rand;
+    return (n = 1) => last(context.last_rand, n)
   },
 
   calc() {
