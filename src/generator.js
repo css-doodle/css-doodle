@@ -19,6 +19,10 @@ function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
 }
 
+function is_nil(s) {
+  return s === undefined || s === null;
+}
+
 class Rules {
 
   constructor(tokens) {
@@ -112,7 +116,10 @@ class Rules {
                 return this.compose_argument(arg, coords);
               }
             });
-            result += apply_args(fn, coords, args);
+            let output = apply_args(fn, coords, args);
+            if (!is_nil(output)) {
+              result += output;
+            }
           }
         }
       }
