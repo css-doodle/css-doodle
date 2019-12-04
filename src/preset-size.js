@@ -78,7 +78,7 @@ const unit = 'mm';
 function get_preset(name, mode) {
   name = String(name).toLowerCase();
 
-  // Default to landspace mode
+  // Default to landscape mode
   let [h, w] = presets[name] || [];
 
   if (modes[mode] == 'p') {
