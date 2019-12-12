@@ -173,6 +173,14 @@ const shapes =  {
     ));
   },
 
+  drop() {
+    return polygon(t => rotate(
+      sin(t),
+      (1 + sin(t)) * cos(t) / 1.4,
+      90
+    ));
+  },
+
   pear() {
     return polygon(t => [
       sin(t),
