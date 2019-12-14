@@ -1,7 +1,7 @@
 import { create_svg_url, normalize_svg } from './svg';
 
 import { pick, rand, unique_id } from './utils/random';
-import { shuffle, last } from './utils/list';
+import { shuffle } from './utils/list';
 import { cell_id, is_letter, alias_for } from './utils/index';
 import { lazy, clamp, sequence } from './utils/index';
 
@@ -9,6 +9,7 @@ import by_unit from './utils/by-unit';
 import by_charcode from './utils/by-charcode';
 import calc from './utils/calc';
 import expand from './utils/expand';
+import Stack from './utils/stack';
 
 import Shapes from './shapes';
 
@@ -58,12 +59,21 @@ const Expose = {
     return _ => extra[1] || 0;
   },
 
+  repeat: (
+    makeSequence('')
+  ),
+
+  multiple: (
+    makeSequence(',')
+  ),
+
+  ['multiple-with-space']: (
+    makeSequence(' ')
+  ),
+
   pick({ context }) {
     return expand((...args) => {
-      let value = pick(args);
-      if (!context.last_pick) context.last_pick = [];
-      context.last_pick.push(value);
-      return value;
+      return pushStack(context, 'last_pick', pick(args));
     });
   },
 
@@ -76,9 +86,7 @@ const Expose = {
       let [ idx ] = extra || [];
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       let value = args[pos];
-      if (!context.last_pick) context.last_pick = [];
-      context.last_pick.push(value);
-      return value;
+      return pushStack(context, 'last_pick', value);
     });
   },
 
@@ -95,33 +103,16 @@ const Expose = {
       let [ idx ] = extra || [];
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       let value = context[values][pos];
-      if (!context.last_pick) context.last_pick = [];
-      context.last_pick.push(value);
-      return value;
+      return pushStack(context, 'last_pick', value);
     });
   },
 
   ['last-pick']({ context }) {
-    return (n = 1) => last(context.last_pick, n)
+    return (n = 1) => {
+      let stack = context.last_pick;
+      return stack ? stack.last(n) : '';
+    };
   },
-
-  multiple: lazy((n, action) => {
-    if (!action || !n) return '';
-    let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1, count)).join(',');
-  }),
-
-  ['multiple-with-space']: lazy((n, action) => {
-    if (!action || !n) return '';
-    let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1, count)).join(' ');
-  }),
-
-  repeat: lazy((n, action) => {
-    if (!action || !n) return '';
-    let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1, count)).join('');
-  }),
 
   rand({ context }) {
     return (...args) => {
@@ -129,9 +120,7 @@ const Expose = {
         ? by_charcode
         : by_unit;
       let value = transform_type(rand).apply(null, args);
-      if (!context.last_rand) context.last_rand = [];
-      context.last_rand.push(value);
-      return value;
+      return pushStack(context, 'last_rand', value);
     };
   },
 
@@ -143,14 +132,15 @@ const Expose = {
       let value = parseInt(
         transform_type(rand).apply(null, args)
       );
-      if (!context.last_rand) context.last_rand = [];
-      context.last_rand.push(value);
-      return value;
+      return pushStack(context, 'last_rand', value);
     }
   },
 
   ['last-rand']({ context }) {
-    return (n = 1) => last(context.last_rand, n)
+    return (n = 1) => {
+      let stack = context.last_rand;
+      return stack ? stack.last(n) : '';
+    };
   },
 
   calc() {
@@ -190,8 +180,22 @@ const Expose = {
       }
       return '';
     });
-  }
+  },
 
+};
+
+function makeSequence(c) {
+  return lazy((n, action) => {
+    if (!action || !n) return '';
+    let count = clamp(n(), 0, 65536);
+    return sequence(count, i => action(i + 1, count)).join(c)
+  });
+}
+
+function pushStack(context, name, value) {
+  if (!context[name]) context[name] = new Stack();
+  context[name].push(value);
+  return value;
 }
 
 export default alias_for(Expose, {
@@ -214,7 +218,7 @@ export default alias_for(Expose, {
   'y':  'col',
   'z':  'depth',
 
-  's': 'size',
+  's':  'size',
   'sx': 'size-row',
   'sy': 'size-col',
   'sz': 'size-depth',
