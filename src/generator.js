@@ -218,10 +218,12 @@ class Rules {
     return rule;
   }
 
-  compose(coords, tokens) {
+  compose(coords, tokens, initial) {
     this.coords.push(coords);
     (tokens || this.tokens).forEach((token, i) => {
       if (token.skip) return false;
+      if (initial && this.grid) return false;
+
       switch (token.type) {
         case 'rule':
           this.add_rule(
@@ -329,10 +331,12 @@ export default
 function generator(tokens, grid_size) {
   let rules = new Rules(tokens);
   let context = {};
+
   rules.compose({
     x: 1, y: 1, z: 1, count: 1, context: {},
     grid: { x: 1, y: 1, z: 1, count: 1 }
-  });
+  }, null, true);
+
   let { grid } = rules.output();
   if (grid) grid_size = grid;
   rules.reset();
