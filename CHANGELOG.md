@@ -1,3 +1,18 @@
+## 0.7.7
+
+### Changes
+
+* Modify the name shape `pear` to `drop` and add rotation.
+* Limit size of the lp and lr to 20.
+
+### Fixes
+
+* Fix unexpectable bug in Chrome.
+
+<br /> <br />
+
+
+
 ## 0.7.6
 
 ### Features

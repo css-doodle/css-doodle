@@ -1109,6 +1109,48 @@
     });
   });
 
+  class Node {
+    constructor(data) {
+      this.prev = this.next = null;
+      this.data = data;
+    }
+  }
+
+  class Stack {
+    constructor(limit = 20) {
+      this._limit = limit;
+      this._size = 0;
+    }
+
+    push(data) {
+      if (this._size >= this._limit) {
+        this.root = this.root.next;
+        this.root.prev = null;
+      }
+
+      let node = new Node(data);
+
+      if (!this.root) {
+        this.root = this.tail = node;
+      } else {
+        node.prev = this.tail;
+        this.tail.next = node;
+        this.tail = node;
+      }
+
+      this._size++;
+    }
+
+    last(n = 1) {
+      let node = this.tail;
+      while (--n) {
+        if (!node.prev) break;
+        node = node.prev;
+      }
+      return node.data;
+    }
+  }
+
   const { cos, sin, sqrt, pow, PI } = Math;
   const DEG = PI / 180;
 
@@ -1380,12 +1422,21 @@
       return _ => extra[1] || 0;
     },
 
+    repeat: (
+      makeSequence('')
+    ),
+
+    multiple: (
+      makeSequence(',')
+    ),
+
+    ['multiple-with-space']: (
+      makeSequence(' ')
+    ),
+
     pick({ context }) {
       return expand((...args) => {
-        let value = pick(args);
-        if (!context.last_pick) context.last_pick = [];
-        context.last_pick.push(value);
-        return value;
+        return pushStack(context, 'last_pick', pick(args));
       });
     },
 
@@ -1398,9 +1449,7 @@
         let [ idx ] = extra || [];
         let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         let value = args[pos];
-        if (!context.last_pick) context.last_pick = [];
-        context.last_pick.push(value);
-        return value;
+        return pushStack(context, 'last_pick', value);
       });
     },
 
@@ -1417,33 +1466,16 @@
         let [ idx ] = extra || [];
         let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         let value = context[values][pos];
-        if (!context.last_pick) context.last_pick = [];
-        context.last_pick.push(value);
-        return value;
+        return pushStack(context, 'last_pick', value);
       });
     },
 
     ['last-pick']({ context }) {
-      return (n = 1) => last(context.last_pick, n)
+      return (n = 1) => {
+        let stack = context.last_pick;
+        return stack ? stack.last(n) : '';
+      };
     },
-
-    multiple: lazy((n, action) => {
-      if (!action || !n) return '';
-      let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1, count)).join(',');
-    }),
-
-    ['multiple-with-space']: lazy((n, action) => {
-      if (!action || !n) return '';
-      let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1, count)).join(' ');
-    }),
-
-    repeat: lazy((n, action) => {
-      if (!action || !n) return '';
-      let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1, count)).join('');
-    }),
 
     rand({ context }) {
       return (...args) => {
@@ -1451,9 +1483,7 @@
           ? by_charcode
           : by_unit;
         let value = transform_type(rand).apply(null, args);
-        if (!context.last_rand) context.last_rand = [];
-        context.last_rand.push(value);
-        return value;
+        return pushStack(context, 'last_rand', value);
       };
     },
 
@@ -1465,14 +1495,15 @@
         let value = parseInt(
           transform_type(rand).apply(null, args)
         );
-        if (!context.last_rand) context.last_rand = [];
-        context.last_rand.push(value);
-        return value;
+        return pushStack(context, 'last_rand', value);
       }
     },
 
     ['last-rand']({ context }) {
-      return (n = 1) => last(context.last_rand, n)
+      return (n = 1) => {
+        let stack = context.last_rand;
+        return stack ? stack.last(n) : '';
+      };
     },
 
     calc() {
@@ -1512,9 +1543,23 @@
         }
         return '';
       });
-    }
+    },
 
   };
+
+  function makeSequence(c) {
+    return lazy((n, action) => {
+      if (!action || !n) return '';
+      let count = clamp(n(), 0, 65536);
+      return sequence(count, i => action(i + 1, count)).join(c)
+    });
+  }
+
+  function pushStack(context, name, value) {
+    if (!context[name]) context[name] = new Stack();
+    context[name].push(value);
+    return value;
+  }
 
   var Func = alias_for(Expose, {
     'm':  'multiple',
@@ -1536,7 +1581,7 @@
     'y':  'col',
     'z':  'depth',
 
-    's': 'size',
+    's':  'size',
     'sx': 'size-row',
     'sy': 'size-col',
     'sz': 'size-depth',
@@ -2110,10 +2155,12 @@
       return rule;
     }
 
-    compose(coords, tokens) {
+    compose(coords, tokens, initial) {
       this.coords.push(coords);
       (tokens || this.tokens).forEach((token, i) => {
         if (token.skip) return false;
+        if (initial && this.grid) return false;
+
         switch (token.type) {
           case 'rule':
             this.add_rule(
@@ -2220,10 +2267,12 @@
   function generator(tokens, grid_size) {
     let rules = new Rules(tokens);
     let context = {};
+
     rules.compose({
       x: 1, y: 1, z: 1, count: 1, context: {},
       grid: { x: 1, y: 1, z: 1, count: 1 }
-    });
+    }, null, true);
+
     let { grid } = rules.output();
     if (grid) grid_size = grid;
     rules.reset();
