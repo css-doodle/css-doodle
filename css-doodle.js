@@ -2404,7 +2404,7 @@
         position: relative;
         line-height: 1;
         display: grid;
-        place-content: center;
+        place-items: center;
       }
     `;
     }
