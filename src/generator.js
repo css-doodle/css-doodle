@@ -31,6 +31,7 @@ class Rules {
     this.props = {};
     this.keyframes = {};
     this.grid = null;
+    this.is_grid_defined = false;
     this.coords = [];
     this.reset();
   }
@@ -195,6 +196,13 @@ class Rules {
           if (is_host_selector(selector)) {
             this.grid = transformed.grid;
             rule = transformed.size || '';
+            this.is_grid_defined = true;
+          } else {
+            rule = '';;
+            if (!this.is_grid_defined) {
+              this.grid = transformed.grid;
+              this.add_rule(':host', transformed.size || '');
+            }
           }
           break;
         }
