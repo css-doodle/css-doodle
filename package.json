@@ -29,6 +29,9 @@
     "rollup": "^1.27.13",
     "terser": "^4.4.2"
   },
+  "files": [
+    "css-doodle*.js"
+  ],
   "keywords": [
     "css",
     "web-components"
