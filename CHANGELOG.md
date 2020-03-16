@@ -1,3 +1,18 @@
+## 0.8.0
+
+### Features
+
+* Add top-level grid definition
+* Add stripe() function for gradients
+
+### Changes
+
+* Use place-items instead of place-content for pseudo elements.
+
+<br /> <br />
+
+
+
 ## 0.7.7
 
 ### Changes
