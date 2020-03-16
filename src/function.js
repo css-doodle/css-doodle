@@ -143,6 +143,20 @@ const Expose = {
     };
   },
 
+  stripe() {
+    return (...colors) => {
+      let max = colors.length;
+      if (!max) {
+        return '';
+      }
+      let n = 100 / max;
+      return colors
+        .filter(n => !!n)
+        .map((color, i) => `${color} 0 ${n * (i + 1)}%`)
+        .join(',');
+    }
+  },
+
   calc() {
     return value => calc(value);
   },
@@ -230,5 +244,8 @@ export default alias_for(Expose, {
   'multi': 'multiple',
   'pick-by-turn': 'pick-n',
   'max-row': 'size-row',
-  'max-col': 'size-col'
+  'max-col': 'size-col',
+
+  // error prone
+  'stripes': 'stripe'
 });
