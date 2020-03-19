@@ -2,8 +2,9 @@
 
 ### Features
 
-* Add top-level grid definition
-* Add stripe() function for gradients
+* Add top-level grid definition.
+* Add stripe() function for gradients.
+* Make function arguments less error prone, e.g. trailing commas.
 
 ### Changes
 
