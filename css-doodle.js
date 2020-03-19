@@ -137,6 +137,14 @@
     return arr.reduce((acc, x) => acc.concat(fn(x)), []);
   }
 
+  function remove_empty_values(arr) {
+    return arr.filter(v => (
+      v !== undefined &&
+      v !== null &&
+      String(v).trim().length
+    ));
+  }
+
   const Tokens = {
     func(name = '') {
       return {
@@ -1376,6 +1384,58 @@
 
   };
 
+  const is_seperator = c => /[,，\s]/.test(c);
+
+  function skip_seperator(it) {
+    while (!it.end()) {
+      if (!is_seperator(it.curr(1))) break;
+      else it.next();
+    }
+  }
+
+  function parse$2(input) {
+    const it = iterator(input);
+    const result = [], stack = [];
+    let group = '';
+
+    while (!it.end()) {
+      let c = it.curr();
+      if (c == '(') {
+        group += c;
+        stack.push(c);
+      }
+
+      else if (c == ')') {
+        group += c;
+        if (stack.length) {
+          stack.pop();
+        }
+      }
+
+      else if (stack.length) {
+        group += c;
+      }
+
+      else if (is_seperator(c)) {
+        result.push(group);
+        group = '';
+        skip_seperator(it);
+      }
+
+      else {
+        group += c;
+      }
+
+      it.next();
+    }
+
+    if (group) {
+      result.push(group);
+    }
+
+    return result;
+  }
+
   const Expose = {
 
     index({ count }) {
@@ -1509,13 +1569,27 @@
     stripe() {
       return (...colors) => {
         let max = colors.length;
+        let default_count = 0;
+        let custom_sizes = [];
+        let prev;
         if (!max) {
           return '';
         }
-        let n = 100 / max;
+        colors.forEach(step => {
+          let [_, size] = parse$2(step);
+          if (size !== undefined) custom_sizes.push(size);
+          else default_count += 1;
+        });
+        let default_size = custom_sizes.length
+          ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
+          : `100% / ${max}`;
         return colors
-          .filter(n => !!n)
-          .map((color, i) => `${color} 0 ${n * (i + 1)}%`)
+          .map((step, i) => {
+            let [color, size] = parse$2(step);
+            let prefix = prev ? (prev + ' + ') : '';
+            prev = prefix + (size !== undefined ? size : default_size);
+            return `${color} 0 calc(${ prev })`
+          })
           .join(',');
       }
     },
@@ -1612,58 +1686,6 @@
     // error prone
     'stripes': 'stripe'
   });
-
-  const is_seperator = c => /[,，\s]/.test(c);
-
-  function skip_seperator(it) {
-    while (!it.end()) {
-      if (!is_seperator(it.curr(1))) break;
-      else it.next();
-    }
-  }
-
-  function parse$2(input) {
-    const it = iterator(input);
-    const result = [], stack = [];
-    let group = '';
-
-    while (!it.end()) {
-      let c = it.curr();
-      if (c == '(') {
-        group += c;
-        stack.push(c);
-      }
-
-      else if (c == ')') {
-        group += c;
-        if (stack.length) {
-          stack.pop();
-        }
-      }
-
-      else if (stack.length) {
-        group += c;
-      }
-
-      else if (is_seperator(c)) {
-        result.push(group);
-        group = '';
-        skip_seperator(it);
-      }
-
-      else {
-        group += c;
-      }
-
-      it.next();
-    }
-
-    if (group) {
-      result.push(group);
-    }
-
-    return result;
-  }
 
   let all = [];
 
@@ -2071,6 +2093,7 @@
                   return this.compose_argument(arg, coords);
                 }
               });
+              args = remove_empty_values(args);
               let output = apply_args(fn, coords, args);
               if (!is_nil(output)) {
                 result += output;

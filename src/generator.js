@@ -5,7 +5,7 @@ import MathFunc from './math';
 import prefixer from './prefixer';
 
 import { apply_args, maybe, cell_id } from './utils/index.js';
-import { join, make_array } from './utils/list';
+import { join, make_array, remove_empty_values } from './utils/list';
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -117,6 +117,7 @@ class Rules {
                 return this.compose_argument(arg, coords);
               }
             });
+            args = remove_empty_values(args);
             let output = apply_args(fn, coords, args);
             if (!is_nil(output)) {
               result += output;

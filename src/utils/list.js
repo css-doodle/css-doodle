@@ -34,3 +34,11 @@ export function flat_map(arr, fn) {
   if (Array.prototype.flatMap) return arr.flatMap(fn);
   return arr.reduce((acc, x) => acc.concat(fn(x)), []);
 }
+
+export function remove_empty_values(arr) {
+  return arr.filter(v => (
+    v !== undefined &&
+    v !== null &&
+    String(v).trim().length
+  ));
+}
