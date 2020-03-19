@@ -12,6 +12,7 @@ import expand from './utils/expand';
 import Stack from './utils/stack';
 
 import Shapes from './shapes';
+import parse_value_group from './parser/parse-value-group';
 
 const Expose = {
 
@@ -146,13 +147,27 @@ const Expose = {
   stripe() {
     return (...colors) => {
       let max = colors.length;
+      let default_count = 0;
+      let custom_sizes = [];
+      let prev;
       if (!max) {
         return '';
       }
-      let n = 100 / max;
+      colors.forEach(step => {
+        let [_, size] = parse_value_group(step);
+        if (size !== undefined) custom_sizes.push(size);
+        else default_count += 1;
+      });
+      let default_size = custom_sizes.length
+        ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
+        : `100% / ${max}`
       return colors
-        .filter(n => !!n)
-        .map((color, i) => `${color} 0 ${n * (i + 1)}%`)
+        .map((step, i) => {
+          let [color, size] = parse_value_group(step);
+          let prefix = prev ? (prev + ' + ') : '';
+          prev = prefix + (size !== undefined ? size : default_size);
+          return `${color} 0 calc(${ prev })`
+        })
         .join(',');
     }
   },
