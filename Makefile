@@ -8,7 +8,6 @@ all: test build minify
 
 build: $(LIB)
 	@npm run build
-	@./tools/tab2spaces $(TARGET)
 
 minify: $(TARGET)
 	@npm run minify

@@ -8,7 +8,7 @@
 
 ### Changes
 
-* Increase the gird size up to 64x64.
+* Increase the grid size up to 64x64.
 * Use place-items instead of place-content for pseudo elements.
 
 <br /> <br />
