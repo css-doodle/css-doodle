@@ -262,5 +262,6 @@ export default alias_for(Expose, {
   'max-col': 'size-col',
 
   // error prone
-  'stripes': 'stripe'
+  'stripes': 'stripe',
+  'strip':   'stripe',
 });
