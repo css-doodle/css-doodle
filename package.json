@@ -7,8 +7,8 @@
     "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
     "minify": "terser --compress --mangle --output=css-doodle.min.js --ecma 6 -- css-doodle.js",
     "trim": "./tools/trim css-doodle.min.js",
-    "start": "karma start",
-    "test": "karma start --single-run"
+    "test": "node -r esm node_modules/.bin/ava --verbose",
+    "test:watch": "npm run test -- --watch"
   },
   "repository": {
     "type": "git",
@@ -19,13 +19,8 @@
     "url": "https://opencollective.com/css-doodle"
   },
   "devDependencies": {
-    "esm": "^3.2.4",
-    "jasmine-core": "^3.2.1",
-    "karma": "^4.1.0",
-    "karma-chrome-launcher": "^2.2.0",
-    "karma-jasmine": "^2.0.1",
-    "karma-mocha-reporter": "^2.2.5",
-    "karma-rollup-preprocessor": "^7.0.0",
+    "ava": "^3.3.0",
+    "esm": "^3.2.25",
     "rollup": "^2.1.0",
     "terser": "^4.6.7"
   },
