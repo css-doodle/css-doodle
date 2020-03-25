@@ -24,9 +24,10 @@ describe('arguments', () => {
     let parsed = parse_css(`
       prop: @fun('calc("1 + 2")')
     `);
-    expect(get_arguments(parsed)).toEqual([
+
+    expect(JSON.stringify(get_arguments(parsed))).toEqual(JSON.stringify([
       [{ type: 'text', value: "calc(\"1 + 2\")" }]
-    ])
+    ]))
   });
 
   it('should ignore invalid arguments', () => {
@@ -53,22 +54,23 @@ describe('arguments', () => {
       prop: @func((fun(v1, v2)));
     `);
     let parsed_c = parse_css('prop: @func(`fun(v1, v2)`)');
-    const result = [
+    const result = JSON.stringify([
       [{ type: 'text', value: 'fun(v1, v2)' }]
-    ];
-    expect(get_arguments(parsed_a)).toEqual(result);
-    expect(get_arguments(parsed_b)).toEqual(result);
-    expect(get_arguments(parsed_c)).toEqual(result);
+    ]);
+
+    expect(JSON.stringify(get_arguments(parsed_a))).toEqual(result);
+    expect(JSON.stringify(get_arguments(parsed_b))).toEqual(result);
+    expect(JSON.stringify(get_arguments(parsed_c))).toEqual(result);
   });
 
   it('should keep the types of input args', () => {
     let parsed = parse_css(`
       prop: @fun(2, "3");
     `);
-    expect(get_arguments(parsed)).toEqual([
+    expect(JSON.stringify(get_arguments(parsed))).toEqual(JSON.stringify([
       [{ type: 'text', value: 2 }],
       [{ type: 'text', value: "3" }]
-    ]);
+    ]));
   });
 
 });
