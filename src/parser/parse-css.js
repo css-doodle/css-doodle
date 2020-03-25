@@ -327,7 +327,7 @@ function normalize_argument(group) {
 
 function seperate_func_name(name) {
   let fname = '', extra = '';
-  if (/\D$/.test(name)) {
+  if (/\D$/.test(name) || Math[name.substr(1)]) {
     return { fname: name, extra }
   }
   for (let i = name.length - 1; i >= 0; i--) {
