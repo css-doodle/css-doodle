@@ -217,7 +217,7 @@ function read_property(it) {
   return prop;
 }
 
-function read_arguments(it) {
+function read_arguments(it, composition) {
   let args = [], group = [], stack = [], arg = '', c;
   while (!it.end()) {
     c = it.curr();
@@ -269,6 +269,7 @@ function read_arguments(it) {
         }
 
         args.push(normalize_argument(group));
+
         [group, arg] = [[], ''];
 
         if (c == ')') break;
@@ -280,8 +281,18 @@ function read_arguments(it) {
       }
       arg += c;
     }
-    it.next();
+
+    if (composition && it.curr() == ')' && !stack.length) {
+      if (group.length) {
+        args.push(normalize_argument(group));
+      }
+      break;
+    }
+    else {
+      it.next();
+    }
   }
+
   return args;
 }
 
@@ -303,12 +314,14 @@ function normalize_argument(group) {
     let cf = first(ft.value);
     let ce  = last(ed.value);
     if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-      if (is.pair(cf) && is.pair_of(cf, ce)) {
+      if (is.pair_of(cf, ce)) {
         ft.value = ft.value.slice(1);
         ed.value = ed.value.slice(0, ed.value.length - 1);
+        result.cluster = true;
       }
     }
   }
+
   return result;
 }
 
@@ -337,11 +350,12 @@ function read_func(it) {
 
   while (!it.end()) {
     c = it.curr();
+    let composition = (c == '.' && it.curr(1) == '@');
     let next = it.curr(1);
-    if (c == '(') {
+    if (c == '(' || composition) {
       has_argument = true;
       it.next();
-      func.arguments = read_arguments(it);
+      func.arguments = read_arguments(it, composition);
       break;
     } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
       name += c;

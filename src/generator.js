@@ -3,9 +3,10 @@ import Property from './property';
 import Selector from './selector';
 import MathFunc from './math';
 import prefixer from './prefixer';
+import parse_value_group from './parser/parse-value-group';
 
-import { apply_args, maybe, cell_id } from './utils/index.js';
-import { join, make_array, remove_empty_values } from './utils/list';
+import { maybe, cell_id } from './utils/index.js';
+import { join, first, last, make_array, remove_empty_values } from './utils/list';
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -64,6 +65,27 @@ class Rules {
     return Func[name] || MathFunc[name];
   }
 
+  apply_func(fn, coords, args) {
+    let _fn = fn(...make_array(coords));
+
+    let input = [];
+    args.forEach(arg => {
+      if (!arg.cluster && typeof arg.value == 'string') {
+        input.push(...parse_value_group(arg.value, true));
+      } else {
+        if (typeof arg == 'function') {
+          input.push(arg)
+        } else if (arg && arg.value) {
+          input.push(arg.value);
+        }
+      }
+    });
+
+    input = remove_empty_values(input);
+    let result = _fn(...make_array(input));
+    return result;
+  }
+
   compose_aname(...args) {
     return args.join('-');
   }
@@ -87,19 +109,20 @@ class Rules {
               ? (...extra) => this.compose_argument(n, coords, extra)
               : this.compose_argument(n, coords, extra);
           });
-          return apply_args(fn, coords, args);
+          return this.apply_func(fn, coords, args)
         }
       }
     });
 
-    return (result.length >= 2)
-      ? result.join('')
-      : result[0];
+    return {
+      cluster: argument.cluster,
+      value: (result.length >= 2 ? ({ value: result.join('') }) : result[0])
+    }
   }
 
   compose_value(value, coords) {
     if (!value || !value.reduce) return '';
-    return value.reduce((result, val) => {
+    let ret = value.reduce((result, val) => {
       switch (val.type) {
         case 'text': {
           result += val.value;
@@ -111,14 +134,13 @@ class Rules {
           if (fn) {
             coords.position = val.position;
             let args = val.arguments.map(arg => {
-              if (fn.lazy) {
-                return (...extra) => this.compose_argument(arg, coords, extra);
-              } else {
-                return this.compose_argument(arg, coords);
-              }
+              return fn.lazy
+                ? (...extra) => this.compose_argument(arg, coords, extra)
+                : this.compose_argument(arg, coords);
             });
-            args = remove_empty_values(args);
-            let output = apply_args(fn, coords, args);
+
+            let output = this.apply_func(fn, coords, args);
+
             if (!is_nil(output)) {
               result += output;
             }
@@ -127,6 +149,8 @@ class Rules {
       }
       return result;
     }, '');
+
+    return ret;
   }
 
   compose_rule(token, _coords, selector) {
@@ -268,7 +292,7 @@ class Rules {
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            let result = apply_args(fn, coords, args);
+            let result = this.apply_func(fn, coords, args);
             if (result) {
               this.compose(coords, token.styles);
             }

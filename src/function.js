@@ -3,7 +3,7 @@ import { create_svg_url, normalize_svg } from './svg';
 import { pick, rand, unique_id } from './utils/random';
 import { shuffle } from './utils/list';
 import { cell_id, is_letter, alias_for } from './utils/index';
-import { lazy, clamp, sequence } from './utils/index';
+import { lazy, clamp, sequence, get_value } from './utils/index';
 
 import by_unit from './utils/by-unit';
 import by_charcode from './utils/by-charcode';
@@ -61,20 +61,20 @@ const Expose = {
   },
 
   repeat: (
-    makeSequence('')
+    make_sequence('')
   ),
 
   multiple: (
-    makeSequence(',')
+    make_sequence(',')
   ),
 
   ['multiple-with-space']: (
-    makeSequence(' ')
+    make_sequence(' ')
   ),
 
   pick({ context }) {
     return expand((...args) => {
-      return pushStack(context, 'last_pick', pick(args));
+      return push_stack(context, 'last_pick', pick(args));
     });
   },
 
@@ -87,7 +87,7 @@ const Expose = {
       let [ idx ] = extra || [];
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       let value = args[pos];
-      return pushStack(context, 'last_pick', value);
+      return push_stack(context, 'last_pick', value);
     });
   },
 
@@ -104,7 +104,7 @@ const Expose = {
       let [ idx ] = extra || [];
       let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
       let value = context[values][pos];
-      return pushStack(context, 'last_pick', value);
+      return push_stack(context, 'last_pick', value);
     });
   },
 
@@ -121,7 +121,7 @@ const Expose = {
         ? by_charcode
         : by_unit;
       let value = transform_type(rand).apply(null, args);
-      return pushStack(context, 'last_rand', value);
+      return push_stack(context, 'last_rand', value);
     };
   },
 
@@ -133,7 +133,7 @@ const Expose = {
       let value = parseInt(
         transform_type(rand).apply(null, args)
       );
-      return pushStack(context, 'last_rand', value);
+      return push_stack(context, 'last_rand', value);
     }
   },
 
@@ -145,7 +145,8 @@ const Expose = {
   },
 
   stripe() {
-    return (...colors) => {
+    return (...input) => {
+      let colors = input.map(get_value);
       let max = colors.length;
       let default_count = 0;
       let custom_sizes = [];
@@ -163,33 +164,36 @@ const Expose = {
         : `100% / ${max}`
       return colors
         .map((step, i) => {
-          let [color, size] = parse_value_group(step);
-          let prefix = prev ? (prev + ' + ') : '';
-          prev = prefix + (size !== undefined ? size : default_size);
-          return `${color} 0 calc(${ prev })`
+          if (custom_sizes.length) {
+            let [color, size] = parse_value_group(step);
+            let prefix = prev ? (prev + ' + ') : '';
+            prev = prefix + (size !== undefined ? size : default_size);
+            return `${color} 0 calc(${ prev })`
+          }
+          return `${step} 0 ${100 / max * (i + 1)}%`
         })
         .join(',');
     }
   },
 
   calc() {
-    return value => calc(value);
+    return value => calc(get_value(value));
   },
 
   hex() {
-    return value => parseInt(value).toString(16);
+    return value => parseInt(get_value(value)).toString(16);
   },
 
   svg: lazy(input => {
     if (input === undefined) return '';
-    let svg = normalize_svg(input().trim());
+    let svg = normalize_svg(get_value(input()).trim());
     return create_svg_url(svg);
   }),
 
   ['svg-filter']: lazy(input => {
     if (input === undefined) return '';
     let id = unique_id('filter-');
-    let svg = normalize_svg(input().trim())
+    let svg = normalize_svg(get_value(input()).trim())
       .replace(
         /<filter([\s>])/,
         `<filter id="${ id }"$1`
@@ -198,7 +202,7 @@ const Expose = {
   }),
 
   var() {
-    return value => `var(${ value })`;
+    return value => `var(${ get_value(value) })`;
   },
 
   shape() {
@@ -213,15 +217,15 @@ const Expose = {
 
 };
 
-function makeSequence(c) {
+function make_sequence(c) {
   return lazy((n, action) => {
     if (!action || !n) return '';
-    let count = clamp(n(), 0, 65536);
-    return sequence(count, i => action(i + 1, count)).join(c)
+    let count = clamp(get_value(n()), 0, 65536);
+    return sequence(count, i => get_value(action(i + 1, count))).join(c);
   });
 }
 
-function pushStack(context, name, value) {
+function push_stack(context, name, value) {
   if (!context[name]) context[name] = new Stack();
   context[name].push(value);
   return value;

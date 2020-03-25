@@ -360,7 +360,7 @@
     return prop;
   }
 
-  function read_arguments(it) {
+  function read_arguments(it, composition) {
     let args = [], group = [], stack = [], arg = '', c;
     while (!it.end()) {
       c = it.curr();
@@ -412,6 +412,7 @@
           }
 
           args.push(normalize_argument(group));
+
           [group, arg] = [[], ''];
 
           if (c == ')') break;
@@ -423,8 +424,18 @@
         }
         arg += c;
       }
-      it.next();
+
+      if (composition && it.curr() == ')' && !stack.length) {
+        if (group.length) {
+          args.push(normalize_argument(group));
+        }
+        break;
+      }
+      else {
+        it.next();
+      }
     }
+
     return args;
   }
 
@@ -446,12 +457,14 @@
       let cf = first(ft.value);
       let ce  = last(ed.value);
       if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-        if (is.pair(cf) && is.pair_of(cf, ce)) {
+        if (is.pair_of(cf, ce)) {
           ft.value = ft.value.slice(1);
           ed.value = ed.value.slice(0, ed.value.length - 1);
+          result.cluster = true;
         }
       }
     }
+
     return result;
   }
 
@@ -480,11 +493,12 @@
 
     while (!it.end()) {
       c = it.curr();
+      let composition = (c == '.' && it.curr(1) == '@');
       let next = it.curr(1);
-      if (c == '(') {
+      if (c == '(' || composition) {
         has_argument = true;
         it.next();
-        func.arguments = read_arguments(it);
+        func.arguments = read_arguments(it, composition);
         break;
       } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
         name += c;
@@ -755,12 +769,6 @@
     return Tokens;
   }
 
-  function apply_args(fn, ...args) {
-    return args.reduce((f, arg) =>
-      f.apply(null, make_array(arg)), fn
-    );
-  }
-
   function clamp(num, min, max) {
     return Math.max(min, Math.min(max, num));
   }
@@ -814,6 +822,13 @@
 
   function cell_id(x, y, z) {
     return 'cell-' + x + '-' + y + '-' + z;
+  }
+
+  function get_value(input) {
+    while (input && input.value) {
+      return get_value(input.value);
+    }
+    return input || '';
   }
 
   const [ min, max, total ] = [ 1, 64, 64 * 64 ];
@@ -1384,22 +1399,26 @@
 
   };
 
-  const is_seperator = c => /[,，\s]/.test(c);
+  function is_seperator(c, no_space) {
+    if (no_space) return /[,，]/.test(c);
+    else return /[,，\s]/.test(c);
+  }
 
-  function skip_seperator(it) {
+  function skip_seperator(it, no_space) {
     while (!it.end()) {
-      if (!is_seperator(it.curr(1))) break;
+      if (!is_seperator(it.curr(1), no_space)) break;
       else it.next();
     }
   }
 
-  function parse$2(input) {
+  function parse$2(input, no_space = false) {
     const it = iterator(input);
     const result = [], stack = [];
     let group = '';
 
     while (!it.end()) {
       let c = it.curr();
+      if (c === undefined) break;
       if (c == '(') {
         group += c;
         stack.push(c);
@@ -1416,10 +1435,10 @@
         group += c;
       }
 
-      else if (is_seperator(c)) {
+      else if (is_seperator(c, no_space)) {
         result.push(group);
         group = '';
-        skip_seperator(it);
+        skip_seperator(it, no_space);
       }
 
       else {
@@ -1483,20 +1502,20 @@
     },
 
     repeat: (
-      makeSequence('')
+      make_sequence('')
     ),
 
     multiple: (
-      makeSequence(',')
+      make_sequence(',')
     ),
 
     ['multiple-with-space']: (
-      makeSequence(' ')
+      make_sequence(' ')
     ),
 
     pick({ context }) {
       return expand((...args) => {
-        return pushStack(context, 'last_pick', pick(args));
+        return push_stack(context, 'last_pick', pick(args));
       });
     },
 
@@ -1509,7 +1528,7 @@
         let [ idx ] = extra || [];
         let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         let value = args[pos];
-        return pushStack(context, 'last_pick', value);
+        return push_stack(context, 'last_pick', value);
       });
     },
 
@@ -1526,7 +1545,7 @@
         let [ idx ] = extra || [];
         let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
         let value = context[values][pos];
-        return pushStack(context, 'last_pick', value);
+        return push_stack(context, 'last_pick', value);
       });
     },
 
@@ -1543,7 +1562,7 @@
           ? by_charcode
           : by_unit;
         let value = transform_type(rand).apply(null, args);
-        return pushStack(context, 'last_rand', value);
+        return push_stack(context, 'last_rand', value);
       };
     },
 
@@ -1555,7 +1574,7 @@
         let value = parseInt(
           transform_type(rand).apply(null, args)
         );
-        return pushStack(context, 'last_rand', value);
+        return push_stack(context, 'last_rand', value);
       }
     },
 
@@ -1567,7 +1586,8 @@
     },
 
     stripe() {
-      return (...colors) => {
+      return (...input) => {
+        let colors = input.map(get_value);
         let max = colors.length;
         let default_count = 0;
         let custom_sizes = [];
@@ -1585,33 +1605,36 @@
           : `100% / ${max}`;
         return colors
           .map((step, i) => {
-            let [color, size] = parse$2(step);
-            let prefix = prev ? (prev + ' + ') : '';
-            prev = prefix + (size !== undefined ? size : default_size);
-            return `${color} 0 calc(${ prev })`
+            if (custom_sizes.length) {
+              let [color, size] = parse$2(step);
+              let prefix = prev ? (prev + ' + ') : '';
+              prev = prefix + (size !== undefined ? size : default_size);
+              return `${color} 0 calc(${ prev })`
+            }
+            return `${step} 0 ${100 / max * (i + 1)}%`
           })
           .join(',');
       }
     },
 
     calc() {
-      return value => calc(value);
+      return value => calc(get_value(value));
     },
 
     hex() {
-      return value => parseInt(value).toString(16);
+      return value => parseInt(get_value(value)).toString(16);
     },
 
     svg: lazy(input => {
       if (input === undefined) return '';
-      let svg = normalize_svg(input().trim());
+      let svg = normalize_svg(get_value(input()).trim());
       return create_svg_url(svg);
     }),
 
     ['svg-filter']: lazy(input => {
       if (input === undefined) return '';
       let id = unique_id('filter-');
-      let svg = normalize_svg(input().trim())
+      let svg = normalize_svg(get_value(input()).trim())
         .replace(
           /<filter([\s>])/,
           `<filter id="${ id }"$1`
@@ -1620,7 +1643,7 @@
     }),
 
     var() {
-      return value => `var(${ value })`;
+      return value => `var(${ get_value(value) })`;
     },
 
     shape() {
@@ -1635,15 +1658,15 @@
 
   };
 
-  function makeSequence(c) {
+  function make_sequence(c) {
     return lazy((n, action) => {
       if (!action || !n) return '';
-      let count = clamp(n(), 0, 65536);
-      return sequence(count, i => action(i + 1, count)).join(c)
+      let count = clamp(get_value(n()), 0, 65536);
+      return sequence(count, i => get_value(action(i + 1, count))).join(c);
     });
   }
 
-  function pushStack(context, name, value) {
+  function push_stack(context, name, value) {
     if (!context[name]) context[name] = new Stack();
     context[name].push(value);
     return value;
@@ -1684,7 +1707,8 @@
     'max-col': 'size-col',
 
     // error prone
-    'stripes': 'stripe'
+    'stripes': 'stripe',
+    'strip':   'stripe',
   });
 
   let all = [];
@@ -1977,6 +2001,7 @@
 
   var MathFunc = methods.reduce((expose, n) => {
     expose[n] = () => (...args) => {
+      args = args.map(get_value);
       if (typeof Math[n] === 'number') return Math[n];
       return Math[n].apply(null, args.map(calc));
     };
@@ -2040,6 +2065,27 @@
       return Func[name] || MathFunc[name];
     }
 
+    apply_func(fn, coords, args) {
+      let _fn = fn(...make_array(coords));
+
+      let input = [];
+      args.forEach(arg => {
+        if (!arg.cluster && typeof arg.value == 'string') {
+          input.push(...parse$2(arg.value, true));
+        } else {
+          if (typeof arg == 'function') {
+            input.push(arg);
+          } else if (arg && arg.value) {
+            input.push(arg.value);
+          }
+        }
+      });
+
+      input = remove_empty_values(input);
+      let result = _fn(...make_array(input));
+      return result;
+    }
+
     compose_aname(...args) {
       return args.join('-');
     }
@@ -2063,19 +2109,20 @@
                 ? (...extra) => this.compose_argument(n, coords, extra)
                 : this.compose_argument(n, coords, extra);
             });
-            return apply_args(fn, coords, args);
+            return this.apply_func(fn, coords, args)
           }
         }
       });
 
-      return (result.length >= 2)
-        ? result.join('')
-        : result[0];
+      return {
+        cluster: argument.cluster,
+        value: (result.length >= 2 ? ({ value: result.join('') }) : result[0])
+      }
     }
 
     compose_value(value, coords) {
       if (!value || !value.reduce) return '';
-      return value.reduce((result, val) => {
+      let ret = value.reduce((result, val) => {
         switch (val.type) {
           case 'text': {
             result += val.value;
@@ -2087,14 +2134,13 @@
             if (fn) {
               coords.position = val.position;
               let args = val.arguments.map(arg => {
-                if (fn.lazy) {
-                  return (...extra) => this.compose_argument(arg, coords, extra);
-                } else {
-                  return this.compose_argument(arg, coords);
-                }
+                return fn.lazy
+                  ? (...extra) => this.compose_argument(arg, coords, extra)
+                  : this.compose_argument(arg, coords);
               });
-              args = remove_empty_values(args);
-              let output = apply_args(fn, coords, args);
+
+              let output = this.apply_func(fn, coords, args);
+
               if (!is_nil(output)) {
                 result += output;
               }
@@ -2103,6 +2149,8 @@
         }
         return result;
       }, '');
+
+      return ret;
     }
 
     compose_rule(token, _coords, selector) {
@@ -2243,7 +2291,7 @@
               let args = token.arguments.map(arg => {
                 return this.compose_argument(arg, coords);
               });
-              let result = apply_args(fn, coords, args);
+              let result = this.apply_func(fn, coords, args);
               if (result) {
                 this.compose(coords, token.styles);
               }

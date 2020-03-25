@@ -1,11 +1,5 @@
 import { make_array } from './list';
 
-export function apply_args(fn, ...args) {
-  return args.reduce((f, arg) =>
-    f.apply(null, make_array(arg)), fn
-  );
-}
-
 export function clamp(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
@@ -60,3 +54,11 @@ export function sequence(count, fn) {
 export function cell_id(x, y, z) {
   return 'cell-' + x + '-' + y + '-' + z;
 }
+
+export function get_value(input) {
+  while (input && input.value) {
+    return get_value(input.value);
+  }
+  return input || '';
+}
+
