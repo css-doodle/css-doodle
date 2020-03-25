@@ -1,3 +1,18 @@
+## 0.8.2
+
+### Features
+
+* Support for function composition.
+* Make arguments expandable.
+
+### Fixes
+
+* Fix Math function name like `ln10` and `SQRT2`.
+
+<br /> <br />
+
+
+
 ## 0.8.1
 
 ### Features
