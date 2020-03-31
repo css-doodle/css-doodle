@@ -1,3 +1,18 @@
+## 0.8.4
+
+### Fixes
+
+* Fix grid parsing.
+
+### Changes
+
+* Set default width/height to be `auto`.
+* Export CSSDoodle as the module name for working with Observable.
+
+<br /> <br />
+
+
+
 ## 0.8.2
 
 ### Features
