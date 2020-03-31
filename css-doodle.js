@@ -1904,7 +1904,8 @@
     })(),
 
     ['@grid'](value, options) {
-      let [grid, size] = value.split('/').map(s => s.trim());
+      let [grid, ...size] = value.split('/').map(s => s.trim());
+      size = size.join(' / ');
       return {
         grid: parse_grid(grid),
         size: size ? this['@size'](size, options) : ''
@@ -2221,13 +2222,16 @@
             if (is_host_selector(selector)) {
               this.grid = transformed.grid;
               rule = transformed.size || '';
-              this.is_grid_defined = true;
             } else {
               rule = '';            if (!this.is_grid_defined) {
+                transformed = Property[prop](value, {
+                  is_special_selector: true
+                });
                 this.grid = transformed.grid;
                 this.add_rule(':host', transformed.size || '');
               }
             }
+            this.is_grid_defined = true;
             break;
           }
           case '@place-cell': {

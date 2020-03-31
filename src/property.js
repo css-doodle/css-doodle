@@ -64,7 +64,8 @@ export default {
   })(),
 
   ['@grid'](value, options) {
-    let [grid, size] = value.split('/').map(s => s.trim());
+    let [grid, ...size] = value.split('/').map(s => s.trim());
+    size = size.join(' / ');
     return {
       grid: parse_grid(grid),
       size: size ? this['@size'](size, options) : ''
