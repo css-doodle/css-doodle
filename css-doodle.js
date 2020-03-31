@@ -2490,8 +2490,8 @@
       :host {
         display: block;
         visibility: visible;
-        width: 1em;
-        height: 1em;
+        width: auto;
+        height: auto;
       }
       .container {
         position: relative;
