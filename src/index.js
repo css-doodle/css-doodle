@@ -247,3 +247,16 @@ class Doodle extends HTMLElement {
 if (!customElements.get('css-doodle')) {
   customElements.define('css-doodle', Doodle);
 }
+
+function CSSDoodle(input, ...vars) {
+  let get_value = v =>
+    (v !== undefined && v !== null) ? v : '';
+  let rules = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+  let doodle = document.createElement('css-doodle');
+  if (doodle.update) {
+    doodle.update(rules);
+  }
+  return doodle;
+}
+
+export default CSSDoodle;

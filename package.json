@@ -4,7 +4,7 @@
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
-    "build": "rollup --output.format=umd --output.file=css-doodle.js -- src/index.js",
+    "build": "rollup --output.format=umd --name=CSSDoodle --output.file=css-doodle.js -- src/index.js",
     "minify": "terser --compress --mangle --output=css-doodle.min.js --ecma 6 -- css-doodle.js",
     "trim": "./tools/trim css-doodle.min.js",
     "test": "node -r esm node_modules/.bin/ava --verbose",

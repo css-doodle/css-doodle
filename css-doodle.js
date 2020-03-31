@@ -1,7 +1,8 @@
-(function (factory) {
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
-  factory();
-}((function () { 'use strict';
+  (global = global || self, global.CSSDoodle = factory());
+}(this, (function () { 'use strict';
 
   function iterator(input) {
     let index = 0, col = 1, line = 1;
@@ -2641,5 +2642,18 @@
   if (!customElements.get('css-doodle')) {
     customElements.define('css-doodle', Doodle);
   }
+
+  function CSSDoodle(input, ...vars) {
+    let get_value = v =>
+      (v !== undefined && v !== null) ? v : '';
+    let rules = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+    let doodle = document.createElement('css-doodle');
+    if (doodle.update) {
+      doodle.update(rules);
+    }
+    return doodle;
+  }
+
+  return CSSDoodle;
 
 })));
