@@ -1495,11 +1495,15 @@
     },
 
     n({ extra }) {
-      return _ => extra[0] || 0;
+      return _ => {
+        return extra ? extra[0] : '@n';
+      }
     },
 
     N({ extra }) {
-      return _ => extra[1] || 0;
+      return _ => {
+        return extra ? extra[1] : '@N';
+      }
     },
 
     repeat: (
