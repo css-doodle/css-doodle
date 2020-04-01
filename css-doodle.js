@@ -2407,26 +2407,31 @@
         get_custom_property_value: this.get_custom_property_value.bind(this)
       };
     }
+    load(again) {
+      let compiled;
+      let use = this.getAttribute('use') || '';
+      if (use) use = `@use:${ use };`;
+      if (!this.innerHTML.trim() && !use) return false;
+      try {
+        let parsed = parse$1(use + this.innerHTML, this.extra);
+        this.grid_size = parse_grid(this.getAttribute('grid'));
+        compiled = generator(parsed, this.grid_size);
+        compiled.grid && (this.grid_size = compiled.grid);
+        this.build_grid(compiled);
+      } catch (e) {
+        this.innerHTML = '';
+        console.error(e && e.message || 'Error in css-doodle.');
+      }
+      if (!again && this.hasAttribute('click-to-update')) {
+        this.addEventListener('click', e => this.update());
+      }
+    }
     connectedCallback(again) {
-      setTimeout(() => {
-        let compiled;
-        let use = this.getAttribute('use') || '';
-        if (use) use = `@use:${ use };`;
-        if (!this.innerHTML.trim() && !use) return false;
-        try {
-          let parsed = parse$1(use + this.innerHTML, this.extra);
-          this.grid_size = parse_grid(this.getAttribute('grid'));
-          compiled = generator(parsed, this.grid_size);
-          compiled.grid && (this.grid_size = compiled.grid);
-          this.build_grid(compiled);
-        } catch (e) {
-          this.innerHTML = '';
-          console.error(e && e.message || 'Error in css-doodle.');
-        }
-        if (!again && this.hasAttribute('click-to-update')) {
-          this.addEventListener('click', e => this.update());
-        }
-      });
+      if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
+        this.load();
+      } else {
+        setTimeout(() => this.load(again));
+      }
     }
 
     get_custom_property_value(name) {
