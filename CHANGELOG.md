@@ -1,3 +1,14 @@
+## 0.8.5
+
+### Fixes
+
+* Fix blink on reinitialization.
+* Fix the value of `@n` and `@M` with no context.
+
+<br /> <br />
+
+
+
 ## 0.8.4
 
 ### Fixes
