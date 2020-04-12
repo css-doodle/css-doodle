@@ -33,7 +33,7 @@ class Doodle extends HTMLElement {
   }
   connectedCallback(again) {
     if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
-      this.load();
+      this.load(again);
     } else {
       setTimeout(() => this.load(again));
     }
