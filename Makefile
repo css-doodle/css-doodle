@@ -4,7 +4,7 @@ TARGET := ./css-doodle.js
 TARGET_MIN := ./css-doodle.min.js
 LIB := ./node_modules
 
-all: test build minify
+all: build minify
 
 build: $(LIB)
 	@npm run build

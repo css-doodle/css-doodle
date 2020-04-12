@@ -832,7 +832,7 @@
     return input || '';
   }
 
-  const [ min, max, total ] = [ 1, 64, 64 * 64 ];
+  const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
     let [x, y, z] = (size + '')
@@ -2452,7 +2452,7 @@
     }
     connectedCallback(again) {
       if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
-        this.load();
+        this.load(again);
       } else {
         setTimeout(() => this.load(again));
       }
