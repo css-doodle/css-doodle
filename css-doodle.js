@@ -855,15 +855,20 @@
     );
   }
 
-  function create_svg_url(svg, id) {
-    if (id) {
-      let blob = new Blob([svg], { type: 'image/svg+xml' });
-      let url = URL.createObjectURL(blob);
-      return `url(${ url }#${ id })`;
-    }
-    else {
-      let encoded = encodeURIComponent(svg);
-      return `url("data:image/svg+xml;utf8,${ encoded }")`;
+  const isFirefox = typeof InstallTrigger !== 'undefined';
+
+  function create_svg_url(svg) {
+    let encoded = encodeURIComponent(svg);
+    return `url("data:image/svg+xml;utf8,${ encoded }")`;
+  }
+
+  function create_svg_filter_url(svg, id) {
+    if(isFirefox) {
+      return `url('data:image/svg+xml;utf8,${svg}#${id}')`;
+    } else {
+      const container = document.querySelector("#filterSvgContainer") || create_svg_filter_container();
+      container.insertAdjacentHTML('beforeend', svg);
+      return `url('#${ id }')`;
     }
   }
 
@@ -876,6 +881,21 @@
       input = input.replace(/<svg([\s>])/, `<svg ${ xmlns }$1`);
     }
     return input;
+  }
+
+  function cleanup_svg_filters() {
+    const container = document.querySelector("#filterSvgContainer");
+    while (container && container.firstChild) {
+      container.firstChild.remove();
+    }
+  }
+
+  function create_svg_filter_container() {
+    const container = document.createElement("div");
+    container.id = "filterSvgContainer";
+    container.setAttribute("style", "display: none;");
+    document.body.insertAdjacentElement('beforeend', container);
+    return container;
   }
 
   function lerp(start, end, t) {
@@ -1644,7 +1664,7 @@
           /<filter([\s>])/,
           `<filter id="${ id }"$1`
         );
-      return create_svg_url(svg, id);
+      return create_svg_filter_url(svg, id);
     }),
 
     var() {
@@ -2567,6 +2587,8 @@
       if (!this.grid_size) {
         this.grid_size = parse_grid(this.getAttribute('grid'));
       }
+
+      cleanup_svg_filters();
 
       const compiled = generator(parse$1(use + styles, this.extra), this.grid_size);
 

@@ -3,6 +3,7 @@ import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
 import { sequence, cell_id } from './utils/index';
+import {cleanup_svg_filters} from "./svg";
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -168,6 +169,8 @@ class Doodle extends HTMLElement {
     if (!this.grid_size) {
       this.grid_size = parse_grid(this.getAttribute('grid'));
     }
+
+    cleanup_svg_filters();
 
     const compiled = generator(parse_css(use + styles, this.extra), this.grid_size);
 
