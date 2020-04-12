@@ -1,4 +1,4 @@
-import { create_svg_url, normalize_svg } from './svg';
+import { create_svg_url, normalize_svg, create_svg_filter_url } from './svg';
 
 import { pick, rand, unique_id } from './utils/random';
 import { shuffle } from './utils/list';
@@ -202,7 +202,7 @@ const Expose = {
         /<filter([\s>])/,
         `<filter id="${ id }"$1`
       );
-    return create_svg_url(svg, id);
+    return create_svg_filter_url(svg, id);
   }),
 
   var() {
