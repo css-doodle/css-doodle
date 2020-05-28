@@ -2,7 +2,8 @@
  * Based on the Shunting-yard algorithm.
  */
 
-import { last } from './list';
+import List from './list';
+let { last } = List();
 
 export default function(input) {
   const expr = infix_to_postfix(input), stack = [];

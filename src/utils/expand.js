@@ -1,4 +1,6 @@
-import { last, flat_map } from './list';
+import List from './list';
+const { last, flat_map } = List();
+
 import { range } from './index';
 import memo from './memo';
 import by_charcode from './by-charcode';

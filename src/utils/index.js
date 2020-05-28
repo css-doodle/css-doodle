@@ -1,5 +1,3 @@
-import { make_array } from './list';
-
 export function clamp(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
@@ -37,6 +35,10 @@ export function is_letter(c) {
   return /^[a-zA-Z]$/.test(c);
 }
 
+export function is_nil(s) {
+  return s === undefined || s === null;
+}
+
 export function lazy(fn) {
   let wrap = () => fn;
   wrap.lazy = true;
@@ -52,7 +54,7 @@ export function sequence(count, fn) {
 }
 
 export function cell_id(x, y, z) {
-  return 'cell-' + x + '-' + y + '-' + z;
+  return 'c-' + x + '-' + y + '-' + z;
 }
 
 export function get_value(input) {
@@ -61,4 +63,3 @@ export function get_value(input) {
   }
   return input || '';
 }
-

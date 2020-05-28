@@ -9,49 +9,52 @@ function even_or_odd(expr) {
   return /^(even|odd)$/.test(expr);
 }
 
-export default {
+export default function(random) {
 
-  at({ x, y }) {
-    return (x1, y1) => (x == x1 && y == y1);
-  },
+  return {
 
-  nth({ count, grid }) {
-    return (...exprs) => exprs.some(expr =>
-      even_or_odd(expr)
-        ? is[expr](count - 1)
-        : nth(expr, count, grid.count)
-    );
-  },
+    at({ x, y }) {
+      return (x1, y1) => (x == x1 && y == y1);
+    },
 
-  row({ x, grid }) {
-    return (...exprs) => exprs.some(expr =>
-      even_or_odd(expr)
-        ? is[expr](x - 1)
-        : nth(expr, x, grid.x)
-    );
-  },
+    nth({ count, grid }) {
+      return (...exprs) => exprs.some(expr =>
+        even_or_odd(expr)
+          ? is[expr](count - 1)
+          : nth(expr, count, grid.count)
+      );
+    },
 
-  col({ y, grid }) {
-    return (...exprs) => exprs.some(expr =>
-      even_or_odd(expr)
-        ? is[expr](y - 1)
-        : nth(expr, y, grid.y)
-    );
-  },
+    row({ x, grid }) {
+      return (...exprs) => exprs.some(expr =>
+        even_or_odd(expr)
+          ? is[expr](x - 1)
+          : nth(expr, x, grid.x)
+      );
+    },
 
-  even({ count }) {
-    return _ => is.even(count - 1);
-  },
+    col({ y, grid }) {
+      return (...exprs) => exprs.some(expr =>
+        even_or_odd(expr)
+          ? is[expr](y - 1)
+          : nth(expr, y, grid.y)
+      );
+    },
 
-  odd({ count }) {
-    return _ => is.odd(count - 1);
-  },
+    even({ count }) {
+      return _ => is.even(count - 1);
+    },
 
-  random() {
-    return (ratio = .5) => {
-      if (ratio >= 1 && ratio <= 0) ratio = .5;
-      return Math.random() < ratio;
+    odd({ count }) {
+      return _ => is.odd(count - 1);
+    },
+
+    random() {
+      return (ratio = .5) => {
+        if (ratio >= 1 && ratio <= 0) ratio = .5;
+        return random() < ratio;
+      }
     }
-  }
 
+  }
 }

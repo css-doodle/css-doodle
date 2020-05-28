@@ -1,6 +1,8 @@
 import iterator from './iterator';
 import parse_var from './parse-var';
-import { first, last, clone } from '../utils/list';
+import List from '../utils/list';
+
+let { first, last, clone } = List();
 
 const Tokens = {
   func(name = '') {
@@ -536,10 +538,10 @@ function read_cond(it, extra) {
   return cond;
 }
 
-function read_property_value(extra, name) {
+function read_variable(extra, name) {
   let rule = '';
-  if (extra && extra.get_custom_property_value) {
-    rule = extra.get_custom_property_value(name);
+  if (extra && extra.get_variable) {
+    rule = extra.get_variable(name);
   }
   return rule;
 }
@@ -550,10 +552,10 @@ function evaluate_value(values, extra) {
       let vars = parse_var(v.value);
       v.value = vars.reduce((ret, p) => {
         let rule = '', other = '', parsed;
-        rule = read_property_value(extra, p.name);
+        rule = read_variable(extra, p.name);
         if (!rule && p.alternative) {
           p.alternative.every(n => {
-            other = read_property_value(extra, n.name);
+            other = read_variable(extra, n.name);
             if (other) {
               rule = other;
               return false;

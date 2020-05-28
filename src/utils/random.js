@@ -1,22 +1,32 @@
-export function lerp(start, end, t) {
-  return start * (1 - t) + end * t;
-}
+export default function(random) {
 
-export function rand(start = 0, end = start) {
-  if (arguments.length == 1) {
-    if (start == 1) start = 0;
-    else if (start < 1) start /= 10;
-    else start = 1;
+  function lerp(start, end, t) {
+    return start * (1 - t) + end * t;
   }
-  return lerp(start, end, Math.random());
-}
 
-export function pick(...items) {
-  let args = items.reduce((acc, n) => acc.concat(n), []);
-  return args[~~(Math.random() * args.length)];
-}
+  function rand( start = 0, end = start) {
+    if (arguments.length == 1) {
+      if (start == 1) start = 0;
+      else if (start < 1) start /= 10;
+      else start = 1;
+    }
+    return lerp(start, end, random());
+  }
 
-export function unique_id(prefix = '') {
-  return prefix + Math.random().toString(32).substr(2);
-}
+  function pick( ...items) {
+    let args = items.reduce((acc, n) => acc.concat(n), []);
+    return args[~~(random() * args.length)];
+  }
 
+  function unique_id(prefix = '') {
+    return prefix + random().toString(32).substr(2);
+  }
+
+  return {
+    lerp, 
+    rand,
+    pick,
+    unique_id
+  };
+
+}

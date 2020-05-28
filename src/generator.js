@@ -5,8 +5,10 @@ import MathFunc from './math';
 import prefixer from './prefixer';
 import parse_value_group from './parser/parse-value-group';
 
-import { maybe, cell_id } from './utils/index.js';
-import { join, first, last, make_array, remove_empty_values } from './utils/list';
+import { maybe, cell_id, is_nil } from './utils/index.js';
+
+import List from './utils/list';
+let { join, make_array, remove_empty_values } = List();
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -20,13 +22,9 @@ function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
 }
 
-function is_nil(s) {
-  return s === undefined || s === null;
-}
-
 class Rules {
 
-  constructor(tokens) {
+  constructor(tokens, random) {
     this.tokens = tokens;
     this.rules = {};
     this.props = {};
@@ -35,6 +33,8 @@ class Rules {
     this.is_grid_defined = false;
     this.coords = [];
     this.reset();
+    this.Func = Func(random);
+    this.Selector = Selector(random);
   }
 
   reset() {
@@ -46,7 +46,7 @@ class Rules {
     }
     this.coords = [];
     for (let key in this.rules) {
-      if (key.startsWith('#cell')) {
+      if (key.startsWith('#c')) {
         delete this.rules[key];
       }
     }
@@ -62,7 +62,7 @@ class Rules {
   }
 
   pick_func(name) {
-    return Func[name] || MathFunc[name];
+    return this.Func[name] || MathFunc[name];
   }
 
   apply_func(fn, coords, args) {
@@ -238,12 +238,14 @@ class Rules {
           if (!is_host_selector(selector)) {
             rule = transformed;
           }
+          break;
         }
         case '@use': {
           if (token.value.length) {
             this.compose(coords, token.value);
           }
           rule = Property[prop](token.value);
+          break;
         }
         default: {
           rule = transformed;
@@ -290,7 +292,7 @@ class Rules {
         }
 
         case 'cond': {
-          let fn = Selector[token.name.substr(1)];
+          let fn = this.Selector[token.name.substr(1)];
           if (fn) {
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
@@ -331,9 +333,7 @@ class Rules {
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         this.styles[target] += `
-          ${ selector } {
-            ${ join(this.rules[selector]) }
-          }
+          ${ selector } { ${ join(this.rules[selector]).trim() } }
         `;
       }
     });
@@ -364,8 +364,8 @@ class Rules {
 }
 
 export default
-function generator(tokens, grid_size) {
-  let rules = new Rules(tokens);
+function generator(tokens, grid_size, random) {
+  let rules = new Rules(tokens, random);
   let context = {};
 
   rules.compose({

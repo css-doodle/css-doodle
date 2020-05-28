@@ -1,7 +1,7 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
-  (global = global || self, global.CSSDoodle = factory());
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
 }(this, (function () { 'use strict';
 
   function iterator(input) {
@@ -101,50 +101,66 @@
     return result;
   }
 
-  function make_array(arr) {
-    return Array.isArray(arr) ? arr : [arr];
-  }
+  function List(random) {
 
-  function join(arr, spliter = '\n') {
-    return (arr || []).join(spliter);
-  }
-
-  function last(arr, n = 1) {
-    return arr[arr.length - n];
-  }
-
-  function first(arr) {
-    return arr[0];
-  }
-
-  function clone(arr) {
-    return JSON.parse(JSON.stringify(arr));
-  }
-
-  function shuffle(arr) {
-    let ret = Array.from ? Array.from(arr) : arr.slice();
-    let m = arr.length;
-    while (m) {
-      let i = ~~(Math.random() * m--);
-      let t = ret[m];
-      ret[m] = ret[i];
-      ret[i] = t;
+    function make_array(arr) {
+      return Array.isArray(arr) ? arr : [arr];
     }
-    return ret;
+
+    function join(arr, spliter = '\n') {
+      return (arr || []).join(spliter);
+    }
+
+    function last(arr, n = 1) {
+      return arr[arr.length - n];
+    }
+
+    function first(arr) {
+      return arr[0];
+    }
+
+    function clone(arr) {
+      return JSON.parse(JSON.stringify(arr));
+    }
+
+    function shuffle(arr) {
+      let ret = Array.from ? Array.from(arr) : arr.slice();
+      let m = arr.length;
+      while (m) {
+        let i = ~~(random() * m--);
+        let t = ret[m];
+        ret[m] = ret[i];
+        ret[i] = t;
+      }
+      return ret;
+    }
+
+    function flat_map(arr, fn) {
+      if (Array.prototype.flatMap) return arr.flatMap(fn);
+      return arr.reduce((acc, x) => acc.concat(fn(x)), []);
+    }
+
+    function remove_empty_values(arr) {
+      return arr.filter(v => (
+        v !== undefined &&
+        v !== null &&
+        String(v).trim().length
+      ));
+    }
+
+    return {
+      make_array,
+      join,
+      last,
+      first,
+      clone,
+      shuffle,
+      flat_map,
+      remove_empty_values
+    }
   }
 
-  function flat_map(arr, fn) {
-    if (Array.prototype.flatMap) return arr.flatMap(fn);
-    return arr.reduce((acc, x) => acc.concat(fn(x)), []);
-  }
-
-  function remove_empty_values(arr) {
-    return arr.filter(v => (
-      v !== undefined &&
-      v !== null &&
-      String(v).trim().length
-    ));
-  }
+  let { first, last, clone } = List();
 
   const Tokens = {
     func(name = '') {
@@ -680,10 +696,10 @@
     return cond;
   }
 
-  function read_property_value(extra, name) {
+  function read_variable(extra, name) {
     let rule = '';
-    if (extra && extra.get_custom_property_value) {
-      rule = extra.get_custom_property_value(name);
+    if (extra && extra.get_variable) {
+      rule = extra.get_variable(name);
     }
     return rule;
   }
@@ -694,10 +710,10 @@
         let vars = parse_var(v.value);
         v.value = vars.reduce((ret, p) => {
           let rule = '', other = '', parsed;
-          rule = read_property_value(extra, p.name);
+          rule = read_variable(extra, p.name);
           if (!rule && p.alternative) {
             p.alternative.every(n => {
-              other = read_property_value(extra, n.name);
+              other = read_variable(extra, n.name);
               if (other) {
                 rule = other;
                 return false;
@@ -807,6 +823,10 @@
     return /^[a-zA-Z]$/.test(c);
   }
 
+  function is_nil(s) {
+    return s === undefined || s === null;
+  }
+
   function lazy(fn) {
     let wrap = () => fn;
     wrap.lazy = true;
@@ -822,7 +842,7 @@
   }
 
   function cell_id(x, y, z) {
-    return 'cell-' + x + '-' + y + '-' + z;
+    return 'c-' + x + '-' + y + '-' + z;
   }
 
   function get_value(input) {
@@ -878,26 +898,37 @@
     return input;
   }
 
-  function lerp(start, end, t) {
-    return start * (1 - t) + end * t;
-  }
+  function randomFunc(random) {
 
-  function rand(start = 0, end = start) {
-    if (arguments.length == 1) {
-      if (start == 1) start = 0;
-      else if (start < 1) start /= 10;
-      else start = 1;
+    function lerp(start, end, t) {
+      return start * (1 - t) + end * t;
     }
-    return lerp(start, end, Math.random());
-  }
 
-  function pick(...items) {
-    let args = items.reduce((acc, n) => acc.concat(n), []);
-    return args[~~(Math.random() * args.length)];
-  }
+    function rand( start = 0, end = start) {
+      if (arguments.length == 1) {
+        if (start == 1) start = 0;
+        else if (start < 1) start /= 10;
+        else start = 1;
+      }
+      return lerp(start, end, random());
+    }
 
-  function unique_id(prefix = '') {
-    return prefix + Math.random().toString(32).substr(2);
+    function pick( ...items) {
+      let args = items.reduce((acc, n) => acc.concat(n), []);
+      return args[~~(random() * args.length)];
+    }
+
+    function unique_id(prefix = '') {
+      return prefix + random().toString(32).substr(2);
+    }
+
+    return {
+      lerp, 
+      rand,
+      pick,
+      unique_id
+    };
+
   }
 
   function by_unit(fn) {
@@ -947,6 +978,7 @@
   /**
    * Based on the Shunting-yard algorithm.
    */
+  let { last: last$1 } = List();
 
   function calc(input) {
     const expr = infix_to_postfix(input), stack = [];
@@ -984,7 +1016,7 @@
         else if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = last(tokens) || {};
+          let { type, value } = last$1(tokens) || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1028,14 +1060,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && last(op_stack) != '(') {
+          while (op_stack.length && last$1(op_stack) != '(') {
             expr.push(op_stack.pop());
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push(op);
           }
@@ -1071,6 +1103,8 @@
     }
   }
 
+  const { last: last$2, flat_map } = List();
+
   function expand(fn) {
     return (...args) => fn.apply(null, flat_map(args, n =>
       String(n).startsWith('[') ? build_range(n) : n
@@ -1097,7 +1131,7 @@
         stack.push(c);
         continue;
       }
-      if (last(stack) == '-') {
+      if (last$2(stack) == '-') {
         stack.pop();
         let from = stack.pop();
         tokens.push(from
@@ -1456,265 +1490,270 @@
     return result;
   }
 
-  const Expose = {
+  function getExposed(random) {
+    const { shuffle } = List(random);
+    const { pick, rand, unique_id } = randomFunc(random);
 
-    index({ count }) {
-      return _ => count;
-    },
+    const Expose = {
 
-    row({ x }) {
-      return _ => x;
-    },
+      index({ count }) {
+        return _ => count;
+      },
 
-    col({ y }) {
-      return _ => y;
-    },
+      row({ x }) {
+        return _ => x;
+      },
 
-    depth({ z }) {
-      return _ => z;
-    },
+      col({ y }) {
+        return _ => y;
+      },
 
-    size({ grid }) {
-      return _ => grid.count;
-    },
+      depth({ z }) {
+        return _ => z;
+      },
 
-    ['size-row']({ grid }) {
-      return _ => grid.x;
-    },
+      size({ grid }) {
+        return _ => grid.count;
+      },
 
-    ['size-col']({ grid }) {
-      return _ => grid.y;
-    },
+      ['size-row']({ grid }) {
+        return _ => grid.x;
+      },
 
-    ['size-depth']({ grid }) {
-      return _ => grid.z;
-    },
+      ['size-col']({ grid }) {
+        return _ => grid.y;
+      },
 
-    id({ x, y, z }) {
-      return _ => cell_id(x, y, z);
-    },
+      ['size-depth']({ grid }) {
+        return _ => grid.z;
+      },
 
-    n({ extra }) {
-      return _ => {
-        return extra ? extra[0] : '@n';
-      }
-    },
+      id({ x, y, z }) {
+        return _ => cell_id(x, y, z);
+      },
 
-    N({ extra }) {
-      return _ => {
-        return extra ? extra[1] : '@N';
-      }
-    },
-
-    repeat: (
-      make_sequence('')
-    ),
-
-    multiple: (
-      make_sequence(',')
-    ),
-
-    ['multiple-with-space']: (
-      make_sequence(' ')
-    ),
-
-    pick({ context }) {
-      return expand((...args) => {
-        return push_stack(context, 'last_pick', pick(args));
-      });
-    },
-
-    ['pick-n']({ context, extra, position }) {
-      let counter = 'pn-counter' + position;
-      return expand((...args) => {
-        if (!context[counter]) context[counter] = 0;
-        context[counter] += 1;
-        let max = args.length;
-        let [ idx ] = extra || [];
-        let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
-        let value = args[pos];
-        return push_stack(context, 'last_pick', value);
-      });
-    },
-
-    ['pick-d']({ context, extra, position }) {
-      let counter = 'pd-counter' + position;
-      let values = 'pd-values' + position;
-      return expand((...args) => {
-        if (!context[counter]) context[counter] = 0;
-        context[counter] += 1;
-        if (!context[values]) {
-          context[values] = shuffle(args);
+      n({ extra }) {
+        return _ => {
+          return extra ? extra[0] : '@n';
         }
-        let max = args.length;
-        let [ idx ] = extra || [];
-        let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
-        let value = context[values][pos];
-        return push_stack(context, 'last_pick', value);
-      });
-    },
+      },
 
-    ['last-pick']({ context }) {
-      return (n = 1) => {
-        let stack = context.last_pick;
-        return stack ? stack.last(n) : '';
-      };
-    },
-
-    rand({ context }) {
-      return (...args) => {
-        let transform_type = args.every(is_letter)
-          ? by_charcode
-          : by_unit;
-        let value = transform_type(rand).apply(null, args);
-        return push_stack(context, 'last_rand', value);
-      };
-    },
-
-    ['rand-int']({ context }) {
-      return (...args) => {
-        let transform_type = args.every(is_letter)
-          ? by_charcode
-          : by_unit;
-        let value = parseInt(
-          transform_type(rand).apply(null, args)
-        );
-        return push_stack(context, 'last_rand', value);
-      }
-    },
-
-    ['last-rand']({ context }) {
-      return (n = 1) => {
-        let stack = context.last_rand;
-        return stack ? stack.last(n) : '';
-      };
-    },
-
-    stripe() {
-      return (...input) => {
-        let colors = input.map(get_value);
-        let max = colors.length;
-        let default_count = 0;
-        let custom_sizes = [];
-        let prev;
-        if (!max) {
-          return '';
+      N({ extra }) {
+        return _ => {
+          return extra ? extra[1] : '@N';
         }
-        colors.forEach(step => {
-          let [_, size] = parse$2(step);
-          if (size !== undefined) custom_sizes.push(size);
-          else default_count += 1;
+      },
+
+      repeat: (
+        make_sequence('')
+      ),
+
+      multiple: (
+        make_sequence(',')
+      ),
+
+      ['multiple-with-space']: (
+        make_sequence(' ')
+      ),
+
+      pick({ context }) {
+        return expand((...args) => {
+          return push_stack(context, 'last_pick', pick(args));
         });
-        let default_size = custom_sizes.length
-          ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
-          : `100% / ${max}`;
-        return colors
-          .map((step, i) => {
-            if (custom_sizes.length) {
-              let [color, size] = parse$2(step);
-              let prefix = prev ? (prev + ' + ') : '';
-              prev = prefix + (size !== undefined ? size : default_size);
-              return `${color} 0 calc(${ prev })`
-            }
-            return `${step} 0 ${100 / max * (i + 1)}%`
-          })
-          .join(',');
-      }
-    },
+      },
 
-    calc() {
-      return value => calc(get_value(value));
-    },
+      ['pick-n']({ context, extra, position }) {
+        let counter = 'pn-counter' + position;
+        return expand((...args) => {
+          if (!context[counter]) context[counter] = 0;
+          context[counter] += 1;
+          let max = args.length;
+          let [ idx ] = extra || [];
+          let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
+          let value = args[pos];
+          return push_stack(context, 'last_pick', value);
+        });
+      },
 
-    hex() {
-      return value => parseInt(get_value(value)).toString(16);
-    },
+      ['pick-d']({ context, extra, position }) {
+        let counter = 'pd-counter' + position;
+        let values = 'pd-values' + position;
+        return expand((...args) => {
+          if (!context[counter]) context[counter] = 0;
+          context[counter] += 1;
+          if (!context[values]) {
+            context[values] = shuffle(args);
+          }
+          let max = args.length;
+          let [ idx ] = extra || [];
+          let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
+          let value = context[values][pos];
+          return push_stack(context, 'last_pick', value);
+        });
+      },
 
-    svg: lazy(input => {
-      if (input === undefined) return '';
-      let svg = normalize_svg(get_value(input()).trim());
-      return create_svg_url(svg);
-    }),
+      ['last-pick']({ context }) {
+        return (n = 1) => {
+          let stack = context.last_pick;
+          return stack ? stack.last(n) : '';
+        };
+      },
 
-    ['svg-filter']: lazy(input => {
-      if (input === undefined) return '';
-      let id = unique_id('filter-');
-      let svg = normalize_svg(get_value(input()).trim())
-        .replace(
-          /<filter([\s>])/,
-          `<filter id="${ id }"$1`
-        );
-      return create_svg_url(svg, id);
-    }),
+      rand({ context }) {
+        return (...args) => {
+          let transform_type = args.every(is_letter)
+            ? by_charcode
+            : by_unit;
+          let value = transform_type(rand).apply(null, args);
+          return push_stack(context, 'last_rand', value);
+        };
+      },
 
-    var() {
-      return value => `var(${ get_value(value) })`;
-    },
-
-    shape() {
-      return memo('shape-function', (type = '', ...args) => {
-        type = type.trim();
-        if (typeof shapes[type] === 'function') {
-          return shapes[type](args);
+      ['rand-int']({ context }) {
+        return (...args) => {
+          let transform_type = args.every(is_letter)
+            ? by_charcode
+            : by_unit;
+          let value = parseInt(
+            transform_type(rand).apply(null, args)
+          );
+          return push_stack(context, 'last_rand', value);
         }
-        return '';
+      },
+
+      ['last-rand']({ context }) {
+        return (n = 1) => {
+          let stack = context.last_rand;
+          return stack ? stack.last(n) : '';
+        };
+      },
+
+      stripe() {
+        return (...input) => {
+          let colors = input.map(get_value);
+          let max = colors.length;
+          let default_count = 0;
+          let custom_sizes = [];
+          let prev;
+          if (!max) {
+            return '';
+          }
+          colors.forEach(step => {
+            let [_, size] = parse$2(step);
+            if (size !== undefined) custom_sizes.push(size);
+            else default_count += 1;
+          });
+          let default_size = custom_sizes.length
+            ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
+            : `100% / ${max}`;
+          return colors
+            .map((step, i) => {
+              if (custom_sizes.length) {
+                let [color, size] = parse$2(step);
+                let prefix = prev ? (prev + ' + ') : '';
+                prev = prefix + (size !== undefined ? size : default_size);
+                return `${color} 0 calc(${ prev })`
+              }
+              return `${step} 0 ${100 / max * (i + 1)}%`
+            })
+            .join(',');
+        }
+      },
+
+      calc() {
+        return value => calc(get_value(value));
+      },
+
+      hex() {
+        return value => parseInt(get_value(value)).toString(16);
+      },
+
+      svg: lazy(input => {
+        if (input === undefined) return '';
+        let svg = normalize_svg(get_value(input()).trim());
+        return create_svg_url(svg);
+      }),
+
+      ['svg-filter']: lazy(input => {
+        if (input === undefined) return '';
+        let id = unique_id('filter-');
+        let svg = normalize_svg(get_value(input()).trim())
+          .replace(
+            /<filter([\s>])/,
+            `<filter id="${ id }"$1`
+          );
+        return create_svg_url(svg, id);
+      }),
+
+      var() {
+        return value => `var(${ get_value(value) })`;
+      },
+
+      shape() {
+        return memo('shape-function', (type = '', ...args) => {
+          type = type.trim();
+          if (typeof shapes[type] === 'function') {
+            return shapes[type](args);
+          }
+          return '';
+        });
+      },
+
+    };
+
+    function make_sequence(c) {
+      return lazy((n, action) => {
+        if (!action || !n) return '';
+        let count = clamp(get_value(n()), 0, 65536);
+        return sequence(count, i => get_value(action(i + 1, count))).join(c);
       });
-    },
+    }
 
-  };
+    function push_stack(context, name, value) {
+      if (!context[name]) context[name] = new Stack();
+      context[name].push(value);
+      return value;
+    }
 
-  function make_sequence(c) {
-    return lazy((n, action) => {
-      if (!action || !n) return '';
-      let count = clamp(get_value(n()), 0, 65536);
-      return sequence(count, i => get_value(action(i + 1, count))).join(c);
+    return alias_for(Expose, {
+      'm':  'multiple',
+      'ms': 'multiple-with-space',
+
+      'r':  'rand',
+      'ri': 'rand-int',
+      'lr': 'last-rand',
+
+      'p':  'pick',
+      'pn': 'pick-n',
+      'pd': 'pick-d',
+      'lp': 'last-pick',
+
+      'rep': 'repeat',
+
+      'i':  'index',
+      'x':  'row',
+      'y':  'col',
+      'z':  'depth',
+
+      's':  'size',
+      'sx': 'size-row',
+      'sy': 'size-col',
+      'sz': 'size-depth',
+
+      // legacy names
+      'size-x': 'size-row',
+      'size-y': 'size-col',
+      'size-z': 'size-depth',
+      'multi': 'multiple',
+      'pick-by-turn': 'pick-n',
+      'max-row': 'size-row',
+      'max-col': 'size-col',
+
+      // error prone
+      'stripes': 'stripe',
+      'strip':   'stripe',
     });
   }
-
-  function push_stack(context, name, value) {
-    if (!context[name]) context[name] = new Stack();
-    context[name].push(value);
-    return value;
-  }
-
-  var Func = alias_for(Expose, {
-    'm':  'multiple',
-    'ms': 'multiple-with-space',
-
-    'r':  'rand',
-    'ri': 'rand-int',
-    'lr': 'last-rand',
-
-    'p':  'pick',
-    'pn': 'pick-n',
-    'pd': 'pick-d',
-    'lp': 'last-pick',
-
-    'rep': 'repeat',
-
-    'i':  'index',
-    'x':  'row',
-    'y':  'col',
-    'z':  'depth',
-
-    's':  'size',
-    'sx': 'size-row',
-    'sy': 'size-col',
-    'sz': 'size-depth',
-
-    // legacy names
-    'size-x': 'size-row',
-    'size-y': 'size-col',
-    'size-z': 'size-depth',
-    'multi': 'multiple',
-    'pick-by-turn': 'pick-n',
-    'max-row': 'size-row',
-    'max-col': 'size-col',
-
-    // error prone
-    'stripes': 'stripe',
-    'strip':   'stripe',
-  });
 
   let all = [];
 
@@ -1955,52 +1994,55 @@
     return /^(even|odd)$/.test(expr);
   }
 
-  var Selector = {
+  function Selector(random) {
 
-    at({ x, y }) {
-      return (x1, y1) => (x == x1 && y == y1);
-    },
+    return {
 
-    nth({ count, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        even_or_odd(expr)
-          ? is$1[expr](count - 1)
-          : nth(expr, count, grid.count)
-      );
-    },
+      at({ x, y }) {
+        return (x1, y1) => (x == x1 && y == y1);
+      },
 
-    row({ x, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        even_or_odd(expr)
-          ? is$1[expr](x - 1)
-          : nth(expr, x, grid.x)
-      );
-    },
+      nth({ count, grid }) {
+        return (...exprs) => exprs.some(expr =>
+          even_or_odd(expr)
+            ? is$1[expr](count - 1)
+            : nth(expr, count, grid.count)
+        );
+      },
 
-    col({ y, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        even_or_odd(expr)
-          ? is$1[expr](y - 1)
-          : nth(expr, y, grid.y)
-      );
-    },
+      row({ x, grid }) {
+        return (...exprs) => exprs.some(expr =>
+          even_or_odd(expr)
+            ? is$1[expr](x - 1)
+            : nth(expr, x, grid.x)
+        );
+      },
 
-    even({ count }) {
-      return _ => is$1.even(count - 1);
-    },
+      col({ y, grid }) {
+        return (...exprs) => exprs.some(expr =>
+          even_or_odd(expr)
+            ? is$1[expr](y - 1)
+            : nth(expr, y, grid.y)
+        );
+      },
 
-    odd({ count }) {
-      return _ => is$1.odd(count - 1);
-    },
+      even({ count }) {
+        return _ => is$1.even(count - 1);
+      },
 
-    random() {
-      return (ratio = .5) => {
-        if (ratio >= 1 && ratio <= 0) ratio = .5;
-        return Math.random() < ratio;
+      odd({ count }) {
+        return _ => is$1.odd(count - 1);
+      },
+
+      random() {
+        return (ratio = .5) => {
+          if (ratio >= 1 && ratio <= 0) ratio = .5;
+          return random() < ratio;
+        }
       }
-    }
 
-  };
+    }
+  }
 
   // Expose all Math functions and constants.
   const methods = Object.getOwnPropertyNames(Math);
@@ -2014,6 +2056,8 @@
     return expose;
   }, {});
 
+  let { join, make_array, remove_empty_values } = List();
+
   function is_host_selector(s) {
     return /^\:(host|doodle)/.test(s);
   }
@@ -2026,13 +2070,9 @@
     return is_host_selector(s) || is_parent_selector(s);
   }
 
-  function is_nil(s) {
-    return s === undefined || s === null;
-  }
-
   class Rules {
 
-    constructor(tokens) {
+    constructor(tokens, random) {
       this.tokens = tokens;
       this.rules = {};
       this.props = {};
@@ -2041,6 +2081,8 @@
       this.is_grid_defined = false;
       this.coords = [];
       this.reset();
+      this.Func = getExposed(random);
+      this.Selector = Selector(random);
     }
 
     reset() {
@@ -2052,7 +2094,7 @@
       };
       this.coords = [];
       for (let key in this.rules) {
-        if (key.startsWith('#cell')) {
+        if (key.startsWith('#c')) {
           delete this.rules[key];
         }
       }
@@ -2068,7 +2110,7 @@
     }
 
     pick_func(name) {
-      return Func[name] || MathFunc[name];
+      return this.Func[name] || MathFunc[name];
     }
 
     apply_func(fn, coords, args) {
@@ -2243,12 +2285,14 @@
             if (!is_host_selector(selector)) {
               rule = transformed;
             }
+            break;
           }
           case '@use': {
             if (token.value.length) {
               this.compose(coords, token.value);
             }
             rule = Property[prop](token.value);
+            break;
           }
           default: {
             rule = transformed;
@@ -2295,7 +2339,7 @@
           }
 
           case 'cond': {
-            let fn = Selector[token.name.substr(1)];
+            let fn = this.Selector[token.name.substr(1)];
             if (fn) {
               let args = token.arguments.map(arg => {
                 return this.compose_argument(arg, coords);
@@ -2336,9 +2380,7 @@
         } else {
           let target = is_host_selector(selector) ? 'host' : 'cells';
           this.styles[target] += `
-          ${ selector } {
-            ${ join(this.rules[selector]) }
-          }
+          ${ selector } { ${ join(this.rules[selector]).trim() } }
         `;
         }
       });
@@ -2368,8 +2410,8 @@
     }
   }
 
-  function generator(tokens, grid_size) {
-    let rules = new Rules(tokens);
+  function generator(tokens, grid_size, random) {
+    let rules = new Rules(tokens, random);
     let context = {};
 
     rules.compose({
@@ -2403,33 +2445,306 @@
     return rules.output();
   }
 
+  /*
+  Copyright 2019 David Bau.
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+
+  var global = window;
+  var math = Math;
+  var pool = [];
+
+  //
+  // The following constants are related to IEEE 754 limits.
+  //
+
+  var width = 256,        // each RC4 output is 0 <= x < 256
+      chunks = 6,         // at least six RC4 outputs for each double
+      digits = 52,        // there are 52 significant digits in a double
+      rngname = 'random', // rngname: name for Math.random and Math.seedrandom
+      startdenom = math.pow(width, chunks),
+      significance = math.pow(2, digits),
+      overflow = significance * 2,
+      mask = width - 1,
+      nodecrypto;         // node.js crypto module, initialized at the bottom.
+
+  //
+  // seedrandom()
+  // This is the seedrandom function described above.
+  //
+  function seedrandom(seed, options, callback) {
+    var key = [];
+    options = (options == true) ? { entropy: true } : (options || {});
+
+    // Flatten the seed string or build one from local entropy if needed.
+    var shortseed = mixkey(flatten(
+      options.entropy ? [seed, tostring(pool)] :
+      (seed == null) ? autoseed() : seed, 3), key);
+
+    // Use the seed to initialize an ARC4 generator.
+    var arc4 = new ARC4(key);
+
+    // This function returns a random double in [0, 1) that contains
+    // randomness in every bit of the mantissa of the IEEE 754 value.
+    var prng = function() {
+      var n = arc4.g(chunks),             // Start with a numerator n < 2 ^ 48
+          d = startdenom,                 //   and denominator d = 2 ^ 48.
+          x = 0;                          //   and no 'extra last byte'.
+      while (n < significance) {          // Fill up all significant digits by
+        n = (n + x) * width;              //   shifting numerator and
+        d *= width;                       //   denominator and generating a
+        x = arc4.g(1);                    //   new least-significant-byte.
+      }
+      while (n >= overflow) {             // To avoid rounding up, before adding
+        n /= 2;                           //   last byte, shift everything
+        d /= 2;                           //   right using integer math until
+        x >>>= 1;                         //   we have exactly the desired bits.
+      }
+      return (n + x) / d;                 // Form the number within [0, 1).
+    };
+
+    prng.int32 = function() { return arc4.g(4) | 0; };
+    prng.quick = function() { return arc4.g(4) / 0x100000000; };
+    prng.double = prng;
+
+    // Mix the randomness into accumulated entropy.
+    mixkey(tostring(arc4.S), pool);
+
+    // Calling convention: what to return as a function of prng, seed, is_math.
+    return (options.pass || callback ||
+        function(prng, seed, is_math_call, state) {
+          if (state) {
+            // Load the arc4 state from the given state if it has an S array.
+            if (state.S) { copy(state, arc4); }
+            // Only provide the .state method if requested via options.state.
+            prng.state = function() { return copy(arc4, {}); };
+          }
+
+          // If called as a method of Math (Math.seedrandom()), mutate
+          // Math.random because that is how seedrandom.js has worked since v1.0.
+          if (is_math_call) { math[rngname] = prng; return seed; }
+
+          // Otherwise, it is a newer calling convention, so return the
+          // prng directly.
+          else return prng;
+        })(
+    prng,
+    shortseed,
+    'global' in options ? options.global : (this == math),
+    options.state);
+  }
+
+  //
+  // ARC4
+  //
+  // An ARC4 implementation.  The constructor takes a key in the form of
+  // an array of at most (width) integers that should be 0 <= x < (width).
+  //
+  // The g(count) method returns a pseudorandom integer that concatenates
+  // the next (count) outputs from ARC4.  Its return value is a number x
+  // that is in the range 0 <= x < (width ^ count).
+  //
+  function ARC4(key) {
+    var t, keylen = key.length,
+        me = this, i = 0, j = me.i = me.j = 0, s = me.S = [];
+
+    // The empty key [] is treated as [0].
+    if (!keylen) { key = [keylen++]; }
+
+    // Set up S using the standard key scheduling algorithm.
+    while (i < width) {
+      s[i] = i++;
+    }
+    for (i = 0; i < width; i++) {
+      s[i] = s[j = mask & (j + key[i % keylen] + (t = s[i]))];
+      s[j] = t;
+    }
+
+    // The "g" method returns the next (count) outputs as one number.
+    (me.g = function(count) {
+      // Using instance members instead of closure state nearly doubles speed.
+      var t, r = 0,
+          i = me.i, j = me.j, s = me.S;
+      while (count--) {
+        t = s[i = mask & (i + 1)];
+        r = r * width + s[mask & ((s[i] = s[j = mask & (j + t)]) + (s[j] = t))];
+      }
+      me.i = i; me.j = j;
+      return r;
+      // For robust unpredictability, the function call below automatically
+      // discards an initial batch of values.  This is called RC4-drop[256].
+      // See http://google.com/search?q=rsa+fluhrer+response&btnI
+    })(width);
+  }
+
+  //
+  // copy()
+  // Copies internal state of ARC4 to or from a plain object.
+  //
+  function copy(f, t) {
+    t.i = f.i;
+    t.j = f.j;
+    t.S = f.S.slice();
+    return t;
+  }
+  //
+  // flatten()
+  // Converts an object tree to nested arrays of strings.
+  //
+  function flatten(obj, depth) {
+    var result = [], typ = (typeof obj), prop;
+    if (depth && typ == 'object') {
+      for (prop in obj) {
+        try { result.push(flatten(obj[prop], depth - 1)); } catch (e) {}
+      }
+    }
+    return (result.length ? result : typ == 'string' ? obj : obj + '\0');
+  }
+
+  //
+  // mixkey()
+  // Mixes a string seed into a key that is an array of integers, and
+  // returns a shortened string seed that is equivalent to the result key.
+  //
+  function mixkey(seed, key) {
+    var stringseed = seed + '', smear, j = 0;
+    while (j < stringseed.length) {
+      key[mask & j] =
+        mask & ((smear ^= key[mask & j] * 19) + stringseed.charCodeAt(j++));
+    }
+    return tostring(key);
+  }
+
+  //
+  // autoseed()
+  // Returns an object for autoseeding, using window.crypto and Node crypto
+  // module if available.
+  //
+  function autoseed() {
+    try {
+      var out;
+      if (nodecrypto && (out = nodecrypto.randomBytes)) ; else {
+        out = new Uint8Array(width);
+        (global.crypto || global.msCrypto).getRandomValues(out);
+      }
+      return tostring(out);
+    } catch (e) {
+      var browser = global.navigator,
+          plugins = browser && browser.plugins;
+      return [+new Date, global, plugins, global.screen, tostring(pool)];
+    }
+  }
+
+  //
+  // tostring()
+  // Converts an array of charcodes to a string
+  //
+  function tostring(a) {
+    return String.fromCharCode.apply(0, a);
+  }
+
+  //
+  // When seedrandom.js is loaded, we immediately mix a few bits
+  // from the built-in RNG into the entropy pool.  Because we do
+  // not want to interfere with deterministic PRNG state later,
+  // seedrandom will not call math.random on its own again after
+  // initialization.
+  //
+  mixkey(math.random(), pool);
+
+  function get_basic_styles() {
+    const inherited_grid_props = get_props(/grid/)
+      .map(n => `${ n }: inherit;`)
+      .join('');
+    return `
+    * {
+      box-sizing: border-box;
+    }
+    *::after, *::before {
+      box-sizing: inherit;
+    }
+    :host {
+      display: block;
+      visibility: visible;
+      width: auto;
+      height: auto;
+    }
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      ${ inherited_grid_props }
+    }
+    .container cell:empty {
+      position: relative;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+  `;
+  }
+
+  function get_grid_styles({x, y}) {
+    return `
+    :host {
+      grid-template-rows: repeat(${ x }, 1fr);
+      grid-template-columns: repeat(${ y }, 1fr);
+    }
+  `;
+  }
+
+  function create_cell(x, y, z) {
+    let cell = document.createElement('cell');
+    cell.id = cell_id(x, y, z);
+    return cell;
+  }
+
+  function create_cells({ x, y, z }) {
+    let root = document.createDocumentFragment();
+    if (z == 1) {
+      for (let i = 1; i <= x; ++i) {
+        for (let j = 1; j <= y; ++j) {
+          root.appendChild(create_cell(i, j, 1));
+        }
+      }
+    }
+    else {
+      let temp = null;
+      for (let i = 1; i <= z; ++i) {
+        let cell = create_cell(1, 1, i);
+        (temp || root).appendChild(cell);
+        temp = cell;
+      }
+      temp = null;
+    }
+    return root;
+  }
+
   class Doodle extends HTMLElement {
     constructor() {
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
       this.extra = {
-        get_custom_property_value: this.get_custom_property_value.bind(this)
+        get_variable: this.get_variable.bind(this)
       };
     }
-    load(again) {
-      let compiled;
-      let use = this.getAttribute('use') || '';
-      if (use) use = `@use:${ use };`;
-      if (!this.innerHTML.trim() && !use) return false;
-      try {
-        let parsed = parse$1(use + this.innerHTML, this.extra);
-        this.grid_size = parse_grid(this.getAttribute('grid'));
-        compiled = generator(parsed, this.grid_size);
-        compiled.grid && (this.grid_size = compiled.grid);
-        this.build_grid(compiled);
-      } catch (e) {
-        this.innerHTML = '';
-        console.error(e && e.message || 'Error in css-doodle.');
-      }
-      if (!again && this.hasAttribute('click-to-update')) {
-        this.addEventListener('click', e => this.update());
-      }
-    }
+
     connectedCallback(again) {
       if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
         this.load(again);
@@ -2438,163 +2753,44 @@
       }
     }
 
-    get_custom_property_value(name) {
-      return getComputedStyle(this).getPropertyValue(name)
-        .trim()
-        .replace(/^\(|\)$/g, '');
-    }
-
-    cell(x, y, z) {
-      let cell = document.createElement('div');
-      cell.id = cell_id(x, y, z);
-      return cell;
-    }
-
-    build_grid(compiled) {
-      const { has_transition, has_animation } = compiled.props;
-      const { keyframes, host, container, cells } = compiled.styles;
-
-      this.doodle.innerHTML = `
-      <style>
-        ${ this.style_basic() }
-      </style>
-      <style class="style-keyframes">
-        ${ keyframes }
-      </style>
-      <style class="style-container">
-        ${ this.style_size() }
-        ${ host }
-        ${ container }
-      </style>
-      <style class="style-cells">
-        ${ (has_transition || has_animation) ? '' : cells }
-      </style>
-      <div class="container"></div>
-    `;
-
-      this.doodle.querySelector('.container')
-        .appendChild(this.html_cells());
-
-      if (has_transition || has_animation) {
-        setTimeout(() => {
-          this.set_style('.style-cells', cells);
-        }, 50);
-      }
-    }
-
-    inherit_props(p) {
-      return get_props(/grid/)
-        .map(n => `${ n }: inherit;`)
-        .join('');
-    }
-
-    style_basic() {
-      return `
-      * {
-        box-sizing: border-box;
-      }
-      *::after, *::before {
-        box-sizing: inherit;
-      }
-      :host {
-        display: block;
-        visibility: visible;
-        width: auto;
-        height: auto;
-      }
-      .container {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display: grid;
-        ${ this.inherit_props() }
-      }
-      .container div:empty {
-        position: relative;
-        line-height: 1;
-        display: grid;
-        place-items: center;
-      }
-    `;
-    }
-
-    style_size() {
-      let { x, y } = this.grid_size;
-      return `
-      :host {
-        grid-template-rows: repeat(${ x }, 1fr);
-        grid-template-columns: repeat(${ y }, 1fr);
-      }
-    `;
-    }
-
-    html_cells() {
-      let { x, y, z } = this.grid_size;
-      let root = document.createDocumentFragment();
-      if (z == 1) {
-        for (let i = 1; i <= x; ++i) {
-          for (let j = 1; j <= y; ++j) {
-            root.appendChild(this.cell(i, j, 1));
-          }
-        }
-      }
-      else {
-        let temp = null;
-        for (let i = 1; i <= z; ++i) {
-          let cell = this.cell(1, 1, i);
-          (temp || root).appendChild(cell);
-          temp = cell;
-        }
-        temp = null;
-      }
-      return root;
-    }
-
-    set_style(selector, styles) {
-      const el = this.shadowRoot.querySelector(selector);
-      el && (el.styleSheet
-        ? (el.styleSheet.cssText = styles )
-        : (el.innerHTML = styles));
-    }
-
     update(styles) {
-      let use = this.getAttribute('use') || '';
-      if (use) use = `@use:${ use };`;
-
+      let use = this.get_use();
       if (!styles) styles = this.innerHTML;
       this.innerHTML = styles;
 
       if (!this.grid_size) {
-        this.grid_size = parse_grid(this.getAttribute('grid'));
+        this.grid_size = this.get_grid();
       }
 
-      const compiled = generator(parse$1(use + styles, this.extra), this.grid_size);
+      let { x: gx, y: gy, z: gz } = this.grid_size;
+
+      const compiled = this.generate(
+        parse$1(use + styles, this.extra)
+      );
 
       if (compiled.grid) {
         let { x, y, z } = compiled.grid;
-        let { x: gx, y: gy, z: gz } = this.grid_size;
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, compiled.grid);
-          return this.build_grid(compiled);
+          return this.build_grid(compiled, compiled.grid);
         }
+
         Object.assign(this.grid_size, compiled.grid);
       }
 
       else {
-        let grid = parse_grid(this.getAttribute('grid'));
+        let grid = this.get_grid();
         let { x, y, z } = grid;
-        let { x: gx, y: gy, z: gz } = this.grid_size;
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, grid);
           return this.build_grid(
-            generator(parse$1(use + styles, this.extra), this.grid_size)
+            this.generate(parse$1(use + styles, this.extra)),
+            grid
           );
         }
       }
 
-      this.set_style('.style-keyframes',
-        compiled.styles.keyframes
-      );
+      this.set_style('.style-keyframes', compiled.styles.keyframes);
 
       if (compiled.props.has_animation) {
         this.set_style('.style-cells', '');
@@ -2603,7 +2799,7 @@
 
       setTimeout(() => {
         this.set_style('.style-container',
-            this.style_size()
+            get_grid_styles(this.grid_size)
           + compiled.styles.host
           + compiled.styles.container
         );
@@ -2618,33 +2814,142 @@
     }
 
     set grid(grid) {
-      this.setAttribute('grid', grid);
+      this.attr('grid', grid);
       this.connectedCallback(true);
     }
 
+    get seed() {
+      return this._seed_value;
+    }
+
+    set seed(seed) {
+      this.attr('seed', seed);
+      this.update();
+    }
+
     get use() {
-      return this.getAttribute('use');
+      return this.attr('use');
     }
 
     set use(use) {
-      this.setAttribute('use', use);
+      this.attr('use', use);
       this.connectedCallback(true);
     }
 
     static get observedAttributes() {
-      return ['grid', 'use'];
+      return ['grid', 'use', 'seed'];
     }
 
     attributeChangedCallback(name, old_val, new_val) {
       if (old_val == new_val) {
         return false;
       }
-      if (name == 'grid' && old_val) {
-        this.grid = new_val;
+      let observed = ['grid', 'use', 'seed'].includes(name);
+      if (observed && !is_nil(old_val)) {
+        this[name] = new_val;
       }
-      if (name == 'use' && old_val) {
-        this.use = new_val;
+    }
+
+    get_grid() {
+      return parse_grid(this.attr('grid'));
+    }
+
+    get_use() {
+      let use = this.attr('use') || '';
+      if (use) use = `@use:${ use };`;
+      return use;
+    }
+
+    attr(name, value) {
+      if (arguments.length === 1) {
+        return this.getAttribute(name);
       }
+      if (arguments.length === 2) {
+        this.setAttribute(name, value);
+        return value;
+      }
+    }
+
+    generate(parsed) {
+      let grid = this.get_grid();
+      let seed = this.attr('seed') || this.attr('data-seed');
+
+      if (is_nil(seed)) {
+        seed = Date.now();
+      }
+
+      seed = String(seed);
+      this._seed_value = seed;
+
+      let random = seedrandom(seed);
+      let compiled = generator(parsed, grid, random);
+      return compiled;
+    }
+
+    load(again) {
+      let use = this.get_use();
+      if (!this.innerHTML.trim() && !use) {
+        return false;
+      }
+      let parsed = parse$1(use + this.innerHTML, this.extra);
+      let compiled = this.generate(parsed);
+
+      this.grid_size = compiled.grid
+        ? compiled.grid
+        : this.get_grid();
+
+      this.build_grid(compiled, this.grid_size);
+
+      if (!again) {
+        if (this.hasAttribute('click-to-update')) {
+          this.addEventListener('click', e => this.update());
+        }
+      }
+    }
+
+    get_variable(name) {
+      return getComputedStyle(this).getPropertyValue(name)
+        .trim()
+        .replace(/^\(|\)$/g, '');
+    }
+
+    build_grid(compiled, grid) {
+      const { has_transition, has_animation } = compiled.props;
+      const { keyframes, host, container, cells } = compiled.styles;
+
+      this.doodle.innerHTML = `
+      <style>
+        ${ get_basic_styles() }
+      </style>
+      <style class="style-keyframes">
+        ${ keyframes }
+      </style>
+      <style class="style-container">
+        ${ get_grid_styles(grid) }
+        ${ host }
+        ${ container }
+      </style>
+      <style class="style-cells">
+        ${ (has_transition || has_animation) ? '' : cells }
+      </style>
+      <grid class="container"></grid>
+    `;
+
+      this.doodle.querySelector('.container')
+        .appendChild(create_cells(grid));
+
+      if (has_transition || has_animation) {
+        setTimeout(() => {
+          this.set_style('.style-cells', cells);
+        }, 50);
+      }
+    }
+
+    set_style(selector, styles) {
+      const el = this.shadowRoot.querySelector(selector);
+      el && (el.styleSheet
+        ? (el.styleSheet.cssText = styles )
+        : (el.innerHTML = styles));
     }
   }
 

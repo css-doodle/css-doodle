@@ -2,35 +2,99 @@ import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
-import { sequence, cell_id } from './utils/index';
+import seedrandom from './lib/seedrandom';
+import { cell_id, is_nil } from './utils/index';
+
+function get_basic_styles() {
+  const inherited_grid_props = get_props(/grid/)
+    .map(n => `${ n }: inherit;`)
+    .join('');
+  return `
+    * {
+      box-sizing: border-box;
+    }
+    *::after, *::before {
+      box-sizing: inherit;
+    }
+    :host {
+      display: block;
+      visibility: visible;
+      width: auto;
+      height: auto;
+    }
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      ${ inherited_grid_props }
+    }
+    .container cell:empty {
+      position: relative;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+  `;
+}
+
+function get_grid_styles({x, y}) {
+  return `
+    :host {
+      grid-template-rows: repeat(${ x }, 1fr);
+      grid-template-columns: repeat(${ y }, 1fr);
+    }
+  `;
+}
+
+function create_cell(x, y, z) {
+  let cell = document.createElement('cell');
+  cell.id = cell_id(x, y, z);
+  return cell;
+}
+
+function create_cells({ x, y, z }) {
+  let root = document.createDocumentFragment();
+  if (z == 1) {
+    for (let i = 1; i <= x; ++i) {
+      for (let j = 1; j <= y; ++j) {
+        root.appendChild(create_cell(i, j, 1));
+      }
+    }
+  }
+  else {
+    let temp = null;
+    for (let i = 1; i <= z; ++i) {
+      let cell = create_cell(1, 1, i);
+      (temp || root).appendChild(cell);
+      temp = cell;
+    }
+    temp = null;
+  }
+  return root;
+}
+
+function loop(fn, delay) {
+  let stamp = Date.now();
+  let id;
+  function _loop() {
+    if (Date.now() - stamp >= delay) {
+      fn(); stamp = Date.now();
+    }
+    return requestAnimationFrame(_loop);
+  }
+  return requestAnimationFrame(_loop);
+}
 
 class Doodle extends HTMLElement {
   constructor() {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
     this.extra = {
-      get_custom_property_value: this.get_custom_property_value.bind(this)
+      get_variable: this.get_variable.bind(this)
     };
   }
-  load(again) {
-    let compiled;
-    let use = this.getAttribute('use') || '';
-    if (use) use = `@use:${ use };`;
-    if (!this.innerHTML.trim() && !use) return false;
-    try {
-      let parsed = parse_css(use + this.innerHTML, this.extra);
-      this.grid_size = parse_grid(this.getAttribute('grid'));
-      compiled = generator(parsed, this.grid_size);
-      compiled.grid && (this.grid_size = compiled.grid);
-      this.build_grid(compiled);
-    } catch (e) {
-      this.innerHTML = '';
-      console.error(e && e.message || 'Error in css-doodle.');
-    }
-    if (!again && this.hasAttribute('click-to-update')) {
-      this.addEventListener('click', e => this.update());
-    }
-  }
+
   connectedCallback(again) {
     if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
       this.load(again);
@@ -39,163 +103,44 @@ class Doodle extends HTMLElement {
     }
   }
 
-  get_custom_property_value(name) {
-    return getComputedStyle(this).getPropertyValue(name)
-      .trim()
-      .replace(/^\(|\)$/g, '');
-  }
-
-  cell(x, y, z) {
-    let cell = document.createElement('div');
-    cell.id = cell_id(x, y, z);
-    return cell;
-  }
-
-  build_grid(compiled) {
-    const { has_transition, has_animation } = compiled.props;
-    const { keyframes, host, container, cells } = compiled.styles;
-
-    this.doodle.innerHTML = `
-      <style>
-        ${ this.style_basic() }
-      </style>
-      <style class="style-keyframes">
-        ${ keyframes }
-      </style>
-      <style class="style-container">
-        ${ this.style_size() }
-        ${ host }
-        ${ container }
-      </style>
-      <style class="style-cells">
-        ${ (has_transition || has_animation) ? '' : cells }
-      </style>
-      <div class="container"></div>
-    `;
-
-    this.doodle.querySelector('.container')
-      .appendChild(this.html_cells());
-
-    if (has_transition || has_animation) {
-      setTimeout(() => {
-        this.set_style('.style-cells', cells);
-      }, 50);
-    }
-  }
-
-  inherit_props(p) {
-    return get_props(/grid/)
-      .map(n => `${ n }: inherit;`)
-      .join('');
-  }
-
-  style_basic() {
-    return `
-      * {
-        box-sizing: border-box;
-      }
-      *::after, *::before {
-        box-sizing: inherit;
-      }
-      :host {
-        display: block;
-        visibility: visible;
-        width: auto;
-        height: auto;
-      }
-      .container {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display: grid;
-        ${ this.inherit_props() }
-      }
-      .container div:empty {
-        position: relative;
-        line-height: 1;
-        display: grid;
-        place-items: center;
-      }
-    `;
-  }
-
-  style_size() {
-    let { x, y } = this.grid_size;
-    return `
-      :host {
-        grid-template-rows: repeat(${ x }, 1fr);
-        grid-template-columns: repeat(${ y }, 1fr);
-      }
-    `;
-  }
-
-  html_cells() {
-    let { x, y, z } = this.grid_size;
-    let root = document.createDocumentFragment();
-    if (z == 1) {
-      for (let i = 1; i <= x; ++i) {
-        for (let j = 1; j <= y; ++j) {
-          root.appendChild(this.cell(i, j, 1));
-        }
-      }
-    }
-    else {
-      let temp = null;
-      for (let i = 1; i <= z; ++i) {
-        let cell = this.cell(1, 1, i);
-        (temp || root).appendChild(cell);
-        temp = cell;
-      }
-      temp = null;
-    }
-    return root;
-  }
-
-  set_style(selector, styles) {
-    const el = this.shadowRoot.querySelector(selector);
-    el && (el.styleSheet
-      ? (el.styleSheet.cssText = styles )
-      : (el.innerHTML = styles));
-  }
-
   update(styles) {
-    let use = this.getAttribute('use') || '';
-    if (use) use = `@use:${ use };`;
-
+    let use = this.get_use();
     if (!styles) styles = this.innerHTML;
     this.innerHTML = styles;
 
     if (!this.grid_size) {
-      this.grid_size = parse_grid(this.getAttribute('grid'));
+      this.grid_size = this.get_grid();
     }
 
-    const compiled = generator(parse_css(use + styles, this.extra), this.grid_size);
+    let { x: gx, y: gy, z: gz } = this.grid_size;
+
+    const compiled = this.generate(
+      parse_css(use + styles, this.extra)
+    );
 
     if (compiled.grid) {
       let { x, y, z } = compiled.grid;
-      let { x: gx, y: gy, z: gz } = this.grid_size;
       if (gx !== x || gy !== y || gz !== z) {
         Object.assign(this.grid_size, compiled.grid);
-        return this.build_grid(compiled);
+        return this.build_grid(compiled, compiled.grid);
       }
+
       Object.assign(this.grid_size, compiled.grid);
     }
 
     else {
-      let grid = parse_grid(this.getAttribute('grid'));
+      let grid = this.get_grid();
       let { x, y, z } = grid;
-      let { x: gx, y: gy, z: gz } = this.grid_size;
       if (gx !== x || gy !== y || gz !== z) {
         Object.assign(this.grid_size, grid);
         return this.build_grid(
-          generator(parse_css(use + styles, this.extra), this.grid_size)
+          this.generate(parse_css(use + styles, this.extra)),
+          grid
         );
       }
     }
 
-    this.set_style('.style-keyframes',
-      compiled.styles.keyframes
-    );
+    this.set_style('.style-keyframes', compiled.styles.keyframes);
 
     if (compiled.props.has_animation) {
       this.set_style('.style-cells', '');
@@ -204,7 +149,7 @@ class Doodle extends HTMLElement {
 
     setTimeout(() => {
       this.set_style('.style-container',
-          this.style_size()
+          get_grid_styles(this.grid_size)
         + compiled.styles.host
         + compiled.styles.container
       );
@@ -219,33 +164,142 @@ class Doodle extends HTMLElement {
   }
 
   set grid(grid) {
-    this.setAttribute('grid', grid);
+    this.attr('grid', grid);
     this.connectedCallback(true);
   }
 
+  get seed() {
+    return this._seed_value;
+  }
+
+  set seed(seed) {
+    this.attr('seed', seed);
+    this.update();
+  }
+
   get use() {
-    return this.getAttribute('use');
+    return this.attr('use');
   }
 
   set use(use) {
-    this.setAttribute('use', use);
+    this.attr('use', use);
     this.connectedCallback(true);
   }
 
   static get observedAttributes() {
-    return ['grid', 'use'];
+    return ['grid', 'use', 'seed'];
   }
 
   attributeChangedCallback(name, old_val, new_val) {
     if (old_val == new_val) {
       return false;
     }
-    if (name == 'grid' && old_val) {
-      this.grid = new_val;
+    let observed = ['grid', 'use', 'seed'].includes(name);
+    if (observed && !is_nil(old_val)) {
+      this[name] = new_val;
     }
-    if (name == 'use' && old_val) {
-      this.use = new_val;
+  }
+
+  get_grid() {
+    return parse_grid(this.attr('grid'));
+  }
+
+  get_use() {
+    let use = this.attr('use') || '';
+    if (use) use = `@use:${ use };`;
+    return use;
+  }
+
+  attr(name, value) {
+    if (arguments.length === 1) {
+      return this.getAttribute(name);
     }
+    if (arguments.length === 2) {
+      this.setAttribute(name, value);
+      return value;
+    }
+  }
+
+  generate(parsed) {
+    let grid = this.get_grid();
+    let seed = this.attr('seed') || this.attr('data-seed');
+
+    if (is_nil(seed)) {
+      seed = Date.now();
+    }
+
+    seed = String(seed);
+    this._seed_value = seed;
+
+    let random = seedrandom(seed);
+    let compiled = generator(parsed, grid, random);
+    return compiled;
+  }
+
+  load(again) {
+    let use = this.get_use();
+    if (!this.innerHTML.trim() && !use) {
+      return false;
+    }
+    let parsed = parse_css(use + this.innerHTML, this.extra);
+    let compiled = this.generate(parsed);
+
+    this.grid_size = compiled.grid
+      ? compiled.grid
+      : this.get_grid();
+
+    this.build_grid(compiled, this.grid_size);
+
+    if (!again) {
+      if (this.hasAttribute('click-to-update')) {
+        this.addEventListener('click', e => this.update());
+      }
+    }
+  }
+
+  get_variable(name) {
+    return getComputedStyle(this).getPropertyValue(name)
+      .trim()
+      .replace(/^\(|\)$/g, '');
+  }
+
+  build_grid(compiled, grid) {
+    const { has_transition, has_animation } = compiled.props;
+    const { keyframes, host, container, cells } = compiled.styles;
+
+    this.doodle.innerHTML = `
+      <style>
+        ${ get_basic_styles() }
+      </style>
+      <style class="style-keyframes">
+        ${ keyframes }
+      </style>
+      <style class="style-container">
+        ${ get_grid_styles(grid) }
+        ${ host }
+        ${ container }
+      </style>
+      <style class="style-cells">
+        ${ (has_transition || has_animation) ? '' : cells }
+      </style>
+      <grid class="container"></grid>
+    `;
+
+    this.doodle.querySelector('.container')
+      .appendChild(create_cells(grid));
+
+    if (has_transition || has_animation) {
+      setTimeout(() => {
+        this.set_style('.style-cells', cells);
+      }, 50);
+    }
+  }
+
+  set_style(selector, styles) {
+    const el = this.shadowRoot.querySelector(selector);
+    el && (el.styleSheet
+      ? (el.styleSheet.cssText = styles )
+      : (el.innerHTML = styles));
   }
 }
 
