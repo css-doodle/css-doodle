@@ -378,8 +378,8 @@ function generator(tokens, grid_size, random) {
   rules.reset();
 
   if (grid_size.z == 1) {
-    for (let x = 1, count = 0; x <= grid_size.x; ++x) {
-      for (let y = 1; y <= grid_size.y; ++y) {
+    for (let y = 1, count = 0; y <= grid_size.y; ++y) {
+      for (let x = 1; x <= grid_size.x; ++x) {
         rules.compose({
           x, y, z: 1,
           count: ++count, grid: grid_size, context

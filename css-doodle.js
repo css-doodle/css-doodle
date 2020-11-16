@@ -1500,12 +1500,12 @@
         return _ => count;
       },
 
-      row({ x }) {
-        return _ => x;
+      row({ y }) {
+        return _ => y;
       },
 
-      col({ y }) {
-        return _ => y;
+      col({ x }) {
+        return _ => x;
       },
 
       depth({ z }) {
@@ -1517,11 +1517,11 @@
       },
 
       ['size-row']({ grid }) {
-        return _ => grid.x;
+        return _ => grid.y;
       },
 
       ['size-col']({ grid }) {
-        return _ => grid.y;
+        return _ => grid.x;
       },
 
       ['size-depth']({ grid }) {
@@ -1731,18 +1731,18 @@
       'rep': 'repeat',
 
       'i':  'index',
-      'x':  'row',
-      'y':  'col',
+      'x':  'col',
+      'y':  'row',
       'z':  'depth',
 
       's':  'size',
-      'sx': 'size-row',
-      'sy': 'size-col',
+      'sx': 'size-col',
+      'sy': 'size-row',
       'sz': 'size-depth',
 
       // legacy names
-      'size-x': 'size-row',
-      'size-y': 'size-col',
+      'size-x': 'size-col',
+      'size-y': 'size-row',
       'size-z': 'size-depth',
       'multi': 'multiple',
       'pick-by-turn': 'pick-n',
@@ -1986,8 +1986,8 @@
   }
 
   const is$1 = {
-    even: n => !!(n % 2),
-    odd:  n => !(n % 2)
+    even: n => !(n % 2),
+    odd:  n => !!(n % 2)
   };
 
   function even_or_odd(expr) {
@@ -2005,33 +2005,47 @@
       nth({ count, grid }) {
         return (...exprs) => exprs.some(expr =>
           even_or_odd(expr)
-            ? is$1[expr](count - 1)
+            ? is$1[expr](count)
             : nth(expr, count, grid.count)
         );
       },
 
-      row({ x, grid }) {
+      row({ y, grid }) {
         return (...exprs) => exprs.some(expr =>
           even_or_odd(expr)
-            ? is$1[expr](x - 1)
-            : nth(expr, x, grid.x)
-        );
-      },
-
-      col({ y, grid }) {
-        return (...exprs) => exprs.some(expr =>
-          even_or_odd(expr)
-            ? is$1[expr](y - 1)
+            ? is$1[expr](y)
             : nth(expr, y, grid.y)
         );
       },
 
-      even({ count }) {
-        return _ => is$1.even(count - 1);
+      col({ x, grid }) {
+        return (...exprs) => exprs.some(expr =>
+          even_or_odd(expr)
+            ? is$1[expr](x)
+            : nth(expr, x, grid.x)
+        );
       },
 
-      odd({ count }) {
-        return _ => is$1.odd(count - 1);
+      even({ count, grid, y }) {
+        return arg => {
+          if (arg === 'cross' && is$1.even(grid.x)) {
+            let m = is$1.even(y) ? 'odd' : 'even';
+            return is$1[m](count);
+          } else {
+            return is$1.even(count);
+          }
+        }
+      },
+
+      odd({ count, grid, y}) {
+        return arg => {
+          if (arg === 'cross' && is$1.even(grid.x)) {
+            let m = is$1.even(y) ? 'even' : 'odd';
+            return is$1[m](count);
+          } else {
+            return is$1.odd(count);
+          }
+        }
       },
 
       random() {
@@ -2424,8 +2438,8 @@
     rules.reset();
 
     if (grid_size.z == 1) {
-      for (let x = 1, count = 0; x <= grid_size.x; ++x) {
-        for (let y = 1; y <= grid_size.y; ++y) {
+      for (let y = 1, count = 0; y <= grid_size.y; ++y) {
+        for (let x = 1; x <= grid_size.x; ++x) {
           rules.compose({
             x, y, z: 1,
             count: ++count, grid: grid_size, context
@@ -2703,8 +2717,8 @@
   function get_grid_styles({x, y}) {
     return `
     :host {
-      grid-template-rows: repeat(${ x }, 1fr);
-      grid-template-columns: repeat(${ y }, 1fr);
+      grid-template-rows: repeat(${ y }, 1fr);
+      grid-template-columns: repeat(${ x }, 1fr);
     }
   `;
   }
@@ -2718,8 +2732,8 @@
   function create_cells({ x, y, z }) {
     let root = document.createDocumentFragment();
     if (z == 1) {
-      for (let i = 1; i <= x; ++i) {
-        for (let j = 1; j <= y; ++j) {
+      for (let j = 1; j <= y; ++j) {
+        for (let i = 1; i <= x; ++i) {
           root.appendChild(create_cell(i, j, 1));
         }
       }

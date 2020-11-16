@@ -41,8 +41,8 @@ function get_basic_styles() {
 function get_grid_styles({x, y}) {
   return `
     :host {
-      grid-template-rows: repeat(${ x }, 1fr);
-      grid-template-columns: repeat(${ y }, 1fr);
+      grid-template-rows: repeat(${ y }, 1fr);
+      grid-template-columns: repeat(${ x }, 1fr);
     }
   `;
 }
@@ -56,8 +56,8 @@ function create_cell(x, y, z) {
 function create_cells({ x, y, z }) {
   let root = document.createDocumentFragment();
   if (z == 1) {
-    for (let i = 1; i <= x; ++i) {
-      for (let j = 1; j <= y; ++j) {
+    for (let j = 1; j <= y; ++j) {
+      for (let i = 1; i <= x; ++i) {
         root.appendChild(create_cell(i, j, 1));
       }
     }

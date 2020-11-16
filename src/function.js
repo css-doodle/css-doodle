@@ -25,12 +25,12 @@ function getExposed(random) {
       return _ => count;
     },
 
-    row({ x }) {
-      return _ => x;
+    row({ y }) {
+      return _ => y;
     },
 
-    col({ y }) {
-      return _ => y;
+    col({ x }) {
+      return _ => x;
     },
 
     depth({ z }) {
@@ -42,11 +42,11 @@ function getExposed(random) {
     },
 
     ['size-row']({ grid }) {
-      return _ => grid.x;
+      return _ => grid.y;
     },
 
     ['size-col']({ grid }) {
-      return _ => grid.y;
+      return _ => grid.x;
     },
 
     ['size-depth']({ grid }) {
@@ -256,18 +256,18 @@ function getExposed(random) {
     'rep': 'repeat',
 
     'i':  'index',
-    'x':  'row',
-    'y':  'col',
+    'x':  'col',
+    'y':  'row',
     'z':  'depth',
 
     's':  'size',
-    'sx': 'size-row',
-    'sy': 'size-col',
+    'sx': 'size-col',
+    'sy': 'size-row',
     'sz': 'size-depth',
 
     // legacy names
-    'size-x': 'size-row',
-    'size-y': 'size-col',
+    'size-x': 'size-col',
+    'size-y': 'size-row',
     'size-z': 'size-depth',
     'multi': 'multiple',
     'pick-by-turn': 'pick-n',
