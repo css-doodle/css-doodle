@@ -89,7 +89,7 @@ const symbols = {
 };
 
 function throw_error(msg, { col, line }) {
-  console.error(
+  console.warn(
     `(at line ${ line }, column ${ col }) ${ msg }`
   );
 }

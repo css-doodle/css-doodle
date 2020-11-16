@@ -241,6 +241,7 @@ class Doodle extends HTMLElement {
     if (!this.innerHTML.trim() && !use) {
       return false;
     }
+
     let parsed = parse_css(use + this.innerHTML, this.extra);
     let compiled = this.generate(parsed);
 

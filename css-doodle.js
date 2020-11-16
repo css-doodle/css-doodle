@@ -247,7 +247,7 @@
   };
 
   function throw_error(msg, { col, line }) {
-    console.error(
+    console.warn(
       `(at line ${ line }, column ${ col }) ${ msg }`
     );
   }
@@ -2905,6 +2905,7 @@
       if (!this.innerHTML.trim() && !use) {
         return false;
       }
+
       let parsed = parse$1(use + this.innerHTML, this.extra);
       let compiled = this.generate(parsed);
 
