@@ -267,6 +267,7 @@ class Doodle extends HTMLElement {
   build_grid(compiled, grid) {
     const { has_transition, has_animation } = compiled.props;
     const { keyframes, host, container, cells } = compiled.styles;
+    const definitions = compiled.definitions;
 
     this.doodle.innerHTML = `
       <style>
@@ -294,6 +295,10 @@ class Doodle extends HTMLElement {
         this.set_style('.style-cells', cells);
       }, 50);
     }
+    // might be removed in the future
+    try {
+      definitions.forEach(CSS.registerProperty);
+    } catch (e) { }
   }
 
   set_style(selector, styles) {

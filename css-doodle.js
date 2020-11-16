@@ -2070,6 +2070,35 @@
     return expose;
   }, {});
 
+  const initial = {
+    length: '0px',
+    number: 0,
+    color: 'black',
+    url: 'url()',
+    image: 'url()',
+    integer: 0,
+    angle: '0deg',
+    time: '0ms',
+    resolution: '0dpi',
+    percentage: '0%',
+    'length-percentage': '0%',
+    'transform-function': 'translate(0)',
+    'transform-list': 'translate(0)',
+    'custom-ident': '_'
+  };
+
+  function get_definition(name) {
+    let type = String(name).substr(2);
+    if (initial[type] !== undefined) {
+      return {
+        name: name,
+        syntax: `<${type}> | <${type}>+ | <${type}>#`,
+        initialValue: initial[type],
+        inherits: false
+      }
+    }
+  }
+
   let { join, make_array, remove_empty_values } = List();
 
   function is_host_selector(s) {
@@ -2097,6 +2126,7 @@
       this.reset();
       this.Func = getExposed(random);
       this.Selector = Selector(random);
+      this.custom_properties = {};
     }
 
     reset() {
@@ -2274,6 +2304,10 @@
         }
       }
 
+      if (/^\-\-/.test(prop)) {
+        this.custom_properties[prop] = value;
+      }
+
       if (Property[prop]) {
         let transformed = Property[prop](value, {
           is_special_selector: is_special_selector(selector)
@@ -2416,10 +2450,19 @@
         });
       });
 
+      let definitions = [];
+      Object.keys(this.custom_properties).forEach(name => {
+        let def = get_definition(name);
+        if (def) {
+          definitions.push(def);
+        }
+      });
+
       return {
         props: this.props,
         styles: this.styles,
-        grid: this.grid
+        grid: this.grid,
+        definitions: definitions
       }
     }
   }
@@ -2931,6 +2974,7 @@
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       const { keyframes, host, container, cells } = compiled.styles;
+      const definitions = compiled.definitions;
 
       this.doodle.innerHTML = `
       <style>
@@ -2958,6 +3002,10 @@
           this.set_style('.style-cells', cells);
         }, 50);
       }
+      // might be removed in the future
+      try {
+        definitions.forEach(CSS.registerProperty);
+      } catch (e) { }
     }
 
     set_style(selector, styles) {

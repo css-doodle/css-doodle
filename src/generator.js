@@ -10,6 +10,8 @@ import { maybe, cell_id, is_nil } from './utils/index.js';
 import List from './utils/list';
 let { join, make_array, remove_empty_values } = List();
 
+import get_definition from './utils/get-definition';
+
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
 }
@@ -35,6 +37,7 @@ class Rules {
     this.reset();
     this.Func = Func(random);
     this.Selector = Selector(random);
+    this.custom_properties = {};
   }
 
   reset() {
@@ -212,6 +215,10 @@ class Rules {
       }
     }
 
+    if (/^\-\-/.test(prop)) {
+      this.custom_properties[prop] = value;
+    }
+
     if (Property[prop]) {
       let transformed = Property[prop](value, {
         is_special_selector: is_special_selector(selector)
@@ -355,10 +362,19 @@ class Rules {
       });
     });
 
+    let definitions = [];
+    Object.keys(this.custom_properties).forEach(name => {
+      let def = get_definition(name);
+      if (def) {
+        definitions.push(def);
+      }
+    });
+
     return {
       props: this.props,
       styles: this.styles,
-      grid: this.grid
+      grid: this.grid,
+      definitions: definitions
     }
   }
 }
