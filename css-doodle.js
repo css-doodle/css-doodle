@@ -2088,7 +2088,7 @@
   };
 
   function get_definition(name) {
-    let type = String(name).substr(2);
+    let type = String(name).substr(2).split('-')[0];
     if (initial[type] !== undefined) {
       return {
         name: name,
