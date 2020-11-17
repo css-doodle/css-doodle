@@ -1,3 +1,19 @@
+## 0.9.0
+
+### Features
+
+* Add seed number to css-doodle.
+* Add cross options to even/odd functions.
+* Automatically register properties by their names.
+
+### Changes
+
+* Make row/col respect to y/x.
+
+<br /> <br />
+
+
+
 ## 0.8.5
 
 ### Fixes
