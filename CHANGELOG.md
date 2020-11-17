@@ -1,3 +1,13 @@
+## 0.9.1
+
+### Fixes
+
+* Fix reading property names.
+
+<br /> <br />
+
+
+
 ## 0.9.0
 
 ### Features
