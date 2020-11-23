@@ -96,7 +96,7 @@
     try {
       result = parse(it);
     } catch (e) {
-      console.error(e && e.message || 'Bad variables.');
+      console.warn(e && e.message || 'Bad variables.');
     }
     return result;
   }
