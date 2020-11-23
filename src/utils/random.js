@@ -4,7 +4,7 @@ export default function(random) {
     return start * (1 - t) + end * t;
   }
 
-  function rand( start = 0, end = start) {
+  function rand(start = 0, end = start) {
     if (arguments.length == 1) {
       if (start == 1) start = 0;
       else if (start < 1) start /= 10;
@@ -23,7 +23,7 @@ export default function(random) {
   }
 
   return {
-    lerp, 
+    lerp,
     rand,
     pick,
     unique_id

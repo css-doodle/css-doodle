@@ -46,6 +46,7 @@ export function lazy(fn) {
 }
 
 export function sequence(count, fn) {
+  count = parseInt(count) || 0;
   let ret = [];
   for (let i = 0; i < count; ++i) {
     ret.push(fn(i));
