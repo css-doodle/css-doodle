@@ -251,7 +251,7 @@ class Rules {
           if (token.value.length) {
             this.compose(coords, token.value);
           }
-          rule = Property[prop](token.value);
+          rule = '';
           break;
         }
         default: {
