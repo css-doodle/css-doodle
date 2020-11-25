@@ -1,3 +1,15 @@
+## 0.9.2
+
+### Fixes
+
+* Normalize the count of sequence generator so it's ok to use `@r` function in `@m` function.
+* Replace all errors with warnings.
+
+### Changes
+
+* Add version to released files.
+
+
 ## 0.9.1
 
 ### Fixes
