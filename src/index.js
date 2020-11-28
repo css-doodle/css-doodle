@@ -5,87 +5,6 @@ import get_props from './utils/get-props';
 import seedrandom from './lib/seedrandom';
 import { cell_id, is_nil } from './utils/index';
 
-function get_basic_styles() {
-  const inherited_grid_props = get_props(/grid/)
-    .map(n => `${ n }: inherit;`)
-    .join('');
-  return `
-    * {
-      box-sizing: border-box;
-    }
-    *::after, *::before {
-      box-sizing: inherit;
-    }
-    :host {
-      display: block;
-      visibility: visible;
-      width: auto;
-      height: auto;
-    }
-    .container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      display: grid;
-      ${ inherited_grid_props }
-    }
-    .container cell:empty {
-      position: relative;
-      line-height: 1;
-      display: grid;
-      place-items: center;
-    }
-  `;
-}
-
-function get_grid_styles({x, y}) {
-  return `
-    :host {
-      grid-template-rows: repeat(${ y }, 1fr);
-      grid-template-columns: repeat(${ x }, 1fr);
-    }
-  `;
-}
-
-function create_cell(x, y, z) {
-  let cell = document.createElement('cell');
-  cell.id = cell_id(x, y, z);
-  return cell;
-}
-
-function create_cells({ x, y, z }) {
-  let root = document.createDocumentFragment();
-  if (z == 1) {
-    for (let j = 1; j <= y; ++j) {
-      for (let i = 1; i <= x; ++i) {
-        root.appendChild(create_cell(i, j, 1));
-      }
-    }
-  }
-  else {
-    let temp = null;
-    for (let i = 1; i <= z; ++i) {
-      let cell = create_cell(1, 1, i);
-      (temp || root).appendChild(cell);
-      temp = cell;
-    }
-    temp = null;
-  }
-  return root;
-}
-
-function loop(fn, delay) {
-  let stamp = Date.now();
-  let id;
-  function _loop() {
-    if (Date.now() - stamp >= delay) {
-      fn(); stamp = Date.now();
-    }
-    return requestAnimationFrame(_loop);
-  }
-  return requestAnimationFrame(_loop);
-}
-
 class Doodle extends HTMLElement {
   constructor() {
     super();
@@ -124,7 +43,6 @@ class Doodle extends HTMLElement {
         Object.assign(this.grid_size, compiled.grid);
         return this.build_grid(compiled, compiled.grid);
       }
-
       Object.assign(this.grid_size, compiled.grid);
     }
 
@@ -174,7 +92,7 @@ class Doodle extends HTMLElement {
 
   set seed(seed) {
     this.attr('seed', seed);
-    this.update();
+    this.connectedCallback(true);
   }
 
   get use() {
@@ -295,10 +213,13 @@ class Doodle extends HTMLElement {
         this.set_style('.style-cells', cells);
       }, 50);
     }
+
     // might be removed in the future
-    try {
-      definitions.forEach(CSS.registerProperty);
-    } catch (e) { }
+    if (window.CSS && window.CSS.registerProperty) {
+      try {
+        definitions.forEach(CSS.registerProperty);
+      } catch (e) { }
+    }
   }
 
   set_style(selector, styles) {
@@ -311,6 +232,75 @@ class Doodle extends HTMLElement {
 
 if (!customElements.get('css-doodle')) {
   customElements.define('css-doodle', Doodle);
+}
+
+function get_basic_styles() {
+  const inherited_grid_props = get_props(/grid/)
+    .map(n => `${ n }: inherit;`)
+    .join('');
+  return `
+    * {
+      box-sizing: border-box;
+    }
+    *::after, *::before {
+      box-sizing: inherit;
+    }
+    :host {
+      display: block;
+      visibility: visible;
+      width: auto;
+      height: auto;
+    }
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      ${ inherited_grid_props }
+    }
+    .container cell:empty {
+      position: relative;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+  `;
+}
+
+function get_grid_styles({x, y}) {
+  return `
+    :host {
+      grid-template-rows: repeat(${ y }, 1fr);
+      grid-template-columns: repeat(${ x }, 1fr);
+    }
+  `;
+}
+
+function create_cell(x, y, z) {
+  let cell = document.createElement('cell');
+  cell.id = cell_id(x, y, z);
+  return cell;
+}
+
+function create_cells({ x, y, z }) {
+  let root = document.createDocumentFragment();
+  if (z == 1) {
+    for (let j = 1; j <= y; ++j) {
+      for (let i = 1; i <= x; ++i) {
+        root.appendChild(create_cell(i, j, 1));
+      }
+    }
+  }
+  else {
+    let temp = null;
+    for (let i = 1; i <= z; ++i) {
+      let cell = create_cell(1, 1, i);
+      (temp || root).appendChild(cell);
+      temp = cell;
+    }
+    temp = null;
+  }
+  return root;
 }
 
 function CSSDoodle(input, ...vars) {
