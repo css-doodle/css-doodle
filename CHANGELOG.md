@@ -1,3 +1,13 @@
+## 0.9.3
+
+### Fixes
+
+* Fix attribute update for seed number.
+
+<br /> <br />
+
+
+
 ## 0.9.2
 
 ### Fixes

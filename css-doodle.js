@@ -1,4 +1,4 @@
-/*! css-doodle@0.9.2 */
+/*! css-doodle@0.9.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -2764,7 +2764,6 @@
           Object.assign(this.grid_size, compiled.grid);
           return this.build_grid(compiled, compiled.grid);
         }
-
         Object.assign(this.grid_size, compiled.grid);
       }
 
@@ -3024,7 +3023,6 @@
     }
     return root;
   }
-
 
   function CSSDoodle(input, ...vars) {
     let get_value = v =>
