@@ -10,6 +10,16 @@ A web component for drawing patterns with CSS.
   <img src="screenshot/doodle.png" />
 </a>
 
+## Example
+
+```css
+<css-doodle>
+  @grid: 5 / 200px;
+  background: @p(#000, #fff);
+  margin: 1px;
+</css-doodle>
+```
+
 ## Docs
 [https://css-doodle.com](http://css-doodle.com)
 
