@@ -851,7 +851,7 @@
     while (input && input.value) {
       return get_value(input.value);
     }
-    return input || '';
+    return is_nil(input) ? '' : input;
   }
 
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
@@ -1449,7 +1449,8 @@
   }
 
   function parse$2(input, no_space = false) {
-    const it = iterator(input);
+    if (is_nil(input)) input = '';
+    const it = iterator(String(input));
     const result = [], stack = [];
     let group = '';
 
@@ -1485,7 +1486,7 @@
       it.next();
     }
 
-    if (group) {
+    if (!is_nil(group)) {
       result.push(group);
     }
 
@@ -2161,20 +2162,24 @@
 
     apply_func(fn, coords, args) {
       let _fn = fn(...make_array(coords));
-
       let input = [];
       args.forEach(arg => {
-        if (!arg.cluster && typeof arg.value == 'string') {
+        let type = typeof arg.value;
+        let is_string_or_number = (type === 'number' || type === 'string');
+
+        if (!arg.cluster && (is_string_or_number)) {
           input.push(...parse$2(arg.value, true));
-        } else {
-          if (typeof arg == 'function') {
+        }
+        else {
+          if (typeof arg === 'function') {
             input.push(arg);
-          } else if (arg && !is_nil(arg.value)) {
-            input.push(arg.value);
+          }
+          else if (!is_nil(arg.value)) {
+            let value = get_value(arg.value);
+            input.push(value);
           }
         }
       });
-
       input = remove_empty_values(input);
       let result = _fn(...make_array(input));
       return result;
@@ -2190,10 +2195,10 @@
 
     compose_argument(argument, coords, extra = []) {
       let result = argument.map(arg => {
-        if (arg.type == 'text') {
+        if (arg.type === 'text') {
           return arg.value;
         }
-        else if (arg.type == 'func') {
+        else if (arg.type === 'func') {
           let fn = this.pick_func(arg.name.substr(1));
           if (fn) {
             coords.extra = extra;
@@ -2215,8 +2220,10 @@
     }
 
     compose_value(value, coords) {
-      if (!value || !value.reduce) return '';
-      let ret = value.reduce((result, val) => {
+      if (!Array.isArray(value)) {
+        return '';
+      }
+      return value.reduce((result, val) => {
         switch (val.type) {
           case 'text': {
             result += val.value;
@@ -2243,8 +2250,6 @@
         }
         return result;
       }, '');
-
-      return ret;
     }
 
     compose_rule(token, _coords, selector) {
@@ -2282,25 +2287,25 @@
         }
       }
 
-      if (prop == 'content') {
+      if (prop === 'content') {
         if (!/["']|^none$|^(var|counter|counters|attr)\(/.test(value)) {
           value = `'${ value }'`;
         }
       }
 
-      if (prop == 'transition') {
+      if (prop === 'transition') {
         this.props.has_transition = true;
       }
 
       let rule = `${ prop }: ${ value };`;
       rule = prefixer(prop, rule);
 
-      if (prop == 'clip-path') {
+      if (prop === 'clip-path') {
         // fix clip bug
         rule += ';overflow: hidden;';
       }
 
-      if (prop == 'width' || prop == 'height') {
+      if (prop === 'width' || prop === 'height') {
         if (!is_special_selector(selector)) {
           rule += `--internal-cell-${ prop }: ${ value };`;
         }
@@ -2395,7 +2400,7 @@
                 return this.compose_argument(arg, coords);
               });
               let result = this.apply_func(fn, coords, args);
-              if (!is_nil(result)) {
+              if (result) {
                 this.compose(coords, token.styles);
               }
             }
@@ -2440,7 +2445,7 @@
         keyframes.forEach(name => {
           let aname = this.compose_aname(name, coords.count);
           this.styles.keyframes += `
-          ${ maybe(i == 0,
+          ${ maybe(i === 0,
             `@keyframes ${ name } {
               ${ this.keyframes[name](coords) }
             }`

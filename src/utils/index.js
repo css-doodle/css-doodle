@@ -62,5 +62,5 @@ export function get_value(input) {
   while (input && input.value) {
     return get_value(input.value);
   }
-  return input || '';
+  return is_nil(input) ? '' : input;
 }

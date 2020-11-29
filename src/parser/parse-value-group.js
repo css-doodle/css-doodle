@@ -1,4 +1,5 @@
 import iterator from './iterator';
+import { is_nil } from '../utils/index.js';
 
 function is_seperator(c, no_space) {
   if (no_space) return /[,，]/.test(c);
@@ -13,7 +14,8 @@ function skip_seperator(it, no_space) {
 }
 
 export default function parse(input, no_space = false) {
-  const it = iterator(input);
+  if (is_nil(input)) input = '';
+  const it = iterator(String(input));
   const result = [], stack = [];
   let group = '';
 
@@ -49,7 +51,7 @@ export default function parse(input, no_space = false) {
     it.next();
   }
 
-  if (group) {
+  if (!is_nil(group)) {
     result.push(group);
   }
 
