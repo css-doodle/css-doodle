@@ -2169,7 +2169,7 @@
         } else {
           if (typeof arg == 'function') {
             input.push(arg);
-          } else if (arg && arg.value) {
+          } else if (arg && !is_nil(arg.value)) {
             input.push(arg.value);
           }
         }
@@ -2395,7 +2395,7 @@
                 return this.compose_argument(arg, coords);
               });
               let result = this.apply_func(fn, coords, args);
-              if (result) {
+              if (!is_nil(result)) {
                 this.compose(coords, token.styles);
               }
             }
