@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/css-doodle/css-doodle.svg?branch=master)](https://travis-ci.org/css-doodle/css-doodle)
 ![license](https://img.shields.io/github/license/mashape/apistatus.svg)
-[![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)](https://spectrum.chat/css-doodle)
 
 
 A web component for drawing patterns with CSS.
