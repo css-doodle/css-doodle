@@ -58,15 +58,19 @@ function getExposed(random) {
     },
 
     n({ extra }) {
-      return _ => {
-        return extra ? extra[0] : '@n';
-      }
+      return _ => extra ? extra[0] : '@n';
+    },
+
+    nx({ extra }) {
+      return _ => extra ? extra[1] : '@nx';
+    },
+
+    ny({ extra }) {
+      return _ => extra ? extra[2] : '@ny';
     },
 
     N({ extra }) {
-      return _ => {
-        return extra ? extra[1] : '@N';
-      }
+      return _ => extra ? extra[3] : '@N';
     },
 
     repeat: (
@@ -229,8 +233,8 @@ function getExposed(random) {
   function make_sequence(c) {
     return lazy((n, action) => {
       if (!action || !n) return '';
-      let count = clamp(get_value(n()), 0, 65536);
-      return sequence(count, i => get_value(action(i + 1, count))).join(c);
+      let count = get_value(n());
+      return sequence(count, (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
     });
   }
 

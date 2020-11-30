@@ -46,10 +46,16 @@ export function lazy(fn) {
 }
 
 export function sequence(count, fn) {
-  count = parseInt(count) || 0;
+  let [x, y = 1] = String(count).split('x');
+  x = clamp(parseInt(x) || 1, 1, 65536);
+  y = clamp(parseInt(y) || 1, 1, 65536);
+  let max = x * y;
   let ret = [];
-  for (let i = 0; i < count; ++i) {
-    ret.push(fn(i));
+  let index = 1;
+  for (let i = 1; i <= y; ++i) {
+    for (let j = 1; j <= x; ++j) {
+      ret.push(fn(index++, j, i, max));
+    }
   }
   return ret;
 }

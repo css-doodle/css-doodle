@@ -488,12 +488,14 @@
 
   function seperate_func_name(name) {
     let fname = '', extra = '';
-    if (/\D$/.test(name) || Math[name.substr(1)]) {
+    if ((/\D$/.test(name) && !/\d+x\d+/.test(name)) || Math[name.substr(1)]) {
       return { fname: name, extra }
     }
     for (let i = name.length - 1; i >= 0; i--) {
       let c = name[i];
-      if (/[\d.]/.test(c)) {
+      let prev = name[i - 1];
+      let next = name[i + 1];
+      if (/[\d.]/.test(c) || ((c == 'x') && /\d/.test(prev) && /\d/.test(next))) {
         extra = c + extra;
       } else {
         fname = name.substring(0, i + 1);
@@ -835,10 +837,16 @@
   }
 
   function sequence(count, fn) {
-    count = parseInt(count) || 0;
+    let [x, y = 1] = String(count).split('x');
+    x = clamp(parseInt(x) || 1, 1, 65536);
+    y = clamp(parseInt(y) || 1, 1, 65536);
+    let max = x * y;
     let ret = [];
-    for (let i = 0; i < count; ++i) {
-      ret.push(fn(i));
+    let index = 1;
+    for (let i = 1; i <= y; ++i) {
+      for (let j = 1; j <= x; ++j) {
+        ret.push(fn(index++, j, i, max));
+      }
     }
     return ret;
   }
@@ -1536,15 +1544,19 @@
       },
 
       n({ extra }) {
-        return _ => {
-          return extra ? extra[0] : '@n';
-        }
+        return _ => extra ? extra[0] : '@n';
+      },
+
+      nx({ extra }) {
+        return _ => extra ? extra[1] : '@nx';
+      },
+
+      ny({ extra }) {
+        return _ => extra ? extra[2] : '@ny';
       },
 
       N({ extra }) {
-        return _ => {
-          return extra ? extra[1] : '@N';
-        }
+        return _ => extra ? extra[3] : '@N';
       },
 
       repeat: (
@@ -1707,8 +1719,8 @@
     function make_sequence(c) {
       return lazy((n, action) => {
         if (!action || !n) return '';
-        let count = clamp(get_value(n()), 0, 65536);
-        return sequence(count, i => get_value(action(i + 1, count))).join(c);
+        let count = get_value(n());
+        return sequence(count, (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
       });
     }
 
