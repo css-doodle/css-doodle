@@ -1731,8 +1731,8 @@
     }
 
     return alias_for(Expose, {
-      'm':  'multiple',
-      'ms': 'multiple-with-space',
+      'm': 'multiple',
+      'M': 'multiple-with-space',
 
       'r':  'rand',
       'ri': 'rand-int',
@@ -1745,17 +1745,22 @@
 
       'rep': 'repeat',
 
-      'i':  'index',
-      'x':  'col',
-      'y':  'row',
-      'z':  'depth',
+      'i': 'index',
+      'x': 'col',
+      'y': 'row',
+      'z': 'depth',
 
+      'I': 'size',
+      'X': 'size-col',
+      'Y': 'size-row',
+      'Z': 'size-depth',
+
+      // legacy names
+      'ms': 'multiple-with-space',
       's':  'size',
       'sx': 'size-col',
       'sy': 'size-row',
       'sz': 'size-depth',
-
-      // legacy names
       'size-x': 'size-col',
       'size-y': 'size-row',
       'size-z': 'size-depth',
@@ -2398,16 +2403,17 @@
     pre_compose(coords, tokens) {
       (tokens || this.tokens).forEach(token => {
         switch (token.type) {
-          case 'rule':
+          case 'rule': {
             this.pre_compose_rule(token, coords);
             break;
+          }
           case 'pseudo': {
             if (is_host_selector(token.selector)) {
               (token.styles || []).forEach(token => {
                 this.pre_compose_rule(token, coords);
               });
-              break;
             }
+            break;
           }
         }
       });
@@ -2420,12 +2426,13 @@
         if (initial && this.grid) return false;
 
         switch (token.type) {
-          case 'rule':
+          case 'rule': {
             this.add_rule(
               this.compose_selector(coords),
               this.compose_rule(token, coords)
             );
             break;
+          }
 
           case 'pseudo': {
             if (token.selector.startsWith(':doodle')) {
@@ -2536,7 +2543,7 @@
     rules.pre_compose({
       x: 1, y: 1, z: 1, count: 1, context: {},
       grid: { x: 1, y: 1, z: 1, count: 1 }
-    }, null);
+    });
 
     let { grid } = rules.output();
     if (grid) grid_size = grid;

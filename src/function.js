@@ -245,8 +245,8 @@ function getExposed(random) {
   }
 
   return alias_for(Expose, {
-    'm':  'multiple',
-    'ms': 'multiple-with-space',
+    'm': 'multiple',
+    'M': 'multiple-with-space',
 
     'r':  'rand',
     'ri': 'rand-int',
@@ -259,17 +259,22 @@ function getExposed(random) {
 
     'rep': 'repeat',
 
-    'i':  'index',
-    'x':  'col',
-    'y':  'row',
-    'z':  'depth',
+    'i': 'index',
+    'x': 'col',
+    'y': 'row',
+    'z': 'depth',
 
+    'I': 'size',
+    'X': 'size-col',
+    'Y': 'size-row',
+    'Z': 'size-depth',
+
+    // legacy names
+    'ms': 'multiple-with-space',
     's':  'size',
     'sx': 'size-col',
     'sy': 'size-row',
     'sz': 'size-depth',
-
-    // legacy names
     'size-x': 'size-col',
     'size-y': 'size-row',
     'size-z': 'size-depth',

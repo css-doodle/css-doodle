@@ -295,16 +295,17 @@ class Rules {
   pre_compose(coords, tokens) {
     (tokens || this.tokens).forEach(token => {
       switch (token.type) {
-        case 'rule':
+        case 'rule': {
           this.pre_compose_rule(token, coords)
           break;
+        }
         case 'pseudo': {
           if (is_host_selector(token.selector)) {
             (token.styles || []).forEach(token => {
               this.pre_compose_rule(token, coords);
             });
-            break;
           }
+          break;
         }
       }
     });
@@ -317,12 +318,13 @@ class Rules {
       if (initial && this.grid) return false;
 
       switch (token.type) {
-        case 'rule':
+        case 'rule': {
           this.add_rule(
             this.compose_selector(coords),
             this.compose_rule(token, coords)
           );
           break;
+        }
 
         case 'pseudo': {
           if (token.selector.startsWith(':doodle')) {
@@ -434,7 +436,7 @@ function generator(tokens, grid_size, random) {
   rules.pre_compose({
     x: 1, y: 1, z: 1, count: 1, context: {},
     grid: { x: 1, y: 1, z: 1, count: 1 }
-  }, null);
+  });
 
   let { grid } = rules.output();
   if (grid) grid_size = grid;
