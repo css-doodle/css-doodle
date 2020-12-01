@@ -267,6 +267,49 @@ class Rules {
     return rule;
   }
 
+  pre_compose_rule(token, _coords) {
+    let coords = Object.assign({}, _coords);
+    let prop = token.property;
+
+    switch (prop) {
+      case '@grid': {
+        let value_group = token.value.reduce((ret, v) => {
+          let composed = this.compose_value(v, coords);
+          if (composed) ret.push(composed);
+          return ret;
+        }, []);
+        let value = value_group.join(', ');
+        let transformed = Property[prop](value, {});
+        this.grid = transformed.grid;
+        break;
+      }
+      case '@use': {
+        if (token.value.length) {
+          this.pre_compose(coords, token.value);
+        }
+        break;
+      }
+    }
+  }
+
+  pre_compose(coords, tokens) {
+    (tokens || this.tokens).forEach(token => {
+      switch (token.type) {
+        case 'rule':
+          this.pre_compose_rule(token, coords)
+          break;
+        case 'pseudo': {
+          if (is_host_selector(token.selector)) {
+            (token.styles || []).forEach(token => {
+              this.pre_compose_rule(token, coords);
+            });
+            break;
+          }
+        }
+      }
+    });
+  }
+
   compose(coords, tokens, initial) {
     this.coords.push(coords);
     (tokens || this.tokens).forEach((token, i) => {
@@ -388,10 +431,10 @@ function generator(tokens, grid_size, random) {
   let rules = new Rules(tokens, random);
   let context = {};
 
-  rules.compose({
+  rules.pre_compose({
     x: 1, y: 1, z: 1, count: 1, context: {},
     grid: { x: 1, y: 1, z: 1, count: 1 }
-  }, null, true);
+  }, null);
 
   let { grid } = rules.output();
   if (grid) grid_size = grid;
