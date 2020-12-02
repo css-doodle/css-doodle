@@ -1,3 +1,19 @@
+## 0.10.0
+
+### Features
+
+* Add 2-dimensional traversal ability to `@m` function.
+* Simplify function names by introducing capitalized names.
+* Improve code generation speed.
+
+### Fixes
+
+* Fix '0' value in arguments not being included.
+
+<br /> <br />
+
+
+
 ## 0.9.3
 
 ### Fixes
