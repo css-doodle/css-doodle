@@ -7,7 +7,7 @@
 A web component for drawing patterns with CSS.
 
 <a href="https://css-doodle.com/">
-  <img src="screenshot/doodle.png" />
+  <img alt="screenshot" src="https://assets.codepen.io/52982/doodle.png" />
 </a>
 
 ## Example
