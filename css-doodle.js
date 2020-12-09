@@ -862,6 +862,13 @@
     return is_nil(input) ? '' : input;
   }
 
+  function normalize_png_name(name) {
+    let prefix = is_nil(name)
+      ? Date.now()
+      : String(name).replace(/\/.png$/g, '');
+    return prefix + '.png';
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -886,15 +893,8 @@
   }
 
   function create_svg_url(svg, id) {
-    if (id) {
-      let blob = new Blob([svg], { type: 'image/svg+xml' });
-      let url = URL.createObjectURL(blob);
-      return `url(${ url }#${ id })`;
-    }
-    else {
-      let encoded = encodeURIComponent(svg);
-      return `url("data:image/svg+xml;utf8,${ encoded }")`;
-    }
+    let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
+    return `url("data:image/svg+xml;utf8,${ encoded }")`;
   }
 
   function normalize_svg(input) {
@@ -908,7 +908,7 @@
     return input;
   }
 
-  function randomFunc(random) {
+  function random_func(random) {
 
     function lerp(start, end, t) {
       return start * (1 - t) + end * t;
@@ -1501,9 +1501,9 @@
     return result;
   }
 
-  function getExposed(random) {
+  function get_exposed(random) {
     const { shuffle } = List(random);
-    const { pick, rand, unique_id } = randomFunc(random);
+    const { pick, rand, unique_id } = random_func(random);
 
     const Expose = {
 
@@ -2144,7 +2144,7 @@
       this.is_grid_defined = false;
       this.coords = [];
       this.reset();
-      this.Func = getExposed(random);
+      this.Func = get_exposed(random);
       this.Selector = Selector(random);
       this.custom_properties = {};
     }
@@ -2496,9 +2496,9 @@
         `;
         } else {
           let target = is_host_selector(selector) ? 'host' : 'cells';
-          this.styles[target] += `
-          ${ selector } { ${ join(this.rules[selector]).trim() } }
-        `;
+          let value = join(this.rules[selector]).trim();
+          let name = (target === 'host') ? `${ selector }, .host` : selector;
+          this.styles[target] += `${ name } { ${ value  } }`;
         }
       });
 
@@ -2846,22 +2846,20 @@
         }
       }
 
-      this.set_style('.style-keyframes', compiled.styles.keyframes);
+      this.set_content('.style-keyframes', compiled.styles.keyframes);
 
       if (compiled.props.has_animation) {
-        this.set_style('.style-cells', '');
-        this.set_style('.style-container', '');
+        this.set_content('.style-cells', '');
+        this.set_content('.style-container', '');
       }
 
       setTimeout(() => {
-        this.set_style('.style-container',
+        this.set_content('.style-container',
             get_grid_styles(this.grid_size)
           + compiled.styles.host
           + compiled.styles.container
         );
-        this.set_style('.style-cells',
-          compiled.styles.cells
-        );
+        this.set_content('.style-cells', compiled.styles.cells);
       });
     }
 
@@ -2938,7 +2936,7 @@
       this._seed_value = seed;
 
       let random = seedrandom(seed);
-      let compiled = generator(parsed, grid, random);
+      let compiled = this.compiled = generator(parsed, grid, random);
       return compiled;
     }
 
@@ -2998,7 +2996,7 @@
 
       if (has_transition || has_animation) {
         setTimeout(() => {
-          this.set_style('.style-cells', cells);
+          this.set_content('.style-cells', cells);
         }, 50);
       }
 
@@ -3010,7 +3008,85 @@
       }
     }
 
-    set_style(selector, styles) {
+    export({ scale, autoSize } = {}) {
+      const { has_transition, has_animation } = this.compiled.props;
+      const { keyframes, host, container, cells } = this.compiled.styles;
+      const grid = this.grid_size;
+
+      let html = `
+      <style>
+        ${ get_basic_styles() }
+        ${ get_grid_styles(grid) }
+        ${ host }
+        ${ container }
+        ${ cells }
+        ${ keyframes }
+      </style>
+      ${ this.doodle.querySelector('.container').outerHTML }
+    `;
+
+      let { width, height } = getComputedStyle(this);
+      width = parseInt(width);
+      height = parseInt(height);
+      scale = parseInt(scale) || 1;
+      let w = width * scale;
+      let h = height * scale;
+
+      let svg = minify(`
+      <svg xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 ${ width } ${ height }"
+        ${ autoSize ? '' : `
+          width="${ w }px"
+          height="${ h }px"
+        `}
+      >
+        <foreignObject width="100%" height="100%">
+          <div
+            xmlns="http://www.w3.org/1999/xhtml"
+            style="width:${ w }px; height: ${ h }px"
+            class="host"
+          >
+            ${ html }
+          </div>
+        </foreignObject>
+      </svg>
+    `);
+      return {
+        width: w,
+        height: h,
+        svg
+      };
+    }
+
+    toPNG(scale, name) {
+      let { width, height, svg } = this.export({ scale });
+      const source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
+      const img = new Image();
+      img.src = source;
+      img.onload = () => {
+        let canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          let url;
+          try {
+            url = URL.createObjectURL(blob);
+          } catch (e) {
+            return console.warn(
+              `Overload resolution ${ width }x${ height }'. Try to decrease the scale value!`
+            );
+          }
+          let a = document.createElement('a');
+          a.download = normalize_png_name(name);
+          a.href = url;
+          a.click();
+        });
+      };
+    }
+
+    set_content(selector, styles) {
       const el = this.shadowRoot.querySelector(selector);
       el && (el.styleSheet
         ? (el.styleSheet.cssText = styles )
@@ -3033,7 +3109,7 @@
     *::after, *::before {
       box-sizing: inherit;
     }
-    :host {
+    :host, .host {
       display: block;
       visibility: visible;
       width: auto;
@@ -3057,11 +3133,17 @@
 
   function get_grid_styles({x, y}) {
     return `
-    :host {
+    :host, .host {
       grid-template-rows: repeat(${ y }, 1fr);
       grid-template-columns: repeat(${ x }, 1fr);
     }
   `;
+  }
+
+  function minify(input) {
+    return input
+      .replace(/\n\s+|^\s+|\n+/g, ' ')
+      .trim();
   }
 
   function create_cell(x, y, z) {
@@ -3092,8 +3174,7 @@
   }
 
   function CSSDoodle(input, ...vars) {
-    let get_value = v =>
-      (v !== undefined && v !== null) ? v : '';
+    let get_value = v => is_nil(v) ? '' : v;
     let rules = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
     let doodle = document.createElement('css-doodle');
     if (doodle.update) {

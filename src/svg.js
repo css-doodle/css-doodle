@@ -1,13 +1,6 @@
 export function create_svg_url(svg, id) {
-  if (id) {
-    let blob = new Blob([svg], { type: 'image/svg+xml' });
-    let url = URL.createObjectURL(blob);
-    return `url(${ url }#${ id })`;
-  }
-  else {
-    let encoded = encodeURIComponent(svg);
-    return `url("data:image/svg+xml;utf8,${ encoded }")`;
-  }
+  let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
+  return `url("data:image/svg+xml;utf8,${ encoded }")`;
 }
 
 export function normalize_svg(input) {

@@ -70,3 +70,10 @@ export function get_value(input) {
   }
   return is_nil(input) ? '' : input;
 }
+
+export function normalize_png_name(name) {
+  let prefix = is_nil(name)
+    ? Date.now()
+    : String(name).replace(/\/.png$/g, '');
+  return prefix + '.png';
+}

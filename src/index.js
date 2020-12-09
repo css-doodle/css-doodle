@@ -3,7 +3,7 @@ import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
 import seedrandom from './lib/seedrandom';
-import { cell_id, is_nil } from './utils/index';
+import { cell_id, is_nil, normalize_png_name } from './utils/index';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -58,22 +58,20 @@ class Doodle extends HTMLElement {
       }
     }
 
-    this.set_style('.style-keyframes', compiled.styles.keyframes);
+    this.set_content('.style-keyframes', compiled.styles.keyframes);
 
     if (compiled.props.has_animation) {
-      this.set_style('.style-cells', '');
-      this.set_style('.style-container', '');
+      this.set_content('.style-cells', '');
+      this.set_content('.style-container', '');
     }
 
     setTimeout(() => {
-      this.set_style('.style-container',
+      this.set_content('.style-container',
           get_grid_styles(this.grid_size)
         + compiled.styles.host
         + compiled.styles.container
       );
-      this.set_style('.style-cells',
-        compiled.styles.cells
-      );
+      this.set_content('.style-cells', compiled.styles.cells);
     });
   }
 
@@ -150,7 +148,7 @@ class Doodle extends HTMLElement {
     this._seed_value = seed;
 
     let random = seedrandom(seed);
-    let compiled = generator(parsed, grid, random);
+    let compiled = this.compiled = generator(parsed, grid, random);
     return compiled;
   }
 
@@ -210,7 +208,7 @@ class Doodle extends HTMLElement {
 
     if (has_transition || has_animation) {
       setTimeout(() => {
-        this.set_style('.style-cells', cells);
+        this.set_content('.style-cells', cells);
       }, 50);
     }
 
@@ -222,7 +220,85 @@ class Doodle extends HTMLElement {
     }
   }
 
-  set_style(selector, styles) {
+  export({ scale, autoSize } = {}) {
+    const { has_transition, has_animation } = this.compiled.props;
+    const { keyframes, host, container, cells } = this.compiled.styles;
+    const grid = this.grid_size;
+
+    let html = `
+      <style>
+        ${ get_basic_styles() }
+        ${ get_grid_styles(grid) }
+        ${ host }
+        ${ container }
+        ${ cells }
+        ${ keyframes }
+      </style>
+      ${ this.doodle.querySelector('.container').outerHTML }
+    `;
+
+    let { width, height } = getComputedStyle(this);
+    width = parseInt(width);
+    height = parseInt(height);
+    scale = parseInt(scale) || 1;
+    let w = width * scale;
+    let h = height * scale;
+
+    let svg = minify(`
+      <svg xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 ${ width } ${ height }"
+        ${ autoSize ? '' : `
+          width="${ w }px"
+          height="${ h }px"
+        `}
+      >
+        <foreignObject width="100%" height="100%">
+          <div
+            xmlns="http://www.w3.org/1999/xhtml"
+            style="width:${ w }px; height: ${ h }px"
+            class="host"
+          >
+            ${ html }
+          </div>
+        </foreignObject>
+      </svg>
+    `);
+    return {
+      width: w,
+      height: h,
+      svg
+    };
+  }
+
+  toPNG(scale, name) {
+    let { width, height, svg } = this.export({ scale });
+    const source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
+    const img = new Image();
+    img.src = source;
+    img.onload = () => {
+      let canvas = document.createElement('canvas');
+      let ctx = canvas.getContext('2d');
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        let url;
+        try {
+          url = URL.createObjectURL(blob);
+        } catch (e) {
+          return console.warn(
+            `Overload resolution ${ width }x${ height }'. Try to decrease the scale value!`
+          );
+        }
+        let a = document.createElement('a');
+        a.download = normalize_png_name(name);
+        a.href = url;
+        a.click();
+      });
+    }
+  }
+
+  set_content(selector, styles) {
     const el = this.shadowRoot.querySelector(selector);
     el && (el.styleSheet
       ? (el.styleSheet.cssText = styles )
@@ -245,7 +321,7 @@ function get_basic_styles() {
     *::after, *::before {
       box-sizing: inherit;
     }
-    :host {
+    :host, .host {
       display: block;
       visibility: visible;
       width: auto;
@@ -269,11 +345,17 @@ function get_basic_styles() {
 
 function get_grid_styles({x, y}) {
   return `
-    :host {
+    :host, .host {
       grid-template-rows: repeat(${ y }, 1fr);
       grid-template-columns: repeat(${ x }, 1fr);
     }
   `;
+}
+
+function minify(input) {
+  return input
+    .replace(/\n\s+|^\s+|\n+/g, ' ')
+    .trim();
 }
 
 function create_cell(x, y, z) {
@@ -304,8 +386,7 @@ function create_cells({ x, y, z }) {
 }
 
 function CSSDoodle(input, ...vars) {
-  let get_value = v =>
-    (v !== undefined && v !== null) ? v : '';
+  let get_value = v => is_nil(v) ? '' : v;
   let rules = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
   let doodle = document.createElement('css-doodle');
   if (doodle.update) {

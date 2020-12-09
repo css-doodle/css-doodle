@@ -388,9 +388,9 @@ class Rules {
         `;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
-        this.styles[target] += `
-          ${ selector } { ${ join(this.rules[selector]).trim() } }
-        `;
+        let value = join(this.rules[selector]).trim();
+        let name = (target === 'host') ? `${ selector }, .host` : selector;
+        this.styles[target] += `${ name } { ${ value  } }`;
       }
     });
 

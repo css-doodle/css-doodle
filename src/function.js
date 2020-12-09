@@ -1,7 +1,7 @@
 import { create_svg_url, normalize_svg } from './svg';
 
 import list from './utils/list';
-import randomFunc from './utils/random';
+import random_func from './utils/random';
 
 import { cell_id, is_letter, alias_for } from './utils/index';
 import { lazy, clamp, sequence, get_value } from './utils/index';
@@ -15,9 +15,9 @@ import Stack from './utils/stack';
 import Shapes from './shapes';
 import parse_value_group from './parser/parse-value-group';
 
-function getExposed(random) {
+function get_exposed(random) {
   const { shuffle } = list(random);
-  const { pick, rand, unique_id } = randomFunc(random);
+  const { pick, rand, unique_id } = random_func(random);
 
   const Expose = {
 
@@ -289,4 +289,4 @@ function getExposed(random) {
   });
 }
 
-export default getExposed;
+export default get_exposed;
