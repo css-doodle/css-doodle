@@ -1,3 +1,19 @@
+## 0.11.1
+
+### Fixes
+
+* Fix default scale for retina screen.
+* Fix the size of the exported image for relative values.
+
+### Changes
+
+* Add `detail` option for export.
+* No export `scale` for Safari.
+
+<br /> <br />
+
+
+
 ## 0.11.0
 
 ### Features
