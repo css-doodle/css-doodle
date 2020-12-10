@@ -1,3 +1,13 @@
+## 0.11.0
+
+### Features
+
+* Add `export` API for saving css-doodle as an image.
+
+<br /> <br />
+
+
+
 ## 0.10.0
 
 ### Features
