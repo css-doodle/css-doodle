@@ -916,9 +916,12 @@
       img.onload = () => {
         let canvas = document.createElement('canvas');
         let ctx = canvas.getContext('2d');
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
+
+        let scale = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(width * scale);
+        canvas.height = Math.floor(height * scale);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
         canvas.toBlob(blob => {
           try {
             resolve({
