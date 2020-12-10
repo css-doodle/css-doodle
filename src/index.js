@@ -241,6 +241,11 @@ class Doodle extends HTMLElement {
 
       let { width, height } = this.getBoundingClientRect();
       scale = parseInt(scale) || 1;
+      // Safari has an issue with viewBox
+      if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+        //scale = 1;
+      }
+
       let w = width * scale;
       let h = height * scale;
 
