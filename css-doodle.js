@@ -3025,9 +3025,7 @@
       ${ this.doodle.querySelector('.container').outerHTML }
     `;
 
-      let { width, height } = getComputedStyle(this);
-      width = parseInt(width);
-      height = parseInt(height);
+      let { width, height } = this.getBoundingClientRect();
       scale = parseInt(scale) || 1;
       let w = width * scale;
       let h = height * scale;
@@ -3041,11 +3039,7 @@
         `}
       >
         <foreignObject width="100%" height="100%">
-          <div
-            xmlns="http://www.w3.org/1999/xhtml"
-            style="width:${ w }px; height: ${ h }px"
-            class="host"
-          >
+          <div xmlns="http://www.w3.org/1999/xhtml" class="host">
             ${ html }
           </div>
         </foreignObject>
