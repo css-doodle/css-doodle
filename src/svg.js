@@ -13,3 +13,28 @@ export function normalize_svg(input) {
   }
   return input;
 }
+
+export function svg_to_png(svg, width, height) {
+  return new Promise((resolve, reject) => {
+    let img = new Image();
+    let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
+    img.src = source;
+    img.onload = () => {
+      let canvas = document.createElement('canvas');
+      let ctx = canvas.getContext('2d');
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        try {
+          resolve({
+            source,
+            url: URL.createObjectURL(blob)
+          });
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+  });
+}

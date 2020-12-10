@@ -4,6 +4,7 @@ import generator from './generator';
 import get_props from './utils/get-props';
 import seedrandom from './lib/seedrandom';
 import { cell_id, is_nil, normalize_png_name } from './utils/index';
+import { svg_to_png } from './svg';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -220,76 +221,68 @@ class Doodle extends HTMLElement {
     }
   }
 
-  export({ scale, autoSize } = {}) {
-    const { has_transition, has_animation } = this.compiled.props;
-    const { keyframes, host, container, cells } = this.compiled.styles;
-    const grid = this.grid_size;
+  export({ scale, autoSize, name, download } = {}) {
+    return new Promise((resolve, reject) => {
+      const { has_transition, has_animation } = this.compiled.props;
+      const { keyframes, host, container, cells } = this.compiled.styles;
+      const grid = this.grid_size;
 
-    let html = `
-      <style>
-        ${ get_basic_styles() }
-        ${ get_grid_styles(grid) }
-        ${ host }
-        ${ container }
-        ${ cells }
-        ${ keyframes }
-      </style>
-      ${ this.doodle.querySelector('.container').outerHTML }
-    `;
+      let html = `
+        <style>
+          ${ get_basic_styles() }
+          ${ get_grid_styles(grid) }
+          ${ host }
+          ${ container }
+          ${ cells }
+          ${ keyframes }
+        </style>
+        ${ this.doodle.querySelector('.container').outerHTML }
+      `;
 
-    let { width, height } = this.getBoundingClientRect();
-    scale = parseInt(scale) || 1;
-    let w = width * scale;
-    let h = height * scale;
+      let { width, height } = this.getBoundingClientRect();
+      scale = parseInt(scale) || 1;
+      let w = width * scale;
+      let h = height * scale;
 
-    let svg = minify(`
-      <svg xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 ${ width } ${ height }"
-        ${ autoSize ? '' : `
-          width="${ w }px"
-          height="${ h }px"
-        `}
-      >
-        <foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml" class="host">
-            ${ html }
-          </div>
-        </foreignObject>
-      </svg>
-    `);
-    return {
-      width: w,
-      height: h,
-      svg
-    };
-  }
+      let svg = minify(`
+        <svg xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 ${ width } ${ height }"
+          ${ autoSize ? '' : `
+            width="${ w }px"
+            height="${ h }px"
+          `}
+        >
+          <foreignObject width="100%" height="100%">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="host">
+              ${ html }
+            </div>
+          </foreignObject>
+        </svg>
+      `);
 
-  toPNG(scale, name) {
-    let { width, height, svg } = this.export({ scale });
-    const source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
-    const img = new Image();
-    img.src = source;
-    img.onload = () => {
-      let canvas = document.createElement('canvas');
-      let ctx = canvas.getContext('2d');
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(blob => {
-        let url;
-        try {
-          url = URL.createObjectURL(blob);
-        } catch (e) {
-          return console.warn(
-            `Overload resolution ${ width }x${ height }'. Try to decrease the scale value!`
-          );
-        }
-        let a = document.createElement('a');
-        a.download = normalize_png_name(name);
-        a.href = url;
-        a.click();
-      });
-    }
+      if (download) {
+        svg_to_png(svg, w, h)
+          .then(({ source, url }) => {
+            resolve({
+              width: w, height: h, svg: svg
+            });
+            if (download) {
+              let a = document.createElement('a');
+              a.download = normalize_png_name(name);
+              a.href = url;
+              a.click();
+            }
+          })
+          .catch(error => {
+            console.warn(`Resolution too big: ${w}x${h}.`);
+            reject(error);
+          });
+      } else {
+        resolve({
+          width: w, height: h, svg: svg
+        });
+      }
+    });
   }
 
   set_content(selector, styles) {
