@@ -925,6 +925,7 @@
         canvas.toBlob(blob => {
           try {
             resolve({
+              blob,
               source,
               url: URL.createObjectURL(blob)
             });
@@ -3036,7 +3037,7 @@
       }
     }
 
-    export({ scale, autoSize, name, download } = {}) {
+    export({ scale, autoSize, name, download, detail } = {}) {
       return new Promise((resolve, reject) => {
         const { has_transition, has_animation } = this.compiled.props;
         const { keyframes, host, container, cells } = this.compiled.styles;
@@ -3079,11 +3080,11 @@
         </svg>
       `);
 
-        if (download) {
+        if (download || detail) {
           svg_to_png(svg, w, h)
-            .then(({ source, url }) => {
+            .then(({ source, url, blob }) => {
               resolve({
-                width: w, height: h, svg: svg
+                width: w, height: h, svg, blob, source
               });
               if (download) {
                 let a = document.createElement('a');

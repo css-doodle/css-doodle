@@ -31,6 +31,7 @@ export function svg_to_png(svg, width, height) {
       canvas.toBlob(blob => {
         try {
           resolve({
+            blob,
             source,
             url: URL.createObjectURL(blob)
           });
