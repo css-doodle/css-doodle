@@ -3065,7 +3065,11 @@
           `}
         >
           <foreignObject width="100%" height="100%">
-            <div xmlns="http://www.w3.org/1999/xhtml" class="host">
+            <div
+              class="host"
+              xmlns="http://www.w3.org/1999/xhtml"
+              style="width: ${ width }px; height: ${ height }px"
+            >
               ${ html }
             </div>
           </foreignObject>
