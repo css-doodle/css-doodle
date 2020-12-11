@@ -1135,7 +1135,7 @@
 
   const store = {};
 
-  function memo$1(prefix, fn) {
+  function memo(prefix, fn) {
     return (...args) => {
       let key = prefix + args.join('-');
       if (store[key]) return store[key];
@@ -1191,7 +1191,7 @@
     return tokens;
   }
 
-  const build_range = memo$1('build_range', (input) => {
+  const build_range = memo('build_range', (input) => {
     let tokens = get_tokens$1(input);
     return flat_map(tokens, ({ type, value }) => {
       if (type == 'char') return value;
@@ -2006,7 +2006,7 @@
       };
     },
 
-    ['@shape']: memo$1('shape-property', value => {
+    ['@shape']: memo('shape-property', value => {
       let [type, ...args] = parse$2(value);
       let prop = 'clip-path';
       if (!shapes[type]) return '';

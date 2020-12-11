@@ -11,6 +11,7 @@ import by_charcode from './utils/by-charcode';
 import calc from './utils/calc';
 import expand from './utils/expand';
 import Stack from './utils/stack';
+import memo from './utils/memo';
 
 import Shapes from './shapes';
 import parse_value_group from './parser/parse-value-group';
