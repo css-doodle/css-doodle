@@ -2607,19 +2607,22 @@
   }
 
   function get_all_variables(element) {
+    let ret = {};
     if (element.computedStyleMap) {
-      return read_style_map(element);
+      for (let [prop, value] of element.computedStyleMap()) {
+        if (prop.startsWith('--')) {
+          ret[prop] = value[0][0];
+        }
+      }
+    } else {
+      let styles = getComputedStyle(element);
+      for (let prop of styles) {
+        if (prop.startsWith('--')) {
+          ret[prop] = styles.getPropertyValue(prop);
+        }
+      }
     }
-    return read_computed_stle(element);
-  }
-
-  function get_all_variables_inline(element) {
-    let variables = get_all_variables(element);
-    let ret = [];
-    for (let prop in variables) {
-      ret.push(prop + ':' + variables[prop]);
-    }
-    return ret.join(';');
+    return inline(ret);
   }
 
   function get_variable(element, name) {
@@ -2629,26 +2632,12 @@
 
   }
 
-  function read_style_map(element) {
-    let ret = {};
-    for (const [prop, value] of element.computedStyleMap()) {
-      if (prop.startsWith('--')) {
-        ret[prop] = value[0][0];
-      }
+  function inline(map) {
+    let result = [];
+    for (let prop in map) {
+      result.push(prop + ':' + map[prop]);
     }
-    return ret;
-  }
-
-  function read_computed_stle(element) {
-    let ret = {};
-    let styles = getComputedStyle(element);
-    for (let i = 0; i < styles.length; ++i) {
-      let prop = styles[i];
-      if (prop.startsWith('--')) {
-        ret[prop] = styles.getPropertyValue(prop);
-      }
-    }
-    return ret;
+    return result.join(';');
   }
 
   /*
@@ -3087,7 +3076,7 @@
         const { has_transition, has_animation } = this.compiled.props;
         const { keyframes, host, container, cells } = this.compiled.styles;
         const grid = this.grid_size;
-        let variables = get_all_variables_inline(this);
+        let variables = get_all_variables(this);
 
         let html = `
         <style>

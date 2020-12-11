@@ -2,7 +2,7 @@ import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
-import { get_variable, get_all_variables_inline } from './utils/variables';
+import { get_variable, get_all_variables } from './utils/variables';
 import seedrandom from './lib/seedrandom';
 import { cell_id, is_nil, normalize_png_name } from './utils/index';
 import { svg_to_png } from './svg';
@@ -221,7 +221,7 @@ class Doodle extends HTMLElement {
       const { has_transition, has_animation } = this.compiled.props;
       const { keyframes, host, container, cells } = this.compiled.styles;
       const grid = this.grid_size;
-      let variables = get_all_variables_inline(this);
+      let variables = get_all_variables(this);
 
       let html = `
         <style>
