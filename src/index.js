@@ -237,24 +237,21 @@ class Doodle extends HTMLElement {
 
       let { width, height } = this.getBoundingClientRect();
       scale = parseInt(scale) || 1;
-      // Safari has an issue with viewBox
-      if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-        scale = 1;
-      }
+      let is_safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
       let w = width * scale;
       let h = height * scale;
 
       let svg = minify(`
         <svg xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="none"
           viewBox="0 0 ${ width } ${ height }"
           ${ autoSize ? '' : `
-            width="${ w }px"
-            height="${ h }px"
+            width="${ is_safari ? width : w }px"
+            height="${ is_safari ? height : h }px"
           `}
         >
           <foreignObject width="100%" height="100%">
-
             <div
               class="host"
               xmlns="http://www.w3.org/1999/xhtml"
