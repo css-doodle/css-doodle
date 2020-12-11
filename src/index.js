@@ -281,7 +281,6 @@ class Doodle extends HTMLElement {
             }
           })
           .catch(error => {
-            console.warn(`Resolution too big: ${w}x${h}.`);
             reject(error);
           });
       } else {
