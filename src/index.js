@@ -2,6 +2,7 @@ import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
 import get_props from './utils/get-props';
+import { get_variable, get_all_variables_inline } from './utils/variables';
 import seedrandom from './lib/seedrandom';
 import { cell_id, is_nil, normalize_png_name } from './utils/index';
 import { svg_to_png } from './svg';
@@ -11,7 +12,7 @@ class Doodle extends HTMLElement {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
     this.extra = {
-      get_variable: this.get_variable.bind(this)
+      get_variable: name => get_variable(this, name)
     };
   }
 
@@ -175,12 +176,6 @@ class Doodle extends HTMLElement {
     }
   }
 
-  get_variable(name) {
-    return getComputedStyle(this).getPropertyValue(name)
-      .trim()
-      .replace(/^\(|\)$/g, '');
-  }
-
   build_grid(compiled, grid) {
     const { has_transition, has_animation } = compiled.props;
     const { keyframes, host, container, cells } = compiled.styles;
@@ -226,6 +221,7 @@ class Doodle extends HTMLElement {
       const { has_transition, has_animation } = this.compiled.props;
       const { keyframes, host, container, cells } = this.compiled.styles;
       const grid = this.grid_size;
+      let variables = get_all_variables_inline(this);
 
       let html = `
         <style>
@@ -258,11 +254,13 @@ class Doodle extends HTMLElement {
           `}
         >
           <foreignObject width="100%" height="100%">
+
             <div
               class="host"
               xmlns="http://www.w3.org/1999/xhtml"
-              style="width: ${ width }px; height: ${ height }px"
+              style="width: ${ width }px; height: ${ height }px; "
             >
+              <style>.host { ${variables} }</style>
               ${ html }
             </div>
           </foreignObject>

@@ -910,8 +910,9 @@
 
   function svg_to_png(svg, width, height) {
     return new Promise((resolve, reject) => {
-      let img = new Image();
       let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
+      let img = new Image();
+      img.crossOrigin = 'anonymous';
       img.src = source;
       img.onload = () => {
         let canvas = document.createElement('canvas');
@@ -2600,6 +2601,51 @@
     return rules.output();
   }
 
+  function get_all_variables(element) {
+    if (element.computedStyleMap) {
+      return read_style_map(element);
+    }
+    return read_computed_stle(element);
+  }
+
+  function get_all_variables_inline(element) {
+    let variables = get_all_variables(element);
+    let ret = [];
+    for (let prop in variables) {
+      ret.push(prop + ':' + variables[prop]);
+    }
+    return ret.join(';');
+  }
+
+  function get_variable(element, name) {
+    return getComputedStyle(element).getPropertyValue(name)
+      .trim()
+      .replace(/^\(|\)$/g, '');
+
+  }
+
+  function read_style_map(element) {
+    let ret = {};
+    for (const [prop, value] of element.computedStyleMap()) {
+      if (prop.startsWith('--')) {
+        ret[prop] = value[0][0];
+      }
+    }
+    return ret;
+  }
+
+  function read_computed_stle(element) {
+    let ret = {};
+    let styles = getComputedStyle(element);
+    for (let i = 0; i < styles.length; ++i) {
+      let prop = styles[i];
+      if (prop.startsWith('--')) {
+        ret[prop] = styles.getPropertyValue(prop);
+      }
+    }
+    return ret;
+  }
+
   /*
   Copyright 2019 David Bau.
   Permission is hereby granted, free of charge, to any person obtaining
@@ -2827,7 +2873,7 @@
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
       this.extra = {
-        get_variable: this.get_variable.bind(this)
+        get_variable: name => get_variable(this, name)
       };
     }
 
@@ -2991,12 +3037,6 @@
       }
     }
 
-    get_variable(name) {
-      return getComputedStyle(this).getPropertyValue(name)
-        .trim()
-        .replace(/^\(|\)$/g, '');
-    }
-
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       const { keyframes, host, container, cells } = compiled.styles;
@@ -3042,6 +3082,7 @@
         const { has_transition, has_animation } = this.compiled.props;
         const { keyframes, host, container, cells } = this.compiled.styles;
         const grid = this.grid_size;
+        let variables = get_all_variables_inline(this);
 
         let html = `
         <style>
@@ -3074,11 +3115,13 @@
           `}
         >
           <foreignObject width="100%" height="100%">
+
             <div
               class="host"
               xmlns="http://www.w3.org/1999/xhtml"
-              style="width: ${ width }px; height: ${ height }px"
+              style="width: ${ width }px; height: ${ height }px; "
             >
+              <style>.host { ${variables} }</style>
               ${ html }
             </div>
           </foreignObject>
