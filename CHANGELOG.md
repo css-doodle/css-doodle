@@ -1,3 +1,18 @@
+## 0.11.2
+
+### Fixes
+
+* Fix scale issue in Safari.
+* Fix missing variables defined outside by applying all variables to the exported root element.
+
+### Changes
+
+* Remove custom warnings for overload resolution.
+
+<br /> <br />
+
+
+
 ## 0.11.1
 
 ### Fixes
