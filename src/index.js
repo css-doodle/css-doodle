@@ -265,7 +265,7 @@ class Doodle extends HTMLElement {
       `);
 
       if (download || detail) {
-        svg_to_png(svg, w, h)
+        svg_to_png(svg, w, h, scale)
           .then(({ source, url, blob }) => {
             resolve({
               width: w, height: h, svg, blob, source

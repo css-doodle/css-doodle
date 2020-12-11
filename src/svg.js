@@ -14,7 +14,7 @@ export function normalize_svg(input) {
   return input;
 }
 
-export function svg_to_png(svg, width, height) {
+export function svg_to_png(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
     let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
     let img = new Image();
@@ -24,9 +24,14 @@ export function svg_to_png(svg, width, height) {
       let canvas = document.createElement('canvas');
       let ctx = canvas.getContext('2d');
 
-      let scale = window.devicePixelRatio || 1;
-      canvas.width = Math.floor(width * scale);
-      canvas.height = Math.floor(height * scale);
+      let dpr = window.devicePixelRatio || 1;
+      /* scale with devicePixelRatio only when the scale equals 1 */
+      if (scale != 1) {
+        dpr = 1;
+      }
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       canvas.toBlob(blob => {
