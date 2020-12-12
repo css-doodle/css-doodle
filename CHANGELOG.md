@@ -2,6 +2,20 @@
 
 ### Fixes
 
+* Fix error when calling `@shape` function.
+
+### Changes
+
+* Respect to `devicePixelRatio` only when the given exporting scale value equals 1.
+
+<br /> <br />
+
+
+
+## 0.11.2
+
+### Fixes
+
 * Fix scale issue in Safari.
 * Fix missing variables defined outside by applying all variables to the exported root element.
 
