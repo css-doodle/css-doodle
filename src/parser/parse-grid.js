@@ -7,7 +7,7 @@ export default function parse_grid(size) {
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/g, 'x')
     .split('x')
-    .map(Number);
+    .map(n => parseInt(n));
 
   const max_xy = (x == 1 || y == 1) ? total : max;
   const max_z = (x == 1 && y == 1) ? total : min;

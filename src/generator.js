@@ -34,6 +34,7 @@ class Rules {
     this.grid = null;
     this.is_grid_defined = false;
     this.coords = [];
+    this.doodles = {};
     this.reset();
     this.Func = Func(random);
     this.Selector = Selector(random);
@@ -48,6 +49,7 @@ class Rules {
       keyframes: ''
     }
     this.coords = [];
+    this.doodles = {};
     for (let key in this.rules) {
       if (key.startsWith('#c')) {
         delete this.rules[key];
@@ -60,7 +62,6 @@ class Rules {
     if (!rules) {
       rules = this.rules[selector] = [];
     }
-
     rules.push.apply(rules, make_array(rule));
   }
 
@@ -108,7 +109,7 @@ class Rules {
       }
       else if (arg.type === 'func') {
         let fn = this.pick_func(arg.name.substr(1));
-        if (fn) {
+        if (typeof fn === 'function') {
           coords.extra = extra;
           coords.position = arg.position;
           let args = arg.arguments.map(n => {
@@ -127,6 +128,12 @@ class Rules {
     }
   }
 
+  compose_doodle(doodle) {
+    let id = 'doodle_' + Math.random().toString(32).substr(2);
+    this.doodles[id] = doodle;
+    return '${' + id + '}';
+  }
+
   compose_value(value, coords) {
     if (!Array.isArray(value)) {
       return '';
@@ -140,18 +147,24 @@ class Rules {
         case 'func': {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
-          if (fn) {
-            coords.position = val.position;
-            let args = val.arguments.map(arg => {
-              return fn.lazy
-                ? (...extra) => this.compose_argument(arg, coords, extra)
-                : this.compose_argument(arg, coords);
-            });
+          if (typeof fn === 'function') {
+            if (fname === 'doodle') {
+              let arg = val.arguments[0] || [];
+              let value = get_value(arg[0]);
+              result += this.compose_doodle(value);
+            } else {
+              coords.position = val.position;
+              let args = val.arguments.map(arg => {
+                return fn.lazy
+                  ? (...extra) => this.compose_argument(arg, coords, extra)
+                  : this.compose_argument(arg, coords);
+              });
 
-            let output = this.apply_func(fn, coords, args);
+              let output = this.apply_func(fn, coords, args);
 
-            if (!is_nil(output)) {
-              result += output;
+              if (!is_nil(output)) {
+                result += output;
+              }
             }
           }
         }
@@ -230,7 +243,6 @@ class Rules {
       switch (prop) {
         case '@grid': {
           if (is_host_selector(selector)) {
-            this.grid = transformed.grid;
             rule = transformed.size || '';
           } else {
             rule = '';;
@@ -238,10 +250,10 @@ class Rules {
               transformed = Property[prop](value, {
                 is_special_selector: true
               });
-              this.grid = transformed.grid;
               this.add_rule(':host', transformed.size || '');
             }
           }
+          this.grid = coords.grid;
           this.is_grid_defined = true;
           break;
         }
@@ -423,9 +435,11 @@ class Rules {
       props: this.props,
       styles: this.styles,
       grid: this.grid,
+      doodles: this.doodles,
       definitions: definitions
     }
   }
+
 }
 
 export default

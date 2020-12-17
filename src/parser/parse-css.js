@@ -219,7 +219,7 @@ function read_property(it) {
   return prop;
 }
 
-function read_arguments(it, composition) {
+function read_arguments(it, composition, doodle) {
   let args = [], group = [], stack = [], arg = '', c;
   while (!it.end()) {
     c = it.curr();
@@ -235,7 +235,7 @@ function read_arguments(it, composition) {
       }
       arg += c;
     }
-    else if (c == '@') {
+    else if (c == '@' && !doodle) {
       if (!group.length) {
         arg = arg.trimLeft();
       }
@@ -245,7 +245,7 @@ function read_arguments(it, composition) {
       }
       group.push(read_func(it));
     }
-    else if (/[,)]/.test(c)) {
+    else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
       if (stack.length) {
         if (c == ')') {
           stack.pop();
@@ -261,7 +261,7 @@ function read_arguments(it, composition) {
             group.push(Tokens.text(arg));
           }
 
-          if (arg.startsWith('±')) {
+          if (arg.startsWith('±') && !doodle) {
             let raw = arg.substr(1);
             let cloned = clone(group);
             last(cloned).value = '-' + raw;
@@ -294,7 +294,6 @@ function read_arguments(it, composition) {
       it.next();
     }
   }
-
   return args;
 }
 
@@ -359,7 +358,7 @@ function read_func(it) {
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
-      func.arguments = read_arguments(it, composition);
+      func.arguments = read_arguments(it, composition, name === '@doodle');
       break;
     } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
       name += c;

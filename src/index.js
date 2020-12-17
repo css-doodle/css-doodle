@@ -1,10 +1,10 @@
 import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
 import generator from './generator';
+import seedrandom from './lib/seedrandom';
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
-import seedrandom from './lib/seedrandom';
-import { cell_id, is_nil, normalize_png_name } from './utils/index';
+import { cell_id, is_nil, normalize_png_name, cache_image, is_safari } from './utils/index';
 import { svg_to_png } from './svg';
 
 class Doodle extends HTMLElement {
@@ -60,7 +60,9 @@ class Doodle extends HTMLElement {
       }
     }
 
-    this.set_content('.style-keyframes', compiled.styles.keyframes);
+    let replace = this.replace(compiled.doodles);
+
+    this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
     if (compiled.props.has_animation) {
       this.set_content('.style-cells', '');
@@ -68,12 +70,12 @@ class Doodle extends HTMLElement {
     }
 
     setTimeout(() => {
-      this.set_content('.style-container',
+      this.set_content('.style-container', replace(
           get_grid_styles(this.grid_size)
         + compiled.styles.host
         + compiled.styles.container
-      );
-      this.set_content('.style-cells', compiled.styles.cells);
+      ));
+      this.set_content('.style-cells', replace(compiled.styles.cells));
     });
   }
 
@@ -149,9 +151,43 @@ class Doodle extends HTMLElement {
     seed = String(seed);
     this._seed_value = seed;
 
-    let random = seedrandom(seed);
+    let random = this.random = seedrandom(seed);
     let compiled = this.compiled = generator(parsed, grid, random);
     return compiled;
+  }
+
+  to_image(code) {
+    let parsed = parse_css(code, this.extra);
+    let _grid = parse_grid({});
+    let compiled = generator(parsed, _grid, this.random);
+    let grid = compiled.grid ? compiled.grid : _grid;
+    const { keyframes, host, container, cells } = compiled.styles;
+
+    let replace = this.replace(compiled.doodles);
+    let grid_container = create_grid(grid);
+
+    let svg = replace(`
+      <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <foreignObject width="100%" height="100%">
+          <div class="host" xmlns="http://www.w3.org/1999/xhtml">
+            <style>
+              ${ get_basic_styles() }
+              ${ get_grid_styles(grid) }
+              ${ host }
+              ${ container }
+              ${ cells }
+              ${ keyframes }
+            </style>
+            ${ grid_container }
+          </div>
+        </foreignObject>
+      </svg>
+    `);
+    let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(svg))) }`;
+    if (is_safari()) {
+      cache_image(source);
+    }
+    return `url(${ source })`;
   }
 
   load(again) {
@@ -176,12 +212,25 @@ class Doodle extends HTMLElement {
     }
   }
 
+  replace(doodles) {
+    let ids = Object.keys(doodles);
+    return s => {
+      if (!ids.length || !s.length) return s;
+      ids.forEach(id => {
+        s = s.replace('${' + id + '}', this.to_image(doodles[id]));
+      });
+      return s;
+    }
+  }
+
   build_grid(compiled, grid) {
     const { has_transition, has_animation } = compiled.props;
     const { keyframes, host, container, cells } = compiled.styles;
     const definitions = compiled.definitions;
+    let replace = this.replace(compiled.doodles);
+    let grid_container = create_grid(grid);
 
-    this.doodle.innerHTML = `
+    this.doodle.innerHTML = replace(`
       <style>
         ${ get_basic_styles() }
       </style>
@@ -196,15 +245,12 @@ class Doodle extends HTMLElement {
       <style class="style-cells">
         ${ (has_transition || has_animation) ? '' : cells }
       </style>
-      <grid class="container"></grid>
-    `;
-
-    this.doodle.querySelector('.container')
-      .appendChild(create_cells(grid));
+      ${ grid_container }
+    `);
 
     if (has_transition || has_animation) {
       setTimeout(() => {
-        this.set_content('.style-cells', cells);
+        this.set_content('.style-cells', replace(cells));
       }, 50);
     }
 
@@ -216,28 +262,13 @@ class Doodle extends HTMLElement {
     }
   }
 
-  export({ scale, autoSize, name, download, detail } = {}) {
+  export({ scale, name, download, detail } = {}) {
     return new Promise((resolve, reject) => {
-      const { has_transition, has_animation } = this.compiled.props;
-      const { keyframes, host, container, cells } = this.compiled.styles;
-      const grid = this.grid_size;
       let variables = get_all_variables(this);
-
-      let html = `
-        <style>
-          ${ get_basic_styles() }
-          ${ get_grid_styles(grid) }
-          ${ host }
-          ${ container }
-          ${ cells }
-          ${ keyframes }
-        </style>
-        ${ this.doodle.querySelector('.container').outerHTML }
-      `;
+      let html = this.doodle.innerHTML;
 
       let { width, height } = this.getBoundingClientRect();
       scale = parseInt(scale) || 1;
-      let is_safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
       let w = width * scale;
       let h = height * scale;
@@ -246,10 +277,7 @@ class Doodle extends HTMLElement {
         <svg xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="none"
           viewBox="0 0 ${ width } ${ height }"
-          ${ autoSize ? '' : `
-            width="${ is_safari ? width : w }px"
-            height="${ is_safari ? height : h }px"
-          `}
+          ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"`}
         >
           <foreignObject width="100%" height="100%">
             <div
@@ -354,7 +382,8 @@ function create_cell(x, y, z) {
   return cell;
 }
 
-function create_cells({ x, y, z }) {
+function create_grid({ x, y, z }) {
+  let grid = document.createElement('grid');
   let root = document.createDocumentFragment();
   if (z == 1) {
     for (let j = 1; j <= y; ++j) {
@@ -372,7 +401,9 @@ function create_cells({ x, y, z }) {
     }
     temp = null;
   }
-  return root;
+  grid.className = 'container';
+  grid.appendChild(root);
+  return grid.outerHTML;
 }
 
 function CSSDoodle(input, ...vars) {

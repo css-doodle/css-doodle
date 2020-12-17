@@ -77,3 +77,16 @@ export function normalize_png_name(name) {
     : String(name).replace(/\/.png$/g, '');
   return prefix + '.png';
 }
+
+export function cache_image(src, fn, delay = 0) {
+  let img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = src;
+  img.onload = function() {
+    setTimeout(fn, delay);
+  }
+}
+
+export function is_safari() {
+  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+}

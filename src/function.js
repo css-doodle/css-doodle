@@ -229,6 +229,10 @@ function get_exposed(random) {
       });
     },
 
+    doodle() {
+      return value => value;
+    }
+
   };
 
   function make_sequence(c) {

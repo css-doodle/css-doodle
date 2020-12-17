@@ -378,7 +378,7 @@
     return prop;
   }
 
-  function read_arguments(it, composition) {
+  function read_arguments(it, composition, doodle) {
     let args = [], group = [], stack = [], arg = '', c;
     while (!it.end()) {
       c = it.curr();
@@ -394,7 +394,7 @@
         }
         arg += c;
       }
-      else if (c == '@') {
+      else if (c == '@' && !doodle) {
         if (!group.length) {
           arg = arg.trimLeft();
         }
@@ -404,7 +404,7 @@
         }
         group.push(read_func(it));
       }
-      else if (/[,)]/.test(c)) {
+      else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
         if (stack.length) {
           if (c == ')') {
             stack.pop();
@@ -420,7 +420,7 @@
               group.push(Tokens.text(arg));
             }
 
-            if (arg.startsWith('±')) {
+            if (arg.startsWith('±') && !doodle) {
               let raw = arg.substr(1);
               let cloned = clone(group);
               last(cloned).value = '-' + raw;
@@ -453,7 +453,6 @@
         it.next();
       }
     }
-
     return args;
   }
 
@@ -518,7 +517,7 @@
       if (c == '(' || composition) {
         has_argument = true;
         it.next();
-        func.arguments = read_arguments(it, composition);
+        func.arguments = read_arguments(it, composition, name === '@doodle');
         break;
       } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
         name += c;
@@ -869,6 +868,19 @@
     return prefix + '.png';
   }
 
+  function cache_image(src, fn, delay = 0) {
+    let img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+    img.onload = function() {
+      setTimeout(fn, delay);
+    };
+  }
+
+  function is_safari() {
+    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -876,7 +888,7 @@
       .replace(/\s+/g, '')
       .replace(/[,，xX]+/g, 'x')
       .split('x')
-      .map(Number);
+      .map(n => parseInt(n));
 
     const max_xy = (x == 1 || y == 1) ? total : max;
     const max_z = (x == 1 && y == 1) ? total : min;
@@ -911,35 +923,45 @@
   function svg_to_png(svg, width, height, scale) {
     return new Promise((resolve, reject) => {
       let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
-      let img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = source;
-      img.onload = () => {
-        let canvas = document.createElement('canvas');
-        let ctx = canvas.getContext('2d');
 
-        let dpr = window.devicePixelRatio || 1;
-        /* scale with devicePixelRatio only when the scale equals 1 */
-        if (scale != 1) {
-          dpr = 1;
-        }
+      function action() {
+        let img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = source;
 
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        img.onload = () => {
+          let canvas = document.createElement('canvas');
+          let ctx = canvas.getContext('2d');
 
-        canvas.toBlob(blob => {
-          try {
-            resolve({
-              blob,
-              source,
-              url: URL.createObjectURL(blob)
-            });
-          } catch (e) {
-            reject(e);
+          let dpr = window.devicePixelRatio || 1;
+          /* scale with devicePixelRatio only when the scale equals 1 */
+          if (scale != 1) {
+            dpr = 1;
           }
-        });
-      };
+
+          canvas.width = width * dpr;
+          canvas.height = height * dpr;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(blob => {
+            try {
+              resolve({
+                blob,
+                source,
+                url: URL.createObjectURL(blob)
+              });
+            } catch (e) {
+              reject(e);
+            }
+          });
+        };
+      }
+
+      if (is_safari) {
+        cache_image(source, action, 200);
+      } else {
+        action();
+      }
     });
   }
 
@@ -1749,6 +1771,10 @@
         });
       },
 
+      doodle() {
+        return value => value;
+      }
+
     };
 
     function make_sequence(c) {
@@ -2178,6 +2204,7 @@
       this.grid = null;
       this.is_grid_defined = false;
       this.coords = [];
+      this.doodles = {};
       this.reset();
       this.Func = get_exposed(random);
       this.Selector = Selector(random);
@@ -2192,6 +2219,7 @@
         keyframes: ''
       };
       this.coords = [];
+      this.doodles = {};
       for (let key in this.rules) {
         if (key.startsWith('#c')) {
           delete this.rules[key];
@@ -2204,7 +2232,6 @@
       if (!rules) {
         rules = this.rules[selector] = [];
       }
-
       rules.push.apply(rules, make_array(rule));
     }
 
@@ -2252,7 +2279,7 @@
         }
         else if (arg.type === 'func') {
           let fn = this.pick_func(arg.name.substr(1));
-          if (fn) {
+          if (typeof fn === 'function') {
             coords.extra = extra;
             coords.position = arg.position;
             let args = arg.arguments.map(n => {
@@ -2271,6 +2298,12 @@
       }
     }
 
+    compose_doodle(doodle) {
+      let id = 'doodle_' + Math.random().toString(32).substr(2);
+      this.doodles[id] = doodle;
+      return '${' + id + '}';
+    }
+
     compose_value(value, coords) {
       if (!Array.isArray(value)) {
         return '';
@@ -2284,18 +2317,24 @@
           case 'func': {
             let fname = val.name.substr(1);
             let fn = this.pick_func(fname);
-            if (fn) {
-              coords.position = val.position;
-              let args = val.arguments.map(arg => {
-                return fn.lazy
-                  ? (...extra) => this.compose_argument(arg, coords, extra)
-                  : this.compose_argument(arg, coords);
-              });
+            if (typeof fn === 'function') {
+              if (fname === 'doodle') {
+                let arg = val.arguments[0] || [];
+                let value = get_value(arg[0]);
+                result += this.compose_doodle(value);
+              } else {
+                coords.position = val.position;
+                let args = val.arguments.map(arg => {
+                  return fn.lazy
+                    ? (...extra) => this.compose_argument(arg, coords, extra)
+                    : this.compose_argument(arg, coords);
+                });
 
-              let output = this.apply_func(fn, coords, args);
+                let output = this.apply_func(fn, coords, args);
 
-              if (!is_nil(output)) {
-                result += output;
+                if (!is_nil(output)) {
+                  result += output;
+                }
               }
             }
           }
@@ -2374,17 +2413,16 @@
         switch (prop) {
           case '@grid': {
             if (is_host_selector(selector)) {
-              this.grid = transformed.grid;
               rule = transformed.size || '';
             } else {
               rule = '';            if (!this.is_grid_defined) {
                 transformed = Property[prop](value, {
                   is_special_selector: true
                 });
-                this.grid = transformed.grid;
                 this.add_rule(':host', transformed.size || '');
               }
             }
+            this.grid = coords.grid;
             this.is_grid_defined = true;
             break;
           }
@@ -2566,9 +2604,11 @@
         props: this.props,
         styles: this.styles,
         grid: this.grid,
+        doodles: this.doodles,
         definitions: definitions
       }
     }
+
   }
 
   function generator(tokens, grid_size, random) {
@@ -2604,40 +2644,6 @@
     }
 
     return rules.output();
-  }
-
-  function get_all_variables(element) {
-    let ret = {};
-    if (element.computedStyleMap) {
-      for (let [prop, value] of element.computedStyleMap()) {
-        if (prop.startsWith('--')) {
-          ret[prop] = value[0][0];
-        }
-      }
-    } else {
-      let styles = getComputedStyle(element);
-      for (let prop of styles) {
-        if (prop.startsWith('--')) {
-          ret[prop] = styles.getPropertyValue(prop);
-        }
-      }
-    }
-    return inline(ret);
-  }
-
-  function get_variable(element, name) {
-    return getComputedStyle(element).getPropertyValue(name)
-      .trim()
-      .replace(/^\(|\)$/g, '');
-
-  }
-
-  function inline(map) {
-    let result = [];
-    for (let prop in map) {
-      result.push(prop + ':' + map[prop]);
-    }
-    return result.join(';');
   }
 
   /*
@@ -2862,6 +2868,40 @@
   //
   mixkey(math.random(), pool);
 
+  function get_all_variables(element) {
+    let ret = {};
+    if (element.computedStyleMap) {
+      for (let [prop, value] of element.computedStyleMap()) {
+        if (prop.startsWith('--')) {
+          ret[prop] = value[0][0];
+        }
+      }
+    } else {
+      let styles = getComputedStyle(element);
+      for (let prop of styles) {
+        if (prop.startsWith('--')) {
+          ret[prop] = styles.getPropertyValue(prop);
+        }
+      }
+    }
+    return inline(ret);
+  }
+
+  function get_variable(element, name) {
+    return getComputedStyle(element).getPropertyValue(name)
+      .trim()
+      .replace(/^\(|\)$/g, '');
+
+  }
+
+  function inline(map) {
+    let result = [];
+    for (let prop in map) {
+      result.push(prop + ':' + map[prop]);
+    }
+    return result.join(';');
+  }
+
   class Doodle extends HTMLElement {
     constructor() {
       super();
@@ -2915,7 +2955,9 @@
         }
       }
 
-      this.set_content('.style-keyframes', compiled.styles.keyframes);
+      let replace = this.replace(compiled.doodles);
+
+      this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
       if (compiled.props.has_animation) {
         this.set_content('.style-cells', '');
@@ -2923,12 +2965,12 @@
       }
 
       setTimeout(() => {
-        this.set_content('.style-container',
+        this.set_content('.style-container', replace(
             get_grid_styles(this.grid_size)
           + compiled.styles.host
           + compiled.styles.container
-        );
-        this.set_content('.style-cells', compiled.styles.cells);
+        ));
+        this.set_content('.style-cells', replace(compiled.styles.cells));
       });
     }
 
@@ -3004,9 +3046,43 @@
       seed = String(seed);
       this._seed_value = seed;
 
-      let random = seedrandom(seed);
+      let random = this.random = seedrandom(seed);
       let compiled = this.compiled = generator(parsed, grid, random);
       return compiled;
+    }
+
+    to_image(code) {
+      let parsed = parse$1(code, this.extra);
+      let _grid = parse_grid({});
+      let compiled = generator(parsed, _grid, this.random);
+      let grid = compiled.grid ? compiled.grid : _grid;
+      const { keyframes, host, container, cells } = compiled.styles;
+
+      let replace = this.replace(compiled.doodles);
+      let grid_container = create_grid(grid);
+
+      let svg = replace(`
+      <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <foreignObject width="100%" height="100%">
+          <div class="host" xmlns="http://www.w3.org/1999/xhtml">
+            <style>
+              ${ get_basic_styles() }
+              ${ get_grid_styles(grid) }
+              ${ host }
+              ${ container }
+              ${ cells }
+              ${ keyframes }
+            </style>
+            ${ grid_container }
+          </div>
+        </foreignObject>
+      </svg>
+    `);
+      let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(svg))) }`;
+      if (is_safari()) {
+        cache_image(source);
+      }
+      return `url(${ source })`;
     }
 
     load(again) {
@@ -3031,12 +3107,25 @@
       }
     }
 
+    replace(doodles) {
+      let ids = Object.keys(doodles);
+      return s => {
+        if (!ids.length || !s.length) return s;
+        ids.forEach(id => {
+          s = s.replace('${' + id + '}', this.to_image(doodles[id]));
+        });
+        return s;
+      }
+    }
+
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       const { keyframes, host, container, cells } = compiled.styles;
       const definitions = compiled.definitions;
+      let replace = this.replace(compiled.doodles);
+      let grid_container = create_grid(grid);
 
-      this.doodle.innerHTML = `
+      this.doodle.innerHTML = replace(`
       <style>
         ${ get_basic_styles() }
       </style>
@@ -3051,15 +3140,12 @@
       <style class="style-cells">
         ${ (has_transition || has_animation) ? '' : cells }
       </style>
-      <grid class="container"></grid>
-    `;
-
-      this.doodle.querySelector('.container')
-        .appendChild(create_cells(grid));
+      ${ grid_container }
+    `);
 
       if (has_transition || has_animation) {
         setTimeout(() => {
-          this.set_content('.style-cells', cells);
+          this.set_content('.style-cells', replace(cells));
         }, 50);
       }
 
@@ -3071,28 +3157,13 @@
       }
     }
 
-    export({ scale, autoSize, name, download, detail } = {}) {
+    export({ scale, name, download, detail } = {}) {
       return new Promise((resolve, reject) => {
-        const { has_transition, has_animation } = this.compiled.props;
-        const { keyframes, host, container, cells } = this.compiled.styles;
-        const grid = this.grid_size;
         let variables = get_all_variables(this);
-
-        let html = `
-        <style>
-          ${ get_basic_styles() }
-          ${ get_grid_styles(grid) }
-          ${ host }
-          ${ container }
-          ${ cells }
-          ${ keyframes }
-        </style>
-        ${ this.doodle.querySelector('.container').outerHTML }
-      `;
+        let html = this.doodle.innerHTML;
 
         let { width, height } = this.getBoundingClientRect();
         scale = parseInt(scale) || 1;
-        let is_safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
         let w = width * scale;
         let h = height * scale;
@@ -3101,10 +3172,7 @@
         <svg xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="none"
           viewBox="0 0 ${ width } ${ height }"
-          ${ autoSize ? '' : `
-            width="${ is_safari ? width : w }px"
-            height="${ is_safari ? height : h }px"
-          `}
+          ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"`}
         >
           <foreignObject width="100%" height="100%">
             <div
@@ -3209,7 +3277,8 @@
     return cell;
   }
 
-  function create_cells({ x, y, z }) {
+  function create_grid({ x, y, z }) {
+    let grid = document.createElement('grid');
     let root = document.createDocumentFragment();
     if (z == 1) {
       for (let j = 1; j <= y; ++j) {
@@ -3227,7 +3296,9 @@
       }
       temp = null;
     }
-    return root;
+    grid.className = 'container';
+    grid.appendChild(root);
+    return grid.outerHTML;
   }
 
   function CSSDoodle(input, ...vars) {
