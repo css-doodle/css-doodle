@@ -1,4 +1,5 @@
 import { clamp } from './utils/index';
+import calc from './utils/calc';
 
 const { cos, sin, sqrt, pow, PI } = Math;
 const DEG = PI / 180;
@@ -225,4 +226,24 @@ const shapes =  {
 
 }
 
-export default shapes;
+function custom_shape(props) {
+  let option = Object.assign(
+    { type: 'evenodd' },
+    props,
+    { split: clamp(parseInt(props.split), 3, 2400) }
+  );
+  return polygon(option, t => {
+    let context = Object.assign({}, props, { t });
+    let x = calc(props.x || '', context);
+    let y = calc(props.y || '', context);
+    if (props.rotate) {
+      return rotate(x, y, parseInt(props.rotate) || 0);
+    }
+    return [x, y];
+  });
+}
+
+export {
+  shapes,
+  custom_shape
+}

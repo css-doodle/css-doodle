@@ -1047,20 +1047,14 @@
    */
   let { last: last$1 } = List();
 
-  function calc(input) {
-    const expr = infix_to_postfix(input), stack = [];
-    while (expr.length) {
-      let top = expr.shift();
-      if (/\d+/.test(top)) stack.push(top);
-      else {
-        let right = stack.pop();
-        let left = stack.pop();
-        stack.push(compute(
-          top, Number(left), Number(right)
-        ));
-      }
-    }
-    return stack[0];
+  const default_context = {
+    'π': Math.PI,
+    '∏': Math.PI
+  };
+
+  function calc(input, context) {
+    const expr = infix_to_postfix(input);
+    return calc$1(expr, Object.assign(default_context, context));
   }
 
   const operator = {
@@ -1069,13 +1063,54 @@
     '(': 1, ')': 1
   };
 
+  function calc$1(expr, context) {
+    let stack = [];
+    while (expr.length) {
+      let { name, value, type } = expr.shift();
+      if (type === 'variable') {
+        let result = context[value];
+        if (typeof result === 'undefined') {
+          result = Math[value];
+        }
+        if (typeof result === 'undefined') {
+          result = expand(value, context);
+        }
+        if (typeof result === 'undefined') {
+          result = 0;
+        }
+        if (typeof result !== 'number') {
+          result = calc$1(infix_to_postfix(result), context);
+        }
+        stack.push(result);
+      }
+      else if (type === 'function') {
+        let args = value.map(v => calc$1(v, context));
+        let fn = context[name] || Math[name];
+        if (typeof fn === 'function') {
+          stack.push(fn(...args));
+        } else {
+          stack.push(0);
+        }
+      } else {
+        if (/\d+/.test(value)) stack.push(value);
+        else {
+          let right = stack.pop();
+          let left = stack.pop();
+          stack.push(compute(
+            value, Number(left), Number(right)
+          ));
+        }
+      }
+    }
+    return stack[0];
+  }
+
   function get_tokens(input) {
     let expr = String(input);
     let tokens = [], num = '';
 
     for (let i = 0; i < expr.length; ++i) {
       let c = expr[i];
-
       if (operator[c]) {
         if (c == '-' && expr[i - 1] == 'e') {
           num += c;
@@ -1098,16 +1133,20 @@
           }
         }
       }
-
       else if (/\S/.test(c)) {
-        num += c;
+        if (c == ',') {
+          tokens.push({ type: 'number', value: num });
+          num = '';
+          tokens.push({ type: 'comma', value: c });
+        } else {
+          num += c;
+        }
       }
     }
 
     if (num.length) {
       tokens.push({ type: 'number', value: num });
     }
-
     return tokens;
   }
 
@@ -1117,8 +1156,49 @@
 
     for (let i = 0; i < tokens.length; ++i) {
       let { type, value } = tokens[i];
+      let next = tokens[i + 1] || {};
       if (type == 'number') {
-        expr.push(value);
+        if (next.value == '(' && /[^\d.]/.test(value)) {
+          let func_body = '';
+          let stack = [];
+          let values = [];
+
+          i += 1;
+          while (tokens[i++] !== undefined) {
+            let c = tokens[i].value;
+            if (c == ')') {
+              if (!stack.length) break;
+              stack.pop();
+              func_body += c;
+            }
+            else {
+              if (c == '(') stack.push(c);
+              if (c == ',') {
+                let arg = infix_to_postfix(func_body);
+                if (arg.length) values.push(arg);
+                func_body = '';
+              } else {
+                func_body += c;
+              }
+            }
+          }
+
+          if (func_body.length) {
+            values.push(infix_to_postfix(func_body));
+          }
+
+          expr.push({
+            type: 'function',
+            name: value,
+            value: values
+          });
+        }
+        else if (/[^\d.]/.test(value)) {
+          expr.push({ type: 'variable', value });
+        }
+        else {
+          expr.push({ type: 'number', value });
+        }
       }
 
       else if (type == 'operator') {
@@ -1128,7 +1208,7 @@
 
         else if (value == ')') {
           while (op_stack.length && last$1(op_stack) != '(') {
-            expr.push(op_stack.pop());
+            expr.push({ type: 'operator', value: op_stack.pop() });
           }
           op_stack.pop();
         }
@@ -1136,7 +1216,7 @@
         else {
           while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
-            if (!/[()]/.test(op)) expr.push(op);
+            if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
           }
           op_stack.push(value);
         }
@@ -1144,7 +1224,7 @@
     }
 
     while (op_stack.length) {
-      expr.push(op_stack.pop());
+      expr.push({ type: 'operator', value: op_stack.pop() });
     }
 
     return expr;
@@ -1160,6 +1240,16 @@
     }
   }
 
+  function expand(value, context) {
+    let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
+    let v = context[variable];
+    if (typeof v !== 'number') {
+      return num;
+    } else {
+      return Number(num) * v;
+    }
+  }
+
   const store = {};
 
   function memo(prefix, fn) {
@@ -1172,7 +1262,7 @@
 
   const { last: last$2, flat_map } = List();
 
-  function expand(fn) {
+  function expand$1(fn) {
     return (...args) => fn.apply(null, flat_map(args, n =>
       String(n).startsWith('[') ? build_range(n) : n
     ));
@@ -1501,6 +1591,23 @@
 
   };
 
+  function custom_shape(props) {
+    let option = Object.assign(
+      { type: 'evenodd' },
+      props,
+      { split: clamp(parseInt(props.split), 3, 2400) }
+    );
+    return polygon(option, t => {
+      let context = Object.assign({}, props, { t });
+      let x = calc(props.x || '', context);
+      let y = calc(props.y || '', context);
+      if (props.rotate) {
+        return rotate(x, y, parseInt(props.rotate) || 0);
+      }
+      return [x, y];
+    });
+  }
+
   function is_seperator(c, no_space) {
     if (no_space) return /[,，]/.test(c);
     else return /[,，\s]/.test(c);
@@ -1553,6 +1660,40 @@
 
     if (!is_nil(group)) {
       result.push(group);
+    }
+
+    return result;
+  }
+
+  function parse$3(input) {
+    let c = '';
+    let i = 0;
+    let temp = '';
+    let result = {};
+    let key = '';
+    let value = '';
+    while ((c = input[i++]) !== undefined) {
+      if (c == ':') {
+        key = temp;
+        temp = '';
+        continue;
+      }
+      if (c == ';') {
+        value = temp;
+        temp = '';
+        if (key.length && value.length) {
+          result[key] = value;
+          key = value = '';
+          continue;
+        }
+      }
+      if (/\S/.test(c)) {
+        temp += c;
+      }
+    }
+
+    if (key.length && temp.length) {
+      result[key] = temp;
     }
 
     return result;
@@ -1629,14 +1770,14 @@
       ),
 
       pick({ context }) {
-        return expand((...args) => {
+        return expand$1((...args) => {
           return push_stack(context, 'last_pick', pick(args));
         });
       },
 
       ['pick-n']({ context, extra, position }) {
         let counter = 'pn-counter' + position;
-        return expand((...args) => {
+        return expand$1((...args) => {
           if (!context[counter]) context[counter] = 0;
           context[counter] += 1;
           let max = args.length;
@@ -1650,7 +1791,7 @@
       ['pick-d']({ context, extra, position }) {
         let counter = 'pd-counter' + position;
         let values = 'pd-values' + position;
-        return expand((...args) => {
+        return expand$1((...args) => {
           if (!context[counter]) context[counter] = 0;
           context[counter] += 1;
           if (!context[values]) {
@@ -1763,11 +1904,14 @@
 
       shape() {
         return memo('shape-function', (type = '', ...args) => {
-          type = type.trim();
+          type = String(type).trim();
+          if (!type.length) return 'polygon()';
           if (typeof shapes[type] === 'function') {
             return shapes[type](args);
+          } else {
+            let config = parse$3(type);
+            return custom_shape(config);
           }
-          return '';
         });
       },
 
@@ -2040,8 +2184,8 @@
     ['@shape']: memo('shape-property', value => {
       let [type, ...args] = parse$2(value);
       let prop = 'clip-path';
-      if (!shapes[type]) return '';
-      let rules = `${ prop }: ${ shapes[type].apply(null, args) };`;
+      if (typeof shapes[type] !== 'function') return '';
+      let rules = `${ prop }: ${ shapes[type](...args) };`;
       return prefixer(prop, rules) + 'overflow: hidden;';
     }),
 

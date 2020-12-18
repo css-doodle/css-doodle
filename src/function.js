@@ -13,8 +13,9 @@ import expand from './utils/expand';
 import Stack from './utils/stack';
 import memo from './utils/memo';
 
-import Shapes from './shapes';
+import { shapes, custom_shape } from './shapes';
 import parse_value_group from './parser/parse-value-group';
+import parse_shape_commands from './parser/parse-shape-commands';
 
 function get_exposed(random) {
   const { shuffle } = list(random);
@@ -221,11 +222,14 @@ function get_exposed(random) {
 
     shape() {
       return memo('shape-function', (type = '', ...args) => {
-        type = type.trim();
-        if (typeof Shapes[type] === 'function') {
-          return Shapes[type](args);
+        type = String(type).trim();
+        if (!type.length) return 'polygon()';
+        if (typeof shapes[type] === 'function') {
+          return shapes[type](args);
+        } else {
+          let config = parse_shape_commands(type);
+          return custom_shape(config);
         }
-        return '';
       });
     },
 

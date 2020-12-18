@@ -5,20 +5,14 @@
 import List from './list';
 let { last } = List();
 
-export default function(input) {
-  const expr = infix_to_postfix(input), stack = [];
-  while (expr.length) {
-    let top = expr.shift();
-    if (/\d+/.test(top)) stack.push(top);
-    else {
-      let right = stack.pop();
-      let left = stack.pop();
-      stack.push(compute(
-        top, Number(left), Number(right)
-      ));
-    }
-  }
-  return stack[0];
+const default_context = {
+  'π': Math.PI,
+  '∏': Math.PI
+}
+
+export default function(input, context) {
+  const expr = infix_to_postfix(input);
+  return calc(expr, Object.assign(default_context, context));
 }
 
 const operator = {
@@ -27,13 +21,54 @@ const operator = {
   '(': 1, ')': 1
 }
 
+function calc(expr, context) {
+  let stack = [];
+  while (expr.length) {
+    let { name, value, type } = expr.shift();
+    if (type === 'variable') {
+      let result = context[value];
+      if (typeof result === 'undefined') {
+        result = Math[value];
+      }
+      if (typeof result === 'undefined') {
+        result = expand(value, context);
+      }
+      if (typeof result === 'undefined') {
+        result = 0;
+      }
+      if (typeof result !== 'number') {
+        result = calc(infix_to_postfix(result), context)
+      }
+      stack.push(result);
+    }
+    else if (type === 'function') {
+      let args = value.map(v => calc(v, context));
+      let fn = context[name] || Math[name];
+      if (typeof fn === 'function') {
+        stack.push(fn(...args));
+      } else {
+        stack.push(0);
+      }
+    } else {
+      if (/\d+/.test(value)) stack.push(value);
+      else {
+        let right = stack.pop();
+        let left = stack.pop();
+        stack.push(compute(
+          value, Number(left), Number(right)
+        ));
+      }
+    }
+  }
+  return stack[0];
+}
+
 function get_tokens(input) {
   let expr = String(input);
   let tokens = [], num = '';
 
   for (let i = 0; i < expr.length; ++i) {
     let c = expr[i];
-
     if (operator[c]) {
       if (c == '-' && expr[i - 1] == 'e') {
         num += c;
@@ -56,16 +91,20 @@ function get_tokens(input) {
         }
       }
     }
-
     else if (/\S/.test(c)) {
-      num += c;
+      if (c == ',') {
+        tokens.push({ type: 'number', value: num });
+        num = '';
+        tokens.push({ type: 'comma', value: c });
+      } else {
+        num += c;
+      }
     }
   }
 
   if (num.length) {
     tokens.push({ type: 'number', value: num });
   }
-
   return tokens;
 }
 
@@ -75,8 +114,49 @@ function infix_to_postfix(input) {
 
   for (let i = 0; i < tokens.length; ++i) {
     let { type, value } = tokens[i];
+    let next = tokens[i + 1] || {};
     if (type == 'number') {
-      expr.push(value);
+      if (next.value == '(' && /[^\d.]/.test(value)) {
+        let func_body = '';
+        let stack = [];
+        let values = [];
+
+        i += 1;
+        while (tokens[i++] !== undefined) {
+          let c = tokens[i].value;
+          if (c == ')') {
+            if (!stack.length) break;
+            stack.pop();
+            func_body += c;
+          }
+          else {
+            if (c == '(') stack.push(c);
+            if (c == ',') {
+              let arg = infix_to_postfix(func_body);
+              if (arg.length) values.push(arg);
+              func_body = '';
+            } else {
+              func_body += c
+            }
+          }
+        }
+
+        if (func_body.length) {
+          values.push(infix_to_postfix(func_body));
+        }
+
+        expr.push({
+          type: 'function',
+          name: value,
+          value: values
+        });
+      }
+      else if (/[^\d.]/.test(value)) {
+        expr.push({ type: 'variable', value });
+      }
+      else {
+        expr.push({ type: 'number', value });
+      }
     }
 
     else if (type == 'operator') {
@@ -86,7 +166,7 @@ function infix_to_postfix(input) {
 
       else if (value == ')') {
         while (op_stack.length && last(op_stack) != '(') {
-          expr.push(op_stack.pop());
+          expr.push({ type: 'operator', value: op_stack.pop() });
         }
         op_stack.pop();
       }
@@ -94,7 +174,7 @@ function infix_to_postfix(input) {
       else {
         while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
           let op = op_stack.pop();
-          if (!/[()]/.test(op)) expr.push(op);
+          if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
         }
         op_stack.push(value);
       }
@@ -102,7 +182,7 @@ function infix_to_postfix(input) {
   }
 
   while (op_stack.length) {
-    expr.push(op_stack.pop());
+    expr.push({ type: 'operator', value: op_stack.pop() });
   }
 
   return expr;
@@ -115,5 +195,15 @@ function compute(op, a, b) {
     case '*': return a * b;
     case '/': return a / b;
     case '%': return a % b;
+  }
+}
+
+function expand(value, context) {
+  let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
+  let v = context[variable];
+  if (typeof v !== 'number') {
+    return num;
+  } else {
+    return Number(num) * v;
   }
 }
