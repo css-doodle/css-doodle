@@ -1,3 +1,14 @@
+## 0.12.0
+
+### Features
+
+* Add `@doodle` function to make css-doodle as backgrounds.
+* Add custom shape via `@shape` function.
+
+<br /> <br />
+
+
+
 ## 0.11.3
 
 ### Fixes
