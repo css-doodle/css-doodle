@@ -1063,7 +1063,7 @@
     '(': 1, ')': 1
   };
 
-  function calc$1(expr, context) {
+  function calc$1(expr, context, repeat = []) {
     let stack = [];
     while (expr.length) {
       let { name, value, type } = expr.shift();
@@ -1079,7 +1079,13 @@
           result = 0;
         }
         if (typeof result !== 'number') {
-          result = calc$1(infix_to_postfix(result), context);
+          repeat.push(result);
+          if (is_cycle(repeat)) {
+            result = 0;
+            repeat = [];
+          } else {
+            result = calc$1(infix_to_postfix(result), context, repeat);
+          }
         }
         stack.push(result);
       }
@@ -1165,7 +1171,9 @@
 
           i += 1;
           while (tokens[i++] !== undefined) {
-            let c = tokens[i].value;
+            let token = tokens[i];
+            if (token === undefined) break;
+            let c = token.value;
             if (c == ')') {
               if (!stack.length) break;
               stack.pop();
@@ -1248,6 +1256,10 @@
     } else {
       return Number(num) * v;
     }
+  }
+
+  function is_cycle(array) {
+    return (array[0] == array[2] && array[1] == array[3]);
   }
 
   const store = {};
@@ -1595,12 +1607,12 @@
     let option = Object.assign(
       { type: 'evenodd' },
       props,
-      { split: clamp(parseInt(props.split), 3, 2400) }
+      { split: clamp(parseInt(props.split) || 0, 3, 2400) }
     );
     return polygon(option, t => {
       let context = Object.assign({}, props, { t });
-      let x = calc(props.x || '', context);
-      let y = calc(props.y || '', context);
+      let x = calc(props.x || 'cos(t)', context);
+      let y = calc(props.y || 'sin(t)', context);
       if (props.rotate) {
         return rotate(x, y, parseInt(props.rotate) || 0);
       }

@@ -230,12 +230,12 @@ function custom_shape(props) {
   let option = Object.assign(
     { type: 'evenodd' },
     props,
-    { split: clamp(parseInt(props.split), 3, 2400) }
+    { split: clamp(parseInt(props.split) || 0, 3, 2400) }
   );
   return polygon(option, t => {
     let context = Object.assign({}, props, { t });
-    let x = calc(props.x || '', context);
-    let y = calc(props.y || '', context);
+    let x = calc(props.x || 'cos(t)', context);
+    let y = calc(props.y || 'sin(t)', context);
     if (props.rotate) {
       return rotate(x, y, parseInt(props.rotate) || 0);
     }

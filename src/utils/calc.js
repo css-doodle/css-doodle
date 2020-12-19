@@ -21,7 +21,7 @@ const operator = {
   '(': 1, ')': 1
 }
 
-function calc(expr, context) {
+function calc(expr, context, repeat = []) {
   let stack = [];
   while (expr.length) {
     let { name, value, type } = expr.shift();
@@ -37,7 +37,13 @@ function calc(expr, context) {
         result = 0;
       }
       if (typeof result !== 'number') {
-        result = calc(infix_to_postfix(result), context)
+        repeat.push(result);
+        if (is_cycle(repeat)) {
+          result = 0;
+          repeat = [];
+        } else {
+          result = calc(infix_to_postfix(result), context, repeat)
+        }
       }
       stack.push(result);
     }
@@ -123,7 +129,9 @@ function infix_to_postfix(input) {
 
         i += 1;
         while (tokens[i++] !== undefined) {
-          let c = tokens[i].value;
+          let token = tokens[i];
+          if (token === undefined) break;
+          let c = token.value;
           if (c == ')') {
             if (!stack.length) break;
             stack.pop();
@@ -206,4 +214,8 @@ function expand(value, context) {
   } else {
     return Number(num) * v;
   }
+}
+
+function is_cycle(array) {
+  return (array[0] == array[2] && array[1] == array[3]);
 }
