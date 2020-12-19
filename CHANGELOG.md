@@ -1,3 +1,14 @@
+## 0.12.1
+
+### Fixes
+
+* Prevent circular references inside `@shape` function.
+* Normalize default values for `@shape` function.
+
+<br /> <br />
+
+
+
 ## 0.12.0
 
 ### Features
