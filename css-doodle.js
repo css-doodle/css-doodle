@@ -2434,8 +2434,14 @@
           return arg.value;
         }
         else if (arg.type === 'func') {
-          let fn = this.pick_func(arg.name.substr(1));
+          let fname = arg.name.substr(1);
+          let fn = this.pick_func(fname);
+
           if (typeof fn === 'function') {
+            if (fname === 'doodle') {
+              let value = get_value((arg.arguments[0] || [])[0]);
+              return this.compose_doodle(value);
+            }
             coords.extra = extra;
             coords.position = arg.position;
             let args = arg.arguments.map(n => {
