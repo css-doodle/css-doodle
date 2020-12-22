@@ -1,3 +1,13 @@
+## 0.12.2
+
+### Fixes
+
+* Fix issue when `@doodle` is part of function arguments.
+
+<br /> <br />
+
+
+
 ## 0.12.1
 
 ### Fixes
