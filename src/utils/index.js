@@ -90,3 +90,9 @@ export function cache_image(src, fn, delay = 0) {
 export function is_safari() {
   return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 }
+
+export function un_entity(code) {
+  let textarea = document.createElement('textarea');
+  textarea.innerHTML = code;
+  return textarea.value;
+}

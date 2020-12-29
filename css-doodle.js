@@ -517,7 +517,7 @@
       if (c == '(' || composition) {
         has_argument = true;
         it.next();
-        func.arguments = read_arguments(it, composition, name === '@doodle');
+        func.arguments = read_arguments(it, composition, name === '@doodle' || name == '@shaders');
         break;
       } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
         name += c;
@@ -881,6 +881,12 @@
     return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   }
 
+  function un_entity(code) {
+    let textarea = document.createElement('textarea');
+    textarea.innerHTML = code;
+    return textarea.value;
+  }
+
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -904,6 +910,92 @@
     );
   }
 
+  function is_quote(c) {
+    return c == '"' || c == "'";
+  }
+
+  function last$1(array) {
+    return array[array.length - 1];
+  }
+
+  function parse$2(input) {
+    let c = '';
+    let temp = '';
+    let name = '';
+    let stack = [];
+    let result = {
+      textures: []
+    };
+    let w = '';
+    let words = [];
+    let i = 0;
+    while ((c = input[i++]) !== undefined) {
+      if (c == '"' || c == "'") {
+        if (last$1(stack) == c) {
+          stack.pop();
+        } else {
+          stack.push(c);
+        }
+      }
+      if (c == '{' && !is_quote(last$1(stack)))  {
+        if (!stack.length) {
+          name = temp;
+          temp = '';
+        } else {
+          temp += c;
+        }
+        stack.push(c);
+      }
+      else if (c == '}' && !is_quote(last$1(stack)))  {
+        stack.pop();
+        if (!stack.length) {
+          let key = name.trim();
+          let value = temp.trim();
+          if (key.length) {
+            if (key.startsWith('texture')) {
+              result.textures.push({
+                name: key,
+                value: value
+              });
+            } else {
+              result[key] = value;
+            }
+          }
+          name = temp = '';
+        } else {
+          temp += c;
+        }
+      }
+      else {
+        if (/\s/.test(c) && w.length) {
+          words.push(w);
+          w = '';
+          let need_break =
+            (words[words.length - 3] == '#define') ||
+            (words[words.length - 2] == '#ifdef') ||
+            (words[words.length - 1] == '#else') ||
+            (words[words.length - 1] == '#endif');
+
+          if (need_break) {
+            temp = temp + '\n';
+          }
+        } else {
+          w += c;
+        }
+        temp += c;
+      }
+    }
+
+    if (result.fragment === undefined) {
+      return {
+        fragment: input,
+        textures: []
+      }
+    }
+
+    return result;
+  }
+
   function create_svg_url(svg, id) {
     let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
     return `url("data:image/svg+xml;utf8,${ encoded }")`;
@@ -919,6 +1011,7 @@
     }
     return input;
   }
+
 
   function svg_to_png(svg, width, height, scale) {
     return new Promise((resolve, reject) => {
@@ -943,17 +1036,17 @@
           canvas.height = height * dpr;
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          canvas.toBlob(blob => {
-            try {
+          try {
+            canvas.toBlob(blob => {
               resolve({
                 blob,
                 source,
                 url: URL.createObjectURL(blob)
               });
-            } catch (e) {
-              reject(e);
-            }
-          });
+            });
+          } catch (e) {
+            reject(e);
+          }
         };
       }
 
@@ -1045,7 +1138,7 @@
   /**
    * Based on the Shunting-yard algorithm.
    */
-  let { last: last$1 } = List();
+  let { last: last$2 } = List();
 
   const default_context = {
     'π': Math.PI,
@@ -1124,7 +1217,7 @@
         else if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = last$1(tokens) || {};
+          let { type, value } = last$2(tokens) || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1215,14 +1308,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && last$1(op_stack) != '(') {
+          while (op_stack.length && last$2(op_stack) != '(') {
             expr.push({ type: 'operator', value: op_stack.pop() });
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last$2(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
           }
@@ -1272,7 +1365,7 @@
     }
   }
 
-  const { last: last$2, flat_map } = List();
+  const { last: last$3, flat_map } = List();
 
   function expand$1(fn) {
     return (...args) => fn.apply(null, flat_map(args, n =>
@@ -1300,7 +1393,7 @@
         stack.push(c);
         continue;
       }
-      if (last$2(stack) == '-') {
+      if (last$3(stack) == '-') {
         stack.pop();
         let from = stack.pop();
         tokens.push(from
@@ -1632,7 +1725,7 @@
     }
   }
 
-  function parse$2(input, no_space = false) {
+  function parse$3(input, no_space = false) {
     if (is_nil(input)) input = '';
     const it = iterator(String(input));
     const result = [], stack = [];
@@ -1677,7 +1770,7 @@
     return result;
   }
 
-  function parse$3(input) {
+  function parse$4(input) {
     let c = '';
     let i = 0;
     let temp = '';
@@ -1864,7 +1957,7 @@
             return '';
           }
           colors.forEach(step => {
-            let [_, size] = parse$2(step);
+            let [_, size] = parse$3(step);
             if (size !== undefined) custom_sizes.push(size);
             else default_count += 1;
           });
@@ -1874,7 +1967,7 @@
           return colors
             .map((step, i) => {
               if (custom_sizes.length) {
-                let [color, size] = parse$2(step);
+                let [color, size] = parse$3(step);
                 let prefix = prev ? (prev + ' + ') : '';
                 prev = prefix + (size !== undefined ? size : default_size);
                 return `${color} 0 calc(${ prev })`
@@ -1921,13 +2014,17 @@
           if (typeof shapes[type] === 'function') {
             return shapes[type](args);
           } else {
-            let config = parse$3(type);
+            let config = parse$4(type);
             return custom_shape(config);
           }
         });
       },
 
       doodle() {
+        return value => value;
+      },
+
+      shaders() {
         return value => value;
       }
 
@@ -2129,7 +2226,7 @@
   var Property = {
 
     ['@size'](value, { is_special_selector }) {
-      let [w, h = w] = parse$2(value);
+      let [w, h = w] = parse$3(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -2144,12 +2241,12 @@
     },
 
     ['@min-size'](value) {
-      let [w, h = w] = parse$2(value);
+      let [w, h = w] = parse$3(value);
       return `min-width: ${ w }; min-height: ${ h };`;
     },
 
     ['@max-size'](value) {
-      let [w, h = w] = parse$2(value);
+      let [w, h = w] = parse$3(value);
       return `max-width: ${ w }; max-height: ${ h };`;
     },
 
@@ -2166,7 +2263,7 @@
       };
 
       return value => {
-        let [left, top = '50%'] = parse$2(value);
+        let [left, top = '50%'] = parse$3(value);
         left = map_left_right[left] || left;
         top = map_top_bottom[top] || top;
         const cw = 'var(--internal-cell-width, 25%)';
@@ -2194,7 +2291,7 @@
     },
 
     ['@shape']: memo('shape-property', value => {
-      let [type, ...args] = parse$2(value);
+      let [type, ...args] = parse$3(value);
       let prop = 'clip-path';
       if (typeof shapes[type] !== 'function') return '';
       let rules = `${ prop }: ${ shapes[type](...args) };`;
@@ -2361,6 +2458,7 @@
       this.is_grid_defined = false;
       this.coords = [];
       this.doodles = {};
+      this.shaders = {};
       this.reset();
       this.Func = get_exposed(random);
       this.Selector = Selector(random);
@@ -2403,7 +2501,7 @@
         let is_string_or_number = (type === 'number' || type === 'string');
 
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$2(arg.value, true));
+          input.push(...parse$3(arg.value, true));
         }
         else {
           if (typeof arg === 'function') {
@@ -2438,9 +2536,11 @@
           let fn = this.pick_func(fname);
 
           if (typeof fn === 'function') {
-            if (fname === 'doodle') {
+            if (fname === 'doodle' || fname === 'shaders') {
               let value = get_value((arg.arguments[0] || [])[0]);
-              return this.compose_doodle(value);
+              return fname === 'doodle'
+                ? this.compose_doodle(value)
+                : this.compose_shaders(value, coords);
             }
             coords.extra = extra;
             coords.position = arg.position;
@@ -2466,6 +2566,15 @@
       return '${' + id + '}';
     }
 
+    compose_shaders(shader, {x, y, z}) {
+      let id = 'shader_' + Math.random().toString(32).substr(2);
+      this.shaders[id] = {
+        shader,
+        cell: cell_id(x, y, z)
+      };
+      return '${' + id + '}';
+    }
+
     compose_value(value, coords) {
       if (!Array.isArray(value)) {
         return '';
@@ -2480,10 +2589,12 @@
             let fname = val.name.substr(1);
             let fn = this.pick_func(fname);
             if (typeof fn === 'function') {
-              if (fname === 'doodle') {
+              if (fname === 'doodle' || fname === 'shaders') {
                 let arg = val.arguments[0] || [];
                 let value = get_value(arg[0]);
-                result += this.compose_doodle(value);
+                result += (fname === 'doodle')
+                  ? this.compose_doodle(value)
+                  : this.compose_shaders(value, coords);
               } else {
                 coords.position = val.position;
                 let args = val.arguments.map(arg => {
@@ -2562,6 +2673,10 @@
         if (!is_special_selector(selector)) {
           rule += `--internal-cell-${ prop }: ${ value };`;
         }
+      }
+
+      if (prop === 'background' && value.includes('shader')) {
+        rule += 'background-size: 100%;';
       }
 
       if (/^\-\-/.test(prop)) {
@@ -2767,6 +2882,7 @@
         styles: this.styles,
         grid: this.grid,
         doodles: this.doodles,
+        shaders: this.shaders,
         definitions: definitions
       }
     }
@@ -3064,6 +3180,119 @@
     return result.join(';');
   }
 
+  function create_shader(gl, type, source) {
+    let shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    return shader;
+  }
+  function create_program(gl, vss, fss) {
+    let vs = create_shader(gl, gl.VERTEX_SHADER, vss);
+    let fs = create_shader(gl, gl.FRAGMENT_SHADER, fss);
+    let prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn('Link failed: ' + gl.getProgramInfoLog(prog));
+      console.warn('vs info-log: ' + gl.getShaderInfoLog(vs));
+      console.warn('fs info-log: ' + gl.getShaderInfoLog(fs));
+    }
+    return prog;
+  }
+
+  function add_uniform(fragment, uniform) {
+    if (!fragment.includes(uniform)) {
+      return uniform + '\n' + fragment;
+    }
+    return fragment;
+  }
+
+  const fragment_head = `
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+  precision highp float;
+  #else
+  precision mediump float;
+  #endif
+`;
+
+  const default_vertex_shader = `
+  attribute vec4 position;
+  void main() {
+    gl_Position = position;
+  }
+`;
+
+
+  /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL */
+  function load_texture(gl, image, i) {
+    const texture = gl.createTexture();
+    gl.activeTexture(gl['TEXTURE' + i]);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  }
+
+  function draw_shader(shaders, width, height) {
+    let canvas = document.createElement('canvas');
+    let ratio = window.devicePixelRatio || 1;
+    width *= ratio;
+    height *= ratio;
+    canvas.width = width;
+    canvas.height = height;
+
+    let gl = canvas.getContext('webgl')
+      || canvas.getContext('exprimental-webgl');
+    if (!gl) return '';
+
+    // resolution uniform
+    let fragment = add_uniform(shaders.fragment || '', 'uniform vec2 u_resolution;');
+    // texture uniform
+    shaders.textures.forEach(n => {
+      let uniform = `uniform sampler2D ${ n.name };`;
+      fragment =  add_uniform(fragment, uniform);
+    });
+
+    let program = create_program(
+      gl,
+      shaders.vertex || default_vertex_shader,
+      fragment_head + fragment
+    );
+
+    /* position in vertex shader */
+    let positionAttributeLocation = gl.getAttribLocation(program, 'position');
+    let positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    let vertices = [-1, -1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1];
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(positionAttributeLocation);
+    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(program);
+
+    /* resolve uniforms */
+    gl.uniform2fv(gl.getUniformLocation(program, "u_resolution"), [width, height]);
+    shaders.textures.forEach((n, i) => {
+      load_texture(gl, n.value, i);
+      gl.uniform1i(gl.getUniformLocation(program, n.name), i);
+    });
+
+    // two triangles to form a rectangle
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // resolve image data in 72dpi :(
+    return Promise.resolve(canvas.toDataURL());
+  }
+
   class Doodle extends HTMLElement {
     constructor() {
       super();
@@ -3117,7 +3346,7 @@
         }
       }
 
-      let replace = this.replace(compiled.doodles);
+      let replace = this.replace(compiled.doodles, compiled.shaders);
 
       this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
@@ -3213,18 +3442,24 @@
       return compiled;
     }
 
-    to_image(code) {
+    doodle_to_image(code, options, fn) {
+      if (typeof options === 'function') {
+        fn = options;
+        options = null;
+      }
       let parsed = parse$1(code, this.extra);
       let _grid = parse_grid({});
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
 
-      let replace = this.replace(compiled.doodles);
+      let replace = this.replace(compiled.doodles, compiled.shaders);
       let grid_container = create_grid(grid);
-
-      let svg = replace(`
-      <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      let size = (options && options.width && options.height)
+        ? `width="${ options.width }" height="${ options.height }"`
+        : '';
+      replace(`
+      <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <foreignObject width="100%" height="100%">
           <div class="host" xmlns="http://www.w3.org/1999/xhtml">
             <style>
@@ -3239,12 +3474,42 @@
           </div>
         </foreignObject>
       </svg>
-    `);
-      let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(svg))) }`;
-      if (is_safari()) {
-        cache_image(source);
+    `).then(result => {
+        let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(result))) }`;
+        if (is_safari()) {
+          cache_image(source);
+        }
+        fn(source);
+      });
+    }
+
+    shader_to_image({ shader, cell }, fn) {
+      let parsed = parse$2(shader);
+      let element = this.doodle.getElementById(cell);
+      let { width, height } = element.getBoundingClientRect();
+      let ratio = window.devicePixelRatio || 1;
+
+      if (!parsed.textures.length) {
+        draw_shader(parsed, width, height).then(fn);
       }
-      return `url(${ source })`;
+      // Need to bind textures first
+      else {
+        let transforms = parsed.textures.map(texture => {
+          return new Promise(resolve => {
+            this.doodle_to_image(texture.value, { width, height }, src => {
+              let img = new Image();
+              img.width = width * ratio;
+              img.height = height * ratio;
+              img.onload = () => resolve({ name: texture.name, value: img });
+              img.src = src;
+            });
+          });
+        });
+        Promise.all(transforms).then(textures => {
+          parsed.textures = textures;
+          draw_shader(parsed, width, height).then(fn);
+        });
+      }
     }
 
     load(again) {
@@ -3253,7 +3518,7 @@
         return false;
       }
 
-      let parsed = parse$1(use + this.innerHTML, this.extra);
+      let parsed = parse$1(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
       this.grid_size = compiled.grid
@@ -3269,14 +3534,35 @@
       }
     }
 
-    replace(doodles) {
-      let ids = Object.keys(doodles);
-      return s => {
-        if (!ids.length || !s.length) return s;
-        ids.forEach(id => {
-          s = s.replace('${' + id + '}', this.to_image(doodles[id]));
+    replace(doodles, shaders) {
+      let doodle_ids = Object.keys(doodles);
+      let shader_ids = Object.keys(shaders);
+      return input => {
+        if (!doodle_ids.length && !shader_ids.length) {
+          return Promise.resolve(input);
+        }
+        let mappings = [].concat(
+          doodle_ids.map(id => {
+            return new Promise(resolve => {
+              if (input.includes(id)) {
+                this.doodle_to_image(doodles[id], value => resolve({ id, value }));
+              }
+            });
+          }),
+          shader_ids.map(id => {
+            return new Promise(resolve => {
+              if (input.includes(id)) {
+                this.shader_to_image(shaders[id], value => resolve({ id, value }));
+              }
+            });
+          })
+        );
+        return Promise.all(mappings).then(mapping => {
+          mapping.forEach(({ id, value }) => {
+            input = input.replace('${' + id + '}', `url(${value})`);
+          });
+          return input;
         });
-        return s;
       }
     }
 
@@ -3284,10 +3570,10 @@
       const { has_transition, has_animation } = compiled.props;
       const { keyframes, host, container, cells } = compiled.styles;
       const definitions = compiled.definitions;
-      let replace = this.replace(compiled.doodles);
+      let replace = this.replace(compiled.doodles, compiled.shaders);
       let grid_container = create_grid(grid);
 
-      this.doodle.innerHTML = replace(`
+      this.doodle.innerHTML = `
       <style>
         ${ get_basic_styles() }
       </style>
@@ -3303,12 +3589,20 @@
         ${ (has_transition || has_animation) ? '' : cells }
       </style>
       ${ grid_container }
-    `);
+    `;
+
+      this.set_content('.style-container', replace(
+          get_grid_styles(grid)
+        + compiled.styles.host
+        + compiled.styles.container
+      ));
 
       if (has_transition || has_animation) {
         setTimeout(() => {
           this.set_content('.style-cells', replace(cells));
         }, 50);
+      } else {
+        this.set_content('.style-cells', replace(compiled.styles.cells));
       }
 
       // might be removed in the future
@@ -3374,10 +3668,16 @@
     }
 
     set_content(selector, styles) {
-      const el = this.shadowRoot.querySelector(selector);
-      el && (el.styleSheet
-        ? (el.styleSheet.cssText = styles )
-        : (el.innerHTML = styles));
+      if (styles instanceof Promise) {
+        styles.then(value => {
+          this.set_content(selector, value);
+        });
+      } else {
+        const el = this.shadowRoot.querySelector(selector);
+        el && (el.styleSheet
+          ? (el.styleSheet.cssText = styles )
+          : (el.innerHTML = styles));
+      }
     }
   }
 
@@ -3409,7 +3709,7 @@
       display: grid;
       ${ inherited_grid_props }
     }
-    .container cell:empty {
+    cell:empty {
       position: relative;
       line-height: 1;
       display: grid;

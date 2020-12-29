@@ -16,6 +16,7 @@ export function normalize_svg(input) {
   return input;
 }
 
+
 export function svg_to_png(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
     let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
@@ -39,17 +40,17 @@ export function svg_to_png(svg, width, height, scale) {
         canvas.height = height * dpr;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        canvas.toBlob(blob => {
-          try {
+        try {
+          canvas.toBlob(blob => {
             resolve({
               blob,
               source,
               url: URL.createObjectURL(blob)
             });
-          } catch (e) {
-            reject(e);
-          }
-        });
+          });
+        } catch (e) {
+          reject(e);
+        }
       }
     }
 

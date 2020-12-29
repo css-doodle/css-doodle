@@ -1,11 +1,13 @@
 import parse_css from './parser/parse-css';
 import parse_grid from './parser/parse-grid';
+import parse_shaders from './parser/parse-shaders';
 import generator from './generator';
 import seedrandom from './lib/seedrandom';
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
-import { cell_id, is_nil, normalize_png_name, cache_image, is_safari } from './utils/index';
+import { cell_id, is_nil, normalize_png_name, cache_image, is_safari, un_entity } from './utils/index';
 import { svg_to_png } from './svg';
+import { draw_shader } from './shader.js';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -60,7 +62,7 @@ class Doodle extends HTMLElement {
       }
     }
 
-    let replace = this.replace(compiled.doodles);
+    let replace = this.replace(compiled.doodles, compiled.shaders);
 
     this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
@@ -156,18 +158,24 @@ class Doodle extends HTMLElement {
     return compiled;
   }
 
-  to_image(code) {
+  doodle_to_image(code, options, fn) {
+    if (typeof options === 'function') {
+      fn = options;
+      options = null;
+    }
     let parsed = parse_css(code, this.extra);
     let _grid = parse_grid({});
     let compiled = generator(parsed, _grid, this.random);
     let grid = compiled.grid ? compiled.grid : _grid;
     const { keyframes, host, container, cells } = compiled.styles;
 
-    let replace = this.replace(compiled.doodles);
+    let replace = this.replace(compiled.doodles, compiled.shaders);
     let grid_container = create_grid(grid);
-
-    let svg = replace(`
-      <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    let size = (options && options.width && options.height)
+      ? `width="${ options.width }" height="${ options.height }"`
+      : '';
+    replace(`
+      <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <foreignObject width="100%" height="100%">
           <div class="host" xmlns="http://www.w3.org/1999/xhtml">
             <style>
@@ -182,12 +190,42 @@ class Doodle extends HTMLElement {
           </div>
         </foreignObject>
       </svg>
-    `);
-    let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(svg))) }`;
-    if (is_safari()) {
-      cache_image(source);
+    `).then(result => {
+      let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(result))) }`;
+      if (is_safari()) {
+        cache_image(source);
+      }
+      fn(source);
+    });
+  }
+
+  shader_to_image({ shader, cell }, fn) {
+    let parsed = parse_shaders(shader);
+    let element = this.doodle.getElementById(cell);
+    let { width, height } = element.getBoundingClientRect();
+    let ratio = window.devicePixelRatio || 1;
+
+    if (!parsed.textures.length) {
+      draw_shader(parsed, width, height).then(fn);
     }
-    return `url(${ source })`;
+    // Need to bind textures first
+    else {
+      let transforms = parsed.textures.map(texture => {
+        return new Promise(resolve => {
+          this.doodle_to_image(texture.value, { width, height }, src => {
+            let img = new Image();
+            img.width = width * ratio;
+            img.height = height * ratio;
+            img.onload = () => resolve({ name: texture.name, value: img });
+            img.src = src;
+          });
+        });
+      });
+      Promise.all(transforms).then(textures => {
+        parsed.textures = textures;
+        draw_shader(parsed, width, height).then(fn);
+      });
+    }
   }
 
   load(again) {
@@ -196,7 +234,7 @@ class Doodle extends HTMLElement {
       return false;
     }
 
-    let parsed = parse_css(use + this.innerHTML, this.extra);
+    let parsed = parse_css(use + un_entity(this.innerHTML), this.extra);
     let compiled = this.generate(parsed);
 
     this.grid_size = compiled.grid
@@ -212,14 +250,35 @@ class Doodle extends HTMLElement {
     }
   }
 
-  replace(doodles) {
-    let ids = Object.keys(doodles);
-    return s => {
-      if (!ids.length || !s.length) return s;
-      ids.forEach(id => {
-        s = s.replace('${' + id + '}', this.to_image(doodles[id]));
+  replace(doodles, shaders) {
+    let doodle_ids = Object.keys(doodles);
+    let shader_ids = Object.keys(shaders);
+    return input => {
+      if (!doodle_ids.length && !shader_ids.length) {
+        return Promise.resolve(input);
+      }
+      let mappings = [].concat(
+        doodle_ids.map(id => {
+          return new Promise(resolve => {
+            if (input.includes(id)) {
+              this.doodle_to_image(doodles[id], value => resolve({ id, value }));
+            }
+          });
+        }),
+        shader_ids.map(id => {
+          return new Promise(resolve => {
+            if (input.includes(id)) {
+              this.shader_to_image(shaders[id], value => resolve({ id, value }));
+            }
+          });
+        })
+      );
+      return Promise.all(mappings).then(mapping => {
+        mapping.forEach(({ id, value }) => {
+          input = input.replace('${' + id + '}', `url(${value})`);
+        });
+        return input;
       });
-      return s;
     }
   }
 
@@ -227,10 +286,10 @@ class Doodle extends HTMLElement {
     const { has_transition, has_animation } = compiled.props;
     const { keyframes, host, container, cells } = compiled.styles;
     const definitions = compiled.definitions;
-    let replace = this.replace(compiled.doodles);
+    let replace = this.replace(compiled.doodles, compiled.shaders);
     let grid_container = create_grid(grid);
 
-    this.doodle.innerHTML = replace(`
+    this.doodle.innerHTML = `
       <style>
         ${ get_basic_styles() }
       </style>
@@ -246,12 +305,20 @@ class Doodle extends HTMLElement {
         ${ (has_transition || has_animation) ? '' : cells }
       </style>
       ${ grid_container }
-    `);
+    `;
+
+    this.set_content('.style-container', replace(
+        get_grid_styles(grid)
+      + compiled.styles.host
+      + compiled.styles.container
+    ));
 
     if (has_transition || has_animation) {
       setTimeout(() => {
         this.set_content('.style-cells', replace(cells));
       }, 50);
+    } else {
+      this.set_content('.style-cells', replace(compiled.styles.cells));
     }
 
     // might be removed in the future
@@ -317,10 +384,16 @@ class Doodle extends HTMLElement {
   }
 
   set_content(selector, styles) {
-    const el = this.shadowRoot.querySelector(selector);
-    el && (el.styleSheet
-      ? (el.styleSheet.cssText = styles )
-      : (el.innerHTML = styles));
+    if (styles instanceof Promise) {
+      styles.then(value => {
+        this.set_content(selector, value);
+      });
+    } else {
+      const el = this.shadowRoot.querySelector(selector);
+      el && (el.styleSheet
+        ? (el.styleSheet.cssText = styles )
+        : (el.innerHTML = styles));
+    }
   }
 }
 
@@ -352,7 +425,7 @@ function get_basic_styles() {
       display: grid;
       ${ inherited_grid_props }
     }
-    .container cell:empty {
+    cell:empty {
       position: relative;
       line-height: 1;
       display: grid;

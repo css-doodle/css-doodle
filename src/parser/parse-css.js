@@ -358,7 +358,7 @@ function read_func(it) {
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
-      func.arguments = read_arguments(it, composition, name === '@doodle');
+      func.arguments = read_arguments(it, composition, name === '@doodle' || name == '@shaders');
       break;
     } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
       name += c;

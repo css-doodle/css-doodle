@@ -235,6 +235,10 @@ function get_exposed(random) {
 
     doodle() {
       return value => value;
+    },
+
+    shaders() {
+      return value => value;
     }
 
   };

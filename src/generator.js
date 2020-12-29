@@ -35,6 +35,7 @@ class Rules {
     this.is_grid_defined = false;
     this.coords = [];
     this.doodles = {};
+    this.shaders = {};
     this.reset();
     this.Func = Func(random);
     this.Selector = Selector(random);
@@ -112,9 +113,11 @@ class Rules {
         let fn = this.pick_func(fname);
 
         if (typeof fn === 'function') {
-          if (fname === 'doodle') {
+          if (fname === 'doodle' || fname === 'shaders') {
             let value = get_value((arg.arguments[0] || [])[0]);
-            return this.compose_doodle(value);
+            return fname === 'doodle'
+              ? this.compose_doodle(value)
+              : this.compose_shaders(value, coords);
           }
           coords.extra = extra;
           coords.position = arg.position;
@@ -140,6 +143,15 @@ class Rules {
     return '${' + id + '}';
   }
 
+  compose_shaders(shader, {x, y, z}) {
+    let id = 'shader_' + Math.random().toString(32).substr(2);
+    this.shaders[id] = {
+      shader,
+      cell: cell_id(x, y, z)
+    };
+    return '${' + id + '}';
+  }
+
   compose_value(value, coords) {
     if (!Array.isArray(value)) {
       return '';
@@ -154,10 +166,12 @@ class Rules {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
-            if (fname === 'doodle') {
+            if (fname === 'doodle' || fname === 'shaders') {
               let arg = val.arguments[0] || [];
               let value = get_value(arg[0]);
-              result += this.compose_doodle(value);
+              result += (fname === 'doodle')
+                ? this.compose_doodle(value)
+                : this.compose_shaders(value, coords);
             } else {
               coords.position = val.position;
               let args = val.arguments.map(arg => {
@@ -236,6 +250,10 @@ class Rules {
       if (!is_special_selector(selector)) {
         rule += `--internal-cell-${ prop }: ${ value };`;
       }
+    }
+
+    if (prop === 'background' && value.includes('shader')) {
+      rule += 'background-size: 100%;';
     }
 
     if (/^\-\-/.test(prop)) {
@@ -442,6 +460,7 @@ class Rules {
       styles: this.styles,
       grid: this.grid,
       doodles: this.doodles,
+      shaders: this.shaders,
       definitions: definitions
     }
   }
