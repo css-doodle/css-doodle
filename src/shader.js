@@ -28,11 +28,7 @@ function add_uniform(fragment, uniform) {
 }
 
 const fragment_head = `
-  #ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
-  #else
-  precision mediump float;
-  #endif
 `;
 
 const default_vertex_shader = `
