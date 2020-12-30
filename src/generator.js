@@ -253,7 +253,7 @@ class Rules {
     }
 
     if (prop === 'background' && value.includes('shader')) {
-      rule += 'background-size: 100%;';
+      rule += 'background-size: 100% 100%;';
     }
 
     if (/^\-\-/.test(prop)) {
