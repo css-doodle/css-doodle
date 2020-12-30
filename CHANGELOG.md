@@ -2,7 +2,7 @@
 
 ### Features
 
-* Add `@shaders` function for wrting GLSL inside css-doodle.
+* Add `@shaders` function for writing GLSL inside css-doodle.
 
 <br /> <br />
 
