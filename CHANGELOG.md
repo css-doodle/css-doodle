@@ -1,3 +1,13 @@
+## 0.13.0
+
+### Features
+
+* Add `@shaders` function for wrting GLSL inside css-doodle.
+
+<br /> <br />
+
+
+
 ## 0.12.2
 
 ### Fixes
