@@ -290,34 +290,34 @@ class Doodle extends HTMLElement {
 
   build_grid(compiled, grid) {
     const { has_transition, has_animation } = compiled.props;
-    const { keyframes, host, container, cells } = compiled.styles;
-    const definitions = compiled.definitions;
     let has_delay = (has_transition || has_animation);
 
-    let replace = this.replace(compiled.doodles, compiled.shaders);
+    const { keyframes, host, container, cells } = compiled.styles;
+    let style_container = get_grid_styles(grid) + host + container;
+    let style_cells = has_delay ? '' : cells;
 
-    let container_style = get_grid_styles(grid) + host + container;
-    let cells_style = has_delay ? '' : cells;
+    let replace = this.replace(compiled.doodles, compiled.shaders);
 
     this.doodle.innerHTML = `
       <style>${ get_basic_styles() }</style>
       <style class="style-keyframes">${ keyframes }</style>
-      <style class="style-container">${ container_style }</style>
-      <style class="style-cells">${ cells_style }</style>
+      <style class="style-container">${ style_container }</style>
+      <style class="style-cells">${ style_cells }</style>
       ${ create_grid(grid) }
     `;
 
-    this.set_content('.style-cells', replace(container_style));
+    this.set_content('.style-container', replace(style_container));
 
     if (has_delay) {
       setTimeout(() => {
-        this.set_content('.style-cells', replace(cells_style));
+        this.set_content('.style-cells', replace(cells));
       }, 50);
     } else {
-      this.set_content('.style-cells', replace(cells_style));
+      this.set_content('.style-cells', replace(cells));
     }
 
     // might be removed in the future
+    const definitions = compiled.definitions;
     if (window.CSS && window.CSS.registerProperty) {
       try {
         definitions.forEach(CSS.registerProperty);

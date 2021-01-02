@@ -950,7 +950,7 @@
         stack.pop();
         if (!stack.length) {
           let key = name.trim();
-          let value = temp.trim();
+          let value = temp.trim().replace(/^\(+|\)+$/g, '');
           if (key.length) {
             if (key.startsWith('texture')) {
               result.textures.push({
@@ -2676,7 +2676,7 @@
       }
 
       if (prop === 'background' && value.includes('shader')) {
-        rule += 'background-size: 100%;';
+        rule += 'background-size: 100% 100%;';
       }
 
       if (/^\-\-/.test(prop)) {
@@ -3537,22 +3537,28 @@
         if (!doodle_ids.length && !shader_ids.length) {
           return Promise.resolve(input);
         }
+
         let mappings = [].concat(
           doodle_ids.map(id => {
-            return new Promise(resolve => {
-              if (input.includes(id)) {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
                 this.doodle_to_image(doodles[id], value => resolve({ id, value }));
-              }
-            });
+              });
+            } else {
+              return Promise.resolve('');
+            }
           }),
           shader_ids.map(id => {
-            return new Promise(resolve => {
-              if (input.includes(id)) {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
                 this.shader_to_image(shaders[id], value => resolve({ id, value }));
-              }
-            });
+              });
+            } else {
+              return Promise.resolve('');
+            }
           })
         );
+
         return Promise.all(mappings).then(mapping => {
           mapping.forEach(({ id, value }) => {
             input = input.replace('${' + id + '}', `url(${value})`);
@@ -3564,44 +3570,34 @@
 
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
+      let has_delay = (has_transition || has_animation);
+
       const { keyframes, host, container, cells } = compiled.styles;
-      const definitions = compiled.definitions;
+      let style_container = get_grid_styles(grid) + host + container;
+      let style_cells = has_delay ? '' : cells;
+
       let replace = this.replace(compiled.doodles, compiled.shaders);
-      let grid_container = create_grid(grid);
 
       this.doodle.innerHTML = `
-      <style>
-        ${ get_basic_styles() }
-      </style>
-      <style class="style-keyframes">
-        ${ keyframes }
-      </style>
-      <style class="style-container">
-        ${ get_grid_styles(grid) }
-        ${ host }
-        ${ container }
-      </style>
-      <style class="style-cells">
-        ${ (has_transition || has_animation) ? '' : cells }
-      </style>
-      ${ grid_container }
+      <style>${ get_basic_styles() }</style>
+      <style class="style-keyframes">${ keyframes }</style>
+      <style class="style-container">${ style_container }</style>
+      <style class="style-cells">${ style_cells }</style>
+      ${ create_grid(grid) }
     `;
 
-      this.set_content('.style-container', replace(
-          get_grid_styles(grid)
-        + compiled.styles.host
-        + compiled.styles.container
-      ));
+      this.set_content('.style-container', replace(style_container));
 
-      if (has_transition || has_animation) {
+      if (has_delay) {
         setTimeout(() => {
           this.set_content('.style-cells', replace(cells));
         }, 50);
       } else {
-        this.set_content('.style-cells', replace(compiled.styles.cells));
+        this.set_content('.style-cells', replace(cells));
       }
 
       // might be removed in the future
+      const definitions = compiled.definitions;
       if (window.CSS && window.CSS.registerProperty) {
         try {
           definitions.forEach(CSS.registerProperty);
@@ -3697,6 +3693,9 @@
       visibility: visible;
       width: auto;
       height: auto;
+    }
+    :host([hidden]), .host[hidden] {
+      display: none;
     }
     .container {
       position: relative;
