@@ -37,8 +37,8 @@ export default function parse(input) {
     else if (c == '}' && !is_quote(last(stack)))  {
       stack.pop();
       if (!stack.length) {
-        let key = name.trim();
-        let value = temp.trim();
+        let key = name.trim()
+        let value = temp.trim().replace(/^\(+|\)+$/g, '');
         if (key.length) {
           if (key.startsWith('texture')) {
             result.textures.push({
