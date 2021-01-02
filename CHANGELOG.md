@@ -1,3 +1,29 @@
+## 0.13.2
+
+### Fixes
+
+* Fix default shader background-size.
+* Fix promise not resolving correctly.
+* Fix reading shaders from CSS variables.
+
+### Enhancement
+
+Add a `:host` display style that respects the `hidden` attribute.
+
+<br /> <br />
+
+
+
+## 0.13.1
+
+### Features
+
+* Remove conditional statements since terser will remove line breaks ( a quick fix).
+
+<br /> <br />
+
+
+
 ## 0.13.0
 
 ### Features
