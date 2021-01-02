@@ -414,6 +414,9 @@ function get_basic_styles() {
       width: auto;
       height: auto;
     }
+    :host([hidden]), .host[hidden] {
+      display: none;
+    }
     .container {
       position: relative;
       width: 100%;
