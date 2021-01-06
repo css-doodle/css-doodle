@@ -38,7 +38,6 @@ const default_vertex_shader = `
   }
 `;
 
-
 /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL */
 function load_texture(gl, image, i) {
   const texture = gl.createTexture();
@@ -51,10 +50,6 @@ function load_texture(gl, image, i) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-}
-
-function is_power_of_2(value) {
-  return (value & (value - 1)) == 0;
 }
 
 function draw_shader(shaders, width, height) {

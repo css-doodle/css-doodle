@@ -3219,7 +3219,6 @@
   }
 `;
 
-
   /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL */
   function load_texture(gl, image, i) {
     const texture = gl.createTexture();
