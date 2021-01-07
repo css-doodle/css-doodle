@@ -209,10 +209,10 @@ function compute(op, a, b) {
 function expand(value, context) {
   let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
   let v = context[variable];
-  if (typeof v !== 'number') {
-    return num;
-  } else {
+  if (typeof v === 'number') {
     return Number(num) * v;
+  } else {
+    return num * calc(infix_to_postfix(v), context);
   }
 }
 
