@@ -1,4 +1,4 @@
-import { clamp } from './utils/index';
+import { clamp, is_nil } from './utils/index';
 import calc from './utils/calc';
 
 const { cos, sin, sqrt, pow, PI } = Math;
@@ -223,19 +223,31 @@ const shapes =  {
       (sin(t * b) + sin(t * d) + sin(t)) * .31
     ]);
   }
+}
 
+function is_empty(value) {
+  return is_nil(value) || value === '';
 }
 
 function custom_shape(props) {
-  let option = Object.assign(
-    { type: 'evenodd' },
-    props,
-    { split: clamp(parseInt(props.split) || 0, 3, 2400) }
-  );
+  let option = Object.assign({}, props, {
+    split: clamp(parseInt(props.split) || 0, 3, 2400),
+    start: 0
+  });
+
+  let px = is_empty(props.x) ? 'cos(t)' : props.x;
+  let py = is_empty(props.y) ? 'sin(t)' : props.y;
+  let pr = is_empty(props.r) ? ''       : props.r;
+
   return polygon(option, t => {
     let context = Object.assign({}, props, { t });
-    let x = calc(props.x || 'cos(t)', context);
-    let y = calc(props.y || 'sin(t)', context);
+    let x = calc(px, context);
+    let y = calc(py, context);
+    if (pr) {
+      let r = calc(pr, context);
+      x = r * Math.cos(t);
+      y = -r * Math.sin(t);
+    }
     if (props.rotate) {
       return rotate(x, y, parseInt(props.rotate) || 0);
     }
