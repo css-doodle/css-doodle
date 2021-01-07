@@ -29,6 +29,8 @@ function polygon(option, fn) {
     );
   }
 
+  option.type = option['fill-rule'] || option.type;
+
   return option.type
     ? `polygon(${ option.type }, ${ points.join(',') })`
     : `polygon(${ points.join(',') })`;
