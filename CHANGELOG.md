@@ -1,3 +1,15 @@
+## 0.13.3
+
+### Enhancement to `@shape` function
+
+* Add polar equation support.
+* Fix calc expand with variables.
+* Make the polygon fill rule default to be `nonzero`.
+
+<br /> <br />
+
+
+
 ## 0.13.2
 
 ### Fixes
