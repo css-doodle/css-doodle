@@ -27,6 +27,7 @@ A web component for drawing patterns with CSS.
 ## Design tools
 
 * [Tabbied](https://tabbied.com) -- Doodle with generated patterns
+* [Shapes](https://css-doodle.com/shapes) -- Discover new CSS polygon shapes
 
 
 ## Resources
