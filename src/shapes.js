@@ -29,11 +29,17 @@ function polygon(option, fn) {
     );
   }
 
-  option.type = option['fill-rule'] || option.type;
+  option.type = read_fillrule(option['fill-rule']);
 
   return option.type
     ? `polygon(${ option.type }, ${ points.join(',') })`
     : `polygon(${ points.join(',') })`;
+}
+
+function read_fillrule(value) {
+  let enum = ['nonzero', 'evenodd'];
+  if (!enum.includes(value)) return '';
+  return value;
 }
 
 function rotate(x, y, deg) {
