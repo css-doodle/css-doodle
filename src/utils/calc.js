@@ -30,7 +30,7 @@ function calc(expr, context, repeat = []) {
       if (typeof result === 'undefined') {
         result = Math[value];
       }
-      if (typeof result === 'undefined' && /^\d/.value) {
+      if (typeof result === 'undefined') {
         result = expand(value, context);
       }
       if (typeof result === 'undefined') {
@@ -209,6 +209,9 @@ function compute(op, a, b) {
 function expand(value, context) {
   let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
   let v = context[variable];
+  if (v === undefined) {
+    return v;
+  }
   if (typeof v === 'number') {
     return Number(num) * v;
   } else {
