@@ -16,9 +16,9 @@ export default function parse(input) {
       temp = '';
       if (key.length && value.length) {
         result[key] = value;
-        key = value = '';
-        continue;
       }
+      key = value = '';
+      continue;
     }
     if (/\S/.test(c)) {
       temp += c;
