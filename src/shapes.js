@@ -37,9 +37,9 @@ function polygon(option, fn) {
 }
 
 function read_fillrule(value) {
-  let enum = ['nonzero', 'evenodd'];
-  if (!enum.includes(value)) return '';
-  return value;
+  return (value === 'nonzero' || value == 'evenodd')
+    ? value
+    : '';
 }
 
 function rotate(x, y, deg) {
