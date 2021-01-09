@@ -1,3 +1,15 @@
+## 0.13.4
+
+### Enhancement to `@shape` function
+
+* Fix reading undefined variables.
+* Handle empty values for shape commands.
+* Validate user input fill-rule value.
+
+<br /> <br />
+
+
+
 ## 0.13.3
 
 ### Enhancement to `@shape` function

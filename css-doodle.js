@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.3 */
+/*! css-doodle@0.13.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1344,6 +1344,9 @@
   function expand(value, context) {
     let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
     let v = context[variable];
+    if (v === undefined) {
+      return v;
+    }
     if (typeof v === 'number') {
       return Number(num) * v;
     } else {
@@ -1499,11 +1502,17 @@
       );
     }
 
-    option.type = option['fill-rule'] || option.type;
+    option.type = read_fillrule(option['fill-rule']);
 
     return option.type
       ? `polygon(${ option.type }, ${ points.join(',') })`
       : `polygon(${ points.join(',') })`;
+  }
+
+  function read_fillrule(value) {
+    return (value === 'nonzero' || value == 'evenodd')
+      ? value
+      : '';
   }
 
   function rotate(x, y, deg) {
@@ -1802,9 +1811,9 @@
         temp = '';
         if (key.length && value.length) {
           result[key] = value;
-          key = value = '';
-          continue;
         }
+        key = value = '';
+        continue;
       }
       if (/\S/.test(c)) {
         temp += c;
