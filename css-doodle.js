@@ -1476,7 +1476,7 @@
     }
   }
 
-  const { cos, sin, sqrt, pow, PI } = Math;
+  const { cos, sin, sqrt, atan2, pow, PI } = Math;
   const DEG = PI / 180;
 
   function polygon(option, fn) {
@@ -1493,15 +1493,43 @@
     let scale = option.scale || 1;
     let start = DEG * (option.start || 0);
     let deg = option.deg ? (option.deg * DEG) : (PI / (split / 2));
-    let points = [];
 
-    for (let i = 0; i < split; ++i) {
-      let t = start - deg * i;
-      let [x, y] = fn(t);
+    let points = [];
+    let add_point = ([x, y], scale) => {
       points.push(
         ((x * 50 * scale) + 50 + '% ') +
         ((y * 50 * scale) + 50 + '%')
       );
+    };
+
+    let first;
+    for (let i = 0; i < split; ++i) {
+      let t = start - deg * i;
+      let [x, y] = fn(t);
+      if (!i) {
+        first = [x, y];
+      }
+      add_point([x, y], scale);
+    }
+
+    if (option.frame !== undefined) {
+      add_point(first, scale);
+      let w = (option.frame || 1) / 100;
+      if (w < 0) w = 1 / 100;
+      let first2;
+      for (let i = 0; i < split; ++i) {
+        let t = start + deg * i;
+        let [x, y] = fn(t);
+        let theta = atan2(y, x);
+        let nx = x - w * cos(theta);
+        let ny = y - w * sin(theta);
+        if (!i) {
+          first2 = [nx, ny];
+        }
+        add_point([nx, ny], scale);
+      }
+      add_point(first2, scale);
+      add_point(first, scale);
     }
 
     option.type = read_fillrule(option['fill-rule']);
