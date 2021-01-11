@@ -15,14 +15,12 @@ export default function parse(input) {
       value = temp;
       temp = '';
       if (key.length && value.length) {
-        result[key] = value;
+        result[key.trim()] = value.trim();
       }
       key = value = '';
       continue;
     }
-    if (/\S/.test(c)) {
-      temp += c;
-    }
+    temp += c;
   }
 
   if (key.length && temp.length) {

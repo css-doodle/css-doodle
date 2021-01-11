@@ -50,6 +50,14 @@ function rotate(x, y, deg) {
   ];
 }
 
+function translate(x, y, offset) {
+  let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
+  return [
+    x + (dx || 0),
+    y + (dy || 0)
+  ];
+}
+
 const shapes =  {
 
   circle() {
@@ -256,8 +264,11 @@ function custom_shape(props) {
       x = r * Math.cos(t);
       y = r * Math.sin(t);
     }
+    if (props.origin) {
+      [x, y] = translate(x, y, props.origin);
+    }
     if (props.rotate) {
-      return rotate(x, y, parseInt(props.rotate) || 0);
+      [x, y] = rotate(x, y, parseInt(props.rotate) || 0);
     }
     return [x, y];
   });
