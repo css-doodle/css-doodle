@@ -1,3 +1,15 @@
+## 0.13.5
+
+### Enhancement to `@shape` function
+
+* Fix cycle direction.
+* Add origin commands for `@shape`.
+* Support exponent operator in `@shape`.
+
+<br /> <br />
+
+
+
 ## 0.13.4
 
 ### Enhancement to `@shape` function

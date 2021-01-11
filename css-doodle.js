@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.4 */
+/*! css-doodle@0.13.5 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1151,7 +1151,7 @@
   }
 
   const operator = {
-    '*': 3, '/': 3, '%': 3,
+    '*': 3, '/': 3, '%': 3, '^' : 3,
     '+': 2, '-': 2,
     '(': 1, ')': 1
   };
@@ -1338,6 +1338,7 @@
       case '*': return a * b;
       case '/': return a / b;
       case '%': return a % b;
+      case '^': return Math.pow(a, b);
     }
   }
 
@@ -1494,7 +1495,7 @@
     let points = [];
 
     for (let i = 0; i < split; ++i) {
-      let t = start + deg * i;
+      let t = start - deg * i;
       let [x, y] = fn(t);
       points.push(
         ((x * 50 * scale) + 50 + '% ') +
@@ -1520,6 +1521,14 @@
     return [
       x * cos(rad) - y * sin(rad),
       y * cos(rad) + x * sin(rad)
+    ];
+  }
+
+  function translate(x, y, offset) {
+    let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
+    return [
+      x + (dx || 0),
+      y + (dy || 0)
     ];
   }
 
@@ -1727,10 +1736,13 @@
       if (pr) {
         let r = calc(pr, context);
         x = r * Math.cos(t);
-        y = -r * Math.sin(t);
+        y = r * Math.sin(t);
+      }
+      if (props.origin) {
+        [x, y] = translate(x, y, props.origin);
       }
       if (props.rotate) {
-        return rotate(x, y, parseInt(props.rotate) || 0);
+        [x, y] = rotate(x, y, parseInt(props.rotate) || 0);
       }
       return [x, y];
     });
@@ -1810,14 +1822,12 @@
         value = temp;
         temp = '';
         if (key.length && value.length) {
-          result[key] = value;
+          result[key.trim()] = value.trim();
         }
         key = value = '';
         continue;
       }
-      if (/\S/.test(c)) {
-        temp += c;
-      }
+      temp += c;
     }
 
     if (key.length && temp.length) {
@@ -2037,7 +2047,9 @@
           if (typeof shapes[type] === 'function') {
             return shapes[type](args);
           } else {
-            let config = parse$4(type);
+            let config = parse$4(
+              type + ',' + args.join(',')
+            );
             return custom_shape(config);
           }
         });
