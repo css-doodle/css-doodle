@@ -1,3 +1,13 @@
+## 0.13.7
+
+### Enhancement to `@shape` function
+
+* Add `frame` option for shape, like stroke.
+
+<br /> <br />
+
+
+
 ## 0.13.6
 
 ### Enhancement to `@shape` function

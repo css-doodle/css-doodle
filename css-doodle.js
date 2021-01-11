@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.6 */
+/*! css-doodle@0.13.7 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
