@@ -1,3 +1,13 @@
+## 0.13.6
+
+### Enhancement to `@shape` function
+
+* Fix the exponent operator precedence to highest.
+
+<br /> <br />
+
+
+
 ## 0.13.5
 
 ### Enhancement to `@shape` function

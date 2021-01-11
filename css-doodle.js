@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.5 */
+/*! css-doodle@0.13.6 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1151,7 +1151,8 @@
   }
 
   const operator = {
-    '*': 3, '/': 3, '%': 3, '^' : 3,
+    '^' : 4,
+    '*': 3, '/': 3, '%': 3,
     '+': 2, '-': 2,
     '(': 1, ')': 1
   };
