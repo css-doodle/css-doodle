@@ -21,7 +21,7 @@ function polygon(option, fn) {
   let points = [];
 
   for (let i = 0; i < split; ++i) {
-    let t = start + deg * i;
+    let t = start - deg * i;
     let [x, y] = fn(t);
     points.push(
       ((x * 50 * scale) + 50 + '% ') +
@@ -254,7 +254,7 @@ function custom_shape(props) {
     if (pr) {
       let r = calc(pr, context);
       x = r * Math.cos(t);
-      y = -r * Math.sin(t);
+      y = r * Math.sin(t);
     }
     if (props.rotate) {
       return rotate(x, y, parseInt(props.rotate) || 0);
