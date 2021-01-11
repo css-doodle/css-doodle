@@ -16,7 +16,7 @@ export default function(input, context) {
 }
 
 const operator = {
-  '*': 3, '/': 3, '%': 3,
+  '*': 3, '/': 3, '%': 3, '^' : 3,
   '+': 2, '-': 2,
   '(': 1, ')': 1
 }
@@ -203,6 +203,7 @@ function compute(op, a, b) {
     case '*': return a * b;
     case '/': return a / b;
     case '%': return a % b;
+    case '^': return Math.pow(a, b);
   }
 }
 
