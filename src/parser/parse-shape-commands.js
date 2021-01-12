@@ -13,18 +13,17 @@ export default function parse(input) {
     }
     if (c == ';') {
       value = temp;
-      temp = '';
       if (key.length && value.length) {
         result[key.trim()] = value.trim();
       }
-      key = value = '';
+      key = value = temp = '';
       continue;
     }
     temp += c;
   }
 
   if (key.length && temp.length) {
-    result[key] = temp;
+    result[key.trim()] = temp.trim.();
   }
 
   return result;

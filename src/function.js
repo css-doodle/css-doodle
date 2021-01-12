@@ -227,9 +227,12 @@ function get_exposed(random) {
         if (typeof shapes[type] === 'function') {
           return shapes[type](args);
         } else {
-          let config = parse_shape_commands(
-            type + ',' + args.join(',')
-          );
+          let commands = type;
+          let rest = args.join(',');
+          if (rest.length) {
+            commands = type + ',' + rest;
+          }
+          let config = parse_shape_commands(commands);
           return custom_shape(config);
         }
       });
