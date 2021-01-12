@@ -292,11 +292,11 @@ function custom_shape(props) {
       x = r * Math.cos(t);
       y = r * Math.sin(t);
     }
-    if (props.origin) {
-      [x, y] = translate(x, y, props.origin);
-    }
     if (props.rotate) {
       [x, y] = rotate(x, y, parseInt(props.rotate) || 0);
+    }
+    if (props.origin) {
+      [x, y] = translate(x, y, props.origin);
     }
     return [x, y];
   });

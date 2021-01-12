@@ -23,7 +23,7 @@ export default function parse(input) {
   }
 
   if (key.length && temp.length) {
-    result[key.trim()] = temp.trim.();
+    result[key.trim()] = temp.trim();
   }
 
   return result;
