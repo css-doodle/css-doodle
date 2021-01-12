@@ -1,25 +1,33 @@
+import iterator from './iterator';
+
 export default function parse(input) {
-  let c = '';
-  let i = 0;
+  const it = iterator(input);
+
   let temp = '';
   let result = {};
   let key = '';
   let value = '';
-  while ((c = input[i++]) !== undefined) {
-    if (c == ':') {
+
+  while (!it.end()) {
+    let c = it.curr();
+    if (c == '/' && it.curr(1) == '*') {
+      read_comments(it);
+    }
+    else if (c == ':') {
       key = temp;
       temp = '';
-      continue;
     }
-    if (c == ';') {
+    else if (c == ';') {
       value = temp;
       if (key.length && value.length) {
         result[key.trim()] = value.trim();
       }
       key = value = temp = '';
-      continue;
     }
-    temp += c;
+    else {
+      temp += c;
+    }
+    it.next();
   }
 
   if (key.length && temp.length) {
@@ -27,4 +35,16 @@ export default function parse(input) {
   }
 
   return result;
+}
+
+function read_comments(it, flag = {}) {
+  it.next();
+  while (!it.end()) {
+    let c = it.curr();
+    if ((c = it.curr()) == '*' && it.curr(1) == '/') {
+      it.next(); it.next();
+      break;
+    }
+    it.next();
+  }
 }

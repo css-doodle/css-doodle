@@ -1750,9 +1750,13 @@
 
   function custom_shape(props) {
     let option = Object.assign({}, props, {
-      split: clamp(parseInt(props.split) || 0, 3, 2400),
+      split: clamp(parseInt(props.split) || 0, 3, 3600),
       start: 0
     });
+
+    if (props.degree) {
+      props.rotate= props.degree;
+    }
 
     let px = is_empty(props.x) ? 'cos(t)' : props.x;
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
@@ -1767,11 +1771,11 @@
         x = r * Math.cos(t);
         y = r * Math.sin(t);
       }
-      if (props.origin) {
-        [x, y] = translate(x, y, props.origin);
-      }
       if (props.rotate) {
         [x, y] = rotate(x, y, parseInt(props.rotate) || 0);
+      }
+      if (props.origin) {
+        [x, y] = translate(x, y, props.origin);
       }
       return [x, y];
     });
@@ -1835,37 +1839,52 @@
   }
 
   function parse$4(input) {
-    console.log(input);
-    let c = '';
-    let i = 0;
+    const it = iterator(input);
+
     let temp = '';
     let result = {};
     let key = '';
     let value = '';
-    while ((c = input[i++]) !== undefined) {
-      if (c == ':') {
+
+    while (!it.end()) {
+      let c = it.curr();
+      if (c == '/' && it.curr(1) == '*') {
+        read_comments$1(it);
+      }
+      else if (c == ':') {
         key = temp;
         temp = '';
-        continue;
       }
-      if (c == ';') {
+      else if (c == ';') {
         value = temp;
-        temp = '';
         if (key.length && value.length) {
           result[key.trim()] = value.trim();
         }
-        key = value = '';
-        continue;
+        key = value = temp = '';
       }
-      temp += c;
+      else {
+        temp += c;
+      }
+      it.next();
     }
 
     if (key.length && temp.length) {
-      result[key.trim()] = temp;
+      result[key.trim()] = temp.trim();
     }
 
-    console.log(result);
     return result;
+  }
+
+  function read_comments$1(it, flag = {}) {
+    it.next();
+    while (!it.end()) {
+      let c = it.curr();
+      if ((c = it.curr()) == '*' && it.curr(1) == '/') {
+        it.next(); it.next();
+        break;
+      }
+      it.next();
+    }
   }
 
   function get_exposed(random) {
