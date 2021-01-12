@@ -279,6 +279,10 @@ function custom_shape(props) {
     start: 0
   });
 
+  if (props.degree) {
+    props.rotate= props.degree;
+  }
+
   let px = is_empty(props.x) ? 'cos(t)' : props.x;
   let py = is_empty(props.y) ? 'sin(t)' : props.y;
   let pr = is_empty(props.r) ? ''       : props.r;
