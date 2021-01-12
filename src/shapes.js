@@ -275,7 +275,7 @@ function is_empty(value) {
 
 function custom_shape(props) {
   let option = Object.assign({}, props, {
-    split: clamp(parseInt(props.split) || 0, 3, 2400),
+    split: clamp(parseInt(props.split) || 0, 3, 3600),
     start: 0
   });
 
