@@ -27,31 +27,29 @@ function polygon(option, fn) {
     );
   }
 
-  let first;
+  let first, first2;
+
   for (let i = 0; i < split; ++i) {
     let t = start - deg * i;
-    let [x, y] = fn(t);
-    if (!i) {
-      first = [x, y];
-    }
-    add_point([x, y], scale);
+    let point = fn(t);
+    if (!i) first = point;
+    add_point(point, scale);
   }
 
   if (option.frame !== undefined) {
     add_point(first, scale);
     let w = (option.frame || 1) / 100;
-    if (w < 0) w = 1 / 100;
-    let first2;
+    if (w <= 0) w = 2 / 1000;
     for (let i = 0; i < split; ++i) {
       let t = start + deg * i;
       let [x, y] = fn(t);
       let theta = atan2(y, x);
-      let nx = x - w * cos(theta);
-      let ny = y - w * sin(theta);
-      if (!i) {
-        first2 = [nx, ny];
-      }
-      add_point([nx, ny], scale);
+      let point = [
+        x - w * cos(theta),
+        y - w * sin(theta)
+      ];
+      if (!i) first2 = point;
+      add_point(point, scale);
     }
     add_point(first2, scale);
     add_point(first, scale);
