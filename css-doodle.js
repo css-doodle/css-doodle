@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.8 */
+/*! css-doodle@0.13.9 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1184,13 +1184,17 @@
         stack.push(result);
       }
       else if (type === 'function') {
-        let args = value.map(v => calc$1(v, context));
-        let fn = context[name] || Math[name];
-        if (typeof fn === 'function') {
-          stack.push(fn(...args));
-        } else {
-          stack.push(0);
+        let output = value.map(v => calc$1(v, context));
+        let fns = name.split('.');
+        let fname;
+        while (fname = fns.pop()) {
+          if (!fname) continue;
+          let fn = context[fname] || Math[fname];
+          output = (typeof fn === 'function')
+            ? (Array.isArray(output) ? fn(...output) : fn(output))
+            : 0;
         }
+        stack.push(output);
       } else {
         if (/\d+/.test(value)) stack.push(value);
         else {
@@ -1502,31 +1506,29 @@
       );
     };
 
-    let first;
+    let first, first2;
+
     for (let i = 0; i < split; ++i) {
       let t = start - deg * i;
-      let [x, y] = fn(t);
-      if (!i) {
-        first = [x, y];
-      }
-      add_point([x, y], scale);
+      let point = fn(t);
+      if (!i) first = point;
+      add_point(point, scale);
     }
 
     if (option.frame !== undefined) {
       add_point(first, scale);
       let w = (option.frame || 1) / 100;
-      if (w < 0) w = 1 / 100;
-      let first2;
+      if (w <= 0) w = 2 / 1000;
       for (let i = 0; i < split; ++i) {
         let t = start + deg * i;
         let [x, y] = fn(t);
         let theta = atan2(y, x);
-        let nx = x - w * cos(theta);
-        let ny = y - w * sin(theta);
-        if (!i) {
-          first2 = [nx, ny];
-        }
-        add_point([nx, ny], scale);
+        let point = [
+          x - w * cos(theta),
+          y - w * sin(theta)
+        ];
+        if (!i) first2 = point;
+        add_point(point, scale);
       }
       add_point(first2, scale);
       add_point(first, scale);

@@ -1,10 +1,20 @@
+## 0.13.9
+
+### Enhancement to `@shape` function
+
+* Add support for function composition.
+
+<br /> <br />
+
+
+
 ## 0.13.8
 
 ### Enhancement to `@shape` function
 
 * Add support for comments inside `@shape` function.
 * Increase max split to 3600.
-* Replace rotate with degree to normaize all commands to nouns.
+* Replace rotate with degree to normalize all commands to nouns.
 * Switch the action order of rotate and origin.
 * Fix trailing semicolon.
 
