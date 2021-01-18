@@ -49,13 +49,17 @@ function calc(expr, context, repeat = []) {
       stack.push(result);
     }
     else if (type === 'function') {
-      let args = value.map(v => calc(v, context));
-      let fn = context[name] || Math[name];
-      if (typeof fn === 'function') {
-        stack.push(fn(...args));
-      } else {
-        stack.push(0);
+      let output = value.map(v => calc(v, context));
+      let fns = name.split('.');
+      let fname;
+      while (fname = fns.pop()) {
+        if (!fname) continue;
+        let fn = context[fname] || Math[fname];
+        output = (typeof fn === 'function')
+          ? (Array.isArray(output) ? fn(...output) : fn(output))
+          : 0;
       }
+      stack.push(output);
     } else {
       if (/\d+/.test(value)) stack.push(value);
       else {
@@ -145,7 +149,7 @@ function infix_to_postfix(input) {
               if (arg.length) values.push(arg);
               func_body = '';
             } else {
-              func_body += c
+              func_body += c;
             }
           }
         }
