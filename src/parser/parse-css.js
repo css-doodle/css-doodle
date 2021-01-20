@@ -278,7 +278,7 @@ function read_arguments(it, composition, doodle) {
       }
     }
     else {
-      if (symbols[c]) {
+      if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
         c = symbols[c];
       }
       arg += c;
@@ -428,7 +428,7 @@ function read_value(it) {
       if (c == '(') stack.push(c);
       if (c == ')') stack.pop();
 
-      if (symbols[c]) {
+      if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
         c = symbols[c];
       }
 
