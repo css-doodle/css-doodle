@@ -281,7 +281,7 @@ class Doodle extends HTMLElement {
 
       return Promise.all(mappings).then(mapping => {
         mapping.forEach(({ id, value }) => {
-          input = input.replace('${' + id + '}', `url(${value})`);
+          input = (input.replaceAll || input.replace)('${' + id + '}', `url(${value})`);
         });
         return input;
       });
