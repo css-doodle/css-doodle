@@ -19,8 +19,10 @@ export default function parse(input) {
     }
     else if (c == ';') {
       value = temp;
+      key = key.trim();
+      value = value.trim();
       if (key.length && value.length) {
-        result[key.trim()] = value.trim();
+        result[key] = value;
       }
       key = value = temp = '';
     }
@@ -30,8 +32,10 @@ export default function parse(input) {
     it.next();
   }
 
+  key = key.trim();
+  temp = temp.trim();
   if (key.length && temp.length) {
-    result[key.trim()] = temp.trim();
+    result[key] = temp;
   }
 
   return result;
