@@ -286,7 +286,7 @@ function custom_shape(props) {
   let pr = is_empty(props.r) ? ''       : props.r;
 
   return polygon(option, t => {
-    let context = Object.assign({}, props, { t });
+    let context = Object.assign({}, props, { t, 'θ': t });
     let x = calc(px, context);
     let y = calc(py, context);
     if (pr) {
