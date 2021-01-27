@@ -1,3 +1,16 @@
+## 0.13.10
+
+### Enhancement to `@shape` function
+
+* Add seq() function for shape.
+* Prevent empty shape commands.
+* Recognize θ symbol.
+* Do not evaluate `π` for compound expressions.
+
+<br /> <br />
+
+
+
 ## 0.13.9
 
 ### Enhancement to `@shape` function

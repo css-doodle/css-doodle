@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.9 */
+/*! css-doodle@0.13.10 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -437,7 +437,7 @@
         }
       }
       else {
-        if (symbols[c]) {
+        if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
           c = symbols[c];
         }
         arg += c;
@@ -587,7 +587,7 @@
         if (c == '(') stack.push(c);
         if (c == ')') stack.pop();
 
-        if (symbols[c]) {
+        if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
           c = symbols[c];
         }
 
@@ -1510,7 +1510,7 @@
 
     for (let i = 0; i < split; ++i) {
       let t = start - deg * i;
-      let point = fn(t);
+      let point = fn(t, i);
       if (!i) first = point;
       add_point(point, scale);
     }
@@ -1521,7 +1521,7 @@
       if (w <= 0) w = 2 / 1000;
       for (let i = 0; i < split; ++i) {
         let t = start + deg * i;
-        let [x, y] = fn(t);
+        let [x, y] = fn(t, i);
         let theta = atan2(y, x);
         let point = [
           x - w * cos(theta),
@@ -1764,10 +1764,19 @@
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
     let pr = is_empty(props.r) ? ''       : props.r;
 
-    return polygon(option, t => {
-      let context = Object.assign({}, props, { t });
+    return polygon(option, (t, i) => {
+      let context = Object.assign({}, props, {
+        't': t,
+        'θ': t,
+        'seq': (...list) => {
+          if (!list.length) return 1;
+          return list[i % list.length];
+        }
+      });
+
       let x = calc(px, context);
       let y = calc(py, context);
+
       if (pr) {
         let r = calc(pr, context);
         x = r * Math.cos(t);
@@ -1859,8 +1868,10 @@
       }
       else if (c == ';') {
         value = temp;
+        key = key.trim();
+        value = value.trim();
         if (key.length && value.length) {
-          result[key.trim()] = value.trim();
+          result[key] = value;
         }
         key = value = temp = '';
       }
@@ -1870,8 +1881,10 @@
       it.next();
     }
 
+    key = key.trim();
+    temp = temp.trim();
     if (key.length && temp.length) {
-      result[key.trim()] = temp.trim();
+      result[key] = temp;
     }
 
     return result;
@@ -3649,9 +3662,15 @@
         );
 
         return Promise.all(mappings).then(mapping => {
-          mapping.forEach(({ id, value }) => {
-            input = input.replace('${' + id + '}', `url(${value})`);
-          });
+          if (input.replaceAll) {
+            mapping.forEach(({ id, value }) => {
+              input = input.replaceAll('${' + id + '}', `url(${value})`);
+            });
+          } else {
+            mapping.forEach(({ id, value }) => {
+              input = input.replace('${' + id + '}', `url(${value})`);
+            });
+          }
           return input;
         });
       }
