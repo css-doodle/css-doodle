@@ -304,7 +304,7 @@ function custom_shape(props) {
       y = r * Math.sin(t);
     }
     if (props.rotate) {
-      [x, y] = rotate(x, y, parseInt(props.rotate) || 0);
+      [x, y] = rotate(x, y, Number(props.rotate) || 0);
     }
     if (props.origin) {
       [x, y] = translate(x, y, props.origin);
