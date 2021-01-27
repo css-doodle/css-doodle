@@ -144,7 +144,7 @@ function infix_to_postfix(input) {
           }
           else {
             if (c == '(') stack.push(c);
-            if (c == ',') {
+            if (c == ',' && !stack.length) {
               let arg = infix_to_postfix(func_body);
               if (arg.length) values.push(arg);
               func_body = '';
