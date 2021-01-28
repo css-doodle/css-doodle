@@ -290,7 +290,7 @@ function custom_shape(props) {
       't': t,
       'θ': t,
       'seq': (...list) => {
-        if (!list.length) return 1;
+        if (!list.length) return '';
         return list[i % list.length];
       }
     });
