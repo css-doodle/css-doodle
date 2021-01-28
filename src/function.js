@@ -220,6 +220,10 @@ function get_exposed(random) {
       return value => `var(${ get_value(value) })`;
     },
 
+    t() {
+      return value => `var(--cssd-time-uniform)`;
+    },
+
     shape() {
       return memo('shape-function', (type = '', ...args) => {
         type = String(type).trim();

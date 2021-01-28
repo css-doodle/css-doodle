@@ -40,6 +40,7 @@ class Rules {
     this.Func = Func(random);
     this.Selector = Selector(random);
     this.custom_properties = {};
+    this.uniforms = {};
   }
 
   reset() {
@@ -113,6 +114,10 @@ class Rules {
         let fn = this.pick_func(fname);
 
         if (typeof fn === 'function') {
+          if (fname === 't') {
+            this.uniforms.t = true;
+          }
+
           if (fname === 'doodle' || fname === 'shaders') {
             let value = get_value((arg.arguments[0] || [])[0]);
             return fname === 'doodle'
@@ -166,6 +171,9 @@ class Rules {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
+            if (fname === 't') {
+              this.uniforms.t = true;
+            }
             if (fname === 'doodle' || fname === 'shaders') {
               let arg = val.arguments[0] || [];
               let value = get_value(arg[0]);
@@ -461,7 +469,8 @@ class Rules {
       grid: this.grid,
       doodles: this.doodles,
       shaders: this.shaders,
-      definitions: definitions
+      definitions: definitions,
+      uniforms: this.uniforms
     }
   }
 

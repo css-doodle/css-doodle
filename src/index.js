@@ -168,6 +168,7 @@ class Doodle extends HTMLElement {
     let compiled = generator(parsed, _grid, this.random);
     let grid = compiled.grid ? compiled.grid : _grid;
     const { keyframes, host, container, cells } = compiled.styles;
+    const { uniforms } = compiled;
 
     let replace = this.replace(compiled.doodles, compiled.shaders);
     let grid_container = create_grid(grid);
@@ -179,7 +180,7 @@ class Doodle extends HTMLElement {
         <foreignObject width="100%" height="100%">
           <div class="host" xmlns="http://www.w3.org/1999/xhtml">
             <style>
-              ${ get_basic_styles() }
+              ${ get_basic_styles(uniforms) }
               ${ get_grid_styles(grid) }
               ${ host }
               ${ container }
@@ -302,10 +303,12 @@ class Doodle extends HTMLElement {
     let style_container = get_grid_styles(grid) + host + container;
     let style_cells = has_delay ? '' : cells;
 
+    const { uniforms } = compiled;
+
     let replace = this.replace(compiled.doodles, compiled.shaders);
 
     this.doodle.innerHTML = `
-      <style>${ get_basic_styles() }</style>
+      <style>${ get_basic_styles(uniforms) }</style>
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
@@ -326,6 +329,12 @@ class Doodle extends HTMLElement {
     const definitions = compiled.definitions;
     if (window.CSS && window.CSS.registerProperty) {
       try {
+        CSS.registerProperty({
+          name: '--cssd-time-uniform',
+          syntax: '<number>',
+          initialValue: 0,
+          inherits: true
+        });
         definitions.forEach(CSS.registerProperty);
       } catch (e) { }
     }
@@ -403,7 +412,7 @@ if (!customElements.get('css-doodle')) {
   customElements.define('css-doodle', Doodle);
 }
 
-function get_basic_styles() {
+function get_basic_styles(uniforms) {
   const inherited_grid_props = get_props(/grid/)
     .map(n => `${ n }: inherit;`)
     .join('');
@@ -419,6 +428,8 @@ function get_basic_styles() {
       visibility: visible;
       width: auto;
       height: auto;
+      --cssd-time-uniform: 0;
+      ${ uniforms.t ? 'animation: t-animation 31536000s infinite;' : ''}
     }
     :host([hidden]), .host[hidden] {
       display: none;
@@ -435,6 +446,15 @@ function get_basic_styles() {
       line-height: 1;
       display: grid;
       place-items: center;
+    }
+
+    @keyframes t-animation {
+      from {
+        --cssd-time-uniform: 0;
+      }
+      to {
+        --cssd-time-uniform: 31536000000;
+      }
     }
   `;
 }
