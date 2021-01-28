@@ -1,4 +1,4 @@
-/*! css-doodle@0.13.10 */
+/*! css-doodle@0.14.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1279,7 +1279,7 @@
             }
             else {
               if (c == '(') stack.push(c);
-              if (c == ',') {
+              if (c == ',' && !stack.length) {
                 let arg = infix_to_postfix(func_body);
                 if (arg.length) values.push(arg);
                 func_body = '';
@@ -1769,7 +1769,7 @@
         't': t,
         'θ': t,
         'seq': (...list) => {
-          if (!list.length) return 1;
+          if (!list.length) return '';
           return list[i % list.length];
         }
       });
@@ -1783,7 +1783,7 @@
         y = r * Math.sin(t);
       }
       if (props.rotate) {
-        [x, y] = rotate(x, y, parseInt(props.rotate) || 0);
+        [x, y] = rotate(x, y, Number(props.rotate) || 0);
       }
       if (props.origin) {
         [x, y] = translate(x, y, props.origin);
@@ -2103,6 +2103,10 @@
 
       var() {
         return value => `var(${ get_value(value) })`;
+      },
+
+      t() {
+        return value => `var(--cssd-time-uniform)`;
       },
 
       shape() {
@@ -2566,6 +2570,7 @@
       this.Func = get_exposed(random);
       this.Selector = Selector(random);
       this.custom_properties = {};
+      this.uniforms = {};
     }
 
     reset() {
@@ -2639,6 +2644,10 @@
           let fn = this.pick_func(fname);
 
           if (typeof fn === 'function') {
+            if (fname === 't') {
+              this.uniforms.t = true;
+            }
+
             if (fname === 'doodle' || fname === 'shaders') {
               let value = get_value((arg.arguments[0] || [])[0]);
               return fname === 'doodle'
@@ -2692,6 +2701,9 @@
             let fname = val.name.substr(1);
             let fn = this.pick_func(fname);
             if (typeof fn === 'function') {
+              if (fname === 't') {
+                this.uniforms.t = true;
+              }
               if (fname === 'doodle' || fname === 'shaders') {
                 let arg = val.arguments[0] || [];
                 let value = get_value(arg[0]);
@@ -2986,7 +2998,8 @@
         grid: this.grid,
         doodles: this.doodles,
         shaders: this.shaders,
-        definitions: definitions
+        definitions: definitions,
+        uniforms: this.uniforms
       }
     }
 
@@ -3550,6 +3563,7 @@
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
+      const { uniforms } = compiled;
 
       let replace = this.replace(compiled.doodles, compiled.shaders);
       let grid_container = create_grid(grid);
@@ -3561,7 +3575,7 @@
         <foreignObject width="100%" height="100%">
           <div class="host" xmlns="http://www.w3.org/1999/xhtml">
             <style>
-              ${ get_basic_styles() }
+              ${ get_basic_styles(uniforms) }
               ${ get_grid_styles(grid) }
               ${ host }
               ${ container }
@@ -3684,10 +3698,12 @@
       let style_container = get_grid_styles(grid) + host + container;
       let style_cells = has_delay ? '' : cells;
 
+      const { uniforms } = compiled;
+
       let replace = this.replace(compiled.doodles, compiled.shaders);
 
       this.doodle.innerHTML = `
-      <style>${ get_basic_styles() }</style>
+      <style>${ get_basic_styles(uniforms) }</style>
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
@@ -3708,6 +3724,12 @@
       const definitions = compiled.definitions;
       if (window.CSS && window.CSS.registerProperty) {
         try {
+          CSS.registerProperty({
+            name: '--cssd-time-uniform',
+            syntax: '<number>',
+            initialValue: 0,
+            inherits: true
+          });
           definitions.forEach(CSS.registerProperty);
         } catch (e) { }
       }
@@ -3785,7 +3807,7 @@
     customElements.define('css-doodle', Doodle);
   }
 
-  function get_basic_styles() {
+  function get_basic_styles(uniforms) {
     const inherited_grid_props = get_props(/grid/)
       .map(n => `${ n }: inherit;`)
       .join('');
@@ -3801,6 +3823,8 @@
       visibility: visible;
       width: auto;
       height: auto;
+      --cssd-time-uniform: 0;
+      ${ uniforms.t ? 'animation: t-animation 31536000s infinite;' : ''}
     }
     :host([hidden]), .host[hidden] {
       display: none;
@@ -3817,6 +3841,15 @@
       line-height: 1;
       display: grid;
       place-items: center;
+    }
+
+    @keyframes t-animation {
+      from {
+        --cssd-time-uniform: 0;
+      }
+      to {
+        --cssd-time-uniform: 31536000000;
+      }
     }
   `;
   }

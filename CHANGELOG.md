@@ -1,3 +1,19 @@
+## 0.14.0
+
+### Features
+
+* Add experimental time uniform via `@t`.
+
+### Fixes
+
+* Fix calc parsing.
+* Keep fraction values for degree in `@shape()` function.
+* Use empty string for empty `seq()` args for preventing side effects.
+
+<br /> <br />
+
+
+
 ## 0.13.10
 
 ### Enhancement to `@shape` function
