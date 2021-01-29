@@ -439,7 +439,7 @@ function get_basic_styles(uniforms = {}) {
       visibility: visible;
       width: auto;
       height: auto;
-      --cssd-time-uniform: 0;
+      --${ uniform_time.name }: 0
     }
     :host([hidden]), .host[hidden] {
       display: none
