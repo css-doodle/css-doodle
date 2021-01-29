@@ -70,6 +70,10 @@ class Doodle extends HTMLElement {
       }
     }
 
+    if (compiled.uniforms.time) {
+      this.register_uniform_time();
+    }
+
     let replace = this.replace(compiled.doodles, compiled.shaders);
 
     this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
@@ -339,15 +343,24 @@ class Doodle extends HTMLElement {
     if (window.CSS && window.CSS.registerProperty) {
       try {
         if (uniforms.time) {
-          CSS.registerProperty({
-            name: '--' + uniform_time.name,
-            syntax: '<number>',
-            initialValue: 0,
-            inherits: true
-          });
+          this.register_uniform_time();
         }
         definitions.forEach(CSS.registerProperty);
       } catch (e) { }
+    }
+  }
+
+  register_uniform_time() {
+    if (!this.is_uniform_time_registered) {
+      try {
+        CSS.registerProperty({
+          name: '--' + uniform_time.name,
+          syntax: '<number>',
+          initialValue: 0,
+          inherits: true
+        });
+      } catch (e) {}
+      this.is_uniform_time_registered = true;
     }
   }
 
