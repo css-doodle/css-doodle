@@ -429,7 +429,7 @@ function get_basic_styles(uniforms) {
       width: auto;
       height: auto;
       --cssd-time-uniform: 0;
-      ${ uniforms.t ? 'animation: t-animation 31536000s infinite;' : ''}
+      ${ uniforms.t ? 'animation: t-animation 31536000s linear infinite;' : ''}
     }
     :host([hidden]), .host[hidden] {
       display: none;
