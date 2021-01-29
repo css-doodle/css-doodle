@@ -1,3 +1,14 @@
+## 0.14.1
+
+### Fixes
+
+* Fix uniform timing function.
+* Prevent uniform animation from getting over-written inside.
+
+<br /> <br />
+
+
+
 ## 0.14.0
 
 ### Features
