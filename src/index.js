@@ -14,7 +14,7 @@ import {
   cell_id, is_nil,
   normalize_png_name, cache_image,
   is_safari, un_entity,
-  maybe, maybenot
+  maybe
 } from './utils/index';
 
 class Doodle extends HTMLElement {
@@ -366,7 +366,7 @@ class Doodle extends HTMLElement {
         <svg xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="none"
           viewBox="0 0 ${ width } ${ height }"
-          ${ maybenot(is_safari(), `width="${ w }px" height="${ h }px"`)}
+          ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
         >
           <foreignObject width="100%" height="100%">
             <div
