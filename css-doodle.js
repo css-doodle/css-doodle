@@ -1,4 +1,4 @@
-/*! css-doodle@0.14.1 */
+/*! css-doodle@0.14.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -794,11 +794,6 @@
 
   function maybe(cond, value) {
     if (!cond) return '';
-    return (typeof value === 'function') ? value() : value;
-  }
-
-  function maybenot(cond, value) {
-    if (cond) return '';
     return (typeof value === 'function') ? value() : value;
   }
 
@@ -3505,6 +3500,10 @@
         }
       }
 
+      if (compiled.uniforms.time) {
+        this.register_uniform_time();
+      }
+
       let replace = this.replace(compiled.doodles, compiled.shaders);
 
       this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
@@ -3774,15 +3773,24 @@
       if (window.CSS && window.CSS.registerProperty) {
         try {
           if (uniforms.time) {
-            CSS.registerProperty({
-              name: '--' + uniform_time.name,
-              syntax: '<number>',
-              initialValue: 0,
-              inherits: true
-            });
+            this.register_uniform_time();
           }
           definitions.forEach(CSS.registerProperty);
         } catch (e) { }
+      }
+    }
+
+    register_uniform_time() {
+      if (!this.is_uniform_time_registered) {
+        try {
+          CSS.registerProperty({
+            name: '--' + uniform_time.name,
+            syntax: '<number>',
+            initialValue: 0,
+            inherits: true
+          });
+        } catch (e) {}
+        this.is_uniform_time_registered = true;
       }
     }
 
@@ -3801,7 +3809,7 @@
         <svg xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="none"
           viewBox="0 0 ${ width } ${ height }"
-          ${ maybenot(is_safari(), `width="${ w }px" height="${ h }px"`)}
+          ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
         >
           <foreignObject width="100%" height="100%">
             <div
@@ -3874,7 +3882,7 @@
       visibility: visible;
       width: auto;
       height: auto;
-      --cssd-time-uniform: 0;
+      --${ uniform_time.name }: 0
     }
     :host([hidden]), .host[hidden] {
       display: none

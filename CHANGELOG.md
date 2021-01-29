@@ -1,3 +1,14 @@
+## 0.14.2
+
+### Fixes
+
+* Fix property register for `update()` method.
+* Fix initial time uniform name.
+
+<br /> <br />
+
+
+
 ## 0.14.1
 
 ### Fixes
