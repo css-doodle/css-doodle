@@ -17,6 +17,8 @@ import { shapes, custom_shape } from './shapes';
 import parse_value_group from './parser/parse-value-group';
 import parse_shape_commands from './parser/parse-shape-commands';
 
+import { uniform_time } from './uniform';
+
 function get_exposed(random) {
   const { shuffle } = list(random);
   const { pick, rand, unique_id } = random_func(random);
@@ -221,7 +223,7 @@ function get_exposed(random) {
     },
 
     t() {
-      return value => `var(--cssd-time-uniform)`;
+      return value => `var(--${ uniform_time.name })`;
     },
 
     shape() {

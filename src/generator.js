@@ -4,6 +4,7 @@ import Selector from './selector';
 import MathFunc from './math';
 import prefixer from './prefixer';
 import parse_value_group from './parser/parse-value-group';
+import { uniform_time } from './uniform';
 
 import { maybe, cell_id, is_nil, get_value } from './utils/index.js';
 
@@ -115,7 +116,7 @@ class Rules {
 
         if (typeof fn === 'function') {
           if (fname === 't') {
-            this.uniforms.t = true;
+            this.uniforms.time = true;
           }
 
           if (fname === 'doodle' || fname === 'shaders') {
@@ -172,7 +173,7 @@ class Rules {
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
             if (fname === 't') {
-              this.uniforms.t = true;
+              this.uniforms.time = true;
             }
             if (fname === 'doodle' || fname === 'shaders') {
               let arg = val.arguments[0] || [];
@@ -214,6 +215,14 @@ class Rules {
 
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
+
+      if (is_host_selector(selector)) {
+        let prefix = uniform_time[prop];
+        if (prefix && value) {
+          value =  prefix + ',' + value;
+        }
+      }
+
       if (coords.count > 1) {
         let { count } = coords;
         switch (prop) {
@@ -439,6 +448,21 @@ class Rules {
     });
 
     let keyframes = Object.keys(this.keyframes);
+
+    if (this.uniforms.time) {
+      this.styles.container += `
+        :host, .host {
+          animation: ${ uniform_time.animation };
+        }
+      `;
+      this.styles.keyframes += `
+       @keyframes ${ uniform_time['animation-name'] } {
+         from { --${ uniform_time.name }: 0 }
+         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] } }
+       }
+      `;
+    }
+
     this.coords.forEach((coords, i) => {
       keyframes.forEach(name => {
         let aname = this.compose_aname(name, coords.count);

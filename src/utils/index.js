@@ -7,6 +7,11 @@ export function maybe(cond, value) {
   return (typeof value === 'function') ? value() : value;
 }
 
+export function maybenot(cond, value) {
+  if (cond) return '';
+  return (typeof value === 'function') ? value() : value;
+}
+
 export function range(start, stop, step) {
   let count = 0, old = start;
   let initial = n => (n > 0 && n < 1) ? .1 : 1;

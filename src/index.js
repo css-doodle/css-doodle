@@ -3,11 +3,19 @@ import parse_grid from './parser/parse-grid';
 import parse_shaders from './parser/parse-shaders';
 import generator from './generator';
 import seedrandom from './lib/seedrandom';
-import get_props from './utils/get-props';
-import { get_variable, get_all_variables } from './utils/variables';
-import { cell_id, is_nil, normalize_png_name, cache_image, is_safari, un_entity } from './utils/index';
 import { svg_to_png } from './svg';
 import { draw_shader } from './shader.js';
+import { uniform_time } from './uniform';
+
+import get_props from './utils/get-props';
+import { get_variable, get_all_variables } from './utils/variables';
+
+import {
+  cell_id, is_nil,
+  normalize_png_name, cache_image,
+  is_safari, un_entity,
+  maybe, maybenot
+} from './utils/index';
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -168,19 +176,20 @@ class Doodle extends HTMLElement {
     let compiled = generator(parsed, _grid, this.random);
     let grid = compiled.grid ? compiled.grid : _grid;
     const { keyframes, host, container, cells } = compiled.styles;
-    const { uniforms } = compiled;
 
     let replace = this.replace(compiled.doodles, compiled.shaders);
     let grid_container = create_grid(grid);
+
     let size = (options && options.width && options.height)
       ? `width="${ options.width }" height="${ options.height }"`
       : '';
+
     replace(`
       <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <foreignObject width="100%" height="100%">
           <div class="host" xmlns="http://www.w3.org/1999/xhtml">
             <style>
-              ${ get_basic_styles(uniforms) }
+              ${ get_basic_styles() }
               ${ get_grid_styles(grid) }
               ${ host }
               ${ container }
@@ -329,12 +338,14 @@ class Doodle extends HTMLElement {
     const definitions = compiled.definitions;
     if (window.CSS && window.CSS.registerProperty) {
       try {
-        CSS.registerProperty({
-          name: '--cssd-time-uniform',
-          syntax: '<number>',
-          initialValue: 0,
-          inherits: true
-        });
+        if (uniforms.time) {
+          CSS.registerProperty({
+            name: '--' + uniform_time.name,
+            syntax: '<number>',
+            initialValue: 0,
+            inherits: true
+          });
+        }
         definitions.forEach(CSS.registerProperty);
       } catch (e) { }
     }
@@ -355,7 +366,7 @@ class Doodle extends HTMLElement {
         <svg xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="none"
           viewBox="0 0 ${ width } ${ height }"
-          ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"`}
+          ${ maybenot(is_safari(), `width="${ w }px" height="${ h }px"`)}
         >
           <foreignObject width="100%" height="100%">
             <div
@@ -412,16 +423,16 @@ if (!customElements.get('css-doodle')) {
   customElements.define('css-doodle', Doodle);
 }
 
-function get_basic_styles(uniforms) {
+function get_basic_styles(uniforms = {}) {
   const inherited_grid_props = get_props(/grid/)
     .map(n => `${ n }: inherit;`)
     .join('');
   return `
     * {
-      box-sizing: border-box;
+      box-sizing: border-box
     }
     *::after, *::before {
-      box-sizing: inherit;
+      box-sizing: inherit
     }
     :host, .host {
       display: block;
@@ -429,10 +440,9 @@ function get_basic_styles(uniforms) {
       width: auto;
       height: auto;
       --cssd-time-uniform: 0;
-      ${ uniforms.t ? 'animation: t-animation 31536000s linear infinite;' : ''}
     }
     :host([hidden]), .host[hidden] {
-      display: none;
+      display: none
     }
     .container {
       position: relative;
@@ -445,16 +455,7 @@ function get_basic_styles(uniforms) {
       position: relative;
       line-height: 1;
       display: grid;
-      place-items: center;
-    }
-
-    @keyframes t-animation {
-      from {
-        --cssd-time-uniform: 0;
-      }
-      to {
-        --cssd-time-uniform: 31536000000;
-      }
+      place-items: center
     }
   `;
 }
