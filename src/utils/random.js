@@ -13,18 +13,17 @@ export default function(random) {
     return lerp(start, end, random());
   }
   
-  function nrand(min = -1, max = -1, skew = 1) {
-    let u = 0, v = 0;
-    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
-    while(v === 0) v = Math.random();
-    let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
-
-    num = num / 10.0 + 0.5; // Translate to 0 -> 1
-    if (num > 1 || num < 0) num = randn_bm(min, max, skew); // resample between 0 and 1 if out of range
-    num = Math.pow(num, skew); // Skew
-    num *= max - min; // Stretch to fill range
-    num += min; // offset to min
-    return num;
+  function nrand(mean = 0, scale = 1) {
+    console.warn(scale)
+    let u1 = 0, u2 = 0;
+    //Convert [0,1) to (0,1)
+    while (u1 === 0) u1 = Math.random();
+    while (u2 === 0) u2 = Math.random();
+    const R = Math.sqrt(-2.0 * Math.log(u1));
+    const Θ = 2.0 * Math.PI * u2;
+    const u0 = R * Math.cos(Θ);
+    console.warn('---', mean + scale * u0)
+    return mean + scale * u0;
   }
 
   function pick( ...items) {
