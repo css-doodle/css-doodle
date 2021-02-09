@@ -655,9 +655,9 @@
   }
 
   function read_rule(it, extra) {
-    let rule = Tokens.rule(), c;
+    let rule = Tokens.rule();
     while (!it.end()) {
-      if ((c = it.curr()) == ';') break;
+      if ((it.curr()) == ';') break;
       else if (!rule.property.length) {
         rule.property = read_property(it);
         if (rule.property == '@use') {
@@ -1072,6 +1072,20 @@
       }
       return lerp(start, end, random());
     }
+    
+    function nrand(min = -1, max = -1, skew = 1) {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+      while(v === 0) v = Math.random();
+      let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+
+      num = num / 10.0 + 0.5; // Translate to 0 -> 1
+      if (num > 1 || num < 0) num = randn_bm(min, max, skew); // resample between 0 and 1 if out of range
+      num = Math.pow(num, skew); // Skew
+      num *= max - min; // Stretch to fill range
+      num += min; // offset to min
+      return num;
+    }
 
     function pick( ...items) {
       let args = items.reduce((acc, n) => acc.concat(n), []);
@@ -1085,6 +1099,7 @@
     return {
       lerp,
       rand,
+      nrand,
       pick,
       unique_id
     };
@@ -1893,8 +1908,8 @@
   function read_comments$1(it, flag = {}) {
     it.next();
     while (!it.end()) {
-      let c = it.curr();
-      if ((c = it.curr()) == '*' && it.curr(1) == '/') {
+      it.curr();
+      if ((it.curr()) == '*' && it.curr(1) == '/') {
         it.next(); it.next();
         break;
       }
@@ -1924,7 +1939,7 @@
 
   function get_exposed(random) {
     const { shuffle } = List(random);
-    const { pick, rand, unique_id } = random_func(random);
+    const { pick, rand, nrand, unique_id } = random_func(random);
 
     const Expose = {
 
@@ -2044,6 +2059,16 @@
           return push_stack(context, 'last_rand', value);
         };
       },
+      
+      nrand({ context }) {
+        return (...args) => {
+          let transform_type = args.every(is_letter)
+            ? by_charcode
+            : by_unit;
+          let value = transform_type(nrand).apply(null, args);
+          return push_stack(context, 'last_nrand', value);
+        };
+      },
 
       ['rand-int']({ context }) {
         return (...args) => {
@@ -2060,6 +2085,13 @@
       ['last-rand']({ context }) {
         return (n = 1) => {
           let stack = context.last_rand;
+          return stack ? stack.last(n) : '';
+        };
+      },
+
+      ['last-nrand']({ context }) {
+        return (n = 1) => {
+          let stack = context.last_nrand;
           return stack ? stack.last(n) : '';
         };
       },
