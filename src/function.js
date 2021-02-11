@@ -270,7 +270,11 @@ function get_exposed(random) {
 
     shaders() {
       return value => value;
-    }
+    },
+
+    path() {
+      return value => value;
+    },
 
   };
 

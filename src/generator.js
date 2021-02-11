@@ -6,7 +6,7 @@ import prefixer from './prefixer';
 import parse_value_group from './parser/parse-value-group';
 import { uniform_time } from './uniform';
 
-import { maybe, cell_id, is_nil, get_value } from './utils/index.js';
+import { maybe, cell_id, is_nil, get_value, hash } from './utils/index.js';
 
 import List from './utils/list';
 let { join, make_array, remove_empty_values } = List();
@@ -25,6 +25,10 @@ function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
 }
 
+function get_id(prefix, value) {
+  return prefix + '_' + hash(value);
+}
+
 class Rules {
 
   constructor(tokens, random) {
@@ -37,6 +41,7 @@ class Rules {
     this.coords = [];
     this.doodles = {};
     this.shaders = {};
+    this.paths = {};
     this.reset();
     this.Func = Func(random);
     this.Selector = Selector(random);
@@ -105,6 +110,10 @@ class Rules {
     return `#${ cell_id(x, y, z) }${ pseudo }`;
   }
 
+  is_composable(name) {
+    return ['doodle', 'shaders'].includes(name);
+  }
+
   compose_argument(argument, coords, extra = []) {
     let result = argument.map(arg => {
       if (arg.type === 'text') {
@@ -118,12 +127,14 @@ class Rules {
           if (fname === 't') {
             this.uniforms.time = true;
           }
-
-          if (fname === 'doodle' || fname === 'shaders') {
+          if (this.is_composable(fname)) {
             let value = get_value((arg.arguments[0] || [])[0]);
-            return fname === 'doodle'
-              ? this.compose_doodle(value)
-              : this.compose_shaders(value, coords);
+            switch (fname) {
+              case 'doodle':
+                return this.compose_doodle(value);
+              case 'shaders':
+                return this.compose_shaders(value, coords);
+            }
           }
           coords.extra = extra;
           coords.position = arg.position;
@@ -132,7 +143,11 @@ class Rules {
               ? (...extra) => this.compose_argument(n, coords, extra)
               : this.compose_argument(n, coords, extra);
           });
-          return this.apply_func(fn, coords, args)
+          let value = this.apply_func(fn, coords, args);
+          if (fname == 'path') {
+            return this.compose_path(value);
+          }
+          return value;
         }
       }
     });
@@ -144,16 +159,25 @@ class Rules {
   }
 
   compose_doodle(doodle) {
-    let id = 'doodle_' + Math.random().toString(32).substr(2);
+    let id = get_id('doodle', doodle);
     this.doodles[id] = doodle;
     return '${' + id + '}';
   }
 
   compose_shaders(shader, {x, y, z}) {
-    let id = 'shader_' + Math.random().toString(32).substr(2);
+    let id = get_id('shader', shader);
     this.shaders[id] = {
       shader,
       cell: cell_id(x, y, z)
+    };
+    return '${' + id + '}';
+  }
+
+  compose_path(commands) {
+    let id = get_id('path', commands);
+    this.paths[id] = {
+      id,
+      commands
     };
     return '${' + id + '}';
   }
@@ -175,12 +199,14 @@ class Rules {
             if (fname === 't') {
               this.uniforms.time = true;
             }
-            if (fname === 'doodle' || fname === 'shaders') {
-              let arg = val.arguments[0] || [];
-              let value = get_value(arg[0]);
-              result += (fname === 'doodle')
-                ? this.compose_doodle(value)
-                : this.compose_shaders(value, coords);
+            if (this.is_composable(fname)) {
+              let value = get_value((val.arguments[0] || [])[0]);
+              switch (fname) {
+                case 'doodle':
+                  result += this.compose_doodle(value); break;
+                case 'shaders':
+                  result += this.compose_shaders(value, coords); break;
+              }
             } else {
               coords.position = val.position;
               let args = val.arguments.map(arg => {
@@ -191,7 +217,10 @@ class Rules {
 
               let output = this.apply_func(fn, coords, args);
 
-              if (!is_nil(output)) {
+              if (fname == 'path') {
+                result += this.compose_path(output);
+              }
+              else if (!is_nil(output)) {
                 result += output;
               }
             }
@@ -493,6 +522,7 @@ class Rules {
       grid: this.grid,
       doodles: this.doodles,
       shaders: this.shaders,
+      paths: this.paths,
       definitions: definitions,
       uniforms: this.uniforms
     }

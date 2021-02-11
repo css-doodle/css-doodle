@@ -96,3 +96,13 @@ export function un_entity(code) {
   textarea.innerHTML = code;
   return textarea.value;
 }
+
+export function hash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    let code = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + code;
+    hash &= hash;
+  }
+  return hash;
+}
