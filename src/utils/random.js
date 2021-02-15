@@ -12,6 +12,17 @@ export default function(random) {
     }
     return lerp(start, end, random());
   }
+  
+  function nrand(mean = 0, scale = 1) {
+    let u1 = 0, u2 = 0;
+    //Convert [0,1) to (0,1)
+    while (u1 === 0) u1 = random();
+    while (u2 === 0) u2 = random();
+    const R = Math.sqrt(-2.0 * Math.log(u1));
+    const Θ = 2.0 * Math.PI * u2;
+    const u0 = R * Math.cos(Θ);
+    return mean + scale * u0;
+  }
 
   function pick( ...items) {
     let args = items.reduce((acc, n) => acc.concat(n), []);
@@ -25,6 +36,7 @@ export default function(random) {
   return {
     lerp,
     rand,
+    nrand,
     pick,
     unique_id
   };

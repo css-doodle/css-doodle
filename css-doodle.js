@@ -655,9 +655,9 @@
   }
 
   function read_rule(it, extra) {
-    let rule = Tokens.rule(), c;
+    let rule = Tokens.rule();
     while (!it.end()) {
-      if ((c = it.curr()) == ';') break;
+      if ((it.curr()) == ';') break;
       else if (!rule.property.length) {
         rule.property = read_property(it);
         if (rule.property == '@use') {
@@ -1072,6 +1072,17 @@
       }
       return lerp(start, end, random());
     }
+    
+    function nrand(mean = 0, scale = 1) {
+      let u1 = 0, u2 = 0;
+      //Convert [0,1) to (0,1)
+      while (u1 === 0) u1 = random();
+      while (u2 === 0) u2 = random();
+      const R = Math.sqrt(-2.0 * Math.log(u1));
+      const Θ = 2.0 * Math.PI * u2;
+      const u0 = R * Math.cos(Θ);
+      return mean + scale * u0;
+    }
 
     function pick( ...items) {
       let args = items.reduce((acc, n) => acc.concat(n), []);
@@ -1085,6 +1096,7 @@
     return {
       lerp,
       rand,
+      nrand,
       pick,
       unique_id
     };
@@ -1893,8 +1905,8 @@
   function read_comments$1(it, flag = {}) {
     it.next();
     while (!it.end()) {
-      let c = it.curr();
-      if ((c = it.curr()) == '*' && it.curr(1) == '/') {
+      it.curr();
+      if ((it.curr()) == '*' && it.curr(1) == '/') {
         it.next(); it.next();
         break;
       }
@@ -1924,7 +1936,7 @@
 
   function get_exposed(random) {
     const { shuffle } = List(random);
-    const { pick, rand, unique_id } = random_func(random);
+    const { pick, rand, nrand, unique_id } = random_func(random);
 
     const Expose = {
 
@@ -2044,15 +2056,35 @@
           return push_stack(context, 'last_rand', value);
         };
       },
+      
+      nrand({ context }) {
+        return (...args) => {
+          let transform_type = args.every(is_letter)
+            ? by_charcode
+            : by_unit;
+          let value = transform_type(nrand).apply(null, args);
+          return push_stack(context, 'last_rand', value);
+        };
+      },
 
       ['rand-int']({ context }) {
         return (...args) => {
           let transform_type = args.every(is_letter)
             ? by_charcode
             : by_unit;
-          let value = parseInt(
-            transform_type(rand).apply(null, args)
-          );
+          let rand_int = (...args) => Math.round(rand(...args));
+          let value = transform_type(rand_int).apply(null, args);
+          return push_stack(context, 'last_rand', value);
+        }
+      },
+
+      ['nrand-int']({ context }) {
+        return (...args) => {
+          let transform_type = args.every(is_letter)
+            ? by_charcode
+            : by_unit;
+          let nrand_int = (...args) => Math.round(nrand(...args));
+          let value = transform_type(nrand_int).apply(null, args);
           return push_stack(context, 'last_rand', value);
         }
       },
@@ -2175,9 +2207,11 @@
       'm': 'multiple',
       'M': 'multiple-with-space',
 
-      'r':  'rand',
-      'ri': 'rand-int',
-      'lr': 'last-rand',
+      'r':    'rand',
+      'nr':   'nrand',
+      'ri':   'rand-int',
+      'nri':  'nrand-int',
+      'lr':   'last-rand',
 
       'p':  'pick',
       'pn': 'pick-n',

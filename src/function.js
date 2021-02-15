@@ -21,7 +21,7 @@ import { uniform_time } from './uniform';
 
 function get_exposed(random) {
   const { shuffle } = list(random);
-  const { pick, rand, unique_id } = random_func(random);
+  const { pick, rand, nrand, unique_id } = random_func(random);
 
   const Expose = {
 
@@ -141,15 +141,35 @@ function get_exposed(random) {
         return push_stack(context, 'last_rand', value);
       };
     },
+    
+    nrand({ context }) {
+      return (...args) => {
+        let transform_type = args.every(is_letter)
+          ? by_charcode
+          : by_unit;
+        let value = transform_type(nrand).apply(null, args);
+        return push_stack(context, 'last_rand', value);
+      };
+    },
 
     ['rand-int']({ context }) {
       return (...args) => {
         let transform_type = args.every(is_letter)
           ? by_charcode
           : by_unit;
-        let value = parseInt(
-          transform_type(rand).apply(null, args)
-        );
+        let rand_int = (...args) => Math.round(rand(...args))
+        let value = transform_type(rand_int).apply(null, args)
+        return push_stack(context, 'last_rand', value);
+      }
+    },
+
+    ['nrand-int']({ context }) {
+      return (...args) => {
+        let transform_type = args.every(is_letter)
+          ? by_charcode
+          : by_unit;
+        let nrand_int = (...args) => Math.round(nrand(...args))
+        let value = transform_type(nrand_int).apply(null, args)
         return push_stack(context, 'last_rand', value);
       }
     },
@@ -272,9 +292,11 @@ function get_exposed(random) {
     'm': 'multiple',
     'M': 'multiple-with-space',
 
-    'r':  'rand',
-    'ri': 'rand-int',
-    'lr': 'last-rand',
+    'r':    'rand',
+    'nr':   'nrand',
+    'ri':   'rand-int',
+    'nri':  'nrand-int',
+    'lr':   'last-rand',
 
     'p':  'pick',
     'pn': 'pick-n',
