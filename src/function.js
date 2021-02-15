@@ -148,7 +148,7 @@ function get_exposed(random) {
           ? by_charcode
           : by_unit;
         let value = transform_type(nrand).apply(null, args);
-        return push_stack(context, 'last_nrand', value);
+        return push_stack(context, 'last_rand', value);
       };
     },
 
@@ -157,9 +157,19 @@ function get_exposed(random) {
         let transform_type = args.every(is_letter)
           ? by_charcode
           : by_unit;
-        let value = parseInt(
-          transform_type(rand).apply(null, args)
-        );
+        let rand_int = (...args) => Math.round(rand(...args))
+        let value = transform_type(rand_int).apply(null, args)
+        return push_stack(context, 'last_rand', value);
+      }
+    },
+
+    ['nrand-int']({ context }) {
+      return (...args) => {
+        let transform_type = args.every(is_letter)
+          ? by_charcode
+          : by_unit;
+        let nrand_int = (...args) => Math.round(nrand(...args))
+        let value = transform_type(nrand_int).apply(null, args)
         return push_stack(context, 'last_rand', value);
       }
     },
@@ -167,13 +177,6 @@ function get_exposed(random) {
     ['last-rand']({ context }) {
       return (n = 1) => {
         let stack = context.last_rand;
-        return stack ? stack.last(n) : '';
-      };
-    },
-
-    ['last-nrand']({ context }) {
-      return (n = 1) => {
-        let stack = context.last_nrand;
         return stack ? stack.last(n) : '';
       };
     },
@@ -289,9 +292,11 @@ function get_exposed(random) {
     'm': 'multiple',
     'M': 'multiple-with-space',
 
-    'r':  'rand',
-    'ri': 'rand-int',
-    'lr': 'last-rand',
+    'r':    'rand',
+    'nr':   'nrand',
+    'ri':   'rand-int',
+    'nri':  'nrand-int',
+    'lr':   'last-rand',
 
     'p':  'pick',
     'pn': 'pick-n',

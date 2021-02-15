@@ -1074,15 +1074,13 @@
     }
     
     function nrand(mean = 0, scale = 1) {
-      console.warn(scale);
       let u1 = 0, u2 = 0;
       //Convert [0,1) to (0,1)
-      while (u1 === 0) u1 = Math.random();
-      while (u2 === 0) u2 = Math.random();
+      while (u1 === 0) u1 = random();
+      while (u2 === 0) u2 = random();
       const R = Math.sqrt(-2.0 * Math.log(u1));
       const Θ = 2.0 * Math.PI * u2;
       const u0 = R * Math.cos(Θ);
-      console.warn('---', mean + scale * u0);
       return mean + scale * u0;
     }
 
@@ -2065,7 +2063,7 @@
             ? by_charcode
             : by_unit;
           let value = transform_type(nrand).apply(null, args);
-          return push_stack(context, 'last_nrand', value);
+          return push_stack(context, 'last_rand', value);
         };
       },
 
@@ -2074,9 +2072,19 @@
           let transform_type = args.every(is_letter)
             ? by_charcode
             : by_unit;
-          let value = parseInt(
-            transform_type(rand).apply(null, args)
-          );
+          let rand_int = (...args) => Math.round(rand(...args));
+          let value = transform_type(rand_int).apply(null, args);
+          return push_stack(context, 'last_rand', value);
+        }
+      },
+
+      ['nrand-int']({ context }) {
+        return (...args) => {
+          let transform_type = args.every(is_letter)
+            ? by_charcode
+            : by_unit;
+          let nrand_int = (...args) => Math.round(nrand(...args));
+          let value = transform_type(nrand_int).apply(null, args);
           return push_stack(context, 'last_rand', value);
         }
       },
@@ -2084,13 +2092,6 @@
       ['last-rand']({ context }) {
         return (n = 1) => {
           let stack = context.last_rand;
-          return stack ? stack.last(n) : '';
-        };
-      },
-
-      ['last-nrand']({ context }) {
-        return (n = 1) => {
-          let stack = context.last_nrand;
           return stack ? stack.last(n) : '';
         };
       },
@@ -2206,9 +2207,11 @@
       'm': 'multiple',
       'M': 'multiple-with-space',
 
-      'r':  'rand',
-      'ri': 'rand-int',
-      'lr': 'last-rand',
+      'r':    'rand',
+      'nr':   'nrand',
+      'ri':   'rand-int',
+      'nri':  'nrand-int',
+      'lr':   'last-rand',
 
       'p':  'pick',
       'pn': 'pick-n',
