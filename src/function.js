@@ -141,7 +141,7 @@ function get_exposed(random) {
         return push_stack(context, 'last_rand', value);
       };
     },
-    
+
     nrand({ context }) {
       return (...args) => {
         let transform_type = args.every(is_letter)
@@ -297,9 +297,9 @@ function get_exposed(random) {
     'M': 'multiple-with-space',
 
     'r':    'rand',
-    'nr':   'nrand',
+    'rn':   'nrand',
     'ri':   'rand-int',
-    'nri':  'nrand-int',
+    'rni':  'nrand-int',
     'lr':   'last-rand',
 
     'p':  'pick',
@@ -320,6 +320,8 @@ function get_exposed(random) {
     'Z': 'size-depth',
 
     // legacy names
+    'nr': 'rn',
+    'nri': 'nri',
     'ms': 'multiple-with-space',
     's':  'size',
     'sx': 'size-col',
