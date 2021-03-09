@@ -1,4 +1,4 @@
-/*! css-doodle@0.14.2 */
+/*! css-doodle@0.15.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -655,9 +655,9 @@
   }
 
   function read_rule(it, extra) {
-    let rule = Tokens.rule();
+    let rule = Tokens.rule(), c;
     while (!it.end()) {
-      if ((it.curr()) == ';') break;
+      if ((c = it.curr()) == ';') break;
       else if (!rule.property.length) {
         rule.property = read_property(it);
         if (rule.property == '@use') {
@@ -885,6 +885,16 @@
     let textarea = document.createElement('textarea');
     textarea.innerHTML = code;
     return textarea.value;
+  }
+
+  function hash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      let code = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + code;
+      hash &= hash;
+    }
+    return hash;
   }
 
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
@@ -1905,8 +1915,8 @@
   function read_comments$1(it, flag = {}) {
     it.next();
     while (!it.end()) {
-      it.curr();
-      if ((it.curr()) == '*' && it.curr(1) == '/') {
+      let c = it.curr();
+      if ((c = it.curr()) == '*' && it.curr(1) == '/') {
         it.next(); it.next();
         break;
       }
@@ -2056,7 +2066,7 @@
           return push_stack(context, 'last_rand', value);
         };
       },
-      
+
       nrand({ context }) {
         return (...args) => {
           let transform_type = args.every(is_letter)
@@ -2185,7 +2195,11 @@
 
       shaders() {
         return value => value;
-      }
+      },
+
+      path() {
+        return value => value;
+      },
 
     };
 
@@ -2208,9 +2222,9 @@
       'M': 'multiple-with-space',
 
       'r':    'rand',
-      'nr':   'nrand',
+      'rn':   'nrand',
       'ri':   'rand-int',
-      'nri':  'nrand-int',
+      'rni':  'nrand-int',
       'lr':   'last-rand',
 
       'p':  'pick',
@@ -2231,6 +2245,8 @@
       'Z': 'size-depth',
 
       // legacy names
+      'nr': 'rn',
+      'nri': 'nri',
       'ms': 'multiple-with-space',
       's':  'size',
       'sx': 'size-col',
@@ -2608,6 +2624,10 @@
     return is_host_selector(s) || is_parent_selector(s);
   }
 
+  function get_id(prefix, value) {
+    return prefix + '_' + hash(value);
+  }
+
   class Rules {
 
     constructor(tokens, random) {
@@ -2620,6 +2640,7 @@
       this.coords = [];
       this.doodles = {};
       this.shaders = {};
+      this.paths = {};
       this.reset();
       this.Func = get_exposed(random);
       this.Selector = Selector(random);
@@ -2688,6 +2709,10 @@
       return `#${ cell_id(x, y, z) }${ pseudo }`;
     }
 
+    is_composable(name) {
+      return ['doodle', 'shaders'].includes(name);
+    }
+
     compose_argument(argument, coords, extra = []) {
       let result = argument.map(arg => {
         if (arg.type === 'text') {
@@ -2701,12 +2726,14 @@
             if (fname === 't') {
               this.uniforms.time = true;
             }
-
-            if (fname === 'doodle' || fname === 'shaders') {
+            if (this.is_composable(fname)) {
               let value = get_value((arg.arguments[0] || [])[0]);
-              return fname === 'doodle'
-                ? this.compose_doodle(value)
-                : this.compose_shaders(value, coords);
+              switch (fname) {
+                case 'doodle':
+                  return this.compose_doodle(value);
+                case 'shaders':
+                  return this.compose_shaders(value, coords);
+              }
             }
             coords.extra = extra;
             coords.position = arg.position;
@@ -2715,7 +2742,11 @@
                 ? (...extra) => this.compose_argument(n, coords, extra)
                 : this.compose_argument(n, coords, extra);
             });
-            return this.apply_func(fn, coords, args)
+            let value = this.apply_func(fn, coords, args);
+            if (fname == 'path') {
+              return this.compose_path(value);
+            }
+            return value;
           }
         }
       });
@@ -2727,16 +2758,25 @@
     }
 
     compose_doodle(doodle) {
-      let id = 'doodle_' + Math.random().toString(32).substr(2);
+      let id = get_id('doodle', doodle);
       this.doodles[id] = doodle;
       return '${' + id + '}';
     }
 
     compose_shaders(shader, {x, y, z}) {
-      let id = 'shader_' + Math.random().toString(32).substr(2);
+      let id = get_id('shader', shader);
       this.shaders[id] = {
         shader,
         cell: cell_id(x, y, z)
+      };
+      return '${' + id + '}';
+    }
+
+    compose_path(commands) {
+      let id = get_id('path', commands);
+      this.paths[id] = {
+        id,
+        commands
       };
       return '${' + id + '}';
     }
@@ -2758,12 +2798,14 @@
               if (fname === 't') {
                 this.uniforms.time = true;
               }
-              if (fname === 'doodle' || fname === 'shaders') {
-                let arg = val.arguments[0] || [];
-                let value = get_value(arg[0]);
-                result += (fname === 'doodle')
-                  ? this.compose_doodle(value)
-                  : this.compose_shaders(value, coords);
+              if (this.is_composable(fname)) {
+                let value = get_value((val.arguments[0] || [])[0]);
+                switch (fname) {
+                  case 'doodle':
+                    result += this.compose_doodle(value); break;
+                  case 'shaders':
+                    result += this.compose_shaders(value, coords); break;
+                }
               } else {
                 coords.position = val.position;
                 let args = val.arguments.map(arg => {
@@ -2774,7 +2816,10 @@
 
                 let output = this.apply_func(fn, coords, args);
 
-                if (!is_nil(output)) {
+                if (fname == 'path') {
+                  result += this.compose_path(output);
+                }
+                else if (!is_nil(output)) {
                   result += output;
                 }
               }
@@ -3075,6 +3120,7 @@
         grid: this.grid,
         doodles: this.doodles,
         shaders: this.shaders,
+        paths: this.paths,
         definitions: definitions,
         uniforms: this.uniforms
       }
@@ -3513,6 +3559,11 @@
         parse$1(use + styles, this.extra)
       );
 
+      if (!this.shadowRoot.innerHTML) {
+        Object.assign(this.grid_size, compiled.grid);
+        return this.build_grid(compiled, compiled.grid);
+      }
+
       if (compiled.grid) {
         let { x, y, z } = compiled.grid;
         if (gx !== x || gy !== y || gz !== z) {
@@ -3521,7 +3572,6 @@
         }
         Object.assign(this.grid_size, compiled.grid);
       }
-
       else {
         let grid = this.get_grid();
         let { x, y, z } = grid;
@@ -3534,11 +3584,19 @@
         }
       }
 
+      let svg_paths = this.build_svg_paths(compiled.paths);
+      if (svg_paths) {
+        let defs = this.shadowRoot.querySelector('.svg-defs');
+        if (defs) {
+          defs.innerHTML = svg_paths;
+        }
+      }
+
       if (compiled.uniforms.time) {
         this.register_uniform_time();
       }
 
-      let replace = this.replace(compiled.doodles, compiled.shaders);
+      let replace = this.replace(compiled);
 
       this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
@@ -3644,8 +3702,9 @@
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
+      let svg_defs = this.build_svg_paths(compiled.paths);
 
-      let replace = this.replace(compiled.doodles, compiled.shaders);
+      let replace = this.replace(compiled);
       let grid_container = create_grid(grid);
 
       let size = (options && options.width && options.height)
@@ -3664,6 +3723,9 @@
               ${ cells }
               ${ keyframes }
             </style>
+            <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+              <defs class="svg-defs">${ svg_defs }</defs>
+            </svg>
             ${ grid_container }
           </div>
         </foreignObject>
@@ -3707,11 +3769,15 @@
     }
 
     load(again) {
+      if (!again) {
+        if (this.hasAttribute('click-to-update')) {
+          this.addEventListener('click', e => this.update());
+        }
+      }
       let use = this.get_use();
       if (!this.innerHTML.trim() && !use) {
         return false;
       }
-
       let parsed = parse$1(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
@@ -3720,19 +3786,14 @@
         : this.get_grid();
 
       this.build_grid(compiled, this.grid_size);
-
-      if (!again) {
-        if (this.hasAttribute('click-to-update')) {
-          this.addEventListener('click', e => this.update());
-        }
-      }
     }
 
-    replace(doodles, shaders) {
+    replace({ doodles, shaders, paths }) {
       let doodle_ids = Object.keys(doodles);
       let shader_ids = Object.keys(shaders);
+      let path_ids = Object.keys(paths);
       return input => {
-        if (!doodle_ids.length && !shader_ids.length) {
+        if (!doodle_ids.length && !shader_ids.length && !path_ids.length) {
           return Promise.resolve(input);
         }
 
@@ -3751,6 +3812,13 @@
               return new Promise(resolve => {
                 this.shader_to_image(shaders[id], value => resolve({ id, value }));
               });
+            } else {
+              return Promise.resolve('');
+            }
+          }),
+          path_ids.map(id => {
+            if (input.includes(id)) {
+              return Promise.resolve({ id, value: '#' + id });
             } else {
               return Promise.resolve('');
             }
@@ -3779,16 +3847,20 @@
       const { keyframes, host, container, cells } = compiled.styles;
       let style_container = get_grid_styles(grid) + host + container;
       let style_cells = has_delay ? '' : cells;
+      let svg_defs = this.build_svg_paths(compiled.paths);
 
       const { uniforms } = compiled;
 
-      let replace = this.replace(compiled.doodles, compiled.shaders);
+      let replace = this.replace(compiled);
 
       this.doodle.innerHTML = `
       <style>${ get_basic_styles(uniforms) }</style>
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
+      <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+        <defs class="svg-defs">${ svg_defs }</defs>
+      </svg>
       ${ create_grid(grid) }
     `;
 
@@ -3812,6 +3884,15 @@
           definitions.forEach(CSS.registerProperty);
         } catch (e) { }
       }
+    }
+
+    build_svg_paths(paths) {
+      let names = Object.keys(paths || {});
+      return names.map(name => `
+      <clipPath id="${ paths[name].id }" clipPathUnits="objectBoundingBox">
+        <path d="${ paths[name].commands }" />
+      </clipPath>
+    `).join('');
     }
 
     register_uniform_time() {
@@ -3933,6 +4014,9 @@
       line-height: 1;
       display: grid;
       place-items: center
+    }
+    svg {
+      position: absolute;
     }
   `;
   }

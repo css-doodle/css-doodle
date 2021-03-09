@@ -1,3 +1,18 @@
+## 0.15.0
+
+### Features
+
+* Add `@path` function for responsive path commands used by clip-path.
+* Add `@rn` function for normalize distribution random. (Thanks @Plasmatium).
+
+### Fixes
+
+* Fix event binding and grid generation for empty block.
+
+<br /> <br />
+
+
+
 ## 0.14.2
 
 ### Fixes
