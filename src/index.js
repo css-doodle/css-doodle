@@ -49,6 +49,11 @@ class Doodle extends HTMLElement {
       parse_css(use + styles, this.extra)
     );
 
+    if (!this.shadowRoot.innerHTML) {
+      Object.assign(this.grid_size, compiled.grid);
+      return this.build_grid(compiled, compiled.grid);
+    }
+
     if (compiled.grid) {
       let { x, y, z } = compiled.grid;
       if (gx !== x || gy !== y || gz !== z) {
@@ -254,6 +259,11 @@ class Doodle extends HTMLElement {
   }
 
   load(again) {
+    if (!again) {
+      if (this.hasAttribute('click-to-update')) {
+        this.addEventListener('click', e => this.update());
+      }
+    }
     let use = this.get_use();
     if (!this.innerHTML.trim() && !use) {
       return false;
@@ -266,12 +276,6 @@ class Doodle extends HTMLElement {
       : this.get_grid();
 
     this.build_grid(compiled, this.grid_size);
-
-    if (!again) {
-      if (this.hasAttribute('click-to-update')) {
-        this.addEventListener('click', e => this.update());
-      }
-    }
   }
 
   replace({ doodles, shaders, paths }) {
