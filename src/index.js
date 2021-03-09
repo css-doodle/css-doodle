@@ -505,6 +505,9 @@ function get_basic_styles(uniforms = {}) {
       display: grid;
       place-items: center
     }
+    svg {
+      position: absolute;
+    }
   `;
 }
 
