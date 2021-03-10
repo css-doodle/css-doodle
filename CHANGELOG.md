@@ -1,3 +1,14 @@
+## 0.15.1
+
+### Fixes
+
+* Avoid error while charset is missing.
+* Fix error in composition for empty functions.
+
+<br /> <br />
+
+
+
 ## 0.15.0
 
 ### Features
