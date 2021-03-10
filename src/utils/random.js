@@ -30,7 +30,7 @@ export default function(random) {
   }
 
   function unique_id(prefix = '') {
-    return prefix + random().toString(32).substr(2);
+    return prefix + Math.random().toString(32).substr(2);
   }
 
   return {

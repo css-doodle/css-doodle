@@ -5,8 +5,9 @@ import MathFunc from './math';
 import prefixer from './prefixer';
 import parse_value_group from './parser/parse-value-group';
 import { uniform_time } from './uniform';
+import random_func from './utils/random';
 
-import { maybe, cell_id, is_nil, get_value, hash } from './utils/index.js';
+import { maybe, cell_id, is_nil, get_value } from './utils/index.js';
 
 import List from './utils/list';
 let { join, make_array, remove_empty_values } = List();
@@ -23,10 +24,6 @@ function is_parent_selector(s) {
 
 function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
-}
-
-function get_id(prefix, value) {
-  return prefix + '_' + hash(value);
 }
 
 class Rules {
@@ -47,6 +44,7 @@ class Rules {
     this.Selector = Selector(random);
     this.custom_properties = {};
     this.uniforms = {};
+    this.unique_id = random_func(random).unique_id;
   }
 
   reset() {
@@ -161,13 +159,13 @@ class Rules {
   }
 
   compose_doodle(doodle) {
-    let id = get_id('doodle', doodle);
+    let id = this.unique_id('doodle');
     this.doodles[id] = doodle;
     return '${' + id + '}';
   }
 
   compose_shaders(shader, {x, y, z}) {
-    let id = get_id('shader', shader);
+    let id = this.unique_id('shader');
     this.shaders[id] = {
       shader,
       cell: cell_id(x, y, z)
@@ -176,7 +174,7 @@ class Rules {
   }
 
   compose_path(commands) {
-    let id = get_id('path', commands);
+    let id = this.unique_id('path');
     this.paths[id] = {
       id,
       commands
