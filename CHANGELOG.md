@@ -1,3 +1,13 @@
+## 0.15.2
+
+### Fixes
+
+* Don't use random seed for unique ids.
+
+<br /> <br />
+
+
+
 ## 0.15.1
 
 ### Fixes

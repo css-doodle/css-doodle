@@ -1,4 +1,4 @@
-/*! css-doodle@0.15.1 */
+/*! css-doodle@0.15.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -887,16 +887,6 @@
     return textarea.value;
   }
 
-  function hash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      let code = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + code;
-      hash &= hash;
-    }
-    return hash;
-  }
-
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
 
   function parse_grid(size) {
@@ -1100,7 +1090,7 @@
     }
 
     function unique_id(prefix = '') {
-      return prefix + random().toString(32).substr(2);
+      return prefix + Math.random().toString(32).substr(2);
     }
 
     return {
@@ -2624,10 +2614,6 @@
     return is_host_selector(s) || is_parent_selector(s);
   }
 
-  function get_id(prefix, value) {
-    return prefix + '_' + hash(value);
-  }
-
   class Rules {
 
     constructor(tokens, random) {
@@ -2646,6 +2632,7 @@
       this.Selector = Selector(random);
       this.custom_properties = {};
       this.uniforms = {};
+      this.unique_id = random_func(random).unique_id;
     }
 
     reset() {
@@ -2760,13 +2747,13 @@
     }
 
     compose_doodle(doodle) {
-      let id = get_id('doodle', doodle);
+      let id = this.unique_id('doodle');
       this.doodles[id] = doodle;
       return '${' + id + '}';
     }
 
     compose_shaders(shader, {x, y, z}) {
-      let id = get_id('shader', shader);
+      let id = this.unique_id('shader');
       this.shaders[id] = {
         shader,
         cell: cell_id(x, y, z)
@@ -2775,7 +2762,7 @@
     }
 
     compose_path(commands) {
-      let id = get_id('path', commands);
+      let id = this.unique_id('path');
       this.paths[id] = {
         id,
         commands
