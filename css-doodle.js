@@ -1082,15 +1082,15 @@
       }
       return lerp(start, end, random());
     }
-    
+
     function nrand(mean = 0, scale = 1) {
       let u1 = 0, u2 = 0;
       //Convert [0,1) to (0,1)
       while (u1 === 0) u1 = random();
       while (u2 === 0) u2 = random();
       const R = Math.sqrt(-2.0 * Math.log(u1));
-      const Θ = 2.0 * Math.PI * u2;
-      const u0 = R * Math.cos(Θ);
+      const t = 2.0 * Math.PI * u2;
+      const u0 = R * Math.cos(t);
       return mean + scale * u0;
     }
 
@@ -2728,11 +2728,13 @@
             }
             if (this.is_composable(fname)) {
               let value = get_value((arg.arguments[0] || [])[0]);
-              switch (fname) {
-                case 'doodle':
-                  return this.compose_doodle(value);
-                case 'shaders':
-                  return this.compose_shaders(value, coords);
+              if (!is_nil(value)) {
+                switch (fname) {
+                  case 'doodle':
+                    return this.compose_doodle(value);
+                  case 'shaders':
+                    return this.compose_shaders(value, coords);
+                }
               }
             }
             coords.extra = extra;
@@ -2800,11 +2802,13 @@
               }
               if (this.is_composable(fname)) {
                 let value = get_value((val.arguments[0] || [])[0]);
-                switch (fname) {
-                  case 'doodle':
-                    result += this.compose_doodle(value); break;
-                  case 'shaders':
-                    result += this.compose_shaders(value, coords); break;
+                if (!is_nil(value)) {
+                  switch (fname) {
+                    case 'doodle':
+                      result += this.compose_doodle(value); break;
+                    case 'shaders':
+                      result += this.compose_shaders(value, coords); break;
+                  }
                 }
               } else {
                 coords.position = val.position;
@@ -2815,12 +2819,12 @@
                 });
 
                 let output = this.apply_func(fn, coords, args);
-
-                if (fname == 'path') {
-                  result += this.compose_path(output);
-                }
-                else if (!is_nil(output)) {
-                  result += output;
+                if (!is_nil(output)) {
+                  if (fname == 'path') {
+                    result += this.compose_path(output);
+                  } else {
+                    result += output;
+                  }
                 }
               }
             }
