@@ -209,6 +209,15 @@ function read_comments(it, flag = {}) {
   }
 }
 
+function read_tag(it) {
+  it.next();
+  while(!it.end()) {
+    let c = it.curr();
+    if (c == '>') break;
+    it.next();
+  }
+}
+
 function read_property(it) {
   let prop = '', c;
   while (!it.end()) {
@@ -619,6 +628,9 @@ export default function parse(input, extra) {
     else if (c == '@' && !read_line(it, true).includes(':')) {
       let cond = read_cond(it, extra);
       if (cond.name.length) Tokens.push(cond);
+    }
+    else if (c == '<') {
+      read_tag(it);
     }
     else if (!is.white_space(c)) {
       let rule = read_rule(it, extra);
