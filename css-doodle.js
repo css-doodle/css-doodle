@@ -1,4 +1,4 @@
-/*! css-doodle@0.15.2 */
+/*! css-doodle@0.15.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -365,6 +365,15 @@
     }
     if (!flag.inline) {
       it.next(); it.next();
+    }
+  }
+
+  function read_tag(it) {
+    it.next();
+    while(!it.end()) {
+      let c = it.curr();
+      if (c == '>') break;
+      it.next();
     }
   }
 
@@ -778,6 +787,9 @@
       else if (c == '@' && !read_line(it, true).includes(':')) {
         let cond = read_cond(it, extra);
         if (cond.name.length) Tokens.push(cond);
+      }
+      else if (c == '<') {
+        read_tag(it);
       }
       else if (!is.white_space(c)) {
         let rule = read_rule(it, extra);

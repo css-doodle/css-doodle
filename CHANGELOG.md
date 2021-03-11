@@ -1,3 +1,13 @@
+## 0.15.3
+
+### Enhancement
+
+* Skip HTML tags inside rules.
+
+<br /> <br />
+
+
+
 ## 0.15.2
 
 ### Fixes
