@@ -199,17 +199,25 @@ function get_exposed(random) {
         let default_size = custom_sizes.length
           ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
           : `100% / ${max}`
-        return colors
-          .map((step, i) => {
-            if (custom_sizes.length) {
-              let [color, size] = parse_value_group(step);
-              let prefix = prev ? (prev + ' + ') : '';
-              prev = prefix + (size !== undefined ? size : default_size);
-              return `${color} 0 calc(${ prev })`
-            }
-            return `${step} 0 ${100 / max * (i + 1)}%`
-          })
-          .join(',');
+        return colors.map((step, i) => {
+          if (custom_sizes.length) {
+            let [color, size] = parse_value_group(step);
+            let prefix = prev ? (prev + ' + ') : '';
+            prev = prefix + (size !== undefined ? size : default_size);
+            return `${color} 0 calc(${ prev })`
+          }
+          return `${step} 0 ${100 / max * (i + 1)}%`
+        })
+        .join(',');
+      }
+    },
+
+    reflect() {
+      return (...input) => {
+        return [
+          ...input,
+          ...input.slice(0, -1).reverse()
+        ].join(',');
       }
     },
 
