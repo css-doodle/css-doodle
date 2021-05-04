@@ -4,11 +4,9 @@ export default function(random) {
     return start * (1 - t) + end * t;
   }
 
-  function rand(start = 0, end = start) {
+  function rand(start = 0, end) {
     if (arguments.length == 1) {
-      if (start == 1) start = 0;
-      else if (start < 1) start /= 10;
-      else start = 1;
+      [start, end] = [0, start];
     }
     return lerp(start, end, random());
   }
