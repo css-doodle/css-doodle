@@ -2216,7 +2216,14 @@
       return lazy((n, action) => {
         if (!action || !n) return '';
         let count = get_value(n());
-        return sequence(calc(count), (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
+        let evaluated = calc(count);
+        if (evaluated === 0) {
+          evaluated = count;
+        }
+        return sequence(
+          evaluated,
+          (...args) => get_value(action(...args))
+        ).join(c);
       });
     }
 
