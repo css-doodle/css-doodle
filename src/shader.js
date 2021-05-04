@@ -62,7 +62,7 @@ function draw_shader(shaders, width, height) {
 
   let gl = canvas.getContext('webgl')
     || canvas.getContext('exprimental-webgl');
-  if (!gl) return '';
+  if (!gl) return Promise.resolve('');
 
   // resolution uniform
   let fragment = add_uniform(shaders.fragment || '', 'uniform vec2 u_resolution;');
