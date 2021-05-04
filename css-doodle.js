@@ -1076,11 +1076,9 @@
       return start * (1 - t) + end * t;
     }
 
-    function rand(start = 0, end = start) {
+    function rand(start = 0, end) {
       if (arguments.length == 1) {
-        if (start == 1) start = 0;
-        else if (start < 1) start /= 10;
-        else start = 1;
+        [start, end] = [0, start];
       }
       return lerp(start, end, random());
     }
@@ -2126,17 +2124,25 @@
           let default_size = custom_sizes.length
             ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
             : `100% / ${max}`;
-          return colors
-            .map((step, i) => {
-              if (custom_sizes.length) {
-                let [color, size] = parse$3(step);
-                let prefix = prev ? (prev + ' + ') : '';
-                prev = prefix + (size !== undefined ? size : default_size);
-                return `${color} 0 calc(${ prev })`
-              }
-              return `${step} 0 ${100 / max * (i + 1)}%`
-            })
-            .join(',');
+          return colors.map((step, i) => {
+            if (custom_sizes.length) {
+              let [color, size] = parse$3(step);
+              let prefix = prev ? (prev + ' + ') : '';
+              prev = prefix + (size !== undefined ? size : default_size);
+              return `${color} 0 calc(${ prev })`
+            }
+            return `${step} 0 ${100 / max * (i + 1)}%`
+          })
+          .join(',');
+        }
+      },
+
+      reflect() {
+        return (...input) => {
+          return [
+            ...input,
+            ...input.slice(0, -1).reverse()
+          ].join(',');
         }
       },
 
@@ -2209,7 +2215,7 @@
       return lazy((n, action) => {
         if (!action || !n) return '';
         let count = get_value(n());
-        return sequence(count, (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
+        return sequence(calc(count), (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
       });
     }
 
@@ -3451,7 +3457,7 @@
 
     let gl = canvas.getContext('webgl')
       || canvas.getContext('exprimental-webgl');
-    if (!gl) return '';
+    if (!gl) return Promise.resolve('');
 
     // resolution uniform
     let fragment = add_uniform(shaders.fragment || '', 'uniform vec2 u_resolution;');
