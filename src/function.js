@@ -290,7 +290,7 @@ function get_exposed(random) {
     return lazy((n, action) => {
       if (!action || !n) return '';
       let count = get_value(n());
-      return sequence(count, (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
+      return sequence(calc(count), (i, x, y, max) => get_value(action(i, x, y, max))).join(c);
     });
   }
 
