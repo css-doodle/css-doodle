@@ -50,17 +50,9 @@ const presets = {
   d5: [ 130, 184 ],
   d6: [ 92, 126 ],
 
-  letter:         [ 216, 279 ],
-  legal:          [ 216, 356 ],
-  'junior-legal': [ 203, 127 ],
-  ledger:         [ 279, 432 ],
-  tabloid:        [ 279, 432 ],
-  executive:      [ 190, 254 ],
-
-  postcard:        [ 100, 148 ],
-  'business-card': [ 54, 90 ],
-
-  poster: [ 390, 540 ],
+  letter:   [ 216, 279 ],
+  postcard: [ 100, 148 ],
+  poster:   [ 390, 540 ],
 }
 
 const modes = {
