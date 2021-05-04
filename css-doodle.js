@@ -1775,12 +1775,12 @@
 
   function custom_shape(props) {
     let option = Object.assign({}, props, {
-      split: clamp(parseInt(props.split) || 0, 3, 3600),
+      split: clamp(parseInt(props.points || props.split) || 0, 3, 3600),
       start: 0
     });
 
     if (props.degree) {
-      props.rotate= props.degree;
+      props.rotate = props.degree;
     }
 
     let px = is_empty(props.x) ? 'cos(t)' : props.x;
