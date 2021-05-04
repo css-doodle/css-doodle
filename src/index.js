@@ -232,7 +232,7 @@ class Doodle extends HTMLElement {
   shader_to_image({ shader, cell }, fn) {
     let parsed = parse_shaders(shader);
     let element = this.doodle.getElementById(cell);
-    let { width, height } = element.getBoundingClientRect();
+    let { width = 0, height = 0} = element && element.getBoundingClientRect() || {};
     let ratio = window.devicePixelRatio || 1;
 
     if (!parsed.textures.length) {
