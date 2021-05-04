@@ -310,7 +310,8 @@ class Rules {
 
     if (Property[prop]) {
       let transformed = Property[prop](value, {
-        is_special_selector: is_special_selector(selector)
+        is_special_selector: is_special_selector(selector),
+        grid: coords.grid
       });
       switch (prop) {
         case '@grid': {
@@ -320,7 +321,8 @@ class Rules {
             rule = '';;
             if (!this.is_grid_defined) {
               transformed = Property[prop](value, {
-                is_special_selector: true
+                is_special_selector: true,
+                grid: coords.grid
               });
               this.add_rule(':host', transformed.size || '');
             }

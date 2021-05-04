@@ -18,7 +18,8 @@ export default function parse_grid(size) {
     z: clamp(z || min, 1, max_z)
   };
 
-  return Object.assign({}, ret,
-    { count: ret.x * ret.y * ret.z }
-  );
+  return Object.assign({}, ret, {
+    count: ret.x * ret.y * ret.z,
+    ratio: ret.x / ret.y
+  });
 }

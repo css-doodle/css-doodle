@@ -7,19 +7,26 @@ import { is_preset, get_preset } from './preset-size';
 
 export default {
 
-  ['@size'](value, { is_special_selector }) {
+  ['@size'](value, { is_special_selector, grid }) {
     let [w, h = w] = parse_value_group(value);
     if (is_preset(w)) {
       [w, h] = get_preset(w, h);
     }
-    return `
+    let styles = `
       width: ${ w };
       height: ${ h };
-      ${ is_special_selector ? '' : `
+    `;
+    if (is_special_selector) {
+      if (w === 'auto' || h === 'auto') {
+        styles += `aspect-ratio: ${ grid.ratio };`;
+      }
+    } else {
+      styles += `
         --internal-cell-width: ${ w };
         --internal-cell-height: ${ h };
-      `}
-    `;
+      `;
+    }
+    return styles;
   },
 
   ['@min-size'](value) {

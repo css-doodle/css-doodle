@@ -917,9 +917,10 @@
       z: clamp(z || min, 1, max_z)
     };
 
-    return Object.assign({}, ret,
-      { count: ret.x * ret.y * ret.z }
-    );
+    return Object.assign({}, ret, {
+      count: ret.x * ret.y * ret.z,
+      ratio: ret.x / ret.y
+    });
   }
 
   function is_quote(c) {
@@ -2402,19 +2403,26 @@
 
   var Property = {
 
-    ['@size'](value, { is_special_selector }) {
+    ['@size'](value, { is_special_selector, grid }) {
       let [w, h = w] = parse$3(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
-      return `
+      let styles = `
       width: ${ w };
       height: ${ h };
-      ${ is_special_selector ? '' : `
+    `;
+      if (is_special_selector) {
+        if (w === 'auto' || h === 'auto') {
+          styles += `aspect-ratio: ${ grid.ratio };`;
+        }
+      } else {
+        styles += `
         --internal-cell-width: ${ w };
         --internal-cell-height: ${ h };
-      `}
-    `;
+      `;
+      }
+      return styles;
     },
 
     ['@min-size'](value) {
@@ -2908,7 +2916,8 @@
 
       if (Property[prop]) {
         let transformed = Property[prop](value, {
-          is_special_selector: is_special_selector(selector)
+          is_special_selector: is_special_selector(selector),
+          grid: coords.grid
         });
         switch (prop) {
           case '@grid': {
@@ -2917,7 +2926,8 @@
             } else {
               rule = '';            if (!this.is_grid_defined) {
                 transformed = Property[prop](value, {
-                  is_special_selector: true
+                  is_special_selector: true,
+                  grid: coords.grid
                 });
                 this.add_rule(':host', transformed.size || '');
               }
