@@ -4015,6 +4015,7 @@
       visibility: visible;
       width: auto;
       height: auto;
+      contain: content;
       --${ uniform_time.name }: 0
     }
     :host([hidden]), .host[hidden] {
