@@ -1,5 +1,6 @@
 import { clamp, is_nil } from './utils/index';
 import calc from './utils/calc';
+import parse_shape_commands from './parser/parse-shape-commands';
 
 const { cos, sin, sqrt, atan2, pow, PI } = Math;
 const DEG = PI / 180;
@@ -84,6 +85,10 @@ function translate(x, y, offset) {
   ];
 }
 
+function commands(c) {
+  return custom_shape(parse_shape_commands(c));
+}
+
 const shapes =  {
 
   circle() {
@@ -91,30 +96,19 @@ const shapes =  {
   },
 
   triangle() {
-    return polygon({ split: 3, start: -90 }, t => [
-      cos(t) * 1.1,
-      sin(t) * 1.1 + .2
-    ]);
-  },
-
-  rhombus() {
-    return polygon({ split: 4 });
+    return commands(`
+      rotate: 30;
+      scale: 1.1;
+      origin: 0 .2
+    `);
   },
 
   pentagon() {
     return polygon({ split: 5, start: 54 });
   },
 
-  hexgon() {
-    return polygon({ split: 6, start: 30 });
-  },
-
   hexagon() {
     return polygon({ split: 6, start: 30 });
-  },
-
-  heptagon() {
-    return polygon({ split: 7, start: -90 });
   },
 
   octagon() {
@@ -122,90 +116,63 @@ const shapes =  {
   },
 
   star() {
-    return polygon({ split: 5, start: 54, deg: 144 });
-  },
-
-  diamond() {
-    return 'polygon(50% 5%, 80% 50%, 50% 95%, 20% 50%)';
-  },
-
-  cross() {
-    return `polygon(
-      5% 35%,  35% 35%, 35% 5%,  65% 5%,
-      65% 35%, 95% 35%, 95% 65%, 65% 65%,
-      65% 95%, 35% 95%, 35% 65%, 5% 65%
-    )`;
+    return commands(`
+      split: 10;
+      r: cos(5t);
+      rotate: -18
+    `);
   },
 
   clover(k = 3) {
-    k = clamp(k, 3, 5);
+     k = clamp(k, 3, 5);
     if (k == 4) k = 2;
-    return polygon({ split: 240 }, t => {
-      let x = cos(k * t) * cos(t);
-      let y = cos(k * t) * sin(t);
-      if (k == 3) x -= .2;
-      if (k == 2) {
-        x /= 1.1;
-        y /= 1.1;
-      }
-      return [x, y];
-    });
+    return commands(`
+      split: 200;
+      r: cos(${k}t);
+      scale: .98
+    `);
   },
 
   hypocycloid(k = 3) {
-    k = clamp(k, 3, 6);
-    let m = 1 - k;
-    return polygon({ scale: 1 / k  }, t => {
-      let x = m * cos(t) + cos(m * (t - PI));
-      let y = m * sin(t) + sin(m * (t - PI));
-      if (k == 3) {
-        x = x * 1.1 - .6;
-        y = y * 1.1
-      }
-      return [x, y];
-    });
-  },
-
-  astroid() {
-    return shapes.hypocycloid(4);
+    k = clamp(k, 3, 5);
+    let scale = [0, 0, 0, .34, .25, .19][k];
+    return commands(`
+      split: 200;
+      scale: ${scale};
+      k: ${k};
+      x: (k-1)*cos(t) + cos((k-1)*t);
+      y: (k-1)*sin(t) - sin((k-1)*t);
+    `);
   },
 
   infinity() {
-    return polygon(t => {
-      let a = .7 * sqrt(2) * cos(t);
-      let b = (pow(sin(t), 2) + 1);
-      return [
-        a / b,
-        a * sin(t) / b
-      ]
-    });
+    return commands(`
+      split: 180;
+      x: cos(t)*.99 / (sin(t)^2 + 1);
+      y: x * sin(t)
+    `);
   },
 
   heart() {
-    return polygon(t => {
-      let x = .75 * pow(sin(t), 3);
-      let y =
-          cos(1 * t) * (13 / 18)
-        - cos(2 * t) * (5 / 18)
-        - cos(3 * t) / 18
-        - cos(4 * t) / 18;
-      return rotate(
-        x * 1.2,
-        (y + .2) * 1.1,
-        180
-      );
-    });
+    return commands(`
+      split: 180;
+      rotate: 180;
+      a: cos(t)*13/18 - cos(2t)*5/18;
+      b: cos(3t)/18 + cos(4t)/18;
+      x: (.75 * sin(t)^3) * 1.2;
+      y: (a - b + .2) * 1.1
+    `);
   },
 
   bean() {
-    return polygon(t => {
-      let [a, b] = [pow(sin(t), 3), pow(cos(t), 3)];
-      return rotate(
-        (a + b) * cos(t) * 1.3 - .45,
-        (a + b) * sin(t) * 1.3 - .45,
-        -90
-      );
-    });
+    return commands(`
+      split: 180;
+      a: sin(t)^3;
+      b: cos(t)^3;
+      x: (a + b) * cos(t) * 1.3 - .45;
+      y: (a + b) * sin(t) * 1.3 - .45;
+      rotate: -90
+    `);
   },
 
   bicorn() {
@@ -217,11 +184,13 @@ const shapes =  {
   },
 
   drop() {
-    return polygon(t => rotate(
-      sin(t),
-      (1 + sin(t)) * cos(t) / 1.4,
-      90
-    ));
+    return commands(`
+      split: 200;
+      rotate: 90;
+      scale: .95;
+      x: sin(t);
+      y: (1 + sin(t)) * cos(t) / 1.6
+    `);
   },
 
   pear() {
@@ -257,13 +226,24 @@ const shapes =  {
     ]);
   },
 
-  alien(...args) {
-    let [a = 1, b = 1, c = 1, d = 1, e = 1]
-      = args.map(n => clamp(n, 1, 9));
-    return polygon({ split: 480, type: 'evenodd' }, t => [
-      (cos(t * a) + cos(t * c) + cos(t * e)) * .31,
-      (sin(t * b) + sin(t * d) + sin(t)) * .31
-    ]);
+  windmill() {
+    return commands(`
+      split: 18;
+      R: seq(.618, 1, 0);
+      T: seq(t+.55, t, t);
+      x: R * cos(T);
+      y: R * sin(T);
+    `)
+  },
+
+  bottle() {
+    return commands(`
+      split: 200;
+      scale: .3;
+      rotate: 180;
+      x: sin(4t) + sin(t) * 1.4;
+      y: cos(t) + cos(t) * 4.8 + .3
+    `);
   }
 }
 
