@@ -30,7 +30,7 @@
   }
 
   // I'll make it work first
-  function parse(it) {
+  function parse$4(it) {
     let word = '', marks = [];
     let groups = [], result = {};
 
@@ -95,7 +95,7 @@
     }
     let it = iterator(input);
     try {
-      result = parse(it);
+      result = parse$4(it);
     } catch (e) {
       console.warn(e && e.message || 'Bad variables.');
     }
@@ -161,7 +161,7 @@
     }
   }
 
-  let { first, last, clone } = List();
+  let { first, last: last$3, clone } = List();
 
   const Tokens = {
     func(name = '') {
@@ -222,7 +222,7 @@
     }
   };
 
-  const is = {
+  const is$1 = {
     white_space(c) {
       return /[\s\n\t]/.test(c);
     },
@@ -255,7 +255,7 @@
 
   function get_text_value(input) {
     if (input.trim().length) {
-      return is.number(+input) ? +input : input.trim()
+      return is$1.number(+input) ? +input : input.trim()
     } else {
       return input;
     }
@@ -287,7 +287,7 @@
   }
 
   function read_line(it, reset) {
-    let check = c => is.line_break(c) || c == '{';
+    let check = c => is$1.line_break(c) || c == '{';
     return read_until(check)(it, reset);
   }
 
@@ -295,7 +295,7 @@
     let c, step = Tokens.step();
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      if (is.white_space(c)) {
+      if (is$1.white_space(c)) {
         it.next();
         continue;
       }
@@ -316,7 +316,7 @@
     let c;
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      else if (is.white_space(c)) {
+      else if (is$1.white_space(c)) {
         it.next();
         continue;
       }
@@ -351,7 +351,7 @@
     return keyframes;
   }
 
-  function read_comments(it, flag = {}) {
+  function read_comments$1(it, flag = {}) {
     it.next();
     while (!it.end()) {
       let c = it.curr();
@@ -381,7 +381,7 @@
     let prop = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == ':') break;
-      else if (!is.white_space(c)) prop += c;
+      else if (!is$1.white_space(c)) prop += c;
       it.next();
     }
     return prop;
@@ -393,7 +393,7 @@
       c = it.curr();
       if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
         if (stack.length) {
-          if (c != '(' && c === last(stack)) {
+          if (c != '(' && c === last$3(stack)) {
             stack.pop();
           } else {
             stack.push(c);
@@ -432,9 +432,9 @@
             if (arg.startsWith('±') && !doodle) {
               let raw = arg.substr(1);
               let cloned = clone(group);
-              last(cloned).value = '-' + raw;
+              last$3(cloned).value = '-' + raw;
               args.push(normalize_argument(cloned));
-              last(group).value = raw;
+              last$3(group).value = raw;
             }
           }
 
@@ -478,12 +478,12 @@
     });
 
     let ft = first(result) || {};
-    let ed = last(result) || {};
+    let ed = last$3(result) || {};
     if (ft.type == 'text' && ed.type == 'text') {
       let cf = first(ft.value);
-      let ce  = last(ed.value);
+      let ce  = last$3(ed.value);
       if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-        if (is.pair_of(cf, ce)) {
+        if (is$1.pair_of(cf, ce)) {
           ft.value = ft.value.slice(1);
           ed.value = ed.value.slice(0, ed.value.length - 1);
           result.cluster = true;
@@ -560,14 +560,14 @@
     while (!it.end()) {
       c = it.curr();
 
-      if (skip && is.white_space(c)) {
+      if (skip && is$1.white_space(c)) {
         it.next();
         continue;
       } else {
         skip = false;
       }
 
-      if (c == '\n' && !is.white_space(it.curr(-1))) {
+      if (c == '\n' && !is$1.white_space(it.curr(-1))) {
         text.value += ' ';
       }
       else if (c == ',' && !stack.length) {
@@ -592,7 +592,7 @@
         }
         value[idx].push(read_func(it));
       }
-      else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
+      else if (!is$1.white_space(c) || !is$1.white_space(it.curr(-1))) {
         if (c == '(') stack.push(c);
         if (c == ')') stack.pop();
 
@@ -614,7 +614,7 @@
     let selector = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == '{') break;
-      else if (!is.white_space(c)) {
+      else if (!is$1.white_space(c)) {
         selector += c;
       }
       it.next();
@@ -630,7 +630,7 @@
         selector.arguments = read_arguments(it);
       }
       else if (/[){]/.test(c)) break;
-      else if (!is.white_space(c)) selector.name += c;
+      else if (!is$1.white_space(c)) selector.name += c;
       it.next();
     }
     return selector;
@@ -640,7 +640,7 @@
     let pseudo = Tokens.pseudo(), c;
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      if (is.white_space(c)) {
+      if (is$1.white_space(c)) {
         it.next();
         continue;
       }
@@ -664,9 +664,9 @@
   }
 
   function read_rule(it, extra) {
-    let rule = Tokens.rule(), c;
+    let rule = Tokens.rule();
     while (!it.end()) {
-      if ((c = it.curr()) == ';') break;
+      if ((it.curr()) == ';') break;
       else if (!rule.property.length) {
         rule.property = read_property(it);
         if (rule.property == '@use') {
@@ -697,7 +697,7 @@
       else if (c == '@' && !read_line(it, true).includes(':')) {
         cond.styles.push(read_cond(it));
       }
-      else if (!is.white_space(c)) {
+      else if (!is$1.white_space(c)) {
         let rule = read_rule(it, extra);
         if (rule.property) cond.styles.push(rule);
         if (it.curr() == '}') break;
@@ -732,7 +732,7 @@
             });
           }
           try {
-            parsed = parse$1(rule, extra);
+            parsed = parse$3(rule, extra);
           } catch (e) { }
           if (parsed) {
             ret.push.apply(ret, parsed);
@@ -761,20 +761,20 @@
     }, []);
   }
 
-  function parse$1(input, extra) {
+  function parse$3(input, extra) {
     const it = iterator(input);
     const Tokens = [];
     while (!it.end()) {
       let c = it.curr();
-      if (is.white_space(c)) {
+      if (is$1.white_space(c)) {
         it.next();
         continue;
       }
       else if (c == '/' && it.curr(1) == '*') {
-        read_comments(it);
+        read_comments$1(it);
       }
       else if (c == '/' && it.curr(1) == '/') {
-        read_comments(it, { inline: true });
+        read_comments$1(it, { inline: true });
       }
       else if (c == ':') {
         let pseudo = read_pseudo(it, extra);
@@ -791,7 +791,7 @@
       else if (c == '<') {
         read_tag(it);
       }
-      else if (!is.white_space(c)) {
+      else if (!is$1.white_space(c)) {
         let rule = read_rule(it, extra);
         if (rule.property) Tokens.push(rule);
       }
@@ -927,7 +927,7 @@
     return c == '"' || c == "'";
   }
 
-  function last$1(array) {
+  function last$2(array) {
     return array[array.length - 1];
   }
 
@@ -944,13 +944,13 @@
     let i = 0;
     while ((c = input[i++]) !== undefined) {
       if (c == '"' || c == "'") {
-        if (last$1(stack) == c) {
+        if (last$2(stack) == c) {
           stack.pop();
         } else {
           stack.push(c);
         }
       }
-      if (c == '{' && !is_quote(last$1(stack)))  {
+      if (c == '{' && !is_quote(last$2(stack)))  {
         if (!stack.length) {
           name = temp;
           temp = '';
@@ -959,7 +959,7 @@
         }
         stack.push(c);
       }
-      else if (c == '}' && !is_quote(last$1(stack)))  {
+      else if (c == '}' && !is_quote(last$2(stack)))  {
         stack.pop();
         if (!stack.length) {
           let key = name.trim();
@@ -1161,7 +1161,7 @@
   /**
    * Based on the Shunting-yard algorithm.
    */
-  let { last: last$2 } = List();
+  let { last: last$1 } = List();
 
   const default_context = {
     'π': Math.PI,
@@ -1190,7 +1190,7 @@
           result = Math[value];
         }
         if (typeof result === 'undefined') {
-          result = expand(value, context);
+          result = expand$1(value, context);
         }
         if (typeof result === 'undefined') {
           result = 0;
@@ -1232,7 +1232,7 @@
     return stack[0];
   }
 
-  function get_tokens(input) {
+  function get_tokens$1(input) {
     let expr = String(input);
     let tokens = [], num = '';
 
@@ -1245,7 +1245,7 @@
         else if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = last$2(tokens) || {};
+          let { type, value } = last$1(tokens) || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1278,7 +1278,7 @@
   }
 
   function infix_to_postfix(input) {
-    let tokens = get_tokens(input);
+    let tokens = get_tokens$1(input);
     const op_stack = [], expr = [];
 
     for (let i = 0; i < tokens.length; ++i) {
@@ -1336,14 +1336,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && last$2(op_stack) != '(') {
+          while (op_stack.length && last$1(op_stack) != '(') {
             expr.push({ type: 'operator', value: op_stack.pop() });
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[last$2(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
           }
@@ -1370,7 +1370,7 @@
     }
   }
 
-  function expand(value, context) {
+  function expand$1(value, context) {
     let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
     let v = context[variable];
     if (v === undefined) {
@@ -1397,9 +1397,9 @@
     }
   }
 
-  const { last: last$3, flat_map } = List();
+  const { last, flat_map } = List();
 
-  function expand$1(fn) {
+  function expand(fn) {
     return (...args) => fn.apply(null, flat_map(args, n =>
       String(n).startsWith('[') ? build_range(n) : n
     ));
@@ -1409,7 +1409,7 @@
     return { type, value };
   }
 
-  function get_tokens$1(input) {
+  function get_tokens(input) {
     let expr = String(input);
     let tokens = [], stack = [];
     if (!expr.startsWith('[') || !expr.endsWith(']')) {
@@ -1425,7 +1425,7 @@
         stack.push(c);
         continue;
       }
-      if (last$3(stack) == '-') {
+      if (last(stack) == '-') {
         stack.pop();
         let from = stack.pop();
         tokens.push(from
@@ -1446,7 +1446,7 @@
   }
 
   const build_range = memo('build_range', (input) => {
-    let tokens = get_tokens$1(input);
+    let tokens = get_tokens(input);
     return flat_map(tokens, ({ type, value }) => {
       if (type == 'char') return value;
       let [ from, to ] = value;
@@ -1827,7 +1827,7 @@
     }
   }
 
-  function parse$3(input, no_space = false) {
+  function parse$1(input, no_space = false) {
     if (is_nil(input)) input = '';
     const it = iterator(String(input));
     const result = [], stack = [];
@@ -1872,7 +1872,7 @@
     return result;
   }
 
-  function parse$4(input) {
+  function parse(input) {
     const it = iterator(input);
 
     let temp = '';
@@ -1883,7 +1883,7 @@
     while (!it.end()) {
       let c = it.curr();
       if (c == '/' && it.curr(1) == '*') {
-        read_comments$1(it);
+        read_comments(it);
       }
       else if (c == ':') {
         key = temp;
@@ -1913,11 +1913,11 @@
     return result;
   }
 
-  function read_comments$1(it, flag = {}) {
+  function read_comments(it, flag = {}) {
     it.next();
     while (!it.end()) {
-      let c = it.curr();
-      if ((c = it.curr()) == '*' && it.curr(1) == '/') {
+      it.curr();
+      if ((it.curr()) == '*' && it.curr(1) == '/') {
         it.next(); it.next();
         break;
       }
@@ -2016,14 +2016,14 @@
       ),
 
       pick({ context }) {
-        return expand$1((...args) => {
+        return expand((...args) => {
           return push_stack(context, 'last_pick', pick(args));
         });
       },
 
       ['pick-n']({ context, extra, position }) {
         let counter = 'pn-counter' + position;
-        return expand$1((...args) => {
+        return expand((...args) => {
           if (!context[counter]) context[counter] = 0;
           context[counter] += 1;
           let max = args.length;
@@ -2037,7 +2037,7 @@
       ['pick-d']({ context, extra, position }) {
         let counter = 'pd-counter' + position;
         let values = 'pd-values' + position;
-        return expand$1((...args) => {
+        return expand((...args) => {
           if (!context[counter]) context[counter] = 0;
           context[counter] += 1;
           if (!context[values]) {
@@ -2118,7 +2118,7 @@
             return '';
           }
           colors.forEach(step => {
-            let [_, size] = parse$3(step);
+            let [_, size] = parse$1(step);
             if (size !== undefined) custom_sizes.push(size);
             else default_count += 1;
           });
@@ -2127,7 +2127,7 @@
             : `100% / ${max}`;
           return colors.map((step, i) => {
             if (custom_sizes.length) {
-              let [color, size] = parse$3(step);
+              let [color, size] = parse$1(step);
               let prefix = prev ? (prev + ' + ') : '';
               prev = prefix + (size !== undefined ? size : default_size);
               return `${color} 0 calc(${ prev })`
@@ -2192,7 +2192,7 @@
             if (rest.length) {
               commands = type + ',' + rest;
             }
-            let config = parse$4(commands);
+            let config = parse(commands);
             return custom_shape(config);
           }
         });
@@ -2411,7 +2411,7 @@
   var Property = {
 
     ['@size'](value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$3(value);
+      let [w, h = w] = parse$1(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -2433,12 +2433,12 @@
     },
 
     ['@min-size'](value) {
-      let [w, h = w] = parse$3(value);
+      let [w, h = w] = parse$1(value);
       return `min-width: ${ w }; min-height: ${ h };`;
     },
 
     ['@max-size'](value) {
-      let [w, h = w] = parse$3(value);
+      let [w, h = w] = parse$1(value);
       return `max-width: ${ w }; max-height: ${ h };`;
     },
 
@@ -2455,7 +2455,7 @@
       };
 
       return value => {
-        let [left, top = '50%'] = parse$3(value);
+        let [left, top = '50%'] = parse$1(value);
         left = map_left_right[left] || left;
         top = map_top_bottom[top] || top;
         const cw = 'var(--internal-cell-width, 25%)';
@@ -2483,7 +2483,7 @@
     },
 
     ['@shape']: memo('shape-property', value => {
-      let [type, ...args] = parse$3(value);
+      let [type, ...args] = parse$1(value);
       let prop = 'clip-path';
       if (typeof shapes[type] !== 'function') return '';
       let rules = `${ prop }: ${ shapes[type](...args) };`;
@@ -2511,7 +2511,7 @@
     }
   }
 
-  const is$1 = {
+  const is = {
     even: n => !(n % 2),
     odd:  n => !!(n % 2)
   };
@@ -2531,7 +2531,7 @@
       nth({ count, grid }) {
         return (...exprs) => exprs.some(expr =>
           even_or_odd(expr)
-            ? is$1[expr](count)
+            ? is[expr](count)
             : nth(expr, count, grid.count)
         );
       },
@@ -2539,7 +2539,7 @@
       row({ y, grid }) {
         return (...exprs) => exprs.some(expr =>
           even_or_odd(expr)
-            ? is$1[expr](y)
+            ? is[expr](y)
             : nth(expr, y, grid.y)
         );
       },
@@ -2547,29 +2547,29 @@
       col({ x, grid }) {
         return (...exprs) => exprs.some(expr =>
           even_or_odd(expr)
-            ? is$1[expr](x)
+            ? is[expr](x)
             : nth(expr, x, grid.x)
         );
       },
 
       even({ count, grid, y }) {
         return arg => {
-          if (arg === 'cross' && is$1.even(grid.x)) {
-            let m = is$1.even(y) ? 'odd' : 'even';
-            return is$1[m](count);
+          if (arg === 'cross' && is.even(grid.x)) {
+            let m = is.even(y) ? 'odd' : 'even';
+            return is[m](count);
           } else {
-            return is$1.even(count);
+            return is.even(count);
           }
         }
       },
 
       odd({ count, grid, y}) {
         return arg => {
-          if (arg === 'cross' && is$1.even(grid.x)) {
-            let m = is$1.even(y) ? 'even' : 'odd';
-            return is$1[m](count);
+          if (arg === 'cross' && is.even(grid.x)) {
+            let m = is.even(y) ? 'even' : 'odd';
+            return is[m](count);
           } else {
-            return is$1.odd(count);
+            return is.odd(count);
           }
         }
       },
@@ -2696,7 +2696,7 @@
         let is_string_or_number = (type === 'number' || type === 'string');
 
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$3(arg.value, true));
+          input.push(...parse$1(arg.value, true));
         }
         else {
           if (typeof arg === 'function') {
@@ -3574,7 +3574,7 @@
       let { x: gx, y: gy, z: gz } = this.grid_size;
 
       const compiled = this.generate(
-        parse$1(use + styles, this.extra)
+        parse$3(use + styles, this.extra)
       );
 
       if (!this.shadowRoot.innerHTML) {
@@ -3596,7 +3596,7 @@
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, grid);
           return this.build_grid(
-            this.generate(parse$1(use + styles, this.extra)),
+            this.generate(parse$3(use + styles, this.extra)),
             grid
           );
         }
@@ -3715,7 +3715,7 @@
         fn = options;
         options = null;
       }
-      let parsed = parse$1(code, this.extra);
+      let parsed = parse$3(code, this.extra);
       let _grid = parse_grid({});
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
@@ -3796,7 +3796,7 @@
       if (!this.innerHTML.trim() && !use) {
         return false;
       }
-      let parsed = parse$1(use + un_entity(this.innerHTML), this.extra);
+      let parsed = parse$3(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
       this.grid_size = compiled.grid
