@@ -1174,7 +1174,7 @@
   }
 
   const operator = {
-    '^' : 4,
+    '^': 4,
     '*': 3, '/': 3, '%': 3,
     '+': 2, '-': 2,
     '(': 1, ')': 1
@@ -1186,13 +1186,13 @@
       let { name, value, type } = expr.shift();
       if (type === 'variable') {
         let result = context[value];
-        if (typeof result === 'undefined') {
+        if (result === undefined) {
           result = Math[value];
         }
-        if (typeof result === 'undefined') {
+        if (result === undefined) {
           result = expand$1(value, context);
         }
-        if (typeof result === 'undefined') {
+        if (result === undefined) {
           result = 0;
         }
         if (typeof result !== 'number') {
@@ -2931,7 +2931,8 @@
             if (is_host_selector(selector)) {
               rule = transformed.size || '';
             } else {
-              rule = '';            if (!this.is_grid_defined) {
+              rule = '';
+              if (!this.is_grid_defined) {
                 transformed = Property[prop](value, {
                   is_special_selector: true,
                   grid: coords.grid

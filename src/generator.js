@@ -318,7 +318,7 @@ class Rules {
           if (is_host_selector(selector)) {
             rule = transformed.size || '';
           } else {
-            rule = '';;
+            rule = '';
             if (!this.is_grid_defined) {
               transformed = Property[prop](value, {
                 is_special_selector: true,

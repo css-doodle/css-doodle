@@ -16,7 +16,7 @@ export default function(input, context) {
 }
 
 const operator = {
-  '^' : 4,
+  '^': 4,
   '*': 3, '/': 3, '%': 3,
   '+': 2, '-': 2,
   '(': 1, ')': 1
@@ -28,13 +28,13 @@ function calc(expr, context, repeat = []) {
     let { name, value, type } = expr.shift();
     if (type === 'variable') {
       let result = context[value];
-      if (typeof result === 'undefined') {
+      if (result === undefined) {
         result = Math[value];
       }
-      if (typeof result === 'undefined') {
+      if (result === undefined) {
         result = expand(value, context);
       }
-      if (typeof result === 'undefined') {
+      if (result === undefined) {
         result = 0;
       }
       if (typeof result !== 'number') {
