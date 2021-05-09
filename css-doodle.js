@@ -368,7 +368,7 @@
     }
   }
 
-  function read_tag(it) {
+  function skip_tag(it) {
     it.next();
     while(!it.end()) {
       let c = it.curr();
@@ -578,7 +578,7 @@
         value[++idx] = [];
         skip = true;
       }
-      else if (/[;}]/.test(c)) {
+      else if (/[;}<]/.test(c)) {
         if (text.value.length) {
           value[idx].push(text);
           text = Tokens.text();
@@ -789,7 +789,7 @@
         if (cond.name.length) Tokens.push(cond);
       }
       else if (c == '<') {
-        read_tag(it);
+        skip_tag(it);
       }
       else if (!is$1.white_space(c)) {
         let rule = read_rule(it, extra);
