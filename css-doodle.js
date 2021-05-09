@@ -2413,12 +2413,12 @@
 
     ['@place-cell']: (() => {
       let map_left_right = {
-        'center': '50%', '0': '0%',
+        'center': '50%',
         'left': '0%', 'right': '100%',
         'top': '50%', 'bottom': '50%'
       };
       let map_top_bottom = {
-        'center': '50%', '0': '0%',
+        'center': '50%',
         'top': '0%', 'bottom': '100%',
         'left': '50%', 'right': '50%',
       };
@@ -2435,9 +2435,9 @@
         top: ${ top };
         width: ${ cw };
         height: ${ ch };
-        margin-left: calc(${ cw } / -2) !important;
-        margin-top: calc(${ ch } / -2) !important;
-        grid-area: unset !important;
+        margin-left: calc(${ cw } / -2);
+        margin-top: calc(${ ch } / -2);
+        grid-area: unset;
       `;
       }
     })(),
