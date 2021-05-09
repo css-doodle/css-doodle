@@ -1564,7 +1564,7 @@
     }
   }
 
-  const { cos, sin, sqrt, atan2, pow, PI } = Math;
+  const { cos, sin, atan2, PI } = Math;
 
   const _ = make_tag_function(c => {
     return create_shape_points(parse$1(c));
@@ -1979,8 +1979,8 @@
           if (!context[counter]) context[counter] = 0;
           context[counter] += 1;
           let max = args.length;
-          let [ idx ] = extra || [];
-          let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
+          let [idx = context[counter]] = extra || [];
+          let pos = (idx - 1) % max;
           let value = args[pos];
           return push_stack(context, 'last_pick', value);
         });
@@ -1996,8 +1996,8 @@
             context[values] = shuffle(args);
           }
           let max = args.length;
-          let [ idx ] = extra || [];
-          let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
+          let [idx = context[counter]] = extra || [];
+          let pos = (idx - 1) % max;
           let value = context[values][pos];
           return push_stack(context, 'last_pick', value);
         });
@@ -2468,16 +2468,9 @@
 
   };
 
-  function build_expr(expr) {
-    return n => String(expr)
-      .replace(/(\d+)(n)/g, '$1*' + n)
-      .replace(/n/g, n);
-  }
-
   function nth(input, curr, max) {
-    let expr = build_expr(input);
     for (let i = 0; i <= max; ++i) {
-      if (calc(expr(i)) == curr) return true;
+      if (calc(input, { n: i }) == curr) return true;
     }
   }
 

@@ -101,8 +101,8 @@ function get_exposed(random) {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
-        let [ idx ] = extra || [];
-        let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
+        let [idx = context[counter]] = extra || [];
+        let pos = (idx - 1) % max;
         let value = args[pos];
         return push_stack(context, 'last_pick', value);
       });
@@ -118,8 +118,8 @@ function get_exposed(random) {
           context[values] = shuffle(args);
         }
         let max = args.length;
-        let [ idx ] = extra || [];
-        let pos = ((idx === undefined ? context[counter] : idx) - 1) % max;
+        let [idx = context[counter]] = extra || [];
+        let pos = (idx - 1) % max;
         let value = context[values][pos];
         return push_stack(context, 'last_pick', value);
       });

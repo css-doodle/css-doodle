@@ -2,7 +2,7 @@ import { clamp, is_nil, make_tag_function } from './utils/index';
 import parse_shape_commands from './parser/parse-shape-commands';
 import calc from './utils/calc';
 
-const { cos, sin, sqrt, atan2, pow, PI } = Math;
+const { cos, sin, atan2, PI } = Math;
 
 const _ = make_tag_function(c => {
   return create_shape_points(parse_shape_commands(c));
