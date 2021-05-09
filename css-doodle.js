@@ -1590,7 +1590,7 @@
     hexagon: () => _`
     split: 6;
     rotate: 30;
-    scale: .99
+    scale: .98
   `,
 
     octagon: () => _`
@@ -1608,6 +1608,7 @@
 
     infinity: () => _`
     split: 180;
+    scale: .99;
     x: cos(t)*.99 / (sin(t)^2 + 1);
     y: x * sin(t)
   `,
