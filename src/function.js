@@ -254,6 +254,20 @@ function get_exposed(random) {
       return value => `var(--${ uniform_time.name })`;
     },
 
+    offset({ count, context, extra, position, grid }) {
+      let key = 'offset-points' + position;
+      return commands => {
+        let [idx = count, _, __, max = grid.count] = extra || [];
+        if (!context[key]) {
+          let config = parse_shape_commands(
+            commands + ';split: ' + max + ';'
+          );
+          context[key] = create_shape_points(config);
+        }
+        return context[key][idx - 1];
+      };
+    },
+
     shape() {
       return memo('shape-function', (type = '', ...args) => {
         type = String(type).trim();
