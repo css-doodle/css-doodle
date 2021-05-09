@@ -13,7 +13,7 @@ import expand from './utils/expand';
 import Stack from './utils/stack';
 import memo from './utils/memo';
 
-import { shapes, custom_shape } from './shapes';
+import { shapes, create_shape_points } from './shapes';
 import parse_value_group from './parser/parse-value-group';
 import parse_shape_commands from './parser/parse-shape-commands';
 
@@ -257,18 +257,21 @@ function get_exposed(random) {
     shape() {
       return memo('shape-function', (type = '', ...args) => {
         type = String(type).trim();
-        if (!type.length) return 'polygon()';
-        if (typeof shapes[type] === 'function') {
-          return shapes[type](args);
-        } else {
-          let commands = type;
-          let rest = args.join(',');
-          if (rest.length) {
-            commands = type + ',' + rest;
+        let points = [];
+        if (type.length) {
+          if (typeof shapes[type] === 'function') {
+            points = shapes[type](args);
+          } else {
+            let commands = type;
+            let rest = args.join(',');
+            if (rest.length) {
+              commands = type + ',' + rest;
+            }
+            let config = parse_shape_commands(commands);
+            points = create_shape_points(config);
           }
-          let config = parse_shape_commands(commands);
-          return custom_shape(config);
         }
+        return `polygon(${points.join(',')})`;
       });
     },
 

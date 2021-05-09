@@ -83,7 +83,8 @@ export default {
     let [type, ...args] = parse_value_group(value);
     let prop = 'clip-path';
     if (typeof shapes[type] !== 'function') return '';
-    let rules = `${ prop }: ${ shapes[type](...args) };`;
+    let points = shapes[type](...args);
+    let rules = `${ prop }: polygon(${points.join(',')});`;
     return prefixer(prop, rules) + 'overflow: hidden;';
   }),
 

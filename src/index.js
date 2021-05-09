@@ -9,6 +9,7 @@ import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
+import { make_tag_function } from './utils/index';
 
 import {
   cell_id, is_nil,
@@ -557,14 +558,12 @@ function create_grid({ x, y, z }) {
   return grid.outerHTML;
 }
 
-function CSSDoodle(input, ...vars) {
-  let get_value = v => is_nil(v) ? '' : v;
-  let rules = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+const CSSDoodle = make_tag_function(rules => {
   let doodle = document.createElement('css-doodle');
   if (doodle.update) {
     doodle.update(rules);
   }
   return doodle;
-}
+});
 
 export default CSSDoodle;

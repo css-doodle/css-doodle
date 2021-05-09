@@ -106,3 +106,11 @@ export function hash(str) {
   }
   return hash;
 }
+
+export function make_tag_function(fn) {
+  let get_value = v => is_nil(v) ? '' : v;
+  return (input, ...vars) => {
+    let string = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+    return fn(string);
+  };
+}
