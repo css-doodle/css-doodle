@@ -102,7 +102,7 @@ const shapes = {
     y: R * sin(T);
   `,
 
-  bottle: () => _`
+  vase: () => _`
     split: 240;
     scale: .3;
     rotate: 180;

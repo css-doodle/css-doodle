@@ -1664,7 +1664,7 @@
     y: R * sin(T);
   `,
 
-    bottle: () => _`
+    vase: () => _`
     split: 240;
     scale: .3;
     rotate: 180;
@@ -4042,15 +4042,13 @@
     return grid.outerHTML;
   }
 
-  function CSSDoodle(input, ...vars) {
-    let get_value = v => is_nil(v) ? '' : v;
-    let rules = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+  const CSSDoodle = make_tag_function(rules => {
     let doodle = document.createElement('css-doodle');
     if (doodle.update) {
       doodle.update(rules);
     }
     return doodle;
-  }
+  });
 
   return CSSDoodle;
 
