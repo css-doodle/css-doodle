@@ -39,6 +39,10 @@ export function is_nil(s) {
   return s === undefined || s === null;
 }
 
+export function is_empty(value) {
+  return is_nil(value) || value === '';
+}
+
 export function lazy(fn) {
   let wrap = () => fn;
   wrap.lazy = true;

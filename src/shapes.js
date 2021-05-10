@@ -1,4 +1,4 @@
-import { clamp, is_nil, make_tag_function } from './utils/index';
+import { clamp, is_empty, make_tag_function } from './utils/index';
 import parse_shape_commands from './parser/parse-shape-commands';
 import calc from './utils/calc';
 
@@ -216,10 +216,6 @@ function translate(x, y, offset) {
     x + (dx || 0),
     y + (dy || 0)
   ];
-}
-
-function is_empty(value) {
-  return is_nil(value) || value === '';
 }
 
 function create_shape_points(props) {

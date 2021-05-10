@@ -841,6 +841,10 @@
     return s === undefined || s === null;
   }
 
+  function is_empty(value) {
+    return is_nil(value) || value === '';
+  }
+
   function lazy(fn) {
     let wrap = () => fn;
     wrap.lazy = true;
@@ -1780,10 +1784,6 @@
     ];
   }
 
-  function is_empty(value) {
-    return is_nil(value) || value === '';
-  }
-
   function create_shape_points(props) {
     let split = clamp(parseInt(props.split || props.points) || 0, 3, 3600);
     let option = Object.assign({}, props, { split });
@@ -1834,7 +1834,7 @@
   }
 
   function parse(input, no_space = false) {
-    if (is_nil(input)) input = '';
+    if (is_empty(input)) input = '';
     const it = iterator(String(input));
     const result = [], stack = [];
     let group = '';
@@ -1871,7 +1871,7 @@
       it.next();
     }
 
-    if (!is_nil(group) && group.length) {
+    if (!is_empty(group)) {
       result.push(group);
     }
 
