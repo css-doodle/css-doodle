@@ -51,7 +51,7 @@ export default function parse(input, no_space = false) {
     it.next();
   }
 
-  if (!is_nil(group)) {
+  if (!is_nil(group) && group.length) {
     result.push(group);
   }
 
