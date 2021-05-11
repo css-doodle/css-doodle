@@ -1,4 +1,4 @@
-export default function iterator(input) {
+export default function iterator(input = '') {
   let index = 0, col = 1, line = 1;
   return {
     curr(n = 0) {

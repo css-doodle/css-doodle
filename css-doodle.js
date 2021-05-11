@@ -5,7 +5,7 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
 }(this, (function () { 'use strict';
 
-  function iterator(input) {
+  function iterator(input = '') {
     let index = 0, col = 1, line = 1;
     return {
       curr(n = 0) {
