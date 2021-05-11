@@ -1,3 +1,27 @@
+## 0.16.0
+
+### Features
+
+* Add experimental `@reflect` and `@offset` functions.
+* Set `aspect-ratio` for auto width/height grid.
+
+### Changes
+
+* Make `@rand` function starts from 0.
+* Remove unused size presets.
+* Remove/add new basic shapes.
+* Add `points` alias for `split`.
+* Set css-doodle element default to be `contain: content`.
+
+### Fixes
+
+* Fix build size to minimal.
+* Fix blank canvas issue in shader.
+* Catch error while WebGL is disabled.
+
+<br /> <br />
+
+
 ## 0.15.3
 
 ### Enhancement
