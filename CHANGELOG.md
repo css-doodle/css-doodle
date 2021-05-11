@@ -1,3 +1,13 @@
+## 0.16.1
+
+### Patch
+
+* Fix SVG size in Safari.
+
+<br /> <br />
+
+
+
 ## 0.16.0
 
 ### Features
@@ -20,6 +30,7 @@
 * Catch error while WebGL is disabled.
 
 <br /> <br />
+
 
 
 ## 0.15.3
