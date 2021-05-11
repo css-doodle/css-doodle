@@ -509,6 +509,8 @@ function get_basic_styles(uniforms = {}) {
     }
     svg {
       position: absolute;
+      width: 100%;
+      height: 100%;
     }
   `;
 }
