@@ -1571,7 +1571,9 @@
   const { cos, sin, atan2, PI } = Math;
 
   const _ = make_tag_function(c => {
-    return create_shape_points(parse$1(c));
+    return create_shape_points(
+      parse$1(c), {min: 3, max: 3600}
+    );
   });
 
   const shapes = {
@@ -1784,8 +1786,8 @@
     ];
   }
 
-  function create_shape_points(props) {
-    let split = clamp(parseInt(props.split || props.points) || 0, 3, 3600);
+  function create_shape_points(props, {min, max}) {
+    let split = clamp(parseInt(props.points || props.split) || 0, min, max);
     let option = Object.assign({}, props, { split });
     let px = is_empty(props.x) ? 'cos(t)' : props.x;
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
@@ -2138,10 +2140,9 @@
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
           if (!context[key]) {
-            let config = parse$1(
-              commands + ';split: ' + max + ';'
-            );
-            context[key] = create_shape_points(config);
+            let config = parse$1(commands);
+            config.points = max;
+            context[key] = create_shape_points(config, {min: 1, max: 65536});
           }
           return context[key][idx - 1];
         };
@@ -2161,7 +2162,7 @@
                 commands = type + ',' + rest;
               }
               let config = parse$1(commands);
-              points = create_shape_points(config);
+              points = create_shape_points(config, {min: 3, max: 3600});
             }
           }
           return `polygon(${points.join(',')})`;

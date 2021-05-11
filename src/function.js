@@ -259,10 +259,9 @@ function get_exposed(random) {
       return commands => {
         let [idx = count, _, __, max = grid.count] = extra || [];
         if (!context[key]) {
-          let config = parse_shape_commands(
-            commands + ';split: ' + max + ';'
-          );
-          context[key] = create_shape_points(config);
+          let config = parse_shape_commands(commands);
+          config.points = max;
+          context[key] = create_shape_points(config, {min: 1, max: 65536});
         }
         return context[key][idx - 1];
       };
@@ -282,7 +281,7 @@ function get_exposed(random) {
               commands = type + ',' + rest;
             }
             let config = parse_shape_commands(commands);
-            points = create_shape_points(config);
+            points = create_shape_points(config, {min: 3, max: 3600});
           }
         }
         return `polygon(${points.join(',')})`;

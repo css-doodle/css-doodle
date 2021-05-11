@@ -5,7 +5,9 @@ import calc from './utils/calc';
 const { cos, sin, atan2, PI } = Math;
 
 const _ = make_tag_function(c => {
-  return create_shape_points(parse_shape_commands(c));
+  return create_shape_points(
+    parse_shape_commands(c), {min: 3, max: 3600}
+  );
 });
 
 const shapes = {
@@ -218,8 +220,8 @@ function translate(x, y, offset) {
   ];
 }
 
-function create_shape_points(props) {
-  let split = clamp(parseInt(props.split || props.points) || 0, 3, 3600);
+function create_shape_points(props, {min, max}) {
+  let split = clamp(parseInt(props.points || props.split) || 0, min, max);
   let option = Object.assign({}, props, { split });
   let px = is_empty(props.x) ? 'cos(t)' : props.x;
   let py = is_empty(props.y) ? 'sin(t)' : props.y;
