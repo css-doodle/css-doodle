@@ -3707,7 +3707,7 @@
               ${ cells }
               ${ keyframes }
             </style>
-            <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+            <svg xmlns="http://www.w3.org/2000/svg" style="width:0; height:0">
               <defs class="svg-defs">${ svg_defs }</defs>
             </svg>
             ${ grid_container }
@@ -3842,7 +3842,7 @@
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
-      <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+      <svg xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
         <defs class="svg-defs">${ svg_defs }</defs>
       </svg>
       ${ create_grid(grid) }
