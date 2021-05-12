@@ -1,3 +1,16 @@
+## 0.17.1
+
+### Enhancement
+  * Add support for group properties.
+  * Add support for svg text node with `content` property.
+
+### Fixes
+  * Catch error on creating illegal SVG elements.
+
+<br /> <br />
+
+
+
 ## 0.17.0
 
 ### Features
