@@ -16,6 +16,7 @@ import memo from './utils/memo';
 import { shapes, create_shape_points } from './shapes';
 import parse_value_group from './parser/parse-value-group';
 import parse_shape_commands from './parser/parse-shape-commands';
+import parse_svg from './parser/parse-svg';
 
 import { uniform_time } from './uniform';
 
@@ -231,18 +232,36 @@ function get_exposed(random) {
 
     svg: lazy(input => {
       if (input === undefined) return '';
-      let svg = normalize_svg(get_value(input()).trim());
+      let value = get_value(input()).trim();
+      if (!value.startsWith('<')) {
+        let parsed = parse_svg(value);
+        let node = generate_svg(parsed);
+        if (node) {
+          value = node.childNodes[0].outerHTML;
+        }
+      }
+      let svg = normalize_svg(value);
       return create_svg_url(svg);
     }),
 
     ['svg-filter']: lazy(input => {
       if (input === undefined) return '';
       let id = unique_id('filter-');
-      let svg = normalize_svg(get_value(input()).trim())
-        .replace(
-          /<filter([\s>])/,
-          `<filter id="${ id }"$1`
-        );
+      let value = get_value(input()).trim();
+      if (!value.startsWith('<')) {
+        let parsed = parse_svg(value, {
+          type: 'block',
+          name: 'filter'
+        });
+        let node = generate_svg(parsed);
+        if (node) {
+          value = node.childNodes[0].outerHTML;
+        }
+      }
+      let svg = normalize_svg(value).replace(
+        /<filter([\s>])/,
+        `<filter id="${ id }"$1`
+      );
       return create_svg_url(svg, id);
     }),
 
@@ -321,6 +340,25 @@ function get_exposed(random) {
     if (!context[name]) context[name] = new Stack();
     context[name].push(value);
     return value;
+  }
+
+
+  const NS = 'https://www.w3.org/2000/svg';
+  function generate_svg(token, element) {
+    if (!element) {
+      element = document.createDocumentFragment();
+    }
+    if (token.type === 'block') {
+      let el = document.createElementNS(NS, token.name);
+      token.body.forEach(t => {
+        generate_svg(t, el);
+      });
+      element.appendChild(el);
+    }
+    if (token.type === 'statement') {
+      element.setAttributeNS(NS, token.property, token.value);
+    }
+    return element;
   }
 
   return alias_for(Expose, {

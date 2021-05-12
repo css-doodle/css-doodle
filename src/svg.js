@@ -16,7 +16,6 @@ export function normalize_svg(input) {
   return input;
 }
 
-
 export function svg_to_png(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
     let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
