@@ -230,9 +230,8 @@ function get_exposed(random) {
       return value => parseInt(get_value(value)).toString(16);
     },
 
-    svg: lazy(input => {
-      if (input === undefined) return '';
-      let value = get_value(input()).trim();
+    svg: lazy((...args) => {
+      let value = args.map(input => get_value(input()).trim()).join(',');
       if (!value.startsWith('<')) {
         let parsed = parse_svg(value);
         let node = generate_svg(parsed);
@@ -244,10 +243,9 @@ function get_exposed(random) {
       return create_svg_url(svg);
     }),
 
-    ['svg-filter']: lazy(input => {
-      if (input === undefined) return '';
+    ['svg-filter']: lazy((...rest) => {
+      let value = args.map(input => get_value(input()).trim()).join(',');
       let id = unique_id('filter-');
-      let value = get_value(input()).trim();
       if (!value.startsWith('<')) {
         let parsed = parse_svg(value, {
           type: 'block',
@@ -342,24 +340,27 @@ function get_exposed(random) {
     return value;
   }
 
-
   const NS = 'https://www.w3.org/2000/svg';
   function generate_svg(token, element, parent) {
     if (!element) {
       element = document.createDocumentFragment();
     }
     if (token.type === 'block') {
-      let el = document.createElementNS(NS, token.name);
-      token.body.forEach(t => {
-        generate_svg(t, el, token);
-      });
-      element.appendChild(el);
+      try {
+        let el = document.createElementNS(NS, token.name);
+        token.body.forEach(t => {
+          generate_svg(t, el, token);
+        });
+        element.appendChild(el);
+      } catch (e) {}
     }
     if (token.type === 'statement') {
       if (parent && parent.name == 'text' && token.property === 'content') {
         element.textContent = token.value;
       } else {
-        element.setAttributeNS(NS, token.property, token.value);
+        try {
+          element.setAttributeNS(NS, token.property, token.value);
+        } catch (e) {}
       }
     }
     return element;

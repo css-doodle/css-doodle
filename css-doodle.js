@@ -2172,12 +2172,17 @@
         fragment = [];
       }
       else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
-        let token = {
+        let props = getGroups(fragment);
+        let value = walk(iter, {
           type: 'statement',
-          property: joinToken(fragment),
+          property: 'token',
           value: []
-        };
-        rules.push(walk(iter, token));
+        });
+        props.forEach(prop => {
+          rules.push(Object.assign({}, value, {
+            property: prop
+          }));
+        });
         if (tokenType == 'block') {
           parentToken.body = rules;
         }
@@ -2200,6 +2205,23 @@
     return tokens
       .filter(token => !token.isSymbol(';'))
       .map(n => n.value).join('');
+  }
+
+  function getGroups(tokens) {
+    let group = [];
+    let temp = [];
+    tokens.forEach(token => {
+      if (token.isSymbol(',')) {
+        group.push(joinToken(temp));
+        temp = [];
+      } else {
+        temp.push(token);
+      }
+    });
+    if (temp.length) {
+      group.push(joinToken(temp));
+    }
+    return group;
   }
 
   function parse(source, root) {
@@ -2441,9 +2463,8 @@
         return value => parseInt(get_value(value)).toString(16);
       },
 
-      svg: lazy(input => {
-        if (input === undefined) return '';
-        let value = get_value(input()).trim();
+      svg: lazy((...args) => {
+        let value = args.map(input => get_value(input()).trim()).join(',');
         if (!value.startsWith('<')) {
           let parsed = parse(value);
           let node = generate_svg(parsed);
@@ -2455,10 +2476,9 @@
         return create_svg_url(svg);
       }),
 
-      ['svg-filter']: lazy(input => {
-        if (input === undefined) return '';
+      ['svg-filter']: lazy((...rest) => {
+        let value = args.map(input => get_value(input()).trim()).join(',');
         let id = unique_id('filter-');
-        let value = get_value(input()).trim();
         if (!value.startsWith('<')) {
           let parsed = parse(value, {
             type: 'block',
@@ -2553,24 +2573,27 @@
       return value;
     }
 
-
     const NS = 'https://www.w3.org/2000/svg';
     function generate_svg(token, element, parent) {
       if (!element) {
         element = document.createDocumentFragment();
       }
       if (token.type === 'block') {
-        let el = document.createElementNS(NS, token.name);
-        token.body.forEach(t => {
-          generate_svg(t, el, token);
-        });
-        element.appendChild(el);
+        try {
+          let el = document.createElementNS(NS, token.name);
+          token.body.forEach(t => {
+            generate_svg(t, el, token);
+          });
+          element.appendChild(el);
+        } catch (e) {}
       }
       if (token.type === 'statement') {
         if (parent && parent.name == 'text' && token.property === 'content') {
           element.textContent = token.value;
         } else {
-          element.setAttributeNS(NS, token.property, token.value);
+          try {
+            element.setAttributeNS(NS, token.property, token.value);
+          } catch (e) {}
         }
       }
       return element;

@@ -29,12 +29,17 @@ function walk(iter, parentToken) {
       fragment = [];
     }
     else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
-      let token = {
+      let props = getGroups(fragment);
+      let value = walk(iter, {
         type: 'statement',
-        property: joinToken(fragment),
+        property: 'token',
         value: []
-      }
-      rules.push(walk(iter, token));
+      });
+      props.forEach(prop => {
+        rules.push(Object.assign({}, value, {
+          property: prop
+        }));
+      });
       if (tokenType == 'block') {
         parentToken.body = rules;
       }
@@ -57,6 +62,23 @@ function joinToken(tokens) {
   return tokens
     .filter(token => !token.isSymbol(';'))
     .map(n => n.value).join('');
+}
+
+function getGroups(tokens) {
+  let group = [];
+  let temp = [];
+  tokens.forEach(token => {
+    if (token.isSymbol(',')) {
+      group.push(joinToken(temp));
+      temp = [];
+    } else {
+      temp.push(token);
+    }
+  });
+  if (temp.length) {
+    group.push(joinToken(temp));
+  }
+  return group;
 }
 
 function parse(source, root) {

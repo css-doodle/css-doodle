@@ -66,6 +66,15 @@ test('scanner', t => {
     { type: 'Symbol', value: '"', status: 'close' },
   ]);
 
+  t('x, y: red;', [
+    { type: 'Word', value: 'x' },
+    { type: 'Symbol', value: ',' },
+    { type: 'Word', value: 'y' },
+    { type: 'Symbol', value: ':' },
+    { type: 'Word', value: 'red' },
+    { type: 'Symbol', value: ';' },
+  ]);
+
 });
 
 test('scanner.escape', t => {
