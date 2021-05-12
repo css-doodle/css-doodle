@@ -1,3 +1,15 @@
+## 0.17.0
+
+### Features
+  * Add a new way to write SVG inside `@svg` function.
+
+### Changes
+  * Remove `contain: content`.
+
+<br /> <br />
+
+
+
 ## 0.16.1
 
 ### Patch
