@@ -2476,7 +2476,7 @@
         return create_svg_url(svg);
       }),
 
-      ['svg-filter']: lazy((...rest) => {
+      ['svg-filter']: lazy((...args) => {
         let value = args.map(input => get_value(input()).trim()).join(',');
         let id = unique_id('filter-');
         if (!value.startsWith('<')) {
