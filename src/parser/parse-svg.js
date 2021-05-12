@@ -7,6 +7,7 @@ function walk(iter, parentToken) {
 
   while (iter.next()) {
     let { prev, curr, next } = iter.get();
+
     if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
       parentToken.body = rules;
       break;
@@ -27,7 +28,7 @@ function walk(iter, parentToken) {
       rules.push(walk(iter, token));
       fragment = [];
     }
-    else if (curr.isSymbol(':') && fragment.length) {
+    else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
       let token = {
         type: 'statement',
         property: joinToken(fragment),

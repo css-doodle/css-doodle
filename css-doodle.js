@@ -2150,6 +2150,7 @@
 
     while (iter.next()) {
       let { prev, curr, next } = iter.get();
+
       if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
         parentToken.body = rules;
         break;
@@ -2170,7 +2171,7 @@
         rules.push(walk(iter, token));
         fragment = [];
       }
-      else if (curr.isSymbol(':') && fragment.length) {
+      else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
         let token = {
           type: 'statement',
           property: joinToken(fragment),
@@ -2554,19 +2555,23 @@
 
 
     const NS = 'https://www.w3.org/2000/svg';
-    function generate_svg(token, element) {
+    function generate_svg(token, element, parent) {
       if (!element) {
         element = document.createDocumentFragment();
       }
       if (token.type === 'block') {
         let el = document.createElementNS(NS, token.name);
         token.body.forEach(t => {
-          generate_svg(t, el);
+          generate_svg(t, el, token);
         });
         element.appendChild(el);
       }
       if (token.type === 'statement') {
-        element.setAttributeNS(NS, token.property, token.value);
+        if (parent && parent.name == 'text' && token.property === 'content') {
+          element.textContent = token.value;
+        } else {
+          element.setAttributeNS(NS, token.property, token.value);
+        }
       }
       return element;
     }
