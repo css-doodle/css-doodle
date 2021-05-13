@@ -1021,13 +1021,15 @@
     return result;
   }
 
+  const NS = 'http://www.w3.org/2000/svg';
+
   function create_svg_url(svg, id) {
     let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
     return `url("data:image/svg+xml;utf8,${ encoded }")`;
   }
 
   function normalize_svg(input) {
-    const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
+    const xmlns = `xmlns="${ NS }"`;
     if (!input.includes('<svg')) {
       input = `<svg ${ xmlns }>${ input }</svg>`;
     }
@@ -1080,6 +1082,37 @@
         action();
       }
     });
+  }
+
+  function generate_svg(token, element, parent) {
+    if (!element) {
+      element = document.createDocumentFragment();
+    }
+    if (token.type === 'block') {
+      try {
+        let el = document.createElementNS(NS, token.name);
+        if (el) {
+          token.body.forEach(t => {
+            generate_svg(t, el, token);
+          });
+          element.appendChild(el);
+        }
+      } catch (e) {}
+    }
+    if (token.type === 'statement') {
+      if (parent && parent.name == 'text' && token.property === 'content') {
+        element.textContent = token.value;
+      } else {
+        try {
+          element.setAttributeNS(NS, token.property, token.value);
+        } catch (e) {}
+      }
+    }
+    if (!parent) {
+      let child = element.childNodes[0];
+      return child && child.outerHTML || '';
+    }
+    return element;
   }
 
   function random_func(random) {
@@ -2569,38 +2602,6 @@
       if (!context[name]) context[name] = new Stack();
       context[name].push(value);
       return value;
-    }
-
-    const NS = 'https://www.w3.org/2000/svg';
-    function generate_svg(token, element, parent) {
-      if (!element) {
-        element = document.createDocumentFragment();
-      }
-      if (token.type === 'block') {
-        try {
-          let el = document.createElementNS(NS, token.name);
-          if (el) {
-            token.body.forEach(t => {
-              generate_svg(t, el, token);
-            });
-            element.appendChild(el);
-          }
-        } catch (e) {}
-      }
-      if (token.type === 'statement') {
-        if (parent && parent.name == 'text' && token.property === 'content') {
-          element.textContent = token.value;
-        } else {
-          try {
-            element.setAttributeNS(NS, token.property, token.value);
-          } catch (e) {}
-        }
-      }
-      if (!parent) {
-        let child = element.childNodes[0];
-        return child && child.outerHTML || '';
-      }
-      return element;
     }
 
     return alias_for(Expose, {

@@ -1,12 +1,14 @@
 import { cache_image, is_safari } from './utils/index';
 
+const NS = 'http://www.w3.org/2000/svg';
+
 export function create_svg_url(svg, id) {
   let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
   return `url("data:image/svg+xml;utf8,${ encoded }")`;
 }
 
 export function normalize_svg(input) {
-  const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
+  const xmlns = `xmlns="${ NS }"`;
   if (!input.includes('<svg')) {
     input = `<svg ${ xmlns }>${ input }</svg>`;
   }
@@ -59,4 +61,35 @@ export function svg_to_png(svg, width, height, scale) {
       action();
     }
   });
+}
+
+export function generate_svg(token, element, parent) {
+  if (!element) {
+    element = document.createDocumentFragment();
+  }
+  if (token.type === 'block') {
+    try {
+      let el = document.createElementNS(NS, token.name);
+      if (el) {
+        token.body.forEach(t => {
+          generate_svg(t, el, token);
+        });
+        element.appendChild(el);
+      }
+    } catch (e) {}
+  }
+  if (token.type === 'statement') {
+    if (parent && parent.name == 'text' && token.property === 'content') {
+      element.textContent = token.value;
+    } else {
+      try {
+        element.setAttributeNS(NS, token.property, token.value);
+      } catch (e) {}
+    }
+  }
+  if (!parent) {
+    let child = element.childNodes[0];
+    return child && child.outerHTML || '';
+  }
+  return element;
 }
