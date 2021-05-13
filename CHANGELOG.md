@@ -1,3 +1,13 @@
+## 0.17.3
+
+### Enhancement
+
+  * Add `turn` option for shape commands.
+
+<br /> <br />
+
+
+
 ## 0.17.2
 
 ### Fixes
@@ -6,7 +16,6 @@
   * Fix extra arguments for sequence functions.
 
 <br /> <br />
-
 
 
 
