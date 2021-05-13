@@ -1,3 +1,15 @@
+## 0.17.2
+
+### Fixes
+
+  * Fix bad variable for `@svg-filter`.
+  * Fix extra arguments for sequence functions.
+
+<br /> <br />
+
+
+
+
 ## 0.17.1
 
 ### Enhancement
