@@ -2553,8 +2553,8 @@
     };
 
     function make_sequence(c) {
-      return lazy((n, action) => {
-        if (!action || !n) return '';
+      return lazy((n, ...actions) => {
+        if (!actions || !n) return '';
         let count = get_value(n());
         let evaluated = calc(count);
         if (evaluated === 0) {
@@ -2562,7 +2562,11 @@
         }
         return sequence(
           evaluated,
-          (...args) => get_value(action(...args))
+          (...args) => {
+            return actions.map(action => {
+              return get_value(action(...args))
+            }).join(',');
+          }
         ).join(c);
       });
     }
