@@ -234,10 +234,7 @@ function get_exposed(random) {
       let value = args.map(input => get_value(input()).trim()).join(',');
       if (!value.startsWith('<')) {
         let parsed = parse_svg(value);
-        let node = generate_svg(parsed);
-        if (node) {
-          value = node.childNodes[0].outerHTML;
-        }
+        value = generate_svg(parsed);
       }
       let svg = normalize_svg(value);
       return create_svg_url(svg);
@@ -251,10 +248,7 @@ function get_exposed(random) {
           type: 'block',
           name: 'filter'
         });
-        let node = generate_svg(parsed);
-        if (node) {
-          value = node.childNodes[0].outerHTML;
-        }
+        value = generate_svg(parsed);
       }
       let svg = normalize_svg(value).replace(
         /<filter([\s>])/,
@@ -352,10 +346,12 @@ function get_exposed(random) {
     if (token.type === 'block') {
       try {
         let el = document.createElementNS(NS, token.name);
-        token.body.forEach(t => {
-          generate_svg(t, el, token);
-        });
-        element.appendChild(el);
+        if (el) {
+          token.body.forEach(t => {
+            generate_svg(t, el, token);
+          });
+          element.appendChild(el);
+        }
       } catch (e) {}
     }
     if (token.type === 'statement') {
@@ -366,6 +362,10 @@ function get_exposed(random) {
           element.setAttributeNS(NS, token.property, token.value);
         } catch (e) {}
       }
+    }
+    if (!parent) {
+      let child = element.childNodes[0];
+      return child && child.outerHTML || '';
     }
     return element;
   }
