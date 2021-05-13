@@ -514,7 +514,8 @@ function get_basic_styles(uniforms = {}) {
   `;
 }
 
-function get_grid_styles({x, y}) {
+function get_grid_styles(grid_obj) {
+  let { x, y } = grid_obj || {};
   return `
     :host, .host {
       grid-template-rows: repeat(${ y }, 1fr);
@@ -535,7 +536,8 @@ function create_cell(x, y, z) {
   return cell;
 }
 
-function create_grid({ x, y, z }) {
+function create_grid(grid_obj) {
+  let { x, y, z } = grid_obj || {};
   let grid = document.createElement('grid');
   let root = document.createDocumentFragment();
   if (z == 1) {
