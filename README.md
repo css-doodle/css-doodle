@@ -1,6 +1,6 @@
 # &lt;css-doodle /&gt;
 
-[![Build Status](https://travis-ci.org/css-doodle/css-doodle.svg?branch=master)](https://travis-ci.org/css-doodle/css-doodle)
+![Build Status](https://github.com/css-doodle/css-doodle/actions/workflows/node.js.yml/badge.svg)
 ![license](https://img.shields.io/github/license/mashape/apistatus.svg)
 
 
