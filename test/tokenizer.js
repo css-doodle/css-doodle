@@ -1,5 +1,5 @@
 import ava from 'ava';
-import { scan } from './tokenizer';
+import { scan } from '../src/parser/tokenizer';
 
 function compare(fn) {
   return t => {
@@ -25,7 +25,7 @@ for (let m in ava) {
 }
 
 
-test('scanner', t => {
+test('basic', t => {
 
   t('', []);
 
@@ -77,7 +77,7 @@ test('scanner', t => {
 
 });
 
-test('scanner.escape', t => {
+test('escape', t => {
 
   t('content: "\\"hello"', [
     { type: 'Word', value: 'content' },
@@ -106,7 +106,7 @@ test('scanner.escape', t => {
 
 });
 
-test('scanner.numbers', t => {
+test('numbers', t => {
 
   t('padding: 0 10px', [
     { type: 'Word', value: 'padding' },
@@ -187,7 +187,7 @@ test('scanner.numbers', t => {
 
 });
 
-test('scanner.comments', t => {
+test('comments', t => {
 
   t('/* color: red', []);
   t('/* color: red */', []);
@@ -229,7 +229,7 @@ test('scanner.comments', t => {
 });
 
 
-test('scanner.svg', t => {
+test('svg', t => {
 
   t('<svg></svg>', [
     { type: 'Word', value: '<svg></svg>' }

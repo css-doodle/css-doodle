@@ -79,11 +79,11 @@ export function generate_svg(token, element, parent) {
     } catch (e) {}
   }
   if (token.type === 'statement') {
-    if (parent && parent.name == 'text' && token.property === 'content') {
+    if (parent && parent.name == 'text' && token.name === 'content') {
       element.textContent = token.value;
     } else {
       try {
-        element.setAttributeNS(NS, token.property, token.value);
+        element.setAttributeNS(NS, token.name, token.value);
       } catch (e) {}
     }
   }

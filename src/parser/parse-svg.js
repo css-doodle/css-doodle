@@ -9,11 +9,11 @@ function walk(iter, parentToken) {
     let { prev, curr, next } = iter.get();
 
     if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
-      parentToken.body = rules;
+      parentToken.value = rules;
       break;
     }
-    else if (tokenType == 'statement' && curr.isSymbol(';') || (next && next.isSymbol('}'))) {
-      if (next.isSymbol('}')) {
+    else if (tokenType == 'statement' && (curr.isSymbol(';') || (next && next.isSymbol('}')))) {
+      if (next && next.isSymbol('}')) {
         fragment.push(curr);
       }
       parentToken.value = joinToken(fragment);
@@ -23,25 +23,27 @@ function walk(iter, parentToken) {
       let token = {
         type: 'block',
         name: joinToken(fragment),
-        body: []
+        value: []
       };
-      rules.push(walk(iter, token));
+      if (token.name) {
+        rules.push(walk(iter, token));
+      }
       fragment = [];
     }
     else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
       let props = getGroups(fragment);
       let value = walk(iter, {
         type: 'statement',
-        property: 'token',
+        name: 'token',
         value: []
       });
       props.forEach(prop => {
         rules.push(Object.assign({}, value, {
-          property: prop
+          name: prop
         }));
       });
       if (tokenType == 'block') {
-        parentToken.body = rules;
+        parentToken.value = rules;
       }
       fragment = [];
     }
@@ -50,7 +52,7 @@ function walk(iter, parentToken) {
     }
   }
   if (rules.length && tokenType == 'block') {
-    parentToken.body = rules;
+    parentToken.value = rules;
   }
   if (fragment.length && tokenType == 'statement') {
     parentToken.value = joinToken(fragment);
@@ -60,7 +62,7 @@ function walk(iter, parentToken) {
 
 function joinToken(tokens) {
   return tokens
-    .filter(token => !token.isSymbol(';'))
+    .filter(token => !token.isSymbol(';', '}'))
     .map(n => n.value).join('');
 }
 
@@ -85,7 +87,8 @@ function parse(source, root) {
   let iter = iterator(scan(source));
   let tokens = walk(iter, root || {
     type: 'block',
-    name: 'svg'
+    name: 'svg',
+    value: []
   });
   return tokens;
 }
