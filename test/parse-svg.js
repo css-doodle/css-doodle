@@ -1,40 +1,24 @@
-import ava from 'ava';
+import test from 'ava';
+
 import parseSvg from '../src/parser/parse-svg';
-
-function compare(fn) {
-  return t => {
-    fn((code, result, print) => {
-      let applied = parseSvg(code);
-      if (print) console.log(applied);
-      t.deepEqual(result, applied);
-    });
-  }
-}
-
-function test(name, fn) {
-  ava(name, compare(fn));
-}
-
-for (let m in ava) {
-  test[m] = (name, fn) => ava[m](name, compare(fn));
-}
-
+import compare from './_compare';
+compare.use(parseSvg);
 
 test('edge cases', t => {
 
-  t('', {
+  compare(t, '', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  t('any', {
+  compare(t, 'any', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  t('any:;', {
+  compare(t, 'any:;', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -44,7 +28,7 @@ test('edge cases', t => {
     }]
   });
 
-  t('circle {}', {
+  compare(t, 'circle {}', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -54,7 +38,7 @@ test('edge cases', t => {
     }]
   });
 
-  t('circle { name: } ', {
+  compare(t, 'circle { name: } ', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -68,31 +52,31 @@ test('edge cases', t => {
     }]
   });
 
-  t('{}', {
+  compare(t, '{}', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  t('{', {
+  compare(t, '{', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  t('}', {
+  compare(t, '}', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  t('{any}', {
+  compare(t, '{any}', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  t('text { {} }', {
+  compare(t, 'text { {} }', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -107,7 +91,7 @@ test('edge cases', t => {
 
 test('statement', t => {
 
-  t('viewBox: 0 0 0 10', {
+  compare(t, 'viewBox: 0 0 0 10', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -117,7 +101,7 @@ test('statement', t => {
     }]
   });
 
-  t('circle { cx: 5; cy: 5 }', {
+  compare(t, 'circle { cx: 5; cy: 5 }', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -134,7 +118,7 @@ test('statement', t => {
 
 
 test('group property', t => {
-  t('cx, cy: 5', {
+  compare(t, 'cx, cy: 5', {
     name: 'svg',
     type: 'block',
     value: [
