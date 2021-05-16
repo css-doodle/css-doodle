@@ -1,6 +1,6 @@
 import { scan, iterator } from './tokenizer';
 
-export default function parse(input) {
+function parse(input) {
   let iter = iterator(scan(input));
   return walk(iter);
 }
@@ -59,3 +59,5 @@ function isValid(name) {
   if (!name.startsWith('--')) return false;
   return true;
 }
+
+export default parse;

@@ -1,6 +1,6 @@
 import { scan, iterator } from './tokenizer';
 
-export default function parse(input) {
+function parse(input) {
   let iter = iterator(scan(input));
   let commands = {};
   let tokens = [];
@@ -29,3 +29,5 @@ export default function parse(input) {
 function joinTokens(tokens) {
   return tokens.map(n => n.value).join('');
 }
+
+export default parse;

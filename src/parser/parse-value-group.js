@@ -1,7 +1,7 @@
 import { is_empty } from '../utils/index.js';
 import { scan, iterator } from './tokenizer';
 
-export default function parse(input, noSpace) {
+function parse(input, noSpace) {
   let group = [];
   let skip = false;
   let tokens = [];
@@ -53,3 +53,5 @@ export default function parse(input, noSpace) {
 function joinTokens(tokens) {
   return tokens.map(n => n.value).join('');
 }
+
+export default parse;
