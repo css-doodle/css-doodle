@@ -31,7 +31,7 @@ test('basic value group', t => {
 
   compare(t, 'a, , @p(a,b)', ['a', '', '@p(a,b)']);
 
-  compare(t, '10px calc(10px / 5)', ['10px', 'calc(10px/5)']);
+  compare(t, '10px calc(10px / 5)', ['10px', 'calc(10px / 5)']);
 
 });
 

@@ -250,6 +250,7 @@ test('svg', t => {
     { type: 'Number', value: '10' },
     { type: 'Symbol', value: ')' },
     { type: 'Symbol', value: '"', status: 'close' },
+    { type: 'Space', value: ' ' },
     { type: 'Word', value: '/>' },
   ]);
 

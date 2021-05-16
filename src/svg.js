@@ -71,7 +71,7 @@ export function generate_svg(token, element, parent) {
     try {
       let el = document.createElementNS(NS, token.name);
       if (el) {
-        token.body.forEach(t => {
+        token.value.forEach(t => {
           generate_svg(t, el, token);
         });
         element.appendChild(el);

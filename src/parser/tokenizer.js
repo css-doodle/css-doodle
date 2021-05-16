@@ -108,8 +108,7 @@ function skipComments(iter) {
 }
 
 function ignoreSpacingSymbol(value) {
-   let excludes = ["'", '"', '`', 'π', '@'];
-   return is.symbol(value) && !excludes.includes(value);
+   return [':', ';', ',', '{', '}', '(', ')', '[', ']'].includes(value);
 }
 
 function readWord(iter) {
@@ -177,7 +176,7 @@ function last(array) {
 }
 
 function scan(source) {
-  let iter = iterator(source.trim());
+  let iter = iterator(String(source).trim());
   let tokens = [];
   let quoteStack = [];
 
