@@ -57,7 +57,7 @@ test('ignore comments', t => {
 
 });
 
-test.only('complex forms', t => {
+test('complex forms', t => {
 
   compare(t, 'a: b:c;', { a: 'b:c' });
 

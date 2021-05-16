@@ -271,4 +271,5 @@ export {
   is,
   iterator,
   scan,
+  Token
 }
