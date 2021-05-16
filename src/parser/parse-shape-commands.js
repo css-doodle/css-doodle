@@ -1,54 +1,31 @@
-import iterator from './iterator';
+import { scan, iterator } from './tokenizer';
 
 export default function parse(input) {
-  const it = iterator(input);
-
-  let temp = '';
-  let result = {};
-  let key = '';
-  let value = '';
-
-  while (!it.end()) {
-    let c = it.curr();
-    if (c == '/' && it.curr(1) == '*') {
-      read_comments(it);
+  let iter = iterator(scan(input));
+  let commands = {};
+  let tokens = [];
+  let name;
+  while (iter.next()) {
+    let { curr, next } = iter.get();
+    if (curr.isSymbol(':') && !name) {
+      name = joinTokens(tokens);
+      tokens = [];
+    } else if (curr.isSymbol(';') && name) {
+      commands[name] = joinTokens(tokens);
+      tokens = [];
+      name = null;
+    } else if (!curr.isSymbol(';')) {
+      tokens.push(curr);
     }
-    else if (c == ':') {
-      key = temp;
-      temp = '';
-    }
-    else if (c == ';') {
-      value = temp;
-      key = key.trim();
-      value = value.trim();
-      if (key.length && value.length) {
-        result[key] = value;
-      }
-      key = value = temp = '';
-    }
-    else {
-      temp += c;
-    }
-    it.next();
   }
 
-  key = key.trim();
-  temp = temp.trim();
-  if (key.length && temp.length) {
-    result[key] = temp;
+  if (tokens.length && name) {
+    commands[name] = joinTokens(tokens);
   }
 
-  return result;
+  return commands;
 }
 
-function read_comments(it, flag = {}) {
-  it.next();
-  while (!it.end()) {
-    let c = it.curr();
-    if ((c = it.curr()) == '*' && it.curr(1) == '/') {
-      it.next(); it.next();
-      break;
-    }
-    it.next();
-  }
+function joinTokens(tokens) {
+  return tokens.map(n => n.value).join('');
 }
