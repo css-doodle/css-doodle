@@ -20,6 +20,19 @@ test('basic', t => {
 
   compare(t, '', []);
 
+  compare(t, 'abc p', [
+    { type: 'Word', value: 'abc' },
+    { type: 'Space', value: ' ' },
+    { type: 'Word', value: 'p' },
+  ]);
+
+  compare(t, 'abc @p', [
+    { type: 'Word', value: 'abc' },
+    { type: 'Space', value: ' ' },
+    { type: 'Symbol', value: '@' },
+    { type: 'Word', value: 'p' },
+  ]);
+
   compare(t, 'color: red;', [
     { type: 'Word', value: 'color' },
     { type: 'Symbol', value: ':' },

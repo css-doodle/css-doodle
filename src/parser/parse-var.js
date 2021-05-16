@@ -8,7 +8,7 @@ export default function parse(input) {
 function walk(iter) {
   let rules = [];
   while (iter.next()) {
-    let { prev, curr, next } = iter.get();
+    let { curr, next } = iter.get();
     if (curr.value === 'var') {
       if (next && next.isSymbol('(')) {
         iter.next();
@@ -28,7 +28,7 @@ function parseVar(iter) {
   let ret = {};
   let tokens = [];
   while (iter.next()) {
-    let { prev, curr, next } = iter.get();
+    let { curr, next } = iter.get();
     if (curr.isSymbol(')', ';') && !ret.name) {
       ret.name = joinTokens(tokens);
       break;

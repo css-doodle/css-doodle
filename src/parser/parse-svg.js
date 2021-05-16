@@ -6,7 +6,7 @@ function walk(iter, parentToken) {
   let tokenType = parentToken && parentToken.type || '';
 
   while (iter.next()) {
-    let { prev, curr, next } = iter.get();
+    let { curr, next } = iter.get();
 
     if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
       parentToken.value = rules;

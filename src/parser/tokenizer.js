@@ -107,6 +107,11 @@ function skipComments(iter) {
   }
 }
 
+function ignoreSpacingSymbol(value) {
+   let excludes = ["'", '"', '`', 'π', '@'];
+   return is.symbol(value) && !excludes.includes(value);
+}
+
 function readWord(iter) {
   let temp = '';
   while (!iter.end()) {
@@ -232,7 +237,7 @@ function scan(source) {
 
       // Reduce unnecessary spaces
       if (!quoteStack.length && lastToken) {
-        if (is.symbol(lastToken.value) || is.symbol(next)) {
+        if (ignoreSpacingSymbol(lastToken.value) || ignoreSpacingSymbol(next)) {
           continue;
         } else {
           spaces = ' ';
