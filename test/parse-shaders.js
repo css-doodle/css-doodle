@@ -63,3 +63,44 @@ test('should break line on #define ', t => {
   }
   compare(t, input, result);
 });
+
+test('handle parens around raw fragment', t => {
+  let input = `(
+    void main() {}
+  )`;
+  let result = {
+    fragment: 'void main(){}',
+    textures: []
+  }
+  compare(t, input, result);
+});
+
+test('handle parens around group values', t => {
+  let input = `(
+    fragment {
+      (
+        void main() {}
+      )
+    }
+  )`;
+  let result = {
+    fragment: 'void main(){}',
+    textures: []
+  }
+  compare(t, input, result);
+});
+
+test('handle nested parens', t => {
+  let input = `
+    fragment {
+      ((
+        void main() {}
+      ))
+    }
+  `;
+  let result = {
+    fragment: 'void main(){}',
+    textures: []
+  }
+  compare(t, input, result);
+});

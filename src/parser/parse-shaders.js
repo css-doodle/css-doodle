@@ -2,7 +2,7 @@ import { scan, iterator, Token } from './tokenizer';
 import { is_empty } from '../utils/index';
 
 function parse(input) {
-  let iter = iterator(scan(input));
+  let iter = iterator(removeParens(scan(input)));
   let stack = [];
   let tokens = [];
   let identifier;
@@ -76,8 +76,19 @@ function lineBreak() {
   return new Token({ type: 'LineBreak', value: '\n' });
 }
 
+function removeParens(tokens) {
+  let head = tokens[0];
+  let last = tokens[tokens.length - 1];
+  while (head && head.isSymbol('(') && last && last.isSymbol(')')) {
+    tokens = tokens.slice(1, tokens.length - 1);
+    head = tokens[0];
+    last = tokens[tokens.length - 1];
+  }
+  return tokens;
+}
+
 function joinToken(tokens) {
-  return tokens.map(n => n.value).join('');
+  return removeParens(tokens).map(n => n.value).join('');
 }
 
 export default parse;
