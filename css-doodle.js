@@ -2330,19 +2330,19 @@
       },
 
       n({ extra }) {
-        return _ => extra ? extra[0] : '@n';
+        return n => extra ? (extra[0] + (Number(n) || 0)) : '@n';
       },
 
       nx({ extra }) {
-        return _ => extra ? extra[1] : '@nx';
+        return n => extra ? (extra[1] + (Number(n) || 0)) : '@nx';
       },
 
       ny({ extra }) {
-        return _ => extra ? extra[2] : '@ny';
+        return n => extra ? (extra[2] + (Number(n) || 0)) : '@ny';
       },
 
       N({ extra }) {
-        return _ => extra ? extra[3] : '@N';
+        return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
       },
 
       repeat: (
