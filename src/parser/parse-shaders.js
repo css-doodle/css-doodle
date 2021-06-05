@@ -1,85 +1,94 @@
-function is_quote(c) {
-  return c == '"' || c == "'";
-}
+import { scan, iterator, Token } from './tokenizer';
+import { is_empty } from '../utils/index';
 
-function last(array) {
-  return array[array.length - 1];
-}
-
-export default function parse(input) {
-  let c = '';
-  let temp = '';
-  let name = '';
+function parse(input) {
+  let iter = iterator(removeParens(scan(input)));
   let stack = [];
+  let tokens = [];
+  let identifier;
+  let line;
   let result = {
-    textures: []
+    textures: [],
   };
-  let w = '';
-  let words = [];
-  let i = 0;
-  while ((c = input[i++]) !== undefined) {
-    if (c == '"' || c == "'") {
-      if (last(stack) == c) {
-        stack.pop();
-      } else {
-        stack.push(c);
-      }
-    }
-    if (c == '{' && !is_quote(last(stack)))  {
+  while (iter.next()) {
+    let { curr, next } = iter.get();
+    if (curr.isSymbol('{')) {
       if (!stack.length) {
-        name = temp;
-        temp = '';
+        let name = joinToken(tokens);
+        if (isIdentifier(name)) {
+          identifier = name;
+          tokens = [];
+        } else {
+          tokens.push(curr);
+        }
       } else {
-        temp += c;
+        tokens.push(curr);
       }
-      stack.push(c);
+      stack.push('{');
     }
-    else if (c == '}' && !is_quote(last(stack)))  {
+    else if (curr.isSymbol('}')) {
       stack.pop();
-      if (!stack.length) {
-        let key = name.trim()
-        let value = temp.trim().replace(/^\(+|\)+$/g, '');
-        if (key.length) {
-          if (key.startsWith('texture')) {
+      if (!stack.length && identifier) {
+        let value = joinToken(tokens);
+        if (identifier && value.length) {
+          if (identifier.startsWith('texture')) {
             result.textures.push({
-              name: key,
-              value: value
+              name: identifier,
+              value
             });
           } else {
-            result[key] = value;
+            result[identifier] = value;
           }
+          tokens = [];
         }
-        name = temp = '';
+        identifier = null;
       } else {
-        temp += c;
+        tokens.push(curr);
       }
     }
     else {
-      if (/\s/.test(c) && w.length) {
-        words.push(w);
-        w = '';
-        let need_break =
-          (words[words.length - 3] == '#define') ||
-          (words[words.length - 2] == '#ifdef') ||
-          (words[words.length - 1] == '#else') ||
-          (words[words.length - 1] == '#endif');
-
-        if (need_break) {
-          temp = temp + '\n';
-        }
-      } else {
-        w += c;
+      if (!is_empty(line) && line != curr.pos[1]) {
+        tokens.push(lineBreak());
+        line = null;
       }
-      temp += c;
+      if (curr.isWord() && curr.value.startsWith('#')) {
+        tokens.push(lineBreak());
+        line = next.pos[1];
+      }
+      tokens.push(curr);
     }
   }
 
-  if (result.fragment === undefined) {
+  if (is_empty(result.fragment)) {
     return {
-      fragment: input,
+      fragment: joinToken(tokens),
       textures: []
     }
   }
-
   return result;
 }
+
+function isIdentifier(name) {
+  return /^texture\w*$|^(fragment|vertex)$/.test(name);
+}
+
+function lineBreak() {
+  return new Token({ type: 'LineBreak', value: '\n' });
+}
+
+function removeParens(tokens) {
+  let head = tokens[0];
+  let last = tokens[tokens.length - 1];
+  while (head && head.isSymbol('(') && last && last.isSymbol(')')) {
+    tokens = tokens.slice(1, tokens.length - 1);
+    head = tokens[0];
+    last = tokens[tokens.length - 1];
+  }
+  return tokens;
+}
+
+function joinToken(tokens) {
+  return removeParens(tokens).map(n => n.value).join('');
+}
+
+export default parse;

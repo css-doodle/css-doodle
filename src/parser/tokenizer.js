@@ -107,6 +107,10 @@ function skipComments(iter) {
   }
 }
 
+function ignoreSpacingSymbol(value) {
+   return [':', ';', ',', '{', '}', '(', ')', '[', ']'].includes(value);
+}
+
 function readWord(iter) {
   let temp = '';
   while (!iter.end()) {
@@ -172,7 +176,7 @@ function last(array) {
 }
 
 function scan(source) {
-  let iter = iterator(source.trim());
+  let iter = iterator(String(source).trim());
   let tokens = [];
   let quoteStack = [];
 
@@ -232,7 +236,7 @@ function scan(source) {
 
       // Reduce unnecessary spaces
       if (!quoteStack.length && lastToken) {
-        if (is.symbol(lastToken.value) || is.symbol(next)) {
+        if (ignoreSpacingSymbol(lastToken.value) || ignoreSpacingSymbol(next)) {
           continue;
         } else {
           spaces = ' ';
@@ -267,4 +271,5 @@ export {
   is,
   iterator,
   scan,
+  Token
 }

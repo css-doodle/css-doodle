@@ -1,59 +1,57 @@
-import iterator from './iterator';
 import { is_empty } from '../utils/index.js';
+import { scan, iterator } from './tokenizer';
 
-function is_seperator(c, no_space) {
-  if (no_space) return /[,，]/.test(c);
-  else return /[,，\s]/.test(c);
-}
+function parse(input, noSpace) {
+  let group = [];
+  let skip = false;
+  let tokens = [];
+  let parenStack = [];
+  let quoteStack = [];
 
-function skip_seperator(it, no_space) {
-  while (!it.end()) {
-    if (!is_seperator(it.curr(1), no_space)) break;
-    else it.next();
-  }
-}
-
-export default function parse(input, no_space = false) {
-  if (is_empty(input)) input = '';
-  const it = iterator(String(input));
-  const result = [], stack = [];
-  let group = '';
-
-  while (!it.end()) {
-    let c = it.curr();
-    if (c === undefined) break;
-    if (c == '(') {
-      group += c;
-      stack.push(c);
-    }
-
-    else if (c == ')') {
-      group += c;
-      if (stack.length) {
-        stack.pop();
-      }
-    }
-
-    else if (stack.length) {
-      group += c;
-    }
-
-    else if (is_seperator(c, no_space)) {
-      result.push(group);
-      group = '';
-      skip_seperator(it, no_space);
-    }
-
-    else {
-      group += c;
-    }
-
-    it.next();
+  if (is_empty(input)) {
+    return group;
   }
 
-  if (!is_empty(group)) {
-    result.push(group);
+  let iter = iterator(scan(input));
+
+  function isSeperator(token) {
+    if (noSpace) {
+      return token.isSymbol(',');
+    }
+    return token.isSymbol(',') || token.isSpace();
   }
 
-  return result;
+  while (iter.next()) {
+    let { prev, curr, next }  = iter.get();
+    if (curr.isSymbol('(')) {
+      parenStack.push(curr.value);
+    }
+    if (curr.isSymbol(')')) {
+      parenStack.pop();
+    }
+    if (curr.status === 'open') {
+      quoteStack.push(curr.value);
+    }
+    if (curr.status === 'close') {
+      quoteStack.pop();
+    }
+    if (isSeperator(curr) && !parenStack.length && !quoteStack.length) {
+      group.push(joinTokens(tokens));
+      tokens = [];
+    } else {
+      tokens.push(curr);
+    }
+  }
+
+  if (tokens.length) {
+    group.push(joinTokens(tokens));
+  }
+
+  return group;
 }
+
+function joinTokens(tokens) {
+  return tokens.map(n => n.value).join('');
+}
+
+export default parse;

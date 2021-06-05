@@ -563,8 +563,8 @@ function evaluate_value(values, extra) {
       v.value = vars.reduce((ret, p) => {
         let rule = '', other = '', parsed;
         rule = read_variable(extra, p.name);
-        if (!rule && p.alternative) {
-          p.alternative.every(n => {
+        if (!rule && p.fallback) {
+          p.fallback.every(n => {
             other = read_variable(extra, n.name);
             if (other) {
               rule = other;
