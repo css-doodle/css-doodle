@@ -171,8 +171,7 @@ test('numbers', t => {
     { type: 'Number', value: '10' },
     { type: 'Word', value: 'e' },
     { type: 'Symbol', value: '+' },
-    { type: 'Symbol', value: '-' },
-    { type: 'Number', value: '9' },
+    { type: 'Number', value: '-9' },
   ]);
 
   compare(t, '0x', [
@@ -195,6 +194,11 @@ test('numbers', t => {
 
   compare(t, 'n-10', [
     { type: 'Word', value: 'n' },
+    { type: 'Number', value: '-10' },
+  ]);
+
+  compare(t, '5-10', [
+    { type: 'Number', value: '5' },
     { type: 'Symbol', value: '-' },
     { type: 'Number', value: '10' },
   ]);

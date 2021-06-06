@@ -1,4 +1,3 @@
-import iterator from './iterator';
 import parse_var from './parse-var';
 import List from '../utils/list';
 
@@ -87,6 +86,30 @@ const symbols = {
   'π': Math.PI,
   '∏': Math.PI
 };
+
+function iterator(input = '') {
+  let index = 0, col = 1, line = 1;
+  return {
+    curr(n = 0) {
+      return input[index + n];
+    },
+    end() {
+      return input.length <= index;
+    },
+    info() {
+      return { index, col, line };
+    },
+    index(n) {
+      return (n === undefined ? index : index = n);
+    },
+    next() {
+      let next = input[index++];
+      if (next == '\n') line++, col = 0;
+      else col++;
+      return next;
+    }
+  };
+}
 
 function throw_error(msg, { col, line }) {
   console.warn(

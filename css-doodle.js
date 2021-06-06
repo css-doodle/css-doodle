@@ -5,101 +5,340 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
 }(this, (function () { 'use strict';
 
-  function iterator$1(input = '') {
-    let index = 0, col = 1, line = 1;
+  /**
+   * This is totally rewrite for the old parser module
+   * I'll improve and replace them little by little.
+   */
+
+  const symbols$1 = {
+    ':': 'colon',
+    ';': 'semicolon',
+    ',': 'comma',
+    '(': 'left-paren',
+    ')': 'right-paren',
+    '[': 'left-square-bracket',
+    ']': 'right-square-bracket',
+    '{': 'left-curly-brace',
+    '}': 'right-curly-brace',
+    'π': 'pi',
+    '±': 'plus-or-minus',
+    '+': 'plus',
+    '-': 'minus',
+    '*': 'product',
+    '/': 'division',
+    '%': 'mod',
+    '"': 'double-quote',
+    "'": 'single-quote',
+    '`': 'backquote',
+    '@': 'at',
+  };
+
+  const is$2 = {
+    escape: c => c == '\\',
+    space:  c => /[\r\n\t\s]/.test(c),
+    digit:  c => /^[0-9]$/.test(c),
+    sign:   c => /^[+-]$/.test(c),
+    dot:    c => c == '.',
+    quote:  c => /^["'`]$/.test(c),
+    symbol: c => symbols$1[c],
+    hexNum: c => /^[0-9a-f]$/i.test(c),
+    hex:           (a, b, c) => a == '0' && is$2.letter(b, 'x') && is$2.hexNum(c),
+    expWithSign:   (a, b, c) => is$2.letter(a, 'e') && is$2.sign(b) && is$2.digit(c),
+    exp:           (a, b) => is$2.letter(a, 'e') && is$2.digit(b),
+    dots:          (a, b) => is$2.dot(a) && is$2.dot(b),
+    letter:        (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
+    comment:       (a, b) => a == '/' && b == '*',
+    selfClosedTag: (a, b) => a == '/' && b == '>',
+    closedTag:     (a, b) => a == '<' && b == '/',
+  };
+
+  class Token {
+    constructor({ type, value, pos, status }) {
+      this.type = type;
+      this.value = value;
+      this.pos = pos;
+      if (status) {
+        this.status = status;
+      }
+    }
+    isSymbol(...values) {
+      let isSymbol = this.type == 'Symbol';
+      if (!values.length) return isSymbol;
+      return values.some(c => c === this.value);
+    }
+    isSpace() {
+      return this.type == 'Space';
+    }
+    isNumber() {
+      return this.type == 'Number';
+    }
+    isWord() {
+      return this.type == 'Word';
+    }
+  }
+
+  function iterator$1(input) {
+    let pointer = -1;
+    let max = input.length;
+    let col = -1, row = 0;
     return {
       curr(n = 0) {
-        return input[index + n];
+        return input[pointer + n];
+      },
+      next(n = 1) {
+        let next = input[pointer += n];
+        if (next == '\n') row++, col = 0;
+        else col += n;
+        return next;
       },
       end() {
-        return input.length <= index;
+        return pointer >= max;
       },
-      info() {
-        return { index, col, line };
-      },
-      index(n) {
-        return (n === undefined ? index : index = n);
-      },
-      next() {
-        let next = input[index++];
-        if (next == '\n') line++, col = 0;
-        else col++;
-        return next;
+      get() {
+        return {
+          prev:  input[pointer - 1],
+          curr:  input[pointer + 0],
+          next:  input[pointer + 1],
+          next2: input[pointer + 2],
+          next3: input[pointer + 3],
+          pos:   [col, row],
+        }
       }
-    };
+    }
   }
 
-  // I'll make it work first
-  function parse$5(it) {
-    let word = '', marks = [];
-    let groups = [], result = {};
+  function skipComments(iter) {
+    while (iter.next()) {
+      let { curr, prev } = iter.get();
+      if (is$2.comment(curr, prev)) break;
+    }
+  }
 
-    while(!it.end()) {
-      let c = it.curr();
-      if (c == '(') {
-        marks.push(c);
-        word = '';
+  function ignoreSpacingSymbol(value) {
+     return [':', ';', ',', '{', '}', '(', ')', '[', ']'].includes(value);
+  }
+
+  function readWord(iter) {
+    let temp = '';
+    while (!iter.end()) {
+      let { curr, next } = iter.get();
+      temp += curr;
+      let isBreak = is$2.symbol(next) || is$2.space(next) || is$2.digit(next);
+      if (temp.length && isBreak) {
+        if (!is$2.closedTag(curr, next)) break;
       }
-      else if (c == ')' || c == ',') {
-        if (/^\-\-.+/.test(word)) {
-          if (!result.name) {
-            result.name = word;
-          } else {
-            if (!result.alternative) {
-              result.alternative = [];
+      iter.next();
+    }
+    return temp.trim();
+  }
+
+  function readSpaces(iter) {
+    let temp = '';
+    while (!iter.end()) {
+      let { curr, next } = iter.get();
+      temp += curr;
+      if (!is$2.space(next)) break;
+      iter.next();
+    }
+    return temp;
+  }
+
+  function readNumber(iter) {
+    let temp = '';
+    let hasDot = false;
+    while (!iter.end()) {
+      let { curr, next, next2, next3 } = iter.get();
+      temp += curr;
+      if (hasDot && is$2.dot(next)) break;
+      if (is$2.dot(curr)) hasDot = true;
+      if (is$2.dots(next, next2)) break;
+      if (is$2.expWithSign(next, next2, next3)) {
+        temp += iter.next() + iter.next();
+      }
+      else if (is$2.exp(next, next2)) {
+        temp += iter.next();
+      }
+      else if (!is$2.digit(next) && !is$2.dot(next)) {
+        break;
+      }
+      iter.next();
+    }
+    return temp;
+  }
+
+  function readHexNumber(iter) {
+    let temp = '0x';
+    iter.next(2);
+    while (!iter.end()) {
+      let { curr, next } = iter.get();
+      temp += curr;
+      if (!is$2.hexNum(next)) break;
+      iter.next();
+    }
+    return temp;
+  }
+
+  function last$3(array) {
+    return array[array.length - 1];
+  }
+
+  function scan(source) {
+    let iter = iterator$1(String(source).trim());
+    let tokens = [];
+    let quoteStack = [];
+
+    while (iter.next()) {
+      let { prev, curr, next, next2, pos } = iter.get();
+      if (is$2.comment(curr, next)) {
+        skipComments(iter);
+      }
+      else if (is$2.hex(curr, next, next2)) {
+        let num = readHexNumber(iter);
+        tokens.push(new Token({
+          type: 'Number', value: num, pos
+        }));
+      }
+      else if (is$2.digit(curr) || (
+          is$2.digit(next) && is$2.dot(curr) && !is$2.dots(prev, curr))) {
+        let num = readNumber(iter);
+        tokens.push(new Token({
+          type: 'Number', value: num, pos
+        }));
+      }
+      else if (is$2.symbol(curr) && !is$2.selfClosedTag(curr, next)) {
+        let lastToken = last$3(tokens);
+        // negative
+        if (curr === '-' && is$2.digit(next) && (!lastToken || !lastToken.isNumber())) {
+          let num = readNumber(iter);
+          tokens.push(new Token({
+            type: 'Number', value: num, pos
+          }));
+          continue;
+        }
+
+        let token = {
+          type: 'Symbol', value: curr, pos
+        };
+        // Escaped symbols
+        if (quoteStack.length && is$2.escape(lastToken.value)) {
+          tokens.pop();
+          let word = readWord(iter);
+          if (word.length) {
+            tokens.push(new Token({
+              type: 'Word', value: word, pos
+            }));
+          }
+        }
+        else {
+          if (is$2.quote(curr)) {
+            let lastQuote = last$3(quoteStack);
+            if (lastQuote == curr) {
+              quoteStack.pop();
+              token.status = 'close';
+            } else {
+              quoteStack.push(curr);
+              token.status = 'open';
             }
-            result.alternative.push({
-              name: word
-            });
           }
-        }
 
-        if (c == ')') {
-          if (marks[marks.length - 1] == '(') {
-            marks.pop();
+          tokens.push(new Token(token));
+        }
+      }
+      else if (is$2.space(curr)) {
+        let spaces = readSpaces(iter);
+        let lastToken = last$3(tokens);
+        let { next } = iter.get();
+
+        // Reduce unnecessary spaces
+        if (!quoteStack.length && lastToken) {
+          if (ignoreSpacingSymbol(lastToken.value) || ignoreSpacingSymbol(next)) {
+            continue;
           } else {
-            throw new Error('bad match');
+            spaces = ' ';
           }
         }
-
-        if (c == ',') {
-          if (!marks.length) {
-            groups.push(result);
-            result = {};
-          }
+        if (tokens.length && (next && next.trim())) {
+          tokens.push(new Token({
+            type: 'Space', value: spaces, pos
+          }));
         }
-
-        word = '';
       }
-      else if (!/\s/.test(c)) {
-        word += c;
+      else {
+        let word = readWord(iter);
+        if (word.length) {
+          tokens.push(new Token({
+            type: 'Word', value: word, pos
+          }));
+        }
       }
-      it.next();
     }
 
-    if (marks.length) {
-      return [];
+    // Remove last space token
+    let lastToken = last$3(tokens);
+    if (lastToken && lastToken.isSpace()) {
+      tokens.length = tokens.length - 1;
     }
-
-    if (result.name) {
-      groups.push(result);
-    }
-    return groups;
+    return tokens;
   }
 
-  function parse_var(input) {
-    input = input.trim();
-    let result = [];
-    if (!/^var\(/.test(input)) {
-      return result;
+  function parse$6(input) {
+    let iter = iterator$1(scan(input));
+    return walk$1(iter);
+  }
+
+  function walk$1(iter) {
+    let rules = [];
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      if (curr.value === 'var') {
+        if (next && next.isSymbol('(')) {
+          iter.next();
+          let rule = parseVar(iter);
+          if (isValid(rule.name)) {
+            rules.push(rule);
+          }
+        }
+      } else if (rules.length && !curr.isSymbol(',')) {
+        break;
+      }
     }
-    let it = iterator$1(input);
-    try {
-      result = parse$5(it);
-    } catch (e) {
-      console.warn(e && e.message || 'Bad variables.');
+    return rules;
+  }
+
+  function parseVar(iter) {
+    let ret = {};
+    let tokens = [];
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      if (curr.isSymbol(')', ';') && !ret.name) {
+        ret.name = joinTokens$2(tokens);
+        break;
+      }
+      else if (curr.isSymbol(',')) {
+        if (ret.name === undefined) {
+          ret.name = joinTokens$2(tokens);
+          tokens = [];
+        }
+        if (ret.name) {
+          ret.fallback = walk$1(iter);
+        }
+      } else {
+        tokens.push(curr);
+      }
     }
-    return result;
+    return ret;
+  }
+
+  function joinTokens$2(tokens) {
+    return tokens.map(n => n.value).join('');
+  }
+
+  function isValid(name) {
+    if (name === undefined) return false;
+    if (name.length <= 2) return false;
+    if (name.substr(2).startsWith('-')) return false;
+    if (!name.startsWith('--')) return false;
+    return true;
   }
 
   function List(random) {
@@ -161,7 +400,7 @@
     }
   }
 
-  let { first, last: last$4, clone } = List();
+  let { first, last: last$2, clone } = List();
 
   const Tokens = {
     func(name = '') {
@@ -222,7 +461,7 @@
     }
   };
 
-  const is$2 = {
+  const is$1 = {
     white_space(c) {
       return /[\s\n\t]/.test(c);
     },
@@ -242,10 +481,34 @@
 
   // This should not be in the parser
   // but I'll leave it here until the rewriting
-  const symbols$1 = {
+  const symbols = {
     'π': Math.PI,
     '∏': Math.PI
   };
+
+  function iterator(input = '') {
+    let index = 0, col = 1, line = 1;
+    return {
+      curr(n = 0) {
+        return input[index + n];
+      },
+      end() {
+        return input.length <= index;
+      },
+      info() {
+        return { index, col, line };
+      },
+      index(n) {
+        return (n === undefined ? index : index = n);
+      },
+      next() {
+        let next = input[index++];
+        if (next == '\n') line++, col = 0;
+        else col++;
+        return next;
+      }
+    };
+  }
 
   function throw_error(msg, { col, line }) {
     console.warn(
@@ -255,7 +518,7 @@
 
   function get_text_value(input) {
     if (input.trim().length) {
-      return is$2.number(+input) ? +input : input.trim()
+      return is$1.number(+input) ? +input : input.trim()
     } else {
       return input;
     }
@@ -287,7 +550,7 @@
   }
 
   function read_line(it, reset) {
-    let check = c => is$2.line_break(c) || c == '{';
+    let check = c => is$1.line_break(c) || c == '{';
     return read_until(check)(it, reset);
   }
 
@@ -295,7 +558,7 @@
     let c, step = Tokens.step();
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      if (is$2.white_space(c)) {
+      if (is$1.white_space(c)) {
         it.next();
         continue;
       }
@@ -316,7 +579,7 @@
     let c;
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      else if (is$2.white_space(c)) {
+      else if (is$1.white_space(c)) {
         it.next();
         continue;
       }
@@ -351,7 +614,7 @@
     return keyframes;
   }
 
-  function read_comments$1(it, flag = {}) {
+  function read_comments(it, flag = {}) {
     it.next();
     while (!it.end()) {
       let c = it.curr();
@@ -381,7 +644,7 @@
     let prop = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == ':') break;
-      else if (!is$2.white_space(c)) prop += c;
+      else if (!is$1.white_space(c)) prop += c;
       it.next();
     }
     return prop;
@@ -393,7 +656,7 @@
       c = it.curr();
       if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
         if (stack.length) {
-          if (c != '(' && c === last$4(stack)) {
+          if (c != '(' && c === last$2(stack)) {
             stack.pop();
           } else {
             stack.push(c);
@@ -432,9 +695,9 @@
             if (arg.startsWith('±') && !doodle) {
               let raw = arg.substr(1);
               let cloned = clone(group);
-              last$4(cloned).value = '-' + raw;
+              last$2(cloned).value = '-' + raw;
               args.push(normalize_argument(cloned));
-              last$4(group).value = raw;
+              last$2(group).value = raw;
             }
           }
 
@@ -446,13 +709,13 @@
         }
       }
       else {
-        if (symbols$1[c] && !/[0-9]/.test(it.curr(-1))) {
-          c = symbols$1[c];
+        if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
+          c = symbols[c];
         }
         arg += c;
       }
 
-      if (composition && it.curr() == ')' && !stack.length) {
+      if (composition && (it.curr() == ')' || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
         if (group.length) {
           args.push(normalize_argument(group));
         }
@@ -478,12 +741,12 @@
     });
 
     let ft = first(result) || {};
-    let ed = last$4(result) || {};
+    let ed = last$2(result) || {};
     if (ft.type == 'text' && ed.type == 'text') {
       let cf = first(ft.value);
-      let ce  = last$4(ed.value);
+      let ce  = last$2(ed.value);
       if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-        if (is$2.pair_of(cf, ce)) {
+        if (is$1.pair_of(cf, ce)) {
           ft.value = ft.value.slice(1);
           ed.value = ed.value.slice(0, ed.value.length - 1);
           result.cluster = true;
@@ -560,14 +823,14 @@
     while (!it.end()) {
       c = it.curr();
 
-      if (skip && is$2.white_space(c)) {
+      if (skip && is$1.white_space(c)) {
         it.next();
         continue;
       } else {
         skip = false;
       }
 
-      if (c == '\n' && !is$2.white_space(it.curr(-1))) {
+      if (c == '\n' && !is$1.white_space(it.curr(-1))) {
         text.value += ' ';
       }
       else if (c == ',' && !stack.length) {
@@ -592,12 +855,12 @@
         }
         value[idx].push(read_func(it));
       }
-      else if (!is$2.white_space(c) || !is$2.white_space(it.curr(-1))) {
+      else if (!is$1.white_space(c) || !is$1.white_space(it.curr(-1))) {
         if (c == '(') stack.push(c);
         if (c == ')') stack.pop();
 
-        if (symbols$1[c] && !/[0-9]/.test(it.curr(-1))) {
-          c = symbols$1[c];
+        if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
+          c = symbols[c];
         }
 
         text.value += c;
@@ -614,7 +877,7 @@
     let selector = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == '{') break;
-      else if (!is$2.white_space(c)) {
+      else if (!is$1.white_space(c)) {
         selector += c;
       }
       it.next();
@@ -630,7 +893,7 @@
         selector.arguments = read_arguments(it);
       }
       else if (/[){]/.test(c)) break;
-      else if (!is$2.white_space(c)) selector.name += c;
+      else if (!is$1.white_space(c)) selector.name += c;
       it.next();
     }
     return selector;
@@ -640,7 +903,7 @@
     let pseudo = Tokens.pseudo(), c;
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      if (is$2.white_space(c)) {
+      if (is$1.white_space(c)) {
         it.next();
         continue;
       }
@@ -697,7 +960,7 @@
       else if (c == '@' && !read_line(it, true).includes(':')) {
         cond.styles.push(read_cond(it));
       }
-      else if (!is$2.white_space(c)) {
+      else if (!is$1.white_space(c)) {
         let rule = read_rule(it, extra);
         if (rule.property) cond.styles.push(rule);
         if (it.curr() == '}') break;
@@ -718,12 +981,12 @@
   function evaluate_value(values, extra) {
     values.forEach && values.forEach(v => {
       if (v.type == 'text' && v.value) {
-        let vars = parse_var(v.value);
+        let vars = parse$6(v.value);
         v.value = vars.reduce((ret, p) => {
           let rule = '', other = '', parsed;
           rule = read_variable(extra, p.name);
-          if (!rule && p.alternative) {
-            p.alternative.every(n => {
+          if (!rule && p.fallback) {
+            p.fallback.every(n => {
               other = read_variable(extra, n.name);
               if (other) {
                 rule = other;
@@ -732,7 +995,7 @@
             });
           }
           try {
-            parsed = parse$4(rule, extra);
+            parsed = parse$5(rule, extra);
           } catch (e) { }
           if (parsed) {
             ret.push.apply(ret, parsed);
@@ -761,20 +1024,20 @@
     }, []);
   }
 
-  function parse$4(input, extra) {
-    const it = iterator$1(input);
+  function parse$5(input, extra) {
+    const it = iterator(input);
     const Tokens = [];
     while (!it.end()) {
       let c = it.curr();
-      if (is$2.white_space(c)) {
+      if (is$1.white_space(c)) {
         it.next();
         continue;
       }
       else if (c == '/' && it.curr(1) == '*') {
-        read_comments$1(it);
+        read_comments(it);
       }
       else if (c == '/' && it.curr(1) == '/') {
-        read_comments$1(it, { inline: true });
+        read_comments(it, { inline: true });
       }
       else if (c == ':') {
         let pseudo = read_pseudo(it, extra);
@@ -791,7 +1054,7 @@
       else if (c == '<') {
         skip_tag(it);
       }
-      else if (!is$2.white_space(c)) {
+      else if (!is$1.white_space(c)) {
         let rule = read_rule(it, extra);
         if (rule.property) Tokens.push(rule);
       }
@@ -935,90 +1198,94 @@
     });
   }
 
-  function is_quote(c) {
-    return c == '"' || c == "'";
-  }
-
-  function last$3(array) {
-    return array[array.length - 1];
-  }
-
-  function parse$3(input) {
-    let c = '';
-    let temp = '';
-    let name = '';
+  function parse$4(input) {
+    let iter = iterator$1(removeParens(scan(input)));
     let stack = [];
+    let tokens = [];
+    let identifier;
+    let line;
     let result = {
-      textures: []
+      textures: [],
     };
-    let w = '';
-    let words = [];
-    let i = 0;
-    while ((c = input[i++]) !== undefined) {
-      if (c == '"' || c == "'") {
-        if (last$3(stack) == c) {
-          stack.pop();
-        } else {
-          stack.push(c);
-        }
-      }
-      if (c == '{' && !is_quote(last$3(stack)))  {
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      if (curr.isSymbol('{')) {
         if (!stack.length) {
-          name = temp;
-          temp = '';
+          let name = joinToken$1(tokens);
+          if (isIdentifier(name)) {
+            identifier = name;
+            tokens = [];
+          } else {
+            tokens.push(curr);
+          }
         } else {
-          temp += c;
+          tokens.push(curr);
         }
-        stack.push(c);
+        stack.push('{');
       }
-      else if (c == '}' && !is_quote(last$3(stack)))  {
+      else if (curr.isSymbol('}')) {
         stack.pop();
-        if (!stack.length) {
-          let key = name.trim();
-          let value = temp.trim().replace(/^\(+|\)+$/g, '');
-          if (key.length) {
-            if (key.startsWith('texture')) {
+        if (!stack.length && identifier) {
+          let value = joinToken$1(tokens);
+          if (identifier && value.length) {
+            if (identifier.startsWith('texture')) {
               result.textures.push({
-                name: key,
-                value: value
+                name: identifier,
+                value
               });
             } else {
-              result[key] = value;
+              result[identifier] = value;
             }
+            tokens = [];
           }
-          name = temp = '';
+          identifier = null;
         } else {
-          temp += c;
+          tokens.push(curr);
         }
       }
       else {
-        if (/\s/.test(c) && w.length) {
-          words.push(w);
-          w = '';
-          let need_break =
-            (words[words.length - 3] == '#define') ||
-            (words[words.length - 2] == '#ifdef') ||
-            (words[words.length - 1] == '#else') ||
-            (words[words.length - 1] == '#endif');
-
-          if (need_break) {
-            temp = temp + '\n';
-          }
-        } else {
-          w += c;
+        if (!is_empty(line) && line != curr.pos[1]) {
+          tokens.push(lineBreak());
+          line = null;
         }
-        temp += c;
+        if (curr.isWord() && curr.value.startsWith('#')) {
+          tokens.push(lineBreak());
+          line = next.pos[1];
+        }
+        tokens.push(curr);
       }
     }
 
-    if (result.fragment === undefined) {
+    if (is_empty(result.fragment)) {
       return {
-        fragment: input,
+        fragment: joinToken$1(tokens),
         textures: []
       }
     }
-
     return result;
+  }
+
+  function isIdentifier(name) {
+    return /^texture\w*$|^(fragment|vertex)$/.test(name);
+  }
+
+  function lineBreak() {
+    return new Token({ type: 'LineBreak', value: '\n' });
+  }
+
+  function removeParens(tokens) {
+    let head = tokens[0];
+    let last = tokens[tokens.length - 1];
+    while (head && head.isSymbol('(') && last && last.isSymbol(')')) {
+      tokens = tokens.slice(1, tokens.length - 1);
+      head = tokens[0];
+      last = tokens[tokens.length - 1];
+    }
+    return tokens;
+  }
+
+  function joinToken$1(tokens) {
+    return removeParens(tokens).map(n => n.value).join('');
   }
 
   const NS = 'http://www.w3.org/2000/svg';
@@ -1092,7 +1359,7 @@
       try {
         let el = document.createElementNS(NS, token.name);
         if (el) {
-          token.body.forEach(t => {
+          token.value.forEach(t => {
             generate_svg(t, el, token);
           });
           element.appendChild(el);
@@ -1100,11 +1367,11 @@
       } catch (e) {}
     }
     if (token.type === 'statement') {
-      if (parent && parent.name == 'text' && token.property === 'content') {
+      if (parent && parent.name == 'text' && token.name === 'content') {
         element.textContent = token.value;
       } else {
         try {
-          element.setAttributeNS(NS, token.property, token.value);
+          element.setAttributeNS(NS, token.name, token.value);
         } catch (e) {}
       }
     }
@@ -1205,7 +1472,7 @@
   /**
    * Based on the Shunting-yard algorithm.
    */
-  let { last: last$2 } = List();
+  let { last: last$1 } = List();
 
   const default_context = {
     'π': Math.PI,
@@ -1289,7 +1556,7 @@
         else if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = last$2(tokens) || {};
+          let { type, value } = last$1(tokens) || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1380,14 +1647,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && last$2(op_stack) != '(') {
+          while (op_stack.length && last$1(op_stack) != '(') {
             expr.push({ type: 'operator', value: op_stack.pop() });
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[last$2(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
           }
@@ -1441,7 +1708,7 @@
     }
   }
 
-  const { last: last$1, flat_map } = List();
+  const { last, flat_map } = List();
 
   function expand(fn) {
     return (...args) => fn.apply(null, flat_map(args, n =>
@@ -1469,7 +1736,7 @@
         stack.push(c);
         continue;
       }
-      if (last$1(stack) == '-') {
+      if (last(stack) == '-') {
         stack.pop();
         let from = stack.pop();
         tokens.push(from
@@ -1547,64 +1814,41 @@
     }
   }
 
-  function parse$2(input) {
-    const it = iterator$1(input);
-
-    let temp = '';
-    let result = {};
-    let key = '';
-    let value = '';
-
-    while (!it.end()) {
-      let c = it.curr();
-      if (c == '/' && it.curr(1) == '*') {
-        read_comments(it);
+  function parse$3(input) {
+    let iter = iterator$1(scan(input));
+    let commands = {};
+    let tokens = [];
+    let name;
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      if (curr.isSymbol(':') && !name) {
+        name = joinTokens$1(tokens);
+        tokens = [];
+      } else if (curr.isSymbol(';') && name) {
+        commands[name] = joinTokens$1(tokens);
+        tokens = [];
+        name = null;
+      } else if (!curr.isSymbol(';')) {
+        tokens.push(curr);
       }
-      else if (c == ':') {
-        key = temp;
-        temp = '';
-      }
-      else if (c == ';') {
-        value = temp;
-        key = key.trim();
-        value = value.trim();
-        if (key.length && value.length) {
-          result[key] = value;
-        }
-        key = value = temp = '';
-      }
-      else {
-        temp += c;
-      }
-      it.next();
     }
 
-    key = key.trim();
-    temp = temp.trim();
-    if (key.length && temp.length) {
-      result[key] = temp;
+    if (tokens.length && name) {
+      commands[name] = joinTokens$1(tokens);
     }
 
-    return result;
+    return commands;
   }
 
-  function read_comments(it, flag = {}) {
-    it.next();
-    while (!it.end()) {
-      it.curr();
-      if ((it.curr()) == '*' && it.curr(1) == '/') {
-        it.next(); it.next();
-        break;
-      }
-      it.next();
-    }
+  function joinTokens$1(tokens) {
+    return tokens.map(n => n.value).join('');
   }
 
   const { cos, sin, atan2, PI } = Math;
 
   const _ = make_tag_function(c => {
     return create_shape_points(
-      parse$2(c), {min: 3, max: 3600}
+      parse$3(c), {min: 3, max: 3600}
     );
   });
 
@@ -1856,325 +2100,56 @@
     });
   }
 
-  function is_seperator(c, no_space) {
-    if (no_space) return /[,，]/.test(c);
-    else return /[,，\s]/.test(c);
-  }
-
-  function skip_seperator(it, no_space) {
-    while (!it.end()) {
-      if (!is_seperator(it.curr(1), no_space)) break;
-      else it.next();
-    }
-  }
-
-  function parse$1(input, no_space = false) {
-    if (is_empty(input)) input = '';
-    const it = iterator$1(String(input));
-    const result = [], stack = [];
-    let group = '';
-
-    while (!it.end()) {
-      let c = it.curr();
-      if (c === undefined) break;
-      if (c == '(') {
-        group += c;
-        stack.push(c);
-      }
-
-      else if (c == ')') {
-        group += c;
-        if (stack.length) {
-          stack.pop();
-        }
-      }
-
-      else if (stack.length) {
-        group += c;
-      }
-
-      else if (is_seperator(c, no_space)) {
-        result.push(group);
-        group = '';
-        skip_seperator(it, no_space);
-      }
-
-      else {
-        group += c;
-      }
-
-      it.next();
-    }
-
-    if (!is_empty(group)) {
-      result.push(group);
-    }
-
-    return result;
-  }
-
-  /**
-   * This is totally rewrite for the old parser module
-   * I'll improve and replace them little by little.
-   */
-
-  const symbols = {
-    ':': 'colon',
-    ';': 'semicolon',
-    ',': 'comma',
-    '(': 'left-paren',
-    ')': 'right-paren',
-    '[': 'left-square-bracket',
-    ']': 'right-square-bracket',
-    '{': 'left-curly-brace',
-    '}': 'right-curly-brace',
-    'π': 'pi',
-    '±': 'plus-or-minus',
-    '+': 'plus',
-    '-': 'minus',
-    '*': 'product',
-    '/': 'division',
-    '%': 'mod',
-    '"': 'double-quote',
-    "'": 'single-quote',
-    '`': 'backquote',
-    '@': 'at',
-  };
-
-  const is$1 = {
-    escape: c => c == '\\',
-    space:  c => /[\r\n\t\s]/.test(c),
-    digit:  c => /^[0-9]$/.test(c),
-    sign:   c => /^[+-]$/.test(c),
-    dot:    c => c == '.',
-    quote:  c => /^["'`]$/.test(c),
-    symbol: c => symbols[c],
-    hexNum: c => /^[0-9a-f]$/i.test(c),
-    hex:           (a, b, c) => a == '0' && is$1.letter(b, 'x') && is$1.hexNum(c),
-    expWithSign:   (a, b, c) => is$1.letter(a, 'e') && is$1.sign(b) && is$1.digit(c),
-    exp:           (a, b) => is$1.letter(a, 'e') && is$1.digit(b),
-    dots:          (a, b) => is$1.dot(a) && is$1.dot(b),
-    letter:        (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
-    comment:       (a, b) => a == '/' && b == '*',
-    selfClosedTag: (a, b) => a == '/' && b == '>',
-    closedTag:     (a, b) => a == '<' && b == '/',
-  };
-
-  class Token {
-    constructor({ type, value, pos, status }) {
-      this.type = type;
-      this.value = value;
-      this.pos = pos;
-      if (status) {
-        this.status = status;
-      }
-    }
-    isSymbol(...values) {
-      let isSymbol = this.type == 'Symbol';
-      if (!values.length) return isSymbol;
-      return values.some(c => c === this.value);
-    }
-    isSpace() {
-      return this.type == 'Space';
-    }
-    isNumber() {
-      return this.type == 'Number';
-    }
-    isWord() {
-      return this.type == 'Word';
-    }
-  }
-
-  function iterator(input) {
-    let pointer = -1;
-    let max = input.length;
-    let col = -1, row = 0;
-    return {
-      curr(n = 0) {
-        return input[pointer + n];
-      },
-      next(n = 1) {
-        let next = input[pointer += n];
-        if (next == '\n') row++, col = 0;
-        else col += n;
-        return next;
-      },
-      end() {
-        return pointer >= max;
-      },
-      get() {
-        return {
-          prev:  input[pointer - 1],
-          curr:  input[pointer + 0],
-          next:  input[pointer + 1],
-          next2: input[pointer + 2],
-          next3: input[pointer + 3],
-          pos:   [col, row],
-        }
-      }
-    }
-  }
-
-  function skipComments(iter) {
-    while (iter.next()) {
-      let { curr, prev } = iter.get();
-      if (is$1.comment(curr, prev)) break;
-    }
-  }
-
-  function readWord(iter) {
-    let temp = '';
-    while (!iter.end()) {
-      let { curr, next } = iter.get();
-      temp += curr;
-      let isBreak = is$1.symbol(next) || is$1.space(next) || is$1.digit(next);
-      if (temp.length && isBreak) {
-        if (!is$1.closedTag(curr, next)) break;
-      }
-      iter.next();
-    }
-    return temp.trim();
-  }
-
-  function readSpaces(iter) {
-    let temp = '';
-    while (!iter.end()) {
-      let { curr, next } = iter.get();
-      temp += curr;
-      if (!is$1.space(next)) break;
-      iter.next();
-    }
-    return temp;
-  }
-
-  function readNumber(iter) {
-    let temp = '';
-    let hasDot = false;
-    while (!iter.end()) {
-      let { curr, next, next2, next3 } = iter.get();
-      temp += curr;
-      if (hasDot && is$1.dot(next)) break;
-      if (is$1.dot(curr)) hasDot = true;
-      if (is$1.dots(next, next2)) break;
-      if (is$1.expWithSign(next, next2, next3)) {
-        temp += iter.next() + iter.next();
-      }
-      else if (is$1.exp(next, next2)) {
-        temp += iter.next();
-      }
-      else if (!is$1.digit(next) && !is$1.dot(next)) {
-        break;
-      }
-      iter.next();
-    }
-    return temp;
-  }
-
-  function readHexNumber(iter) {
-    let temp = '0x';
-    iter.next(2);
-    while (!iter.end()) {
-      let { curr, next } = iter.get();
-      temp += curr;
-      if (!is$1.hexNum(next)) break;
-      iter.next();
-    }
-    return temp;
-  }
-
-  function last(array) {
-    return array[array.length - 1];
-  }
-
-  function scan(source) {
-    let iter = iterator(source.trim());
+  function parse$2(input, noSpace) {
+    let group = [];
     let tokens = [];
+    let parenStack = [];
     let quoteStack = [];
 
+    if (is_empty(input)) {
+      return group;
+    }
+
+    let iter = iterator$1(scan(input));
+
+    function isSeperator(token) {
+      if (noSpace) {
+        return token.isSymbol(',');
+      }
+      return token.isSymbol(',') || token.isSpace();
+    }
+
     while (iter.next()) {
-      let { prev, curr, next, next2, pos } = iter.get();
-      if (is$1.comment(curr, next)) {
-        skipComments(iter);
+      let { prev, curr, next }  = iter.get();
+      if (curr.isSymbol('(')) {
+        parenStack.push(curr.value);
       }
-      else if (is$1.hex(curr, next, next2)) {
-        let num = readHexNumber(iter);
-        tokens.push(new Token({
-          type: 'Number', value: num, pos
-        }));
+      if (curr.isSymbol(')')) {
+        parenStack.pop();
       }
-      else if (is$1.digit(curr) || (
-          is$1.digit(next) && is$1.dot(curr) && !is$1.dots(prev, curr))) {
-        let num = readNumber(iter);
-        tokens.push(new Token({
-          type: 'Number', value: num, pos
-        }));
+      if (curr.status === 'open') {
+        quoteStack.push(curr.value);
       }
-      else if (is$1.symbol(curr) && !is$1.selfClosedTag(curr, next)) {
-        let token = {
-          type: 'Symbol', value: curr, pos
-        };
-        let lastToken = last(tokens);
-
-        // Escaped symbols
-        if (quoteStack.length && is$1.escape(lastToken.value)) {
-          tokens.pop();
-          let word = readWord(iter);
-          if (word.length) {
-            tokens.push(new Token({
-              type: 'Word', value: word, pos
-            }));
-          }
-        }
-        else {
-          if (is$1.quote(curr)) {
-            let lastQuote = last(quoteStack);
-            if (lastQuote == curr) {
-              quoteStack.pop();
-              token.status = 'close';
-            } else {
-              quoteStack.push(curr);
-              token.status = 'open';
-            }
-          }
-
-          tokens.push(new Token(token));
-        }
+      if (curr.status === 'close') {
+        quoteStack.pop();
       }
-      else if (is$1.space(curr)) {
-        let spaces = readSpaces(iter);
-        let lastToken = last(tokens);
-        let { next } = iter.get();
-
-        // Reduce unnecessary spaces
-        if (!quoteStack.length && lastToken) {
-          if (is$1.symbol(lastToken.value) || is$1.symbol(next)) {
-            continue;
-          } else {
-            spaces = ' ';
-          }
-        }
-        if (tokens.length && (next && next.trim())) {
-          tokens.push(new Token({
-            type: 'Space', value: spaces, pos
-          }));
-        }
-      }
-      else {
-        let word = readWord(iter);
-        if (word.length) {
-          tokens.push(new Token({
-            type: 'Word', value: word, pos
-          }));
-        }
+      if (isSeperator(curr) && !parenStack.length && !quoteStack.length) {
+        group.push(joinTokens(tokens));
+        tokens = [];
+      } else {
+        tokens.push(curr);
       }
     }
 
-    // Remove last space token
-    let lastToken = last(tokens);
-    if (lastToken && lastToken.isSpace()) {
-      tokens.length = tokens.length - 1;
+    if (tokens.length) {
+      group.push(joinTokens(tokens));
     }
-    return tokens;
+
+    return group;
+  }
+
+  function joinTokens(tokens) {
+    return tokens.map(n => n.value).join('');
   }
 
   function walk(iter, parentToken) {
@@ -2183,14 +2158,14 @@
     let tokenType = parentToken && parentToken.type || '';
 
     while (iter.next()) {
-      let { prev, curr, next } = iter.get();
+      let { curr, next } = iter.get();
 
       if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
-        parentToken.body = rules;
+        parentToken.value = rules;
         break;
       }
-      else if (tokenType == 'statement' && curr.isSymbol(';') || (next && next.isSymbol('}'))) {
-        if (next.isSymbol('}')) {
+      else if (tokenType == 'statement' && (curr.isSymbol(';') || (next && next.isSymbol('}')))) {
+        if (next && next.isSymbol('}')) {
           fragment.push(curr);
         }
         parentToken.value = joinToken(fragment);
@@ -2200,25 +2175,27 @@
         let token = {
           type: 'block',
           name: joinToken(fragment),
-          body: []
+          value: []
         };
-        rules.push(walk(iter, token));
+        if (token.name) {
+          rules.push(walk(iter, token));
+        }
         fragment = [];
       }
       else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
         let props = getGroups(fragment);
         let value = walk(iter, {
           type: 'statement',
-          property: 'token',
+          name: 'token',
           value: []
         });
         props.forEach(prop => {
           rules.push(Object.assign({}, value, {
-            property: prop
+            name: prop
           }));
         });
         if (tokenType == 'block') {
-          parentToken.body = rules;
+          parentToken.value = rules;
         }
         fragment = [];
       }
@@ -2227,7 +2204,7 @@
       }
     }
     if (rules.length && tokenType == 'block') {
-      parentToken.body = rules;
+      parentToken.value = rules;
     }
     if (fragment.length && tokenType == 'statement') {
       parentToken.value = joinToken(fragment);
@@ -2237,7 +2214,7 @@
 
   function joinToken(tokens) {
     return tokens
-      .filter(token => !token.isSymbol(';'))
+      .filter(token => !token.isSymbol(';', '}'))
       .map(n => n.value).join('');
   }
 
@@ -2258,13 +2235,60 @@
     return group;
   }
 
-  function parse(source, root) {
-    let iter = iterator(scan(source));
+  function parse$1(source, root) {
+    let iter = iterator$1(scan(source));
     let tokens = walk(iter, root || {
       type: 'block',
-      name: 'svg'
+      name: 'svg',
+      value: []
     });
     return tokens;
+  }
+
+  const commands = 'MmLlHhVvCcSsQqTtAaZz';
+  const relatives = 'mlhvcsqtaz';
+
+  function parse(input) {
+    let iter = iterator$1(scan(input));
+    let temp = {};
+    let result = {
+      commands: [],
+      valid: true
+    };
+    while (iter.next()) {
+      let { curr } = iter.get();
+      if (curr.isSpace() || curr.isSymbol(',')) {
+        continue;
+      }
+      if (curr.isWord()) {
+        if (temp.name) {
+          result.commands.push(temp);
+          temp = {};
+        }
+        temp.name = curr.value;
+        temp.value = [];
+        if (!commands.includes(curr.value)) {
+          temp.type = 'unknown';
+          result.valid = false;
+        } else if (relatives.includes(curr.value)) {
+          temp.type = 'relative';
+        } else {
+          temp.type = 'absolute';
+        }
+      } else if (temp.value) {
+        let value = curr.value;
+        if (curr.isNumber()) {
+          value = Number(curr.value);
+        }
+        temp.value.push(value);
+      } else if (!temp.name) {
+        result.valid = false;
+      }
+    }
+    if (temp.name) {
+      result.commands.push(temp);
+    }
+    return result;
   }
 
   const uniform_time = {
@@ -2460,7 +2484,7 @@
             return '';
           }
           colors.forEach(step => {
-            let [_, size] = parse$1(step);
+            let [_, size] = parse$2(step);
             if (size !== undefined) custom_sizes.push(size);
             else default_count += 1;
           });
@@ -2469,7 +2493,7 @@
             : `100% / ${max}`;
           return colors.map((step, i) => {
             if (custom_sizes.length) {
-              let [color, size] = parse$1(step);
+              let [color, size] = parse$2(step);
               let prefix = prev ? (prev + ' + ') : '';
               prev = prefix + (size !== undefined ? size : default_size);
               return `${color} 0 calc(${ prev })`
@@ -2500,7 +2524,7 @@
       svg: lazy((...args) => {
         let value = args.map(input => get_value(input()).trim()).join(',');
         if (!value.startsWith('<')) {
-          let parsed = parse(value);
+          let parsed = parse$1(value);
           value = generate_svg(parsed);
         }
         let svg = normalize_svg(value);
@@ -2511,7 +2535,7 @@
         let value = args.map(input => get_value(input()).trim()).join(',');
         let id = unique_id('filter-');
         if (!value.startsWith('<')) {
-          let parsed = parse(value, {
+          let parsed = parse$1(value, {
             type: 'block',
             name: 'filter'
           });
@@ -2537,7 +2561,7 @@
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
           if (!context[key]) {
-            let config = parse$2(commands);
+            let config = parse$3(commands);
             config.points = max;
             context[key] = create_shape_points(config, {min: 1, max: 65536});
           }
@@ -2558,7 +2582,7 @@
               if (rest.length) {
                 commands = type + ',' + rest;
               }
-              let config = parse$2(commands);
+              let config = parse$3(commands);
               points = create_shape_points(config, {min: 3, max: 3600});
             }
           }
@@ -2576,6 +2600,54 @@
 
       path() {
         return value => value;
+      },
+
+      invert() {
+        return commands => {
+          let parsed = parse(commands);
+          if (!parsed.valid) return commands;
+          return parsed.commands.map(({ name, value }) => {
+            switch (name) {
+              case 'v': return 'h' + value.join(' ');
+              case 'h': return 'v' + value.join(' ');
+            }
+            return name + value.join(' ');
+          }).join(' ');
+        };
+      },
+
+      flipH() {
+        return commands => {
+          let parsed = parse(commands);
+          if (!parsed.valid) return commands;
+          return parsed.commands.map(({ name, value }) => {
+            switch (name) {
+              case 'h': return name + value.map(flip_value).join(' ');
+            }
+            return name + value.join(' ');
+          }).join(' ');
+        };
+      },
+
+      flipV() {
+        return commands => {
+          let parsed = parse(commands);
+          if (!parsed.valid) return commands;
+          return parsed.commands.map(({ name, value }) => {
+            switch (name) {
+              case 'v': return name + ' ' + value.map(flip_value).join(' ');
+            }
+            return name + ' ' + value.join(' ');
+          }).join(' ');
+        };
+      },
+
+      flip(...args) {
+        let flipH = Expose.flipH(...args);
+        let flipV = Expose.flipV(...args);
+        return commands => {
+          return flipV(flipH(commands));
+        }
       },
 
     };
@@ -2603,6 +2675,10 @@
       if (!context[name]) context[name] = new Stack();
       context[name].push(value);
       return value;
+    }
+
+    function flip_value(num) {
+      return -1 * num;
     }
 
     return alias_for(Expose, {
@@ -2783,7 +2859,7 @@
   var Property = {
 
     ['@size'](value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$1(value);
+      let [w, h = w] = parse$2(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -2805,12 +2881,12 @@
     },
 
     ['@min-size'](value) {
-      let [w, h = w] = parse$1(value);
+      let [w, h = w] = parse$2(value);
       return `min-width: ${ w }; min-height: ${ h };`;
     },
 
     ['@max-size'](value) {
-      let [w, h = w] = parse$1(value);
+      let [w, h = w] = parse$2(value);
       return `max-width: ${ w }; max-height: ${ h };`;
     },
 
@@ -2827,7 +2903,7 @@
       };
 
       return value => {
-        let [left, top = '50%'] = parse$1(value);
+        let [left, top = '50%'] = parse$2(value);
         left = map_left_right[left] || left;
         top = map_top_bottom[top] || top;
         const cw = 'var(--internal-cell-width, 25%)';
@@ -2855,7 +2931,7 @@
     },
 
     ['@shape']: memo('shape-property', value => {
-      let [type, ...args] = parse$1(value);
+      let [type, ...args] = parse$2(value);
       let prop = 'clip-path';
       if (typeof shapes[type] !== 'function') return '';
       let points = shapes[type](...args);
@@ -3062,7 +3138,7 @@
         let is_string_or_number = (type === 'number' || type === 'string');
 
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$1(arg.value, true));
+          input.push(...parse$2(arg.value, true));
         }
         else {
           if (typeof arg === 'function') {
@@ -3941,7 +4017,7 @@
       let { x: gx, y: gy, z: gz } = this.grid_size;
 
       const compiled = this.generate(
-        parse$4(use + styles, this.extra)
+        parse$5(use + styles, this.extra)
       );
 
       if (!this.shadowRoot.innerHTML) {
@@ -3963,7 +4039,7 @@
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, grid);
           return this.build_grid(
-            this.generate(parse$4(use + styles, this.extra)),
+            this.generate(parse$5(use + styles, this.extra)),
             grid
           );
         }
@@ -4082,7 +4158,7 @@
         fn = options;
         options = null;
       }
-      let parsed = parse$4(code, this.extra);
+      let parsed = parse$5(code, this.extra);
       let _grid = parse_grid({});
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
@@ -4125,7 +4201,7 @@
     }
 
     shader_to_image({ shader, cell }, fn) {
-      let parsed = parse$3(shader);
+      let parsed = parse$4(shader);
       let element = this.doodle.getElementById(cell);
       let { width = 0, height = 0} = element && element.getBoundingClientRect() || {};
       let ratio = window.devicePixelRatio || 1;
@@ -4163,7 +4239,7 @@
       if (!this.innerHTML.trim() && !use) {
         return false;
       }
-      let parsed = parse$4(use + un_entity(this.innerHTML), this.extra);
+      let parsed = parse$5(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
       this.grid_size = compiled.grid

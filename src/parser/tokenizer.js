@@ -201,7 +201,7 @@ function scan(source) {
     else if (is.symbol(curr) && !is.selfClosedTag(curr, next)) {
       let lastToken = last(tokens);
       // negative
-      if (curr === '-' && is.digit(next) && (!lastToken || lastToken.isSpace())) {
+      if (curr === '-' && is.digit(next) && (!lastToken || !lastToken.isNumber())) {
         let num = readNumber(iter);
         tokens.push(new Token({
           type: 'Number', value: num, pos

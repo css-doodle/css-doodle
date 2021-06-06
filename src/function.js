@@ -17,6 +17,7 @@ import { shapes, create_shape_points } from './shapes';
 import parse_value_group from './parser/parse-value-group';
 import parse_shape_commands from './parser/parse-shape-commands';
 import parse_svg from './parser/parse-svg';
+import parse_svg_path from './parser/parse-svg-path';
 
 import { uniform_time } from './uniform';
 
@@ -311,6 +312,54 @@ function get_exposed(random) {
       return value => value;
     },
 
+    invert() {
+      return commands => {
+        let parsed = parse_svg_path(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.map(({ name, value }) => {
+          switch (name) {
+            case 'v': return 'h' + value.join(' ');
+            case 'h': return 'v' + value.join(' ');
+          }
+          return name + value.join(' ');
+        }).join(' ');
+      };
+    },
+
+    flipH() {
+      return commands => {
+        let parsed = parse_svg_path(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.map(({ name, value }) => {
+          switch (name) {
+            case 'h': return name + value.map(flip_value).join(' ');
+          }
+          return name + value.join(' ');
+        }).join(' ');
+      };
+    },
+
+    flipV() {
+      return commands => {
+        let parsed = parse_svg_path(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.map(({ name, value }) => {
+          switch (name) {
+            case 'v': return name + ' ' + value.map(flip_value).join(' ');
+          }
+          return name + ' ' + value.join(' ');
+        }).join(' ');
+      };
+    },
+
+    flip(...args) {
+      let flipH = Expose.flipH(...args);
+      let flipV = Expose.flipV(...args);
+      return commands => {
+        return flipV(flipH(commands));
+      }
+    },
+
   };
 
   function make_sequence(c) {
@@ -336,6 +385,10 @@ function get_exposed(random) {
     if (!context[name]) context[name] = new Stack();
     context[name].push(value);
     return value;
+  }
+
+  function flip_value(num) {
+    return -1 * num;
   }
 
   return alias_for(Expose, {
