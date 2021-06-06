@@ -189,6 +189,30 @@ test('numbers', t => {
     { type: 'Word', value: 'ga' },
   ]);
 
+  compare(t, '-10', [
+    { type: 'Number', value: '-10' }
+  ]);
+
+  compare(t, 'n-10', [
+    { type: 'Word', value: 'n' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Number', value: '10' },
+  ]);
+
+  compare(t, 'n - 10', [
+    { type: 'Word', value: 'n' },
+    { type: 'Space', value: ' ' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Space', value: ' ' },
+    { type: 'Number', value: '10' },
+  ]);
+
+  compare(t, 'n -10', [
+    { type: 'Word', value: 'n' },
+    { type: 'Space', value: ' ' },
+    { type: 'Number', value: '-10' },
+  ]);
+
 });
 
 test('comments', t => {
