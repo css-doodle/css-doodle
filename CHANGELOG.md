@@ -1,3 +1,21 @@
+## 0.18.0
+
+### Features
+
+  * Add experimental `@flip` and `@revert` function for svg path
+
+### Enhancement
+
+  * Rewrite small parsers.
+
+### Fixes
+
+  * Fix args for composed functions
+
+<br /> <br />
+
+
+
 ## 0.17.4
 
 ### Enhancement
