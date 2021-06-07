@@ -169,11 +169,14 @@ function create_polygon_points(option, fn) {
     points.push(fill);
   }
 
-  let add = ([x, y]) => {
-    points.push(
-      ((x * 50 * scale) + 50 + '% ') +
-      ((y * 50 * scale) + 50 + '%')
-    );
+  let add = ([x1, y1]) => {
+    let x = ((x1 * 50 * scale) + 50 + '%');
+    let y = ((y1 * 50 * scale) + 50 + '%');
+    if (option.absolute) {
+      x = x1 * scale;
+      y = y1 * scale;
+    }
+    points.push(x + ' ' + y);
   }
 
   for (let i = 0; i < split; ++i) {

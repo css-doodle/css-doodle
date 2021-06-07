@@ -279,6 +279,20 @@ function get_exposed(random) {
       };
     },
 
+    Offset({ count, context, extra, position, grid }) {
+      let key = 'offset-points' + position;
+      return commands => {
+        let [idx = count, _, __, max = grid.count] = extra || [];
+        if (!context[key]) {
+          let config = parse_shape_commands(commands);
+          config.points = max;
+          config.absolute = true;
+          context[key] = create_shape_points(config, {min: 1, max: 65536});
+        }
+        return context[key][idx - 1];
+      };
+    },
+
     shape() {
       return memo('shape-function', (type = '', ...args) => {
         type = String(type).trim();

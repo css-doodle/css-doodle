@@ -2011,11 +2011,14 @@
       points.push(fill);
     }
 
-    let add = ([x, y]) => {
-      points.push(
-        ((x * 50 * scale) + 50 + '% ') +
-        ((y * 50 * scale) + 50 + '%')
-      );
+    let add = ([x1, y1]) => {
+      let x = ((x1 * 50 * scale) + 50 + '%');
+      let y = ((y1 * 50 * scale) + 50 + '%');
+      if (option.absolute) {
+        x = x1 * scale;
+        y = y1 * scale;
+      }
+      points.push(x + ' ' + y);
     };
 
     for (let i = 0; i < split; ++i) {
@@ -2563,6 +2566,20 @@
           if (!context[key]) {
             let config = parse$3(commands);
             config.points = max;
+            context[key] = create_shape_points(config, {min: 1, max: 65536});
+          }
+          return context[key][idx - 1];
+        };
+      },
+
+      Offset({ count, context, extra, position, grid }) {
+        let key = 'offset-points' + position;
+        return commands => {
+          let [idx = count, _, __, max = grid.count] = extra || [];
+          if (!context[key]) {
+            let config = parse$3(commands);
+            config.points = max;
+            config.absolute = true;
             context[key] = create_shape_points(config, {min: 1, max: 65536});
           }
           return context[key][idx - 1];
