@@ -1,3 +1,13 @@
+## 0.18.1
+
+### Enhancement
+
+  * Add `Offset` function for generating absolute values.
+
+<br /> <br />
+
+
+
 ## 0.18.0
 
 ### Features
