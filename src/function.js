@@ -333,9 +333,11 @@ function get_exposed(random) {
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
             case 'v': return 'h' + value.join(' ');
+            case 'V': return 'H' + value.join(' ');
             case 'h': return 'v' + value.join(' ');
+            case 'H': return 'V' + value.join(' ');
+            default:  return name + value.join(' ');
           }
-          return name + value.join(' ');
         }).join(' ');
       };
     },
@@ -346,9 +348,10 @@ function get_exposed(random) {
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
-            case 'h': return name + value.map(flip_value).join(' ');
+            case 'h':
+            case 'H': return name + value.map(flip_value).join(' ');
+            default:  return name + value.join(' ');
           }
-          return name + value.join(' ');
         }).join(' ');
       };
     },
@@ -359,9 +362,10 @@ function get_exposed(random) {
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
-            case 'v': return name + ' ' + value.map(flip_value).join(' ');
+            case 'v':
+            case 'V': return name + value.map(flip_value).join(' ');
+            default:  return name + value.join(' ');
           }
-          return name + ' ' + value.join(' ');
         }).join(' ');
       };
     },
