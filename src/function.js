@@ -436,6 +436,9 @@ function get_exposed(random) {
     'Y': 'size-row',
     'Z': 'size-depth',
 
+    'flipv': 'flipV',
+    'fliph': 'flipH',
+
     // legacy names, keep them before 1.0
     'nr': 'rn',
     'nri': 'nri',
