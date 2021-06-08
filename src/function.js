@@ -266,7 +266,7 @@ function get_exposed(random) {
       return value => `var(--${ uniform_time.name })`;
     },
 
-    offset({ count, context, extra, position, grid }) {
+    point({ count, context, extra, position, grid }) {
       let key = 'offset-points' + position;
       return commands => {
         let [idx = count, _, __, max = grid.count] = extra || [];
@@ -279,7 +279,7 @@ function get_exposed(random) {
       };
     },
 
-    Offset({ count, context, extra, position, grid }) {
+    Point({ count, context, extra, position, grid }) {
       let key = 'offset-points' + position;
       return commands => {
         let [idx = count, _, __, max = grid.count] = extra || [];
@@ -432,7 +432,7 @@ function get_exposed(random) {
     'Y': 'size-row',
     'Z': 'size-depth',
 
-    // legacy names
+    // legacy names, keep them before 1.0
     'nr': 'rn',
     'nri': 'nri',
     'ms': 'multiple-with-space',
@@ -447,6 +447,8 @@ function get_exposed(random) {
     'pick-by-turn': 'pick-n',
     'max-row': 'size-row',
     'max-col': 'size-col',
+    'offset': 'point',
+    'Offset': 'Point',
 
     // error prone
     'stripes': 'stripe',
