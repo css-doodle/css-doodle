@@ -15,7 +15,7 @@ function draw_canvas(code, width, height, random) {
   ctx.scale(ratio, ratio);
 
   try {
-    let fn = new Function(`return (ctx, WIDTH, HEIGHT, random) => {${code}}`)();
+    let fn = new Function(`return (ctx, width, height, random) => {${code}}`)();
     fn(ctx, width, height, random);
   } catch(e) {
     // ignore
