@@ -236,7 +236,7 @@ class Doodle extends HTMLElement {
     let { width, height } = element && element.getBoundingClientRect() || {
       width: 0, height: 0
     };
-    draw_canvas(code, width, height).then(fn);
+    draw_canvas(code, width, height, this.random).then(fn);
   }
 
   shader_to_image({ shader, cell }, fn) {

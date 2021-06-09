@@ -1,6 +1,6 @@
 import { un_entity } from './utils/index';
 
-function draw_canvas(code, width, height) {
+function draw_canvas(code, width, height, random) {
   code = un_entity(code);
 
   let canvas = document.createElement('canvas');
@@ -15,8 +15,8 @@ function draw_canvas(code, width, height) {
   ctx.scale(ratio, ratio);
 
   try {
-    let fn = new Function(`return (ctx, WIDTH, HEIGHT) => {${code}}`)();
-    fn(ctx, width, height);
+    let fn = new Function(`return (ctx, WIDTH, HEIGHT, random) => {${code}}`)();
+    fn(ctx, width, height, random);
   } catch(e) {
     // ignore
   }
