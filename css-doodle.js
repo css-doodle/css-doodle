@@ -486,6 +486,10 @@
     '∏': Math.PI
   };
 
+  function composible(name) {
+    return ['@canvas', '@shaders', '@doodle'].includes(name);
+  }
+
   function iterator(input = '') {
     let index = 0, col = 1, line = 1;
     return {
@@ -789,7 +793,7 @@
       if (c == '(' || composition) {
         has_argument = true;
         it.next();
-        func.arguments = read_arguments(it, composition, name === '@doodle' || name == '@shaders');
+        func.arguments = read_arguments(it, composition, composible(name));
         break;
       } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
         name += c;
@@ -2559,7 +2563,7 @@
         return value => `var(--${ uniform_time.name })`;
       },
 
-      offset({ count, context, extra, position, grid }) {
+      point({ count, context, extra, position, grid }) {
         let key = 'offset-points' + position;
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
@@ -2572,7 +2576,7 @@
         };
       },
 
-      Offset({ count, context, extra, position, grid }) {
+      Point({ count, context, extra, position, grid }) {
         let key = 'offset-points' + position;
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
@@ -2615,6 +2619,10 @@
         return value => value;
       },
 
+      canvas() {
+        return value => value;
+      },
+
       path() {
         return value => value;
       },
@@ -2626,9 +2634,11 @@
           return parsed.commands.map(({ name, value }) => {
             switch (name) {
               case 'v': return 'h' + value.join(' ');
+              case 'V': return 'H' + value.join(' ');
               case 'h': return 'v' + value.join(' ');
+              case 'H': return 'V' + value.join(' ');
+              default:  return name + value.join(' ');
             }
-            return name + value.join(' ');
           }).join(' ');
         };
       },
@@ -2639,9 +2649,10 @@
           if (!parsed.valid) return commands;
           return parsed.commands.map(({ name, value }) => {
             switch (name) {
-              case 'h': return name + value.map(flip_value).join(' ');
+              case 'h':
+              case 'H': return name + value.map(flip_value).join(' ');
+              default:  return name + value.join(' ');
             }
-            return name + value.join(' ');
           }).join(' ');
         };
       },
@@ -2652,9 +2663,10 @@
           if (!parsed.valid) return commands;
           return parsed.commands.map(({ name, value }) => {
             switch (name) {
-              case 'v': return name + ' ' + value.map(flip_value).join(' ');
+              case 'v':
+              case 'V': return name + value.map(flip_value).join(' ');
+              default:  return name + value.join(' ');
             }
-            return name + ' ' + value.join(' ');
           }).join(' ');
         };
       },
@@ -2725,7 +2737,10 @@
       'Y': 'size-row',
       'Z': 'size-depth',
 
-      // legacy names
+      'flipv': 'flipV',
+      'fliph': 'flipH',
+
+      // legacy names, keep them before 1.0
       'nr': 'rn',
       'nri': 'nri',
       'ms': 'multiple-with-space',
@@ -2740,6 +2755,8 @@
       'pick-by-turn': 'pick-n',
       'max-row': 'size-row',
       'max-col': 'size-col',
+      'offset': 'point',
+      'Offset': 'Point',
 
       // error prone
       'stripes': 'stripe',
@@ -3109,6 +3126,7 @@
       this.is_grid_defined = false;
       this.coords = [];
       this.doodles = {};
+      this.canvas = {};
       this.shaders = {};
       this.paths = {};
       this.reset();
@@ -3128,6 +3146,8 @@
       };
       this.coords = [];
       this.doodles = {};
+      this.canvas = {};
+      this.shaders = {};
       for (let key in this.rules) {
         if (key.startsWith('#c')) {
           delete this.rules[key];
@@ -3181,7 +3201,7 @@
     }
 
     is_composable(name) {
-      return ['doodle', 'shaders'].includes(name);
+      return ['doodle', 'shaders', 'canvas'].includes(name);
     }
 
     compose_argument(argument, coords, extra = []) {
@@ -3205,6 +3225,8 @@
                     return this.compose_doodle(value);
                   case 'shaders':
                     return this.compose_shaders(value, coords);
+                  case 'canvas':
+                    return this.compose_canvas(value, coords);
                 }
               }
             }
@@ -3245,6 +3267,15 @@
       return '${' + id + '}';
     }
 
+    compose_canvas(code, {x, y, z}) {
+      let id = this.unique_id('canvas');
+      this.canvas[id] = {
+        code,
+        cell: cell_id(x, y, z)
+      };
+      return '${' + id + '}';
+    }
+
     compose_path(commands) {
       let id = this.unique_id('path');
       this.paths[id] = {
@@ -3279,6 +3310,8 @@
                       result += this.compose_doodle(value); break;
                     case 'shaders':
                       result += this.compose_shaders(value, coords); break;
+                    case 'canvas':
+                      result += this.compose_canvas(value, coords); break;
                   }
                 }
               } else {
@@ -3372,7 +3405,7 @@
         }
       }
 
-      if (prop === 'background' && value.includes('shader')) {
+      if (prop === 'background' && (value.includes('shader') || value.includes('canvas'))) {
         rule += 'background-size: 100% 100%;';
       }
 
@@ -3599,6 +3632,7 @@
         doodles: this.doodles,
         shaders: this.shaders,
         paths: this.paths,
+        canvas: this.canvas,
         definitions: definitions,
         uniforms: this.uniforms
       }
@@ -3971,6 +4005,29 @@
     return Promise.resolve(canvas.toDataURL());
   }
 
+  function draw_canvas(code, width, height, random) {
+    code = un_entity(code);
+
+    let canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+    let ratio = window.devicePixelRatio || 1;
+
+    canvas.style.width = canvas.width +'px';
+    canvas.style.height = canvas.height +'px';
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+
+    ctx.scale(ratio, ratio);
+
+    try {
+      let fn = new Function(`return (ctx, width, height, random) => {${code}}`)();
+      fn(ctx, width, height, random);
+    } catch(e) {
+      // ignore
+    }
+    return Promise.resolve(canvas.toDataURL());
+  }
+
   function get_all_variables(element) {
     let ret = {};
     if (element.computedStyleMap) {
@@ -4217,10 +4274,20 @@
       });
     }
 
+    canvas_to_image({ code, cell }, fn) {
+      let element = this.doodle.getElementById(cell);
+      let { width, height } = element && element.getBoundingClientRect() || {
+        width: 0, height: 0
+      };
+      draw_canvas(code, width, height, this.random).then(fn);
+    }
+
     shader_to_image({ shader, cell }, fn) {
       let parsed = parse$4(shader);
       let element = this.doodle.getElementById(cell);
-      let { width = 0, height = 0} = element && element.getBoundingClientRect() || {};
+      let { width, height } = element && element.getBoundingClientRect() || {
+        width: 0, height: 0
+      };
       let ratio = window.devicePixelRatio || 1;
 
       if (!parsed.textures.length) {
@@ -4266,12 +4333,13 @@
       this.build_grid(compiled, this.grid_size);
     }
 
-    replace({ doodles, shaders, paths }) {
+    replace({ doodles, shaders, paths, canvas }) {
       let doodle_ids = Object.keys(doodles);
       let shader_ids = Object.keys(shaders);
       let path_ids = Object.keys(paths);
+      let canvas_ids = Object.keys(canvas);
       return input => {
-        if (!doodle_ids.length && !shader_ids.length && !path_ids.length) {
+        if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length) {
           return Promise.resolve(input);
         }
 
@@ -4289,6 +4357,15 @@
             if (input.includes(id)) {
               return new Promise(resolve => {
                 this.shader_to_image(shaders[id], value => resolve({ id, value }));
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          }),
+          canvas_ids.map(id => {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
+                this.canvas_to_image(canvas[id], value => resolve({ id, value }));
               });
             } else {
               return Promise.resolve('');
