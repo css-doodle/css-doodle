@@ -10,7 +10,7 @@ import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
-import { make_tag_function } from './utils/index';
+import { make_tag_function, entity } from './utils/index';
 
 import {
   cell_id, is_nil,
@@ -444,7 +444,7 @@ class Doodle extends HTMLElement {
               xmlns="http://www.w3.org/1999/xhtml"
               style="width: ${ width }px; height: ${ height }px; "
             >
-              <style>.host { ${variables} }</style>
+              <style>.host { ${entity(variables)} }</style>
               ${ html }
             </div>
           </foreignObject>

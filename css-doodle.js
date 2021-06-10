@@ -1170,6 +1170,14 @@
     return textarea.value;
   }
 
+  function entity(code) {
+    return code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+  }
+
   function make_tag_function(fn) {
     let get_value = v => is_nil(v) ? '' : v;
     return (input, ...vars) => {
@@ -1313,7 +1321,6 @@
   function svg_to_png(svg, width, height, scale) {
     return new Promise((resolve, reject) => {
       let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
-
       function action() {
         let img = new Image();
         img.crossOrigin = 'anonymous';
@@ -1347,7 +1354,7 @@
         };
       }
 
-      if (is_safari) {
+      if (is_safari()) {
         cache_image(source, action, 200);
       } else {
         action();
@@ -4487,7 +4494,7 @@
               xmlns="http://www.w3.org/1999/xhtml"
               style="width: ${ width }px; height: ${ height }px; "
             >
-              <style>.host { ${variables} }</style>
+              <style>.host { ${entity(variables)} }</style>
               ${ html }
             </div>
           </foreignObject>
