@@ -1,3 +1,22 @@
+## 0.19.0
+
+### Features
+
+  * Add `@canvas` for generating background with JS.
+
+### Enhancement
+
+  * Add flip/invert support for H and V commands.
+  * Add lowercase `flipv` and `fliph` aliases.
+
+### Changes
+
+  * Change `offset` to `point` for a better name.
+
+<br /> <br />
+
+
+
 ## 0.18.1
 
 ### Enhancement
