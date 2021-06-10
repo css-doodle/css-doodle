@@ -37,6 +37,7 @@ class Rules {
     this.is_grid_defined = false;
     this.coords = [];
     this.doodles = {};
+    this.canvas = {};
     this.shaders = {};
     this.paths = {};
     this.reset();
@@ -56,6 +57,8 @@ class Rules {
     }
     this.coords = [];
     this.doodles = {};
+    this.canvas = {};
+    this.shaders = {};
     for (let key in this.rules) {
       if (key.startsWith('#c')) {
         delete this.rules[key];
@@ -109,7 +112,7 @@ class Rules {
   }
 
   is_composable(name) {
-    return ['doodle', 'shaders'].includes(name);
+    return ['doodle', 'shaders', 'canvas'].includes(name);
   }
 
   compose_argument(argument, coords, extra = []) {
@@ -133,6 +136,8 @@ class Rules {
                   return this.compose_doodle(value);
                 case 'shaders':
                   return this.compose_shaders(value, coords);
+                case 'canvas':
+                  return this.compose_canvas(value, coords);
               }
             }
           }
@@ -173,6 +178,15 @@ class Rules {
     return '${' + id + '}';
   }
 
+  compose_canvas(code, {x, y, z}) {
+    let id = this.unique_id('canvas');
+    this.canvas[id] = {
+      code,
+      cell: cell_id(x, y, z)
+    };
+    return '${' + id + '}';
+  }
+
   compose_path(commands) {
     let id = this.unique_id('path');
     this.paths[id] = {
@@ -207,6 +221,8 @@ class Rules {
                     result += this.compose_doodle(value); break;
                   case 'shaders':
                     result += this.compose_shaders(value, coords); break;
+                  case 'canvas':
+                    result += this.compose_canvas(value, coords); break;
                 }
               }
             } else {
@@ -300,7 +316,7 @@ class Rules {
       }
     }
 
-    if (prop === 'background' && value.includes('shader')) {
+    if (prop === 'background' && (value.includes('shader') || value.includes('canvas'))) {
       rule += 'background-size: 100% 100%;';
     }
 
@@ -527,6 +543,7 @@ class Rules {
       doodles: this.doodles,
       shaders: this.shaders,
       paths: this.paths,
+      canvas: this.canvas,
       definitions: definitions,
       uniforms: this.uniforms
     }

@@ -5,11 +5,12 @@ import generator from './generator';
 import seedrandom from './lib/seedrandom';
 import { svg_to_png } from './svg';
 import { draw_shader } from './shader.js';
+import { draw_canvas } from './canvas.js';
 import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
-import { make_tag_function } from './utils/index';
+import { make_tag_function, entity } from './utils/index';
 
 import {
   cell_id, is_nil,
@@ -230,10 +231,20 @@ class Doodle extends HTMLElement {
     });
   }
 
+  canvas_to_image({ code, cell }, fn) {
+    let element = this.doodle.getElementById(cell);
+    let { width, height } = element && element.getBoundingClientRect() || {
+      width: 0, height: 0
+    };
+    draw_canvas(code, width, height, this.random).then(fn);
+  }
+
   shader_to_image({ shader, cell }, fn) {
     let parsed = parse_shaders(shader);
     let element = this.doodle.getElementById(cell);
-    let { width = 0, height = 0} = element && element.getBoundingClientRect() || {};
+    let { width, height } = element && element.getBoundingClientRect() || {
+      width: 0, height: 0
+    };
     let ratio = window.devicePixelRatio || 1;
 
     if (!parsed.textures.length) {
@@ -279,12 +290,13 @@ class Doodle extends HTMLElement {
     this.build_grid(compiled, this.grid_size);
   }
 
-  replace({ doodles, shaders, paths }) {
+  replace({ doodles, shaders, paths, canvas }) {
     let doodle_ids = Object.keys(doodles);
     let shader_ids = Object.keys(shaders);
     let path_ids = Object.keys(paths);
+    let canvas_ids = Object.keys(canvas);
     return input => {
-      if (!doodle_ids.length && !shader_ids.length && !path_ids.length) {
+      if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length) {
         return Promise.resolve(input);
       }
 
@@ -302,6 +314,15 @@ class Doodle extends HTMLElement {
           if (input.includes(id)) {
             return new Promise(resolve => {
               this.shader_to_image(shaders[id], value => resolve({ id, value }));
+            });
+          } else {
+            return Promise.resolve('');
+          }
+        }),
+        canvas_ids.map(id => {
+          if (input.includes(id)) {
+            return new Promise(resolve => {
+              this.canvas_to_image(canvas[id], value => resolve({ id, value }));
             });
           } else {
             return Promise.resolve('');
@@ -423,7 +444,7 @@ class Doodle extends HTMLElement {
               xmlns="http://www.w3.org/1999/xhtml"
               style="width: ${ width }px; height: ${ height }px; "
             >
-              <style>.host { ${variables} }</style>
+              <style>.host { ${entity(variables)} }</style>
               ${ html }
             </div>
           </foreignObject>

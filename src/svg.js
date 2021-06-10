@@ -21,7 +21,6 @@ export function normalize_svg(input) {
 export function svg_to_png(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
     let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
-
     function action() {
       let img = new Image();
       img.crossOrigin = 'anonymous';
@@ -55,7 +54,7 @@ export function svg_to_png(svg, width, height, scale) {
       }
     }
 
-    if (is_safari) {
+    if (is_safari()) {
       cache_image(source, action, 200);
     } else {
       action();

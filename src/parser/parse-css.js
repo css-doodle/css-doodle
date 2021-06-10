@@ -87,6 +87,10 @@ const symbols = {
   '∏': Math.PI
 };
 
+function composible(name) {
+  return ['@canvas', '@shaders', '@doodle'].includes(name);
+}
+
 function iterator(input = '') {
   let index = 0, col = 1, line = 1;
   return {
@@ -390,7 +394,7 @@ function read_func(it) {
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
-      func.arguments = read_arguments(it, composition, name === '@doodle' || name == '@shaders');
+      func.arguments = read_arguments(it, composition, composible(name));
       break;
     } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
       name += c;

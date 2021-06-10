@@ -322,6 +322,10 @@ function get_exposed(random) {
       return value => value;
     },
 
+    canvas() {
+      return value => value;
+    },
+
     path() {
       return value => value;
     },

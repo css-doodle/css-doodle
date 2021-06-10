@@ -101,6 +101,14 @@ export function un_entity(code) {
   return textarea.value;
 }
 
+export function entity(code) {
+  return code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export function hash(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
