@@ -1,4 +1,4 @@
-/*! css-doodle@0.19.0 */
+/*! css-doodle@0.19.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1607,7 +1607,7 @@
       let { type, value } = tokens[i];
       let next = tokens[i + 1] || {};
       if (type == 'number') {
-        if (next.value == '(' && /[^\d.]/.test(value)) {
+        if (next.value == '(' && /[^\d.\-]/.test(value)) {
           let func_body = '';
           let stack = [];
           let values = [];
@@ -1644,7 +1644,7 @@
             value: values
           });
         }
-        else if (/[^\d.]/.test(value)) {
+        else if (/[^\d.\-]/.test(value)) {
           expr.push({ type: 'variable', value });
         }
         else {
@@ -1693,7 +1693,7 @@
   }
 
   function expand$1(value, context) {
-    let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
+    let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
     let v = context[variable];
     if (v === undefined) {
       return v;
@@ -2683,6 +2683,16 @@
         let flipV = Expose.flipV(...args);
         return commands => {
           return flipV(flipH(commands));
+        }
+      },
+
+      reverse(...args) {
+        return commands => {
+          let parsed = parse(commands);
+          if (!parsed.valid) return commands;
+          return parsed.commands.reverse().map(({ name, value }) => {
+            return name + value.join(' ');
+          }).join(' ');
         }
       },
 

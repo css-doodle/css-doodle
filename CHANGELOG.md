@@ -1,3 +1,17 @@
+## 0.19.1
+
+### Enhancement
+
+  * Add another experimental `@reverse` function for svg paths.
+
+### Fixes
+
+  * Temporarily fix nagative number calculations.
+
+<br /> <br />
+
+
+
 ## 0.19.0
 
 ### Features
