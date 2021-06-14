@@ -8,7 +8,7 @@ import { lazy, clamp, sequence, get_value } from './utils/index';
 
 import by_unit from './utils/by-unit';
 import by_charcode from './utils/by-charcode';
-import calc from './utils/calc';
+import calc from './calc';
 import expand from './utils/expand';
 import Stack from './utils/stack';
 import memo from './utils/memo';

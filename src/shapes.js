@@ -1,6 +1,6 @@
 import { clamp, is_empty, make_tag_function } from './utils/index';
 import parse_shape_commands from './parser/parse-shape-commands';
-import calc from './utils/calc';
+import calc from './calc';
 
 const { cos, sin, atan2, PI } = Math;
 

@@ -2,7 +2,7 @@
  * Based on the Shunting-yard algorithm.
  */
 
-import List from './list';
+import List from './utils/list';
 let { last } = List();
 
 const default_context = {
@@ -127,7 +127,7 @@ function infix_to_postfix(input) {
     let { type, value } = tokens[i];
     let next = tokens[i + 1] || {};
     if (type == 'number') {
-      if (next.value == '(' && /[^\d.]/.test(value)) {
+      if (next.value == '(' && /[^\d.\-]/.test(value)) {
         let func_body = '';
         let stack = [];
         let values = [];
@@ -164,7 +164,7 @@ function infix_to_postfix(input) {
           value: values
         });
       }
-      else if (/[^\d.]/.test(value)) {
+      else if (/[^\d.\-]/.test(value)) {
         expr.push({ type: 'variable', value });
       }
       else {
@@ -213,7 +213,7 @@ function compute(op, a, b) {
 }
 
 function expand(value, context) {
-  let [_, num, variable] = value.match(/([\d.]+)(.*)/) || [];
+  let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
   let v = context[variable];
   if (v === undefined) {
     return v;

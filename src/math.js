@@ -1,4 +1,4 @@
-import calc from './utils/calc';
+import calc from './calc';
 import { get_value } from './utils/index';
 
 // Expose all Math functions and constants.
