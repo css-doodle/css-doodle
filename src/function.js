@@ -382,6 +382,16 @@ function get_exposed(random) {
       }
     },
 
+    reverse(...args) {
+      return commands => {
+        let parsed = parse_svg_path(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.reverse().map(({ name, value }) => {
+          return name + value.join(' ');
+        }).join(' ');
+      }
+    },
+
   };
 
   function make_sequence(c) {
