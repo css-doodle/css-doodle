@@ -206,7 +206,7 @@ class Doodle extends HTMLElement {
     replace(`
       <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <foreignObject width="100%" height="100%">
-          <div class="host" xmlns="http://www.w3.org/2000/xhtml">
+          <div class="host" xmlns="http://www.w3.org/1999/xhtml">
             <style>
               ${ get_basic_styles() }
               ${ get_grid_styles(grid) }
@@ -441,7 +441,7 @@ class Doodle extends HTMLElement {
           <foreignObject width="100%" height="100%">
             <div
               class="host"
-              xmlns="http://www.w3.org/2000/xhtml"
+              xmlns="http://www.w3.org/1999/xhtml"
               style="width: ${ width }px; height: ${ height }px; "
             >
               <style>.host { ${entity(variables)} }</style>
