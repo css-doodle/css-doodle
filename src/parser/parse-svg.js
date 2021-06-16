@@ -6,13 +6,17 @@ function walk(iter, parentToken) {
   let tokenType = parentToken && parentToken.type || '';
 
   while (iter.next()) {
-    let { curr, next } = iter.get();
+    let { prev, curr, next } = iter.get();
 
     if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
       parentToken.value = rules;
       break;
     }
-    else if (tokenType == 'statement' && (curr.isSymbol(';') || (next && next.isSymbol('}')))) {
+    else if (
+      tokenType == 'statement'
+      && (curr.isSymbol(';')
+      || (next && next.isSymbol('}')))
+    ) {
       if (next && next.isSymbol('}')) {
         fragment.push(curr);
       }
@@ -30,7 +34,12 @@ function walk(iter, parentToken) {
       }
       fragment = [];
     }
-    else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
+    else if (
+      tokenType !== 'statement'
+      && curr.isSymbol(':')
+      && !isSpecialProperty(prev, next)
+      && fragment.length
+    ) {
       let props = getGroups(fragment);
       let value = walk(iter, {
         type: 'statement',
@@ -58,6 +67,17 @@ function walk(iter, parentToken) {
     parentToken.value = joinToken(fragment);
   }
   return tokenType ? parentToken : rules;
+}
+
+function isSpecialProperty(prev, next) {
+  const names = [
+    'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
+    'xlink:show',    'xlink:title',   'xlink:type',
+    'xml:base',      'xml:lang',      'xml:space',
+  ];
+  let prevValue = prev && prev.value;
+  let nextValue = next && next.value;
+  return names.includes(prevValue + ':' + nextValue);
 }
 
 function joinToken(tokens) {
