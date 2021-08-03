@@ -32,13 +32,22 @@ function walk(iter, parentToken) {
       parentToken.value = rules;
     }
     else if (curr.isSymbol('{')) {
-      let name = joinToken(fragment);
-      if (name) {
-        rules.push(walk(iter, {
+      let selectors = getGroups(fragment, token => token.isSpace());
+      if (selectors.length) {
+        let block = walk(iter, {
           type: 'block',
-          name: name,
+          name:  selectors.pop(),
           value: []
-        }));
+        });
+        let tokenName;
+        while (tokenName = selectors.pop()) {
+          block = {
+            type: 'block',
+            name: tokenName,
+            value: [block]
+          }
+        }
+        rules.push(block);
       }
       fragment = [];
     }
@@ -47,7 +56,7 @@ function walk(iter, parentToken) {
       && !isSpecialProperty(prev, next)
       && fragment.length
     ) {
-      let props = getGroups(fragment);
+      let props = getGroups(fragment, token => token.isSymbol(','));
       let value = readStatement(iter, {
         type: 'statement',
         name: 'unkown',
@@ -100,11 +109,11 @@ function joinToken(tokens) {
     .map(n => n.value).join('');
 }
 
-function getGroups(tokens) {
+function getGroups(tokens, fn) {
   let group = [];
   let temp = [];
   tokens.forEach(token => {
-    if (token.isSymbol(',')) {
+    if (fn(token)) {
       group.push(joinToken(temp));
       temp = [];
     } else {

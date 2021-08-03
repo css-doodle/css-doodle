@@ -166,3 +166,38 @@ test('colon separated properties', t => {
     ]
   });
 });
+
+
+test('block names', t => {
+  compare(t, 'g circle { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: []
+      }]
+    }]
+  });
+
+  compare(t, 'g circle { name: value } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: [{
+          type: 'statement',
+          name: 'name',
+          value: 'value'
+        }]
+      }]
+    }]
+  });
+});
