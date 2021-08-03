@@ -129,18 +129,27 @@ test('group property', t => {
 });
 
 
-test('semicolon seperated values', t => {
-  compare(t, 'values: 60; 100; 110', {
+test('semicolon separated values', t => {
+  compare(t, 'values: 60; 100; 180', {
     name: 'svg',
     type: 'block',
     value: [
-      { type: 'statement', name: 'values', value: '60; 100; 110' }
+      { type: 'statement', name: 'values', value: '60;100;180' }
     ]
-  }, true);
+  });
+
+  compare(t, 'values: 20 50; 100; 110; cy: 10', {
+    name: 'svg',
+    type: 'block',
+    value: [
+      { type: 'statement', name: 'values', value: '20 50;100;110' },
+      { type: 'statement', name: 'cy', value: '10' }
+    ]
+  });
 });
 
 
-test('colon seperated properties', t => {
+test('colon separated properties', t => {
   compare(t, 'xlink:href: url(#app)', {
     name: 'svg',
     type: 'block',

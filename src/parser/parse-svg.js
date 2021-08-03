@@ -1,5 +1,21 @@
 import { scan, iterator } from './tokenizer';
 
+function readStatement(iter, token) {
+  let fragment = [];
+  while (iter.next()) {
+    let { curr, next } = iter.get();
+    let isStatementBreak = !next || curr.isSymbol(';') || next.isSymbol('}');
+    fragment.push(curr);
+    if (isStatementBreak) {
+      break;
+    }
+  }
+  if (fragment.length) {
+    token.value = joinToken(fragment);
+  }
+  return token;
+}
+
 function walk(iter, parentToken) {
   let rules = [];
   let fragment = [];
@@ -7,59 +23,54 @@ function walk(iter, parentToken) {
 
   while (iter.next()) {
     let { prev, curr, next } = iter.get();
+    let isBlockBreak = !next || curr.isSymbol('}');
 
-    if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
-      parentToken.value = rules;
-      break;
-    }
-    else if (
-      tokenType == 'statement'
-      && (curr.isSymbol(';')
-      || (next && next.isSymbol('}')))
-    ) {
-      if (next && next.isSymbol('}')) {
-        fragment.push(curr);
+    if (tokenType === 'block' && isBlockBreak) {
+      if (!next && rules.length && !curr.isSymbol('}')) {
+        rules[rules.length - 1].value += (';' + curr.value);
       }
-      parentToken.value = joinToken(fragment);
-      break;
+      parentToken.value = rules;
     }
     else if (curr.isSymbol('{')) {
-      let token = {
-        type: 'block',
-        name: joinToken(fragment),
-        value: []
-      };
-      if (token.name) {
-        rules.push(walk(iter, token));
+      let name = joinToken(fragment);
+      if (name) {
+        rules.push(walk(iter, {
+          type: 'block',
+          name: name,
+          value: []
+        }));
       }
       fragment = [];
     }
     else if (
-      tokenType !== 'statement'
-      && curr.isSymbol(':')
+      curr.isSymbol(':')
       && !isSpecialProperty(prev, next)
       && fragment.length
     ) {
       let props = getGroups(fragment);
-      let value = walk(iter, {
+      let value = readStatement(iter, {
         type: 'statement',
-        name: 'token',
-        value: []
+        name: 'unkown',
+        value: ''
       });
       props.forEach(prop => {
-        rules.push(Object.assign({}, value, {
-          name: prop
-        }));
+        rules.push(Object.assign({}, value, { name: prop }));
       });
       if (tokenType == 'block') {
         parentToken.value = rules;
       }
       fragment = [];
     }
-    else {
+    else if (curr.isSymbol(';')) {
+      if (rules.length && fragment.length) {
+        rules[rules.length - 1].value += (';' + joinToken(fragment));
+        fragment = [];
+      }
+    } else {
       fragment.push(curr);
     }
   }
+
   if (rules.length && tokenType == 'block') {
     parentToken.value = rules;
   }
@@ -82,7 +93,10 @@ function isSpecialProperty(prev, next) {
 
 function joinToken(tokens) {
   return tokens
-    .filter(token => !token.isSymbol(';', '}'))
+    .filter((token, i) => {
+      if (token.isSymbol(';', '}') && i === tokens.length - 1) return false;
+      return true;
+    })
     .map(n => n.value).join('');
 }
 
