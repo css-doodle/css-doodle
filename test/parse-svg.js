@@ -202,9 +202,10 @@ test('block names', t => {
   });
 });
 
+
 test('id expand', t => {
 
- compare(t, 'g circle#id { } ', {
+  compare(t, 'g circle#id { } ', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -221,6 +222,5 @@ test('id expand', t => {
       }]
     }]
   });
-
 
 });
