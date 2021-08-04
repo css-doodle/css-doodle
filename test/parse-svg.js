@@ -127,3 +127,100 @@ test('group property', t => {
     ]
   });
 });
+
+
+test('semicolon separated values', t => {
+  compare(t, 'values: 60; 100; 180', {
+    name: 'svg',
+    type: 'block',
+    value: [
+      { type: 'statement', name: 'values', value: '60;100;180' }
+    ]
+  });
+
+  compare(t, 'values: 20 50; 100; 110; cy: 10', {
+    name: 'svg',
+    type: 'block',
+    value: [
+      { type: 'statement', name: 'values', value: '20 50;100;110' },
+      { type: 'statement', name: 'cy', value: '10' }
+    ]
+  });
+});
+
+
+test('colon separated properties', t => {
+  compare(t, 'xlink:href: url(#app)', {
+    name: 'svg',
+    type: 'block',
+    value: [
+      { type: 'statement', name: 'xlink:href', value: 'url(#app)' }
+    ]
+  });
+
+  compare(t, 'xlink:title: hello:world', {
+    name: 'svg',
+    type: 'block',
+    value: [
+      { type: 'statement', name: 'xlink:title', value: 'hello:world' }
+    ]
+  });
+});
+
+
+test('block names', t => {
+  compare(t, 'g circle { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: []
+      }]
+    }]
+  });
+
+  compare(t, 'g circle { name: value } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: [{
+          type: 'statement',
+          name: 'name',
+          value: 'value'
+        }]
+      }]
+    }]
+  });
+});
+
+
+test('id expand', t => {
+
+  compare(t, 'g circle#id { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: [{
+          type: 'statement',
+          name: 'id',
+          value: 'id'
+        }]
+      }]
+    }]
+  });
+
+});
