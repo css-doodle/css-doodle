@@ -201,3 +201,26 @@ test('block names', t => {
     }]
   });
 });
+
+test('id expand', t => {
+
+ compare(t, 'g circle#id { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: [{
+          type: 'statement',
+          name: 'id',
+          value: 'id'
+        }]
+      }]
+    }]
+  });
+
+
+});

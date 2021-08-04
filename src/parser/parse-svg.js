@@ -33,22 +33,23 @@ function walk(iter, parentToken) {
     }
     else if (curr.isSymbol('{')) {
       let selectors = getGroups(fragment, token => token.isSpace());
-      if (selectors.length) {
-        let block = walk(iter, {
-          type: 'block',
-          name:  selectors.pop(),
-          value: []
-        });
-        let tokenName;
-        while (tokenName = selectors.pop()) {
-          block = {
-            type: 'block',
-            name: tokenName,
-            value: [block]
-          }
-        }
-        rules.push(block);
+      if (!selectors.length) {
+        continue;
       }
+      let tokenName;
+      let block = resolveId(walk(iter, {
+        type: 'block',
+        name:  selectors.pop(),
+        value: []
+      }));
+      while (tokenName = selectors.pop()) {
+        block = resolveId({
+          type: 'block',
+          name: tokenName,
+          value: [block]
+        });
+      }
+      rules.push(block);
       fragment = [];
     }
     else if (
@@ -107,6 +108,21 @@ function joinToken(tokens) {
       return true;
     })
     .map(n => n.value).join('');
+}
+
+function resolveId(block) {
+  let name = block.name || '';
+  let [tokenName, ...ids] = name.split(/#/);
+  let id = ids[ids.length - 1];
+  if (id) {
+    block.name = tokenName;
+    block.value.push({
+      type: 'statement',
+      name: 'id',
+      value: id,
+    });
+  }
+  return block;
 }
 
 function getGroups(tokens, fn) {
