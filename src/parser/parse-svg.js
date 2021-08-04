@@ -30,16 +30,17 @@ function walk(iter, parentToken) {
         rules[rules.length - 1].value += (';' + curr.value);
       }
       parentToken.value = rules;
+      break;
     }
     else if (curr.isSymbol('{')) {
       let selectors = getGroups(fragment, token => token.isSpace());
       if (!selectors.length) {
         continue;
       }
-      let tokenName;
+      let tokenName = selectors.pop();
       let block = resolveId(walk(iter, {
         type: 'block',
-        name:  selectors.pop(),
+        name: tokenName,
         value: []
       }));
       while (tokenName = selectors.pop()) {
@@ -83,9 +84,6 @@ function walk(iter, parentToken) {
 
   if (rules.length && tokenType == 'block') {
     parentToken.value = rules;
-  }
-  if (fragment.length && tokenType == 'statement') {
-    parentToken.value = joinToken(fragment);
   }
   return tokenType ? parentToken : rules;
 }
