@@ -1,3 +1,56 @@
+## 0.19.2
+
+### Enhancement to `svg` function
+
+  * Add support for nested selectors shorthand.
+
+    ```css
+    g circle {
+
+    }
+
+    /* equals to */
+
+    g {
+      circle {
+
+      }
+    }
+    ```
+  * Resolve `id` property on selectors.
+
+    ```css
+    circle#my-circle {
+
+    }
+
+    /* equals to */
+
+    circle {
+      id: my-circle;
+    }
+    ```
+
+  * Handle special properties in SVG.
+
+    ```css
+    use {
+      xlink:href: #my-circle;
+    }
+    ```
+
+  * Fix for semicolons as value separators.
+
+    ```css
+    animate {
+      values: 50; 490; 350; 450;
+      keyTimes: 0; 0.5; 0.8; 1;
+    }
+    ```
+<br /> <br />
+
+
+
 ## 0.19.1
 
 ### Enhancement

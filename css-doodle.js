@@ -1,4 +1,4 @@
-/*! css-doodle@0.19.1 */
+/*! css-doodle@0.19.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1301,6 +1301,7 @@
   }
 
   const NS = 'http://www.w3.org/2000/svg';
+  const NSXLink = 'http://www.w3.org/1999/xlink';
 
   function create_svg_url(svg, id) {
     let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
@@ -1309,11 +1310,12 @@
 
   function normalize_svg(input) {
     const xmlns = `xmlns="${ NS }"`;
+    const xmlnsXLink = `xmlns:xlink="${ NSXLink }"`;
     if (!input.includes('<svg')) {
-      input = `<svg ${ xmlns }>${ input }</svg>`;
+      input = `<svg ${ xmlns } ${ xmlnsXLink }>${ input }</svg>`;
     }
     if (!input.includes('xmlns')) {
-      input = input.replace(/<svg([\s>])/, `<svg ${ xmlns }$1`);
+      input = input.replace(/<svg([\s>])/, `<svg ${ xmlns } ${ xmlnsXLink }$1`);
     }
     return input;
   }
@@ -1382,7 +1384,8 @@
         element.textContent = token.value;
       } else {
         try {
-          element.setAttributeNS(NS, token.name, token.value);
+          let ns = token.name.startsWith('xlink:') ? NSXLink : NS;
+          element.setAttributeNS(ns, token.name, token.value);
         } catch (e) {}
       }
     }
@@ -2166,77 +2169,134 @@
     return tokens.map(n => n.value).join('');
   }
 
+  function readStatement(iter, token) {
+    let fragment = [];
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      let isStatementBreak = !next || curr.isSymbol(';') || next.isSymbol('}');
+      fragment.push(curr);
+      if (isStatementBreak) {
+        break;
+      }
+    }
+    if (fragment.length) {
+      token.value = joinToken(fragment);
+    }
+    return token;
+  }
+
   function walk(iter, parentToken) {
     let rules = [];
     let fragment = [];
     let tokenType = parentToken && parentToken.type || '';
 
     while (iter.next()) {
-      let { curr, next } = iter.get();
+      let { prev, curr, next } = iter.get();
+      let isBlockBreak = !next || curr.isSymbol('}');
 
-      if (tokenType == 'block' && (!next || curr.isSymbol('}'))) {
+      if (tokenType === 'block' && isBlockBreak) {
+        if (!next && rules.length && !curr.isSymbol('}')) {
+          rules[rules.length - 1].value += (';' + curr.value);
+        }
         parentToken.value = rules;
         break;
       }
-      else if (tokenType == 'statement' && (curr.isSymbol(';') || (next && next.isSymbol('}')))) {
-        if (next && next.isSymbol('}')) {
-          fragment.push(curr);
-        }
-        parentToken.value = joinToken(fragment);
-        break;
-      }
       else if (curr.isSymbol('{')) {
-        let token = {
-          type: 'block',
-          name: joinToken(fragment),
-          value: []
-        };
-        if (token.name) {
-          rules.push(walk(iter, token));
+        let selectors = getGroups(fragment, token => token.isSpace());
+        if (!selectors.length) {
+          continue;
         }
+        let tokenName = selectors.pop();
+        let block = resolveId(walk(iter, {
+          type: 'block',
+          name: tokenName,
+          value: []
+        }));
+        while (tokenName = selectors.pop()) {
+          block = resolveId({
+            type: 'block',
+            name: tokenName,
+            value: [block]
+          });
+        }
+        rules.push(block);
         fragment = [];
       }
-      else if (tokenType !== 'statement' && curr.isSymbol(':') && fragment.length) {
-        let props = getGroups(fragment);
-        let value = walk(iter, {
+      else if (
+        curr.isSymbol(':')
+        && !isSpecialProperty(prev, next)
+        && fragment.length
+      ) {
+        let props = getGroups(fragment, token => token.isSymbol(','));
+        let value = readStatement(iter, {
           type: 'statement',
-          name: 'token',
-          value: []
+          name: 'unkown',
+          value: ''
         });
         props.forEach(prop => {
-          rules.push(Object.assign({}, value, {
-            name: prop
-          }));
+          rules.push(Object.assign({}, value, { name: prop }));
         });
         if (tokenType == 'block') {
           parentToken.value = rules;
         }
         fragment = [];
       }
-      else {
+      else if (curr.isSymbol(';')) {
+        if (rules.length && fragment.length) {
+          rules[rules.length - 1].value += (';' + joinToken(fragment));
+          fragment = [];
+        }
+      } else {
         fragment.push(curr);
       }
     }
+
     if (rules.length && tokenType == 'block') {
       parentToken.value = rules;
-    }
-    if (fragment.length && tokenType == 'statement') {
-      parentToken.value = joinToken(fragment);
     }
     return tokenType ? parentToken : rules;
   }
 
+  function isSpecialProperty(prev, next) {
+    const names = [
+      'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
+      'xlink:show',    'xlink:title',   'xlink:type',
+      'xml:base',      'xml:lang',      'xml:space',
+    ];
+    let prevValue = prev && prev.value;
+    let nextValue = next && next.value;
+    return names.includes(prevValue + ':' + nextValue);
+  }
+
   function joinToken(tokens) {
     return tokens
-      .filter(token => !token.isSymbol(';', '}'))
+      .filter((token, i) => {
+        if (token.isSymbol(';', '}') && i === tokens.length - 1) return false;
+        return true;
+      })
       .map(n => n.value).join('');
   }
 
-  function getGroups(tokens) {
+  function resolveId(block) {
+    let name = block.name || '';
+    let [tokenName, ...ids] = name.split(/#/);
+    let id = ids[ids.length - 1];
+    if (id) {
+      block.name = tokenName;
+      block.value.push({
+        type: 'statement',
+        name: 'id',
+        value: id,
+      });
+    }
+    return block;
+  }
+
+  function getGroups(tokens, fn) {
     let group = [];
     let temp = [];
     tokens.forEach(token => {
-      if (token.isSymbol(',')) {
+      if (fn(token)) {
         group.push(joinToken(temp));
         temp = [];
       } else {
