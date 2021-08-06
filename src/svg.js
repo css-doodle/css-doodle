@@ -1,6 +1,7 @@
 import { cache_image, is_safari } from './utils/index';
 
 const NS = 'http://www.w3.org/2000/svg';
+const NSXLink = 'http://www.w3.org/1999/xlink';
 
 export function create_svg_url(svg, id) {
   let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
@@ -9,11 +10,12 @@ export function create_svg_url(svg, id) {
 
 export function normalize_svg(input) {
   const xmlns = `xmlns="${ NS }"`;
+  const xmlnsXLink = `xmlns:xlink="${ NSXLink }"`;
   if (!input.includes('<svg')) {
-    input = `<svg ${ xmlns }>${ input }</svg>`;
+    input = `<svg ${ xmlns } ${ xmlnsXLink }>${ input }</svg>`;
   }
   if (!input.includes('xmlns')) {
-    input = input.replace(/<svg([\s>])/, `<svg ${ xmlns }$1`);
+    input = input.replace(/<svg([\s>])/, `<svg ${ xmlns } ${ xmlnsXLink }$1`);
   }
   return input;
 }
@@ -82,7 +84,8 @@ export function generate_svg(token, element, parent) {
       element.textContent = token.value;
     } else {
       try {
-        element.setAttributeNS(NS, token.name, token.value);
+        let ns = token.name.startsWith('xlink:') ? NSXLink : NS;
+        element.setAttributeNS(ns, token.name, token.value);
       } catch (e) {}
     }
   }
