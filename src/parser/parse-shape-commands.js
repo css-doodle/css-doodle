@@ -5,25 +5,42 @@ function parse(input) {
   let commands = {};
   let tokens = [];
   let name;
+  let negative = false;
   while (iter.next()) {
-    let { curr, next } = iter.get();
+    let { prev, curr, next } = iter.get();
     if (curr.isSymbol(':') && !name) {
       name = joinTokens(tokens);
       tokens = [];
     } else if (curr.isSymbol(';') && name) {
-      commands[name] = joinTokens(tokens);
+      commands[name] = transformNegative(joinTokens(tokens), negative);
       tokens = [];
       name = null;
+      negative = false;
     } else if (!curr.isSymbol(';')) {
-      tokens.push(curr);
+      let prevMinus = prev && prev.isSymbol('-');
+      let nextMinus = next && next.isSymbol('-');
+      let currMinus = curr.isSymbol('-');
+      if (!name && currMinus && !prevMinus && !nextMinus) {
+        if (next && next.isSymbol(':')) {
+          tokens.push(curr);
+        } else {
+          negative = true;
+        }
+      } else {
+        tokens.push(curr);
+      }
     }
   }
 
   if (tokens.length && name) {
-    commands[name] = joinTokens(tokens);
+    commands[name] = transformNegative(joinTokens(tokens), negative);
   }
 
   return commands;
+}
+
+function transformNegative(value, negative) {
+  return negative ? `-1 * (${ value })` : value;
 }
 
 function joinTokens(tokens) {
