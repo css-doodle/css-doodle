@@ -246,6 +246,8 @@ function create_shape_points(props, {min, max}) {
         return list[i % list.length];
       },
       'range': (a, b = 0) => {
+        a = Number(a) || 0;
+        b = Number(b) || 0;
         if (a > b) [a, b] = [b, a];
         let step = Math.abs(b - a) / (split - 1);
         return a + step * i;
