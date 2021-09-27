@@ -3,16 +3,16 @@
  */
 
 import List from './utils/list';
+import { is_invalid_number } from './utils/index';
 let { last } = List();
 
 const default_context = {
   'π': Math.PI,
-  '∏': Math.PI
 }
 
 export default function(input, context) {
   const expr = infix_to_postfix(input);
-  return calc(expr, Object.assign(default_context, context));
+  return calc(expr, Object.assign({}, default_context, context));
 }
 
 const operator = {
@@ -28,11 +28,16 @@ function calc(expr, context, repeat = []) {
     let { name, value, type } = expr.shift();
     if (type === 'variable') {
       let result = context[value];
-      if (result === undefined) {
+      if (is_invalid_number(result)) {
         result = Math[value];
       }
-      if (result === undefined) {
+      if (is_invalid_number(result)) {
         result = expand(value, context);
+      }
+      if (is_invalid_number(result)) {
+        if (/^\-\D/.test(value)) {
+          result = expand('-1' + value.substr(1), context);
+        }
       }
       if (result === undefined) {
         result = 0;
