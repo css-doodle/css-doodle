@@ -86,4 +86,6 @@ test('negative variable', t => {
 
   compare(t, '--x: 10', { '--x': '10' });
 
+  compare(t, '-fill-rule: evenodd', { 'fill-rule': 'evenodd' });
+
 });

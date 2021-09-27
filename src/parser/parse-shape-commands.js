@@ -12,7 +12,7 @@ function parse(input) {
       name = joinTokens(tokens);
       tokens = [];
     } else if (curr.isSymbol(';') && name) {
-      commands[name] = transformNegative(joinTokens(tokens), negative);
+      commands[name] = transformNegative(name, joinTokens(tokens), negative);
       tokens = [];
       name = null;
       negative = false;
@@ -20,7 +20,7 @@ function parse(input) {
       let prevMinus = prev && prev.isSymbol('-');
       let nextMinus = next && next.isSymbol('-');
       let currMinus = curr.isSymbol('-');
-      if (!name && currMinus && !prevMinus && !nextMinus) {
+      if (!name && !tokens.length && currMinus && !prevMinus && !nextMinus) {
         if (next && next.isSymbol(':')) {
           tokens.push(curr);
         } else {
@@ -33,13 +33,16 @@ function parse(input) {
   }
 
   if (tokens.length && name) {
-    commands[name] = transformNegative(joinTokens(tokens), negative);
+    commands[name] = transformNegative(name, joinTokens(tokens), negative);
   }
 
   return commands;
 }
 
-function transformNegative(value, negative) {
+function transformNegative(name, value, negative) {
+  if (name === 'fill-rule') {
+    return value;
+  }
   return negative ? `-1 * (${ value })` : value;
 }
 
