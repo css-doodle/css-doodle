@@ -244,6 +244,11 @@ function create_shape_points(props, {min, max}) {
       'seq': (...list) => {
         if (!list.length) return '';
         return list[i % list.length];
+      },
+      'range': (a, b = 0) => {
+        if (a > b) [a, b] = [b, a];
+        let step = Math.abs(b - a) / (split - 1);
+        return a + step * i;
       }
     });
     let x = calc(px, context);
