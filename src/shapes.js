@@ -235,6 +235,10 @@ function create_shape_points(props, {min, max}) {
     props.rotate = props.degree;
   }
 
+  if (props.origin) {
+    props.move = props.origin;
+  }
+
   return create_polygon_points(option, (t, i) => {
     let context = Object.assign({}, props, {
       't': t,
@@ -254,8 +258,8 @@ function create_shape_points(props, {min, max}) {
     if (props.rotate) {
       [x, y] = rotate(x, y, Number(props.rotate) || 0);
     }
-    if (props.origin) {
-      [x, y] = translate(x, y, props.origin);
+    if (props.move) {
+      [x, y] = translate(x, y, props.move);
     }
     return [x, y];
   });
