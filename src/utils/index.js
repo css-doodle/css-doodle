@@ -39,6 +39,10 @@ export function is_nil(s) {
   return s === undefined || s === null;
 }
 
+export function is_invalid_number(v) {
+  return is_nil(v) || isNaN(v);
+}
+
 export function is_empty(value) {
   return is_nil(value) || value === '';
 }
