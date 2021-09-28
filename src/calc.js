@@ -54,6 +54,11 @@ function calc(expr, context, repeat = []) {
       stack.push(result);
     }
     else if (type === 'function') {
+      let negative = false;
+      if (/^\-/.test(name)) {
+        negative = true;
+        name = name.substr(1);
+      }
       let output = value.map(v => calc(v, context));
       let fns = name.split('.');
       let fname;
@@ -63,6 +68,9 @@ function calc(expr, context, repeat = []) {
         output = (typeof fn === 'function')
           ? (Array.isArray(output) ? fn(...output) : fn(output))
           : 0;
+      }
+      if (negative) {
+        output = -1 * output;
       }
       stack.push(output);
     } else {
