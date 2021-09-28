@@ -1109,7 +1109,7 @@
   }
 
   function is_invalid_number(v) {
-    return is_nil(v) || isNaN(v);
+    return is_nil(v) || Number.isNaN(v);
   }
 
   function is_empty(value) {

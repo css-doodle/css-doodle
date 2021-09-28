@@ -40,7 +40,7 @@ export function is_nil(s) {
 }
 
 export function is_invalid_number(v) {
-  return is_nil(v) || isNaN(v);
+  return is_nil(v) || Number.isNaN(v);
 }
 
 export function is_empty(value) {
