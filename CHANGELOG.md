@@ -1,3 +1,46 @@
+## 0.20.0
+
+### Features
+
+  * Support left-handed negative commands or variables inside `shape` function.
+
+    ```css
+    clip-path: @shape(
+      -x: cos(t) - .2
+    );
+
+    /* equals to */
+
+    clip-path: @shape(
+      x: -1 * (cos(t) - .2)
+    );
+
+    ```
+
+  * Add `range` function within shape context so that it's easy to draw Math equations.
+
+    ```css
+    @grid: 11x1 / 200px;
+
+    @place-cell: @point(
+      x: range(-1, 1); /* -1, -.9, 0, ..., .9, 1 */
+      y: x^2;
+    );
+    ```
+
+### Breaking
+
+  * Rename shape command `origin` to `move`.
+  * Change shape function to respect Math coordinate system.
+
+### Fixes
+
+  * Fix calc function for heading negative variables.
+
+<br /> <br />
+
+
+
 ## 0.19.2
 
 ### Enhancement to `svg` function

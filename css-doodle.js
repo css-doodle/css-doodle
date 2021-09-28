@@ -1,4 +1,4 @@
-/*! css-doodle@0.19.2 */
+/*! css-doodle@0.20.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1108,6 +1108,10 @@
     return s === undefined || s === null;
   }
 
+  function is_invalid_number(v) {
+    return is_nil(v) || isNaN(v);
+  }
+
   function is_empty(value) {
     return is_nil(value) || value === '';
   }
@@ -1490,12 +1494,11 @@
 
   const default_context = {
     'π': Math.PI,
-    '∏': Math.PI
   };
 
   function calc(input, context) {
     const expr = infix_to_postfix(input);
-    return calc$1(expr, Object.assign(default_context, context));
+    return calc$1(expr, Object.assign({}, default_context, context));
   }
 
   const operator = {
@@ -1511,11 +1514,16 @@
       let { name, value, type } = expr.shift();
       if (type === 'variable') {
         let result = context[value];
-        if (result === undefined) {
+        if (is_invalid_number(result)) {
           result = Math[value];
         }
-        if (result === undefined) {
+        if (is_invalid_number(result)) {
           result = expand$1(value, context);
+        }
+        if (is_invalid_number(result)) {
+          if (/^\-\D/.test(value)) {
+            result = expand$1('-1' + value.substr(1), context);
+          }
         }
         if (result === undefined) {
           result = 0;
@@ -1554,7 +1562,7 @@
         }
       }
     }
-    return stack[0];
+    return Number(stack[0]) || 0;
   }
 
   function get_tokens$1(input) {
@@ -1833,25 +1841,45 @@
     let commands = {};
     let tokens = [];
     let name;
+    let negative = false;
     while (iter.next()) {
-      let { curr, next } = iter.get();
+      let { prev, curr, next } = iter.get();
       if (curr.isSymbol(':') && !name) {
         name = joinTokens$1(tokens);
         tokens = [];
       } else if (curr.isSymbol(';') && name) {
-        commands[name] = joinTokens$1(tokens);
+        commands[name] = transformNegative(name, joinTokens$1(tokens), negative);
         tokens = [];
         name = null;
+        negative = false;
       } else if (!curr.isSymbol(';')) {
-        tokens.push(curr);
+        let prevMinus = prev && prev.isSymbol('-');
+        let nextMinus = next && next.isSymbol('-');
+        let currMinus = curr.isSymbol('-');
+        if (!name && !tokens.length && currMinus && !prevMinus && !nextMinus) {
+          if (next && next.isSymbol(':')) {
+            tokens.push(curr);
+          } else {
+            negative = true;
+          }
+        } else {
+          tokens.push(curr);
+        }
       }
     }
 
     if (tokens.length && name) {
-      commands[name] = joinTokens$1(tokens);
+      commands[name] = transformNegative(name, joinTokens$1(tokens), negative);
     }
 
     return commands;
+  }
+
+  function transformNegative(name, value, negative) {
+    if (name === 'fill-rule') {
+      return value;
+    }
+    return negative ? `-1 * (${ value })` : value;
   }
 
   function joinTokens$1(tokens) {
@@ -1875,7 +1903,7 @@
     triangle: () => _`
     rotate: 30;
     scale: 1.1;
-    origin: 0 .2
+    move: 0 .2
   `,
 
     pentagon: () => _`
@@ -1915,14 +1943,13 @@
     a: cos(t)*13/18 - cos(2t)*5/18;
     b: cos(3t)/18 + cos(4t)/18;
     x: (.75 * sin(t)^3) * 1.2;
-    y: (a - b + .2) * 1.1
+    y: (a - b + .2) * -1.1
   `,
 
     bean: () => _`
     split: 180;
-    rotate: -90;
-    origin: -.45 .45;
-    r: sin(t)^3 + cos(t)^3
+    r: sin(t)^3 + cos(t)^3;
+    move: -.35 .35;
   `,
 
     bicorn: () => _`
@@ -1941,7 +1968,7 @@
 
     fish: () => _`
     split: 240;
-    x: cos(t) - sin(t)^2 / sqrt(2);
+    x: cos(t) - sin(t)^2 / sqrt(2) - .04;
     y: sin(2t)/2
   `,
 
@@ -1956,15 +1983,14 @@
     windmill:  () => _`
     split: 18;
     R: seq(.618, 1, 0);
-    T: seq(t+.55, t, t);
+    T: seq(t-.55, t, t);
     x: R * cos(T);
-    y: R * sin(T);
+    y: R * sin(T)
   `,
 
     vase: () => _`
     split: 240;
     scale: .3;
-    rotate: 180;
     x: sin(4t) + sin(t) * 1.4;
     y: cos(t) + cos(t) * 4.8 + .3
   `,
@@ -2017,7 +2043,7 @@
     let frame = option.frame;
     let fill = option['fill-rule'];
 
-    let rad = (PI * 2) * turn / split;
+    let rad = (-PI * 2) * turn / split;
     let points = [];
     let first_point, first_point2;
 
@@ -2027,10 +2053,10 @@
 
     let add = ([x1, y1]) => {
       let x = ((x1 * 50 * scale) + 50 + '%');
-      let y = ((y1 * 50 * scale) + 50 + '%');
+      let y = ((-y1 * 50 * scale) + 50 + '%');
       if (option.absolute) {
         x = x1 * scale;
-        y = y1 * scale;
+        y = -y1 * scale;
       }
       points.push(x + ' ' + y);
     };
@@ -2065,7 +2091,7 @@
   }
 
   function rotate(x, y, deg) {
-    let rad = PI / 180 * deg;
+    let rad = -PI / 180 * deg;
     return [
       x * cos(rad) - y * sin(rad),
       y * cos(rad) + x * sin(rad)
@@ -2076,7 +2102,7 @@
     let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
     return [
       x + (dx || 0),
-      y + (dy || 0)
+      y - (dy || 0)
     ];
   }
 
@@ -2091,6 +2117,10 @@
       props.rotate = props.degree;
     }
 
+    if (props.origin) {
+      props.move = props.origin;
+    }
+
     return create_polygon_points(option, (t, i) => {
       let context = Object.assign({}, props, {
         't': t,
@@ -2098,6 +2128,13 @@
         'seq': (...list) => {
           if (!list.length) return '';
           return list[i % list.length];
+        },
+        'range': (a, b = 0) => {
+          a = Number(a) || 0;
+          b = Number(b) || 0;
+          if (a > b) [a, b] = [b, a];
+          let step = Math.abs(b - a) / (split - 1);
+          return a + step * i;
         }
       });
       let x = calc(px, context);
@@ -2110,8 +2147,8 @@
       if (props.rotate) {
         [x, y] = rotate(x, y, Number(props.rotate) || 0);
       }
-      if (props.origin) {
-        [x, y] = translate(x, y, props.origin);
+      if (props.move) {
+        [x, y] = translate(x, y, props.move);
       }
       return [x, y];
     });
@@ -4397,9 +4434,6 @@
         }
       }
       let use = this.get_use();
-      if (!this.innerHTML.trim() && !use) {
-        return false;
-      }
       let parsed = parse$5(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
