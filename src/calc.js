@@ -76,7 +76,7 @@ function calc(expr, context, repeat = []) {
       }
     }
   }
-  return stack[0];
+  return Number(stack[0]) || 0;
 }
 
 function get_tokens(input) {

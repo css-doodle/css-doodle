@@ -19,7 +19,7 @@ const shapes = {
   triangle: () => _`
     rotate: 30;
     scale: 1.1;
-    origin: 0 .2
+    move: 0 .2
   `,
 
   pentagon: () => _`
@@ -59,14 +59,13 @@ const shapes = {
     a: cos(t)*13/18 - cos(2t)*5/18;
     b: cos(3t)/18 + cos(4t)/18;
     x: (.75 * sin(t)^3) * 1.2;
-    y: (a - b + .2) * 1.1
+    y: (a - b + .2) * -1.1
   `,
 
   bean: () => _`
     split: 180;
-    rotate: -90;
-    origin: -.45 .45;
-    r: sin(t)^3 + cos(t)^3
+    r: sin(t)^3 + cos(t)^3;
+    move: -.35 .35;
   `,
 
   bicorn: () => _`
@@ -85,7 +84,7 @@ const shapes = {
 
   fish: () => _`
     split: 240;
-    x: cos(t) - sin(t)^2 / sqrt(2);
+    x: cos(t) - sin(t)^2 / sqrt(2) - .04;
     y: sin(2t)/2
   `,
 
@@ -100,15 +99,14 @@ const shapes = {
   windmill:  () => _`
     split: 18;
     R: seq(.618, 1, 0);
-    T: seq(t+.55, t, t);
+    T: seq(t-.55, t, t);
     x: R * cos(T);
-    y: R * sin(T);
+    y: R * sin(T)
   `,
 
   vase: () => _`
     split: 240;
     scale: .3;
-    rotate: 180;
     x: sin(4t) + sin(t) * 1.4;
     y: cos(t) + cos(t) * 4.8 + .3
   `,
@@ -161,7 +159,7 @@ function create_polygon_points(option, fn) {
   let frame = option.frame;
   let fill = option['fill-rule'];
 
-  let rad = (PI * 2) * turn / split;
+  let rad = (-PI * 2) * turn / split;
   let points = [];
   let first_point, first_point2;
 
@@ -171,10 +169,10 @@ function create_polygon_points(option, fn) {
 
   let add = ([x1, y1]) => {
     let x = ((x1 * 50 * scale) + 50 + '%');
-    let y = ((y1 * 50 * scale) + 50 + '%');
+    let y = ((-y1 * 50 * scale) + 50 + '%');
     if (option.absolute) {
       x = x1 * scale;
-      y = y1 * scale;
+      y = -y1 * scale;
     }
     points.push(x + ' ' + y);
   }
@@ -209,7 +207,7 @@ function create_polygon_points(option, fn) {
 }
 
 function rotate(x, y, deg) {
-  let rad = PI / 180 * deg;
+  let rad = -PI / 180 * deg;
   return [
     x * cos(rad) - y * sin(rad),
     y * cos(rad) + x * sin(rad)
@@ -220,7 +218,7 @@ function translate(x, y, offset) {
   let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
   return [
     x + (dx || 0),
-    y + (dy || 0)
+    y - (dy || 0)
   ];
 }
 
@@ -235,6 +233,10 @@ function create_shape_points(props, {min, max}) {
     props.rotate = props.degree;
   }
 
+  if (props.origin) {
+    props.move = props.origin;
+  }
+
   return create_polygon_points(option, (t, i) => {
     let context = Object.assign({}, props, {
       't': t,
@@ -242,6 +244,13 @@ function create_shape_points(props, {min, max}) {
       'seq': (...list) => {
         if (!list.length) return '';
         return list[i % list.length];
+      },
+      'range': (a, b = 0) => {
+        a = Number(a) || 0;
+        b = Number(b) || 0;
+        if (a > b) [a, b] = [b, a];
+        let step = Math.abs(b - a) / (split - 1);
+        return a + step * i;
       }
     });
     let x = calc(px, context);
@@ -254,8 +263,8 @@ function create_shape_points(props, {min, max}) {
     if (props.rotate) {
       [x, y] = rotate(x, y, Number(props.rotate) || 0);
     }
-    if (props.origin) {
-      [x, y] = translate(x, y, props.origin);
+    if (props.move) {
+      [x, y] = translate(x, y, props.move);
     }
     return [x, y];
   });
