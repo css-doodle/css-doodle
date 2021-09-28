@@ -1,4 +1,4 @@
-/*! css-doodle@0.20.0 */
+/*! css-doodle@0.20.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1540,6 +1540,11 @@
         stack.push(result);
       }
       else if (type === 'function') {
+        let negative = false;
+        if (/^\-/.test(name)) {
+          negative = true;
+          name = name.substr(1);
+        }
         let output = value.map(v => calc$1(v, context));
         let fns = name.split('.');
         let fname;
@@ -1549,6 +1554,9 @@
           output = (typeof fn === 'function')
             ? (Array.isArray(output) ? fn(...output) : fn(output))
             : 0;
+        }
+        if (negative) {
+          output = -1 * output;
         }
         stack.push(output);
       } else {

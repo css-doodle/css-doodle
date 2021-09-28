@@ -1,3 +1,13 @@
+## 0.20.1
+
+### Patches
+
+  * Fix negative functions in `calc`.
+
+<br /> <br />
+
+
+
 ## 0.20.0
 
 ### Features
