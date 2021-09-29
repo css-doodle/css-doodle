@@ -3,28 +3,11 @@
  * I'll improve and replace them little by little.
  */
 
-const symbols = {
-  ':': 'colon',
-  ';': 'semicolon',
-  ',': 'comma',
-  '(': 'left-paren',
-  ')': 'right-paren',
-  '[': 'left-square-bracket',
-  ']': 'right-square-bracket',
-  '{': 'left-curly-brace',
-  '}': 'right-curly-brace',
-  'π': 'pi',
-  '±': 'plus-or-minus',
-  '+': 'plus',
-  '-': 'minus',
-  '*': 'product',
-  '/': 'division',
-  '%': 'mod',
-  '"': 'double-quote',
-  "'": 'single-quote',
-  '`': 'backquote',
-  '@': 'at',
-}
+const symbols = [
+  ':', ';', ',', '(', ')', '[', ']',
+  '{', '}', 'π', '±', '+', '-', '*',
+  '/', '%', '"', "'", '`', '@',
+];
 
 const is = {
   escape: c => c == '\\',
@@ -33,7 +16,7 @@ const is = {
   sign:   c => /^[+-]$/.test(c),
   dot:    c => c == '.',
   quote:  c => /^["'`]$/.test(c),
-  symbol: c => symbols[c],
+  symbol: c => symbols.includes(c),
   hexNum: c => /^[0-9a-f]$/i.test(c),
   hex:           (a, b, c) => a == '0' && is.letter(b, 'x') && is.hexNum(c),
   expWithSign:   (a, b, c) => is.letter(a, 'e') && is.sign(b) && is.digit(c),
