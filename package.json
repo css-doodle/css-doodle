@@ -25,7 +25,6 @@
     "terser": "5.9.0"
   },
   "files": [
-    "src",
     "css-doodle*.js"
   ],
   "keywords": [
