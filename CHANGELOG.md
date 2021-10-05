@@ -1,3 +1,13 @@
+## 0.20.2
+
+### Patches
+
+  *  Fix `frame` calculation on graph transformations.
+
+<br /> <br />
+
+
+
 ## 0.20.1
 
 ### Patches

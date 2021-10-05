@@ -1,4 +1,4 @@
-/*! css-doodle@0.20.1 */
+/*! css-doodle@0.20.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -10,28 +10,11 @@
    * I'll improve and replace them little by little.
    */
 
-  const symbols$1 = {
-    ':': 'colon',
-    ';': 'semicolon',
-    ',': 'comma',
-    '(': 'left-paren',
-    ')': 'right-paren',
-    '[': 'left-square-bracket',
-    ']': 'right-square-bracket',
-    '{': 'left-curly-brace',
-    '}': 'right-curly-brace',
-    'π': 'pi',
-    '±': 'plus-or-minus',
-    '+': 'plus',
-    '-': 'minus',
-    '*': 'product',
-    '/': 'division',
-    '%': 'mod',
-    '"': 'double-quote',
-    "'": 'single-quote',
-    '`': 'backquote',
-    '@': 'at',
-  };
+  const symbols$1 = [
+    ':', ';', ',', '(', ')', '[', ']',
+    '{', '}', 'π', '±', '+', '-', '*',
+    '/', '%', '"', "'", '`', '@',
+  ];
 
   const is$2 = {
     escape: c => c == '\\',
@@ -40,7 +23,7 @@
     sign:   c => /^[+-]$/.test(c),
     dot:    c => c == '.',
     quote:  c => /^["'`]$/.test(c),
-    symbol: c => symbols$1[c],
+    symbol: c => symbols$1.includes(c),
     hexNum: c => /^[0-9a-f]$/i.test(c),
     hex:           (a, b, c) => a == '0' && is$2.letter(b, 'x') && is$2.hexNum(c),
     expWithSign:   (a, b, c) => is$2.letter(a, 'e') && is$2.sign(b) && is$2.digit(c),
@@ -2082,8 +2065,8 @@
       if (w <= 0) w = 2 / 1000;
       for (let i = 0; i < split; ++i) {
         let t = rad * i;
-        let [x, y] = fn(t, i);
-        let theta = atan2(y, x);
+        let [x, y, dx = 0, dy = 0] = fn(t, i);
+        let theta = atan2(y + dy, x - dx);
         let point = [
           x - w * cos(theta),
           y - w * sin(theta)
@@ -2110,7 +2093,9 @@
     let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
     return [
       x + (dx || 0),
-      y - (dy || 0)
+      y - (dy || 0),
+      dx,
+      dy
     ];
   }
 
@@ -2147,6 +2132,8 @@
       });
       let x = calc(px, context);
       let y = calc(py, context);
+      let dx = 0;
+      let dy = 0;
       if (pr) {
         let r = calc(pr, context);
         x = r * Math.cos(t);
@@ -2156,9 +2143,9 @@
         [x, y] = rotate(x, y, Number(props.rotate) || 0);
       }
       if (props.move) {
-        [x, y] = translate(x, y, props.move);
+        [x, y, dx, dy] = translate(x, y, props.move);
       }
-      return [x, y];
+      return [x, y, dx, dy];
     });
   }
 
