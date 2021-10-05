@@ -190,8 +190,8 @@ function create_polygon_points(option, fn) {
     if (w <= 0) w = 2 / 1000;
     for (let i = 0; i < split; ++i) {
       let t = rad * i;
-      let [x, y] = fn(t, i);
-      let theta = atan2(y, x);
+      let [x, y, dx = 0, dy = 0] = fn(t, i);
+      let theta = atan2(y + dy, x - dx);
       let point = [
         x - w * cos(theta),
         y - w * sin(theta)
@@ -218,7 +218,9 @@ function translate(x, y, offset) {
   let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
   return [
     x + (dx || 0),
-    y - (dy || 0)
+    y - (dy || 0),
+    dx,
+    dy
   ];
 }
 
@@ -255,6 +257,8 @@ function create_shape_points(props, {min, max}) {
     });
     let x = calc(px, context);
     let y = calc(py, context);
+    let dx = 0;
+    let dy = 0;
     if (pr) {
       let r = calc(pr, context);
       x = r * Math.cos(t);
@@ -264,9 +268,9 @@ function create_shape_points(props, {min, max}) {
       [x, y] = rotate(x, y, Number(props.rotate) || 0);
     }
     if (props.move) {
-      [x, y] = translate(x, y, props.move);
+      [x, y, dx, dy] = translate(x, y, props.move);
     }
-    return [x, y];
+    return [x, y, dx, dy];
   });
 }
 
