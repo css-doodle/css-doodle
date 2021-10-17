@@ -157,7 +157,7 @@ function create_polygon_points(option, fn) {
   let scale = option.scale || 1;
   let turn = option.turn || 1;
   let frame = option.frame;
-  let fill = option['fill-rule'];
+  let fill = option['fill'] || option['fill-rule'];
 
   let rad = (-PI * 2) * turn / split;
   let points = [];
