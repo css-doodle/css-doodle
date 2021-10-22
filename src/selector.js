@@ -1,4 +1,5 @@
 import nth from './utils/nth';
+import calc from './calc';
 
 const is = {
   even: n => !(n % 2),
@@ -67,6 +68,16 @@ export default function(random) {
       return (ratio = .5) => {
         if (ratio >= 1 && ratio <= 0) ratio = .5;
         return random() < ratio;
+      }
+    },
+
+    match({ count, grid, x, y }) {
+      return expr => {
+        return !!calc(expr, {
+          x, y,
+          X: grid.x, Y: grid.Y,
+          i: count,
+        });
       }
     }
 

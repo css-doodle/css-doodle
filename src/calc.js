@@ -8,6 +8,10 @@ let { last } = List();
 
 const default_context = {
   'π': Math.PI,
+  gcd: (a, b) => {
+    while (b) [a, b] = [b, a % b];
+    return a;
+  }
 }
 
 export default function(input, context) {
@@ -16,10 +20,15 @@ export default function(input, context) {
 }
 
 const operator = {
-  '^': 4,
-  '*': 3, '/': 3, '%': 3,
-  '+': 2, '-': 2,
-  '(': 1, ')': 1
+  '^': 5,
+  '*': 4, '/': 4, '%': 4,
+  '+': 3, '-': 3,
+  '(': 2, ')': 2,
+  '<': 1, '>': 1,
+  '=': 1, '==': 1,
+  '≤': 1, '<=': 1,
+  '≥': 1, '>=': 1,
+  '≠': 1, '!=': 1,
 }
 
 function calc(expr, context, repeat = []) {
@@ -94,13 +103,17 @@ function get_tokens(input) {
   for (let i = 0; i < expr.length; ++i) {
     let c = expr[i];
     if (operator[c]) {
-      if (c == '-' && expr[i - 1] == 'e') {
+      let last_token = last(tokens);
+      if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
+        last_token.value += c;
+      }
+      else if (c == '-' && expr[i - 1] == 'e') {
         num += c;
       }
       else if (!tokens.length && !num.length && /[+-]/.test(c)) {
         num += c;
       } else {
-        let { type, value } = last(tokens) || {};
+        let { type, value } = last_token || {};
         if (type == 'operator'
             && !num.length
             && /[^()]/.test(c)
@@ -120,6 +133,10 @@ function get_tokens(input) {
         tokens.push({ type: 'number', value: num });
         num = '';
         tokens.push({ type: 'comma', value: c });
+      } else if (c == '!') {
+        tokens.push({ type: 'number', value: num });
+        tokens.push({ type: 'operator', value: c });
+        num = '';
       } else {
         num += c;
       }
@@ -222,6 +239,12 @@ function compute(op, a, b) {
     case '/': return a / b;
     case '%': return a % b;
     case '^': return Math.pow(a, b);
+    case '<': return a < b;
+    case '>': return a > b;
+    case '=': case '==': return a == b;
+    case '≤': case '<=': return a <= b;
+    case '≥': case '>=': return a >= b;
+    case '≠': case '!=': return a != b;
   }
 }
 
