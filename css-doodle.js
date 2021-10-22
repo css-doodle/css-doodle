@@ -1,4 +1,4 @@
-/*! css-doodle@0.20.2 */
+/*! css-doodle@0.21.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1477,6 +1477,10 @@
 
   const default_context = {
     'π': Math.PI,
+    gcd: (a, b) => {
+      while (b) [a, b] = [b, a % b];
+      return a;
+    }
   };
 
   function calc(input, context) {
@@ -1485,10 +1489,15 @@
   }
 
   const operator = {
-    '^': 4,
-    '*': 3, '/': 3, '%': 3,
-    '+': 2, '-': 2,
-    '(': 1, ')': 1
+    '^': 5,
+    '*': 4, '/': 4, '%': 4,
+    '+': 3, '-': 3,
+    '(': 2, ')': 2,
+    '<': 1, '>': 1,
+    '=': 1, '==': 1,
+    '≤': 1, '<=': 1,
+    '≥': 1, '>=': 1,
+    '≠': 1, '!=': 1,
   };
 
   function calc$1(expr, context, repeat = []) {
@@ -1563,13 +1572,17 @@
     for (let i = 0; i < expr.length; ++i) {
       let c = expr[i];
       if (operator[c]) {
-        if (c == '-' && expr[i - 1] == 'e') {
+        let last_token = last$1(tokens);
+        if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
+          last_token.value += c;
+        }
+        else if (c == '-' && expr[i - 1] == 'e') {
           num += c;
         }
         else if (!tokens.length && !num.length && /[+-]/.test(c)) {
           num += c;
         } else {
-          let { type, value } = last$1(tokens) || {};
+          let { type, value } = last_token || {};
           if (type == 'operator'
               && !num.length
               && /[^()]/.test(c)
@@ -1589,6 +1602,10 @@
           tokens.push({ type: 'number', value: num });
           num = '';
           tokens.push({ type: 'comma', value: c });
+        } else if (c == '!') {
+          tokens.push({ type: 'number', value: num });
+          tokens.push({ type: 'operator', value: c });
+          num = '';
         } else {
           num += c;
         }
@@ -1691,6 +1708,12 @@
       case '/': return a / b;
       case '%': return a % b;
       case '^': return Math.pow(a, b);
+      case '<': return a < b;
+      case '>': return a > b;
+      case '=': case '==': return a == b;
+      case '≤': case '<=': return a <= b;
+      case '≥': case '>=': return a >= b;
+      case '≠': case '!=': return a != b;
     }
   }
 
@@ -2032,7 +2055,7 @@
     let scale = option.scale || 1;
     let turn = option.turn || 1;
     let frame = option.frame;
-    let fill = option['fill-rule'];
+    let fill = option['fill'] || option['fill-rule'];
 
     let rad = (-PI * 2) * turn / split;
     let points = [];
@@ -3163,6 +3186,16 @@
         return (ratio = .5) => {
           if (ratio >= 1 && ratio <= 0) ratio = .5;
           return random() < ratio;
+        }
+      },
+
+      match({ count, grid, x, y }) {
+        return expr => {
+          return !!calc(expr, {
+            x, y,
+            X: grid.x, Y: grid.Y,
+            i: count,
+          });
         }
       }
 

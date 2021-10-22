@@ -1,8 +1,34 @@
+## 0.21.0
+
+### Features
+
+  * Add the general `@match` selector.
+
+    ```css
+    /* match the first 5 elements */
+    @match( i <= 5 ) {
+      background: red;
+    }
+
+    /* other math calculations */
+    @match( gcd(x, y) ≠ 1 ) {
+      background: red;
+    }
+    ```
+
+### changes
+
+  *  Use a shorter name `fill` for `fill-rule`.
+
+<br /> <br />
+
+
+
 ## 0.20.2
 
 ### Patches
 
-  *  Fix `frame` calculation on graph transformations.
+  * Fix `frame` calculation on graph transformations.
 
 <br /> <br />
 
