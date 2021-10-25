@@ -1,4 +1,4 @@
-/*! css-doodle@0.21.1 */
+/*! css-doodle@0.21.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1713,6 +1713,7 @@
       case '*': return a * b;
       case '%': return a % b;
       case '|': return a | b;
+      case '&': return a & b;
       case '<': return a < b;
       case '>': return a > b;
       case '^': return Math.pow(a, b);
@@ -3201,9 +3202,9 @@
       match({ count, grid, x, y }) {
         return expr => {
           return !!calc('(' + expr + ')', {
-            x, y,
-            X: grid.x, Y: grid.y,
-            i: count,
+            x, X: grid.x,
+            y, Y: grid.y,
+            i: count, I: grid.count,
           });
         }
       }

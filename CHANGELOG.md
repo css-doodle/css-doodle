@@ -1,3 +1,14 @@
+## 0.21.2
+
+### Patches
+
+  * Add the missing `&` operator computation.
+  * Add context value `I` into `@match`.
+
+<br /> <br />
+
+
+
 ## 0.21.1
 
 ### Enhancement
