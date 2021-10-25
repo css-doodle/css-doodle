@@ -20,15 +20,18 @@ export default function(input, context) {
 }
 
 const operator = {
-  '^': 5,
-  '*': 4, '/': 4, '%': 4,
-  '+': 3, '-': 3,
-  '(': 2, ')': 2,
-  '<': 1, '>': 1,
-  '=': 1, '==': 1,
-  '≤': 1, '<=': 1,
-  '≥': 1, '>=': 1,
-  '≠': 1, '!=': 1,
+  '^': 7,
+  '*': 6, '/': 6, '÷': 6, '%': 6,
+  '&': 5, '|': 5,
+  '+': 4, '-': 4,
+  '<': 3, '>': 3,
+  '=': 3, '==': 3,
+  '≤': 3, '<=': 3,
+  '≥': 3, '>=': 3,
+  '≠': 3, '!=': 3,
+  '∧': 2, '&&': 2,
+  '∨': 2, '||': 2,
+  '(': 1 , ')': 1,
 }
 
 function calc(expr, context, repeat = []) {
@@ -105,6 +108,9 @@ function get_tokens(input) {
     if (operator[c]) {
       let last_token = last(tokens);
       if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
+        last_token.value += c;
+      }
+      else if (/^[|&]$/.test(c) && last_token && last_token.value == c) {
         last_token.value += c;
       }
       else if (c == '-' && expr[i - 1] == 'e') {
@@ -236,15 +242,18 @@ function compute(op, a, b) {
     case '+': return a + b;
     case '-': return a - b;
     case '*': return a * b;
-    case '/': return a / b;
     case '%': return a % b;
-    case '^': return Math.pow(a, b);
+    case '|': return a | b;
     case '<': return a < b;
     case '>': return a > b;
+    case '^': return Math.pow(a, b);
+    case '÷': case '/': return a / b;
     case '=': case '==': return a == b;
     case '≤': case '<=': return a <= b;
     case '≥': case '>=': return a >= b;
     case '≠': case '!=': return a != b;
+    case '∧': case '&&': return a && b;
+    case '∨': case '||': return a || b;
   }
 }
 
