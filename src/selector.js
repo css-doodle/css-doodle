@@ -74,9 +74,9 @@ export default function(random) {
     match({ count, grid, x, y }) {
       return expr => {
         return !!calc('(' + expr + ')', {
-          x, y,
-          X: grid.x, Y: grid.y,
-          i: count,
+          x, X: grid.x,
+          y, Y: grid.y,
+          i: count, I: grid.count,
         });
       }
     }
