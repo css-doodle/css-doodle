@@ -1,3 +1,18 @@
+## 0.21.1
+
+### Enhancement
+
+  * Add support for more Math notations:
+    `&&`, `||`, `|`, `&`, `∧`, `∨`
+
+### Fixes
+
+  * Fix default context value.
+
+<br /> <br />
+
+
+
 ## 0.21.0
 
 ### Features
@@ -16,7 +31,7 @@
     }
     ```
 
-### changes
+### Changes
 
   *  Use a shorter name `fill` for `fill-rule`.
 

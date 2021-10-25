@@ -1,4 +1,4 @@
-/*! css-doodle@0.21.0 */
+/*! css-doodle@0.21.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1489,15 +1489,18 @@
   }
 
   const operator = {
-    '^': 5,
-    '*': 4, '/': 4, '%': 4,
-    '+': 3, '-': 3,
-    '(': 2, ')': 2,
-    '<': 1, '>': 1,
-    '=': 1, '==': 1,
-    '≤': 1, '<=': 1,
-    '≥': 1, '>=': 1,
-    '≠': 1, '!=': 1,
+    '^': 7,
+    '*': 6, '/': 6, '÷': 6, '%': 6,
+    '&': 5, '|': 5,
+    '+': 4, '-': 4,
+    '<': 3, '>': 3,
+    '=': 3, '==': 3,
+    '≤': 3, '<=': 3,
+    '≥': 3, '>=': 3,
+    '≠': 3, '!=': 3,
+    '∧': 2, '&&': 2,
+    '∨': 2, '||': 2,
+    '(': 1 , ')': 1,
   };
 
   function calc$1(expr, context, repeat = []) {
@@ -1574,6 +1577,9 @@
       if (operator[c]) {
         let last_token = last$1(tokens);
         if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
+          last_token.value += c;
+        }
+        else if (/^[|&]$/.test(c) && last_token && last_token.value == c) {
           last_token.value += c;
         }
         else if (c == '-' && expr[i - 1] == 'e') {
@@ -1705,15 +1711,18 @@
       case '+': return a + b;
       case '-': return a - b;
       case '*': return a * b;
-      case '/': return a / b;
       case '%': return a % b;
-      case '^': return Math.pow(a, b);
+      case '|': return a | b;
       case '<': return a < b;
       case '>': return a > b;
+      case '^': return Math.pow(a, b);
+      case '÷': case '/': return a / b;
       case '=': case '==': return a == b;
       case '≤': case '<=': return a <= b;
       case '≥': case '>=': return a >= b;
       case '≠': case '!=': return a != b;
+      case '∧': case '&&': return a && b;
+      case '∨': case '||': return a || b;
     }
   }
 
@@ -3191,9 +3200,9 @@
 
       match({ count, grid, x, y }) {
         return expr => {
-          return !!calc(expr, {
+          return !!calc('(' + expr + ')', {
             x, y,
-            X: grid.x, Y: grid.Y,
+            X: grid.x, Y: grid.y,
             i: count,
           });
         }
