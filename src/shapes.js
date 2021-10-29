@@ -226,7 +226,7 @@ function translate(x, y, offset) {
 }
 
 function create_shape_points(props, {min, max}) {
-  let split = clamp(parseInt(props.points || props.split) || 0, min, max);
+  let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
   let option = Object.assign({}, props, { split });
   let px = is_empty(props.x) ? 'cos(t)' : props.x;
   let py = is_empty(props.y) ? 'sin(t)' : props.y;
