@@ -24,7 +24,8 @@ const operator = {
   '*': 6, '/': 6, '÷': 6, '%': 6,
   '&': 5, '|': 5,
   '+': 4, '-': 4,
-  '<': 3, '>': 3,
+  '<': 3, '<<': 3,
+  '>': 3, '>>': 3,
   '=': 3, '==': 3,
   '≤': 3, '<=': 3,
   '≥': 3, '>=': 3,
@@ -110,7 +111,7 @@ function get_tokens(input) {
       if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
         last_token.value += c;
       }
-      else if (/^[|&]$/.test(c) && last_token && last_token.value == c) {
+      else if (/^[|&<>]$/.test(c) && last_token && last_token.value == c) {
         last_token.value += c;
       }
       else if (c == '-' && expr[i - 1] == 'e') {
@@ -255,6 +256,8 @@ function compute(op, a, b) {
     case '≠': case '!=': return a != b;
     case '∧': case '&&': return a && b;
     case '∨': case '||': return a || b;
+    case '<<': return a << b;
+    case '>>': return a >> b;
   }
 }
 
