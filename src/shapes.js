@@ -159,7 +159,7 @@ function create_polygon_points(option, fn) {
   let frame = option.frame;
   let fill = option['fill'] || option['fill-rule'];
 
-  let rad = (-PI * 2) * turn / split;
+  let rad = (PI * 2) * turn / split;
   let points = [];
   let first_point, first_point2;
 
@@ -178,7 +178,7 @@ function create_polygon_points(option, fn) {
   }
 
   for (let i = 0; i < split; ++i) {
-    let t = -rad * i;
+    let t = rad * i;
     let point = fn(t, i);
     if (!i) first_point = point;
     add(point);
@@ -189,7 +189,7 @@ function create_polygon_points(option, fn) {
     let w = (frame || 1) / 100;
     if (w <= 0) w = 2 / 1000;
     for (let i = 0; i < split; ++i) {
-      let t = rad * i;
+      let t = -rad * i;
       let [x, y, dx = 0, dy = 0] = fn(t, i);
       let theta = atan2(y + dy, x - dx);
       let point = [
