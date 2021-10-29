@@ -1,4 +1,4 @@
-/*! css-doodle@0.21.2 */
+/*! css-doodle@0.21.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1493,7 +1493,8 @@
     '*': 6, '/': 6, '÷': 6, '%': 6,
     '&': 5, '|': 5,
     '+': 4, '-': 4,
-    '<': 3, '>': 3,
+    '<': 3, '<<': 3,
+    '>': 3, '>>': 3,
     '=': 3, '==': 3,
     '≤': 3, '<=': 3,
     '≥': 3, '>=': 3,
@@ -1579,7 +1580,7 @@
         if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
           last_token.value += c;
         }
-        else if (/^[|&]$/.test(c) && last_token && last_token.value == c) {
+        else if (/^[|&<>]$/.test(c) && last_token && last_token.value == c) {
           last_token.value += c;
         }
         else if (c == '-' && expr[i - 1] == 'e') {
@@ -1724,6 +1725,8 @@
       case '≠': case '!=': return a != b;
       case '∧': case '&&': return a && b;
       case '∨': case '||': return a || b;
+      case '<<': return a << b;
+      case '>>': return a >> b;
     }
   }
 
@@ -2067,7 +2070,7 @@
     let frame = option.frame;
     let fill = option['fill'] || option['fill-rule'];
 
-    let rad = (-PI * 2) * turn / split;
+    let rad = (PI * 2) * turn / split;
     let points = [];
     let first_point, first_point2;
 
@@ -2086,7 +2089,7 @@
     };
 
     for (let i = 0; i < split; ++i) {
-      let t = -rad * i;
+      let t = rad * i;
       let point = fn(t, i);
       if (!i) first_point = point;
       add(point);
@@ -2094,10 +2097,10 @@
 
     if (frame !== undefined) {
       add(first_point);
-      let w = (frame || 1) / 100;
+      let w = (frame || 1) / 100 * turn;
       if (w <= 0) w = 2 / 1000;
       for (let i = 0; i < split; ++i) {
-        let t = rad * i;
+        let t = -rad * i;
         let [x, y, dx = 0, dy = 0] = fn(t, i);
         let theta = atan2(y + dy, x - dx);
         let point = [

@@ -1,3 +1,14 @@
+## 0.21.3
+
+### Patches
+
+  * Add support for left/right shift operator.
+  * Increase the `frame` width based on `turn` value.
+
+<br /> <br />
+
+
+
 ## 0.21.2
 
 ### Patches
