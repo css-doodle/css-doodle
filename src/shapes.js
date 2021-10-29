@@ -186,7 +186,7 @@ function create_polygon_points(option, fn) {
 
   if (frame !== undefined) {
     add(first_point);
-    let w = (frame || 1) / 100;
+    let w = (frame || 1) / 100 * turn;
     if (w <= 0) w = 2 / 1000;
     for (let i = 0; i < split; ++i) {
       let t = -rad * i;
