@@ -166,11 +166,12 @@ function create_polygon_points(option, fn) {
     points.push(fill);
   }
 
+  let factor = (option.scale === undefined) ? 1 : option.scale;
   let add = ([x1, y1]) => {
-    let [x, y] = scale(x1, -y1, option.scale || 1);
+    let [x, y] = scale(x1, -y1, factor);
     if (!option.absolute) {
-      x = (x * 50 + 50) + '%';
-      y = (y * 50 + 50) + '%';
+      x = (x + 1) * 50 + '%';
+      y = (y + 1) * 50 + '%';
     }
     points.push(x + ' ' + y);
   }
