@@ -154,9 +154,9 @@ function create_polygon_points(option, fn) {
   }
 
   let split = option.split || 180;
-  let scale = Number(option.scale) || 1;
-  let turn = Number(option.turn) || 1;
-  let frame = Number(option.frame) || 1;
+  let scale = option.scale || 1;
+  let turn = option.turn || 1;
+  let frame = option.frame;
   let fill = option['fill'] || option['fill-rule'];
 
   let rad = (PI * 2) * turn / split;
@@ -188,7 +188,7 @@ function create_polygon_points(option, fn) {
     add(first_point);
     let w = frame / 100;
     if (turn > 1) w *= 2;
-    if (w <= 0) w = .002;
+    if (w == 0) w = .002;
     for (let i = 0; i < split; ++i) {
       let t = -rad * i;
       let [x, y, dx = 0, dy = 0] = fn(t, i);
