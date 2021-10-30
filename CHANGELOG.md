@@ -1,3 +1,17 @@
+## 0.21.4
+
+### Patches
+
+* Add support for `scale` in two directions.
+* Add support for negative `frame` value.
+* Add `vertices` alias for `points`.
+* Allow `scale` value to be 0.
+* Fix `frame` calculation logic.
+
+<br /> <br />
+
+
+
 ## 0.21.3
 
 ### Patches

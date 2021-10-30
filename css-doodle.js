@@ -1,4 +1,4 @@
-/*! css-doodle@0.21.3 */
+/*! css-doodle@0.21.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -2065,7 +2065,6 @@
     }
 
     let split = option.split || 180;
-    let scale = option.scale || 1;
     let turn = option.turn || 1;
     let frame = option.frame;
     let fill = option['fill'] || option['fill-rule'];
@@ -2078,12 +2077,12 @@
       points.push(fill);
     }
 
+    let factor = (option.scale === undefined) ? 1 : option.scale;
     let add = ([x1, y1]) => {
-      let x = ((x1 * 50 * scale) + 50 + '%');
-      let y = ((-y1 * 50 * scale) + 50 + '%');
-      if (option.absolute) {
-        x = x1 * scale;
-        y = -y1 * scale;
+      let [x, y] = scale(x1, -y1, factor);
+      if (!option.absolute) {
+        x = (x + 1) * 50 + '%';
+        y = (y + 1) * 50 + '%';
       }
       points.push(x + ' ' + y);
     };
@@ -2097,8 +2096,9 @@
 
     if (frame !== undefined) {
       add(first_point);
-      let w = (frame || 1) / 100 * turn;
-      if (w <= 0) w = 2 / 1000;
+      let w = frame / 100;
+      if (turn > 1) w *= 2;
+      if (w == 0) w = .002;
       for (let i = 0; i < split; ++i) {
         let t = -rad * i;
         let [x, y, dx = 0, dy = 0] = fn(t, i);
@@ -2126,7 +2126,7 @@
   }
 
   function translate(x, y, offset) {
-    let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
+    let [dx, dy = dx] = String(offset).split(/[,\s]+/).map(Number);
     return [
       x + (dx || 0),
       y - (dy || 0),
@@ -2135,8 +2135,16 @@
     ];
   }
 
+  function scale(x, y, factor) {
+    let [fx, fy = fx] = String(factor).split(/[,\s]+/).map(Number);
+    return [
+      x * fx,
+      y * fy
+    ];
+  }
+
   function create_shape_points(props, {min, max}) {
-    let split = clamp(parseInt(props.points || props.split) || 0, min, max);
+    let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
     let option = Object.assign({}, props, { split });
     let px = is_empty(props.x) ? 'cos(t)' : props.x;
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
