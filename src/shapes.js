@@ -154,7 +154,6 @@ function create_polygon_points(option, fn) {
   }
 
   let split = option.split || 180;
-  let scale = option.scale || 1;
   let turn = option.turn || 1;
   let frame = option.frame;
   let fill = option['fill'] || option['fill-rule'];
@@ -168,11 +167,10 @@ function create_polygon_points(option, fn) {
   }
 
   let add = ([x1, y1]) => {
-    let x = ((x1 * 50 * scale) + 50 + '%');
-    let y = ((-y1 * 50 * scale) + 50 + '%');
-    if (option.absolute) {
-      x = x1 * scale;
-      y = -y1 * scale;
+    let [x, y] = scale(x1, -y1, option.scale || 1);
+    if (!option.absolute) {
+      x = (x * 50 + 50) + '%';
+      y = (y * 50 + 50) + '%';
     }
     points.push(x + ' ' + y);
   }
@@ -216,12 +214,20 @@ function rotate(x, y, deg) {
 }
 
 function translate(x, y, offset) {
-  let [dx, dy = dx] = String(offset).split(/[,\s]/).map(Number);
+  let [dx, dy = dx] = String(offset).split(/[,\s]+/).map(Number);
   return [
     x + (dx || 0),
     y - (dy || 0),
     dx,
     dy
+  ];
+}
+
+function scale(x, y, factor) {
+  let [fx, fy = fx] = String(factor).split(/[,\s]+/).map(Number);
+  return [
+    x * fx,
+    y * fy
   ];
 }
 
