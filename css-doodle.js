@@ -1,4 +1,4 @@
-/*! css-doodle@0.21.4 */
+/*! css-doodle@0.21.5 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -2706,7 +2706,7 @@
         return value => `var(--${ uniform_time.name })`;
       },
 
-      point({ count, context, extra, position, grid }) {
+      plot({ count, context, extra, position, grid }) {
         let key = 'offset-points' + position;
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
@@ -2719,7 +2719,7 @@
         };
       },
 
-      Point({ count, context, extra, position, grid }) {
+      Plot({ count, context, extra, position, grid }) {
         let key = 'offset-points' + position;
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
@@ -2908,8 +2908,10 @@
       'pick-by-turn': 'pick-n',
       'max-row': 'size-row',
       'max-col': 'size-col',
-      'offset': 'point',
-      'Offset': 'Point',
+      'offset': 'plot',
+      'Offset': 'Plot',
+      'point': 'plot',
+      'Point': 'Plot',
 
       // error prone
       'stripes': 'stripe',

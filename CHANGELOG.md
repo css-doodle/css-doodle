@@ -1,3 +1,13 @@
+## 0.21.5
+
+### Patches
+
+* Use name `plot()` for `point()`.
+
+<br /> <br />
+
+
+
 ## 0.21.4
 
 ### Patches
