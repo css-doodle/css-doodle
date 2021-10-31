@@ -266,7 +266,7 @@ function get_exposed(random) {
       return value => `var(--${ uniform_time.name })`;
     },
 
-    point({ count, context, extra, position, grid }) {
+    plot({ count, context, extra, position, grid }) {
       let key = 'offset-points' + position;
       return commands => {
         let [idx = count, _, __, max = grid.count] = extra || [];
@@ -279,7 +279,7 @@ function get_exposed(random) {
       };
     },
 
-    Point({ count, context, extra, position, grid }) {
+    Plot({ count, context, extra, position, grid }) {
       let key = 'offset-points' + position;
       return commands => {
         let [idx = count, _, __, max = grid.count] = extra || [];
@@ -468,8 +468,10 @@ function get_exposed(random) {
     'pick-by-turn': 'pick-n',
     'max-row': 'size-row',
     'max-col': 'size-col',
-    'offset': 'point',
-    'Offset': 'Point',
+    'offset': 'plot',
+    'Offset': 'Plot',
+    'point': 'plot',
+    'Point': 'Plot',
 
     // error prone
     'stripes': 'stripe',
