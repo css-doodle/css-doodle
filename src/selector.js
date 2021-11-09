@@ -77,6 +77,7 @@ export default function(random) {
           x, X: grid.x,
           y, Y: grid.y,
           i: count, I: grid.count,
+          random,
         });
       }
     }
