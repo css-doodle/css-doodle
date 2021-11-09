@@ -1,4 +1,4 @@
-/*! css-doodle@0.21.5 */
+/*! css-doodle@0.21.6 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -702,7 +702,7 @@
         arg += c;
       }
 
-      if (composition && (it.curr() == ')' || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
+      if (composition && (it.curr(1) == ')' || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
         if (group.length) {
           args.push(normalize_argument(group));
         }
@@ -3218,6 +3218,7 @@
             x, X: grid.x,
             y, Y: grid.y,
             i: count, I: grid.count,
+            random,
           });
         }
       }
@@ -4246,7 +4247,7 @@
 
     update(styles) {
       let use = this.get_use();
-      if (!styles) styles = this.innerHTML;
+      if (!styles) styles = un_entity(this.innerHTML);
       this.innerHTML = styles;
 
       if (!this.grid_size) {

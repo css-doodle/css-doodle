@@ -1,3 +1,15 @@
+## 0.21.6
+
+### Patches
+
+* Fix css parsing on function composition.
+* Fix entity issue for `update()`.
+* Use seed random to replace `Math.random` inside `match()`.
+
+<br /> <br />
+
+
+
 ## 0.21.5
 
 ### Patches
