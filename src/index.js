@@ -10,12 +10,12 @@ import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
-import { make_tag_function, entity } from './utils/index';
 
 import {
+  make_tag_function,
   cell_id, is_nil,
   normalize_png_name, cache_image,
-  is_safari, un_entity,
+  is_safari, entity, un_entity,
   maybe
 } from './utils/index';
 
@@ -38,7 +38,7 @@ class Doodle extends HTMLElement {
 
   update(styles) {
     let use = this.get_use();
-    if (!styles) styles = this.innerHTML;
+    if (!styles) styles = un_entity(this.innerHTML);
     this.innerHTML = styles;
 
     if (!this.grid_size) {
