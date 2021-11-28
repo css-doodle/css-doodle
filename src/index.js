@@ -4,13 +4,14 @@ import parse_shaders from './parser/parse-shaders';
 import generator from './generator';
 import seedrandom from './lib/seedrandom';
 import { svg_to_png } from './svg';
-import { draw_shader } from './shader.js';
-import { draw_canvas } from './canvas.js';
-import { make_paint } from './paint.js';
+import { draw_shader } from './shader';
+import { draw_canvas } from './canvas';
+import { make_paint } from './paint';
 import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
+import { clearCache } from './utils/cache';
 
 import {
   make_tag_function,
@@ -38,6 +39,7 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
+    clearCache();
     let use = this.get_use();
     if (!styles) styles = un_entity(this.innerHTML);
     this.innerHTML = styles;

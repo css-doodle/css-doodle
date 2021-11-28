@@ -7,7 +7,7 @@ import parse_value_group from './parser/parse-value-group';
 import { uniform_time } from './uniform';
 import random_func from './utils/random';
 
-import { maybe, cell_id, is_nil, get_value } from './utils/index.js';
+import { maybe, cell_id, is_nil, get_value } from './utils/index';
 
 import List from './utils/list';
 let { join, make_array, remove_empty_values } = List();

@@ -1,4 +1,4 @@
-import { is_empty } from '../utils/index.js';
+import { is_empty } from '../utils/index';
 import { scan, iterator } from './tokenizer';
 
 function parse(input, noSpace) {

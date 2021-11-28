@@ -1,3 +1,5 @@
+import { setCache, getCache } from './utils/cache';
+
 function create_shader(gl, type, source) {
   let shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -39,7 +41,7 @@ const default_vertex_shader = `#version 300 es
   }
 `;
 
-/* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL */
+// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
 function load_texture(gl, image, i) {
   const texture = gl.createTexture();
   gl.activeTexture(gl['TEXTURE' + i]);
@@ -54,6 +56,10 @@ function load_texture(gl, image, i) {
 }
 
 function draw_shader(shaders, width, height) {
+  let result = getCache(shaders);
+  if (result) {
+    return Promise.resolve(result);
+  }
   let canvas = document.createElement('canvas');
   let ratio = window.devicePixelRatio || 1;
   width *= ratio;
@@ -78,7 +84,7 @@ function draw_shader(shaders, width, height) {
     fragment_head + fragment
   );
 
-  /* position in vertex shader */
+  // position in vertex shader
   let positionAttributeLocation = gl.getAttribLocation(program, 'position');
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -93,7 +99,7 @@ function draw_shader(shaders, width, height) {
 
   gl.useProgram(program);
 
-  /* resolve uniforms */
+  // resolve uniforms
   gl.uniform2fv(gl.getUniformLocation(program, "u_resolution"), [width, height]);
   shaders.textures.forEach((n, i) => {
     load_texture(gl, n.value, i);
@@ -104,7 +110,7 @@ function draw_shader(shaders, width, height) {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 
   // resolve image data in 72dpi :(
-  return Promise.resolve(canvas.toDataURL());
+  return Promise.resolve(setCache(shaders, canvas.toDataURL()));
 }
 
 export {

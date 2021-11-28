@@ -1,11 +1,12 @@
 import { un_entity } from './utils/index';
+import { getCache, setCache } from '~/utils/cache';
 
 let counter = 1;
-let cache = {};
 
 function make_paint(code, random) {
-  if (cache[code]) {
-    return Promise.resolve(cache[code]);
+  let result = getCache(code);
+  if (result) {
+    return Promise.resolve(result);
   }
 
   let name = 'css-doodle-paint-' + counter++;
@@ -21,7 +22,7 @@ function make_paint(code, random) {
     }
   } catch(e) {}
 
-  return Promise.resolve(cache[code] = `paint(${name})`);
+  return Promise.resolve(setCache(code, `paint(${name})`));
 }
 
 export {

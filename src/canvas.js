@@ -1,7 +1,11 @@
 import { un_entity } from './utils/index';
+import { setCache, getCache } from '~/utils/cache';
 
 function draw_canvas(code, width, height, random) {
-  code = un_entity(code);
+  let result = getCache(code);
+  if (result) {
+    return Promise.resolve(result);
+  }
 
   let canvas = document.createElement('canvas');
   let ctx = canvas.getContext('2d');
@@ -15,12 +19,12 @@ function draw_canvas(code, width, height, random) {
   ctx.scale(ratio, ratio);
 
   try {
-    let fn = new Function(`return (ctx, width, height, random) => {${code}}`)();
+    let fn = new Function(`return (ctx, width, height, random) => {${un_entity(code)}}`)();
     fn(ctx, width, height, random);
   } catch(e) {
     // ignore
   }
-  return Promise.resolve(canvas.toDataURL());
+  return Promise.resolve(setCache(code, canvas.toDataURL()));
 }
 
 export {

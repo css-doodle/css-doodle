@@ -21,8 +21,8 @@
   "devDependencies": {
     "ava": "3.15.0",
     "esm": "3.2.25",
-    "rollup": "2.47.0",
-    "terser": "5.9.0"
+    "rollup": "2.60.1",
+    "terser": "5.10.0"
   },
   "files": [
     "css-doodle*.js"
