@@ -38,6 +38,7 @@ class Rules {
     this.coords = [];
     this.doodles = {};
     this.canvas = {};
+    this.paint = {};
     this.shaders = {};
     this.paths = {};
     this.reset();
@@ -58,6 +59,7 @@ class Rules {
     this.coords = [];
     this.doodles = {};
     this.canvas = {};
+    this.paint = {};
     this.shaders = {};
     for (let key in this.rules) {
       if (key.startsWith('#c')) {
@@ -112,7 +114,7 @@ class Rules {
   }
 
   is_composable(name) {
-    return ['doodle', 'shaders', 'canvas'].includes(name);
+    return ['doodle', 'shaders', 'canvas', 'paint'].includes(name);
   }
 
   compose_argument(argument, coords, extra = []) {
@@ -138,6 +140,8 @@ class Rules {
                   return this.compose_shaders(value, coords);
                 case 'canvas':
                   return this.compose_canvas(value, coords);
+                case 'paint':
+                  return this.compose_paint(value, arg.arguments.slice(1));
               }
             }
           }
@@ -187,6 +191,17 @@ class Rules {
     return '${' + id + '}';
   }
 
+  compose_paint(code, rest = []) {
+    let commands = code;
+    let result = rest.map(group => get_value(group[0])).join(',');
+    if (result.length) {
+      commands = code + ',' + result;
+    }
+    let id = this.unique_id('paint');
+    this.paint[id] = { code: commands };
+    return '${' + id + '}';
+  }
+
   compose_path(commands) {
     let id = this.unique_id('path');
     this.paths[id] = {
@@ -223,6 +238,8 @@ class Rules {
                     result += this.compose_shaders(value, coords); break;
                   case 'canvas':
                     result += this.compose_canvas(value, coords); break;
+                  case 'paint':
+                    result += this.compose_paint(value, val.arguments.slice(1)); break;
                 }
               }
             } else {
@@ -316,7 +333,7 @@ class Rules {
       }
     }
 
-    if (prop === 'background' && (value.includes('shader') || value.includes('canvas'))) {
+    if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('paint'))) {
       rule += 'background-size: 100% 100%;';
     }
 
@@ -544,6 +561,7 @@ class Rules {
       shaders: this.shaders,
       paths: this.paths,
       canvas: this.canvas,
+      paint: this.paint,
       definitions: definitions,
       uniforms: this.uniforms
     }

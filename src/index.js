@@ -6,6 +6,7 @@ import seedrandom from './lib/seedrandom';
 import { svg_to_png } from './svg';
 import { draw_shader } from './shader.js';
 import { draw_canvas } from './canvas.js';
+import { make_paint } from './paint.js';
 import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
@@ -239,6 +240,10 @@ class Doodle extends HTMLElement {
     draw_canvas(code, width, height, this.random).then(fn);
   }
 
+  paint_to_image({ code, cell }, fn) {
+    make_paint(code, this.random).then(fn);
+  }
+
   shader_to_image({ shader, cell }, fn) {
     let parsed = parse_shaders(shader);
     let element = this.doodle.getElementById(cell);
@@ -287,16 +292,16 @@ class Doodle extends HTMLElement {
     this.build_grid(compiled, this.grid_size);
   }
 
-  replace({ doodles, shaders, paths, canvas }) {
+  replace({ doodles, shaders, paths, canvas, paint }) {
     let doodle_ids = Object.keys(doodles);
     let shader_ids = Object.keys(shaders);
     let path_ids = Object.keys(paths);
     let canvas_ids = Object.keys(canvas);
+    let paint_ids = Object.keys(paint);
     return input => {
-      if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length) {
+      if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length && !paint_ids.length) {
         return Promise.resolve(input);
       }
-
       let mappings = [].concat(
         doodle_ids.map(id => {
           if (input.includes(id)) {
@@ -325,6 +330,15 @@ class Doodle extends HTMLElement {
             return Promise.resolve('');
           }
         }),
+        paint_ids.map(id => {
+          if (input.includes(id)) {
+            return new Promise(resolve => {
+              this.paint_to_image(paint[id], value => resolve({ id, value }));
+            });
+          } else {
+            return Promise.resolve('');
+          }
+        }),
         path_ids.map(id => {
           if (input.includes(id)) {
             return Promise.resolve({ id, value: '#' + id });
@@ -337,11 +351,17 @@ class Doodle extends HTMLElement {
       return Promise.all(mappings).then(mapping => {
         if (input.replaceAll) {
           mapping.forEach(({ id, value }) => {
-            input = input.replaceAll('${' + id + '}', `url(${value})`);
+            input = input.replaceAll(
+              '${' + id + '}',
+              /^paint/.test(id) ? value : `url(${value})`
+            );
           });
         } else {
           mapping.forEach(({ id, value }) => {
-            input = input.replace('${' + id + '}', `url(${value})`);
+            input = input.replace(
+              '${' + id + '}',
+              /^paint/.test(id) ? value : `url(${value})`
+            )
           });
         }
         return input;
