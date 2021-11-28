@@ -27,12 +27,13 @@ function add_uniform(fragment, uniform) {
   return fragment;
 }
 
-const fragment_head = `
+const fragment_head = `#version 300 es
   precision highp float;
+  out vec4 FragColor;
 `;
 
-const default_vertex_shader = `
-  attribute vec4 position;
+const default_vertex_shader = `#version 300 es
+  in vec4 position;
   void main() {
     gl_Position = position;
   }
@@ -60,8 +61,7 @@ function draw_shader(shaders, width, height) {
   canvas.width = width;
   canvas.height = height;
 
-  let gl = canvas.getContext('webgl')
-    || canvas.getContext('exprimental-webgl');
+  let gl = canvas.getContext('webgl2');
   if (!gl) return Promise.resolve('');
 
   // resolution uniform

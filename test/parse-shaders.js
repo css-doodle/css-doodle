@@ -64,6 +64,18 @@ test('should break line on #define ', t => {
   compare(t, input, result);
 });
 
+test('should break line on any starts with # ', t => {
+  let input = `
+    #define CONST2 xxx;
+    void main() {}
+  `;
+  let result = {
+    fragment: '\n#define CONST2 xxx;\nvoid main(){}',
+    textures: []
+  }
+  compare(t, input, result);
+});
+
 test('handle parens around raw fragment', t => {
   let input = `(
     void main() {}

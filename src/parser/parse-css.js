@@ -340,7 +340,7 @@ function normalize_argument(group) {
       if (value.includes('`')) {
         arg.value = value = value.replace(/`/g, '"');
       }
-      arg.value = value.replace(/\n+|\s+/g, ' ')
+      arg.value = value;
     }
     return arg;
   });
