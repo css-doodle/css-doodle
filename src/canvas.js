@@ -1,8 +1,8 @@
 import { un_entity } from './utils/index';
-import { setCache, getCache } from '~/utils/cache';
+import Cache from './utils/cache';
 
 function draw_canvas(code, width, height, random) {
-  let result = getCache(code);
+  let result = Cache.get(code);
   if (result) {
     return Promise.resolve(result);
   }
@@ -24,7 +24,7 @@ function draw_canvas(code, width, height, random) {
   } catch(e) {
     // ignore
   }
-  return Promise.resolve(setCache(code, canvas.toDataURL()));
+  return Promise.resolve(Cache.set(code, canvas.toDataURL()));
 }
 
 export {

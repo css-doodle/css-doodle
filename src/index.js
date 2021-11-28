@@ -11,7 +11,7 @@ import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
-import { clearCache } from './utils/cache';
+import Cache from './utils/cache';
 
 import {
   make_tag_function,
@@ -39,7 +39,7 @@ class Doodle extends HTMLElement {
   }
 
   update(styles) {
-    clearCache();
+    Cache.clear();
     let use = this.get_use();
     if (!styles) styles = un_entity(this.innerHTML);
     this.innerHTML = styles;

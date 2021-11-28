@@ -1,10 +1,10 @@
 import { un_entity } from './utils/index';
-import { getCache, setCache } from '~/utils/cache';
+import Cache from './utils/cache';
 
 let counter = 1;
 
-function make_paint(code, random) {
-  let result = getCache(code);
+function make_paint(code) {
+  let result = Cache.get(code);
   if (result) {
     return Promise.resolve(result);
   }
@@ -22,7 +22,7 @@ function make_paint(code, random) {
     }
   } catch(e) {}
 
-  return Promise.resolve(setCache(code, `paint(${name})`));
+  return Promise.resolve(Cache.set(code, `paint(${name})`));
 }
 
 export {

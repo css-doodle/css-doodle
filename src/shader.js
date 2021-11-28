@@ -1,4 +1,4 @@
-import { setCache, getCache } from './utils/cache';
+import Cache from './utils/cache';
 
 function create_shader(gl, type, source) {
   let shader = gl.createShader(type);
@@ -56,7 +56,7 @@ function load_texture(gl, image, i) {
 }
 
 function draw_shader(shaders, width, height) {
-  let result = getCache(shaders);
+  let result = Cache.get(shaders);
   if (result) {
     return Promise.resolve(result);
   }
@@ -110,7 +110,7 @@ function draw_shader(shaders, width, height) {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 
   // resolve image data in 72dpi :(
-  return Promise.resolve(setCache(shaders, canvas.toDataURL()));
+  return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
 }
 
 export {
