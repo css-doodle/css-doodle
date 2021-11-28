@@ -243,7 +243,7 @@ class Doodle extends HTMLElement {
   }
 
   paint_to_image({ code, cell }, fn) {
-    make_paint(code, this.random).then(fn);
+    make_paint(code).then(fn);
   }
 
   shader_to_image({ shader, cell }, fn) {

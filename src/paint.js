@@ -8,13 +8,9 @@ function make_paint(code) {
   if (result) {
     return Promise.resolve(result);
   }
+  let name = 'css-doodle-paint-' + (counter++);
+  let wrapped = generate(name, code);
 
-  let name = 'css-doodle-paint-' + counter++;
-  let wrapped = `
-    registerPaint('${name}', class {
-      ${ un_entity(code) }
-    })
-  `;
   let blob = new Blob([wrapped], { type: 'text/javascript' });
   try {
     if (CSS.paintWorklet) {
@@ -23,6 +19,23 @@ function make_paint(code) {
   } catch(e) {}
 
   return Promise.resolve(Cache.set(code, `paint(${name})`));
+}
+
+function generate(name, code) {
+  code = un_entity(code);
+  // make it so
+  if (!code.includes('paint(')) {
+    code = `
+      paint(ctx, {width, height}, props) {
+        ${code}
+      }
+    `
+  }
+  return `
+    registerPaint('${name}', class {
+      ${ code }
+    })
+  `;
 }
 
 export {
