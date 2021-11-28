@@ -1,4 +1,4 @@
-##0.22.0
+## 0.22.0
 
 * Now use WebGL2 and GLSL3.0 for shader programs.
 * Added `@paint` function for quick CSS painting API experiment.
