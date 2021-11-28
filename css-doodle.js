@@ -1,9 +1,9 @@
-/*! css-doodle@0.21.6 */
+/*! css-doodle@0.22.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
-}(this, (function () { 'use strict';
+})(this, (function () { 'use strict';
 
   /**
    * This is totally rewrite for the old parser module
@@ -722,7 +722,7 @@
         if (value.includes('`')) {
           arg.value = value = value.replace(/`/g, '"');
         }
-        arg.value = value.replace(/\n+|\s+/g, ' ');
+        arg.value = value;
       }
       return arg;
     });
@@ -1163,6 +1163,19 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
+  }
+
+  /* cyrb53 */
+  function hash(str, seed = 0) {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch; i < str.length; i++) {
+      ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1>>>0);
   }
 
   function make_tag_function(fn) {
@@ -1747,13 +1760,36 @@
     return (array[0] == array[2] && array[1] == array[3]);
   }
 
-  const store = {};
+  class CacheValue {
+    constructor() {
+      this.cache = {};
+    }
+    clear() {
+      this.cache = {};
+    }
+    set(input, value) {
+      if (is_nil(input)) {
+        return '';
+      }
+      let key = this.getKey(input);
+      return this.cache[key] = value;
+    }
+    get(input) {
+      let key = this.getKey(input);
+      return this.cache[key];
+    }
+    getKey(input) {
+      return (typeof input === 'string')
+        ? hash(input)
+        : hash(JSON.stringify(input));
+    }
+  }
+
+  var Cache = new CacheValue();
 
   function memo(prefix, fn) {
     return (...args) => {
-      let key = prefix + args.join('-');
-      if (store[key]) return store[key];
-      return (store[key] = fn.apply(null, args));
+      let key = prefix + args.join('-');    return Cache.get(key) || Cache.set(key, fn.apply(null, args));
     }
   }
 
@@ -2766,6 +2802,10 @@
         return value => value;
       },
 
+      paint() {
+        return value => value;
+      },
+
       path() {
         return value => value;
       },
@@ -3293,6 +3333,7 @@
       this.coords = [];
       this.doodles = {};
       this.canvas = {};
+      this.paint = {};
       this.shaders = {};
       this.paths = {};
       this.reset();
@@ -3313,6 +3354,7 @@
       this.coords = [];
       this.doodles = {};
       this.canvas = {};
+      this.paint = {};
       this.shaders = {};
       for (let key in this.rules) {
         if (key.startsWith('#c')) {
@@ -3367,7 +3409,7 @@
     }
 
     is_composable(name) {
-      return ['doodle', 'shaders', 'canvas'].includes(name);
+      return ['doodle', 'shaders', 'canvas', 'paint'].includes(name);
     }
 
     compose_argument(argument, coords, extra = []) {
@@ -3393,6 +3435,8 @@
                     return this.compose_shaders(value, coords);
                   case 'canvas':
                     return this.compose_canvas(value, coords);
+                  case 'paint':
+                    return this.compose_paint(value, arg.arguments.slice(1));
                 }
               }
             }
@@ -3442,6 +3486,17 @@
       return '${' + id + '}';
     }
 
+    compose_paint(code, rest = []) {
+      let commands = code;
+      let result = rest.map(group => get_value(group[0])).join(',');
+      if (result.length) {
+        commands = code + ',' + result;
+      }
+      let id = this.unique_id('paint');
+      this.paint[id] = { code: commands };
+      return '${' + id + '}';
+    }
+
     compose_path(commands) {
       let id = this.unique_id('path');
       this.paths[id] = {
@@ -3478,6 +3533,8 @@
                       result += this.compose_shaders(value, coords); break;
                     case 'canvas':
                       result += this.compose_canvas(value, coords); break;
+                    case 'paint':
+                      result += this.compose_paint(value, val.arguments.slice(1)); break;
                   }
                 }
               } else {
@@ -3571,7 +3628,7 @@
         }
       }
 
-      if (prop === 'background' && (value.includes('shader') || value.includes('canvas'))) {
+      if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('paint'))) {
         rule += 'background-size: 100% 100%;';
       }
 
@@ -3799,6 +3856,7 @@
         shaders: this.shaders,
         paths: this.paths,
         canvas: this.canvas,
+        paint: this.paint,
         definitions: definitions,
         uniforms: this.uniforms
       }
@@ -4091,18 +4149,19 @@
     return fragment;
   }
 
-  const fragment_head = `
+  const fragment_head = `#version 300 es
   precision highp float;
+  out vec4 FragColor;
 `;
 
-  const default_vertex_shader = `
-  attribute vec4 position;
+  const default_vertex_shader = `#version 300 es
+  in vec4 position;
   void main() {
     gl_Position = position;
   }
 `;
 
-  /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL */
+  // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
   function load_texture(gl, image, i) {
     const texture = gl.createTexture();
     gl.activeTexture(gl['TEXTURE' + i]);
@@ -4117,6 +4176,10 @@
   }
 
   function draw_shader(shaders, width, height) {
+    let result = Cache.get(shaders);
+    if (result) {
+      return Promise.resolve(result);
+    }
     let canvas = document.createElement('canvas');
     let ratio = window.devicePixelRatio || 1;
     width *= ratio;
@@ -4124,8 +4187,7 @@
     canvas.width = width;
     canvas.height = height;
 
-    let gl = canvas.getContext('webgl')
-      || canvas.getContext('exprimental-webgl');
+    let gl = canvas.getContext('webgl2');
     if (!gl) return Promise.resolve('');
 
     // resolution uniform
@@ -4142,7 +4204,7 @@
       fragment_head + fragment
     );
 
-    /* position in vertex shader */
+    // position in vertex shader
     let positionAttributeLocation = gl.getAttribLocation(program, 'position');
     let positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -4157,7 +4219,7 @@
 
     gl.useProgram(program);
 
-    /* resolve uniforms */
+    // resolve uniforms
     gl.uniform2fv(gl.getUniformLocation(program, "u_resolution"), [width, height]);
     shaders.textures.forEach((n, i) => {
       load_texture(gl, n.value, i);
@@ -4168,11 +4230,14 @@
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     // resolve image data in 72dpi :(
-    return Promise.resolve(canvas.toDataURL());
+    return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
   }
 
   function draw_canvas(code, width, height, random) {
-    code = un_entity(code);
+    let result = Cache.get(code);
+    if (result) {
+      return Promise.resolve(result);
+    }
 
     let canvas = document.createElement('canvas');
     let ctx = canvas.getContext('2d');
@@ -4186,12 +4251,49 @@
     ctx.scale(ratio, ratio);
 
     try {
-      let fn = new Function(`return (ctx, width, height, random) => {${code}}`)();
+      let fn = new Function(`return (ctx, width, height, random) => {${un_entity(code)}}`)();
       fn(ctx, width, height, random);
     } catch(e) {
       // ignore
     }
-    return Promise.resolve(canvas.toDataURL());
+    return Promise.resolve(Cache.set(code, canvas.toDataURL()));
+  }
+
+  let counter = 1;
+
+  function make_paint(code) {
+    let result = Cache.get(code);
+    if (result) {
+      return Promise.resolve(result);
+    }
+    let name = 'css-doodle-paint-' + (counter++);
+    let wrapped = generate(name, code);
+
+    let blob = new Blob([wrapped], { type: 'text/javascript' });
+    try {
+      if (CSS.paintWorklet) {
+        CSS.paintWorklet.addModule(URL.createObjectURL(blob));
+      }
+    } catch(e) {}
+
+    return Promise.resolve(Cache.set(code, `paint(${name})`));
+  }
+
+  function generate(name, code) {
+    code = un_entity(code);
+    // make it so
+    if (!code.includes('paint(')) {
+      code = `
+      paint(ctx, {width, height}, props) {
+        ${code}
+      }
+    `;
+    }
+    return `
+    registerPaint('${name}', class {
+      ${ code }
+    })
+  `;
   }
 
   function get_all_variables(element) {
@@ -4246,6 +4348,7 @@
     }
 
     update(styles) {
+      Cache.clear();
       let use = this.get_use();
       if (!styles) styles = un_entity(this.innerHTML);
       this.innerHTML = styles;
@@ -4448,6 +4551,10 @@
       draw_canvas(code, width, height, this.random).then(fn);
     }
 
+    paint_to_image({ code, cell }, fn) {
+      make_paint(code).then(fn);
+    }
+
     shader_to_image({ shader, cell }, fn) {
       let parsed = parse$4(shader);
       let element = this.doodle.getElementById(cell);
@@ -4496,16 +4603,16 @@
       this.build_grid(compiled, this.grid_size);
     }
 
-    replace({ doodles, shaders, paths, canvas }) {
+    replace({ doodles, shaders, paths, canvas, paint }) {
       let doodle_ids = Object.keys(doodles);
       let shader_ids = Object.keys(shaders);
       let path_ids = Object.keys(paths);
       let canvas_ids = Object.keys(canvas);
+      let paint_ids = Object.keys(paint);
       return input => {
-        if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length) {
+        if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length && !paint_ids.length) {
           return Promise.resolve(input);
         }
-
         let mappings = [].concat(
           doodle_ids.map(id => {
             if (input.includes(id)) {
@@ -4534,6 +4641,15 @@
               return Promise.resolve('');
             }
           }),
+          paint_ids.map(id => {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
+                this.paint_to_image(paint[id], value => resolve({ id, value }));
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          }),
           path_ids.map(id => {
             if (input.includes(id)) {
               return Promise.resolve({ id, value: '#' + id });
@@ -4546,11 +4662,17 @@
         return Promise.all(mappings).then(mapping => {
           if (input.replaceAll) {
             mapping.forEach(({ id, value }) => {
-              input = input.replaceAll('${' + id + '}', `url(${value})`);
+              input = input.replaceAll(
+                '${' + id + '}',
+                /^paint/.test(id) ? value : `url(${value})`
+              );
             });
           } else {
             mapping.forEach(({ id, value }) => {
-              input = input.replace('${' + id + '}', `url(${value})`);
+              input = input.replace(
+                '${' + id + '}',
+                /^paint/.test(id) ? value : `url(${value})`
+              );
             });
           }
           return input;
@@ -4798,4 +4920,4 @@
 
   return CSSDoodle;
 
-})));
+}));

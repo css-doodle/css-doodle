@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.21.6",
+  "version": "0.22.0",
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
@@ -36,5 +36,8 @@
   "bugs": {
     "url": "https://github.com/css-doodle/css-doodle/issues"
   },
-  "homepage": "https://css-doodle.com"
+  "homepage": "https://css-doodle.com",
+  "dependencies": {
+    "markdown-preview": "^0.4.3"
+  }
 }

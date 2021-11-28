@@ -1,3 +1,37 @@
+##0.22.0
+
+* Now use WebGL2 and GLSL3.0 for shader programs.
+* Added `@paint` function for quick CSS painting API experiment.
+  ```css
+  background: @paint(
+    paint(ctx, {width, height}) {
+      let x = width / 2;
+      let y = height / 2;
+      let r = Math.min(x, y);
+      ctx.fillStyle = 'red';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 2 * Math.PI, false);
+      ctx.fill();
+    }
+  );
+  ```
+
+  If the inner `paint` function is missing it will try to autocomplete the code.
+  ```css
+  background: @paint(
+    let x = width / 2;
+    let y = height / 2;
+    let r = Math.min(x, y);
+    ctx.fillStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 2 * Math.PI, false);
+    ctx.fill();
+  );
+  ```
+<br /> <br />
+
+
+
 ## 0.21.6
 
 ### Patches
