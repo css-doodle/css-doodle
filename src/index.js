@@ -6,7 +6,6 @@ import seedrandom from './lib/seedrandom';
 import { svg_to_png } from './svg';
 import { draw_shader } from './shader';
 import { draw_canvas } from './canvas';
-import { make_paint } from './paint';
 import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
@@ -234,16 +233,12 @@ class Doodle extends HTMLElement {
     });
   }
 
-  canvas_to_image({ code, cell }, fn) {
-    let element = this.doodle.getElementById(cell);
-    let { width, height } = element && element.getBoundingClientRect() || {
-      width: 0, height: 0
-    };
-    draw_canvas(code, width, height, this.random).then(fn);
+  paint_to_image({ code, cell }, fn) {
+
   }
 
-  paint_to_image({ code, cell }, fn) {
-    make_paint(code).then(fn);
+  canvas_to_image({ code }, fn) {
+    draw_canvas(code).then(fn);
   }
 
   shader_to_image({ shader, cell }, fn) {
@@ -300,8 +295,9 @@ class Doodle extends HTMLElement {
     let path_ids = Object.keys(paths);
     let canvas_ids = Object.keys(canvas);
     let paint_ids = Object.keys(paint);
+    let length = doodle_ids.length + canvas_ids.length + shader_ids.length + path_ids.length + paint_ids.length;
     return input => {
-      if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length && !paint_ids.length) {
+      if (!length) {
         return Promise.resolve(input);
       }
       let mappings = [].concat(
@@ -333,13 +329,7 @@ class Doodle extends HTMLElement {
           }
         }),
         paint_ids.map(id => {
-          if (input.includes(id)) {
-            return new Promise(resolve => {
-              this.paint_to_image(paint[id], value => resolve({ id, value }));
-            });
-          } else {
-            return Promise.resolve('');
-          }
+          return Promise.resolve('');
         }),
         path_ids.map(id => {
           if (input.includes(id)) {
@@ -355,14 +345,14 @@ class Doodle extends HTMLElement {
           mapping.forEach(({ id, value }) => {
             input = input.replaceAll(
               '${' + id + '}',
-              /^paint/.test(id) ? value : `url(${value})`
+              /^canvas/.test(id) ? value : `url(${value})`
             );
           });
         } else {
           mapping.forEach(({ id, value }) => {
             input = input.replace(
               '${' + id + '}',
-              /^paint/.test(id) ? value : `url(${value})`
+              /^canvas/.test(id) ? value : `url(${value})`
             )
           });
         }

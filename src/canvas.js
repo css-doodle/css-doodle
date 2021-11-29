@@ -1,30 +1,41 @@
 import { un_entity } from './utils/index';
 import Cache from './utils/cache';
 
-function draw_canvas(code, width, height, random) {
+let counter = 1;
+
+function draw_canvas(code) {
   let result = Cache.get(code);
   if (result) {
     return Promise.resolve(result);
   }
+  let name = 'css-doodle-paint-' + (counter++);
+  let wrapped = generate(name, code);
 
-  let canvas = document.createElement('canvas');
-  let ctx = canvas.getContext('2d');
-  let ratio = window.devicePixelRatio || 1;
-
-  canvas.style.width = canvas.width +'px';
-  canvas.style.height = canvas.height +'px';
-  canvas.width = width * ratio;
-  canvas.height = height * ratio;
-
-  ctx.scale(ratio, ratio);
-
+  let blob = new Blob([wrapped], { type: 'text/javascript' });
   try {
-    let fn = new Function(`return (ctx, width, height, random) => {${un_entity(code)}}`)();
-    fn(ctx, width, height, random);
-  } catch(e) {
-    // ignore
+    if (CSS.paintWorklet) {
+      CSS.paintWorklet.addModule(URL.createObjectURL(blob));
+    }
+  } catch(e) {}
+
+  return Promise.resolve(Cache.set(code, `paint(${name})`));
+}
+
+function generate(name, code) {
+  code = un_entity(code);
+  // make it so
+  if (!code.includes('paint(')) {
+    code = `
+      paint(ctx, {width, height}, props) {
+        ${code}
+      }
+    `
   }
-  return Promise.resolve(Cache.set(code, canvas.toDataURL()));
+  return `
+    registerPaint('${name}', class {
+      ${ code }
+    })
+  `;
 }
 
 export {

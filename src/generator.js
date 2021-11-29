@@ -139,9 +139,9 @@ class Rules {
                 case 'shaders':
                   return this.compose_shaders(value, coords);
                 case 'canvas':
-                  return this.compose_canvas(value, coords);
+                  return this.compose_canvas(value, arg.arguments.slice(1));
                 case 'paint':
-                  return this.compose_paint(value, arg.arguments.slice(1));
+                  return this.compose_paint(value);
               }
             }
           }
@@ -182,23 +182,23 @@ class Rules {
     return '${' + id + '}';
   }
 
-  compose_canvas(code, {x, y, z}) {
-    let id = this.unique_id('canvas');
-    this.canvas[id] = {
+  compose_paint(code, {x, y, z}) {
+    let id = this.unique_id('paint');
+    this.paint[id] = {
       code,
       cell: cell_id(x, y, z)
     };
     return '${' + id + '}';
   }
 
-  compose_paint(code, rest = []) {
+  compose_canvas(code, rest = []) {
     let commands = code;
     let result = rest.map(group => get_value(group[0])).join(',');
     if (result.length) {
       commands = code + ',' + result;
     }
-    let id = this.unique_id('paint');
-    this.paint[id] = { code: commands };
+    let id = this.unique_id('canvas');
+    this.canvas[id] = { code: commands };
     return '${' + id + '}';
   }
 
@@ -236,10 +236,10 @@ class Rules {
                     result += this.compose_doodle(value); break;
                   case 'shaders':
                     result += this.compose_shaders(value, coords); break;
-                  case 'canvas':
-                    result += this.compose_canvas(value, coords); break;
                   case 'paint':
-                    result += this.compose_paint(value, val.arguments.slice(1)); break;
+                    result += this.compose_paint(value); break;
+                  case 'canvas':
+                    result += this.compose_canvas(value, val.arguments.slice(1)); break;
                 }
               }
             } else {
