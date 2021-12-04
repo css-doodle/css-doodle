@@ -5,11 +5,13 @@ import generator from './generator';
 import seedrandom from './lib/seedrandom';
 import { svg_to_png } from './svg';
 import { draw_shader } from './shader';
+import { draw_pattern } from './pattern';
 import { draw_canvas } from './canvas';
 import { uniform_time } from './uniform';
 
 import get_props from './utils/get-props';
 import { get_variable, get_all_variables } from './utils/variables';
+import { get_rgba_color } from './utils/get-rgba-color';
 import Cache from './utils/cache';
 
 import {
@@ -25,7 +27,8 @@ class Doodle extends HTMLElement {
     super();
     this.doodle = this.attachShadow({ mode: 'open' });
     this.extra = {
-      get_variable: name => get_variable(this, name)
+      get_variable: name => get_variable(this, name),
+      get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
     };
   }
 
@@ -233,8 +236,9 @@ class Doodle extends HTMLElement {
     });
   }
 
-  paint_to_image({ code, cell }, fn) {
-
+  pattern_to_image({ code, cell }, fn) {
+    let shader = draw_pattern(code, this.extra);
+    this.shader_to_image({ shader, cell }, fn);
   }
 
   canvas_to_image({ code }, fn) {
@@ -289,13 +293,13 @@ class Doodle extends HTMLElement {
     this.build_grid(compiled, this.grid_size);
   }
 
-  replace({ doodles, shaders, paths, canvas, paint }) {
+  replace({ doodles, shaders, paths, canvas, pattern }) {
     let doodle_ids = Object.keys(doodles);
     let shader_ids = Object.keys(shaders);
     let path_ids = Object.keys(paths);
     let canvas_ids = Object.keys(canvas);
-    let paint_ids = Object.keys(paint);
-    let length = doodle_ids.length + canvas_ids.length + shader_ids.length + path_ids.length + paint_ids.length;
+    let pattern_ids = Object.keys(pattern);
+    let length = doodle_ids.length + canvas_ids.length + shader_ids.length + path_ids.length + pattern_ids.length;
     return input => {
       if (!length) {
         return Promise.resolve(input);
@@ -328,8 +332,14 @@ class Doodle extends HTMLElement {
             return Promise.resolve('');
           }
         }),
-        paint_ids.map(id => {
-          return Promise.resolve('');
+        pattern_ids.map(id => {
+          if (input.includes(id)) {
+            return new Promise(resolve => {
+              this.pattern_to_image(pattern[id], value => resolve({ id, value }));
+            });
+          } else {
+            return Promise.resolve('');
+          }
         }),
         path_ids.map(id => {
           if (input.includes(id)) {
@@ -379,7 +389,7 @@ class Doodle extends HTMLElement {
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
-      <svg xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
+      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
         <defs class="svg-defs">${ svg_defs }</defs>
       </svg>
       ${ create_grid(grid) }

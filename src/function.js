@@ -326,7 +326,7 @@ function get_exposed(random) {
       return value => value;
     },
 
-    paint() {
+    pattern() {
       return value => value;
     },
 
@@ -476,10 +476,12 @@ function get_exposed(random) {
     'Offset': 'Plot',
     'point': 'plot',
     'Point': 'Plot',
+    'paint': 'canvas',
 
     // error prone
     'stripes': 'stripe',
     'strip':   'stripe',
+    'patern':  'pattern',
   });
 }
 

@@ -38,7 +38,7 @@ class Rules {
     this.coords = [];
     this.doodles = {};
     this.canvas = {};
-    this.paint = {};
+    this.pattern = {};
     this.shaders = {};
     this.paths = {};
     this.reset();
@@ -59,7 +59,7 @@ class Rules {
     this.coords = [];
     this.doodles = {};
     this.canvas = {};
-    this.paint = {};
+    this.pattern = {};
     this.shaders = {};
     for (let key in this.rules) {
       if (key.startsWith('#c')) {
@@ -114,7 +114,7 @@ class Rules {
   }
 
   is_composable(name) {
-    return ['doodle', 'shaders', 'canvas', 'paint'].includes(name);
+    return ['doodle', 'shaders', 'canvas', 'pattern'].includes(name);
   }
 
   compose_argument(argument, coords, extra = []) {
@@ -140,8 +140,8 @@ class Rules {
                   return this.compose_shaders(value, coords);
                 case 'canvas':
                   return this.compose_canvas(value, arg.arguments.slice(1));
-                case 'paint':
-                  return this.compose_paint(value);
+                case 'pattern':
+                  return this.compose_pattern(value, coords);
               }
             }
           }
@@ -182,9 +182,9 @@ class Rules {
     return '${' + id + '}';
   }
 
-  compose_paint(code, {x, y, z}) {
-    let id = this.unique_id('paint');
-    this.paint[id] = {
+  compose_pattern(code, {x, y, z}) {
+    let id = this.unique_id('pattern');
+    this.pattern[id] = {
       code,
       cell: cell_id(x, y, z)
     };
@@ -236,8 +236,8 @@ class Rules {
                     result += this.compose_doodle(value); break;
                   case 'shaders':
                     result += this.compose_shaders(value, coords); break;
-                  case 'paint':
-                    result += this.compose_paint(value); break;
+                  case 'pattern':
+                    result += this.compose_pattern(value, coords); break;
                   case 'canvas':
                     result += this.compose_canvas(value, val.arguments.slice(1)); break;
                 }
@@ -333,7 +333,7 @@ class Rules {
       }
     }
 
-    if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('paint'))) {
+    if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('pattern'))) {
       rule += 'background-size: 100% 100%;';
     }
 
@@ -561,7 +561,7 @@ class Rules {
       shaders: this.shaders,
       paths: this.paths,
       canvas: this.canvas,
-      paint: this.paint,
+      pattern: this.pattern,
       definitions: definitions,
       uniforms: this.uniforms
     }

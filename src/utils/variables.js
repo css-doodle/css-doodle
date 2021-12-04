@@ -21,7 +21,6 @@ export function get_variable(element, name) {
   return getComputedStyle(element).getPropertyValue(name)
     .trim()
     .replace(/^\(|\)$/g, '');
-
 }
 
 function inline(map) {
