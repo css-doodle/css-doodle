@@ -1,4 +1,4 @@
-/*! css-doodle@0.22.0 */
+/*! css-doodle@0.23.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -264,12 +264,12 @@
     return tokens;
   }
 
-  function parse$6(input) {
+  function parse$7(input) {
     let iter = iterator$1(scan(input));
-    return walk$1(iter);
+    return walk$2(iter);
   }
 
-  function walk$1(iter) {
+  function walk$2(iter) {
     let rules = [];
     while (iter.next()) {
       let { curr, next } = iter.get();
@@ -303,7 +303,7 @@
           tokens = [];
         }
         if (ret.name) {
-          ret.fallback = walk$1(iter);
+          ret.fallback = walk$2(iter);
         }
       } else {
         tokens.push(curr);
@@ -968,7 +968,7 @@
   function evaluate_value(values, extra) {
     values.forEach && values.forEach(v => {
       if (v.type == 'text' && v.value) {
-        let vars = parse$6(v.value);
+        let vars = parse$7(v.value);
         v.value = vars.reduce((ret, p) => {
           let rule = '', other = '', parsed;
           rule = read_variable(extra, p.name);
@@ -982,7 +982,7 @@
             });
           }
           try {
-            parsed = parse$5(rule, extra);
+            parsed = parse$6(rule, extra);
           } catch (e) { }
           if (parsed) {
             ret.push.apply(ret, parsed);
@@ -1011,7 +1011,7 @@
     }, []);
   }
 
-  function parse$5(input, extra) {
+  function parse$6(input, extra) {
     const it = iterator(input);
     const Tokens = [];
     while (!it.end()) {
@@ -1210,7 +1210,7 @@
     });
   }
 
-  function parse$4(input) {
+  function parse$5(input) {
     let iter = iterator$1(removeParens(scan(input)));
     let stack = [];
     let tokens = [];
@@ -1223,7 +1223,7 @@
       let { curr, next } = iter.get();
       if (curr.isSymbol('{')) {
         if (!stack.length) {
-          let name = joinToken$1(tokens);
+          let name = joinToken$2(tokens);
           if (isIdentifier(name)) {
             identifier = name;
             tokens = [];
@@ -1238,7 +1238,7 @@
       else if (curr.isSymbol('}')) {
         stack.pop();
         if (!stack.length && identifier) {
-          let value = joinToken$1(tokens);
+          let value = joinToken$2(tokens);
           if (identifier && value.length) {
             if (identifier.startsWith('texture')) {
               result.textures.push({
@@ -1270,7 +1270,7 @@
 
     if (is_empty(result.fragment)) {
       return {
-        fragment: joinToken$1(tokens),
+        fragment: joinToken$2(tokens),
         textures: []
       }
     }
@@ -1296,7 +1296,7 @@
     return tokens;
   }
 
-  function joinToken$1(tokens) {
+  function joinToken$2(tokens) {
     return removeParens(tokens).map(n => n.value).join('');
   }
 
@@ -1899,7 +1899,7 @@
     }
   }
 
-  function parse$3(input) {
+  function parse$4(input) {
     let iter = iterator$1(scan(input));
     let commands = {};
     let tokens = [];
@@ -1953,7 +1953,7 @@
 
   const _ = make_tag_function(c => {
     return create_shape_points(
-      parse$3(c), {min: 3, max: 3600}
+      parse$4(c), {min: 3, max: 3600}
     );
   });
 
@@ -2229,7 +2229,7 @@
     });
   }
 
-  function parse$2(input, noSpace) {
+  function parse$3(input, noSpace) {
     let group = [];
     let tokens = [];
     let parenStack = [];
@@ -2281,7 +2281,7 @@
     return tokens.map(n => n.value).join('');
   }
 
-  function readStatement(iter, token) {
+  function readStatement$1(iter, token) {
     let fragment = [];
     while (iter.next()) {
       let { curr, next } = iter.get();
@@ -2292,12 +2292,12 @@
       }
     }
     if (fragment.length) {
-      token.value = joinToken(fragment);
+      token.value = joinToken$1(fragment);
     }
     return token;
   }
 
-  function walk(iter, parentToken) {
+  function walk$1(iter, parentToken) {
     let rules = [];
     let fragment = [];
     let tokenType = parentToken && parentToken.type || '';
@@ -2319,7 +2319,7 @@
           continue;
         }
         let tokenName = selectors.pop();
-        let block = resolveId(walk(iter, {
+        let block = resolveId(walk$1(iter, {
           type: 'block',
           name: tokenName,
           value: []
@@ -2340,7 +2340,7 @@
         && fragment.length
       ) {
         let props = getGroups(fragment, token => token.isSymbol(','));
-        let value = readStatement(iter, {
+        let value = readStatement$1(iter, {
           type: 'statement',
           name: 'unkown',
           value: ''
@@ -2355,7 +2355,7 @@
       }
       else if (curr.isSymbol(';')) {
         if (rules.length && fragment.length) {
-          rules[rules.length - 1].value += (';' + joinToken(fragment));
+          rules[rules.length - 1].value += (';' + joinToken$1(fragment));
           fragment = [];
         }
       } else {
@@ -2380,7 +2380,7 @@
     return names.includes(prevValue + ':' + nextValue);
   }
 
-  function joinToken(tokens) {
+  function joinToken$1(tokens) {
     return tokens
       .filter((token, i) => {
         if (token.isSymbol(';', '}') && i === tokens.length - 1) return false;
@@ -2409,21 +2409,21 @@
     let temp = [];
     tokens.forEach(token => {
       if (fn(token)) {
-        group.push(joinToken(temp));
+        group.push(joinToken$1(temp));
         temp = [];
       } else {
         temp.push(token);
       }
     });
     if (temp.length) {
-      group.push(joinToken(temp));
+      group.push(joinToken$1(temp));
     }
     return group;
   }
 
-  function parse$1(source, root) {
+  function parse$2(source, root) {
     let iter = iterator$1(scan(source));
-    let tokens = walk(iter, root || {
+    let tokens = walk$1(iter, root || {
       type: 'block',
       name: 'svg',
       value: []
@@ -2434,7 +2434,7 @@
   const commands = 'MmLlHhVvCcSsQqTtAaZz';
   const relatives = 'mlhvcsqtaz';
 
-  function parse(input) {
+  function parse$1(input) {
     let iter = iterator$1(scan(input));
     let temp = {};
     let result = {
@@ -2670,7 +2670,7 @@
             return '';
           }
           colors.forEach(step => {
-            let [_, size] = parse$2(step);
+            let [_, size] = parse$3(step);
             if (size !== undefined) custom_sizes.push(size);
             else default_count += 1;
           });
@@ -2679,7 +2679,7 @@
             : `100% / ${max}`;
           return colors.map((step, i) => {
             if (custom_sizes.length) {
-              let [color, size] = parse$2(step);
+              let [color, size] = parse$3(step);
               let prefix = prev ? (prev + ' + ') : '';
               prev = prefix + (size !== undefined ? size : default_size);
               return `${color} 0 calc(${ prev })`
@@ -2710,7 +2710,7 @@
       svg: lazy((...args) => {
         let value = args.map(input => get_value(input()).trim()).join(',');
         if (!value.startsWith('<')) {
-          let parsed = parse$1(value);
+          let parsed = parse$2(value);
           value = generate_svg(parsed);
         }
         let svg = normalize_svg(value);
@@ -2721,7 +2721,7 @@
         let value = args.map(input => get_value(input()).trim()).join(',');
         let id = unique_id('filter-');
         if (!value.startsWith('<')) {
-          let parsed = parse$1(value, {
+          let parsed = parse$2(value, {
             type: 'block',
             name: 'filter'
           });
@@ -2747,7 +2747,7 @@
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
           if (!context[key]) {
-            let config = parse$3(commands);
+            let config = parse$4(commands);
             config.points = max;
             context[key] = create_shape_points(config, {min: 1, max: 65536});
           }
@@ -2760,7 +2760,7 @@
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
           if (!context[key]) {
-            let config = parse$3(commands);
+            let config = parse$4(commands);
             config.points = max;
             config.absolute = true;
             context[key] = create_shape_points(config, {min: 1, max: 65536});
@@ -2782,7 +2782,7 @@
               if (rest.length) {
                 commands = type + ',' + rest;
               }
-              let config = parse$3(commands);
+              let config = parse$4(commands);
               points = create_shape_points(config, {min: 3, max: 3600});
             }
           }
@@ -2802,7 +2802,7 @@
         return value => value;
       },
 
-      paint() {
+      pattern() {
         return value => value;
       },
 
@@ -2812,7 +2812,7 @@
 
       invert() {
         return commands => {
-          let parsed = parse(commands);
+          let parsed = parse$1(commands);
           if (!parsed.valid) return commands;
           return parsed.commands.map(({ name, value }) => {
             switch (name) {
@@ -2828,7 +2828,7 @@
 
       flipH() {
         return commands => {
-          let parsed = parse(commands);
+          let parsed = parse$1(commands);
           if (!parsed.valid) return commands;
           return parsed.commands.map(({ name, value }) => {
             switch (name) {
@@ -2842,7 +2842,7 @@
 
       flipV() {
         return commands => {
-          let parsed = parse(commands);
+          let parsed = parse$1(commands);
           if (!parsed.valid) return commands;
           return parsed.commands.map(({ name, value }) => {
             switch (name) {
@@ -2864,7 +2864,7 @@
 
       reverse(...args) {
         return commands => {
-          let parsed = parse(commands);
+          let parsed = parse$1(commands);
           if (!parsed.valid) return commands;
           return parsed.commands.reverse().map(({ name, value }) => {
             return name + value.join(' ');
@@ -2952,10 +2952,12 @@
       'Offset': 'Plot',
       'point': 'plot',
       'Point': 'Plot',
+      'paint': 'canvas',
 
       // error prone
       'stripes': 'stripe',
       'strip':   'stripe',
+      'patern':  'pattern',
     });
   }
 
@@ -3088,7 +3090,7 @@
   var Property = {
 
     ['@size'](value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$2(value);
+      let [w, h = w] = parse$3(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -3110,12 +3112,12 @@
     },
 
     ['@min-size'](value) {
-      let [w, h = w] = parse$2(value);
+      let [w, h = w] = parse$3(value);
       return `min-width: ${ w }; min-height: ${ h };`;
     },
 
     ['@max-size'](value) {
-      let [w, h = w] = parse$2(value);
+      let [w, h = w] = parse$3(value);
       return `max-width: ${ w }; max-height: ${ h };`;
     },
 
@@ -3132,7 +3134,7 @@
       };
 
       return value => {
-        let [left, top = '50%'] = parse$2(value);
+        let [left, top = '50%'] = parse$3(value);
         left = map_left_right[left] || left;
         top = map_top_bottom[top] || top;
         const cw = 'var(--internal-cell-width, 25%)';
@@ -3160,7 +3162,7 @@
     },
 
     ['@shape']: memo('shape-property', value => {
-      let [type, ...args] = parse$2(value);
+      let [type, ...args] = parse$3(value);
       let prop = 'clip-path';
       if (typeof shapes[type] !== 'function') return '';
       let points = shapes[type](...args);
@@ -3333,7 +3335,7 @@
       this.coords = [];
       this.doodles = {};
       this.canvas = {};
-      this.paint = {};
+      this.pattern = {};
       this.shaders = {};
       this.paths = {};
       this.reset();
@@ -3354,7 +3356,7 @@
       this.coords = [];
       this.doodles = {};
       this.canvas = {};
-      this.paint = {};
+      this.pattern = {};
       this.shaders = {};
       for (let key in this.rules) {
         if (key.startsWith('#c')) {
@@ -3383,7 +3385,7 @@
         let is_string_or_number = (type === 'number' || type === 'string');
 
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$2(arg.value, true));
+          input.push(...parse$3(arg.value, true));
         }
         else {
           if (typeof arg === 'function') {
@@ -3409,7 +3411,7 @@
     }
 
     is_composable(name) {
-      return ['doodle', 'shaders', 'canvas', 'paint'].includes(name);
+      return ['doodle', 'shaders', 'canvas', 'pattern'].includes(name);
     }
 
     compose_argument(argument, coords, extra = []) {
@@ -3434,9 +3436,9 @@
                   case 'shaders':
                     return this.compose_shaders(value, coords);
                   case 'canvas':
-                    return this.compose_canvas(value, coords);
-                  case 'paint':
-                    return this.compose_paint(value, arg.arguments.slice(1));
+                    return this.compose_canvas(value, arg.arguments.slice(1));
+                  case 'pattern':
+                    return this.compose_pattern(value, coords);
                 }
               }
             }
@@ -3477,23 +3479,23 @@
       return '${' + id + '}';
     }
 
-    compose_canvas(code, {x, y, z}) {
-      let id = this.unique_id('canvas');
-      this.canvas[id] = {
+    compose_pattern(code, {x, y, z}) {
+      let id = this.unique_id('pattern');
+      this.pattern[id] = {
         code,
         cell: cell_id(x, y, z)
       };
       return '${' + id + '}';
     }
 
-    compose_paint(code, rest = []) {
+    compose_canvas(code, rest = []) {
       let commands = code;
       let result = rest.map(group => get_value(group[0])).join(',');
       if (result.length) {
         commands = code + ',' + result;
       }
-      let id = this.unique_id('paint');
-      this.paint[id] = { code: commands };
+      let id = this.unique_id('canvas');
+      this.canvas[id] = { code: commands };
       return '${' + id + '}';
     }
 
@@ -3531,10 +3533,10 @@
                       result += this.compose_doodle(value); break;
                     case 'shaders':
                       result += this.compose_shaders(value, coords); break;
+                    case 'pattern':
+                      result += this.compose_pattern(value, coords); break;
                     case 'canvas':
-                      result += this.compose_canvas(value, coords); break;
-                    case 'paint':
-                      result += this.compose_paint(value, val.arguments.slice(1)); break;
+                      result += this.compose_canvas(value, val.arguments.slice(1)); break;
                   }
                 }
               } else {
@@ -3628,7 +3630,7 @@
         }
       }
 
-      if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('paint'))) {
+      if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('pattern'))) {
         rule += 'background-size: 100% 100%;';
       }
 
@@ -3856,7 +3858,7 @@
         shaders: this.shaders,
         paths: this.paths,
         canvas: this.canvas,
-        paint: this.paint,
+        pattern: this.pattern,
         definitions: definitions,
         uniforms: this.uniforms
       }
@@ -4233,35 +4235,275 @@
     return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
   }
 
-  function draw_canvas(code, width, height, random) {
-    let result = Cache.get(code);
-    if (result) {
-      return Promise.resolve(result);
+  function readStatement(iter, token) {
+    let fragment = [];
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      let isStatementBreak = !next || curr.isSymbol(';') || next.isSymbol('}');
+      fragment.push(curr);
+      if (isStatementBreak) {
+        break;
+      }
+    }
+    if (fragment.length) {
+      token.value = joinToken(fragment);
+    }
+    return token;
+  }
+
+  function walk(iter, parentToken) {
+    let rules = [];
+    let fragment = [];
+    let tokenType = parentToken && parentToken.type || '';
+    let stack = [];
+
+    while (iter.next()) {
+      let { prev, curr, next } = iter.get();
+      let isBlockBreak = !next || curr.isSymbol('}');
+      if (tokenType === 'block' && isBlockBreak) {
+        if (!next && rules.length && !curr.isSymbol('}')) {
+          rules[rules.length - 1].value += (';' + curr.value);
+        }
+        parentToken.value = rules;
+        break;
+      }
+      else if (curr.isSymbol('{') && fragment.length && !stack.length) {
+        let selectors = parseSelector(fragment);
+        if (!selectors.length) {
+          continue;
+        }
+        let block = walk(iter, {
+          type: 'block',
+          name: 'unkown',
+          value: []
+        });
+
+        selectors.forEach(selector => {
+          let newBlock = Object.assign({}, block, {
+            name: selector.name,
+            args: selector.args
+          });
+          rules.push(newBlock);
+        });
+        fragment = [];
+      }
+      else if (curr.isSymbol(':') && fragment.length && !stack.length) {
+        let prop = joinToken(fragment);
+        rules.push(readStatement(iter, {
+          type: 'statement',
+          name: prop,
+          value: ''
+        }));
+        if (tokenType == 'block') {
+          parentToken.value = rules;
+        }
+        fragment = [];
+      }
+      else if (curr.isSymbol(';')) {
+        if (rules.length && fragment.length) {
+          rules[rules.length - 1].value += (';' + joinToken(fragment));
+          fragment = [];
+        }
+      } else {
+        if (curr.isSymbol('(')) {
+          stack.push(curr);
+        }
+        if (curr.isSymbol(')')) {
+          stack.pop();
+        }
+        fragment.push(curr);
+      }
     }
 
-    let canvas = document.createElement('canvas');
-    let ctx = canvas.getContext('2d');
-    let ratio = window.devicePixelRatio || 1;
-
-    canvas.style.width = canvas.width +'px';
-    canvas.style.height = canvas.height +'px';
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-
-    ctx.scale(ratio, ratio);
-
-    try {
-      let fn = new Function(`return (ctx, width, height, random) => {${un_entity(code)}}`)();
-      fn(ctx, width, height, random);
-    } catch(e) {
-      // ignore
+    if (rules.length && tokenType == 'block') {
+      parentToken.value = rules;
     }
-    return Promise.resolve(Cache.set(code, canvas.toDataURL()));
+    return tokenType ? parentToken : rules;
+  }
+
+  function joinToken(tokens) {
+    return tokens
+      .filter((token, i) => {
+        if (token.isSymbol(';') && i === tokens.length - 1) return false;
+        return true;
+      })
+      .map(n => n.value).join('');
+  }
+
+  function parseSelector(tokens) {
+    let iter = iterator$1(tokens);
+    let groups = [];
+    let selectorName = '';
+    let args = [];
+    let fragments = [];
+    let stack = [];
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      if (!selectorName.length && curr.isWord()) {
+        selectorName = curr.value;
+      }
+      else if (curr.isSymbol('(')) {
+        if (stack.length) {
+          fragments.push(curr.value);
+        }
+        stack.push(curr);
+      }
+      else if (curr.isSymbol(')')) {
+        stack.pop();
+        if (stack.length) {
+          fragments.push(curr.value);
+        } else if (fragments.length) {
+          args.push(fragments.join(''));
+          fragments = [];
+        }
+      }
+      else if (curr.isSymbol(',')) {
+        if (stack.length) {
+          args.push(fragments.join(''));
+          fragments = [];
+        } else {
+          if (fragments.length) {
+            args.push(fragments.join(''));
+            fragments = [];
+          }
+          if (selectorName) {
+            groups.push({
+              name: selectorName,
+              args
+            });
+            selectorName = '';
+            args = [];
+            fragments = [];
+          }
+        }
+      }
+      else {
+        fragments.push(curr.value);
+      }
+    }
+
+    if (selectorName) {
+      groups.push({
+        name: selectorName,
+        args
+      });
+    }
+
+    return groups.filter((v, i, self) => {
+      let idx = self.findIndex(n => {
+        return (n.name === v.name && v.args.join('') == n.args.join(''));
+      });
+      return idx === i;
+    });
+  }
+
+  function parse(source) {
+    let iter = iterator$1(scan(source));
+    let tokens = walk(iter);
+    return tokens;
+  }
+
+  function generate_shader(input, grid) {
+    return `
+    vec3 mapping(vec2 uv, vec2 grid) {
+      vec2 _grid = 1.0/grid;
+      return vec3(
+        ceil(uv.x/_grid.x),
+        ceil(grid.y - uv.y/_grid.y),
+        uv.x + grid.x * (uv.y - 1.0)
+      );
+    }
+    vec4 getColor(float x, float y, float i, float X, float Y) {
+      vec4 color = vec4(0, 0, 0, 0);
+      ${input}
+      return color;
+    }
+    void main() {
+      vec2 uv = gl_FragCoord.xy/u_resolution.xy;
+      vec2 grid = vec2(${grid.x}, ${grid.y});
+      vec3 p = mapping(uv, grid);
+      FragColor = getColor(p.x, p.y, p.z, grid.x, grid.y);
+    }
+  `;
+  }
+
+  function generate_statement(token, extra) {
+    if (token.name === 'fill') {
+      let {r, g, b, a} = extra.get_rgba_color(token.value);
+      return {
+        type: 'statement',
+        value: `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`,
+      }
+    }
+    if (token.name == 'grid') {
+      return {
+        type: 'grid',
+        value: token.value,
+      }
+    }
+    return {
+      type: 'statement',
+      value: ''
+    }
+  }
+
+  function generate_block(token, extra) {
+    if (token.name === 'match') {
+      let cond = token.args[0];
+      let values = [];
+      token.value.forEach(t => {
+        let statement = generate_statement(t, extra);
+        if (statement.type == 'statement') {
+          values.push(statement.value);
+        }
+      });
+      return `
+      if (${cond}) {
+        ${values.join('')}
+      }
+    `
+    }
+    return '';
+  }
+
+  function float(n) {
+    return String(n).includes('.') ? n : n + '.0';
+  }
+
+  function get_grid(input) {
+    let [x, y = x] = String(input + '')
+      .replace(/\s+/g, '')
+      .replace(/[,，xX]+/g, 'x')
+      .split('x')
+      .map(n => parseInt(n));
+    if (!x || x < 1) x = 1;
+    if (!y || y < 1) y = 1;
+    return { x, y }
+  }
+
+  function draw_pattern(code, extra) {
+    let tokens = parse(code);
+    let result = [];
+    let grid = {x: 1, y: 1 };
+    tokens.forEach(token => {
+      if (token.type === 'statement') {
+        let statement = generate_statement(token, extra);
+        if (statement.type == 'statement') {
+          result.push(statement.value);
+        }
+        if (statement.type === 'grid') {
+          grid = get_grid(statement.value);
+        }
+      } else if (token.type === 'block') {
+        result.push(generate_block(token, extra));
+      }
+    });
+    return generate_shader(result.join(''), grid);
   }
 
   let counter = 1;
 
-  function make_paint(code) {
+  function draw_canvas(code) {
     let result = Cache.get(code);
     if (result) {
       return Promise.resolve(result);
@@ -4319,7 +4561,6 @@
     return getComputedStyle(element).getPropertyValue(name)
       .trim()
       .replace(/^\(|\)$/g, '');
-
   }
 
   function inline(map) {
@@ -4330,12 +4571,29 @@
     return result.join(';');
   }
 
+  function transform(color) {
+    let [r, g, b, a = 1] = color
+      .replace(/rgba?\((.+)\)/, (_, v) => v)
+      .split(/,\s*/);
+    return {r, g, b, a};
+  }
+
+  function get_rgba_color(root, value) {
+    let element = root.querySelector('#defs');
+    if (!element) {
+      return { r: 0, g: 0, b: 0, a: 1 }
+    }
+    element.style.color = value;
+    return transform(getComputedStyle(element).color);
+  }
+
   class Doodle extends HTMLElement {
     constructor() {
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
       this.extra = {
-        get_variable: name => get_variable(this, name)
+        get_variable: name => get_variable(this, name),
+        get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
       };
     }
 
@@ -4360,7 +4618,7 @@
       let { x: gx, y: gy, z: gz } = this.grid_size;
 
       const compiled = this.generate(
-        parse$5(use + styles, this.extra)
+        parse$6(use + styles, this.extra)
       );
 
       if (!this.shadowRoot.innerHTML) {
@@ -4382,7 +4640,7 @@
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, grid);
           return this.build_grid(
-            this.generate(parse$5(use + styles, this.extra)),
+            this.generate(parse$6(use + styles, this.extra)),
             grid
           );
         }
@@ -4501,7 +4759,7 @@
         fn = options;
         options = null;
       }
-      let parsed = parse$5(code, this.extra);
+      let parsed = parse$6(code, this.extra);
       let _grid = parse_grid({});
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
@@ -4543,20 +4801,17 @@
       });
     }
 
-    canvas_to_image({ code, cell }, fn) {
-      let element = this.doodle.getElementById(cell);
-      let { width, height } = element && element.getBoundingClientRect() || {
-        width: 0, height: 0
-      };
-      draw_canvas(code, width, height, this.random).then(fn);
+    pattern_to_image({ code, cell }, fn) {
+      let shader = draw_pattern(code, this.extra);
+      this.shader_to_image({ shader, cell }, fn);
     }
 
-    paint_to_image({ code, cell }, fn) {
-      make_paint(code).then(fn);
+    canvas_to_image({ code }, fn) {
+      draw_canvas(code).then(fn);
     }
 
     shader_to_image({ shader, cell }, fn) {
-      let parsed = parse$4(shader);
+      let parsed = parse$5(shader);
       let element = this.doodle.getElementById(cell);
       let { width, height } = element && element.getBoundingClientRect() || {
         width: 0, height: 0
@@ -4593,7 +4848,7 @@
         }
       }
       let use = this.get_use();
-      let parsed = parse$5(use + un_entity(this.innerHTML), this.extra);
+      let parsed = parse$6(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
       this.grid_size = compiled.grid
@@ -4603,14 +4858,15 @@
       this.build_grid(compiled, this.grid_size);
     }
 
-    replace({ doodles, shaders, paths, canvas, paint }) {
+    replace({ doodles, shaders, paths, canvas, pattern }) {
       let doodle_ids = Object.keys(doodles);
       let shader_ids = Object.keys(shaders);
       let path_ids = Object.keys(paths);
       let canvas_ids = Object.keys(canvas);
-      let paint_ids = Object.keys(paint);
+      let pattern_ids = Object.keys(pattern);
+      let length = doodle_ids.length + canvas_ids.length + shader_ids.length + path_ids.length + pattern_ids.length;
       return input => {
-        if (!doodle_ids.length && !shader_ids.length && !path_ids.length && !canvas_ids.length && !paint_ids.length) {
+        if (!length) {
           return Promise.resolve(input);
         }
         let mappings = [].concat(
@@ -4641,10 +4897,10 @@
               return Promise.resolve('');
             }
           }),
-          paint_ids.map(id => {
+          pattern_ids.map(id => {
             if (input.includes(id)) {
               return new Promise(resolve => {
-                this.paint_to_image(paint[id], value => resolve({ id, value }));
+                this.pattern_to_image(pattern[id], value => resolve({ id, value }));
               });
             } else {
               return Promise.resolve('');
@@ -4664,14 +4920,14 @@
             mapping.forEach(({ id, value }) => {
               input = input.replaceAll(
                 '${' + id + '}',
-                /^paint/.test(id) ? value : `url(${value})`
+                /^canvas/.test(id) ? value : `url(${value})`
               );
             });
           } else {
             mapping.forEach(({ id, value }) => {
               input = input.replace(
                 '${' + id + '}',
-                /^paint/.test(id) ? value : `url(${value})`
+                /^canvas/.test(id) ? value : `url(${value})`
               );
             });
           }
@@ -4698,7 +4954,7 @@
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
-      <svg xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
+      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
         <defs class="svg-defs">${ svg_defs }</defs>
       </svg>
       ${ create_grid(grid) }
