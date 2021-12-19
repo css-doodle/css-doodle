@@ -5,11 +5,10 @@ function generate_shader(input, grid) {
   return `
     vec3 mapping(vec2 uv, vec2 grid) {
       vec2 _grid = 1.0/grid;
-      return vec3(
-        ceil(uv.x/_grid.x),
-        ceil(grid.y - uv.y/_grid.y),
-        uv.x + grid.x * (uv.y - 1.0)
-      );
+      float x = ceil(uv.x/_grid.x);
+      float y = ceil(grid.y - uv.y/_grid.y);
+      float i = x + (y - 1.0) * y;
+      return vec3(x, y, i);
     }
     vec4 getColor(float x, float y, float i, float X, float Y) {
       vec4 color = vec4(0, 0, 0, 0);
