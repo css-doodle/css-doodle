@@ -36,8 +36,5 @@
   "bugs": {
     "url": "https://github.com/css-doodle/css-doodle/issues"
   },
-  "homepage": "https://css-doodle.com",
-  "dependencies": {
-    "markdown-preview": "^0.4.3"
-  }
+  "homepage": "https://css-doodle.com"
 }
