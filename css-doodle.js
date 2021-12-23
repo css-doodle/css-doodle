@@ -1,4 +1,4 @@
-/*! css-doodle@0.23.0 */
+/*! css-doodle@0.23.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -4407,13 +4407,12 @@
     return `
     vec3 mapping(vec2 uv, vec2 grid) {
       vec2 _grid = 1.0/grid;
-      return vec3(
-        ceil(uv.x/_grid.x),
-        ceil(grid.y - uv.y/_grid.y),
-        uv.x + grid.x * (uv.y - 1.0)
-      );
+      float x = ceil(uv.x/_grid.x);
+      float y = ceil(grid.y - uv.y/_grid.y);
+      float i = x + (y - 1.0) * y;
+      return vec3(x, y, i);
     }
-    vec4 getColor(float x, float y, float i, float X, float Y) {
+    vec4 getColor(float x, float y, float i, float I, float X, float Y) {
       vec4 color = vec4(0, 0, 0, 0);
       ${input}
       return color;
@@ -4422,7 +4421,7 @@
       vec2 uv = gl_FragCoord.xy/u_resolution.xy;
       vec2 grid = vec2(${grid.x}, ${grid.y});
       vec3 p = mapping(uv, grid);
-      FragColor = getColor(p.x, p.y, p.z, grid.x, grid.y);
+      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y);
     }
   `;
   }

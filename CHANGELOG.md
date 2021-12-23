@@ -1,3 +1,13 @@
+## 0.23.1
+
+* Fixed `index` calculation in `@pattern`.
+* Added `I` for `@pattern`.
+* Removed useless dependencies.
+
+<br /> <br />
+
+
+
 ## 0.23.0
 
 * Added `@pattern` function for pixel patterns drawing.
