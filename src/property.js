@@ -3,9 +3,10 @@ import parse_grid from './parser/parse-grid';
 import { shapes } from './shapes';
 import prefixer from './prefixer';
 import memo from './utils/memo';
+import { alias_for } from './utils/index';
 import { is_preset, get_preset } from './preset-size';
 
-export default {
+const Expose = {
 
   ['@size'](value, { is_special_selector, grid }) {
     let [w, h = w] = parse_value_group(value);
@@ -39,7 +40,7 @@ export default {
     return `max-width: ${ w }; max-height: ${ h };`;
   },
 
-  ['@place-cell']: (() => {
+  ['@offset']: (() => {
     let map_left_right = {
       'center': '50%',
       'left': '0%', 'right': '100%',
@@ -96,4 +97,12 @@ export default {
     }
   }
 
-}
+};
+
+export default alias_for(Expose, {
+
+  // legacy names.
+  'place-cell': 'offset',
+
+});
+
