@@ -272,21 +272,10 @@ function get_exposed(random) {
         let [idx = count, _, __, max = grid.count] = extra || [];
         if (!context[key]) {
           let config = parse_shape_commands(commands);
+          delete config['fill'];
+          delete config['fill-rule'];
+          delete config['frame'];
           config.points = max;
-          context[key] = create_shape_points(config, {min: 1, max: 65536});
-        }
-        return context[key][idx - 1];
-      };
-    },
-
-    Plot({ count, context, extra, position, grid }) {
-      let key = 'offset-points' + position;
-      return commands => {
-        let [idx = count, _, __, max = grid.count] = extra || [];
-        if (!context[key]) {
-          let config = parse_shape_commands(commands);
-          config.points = max;
-          config.absolute = true;
           context[key] = create_shape_points(config, {min: 1, max: 65536});
         }
         return context[key][idx - 1];

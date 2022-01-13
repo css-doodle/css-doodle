@@ -31,16 +31,15 @@ function parse(input) {
       }
     }
   }
-
   if (tokens.length && name) {
     commands[name] = transformNegative(name, joinTokens(tokens), negative);
   }
-
   return commands;
 }
 
 function transformNegative(name, value, negative) {
-  if (name === 'fill-rule') {
+  let excludes = ['fill-rule', 'fill'];
+  if (excludes.includes(name)) {
     return value;
   }
   return negative ? `-1 * (${ value })` : value;

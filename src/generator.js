@@ -213,9 +213,13 @@ class Rules {
 
   compose_value(value, coords) {
     if (!Array.isArray(value)) {
-      return '';
+      return {
+        value: '',
+        extra: '',
+      }
     }
-    return value.reduce((result, val) => {
+    let extra = '';
+    let output = value.reduce((result, val) => {
       switch (val.type) {
         case 'text': {
           result += val.value;
@@ -258,20 +262,36 @@ class Rules {
                   result += output;
                 }
               }
+              if (output.extra) {
+                extra = output.extra;
+              }
             }
           }
         }
       }
       return result;
     }, '');
+
+    return {
+      value: output,
+      extra: extra,
+    }
   }
 
   compose_rule(token, _coords, selector) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
+    let extra;
     let value_group = token.value.reduce((ret, v) => {
       let composed = this.compose_value(v, coords);
-      if (composed) ret.push(composed);
+      if (composed) {
+        if (composed.value) {
+          ret.push(composed.value);
+        }
+        if (composed.extra) {
+          extra = composed.extra;
+        }
+      }
       return ret;
     }, []);
 
@@ -310,7 +330,7 @@ class Rules {
     }
 
     if (prop === 'content') {
-      if (!/["']|^none$|^(var|counter|counters|attr)\(/.test(value)) {
+      if (!/["']|^none$|^(var|counter|counters|attr|url)\(/.test(value)) {
         value = `'${ value }'`;
       }
     }
@@ -344,7 +364,8 @@ class Rules {
     if (Property[prop]) {
       let transformed = Property[prop](value, {
         is_special_selector: is_special_selector(selector),
-        grid: coords.grid
+        grid: coords.grid,
+        extra
       });
       switch (prop) {
         case '@grid': {
@@ -394,7 +415,7 @@ class Rules {
       case '@grid': {
         let value_group = token.value.reduce((ret, v) => {
           let composed = this.compose_value(v, coords);
-          if (composed) ret.push(composed);
+          if (composed && composed.value) ret.push(composed.value);
           return ret;
         }, []);
         let value = value_group.join(', ');

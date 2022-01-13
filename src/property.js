@@ -51,7 +51,7 @@ export default {
       'left': '50%', 'right': '50%',
     };
 
-    return value => {
+    return (value, { extra }) => {
       let [left, top = '50%'] = parse_value_group(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
@@ -66,6 +66,8 @@ export default {
         margin-left: calc(${ cw } / -2);
         margin-top: calc(${ ch } / -2);
         grid-area: unset;
+        --plot-angle: ${ extra || 0};
+        transform: rotate(${ extra || 0}deg);
       `;
     }
   })(),
