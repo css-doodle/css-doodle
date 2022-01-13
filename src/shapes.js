@@ -183,6 +183,9 @@ function create_polygon_points(option, fn) {
 
   let factor = (option.scale === undefined) ? 1 : option.scale;
   let add = ([x1, y1, dx = 0, dy = 0]) => {
+    if (x1 == 'evenodd' || x1 == 'nonzero') {
+      return points.push(new Point(x1, '', ''));
+    }
     let [x, y] = scale(x1, -y1, factor);
     let [dx1, dy2] = scale(dx, -dy, factor);
     let angle = calc_angle(x, y, dx1, dy2, direction);
@@ -199,7 +202,7 @@ function create_polygon_points(option, fn) {
   }
 
   if (fill == 'nonzero' || fill == 'evenodd') {
-    add([fill, '', 0]);
+    add([fill, '', '']);
   }
 
   for (let i = 0; i < split; ++i) {
@@ -277,8 +280,9 @@ function create_shape_points(props, {min, max}) {
   let px = is_empty(props.x) ? 'cos(t)' : props.x;
   let py = is_empty(props.y) ? 'sin(t)' : props.y;
   let pr = is_empty(props.r) ? ''       : props.r;
+
   let { unit, value } = parse_compound_value(pr);
-  if (unit) {
+  if (unit && !props[unit] && unit !== 't') {
     if (is_empty(props.unit)) {
       props.unit = unit;
     }

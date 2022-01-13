@@ -102,7 +102,7 @@ const Expose = {
 export default alias_for(Expose, {
 
   // legacy names.
-  'place-cell': 'offset',
+  '@place-cell': '@offset',
 
 });
 
