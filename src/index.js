@@ -81,14 +81,6 @@ class Doodle extends HTMLElement {
       }
     }
 
-    let svg_paths = this.build_svg_paths(compiled.paths);
-    if (svg_paths) {
-      let defs = this.shadowRoot.querySelector('.svg-defs');
-      if (defs) {
-        defs.innerHTML = svg_paths;
-      }
-    }
-
     if (compiled.uniforms.time) {
       this.register_uniform_time();
     }
@@ -199,7 +191,6 @@ class Doodle extends HTMLElement {
     let compiled = generator(parsed, _grid, this.random);
     let grid = compiled.grid ? compiled.grid : _grid;
     const { keyframes, host, container, cells } = compiled.styles;
-    let svg_defs = this.build_svg_paths(compiled.paths);
 
     let replace = this.replace(compiled);
     let grid_container = create_grid(grid);
@@ -220,9 +211,7 @@ class Doodle extends HTMLElement {
               ${ cells }
               ${ keyframes }
             </style>
-            <svg xmlns="http://www.w3.org/2000/svg" style="width:0; height:0">
-              <defs class="svg-defs">${ svg_defs }</defs>
-            </svg>
+            <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0; height:0"></svg>
             ${ grid_container }
           </div>
         </foreignObject>
@@ -293,13 +282,12 @@ class Doodle extends HTMLElement {
     this.build_grid(compiled, this.grid_size);
   }
 
-  replace({ doodles, shaders, paths, canvas, pattern }) {
+  replace({ doodles, shaders, canvas, pattern }) {
     let doodle_ids = Object.keys(doodles);
     let shader_ids = Object.keys(shaders);
-    let path_ids = Object.keys(paths);
     let canvas_ids = Object.keys(canvas);
     let pattern_ids = Object.keys(pattern);
-    let length = doodle_ids.length + canvas_ids.length + shader_ids.length + path_ids.length + pattern_ids.length;
+    let length = doodle_ids.length + canvas_ids.length + shader_ids.length + pattern_ids.length;
     return input => {
       if (!length) {
         return Promise.resolve(input);
@@ -341,13 +329,6 @@ class Doodle extends HTMLElement {
             return Promise.resolve('');
           }
         }),
-        path_ids.map(id => {
-          if (input.includes(id)) {
-            return Promise.resolve({ id, value: '#' + id });
-          } else {
-            return Promise.resolve('');
-          }
-        })
       );
 
       return Promise.all(mappings).then(mapping => {
@@ -378,7 +359,6 @@ class Doodle extends HTMLElement {
     const { keyframes, host, container, cells } = compiled.styles;
     let style_container = get_grid_styles(grid) + host + container;
     let style_cells = has_delay ? '' : cells;
-    let svg_defs = this.build_svg_paths(compiled.paths);
 
     const { uniforms } = compiled;
 
@@ -389,9 +369,7 @@ class Doodle extends HTMLElement {
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
-      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
-        <defs class="svg-defs">${ svg_defs }</defs>
-      </svg>
+      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
       ${ create_grid(grid) }
     `;
 
@@ -413,15 +391,6 @@ class Doodle extends HTMLElement {
         }
       } catch (e) { }
     }
-  }
-
-  build_svg_paths(paths) {
-    let names = Object.keys(paths || {});
-    return names.map(name => `
-      <clipPath id="${ paths[name].id }" clipPathUnits="objectBoundingBox">
-        <path d="${ paths[name].commands }" />
-      </clipPath>
-    `).join('');
   }
 
   register_uniform_time() {

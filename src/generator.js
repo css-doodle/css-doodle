@@ -38,7 +38,6 @@ class Rules {
     this.canvas = {};
     this.pattern = {};
     this.shaders = {};
-    this.paths = {};
     this.reset();
     this.Func = Func(random);
     this.Selector = Selector(random);
@@ -151,9 +150,6 @@ class Rules {
               : this.compose_argument(n, coords, extra);
           });
           let value = this.apply_func(fn, coords, args);
-          if (fname == 'path') {
-            return this.compose_path(value);
-          }
           return value;
         }
       }
@@ -197,15 +193,6 @@ class Rules {
     }
     let id = this.unique_id('canvas');
     this.canvas[id] = { code: commands };
-    return '${' + id + '}';
-  }
-
-  compose_path(commands) {
-    let id = this.unique_id('path');
-    this.paths[id] = {
-      id,
-      commands
-    };
     return '${' + id + '}';
   }
 
@@ -254,11 +241,7 @@ class Rules {
 
               let output = this.apply_func(fn, coords, args);
               if (!is_nil(output)) {
-                if (fname == 'path') {
-                  result += this.compose_path(output);
-                } else {
-                  result += output;
-                }
+                result += output;
               }
               if (output.extra) {
                 extra = output.extra;
@@ -570,7 +553,6 @@ class Rules {
       grid: this.grid,
       doodles: this.doodles,
       shaders: this.shaders,
-      paths: this.paths,
       canvas: this.canvas,
       pattern: this.pattern,
       uniforms: this.uniforms

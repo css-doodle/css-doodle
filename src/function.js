@@ -289,10 +289,6 @@ function get_exposed(random) {
       return value => value;
     },
 
-    path() {
-      return value => value;
-    },
-
     invert() {
       return commands => {
         let parsed = parse_svg_path(commands);
