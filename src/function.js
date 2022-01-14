@@ -27,35 +27,35 @@ function get_exposed(random) {
 
   const Expose = {
 
-    index({ count }) {
+    i({ count }) {
       return _ => count;
     },
 
-    row({ y }) {
+    y({ y }) {
       return _ => y;
     },
 
-    col({ x }) {
+    x({ x }) {
       return _ => x;
     },
 
-    depth({ z }) {
+    z({ z }) {
       return _ => z;
     },
 
-    size({ grid }) {
+    I({ grid }) {
       return _ => grid.count;
     },
 
-    ['size-row']({ grid }) {
+    Y({ grid }) {
       return _ => grid.y;
     },
 
-    ['size-col']({ grid }) {
+    X({ grid }) {
       return _ => grid.x;
     },
 
-    ['size-depth']({ grid }) {
+    Z({ grid }) {
       return _ => grid.z;
     },
 
@@ -79,25 +79,25 @@ function get_exposed(random) {
       return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
     },
 
-    repeat: (
+    µ: (
       make_sequence('')
     ),
 
-    multiple: (
+    m: (
       make_sequence(',')
     ),
 
-    ['multiple-with-space']: (
+    M: (
       make_sequence(' ')
     ),
 
-    pick({ context }) {
+    p({ context }) {
       return expand((...args) => {
         return push_stack(context, 'last_pick', pick(args));
       });
     },
 
-    ['pick-n']({ context, extra, position }) {
+    pn({ context, extra, position }) {
       let counter = 'pn-counter' + position;
       return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
@@ -110,7 +110,7 @@ function get_exposed(random) {
       });
     },
 
-    ['pick-d']({ context, extra, position }) {
+    pd({ context, extra, position }) {
       let counter = 'pd-counter' + position;
       let values = 'pd-values' + position;
       return expand((...args) => {
@@ -127,14 +127,14 @@ function get_exposed(random) {
       });
     },
 
-    ['last-pick']({ context }) {
+    lp({ context }) {
       return (n = 1) => {
         let stack = context.last_pick;
         return stack ? stack.last(n) : '';
       };
     },
 
-    rand({ context }) {
+    r({ context }) {
       return (...args) => {
         let transform_type = args.every(is_letter)
           ? by_charcode
@@ -144,7 +144,7 @@ function get_exposed(random) {
       };
     },
 
-    ['rand-int']({ context }) {
+    ri({ context }) {
       return (...args) => {
         let transform_type = args.every(is_letter)
           ? by_charcode
@@ -155,7 +155,7 @@ function get_exposed(random) {
       }
     },
 
-    ['last-rand']({ context }) {
+    lr({ context }) {
       return (n = 1) => {
         let stack = context.last_rand;
         return stack ? stack.last(n) : '';
@@ -211,7 +211,7 @@ function get_exposed(random) {
       return create_svg_url(svg);
     }),
 
-    ['svg-filter']: lazy((...args) => {
+    filter: lazy((...args) => {
       let value = args.map(input => get_value(input()).trim()).join(',');
       let id = unique_id('filter-');
       if (!value.startsWith('<')) {
@@ -383,57 +383,48 @@ function get_exposed(random) {
   }
 
   return alias_for(Expose, {
-    'm': 'multiple',
-    'M': 'multiple-with-space',
-    'µ': 'repeat',
-
-    'r':    'rand',
-    'ri':   'rand-int',
-    'lr':   'last-rand',
-
-    'p':  'pick',
-    'pn': 'pick-n',
-    'pd': 'pick-d',
-    'lp': 'last-pick',
-
-    'i': 'index',
-    'x': 'col',
-    'y': 'row',
-    'z': 'depth',
-
-    'I': 'size',
-    'X': 'size-col',
-    'Y': 'size-row',
-    'Z': 'size-depth',
-
-    'flipv': 'flipV',
-    'fliph': 'flipH',
-
-    // legacy names, keep them before 1.0
-    'nr': 'rn',
-    'ms': 'multiple-with-space',
-    's':  'size',
-    'sx': 'size-col',
-    'sy': 'size-row',
-    'sz': 'size-depth',
-    'size-x': 'size-col',
-    'size-y': 'size-row',
-    'size-z': 'size-depth',
-    'multi': 'multiple',
-    'pick-by-turn': 'pick-n',
-    'max-row': 'size-row',
-    'max-col': 'size-col',
-    'offset': 'plot',
-    'Offset': 'Plot',
-    'point': 'plot',
-    'Point': 'Plot',
-    'paint': 'canvas',
-    'rep': 'repeat',
+    'index': 'i',
+    'col': 'x',
+    'row': 'y',
+    'depth': 'z',
+    'rand': 'r',
+    'pick': 'p',
 
     // error prone
     'stripes': 'stripe',
     'strip':   'stripe',
     'patern':  'pattern',
+    'flipv': 'flipV',
+    'fliph': 'flipH',
+
+    // legacy names, keep them before 1.0
+    'svg-filter': 'filter',
+    'last-rand': 'lr',
+    'last-pick': 'lp',
+    'multiple': 'm',
+    'multi': 'm',
+    'rep': 'µ',
+    'repeat': 'µ',
+    'ms': 'M',
+    's':  'I',
+    'size': 'I',
+    'sx': 'X',
+    'size-x': 'X',
+    'size-col': 'X',
+    'max-col': 'X',
+    'sy': 'Y',
+    'size-y': 'Y',
+    'size-row': 'Y',
+    'max-row': 'Y',
+    'sz': 'Z',
+    'size-z': 'Z',
+    'size-depth': 'Z',
+    'pick-by-turn': 'pn',
+    'offset': 'plot',
+    'Offset': 'Plot',
+    'point': 'plot',
+    'Point': 'Plot',
+    'paint': 'canvas',
   });
 }
 
