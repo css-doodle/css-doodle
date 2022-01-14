@@ -30,16 +30,6 @@ const Expose = {
     return styles;
   },
 
-  ['@min-size'](value) {
-    let [w, h = w] = parse_value_group(value);
-    return `min-width: ${ w }; min-height: ${ h };`;
-  },
-
-  ['@max-size'](value) {
-    let [w, h = w] = parse_value_group(value);
-    return `max-width: ${ w }; max-height: ${ h };`;
-  },
-
   ['@offset']: (() => {
     let map_left_right = {
       'center': '50%',
@@ -67,8 +57,8 @@ const Expose = {
         margin-left: calc(${ cw } / -2);
         margin-top: calc(${ ch } / -2);
         grid-area: unset;
-        --plot-angle: ${ extra || 0};
-        transform: rotate(${ extra || 0}deg);
+        --plot-angle: ${ extra || 0 };
+        transform: rotate(${ extra || 0 }deg);
       `;
     }
   })(),
