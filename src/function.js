@@ -193,15 +193,6 @@ function get_exposed(random) {
       }
     },
 
-    reflect() {
-      return (...input) => {
-        return [
-          ...input,
-          ...input.slice(0, -1).reverse()
-        ].join(',');
-      }
-    },
-
     calc() {
       return value => calc(get_value(value));
     },
@@ -424,7 +415,6 @@ function get_exposed(random) {
 
     // legacy names, keep them before 1.0
     'nr': 'rn',
-    'nri': 'nri',
     'ms': 'multiple-with-space',
     's':  'size',
     'sx': 'size-col',
