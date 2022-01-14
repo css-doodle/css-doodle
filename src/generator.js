@@ -12,8 +12,6 @@ import { maybe, cell_id, is_nil, get_value } from './utils/index';
 import List from './utils/list';
 let { join, make_array, remove_empty_values } = List();
 
-import get_definition from './utils/get-definition';
-
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
 }
@@ -566,14 +564,6 @@ class Rules {
       });
     });
 
-    let definitions = [];
-    Object.keys(this.custom_properties).forEach(name => {
-      let def = get_definition(name);
-      if (def) {
-        definitions.push(def);
-      }
-    });
-
     return {
       props: this.props,
       styles: this.styles,
@@ -583,7 +573,6 @@ class Rules {
       paths: this.paths,
       canvas: this.canvas,
       pattern: this.pattern,
-      definitions: definitions,
       uniforms: this.uniforms
     }
   }
