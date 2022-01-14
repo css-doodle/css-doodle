@@ -419,6 +419,7 @@ function get_exposed(random) {
   return alias_for(Expose, {
     'm': 'multiple',
     'M': 'multiple-with-space',
+    'µ': 'repeat',
 
     'r':    'rand',
     'rn':   'nrand',
@@ -430,8 +431,6 @@ function get_exposed(random) {
     'pn': 'pick-n',
     'pd': 'pick-d',
     'lp': 'last-pick',
-
-    'rep': 'repeat',
 
     'i': 'index',
     'x': 'col',
@@ -466,6 +465,7 @@ function get_exposed(random) {
     'point': 'plot',
     'Point': 'Plot',
     'paint': 'canvas',
+    'rep': 'repeat',
 
     // error prone
     'stripes': 'stripe',
