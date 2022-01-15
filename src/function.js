@@ -187,6 +187,16 @@ function get_exposed(random) {
       };
     },
 
+    noise({ context, position }) {
+      return (x, y, z = 0) => {
+        let counter = 'raw-noise-2d' + position;
+        if (!context[counter]) {
+          context[counter] = new Noise(random);
+        }
+        return context[counter].noise(calc(x), calc(y), calc(z));
+      };
+    },
+
     stripe() {
       return (...input) => {
         let colors = input.map(get_value);
@@ -425,7 +435,6 @@ function get_exposed(random) {
     'row': 'y',
     'depth': 'z',
     'rand': 'r',
-    'noise': 'rn',
     'pick': 'p',
 
     // error prone
