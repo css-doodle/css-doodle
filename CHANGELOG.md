@@ -1,3 +1,47 @@
+## 0.24.0
+
+### Changes
+
+* Removed `@min-size`, `@max-size`, `@path()`, `nrand()`, and `@reflect()` since I never used them.
+* Removed the feature of registering typed custom properties automatically, which was used for animation.
+* Renamed `place-cell` to `offset` in favor of shorter name.
+
+### Features
+
+* Added Perlin noise function `@rn()` and `@noise()`.
+  ```css
+  /* similar to @r() function */
+  scale: @rn(0, 1);
+  rotate: @rn(360deg);
+  ```
+
+* Added support for `direction` inside `@plot()` function.
+  Each element will rotate towards the curve direction or with custom angles.
+  ```csss
+  @offset: @plot(
+    /* the syntax is similar to offset-rotate */
+    direction: auto 90deg;
+  );
+  ```
+
+* Added support for `unit` inside `@plot()` function.
+  Now the `box-shadow` value can be plotted.
+  ```css
+  box-shadow: @m10(
+    @plot(r: 10, unit: em) 0 0 #000
+  );
+  ```
+  Or simply put the unit at the end of `r`.
+  ```css
+  box-shadow: @m10(
+    @plot(r: 10em) 0 0 #000
+  );
+  ```
+
+<br /> <br />
+
+
+
 ## 0.23.1
 
 * Fixed `index` calculation in `@pattern`.

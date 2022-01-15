@@ -1,4 +1,4 @@
-/*! css-doodle@0.23.1 */
+/*! css-doodle@0.24.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -191,7 +191,8 @@
       else if (is$2.symbol(curr) && !is$2.selfClosedTag(curr, next)) {
         let lastToken = last$3(tokens);
         // negative
-        if (curr === '-' && is$2.digit(next) && (!lastToken || !lastToken.isNumber())) {
+        let isNextDigit = is$2.digit(next) || (is$2.dot(next) && is$2.digit(next2));
+        if (curr === '-' && isNextDigit && (!lastToken || !lastToken.isNumber())) {
           let num = readNumber(iter);
           tokens.push(new Token({
             type: 'Number', value: num, pos
@@ -264,7 +265,7 @@
     return tokens;
   }
 
-  function parse$7(input) {
+  function parse$9(input) {
     let iter = iterator$1(scan(input));
     return walk$2(iter);
   }
@@ -347,7 +348,7 @@
     }
 
     function shuffle(arr) {
-      let ret = Array.from ? Array.from(arr) : arr.slice();
+      let ret = [...arr];
       let m = arr.length;
       while (m) {
         let i = ~~(random() * m--);
@@ -356,6 +357,10 @@
         ret[i] = t;
       }
       return ret;
+    }
+
+    function duplicate(arr) {
+      return [].concat(arr, arr);
     }
 
     function flat_map(arr, fn) {
@@ -379,6 +384,7 @@
       clone,
       shuffle,
       flat_map,
+      duplicate,
       remove_empty_values
     }
   }
@@ -968,7 +974,7 @@
   function evaluate_value(values, extra) {
     values.forEach && values.forEach(v => {
       if (v.type == 'text' && v.value) {
-        let vars = parse$7(v.value);
+        let vars = parse$9(v.value);
         v.value = vars.reduce((ret, p) => {
           let rule = '', other = '', parsed;
           rule = read_variable(extra, p.name);
@@ -982,7 +988,7 @@
             });
           }
           try {
-            parsed = parse$6(rule, extra);
+            parsed = parse$8(rule, extra);
           } catch (e) { }
           if (parsed) {
             ret.push.apply(ret, parsed);
@@ -1011,7 +1017,7 @@
     }, []);
   }
 
-  function parse$6(input, extra) {
+  function parse$8(input, extra) {
     const it = iterator(input);
     const Tokens = [];
     while (!it.end()) {
@@ -1114,7 +1120,7 @@
     let index = 1;
     for (let i = 1; i <= y; ++i) {
       for (let j = 1; j <= x; ++j) {
-        ret.push(fn(index++, j, i, max));
+        ret.push(fn(index++, j, i, max, x, y));
       }
     }
     return ret;
@@ -1210,7 +1216,7 @@
     });
   }
 
-  function parse$5(input) {
+  function parse$7(input) {
     let iter = iterator$1(removeParens(scan(input)));
     let stack = [];
     let tokens = [];
@@ -1396,31 +1402,20 @@
     return element;
   }
 
-  function random_func(random) {
+  function Random(random) {
 
-    function lerp(start, end, t) {
-      return start * (1 - t) + end * t;
+    function lerp(t, a, b) {
+      return a + t * (b - a);
     }
 
     function rand(start = 0, end) {
       if (arguments.length == 1) {
         [start, end] = [0, start];
       }
-      return lerp(start, end, random());
+      return lerp(random(), start, end);
     }
 
-    function nrand(mean = 0, scale = 1) {
-      let u1 = 0, u2 = 0;
-      //Convert [0,1) to (0,1)
-      while (u1 === 0) u1 = random();
-      while (u2 === 0) u2 = random();
-      const R = Math.sqrt(-2.0 * Math.log(u1));
-      const t = 2.0 * Math.PI * u2;
-      const u0 = R * Math.cos(t);
-      return mean + scale * u0;
-    }
-
-    function pick( ...items) {
+    function pick(...items) {
       let args = items.reduce((acc, n) => acc.concat(n), []);
       return args[~~(random() * args.length)];
     }
@@ -1432,7 +1427,6 @@
     return {
       lerp,
       rand,
-      nrand,
       pick,
       unique_id
     };
@@ -1899,7 +1893,65 @@
     }
   }
 
-  function parse$4(input) {
+  /**
+   * Improved noise by Ken Perlin
+   * Translated from: https://mrl.nyu.edu/~perlin/noise/
+   */
+
+  class Perlin {
+    constructor(random) {
+      let { lerp } = Random(random);
+      let { shuffle, duplicate } = List(random);
+      this.lerp = lerp;
+      this.p = duplicate(shuffle([
+        151,160,137,91,90,15,
+        131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+        190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+        88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,
+        77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+        102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
+        135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
+        5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+        223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
+        129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
+        251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
+        49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
+        138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+      ]));
+    }
+
+    // Convert LO 4 bits of hash code into 12 gradient directions.
+    grad(hash, x, y, z) {
+      let h = hash & 15,
+          u = h < 8 ? x : y,
+          v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+      return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
+    }
+
+    noise(x, y, z) {
+      let { p, grad, lerp } = this;
+      // Find unit cube that contains point.
+      let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
+      // Find relative x, y, z of point in cube.
+      [x, y, z] = [x, y, z].map(n => n - Math.floor(n));
+      // Compute fade curves for each of x, y, z.
+      let [u, v, w] = [x, y, z].map(n => n * n * n * (n * (n * 6 - 15) + 10));
+      // hash coordinates of the 8 cube corners.
+      let A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
+          B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
+      // And add blended results from 8 corners of cube.
+      return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ),
+                                     grad(p[BA  ], x-1, y  , z   )),
+                             lerp(u, grad(p[AB  ], x  , y-1, z   ),
+                                     grad(p[BB  ], x-1, y-1, z   ))),
+                     lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),
+                                     grad(p[BA+1], x-1, y  , z-1 )),
+                             lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
+                                     grad(p[BB+1], x-1, y-1, z-1 ))));
+    }
+  }
+
+  function parse$6(input) {
     let iter = iterator$1(scan(input));
     let commands = {};
     let tokens = [];
@@ -1930,16 +1982,15 @@
         }
       }
     }
-
     if (tokens.length && name) {
       commands[name] = transformNegative(name, joinTokens$1(tokens), negative);
     }
-
     return commands;
   }
 
   function transformNegative(name, value, negative) {
-    if (name === 'fill-rule') {
+    let excludes = ['fill-rule', 'fill'];
+    if (excludes.includes(name)) {
       return value;
     }
     return negative ? `-1 * (${ value })` : value;
@@ -1949,11 +2000,133 @@
     return tokens.map(n => n.value).join('');
   }
 
-  const { cos, sin, atan2, PI } = Math;
+  function parse$5(input, noSpace) {
+    let group = [];
+    let tokens = [];
+    let parenStack = [];
+    let quoteStack = [];
+
+    if (is_empty(input)) {
+      return group;
+    }
+
+    let iter = iterator$1(scan(input));
+
+    function isSeperator(token) {
+      if (noSpace) {
+        return token.isSymbol(',');
+      }
+      return token.isSymbol(',') || token.isSpace();
+    }
+
+    while (iter.next()) {
+      let { prev, curr, next }  = iter.get();
+      if (curr.isSymbol('(')) {
+        parenStack.push(curr.value);
+      }
+      if (curr.isSymbol(')')) {
+        parenStack.pop();
+      }
+      if (curr.status === 'open') {
+        quoteStack.push(curr.value);
+      }
+      if (curr.status === 'close') {
+        quoteStack.pop();
+      }
+      if (isSeperator(curr) && !parenStack.length && !quoteStack.length) {
+        group.push(joinTokens(tokens));
+        tokens = [];
+      } else {
+        tokens.push(curr);
+      }
+    }
+
+    if (tokens.length) {
+      group.push(joinTokens(tokens));
+    }
+
+    return group;
+  }
+
+  function joinTokens(tokens) {
+    return tokens.map(n => n.value).join('');
+  }
+
+  const keywords = ['auto', 'reverse'];
+  const units = ['deg', 'rad', 'grad', 'turn'];
+
+  function parse$4(input) {
+    let iter = iterator$1(scan(input));
+    let matched = false;
+    let unit = '';
+    let ret = {
+      direction: '',
+      angle: '',
+    };
+    while (iter.next()) {
+      let { prev, curr, next } = iter.get();
+      if (curr.isWord() && keywords.includes(curr.value)) {
+        ret.direction = curr.value;
+        matched = true;
+      }
+      else if (curr.isNumber()) {
+        ret.angle = Number(curr.value);
+        matched = true;
+      }
+      else if (curr.isWord() && prev && prev.isNumber() && units.includes(curr.value)) {
+        unit = curr.value;
+      }
+      else if (curr.isSpace() && ret.direction !== '' && ret.angle !== '') {
+        break;
+      }
+    }
+    if (!matched) {
+      ret.direction = 'auto';
+    }
+    return normalizeAngle(ret, unit);
+  }
+
+  function normalizeAngle(input, unit) {
+    let { angle } = input;
+    if (angle === '') {
+      angle = 0;
+    }
+    if (unit === 'rad') {
+      angle /= (Math.PI / 180);
+    }
+    if (unit === 'grad') {
+      angle *= .9;
+    }
+    if (unit === 'turn') {
+      angle *= 360;
+    }
+    return Object.assign({}, input, { angle });
+  }
+
+  function parse$3(input) {
+    let iter = iterator$1(scan(input));
+    let ret = {};
+    let matched = false;
+    while (iter.next()) {
+      let { prev, curr } = iter.get();
+      if (curr.isNumber()) {
+        ret.value = Number(curr.value);
+        matched = true;
+      }
+      else if (matched && curr.isWord() && prev && prev.isNumber()) {
+        ret.unit = curr.value;
+      } else {
+        break;
+      }
+    }
+    return ret;
+  }
+
+  const { cos, sin, abs, atan2, PI } = Math;
 
   const _ = make_tag_function(c => {
     return create_shape_points(
-      parse$4(c), {min: 3, max: 3600}
+      parse$6(c), {min: 3, max: 3600}
     );
   });
 
@@ -2090,6 +2263,20 @@
     },
   };
 
+  class Point {
+    constructor(x, y, angle) {
+      this.x = x;
+      this.y = y;
+      this.extra = angle;
+    }
+    valueOf() {
+      return this.x + ' ' + this.y;
+    }
+    toString() {
+      return this.valueOf();
+    }
+  }
+
   function create_polygon_points(option, fn) {
     if (typeof arguments[0] == 'function') {
       fn = option;
@@ -2104,24 +2291,36 @@
     let turn = option.turn || 1;
     let frame = option.frame;
     let fill = option['fill'] || option['fill-rule'];
+    let direction = parse$4(option['direction'] || option['dir'] || '');
+    let unit = option.unit;
 
     let rad = (PI * 2) * turn / split;
     let points = [];
     let first_point, first_point2;
 
-    if (fill == 'nonzero' || fill == 'evenodd') {
-      points.push(fill);
-    }
-
     let factor = (option.scale === undefined) ? 1 : option.scale;
-    let add = ([x1, y1]) => {
+    let add = ([x1, y1, dx = 0, dy = 0]) => {
+      if (x1 == 'evenodd' || x1 == 'nonzero') {
+        return points.push(new Point(x1, '', ''));
+      }
       let [x, y] = scale(x1, -y1, factor);
-      if (!option.absolute) {
+      let [dx1, dy2] = scale(dx, -dy, factor);
+      let angle = calc_angle(x, y, dx1, dy2, direction);
+      if (unit !== undefined && unit !== '%') {
+        if (unit !== 'none') {
+          x += unit;
+          y += unit;
+        }
+      } else {
         x = (x + 1) * 50 + '%';
         y = (y + 1) * 50 + '%';
       }
-      points.push(x + ' ' + y);
+      points.push(new Point(x, y, angle));
     };
+
+    if (fill == 'nonzero' || fill == 'evenodd') {
+      add([fill, '', '']);
+    }
 
     for (let i = 0; i < split; ++i) {
       let t = rad * i;
@@ -2153,6 +2352,20 @@
     return points;
   }
 
+  function calc_angle(x, y, dx, dy, option) {
+    let base = atan2(y + dy, x - dx) * 180 / PI;
+    if (option.direction === 'reverse') {
+      base -= 180;
+    }
+    if (!option.direction) {
+      base = 90;
+    }
+    if (option.angle) {
+      base += option.angle;
+    }
+    return base;
+  }
+
   function rotate(x, y, deg) {
     let rad = -PI / 180 * deg;
     return [
@@ -2162,7 +2375,7 @@
   }
 
   function translate(x, y, offset) {
-    let [dx, dy = dx] = String(offset).split(/[,\s]+/).map(Number);
+    let [dx, dy = dx] = parse$5(offset).map(Number);
     return [
       x + (dx || 0),
       y - (dy || 0),
@@ -2172,7 +2385,7 @@
   }
 
   function scale(x, y, factor) {
-    let [fx, fy = fx] = String(factor).split(/[,\s]+/).map(Number);
+    let [fx, fy = fx] = parse$5(factor).map(Number);
     return [
       x * fx,
       y * fy
@@ -2181,10 +2394,17 @@
 
   function create_shape_points(props, {min, max}) {
     let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
-    let option = Object.assign({}, props, { split });
     let px = is_empty(props.x) ? 'cos(t)' : props.x;
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
     let pr = is_empty(props.r) ? ''       : props.r;
+
+    let { unit, value } = parse$3(pr);
+    if (unit && !props[unit] && unit !== 't') {
+      if (is_empty(props.unit)) {
+        props.unit = unit;
+      }
+      pr = props.r = value;
+    }
 
     if (props.degree) {
       props.rotate = props.degree;
@@ -2193,6 +2413,8 @@
     if (props.origin) {
       props.move = props.origin;
     }
+
+    let option = Object.assign({}, props, { split });
 
     return create_polygon_points(option, (t, i) => {
       let context = Object.assign({}, props, {
@@ -2206,7 +2428,7 @@
           a = Number(a) || 0;
           b = Number(b) || 0;
           if (a > b) [a, b] = [b, a];
-          let step = Math.abs(b - a) / (split - 1);
+          let step = abs(b - a) / (split - 1);
           return a + step * i;
         }
       });
@@ -2216,8 +2438,8 @@
       let dy = 0;
       if (pr) {
         let r = calc(pr, context);
-        x = r * Math.cos(t);
-        y = r * Math.sin(t);
+        x = r * cos(t);
+        y = r * sin(t);
       }
       if (props.rotate) {
         [x, y] = rotate(x, y, Number(props.rotate) || 0);
@@ -2227,58 +2449,6 @@
       }
       return [x, y, dx, dy];
     });
-  }
-
-  function parse$3(input, noSpace) {
-    let group = [];
-    let tokens = [];
-    let parenStack = [];
-    let quoteStack = [];
-
-    if (is_empty(input)) {
-      return group;
-    }
-
-    let iter = iterator$1(scan(input));
-
-    function isSeperator(token) {
-      if (noSpace) {
-        return token.isSymbol(',');
-      }
-      return token.isSymbol(',') || token.isSpace();
-    }
-
-    while (iter.next()) {
-      let { prev, curr, next }  = iter.get();
-      if (curr.isSymbol('(')) {
-        parenStack.push(curr.value);
-      }
-      if (curr.isSymbol(')')) {
-        parenStack.pop();
-      }
-      if (curr.status === 'open') {
-        quoteStack.push(curr.value);
-      }
-      if (curr.status === 'close') {
-        quoteStack.pop();
-      }
-      if (isSeperator(curr) && !parenStack.length && !quoteStack.length) {
-        group.push(joinTokens(tokens));
-        tokens = [];
-      } else {
-        tokens.push(curr);
-      }
-    }
-
-    if (tokens.length) {
-      group.push(joinTokens(tokens));
-    }
-
-    return group;
-  }
-
-  function joinTokens(tokens) {
-    return tokens.map(n => n.value).join('');
   }
 
   function readStatement$1(iter, token) {
@@ -2499,39 +2669,39 @@
 
   function get_exposed(random) {
     const { shuffle } = List(random);
-    const { pick, rand, nrand, unique_id } = random_func(random);
+    const { pick, rand, lerp, unique_id } = Random(random);
 
     const Expose = {
 
-      index({ count }) {
+      i({ count }) {
         return _ => count;
       },
 
-      row({ y }) {
+      y({ y }) {
         return _ => y;
       },
 
-      col({ x }) {
+      x({ x }) {
         return _ => x;
       },
 
-      depth({ z }) {
+      z({ z }) {
         return _ => z;
       },
 
-      size({ grid }) {
+      I({ grid }) {
         return _ => grid.count;
       },
 
-      ['size-row']({ grid }) {
+      Y({ grid }) {
         return _ => grid.y;
       },
 
-      ['size-col']({ grid }) {
+      X({ grid }) {
         return _ => grid.x;
       },
 
-      ['size-depth']({ grid }) {
+      Z({ grid }) {
         return _ => grid.z;
       },
 
@@ -2555,25 +2725,25 @@
         return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
       },
 
-      repeat: (
+      µ: (
         make_sequence('')
       ),
 
-      multiple: (
+      m: (
         make_sequence(',')
       ),
 
-      ['multiple-with-space']: (
+      M: (
         make_sequence(' ')
       ),
 
-      pick({ context }) {
+      p({ context }) {
         return expand((...args) => {
           return push_stack(context, 'last_pick', pick(args));
         });
       },
 
-      ['pick-n']({ context, extra, position }) {
+      pn({ context, extra, position }) {
         let counter = 'pn-counter' + position;
         return expand((...args) => {
           if (!context[counter]) context[counter] = 0;
@@ -2586,14 +2756,14 @@
         });
       },
 
-      ['pick-d']({ context, extra, position }) {
+      pd({ context, extra, position }) {
         let counter = 'pd-counter' + position;
         let values = 'pd-values' + position;
         return expand((...args) => {
           if (!context[counter]) context[counter] = 0;
           context[counter] += 1;
           if (!context[values]) {
-            context[values] = shuffle(args);
+            context[values] = shuffle(args || []);
           }
           let max = args.length;
           let [idx = context[counter]] = extra || [];
@@ -2603,14 +2773,14 @@
         });
       },
 
-      ['last-pick']({ context }) {
+      lp({ context }) {
         return (n = 1) => {
           let stack = context.last_pick;
           return stack ? stack.last(n) : '';
         };
       },
 
-      rand({ context }) {
+      r({ context }) {
         return (...args) => {
           let transform_type = args.every(is_letter)
             ? by_charcode
@@ -2620,17 +2790,7 @@
         };
       },
 
-      nrand({ context }) {
-        return (...args) => {
-          let transform_type = args.every(is_letter)
-            ? by_charcode
-            : by_unit;
-          let value = transform_type(nrand).apply(null, args);
-          return push_stack(context, 'last_rand', value);
-        };
-      },
-
-      ['rand-int']({ context }) {
+      ri({ context }) {
         return (...args) => {
           let transform_type = args.every(is_letter)
             ? by_charcode
@@ -2641,21 +2801,54 @@
         }
       },
 
-      ['nrand-int']({ context }) {
+      rn({ x, y, context, position, grid, extra }) {
+        let counter = 'noise-2d' + position;
+        let [ni, nx, ny, nm, NX, NY] = extra || [];
+        let isSeqContext = (ni && nm);
         return (...args) => {
-          let transform_type = args.every(is_letter)
-            ? by_charcode
-            : by_unit;
-          let nrand_int = (...args) => Math.round(nrand(...args));
-          let value = transform_type(nrand_int).apply(null, args);
+          let [start, end = start, freq = 1, amp = 1] = args;
+          if (args.length == 1) {
+            [start, end] = [0, start];
+          }
+          if (!context[counter]) {
+            context[counter] = new Perlin(random);
+          }
+          freq = normalize(freq);
+          amp = normalize(amp);
+          let transform = [start, end].every(is_letter) ? by_charcode : by_unit;
+          let t = isSeqContext
+            ? context[counter].noise((nx - 1)/NX * freq, (ny - 1)/NY * freq, 0)
+            : context[counter].noise((x - 1)/grid.x * freq, (y - 1)/grid.y * freq, 0);
+          let fn = transform((start, end) => map2d(t * amp, start, end, amp));
+          let value = fn(start, end);
           return push_stack(context, 'last_rand', value);
-        }
+        };
       },
 
-      ['last-rand']({ context }) {
+      lr({ context }) {
         return (n = 1) => {
           let stack = context.last_rand;
           return stack ? stack.last(n) : '';
+        };
+      },
+
+      noise({ context, grid, position, ...rest }) {
+        let vars = {
+          i: rest.count, I: grid.count,
+          x: rest.x, X: grid.x,
+          y: rest.y, Y: grid.y,
+          z: rest.z, Z: grid.z,
+        };
+        return (x, y, z = 0) => {
+          let counter = 'raw-noise-2d' + position;
+          if (!context[counter]) {
+            context[counter] = new Perlin(random);
+          }
+          return context[counter].noise(
+            calc(x, vars),
+            calc(y, vars),
+            calc(z, vars)
+          );
         };
       },
 
@@ -2670,7 +2863,7 @@
             return '';
           }
           colors.forEach(step => {
-            let [_, size] = parse$3(step);
+            let [_, size] = parse$5(step);
             if (size !== undefined) custom_sizes.push(size);
             else default_count += 1;
           });
@@ -2679,7 +2872,7 @@
             : `100% / ${max}`;
           return colors.map((step, i) => {
             if (custom_sizes.length) {
-              let [color, size] = parse$3(step);
+              let [color, size] = parse$5(step);
               let prefix = prev ? (prev + ' + ') : '';
               prev = prefix + (size !== undefined ? size : default_size);
               return `${color} 0 calc(${ prev })`
@@ -2687,15 +2880,6 @@
             return `${step} 0 ${100 / max * (i + 1)}%`
           })
           .join(',');
-        }
-      },
-
-      reflect() {
-        return (...input) => {
-          return [
-            ...input,
-            ...input.slice(0, -1).reverse()
-          ].join(',');
         }
       },
 
@@ -2717,7 +2901,7 @@
         return create_svg_url(svg);
       }),
 
-      ['svg-filter']: lazy((...args) => {
+      filter: lazy((...args) => {
         let value = args.map(input => get_value(input()).trim()).join(',');
         let id = unique_id('filter-');
         if (!value.startsWith('<')) {
@@ -2747,22 +2931,11 @@
         return commands => {
           let [idx = count, _, __, max = grid.count] = extra || [];
           if (!context[key]) {
-            let config = parse$4(commands);
+            let config = parse$6(commands);
+            delete config['fill'];
+            delete config['fill-rule'];
+            delete config['frame'];
             config.points = max;
-            context[key] = create_shape_points(config, {min: 1, max: 65536});
-          }
-          return context[key][idx - 1];
-        };
-      },
-
-      Plot({ count, context, extra, position, grid }) {
-        let key = 'offset-points' + position;
-        return commands => {
-          let [idx = count, _, __, max = grid.count] = extra || [];
-          if (!context[key]) {
-            let config = parse$4(commands);
-            config.points = max;
-            config.absolute = true;
             context[key] = create_shape_points(config, {min: 1, max: 65536});
           }
           return context[key][idx - 1];
@@ -2782,7 +2955,7 @@
               if (rest.length) {
                 commands = type + ',' + rest;
               }
-              let config = parse$4(commands);
+              let config = parse$6(commands);
               points = create_shape_points(config, {min: 3, max: 3600});
             }
           }
@@ -2803,10 +2976,6 @@
       },
 
       pattern() {
-        return value => value;
-      },
-
-      path() {
         return value => value;
       },
 
@@ -2903,61 +3072,61 @@
       return -1 * num;
     }
 
+    function map2d(value, min, max, amp = 1) {
+      let dimention = 2;
+      let v = Math.sqrt(dimention / 4) * amp;
+      let [ma, mb] = [-v, v];
+      return lerp((value - ma) / (mb - ma), min * amp, max * amp);
+    }
+
+    function normalize(value) {
+      value = Number(value) || 0;
+      return value < 0 ? 0 : value;
+    }
+
     return alias_for(Expose, {
-      'm': 'multiple',
-      'M': 'multiple-with-space',
-
-      'r':    'rand',
-      'rn':   'nrand',
-      'ri':   'rand-int',
-      'rni':  'nrand-int',
-      'lr':   'last-rand',
-
-      'p':  'pick',
-      'pn': 'pick-n',
-      'pd': 'pick-d',
-      'lp': 'last-pick',
-
-      'rep': 'repeat',
-
-      'i': 'index',
-      'x': 'col',
-      'y': 'row',
-      'z': 'depth',
-
-      'I': 'size',
-      'X': 'size-col',
-      'Y': 'size-row',
-      'Z': 'size-depth',
-
-      'flipv': 'flipV',
-      'fliph': 'flipH',
-
-      // legacy names, keep them before 1.0
-      'nr': 'rn',
-      'nri': 'nri',
-      'ms': 'multiple-with-space',
-      's':  'size',
-      'sx': 'size-col',
-      'sy': 'size-row',
-      'sz': 'size-depth',
-      'size-x': 'size-col',
-      'size-y': 'size-row',
-      'size-z': 'size-depth',
-      'multi': 'multiple',
-      'pick-by-turn': 'pick-n',
-      'max-row': 'size-row',
-      'max-col': 'size-col',
-      'offset': 'plot',
-      'Offset': 'Plot',
-      'point': 'plot',
-      'Point': 'Plot',
-      'paint': 'canvas',
+      'index': 'i',
+      'col': 'x',
+      'row': 'y',
+      'depth': 'z',
+      'rand': 'r',
+      'pick': 'p',
 
       // error prone
       'stripes': 'stripe',
       'strip':   'stripe',
       'patern':  'pattern',
+      'flipv': 'flipV',
+      'fliph': 'flipH',
+
+      // legacy names, keep them before 1.0
+      'svg-filter': 'filter',
+      'last-rand': 'lr',
+      'last-pick': 'lp',
+      'multiple': 'm',
+      'multi': 'm',
+      'rep': 'µ',
+      'repeat': 'µ',
+      'ms': 'M',
+      's':  'I',
+      'size': 'I',
+      'sx': 'X',
+      'size-x': 'X',
+      'size-col': 'X',
+      'max-col': 'X',
+      'sy': 'Y',
+      'size-y': 'Y',
+      'size-row': 'Y',
+      'max-row': 'Y',
+      'sz': 'Z',
+      'size-z': 'Z',
+      'size-depth': 'Z',
+      'pick-by-turn': 'pn',
+      'offset': 'plot',
+      'Offset': 'Plot',
+      'point': 'plot',
+      'Point': 'Plot',
+      'paint': 'canvas',
     });
   }
 
@@ -3087,10 +3256,10 @@
     return !!presets[name];
   }
 
-  var Property = {
+  const Expose = {
 
     ['@size'](value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$3(value);
+      let [w, h = w] = parse$5(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -3111,17 +3280,7 @@
       return styles;
     },
 
-    ['@min-size'](value) {
-      let [w, h = w] = parse$3(value);
-      return `min-width: ${ w }; min-height: ${ h };`;
-    },
-
-    ['@max-size'](value) {
-      let [w, h = w] = parse$3(value);
-      return `max-width: ${ w }; max-height: ${ h };`;
-    },
-
-    ['@place-cell']: (() => {
+    ['@offset']: (() => {
       let map_left_right = {
         'center': '50%',
         'left': '0%', 'right': '100%',
@@ -3133,8 +3292,8 @@
         'left': '50%', 'right': '50%',
       };
 
-      return value => {
-        let [left, top = '50%'] = parse$3(value);
+      return (value, { extra }) => {
+        let [left, top = '50%'] = parse$5(value);
         left = map_left_right[left] || left;
         top = map_top_bottom[top] || top;
         const cw = 'var(--internal-cell-width, 25%)';
@@ -3148,6 +3307,8 @@
         margin-left: calc(${ cw } / -2);
         margin-top: calc(${ ch } / -2);
         grid-area: unset;
+        --plot-angle: ${ extra || 0 };
+        transform: rotate(${ extra || 0 }deg);
       `;
       }
     })(),
@@ -3162,7 +3323,7 @@
     },
 
     ['@shape']: memo('shape-property', value => {
-      let [type, ...args] = parse$3(value);
+      let [type, ...args] = parse$5(value);
       let prop = 'clip-path';
       if (typeof shapes[type] !== 'function') return '';
       let points = shapes[type](...args);
@@ -3177,6 +3338,13 @@
     }
 
   };
+
+  var Property = alias_for(Expose, {
+
+    // legacy names.
+    '@place-cell': '@offset',
+
+  });
 
   function nth(input, curr, max) {
     for (let i = 0; i <= max; ++i) {
@@ -3280,35 +3448,6 @@
     return expose;
   }, {});
 
-  const initial = {
-    length: '0px',
-    number: 0,
-    color: 'black',
-    url: 'url()',
-    image: 'url()',
-    integer: 0,
-    angle: '0deg',
-    time: '0ms',
-    resolution: '0dpi',
-    percentage: '0%',
-    'length-percentage': '0%',
-    'transform-function': 'translate(0)',
-    'transform-list': 'translate(0)',
-    'custom-ident': '_'
-  };
-
-  function get_definition(name) {
-    let type = String(name).substr(2).split('-')[0];
-    if (initial[type] !== undefined) {
-      return {
-        name: name,
-        syntax: `<${type}> | <${type}>+ | <${type}>#`,
-        initialValue: initial[type],
-        inherits: false
-      }
-    }
-  }
-
   let { join, make_array, remove_empty_values } = List();
 
   function is_host_selector(s) {
@@ -3337,13 +3476,12 @@
       this.canvas = {};
       this.pattern = {};
       this.shaders = {};
-      this.paths = {};
       this.reset();
       this.Func = get_exposed(random);
       this.Selector = Selector(random);
       this.custom_properties = {};
       this.uniforms = {};
-      this.unique_id = random_func(random).unique_id;
+      this.unique_id = Random(random).unique_id;
     }
 
     reset() {
@@ -3383,9 +3521,8 @@
       args.forEach(arg => {
         let type = typeof arg.value;
         let is_string_or_number = (type === 'number' || type === 'string');
-
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$3(arg.value, true));
+          input.push(...parse$5(arg.value, true));
         }
         else {
           if (typeof arg === 'function') {
@@ -3450,9 +3587,6 @@
                 : this.compose_argument(n, coords, extra);
             });
             let value = this.apply_func(fn, coords, args);
-            if (fname == 'path') {
-              return this.compose_path(value);
-            }
             return value;
           }
         }
@@ -3499,20 +3633,15 @@
       return '${' + id + '}';
     }
 
-    compose_path(commands) {
-      let id = this.unique_id('path');
-      this.paths[id] = {
-        id,
-        commands
-      };
-      return '${' + id + '}';
-    }
-
     compose_value(value, coords) {
       if (!Array.isArray(value)) {
-        return '';
+        return {
+          value: '',
+          extra: '',
+        }
       }
-      return value.reduce((result, val) => {
+      let extra = '';
+      let output = value.reduce((result, val) => {
         switch (val.type) {
           case 'text': {
             result += val.value;
@@ -3549,11 +3678,10 @@
 
                 let output = this.apply_func(fn, coords, args);
                 if (!is_nil(output)) {
-                  if (fname == 'path') {
-                    result += this.compose_path(output);
-                  } else {
-                    result += output;
-                  }
+                  result += output;
+                }
+                if (output.extra) {
+                  extra = output.extra;
                 }
               }
             }
@@ -3561,14 +3689,27 @@
         }
         return result;
       }, '');
+
+      return {
+        value: output,
+        extra: extra,
+      }
     }
 
     compose_rule(token, _coords, selector) {
       let coords = Object.assign({}, _coords);
       let prop = token.property;
+      let extra;
       let value_group = token.value.reduce((ret, v) => {
         let composed = this.compose_value(v, coords);
-        if (composed) ret.push(composed);
+        if (composed) {
+          if (composed.value) {
+            ret.push(composed.value);
+          }
+          if (composed.extra) {
+            extra = composed.extra;
+          }
+        }
         return ret;
       }, []);
 
@@ -3607,7 +3748,7 @@
       }
 
       if (prop === 'content') {
-        if (!/["']|^none$|^(var|counter|counters|attr)\(/.test(value)) {
+        if (!/["']|^none$|^(var|counter|counters|attr|url)\(/.test(value)) {
           value = `'${ value }'`;
         }
       }
@@ -3641,7 +3782,8 @@
       if (Property[prop]) {
         let transformed = Property[prop](value, {
           is_special_selector: is_special_selector(selector),
-          grid: coords.grid
+          grid: coords.grid,
+          extra
         });
         switch (prop) {
           case '@grid': {
@@ -3691,7 +3833,7 @@
         case '@grid': {
           let value_group = token.value.reduce((ret, v) => {
             let composed = this.compose_value(v, coords);
-            if (composed) ret.push(composed);
+            if (composed && composed.value) ret.push(composed.value);
             return ret;
           }, []);
           let value = value_group.join(', ');
@@ -3842,24 +3984,14 @@
         });
       });
 
-      let definitions = [];
-      Object.keys(this.custom_properties).forEach(name => {
-        let def = get_definition(name);
-        if (def) {
-          definitions.push(def);
-        }
-      });
-
       return {
         props: this.props,
         styles: this.styles,
         grid: this.grid,
         doodles: this.doodles,
         shaders: this.shaders,
-        paths: this.paths,
         canvas: this.canvas,
         pattern: this.pattern,
-        definitions: definitions,
         uniforms: this.uniforms
       }
     }
@@ -4617,7 +4749,7 @@
       let { x: gx, y: gy, z: gz } = this.grid_size;
 
       const compiled = this.generate(
-        parse$6(use + styles, this.extra)
+        parse$8(use + styles, this.extra)
       );
 
       if (!this.shadowRoot.innerHTML) {
@@ -4639,17 +4771,9 @@
         if (gx !== x || gy !== y || gz !== z) {
           Object.assign(this.grid_size, grid);
           return this.build_grid(
-            this.generate(parse$6(use + styles, this.extra)),
+            this.generate(parse$8(use + styles, this.extra)),
             grid
           );
-        }
-      }
-
-      let svg_paths = this.build_svg_paths(compiled.paths);
-      if (svg_paths) {
-        let defs = this.shadowRoot.querySelector('.svg-defs');
-        if (defs) {
-          defs.innerHTML = svg_paths;
         }
       }
 
@@ -4758,12 +4882,11 @@
         fn = options;
         options = null;
       }
-      let parsed = parse$6(code, this.extra);
+      let parsed = parse$8(code, this.extra);
       let _grid = parse_grid({});
       let compiled = generator(parsed, _grid, this.random);
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
-      let svg_defs = this.build_svg_paths(compiled.paths);
 
       let replace = this.replace(compiled);
       let grid_container = create_grid(grid);
@@ -4784,9 +4907,7 @@
               ${ cells }
               ${ keyframes }
             </style>
-            <svg xmlns="http://www.w3.org/2000/svg" style="width:0; height:0">
-              <defs class="svg-defs">${ svg_defs }</defs>
-            </svg>
+            <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0; height:0"></svg>
             ${ grid_container }
           </div>
         </foreignObject>
@@ -4810,7 +4931,7 @@
     }
 
     shader_to_image({ shader, cell }, fn) {
-      let parsed = parse$5(shader);
+      let parsed = parse$7(shader);
       let element = this.doodle.getElementById(cell);
       let { width, height } = element && element.getBoundingClientRect() || {
         width: 0, height: 0
@@ -4847,7 +4968,7 @@
         }
       }
       let use = this.get_use();
-      let parsed = parse$6(use + un_entity(this.innerHTML), this.extra);
+      let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
 
       this.grid_size = compiled.grid
@@ -4857,13 +4978,12 @@
       this.build_grid(compiled, this.grid_size);
     }
 
-    replace({ doodles, shaders, paths, canvas, pattern }) {
+    replace({ doodles, shaders, canvas, pattern }) {
       let doodle_ids = Object.keys(doodles);
       let shader_ids = Object.keys(shaders);
-      let path_ids = Object.keys(paths);
       let canvas_ids = Object.keys(canvas);
       let pattern_ids = Object.keys(pattern);
-      let length = doodle_ids.length + canvas_ids.length + shader_ids.length + path_ids.length + pattern_ids.length;
+      let length = doodle_ids.length + canvas_ids.length + shader_ids.length + pattern_ids.length;
       return input => {
         if (!length) {
           return Promise.resolve(input);
@@ -4905,13 +5025,6 @@
               return Promise.resolve('');
             }
           }),
-          path_ids.map(id => {
-            if (input.includes(id)) {
-              return Promise.resolve({ id, value: '#' + id });
-            } else {
-              return Promise.resolve('');
-            }
-          })
         );
 
         return Promise.all(mappings).then(mapping => {
@@ -4942,7 +5055,6 @@
       const { keyframes, host, container, cells } = compiled.styles;
       let style_container = get_grid_styles(grid) + host + container;
       let style_cells = has_delay ? '' : cells;
-      let svg_defs = this.build_svg_paths(compiled.paths);
 
       const { uniforms } = compiled;
 
@@ -4953,9 +5065,7 @@
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
-      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0">
-        <defs class="svg-defs">${ svg_defs }</defs>
-      </svg>
+      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
       ${ create_grid(grid) }
     `;
 
@@ -4970,24 +5080,13 @@
       }
 
       // might be removed in the future
-      const definitions = compiled.definitions;
       if (window.CSS && window.CSS.registerProperty) {
         try {
           if (uniforms.time) {
             this.register_uniform_time();
           }
-          definitions.forEach(CSS.registerProperty);
         } catch (e) { }
       }
-    }
-
-    build_svg_paths(paths) {
-      let names = Object.keys(paths || {});
-      return names.map(name => `
-      <clipPath id="${ paths[name].id }" clipPathUnits="objectBoundingBox">
-        <path d="${ paths[name].commands }" />
-      </clipPath>
-    `).join('');
     }
 
     register_uniform_time() {
