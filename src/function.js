@@ -187,13 +187,23 @@ function get_exposed(random) {
       };
     },
 
-    noise({ context, position }) {
+    noise({ context, grid, position, ...rest }) {
+      let vars = {
+        i: rest.count, I: grid.count,
+        x: rest.x, X: grid.x,
+        y: rest.y, Y: grid.y,
+        z: rest.z, Z: grid.z,
+      };
       return (x, y, z = 0) => {
         let counter = 'raw-noise-2d' + position;
         if (!context[counter]) {
           context[counter] = new Noise(random);
         }
-        return context[counter].noise(calc(x), calc(y), calc(z));
+        return context[counter].noise(
+          calc(x, vars),
+          calc(y, vars),
+          calc(z, vars)
+        );
       };
     },
 
