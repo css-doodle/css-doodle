@@ -416,7 +416,7 @@ function get_exposed(random) {
 
   function normalize(value) {
     value = Number(value) || 0;
-    return value < 0 ? 0 value;
+    return value < 0 ? 0 : value;
   }
 
   return alias_for(Expose, {
