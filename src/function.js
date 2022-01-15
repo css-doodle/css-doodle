@@ -12,6 +12,7 @@ import calc from './calc';
 import expand from './utils/expand';
 import Stack from './utils/stack';
 import memo from './utils/memo';
+import Noise from './utils/noise';
 
 import { shapes, create_shape_points } from './shapes';
 import parse_value_group from './parser/parse-value-group';
@@ -23,7 +24,7 @@ import { uniform_time } from './uniform';
 
 function get_exposed(random) {
   const { shuffle } = list(random);
-  const { pick, rand, unique_id } = random_func(random);
+  const { pick, rand, lerp, unique_id } = random_func(random);
 
   const Expose = {
 
@@ -117,7 +118,7 @@ function get_exposed(random) {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         if (!context[values]) {
-          context[values] = shuffle(args);
+          context[values] = shuffle(args || []);
         }
         let max = args.length;
         let [idx = context[counter]] = extra || [];
@@ -153,6 +154,30 @@ function get_exposed(random) {
         let value = transform_type(rand_int).apply(null, args)
         return push_stack(context, 'last_rand', value);
       }
+    },
+
+    rn({ x, y, context, position, grid, extra }) {
+      let counter = 'noise-2d' + position;
+      let [ni, nx, ny, nm, NX, NY] = extra || [];
+      let isSeqContext = (ni && nm);
+      return (...args) => {
+        let [start, end = start, freq = 1, amp = 1] = args;
+        if (args.length == 1) {
+          [start, end] = [0, start];
+        }
+        if (!context[counter]) {
+          context[counter] = new Noise(random);
+        }
+        freq = normalize(freq);
+        amp = normalize(amp);
+        let transform = [start, end].every(is_letter) ? by_charcode : by_unit;
+        let t = isSeqContext
+          ? context[counter].noise((nx - 1)/NX * freq, (ny - 1)/NY * freq, 0)
+          : context[counter].noise((x - 1)/grid.x * freq, (y - 1)/grid.y * freq, 0);
+        let fn = transform((start, end) => map2d(t * amp, start, end, amp));
+        let value = fn(start, end);
+        return push_stack(context, 'last_rand', value);
+      };
     },
 
     lr({ context }) {
@@ -382,12 +407,25 @@ function get_exposed(random) {
     return -1 * num;
   }
 
+  function map2d(value, min, max, amp = 1) {
+    let dimention = 2;
+    let v = Math.sqrt(dimention / 4) * amp;
+    let [ma, mb] = [-v, v];
+    return lerp((value - ma) / (mb - ma), min * amp, max * amp);
+  }
+
+  function normalize(value) {
+    value = Number(value) || 0;
+    return value < 0 ? 0 value;
+  }
+
   return alias_for(Expose, {
     'index': 'i',
     'col': 'x',
     'row': 'y',
     'depth': 'z',
     'rand': 'r',
+    'noise': 'rn',
     'pick': 'p',
 
     // error prone

@@ -83,7 +83,6 @@ class Rules {
     args.forEach(arg => {
       let type = typeof arg.value;
       let is_string_or_number = (type === 'number' || type === 'string');
-
       if (!arg.cluster && (is_string_or_number)) {
         input.push(...parse_value_group(arg.value, true));
       }

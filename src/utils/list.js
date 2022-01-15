@@ -21,7 +21,7 @@ export default function(random) {
   }
 
   function shuffle(arr) {
-    let ret = Array.from ? Array.from(arr) : arr.slice();
+    let ret = [...arr];
     let m = arr.length;
     while (m) {
       let i = ~~(random() * m--);
@@ -30,6 +30,10 @@ export default function(random) {
       ret[i] = t;
     }
     return ret;
+  }
+
+  function duplicate(arr) {
+    return [].concat(arr, arr);
   }
 
   function flat_map(arr, fn) {
@@ -53,6 +57,7 @@ export default function(random) {
     clone,
     shuffle,
     flat_map,
+    duplicate,
     remove_empty_values
   }
 }

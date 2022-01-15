@@ -62,7 +62,7 @@ export function sequence(count, fn) {
   let index = 1;
   for (let i = 1; i <= y; ++i) {
     for (let j = 1; j <= x; ++j) {
-      ret.push(fn(index++, j, i, max));
+      ret.push(fn(index++, j, i, max, x, y));
     }
   }
   return ret;
