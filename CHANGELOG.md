@@ -4,7 +4,7 @@
 
 * Removed `@min-size`, `@max-size`, `@path()`, `nrand()`, and `@reflect()` since I never used them.
 * Removed the feature of registering typed custom properties automatically, which was used for animation.
-* Renamed `place-cell` to `offset` in favor of shorter name.
+* Renamed `place-cell` to `offset` in favor of a shorter name.
 
 ### Features
 
@@ -17,7 +17,7 @@
 
 * Added support for `direction` inside `@plot()` function.
   Each element will rotate towards the curve direction or with custom angles.
-  ```csss
+  ```css
   @offset: @plot(
     /* the syntax is similar to offset-rotate */
     direction: auto 90deg;
