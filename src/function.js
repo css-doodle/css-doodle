@@ -477,6 +477,8 @@ function get_exposed(random) {
     'size-z': 'Z',
     'size-depth': 'Z',
     'pick-by-turn': 'pn',
+    'pick-n': 'pn',
+    'pick-d': 'pd',
     'offset': 'plot',
     'Offset': 'Plot',
     'point': 'plot',
