@@ -42,26 +42,12 @@ export default function(random) {
       );
     },
 
-    even({ count, grid, y }) {
-      return arg => {
-        if (arg === 'cross' && is.even(grid.x)) {
-          let m = is.even(y) ? 'odd' : 'even';
-          return is[m](count);
-        } else {
-          return is.even(count);
-        }
-      }
+    even({ count, grid, x, y }) {
+      return arg => is.odd(x + y);
     },
 
-    odd({ count, grid, y}) {
-      return arg => {
-        if (arg === 'cross' && is.even(grid.x)) {
-          let m = is.even(y) ? 'even' : 'odd';
-          return is[m](count);
-        } else {
-          return is.odd(count);
-        }
-      }
+    odd({ count, grid, x, y}) {
+      return arg => is.even(x + y);
     },
 
     random() {
