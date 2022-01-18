@@ -1,7 +1,8 @@
 const uniform_time = {
   'name': 'cssd-uniform-time',
   'animation-name': 'cssd-uniform-time-animation',
-  'animation-duration': '31536000000', /* one year in ms */
+  /* one year in ms * 10 makes it 100 frames per sec */
+  'animation-duration': 315360000000,
   'animation-iteration-count': 'infinite',
   'animation-delay': '0s',
   'animation-direction': 'normal',

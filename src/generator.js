@@ -525,7 +525,7 @@ class Rules {
       this.styles.keyframes += `
        @keyframes ${ uniform_time['animation-name'] } {
          from { --${ uniform_time.name }: 0 }
-         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] } }
+         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] / 10 } }
        }
       `;
     }

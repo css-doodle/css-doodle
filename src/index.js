@@ -385,11 +385,9 @@ class Doodle extends HTMLElement {
 
     // might be removed in the future
     if (window.CSS && window.CSS.registerProperty) {
-      try {
-        if (uniforms.time) {
-          this.register_uniform_time();
-        }
-      } catch (e) { }
+      if (uniforms.time) {
+        this.register_uniform_time();
+      }
     }
   }
 
