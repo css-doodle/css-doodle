@@ -321,6 +321,9 @@ function create_shape_points(props, {min, max}) {
     let dy = 0;
     if (pr) {
       let r = calc(pr, context);
+      if (r == 0) {
+        r = .00001;
+      }
       x = r * cos(t);
       y = r * sin(t);
     }
