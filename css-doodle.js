@@ -1,4 +1,4 @@
-/*! css-doodle@0.24.0 */
+/*! css-doodle@0.24.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -2438,6 +2438,9 @@
       let dy = 0;
       if (pr) {
         let r = calc(pr, context);
+        if (r == 0) {
+          r = .00001;
+        }
         x = r * cos(t);
         y = r * sin(t);
       }
@@ -2650,7 +2653,7 @@
   const uniform_time = {
     'name': 'cssd-uniform-time',
     'animation-name': 'cssd-uniform-time-animation',
-    'animation-duration': '31536000000', /* one year in ms */
+    'animation-duration': 31536000000, /* one year in ms */
     'animation-iteration-count': 'infinite',
     'animation-delay': '0s',
     'animation-direction': 'normal',
@@ -3395,26 +3398,12 @@
         );
       },
 
-      even({ count, grid, y }) {
-        return arg => {
-          if (arg === 'cross' && is.even(grid.x)) {
-            let m = is.even(y) ? 'odd' : 'even';
-            return is[m](count);
-          } else {
-            return is.even(count);
-          }
-        }
+      even({ count, grid, x, y }) {
+        return arg => is.odd(x + y);
       },
 
-      odd({ count, grid, y}) {
-        return arg => {
-          if (arg === 'cross' && is.even(grid.x)) {
-            let m = is.even(y) ? 'even' : 'odd';
-            return is[m](count);
-          } else {
-            return is.odd(count);
-          }
-        }
+      odd({ count, grid, x, y}) {
+        return arg => is.even(x + y);
       },
 
       random() {
@@ -3965,7 +3954,7 @@
         this.styles.keyframes += `
        @keyframes ${ uniform_time['animation-name'] } {
          from { --${ uniform_time.name }: 0 }
-         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] } }
+         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] / 10 } }
        }
       `;
       }
@@ -5083,11 +5072,9 @@
 
       // might be removed in the future
       if (window.CSS && window.CSS.registerProperty) {
-        try {
-          if (uniforms.time) {
-            this.register_uniform_time();
-          }
-        } catch (e) { }
+        if (uniforms.time) {
+          this.register_uniform_time();
+        }
       }
     }
 

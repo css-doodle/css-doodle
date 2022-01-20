@@ -1,3 +1,13 @@
+## 0.24.1
+
+* Decreased the automatically registered animation frame to 100/sec.
+* Removed the `cross` option for `even/odd` selector because it's now handled by default.
+* Make `r` small enough when it equels to 0.
+
+<br /> <br />
+
+
+
 ## 0.24.0
 
 ### Changes
