@@ -303,11 +303,12 @@ function create_shape_points(props, {min, max}) {
     let context = Object.assign({}, props, {
       't': t,
       'θ': t,
-      'seq': (...list) => {
+      'i': (i + 1),
+      seq(...list) {
         if (!list.length) return '';
         return list[i % list.length];
       },
-      'range': (a, b = 0) => {
+      range(a, b = 0) {
         a = Number(a) || 0;
         b = Number(b) || 0;
         if (a > b) [a, b] = [b, a];
