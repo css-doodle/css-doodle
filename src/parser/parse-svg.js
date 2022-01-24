@@ -1,4 +1,5 @@
 import { scan, iterator } from './tokenizer';
+import parseValueGroup from './parse-value-group';
 
 function readStatement(iter, token) {
   let fragment = [];
@@ -59,14 +60,22 @@ function walk(iter, parentToken) {
       && fragment.length
     ) {
       let props = getGroups(fragment, token => token.isSymbol(','));
-      let value = readStatement(iter, {
+      let statement = readStatement(iter, {
         type: 'statement',
         name: 'unkown',
         value: ''
       });
-      props.forEach(prop => {
-        rules.push(Object.assign({}, value, { name: prop }));
+      let groupdValue = parseValueGroup(statement.value);
+      let expand = (props.length > 1 && groupdValue.length === props.length);
+
+      props.forEach((prop, i) => {
+        let item = Object.assign({}, statement, { name: prop });
+        if (expand) {
+          item.value = groupdValue[i];
+        }
+        rules.push(item);
       });
+
       if (tokenType == 'block') {
         parentToken.value = rules;
       }

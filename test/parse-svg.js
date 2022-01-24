@@ -126,6 +126,16 @@ test('group property', t => {
       { type: 'statement', name: 'cy', value: '5'},
     ]
   });
+
+  compare(t, 'cx, cy: 5 6', {
+    name: 'svg',
+    type: 'block',
+    value: [
+      { type: 'statement', name: 'cx', value: '5'},
+      { type: 'statement', name: 'cy', value: '6'},
+    ]
+  });
+
 });
 
 

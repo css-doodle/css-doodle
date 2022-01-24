@@ -48,7 +48,7 @@ test('statement', t => {
   }]);
 });
 
-test.only('block', t => {
+test('block', t => {
   compare(t, 'match {}', [{
     type: 'block',
     name: 'match',
