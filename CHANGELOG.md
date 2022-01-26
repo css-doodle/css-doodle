@@ -1,3 +1,12 @@
+## 0.24.2
+
+* Expand grouped value for the grouped properties.
+* Added `index` variable to the the default shape context.
+
+<br /> <br />
+
+
+
 ## 0.24.1
 
 * Decreased the automatically registered animation frame to 100/sec.

@@ -1,4 +1,4 @@
-/*! css-doodle@0.24.1 */
+/*! css-doodle@0.24.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -2420,11 +2420,12 @@
       let context = Object.assign({}, props, {
         't': t,
         'θ': t,
-        'seq': (...list) => {
+        'i': (i + 1),
+        seq(...list) {
           if (!list.length) return '';
           return list[i % list.length];
         },
-        'range': (a, b = 0) => {
+        range(a, b = 0) {
           a = Number(a) || 0;
           b = Number(b) || 0;
           if (a > b) [a, b] = [b, a];
@@ -2513,14 +2514,22 @@
         && fragment.length
       ) {
         let props = getGroups(fragment, token => token.isSymbol(','));
-        let value = readStatement$1(iter, {
+        let statement = readStatement$1(iter, {
           type: 'statement',
           name: 'unkown',
           value: ''
         });
-        props.forEach(prop => {
-          rules.push(Object.assign({}, value, { name: prop }));
+        let groupdValue = parse$5(statement.value);
+        let expand = (props.length > 1 && groupdValue.length === props.length);
+
+        props.forEach((prop, i) => {
+          let item = Object.assign({}, statement, { name: prop });
+          if (expand) {
+            item.value = groupdValue[i];
+          }
+          rules.push(item);
         });
+
         if (tokenType == 'block') {
           parentToken.value = rules;
         }
