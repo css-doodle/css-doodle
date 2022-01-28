@@ -3,8 +3,8 @@
  * Translated from: https://mrl.nyu.edu/~perlin/noise/
  */
 
-import Random from './random';
-import List from './list';
+import Random from './random.js';
+import List from './list.js';
 
 export default class Perlin {
   constructor(random) {

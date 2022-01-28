@@ -1,4 +1,4 @@
-import { cache_image, is_safari } from './utils/index';
+import { cache_image, is_safari } from './utils/index.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const NSXLink = 'http://www.w3.org/1999/xlink';

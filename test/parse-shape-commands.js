@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseShapeCommands from '../src/parser/parse-shape-commands';
-import compare from './_compare';
+import parseShapeCommands from '../src/parser/parse-shape-commands.js';
+import compare from './_compare.js';
 compare.use(parseShapeCommands);
 
 test('single statement', t => {

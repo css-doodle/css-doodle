@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseDirection from '../src/parser/parse-direction';
-import compare from './_compare';
+import parseDirection from '../src/parser/parse-direction.js';
+import compare from './_compare.js';
 
 test('direction group', t => {
 

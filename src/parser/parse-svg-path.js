@@ -1,4 +1,4 @@
-import { scan, iterator } from './tokenizer';
+import { scan, iterator } from './tokenizer.js';
 
 const commands = 'MmLlHhVvCcSsQqTtAaZz';
 const relatives = 'mlhvcsqtaz';

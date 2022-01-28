@@ -1,5 +1,5 @@
-import parse_var from './parse-var';
-import List from '../utils/list';
+import parse_var from './parse-var.js';
+import List from '../utils/list.js';
 
 let { first, last, clone } = List();
 

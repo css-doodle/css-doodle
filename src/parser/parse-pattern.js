@@ -1,4 +1,4 @@
-import { scan, iterator } from './tokenizer';
+import { scan, iterator } from './tokenizer.js';
 
 function readStatement(iter, token) {
   let fragment = [];

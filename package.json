@@ -7,8 +7,8 @@
     "build": "rollup -c rollup.config.js",
     "minify": "terser -cm --comments '/^!/' -o css-doodle.min.js --ecma 6 -b ascii_only=true -- css-doodle.js",
     "trim": "./tools/trim css-doodle.min.js",
-    "test": "node -r esm node_modules/.bin/ava --verbose",
-    "test:watch": "npm run test -- --watch"
+    "test": "ava",
+    "test:watch": "npm test -- --watch"
   },
   "repository": {
     "type": "git",
@@ -19,8 +19,7 @@
     "url": "https://opencollective.com/css-doodle"
   },
   "devDependencies": {
-    "ava": "3.15.0",
-    "esm": "3.2.25",
+    "ava": "4.0.1",
     "rollup": "2.60.1",
     "terser": "5.10.0"
   },
@@ -31,6 +30,7 @@
     "css",
     "web-components"
   ],
+  "type": "module",
   "author": "yuanchuan",
   "license": "MIT",
   "bugs": {

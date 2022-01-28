@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseSvgPath from '../src/parser/parse-svg-path';
-import compare from './_compare';
+import parseSvgPath from '../src/parser/parse-svg-path.js';
+import compare from './_compare.js';
 
 compare.use(parseSvgPath);
 

@@ -1,4 +1,4 @@
-import get_props from './utils/get-props';
+import get_props from './utils/get-props.js';
 
 function build_mapping(prefix) {
   let reg = new RegExp(`\\-?${ prefix }\\-?`);

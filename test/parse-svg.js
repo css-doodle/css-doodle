@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseSvg from '../src/parser/parse-svg';
-import compare from './_compare';
+import parseSvg from '../src/parser/parse-svg.js';
+import compare from './_compare.js';
 compare.use(parseSvg);
 
 test('edge cases', t => {

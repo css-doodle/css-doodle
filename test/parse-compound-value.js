@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseCompoundValue from '../src/parser/parse-compound-value';
-import compare from './_compare';
+import parseCompoundValue from '../src/parser/parse-compound-value.js';
+import compare from './_compare.js';
 
 test('direction group', t => {
 

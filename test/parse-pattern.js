@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parsePattern from '../src/parser/parse-pattern';
-import compare from './_compare';
+import parsePattern from '../src/parser/parse-pattern.js';
+import compare from './_compare.js';
 compare.use(parsePattern);
 
 test('edge cased', t => {

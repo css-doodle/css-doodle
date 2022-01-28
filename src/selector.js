@@ -1,5 +1,5 @@
-import nth from './utils/nth';
-import calc from './calc';
+import nth from './utils/nth.js';
+import calc from './calc.js';
 
 const is = {
   even: n => !(n % 2),

@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseValueGroup from '../src/parser/parse-value-group';
-import compare from './_compare';
+import parseValueGroup from '../src/parser/parse-value-group.js';
+import compare from './_compare.js';
 
 test('basic value group', t => {
 

@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import compare from './_compare';
-import parseVar from '../src/parser/parse-var';
+import compare from './_compare.js';
+import parseVar from '../src/parser/parse-var.js';
 compare.use(parseVar);
 
 test('basic utility', t => {
