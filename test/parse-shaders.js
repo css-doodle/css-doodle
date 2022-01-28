@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseShaders from '../src/parser/parse-shaders';
-import compare from './_compare';
+import parseShaders from '../src/parser/parse-shaders.js';
+import compare from './_compare.js';
 compare.use(parseShaders);
 
 test('empty content', t => {

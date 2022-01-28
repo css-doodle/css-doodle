@@ -2,8 +2,8 @@
  * Based on the Shunting-yard algorithm.
  */
 
-import List from './utils/list';
-import { is_invalid_number } from './utils/index';
+import List from './utils/list.js';
+import { is_invalid_number } from './utils/index.js';
 let { last } = List();
 
 const default_context = {

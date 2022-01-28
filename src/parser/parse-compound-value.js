@@ -1,4 +1,4 @@
-import { iterator, scan } from './tokenizer';
+import { iterator, scan } from './tokenizer.js';
 
 function parse(input) {
   let iter = iterator(scan(input));

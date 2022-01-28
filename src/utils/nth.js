@@ -1,4 +1,4 @@
-import calc from '../calc';
+import calc from '../calc.js';
 
 export default function nth(input, curr, max) {
   for (let i = 0; i <= max; ++i) {

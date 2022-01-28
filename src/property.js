@@ -1,10 +1,10 @@
-import parse_value_group from './parser/parse-value-group';
-import parse_grid from './parser/parse-grid';
-import { shapes } from './shapes';
-import prefixer from './prefixer';
-import memo from './utils/memo';
-import { alias_for } from './utils/index';
-import { is_preset, get_preset } from './preset-size';
+import parse_value_group from './parser/parse-value-group.js';
+import parse_grid from './parser/parse-grid.js';
+import { shapes } from './shapes.js';
+import prefixer from './prefixer.js';
+import memo from './utils/memo.js';
+import { alias_for } from './utils/index.js';
+import { is_preset, get_preset } from './preset-size.js';
 
 const Expose = {
 

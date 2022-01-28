@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import { scan } from '../src/parser/tokenizer';
-import compare from './_compare';
+import { scan } from '../src/parser/tokenizer.js';
+import compare from './_compare.js';
 
 compare.use(input => {
   return Array.from(scan(input)).map(n => {

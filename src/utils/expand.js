@@ -1,9 +1,9 @@
-import List from './list';
+import List from './list.js';
 const { last, flat_map } = List();
 
-import { range } from './index';
-import memo from './memo';
-import by_charcode from './by-charcode';
+import { range } from './index.js';
+import memo from './memo.js';
+import by_charcode from './by-charcode.js';
 
 export default function expand(fn) {
   return (...args) => fn.apply(null, flat_map(args, n =>

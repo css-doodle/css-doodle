@@ -1,5 +1,5 @@
-import { scan, iterator } from './tokenizer';
-import parseValueGroup from './parse-value-group';
+import { scan, iterator } from './tokenizer.js';
+import parseValueGroup from './parse-value-group.js';
 
 function readStatement(iter, token) {
   let fragment = [];

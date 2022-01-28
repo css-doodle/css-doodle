@@ -1,6 +1,6 @@
 import test from 'ava';
-import calc from '../src/calc';
-import compare from './_compare';
+import calc from '../src/calc.js';
+import compare from './_compare.js';
 
 compare.use(calc);
 

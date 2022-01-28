@@ -1,5 +1,5 @@
-import { is_empty } from '../utils/index';
-import { scan, iterator } from './tokenizer';
+import { is_empty } from '../utils/index.js';
+import { scan, iterator } from './tokenizer.js';
 
 function parse(input, noSpace) {
   let group = [];

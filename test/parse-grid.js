@@ -1,7 +1,7 @@
 import test from 'ava';
 
-import parseGrid from '../src/parser/parse-grid';
-import compare from './_compare';
+import parseGrid from '../src/parser/parse-grid.js';
+import compare from './_compare.js';
 compare.use(parseGrid);
 
 const defaultGrid = {

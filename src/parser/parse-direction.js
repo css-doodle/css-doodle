@@ -1,4 +1,4 @@
-import { iterator, scan } from './tokenizer';
+import { iterator, scan } from './tokenizer.js';
 
 const keywords = ['auto', 'reverse'];
 const units = ['deg', 'rad', 'grad', 'turn'];
