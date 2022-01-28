@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "minify": "terser -cm --comments '/^!/' -o css-doodle.min.js --ecma 6 -b ascii_only=true -- css-doodle.js",
-    "trim": "./tools/trim css-doodle.min.js",
+    "trim": "./tools/trim.js css-doodle.min.js",
     "test": "ava",
     "test:watch": "npm test -- --watch"
   },

@@ -11,7 +11,7 @@ build: $(LIB)
 
 minify: $(TARGET)
 	@npm run minify
-	@./tools/trim $(TARGET_MIN)
+	@./tools/trim.js $(TARGET_MIN)
 
 test:
 	@npm run test
