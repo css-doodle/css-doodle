@@ -150,6 +150,8 @@ class Rules {
           });
           let value = this.apply_func(fn, coords, args);
           return value;
+        } else {
+          return arg.name;
         }
       }
     });

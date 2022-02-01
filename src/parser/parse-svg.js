@@ -21,11 +21,17 @@ function walk(iter, parentToken) {
   let rules = [];
   let fragment = [];
   let tokenType = parentToken && parentToken.type || '';
+  let stack = [];
 
   while (iter.next()) {
     let { prev, curr, next } = iter.get();
     let isBlockBreak = !next || curr.isSymbol('}');
-
+    if (curr.isSymbol('(')) {
+      stack.push(curr.value);
+    }
+    if (curr.isSymbol(')')) {
+      stack.pop();
+    }
     if (tokenType === 'block' && isBlockBreak) {
       if (!next && rules.length && !curr.isSymbol('}')) {
         rules[rules.length - 1].value += (';' + curr.value);
@@ -38,24 +44,29 @@ function walk(iter, parentToken) {
       if (!selectors.length) {
         continue;
       }
+      if (isSkip(parentToken.name)) {
+        selectors = [joinToken(fragment)];
+      }
       let tokenName = selectors.pop();
+      let skip = isSkip(...selectors, parentToken.name, tokenName);
       let block = resolveId(walk(iter, {
         type: 'block',
         name: tokenName,
         value: []
-      }));
+      }), skip);
       while (tokenName = selectors.pop()) {
         block = resolveId({
           type: 'block',
           name: tokenName,
           value: [block]
-        });
+        }, skip);
       }
       rules.push(block);
       fragment = [];
     }
     else if (
       curr.isSymbol(':')
+      && !stack.length
       && !isSpecialProperty(prev, next)
       && fragment.length
     ) {
@@ -117,11 +128,11 @@ function joinToken(tokens) {
     .map(n => n.value).join('');
 }
 
-function resolveId(block) {
+function resolveId(block, skip) {
   let name = block.name || '';
   let [tokenName, ...ids] = name.split(/#/);
   let id = ids[ids.length - 1];
-  if (id) {
+  if (id && !skip) {
     block.name = tokenName;
     block.value.push({
       type: 'statement',
@@ -147,6 +158,10 @@ function getGroups(tokens, fn) {
     group.push(joinToken(temp));
   }
   return group;
+}
+
+function isSkip(...names) {
+  return names.some(n => n === 'style');
 }
 
 function parse(source, root) {

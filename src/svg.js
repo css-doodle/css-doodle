@@ -69,20 +69,42 @@ export function generate_svg(token, element, parent) {
     element = document.createDocumentFragment();
   }
   if (token.type === 'block') {
-    try {
-      let el = document.createElementNS(NS, token.name);
-      if (el) {
-        token.value.forEach(t => {
-          generate_svg(t, el, token);
-        });
-        element.appendChild(el);
-      }
-    } catch (e) {}
+    // style tag
+    if (token.name === 'style' && Array.isArray(token.value)) {
+      let el = document.createElement('style');
+      let styles = [];
+      token.value.forEach(t => {
+        styles.push(compose_block(t));
+      });
+      el.innerHTML = styles.join('');
+      element.appendChild(el);
+    }
+    // normal svg elements
+    else {
+      try {
+        let el = document.createElementNS(NS, token.name);
+        if (el) {
+          token.value.forEach(t => {
+            generate_svg(t, el, token);
+          });
+          element.appendChild(el);
+        }
+      } catch (e) {}
+    }
   }
   if (token.type === 'statement') {
     if (parent && parent.name == 'text' && token.name === 'content') {
       element.textContent = token.value;
-    } else {
+    }
+    // inline style
+    else if (token.name.startsWith('style ')) {
+      let name = (token.name.split('style ')[1] || '').trim();
+      if (name.length) {
+        let style = element.getAttribute('style') || '';
+        element.setAttribute('style', style + `${name}: ${token.value};`);
+      }
+    }
+    else {
       try {
         let ns = token.name.startsWith('xlink:') ? NSXLink : NS;
         element.setAttributeNS(ns, token.name, token.value);
@@ -94,4 +116,16 @@ export function generate_svg(token, element, parent) {
     return child && child.outerHTML || '';
   }
   return element;
+}
+
+function compose_block(block) {
+  return `${block.name} {
+    ${block.value.map(n => {
+      if (n.type === 'statement') {
+        return `${n.name}: ${n.value};`;
+      } else if (n.type === 'block') {
+        return compose_block(n);
+      }
+    }).join('')}
+  }`
 }
