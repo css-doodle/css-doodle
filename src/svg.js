@@ -93,8 +93,10 @@ export function generate_svg(token, element, parent) {
     }
   }
   if (token.type === 'statement') {
-    if (parent && parent.name == 'text' && token.name === 'content') {
-      element.textContent = token.value;
+    let isTextNode = parent && (parent.name === 'text' || parent.name === 'tspan');
+    if (isTextNode && token.name === 'content') {
+      let text = document.createTextNode(token.value);
+      element.appendChild(text);
     }
     // inline style
     else if (token.name.startsWith('style ')) {
