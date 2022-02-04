@@ -132,7 +132,7 @@ function resolveId(block, skip) {
   let name = block.name || '';
   let [tokenName, ...ids] = name.split(/#/);
   let id = ids[ids.length - 1];
-  if (id && !skip) {
+  if (tokenName && id && !skip) {
     block.name = tokenName;
     block.value.push({
       type: 'statement',

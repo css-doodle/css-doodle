@@ -233,7 +233,6 @@ test('block names', t => {
 
 });
 
-
 test('id expand', t => {
   compare(t, 'g circle#id { } ', {
     type: 'block',
@@ -250,6 +249,18 @@ test('id expand', t => {
           value: 'id'
         }]
       }]
+    }]
+  });
+});
+
+test('empty id expand', t => {
+  compare(t, '#abc {}', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: '#abc',
+      value: []
     }]
   });
 });
