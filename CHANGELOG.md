@@ -1,3 +1,13 @@
+## 0.24.3
+
+* Improved `@svg()` function for style tags and inline styles.
+* Improved `@svg()` function for expanding `id` to empty blocks.
+* Fixed tests on Windows.
+
+<br /> <br />
+
+
+
 ## 0.24.2
 
 * Expand grouped value for the grouped properties.

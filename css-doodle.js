@@ -1,4 +1,4 @@
-/*! css-doodle@0.24.2 */
+/*! css-doodle@0.24.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1375,20 +1375,42 @@
       element = document.createDocumentFragment();
     }
     if (token.type === 'block') {
-      try {
-        let el = document.createElementNS(NS, token.name);
-        if (el) {
-          token.value.forEach(t => {
-            generate_svg(t, el, token);
-          });
-          element.appendChild(el);
-        }
-      } catch (e) {}
+      // style tag
+      if (token.name === 'style' && Array.isArray(token.value)) {
+        let el = document.createElement('style');
+        let styles = [];
+        token.value.forEach(t => {
+          styles.push(compose_block(t));
+        });
+        el.innerHTML = styles.join('');
+        element.appendChild(el);
+      }
+      // normal svg elements
+      else {
+        try {
+          let el = document.createElementNS(NS, token.name);
+          if (el) {
+            token.value.forEach(t => {
+              generate_svg(t, el, token);
+            });
+            element.appendChild(el);
+          }
+        } catch (e) {}
+      }
     }
     if (token.type === 'statement') {
       if (parent && parent.name == 'text' && token.name === 'content') {
         element.textContent = token.value;
-      } else {
+      }
+      // inline style
+      else if (token.name.startsWith('style ')) {
+        let name = (token.name.split('style ')[1] || '').trim();
+        if (name.length) {
+          let style = element.getAttribute('style') || '';
+          element.setAttribute('style', style + `${name}: ${token.value};`);
+        }
+      }
+      else {
         try {
           let ns = token.name.startsWith('xlink:') ? NSXLink : NS;
           element.setAttributeNS(ns, token.name, token.value);
@@ -1400,6 +1422,18 @@
       return child && child.outerHTML || '';
     }
     return element;
+  }
+
+  function compose_block(block) {
+    return `${block.name} {
+    ${block.value.map(n => {
+      if (n.type === 'statement') {
+        return `${n.name}: ${n.value};`;
+      } else if (n.type === 'block') {
+        return compose_block(n);
+      }
+    }).join('')}
+  }`
   }
 
   function Random(random) {
@@ -2475,11 +2509,17 @@
     let rules = [];
     let fragment = [];
     let tokenType = parentToken && parentToken.type || '';
+    let stack = [];
 
     while (iter.next()) {
       let { prev, curr, next } = iter.get();
       let isBlockBreak = !next || curr.isSymbol('}');
-
+      if (curr.isSymbol('(')) {
+        stack.push(curr.value);
+      }
+      if (curr.isSymbol(')')) {
+        stack.pop();
+      }
       if (tokenType === 'block' && isBlockBreak) {
         if (!next && rules.length && !curr.isSymbol('}')) {
           rules[rules.length - 1].value += (';' + curr.value);
@@ -2492,24 +2532,29 @@
         if (!selectors.length) {
           continue;
         }
+        if (isSkip(parentToken.name)) {
+          selectors = [joinToken$1(fragment)];
+        }
         let tokenName = selectors.pop();
+        let skip = isSkip(...selectors, parentToken.name, tokenName);
         let block = resolveId(walk$1(iter, {
           type: 'block',
           name: tokenName,
           value: []
-        }));
+        }), skip);
         while (tokenName = selectors.pop()) {
           block = resolveId({
             type: 'block',
             name: tokenName,
             value: [block]
-          });
+          }, skip);
         }
         rules.push(block);
         fragment = [];
       }
       else if (
         curr.isSymbol(':')
+        && !stack.length
         && !isSpecialProperty(prev, next)
         && fragment.length
       ) {
@@ -2571,11 +2616,11 @@
       .map(n => n.value).join('');
   }
 
-  function resolveId(block) {
+  function resolveId(block, skip) {
     let name = block.name || '';
     let [tokenName, ...ids] = name.split(/#/);
     let id = ids[ids.length - 1];
-    if (id) {
+    if (tokenName && id && !skip) {
       block.name = tokenName;
       block.value.push({
         type: 'statement',
@@ -2601,6 +2646,10 @@
       group.push(joinToken$1(temp));
     }
     return group;
+  }
+
+  function isSkip(...names) {
+    return names.some(n => n === 'style');
   }
 
   function parse$2(source, root) {
@@ -3588,6 +3637,8 @@
             });
             let value = this.apply_func(fn, coords, args);
             return value;
+          } else {
+            return arg.name;
           }
         }
       });
