@@ -18,6 +18,26 @@ uniform_time['animation'] = `
   ${ uniform_time['animation-name'] }
 `;
 
+const uniform_mousex = {
+  name: 'cssd-uniform-mousex',
+};
+
+const uniform_mousey = {
+  name: 'cssd-uniform-mousey',
+};
+
+const uniform_width = {
+  name: 'cssd-uniform-width',
+};
+
+const uniform_height = {
+  name: 'cssd-uniform-height',
+};
+
 export {
-  uniform_time
+  uniform_time,
+  uniform_mousex,
+  uniform_mousey,
+  uniform_width,
+  uniform_height,
 }

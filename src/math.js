@@ -1,5 +1,5 @@
-import calc from './calc';
-import { get_value } from './utils/index';
+import calc from './calc.js';
+import { get_value } from './utils/index.js';
 
 // Expose all Math functions and constants.
 const methods = Object.getOwnPropertyNames(Math);

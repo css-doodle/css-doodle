@@ -1,18 +1,18 @@
-import parse_css from './parser/parse-css';
-import parse_grid from './parser/parse-grid';
-import parse_shaders from './parser/parse-shaders';
-import generator from './generator';
-import seedrandom from './lib/seedrandom';
-import { svg_to_png } from './svg';
-import { draw_shader } from './shader';
-import { draw_pattern } from './pattern';
-import { draw_canvas } from './canvas';
-import { uniform_time } from './uniform';
+import parse_css from './parser/parse-css.js';
+import parse_grid from './parser/parse-grid.js';
+import parse_shaders from './parser/parse-shaders.js';
+import generator from './generator.js';
+import seedrandom from './lib/seedrandom.js';
+import { svg_to_png } from './svg.js';
+import { draw_shader } from './shader.js';
+import { draw_pattern } from './pattern.js';
+import { draw_canvas } from './canvas.js';
 
-import get_props from './utils/get-props';
-import { get_variable, get_all_variables } from './utils/variables';
-import { get_rgba_color } from './utils/get-rgba-color';
-import Cache from './utils/cache';
+import get_props from './utils/get-props.js';
+import { get_variable, get_all_variables } from './utils/variables.js';
+import { get_rgba_color } from './utils/get-rgba-color.js';
+import Cache from './utils/cache.js';
+import * as Uniforms from './uniforms.js';
 
 import {
   make_tag_function,
@@ -20,7 +20,8 @@ import {
   normalize_png_name, cache_image,
   is_safari, entity, un_entity,
   maybe
-} from './utils/index';
+} from './utils/index.js';
+
 
 class Doodle extends HTMLElement {
   constructor() {
@@ -81,12 +82,7 @@ class Doodle extends HTMLElement {
       }
     }
 
-    if (compiled.uniforms.time) {
-      this.register_uniform_time();
-    }
-
     let replace = this.replace(compiled);
-
     this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
     if (compiled.props.has_animation) {
@@ -266,14 +262,16 @@ class Doodle extends HTMLElement {
   }
 
   load(again) {
+    let use = this.get_use();
+    let parsed = parse_css(use + un_entity(this.innerHTML), this.extra);
+    let compiled = this.generate(parsed);
+    let { uniforms } = compiled;
+
     if (!again) {
       if (this.hasAttribute('click-to-update')) {
         this.addEventListener('click', e => this.update());
       }
     }
-    let use = this.get_use();
-    let parsed = parse_css(use + un_entity(this.innerHTML), this.extra);
-    let compiled = this.generate(parsed);
 
     this.grid_size = compiled.grid
       ? compiled.grid
@@ -365,7 +363,7 @@ class Doodle extends HTMLElement {
     let replace = this.replace(compiled);
 
     this.doodle.innerHTML = `
-      <style>${ get_basic_styles(uniforms) }</style>
+      <style>${ get_basic_styles() }</style>
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
@@ -383,16 +381,85 @@ class Doodle extends HTMLElement {
       this.set_content('.style-cells', replace(cells));
     }
 
-    // might be removed in the future
-    if (window.CSS && window.CSS.registerProperty) {
-      if (uniforms.time) {
-        this.register_uniform_time();
+    if (uniforms.time) {
+      this.register_uniform_time();
+    }
+    if (uniforms.mousex || uniforms.mousey) {
+      this.register_uniform_mouse(uniforms);
+    } else {
+      this.remove_uniform_mouse();
+    }
+    if (uniforms.width || uniforms.height) {
+      this.register_uniform_resolution(uniforms);
+    } else {
+      this.remove_uniform_resolution();
+    }
+  }
+
+  register_uniform_mouse(uniforms) {
+    if (!this.uniform_mouse_callback) {
+      let { uniform_mousex, uniform_mousey } = Uniforms;
+      this.uniform_mouse_callback = e => {
+        if (uniforms.mousex) {
+          this.style.setProperty('--' + uniform_mousex.name, e.offsetX);
+        }
+        if (uniforms.mousey) {
+          this.style.setProperty('--' + uniform_mousey.name, e.offsetY);
+        }
       }
+      this.addEventListener('pointermove', this.uniform_mouse_callback);
+    }
+  }
+
+  remove_uniform_mouse() {
+    if (this.uniform_mouse_callback) {
+      let { uniform_mousex, uniform_mousey } = Uniforms;
+      this.style.removeProperty('--' + uniform_mousex.name);
+      this.style.removeProperty('--' + uniform_mousey.name);
+      this.removeEventListener('pointermove', this.uniform_mouse_callback);
+      this.uniform_mouse_callback = null;
+    }
+  }
+
+  register_uniform_resolution(uniforms) {
+    if (!this.uniform_resolution_observer) {
+      let { uniform_width, uniform_height } = Uniforms;
+      const setProperty = () => {
+        let box = this.getBoundingClientRect();
+        if (uniforms.width) {
+          this.style.setProperty('--' + uniform_width.name, box.width);
+        }
+        if (uniforms.height) {
+          this.style.setProperty('--' + uniform_height.name, box.height);
+        }
+      };
+      setProperty();
+      this.uniform_resolution_observer = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          let data = entry.contentBoxSize || entry.contentRect;
+          if (data) setProperty();
+        }
+      });
+      this.uniform_resolution_observer.observe(this);
+    }
+  }
+
+  remove_uniform_resolution() {
+    if (this.uniform_resolution_observer) {
+      let { uniform_width, uniform_height } = Uniforms;
+      this.style.removeProperty('--' + uniform_width.name);
+      this.style.removeProperty('--' + uniform_height.name);
+      this.uniform_resolution_observer.unobserve(this);
+      this.uniform_resolution_observer = null;
     }
   }
 
   register_uniform_time() {
+    if (!window.CSS || !window.CSS.registerProperty) {
+      return false;
+    }
     if (!this.is_uniform_time_registered) {
+      let { uniform_time } = Uniforms;
       try {
         CSS.registerProperty({
           name: '--' + uniform_time.name,
@@ -477,7 +544,8 @@ if (!customElements.get('css-doodle')) {
   customElements.define('css-doodle', Doodle);
 }
 
-function get_basic_styles(uniforms = {}) {
+function get_basic_styles() {
+  let { uniform_time } = Uniforms;
   const inherited_grid_props = get_props(/grid/)
     .map(n => `${ n }: inherit;`)
     .join('');

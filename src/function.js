@@ -1,26 +1,26 @@
-import { create_svg_url, normalize_svg, generate_svg } from './svg';
+import { create_svg_url, normalize_svg, generate_svg } from './svg.js';
 
-import list from './utils/list';
-import random_func from './utils/random';
+import list from './utils/list.js';
+import random_func from './utils/random.js';
 
-import { cell_id, is_letter, alias_for } from './utils/index';
-import { lazy, clamp, sequence, get_value } from './utils/index';
+import { cell_id, is_letter, alias_for } from './utils/index.js';
+import { lazy, clamp, sequence, get_value } from './utils/index.js';
 
-import by_unit from './utils/by-unit';
-import by_charcode from './utils/by-charcode';
-import calc from './calc';
-import expand from './utils/expand';
-import Stack from './utils/stack';
-import memo from './utils/memo';
-import Noise from './utils/noise';
+import by_unit from './utils/by-unit.js';
+import by_charcode from './utils/by-charcode.js';
+import calc from './calc.js';
+import expand from './utils/expand.js';
+import Stack from './utils/stack.js';
+import memo from './utils/memo.js';
+import Noise from './utils/noise.js';
 
-import { shapes, create_shape_points } from './shapes';
-import parse_value_group from './parser/parse-value-group';
-import parse_shape_commands from './parser/parse-shape-commands';
-import parse_svg from './parser/parse-svg';
-import parse_svg_path from './parser/parse-svg-path';
+import { shapes, create_shape_points } from './shapes.js';
+import parse_value_group from './parser/parse-value-group.js';
+import parse_shape_commands from './parser/parse-shape-commands.js';
+import parse_svg from './parser/parse-svg.js';
+import parse_svg_path from './parser/parse-svg-path.js';
 
-import { uniform_time } from './uniform';
+import * as Uniforms from './uniforms.js';
 
 function get_exposed(random) {
   const { shuffle } = list(random);
@@ -80,17 +80,11 @@ function get_exposed(random) {
       return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
     },
 
-    µ: (
-      make_sequence('')
-    ),
+    m: make_sequence(','),
 
-    m: (
-      make_sequence(',')
-    ),
+    M: make_sequence(' '),
 
-    M: (
-      make_sequence(' ')
-    ),
+    µ: make_sequence(''),
 
     p({ context }) {
       return expand((...args) => {
@@ -277,8 +271,24 @@ function get_exposed(random) {
       return value => `var(${ get_value(value) })`;
     },
 
-    t() {
-      return value => `var(--${ uniform_time.name })`;
+    ut() {
+      return value => `var(--${ Uniforms.uniform_time.name })`;
+    },
+
+    uw() {
+      return value => `var(--${ Uniforms.uniform_width.name })`;
+    },
+
+    uh() {
+      return value => `var(--${ Uniforms.uniform_height.name })`;
+    },
+
+    ux() {
+      return value => `var(--${ Uniforms.uniform_mousex.name })`;
+    },
+
+    uy() {
+      return value => `var(--${ Uniforms.uniform_mousey.name })`;
     },
 
     plot({ count, context, extra, position, grid }) {
@@ -455,6 +465,7 @@ function get_exposed(random) {
     'fliph': 'flipH',
 
     // legacy names, keep them before 1.0
+    't': 'ut',
     'svg-filter': 'filter',
     'last-rand': 'lr',
     'last-pick': 'lp',

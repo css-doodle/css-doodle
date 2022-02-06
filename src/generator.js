@@ -1,15 +1,15 @@
-import Func from './function';
-import Property from './property';
-import Selector from './selector';
-import MathFunc from './math';
-import prefixer from './prefixer';
-import parse_value_group from './parser/parse-value-group';
-import { uniform_time } from './uniform';
-import random_func from './utils/random';
+import Func from './function.js';
+import Property from './property.js';
+import Selector from './selector.js';
+import MathFunc from './math.js';
+import prefixer from './prefixer.js';
+import parse_value_group from './parser/parse-value-group.js';
+import { uniform_time } from './uniforms.js';
+import random_func from './utils/random.js';
 
-import { maybe, cell_id, is_nil, get_value } from './utils/index';
+import { maybe, cell_id, is_nil, get_value } from './utils/index.js';
 
-import List from './utils/list';
+import List from './utils/list.js';
 let { join, make_array, remove_empty_values } = List();
 
 function is_host_selector(s) {
@@ -121,11 +121,8 @@ class Rules {
       else if (arg.type === 'func') {
         let fname = arg.name.substr(1);
         let fn = this.pick_func(fname);
-
         if (typeof fn === 'function') {
-          if (fname === 't') {
-            this.uniforms.time = true;
-          }
+          this.check_uniforms(fname);
           if (this.is_composable(fname)) {
             let value = get_value((arg.arguments[0] || [])[0]);
             if (!is_nil(value)) {
@@ -197,6 +194,16 @@ class Rules {
     return '${' + id + '}';
   }
 
+  check_uniforms(name) {
+    switch (name) {
+      case 'ut': case 't': this.uniforms.time = true; break;
+      case 'ux': this.uniforms.mousex = true; break;
+      case 'uy': this.uniforms.mousey = true; break;
+      case 'uw': this.uniforms.width = true; break;
+      case 'uh': this.uniforms.height = true; break;
+    }
+  }
+
   compose_value(value, coords) {
     if (!Array.isArray(value)) {
       return {
@@ -215,9 +222,7 @@ class Rules {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
-            if (fname === 't') {
-              this.uniforms.time = true;
-            }
+            this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((val.arguments[0] || [])[0]);
               if (!is_nil(value)) {
