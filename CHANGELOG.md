@@ -1,3 +1,13 @@
+## 0.24.4
+
+* Added `ux`, `uy`, `uw`, and `uh` uniform variables.
+* Imroved svg parsing.
+* Added support for `tspan` and multiple text nodes.
+
+<br /> <br />
+
+
+
 ## 0.24.3
 
 * Improved `@svg()` function for style tags and inline styles.

@@ -1,4 +1,4 @@
-/*! css-doodle@0.24.3 */
+/*! css-doodle@0.24.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1399,8 +1399,10 @@
       }
     }
     if (token.type === 'statement') {
-      if (parent && parent.name == 'text' && token.name === 'content') {
-        element.textContent = token.value;
+      let isTextNode = parent && (parent.name === 'text' || parent.name === 'tspan');
+      if (isTextNode && token.name === 'content') {
+        let text = document.createTextNode(token.value);
+        element.appendChild(text);
       }
       // inline style
       else if (token.name.startsWith('style ')) {
@@ -2522,7 +2524,10 @@
       }
       if (tokenType === 'block' && isBlockBreak) {
         if (!next && rules.length && !curr.isSymbol('}')) {
-          rules[rules.length - 1].value += (';' + curr.value);
+          let last = rules[rules.length - 1].value;
+          if (typeof last === 'string') {
+            rules[rules.length - 1].value += (';' + curr.value);
+          }
         }
         parentToken.value = rules;
         break;
@@ -2585,7 +2590,8 @@
           rules[rules.length - 1].value += (';' + joinToken$1(fragment));
           fragment = [];
         }
-      } else {
+      }
+      else {
         fragment.push(curr);
       }
     }
@@ -2728,6 +2734,31 @@
   ${ uniform_time['animation-name'] }
 `;
 
+  const uniform_mousex = {
+    name: 'cssd-uniform-mousex',
+  };
+
+  const uniform_mousey = {
+    name: 'cssd-uniform-mousey',
+  };
+
+  const uniform_width = {
+    name: 'cssd-uniform-width',
+  };
+
+  const uniform_height = {
+    name: 'cssd-uniform-height',
+  };
+
+  var Uniforms = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    uniform_time: uniform_time,
+    uniform_mousex: uniform_mousex,
+    uniform_mousey: uniform_mousey,
+    uniform_width: uniform_width,
+    uniform_height: uniform_height
+  });
+
   function get_exposed(random) {
     const { shuffle } = List(random);
     const { pick, rand, lerp, unique_id } = Random(random);
@@ -2786,17 +2817,11 @@
         return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
       },
 
-      µ: (
-        make_sequence('')
-      ),
+      m: make_sequence(','),
 
-      m: (
-        make_sequence(',')
-      ),
+      M: make_sequence(' '),
 
-      M: (
-        make_sequence(' ')
-      ),
+      µ: make_sequence(''),
 
       p({ context }) {
         return expand((...args) => {
@@ -2983,8 +3008,24 @@
         return value => `var(${ get_value(value) })`;
       },
 
-      t() {
+      ut() {
         return value => `var(--${ uniform_time.name })`;
+      },
+
+      uw() {
+        return value => `var(--${ uniform_width.name })`;
+      },
+
+      uh() {
+        return value => `var(--${ uniform_height.name })`;
+      },
+
+      ux() {
+        return value => `var(--${ uniform_mousex.name })`;
+      },
+
+      uy() {
+        return value => `var(--${ uniform_mousey.name })`;
       },
 
       plot({ count, context, extra, position, grid }) {
@@ -3161,6 +3202,7 @@
       'fliph': 'flipH',
 
       // legacy names, keep them before 1.0
+      't': 'ut',
       'svg-filter': 'filter',
       'last-rand': 'lr',
       'last-pick': 'lp',
@@ -3608,11 +3650,8 @@
         else if (arg.type === 'func') {
           let fname = arg.name.substr(1);
           let fn = this.pick_func(fname);
-
           if (typeof fn === 'function') {
-            if (fname === 't') {
-              this.uniforms.time = true;
-            }
+            this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((arg.arguments[0] || [])[0]);
               if (!is_nil(value)) {
@@ -3684,6 +3723,16 @@
       return '${' + id + '}';
     }
 
+    check_uniforms(name) {
+      switch (name) {
+        case 'ut': case 't': this.uniforms.time = true; break;
+        case 'ux': this.uniforms.mousex = true; break;
+        case 'uy': this.uniforms.mousey = true; break;
+        case 'uw': this.uniforms.width = true; break;
+        case 'uh': this.uniforms.height = true; break;
+      }
+    }
+
     compose_value(value, coords) {
       if (!Array.isArray(value)) {
         return {
@@ -3702,9 +3751,7 @@
             let fname = val.name.substr(1);
             let fn = this.pick_func(fname);
             if (typeof fn === 'function') {
-              if (fname === 't') {
-                this.uniforms.time = true;
-              }
+              this.check_uniforms(fname);
               if (this.is_composable(fname)) {
                 let value = get_value((val.arguments[0] || [])[0]);
                 if (!is_nil(value)) {
@@ -4828,12 +4875,7 @@
         }
       }
 
-      if (compiled.uniforms.time) {
-        this.register_uniform_time();
-      }
-
       let replace = this.replace(compiled);
-
       this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
       if (compiled.props.has_animation) {
@@ -5013,14 +5055,15 @@
     }
 
     load(again) {
+      let use = this.get_use();
+      let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
+      let compiled = this.generate(parsed);
+
       if (!again) {
         if (this.hasAttribute('click-to-update')) {
           this.addEventListener('click', e => this.update());
         }
       }
-      let use = this.get_use();
-      let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
-      let compiled = this.generate(parsed);
 
       this.grid_size = compiled.grid
         ? compiled.grid
@@ -5112,7 +5155,7 @@
       let replace = this.replace(compiled);
 
       this.doodle.innerHTML = `
-      <style>${ get_basic_styles(uniforms) }</style>
+      <style>${ get_basic_styles() }</style>
       <style class="style-keyframes">${ keyframes }</style>
       <style class="style-container">${ style_container }</style>
       <style class="style-cells">${ style_cells }</style>
@@ -5130,16 +5173,88 @@
         this.set_content('.style-cells', replace(cells));
       }
 
-      // might be removed in the future
-      if (window.CSS && window.CSS.registerProperty) {
-        if (uniforms.time) {
-          this.register_uniform_time();
-        }
+      if (uniforms.time) {
+        this.register_uniform_time();
+      }
+      if (uniforms.mousex || uniforms.mousey) {
+        this.register_uniform_mouse(uniforms);
+      } else {
+        this.remove_uniform_mouse();
+      }
+      if (uniforms.width || uniforms.height) {
+        this.register_uniform_resolution(uniforms);
+      } else {
+        this.remove_uniform_resolution();
+      }
+    }
+
+    register_uniform_mouse(uniforms) {
+      if (!this.uniform_mouse_callback) {
+        let { uniform_mousex, uniform_mousey } = Uniforms;
+        this.uniform_mouse_callback = e => {
+          let data = e.detail || e;
+          if (uniforms.mousex) {
+            this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
+          }
+          if (uniforms.mousey) {
+            this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
+          }
+        };
+        this.addEventListener('pointermove', this.uniform_mouse_callback);
+        let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
+        this.dispatchEvent(event);
+      }
+    }
+
+    remove_uniform_mouse() {
+      if (this.uniform_mouse_callback) {
+        let { uniform_mousex, uniform_mousey } = Uniforms;
+        this.style.removeProperty('--' + uniform_mousex.name);
+        this.style.removeProperty('--' + uniform_mousey.name);
+        this.removeEventListener('pointermove', this.uniform_mouse_callback);
+        this.uniform_mouse_callback = null;
+      }
+    }
+
+    register_uniform_resolution(uniforms) {
+      if (!this.uniform_resolution_observer) {
+        let { uniform_width, uniform_height } = Uniforms;
+        const setProperty = () => {
+          let box = this.getBoundingClientRect();
+          if (uniforms.width) {
+            this.style.setProperty('--' + uniform_width.name, box.width);
+          }
+          if (uniforms.height) {
+            this.style.setProperty('--' + uniform_height.name, box.height);
+          }
+        };
+        setProperty();
+        this.uniform_resolution_observer = new ResizeObserver(entries => {
+          for (let entry of entries) {
+            let data = entry.contentBoxSize || entry.contentRect;
+            if (data) setProperty();
+          }
+        });
+        this.uniform_resolution_observer.observe(this);
+      }
+    }
+
+    remove_uniform_resolution() {
+      if (this.uniform_resolution_observer) {
+        let { uniform_width, uniform_height } = Uniforms;
+        this.style.removeProperty('--' + uniform_width.name);
+        this.style.removeProperty('--' + uniform_height.name);
+        this.uniform_resolution_observer.unobserve(this);
+        this.uniform_resolution_observer = null;
       }
     }
 
     register_uniform_time() {
+      if (!window.CSS || !window.CSS.registerProperty) {
+        return false;
+      }
       if (!this.is_uniform_time_registered) {
+        let { uniform_time } = Uniforms;
         try {
           CSS.registerProperty({
             name: '--' + uniform_time.name,
@@ -5224,7 +5339,8 @@
     customElements.define('css-doodle', Doodle);
   }
 
-  function get_basic_styles(uniforms = {}) {
+  function get_basic_styles() {
+    let { uniform_time } = Uniforms;
     const inherited_grid_props = get_props(/grid/)
       .map(n => `${ n }: inherit;`)
       .join('');
