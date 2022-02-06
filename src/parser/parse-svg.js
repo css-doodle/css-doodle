@@ -34,7 +34,10 @@ function walk(iter, parentToken) {
     }
     if (tokenType === 'block' && isBlockBreak) {
       if (!next && rules.length && !curr.isSymbol('}')) {
-        rules[rules.length - 1].value += (';' + curr.value);
+        let last = rules[rules.length - 1].value;
+        if (typeof last === 'string') {
+          rules[rules.length - 1].value += (';' + curr.value);
+        }
       }
       parentToken.value = rules;
       break;
@@ -97,7 +100,8 @@ function walk(iter, parentToken) {
         rules[rules.length - 1].value += (';' + joinToken(fragment));
         fragment = [];
       }
-    } else {
+    }
+    else {
       fragment.push(curr);
     }
   }

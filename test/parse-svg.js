@@ -264,3 +264,15 @@ test('empty id expand', t => {
     }]
   });
 });
+
+test('ignore tail semicolons', t => {
+  compare(t, 'path {};', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'path',
+      value: []
+    }]
+  });
+});
