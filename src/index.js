@@ -400,14 +400,17 @@ class Doodle extends HTMLElement {
     if (!this.uniform_mouse_callback) {
       let { uniform_mousex, uniform_mousey } = Uniforms;
       this.uniform_mouse_callback = e => {
+        let data = e.detail || e;
         if (uniforms.mousex) {
-          this.style.setProperty('--' + uniform_mousex.name, e.offsetX);
+          this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
         }
         if (uniforms.mousey) {
-          this.style.setProperty('--' + uniform_mousey.name, e.offsetY);
+          this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
         }
       }
       this.addEventListener('pointermove', this.uniform_mouse_callback);
+      let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
+      this.dispatchEvent(event);
     }
   }
 
