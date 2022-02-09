@@ -1,4 +1,5 @@
-import { create_svg_url, normalize_svg, generate_svg } from './svg.js';
+import { create_svg_url, normalize_svg } from './svg.js';
+import { generate_svg } from './generator/svg.js';
 
 import list from './utils/list.js';
 import random_func from './utils/random.js';

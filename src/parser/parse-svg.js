@@ -3,18 +3,57 @@ import parseValueGroup from './parse-value-group.js';
 
 function readStatement(iter, token) {
   let fragment = [];
+  let inlineBlock;
+  let stack = [];
   while (iter.next()) {
     let { curr, next } = iter.get();
-    let isStatementBreak = !next || curr.isSymbol(';') || next.isSymbol('}');
-    fragment.push(curr);
+    let isStatementBreak = !stack.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+    if (curr.isSymbol("'", '"')) {
+      if (curr.status === 'open') {
+        stack.push(curr);
+      } else {
+        stack.pop();
+      }
+    }
+    if (!stack.length && curr.isSymbol('{')) {
+      let selectors = getGroups(fragment, token => token.isSpace());
+      if (!selectors.length) {
+        continue;
+      }
+      let tokenName = selectors.pop();
+      let skip = isSkip(...selectors, tokenName);
+      inlineBlock = resolveId(walk(iter, {
+        type: 'block',
+        name: tokenName,
+        inline: true,
+        value: []
+      }), skip);
+      while (tokenName = selectors.pop()) {
+        inlineBlock = resolveId({
+          type: 'block',
+          name: tokenName,
+          value: [inlineBlock]
+        }, skip);
+      }
+      break;
+    }
+    // skip quotes
+    let skip = (curr.status == 'open' && stack.length == 1)
+      || (curr.status == 'close' && !stack.length);
+
+    if (!skip) {
+      fragment.push(curr);
+    }
     if (isStatementBreak) {
       break;
     }
   }
-  if (fragment.length) {
+  if (fragment.length && !inlineBlock) {
     token.value = joinToken(fragment);
+  } else if (inlineBlock) {
+    token.value = inlineBlock;
   }
-  return token;
+  return token
 }
 
 function walk(iter, parentToken) {
@@ -32,7 +71,7 @@ function walk(iter, parentToken) {
     if (curr.isSymbol(')')) {
       stack.pop();
     }
-    if (tokenType === 'block' && isBlockBreak) {
+    if (isBlock(tokenType) && isBlockBreak) {
       if (!next && rules.length && !curr.isSymbol('}')) {
         let last = rules[rules.length - 1].value;
         if (typeof last === 'string') {
@@ -89,8 +128,7 @@ function walk(iter, parentToken) {
         }
         rules.push(item);
       });
-
-      if (tokenType == 'block') {
+      if (isBlock(tokenType)) {
         parentToken.value = rules;
       }
       fragment = [];
@@ -106,7 +144,7 @@ function walk(iter, parentToken) {
     }
   }
 
-  if (rules.length && tokenType == 'block') {
+  if (rules.length && isBlock(tokenType)) {
     parentToken.value = rules;
   }
   return tokenType ? parentToken : rules;
@@ -168,6 +206,19 @@ function isSkip(...names) {
   return names.some(n => n === 'style');
 }
 
+function isBlock(type) {
+  return type === 'block';
+}
+
+function skipHeadSVG(block) {
+  let head = block && block.value && block.value[0];
+  if (head && head.name === 'svg' && isBlock(head.type)) {
+    return skipHeadSVG(head);
+  } else {
+    return block;
+  }
+}
+
 function parse(source, root) {
   let iter = iterator(scan(source));
   let tokens = walk(iter, root || {
@@ -175,7 +226,7 @@ function parse(source, root) {
     name: 'svg',
     value: []
   });
-  return tokens;
+  return skipHeadSVG(tokens);
 }
 
 export default parse;
