@@ -1,4 +1,4 @@
-import { create_svg_url, normalize_svg } from './svg.js';
+import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { generate_svg } from './generator/svg.js';
 
 import list from './utils/list.js';
@@ -15,7 +15,7 @@ import Stack from './utils/stack.js';
 import memo from './utils/memo.js';
 import Noise from './utils/noise.js';
 
-import { shapes, create_shape_points } from './shapes.js';
+import { shapes, create_shape_points } from './generator/shapes.js';
 import parse_value_group from './parser/parse-value-group.js';
 import parse_shape_commands from './parser/parse-shape-commands.js';
 import parse_svg from './parser/parse-svg.js';

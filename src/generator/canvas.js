@@ -1,5 +1,5 @@
-import { un_entity } from './utils/index';
-import Cache from './utils/cache';
+import { un_entity } from '../utils/index.js';
+import Cache from '../utils/cache.js';
 
 let counter = 1;
 

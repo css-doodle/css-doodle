@@ -1,7 +1,7 @@
 import parse_value_group from './parser/parse-value-group.js';
 import parse_grid from './parser/parse-grid.js';
-import { shapes } from './shapes.js';
-import prefixer from './prefixer.js';
+import { shapes } from './generator/shapes.js';
+import prefixer from './utils/prefixer.js';
 import memo from './utils/memo.js';
 import { alias_for } from './utils/index.js';
 import { is_preset, get_preset } from './preset-size.js';

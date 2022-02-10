@@ -1,5 +1,5 @@
-import Cache from './utils/cache.js';
-import parse_pattern from './parser/parse-pattern.js';
+import Cache from '../utils/cache.js';
+import parse_pattern from '../parser/parse-pattern.js';
 
 function generate_shader(input, grid) {
   return `

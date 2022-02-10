@@ -1,15 +1,15 @@
-import Func from './function.js';
-import Property from './property.js';
-import Selector from './selector.js';
-import MathFunc from './math.js';
-import prefixer from './prefixer.js';
-import parse_value_group from './parser/parse-value-group.js';
-import { uniform_time } from './uniforms.js';
-import random_func from './utils/random.js';
+import Func from '../function.js';
+import Property from '../property.js';
+import Selector from '../selector.js';
+import prefixer from '../utils/prefixer.js';
+import parse_value_group from '../parser/parse-value-group.js';
+import { uniform_time } from '../uniforms.js';
+import random_func from '../utils/random.js';
+import calc from '../calc.js';
 
-import { maybe, cell_id, is_nil, get_value } from './utils/index.js';
+import { maybe, cell_id, is_nil, get_value } from '../utils/index.js';
 
-import List from './utils/list.js';
+import List from '../utils/list.js';
 let { join, make_array, remove_empty_values } = List();
 
 function is_host_selector(s) {
@@ -22,6 +22,17 @@ function is_parent_selector(s) {
 
 function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
+}
+
+const MathFunc = {};
+for (let name of Object.getOwnPropertyNames(Math)) {
+  MathFunc[name] = () => (...args) => {
+    if (typeof Math[name] === 'number') {
+      return Math[name];
+    }
+    args = args.map(n => calc(get_value(n)));
+    return Math[name](...args);
+  }
 }
 
 class Rules {

@@ -1,24 +1,4 @@
-import { cache_image, is_safari } from './utils/index.js';
-
-const NS = 'http://www.w3.org/2000/svg';
-const NSXLink = 'http://www.w3.org/1999/xlink';
-
-function create_svg_url(svg, id) {
-  let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
-  return `url("data:image/svg+xml;utf8,${ encoded }")`;
-}
-
-function normalize_svg(input) {
-  const xmlns = `xmlns="${ NS }"`;
-  const xmlnsXLink = `xmlns:xlink="${ NSXLink }"`;
-  if (!input.includes('<svg')) {
-    input = `<svg ${ xmlns } ${ xmlnsXLink }>${ input }</svg>`;
-  }
-  if (!input.includes('xmlns')) {
-    input = input.replace(/<svg([\s>])/, `<svg ${ xmlns } ${ xmlnsXLink }$1`);
-  }
-  return input;
-}
+import { cache_image, is_safari } from '../utils/index.js';
 
 function svg_to_png(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
@@ -64,8 +44,4 @@ function svg_to_png(svg, width, height, scale) {
   });
 }
 
-export {
-  create_svg_url,
-  normalize_svg,
-  svg_to_png,
-}
+export { svg_to_png }

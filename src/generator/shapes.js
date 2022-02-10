@@ -1,9 +1,9 @@
-import { clamp, is_empty, make_tag_function } from './utils/index.js';
-import parse_shape_commands from './parser/parse-shape-commands.js';
-import parse_value_group from './parser/parse-value-group.js';
-import parse_direction from './parser/parse-direction.js';
-import parse_compound_value from './parser/parse-compound-value.js';
-import calc from './calc.js';
+import { clamp, is_empty, make_tag_function } from '../utils/index.js';
+import parse_shape_commands from '../parser/parse-shape-commands.js';
+import parse_value_group from '../parser/parse-value-group.js';
+import parse_direction from '../parser/parse-direction.js';
+import parse_compound_value from '../parser/parse-compound-value.js';
+import calc from '../calc.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
 

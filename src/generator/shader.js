@@ -1,4 +1,4 @@
-import Cache from './utils/cache.js';
+import Cache from '../utils/cache.js';
 
 function create_shader(gl, type, source) {
   let shader = gl.createShader(type);

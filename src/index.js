@@ -1,12 +1,14 @@
 import parse_css from './parser/parse-css.js';
 import parse_grid from './parser/parse-grid.js';
 import parse_shaders from './parser/parse-shaders.js';
-import generator from './generator.js';
+
+import generator from './generator/generator.js';
+import { draw_shader } from './generator/shader.js';
+import { draw_pattern } from './generator/pattern.js';
+import { draw_canvas } from './generator/canvas.js';
+import { svg_to_png } from './generator/svg-to-png.js';
+
 import seedrandom from './lib/seedrandom.js';
-import { svg_to_png } from './svg.js';
-import { draw_shader } from './shader.js';
-import { draw_pattern } from './pattern.js';
-import { draw_canvas } from './canvas.js';
 
 import get_props from './utils/get-props.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
