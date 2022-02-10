@@ -133,3 +133,8 @@ export function make_tag_function(fn) {
     return fn(string);
   };
 }
+
+export function next_id() {
+  let id = 0;
+  return (prefix = '') => `${prefix}-${++id}`;
+}

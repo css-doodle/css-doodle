@@ -1,14 +1,14 @@
-import { un_entity } from '../utils/index.js';
+import { un_entity, next_id } from '../utils/index.js';
 import Cache from '../utils/cache.js';
 
-let counter = 1;
+const nextId = next_id();
 
 function draw_canvas(code) {
   let result = Cache.get(code);
   if (result) {
     return Promise.resolve(result);
   }
-  let name = 'css-doodle-paint-' + (counter++);
+  let name = nextId('css-doodle-paint');
   let wrapped = generate(name, code);
 
   let blob = new Blob([wrapped], { type: 'text/javascript' });

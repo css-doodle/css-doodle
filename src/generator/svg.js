@@ -1,6 +1,8 @@
+import { next_id } from '../utils/index.js';
+
 const NS = 'http://www.w3.org/2000/svg';
 const NSXLink = 'http://www.w3.org/1999/xlink';
-const nextId = ((id = 0) => (n = '') => `${n}-${++id}`)();
+const nextId = next_id();
 
 class Tag {
   constructor(name, value = '') {
