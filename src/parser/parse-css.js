@@ -519,7 +519,7 @@ function read_pseudo(it, extra) {
         pseudo.styles = pseudo.styles.concat(
           rule.value
         );
-      } else {
+      } else if (rule.property !== '}') {
         pseudo.styles.push(rule);
       }
       if (it.curr() == '}') break;
@@ -532,7 +532,13 @@ function read_pseudo(it, extra) {
 function read_rule(it, extra) {
   let rule = Tokens.rule(), c;
   while (!it.end()) {
-    if ((c = it.curr()) == ';') break;
+    c = it.curr();
+    if (c == '/' && it.curr(1) == '*') {
+      read_comments(it);
+    }
+    else if (c == ';') {
+      break;
+    }
     else if (!rule.property.length) {
       rule.property = read_property(it);
       if (rule.property == '@use') {
@@ -552,7 +558,9 @@ function read_rule(it, extra) {
 function read_cond(it, extra) {
   let cond = Tokens.cond(), c;
   while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
+    if ((c = it.curr()) == '}') {
+      break;
+    }
     else if (!cond.name.length) {
       Object.assign(cond, read_cond_selector(it));
     }
