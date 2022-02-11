@@ -1,7 +1,38 @@
+## 0.24.5
+
+### Fixes
+
+* Fixed keyframes parsing error. (#54)
+* Fixed comments inside pseudo elements. (#56, 57)
+
+### Enhancement
+
+* Don't break in SSR apps.
+* Speeded up component initialization.
+
+### Features
+
+* Added support for inline SVG filters or gradients.
+  ```css
+  background: @svg(
+    viewBox: -5 -5 10 10;
+    circle {
+      r: 4;
+      fill: linearGradient {
+
+      }
+    }
+  )
+  ```
+
+<br /> <br />
+
+
+
 ## 0.24.4
 
 * Added `ux`, `uy`, `uw`, and `uh` uniform variables.
-* Imroved svg parsing.
+* Improved svg parsing.
 * Added support for `tspan` and multiple text nodes.
 
 <br /> <br />

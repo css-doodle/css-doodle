@@ -1,9 +1,9 @@
-/*! css-doodle@0.24.4 */
+/*! css-doodle@0.25.0 */
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-  typeof define === 'function' && define.amd ? define(factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
-})(this, (function () { 'use strict';
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.CSSDoodle = {}));
+})(this, (function (exports) { 'use strict';
 
   /**
    * This is totally rewrite for the old parser module
@@ -16,7 +16,7 @@
     '/', '%', '"', "'", '`', '@',
   ];
 
-  const is$2 = {
+  const is$1 = {
     escape: c => c == '\\',
     space:  c => /[\r\n\t\s]/.test(c),
     digit:  c => /^[0-9]$/.test(c),
@@ -25,10 +25,10 @@
     quote:  c => /^["'`]$/.test(c),
     symbol: c => symbols$1.includes(c),
     hexNum: c => /^[0-9a-f]$/i.test(c),
-    hex:           (a, b, c) => a == '0' && is$2.letter(b, 'x') && is$2.hexNum(c),
-    expWithSign:   (a, b, c) => is$2.letter(a, 'e') && is$2.sign(b) && is$2.digit(c),
-    exp:           (a, b) => is$2.letter(a, 'e') && is$2.digit(b),
-    dots:          (a, b) => is$2.dot(a) && is$2.dot(b),
+    hex:           (a, b, c) => a == '0' && is$1.letter(b, 'x') && is$1.hexNum(c),
+    expWithSign:   (a, b, c) => is$1.letter(a, 'e') && is$1.sign(b) && is$1.digit(c),
+    exp:           (a, b) => is$1.letter(a, 'e') && is$1.digit(b),
+    dots:          (a, b) => is$1.dot(a) && is$1.dot(b),
     letter:        (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
     comment:       (a, b) => a == '/' && b == '*',
     selfClosedTag: (a, b) => a == '/' && b == '>',
@@ -93,7 +93,7 @@
   function skipComments(iter) {
     while (iter.next()) {
       let { curr, prev } = iter.get();
-      if (is$2.comment(curr, prev)) break;
+      if (is$1.comment(curr, prev)) break;
     }
   }
 
@@ -106,9 +106,9 @@
     while (!iter.end()) {
       let { curr, next } = iter.get();
       temp += curr;
-      let isBreak = is$2.symbol(next) || is$2.space(next) || is$2.digit(next);
+      let isBreak = is$1.symbol(next) || is$1.space(next) || is$1.digit(next);
       if (temp.length && isBreak) {
-        if (!is$2.closedTag(curr, next)) break;
+        if (!is$1.closedTag(curr, next)) break;
       }
       iter.next();
     }
@@ -120,7 +120,7 @@
     while (!iter.end()) {
       let { curr, next } = iter.get();
       temp += curr;
-      if (!is$2.space(next)) break;
+      if (!is$1.space(next)) break;
       iter.next();
     }
     return temp;
@@ -132,16 +132,16 @@
     while (!iter.end()) {
       let { curr, next, next2, next3 } = iter.get();
       temp += curr;
-      if (hasDot && is$2.dot(next)) break;
-      if (is$2.dot(curr)) hasDot = true;
-      if (is$2.dots(next, next2)) break;
-      if (is$2.expWithSign(next, next2, next3)) {
+      if (hasDot && is$1.dot(next)) break;
+      if (is$1.dot(curr)) hasDot = true;
+      if (is$1.dots(next, next2)) break;
+      if (is$1.expWithSign(next, next2, next3)) {
         temp += iter.next() + iter.next();
       }
-      else if (is$2.exp(next, next2)) {
+      else if (is$1.exp(next, next2)) {
         temp += iter.next();
       }
-      else if (!is$2.digit(next) && !is$2.dot(next)) {
+      else if (!is$1.digit(next) && !is$1.dot(next)) {
         break;
       }
       iter.next();
@@ -155,13 +155,13 @@
     while (!iter.end()) {
       let { curr, next } = iter.get();
       temp += curr;
-      if (!is$2.hexNum(next)) break;
+      if (!is$1.hexNum(next)) break;
       iter.next();
     }
     return temp;
   }
 
-  function last$3(array) {
+  function last$1(array) {
     return array[array.length - 1];
   }
 
@@ -172,26 +172,26 @@
 
     while (iter.next()) {
       let { prev, curr, next, next2, pos } = iter.get();
-      if (is$2.comment(curr, next)) {
+      if (is$1.comment(curr, next)) {
         skipComments(iter);
       }
-      else if (is$2.hex(curr, next, next2)) {
+      else if (is$1.hex(curr, next, next2)) {
         let num = readHexNumber(iter);
         tokens.push(new Token({
           type: 'Number', value: num, pos
         }));
       }
-      else if (is$2.digit(curr) || (
-          is$2.digit(next) && is$2.dot(curr) && !is$2.dots(prev, curr))) {
+      else if (is$1.digit(curr) || (
+          is$1.digit(next) && is$1.dot(curr) && !is$1.dots(prev, curr))) {
         let num = readNumber(iter);
         tokens.push(new Token({
           type: 'Number', value: num, pos
         }));
       }
-      else if (is$2.symbol(curr) && !is$2.selfClosedTag(curr, next)) {
-        let lastToken = last$3(tokens);
+      else if (is$1.symbol(curr) && !is$1.selfClosedTag(curr, next)) {
+        let lastToken = last$1(tokens);
         // negative
-        let isNextDigit = is$2.digit(next) || (is$2.dot(next) && is$2.digit(next2));
+        let isNextDigit = is$1.digit(next) || (is$1.dot(next) && is$1.digit(next2));
         if (curr === '-' && isNextDigit && (!lastToken || !lastToken.isNumber())) {
           let num = readNumber(iter);
           tokens.push(new Token({
@@ -204,7 +204,7 @@
           type: 'Symbol', value: curr, pos
         };
         // Escaped symbols
-        if (quoteStack.length && is$2.escape(lastToken.value)) {
+        if (quoteStack.length && is$1.escape(lastToken.value)) {
           tokens.pop();
           let word = readWord(iter);
           if (word.length) {
@@ -214,8 +214,8 @@
           }
         }
         else {
-          if (is$2.quote(curr)) {
-            let lastQuote = last$3(quoteStack);
+          if (is$1.quote(curr)) {
+            let lastQuote = last$1(quoteStack);
             if (lastQuote == curr) {
               quoteStack.pop();
               token.status = 'close';
@@ -228,9 +228,9 @@
           tokens.push(new Token(token));
         }
       }
-      else if (is$2.space(curr)) {
+      else if (is$1.space(curr)) {
         let spaces = readSpaces(iter);
-        let lastToken = last$3(tokens);
+        let lastToken = last$1(tokens);
         let { next } = iter.get();
 
         // Reduce unnecessary spaces
@@ -258,7 +258,7 @@
     }
 
     // Remove last space token
-    let lastToken = last$3(tokens);
+    let lastToken = last$1(tokens);
     if (lastToken && lastToken.isSpace()) {
       tokens.length = tokens.length - 1;
     }
@@ -325,71 +325,42 @@
     return true;
   }
 
-  function List(random) {
-
-    function make_array(arr) {
-      return Array.isArray(arr) ? arr : [arr];
-    }
-
-    function join(arr, spliter = '\n') {
-      return (arr || []).join(spliter);
-    }
-
-    function last(arr, n = 1) {
-      return arr[arr.length - n];
-    }
-
-    function first(arr) {
-      return arr[0];
-    }
-
-    function clone(arr) {
-      return JSON.parse(JSON.stringify(arr));
-    }
-
-    function shuffle(arr) {
-      let ret = [...arr];
-      let m = arr.length;
-      while (m) {
-        let i = ~~(random() * m--);
-        let t = ret[m];
-        ret[m] = ret[i];
-        ret[i] = t;
-      }
-      return ret;
-    }
-
-    function duplicate(arr) {
-      return [].concat(arr, arr);
-    }
-
-    function flat_map(arr, fn) {
-      if (Array.prototype.flatMap) return arr.flatMap(fn);
-      return arr.reduce((acc, x) => acc.concat(fn(x)), []);
-    }
-
-    function remove_empty_values(arr) {
-      return arr.filter(v => (
-        v !== undefined &&
-        v !== null &&
-        String(v).trim().length
-      ));
-    }
-
-    return {
-      make_array,
-      join,
-      last,
-      first,
-      clone,
-      shuffle,
-      flat_map,
-      duplicate,
-      remove_empty_values
-    }
+  function make_array(arr) {
+    return Array.isArray(arr) ? arr : [arr];
   }
 
-  let { first, last: last$2, clone } = List();
+  function join(arr, spliter = '\n') {
+    return (arr || []).join(spliter);
+  }
+
+  function last(arr, n = 1) {
+    return arr[arr.length - n];
+  }
+
+  function first(arr) {
+    return arr[0];
+  }
+
+  function clone(arr) {
+    return JSON.parse(JSON.stringify(arr));
+  }
+
+  function duplicate(arr) {
+    return [].concat(arr, arr);
+  }
+
+  function flat_map(arr, fn) {
+    if (Array.prototype.flatMap) return arr.flatMap(fn);
+    return arr.reduce((acc, x) => acc.concat(fn(x)), []);
+  }
+
+  function remove_empty_values(arr) {
+    return arr.filter(v => (
+      v !== undefined &&
+      v !== null &&
+      String(v).trim().length
+    ));
+  }
 
   const Tokens = {
     func(name = '') {
@@ -450,7 +421,7 @@
     }
   };
 
-  const is$1 = {
+  const is = {
     white_space(c) {
       return /[\s\n\t]/.test(c);
     },
@@ -511,7 +482,7 @@
 
   function get_text_value(input) {
     if (input.trim().length) {
-      return is$1.number(+input) ? +input : input.trim()
+      return is.number(+input) ? +input : input.trim()
     } else {
       return input;
     }
@@ -543,7 +514,7 @@
   }
 
   function read_line(it, reset) {
-    let check = c => is$1.line_break(c) || c == '{';
+    let check = c => is.line_break(c) || c == '{';
     return read_until(check)(it, reset);
   }
 
@@ -551,7 +522,7 @@
     let c, step = Tokens.step();
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      if (is$1.white_space(c)) {
+      if (is.white_space(c)) {
         it.next();
         continue;
       }
@@ -572,7 +543,7 @@
     let c;
     while (!it.end()) {
       if ((c = it.curr()) == '}') break;
-      else if (is$1.white_space(c)) {
+      else if (is.white_space(c)) {
         it.next();
         continue;
       }
@@ -597,7 +568,7 @@
         }
         continue;
       }
-      else if (c == '{') {
+      else if (c == '{' || it.curr(-1) == '{') {
         it.next();
         keyframes.steps = read_steps(it, extra);
         break;
@@ -637,7 +608,7 @@
     let prop = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == ':') break;
-      else if (!is$1.white_space(c)) prop += c;
+      else if (!is.white_space(c)) prop += c;
       it.next();
     }
     return prop;
@@ -649,7 +620,7 @@
       c = it.curr();
       if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
         if (stack.length) {
-          if (c != '(' && c === last$2(stack)) {
+          if (c != '(' && c === last(stack)) {
             stack.pop();
           } else {
             stack.push(c);
@@ -688,9 +659,9 @@
             if (arg.startsWith('±') && !doodle) {
               let raw = arg.substr(1);
               let cloned = clone(group);
-              last$2(cloned).value = '-' + raw;
+              last(cloned).value = '-' + raw;
               args.push(normalize_argument(cloned));
-              last$2(group).value = raw;
+              last(group).value = raw;
             }
           }
 
@@ -734,12 +705,12 @@
     });
 
     let ft = first(result) || {};
-    let ed = last$2(result) || {};
+    let ed = last(result) || {};
     if (ft.type == 'text' && ed.type == 'text') {
       let cf = first(ft.value);
-      let ce  = last$2(ed.value);
+      let ce  = last(ed.value);
       if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-        if (is$1.pair_of(cf, ce)) {
+        if (is.pair_of(cf, ce)) {
           ft.value = ft.value.slice(1);
           ed.value = ed.value.slice(0, ed.value.length - 1);
           result.cluster = true;
@@ -816,14 +787,14 @@
     while (!it.end()) {
       c = it.curr();
 
-      if (skip && is$1.white_space(c)) {
+      if (skip && is.white_space(c)) {
         it.next();
         continue;
       } else {
         skip = false;
       }
 
-      if (c == '\n' && !is$1.white_space(it.curr(-1))) {
+      if (c == '\n' && !is.white_space(it.curr(-1))) {
         text.value += ' ';
       }
       else if (c == ',' && !stack.length) {
@@ -848,7 +819,7 @@
         }
         value[idx].push(read_func(it));
       }
-      else if (!is$1.white_space(c) || !is$1.white_space(it.curr(-1))) {
+      else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
         if (c == '(') stack.push(c);
         if (c == ')') stack.pop();
 
@@ -870,7 +841,7 @@
     let selector = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == '{') break;
-      else if (!is$1.white_space(c)) {
+      else if (!is.white_space(c)) {
         selector += c;
       }
       it.next();
@@ -886,7 +857,7 @@
         selector.arguments = read_arguments(it);
       }
       else if (/[){]/.test(c)) break;
-      else if (!is$1.white_space(c)) selector.name += c;
+      else if (!is.white_space(c)) selector.name += c;
       it.next();
     }
     return selector;
@@ -895,8 +866,14 @@
   function read_pseudo(it, extra) {
     let pseudo = Tokens.pseudo(), c;
     while (!it.end()) {
-      if ((c = it.curr()) == '}') break;
-      if (is$1.white_space(c)) {
+      c = it.curr();
+      if (c == '/' && it.curr(1) == '*') {
+        read_comments(it);
+      }
+      else if (c == '}') {
+        break;
+      }
+      else if (is.white_space(c)) {
         it.next();
         continue;
       }
@@ -920,9 +897,15 @@
   }
 
   function read_rule(it, extra) {
-    let rule = Tokens.rule();
+    let rule = Tokens.rule(), c;
     while (!it.end()) {
-      if ((it.curr()) == ';') break;
+      c = it.curr();
+      if (c == '/' && it.curr(1) == '*') {
+        read_comments(it);
+      }
+      else if (c == ';') {
+        break;
+      }
       else if (!rule.property.length) {
         rule.property = read_property(it);
         if (rule.property == '@use') {
@@ -942,7 +925,13 @@
   function read_cond(it, extra) {
     let cond = Tokens.cond(), c;
     while (!it.end()) {
-      if ((c = it.curr()) == '}') break;
+      c = it.curr();
+      if (c == '/' && it.curr(1) == '*') {
+        read_comments(it);
+      }
+      else if (c == '}') {
+        break;
+      }
       else if (!cond.name.length) {
         Object.assign(cond, read_cond_selector(it));
       }
@@ -953,7 +942,7 @@
       else if (c == '@' && !read_line(it, true).includes(':')) {
         cond.styles.push(read_cond(it));
       }
-      else if (!is$1.white_space(c)) {
+      else if (!is.white_space(c)) {
         let rule = read_rule(it, extra);
         if (rule.property) cond.styles.push(rule);
         if (it.curr() == '}') break;
@@ -1022,15 +1011,12 @@
     const Tokens = [];
     while (!it.end()) {
       let c = it.curr();
-      if (is$1.white_space(c)) {
+      if (is.white_space(c)) {
         it.next();
         continue;
       }
       else if (c == '/' && it.curr(1) == '*') {
         read_comments(it);
-      }
-      else if (c == '/' && it.curr(1) == '/') {
-        read_comments(it, { inline: true });
       }
       else if (c == ':') {
         let pseudo = read_pseudo(it, extra);
@@ -1047,7 +1033,7 @@
       else if (c == '<') {
         skip_tag(it);
       }
-      else if (!is$1.white_space(c)) {
+      else if (!is.white_space(c)) {
         let rule = read_rule(it, extra);
         if (rule.property) Tokens.push(rule);
       }
@@ -1057,6 +1043,7 @@
   }
 
   function clamp(num, min, max) {
+    num = Number(num) || 0;
     return Math.max(min, Math.min(max, num));
   }
 
@@ -1082,10 +1069,10 @@
     return range;
   }
 
-  function alias_for(obj, names) {
-    Object.keys(names).forEach(n => {
-      obj[n] = obj[names[n]];
-    });
+  function add_alias(obj, names) {
+    for (let [alias, name] of Object.entries(names)) {
+      obj[alias] = obj[name];
+    }
     return obj;
   }
 
@@ -1190,6 +1177,19 @@
       let string = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
       return fn(string);
     };
+  }
+
+  function next_id() {
+    let id = 0;
+    return (prefix = '') => `${prefix}-${++id}`;
+  }
+
+  function lerp(t, a, b) {
+    return a + t * (b - a);
+  }
+
+  function unique_id(prefix = '') {
+    return prefix + Math.random().toString(32).substr(2);
   }
 
   const [ min, max, total ] = [ 1, 32, 32 * 32 ];
@@ -1306,8 +1306,8 @@
     return removeParens(tokens).map(n => n.value).join('');
   }
 
-  const NS = 'http://www.w3.org/2000/svg';
-  const NSXLink = 'http://www.w3.org/1999/xlink';
+  const NS$1 = 'http://www.w3.org/2000/svg';
+  const NSXLink$1 = 'http://www.w3.org/1999/xlink';
 
   function create_svg_url(svg, id) {
     let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
@@ -1315,8 +1315,8 @@
   }
 
   function normalize_svg(input) {
-    const xmlns = `xmlns="${ NS }"`;
-    const xmlnsXLink = `xmlns:xlink="${ NSXLink }"`;
+    const xmlns = `xmlns="${ NS$1 }"`;
+    const xmlnsXLink = `xmlns:xlink="${ NSXLink$1 }"`;
     if (!input.includes('<svg')) {
       input = `<svg ${ xmlns } ${ xmlnsXLink }>${ input }</svg>`;
     }
@@ -1326,163 +1326,180 @@
     return input;
   }
 
-  function svg_to_png(svg, width, height, scale) {
-    return new Promise((resolve, reject) => {
-      let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
-      function action() {
-        let img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = source;
+  const NS = 'http://www.w3.org/2000/svg';
+  const NSXLink = 'http://www.w3.org/1999/xlink';
+  const nextId$1 = next_id();
 
-        img.onload = () => {
-          let canvas = document.createElement('canvas');
-          let ctx = canvas.getContext('2d');
-
-          let dpr = window.devicePixelRatio || 1;
-          /* scale with devicePixelRatio only when the scale equals 1 */
-          if (scale != 1) {
-            dpr = 1;
-          }
-
-          canvas.width = width * dpr;
-          canvas.height = height * dpr;
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          try {
-            canvas.toBlob(blob => {
-              resolve({
-                blob,
-                source,
-                url: URL.createObjectURL(blob)
-              });
-            });
-          } catch (e) {
-            reject(e);
-          }
-        };
+  class Tag {
+    constructor(name, value = '') {
+      if (!name) {
+        throw new Error("Tag name is required");
       }
-
-      if (is_safari()) {
-        cache_image(source, action, 200);
-      } else {
-        action();
+      this.name = name;
+      this.body = [];
+      this.attrs = {};
+      if (this.isTextNode()) {
+        this.body = value;
       }
-    });
+    }
+    isTextNode() {
+      return this.name === 'text-node';
+    }
+    append(tag) {
+      if (!this.isTextNode()) {
+        this.body.push(tag);
+      }
+    }
+    attr(name, value) {
+      if (!this.isTextNode()) {
+        if (value === undefined) {
+          return this.attrs[name];
+        }
+        return this.attrs[name] = value;
+      }
+    }
+    toString() {
+      if (this.isTextNode()) {
+        return this.body;
+      }
+      let attrs = [''];
+      let body = [];
+      for (let [name, value] of Object.entries(this.attrs)) {
+        attrs.push(`${name}="${value}"`);
+      }
+      for (let tag of this.body) {
+        body.push(tag.toString());
+      }
+      return `<${this.name}${attrs.join(' ')}>${body.join('')}</${this.name}>`;
+    }
   }
 
-  function generate_svg(token, element, parent) {
+  function composeStyleRule(name, value) {
+    return `${name}:${value};`
+  }
+
+  function composeStyle(block) {
+    const style = block.value
+      .map(n => (n.type === 'block') ? composeStyle(n) : composeStyleRule(n.name, n.value))
+      .join('');
+    return `${block.name}{${style}}`;
+  }
+
+  function generate$1(token, element, parent, root) {
+    let inlineId;
     if (!element) {
-      element = document.createDocumentFragment();
+      element = new Tag('root');
     }
     if (token.type === 'block') {
       // style tag
-      if (token.name === 'style' && Array.isArray(token.value)) {
-        let el = document.createElement('style');
-        let styles = [];
-        token.value.forEach(t => {
-          styles.push(compose_block(t));
-        });
-        el.innerHTML = styles.join('');
-        element.appendChild(el);
+      if (token.name === 'style') {
+        if (Array.isArray(token.value)) {
+          let el = new Tag('style');
+          let styles = [];
+          for (let block of token.value) {
+            if (block.type === 'block') {
+              styles.push(composeStyle(block));
+            }
+          }
+          el.append(styles.join(''));
+          element.append(el);
+        }
       }
       // normal svg elements
       else {
-        try {
-          let el = document.createElementNS(NS, token.name);
-          if (el) {
-            token.value.forEach(t => {
-              generate_svg(t, el, token);
-            });
-            element.appendChild(el);
+        let el = new Tag(token.name);
+        if (!root) {
+          root = el;
+          root.attr('xmlns', NS);
+        }
+        for (let block of token.value) {
+          let id = generate$1(block, el, token, root);
+          if (id) { inlineId = id; }
+        }
+        // generate id for inline block if no id is found
+        if (token.inline) {
+          let found = token.value.find(n => n.type === 'statement' && n.name === 'id');
+          if (found) {
+            inlineId = found.value;
+          } else {
+            inlineId = nextId$1(token.name);
+            el.attr('id', inlineId);
           }
-        } catch (e) {}
+        }
+        element.append(el);
       }
     }
     if (token.type === 'statement') {
       let isTextNode = parent && (parent.name === 'text' || parent.name === 'tspan');
       if (isTextNode && token.name === 'content') {
-        let text = document.createTextNode(token.value);
-        element.appendChild(text);
+        let text = new Tag('text-node', token.value);
+        element.append(text);
       }
       // inline style
       else if (token.name.startsWith('style ')) {
         let name = (token.name.split('style ')[1] || '').trim();
         if (name.length) {
-          let style = element.getAttribute('style') || '';
-          element.setAttribute('style', style + `${name}: ${token.value};`);
+          let style = element.attr('style') || '';
+          element.attr('style', style + composeStyleRule(name, token.value));
         }
       }
       else {
-        try {
-          let ns = token.name.startsWith('xlink:') ? NSXLink : NS;
-          element.setAttributeNS(ns, token.name, token.value);
-        } catch (e) {}
+        let value = token.value;
+        // handle inline block value
+        if (value && value.type === 'block') {
+          let id = generate$1(token.value, root, token, root);
+          value = `url(#${id})`;
+        }
+        element.attr(token.name, value);
+        if (token.name.includes('xlink:')) {
+          root.attr('xmlns:xlink', NSXLink);
+        }
       }
     }
     if (!parent) {
-      let child = element.childNodes[0];
-      return child && child.outerHTML || '';
+      return root.toString();
     }
-    return element;
+    return inlineId;
   }
 
-  function compose_block(block) {
-    return `${block.name} {
-    ${block.value.map(n => {
-      if (n.type === 'statement') {
-        return `${n.name}: ${n.value};`;
-      } else if (n.type === 'block') {
-        return compose_block(n);
-      }
-    }).join('')}
-  }`
+  function generate_svg(token) {
+    return generate$1(token);
   }
 
-  function Random(random) {
-
-    function lerp(t, a, b) {
-      return a + t * (b - a);
-    }
-
-    function rand(start = 0, end) {
-      if (arguments.length == 1) {
-        [start, end] = [0, start];
+  function parse$6(input) {
+    let iter = iterator$1(scan(input));
+    let ret = {};
+    let matched = false;
+    while (iter.next()) {
+      let { prev, curr } = iter.get();
+      if (curr.isNumber()) {
+        ret.value = Number(curr.value);
+        matched = true;
       }
-      return lerp(random(), start, end);
+      else if (matched && (curr.isWord() || curr.isSymbol()) && prev && prev.isNumber()) {
+        ret.unit = curr.value;
+      } else {
+        break;
+      }
     }
-
-    function pick(...items) {
-      let args = items.reduce((acc, n) => acc.concat(n), []);
-      return args[~~(random() * args.length)];
-    }
-
-    function unique_id(prefix = '') {
-      return prefix + Math.random().toString(32).substr(2);
-    }
-
-    return {
-      lerp,
-      rand,
-      pick,
-      unique_id
-    };
-
+    return ret;
   }
 
   function by_unit(fn) {
     return (...args) => {
-      let unit = get_unit(args);
-      return restore(fn, unit).apply(null, args);
-    }
-  }
-
-  function restore(fn, unit) {
-    return (...args) => {
-      args = args.map(str => Number(
-        String(str).replace(/\D+$/g, '')
-      ));
-      let result = fn.apply(null, args);
-      if (!unit.length) {
+      let units = [], values = [];
+      for (let arg of args) {
+        let { unit, value } = parse$6(arg);
+        if (unit !== undefined) {
+          units.push(unit);
+        }
+        if (value !== undefined) {
+          values.push(value);
+        }
+      }
+      let result = fn(...values);
+      let unit = units.find(n => n !== undefined);
+      if (unit === undefined) {
         return result;
       }
       if (Array.isArray(result)) {
@@ -1492,21 +1509,10 @@
     }
   }
 
-  function get_unit(values) {
-    let unit = '';
-    values.some(str => {
-      let input = String(str).trim();
-      if (!input) return '';
-      let matched = input.match(/\d(\D+)$/);
-      return (unit = matched ? matched[1] : '');
-    });
-    return unit;
-  }
-
   function by_charcode(fn) {
     return (...args) => {
       let codes = args.map(n => String(n).charCodeAt(0));
-      let result = fn.apply(null, codes);
+      let result = fn(...codes);
       return Array.isArray(result)
         ? result.map(n => String.fromCharCode(n))
         : String.fromCharCode(result);
@@ -1516,7 +1522,6 @@
   /**
    * Based on the Shunting-yard algorithm.
    */
-  let { last: last$1 } = List();
 
   const default_context = {
     'π': Math.PI,
@@ -1525,11 +1530,6 @@
       return a;
     }
   };
-
-  function calc(input, context) {
-    const expr = infix_to_postfix(input);
-    return calc$1(expr, Object.assign({}, default_context, context));
-  }
 
   const operator = {
     '^': 7,
@@ -1547,7 +1547,7 @@
     '(': 1 , ')': 1,
   };
 
-  function calc$1(expr, context, repeat = []) {
+  function calc(expr, context, repeat = []) {
     let stack = [];
     while (expr.length) {
       let { name, value, type } = expr.shift();
@@ -1573,7 +1573,7 @@
             result = 0;
             repeat = [];
           } else {
-            result = calc$1(infix_to_postfix(result), context, repeat);
+            result = calc(infix_to_postfix(result), context, repeat);
           }
         }
         stack.push(result);
@@ -1584,7 +1584,7 @@
           negative = true;
           name = name.substr(1);
         }
-        let output = value.map(v => calc$1(v, context));
+        let output = value.map(v => calc(v, context));
         let fns = name.split('.');
         let fname;
         while (fname = fns.pop()) {
@@ -1619,7 +1619,7 @@
     for (let i = 0; i < expr.length; ++i) {
       let c = expr[i];
       if (operator[c]) {
-        let last_token = last$1(tokens);
+        let last_token = last(tokens);
         if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
           last_token.value += c;
         }
@@ -1727,14 +1727,14 @@
         }
 
         else if (value == ')') {
-          while (op_stack.length && last$1(op_stack) != '(') {
+          while (op_stack.length && last(op_stack) != '(') {
             expr.push({ type: 'operator', value: op_stack.pop() });
           }
           op_stack.pop();
         }
 
         else {
-          while (op_stack.length && operator[last$1(op_stack)] >= operator[value]) {
+          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
             let op = op_stack.pop();
             if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
           }
@@ -1782,12 +1782,17 @@
     if (typeof v === 'number') {
       return Number(num) * v;
     } else {
-      return num * calc$1(infix_to_postfix(v), context);
+      return num * calc(infix_to_postfix(v), context);
     }
   }
 
   function is_cycle(array) {
     return (array[0] == array[2] && array[1] == array[3]);
+  }
+
+  function calc$1(input, context) {
+    const expr = infix_to_postfix(input);
+    return calc(expr, Object.assign({}, default_context, context));
   }
 
   class CacheValue {
@@ -1819,16 +1824,8 @@
 
   function memo(prefix, fn) {
     return (...args) => {
-      let key = prefix + args.join('-');    return Cache.get(key) || Cache.set(key, fn.apply(null, args));
+      let key = prefix + args.join('-');    return Cache.get(key) || Cache.set(key, fn(...args));
     }
-  }
-
-  const { last, flat_map } = List();
-
-  function expand(fn) {
-    return (...args) => fn.apply(null, flat_map(args, n =>
-      String(n).startsWith('[') ? build_range(n) : n
-    ));
   }
 
   function Type(type, value) {
@@ -1887,6 +1884,12 @@
     });
   });
 
+  function expand(fn) {
+    return (...args) => fn(...flat_map(args, n =>
+      String(n).startsWith('[') ? build_range(n) : n
+    ));
+  }
+
   class Node {
     constructor(data) {
       this.prev = this.next = null;
@@ -1899,15 +1902,12 @@
       this._limit = limit;
       this._size = 0;
     }
-
     push(data) {
       if (this._size >= this._limit) {
         this.root = this.root.next;
         this.root.prev = null;
       }
-
       let node = new Node(data);
-
       if (!this.root) {
         this.root = this.tail = node;
       } else {
@@ -1915,10 +1915,8 @@
         this.tail.next = node;
         this.tail = node;
       }
-
       this._size++;
     }
-
     last(n = 1) {
       let node = this.tail;
       while (--n) {
@@ -1935,10 +1933,7 @@
    */
 
   class Perlin {
-    constructor(random) {
-      let { lerp } = Random(random);
-      let { shuffle, duplicate } = List(random);
-      this.lerp = lerp;
+    constructor(shuffle) {
       this.p = duplicate(shuffle([
         151,160,137,91,90,15,
         131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -1965,7 +1960,7 @@
     }
 
     noise(x, y, z) {
-      let { p, grad, lerp } = this;
+      let { p, grad } = this;
       // Find unit cube that contains point.
       let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
       // Find relative x, y, z of point in cube.
@@ -1987,7 +1982,7 @@
     }
   }
 
-  function parse$6(input) {
+  function parse$5(input) {
     let iter = iterator$1(scan(input));
     let commands = {};
     let tokens = [];
@@ -2036,7 +2031,7 @@
     return tokens.map(n => n.value).join('');
   }
 
-  function parse$5(input, noSpace) {
+  function parse$4(input, noSpace) {
     let group = [];
     let tokens = [];
     let parenStack = [];
@@ -2091,7 +2086,7 @@
   const keywords = ['auto', 'reverse'];
   const units = ['deg', 'rad', 'grad', 'turn'];
 
-  function parse$4(input) {
+  function parse$3(input) {
     let iter = iterator$1(scan(input));
     let matched = false;
     let unit = '';
@@ -2139,30 +2134,11 @@
     return Object.assign({}, input, { angle });
   }
 
-  function parse$3(input) {
-    let iter = iterator$1(scan(input));
-    let ret = {};
-    let matched = false;
-    while (iter.next()) {
-      let { prev, curr } = iter.get();
-      if (curr.isNumber()) {
-        ret.value = Number(curr.value);
-        matched = true;
-      }
-      else if (matched && curr.isWord() && prev && prev.isNumber()) {
-        ret.unit = curr.value;
-      } else {
-        break;
-      }
-    }
-    return ret;
-  }
-
   const { cos, sin, abs, atan2, PI } = Math;
 
   const _ = make_tag_function(c => {
     return create_shape_points(
-      parse$6(c), {min: 3, max: 3600}
+      parse$5(c), {min: 3, max: 3600}
     );
   });
 
@@ -2327,7 +2303,7 @@
     let turn = option.turn || 1;
     let frame = option.frame;
     let fill = option['fill'] || option['fill-rule'];
-    let direction = parse$4(option['direction'] || option['dir'] || '');
+    let direction = parse$3(option['direction'] || option['dir'] || '');
     let unit = option.unit;
 
     let rad = (PI * 2) * turn / split;
@@ -2411,7 +2387,7 @@
   }
 
   function translate(x, y, offset) {
-    let [dx, dy = dx] = parse$5(offset).map(Number);
+    let [dx, dy = dx] = parse$4(offset).map(Number);
     return [
       x + (dx || 0),
       y - (dy || 0),
@@ -2421,7 +2397,7 @@
   }
 
   function scale(x, y, factor) {
-    let [fx, fy = fx] = parse$5(factor).map(Number);
+    let [fx, fy = fx] = parse$4(factor).map(Number);
     return [
       x * fx,
       y * fy
@@ -2434,7 +2410,7 @@
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
     let pr = is_empty(props.r) ? ''       : props.r;
 
-    let { unit, value } = parse$3(pr);
+    let { unit, value } = parse$6(pr);
     if (unit && !props[unit] && unit !== 't') {
       if (is_empty(props.unit)) {
         props.unit = unit;
@@ -2469,12 +2445,12 @@
           return a + step * i;
         }
       });
-      let x = calc(px, context);
-      let y = calc(py, context);
+      let x = calc$1(px, context);
+      let y = calc$1(py, context);
       let dx = 0;
       let dy = 0;
       if (pr) {
-        let r = calc(pr, context);
+        let r = calc$1(pr, context);
         if (r == 0) {
           r = .00001;
         }
@@ -2493,18 +2469,57 @@
 
   function readStatement$1(iter, token) {
     let fragment = [];
+    let inlineBlock;
+    let stack = [];
     while (iter.next()) {
       let { curr, next } = iter.get();
-      let isStatementBreak = !next || curr.isSymbol(';') || next.isSymbol('}');
-      fragment.push(curr);
+      let isStatementBreak = !stack.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+      if (curr.isSymbol("'", '"')) {
+        if (curr.status === 'open') {
+          stack.push(curr);
+        } else {
+          stack.pop();
+        }
+      }
+      if (!stack.length && curr.isSymbol('{')) {
+        let selectors = getGroups(fragment, token => token.isSpace());
+        if (!selectors.length) {
+          continue;
+        }
+        let tokenName = selectors.pop();
+        let skip = isSkip(...selectors, tokenName);
+        inlineBlock = resolveId(walk$1(iter, {
+          type: 'block',
+          name: tokenName,
+          inline: true,
+          value: []
+        }), skip);
+        while (tokenName = selectors.pop()) {
+          inlineBlock = resolveId({
+            type: 'block',
+            name: tokenName,
+            value: [inlineBlock]
+          }, skip);
+        }
+        break;
+      }
+      // skip quotes
+      let skip = (curr.status == 'open' && stack.length == 1)
+        || (curr.status == 'close' && !stack.length);
+
+      if (!skip) {
+        fragment.push(curr);
+      }
       if (isStatementBreak) {
         break;
       }
     }
-    if (fragment.length) {
+    if (fragment.length && !inlineBlock) {
       token.value = joinToken$1(fragment);
+    } else if (inlineBlock) {
+      token.value = inlineBlock;
     }
-    return token;
+    return token
   }
 
   function walk$1(iter, parentToken) {
@@ -2522,7 +2537,7 @@
       if (curr.isSymbol(')')) {
         stack.pop();
       }
-      if (tokenType === 'block' && isBlockBreak) {
+      if (isBlock(tokenType) && isBlockBreak) {
         if (!next && rules.length && !curr.isSymbol('}')) {
           let last = rules[rules.length - 1].value;
           if (typeof last === 'string') {
@@ -2569,7 +2584,7 @@
           name: 'unkown',
           value: ''
         });
-        let groupdValue = parse$5(statement.value);
+        let groupdValue = parse$4(statement.value);
         let expand = (props.length > 1 && groupdValue.length === props.length);
 
         props.forEach((prop, i) => {
@@ -2579,8 +2594,7 @@
           }
           rules.push(item);
         });
-
-        if (tokenType == 'block') {
+        if (isBlock(tokenType)) {
           parentToken.value = rules;
         }
         fragment = [];
@@ -2596,7 +2610,7 @@
       }
     }
 
-    if (rules.length && tokenType == 'block') {
+    if (rules.length && isBlock(tokenType)) {
       parentToken.value = rules;
     }
     return tokenType ? parentToken : rules;
@@ -2658,6 +2672,19 @@
     return names.some(n => n === 'style');
   }
 
+  function isBlock(type) {
+    return type === 'block';
+  }
+
+  function skipHeadSVG(block) {
+    let head = block && block.value && block.value[0];
+    if (head && head.name === 'svg' && isBlock(head.type)) {
+      return skipHeadSVG(head);
+    } else {
+      return block;
+    }
+  }
+
   function parse$2(source, root) {
     let iter = iterator$1(scan(source));
     let tokens = walk$1(iter, root || {
@@ -2665,7 +2692,7 @@
       name: 'svg',
       value: []
     });
-    return tokens;
+    return skipHeadSVG(tokens);
   }
 
   const commands = 'MmLlHhVvCcSsQqTtAaZz';
@@ -2759,521 +2786,459 @@
     uniform_height: uniform_height
   });
 
-  function get_exposed(random) {
-    const { shuffle } = List(random);
-    const { pick, rand, lerp, unique_id } = Random(random);
-
-    const Expose = {
-
-      i({ count }) {
-        return _ => count;
-      },
-
-      y({ y }) {
-        return _ => y;
-      },
-
-      x({ x }) {
-        return _ => x;
-      },
-
-      z({ z }) {
-        return _ => z;
-      },
-
-      I({ grid }) {
-        return _ => grid.count;
-      },
-
-      Y({ grid }) {
-        return _ => grid.y;
-      },
-
-      X({ grid }) {
-        return _ => grid.x;
-      },
-
-      Z({ grid }) {
-        return _ => grid.z;
-      },
-
-      id({ x, y, z }) {
-        return _ => cell_id(x, y, z);
-      },
-
-      n({ extra }) {
-        return n => extra ? (extra[0] + (Number(n) || 0)) : '@n';
-      },
-
-      nx({ extra }) {
-        return n => extra ? (extra[1] + (Number(n) || 0)) : '@nx';
-      },
-
-      ny({ extra }) {
-        return n => extra ? (extra[2] + (Number(n) || 0)) : '@ny';
-      },
-
-      N({ extra }) {
-        return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
-      },
-
-      m: make_sequence(','),
-
-      M: make_sequence(' '),
-
-      µ: make_sequence(''),
-
-      p({ context }) {
-        return expand((...args) => {
-          return push_stack(context, 'last_pick', pick(args));
-        });
-      },
-
-      pn({ context, extra, position }) {
-        let counter = 'pn-counter' + position;
-        return expand((...args) => {
-          if (!context[counter]) context[counter] = 0;
-          context[counter] += 1;
-          let max = args.length;
-          let [idx = context[counter]] = extra || [];
-          let pos = (idx - 1) % max;
-          let value = args[pos];
-          return push_stack(context, 'last_pick', value);
-        });
-      },
-
-      pd({ context, extra, position }) {
-        let counter = 'pd-counter' + position;
-        let values = 'pd-values' + position;
-        return expand((...args) => {
-          if (!context[counter]) context[counter] = 0;
-          context[counter] += 1;
-          if (!context[values]) {
-            context[values] = shuffle(args || []);
-          }
-          let max = args.length;
-          let [idx = context[counter]] = extra || [];
-          let pos = (idx - 1) % max;
-          let value = context[values][pos];
-          return push_stack(context, 'last_pick', value);
-        });
-      },
-
-      lp({ context }) {
-        return (n = 1) => {
-          let stack = context.last_pick;
-          return stack ? stack.last(n) : '';
-        };
-      },
-
-      r({ context }) {
-        return (...args) => {
-          let transform_type = args.every(is_letter)
-            ? by_charcode
-            : by_unit;
-          let value = transform_type(rand).apply(null, args);
-          return push_stack(context, 'last_rand', value);
-        };
-      },
-
-      ri({ context }) {
-        return (...args) => {
-          let transform_type = args.every(is_letter)
-            ? by_charcode
-            : by_unit;
-          let rand_int = (...args) => Math.round(rand(...args));
-          let value = transform_type(rand_int).apply(null, args);
-          return push_stack(context, 'last_rand', value);
+  function make_sequence(c) {
+    return lazy((n, ...actions) => {
+      if (!actions || !n) return '';
+      let count = get_value(n());
+      let evaluated = calc$1(count);
+      if (evaluated === 0) {
+        evaluated = count;
+      }
+      return sequence(
+        evaluated,
+        (...args) => {
+          return actions.map(action => {
+            return get_value(action(...args))
+          }).join(',');
         }
-      },
-
-      rn({ x, y, context, position, grid, extra }) {
-        let counter = 'noise-2d' + position;
-        let [ni, nx, ny, nm, NX, NY] = extra || [];
-        let isSeqContext = (ni && nm);
-        return (...args) => {
-          let [start, end = start, freq = 1, amp = 1] = args;
-          if (args.length == 1) {
-            [start, end] = [0, start];
-          }
-          if (!context[counter]) {
-            context[counter] = new Perlin(random);
-          }
-          freq = normalize(freq);
-          amp = normalize(amp);
-          let transform = [start, end].every(is_letter) ? by_charcode : by_unit;
-          let t = isSeqContext
-            ? context[counter].noise((nx - 1)/NX * freq, (ny - 1)/NY * freq, 0)
-            : context[counter].noise((x - 1)/grid.x * freq, (y - 1)/grid.y * freq, 0);
-          let fn = transform((start, end) => map2d(t * amp, start, end, amp));
-          let value = fn(start, end);
-          return push_stack(context, 'last_rand', value);
-        };
-      },
-
-      lr({ context }) {
-        return (n = 1) => {
-          let stack = context.last_rand;
-          return stack ? stack.last(n) : '';
-        };
-      },
-
-      noise({ context, grid, position, ...rest }) {
-        let vars = {
-          i: rest.count, I: grid.count,
-          x: rest.x, X: grid.x,
-          y: rest.y, Y: grid.y,
-          z: rest.z, Z: grid.z,
-        };
-        return (x, y, z = 0) => {
-          let counter = 'raw-noise-2d' + position;
-          if (!context[counter]) {
-            context[counter] = new Perlin(random);
-          }
-          return context[counter].noise(
-            calc(x, vars),
-            calc(y, vars),
-            calc(z, vars)
-          );
-        };
-      },
-
-      stripe() {
-        return (...input) => {
-          let colors = input.map(get_value);
-          let max = colors.length;
-          let default_count = 0;
-          let custom_sizes = [];
-          let prev;
-          if (!max) {
-            return '';
-          }
-          colors.forEach(step => {
-            let [_, size] = parse$5(step);
-            if (size !== undefined) custom_sizes.push(size);
-            else default_count += 1;
-          });
-          let default_size = custom_sizes.length
-            ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
-            : `100% / ${max}`;
-          return colors.map((step, i) => {
-            if (custom_sizes.length) {
-              let [color, size] = parse$5(step);
-              let prefix = prev ? (prev + ' + ') : '';
-              prev = prefix + (size !== undefined ? size : default_size);
-              return `${color} 0 calc(${ prev })`
-            }
-            return `${step} 0 ${100 / max * (i + 1)}%`
-          })
-          .join(',');
-        }
-      },
-
-      calc() {
-        return value => calc(get_value(value));
-      },
-
-      hex() {
-        return value => parseInt(get_value(value)).toString(16);
-      },
-
-      svg: lazy((...args) => {
-        let value = args.map(input => get_value(input()).trim()).join(',');
-        if (!value.startsWith('<')) {
-          let parsed = parse$2(value);
-          value = generate_svg(parsed);
-        }
-        let svg = normalize_svg(value);
-        return create_svg_url(svg);
-      }),
-
-      filter: lazy((...args) => {
-        let value = args.map(input => get_value(input()).trim()).join(',');
-        let id = unique_id('filter-');
-        if (!value.startsWith('<')) {
-          let parsed = parse$2(value, {
-            type: 'block',
-            name: 'filter'
-          });
-          value = generate_svg(parsed);
-        }
-        let svg = normalize_svg(value).replace(
-          /<filter([\s>])/,
-          `<filter id="${ id }"$1`
-        );
-        return create_svg_url(svg, id);
-      }),
-
-      var() {
-        return value => `var(${ get_value(value) })`;
-      },
-
-      ut() {
-        return value => `var(--${ uniform_time.name })`;
-      },
-
-      uw() {
-        return value => `var(--${ uniform_width.name })`;
-      },
-
-      uh() {
-        return value => `var(--${ uniform_height.name })`;
-      },
-
-      ux() {
-        return value => `var(--${ uniform_mousex.name })`;
-      },
-
-      uy() {
-        return value => `var(--${ uniform_mousey.name })`;
-      },
-
-      plot({ count, context, extra, position, grid }) {
-        let key = 'offset-points' + position;
-        return commands => {
-          let [idx = count, _, __, max = grid.count] = extra || [];
-          if (!context[key]) {
-            let config = parse$6(commands);
-            delete config['fill'];
-            delete config['fill-rule'];
-            delete config['frame'];
-            config.points = max;
-            context[key] = create_shape_points(config, {min: 1, max: 65536});
-          }
-          return context[key][idx - 1];
-        };
-      },
-
-      shape() {
-        return memo('shape-function', (type = '', ...args) => {
-          type = String(type).trim();
-          let points = [];
-          if (type.length) {
-            if (typeof shapes[type] === 'function') {
-              points = shapes[type](args);
-            } else {
-              let commands = type;
-              let rest = args.join(',');
-              if (rest.length) {
-                commands = type + ',' + rest;
-              }
-              let config = parse$6(commands);
-              points = create_shape_points(config, {min: 3, max: 3600});
-            }
-          }
-          return `polygon(${points.join(',')})`;
-        });
-      },
-
-      doodle() {
-        return value => value;
-      },
-
-      shaders() {
-        return value => value;
-      },
-
-      canvas() {
-        return value => value;
-      },
-
-      pattern() {
-        return value => value;
-      },
-
-      invert() {
-        return commands => {
-          let parsed = parse$1(commands);
-          if (!parsed.valid) return commands;
-          return parsed.commands.map(({ name, value }) => {
-            switch (name) {
-              case 'v': return 'h' + value.join(' ');
-              case 'V': return 'H' + value.join(' ');
-              case 'h': return 'v' + value.join(' ');
-              case 'H': return 'V' + value.join(' ');
-              default:  return name + value.join(' ');
-            }
-          }).join(' ');
-        };
-      },
-
-      flipH() {
-        return commands => {
-          let parsed = parse$1(commands);
-          if (!parsed.valid) return commands;
-          return parsed.commands.map(({ name, value }) => {
-            switch (name) {
-              case 'h':
-              case 'H': return name + value.map(flip_value).join(' ');
-              default:  return name + value.join(' ');
-            }
-          }).join(' ');
-        };
-      },
-
-      flipV() {
-        return commands => {
-          let parsed = parse$1(commands);
-          if (!parsed.valid) return commands;
-          return parsed.commands.map(({ name, value }) => {
-            switch (name) {
-              case 'v':
-              case 'V': return name + value.map(flip_value).join(' ');
-              default:  return name + value.join(' ');
-            }
-          }).join(' ');
-        };
-      },
-
-      flip(...args) {
-        let flipH = Expose.flipH(...args);
-        let flipV = Expose.flipV(...args);
-        return commands => {
-          return flipV(flipH(commands));
-        }
-      },
-
-      reverse(...args) {
-        return commands => {
-          let parsed = parse$1(commands);
-          if (!parsed.valid) return commands;
-          return parsed.commands.reverse().map(({ name, value }) => {
-            return name + value.join(' ');
-          }).join(' ');
-        }
-      },
-
-    };
-
-    function make_sequence(c) {
-      return lazy((n, ...actions) => {
-        if (!actions || !n) return '';
-        let count = get_value(n());
-        let evaluated = calc(count);
-        if (evaluated === 0) {
-          evaluated = count;
-        }
-        return sequence(
-          evaluated,
-          (...args) => {
-            return actions.map(action => {
-              return get_value(action(...args))
-            }).join(',');
-          }
-        ).join(c);
-      });
-    }
-
-    function push_stack(context, name, value) {
-      if (!context[name]) context[name] = new Stack();
-      context[name].push(value);
-      return value;
-    }
-
-    function flip_value(num) {
-      return -1 * num;
-    }
-
-    function map2d(value, min, max, amp = 1) {
-      let dimention = 2;
-      let v = Math.sqrt(dimention / 4) * amp;
-      let [ma, mb] = [-v, v];
-      return lerp((value - ma) / (mb - ma), min * amp, max * amp);
-    }
-
-    function normalize(value) {
-      value = Number(value) || 0;
-      return value < 0 ? 0 : value;
-    }
-
-    return alias_for(Expose, {
-      'index': 'i',
-      'col': 'x',
-      'row': 'y',
-      'depth': 'z',
-      'rand': 'r',
-      'pick': 'p',
-
-      // error prone
-      'stripes': 'stripe',
-      'strip':   'stripe',
-      'patern':  'pattern',
-      'flipv': 'flipV',
-      'fliph': 'flipH',
-
-      // legacy names, keep them before 1.0
-      't': 'ut',
-      'svg-filter': 'filter',
-      'last-rand': 'lr',
-      'last-pick': 'lp',
-      'multiple': 'm',
-      'multi': 'm',
-      'rep': 'µ',
-      'repeat': 'µ',
-      'ms': 'M',
-      's':  'I',
-      'size': 'I',
-      'sx': 'X',
-      'size-x': 'X',
-      'size-col': 'X',
-      'max-col': 'X',
-      'sy': 'Y',
-      'size-y': 'Y',
-      'size-row': 'Y',
-      'max-row': 'Y',
-      'sz': 'Z',
-      'size-z': 'Z',
-      'size-depth': 'Z',
-      'pick-by-turn': 'pn',
-      'pick-n': 'pn',
-      'pick-d': 'pd',
-      'offset': 'plot',
-      'Offset': 'Plot',
-      'point': 'plot',
-      'Point': 'Plot',
-      'paint': 'canvas',
+      ).join(c);
     });
   }
 
-  let all = [];
+  function push_stack(context, name, value) {
+    if (!context[name]) context[name] = new Stack();
+    context[name].push(value);
+    return value;
+  }
 
-  function get_props(arg) {
-    if (!all.length) {
-      let props = new Set();
-      for (let n in document.head.style) {
-        if (!n.startsWith('-')) {
-          props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+  function flip_value(num) {
+    return -1 * num;
+  }
+
+  function map2d(value, min, max, amp = 1) {
+    let dimention = 2;
+    let v = Math.sqrt(dimention / 4) * amp;
+    let [ma, mb] = [-v, v];
+    return lerp((value - ma) / (mb - ma), min * amp, max * amp);
+  }
+
+  var Func = add_alias({
+
+    i({ count }) {
+      return _ => count;
+    },
+
+    y({ y }) {
+      return _ => y;
+    },
+
+    x({ x }) {
+      return _ => x;
+    },
+
+    z({ z }) {
+      return _ => z;
+    },
+
+    I({ grid }) {
+      return _ => grid.count;
+    },
+
+    Y({ grid }) {
+      return _ => grid.y;
+    },
+
+    X({ grid }) {
+      return _ => grid.x;
+    },
+
+    Z({ grid }) {
+      return _ => grid.z;
+    },
+
+    id({ x, y, z }) {
+      return _ => cell_id(x, y, z);
+    },
+
+    n({ extra }) {
+      return n => extra ? (extra[0] + (Number(n) || 0)) : '@n';
+    },
+
+    nx({ extra }) {
+      return n => extra ? (extra[1] + (Number(n) || 0)) : '@nx';
+    },
+
+    ny({ extra }) {
+      return n => extra ? (extra[2] + (Number(n) || 0)) : '@ny';
+    },
+
+    N({ extra }) {
+      return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
+    },
+
+    m: make_sequence(','),
+
+    M: make_sequence(' '),
+
+    µ: make_sequence(''),
+
+    p({ context, pick }) {
+      return expand((...args) => {
+        return push_stack(context, 'last_pick', pick(args));
+      });
+    },
+
+    pn({ context, extra, position }) {
+      let counter = 'pn-counter' + position;
+      return expand((...args) => {
+        if (!context[counter]) context[counter] = 0;
+        context[counter] += 1;
+        let max = args.length;
+        let [idx = context[counter]] = extra || [];
+        let pos = (idx - 1) % max;
+        let value = args[pos];
+        return push_stack(context, 'last_pick', value);
+      });
+    },
+
+    pd({ context, extra, position, shuffle }) {
+      let counter = 'pd-counter' + position;
+      let values = 'pd-values' + position;
+      return expand((...args) => {
+        if (!context[counter]) context[counter] = 0;
+        context[counter] += 1;
+        if (!context[values]) {
+          context[values] = shuffle(args || []);
         }
+        let max = args.length;
+        let [idx = context[counter]] = extra || [];
+        let pos = (idx - 1) % max;
+        let value = context[values][pos];
+        return push_stack(context, 'last_pick', value);
+      });
+    },
+
+    lp({ context }) {
+      return (n = 1) => {
+        let stack = context.last_pick;
+        return stack ? stack.last(n) : '';
+      };
+    },
+
+    r({ context, rand }) {
+      return (...args) => {
+        let transform = args.every(is_letter)
+          ? by_charcode
+          : by_unit;
+        let value = transform(rand)(...args);
+        return push_stack(context, 'last_rand', value);
+      };
+    },
+
+    rn({ x, y, context, position, grid, extra, shuffle }) {
+      let counter = 'noise-2d' + position;
+      let [ni, nx, ny, nm, NX, NY] = extra || [];
+      let isSeqContext = (ni && nm);
+      return (...args) => {
+        let [start, end = start, freq = 1, amp = 1] = args;
+        if (args.length == 1) {
+          [start, end] = [0, start];
+        }
+        if (!context[counter]) {
+          context[counter] = new Perlin(shuffle);
+        }
+        freq = clamp(freq, 0, Infinity);
+        amp = clamp(amp, 0, Infinity);
+        let transform = [start, end].every(is_letter) ? by_charcode : by_unit;
+        let t = isSeqContext
+          ? context[counter].noise((nx - 1)/NX * freq, (ny - 1)/NY * freq, 0)
+          : context[counter].noise((x - 1)/grid.x * freq, (y - 1)/grid.y * freq, 0);
+        let fn = transform((start, end) => map2d(t * amp, start, end, amp));
+        let value = fn(start, end);
+        return push_stack(context, 'last_rand', value);
+      };
+    },
+
+    lr({ context }) {
+      return (n = 1) => {
+        let stack = context.last_rand;
+        return stack ? stack.last(n) : '';
+      };
+    },
+
+    noise({ context, grid, position, shuffle, ...rest }) {
+      let vars = {
+        i: rest.count, I: grid.count,
+        x: rest.x, X: grid.x,
+        y: rest.y, Y: grid.y,
+        z: rest.z, Z: grid.z,
+      };
+      return (x, y, z = 0) => {
+        let counter = 'raw-noise-2d' + position;
+        if (!context[counter]) {
+          context[counter] = new Perlin(shuffle);
+        }
+        return context[counter].noise(
+          calc$1(x, vars),
+          calc$1(y, vars),
+          calc$1(z, vars)
+        );
+      };
+    },
+
+    stripe() {
+      return (...input) => {
+        let colors = input.map(get_value);
+        let max = colors.length;
+        let default_count = 0;
+        let custom_sizes = [];
+        let prev;
+        if (!max) {
+          return '';
+        }
+        colors.forEach(step => {
+          let [_, size] = parse$4(step);
+          if (size !== undefined) custom_sizes.push(size);
+          else default_count += 1;
+        });
+        let default_size = custom_sizes.length
+          ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
+          : `100% / ${max}`;
+        return colors.map((step, i) => {
+          if (custom_sizes.length) {
+            let [color, size] = parse$4(step);
+            let prefix = prev ? (prev + ' + ') : '';
+            prev = prefix + (size !== undefined ? size : default_size);
+            return `${color} 0 calc(${ prev })`
+          }
+          return `${step} 0 ${100 / max * (i + 1)}%`
+        })
+        .join(',');
       }
-      if (!props.has('grid-gap')) {
-        props.add('grid-gap');
+    },
+
+    calc() {
+      return value => calc$1(get_value(value));
+    },
+
+    hex() {
+      return value => parseInt(get_value(value)).toString(16);
+    },
+
+    svg: lazy((...args) => {
+      let value = args.map(input => get_value(input()).trim()).join(',');
+      if (!value.startsWith('<')) {
+        let parsed = parse$2(value);
+        value = generate_svg(parsed);
       }
-      all = Array.from(props);
-    }
-    return (arg && arg.test)
-      ? all.filter(n => arg.test(n))
-      : all;
-  }
+      let svg = normalize_svg(value);
+      return create_svg_url(svg);
+    }),
 
-  function build_mapping(prefix) {
-    let reg = new RegExp(`\\-?${ prefix }\\-?`);
-    return get_props(reg)
-      .map(n => n.replace(reg, ''))
-      .reduce((obj, n) => { return obj[n] = n, obj }, {});
-  }
+    filter: lazy((...args) => {
+      let value = args.map(input => get_value(input()).trim()).join(',');
+      let id = unique_id('filter-');
+      if (!value.startsWith('<')) {
+        let parsed = parse$2(value, {
+          type: 'block',
+          name: 'filter'
+        });
+        value = generate_svg(parsed);
+      }
+      let svg = normalize_svg(value).replace(
+        /<filter([\s>])/,
+        `<filter id="${ id }"$1`
+      );
+      return create_svg_url(svg, id);
+    }),
 
-  const props_webkit_mapping = build_mapping('webkit');
-  const props_moz_mapping = build_mapping('moz');
+    var() {
+      return value => `var(${ get_value(value) })`;
+    },
 
-  function prefixer(prop, rule) {
-    if (props_webkit_mapping[prop]) {
-      return `-webkit-${ rule } ${ rule }`;
-    }
-    else if (props_moz_mapping[prop]) {
-      return `-moz-${ rule } ${ rule }`;
-    }
-    return rule;
-  }
+    ut() {
+      return value => `var(--${ uniform_time.name })`;
+    },
+
+    uw() {
+      return value => `var(--${ uniform_width.name })`;
+    },
+
+    uh() {
+      return value => `var(--${ uniform_height.name })`;
+    },
+
+    ux() {
+      return value => `var(--${ uniform_mousex.name })`;
+    },
+
+    uy() {
+      return value => `var(--${ uniform_mousey.name })`;
+    },
+
+    plot({ count, context, extra, position, grid }) {
+      let key = 'offset-points' + position;
+      return commands => {
+        let [idx = count, _, __, max = grid.count] = extra || [];
+        if (!context[key]) {
+          let config = parse$5(commands);
+          delete config['fill'];
+          delete config['fill-rule'];
+          delete config['frame'];
+          config.points = max;
+          context[key] = create_shape_points(config, {min: 1, max: 65536});
+        }
+        return context[key][idx - 1];
+      };
+    },
+
+    shape() {
+      return memo('shape-function', (type = '', ...args) => {
+        type = String(type).trim();
+        let points = [];
+        if (type.length) {
+          if (typeof shapes[type] === 'function') {
+            points = shapes[type](args);
+          } else {
+            let commands = type;
+            let rest = args.join(',');
+            if (rest.length) {
+              commands = type + ',' + rest;
+            }
+            let config = parse$5(commands);
+            points = create_shape_points(config, {min: 3, max: 3600});
+          }
+        }
+        return `polygon(${points.join(',')})`;
+      });
+    },
+
+    doodle() {
+      return value => value;
+    },
+
+    shaders() {
+      return value => value;
+    },
+
+    canvas() {
+      return value => value;
+    },
+
+    pattern() {
+      return value => value;
+    },
+
+    invert() {
+      return commands => {
+        let parsed = parse$1(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.map(({ name, value }) => {
+          switch (name) {
+            case 'v': return 'h' + value.join(' ');
+            case 'V': return 'H' + value.join(' ');
+            case 'h': return 'v' + value.join(' ');
+            case 'H': return 'V' + value.join(' ');
+            default:  return name + value.join(' ');
+          }
+        }).join(' ');
+      };
+    },
+
+    flipH() {
+      return commands => {
+        let parsed = parse$1(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.map(({ name, value }) => {
+          switch (name) {
+            case 'h':
+            case 'H': return name + value.map(flip_value).join(' ');
+            default:  return name + value.join(' ');
+          }
+        }).join(' ');
+      };
+    },
+
+    flipV() {
+      return commands => {
+        let parsed = parse$1(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.map(({ name, value }) => {
+          switch (name) {
+            case 'v':
+            case 'V': return name + value.map(flip_value).join(' ');
+            default:  return name + value.join(' ');
+          }
+        }).join(' ');
+      };
+    },
+
+    flip(...args) {
+      let flipH = Expose.flipH(...args);
+      let flipV = Expose.flipV(...args);
+      return commands => {
+        return flipV(flipH(commands));
+      }
+    },
+
+    reverse(...args) {
+      return commands => {
+        let parsed = parse$1(commands);
+        if (!parsed.valid) return commands;
+        return parsed.commands.reverse().map(({ name, value }) => {
+          return name + value.join(' ');
+        }).join(' ');
+      }
+    },
+
+  }, {
+
+    'index': 'i',
+    'col': 'x',
+    'row': 'y',
+    'depth': 'z',
+    'rand': 'r',
+    'pick': 'p',
+
+    // error prone
+    'stripes': 'stripe',
+    'strip':   'stripe',
+    'patern':  'pattern',
+    'flipv': 'flipV',
+    'fliph': 'flipH',
+
+    // legacy names, keep them before 1.0
+    't': 'ut',
+    'svg-filter': 'filter',
+    'last-rand': 'lr',
+    'last-pick': 'lp',
+    'multiple': 'm',
+    'multi': 'm',
+    'rep': 'µ',
+    'repeat': 'µ',
+    'ms': 'M',
+    's':  'I',
+    'size': 'I',
+    'sx': 'X',
+    'size-x': 'X',
+    'size-col': 'X',
+    'max-col': 'X',
+    'sy': 'Y',
+    'size-y': 'Y',
+    'size-row': 'Y',
+    'max-row': 'Y',
+    'sz': 'Z',
+    'size-z': 'Z',
+    'size-depth': 'Z',
+    'pick-by-turn': 'pn',
+    'pick-n': 'pn',
+    'pick-d': 'pd',
+    'offset': 'plot',
+    'Offset': 'Plot',
+    'point': 'plot',
+    'Point': 'Plot',
+    'paint': 'canvas',
+  });
 
   const presets = {
 
@@ -3361,10 +3326,64 @@
     return !!presets[name];
   }
 
-  const Expose = {
+  let all_props = [];
 
-    ['@size'](value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$5(value);
+  function get_props(arg) {
+    if (!all_props.length) {
+      let props = new Set();
+      if (typeof document !== 'undefined') {
+        for (let n in document.head.style) {
+          if (!n.startsWith('-')) {
+            props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
+          }
+        }
+      }
+      if (!props.has('grid-gap')) {
+        props.add('grid-gap');
+      }
+      all_props = Array.from(props);
+    }
+    return (arg instanceof RegExp)
+      ? all_props.filter(n => arg.test(n))
+      : all_props;
+  }
+
+  function build_mapping(prefix) {
+    let reg = new RegExp(`\\-?${ prefix }\\-?`);
+    return get_props(reg)
+      .map(n => n.replace(reg, ''))
+      .reduce((obj, n) => { return obj[n] = n, obj }, {});
+  }
+
+  const props_webkit_mapping = build_mapping('webkit');
+  const props_moz_mapping = build_mapping('moz');
+
+  function prefixer(prop, rule) {
+    if (props_webkit_mapping[prop]) {
+      return `-webkit-${ rule } ${ rule }`;
+    }
+    else if (props_moz_mapping[prop]) {
+      return `-moz-${ rule } ${ rule }`;
+    }
+    return rule;
+  }
+
+  const map_left_right = {
+    center: '50%',
+    left: '0%', right: '100%',
+    top: '50%', bottom: '50%'
+  };
+
+  const map_top_bottom = {
+    center: '50%',
+    top: '0%', bottom: '100%',
+    left: '50%', right: '50%',
+  };
+
+  var Property = add_alias({
+
+    size(value, { is_special_selector, grid }) {
+      let [w, h = w] = parse$4(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -3385,161 +3404,130 @@
       return styles;
     },
 
-    ['@offset']: (() => {
-      let map_left_right = {
-        'center': '50%',
-        'left': '0%', 'right': '100%',
-        'top': '50%', 'bottom': '50%'
-      };
-      let map_top_bottom = {
-        'center': '50%',
-        'top': '0%', 'bottom': '100%',
-        'left': '50%', 'right': '50%',
-      };
+    offset(value, { extra }) {
+      let [left, top = '50%'] = parse$4(value);
+      left = map_left_right[left] || left;
+      top = map_top_bottom[top] || top;
+      const cw = 'var(--internal-cell-width, 25%)';
+      const ch = 'var(--internal-cell-height, 25%)';
+      return `
+      position: absolute;
+      left: ${ left };
+      top: ${ top };
+      width: ${ cw };
+      height: ${ ch };
+      margin-left: calc(${ cw } / -2);
+      margin-top: calc(${ ch } / -2);
+      grid-area: unset;
+      --plot-angle: ${ extra || 0 };
+      transform: rotate(${ extra || 0 }deg);
+    `;
+    },
 
-      return (value, { extra }) => {
-        let [left, top = '50%'] = parse$5(value);
-        left = map_left_right[left] || left;
-        top = map_top_bottom[top] || top;
-        const cw = 'var(--internal-cell-width, 25%)';
-        const ch = 'var(--internal-cell-height, 25%)';
-        return `
-        position: absolute;
-        left: ${ left };
-        top: ${ top };
-        width: ${ cw };
-        height: ${ ch };
-        margin-left: calc(${ cw } / -2);
-        margin-top: calc(${ ch } / -2);
-        grid-area: unset;
-        --plot-angle: ${ extra || 0 };
-        transform: rotate(${ extra || 0 }deg);
-      `;
-      }
-    })(),
-
-    ['@grid'](value, options) {
+    grid(value, options) {
       let [grid, ...size] = value.split('/').map(s => s.trim());
       size = size.join(' / ');
       return {
         grid: parse_grid(grid),
-        size: size ? this['@size'](size, options) : ''
+        size: size ? this.size(size, options) : ''
       };
     },
 
-    ['@shape']: memo('shape-property', value => {
-      let [type, ...args] = parse$5(value);
-      let prop = 'clip-path';
+    shape: memo('shape-property', value => {
+      let [type, ...args] = parse$4(value);
       if (typeof shapes[type] !== 'function') return '';
+      let prop = 'clip-path';
       let points = shapes[type](...args);
       let rules = `${ prop }: polygon(${points.join(',')});`;
       return prefixer(prop, rules) + 'overflow: hidden;';
     }),
 
-    ['@use'](rules) {
+    use(rules) {
       if (rules.length > 2) {
         return rules;
       }
-    }
+    },
 
-  };
-
-  var Property = alias_for(Expose, {
+  }, {
 
     // legacy names.
-    '@place-cell': '@offset',
+    'place-cell': 'offset',
 
   });
 
-  function nth(input, curr, max) {
-    for (let i = 0; i <= max; ++i) {
-      if (calc(input, { n: i }) == curr) return true;
-    }
-  }
-
-  const is = {
+  const literal = {
     even: n => !(n % 2),
-    odd:  n => !!(n % 2)
+    odd:  n => !!(n % 2),
   };
 
-  function even_or_odd(expr) {
-    return /^(even|odd)$/.test(expr);
-  }
-
-  function Selector(random) {
-
-    return {
-
-      at({ x, y }) {
-        return (x1, y1) => (x == x1 && y == y1);
-      },
-
-      nth({ count, grid }) {
-        return (...exprs) => exprs.some(expr =>
-          even_or_odd(expr)
-            ? is[expr](count)
-            : nth(expr, count, grid.count)
-        );
-      },
-
-      row({ y, grid }) {
-        return (...exprs) => exprs.some(expr =>
-          even_or_odd(expr)
-            ? is[expr](y)
-            : nth(expr, y, grid.y)
-        );
-      },
-
-      col({ x, grid }) {
-        return (...exprs) => exprs.some(expr =>
-          even_or_odd(expr)
-            ? is[expr](x)
-            : nth(expr, x, grid.x)
-        );
-      },
-
-      even({ count, grid, x, y }) {
-        return arg => is.odd(x + y);
-      },
-
-      odd({ count, grid, x, y}) {
-        return arg => is.even(x + y);
-      },
-
-      random() {
-        return (ratio = .5) => {
-          if (ratio >= 1 && ratio <= 0) ratio = .5;
-          return random() < ratio;
-        }
-      },
-
-      match({ count, grid, x, y }) {
-        return expr => {
-          return !!calc('(' + expr + ')', {
-            x, X: grid.x,
-            y, Y: grid.y,
-            i: count, I: grid.count,
-            random,
-          });
-        }
+  /**
+   * TODO: optimization
+   */
+  function nth(input, curr, max) {
+    for (let i = 0; i <= max; ++i) {
+      if (calc$1(input, { n: i }) == curr) {
+        return true;
       }
-
     }
   }
 
-  // Expose all Math functions and constants.
-  const methods = Object.getOwnPropertyNames(Math);
+  var Selector = {
 
-  var MathFunc = methods.reduce((expose, n) => {
-    expose[n] = () => (...args) => {
-      args = args.map(get_value);
-      if (typeof Math[n] === 'number') return Math[n];
-      return Math[n].apply(null, args.map(calc));
-    };
-    return expose;
-  }, {});
+    at({ x, y }) {
+      return (x1, y1) => (x == x1 && y == y1);
+    },
 
-  let { join, make_array, remove_empty_values } = List();
+    nth({ count, grid }) {
+      return (...exprs) => exprs.some(expr =>
+        literal[expr]
+          ? literal[expr](count)
+          : nth(expr, count, grid.count)
+      );
+    },
+
+    row({ y, grid }) {
+      return (...exprs) => exprs.some(expr =>
+        literal[expr]
+          ? literal[expr](y)
+          : nth(expr, y, grid.y)
+      );
+    },
+
+    col({ x, grid }) {
+      return (...exprs) => exprs.some(expr =>
+        literal[expr]
+          ? literal[expr](x)
+          : nth(expr, x, grid.x)
+      );
+    },
+
+    even({ count, grid, x, y }) {
+      return arg => literal.odd(x + y);
+    },
+
+    odd({ count, grid, x, y}) {
+      return arg => literal.even(x + y);
+    },
+
+    random({ random }) {
+      return (ratio = .5) => {
+        if (ratio >= 1 && ratio <= 0) ratio = .5;
+        return random() < ratio;
+      }
+    },
+
+    match({ count, grid, x, y, random }) {
+      return expr => {
+        return !!calc$1('(' + expr + ')', {
+          x, X: grid.x,
+          y, Y: grid.y,
+          i: count, I: grid.count,
+          random,
+        });
+      }
+    },
+
+  };
 
   function is_host_selector(s) {
     return /^\:(host|doodle)/.test(s);
@@ -3553,9 +3541,20 @@
     return is_host_selector(s) || is_parent_selector(s);
   }
 
+  const MathFunc = {};
+  for (let name of Object.getOwnPropertyNames(Math)) {
+    MathFunc[name] = () => (...args) => {
+      if (typeof Math[name] === 'number') {
+        return Math[name];
+      }
+      args = args.map(n => calc$1(get_value(n)));
+      return Math[name](...args);
+    };
+  }
+
   class Rules {
 
-    constructor(tokens, random) {
+    constructor(tokens) {
       this.tokens = tokens;
       this.rules = {};
       this.props = {};
@@ -3568,11 +3567,8 @@
       this.pattern = {};
       this.shaders = {};
       this.reset();
-      this.Func = get_exposed(random);
-      this.Selector = Selector(random);
       this.custom_properties = {};
       this.uniforms = {};
-      this.unique_id = Random(random).unique_id;
     }
 
     reset() {
@@ -3603,7 +3599,7 @@
     }
 
     pick_func(name) {
-      return this.Func[name] || MathFunc[name];
+      return Func[name] || MathFunc[name];
     }
 
     apply_func(fn, coords, args) {
@@ -3613,7 +3609,7 @@
         let type = typeof arg.value;
         let is_string_or_number = (type === 'number' || type === 'string');
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$5(arg.value, true));
+          input.push(...parse$4(arg.value, true));
         }
         else {
           if (typeof arg === 'function') {
@@ -3689,13 +3685,13 @@
     }
 
     compose_doodle(doodle) {
-      let id = this.unique_id('doodle');
+      let id = unique_id('doodle');
       this.doodles[id] = doodle;
       return '${' + id + '}';
     }
 
     compose_shaders(shader, {x, y, z}) {
-      let id = this.unique_id('shader');
+      let id = unique_id('shader');
       this.shaders[id] = {
         shader,
         cell: cell_id(x, y, z)
@@ -3704,7 +3700,7 @@
     }
 
     compose_pattern(code, {x, y, z}) {
-      let id = this.unique_id('pattern');
+      let id = unique_id('pattern');
       this.pattern[id] = {
         code,
         cell: cell_id(x, y, z)
@@ -3718,7 +3714,7 @@
       if (result.length) {
         commands = code + ',' + result;
       }
-      let id = this.unique_id('canvas');
+      let id = unique_id('canvas');
       this.canvas[id] = { code: commands };
       return '${' + id + '}';
     }
@@ -3877,20 +3873,21 @@
         this.custom_properties[prop] = value;
       }
 
-      if (Property[prop]) {
-        let transformed = Property[prop](value, {
+      if (/^@/.test(prop) && Property[prop.substr(1)]) {
+        let name = prop.substr(1);
+        let transformed = Property[name](value, {
           is_special_selector: is_special_selector(selector),
           grid: coords.grid,
           extra
         });
-        switch (prop) {
-          case '@grid': {
+        switch (name) {
+          case 'grid': {
             if (is_host_selector(selector)) {
               rule = transformed.size || '';
             } else {
               rule = '';
               if (!this.is_grid_defined) {
-                transformed = Property[prop](value, {
+                transformed = Property[name](value, {
                   is_special_selector: true,
                   grid: coords.grid
                 });
@@ -3901,13 +3898,14 @@
             this.is_grid_defined = true;
             break;
           }
-          case '@place-cell': {
+          case 'place-cell':
+          case 'offset': {
             if (!is_host_selector(selector)) {
               rule = transformed;
             }
             break;
           }
-          case '@use': {
+          case 'use': {
             if (token.value.length) {
               this.compose(coords, token.value);
             }
@@ -3935,7 +3933,8 @@
             return ret;
           }, []);
           let value = value_group.join(', ');
-          let transformed = Property[prop](value, {});
+          let name = prop.substr(1);
+          let transformed = Property[name](value, {});
           this.grid = transformed.grid;
           break;
         }
@@ -4004,7 +4003,7 @@
           }
 
           case 'cond': {
-            let fn = this.Selector[token.name.substr(1)];
+            let fn = Selector[token.name.substr(1)];
             if (fn) {
               let args = token.arguments.map(arg => {
                 return this.compose_argument(arg, coords);
@@ -4035,22 +4034,20 @@
     }
 
     output() {
-      Object.keys(this.rules).forEach((selector, i) => {
+      for (let [selector, rule] of Object.entries(this.rules)) {
         if (is_parent_selector(selector)) {
           this.styles.container += `
           .container {
-            ${ join(this.rules[selector]) }
+            ${ join(rule) }
           }
         `;
         } else {
           let target = is_host_selector(selector) ? 'host' : 'cells';
-          let value = join(this.rules[selector]).trim();
+          let value = join(rule).trim();
           let name = (target === 'host') ? `${ selector }, .host` : selector;
           this.styles[target] += `${ name } { ${ value  } }`;
         }
-      });
-
-      let keyframes = Object.keys(this.keyframes);
+      }
 
       if (this.uniforms.time) {
         this.styles.container += `
@@ -4067,19 +4064,15 @@
       }
 
       this.coords.forEach((coords, i) => {
-        keyframes.forEach(name => {
+        for (let [name, keyframe] of Object.entries(this.keyframes)) {
           let aname = this.compose_aname(name, coords.count);
           this.styles.keyframes += `
-          ${ maybe(i === 0,
-            `@keyframes ${ name } {
-              ${ this.keyframes[name](coords) }
-            }`
-          )}
+          ${ maybe(i === 0, `@keyframes ${ name } { ${ keyframe(coords) } }`)}
           @keyframes ${ aname } {
-            ${ this.keyframes[name](coords) }
+            ${ keyframe(coords) }
           }
         `;
-        });
+        }
       });
 
       return {
@@ -4096,13 +4089,38 @@
 
   }
 
-  function generator(tokens, grid_size, random) {
-    let rules = new Rules(tokens, random);
+  function generate_css(tokens, grid_size, random) {
+    let rules = new Rules(tokens);
     let context = {};
+
+    function rand(start = 0, end) {
+      if (arguments.length == 1) {
+        [start, end] = [0, start];
+      }
+      return lerp(random(), start, end);
+    }
+
+    function pick(...items) {
+      let args = items.reduce((acc, n) => acc.concat(n), []);
+      return args[~~(random() * args.length)];
+    }
+
+    function shuffle(arr) {
+      let ret = [...arr];
+      let m = arr.length;
+      while (m) {
+        let i = ~~(random() * m--);
+        let t = ret[m];
+        ret[m] = ret[i];
+        ret[i] = t;
+      }
+      return ret;
+    }
 
     rules.pre_compose({
       x: 1, y: 1, z: 1, count: 1, context: {},
-      grid: { x: 1, y: 1, z: 1, count: 1 }
+      grid: { x: 1, y: 1, z: 1, count: 1 },
+      random, rand, pick, shuffle,
     });
 
     let { grid } = rules.output();
@@ -4114,7 +4132,8 @@
         for (let x = 1; x <= grid_size.x; ++x) {
           rules.compose({
             x, y, z: 1,
-            count: ++count, grid: grid_size, context
+            count: ++count, grid: grid_size, context,
+            random, rand, pick, shuffle,
           });
         }
       }
@@ -4123,235 +4142,14 @@
       for (let z = 1, count = 0; z <= grid_size.z; ++z) {
         rules.compose({
           x: 1, y: 1, z,
-          count: ++count, grid: grid_size, context
+          count: ++count, grid: grid_size, context,
+          random, rand, pick, shuffle,
         });
       }
     }
 
     return rules.output();
   }
-
-  /*
-  Copyright 2019 David Bau.
-  Permission is hereby granted, free of charge, to any person obtaining
-  a copy of this software and associated documentation files (the
-  "Software"), to deal in the Software without restriction, including
-  without limitation the rights to use, copy, modify, merge, publish,
-  distribute, sublicense, and/or sell copies of the Software, and to
-  permit persons to whom the Software is furnished to do so, subject to
-  the following conditions:
-  The above copyright notice and this permission notice shall be
-  included in all copies or substantial portions of the Software.
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  */
-
-  var global = window;
-  var math = Math;
-  var pool = [];
-
-  //
-  // The following constants are related to IEEE 754 limits.
-  //
-
-  var width = 256,        // each RC4 output is 0 <= x < 256
-      chunks = 6,         // at least six RC4 outputs for each double
-      digits = 52,        // there are 52 significant digits in a double
-      rngname = 'random', // rngname: name for Math.random and Math.seedrandom
-      startdenom = math.pow(width, chunks),
-      significance = math.pow(2, digits),
-      overflow = significance * 2,
-      mask = width - 1,
-      nodecrypto;         // node.js crypto module, initialized at the bottom.
-
-  //
-  // seedrandom()
-  // This is the seedrandom function described above.
-  //
-  function seedrandom(seed, options, callback) {
-    var key = [];
-    options = (options == true) ? { entropy: true } : (options || {});
-
-    // Flatten the seed string or build one from local entropy if needed.
-    var shortseed = mixkey(flatten(
-      options.entropy ? [seed, tostring(pool)] :
-      (seed == null) ? autoseed() : seed, 3), key);
-
-    // Use the seed to initialize an ARC4 generator.
-    var arc4 = new ARC4(key);
-
-    // This function returns a random double in [0, 1) that contains
-    // randomness in every bit of the mantissa of the IEEE 754 value.
-    var prng = function() {
-      var n = arc4.g(chunks),             // Start with a numerator n < 2 ^ 48
-          d = startdenom,                 //   and denominator d = 2 ^ 48.
-          x = 0;                          //   and no 'extra last byte'.
-      while (n < significance) {          // Fill up all significant digits by
-        n = (n + x) * width;              //   shifting numerator and
-        d *= width;                       //   denominator and generating a
-        x = arc4.g(1);                    //   new least-significant-byte.
-      }
-      while (n >= overflow) {             // To avoid rounding up, before adding
-        n /= 2;                           //   last byte, shift everything
-        d /= 2;                           //   right using integer math until
-        x >>>= 1;                         //   we have exactly the desired bits.
-      }
-      return (n + x) / d;                 // Form the number within [0, 1).
-    };
-
-    prng.int32 = function() { return arc4.g(4) | 0; };
-    prng.quick = function() { return arc4.g(4) / 0x100000000; };
-    prng.double = prng;
-
-    // Mix the randomness into accumulated entropy.
-    mixkey(tostring(arc4.S), pool);
-
-    // Calling convention: what to return as a function of prng, seed, is_math.
-    return (options.pass || callback ||
-        function(prng, seed, is_math_call, state) {
-          if (state) {
-            // Load the arc4 state from the given state if it has an S array.
-            if (state.S) { copy(state, arc4); }
-            // Only provide the .state method if requested via options.state.
-            prng.state = function() { return copy(arc4, {}); };
-          }
-
-          // If called as a method of Math (Math.seedrandom()), mutate
-          // Math.random because that is how seedrandom.js has worked since v1.0.
-          if (is_math_call) { math[rngname] = prng; return seed; }
-
-          // Otherwise, it is a newer calling convention, so return the
-          // prng directly.
-          else return prng;
-        })(
-    prng,
-    shortseed,
-    'global' in options ? options.global : (this == math),
-    options.state);
-  }
-
-  //
-  // ARC4
-  //
-  // An ARC4 implementation.  The constructor takes a key in the form of
-  // an array of at most (width) integers that should be 0 <= x < (width).
-  //
-  // The g(count) method returns a pseudorandom integer that concatenates
-  // the next (count) outputs from ARC4.  Its return value is a number x
-  // that is in the range 0 <= x < (width ^ count).
-  //
-  function ARC4(key) {
-    var t, keylen = key.length,
-        me = this, i = 0, j = me.i = me.j = 0, s = me.S = [];
-
-    // The empty key [] is treated as [0].
-    if (!keylen) { key = [keylen++]; }
-
-    // Set up S using the standard key scheduling algorithm.
-    while (i < width) {
-      s[i] = i++;
-    }
-    for (i = 0; i < width; i++) {
-      s[i] = s[j = mask & (j + key[i % keylen] + (t = s[i]))];
-      s[j] = t;
-    }
-
-    // The "g" method returns the next (count) outputs as one number.
-    (me.g = function(count) {
-      // Using instance members instead of closure state nearly doubles speed.
-      var t, r = 0,
-          i = me.i, j = me.j, s = me.S;
-      while (count--) {
-        t = s[i = mask & (i + 1)];
-        r = r * width + s[mask & ((s[i] = s[j = mask & (j + t)]) + (s[j] = t))];
-      }
-      me.i = i; me.j = j;
-      return r;
-      // For robust unpredictability, the function call below automatically
-      // discards an initial batch of values.  This is called RC4-drop[256].
-      // See http://google.com/search?q=rsa+fluhrer+response&btnI
-    })(width);
-  }
-
-  //
-  // copy()
-  // Copies internal state of ARC4 to or from a plain object.
-  //
-  function copy(f, t) {
-    t.i = f.i;
-    t.j = f.j;
-    t.S = f.S.slice();
-    return t;
-  }
-  //
-  // flatten()
-  // Converts an object tree to nested arrays of strings.
-  //
-  function flatten(obj, depth) {
-    var result = [], typ = (typeof obj), prop;
-    if (depth && typ == 'object') {
-      for (prop in obj) {
-        try { result.push(flatten(obj[prop], depth - 1)); } catch (e) {}
-      }
-    }
-    return (result.length ? result : typ == 'string' ? obj : obj + '\0');
-  }
-
-  //
-  // mixkey()
-  // Mixes a string seed into a key that is an array of integers, and
-  // returns a shortened string seed that is equivalent to the result key.
-  //
-  function mixkey(seed, key) {
-    var stringseed = seed + '', smear, j = 0;
-    while (j < stringseed.length) {
-      key[mask & j] =
-        mask & ((smear ^= key[mask & j] * 19) + stringseed.charCodeAt(j++));
-    }
-    return tostring(key);
-  }
-
-  //
-  // autoseed()
-  // Returns an object for autoseeding, using window.crypto and Node crypto
-  // module if available.
-  //
-  function autoseed() {
-    try {
-      var out;
-      if (nodecrypto && (out = nodecrypto.randomBytes)) ; else {
-        out = new Uint8Array(width);
-        (global.crypto || global.msCrypto).getRandomValues(out);
-      }
-      return tostring(out);
-    } catch (e) {
-      var browser = global.navigator,
-          plugins = browser && browser.plugins;
-      return [+new Date, global, plugins, global.screen, tostring(pool)];
-    }
-  }
-
-  //
-  // tostring()
-  // Converts an array of charcodes to a string
-  //
-  function tostring(a) {
-    return String.fromCharCode.apply(0, a);
-  }
-
-  //
-  // When seedrandom.js is loaded, we immediately mix a few bits
-  // from the built-in RNG into the entropy pool.  Because we do
-  // not want to interfere with deterministic PRNG state later,
-  // seedrandom will not call math.random on its own again after
-  // initialization.
-  //
-  mixkey(math.random(), pool);
 
   function create_shader(gl, type, source) {
     let shader = gl.createShader(type);
@@ -4730,14 +4528,14 @@
     return generate_shader(result.join(''), grid);
   }
 
-  let counter = 1;
+  const nextId = next_id();
 
   function draw_canvas(code) {
     let result = Cache.get(code);
     if (result) {
       return Promise.resolve(result);
     }
-    let name = 'css-doodle-paint-' + (counter++);
+    let name = nextId('css-doodle-paint');
     let wrapped = generate(name, code);
 
     let blob = new Blob([wrapped], { type: 'text/javascript' });
@@ -4767,7 +4565,276 @@
   `;
   }
 
+  function svg_to_png(svg, width, height, scale) {
+    return new Promise((resolve, reject) => {
+      let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
+      function action() {
+        let img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = source;
+
+        img.onload = () => {
+          let canvas = document.createElement('canvas');
+          let ctx = canvas.getContext('2d');
+
+          let dpr = window.devicePixelRatio || 1;
+          /* scale with devicePixelRatio only when the scale equals 1 */
+          if (scale != 1) {
+            dpr = 1;
+          }
+
+          canvas.width = width * dpr;
+          canvas.height = height * dpr;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          try {
+            canvas.toBlob(blob => {
+              resolve({
+                blob,
+                source,
+                url: URL.createObjectURL(blob)
+              });
+            });
+          } catch (e) {
+            reject(e);
+          }
+        };
+      }
+
+      if (is_safari()) {
+        cache_image(source, action, 200);
+      } else {
+        action();
+      }
+    });
+  }
+
+  /*
+  Copyright 2019 David Bau.
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+
+  var global = globalThis;
+  var math = Math;
+  var pool = [];
+
+  //
+  // The following constants are related to IEEE 754 limits.
+  //
+
+  var width = 256,        // each RC4 output is 0 <= x < 256
+      chunks = 6,         // at least six RC4 outputs for each double
+      digits = 52,        // there are 52 significant digits in a double
+      rngname = 'random', // rngname: name for Math.random and Math.seedrandom
+      startdenom = math.pow(width, chunks),
+      significance = math.pow(2, digits),
+      overflow = significance * 2,
+      mask = width - 1,
+      nodecrypto;         // node.js crypto module, initialized at the bottom.
+
+  //
+  // seedrandom()
+  // This is the seedrandom function described above.
+  //
+  function seedrandom(seed, options, callback) {
+    var key = [];
+    options = (options == true) ? { entropy: true } : (options || {});
+
+    // Flatten the seed string or build one from local entropy if needed.
+    var shortseed = mixkey(flatten(
+      options.entropy ? [seed, tostring(pool)] :
+      (seed == null) ? autoseed() : seed, 3), key);
+
+    // Use the seed to initialize an ARC4 generator.
+    var arc4 = new ARC4(key);
+
+    // This function returns a random double in [0, 1) that contains
+    // randomness in every bit of the mantissa of the IEEE 754 value.
+    var prng = function() {
+      var n = arc4.g(chunks),             // Start with a numerator n < 2 ^ 48
+          d = startdenom,                 //   and denominator d = 2 ^ 48.
+          x = 0;                          //   and no 'extra last byte'.
+      while (n < significance) {          // Fill up all significant digits by
+        n = (n + x) * width;              //   shifting numerator and
+        d *= width;                       //   denominator and generating a
+        x = arc4.g(1);                    //   new least-significant-byte.
+      }
+      while (n >= overflow) {             // To avoid rounding up, before adding
+        n /= 2;                           //   last byte, shift everything
+        d /= 2;                           //   right using integer math until
+        x >>>= 1;                         //   we have exactly the desired bits.
+      }
+      return (n + x) / d;                 // Form the number within [0, 1).
+    };
+
+    prng.int32 = function() { return arc4.g(4) | 0; };
+    prng.quick = function() { return arc4.g(4) / 0x100000000; };
+    prng.double = prng;
+
+    // Mix the randomness into accumulated entropy.
+    mixkey(tostring(arc4.S), pool);
+
+    // Calling convention: what to return as a function of prng, seed, is_math.
+    return (options.pass || callback ||
+        function(prng, seed, is_math_call, state) {
+          if (state) {
+            // Load the arc4 state from the given state if it has an S array.
+            if (state.S) { copy(state, arc4); }
+            // Only provide the .state method if requested via options.state.
+            prng.state = function() { return copy(arc4, {}); };
+          }
+
+          // If called as a method of Math (Math.seedrandom()), mutate
+          // Math.random because that is how seedrandom.js has worked since v1.0.
+          if (is_math_call) { math[rngname] = prng; return seed; }
+
+          // Otherwise, it is a newer calling convention, so return the
+          // prng directly.
+          else return prng;
+        })(
+    prng,
+    shortseed,
+    'global' in options ? options.global : (this == math),
+    options.state);
+  }
+
+  //
+  // ARC4
+  //
+  // An ARC4 implementation.  The constructor takes a key in the form of
+  // an array of at most (width) integers that should be 0 <= x < (width).
+  //
+  // The g(count) method returns a pseudorandom integer that concatenates
+  // the next (count) outputs from ARC4.  Its return value is a number x
+  // that is in the range 0 <= x < (width ^ count).
+  //
+  function ARC4(key) {
+    var t, keylen = key.length,
+        me = this, i = 0, j = me.i = me.j = 0, s = me.S = [];
+
+    // The empty key [] is treated as [0].
+    if (!keylen) { key = [keylen++]; }
+
+    // Set up S using the standard key scheduling algorithm.
+    while (i < width) {
+      s[i] = i++;
+    }
+    for (i = 0; i < width; i++) {
+      s[i] = s[j = mask & (j + key[i % keylen] + (t = s[i]))];
+      s[j] = t;
+    }
+
+    // The "g" method returns the next (count) outputs as one number.
+    (me.g = function(count) {
+      // Using instance members instead of closure state nearly doubles speed.
+      var t, r = 0,
+          i = me.i, j = me.j, s = me.S;
+      while (count--) {
+        t = s[i = mask & (i + 1)];
+        r = r * width + s[mask & ((s[i] = s[j = mask & (j + t)]) + (s[j] = t))];
+      }
+      me.i = i; me.j = j;
+      return r;
+      // For robust unpredictability, the function call below automatically
+      // discards an initial batch of values.  This is called RC4-drop[256].
+      // See http://google.com/search?q=rsa+fluhrer+response&btnI
+    })(width);
+  }
+
+  //
+  // copy()
+  // Copies internal state of ARC4 to or from a plain object.
+  //
+  function copy(f, t) {
+    t.i = f.i;
+    t.j = f.j;
+    t.S = f.S.slice();
+    return t;
+  }
+  //
+  // flatten()
+  // Converts an object tree to nested arrays of strings.
+  //
+  function flatten(obj, depth) {
+    var result = [], typ = (typeof obj), prop;
+    if (depth && typ == 'object') {
+      for (prop in obj) {
+        try { result.push(flatten(obj[prop], depth - 1)); } catch (e) {}
+      }
+    }
+    return (result.length ? result : typ == 'string' ? obj : obj + '\0');
+  }
+
+  //
+  // mixkey()
+  // Mixes a string seed into a key that is an array of integers, and
+  // returns a shortened string seed that is equivalent to the result key.
+  //
+  function mixkey(seed, key) {
+    var stringseed = seed + '', smear, j = 0;
+    while (j < stringseed.length) {
+      key[mask & j] =
+        mask & ((smear ^= key[mask & j] * 19) + stringseed.charCodeAt(j++));
+    }
+    return tostring(key);
+  }
+
+  //
+  // autoseed()
+  // Returns an object for autoseeding, using window.crypto and Node crypto
+  // module if available.
+  //
+  function autoseed() {
+    try {
+      var out;
+      if (nodecrypto && (out = nodecrypto.randomBytes)) ; else {
+        out = new Uint8Array(width);
+        (global.crypto || global.msCrypto).getRandomValues(out);
+      }
+      return tostring(out);
+    } catch (e) {
+      var browser = global.navigator,
+          plugins = browser && browser.plugins;
+      return [+new Date, global, plugins, global.screen, tostring(pool)];
+    }
+  }
+
+  //
+  // tostring()
+  // Converts an array of charcodes to a string
+  //
+  function tostring(a) {
+    return String.fromCharCode.apply(0, a);
+  }
+
+  //
+  // When seedrandom.js is loaded, we immediately mix a few bits
+  // from the built-in RNG into the entropy pool.  Because we do
+  // not want to interfere with deterministic PRNG state later,
+  // seedrandom will not call math.random on its own again after
+  // initialization.
+  //
+  mixkey(math.random(), pool);
+
   function get_all_variables(element) {
+    if (typeof getComputedStyle === 'undefined') {
+      return '';
+    }
     let ret = {};
     if (element.computedStyleMap) {
       for (let [prop, value] of element.computedStyleMap()) {
@@ -4787,6 +4854,9 @@
   }
 
   function get_variable(element, name) {
+    if (typeof getComputedStyle === 'undefined') {
+      return '';
+    }
     return getComputedStyle(element).getPropertyValue(name)
       .trim()
       .replace(/^\(|\)$/g, '');
@@ -4794,8 +4864,8 @@
 
   function inline(map) {
     let result = [];
-    for (let prop in map) {
-      result.push(prop + ':' + map[prop]);
+    for (let [prop, value] of Object.entries(map)) {
+      result.push(prop + ':' + value);
     }
     return result.join(';');
   }
@@ -4816,527 +4886,528 @@
     return transform(getComputedStyle(element).color);
   }
 
-  class Doodle extends HTMLElement {
-    constructor() {
-      super();
-      this.doodle = this.attachShadow({ mode: 'open' });
-      this.extra = {
-        get_variable: name => get_variable(this, name),
-        get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
-      };
-    }
-
-    connectedCallback(again) {
-      if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
-        this.load(again);
-      } else {
-        setTimeout(() => this.load(again));
-      }
-    }
-
-    update(styles) {
-      Cache.clear();
-      let use = this.get_use();
-      if (!styles) styles = un_entity(this.innerHTML);
-      this.innerHTML = styles;
-
-      if (!this.grid_size) {
-        this.grid_size = this.get_grid();
+  if (typeof customElements !== 'undefined') {
+    class Doodle extends HTMLElement {
+      constructor() {
+        super();
+        this.doodle = this.attachShadow({ mode: 'open' });
+        this.extra = {
+          get_variable: name => get_variable(this, name),
+          get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
+        };
       }
 
-      let { x: gx, y: gy, z: gz } = this.grid_size;
-
-      const compiled = this.generate(
-        parse$8(use + styles, this.extra)
-      );
-
-      if (!this.shadowRoot.innerHTML) {
-        Object.assign(this.grid_size, compiled.grid);
-        return this.build_grid(compiled, compiled.grid);
+      connectedCallback(again) {
+        if (this.innerHTML) {
+          this.load(again);
+        } else {
+          setTimeout(() => this.load(again));
+        }
       }
 
-      if (compiled.grid) {
-        let { x, y, z } = compiled.grid;
-        if (gx !== x || gy !== y || gz !== z) {
+      update(styles) {
+        Cache.clear();
+        let use = this.get_use();
+        if (!styles) styles = un_entity(this.innerHTML);
+        this.innerHTML = styles;
+
+        if (!this.grid_size) {
+          this.grid_size = this.get_grid();
+        }
+
+        let { x: gx, y: gy, z: gz } = this.grid_size;
+
+        const compiled = this.generate(
+          parse$8(use + styles, this.extra)
+        );
+
+        if (!this.shadowRoot.innerHTML) {
           Object.assign(this.grid_size, compiled.grid);
           return this.build_grid(compiled, compiled.grid);
         }
-        Object.assign(this.grid_size, compiled.grid);
-      }
-      else {
-        let grid = this.get_grid();
-        let { x, y, z } = grid;
-        if (gx !== x || gy !== y || gz !== z) {
-          Object.assign(this.grid_size, grid);
-          return this.build_grid(
-            this.generate(parse$8(use + styles, this.extra)),
-            grid
-          );
-        }
-      }
 
-      let replace = this.replace(compiled);
-      this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
-
-      if (compiled.props.has_animation) {
-        this.set_content('.style-cells', '');
-        this.set_content('.style-container', '');
-      }
-
-      setTimeout(() => {
-        this.set_content('.style-container', replace(
-            get_grid_styles(this.grid_size)
-          + compiled.styles.host
-          + compiled.styles.container
-        ));
-        this.set_content('.style-cells', replace(compiled.styles.cells));
-      });
-    }
-
-    get grid() {
-      return Object.assign({}, this.grid_size);
-    }
-
-    set grid(grid) {
-      this.attr('grid', grid);
-      this.connectedCallback(true);
-    }
-
-    get seed() {
-      return this._seed_value;
-    }
-
-    set seed(seed) {
-      this.attr('seed', seed);
-      this.connectedCallback(true);
-    }
-
-    get use() {
-      return this.attr('use');
-    }
-
-    set use(use) {
-      this.attr('use', use);
-      this.connectedCallback(true);
-    }
-
-    static get observedAttributes() {
-      return ['grid', 'use', 'seed'];
-    }
-
-    attributeChangedCallback(name, old_val, new_val) {
-      if (old_val == new_val) {
-        return false;
-      }
-      let observed = ['grid', 'use', 'seed'].includes(name);
-      if (observed && !is_nil(old_val)) {
-        this[name] = new_val;
-      }
-    }
-
-    get_grid() {
-      return parse_grid(this.attr('grid'));
-    }
-
-    get_use() {
-      let use = this.attr('use') || '';
-      if (use) use = `@use:${ use };`;
-      return use;
-    }
-
-    attr(name, value) {
-      if (arguments.length === 1) {
-        return this.getAttribute(name);
-      }
-      if (arguments.length === 2) {
-        this.setAttribute(name, value);
-        return value;
-      }
-    }
-
-    generate(parsed) {
-      let grid = this.get_grid();
-      let seed = this.attr('seed') || this.attr('data-seed');
-
-      if (is_nil(seed)) {
-        seed = Date.now();
-      }
-
-      seed = String(seed);
-      this._seed_value = seed;
-
-      let random = this.random = seedrandom(seed);
-      let compiled = this.compiled = generator(parsed, grid, random);
-      return compiled;
-    }
-
-    doodle_to_image(code, options, fn) {
-      if (typeof options === 'function') {
-        fn = options;
-        options = null;
-      }
-      let parsed = parse$8(code, this.extra);
-      let _grid = parse_grid({});
-      let compiled = generator(parsed, _grid, this.random);
-      let grid = compiled.grid ? compiled.grid : _grid;
-      const { keyframes, host, container, cells } = compiled.styles;
-
-      let replace = this.replace(compiled);
-      let grid_container = create_grid(grid);
-
-      let size = (options && options.width && options.height)
-        ? `width="${ options.width }" height="${ options.height }"`
-        : '';
-
-      replace(`
-      <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-        <foreignObject width="100%" height="100%">
-          <div class="host" xmlns="http://www.w3.org/1999/xhtml">
-            <style>
-              ${ get_basic_styles() }
-              ${ get_grid_styles(grid) }
-              ${ host }
-              ${ container }
-              ${ cells }
-              ${ keyframes }
-            </style>
-            <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0; height:0"></svg>
-            ${ grid_container }
-          </div>
-        </foreignObject>
-      </svg>
-    `).then(result => {
-        let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(result))) }`;
-        if (is_safari()) {
-          cache_image(source);
-        }
-        fn(source);
-      });
-    }
-
-    pattern_to_image({ code, cell }, fn) {
-      let shader = draw_pattern(code, this.extra);
-      this.shader_to_image({ shader, cell }, fn);
-    }
-
-    canvas_to_image({ code }, fn) {
-      draw_canvas(code).then(fn);
-    }
-
-    shader_to_image({ shader, cell }, fn) {
-      let parsed = parse$7(shader);
-      let element = this.doodle.getElementById(cell);
-      let { width, height } = element && element.getBoundingClientRect() || {
-        width: 0, height: 0
-      };
-      let ratio = window.devicePixelRatio || 1;
-
-      if (!parsed.textures.length) {
-        draw_shader(parsed, width, height).then(fn);
-      }
-      // Need to bind textures first
-      else {
-        let transforms = parsed.textures.map(texture => {
-          return new Promise(resolve => {
-            this.doodle_to_image(texture.value, { width, height }, src => {
-              let img = new Image();
-              img.width = width * ratio;
-              img.height = height * ratio;
-              img.onload = () => resolve({ name: texture.name, value: img });
-              img.src = src;
-            });
-          });
-        });
-        Promise.all(transforms).then(textures => {
-          parsed.textures = textures;
-          draw_shader(parsed, width, height).then(fn);
-        });
-      }
-    }
-
-    load(again) {
-      let use = this.get_use();
-      let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
-      let compiled = this.generate(parsed);
-
-      if (!again) {
-        if (this.hasAttribute('click-to-update')) {
-          this.addEventListener('click', e => this.update());
-        }
-      }
-
-      this.grid_size = compiled.grid
-        ? compiled.grid
-        : this.get_grid();
-
-      this.build_grid(compiled, this.grid_size);
-    }
-
-    replace({ doodles, shaders, canvas, pattern }) {
-      let doodle_ids = Object.keys(doodles);
-      let shader_ids = Object.keys(shaders);
-      let canvas_ids = Object.keys(canvas);
-      let pattern_ids = Object.keys(pattern);
-      let length = doodle_ids.length + canvas_ids.length + shader_ids.length + pattern_ids.length;
-      return input => {
-        if (!length) {
-          return Promise.resolve(input);
-        }
-        let mappings = [].concat(
-          doodle_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.doodle_to_image(doodles[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-          shader_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.shader_to_image(shaders[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-          canvas_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.canvas_to_image(canvas[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-          pattern_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.pattern_to_image(pattern[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-        );
-
-        return Promise.all(mappings).then(mapping => {
-          if (input.replaceAll) {
-            mapping.forEach(({ id, value }) => {
-              input = input.replaceAll(
-                '${' + id + '}',
-                /^canvas/.test(id) ? value : `url(${value})`
-              );
-            });
-          } else {
-            mapping.forEach(({ id, value }) => {
-              input = input.replace(
-                '${' + id + '}',
-                /^canvas/.test(id) ? value : `url(${value})`
-              );
-            });
+        if (compiled.grid) {
+          let { x, y, z } = compiled.grid;
+          if (gx !== x || gy !== y || gz !== z) {
+            Object.assign(this.grid_size, compiled.grid);
+            return this.build_grid(compiled, compiled.grid);
           }
-          return input;
-        });
-      }
-    }
+          Object.assign(this.grid_size, compiled.grid);
+        }
+        else {
+          let grid = this.get_grid();
+          let { x, y, z } = grid;
+          if (gx !== x || gy !== y || gz !== z) {
+            Object.assign(this.grid_size, grid);
+            return this.build_grid(
+              this.generate(parse$8(use + styles, this.extra)),
+              grid
+            );
+          }
+        }
 
-    build_grid(compiled, grid) {
-      const { has_transition, has_animation } = compiled.props;
-      let has_delay = (has_transition || has_animation);
+        let replace = this.replace(compiled);
+        this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
 
-      const { keyframes, host, container, cells } = compiled.styles;
-      let style_container = get_grid_styles(grid) + host + container;
-      let style_cells = has_delay ? '' : cells;
+        if (compiled.props.has_animation) {
+          this.set_content('.style-cells', '');
+          this.set_content('.style-container', '');
+        }
 
-      const { uniforms } = compiled;
-
-      let replace = this.replace(compiled);
-
-      this.doodle.innerHTML = `
-      <style>${ get_basic_styles() }</style>
-      <style class="style-keyframes">${ keyframes }</style>
-      <style class="style-container">${ style_container }</style>
-      <style class="style-cells">${ style_cells }</style>
-      <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
-      ${ create_grid(grid) }
-    `;
-
-      this.set_content('.style-container', replace(style_container));
-
-      if (has_delay) {
         setTimeout(() => {
-          this.set_content('.style-cells', replace(cells));
-        }, 50);
-      } else {
-        this.set_content('.style-cells', replace(cells));
-      }
-
-      if (uniforms.time) {
-        this.register_uniform_time();
-      }
-      if (uniforms.mousex || uniforms.mousey) {
-        this.register_uniform_mouse(uniforms);
-      } else {
-        this.remove_uniform_mouse();
-      }
-      if (uniforms.width || uniforms.height) {
-        this.register_uniform_resolution(uniforms);
-      } else {
-        this.remove_uniform_resolution();
-      }
-    }
-
-    register_uniform_mouse(uniforms) {
-      if (!this.uniform_mouse_callback) {
-        let { uniform_mousex, uniform_mousey } = Uniforms;
-        this.uniform_mouse_callback = e => {
-          let data = e.detail || e;
-          if (uniforms.mousex) {
-            this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
-          }
-          if (uniforms.mousey) {
-            this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
-          }
-        };
-        this.addEventListener('pointermove', this.uniform_mouse_callback);
-        let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
-        this.dispatchEvent(event);
-      }
-    }
-
-    remove_uniform_mouse() {
-      if (this.uniform_mouse_callback) {
-        let { uniform_mousex, uniform_mousey } = Uniforms;
-        this.style.removeProperty('--' + uniform_mousex.name);
-        this.style.removeProperty('--' + uniform_mousey.name);
-        this.removeEventListener('pointermove', this.uniform_mouse_callback);
-        this.uniform_mouse_callback = null;
-      }
-    }
-
-    register_uniform_resolution(uniforms) {
-      if (!this.uniform_resolution_observer) {
-        let { uniform_width, uniform_height } = Uniforms;
-        const setProperty = () => {
-          let box = this.getBoundingClientRect();
-          if (uniforms.width) {
-            this.style.setProperty('--' + uniform_width.name, box.width);
-          }
-          if (uniforms.height) {
-            this.style.setProperty('--' + uniform_height.name, box.height);
-          }
-        };
-        setProperty();
-        this.uniform_resolution_observer = new ResizeObserver(entries => {
-          for (let entry of entries) {
-            let data = entry.contentBoxSize || entry.contentRect;
-            if (data) setProperty();
-          }
+          this.set_content('.style-container', replace(
+              get_grid_styles(this.grid_size)
+            + compiled.styles.host
+            + compiled.styles.container
+          ));
+          this.set_content('.style-cells', replace(compiled.styles.cells));
         });
-        this.uniform_resolution_observer.observe(this);
       }
-    }
 
-    remove_uniform_resolution() {
-      if (this.uniform_resolution_observer) {
-        let { uniform_width, uniform_height } = Uniforms;
-        this.style.removeProperty('--' + uniform_width.name);
-        this.style.removeProperty('--' + uniform_height.name);
-        this.uniform_resolution_observer.unobserve(this);
-        this.uniform_resolution_observer = null;
+      get grid() {
+        return Object.assign({}, this.grid_size);
       }
-    }
 
-    register_uniform_time() {
-      if (!window.CSS || !window.CSS.registerProperty) {
-        return false;
+      set grid(grid) {
+        this.attr('grid', grid);
+        this.connectedCallback(true);
       }
-      if (!this.is_uniform_time_registered) {
-        let { uniform_time } = Uniforms;
-        try {
-          CSS.registerProperty({
-            name: '--' + uniform_time.name,
-            syntax: '<number>',
-            initialValue: 0,
-            inherits: true
-          });
-        } catch (e) {}
-        this.is_uniform_time_registered = true;
+
+      get seed() {
+        return this._seed_value;
       }
-    }
 
-    export({ scale, name, download, detail } = {}) {
-      return new Promise((resolve, reject) => {
-        let variables = get_all_variables(this);
-        let html = this.doodle.innerHTML;
+      set seed(seed) {
+        this.attr('seed', seed);
+        this.connectedCallback(true);
+      }
 
-        let { width, height } = this.getBoundingClientRect();
-        scale = parseInt(scale) || 1;
+      get use() {
+        return this.attr('use');
+      }
 
-        let w = width * scale;
-        let h = height * scale;
+      set use(use) {
+        this.attr('use', use);
+        this.connectedCallback(true);
+      }
 
-        let svg = minify(`
-        <svg xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
-          viewBox="0 0 ${ width } ${ height }"
-          ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
-        >
+      static get observedAttributes() {
+        return ['grid', 'use', 'seed'];
+      }
+
+      attributeChangedCallback(name, old_val, new_val) {
+        if (old_val == new_val) {
+          return false;
+        }
+        let observed = ['grid', 'use', 'seed'].includes(name);
+        if (observed && !is_nil(old_val)) {
+          this[name] = new_val;
+        }
+      }
+
+      get_grid() {
+        return parse_grid(this.attr('grid'));
+      }
+
+      get_use() {
+        let use = this.attr('use') || '';
+        if (use) use = `@use:${ use };`;
+        return use;
+      }
+
+      attr(name, value) {
+        if (arguments.length === 1) {
+          return this.getAttribute(name);
+        }
+        if (arguments.length === 2) {
+          this.setAttribute(name, value);
+          return value;
+        }
+      }
+
+      generate(parsed) {
+        let grid = this.get_grid();
+        let seed = this.attr('seed') || this.attr('data-seed');
+
+        if (is_nil(seed)) {
+          seed = Date.now();
+        }
+
+        seed = String(seed);
+        this._seed_value = seed;
+
+        let random = this.random = seedrandom(seed);
+        let compiled = this.compiled = generate_css(parsed, grid, random);
+        return compiled;
+      }
+
+      doodle_to_image(code, options, fn) {
+        if (typeof options === 'function') {
+          fn = options;
+          options = null;
+        }
+        let parsed = parse$8(code, this.extra);
+        let _grid = parse_grid({});
+        let compiled = generate_css(parsed, _grid, this.random);
+        let grid = compiled.grid ? compiled.grid : _grid;
+        const { keyframes, host, container, cells } = compiled.styles;
+
+        let replace = this.replace(compiled);
+        let grid_container = create_grid(grid);
+
+        let size = (options && options.width && options.height)
+          ? `width="${ options.width }" height="${ options.height }"`
+          : '';
+
+        replace(`
+        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
           <foreignObject width="100%" height="100%">
-            <div
-              class="host"
-              xmlns="http://www.w3.org/1999/xhtml"
-              style="width: ${ width }px; height: ${ height }px; "
-            >
-              <style>.host { ${entity(variables)} }</style>
-              ${ html }
+            <div class="host" xmlns="http://www.w3.org/1999/xhtml">
+              <style>
+                ${ get_basic_styles() }
+                ${ get_grid_styles(grid) }
+                ${ host }
+                ${ container }
+                ${ cells }
+                ${ keyframes }
+              </style>
+              <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0; height:0"></svg>
+              ${ grid_container }
             </div>
           </foreignObject>
         </svg>
-      `);
+      `).then(result => {
+          let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(result))) }`;
+          if (is_safari()) {
+            cache_image(source);
+          }
+          fn(source);
+        });
+      }
 
-        if (download || detail) {
-          svg_to_png(svg, w, h, scale)
-            .then(({ source, url, blob }) => {
-              resolve({
-                width: w, height: h, svg, blob, source
+      pattern_to_image({ code, cell }, fn) {
+        let shader = draw_pattern(code, this.extra);
+        this.shader_to_image({ shader, cell }, fn);
+      }
+
+      canvas_to_image({ code }, fn) {
+        draw_canvas(code).then(fn);
+      }
+
+      shader_to_image({ shader, cell }, fn) {
+        let parsed = parse$7(shader);
+        let element = this.doodle.getElementById(cell);
+        let { width, height } = element && element.getBoundingClientRect() || {
+          width: 0, height: 0
+        };
+        let ratio = window.devicePixelRatio || 1;
+
+        if (!parsed.textures.length) {
+          draw_shader(parsed, width, height).then(fn);
+        }
+        // Need to bind textures first
+        else {
+          let transforms = parsed.textures.map(texture => {
+            return new Promise(resolve => {
+              this.doodle_to_image(texture.value, { width, height }, src => {
+                let img = new Image();
+                img.width = width * ratio;
+                img.height = height * ratio;
+                img.onload = () => resolve({ name: texture.name, value: img });
+                img.src = src;
               });
-              if (download) {
-                let a = document.createElement('a');
-                a.download = normalize_png_name(name);
-                a.href = url;
-                a.click();
-              }
-            })
-            .catch(error => {
-              reject(error);
             });
-        } else {
-          resolve({
-            width: w, height: h, svg: svg
+          });
+          Promise.all(transforms).then(textures => {
+            parsed.textures = textures;
+            draw_shader(parsed, width, height).then(fn);
           });
         }
-      });
-    }
+      }
 
-    set_content(selector, styles) {
-      if (styles instanceof Promise) {
-        styles.then(value => {
-          this.set_content(selector, value);
+      load(again) {
+        let use = this.get_use();
+        let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
+        let compiled = this.generate(parsed);
+
+        if (!again) {
+          if (this.hasAttribute('click-to-update')) {
+            this.addEventListener('click', e => this.update());
+          }
+        }
+
+        this.grid_size = compiled.grid
+          ? compiled.grid
+          : this.get_grid();
+
+        this.build_grid(compiled, this.grid_size);
+      }
+
+      replace({ doodles, shaders, canvas, pattern }) {
+        let doodle_ids = Object.keys(doodles);
+        let shader_ids = Object.keys(shaders);
+        let canvas_ids = Object.keys(canvas);
+        let pattern_ids = Object.keys(pattern);
+        let length = doodle_ids.length + canvas_ids.length + shader_ids.length + pattern_ids.length;
+        return input => {
+          if (!length) {
+            return Promise.resolve(input);
+          }
+          let mappings = [].concat(
+            doodle_ids.map(id => {
+              if (input.includes(id)) {
+                return new Promise(resolve => {
+                  this.doodle_to_image(doodles[id], value => resolve({ id, value }));
+                });
+              } else {
+                return Promise.resolve('');
+              }
+            }),
+            shader_ids.map(id => {
+              if (input.includes(id)) {
+                return new Promise(resolve => {
+                  this.shader_to_image(shaders[id], value => resolve({ id, value }));
+                });
+              } else {
+                return Promise.resolve('');
+              }
+            }),
+            canvas_ids.map(id => {
+              if (input.includes(id)) {
+                return new Promise(resolve => {
+                  this.canvas_to_image(canvas[id], value => resolve({ id, value }));
+                });
+              } else {
+                return Promise.resolve('');
+              }
+            }),
+            pattern_ids.map(id => {
+              if (input.includes(id)) {
+                return new Promise(resolve => {
+                  this.pattern_to_image(pattern[id], value => resolve({ id, value }));
+                });
+              } else {
+                return Promise.resolve('');
+              }
+            }),
+          );
+
+          return Promise.all(mappings).then(mapping => {
+            if (input.replaceAll) {
+              mapping.forEach(({ id, value }) => {
+                input = input.replaceAll(
+                  '${' + id + '}',
+                  /^canvas/.test(id) ? value : `url(${value})`
+                );
+              });
+            } else {
+              mapping.forEach(({ id, value }) => {
+                input = input.replace(
+                  '${' + id + '}',
+                  /^canvas/.test(id) ? value : `url(${value})`
+                );
+              });
+            }
+            return input;
+          });
+        }
+      }
+
+      build_grid(compiled, grid) {
+        const { has_transition, has_animation } = compiled.props;
+        let has_delay = (has_transition || has_animation);
+
+        const { keyframes, host, container, cells } = compiled.styles;
+        let style_container = get_grid_styles(grid) + host + container;
+        let style_cells = has_delay ? '' : cells;
+
+        const { uniforms } = compiled;
+
+        let replace = this.replace(compiled);
+
+        this.doodle.innerHTML = `
+        <style>${ get_basic_styles() }</style>
+        <style class="style-keyframes">${ keyframes }</style>
+        <style class="style-container">${ style_container }</style>
+        <style class="style-cells">${ style_cells }</style>
+        <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
+        ${ create_grid(grid) }
+      `;
+
+        this.set_content('.style-container', replace(style_container));
+
+        if (has_delay) {
+          setTimeout(() => {
+            this.set_content('.style-cells', replace(cells));
+          }, 50);
+        } else {
+          this.set_content('.style-cells', replace(cells));
+        }
+
+        if (uniforms.time) {
+          this.register_uniform_time();
+        }
+        if (uniforms.mousex || uniforms.mousey) {
+          this.register_uniform_mouse(uniforms);
+        } else {
+          this.remove_uniform_mouse();
+        }
+        if (uniforms.width || uniforms.height) {
+          this.register_uniform_resolution(uniforms);
+        } else {
+          this.remove_uniform_resolution();
+        }
+      }
+
+      register_uniform_mouse(uniforms) {
+        if (!this.uniform_mouse_callback) {
+          let { uniform_mousex, uniform_mousey } = Uniforms;
+          this.uniform_mouse_callback = e => {
+            let data = e.detail || e;
+            if (uniforms.mousex) {
+              this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
+            }
+            if (uniforms.mousey) {
+              this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
+            }
+          };
+          this.addEventListener('pointermove', this.uniform_mouse_callback);
+          let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
+          this.dispatchEvent(event);
+        }
+      }
+
+      remove_uniform_mouse() {
+        if (this.uniform_mouse_callback) {
+          let { uniform_mousex, uniform_mousey } = Uniforms;
+          this.style.removeProperty('--' + uniform_mousex.name);
+          this.style.removeProperty('--' + uniform_mousey.name);
+          this.removeEventListener('pointermove', this.uniform_mouse_callback);
+          this.uniform_mouse_callback = null;
+        }
+      }
+
+      register_uniform_resolution(uniforms) {
+        if (!this.uniform_resolution_observer) {
+          let { uniform_width, uniform_height } = Uniforms;
+          const setProperty = () => {
+            let box = this.getBoundingClientRect();
+            if (uniforms.width) {
+              this.style.setProperty('--' + uniform_width.name, box.width);
+            }
+            if (uniforms.height) {
+              this.style.setProperty('--' + uniform_height.name, box.height);
+            }
+          };
+          setProperty();
+          this.uniform_resolution_observer = new ResizeObserver(entries => {
+            for (let entry of entries) {
+              let data = entry.contentBoxSize || entry.contentRect;
+              if (data) setProperty();
+            }
+          });
+          this.uniform_resolution_observer.observe(this);
+        }
+      }
+
+      remove_uniform_resolution() {
+        if (this.uniform_resolution_observer) {
+          let { uniform_width, uniform_height } = Uniforms;
+          this.style.removeProperty('--' + uniform_width.name);
+          this.style.removeProperty('--' + uniform_height.name);
+          this.uniform_resolution_observer.unobserve(this);
+          this.uniform_resolution_observer = null;
+        }
+      }
+
+      register_uniform_time() {
+        if (!window.CSS || !window.CSS.registerProperty) {
+          return false;
+        }
+        if (!this.is_uniform_time_registered) {
+          let { uniform_time } = Uniforms;
+          try {
+            CSS.registerProperty({
+              name: '--' + uniform_time.name,
+              syntax: '<number>',
+              initialValue: 0,
+              inherits: true
+            });
+          } catch (e) {}
+          this.is_uniform_time_registered = true;
+        }
+      }
+
+      export({ scale, name, download, detail } = {}) {
+        return new Promise((resolve, reject) => {
+          let variables = get_all_variables(this);
+          let html = this.doodle.innerHTML;
+
+          let { width, height } = this.getBoundingClientRect();
+          scale = parseInt(scale) || 1;
+
+          let w = width * scale;
+          let h = height * scale;
+
+          let svg = `
+          <svg xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            viewBox="0 0 ${ width } ${ height }"
+            ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
+          >
+            <foreignObject width="100%" height="100%">
+              <div
+                class="host"
+                xmlns="http://www.w3.org/1999/xhtml"
+                style="width: ${ width }px; height: ${ height }px; "
+              >
+                <style>.host { ${entity(variables)} }</style>
+                ${ html }
+              </div>
+            </foreignObject>
+          </svg>
+        `;
+
+          if (download || detail) {
+            svg_to_png(svg, w, h, scale)
+              .then(({ source, url, blob }) => {
+                resolve({
+                  width: w, height: h, svg, blob, source
+                });
+                if (download) {
+                  let a = document.createElement('a');
+                  a.download = normalize_png_name(name);
+                  a.href = url;
+                  a.click();
+                }
+              })
+              .catch(error => {
+                reject(error);
+              });
+          } else {
+            resolve({
+              width: w, height: h, svg: svg
+            });
+          }
         });
-      } else {
-        const el = this.shadowRoot.querySelector(selector);
-        el && (el.styleSheet
-          ? (el.styleSheet.cssText = styles )
-          : (el.innerHTML = styles));
+      }
+
+      set_content(selector, styles) {
+        if (styles instanceof Promise) {
+          styles.then(value => {
+            this.set_content(selector, value);
+          });
+        } else {
+          const el = this.shadowRoot.querySelector(selector);
+          el && (el.styleSheet
+            ? (el.styleSheet.cssText = styles )
+            : (el.innerHTML = styles));
+        }
       }
     }
-  }
-
-  if (!customElements.get('css-doodle')) {
-    customElements.define('css-doodle', Doodle);
+    if (!customElements.get('css-doodle')) {
+      customElements.define('css-doodle', Doodle);
+    }
   }
 
   function get_basic_styles() {
@@ -5392,12 +5463,6 @@
   `;
   }
 
-  function minify(input) {
-    return input
-      .replace(/\n\s+|^\s+|\n+/g, ' ')
-      .trim();
-  }
-
   function create_cell(x, y, z) {
     let cell = document.createElement('cell');
     cell.id = cell_id(x, y, z);
@@ -5437,6 +5502,8 @@
     return doodle;
   });
 
-  return CSSDoodle;
+  exports.CSSDoodle = CSSDoodle;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
