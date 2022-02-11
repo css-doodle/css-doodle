@@ -1,7 +1,5 @@
 import parse_var from './parse-var.js';
-import List from '../utils/list.js';
-
-let { first, last, clone } = List();
+import { first, last, clone } from '../utils/list.js';
 
 const Tokens = {
   func(name = '') {

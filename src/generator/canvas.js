@@ -39,5 +39,5 @@ function generate(name, code) {
 }
 
 export {
-  draw_canvas
+  draw_canvas,
 }

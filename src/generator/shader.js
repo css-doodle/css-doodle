@@ -114,5 +114,5 @@ function draw_shader(shaders, width, height) {
 }
 
 export {
-  draw_shader
+  draw_shader,
 }

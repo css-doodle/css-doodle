@@ -3,14 +3,11 @@
  * Translated from: https://mrl.nyu.edu/~perlin/noise/
  */
 
-import Random from './random.js';
-import List from './list.js';
+import { lerp } from './index.js';
+import { duplicate } from './list.js';
 
 export default class Perlin {
-  constructor(random) {
-    let { lerp } = Random(random);
-    let { shuffle, duplicate } = List(random);
-    this.lerp = lerp;
+  constructor(shuffle) {
     this.p = duplicate(shuffle([
       151,160,137,91,90,15,
       131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -37,7 +34,7 @@ export default class Perlin {
   }
 
   noise(x, y, z) {
-    let { p, grad, lerp } = this;
+    let { p, grad } = this;
     // Find unit cube that contains point.
     let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
     // Find relative x, y, z of point in cube.

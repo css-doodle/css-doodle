@@ -10,7 +10,7 @@ function parse(input) {
       ret.value = Number(curr.value);
       matched = true;
     }
-    else if (matched && curr.isWord() && prev && prev.isNumber()) {
+    else if (matched && (curr.isWord() || curr.isSymbol()) && prev && prev.isNumber()) {
       ret.unit = curr.value;
     } else {
       break;

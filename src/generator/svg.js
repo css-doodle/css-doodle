@@ -140,4 +140,6 @@ function generate_svg(token) {
   return generate(token);
 }
 
-export { generate_svg }
+export {
+  generate_svg,
+}

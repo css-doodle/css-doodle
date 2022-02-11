@@ -9,6 +9,10 @@ test('direction group', t => {
 
   compare(t, '', {});
 
+  compare(t, '10', {
+    value: 10,
+  });
+
   compare(t, '10em', {
     value: 10,
     unit: 'em'
@@ -21,6 +25,11 @@ test('direction group', t => {
 
   compare(t, '-10.5 vw', {
     value: -10.5,
+  });
+
+  compare(t, '10%', {
+    value: 10,
+    unit: '%'
   });
 
 });

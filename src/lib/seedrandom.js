@@ -18,7 +18,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-var global = window;
+var global = globalThis;
 var math = Math;
 var pool = [];
 
@@ -224,4 +224,6 @@ function tostring(a) {
 //
 mixkey(math.random(), pool);
 
-export default seedrandom;
+export {
+  seedrandom,
+}

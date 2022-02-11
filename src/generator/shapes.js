@@ -341,5 +341,5 @@ function create_shape_points(props, {min, max}) {
 export {
   create_polygon_points,
   create_shape_points,
-  shapes
+  shapes,
 }

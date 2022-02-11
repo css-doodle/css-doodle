@@ -1,15 +1,8 @@
-import List from './list.js';
-const { last, flat_map } = List();
+import { last, flat_map } from './list.js';
 
 import { range } from './index.js';
-import memo from './memo.js';
-import by_charcode from './by-charcode.js';
-
-export default function expand(fn) {
-  return (...args) => fn.apply(null, flat_map(args, n =>
-    String(n).startsWith('[') ? build_range(n) : n
-  ));
-}
+import { memo } from './memo.js';
+import { by_charcode } from './transform.js';
 
 function Type(type, value) {
   return { type, value };
@@ -66,3 +59,13 @@ const build_range = memo('build_range', (input) => {
     return result;
   });
 });
+
+function expand(fn) {
+  return (...args) => fn(...flat_map(args, n =>
+    String(n).startsWith('[') ? build_range(n) : n
+  ));
+}
+
+export {
+  expand,
+}

@@ -44,4 +44,6 @@ function svg_to_png(svg, width, height, scale) {
   });
 }
 
-export { svg_to_png }
+export {
+  svg_to_png,
+}

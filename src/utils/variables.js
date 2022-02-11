@@ -1,4 +1,7 @@
-export function get_all_variables(element) {
+function get_all_variables(element) {
+  if (typeof getComputedStyle === 'undefined') {
+    return '';
+  }
   let ret = {};
   if (element.computedStyleMap) {
     for (let [prop, value] of element.computedStyleMap()) {
@@ -17,7 +20,10 @@ export function get_all_variables(element) {
   return inline(ret);
 }
 
-export function get_variable(element, name) {
+function get_variable(element, name) {
+  if (typeof getComputedStyle === 'undefined') {
+    return '';
+  }
   return getComputedStyle(element).getPropertyValue(name)
     .trim()
     .replace(/^\(|\)$/g, '');
@@ -25,9 +31,13 @@ export function get_variable(element, name) {
 
 function inline(map) {
   let result = [];
-  for (let prop in map) {
-    result.push(prop + ':' + map[prop]);
+  for (let [prop, value] of Object.entries(map)) {
+    result.push(prop + ':' + value);
   }
   return result.join(';');
 }
 
+export {
+  get_all_variables,
+  get_variable,
+}

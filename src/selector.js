@@ -1,72 +1,75 @@
-import nth from './utils/nth.js';
 import calc from './calc.js';
 
-const is = {
+const literal = {
   even: n => !(n % 2),
-  odd:  n => !!(n % 2)
+  odd:  n => !!(n % 2),
 };
 
-function even_or_odd(expr) {
-  return /^(even|odd)$/.test(expr);
+/**
+ * TODO: optimization
+ */
+function nth(input, curr, max) {
+  for (let i = 0; i <= max; ++i) {
+    if (calc(input, { n: i }) == curr) {
+      return true;
+    }
+  }
 }
 
-export default function(random) {
+export default {
 
-  return {
+  at({ x, y }) {
+    return (x1, y1) => (x == x1 && y == y1);
+  },
 
-    at({ x, y }) {
-      return (x1, y1) => (x == x1 && y == y1);
-    },
+  nth({ count, grid }) {
+    return (...exprs) => exprs.some(expr =>
+      literal[expr]
+        ? literal[expr](count)
+        : nth(expr, count, grid.count)
+    );
+  },
 
-    nth({ count, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        even_or_odd(expr)
-          ? is[expr](count)
-          : nth(expr, count, grid.count)
-      );
-    },
+  row({ y, grid }) {
+    return (...exprs) => exprs.some(expr =>
+      literal[expr]
+        ? literal[expr](y)
+        : nth(expr, y, grid.y)
+    );
+  },
 
-    row({ y, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        even_or_odd(expr)
-          ? is[expr](y)
-          : nth(expr, y, grid.y)
-      );
-    },
+  col({ x, grid }) {
+    return (...exprs) => exprs.some(expr =>
+      literal[expr]
+        ? literal[expr](x)
+        : nth(expr, x, grid.x)
+    );
+  },
 
-    col({ x, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        even_or_odd(expr)
-          ? is[expr](x)
-          : nth(expr, x, grid.x)
-      );
-    },
+  even({ count, grid, x, y }) {
+    return arg => literal.odd(x + y);
+  },
 
-    even({ count, grid, x, y }) {
-      return arg => is.odd(x + y);
-    },
+  odd({ count, grid, x, y}) {
+    return arg => literal.even(x + y);
+  },
 
-    odd({ count, grid, x, y}) {
-      return arg => is.even(x + y);
-    },
-
-    random() {
-      return (ratio = .5) => {
-        if (ratio >= 1 && ratio <= 0) ratio = .5;
-        return random() < ratio;
-      }
-    },
-
-    match({ count, grid, x, y }) {
-      return expr => {
-        return !!calc('(' + expr + ')', {
-          x, X: grid.x,
-          y, Y: grid.y,
-          i: count, I: grid.count,
-          random,
-        });
-      }
+  random({ random }) {
+    return (ratio = .5) => {
+      if (ratio >= 1 && ratio <= 0) ratio = .5;
+      return random() < ratio;
     }
+  },
 
-  }
+  match({ count, grid, x, y, random }) {
+    return expr => {
+      return !!calc('(' + expr + ')', {
+        x, X: grid.x,
+        y, Y: grid.y,
+        i: count, I: grid.count,
+        random,
+      });
+    }
+  },
+
 }

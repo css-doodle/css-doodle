@@ -1,16 +1,13 @@
 import Func from '../function.js';
 import Property from '../property.js';
 import Selector from '../selector.js';
-import prefixer from '../utils/prefixer.js';
 import parse_value_group from '../parser/parse-value-group.js';
 import { uniform_time } from '../uniforms.js';
-import random_func from '../utils/random.js';
+import { prefixer } from '../utils/prefixer.js';
 import calc from '../calc.js';
 
-import { maybe, cell_id, is_nil, get_value } from '../utils/index.js';
-
-import List from '../utils/list.js';
-let { join, make_array, remove_empty_values } = List();
+import { maybe, cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
+import { join, make_array, remove_empty_values } from '../utils/list.js'
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -37,7 +34,7 @@ for (let name of Object.getOwnPropertyNames(Math)) {
 
 class Rules {
 
-  constructor(tokens, random) {
+  constructor(tokens) {
     this.tokens = tokens;
     this.rules = {};
     this.props = {};
@@ -50,11 +47,8 @@ class Rules {
     this.pattern = {};
     this.shaders = {};
     this.reset();
-    this.Func = Func(random);
-    this.Selector = Selector(random);
     this.custom_properties = {};
     this.uniforms = {};
-    this.unique_id = random_func(random).unique_id;
   }
 
   reset() {
@@ -85,7 +79,7 @@ class Rules {
   }
 
   pick_func(name) {
-    return this.Func[name] || MathFunc[name];
+    return Func[name] || MathFunc[name];
   }
 
   apply_func(fn, coords, args) {
@@ -171,13 +165,13 @@ class Rules {
   }
 
   compose_doodle(doodle) {
-    let id = this.unique_id('doodle');
+    let id = unique_id('doodle');
     this.doodles[id] = doodle;
     return '${' + id + '}';
   }
 
   compose_shaders(shader, {x, y, z}) {
-    let id = this.unique_id('shader');
+    let id = unique_id('shader');
     this.shaders[id] = {
       shader,
       cell: cell_id(x, y, z)
@@ -186,7 +180,7 @@ class Rules {
   }
 
   compose_pattern(code, {x, y, z}) {
-    let id = this.unique_id('pattern');
+    let id = unique_id('pattern');
     this.pattern[id] = {
       code,
       cell: cell_id(x, y, z)
@@ -200,7 +194,7 @@ class Rules {
     if (result.length) {
       commands = code + ',' + result;
     }
-    let id = this.unique_id('canvas');
+    let id = unique_id('canvas');
     this.canvas[id] = { code: commands };
     return '${' + id + '}';
   }
@@ -359,20 +353,21 @@ class Rules {
       this.custom_properties[prop] = value;
     }
 
-    if (Property[prop]) {
-      let transformed = Property[prop](value, {
+    if (/^@/.test(prop) && Property[prop.substr(1)]) {
+      let name = prop.substr(1);
+      let transformed = Property[name](value, {
         is_special_selector: is_special_selector(selector),
         grid: coords.grid,
         extra
       });
-      switch (prop) {
-        case '@grid': {
+      switch (name) {
+        case 'grid': {
           if (is_host_selector(selector)) {
             rule = transformed.size || '';
           } else {
             rule = '';
             if (!this.is_grid_defined) {
-              transformed = Property[prop](value, {
+              transformed = Property[name](value, {
                 is_special_selector: true,
                 grid: coords.grid
               });
@@ -383,13 +378,14 @@ class Rules {
           this.is_grid_defined = true;
           break;
         }
-        case '@place-cell': {
+        case 'place-cell':
+        case 'offset': {
           if (!is_host_selector(selector)) {
             rule = transformed;
           }
           break;
         }
-        case '@use': {
+        case 'use': {
           if (token.value.length) {
             this.compose(coords, token.value);
           }
@@ -417,7 +413,8 @@ class Rules {
           return ret;
         }, []);
         let value = value_group.join(', ');
-        let transformed = Property[prop](value, {});
+        let name = prop.substr(1);
+        let transformed = Property[name](value, {});
         this.grid = transformed.grid;
         break;
       }
@@ -486,7 +483,7 @@ class Rules {
         }
 
         case 'cond': {
-          let fn = this.Selector[token.name.substr(1)];
+          let fn = Selector[token.name.substr(1)];
           if (fn) {
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
@@ -578,14 +575,38 @@ class Rules {
 
 }
 
-export default
-function generator(tokens, grid_size, random) {
-  let rules = new Rules(tokens, random);
+function generate_css(tokens, grid_size, random) {
+  let rules = new Rules(tokens);
   let context = {};
+
+  function rand(start = 0, end) {
+    if (arguments.length == 1) {
+      [start, end] = [0, start];
+    }
+    return lerp(random(), start, end);
+  }
+
+  function pick(...items) {
+    let args = items.reduce((acc, n) => acc.concat(n), []);
+    return args[~~(random() * args.length)];
+  }
+
+  function shuffle(arr) {
+    let ret = [...arr];
+    let m = arr.length;
+    while (m) {
+      let i = ~~(random() * m--);
+      let t = ret[m];
+      ret[m] = ret[i];
+      ret[i] = t;
+    }
+    return ret;
+  }
 
   rules.pre_compose({
     x: 1, y: 1, z: 1, count: 1, context: {},
-    grid: { x: 1, y: 1, z: 1, count: 1 }
+    grid: { x: 1, y: 1, z: 1, count: 1 },
+    random, rand, pick, shuffle,
   });
 
   let { grid } = rules.output();
@@ -597,7 +618,8 @@ function generator(tokens, grid_size, random) {
       for (let x = 1; x <= grid_size.x; ++x) {
         rules.compose({
           x, y, z: 1,
-          count: ++count, grid: grid_size, context
+          count: ++count, grid: grid_size, context,
+          random, rand, pick, shuffle,
         });
       }
     }
@@ -606,10 +628,15 @@ function generator(tokens, grid_size, random) {
     for (let z = 1, count = 0; z <= grid_size.z; ++z) {
       rules.compose({
         x: 1, y: 1, z,
-        count: ++count, grid: grid_size, context
+        count: ++count, grid: grid_size, context,
+        random, rand, pick, shuffle,
       });
     }
   }
 
   return rules.output();
+}
+
+export {
+  generate_css,
 }

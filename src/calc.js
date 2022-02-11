@@ -2,9 +2,8 @@
  * Based on the Shunting-yard algorithm.
  */
 
-import List from './utils/list.js';
+import { last } from './utils/list.js';
 import { is_invalid_number } from './utils/index.js';
-let { last } = List();
 
 const default_context = {
   'π': Math.PI,
@@ -12,11 +11,6 @@ const default_context = {
     while (b) [a, b] = [b, a % b];
     return a;
   }
-}
-
-export default function(input, context) {
-  const expr = infix_to_postfix(input);
-  return calc(expr, Object.assign({}, default_context, context));
 }
 
 const operator = {
@@ -276,4 +270,9 @@ function expand(value, context) {
 
 function is_cycle(array) {
   return (array[0] == array[2] && array[1] == array[3]);
+}
+
+export default function(input, context) {
+  const expr = infix_to_postfix(input);
+  return calc(expr, Object.assign({}, default_context, context));
 }

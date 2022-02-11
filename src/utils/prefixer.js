@@ -1,4 +1,4 @@
-import get_props from './get-props.js';
+import { get_props } from './get-props.js';
 
 function build_mapping(prefix) {
   let reg = new RegExp(`\\-?${ prefix }\\-?`);
@@ -10,7 +10,7 @@ function build_mapping(prefix) {
 const props_webkit_mapping = build_mapping('webkit');
 const props_moz_mapping = build_mapping('moz');
 
-export default function(prop, rule) {
+function prefixer(prop, rule) {
   if (props_webkit_mapping[prop]) {
     return `-webkit-${ rule } ${ rule }`;
   }
@@ -18,4 +18,8 @@ export default function(prop, rule) {
     return `-moz-${ rule } ${ rule }`;
   }
   return rule;
+}
+
+export {
+  prefixer,
 }
