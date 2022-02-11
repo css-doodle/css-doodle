@@ -6,7 +6,7 @@ import { is_preset, get_preset } from './preset-size.js';
 
 import { prefixer } from './utils/prefixer.js';
 import { memo } from './utils/memo.js';
-import { alias_for } from './utils/index.js';
+import { add_alias } from './utils/index.js';
 
 const map_left_right = {
   center: '50%',
@@ -20,7 +20,7 @@ const map_top_bottom = {
   left: '50%', right: '50%',
 };
 
-export default alias_for({
+export default add_alias({
 
   size(value, { is_special_selector, grid }) {
     let [w, h = w] = parse_value_group(value);

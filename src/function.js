@@ -1,7 +1,7 @@
 import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { generate_svg } from './generator/svg.js';
 
-import { cell_id, is_letter, alias_for, unique_id, lerp } from './utils/index.js';
+import { cell_id, is_letter, add_alias, unique_id, lerp } from './utils/index.js';
 import { lazy, clamp, sequence, get_value } from './utils/index.js';
 import { by_unit, by_charcode } from './utils/transform.js';
 
@@ -55,7 +55,7 @@ function map2d(value, min, max, amp = 1) {
   return lerp((value - ma) / (mb - ma), min * amp, max * amp);
 }
 
-export default alias_for({
+export default add_alias({
 
   i({ count }) {
     return _ => count;

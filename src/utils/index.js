@@ -25,10 +25,10 @@ function range(start, stop, step) {
   return range;
 }
 
-function alias_for(obj, names) {
-  Object.keys(names).forEach(n => {
-    obj[n] = obj[names[n]];
-  });
+function add_alias(obj, names) {
+  for (let [alias, name] of Object.entries(names)) {
+    obj[alias] = obj[name];
+  }
   return obj;
 }
 
@@ -152,7 +152,7 @@ export {
   clamp,
   maybe,
   range,
-  alias_for,
+  add_alias,
   is_letter,
   is_nil,
   is_invalid_number,

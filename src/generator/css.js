@@ -514,22 +514,20 @@ class Rules {
   }
 
   output() {
-    Object.keys(this.rules).forEach((selector, i) => {
+    for (let [selector, rule] of Object.entries(this.rules)) {
       if (is_parent_selector(selector)) {
         this.styles.container += `
           .container {
-            ${ join(this.rules[selector]) }
+            ${ join(rule) }
           }
         `;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
-        let value = join(this.rules[selector]).trim();
+        let value = join(rule).trim();
         let name = (target === 'host') ? `${ selector }, .host` : selector;
         this.styles[target] += `${ name } { ${ value  } }`;
       }
-    });
-
-    let keyframes = Object.keys(this.keyframes);
+    }
 
     if (this.uniforms.time) {
       this.styles.container += `
@@ -546,19 +544,15 @@ class Rules {
     }
 
     this.coords.forEach((coords, i) => {
-      keyframes.forEach(name => {
+      for (let [name, keyframe] of Object.entries(this.keyframes)) {
         let aname = this.compose_aname(name, coords.count);
         this.styles.keyframes += `
-          ${ maybe(i === 0,
-            `@keyframes ${ name } {
-              ${ this.keyframes[name](coords) }
-            }`
-          )}
+          ${ maybe(i === 0, `@keyframes ${ name } { ${ keyframe(coords) } }`)}
           @keyframes ${ aname } {
-            ${ this.keyframes[name](coords) }
+            ${ keyframe(coords) }
           }
         `;
-      });
+      }
     });
 
     return {
