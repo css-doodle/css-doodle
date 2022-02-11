@@ -1,9 +1,9 @@
-## 0.24.5
+## 0.25.0
 
 ### Fixes
 
 * Fixed keyframes parsing error. (#54)
-* Fixed comments inside pseudo elements. (#56, 57)
+* Fixed comments inside pseudo elements. (#56, #57)
 
 ### Enhancement
 
