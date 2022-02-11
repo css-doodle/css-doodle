@@ -505,8 +505,14 @@ function read_cond_selector(it) {
 function read_pseudo(it, extra) {
   let pseudo = Tokens.pseudo(), c;
   while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    if (is.white_space(c)) {
+    c = it.curr();
+    if (c == '/' && it.curr(1) == '*') {
+      read_comments(it);
+    }
+    else if (c == '}') {
+      break;
+    }
+    else if (is.white_space(c)) {
       it.next();
       continue;
     }
@@ -519,7 +525,7 @@ function read_pseudo(it, extra) {
         pseudo.styles = pseudo.styles.concat(
           rule.value
         );
-      } else if (rule.property !== '}') {
+      } else {
         pseudo.styles.push(rule);
       }
       if (it.curr() == '}') break;
@@ -558,7 +564,11 @@ function read_rule(it, extra) {
 function read_cond(it, extra) {
   let cond = Tokens.cond(), c;
   while (!it.end()) {
-    if ((c = it.curr()) == '}') {
+    c = it.curr();
+    if (c == '/' && it.curr(1) == '*') {
+      read_comments(it);
+    }
+    else if (c == '}') {
       break;
     }
     else if (!cond.name.length) {
@@ -646,9 +656,6 @@ export default function parse(input, extra) {
     }
     else if (c == '/' && it.curr(1) == '*') {
       read_comments(it);
-    }
-    else if (c == '/' && it.curr(1) == '/') {
-      read_comments(it, { inline: true });
     }
     else if (c == ':') {
       let pseudo = read_pseudo(it, extra);
