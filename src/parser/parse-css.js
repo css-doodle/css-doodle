@@ -207,7 +207,7 @@ function read_keyframes(it, extra) {
       }
       continue;
     }
-    else if (c == '{') {
+    else if (c == '{' || it.curr(-1) == '{') {
       it.next();
       keyframes.steps = read_steps(it, extra);
       break;
