@@ -36,7 +36,7 @@ if (typeof customElements !== 'undefined') {
     }
 
     connectedCallback(again) {
-      if (/^(complete|interactive|loaded)$/.test(document.readyState)) {
+      if (this.innerHTML) {
         this.load(again);
       } else {
         setTimeout(() => this.load(again));
