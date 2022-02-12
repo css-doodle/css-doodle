@@ -225,10 +225,12 @@ function scan(source) {
       let spaces = readSpaces(iter);
       let lastToken = last(tokens);
       let { next } = iter.get();
-
       // Reduce unnecessary spaces
       if (!quoteStack.length && lastToken) {
-        if (ignoreSpacingSymbol(lastToken.value) || ignoreSpacingSymbol(next)) {
+        let prev = lastToken.value;
+        let ignoreLeft = (ignoreSpacingSymbol(prev) && prev !== ')');
+        let ignoreRight = (ignoreSpacingSymbol(next) && next !== '(');
+        if (ignoreLeft || ignoreRight)  {
           continue;
         } else {
           spaces = ' ';
