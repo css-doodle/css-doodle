@@ -259,7 +259,7 @@ export default add_alias({
   },
 
   svg: lazy((...args) => {
-    let value = args.map(input => get_value(input()).trim()).join(',');
+    let value = args.map(input => get_value(input())).join(',');
     if (!value.startsWith('<')) {
       let parsed = parse_svg(value);
       value = generate_svg(parsed);
@@ -269,7 +269,7 @@ export default add_alias({
   }),
 
   filter: lazy((...args) => {
-    let value = args.map(input => get_value(input()).trim()).join(',');
+    let value = args.map(input => get_value(input())).join(',');
     let id = unique_id('filter-');
     if (!value.startsWith('<')) {
       let parsed = parse_svg(value, {

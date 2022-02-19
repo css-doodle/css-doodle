@@ -74,7 +74,7 @@ function cell_id(x, y, z) {
 }
 
 function get_value(input) {
-  while (input && input.value) {
+  while (input && !is_nil(input.value)) {
     return get_value(input.value);
   }
   return is_nil(input) ? '' : input;
