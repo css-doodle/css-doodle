@@ -1,4 +1,4 @@
-/*! css-doodle@0.25.0 */
+/*! css-doodle@0.25.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -232,10 +232,12 @@
         let spaces = readSpaces(iter);
         let lastToken = last$1(tokens);
         let { next } = iter.get();
-
         // Reduce unnecessary spaces
         if (!quoteStack.length && lastToken) {
-          if (ignoreSpacingSymbol(lastToken.value) || ignoreSpacingSymbol(next)) {
+          let prev = lastToken.value;
+          let ignoreLeft = (ignoreSpacingSymbol(prev) && prev !== ')');
+          let ignoreRight = (ignoreSpacingSymbol(next) && next !== '(');
+          if (ignoreLeft || ignoreRight)  {
             continue;
           } else {
             spaces = ' ';
@@ -1118,7 +1120,7 @@
   }
 
   function get_value(input) {
-    while (input && input.value) {
+    while (input && !is_nil(input.value)) {
       return get_value(input.value);
     }
     return is_nil(input) ? '' : input;
@@ -3026,7 +3028,7 @@
     },
 
     svg: lazy((...args) => {
-      let value = args.map(input => get_value(input()).trim()).join(',');
+      let value = args.map(input => get_value(input())).join(',');
       if (!value.startsWith('<')) {
         let parsed = parse$2(value);
         value = generate_svg(parsed);
@@ -3036,7 +3038,7 @@
     }),
 
     filter: lazy((...args) => {
-      let value = args.map(input => get_value(input()).trim()).join(',');
+      let value = args.map(input => get_value(input())).join(',');
       let id = unique_id('filter-');
       if (!value.startsWith('<')) {
         let parsed = parse$2(value, {

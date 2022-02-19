@@ -1,3 +1,14 @@
+## 0.25.1
+
+### Fixes
+
+* Do not remove spaces around parens.
+* Fix svg arguments transform.
+
+<br /> <br />
+
+
+
 ## 0.25.0
 
 ### Fixes
