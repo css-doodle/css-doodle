@@ -1,3 +1,13 @@
+## 0.25.2
+
+### Enhancement
+
+* Support reading CSS variables inside functions.
+
+<br /> <br />
+
+
+
 ## 0.25.1
 
 ### Fixes
