@@ -233,7 +233,9 @@ class Rules {
 
   inject_variables(value, count) {
     let group = this.custom_properties[count];
-    if (group == undefined) value;
+    if (is_nil(group)) {
+      return value;
+    }
     let result = [];
     for (let [name, key] of Object.entries(group)) {
       result.push(`${name}: ${key};`);
