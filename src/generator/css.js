@@ -619,8 +619,7 @@ function generate_css(tokens, grid_size, random) {
 
   function pick(...items) {
     let args = items.reduce((acc, n) => acc.concat(n), []);
-    let idx = ~~(random() * args.length);
-    return [args[idx], idx];
+    return args[~~(random() * args.length)];
   }
 
   function shuffle(arr) {

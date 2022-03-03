@@ -117,33 +117,43 @@ export default add_alias({
 
   p({ context, pick }) {
     return expand((...args) => {
-      if (!args.length && context.last_pick_args) {
-        args = context.last_pick_args;
+      if (!args.length) {
+        args = context.last_pick_args || [];
       }
-      let [picked, index] = pick(args);
+      let picked = pick(args);
       context.last_pick_args = args;
-      context.last_pick_index = index;
-      push_stack(context, 'last_pick', picked);
-      return picked;
+      return push_stack(context, 'last_pick', picked);
     });
   },
 
-  P({ context, pick }) {
+  P({ context, pick, position }) {
+    let counter = 'P-counter' + position;
     return expand((...args) => {
-      if (!args.length && context.last_pick_args) {
-        args = context.last_pick_args;
+      let normal = true;
+      if (!args.length) {
+        args = context.last_pick_args || [];
+        normal = false;
       }
       let stack = context.last_pick;
-      let last_index = context.last_pick_index;
       let last = stack ? stack.last(1) : '';
-      let [picked, index]= pick(args);
-      while (args.length > 1 && last === picked && index === last_index) {
-        [picked, index] = pick(args);
+      if (normal) {
+        if (!context[counter]) {
+          context[counter] = {};
+        }
+        last = context[counter].last_pick;
       }
-      context.last_pick_index = index;
+      if (args.length > 1) {
+        let i = args.findIndex(n => n === last);
+        if (i !== -1) {
+          args.splice(i, 1);
+        }
+      }
+      let picked = pick(args);
       context.last_pick_args = args;
-      push_stack(context, 'last_pick', picked);
-      return picked;
+      if (normal) {
+        context[counter].last_pick = picked;
+      }
+      return push_stack(context, 'last_pick', picked);
     });
   },
 
