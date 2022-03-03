@@ -117,7 +117,33 @@ export default add_alias({
 
   p({ context, pick }) {
     return expand((...args) => {
-      return push_stack(context, 'last_pick', pick(args));
+      if (!args.length && context.last_pick_args) {
+        args = context.last_pick_args;
+      }
+      let [picked, index] = pick(args);
+      context.last_pick_args = args;
+      context.last_pick_index = index;
+      push_stack(context, 'last_pick', picked);
+      return picked;
+    });
+  },
+
+  P({ context, pick }) {
+    return expand((...args) => {
+      if (!args.length && context.last_pick_args) {
+        args = context.last_pick_args;
+      }
+      let stack = context.last_pick;
+      let last_index = context.last_pick_index;
+      let last = stack ? stack.last(1) : '';
+      let [picked, index]= pick(args);
+      while (args.length > 1 && last === picked && index === last_index) {
+        [picked, index] = pick(args);
+      }
+      context.last_pick_index = index;
+      context.last_pick_args = args;
+      push_stack(context, 'last_pick', picked);
+      return picked;
     });
   },
 
