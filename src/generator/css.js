@@ -129,7 +129,7 @@ class Rules {
           result = result.substring(1, result.length - 1);
         }
       }
-      return result;
+      return result.replace(/;+$/g, '');
     }
     return value;
   }
