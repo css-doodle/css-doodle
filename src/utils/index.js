@@ -56,8 +56,8 @@ function lazy(fn) {
 
 function sequence(count, fn) {
   let [x, y = 1] = String(count).split('x');
-  x = clamp(parseInt(x) || 1, 1, 65536);
-  y = clamp(parseInt(y) || 1, 1, 65536);
+  x = clamp(Math.ceil(x) || 1, 1, 65536);
+  y = clamp(Math.ceil(y) || 1, 1, 65536);
   let max = x * y;
   let ret = [];
   let index = 1;
