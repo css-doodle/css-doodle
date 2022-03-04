@@ -184,7 +184,7 @@ if (typeof customElements !== 'undefined') {
         fn = options;
         options = null;
       }
-      code = ':doodle { @size: 100% }' + code;
+      code = ':doodle { width:100%;height:100% }' + code;
       let parsed = parse_css(code, this.extra);
       let _grid = parse_grid({});
       let compiled = generate_css(parsed, _grid, this.random);
