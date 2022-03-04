@@ -117,7 +117,43 @@ export default add_alias({
 
   p({ context, pick }) {
     return expand((...args) => {
-      return push_stack(context, 'last_pick', pick(args));
+      if (!args.length) {
+        args = context.last_pick_args || [];
+      }
+      let picked = pick(args);
+      context.last_pick_args = args;
+      return push_stack(context, 'last_pick', picked);
+    });
+  },
+
+  P({ context, pick, position }) {
+    let counter = 'P-counter' + position;
+    return expand((...args) => {
+      let normal = true;
+      if (!args.length) {
+        args = context.last_pick_args || [];
+        normal = false;
+      }
+      let stack = context.last_pick;
+      let last = stack ? stack.last(1) : '';
+      if (normal) {
+        if (!context[counter]) {
+          context[counter] = {};
+        }
+        last = context[counter].last_pick;
+      }
+      if (args.length > 1) {
+        let i = args.findIndex(n => n === last);
+        if (i !== -1) {
+          args.splice(i, 1);
+        }
+      }
+      let picked = pick(args);
+      context.last_pick_args = args;
+      if (normal) {
+        context[counter].last_pick = picked;
+      }
+      return push_stack(context, 'last_pick', picked);
     });
   },
 
