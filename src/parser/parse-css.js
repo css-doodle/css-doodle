@@ -328,6 +328,14 @@ function read_arguments(it, composition, doodle) {
       it.next();
     }
   }
+  return skip_last_empty_args(args);
+}
+
+function skip_last_empty_args(args) {
+  let arg = last(args[0]);
+  if (arg && arg.type === 'text' && !String(arg.value).trim().length) {
+    args[0] = args[0].slice(0, -1);
+  }
   return args;
 }
 
