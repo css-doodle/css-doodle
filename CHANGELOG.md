@@ -1,3 +1,25 @@
+## 0.26.0
+
+### Features
+
+* Added `@P` (uppercase) function for picking a different value from last one.
+* The `@p` function with no arguments will use the arguments from last `@p` function.
+
+### Enhancement
+
+* Set default width and height to `100%` for doodle background.
+* Transform values with `Math.ceil` for sequence generators.
+
+### Fixes
+
+* Fixed tail semicolons for variables.
+* Fixed context in nested sequence functions.
+* Fixed arguments parsing to ignore last empty args.
+
+<br /> <br />
+
+
+
 ## 0.25.2
 
 ### Enhancement

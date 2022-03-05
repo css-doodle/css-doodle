@@ -1,4 +1,4 @@
-/*! css-doodle@0.25.2 */
+/*! css-doodle@0.26.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -691,6 +691,14 @@
         it.next();
       }
     }
+    return skip_last_empty_args(args);
+  }
+
+  function skip_last_empty_args(args) {
+    let arg = last(args[0]);
+    if (arg && arg.type === 'text' && !String(arg.value).trim().length) {
+      args[0] = args[0].slice(0, -1);
+    }
     return args;
   }
 
@@ -1102,8 +1110,8 @@
 
   function sequence(count, fn) {
     let [x, y = 1] = String(count).split('x');
-    x = clamp(parseInt(x) || 1, 1, 65536);
-    y = clamp(parseInt(y) || 1, 1, 65536);
+    x = clamp(Math.ceil(x) || 1, 1, 65536);
+    y = clamp(Math.ceil(y) || 1, 1, 65536);
     let max = x * y;
     let ret = [];
     let index = 1;
@@ -2863,19 +2871,23 @@
     },
 
     n({ extra }) {
-      return n => extra ? (extra[0] + (Number(n) || 0)) : '@n';
+      let lastExtra = last(extra);
+      return n => lastExtra ? (lastExtra[0] + (Number(n) || 0)) : '@n';
     },
 
     nx({ extra }) {
-      return n => extra ? (extra[1] + (Number(n) || 0)) : '@nx';
+      let lastExtra = last(extra);
+      return n => lastExtra ? (lastExtra[1] + (Number(n) || 0)) : '@nx';
     },
 
     ny({ extra }) {
-      return n => extra ? (extra[2] + (Number(n) || 0)) : '@ny';
+      let lastExtra = last(extra);
+      return n => lastExtra ? (lastExtra[2] + (Number(n) || 0)) : '@ny';
     },
 
     N({ extra }) {
-      return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
+      let lastExtra = last(extra);
+      return n => lastExtra ? (lastExtra[3] + (Number(n) || 0)) : '@N';
     },
 
     m: make_sequence(','),
@@ -2886,17 +2898,54 @@
 
     p({ context, pick }) {
       return expand((...args) => {
-        return push_stack(context, 'last_pick', pick(args));
+        if (!args.length) {
+          args = context.last_pick_args || [];
+        }
+        let picked = pick(args);
+        context.last_pick_args = args;
+        return push_stack(context, 'last_pick', picked);
+      });
+    },
+
+    P({ context, pick, position }) {
+      let counter = 'P-counter' + position;
+      return expand((...args) => {
+        let normal = true;
+        if (!args.length) {
+          args = context.last_pick_args || [];
+          normal = false;
+        }
+        let stack = context.last_pick;
+        let last = stack ? stack.last(1) : '';
+        if (normal) {
+          if (!context[counter]) {
+            context[counter] = {};
+          }
+          last = context[counter].last_pick;
+        }
+        if (args.length > 1) {
+          let i = args.findIndex(n => n === last);
+          if (i !== -1) {
+            args.splice(i, 1);
+          }
+        }
+        let picked = pick(args);
+        context.last_pick_args = args;
+        if (normal) {
+          context[counter].last_pick = picked;
+        }
+        return push_stack(context, 'last_pick', picked);
       });
     },
 
     pn({ context, extra, position }) {
       let counter = 'pn-counter' + position;
+      let lastExtra = last(extra);
       return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
-        let [idx = context[counter]] = extra || [];
+        let [idx = context[counter]] = lastExtra || [];
         let pos = (idx - 1) % max;
         let value = args[pos];
         return push_stack(context, 'last_pick', value);
@@ -2906,6 +2955,7 @@
     pd({ context, extra, position, shuffle }) {
       let counter = 'pd-counter' + position;
       let values = 'pd-values' + position;
+      let lastExtra = last(extra);
       return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
@@ -2913,7 +2963,7 @@
           context[values] = shuffle(args || []);
         }
         let max = args.length;
-        let [idx = context[counter]] = extra || [];
+        let [idx = context[counter]] = lastExtra || [];
         let pos = (idx - 1) % max;
         let value = context[values][pos];
         return push_stack(context, 'last_pick', value);
@@ -2939,7 +2989,7 @@
 
     rn({ x, y, context, position, grid, extra, shuffle }) {
       let counter = 'noise-2d' + position;
-      let [ni, nx, ny, nm, NX, NY] = extra || [];
+      let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
       let isSeqContext = (ni && nm);
       return (...args) => {
         let [start, end = start, freq = 1, amp = 1] = args;
@@ -3080,8 +3130,9 @@
 
     plot({ count, context, extra, position, grid }) {
       let key = 'offset-points' + position;
+      let lastExtra = last(extra);
       return commands => {
-        let [idx = count, _, __, max = grid.count] = extra || [];
+        let [idx = count, _, __, max = grid.count] = lastExtra || [];
         if (!context[key]) {
           let config = parse$5(commands);
           delete config['fill'];
@@ -3651,12 +3702,14 @@
             result = result.substring(1, result.length - 1);
           }
         }
-        return result;
+        return result.replace(/;+$/g, '');
       }
       return value;
     }
 
     compose_argument(argument, coords, extra = [], parent) {
+      if (!coords.extra) coords.extra = [];
+      coords.extra.push(extra);
       let result = argument.map(arg => {
         if (arg.type === 'text') {
           if (/^\-\-\w/.test(arg.value)) {
@@ -3687,11 +3740,11 @@
                 }
               }
             }
-            coords.extra = extra;
             coords.position = arg.position;
+            let cloned = Object.assign({}, coords, { extra: [...coords.extra] });
             let args = arg.arguments.map(n => {
               return fn.lazy
-                ? (...extra) => this.compose_argument(n, coords, extra, arg)
+                ? (...extra) => this.compose_argument(n, cloned, extra, arg)
                 : this.compose_argument(n, coords, extra, arg);
             });
             let value = this.apply_func(fn, coords, args);
@@ -3701,6 +3754,8 @@
           }
         }
       });
+
+      coords.extra.pop();
 
       return {
         cluster: argument.cluster,
@@ -5085,6 +5140,7 @@
           fn = options;
           options = null;
         }
+        code = ':doodle { width:100%;height:100% }' + code;
         let parsed = parse$8(code, this.extra);
         let _grid = parse_grid({});
         let compiled = generate_css(parsed, _grid, this.random);
