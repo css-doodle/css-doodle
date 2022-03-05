@@ -135,6 +135,8 @@ class Rules {
   }
 
   compose_argument(argument, coords, extra = [], parent) {
+    if (!coords.extra) coords.extra = [];
+    coords.extra.push(extra);
     let result = argument.map(arg => {
       if (arg.type === 'text') {
         if (/^\-\-\w/.test(arg.value)) {
@@ -165,11 +167,11 @@ class Rules {
               }
             }
           }
-          coords.extra = extra;
           coords.position = arg.position;
+          let cloned = Object.assign({}, coords, { extra: [...coords.extra] });
           let args = arg.arguments.map(n => {
             return fn.lazy
-              ? (...extra) => this.compose_argument(n, coords, extra, arg)
+              ? (...extra) => this.compose_argument(n, cloned, extra, arg)
               : this.compose_argument(n, coords, extra, arg);
           });
           let value = this.apply_func(fn, coords, args);
@@ -179,6 +181,8 @@ class Rules {
         }
       }
     });
+
+    coords.extra.pop();
 
     return {
       cluster: argument.cluster,

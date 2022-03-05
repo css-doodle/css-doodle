@@ -4,6 +4,7 @@ import { generate_svg } from './generator/svg.js';
 import { cell_id, is_letter, add_alias, unique_id, lerp } from './utils/index.js';
 import { lazy, clamp, sequence, get_value } from './utils/index.js';
 import { by_unit, by_charcode } from './utils/transform.js';
+import { last } from './utils/list.js';
 
 import calc from './calc.js';
 import { memo } from './utils/memo.js';
@@ -94,19 +95,23 @@ export default add_alias({
   },
 
   n({ extra }) {
-    return n => extra ? (extra[0] + (Number(n) || 0)) : '@n';
+    let lastExtra = last(extra);
+    return n => lastExtra ? (lastExtra[0] + (Number(n) || 0)) : '@n';
   },
 
   nx({ extra }) {
-    return n => extra ? (extra[1] + (Number(n) || 0)) : '@nx';
+    let lastExtra = last(extra);
+    return n => lastExtra ? (lastExtra[1] + (Number(n) || 0)) : '@nx';
   },
 
   ny({ extra }) {
-    return n => extra ? (extra[2] + (Number(n) || 0)) : '@ny';
+    let lastExtra = last(extra);
+    return n => lastExtra ? (lastExtra[2] + (Number(n) || 0)) : '@ny';
   },
 
   N({ extra }) {
-    return n => extra ? (extra[3] + (Number(n) || 0)) : '@N';
+    let lastExtra = last(extra);
+    return n => lastExtra ? (lastExtra[3] + (Number(n) || 0)) : '@N';
   },
 
   m: make_sequence(','),
@@ -159,11 +164,12 @@ export default add_alias({
 
   pn({ context, extra, position }) {
     let counter = 'pn-counter' + position;
+    let lastExtra = last(extra);
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
       let max = args.length;
-      let [idx = context[counter]] = extra || [];
+      let [idx = context[counter]] = lastExtra || [];
       let pos = (idx - 1) % max;
       let value = args[pos];
       return push_stack(context, 'last_pick', value);
@@ -173,6 +179,7 @@ export default add_alias({
   pd({ context, extra, position, shuffle }) {
     let counter = 'pd-counter' + position;
     let values = 'pd-values' + position;
+    let lastExtra = last(extra);
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -180,7 +187,7 @@ export default add_alias({
         context[values] = shuffle(args || []);
       }
       let max = args.length;
-      let [idx = context[counter]] = extra || [];
+      let [idx = context[counter]] = lastExtra || [];
       let pos = (idx - 1) % max;
       let value = context[values][pos];
       return push_stack(context, 'last_pick', value);
@@ -206,7 +213,7 @@ export default add_alias({
 
   rn({ x, y, context, position, grid, extra, shuffle }) {
     let counter = 'noise-2d' + position;
-    let [ni, nx, ny, nm, NX, NY] = extra || [];
+    let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
     let isSeqContext = (ni && nm);
     return (...args) => {
       let [start, end = start, freq = 1, amp = 1] = args;
@@ -347,8 +354,9 @@ export default add_alias({
 
   plot({ count, context, extra, position, grid }) {
     let key = 'offset-points' + position;
+    let lastExtra = last(extra);
     return commands => {
-      let [idx = count, _, __, max = grid.count] = extra || [];
+      let [idx = count, _, __, max = grid.count] = lastExtra || [];
       if (!context[key]) {
         let config = parse_shape_commands(commands);
         delete config['fill'];
