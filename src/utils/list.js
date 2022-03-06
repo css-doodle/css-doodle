@@ -1,3 +1,5 @@
+import { is_nil } from './index.js';
+
 function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
@@ -7,6 +9,7 @@ function join(arr, spliter = '\n') {
 }
 
 function last(arr, n = 1) {
+  if (is_nil(arr)) return '';
   return arr[arr.length - n];
 }
 
@@ -29,9 +32,7 @@ function flat_map(arr, fn) {
 
 function remove_empty_values(arr) {
   return arr.filter(v => (
-    v !== undefined &&
-    v !== null &&
-    String(v).trim().length
+    !is_nil(v) && String(v).trim().length
   ));
 }
 
