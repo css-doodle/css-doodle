@@ -56,7 +56,7 @@ function map2d(value, min, max, amp = 1) {
   return lerp((value - ma) / (mb - ma), min * amp, max * amp);
 }
 
-export default add_alias({
+const Expose = add_alias({
 
   i({ count }) {
     return _ => count;
@@ -516,3 +516,5 @@ export default add_alias({
   'Point': 'Plot',
   'paint': 'canvas',
 });
+
+export default Expose;
