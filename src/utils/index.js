@@ -74,10 +74,9 @@ function cell_id(x, y, z) {
 }
 
 function get_value(input) {
-  while (input && !is_nil(input.value)) {
-    return get_value(input.value);
-  }
-  return is_nil(input) ? '' : input;
+  let v = input;
+  while (v && !is_nil(v.value)) v = v.value;
+  return is_nil(v) ? '' : v;
 }
 
 function normalize_png_name(name) {
