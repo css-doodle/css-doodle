@@ -1,3 +1,14 @@
+## 0.26.1
+
+### Fixes
+
+* Fixed undefined `Expose`.
+* Prevent error for incomplete code.
+
+<br /> <br />
+
+
+
 ## 0.26.0
 
 ### Features
