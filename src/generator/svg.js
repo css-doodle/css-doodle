@@ -104,7 +104,7 @@ function generate(token, element, parent, root) {
     }
   }
   if (token.type === 'statement') {
-    let isTextNode = parent && (parent.name === 'text' || parent.name === 'tspan');
+    let isTextNode = parent && /^(text|tspan|textPath)$/i.test(parent.name);
     if (isTextNode && token.name === 'content') {
       let text = new Tag('text-node', token.value);
       element.append(text);
