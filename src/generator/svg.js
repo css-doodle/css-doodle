@@ -123,6 +123,9 @@ function generate(token, element, parent, root) {
       if (value && value.type === 'block') {
         let id = generate(token.value, root, token, root);
         value = `url(#${id})`;
+        if (token.name === 'xlink:href' || token.name === 'href') {
+          value = `#${id}`;
+        }
       }
       element.attr(token.name, value);
       if (token.name.includes('xlink:')) {
