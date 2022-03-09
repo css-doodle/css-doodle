@@ -28,11 +28,12 @@ function make_sequence(c) {
     if (evaluated === 0) {
       evaluated = count;
     }
+    let signature = Math.random();
     return sequence(
       evaluated,
       (...args) => {
         return actions.map(action => {
-          return get_value(action(...args))
+          return get_value(action(...args, signature))
         }).join(',');
       }
     ).join(c);
@@ -163,8 +164,9 @@ const Expose = add_alias({
   },
 
   pn({ context, extra, position }) {
-    let counter = 'pn-counter' + position;
     let lastExtra = last(extra);
+    let sig = lastExtra ? last(lastExtra) : '';
+    let counter = 'pn-counter' + position + sig;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -177,9 +179,10 @@ const Expose = add_alias({
   },
 
   pd({ context, extra, position, shuffle }) {
-    let counter = 'pd-counter' + position;
-    let values = 'pd-values' + position;
     let lastExtra = last(extra);
+    let sig = lastExtra ? last(lastExtra) : '';
+    let counter = 'pd-counter' + position  + sig;
+    let values = 'pd-values' + position + sig;;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
