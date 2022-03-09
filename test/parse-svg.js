@@ -276,3 +276,26 @@ test('ignore tail semicolons', t => {
     }]
   });
 });
+
+test('statement end on quotes', t => {
+  compare(t, `
+    text { content: '' }
+    g {}
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'text',
+      value: [{
+        name: 'content',
+        type: 'statement',
+        value: ''
+      }]
+    }, {
+      name: 'g',
+      type: 'block',
+      value: []
+    }]
+  });
+});

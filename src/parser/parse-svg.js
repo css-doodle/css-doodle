@@ -14,6 +14,9 @@ function readStatement(iter, token) {
       } else {
         stack.pop();
       }
+      if (next.isSymbol('}') && !stack.length) {
+        isStatementBreak = true;
+      }
     }
     if (!stack.length && curr.isSymbol('{')) {
       let selectors = getGroups(fragment, token => token.isSpace());
