@@ -168,10 +168,9 @@ class Rules {
             }
           }
           coords.position = arg.position;
-          let cloned = Object.assign({}, coords, { extra: [...coords.extra] });
           let args = arg.arguments.map(n => {
             return fn.lazy
-              ? (...extra) => this.compose_argument(n, cloned, extra, arg)
+              ? (...extra) => this.compose_argument(n, coords, extra, arg)
               : this.compose_argument(n, coords, extra, arg);
           });
           let value = this.apply_func(fn, coords, args);
