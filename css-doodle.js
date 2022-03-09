@@ -1,4 +1,4 @@
-/*! css-doodle@0.26.1 */
+/*! css-doodle@0.26.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -1438,7 +1438,7 @@
       }
     }
     if (token.type === 'statement') {
-      let isTextNode = parent && (parent.name === 'text' || parent.name === 'tspan');
+      let isTextNode = parent && /^(text|tspan|textPath)$/i.test(parent.name);
       if (isTextNode && token.name === 'content') {
         let text = new Tag('text-node', token.value);
         element.append(text);
@@ -1457,6 +1457,9 @@
         if (value && value.type === 'block') {
           let id = generate$1(token.value, root, token, root);
           value = `url(#${id})`;
+          if (token.name === 'xlink:href' || token.name === 'href') {
+            value = `#${id}`;
+          }
         }
         element.attr(token.name, value);
         if (token.name.includes('xlink:')) {
@@ -2488,6 +2491,9 @@
         } else {
           stack.pop();
         }
+        if (next.isSymbol('}') && !stack.length) {
+          isStatementBreak = true;
+        }
       }
       if (!stack.length && curr.isSymbol('{')) {
         let selectors = getGroups(fragment, token => token.isSpace());
@@ -2802,11 +2808,12 @@
       if (evaluated === 0) {
         evaluated = count;
       }
+      let signature = Math.random();
       return sequence(
         evaluated,
         (...args) => {
           return actions.map(action => {
-            return get_value(action(...args))
+            return get_value(action(...args, signature))
           }).join(',');
         }
       ).join(c);
@@ -2937,8 +2944,9 @@
     },
 
     pn({ context, extra, position }) {
-      let counter = 'pn-counter' + position;
       let lastExtra = last(extra);
+      let sig = lastExtra ? last(lastExtra) : '';
+      let counter = 'pn-counter' + position + sig;
       return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
@@ -2951,10 +2959,10 @@
     },
 
     pd({ context, extra, position, shuffle }) {
-      let counter = 'pd-counter' + position;
-      let values = 'pd-values' + position;
       let lastExtra = last(extra);
-      return expand((...args) => {
+      let sig = lastExtra ? last(lastExtra) : '';
+      let counter = 'pd-counter' + position  + sig;
+      let values = 'pd-values' + position + sig;    return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         if (!context[values]) {
@@ -3739,10 +3747,9 @@
               }
             }
             coords.position = arg.position;
-            let cloned = Object.assign({}, coords, { extra: [...coords.extra] });
             let args = arg.arguments.map(n => {
               return fn.lazy
-                ? (...extra) => this.compose_argument(n, cloned, extra, arg)
+                ? (...extra) => this.compose_argument(n, coords, extra, arg)
                 : this.compose_argument(n, coords, extra, arg);
             });
             let value = this.apply_func(fn, coords, args);

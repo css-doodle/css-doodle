@@ -1,3 +1,16 @@
+## 0.26.2
+
+### Fixes
+
+* Fixed context value by adding signature for each sequence.
+* Fixed SVG parsing on tail quotes of statement.
+* Fixed SVG inline definition for `href` property.
+* Added missing `textPath` as the text element.
+
+<br /> <br />
+
+
+
 ## 0.26.1
 
 ### Fixes
