@@ -1,3 +1,14 @@
+## 0.26.3
+
+### Fixes
+
+* Do not expose error for empty arguments.
+* Return function name if it's not being registered.
+
+<br /> <br />
+
+
+
 ## 0.26.2
 
 ### Fixes

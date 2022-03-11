@@ -1,4 +1,4 @@
-/*! css-doodle@0.26.2 */
+/*! css-doodle@0.26.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -3870,10 +3870,9 @@
                 if (!is_nil(output)) {
                   result += output;
                 }
-                if (output.extra) {
-                  extra = output.extra;
-                }
               }
+            } else {
+              result += val.name;
             }
           }
         }
