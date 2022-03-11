@@ -290,11 +290,10 @@ class Rules {
               let output = this.apply_func(fn, coords, args);
               if (!is_nil(output)) {
                 result += output;
-                if (output.extra) {
-                  extra = output.extra;
-                }
               }
             }
+          } else {
+            result += val.name;
           }
         }
       }
