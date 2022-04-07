@@ -251,6 +251,28 @@ test('id expand', t => {
       }]
     }]
   });
+
+  compare(t, 'g#id circle {} ', {
+    name: 'svg',
+    type: 'block',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [
+        {
+          type: 'block',
+          name: 'circle',
+          value: []
+        },
+        {
+          type: 'statement',
+          name: 'id',
+          value: 'id'
+        },
+      ]
+    }]
+  });
+
 });
 
 test('empty id expand', t => {
