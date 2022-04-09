@@ -418,6 +418,7 @@ class Rules {
           break;
         }
         case 'place-cell':
+        case 'position':
         case 'offset': {
           if (!is_host_selector(selector)) {
             rule = transformed;
