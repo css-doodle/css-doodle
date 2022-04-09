@@ -1,3 +1,12 @@
+## 0.26.4
+
+* Renamed `@offset` to `@position`.
+* Fixed missing output extra value.
+
+<br /> <br />
+
+
+
 ## 0.26.3
 
 ### Fixes

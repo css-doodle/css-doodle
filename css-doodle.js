@@ -1,4 +1,4 @@
-/*! css-doodle@0.26.3 */
+/*! css-doodle@0.26.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -2804,9 +2804,12 @@
     return lazy((n, ...actions) => {
       if (!actions || !n) return '';
       let count = get_value(n());
-      let evaluated = calc$1(count);
-      if (evaluated === 0) {
-        evaluated = count;
+      let evaluated = count;
+      if (/\D/.test(count)){
+        evaluated = calc$1(count);
+        if (evaluated === 0) {
+          evaluated = count;
+        }
       }
       let signature = Math.random();
       return sequence(
@@ -3463,7 +3466,7 @@
       return styles;
     },
 
-    offset(value, { extra }) {
+    position(value, { extra }) {
       let [left, top = '50%'] = parse$4(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
@@ -3510,7 +3513,8 @@
   }, {
 
     // legacy names.
-    'place-cell': 'offset',
+    'place-cell': 'position',
+    'offset': 'position',
 
   });
 
@@ -3869,6 +3873,9 @@
                 let output = this.apply_func(fn, coords, args);
                 if (!is_nil(output)) {
                   result += output;
+                  if (output.extra) {
+                    extra = output.extra;
+                  }
                 }
               }
             } else {
@@ -3997,6 +4004,7 @@
             break;
           }
           case 'place-cell':
+          case 'position':
           case 'offset': {
             if (!is_host_selector(selector)) {
               rule = transformed;
