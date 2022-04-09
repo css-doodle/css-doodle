@@ -24,9 +24,12 @@ function make_sequence(c) {
   return lazy((n, ...actions) => {
     if (!actions || !n) return '';
     let count = get_value(n());
-    let evaluated = calc(count);
-    if (evaluated === 0) {
-      evaluated = count;
+    let evaluated = count;
+    if (/\D/.test(count)){
+      evaluated = calc(count);
+      if (evaluated === 0) {
+        evaluated = count;
+      }
     }
     let signature = Math.random();
     return sequence(
