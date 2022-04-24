@@ -238,14 +238,19 @@ if (typeof customElements !== 'undefined') {
       let element = this.doodle.getElementById(cell);
       const tick = (value) => {
         if(typeof value === 'function') {
+          let currentImage;
           const update = (t) => {
-            element.style.backgroundImage = `url(${value(t)})`;
-            requestAnimationFrame(update);
+            if(currentImage === element.style.backgroundImage) {
+              element.style.backgroundImage = `url(${value(t)})`;
+              currentImage = element.style.backgroundImage;
+              requestAnimationFrame(update);
+            }
           };
           requestAnimationFrame(update);
-          const ret = value(0);
+          const ret = value();
           element.style.backgroundImage = `url(${ret})`;
-          return ret;
+          currentImage = element.style.backgroundImage;
+          return '';
         }
         return value;
       }
