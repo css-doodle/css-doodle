@@ -114,15 +114,10 @@ function draw_shader(shaders, width, height) {
   // resolve image data in 72dpi :(
   const uTimeLoc = gl.getUniformLocation(program, "u_time");
   if(uTimeLoc) {
-    let startTime = Date.now();
-    return Promise.resolve(Cache.set(shaders, () => {
-      const t = (Date.now() - startTime) / 1000;
+    return Promise.resolve(Cache.set(shaders, (t) => {
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.uniform1f(uTimeLoc, t);
+      gl.uniform1f(uTimeLoc, t / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      // if(!canvas.parentElement) {
-      //   document.body.appendChild(canvas);
-      // }
       return canvas.toDataURL();
     }));
   } else {

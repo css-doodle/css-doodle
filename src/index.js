@@ -238,15 +238,12 @@ if (typeof customElements !== 'undefined') {
       let element = this.doodle.getElementById(cell);
       const tick = (value) => {
         if(typeof value === 'function') {
-          if(!value.ticker) {
-            value.ticker = true;
-            const update = () => {
-              this.shader_to_image({shader: parsed, cell}, fn);
-              requestAnimationFrame(update);
-            };
-            update();
-          }
-          const ret = value();
+          const update = (t) => {
+            element.style.backgroundImage = `url(${value(t)})`;
+            requestAnimationFrame(update);
+          };
+          requestAnimationFrame(update);
+          const ret = value(0);
           element.style.backgroundImage = `url(${ret})`;
           return ret;
         }
