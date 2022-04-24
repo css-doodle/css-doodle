@@ -442,19 +442,6 @@
       .replace(/"/g, '&quot;')
   }
 
-  /* cyrb53 */
-  function hash(str, seed = 0) {
-    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-    for (let i = 0, ch; i < str.length; i++) {
-      ch = str.charCodeAt(i);
-      h1 = Math.imul(h1 ^ ch, 2654435761);
-      h2 = Math.imul(h2 ^ ch, 1597334677);
-    }
-    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
-    return 4294967296 * (2097151 & h2) + (h1>>>0);
-  }
-
   function make_tag_function(fn) {
     let get_value = v => is_nil(v) ? '' : v;
     return (input, ...vars) => {
@@ -1283,10 +1270,8 @@
     }
 
     if (is_empty(result.fragment)) {
-      return {
-        fragment: joinToken$2(tokens),
-        textures: []
-      }
+      result.fragment = joinToken$2(tokens);
+      result.textures = result.textures || [];
     }
     return result;
   }
@@ -1808,26 +1793,20 @@
 
   class CacheValue {
     constructor() {
-      this.cache = {};
+      this.cache = new WeakMap();
     }
     clear() {
-      this.cache = {};
+      this.cache = new WeakMap();
     }
-    set(input, value) {
-      if (is_nil(input)) {
+    set(key, value) {
+      if (is_nil(key)) {
         return '';
       }
-      let key = this.getKey(input);
-      return this.cache[key] = value;
+      this.cache.set(key, value);
+      return value;
     }
-    get(input) {
-      let key = this.getKey(input);
-      return this.cache[key];
-    }
-    getKey(input) {
-      return (typeof input === 'string')
-        ? hash(input)
-        : hash(JSON.stringify(input));
+    get(key) {
+      return this.cache.get(key);
     }
   }
 
@@ -4323,7 +4302,7 @@
     canvas.width = width;
     canvas.height = height;
 
-    let gl = canvas.getContext('webgl2');
+    let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
     if (!gl) return Promise.resolve('');
 
     // resolution uniform
@@ -4356,7 +4335,9 @@
     gl.useProgram(program);
 
     // resolve uniforms
-    gl.uniform2fv(gl.getUniformLocation(program, "u_resolution"), [width, height]);
+    const uResolutionLoc = gl.getUniformLocation(program, "u_resolution");
+    gl.uniform2fv(uResolutionLoc, [width, height]);
+
     shaders.textures.forEach((n, i) => {
       load_texture(gl, n.value, i);
       gl.uniform1i(gl.getUniformLocation(program, n.name), i);
@@ -4366,7 +4347,17 @@
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     // resolve image data in 72dpi :(
-    return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
+    const uTimeLoc = gl.getUniformLocation(program, "u_time");
+    if(uTimeLoc) {
+      return Promise.resolve(Cache.set(shaders, (t) => {
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(uTimeLoc, t / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        return canvas.toDataURL();
+      }));
+    } else {
+      return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
+    }
   }
 
   function readStatement(iter, token) {
@@ -5202,15 +5193,33 @@
       }
 
       shader_to_image({ shader, cell }, fn) {
-        let parsed = parse$7(shader);
+        let parsed = typeof shader === 'string' ?  parse$7(shader) : shader;
         let element = this.doodle.getElementById(cell);
+        const tick = (value) => {
+          if(typeof value === 'function') {
+            let currentImage;
+            const update = (t) => {
+              if(currentImage === element.style.backgroundImage) {
+                element.style.backgroundImage = `url(${value(t)})`;
+                currentImage = element.style.backgroundImage;
+                requestAnimationFrame(update);
+              }
+            };
+            requestAnimationFrame(update);
+            const ret = value();
+            element.style.backgroundImage = `url(${ret})`;
+            currentImage = element.style.backgroundImage;
+            return '';
+          }
+          return value;
+        };
         let { width, height } = element && element.getBoundingClientRect() || {
           width: 0, height: 0
         };
         let ratio = window.devicePixelRatio || 1;
 
-        if (!parsed.textures.length) {
-          draw_shader(parsed, width, height).then(fn);
+        if (!parsed.textures.length || parsed.ticker) {
+          draw_shader(parsed, width, height).then(tick).then(fn);
         }
         // Need to bind textures first
         else {
@@ -5227,7 +5236,7 @@
           });
           Promise.all(transforms).then(textures => {
             parsed.textures = textures;
-            draw_shader(parsed, width, height).then(fn);
+            draw_shader(parsed, width, height).then(tick).then(fn);
           });
         }
       }
