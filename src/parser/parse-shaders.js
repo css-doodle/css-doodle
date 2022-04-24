@@ -60,10 +60,8 @@ function parse(input) {
   }
 
   if (is_empty(result.fragment)) {
-    return {
-      fragment: joinToken(tokens),
-      textures: []
-    }
+    result.fragment = joinToken(tokens);
+    result.textures = result.textures || [];
   }
   return result;
 }

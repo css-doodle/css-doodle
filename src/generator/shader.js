@@ -67,7 +67,7 @@ function draw_shader(shaders, width, height) {
   canvas.width = width;
   canvas.height = height;
 
-  let gl = canvas.getContext('webgl2');
+  let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
   if (!gl) return Promise.resolve('');
 
   // resolution uniform
@@ -100,7 +100,9 @@ function draw_shader(shaders, width, height) {
   gl.useProgram(program);
 
   // resolve uniforms
-  gl.uniform2fv(gl.getUniformLocation(program, "u_resolution"), [width, height]);
+  const uResolutionLoc = gl.getUniformLocation(program, "u_resolution");
+  gl.uniform2fv(uResolutionLoc, [width, height]);
+
   shaders.textures.forEach((n, i) => {
     load_texture(gl, n.value, i);
     gl.uniform1i(gl.getUniformLocation(program, n.name), i);
@@ -110,7 +112,22 @@ function draw_shader(shaders, width, height) {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 
   // resolve image data in 72dpi :(
-  return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
+  const uTimeLoc = gl.getUniformLocation(program, "u_time");
+  if(uTimeLoc) {
+    let startTime = Date.now();
+    return Promise.resolve(Cache.set(shaders, () => {
+      const t = (Date.now() - startTime) / 1000;
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform1f(uTimeLoc, t);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      // if(!canvas.parentElement) {
+      //   document.body.appendChild(canvas);
+      // }
+      return canvas.toDataURL();
+    }));
+  } else {
+    return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
+  }
 }
 
 export {

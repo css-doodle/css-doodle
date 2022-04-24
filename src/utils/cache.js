@@ -1,27 +1,21 @@
-import { hash, is_nil } from './index.js';
+import { is_nil } from './index.js';
 
 class CacheValue {
   constructor() {
-    this.cache = {};
+    this.cache = new WeakMap();
   }
   clear() {
-    this.cache = {};
+    this.cache = new WeakMap();
   }
-  set(input, value) {
-    if (is_nil(input)) {
+  set(key, value) {
+    if (is_nil(key)) {
       return '';
     }
-    let key = this.getKey(input);
-    return this.cache[key] = value;
+    this.cache.set(key, value);
+    return value;
   }
-  get(input) {
-    let key = this.getKey(input);
-    return this.cache[key];
-  }
-  getKey(input) {
-    return (typeof input === 'string')
-      ? hash(input)
-      : hash(JSON.stringify(input));
+  get(key) {
+    return this.cache.get(key);
   }
 }
 

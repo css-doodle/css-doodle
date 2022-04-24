@@ -234,15 +234,31 @@ if (typeof customElements !== 'undefined') {
     }
 
     shader_to_image({ shader, cell }, fn) {
-      let parsed = parse_shaders(shader);
+      let parsed = typeof shader === 'string' ?  parse_shaders(shader) : shader;
       let element = this.doodle.getElementById(cell);
+      const tick = (value) => {
+        if(typeof value === 'function') {
+          if(!value.ticker) {
+            value.ticker = true;
+            const update = () => {
+              this.shader_to_image({shader: parsed, cell}, fn);
+              requestAnimationFrame(update);
+            };
+            update();
+          }
+          const ret = value();
+          element.style.backgroundImage = `url(${ret})`;
+          return ret;
+        }
+        return value;
+      }
       let { width, height } = element && element.getBoundingClientRect() || {
         width: 0, height: 0
       };
       let ratio = window.devicePixelRatio || 1;
 
-      if (!parsed.textures.length) {
-        draw_shader(parsed, width, height).then(fn);
+      if (!parsed.textures.length || parsed.ticker) {
+        draw_shader(parsed, width, height).then(tick).then(fn);
       }
       // Need to bind textures first
       else {
@@ -259,7 +275,7 @@ if (typeof customElements !== 'undefined') {
         });
         Promise.all(transforms).then(textures => {
           parsed.textures = textures;
-          draw_shader(parsed, width, height).then(fn);
+          draw_shader(parsed, width, height).then(tick).then(fn);
         });
       }
     }
