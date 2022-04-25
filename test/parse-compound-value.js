@@ -32,4 +32,13 @@ test('direction group', t => {
     unit: '%'
   });
 
+  // should be treated as expression
+  compare(t, '10%2', {
+    value: 10,
+  });
+
+  compare(t, '1/sin(t)', {
+    value: 1,
+  });
+
 });
