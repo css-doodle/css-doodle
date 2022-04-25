@@ -5,12 +5,16 @@ function parse(input) {
   let ret = {};
   let matched = false;
   while (iter.next()) {
-    let { prev, curr } = iter.get();
+    let { prev, curr, next} = iter.get();
+    let isUnit = matched
+      && (curr.isWord() || curr.isSymbol())
+      && prev && prev.isNumber()
+      && !next;
     if (curr.isNumber()) {
       ret.value = Number(curr.value);
       matched = true;
     }
-    else if (matched && (curr.isWord() || curr.isSymbol()) && prev && prev.isNumber()) {
+    else if (isUnit) {
       ret.unit = curr.value;
     } else {
       break;
