@@ -68,7 +68,6 @@ function draw_shader(shaders, width, height) {
   height *= ratio;
   canvas.width = width;
   canvas.height = height;
-  console.log(canvas);
 
   let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
   if (!gl) return Promise.resolve('');

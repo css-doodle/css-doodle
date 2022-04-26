@@ -165,7 +165,7 @@
     return array[array.length - 1];
   }
 
-  function scan(source) {
+  function scan(source, preserveLineBreak = false) {
     let iter = iterator$1(String(source).trim());
     let tokens = [];
     let quoteStack = [];
@@ -240,7 +240,7 @@
           if (ignoreLeft || ignoreRight)  {
             continue;
           } else {
-            spaces = ' ';
+            spaces = preserveLineBreak ? curr : ' ';
           }
         }
         if (tokens.length && (next && next.trim())) {
@@ -1226,7 +1226,7 @@
 
   function parse$7(input) {
     input = input.replace(/\/\/[^\n]*(\n|$)/mg, ''); // remove single-line comment
-    let iter = iterator$1(removeParens(scan(input)));
+    let iter = iterator$1(removeParens(scan(input, true)));
     let stack = [];
     let tokens = [];
     let identifier;
@@ -4323,7 +4323,6 @@
     height *= ratio;
     canvas.width = width;
     canvas.height = height;
-    console.log(canvas);
 
     let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
     if (!gl) return Promise.resolve('');
