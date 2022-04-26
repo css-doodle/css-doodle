@@ -24,6 +24,7 @@ const is = {
   dots:          (a, b) => is.dot(a) && is.dot(b),
   letter:        (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
   comment:       (a, b) => a == '/' && b == '*',
+  inlineComment: (a, b) => a == '/' && b === '/',
   selfClosedTag: (a, b) => a == '/' && b == '>',
   closedTag:     (a, b) => a == '<' && b == '/',
 }
@@ -63,7 +64,7 @@ function iterator(input) {
     },
     next(n = 1) {
       let next = input[pointer += n];
-      if (next == '\n') row++, col = 0;
+      if (next === '\n') row++, col = 0;
       else col += n;
       return next;
     },
@@ -87,6 +88,12 @@ function skipComments(iter) {
   while (iter.next()) {
     let { curr, prev } = iter.get();
     if (is.comment(curr, prev)) break;
+  }
+}
+
+function skipInlineComments(iter) {
+  while (iter.next()) {
+    if (iter.curr() === '\n') break;
   }
 }
 
@@ -158,7 +165,7 @@ function last(array) {
   return array[array.length - 1];
 }
 
-function scan(source, preserveLineBreak = false) {
+function scan(source, options = {}) {
   let iter = iterator(String(source).trim());
   let tokens = [];
   let quoteStack = [];
@@ -167,6 +174,9 @@ function scan(source, preserveLineBreak = false) {
     let { prev, curr, next, next2, pos } = iter.get();
     if (is.comment(curr, next)) {
       skipComments(iter);
+    }
+    else if (options.ignoreInlineComment && is.inlineComment(curr, next)) {
+      skipInlineComments(iter);
     }
     else if (is.hex(curr, next, next2)) {
       let num = readHexNumber(iter);
@@ -233,7 +243,7 @@ function scan(source, preserveLineBreak = false) {
         if (ignoreLeft || ignoreRight)  {
           continue;
         } else {
-          spaces = preserveLineBreak ? curr : ' ';
+          spaces = options.preserveLineBreak ? curr : ' ';
         }
       }
       if (tokens.length && (next && next.trim())) {

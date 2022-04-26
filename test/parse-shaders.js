@@ -116,3 +116,23 @@ test('handle nested parens', t => {
   }
   compare(t, input, result);
 });
+
+test('ignore comments', t => {
+  let input = `
+    // this is inline comment
+    // this is another inline comment
+    fragment {
+      void main() {
+        /**
+         * more comments
+         */
+        float PI = /*pi value*/3.14159;
+      }
+    }
+  `;
+  let result = {
+    fragment: 'void main(){float PI = 3.14159;}',
+    textures: []
+  }
+  compare(t, input, result);
+});
