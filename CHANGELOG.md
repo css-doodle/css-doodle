@@ -1,3 +1,19 @@
+## 0.27.0
+
+### Features
+
+* Add `u_time` uniform to `@shaders`. Now it supports animation in shaders. (#70)
+* Add support for shader syntax compatibility with shadertoy (#73)
+* Increase grid size up to `256x256`. (#73)
+
+### Fixes
+
+* Fix Math expression in `r` property caused by wrong unit detection. (#72)
+
+<br /> <br />
+
+
+
 ## 0.26.4
 
 * Renamed `@offset` to `@position`.
