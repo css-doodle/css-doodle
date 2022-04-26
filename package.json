@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.26.4",
+  "version": "0.27.0",
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
@@ -19,16 +19,20 @@
     "url": "https://opencollective.com/css-doodle"
   },
   "devDependencies": {
-    "ava": "4.0.1",
-    "rollup": "2.60.1",
-    "terser": "5.10.0"
+    "ava": "4.2.0",
+    "rollup": "2.70.2",
+    "terser": "5.12.1"
   },
   "files": [
     "css-doodle*.js"
   ],
   "keywords": [
     "css",
-    "web-components"
+    "css-doodle",
+    "creative-coding",
+    "generative-art",
+    "patterns",
+    "web-component"
   ],
   "type": "module",
   "author": "yuanchuan",

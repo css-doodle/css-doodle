@@ -1,4 +1,4 @@
-/*! css-doodle@0.26.4 */
+/*! css-doodle@0.27.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -31,6 +31,7 @@
     dots:          (a, b) => is$1.dot(a) && is$1.dot(b),
     letter:        (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
     comment:       (a, b) => a == '/' && b == '*',
+    inlineComment: (a, b) => a == '/' && b === '/',
     selfClosedTag: (a, b) => a == '/' && b == '>',
     closedTag:     (a, b) => a == '<' && b == '/',
   };
@@ -70,7 +71,7 @@
       },
       next(n = 1) {
         let next = input[pointer += n];
-        if (next == '\n') row++, col = 0;
+        if (next === '\n') row++, col = 0;
         else col += n;
         return next;
       },
@@ -94,6 +95,12 @@
     while (iter.next()) {
       let { curr, prev } = iter.get();
       if (is$1.comment(curr, prev)) break;
+    }
+  }
+
+  function skipInlineComments(iter) {
+    while (iter.next()) {
+      if (iter.curr() === '\n') break;
     }
   }
 
@@ -165,7 +172,7 @@
     return array[array.length - 1];
   }
 
-  function scan(source, preserveLineBreak = false) {
+  function scan(source, options = {}) {
     let iter = iterator$1(String(source).trim());
     let tokens = [];
     let quoteStack = [];
@@ -174,6 +181,9 @@
       let { prev, curr, next, next2, pos } = iter.get();
       if (is$1.comment(curr, next)) {
         skipComments(iter);
+      }
+      else if (options.ignoreInlineComment && is$1.inlineComment(curr, next)) {
+        skipInlineComments(iter);
       }
       else if (is$1.hex(curr, next, next2)) {
         let num = readHexNumber(iter);
@@ -240,7 +250,7 @@
           if (ignoreLeft || ignoreRight)  {
             continue;
           } else {
-            spaces = preserveLineBreak ? curr : ' ';
+            spaces = options.preserveLineBreak ? curr : ' ';
           }
         }
         if (tokens.length && (next && next.trim())) {
@@ -1225,8 +1235,11 @@
   }
 
   function parse$7(input) {
-    input = input.replace(/\/\/[^\n]*(\n|$)/mg, ''); // remove single-line comment
-    let iter = iterator$1(removeParens(scan(input, true)));
+    let scanOptions = {
+      preserveLineBreak: true,
+      ignoreInlineComment: true,
+    };
+    let iter = iterator$1(removeParens(scan(input, scanOptions)));
     let stack = [];
     let tokens = [];
     let identifier;
@@ -1481,12 +1494,16 @@
     let ret = {};
     let matched = false;
     while (iter.next()) {
-      let { prev, curr } = iter.get();
+      let { prev, curr, next} = iter.get();
+      let isUnit = matched
+        && (curr.isWord() || curr.isSymbol())
+        && prev && prev.isNumber()
+        && !next;
       if (curr.isNumber()) {
         ret.value = Number(curr.value);
         matched = true;
       }
-      else if (matched && (curr.isWord() || curr.isSymbol()) && prev && prev.isNumber()) {
+      else if (isUnit) {
         ret.unit = curr.value;
       } else {
         break;
