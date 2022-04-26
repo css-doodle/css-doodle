@@ -158,7 +158,7 @@ function last(array) {
   return array[array.length - 1];
 }
 
-function scan(source) {
+function scan(source, preserveLineBreak = false) {
   let iter = iterator(String(source).trim());
   let tokens = [];
   let quoteStack = [];
@@ -233,7 +233,7 @@ function scan(source) {
         if (ignoreLeft || ignoreRight)  {
           continue;
         } else {
-          spaces = ' ';
+          spaces = preserveLineBreak ? curr : ' ';
         }
       }
       if (tokens.length && (next && next.trim())) {

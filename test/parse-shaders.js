@@ -58,7 +58,7 @@ test('should break line on #define ', t => {
     void main() {}
   `;
   let result = {
-    fragment: '\n#define CONST2\n void main(){}',
+    fragment: '\n#define CONST2\n\nvoid main(){}',
     textures: []
   }
   compare(t, input, result);
