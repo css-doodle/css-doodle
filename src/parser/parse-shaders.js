@@ -4,7 +4,7 @@ import { is_empty } from '../utils/index.js';
 function parse(input) {
   let scanOptions = {
     preserveLineBreak: true,
-    ignoreInlineComment: true
+    ignoreInlineComment: true,
   };
   let iter = iterator(removeParens(scan(input, scanOptions)));
   let stack = [];

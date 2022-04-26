@@ -117,7 +117,6 @@ test('handle nested parens', t => {
   compare(t, input, result);
 });
 
-
 test('ignore comments', t => {
   let input = `
     // this is inline comment
@@ -137,4 +136,3 @@ test('ignore comments', t => {
   }
   compare(t, input, result);
 });
-
