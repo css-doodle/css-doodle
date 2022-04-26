@@ -1,6 +1,6 @@
 import { clamp } from '../utils/index.js';
 
-const [ min, max, total ] = [ 1, 32, 32 * 32 ];
+const [ min, max, total ] = [ 1, 256, 256 * 256 ];
 
 export default function parse_grid(size) {
   let [x, y, z] = (size + '')

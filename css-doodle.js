@@ -1200,7 +1200,7 @@
     return Tokens;
   }
 
-  const [ min, max, total ] = [ 1, 32, 32 * 32 ];
+  const [ min, max, total ] = [ 1, 256, 256 * 256 ];
 
   function parse_grid(size) {
     let [x, y, z] = (size + '')
@@ -1225,6 +1225,7 @@
   }
 
   function parse$7(input) {
+    input = input.replace(/\/\/[^\n]*(\n|$)/mg, ''); // remove single-line comment
     let iter = iterator$1(removeParens(scan(input)));
     let stack = [];
     let tokens = [];
@@ -4303,8 +4304,10 @@
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
 
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   }
@@ -4320,17 +4323,43 @@
     height *= ratio;
     canvas.width = width;
     canvas.height = height;
+    console.log(canvas);
 
     let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
     if (!gl) return Promise.resolve('');
 
     // resolution uniform
     let fragment = add_uniform(shaders.fragment || '', 'uniform vec2 u_resolution;');
+
+    fragment = add_uniform(fragment, 'uniform float u_time;');
+    fragment = add_uniform(fragment, 'uniform float u_timeDelta;');
+    fragment = add_uniform(fragment, 'uniform int u_frameIndex;');
+    // fragment = add_uniform(fragment, 'uniform vec4 u_mouse;');
+
     // texture uniform
     shaders.textures.forEach(n => {
       let uniform = `uniform sampler2D ${ n.name };`;
       fragment =  add_uniform(fragment, uniform);
     });
+
+    const isShaderToyFragment = /(^|[^\w\_])void\s+mainImage\(\s*out\s+vec4\s+fragColor,\s*in\s+vec2\s+fragCoord\s*\)/mg.test(fragment);
+    
+    if(isShaderToyFragment) {
+      fragment = `// https://www.shadertoy.com/howto
+
+#define iResolution vec3(u_resolution, 0)
+#define iTime u_time
+#define iTimeDelta u_timeDelta
+#define iFrame u_frameIndex
+
+${shaders.textures.map((n, i) => `#define iChannel${i} ${n.name}`).join('\n')}
+
+${fragment}
+
+void main() {
+  mainImage(FragColor, gl_FragCoord.xy);
+}`;
+    }
 
     let program = create_program(
       gl,
@@ -4367,10 +4396,19 @@
 
     // resolve image data in 72dpi :(
     const uTimeLoc = gl.getUniformLocation(program, "u_time");
-    if(uTimeLoc) {
+    const uFrameLoc = gl.getUniformLocation(program, "u_frameIndex");
+    const uTimeDelta = gl.getUniformLocation(program, "u_timeDelta");
+    if(uTimeLoc || uFrameLoc) {
+      let frameIndex = 0;
+      let currentTime = 0;
       return Promise.resolve(Cache.set(shaders, (t) => {
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.uniform1f(uTimeLoc, t / 1000);
+        if(uTimeLoc) gl.uniform1f(uTimeLoc, t / 1000);
+        if(uFrameLoc) gl.uniform1i(uFrameLoc, frameIndex++);
+        if(uTimeDelta) {
+          gl.uniform1f(uTimeDelta, (currentTime - t) / 1000);
+          currentTime = t;
+        }
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         return canvas.toDataURL();
       }));
@@ -5225,7 +5263,7 @@
               }
             };
             requestAnimationFrame(update);
-            const ret = value();
+            const ret = value(0);
             element.style.backgroundImage = `url(${ret})`;
             currentImage = element.style.backgroundImage;
             return '';

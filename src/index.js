@@ -247,7 +247,7 @@ if (typeof customElements !== 'undefined') {
             }
           };
           requestAnimationFrame(update);
-          const ret = value();
+          const ret = value(0);
           element.style.backgroundImage = `url(${ret})`;
           currentImage = element.style.backgroundImage;
           return '';

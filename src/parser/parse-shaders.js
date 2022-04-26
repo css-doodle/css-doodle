@@ -2,6 +2,7 @@ import { scan, iterator, Token } from './tokenizer.js';
 import { is_empty } from '../utils/index.js';
 
 function parse(input) {
+  input = input.replace(/\/\/[^\n]*(\n|$)/mg, ''); // remove single-line comment
   let iter = iterator(removeParens(scan(input)));
   let stack = [];
   let tokens = [];
