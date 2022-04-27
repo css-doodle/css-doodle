@@ -46,12 +46,13 @@ if (typeof customElements !== 'undefined') {
     }
 
     disconnectedCallback() {
+      Cache.clear();
       this.clear_animations();
     }
 
     update(styles) {
-      Cache.clear();
-      this.clear_animations();
+      this.disconnectedCallback();
+
       let use = this.get_use();
       if (!styles) styles = un_entity(this.innerHTML);
       this.innerHTML = styles;
@@ -247,19 +248,19 @@ if (typeof customElements !== 'undefined') {
       this.animations = [];
     }
 
-    shader_to_image({ shader, cell }, fn) {
+    shader_to_image({ shader, cell, id }, fn) {
       let parsed = typeof shader === 'string' ?  parse_shaders(shader) : shader;
       let element = this.doodle.getElementById(cell);
 
       const tick = (value) => {
         if (typeof value === 'function') {
           let animation = create_animation_frame(t => {
-            element.style.backgroundImage = `url(${value(t)})`;
+            element.style.setProperty(id, `url(${value(t)})`);
           });
           this.animations.push(animation);
           return '';
         }
-        return value;
+        element.style.setProperty(id, `url(${value})`);
       }
 
       let { width, height } = element && element.getBoundingClientRect() || {
@@ -359,20 +360,11 @@ if (typeof customElements !== 'undefined') {
         );
 
         return Promise.all(mappings).then(mapping => {
-          if (input.replaceAll) {
-            mapping.forEach(({ id, value }) => {
-              input = input.replaceAll(
-                '${' + id + '}',
-                /^canvas/.test(id) ? value : `url(${value})`
-              );
-            });
-          } else {
-            mapping.forEach(({ id, value }) => {
-              input = input.replace(
-                '${' + id + '}',
-                /^canvas/.test(id) ? value : `url(${value})`
-              )
-            });
+          for (let {id, value} of mapping) {
+            let target = `url(${value})`;
+            if (/^canvas/.test(id)) target = value;
+            if (/^shader/.test(id)) target = `var(--${id})`;
+            input = input.replaceAll('${' + id + '}', target);
           }
           return input;
         });
