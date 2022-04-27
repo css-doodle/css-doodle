@@ -1,3 +1,13 @@
+## 0.27.1
+
+* Add `pause/resume` to Shader and CSS animations. (#78)
+* Use CSS variable for Shader background value. (#77)
+* Clear Shader animations on `update` or `disconnected`. (#76)
+
+<br /> <br />
+
+
+
 ## 0.27.0
 
 ### Features
