@@ -15,6 +15,7 @@ import { get_props } from './utils/get-props.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { get_rgba_color } from './utils/get-rgba-color.js';
 import Cache from './utils/cache.js';
+import create_animation_frame from './utils/create-animation-frame.js';
 
 import {
   make_tag_function,
@@ -29,6 +30,7 @@ if (typeof customElements !== 'undefined') {
     constructor() {
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
+      this.animations = [];
       this.extra = {
         get_variable: name => get_variable(this, name),
         get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
@@ -43,8 +45,13 @@ if (typeof customElements !== 'undefined') {
       }
     }
 
+    disconnectedCallback() {
+      this.clear_animations();
+    }
+
     update(styles) {
       Cache.clear();
+      this.clear_animations();
       let use = this.get_use();
       if (!styles) styles = un_entity(this.innerHTML);
       this.innerHTML = styles;
@@ -233,32 +240,33 @@ if (typeof customElements !== 'undefined') {
       draw_canvas(code).then(fn);
     }
 
+    clear_animations() {
+      for (let animation of this.animations) {
+        animation.cancel();
+      }
+      this.animations = [];
+    }
+
     shader_to_image({ shader, cell }, fn) {
       let parsed = typeof shader === 'string' ?  parse_shaders(shader) : shader;
       let element = this.doodle.getElementById(cell);
+
       const tick = (value) => {
-        if(typeof value === 'function') {
-          let currentImage;
-          const update = (t) => {
-            if(currentImage === element.style.backgroundImage) {
-              element.style.backgroundImage = `url(${value(t)})`;
-              currentImage = element.style.backgroundImage;
-              requestAnimationFrame(update);
-            }
-          };
-          requestAnimationFrame(update);
-          const ret = value(0);
-          element.style.backgroundImage = `url(${ret})`;
-          currentImage = element.style.backgroundImage;
+        if (typeof value === 'function') {
+          let animation = create_animation_frame(t => {
+            element.style.backgroundImage = `url(${value(t)})`;
+          });
+          this.animations.push(animation);
           return '';
         }
         return value;
       }
+
       let { width, height } = element && element.getBoundingClientRect() || {
         width: 0, height: 0
       };
-      let ratio = window.devicePixelRatio || 1;
 
+      let ratio = window.devicePixelRatio || 1;
       if (!parsed.textures.length || parsed.ticker) {
         draw_shader(parsed, width, height).then(tick).then(fn);
       }
