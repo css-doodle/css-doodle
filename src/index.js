@@ -47,7 +47,10 @@ if (typeof customElements !== 'undefined') {
 
     disconnectedCallback() {
       Cache.clear();
-      this.clear_animations();
+      for (let animation of this.animations) {
+        animation.cancel();
+      }
+      this.animations = [];
     }
 
     update(styles) {
@@ -241,11 +244,18 @@ if (typeof customElements !== 'undefined') {
       draw_canvas(code).then(fn);
     }
 
-    clear_animations() {
+    pause() {
+      this.setAttribute('cssd-paused-animation', true);
       for (let animation of this.animations) {
-        animation.cancel();
+        animation.pause();
       }
-      this.animations = [];
+    }
+
+    resume() {
+      this.removeAttribute('cssd-paused-animation');
+      for (let animation of this.animations) {
+        animation.resume();
+      }
     }
 
     shader_to_image({ shader, cell, id }, fn) {
@@ -581,11 +591,9 @@ function get_basic_styles() {
     .map(n => `${ n }: inherit;`)
     .join('');
   return `
-    * {
-      box-sizing: border-box
-    }
-    *::after, *::before {
-      box-sizing: inherit
+    *, *::after, *::before {
+      box-sizing: border-box;
+      animation-play-state: var(--cssd-animation-play-state) !important;
     }
     :host, .host {
       display: block;
@@ -614,6 +622,10 @@ function get_basic_styles() {
       position: absolute;
       width: 100%;
       height: 100%;
+    }
+    :host([cssd-paused-animation]) {
+      --cssd-animation-play-state: paused;
+      animation-play-state: paused !important;
     }
   `;
 }
