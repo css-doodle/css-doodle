@@ -252,15 +252,19 @@ if (typeof customElements !== 'undefined') {
       let parsed = typeof shader === 'string' ?  parse_shaders(shader) : shader;
       let element = this.doodle.getElementById(cell);
 
+      const set_shader_prop = (v) => {
+        element.style.setProperty(id, `url(${v})`);
+      }
+
       const tick = (value) => {
         if (typeof value === 'function') {
           let animation = create_animation_frame(t => {
-            element.style.setProperty(id, `url(${value(t)})`);
+            set_shader_prop(value(t));
           });
           this.animations.push(animation);
           return '';
         }
-        element.style.setProperty(id, `url(${value})`);
+        set_shader_prop(value);
       }
 
       let { width, height } = element && element.getBoundingClientRect() || {
@@ -361,8 +365,11 @@ if (typeof customElements !== 'undefined') {
 
         return Promise.all(mappings).then(mapping => {
           for (let {id, value} of mapping) {
+            /* default to data-uri for doodle and pattern */
             let target = `url(${value})`;
+            /* canvas uses css painting api */
             if (/^canvas/.test(id)) target = value;
+            /* shader uses css vars */
             if (/^shader/.test(id)) target = `var(--${id})`;
             input = input.replaceAll('${' + id + '}', target);
           }
