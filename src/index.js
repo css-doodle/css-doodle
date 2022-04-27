@@ -245,12 +245,14 @@ if (typeof customElements !== 'undefined') {
     }
 
     pause() {
+      this.setAttribute('cssd-paused-animation', true);
       for (let animation of this.animations) {
         animation.pause();
       }
     }
 
     resume() {
+      this.removeAttribute('cssd-paused-animation');
       for (let animation of this.animations) {
         animation.resume();
       }
@@ -589,11 +591,9 @@ function get_basic_styles() {
     .map(n => `${ n }: inherit;`)
     .join('');
   return `
-    * {
-      box-sizing: border-box
-    }
-    *::after, *::before {
-      box-sizing: inherit
+    *, *::after, *::before {
+      box-sizing: border-box;
+      animation-play-state: var(--cssd-animation-play-state) !important;
     }
     :host, .host {
       display: block;
@@ -622,6 +622,10 @@ function get_basic_styles() {
       position: absolute;
       width: 100%;
       height: 100%;
+    }
+    :host([cssd-paused-animation]) {
+      --cssd-animation-play-state: paused;
+      animation-play-state: paused !important;
     }
   `;
 }
