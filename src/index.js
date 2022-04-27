@@ -47,7 +47,10 @@ if (typeof customElements !== 'undefined') {
 
     disconnectedCallback() {
       Cache.clear();
-      this.clear_animations();
+      for (let animation of this.animations) {
+        animation.cancel();
+      }
+      this.animations = [];
     }
 
     update(styles) {
@@ -241,11 +244,16 @@ if (typeof customElements !== 'undefined') {
       draw_canvas(code).then(fn);
     }
 
-    clear_animations() {
+    pause() {
       for (let animation of this.animations) {
-        animation.cancel();
+        animation.pause();
       }
-      this.animations = [];
+    }
+
+    resume() {
+      for (let animation of this.animations) {
+        animation.resume();
+      }
     }
 
     shader_to_image({ shader, cell, id }, fn) {
