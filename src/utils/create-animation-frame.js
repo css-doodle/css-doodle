@@ -1,5 +1,5 @@
 const STEP60 = 1000 / 60; // 60fps
-const STEP8 = 1000 / 8;   // 8fps
+const STEP1 = 1000 / 1;   // 1fps
 
 function createAnimationFrame(fn) {
   let id;
@@ -11,7 +11,7 @@ function createAnimationFrame(fn) {
     fn(time);
     let step = (stamp - last);
     if (step < STEP60) step = STEP60;
-    if (step > STEP8) step = STEP8;
+    if (step > STEP1) step = STEP1;
     if (last) time += step;
     last = stamp;
     id = requestAnimationFrame(loop);
