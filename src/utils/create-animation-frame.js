@@ -4,16 +4,18 @@ const STEP1 = 1000 / 1;   // 1fps
 function createAnimationFrame(fn) {
   let id;
   let time = 0;
-  let last = 0;
+  let lastTime = 0;
+  let lastStep = 0;
   let paused = false;
   function loop(stamp) {
     if (!time) time = stamp;
     fn(time);
-    let step = (stamp - last);
+    let step = (stamp - lastTime);
     if (step < STEP60) step = STEP60;
-    if (step > STEP1) step = STEP1;
-    if (last) time += step;
-    last = stamp;
+    if (step > STEP1) step = lastStep || STEP1;
+    if (lastTime) time += step;
+    lastStep = step;
+    lastTime = stamp;
     id = requestAnimationFrame(loop);
   }
   id = requestAnimationFrame(loop);
