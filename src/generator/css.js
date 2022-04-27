@@ -198,6 +198,7 @@ class Rules {
   compose_shaders(shader, {x, y, z}) {
     let id = unique_id('shader');
     this.shaders[id] = {
+      id: '--' + id,
       shader,
       cell: cell_id(x, y, z)
     };
