@@ -1,4 +1,4 @@
-/*! css-doodle@0.27.0 */
+/*! css-doodle@0.27.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -3797,6 +3797,7 @@
     compose_shaders(shader, {x, y, z}) {
       let id = unique_id('shader');
       this.shaders[id] = {
+        id: '--' + id,
         shader,
         cell: cell_id(x, y, z)
       };
@@ -5056,11 +5057,56 @@ void main() {
     return transform(getComputedStyle(element).color);
   }
 
+  const STEP60 = 1000 / 60; // 60fps
+  const STEP1 = 1000 / 1;   // 1fps
+
+  function createAnimationFrame(fn) {
+    let id;
+    let time = 0;
+    let lastTime = 0;
+    let lastStep = 0;
+    let paused = false;
+    function loop(stamp) {
+      if (!time) time = stamp;
+      fn(time);
+      let step = (stamp - lastTime);
+      if (step < STEP60) step = STEP60;
+      if (step > STEP1) step = lastStep || STEP1;
+      if (lastTime) time += step;
+      lastStep = step;
+      lastTime = stamp;
+      id = requestAnimationFrame(loop);
+    }
+    id = requestAnimationFrame(loop);
+    return {
+      resume() {
+        if (id && paused) {
+          paused = false;
+          id = requestAnimationFrame(loop);
+        }
+      },
+      pause() {
+        if (id) {
+          cancelAnimationFrame(id);
+          paused = true;
+        }
+      },
+      cancel() {
+        if (id) {
+          paused = false;
+          cancelAnimationFrame(id);
+          id = null;
+        }
+      },
+    }
+  }
+
   if (typeof customElements !== 'undefined') {
     class Doodle extends HTMLElement {
       constructor() {
         super();
         this.doodle = this.attachShadow({ mode: 'open' });
+        this.animations = [];
         this.extra = {
           get_variable: name => get_variable(this, name),
           get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
@@ -5075,8 +5121,17 @@ void main() {
         }
       }
 
-      update(styles) {
+      disconnectedCallback() {
         Cache.clear();
+        for (let animation of this.animations) {
+          animation.cancel();
+        }
+        this.animations = [];
+      }
+
+      update(styles) {
+        this.disconnectedCallback();
+
         let use = this.get_use();
         if (!styles) styles = un_entity(this.innerHTML);
         this.innerHTML = styles;
@@ -5265,32 +5320,44 @@ void main() {
         draw_canvas(code).then(fn);
       }
 
-      shader_to_image({ shader, cell }, fn) {
+      pause() {
+        this.setAttribute('cssd-paused-animation', true);
+        for (let animation of this.animations) {
+          animation.pause();
+        }
+      }
+
+      resume() {
+        this.removeAttribute('cssd-paused-animation');
+        for (let animation of this.animations) {
+          animation.resume();
+        }
+      }
+
+      shader_to_image({ shader, cell, id }, fn) {
         let parsed = typeof shader === 'string' ?  parse$7(shader) : shader;
         let element = this.doodle.getElementById(cell);
+
+        const set_shader_prop = (v) => {
+          element.style.setProperty(id, `url(${v})`);
+        };
+
         const tick = (value) => {
-          if(typeof value === 'function') {
-            let currentImage;
-            const update = (t) => {
-              if(currentImage === element.style.backgroundImage) {
-                element.style.backgroundImage = `url(${value(t)})`;
-                currentImage = element.style.backgroundImage;
-                requestAnimationFrame(update);
-              }
-            };
-            requestAnimationFrame(update);
-            const ret = value(0);
-            element.style.backgroundImage = `url(${ret})`;
-            currentImage = element.style.backgroundImage;
+          if (typeof value === 'function') {
+            let animation = createAnimationFrame(t => {
+              set_shader_prop(value(t));
+            });
+            this.animations.push(animation);
             return '';
           }
-          return value;
+          set_shader_prop(value);
         };
+
         let { width, height } = element && element.getBoundingClientRect() || {
           width: 0, height: 0
         };
-        let ratio = window.devicePixelRatio || 1;
 
+        let ratio = window.devicePixelRatio || 1;
         if (!parsed.textures.length || parsed.ticker) {
           draw_shader(parsed, width, height).then(tick).then(fn);
         }
@@ -5382,20 +5449,14 @@ void main() {
           );
 
           return Promise.all(mappings).then(mapping => {
-            if (input.replaceAll) {
-              mapping.forEach(({ id, value }) => {
-                input = input.replaceAll(
-                  '${' + id + '}',
-                  /^canvas/.test(id) ? value : `url(${value})`
-                );
-              });
-            } else {
-              mapping.forEach(({ id, value }) => {
-                input = input.replace(
-                  '${' + id + '}',
-                  /^canvas/.test(id) ? value : `url(${value})`
-                );
-              });
+            for (let {id, value} of mapping) {
+              /* default to data-uri for doodle and pattern */
+              let target = `url(${value})`;
+              /* canvas uses css painting api */
+              if (/^canvas/.test(id)) target = value;
+              /* shader uses css vars */
+              if (/^shader/.test(id)) target = `var(--${id})`;
+              input = input.replaceAll('${' + id + '}', target);
             }
             return input;
           });
@@ -5605,11 +5666,9 @@ void main() {
       .map(n => `${ n }: inherit;`)
       .join('');
     return `
-    * {
-      box-sizing: border-box
-    }
-    *::after, *::before {
-      box-sizing: inherit
+    *, *::after, *::before {
+      box-sizing: border-box;
+      animation-play-state: var(--cssd-animation-play-state) !important;
     }
     :host, .host {
       display: block;
@@ -5638,6 +5697,10 @@ void main() {
       position: absolute;
       width: 100%;
       height: 100%;
+    }
+    :host([cssd-paused-animation]) {
+      --cssd-animation-play-state: paused;
+      animation-play-state: paused !important;
     }
   `;
   }

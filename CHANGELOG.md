@@ -1,9 +1,19 @@
+## 0.27.1
+
+* Add `pause/resume` to Shader and CSS animations. (#78)
+* Use CSS variable for Shader background value. (#77)
+* Clear Shader animations on `update` or `disconnected`. (#76)
+
+<br /> <br />
+
+
+
 ## 0.27.0
 
 ### Features
 
 * Add `u_time` uniform to `@shaders`. Now it supports animation in shaders. (#70)
-* Add support for shader syntax compatibility with shadertoy (#73)
+* Add support for shader syntax compatible with shadertoy (#73)
 * Increase grid size up to `256x256`. (#73)
 
 ### Fixes
