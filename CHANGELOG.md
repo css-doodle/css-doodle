@@ -13,7 +13,7 @@
 ### Features
 
 * Add `u_time` uniform to `@shaders`. Now it supports animation in shaders. (#70)
-* Add support for shader syntax compatibility with shadertoy (#73)
+* Add support for shader syntax compatible with shadertoy (#73)
 * Increase grid size up to `256x256`. (#73)
 
 ### Fixes
