@@ -261,6 +261,7 @@ if (typeof customElements !== 'undefined') {
     shader_to_image({ shader, cell, id }, fn) {
       let parsed = typeof shader === 'string' ?  parse_shaders(shader) : shader;
       let element = this.doodle.getElementById(cell);
+      const seed = this.seed;
 
       const set_shader_prop = (v) => {
         element.style.setProperty(id, `url(${v})`);
@@ -283,7 +284,7 @@ if (typeof customElements !== 'undefined') {
 
       let ratio = window.devicePixelRatio || 1;
       if (!parsed.textures.length || parsed.ticker) {
-        draw_shader(parsed, width, height).then(tick).then(fn);
+        draw_shader(parsed, width, height, seed).then(tick).then(fn);
       }
       // Need to bind textures first
       else {
@@ -300,7 +301,7 @@ if (typeof customElements !== 'undefined') {
         });
         Promise.all(transforms).then(textures => {
           parsed.textures = textures;
-          draw_shader(parsed, width, height).then(tick).then(fn);
+          draw_shader(parsed, width, height, seed).then(tick).then(fn);
         });
       }
     }
