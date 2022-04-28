@@ -4330,7 +4330,7 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   }
 
-  function draw_shader(shaders, width, height) {
+  function draw_shader(shaders, width, height, seed) {
     let result = Cache.get(shaders);
     if (result) {
       return Promise.resolve(result);
@@ -4351,6 +4351,7 @@
     fragment = add_uniform(fragment, 'uniform float u_time;');
     fragment = add_uniform(fragment, 'uniform float u_timeDelta;');
     fragment = add_uniform(fragment, 'uniform int u_frameIndex;');
+    fragment = add_uniform(fragment, 'uniform vec2 u_seed;');
     // fragment = add_uniform(fragment, 'uniform vec4 u_mouse;');
 
     // texture uniform
@@ -4408,14 +4409,17 @@ void main() {
       gl.uniform1i(gl.getUniformLocation(program, n.name), i);
     });
 
-    // two triangles to form a rectangle
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    // vec2 u_seed, u_seed.x = hash(doodle.seed) / 1e16, u_seed.y = Math.random()
+    const uSeed = gl.getUniformLocation(program, "u_seed");
+    if(uSeed) {
+      gl.uniform2f(uSeed, hash(seed) / 1e16, Math.random());
+    }
 
     // resolve image data in 72dpi :(
     const uTimeLoc = gl.getUniformLocation(program, "u_time");
     const uFrameLoc = gl.getUniformLocation(program, "u_frameIndex");
     const uTimeDelta = gl.getUniformLocation(program, "u_timeDelta");
-    if(uTimeLoc || uFrameLoc) {
+    if(uTimeLoc || uTimeDelta || uFrameLoc) {
       let frameIndex = 0;
       let currentTime = 0;
       return Promise.resolve(Cache.set(shaders, (t) => {
@@ -4430,6 +4434,7 @@ void main() {
         return canvas.toDataURL();
       }));
     } else {
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
       return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
     }
   }
@@ -5337,6 +5342,7 @@ void main() {
       shader_to_image({ shader, cell, id }, fn) {
         let parsed = typeof shader === 'string' ?  parse$7(shader) : shader;
         let element = this.doodle.getElementById(cell);
+        const seed = this.seed;
 
         const set_shader_prop = (v) => {
           element.style.setProperty(id, `url(${v})`);
@@ -5359,7 +5365,7 @@ void main() {
 
         let ratio = window.devicePixelRatio || 1;
         if (!parsed.textures.length || parsed.ticker) {
-          draw_shader(parsed, width, height).then(tick).then(fn);
+          draw_shader(parsed, width, height, seed).then(tick).then(fn);
         }
         // Need to bind textures first
         else {
@@ -5376,7 +5382,7 @@ void main() {
           });
           Promise.all(transforms).then(textures => {
             parsed.textures = textures;
-            draw_shader(parsed, width, height).then(tick).then(fn);
+            draw_shader(parsed, width, height, seed).then(tick).then(fn);
           });
         }
       }

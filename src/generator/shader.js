@@ -1,4 +1,5 @@
 import Cache from '../utils/cache.js';
+import { hash } from '../utils/index.js';
 
 function create_shader(gl, type, source) {
   let shader = gl.createShader(type);
@@ -57,7 +58,7 @@ function load_texture(gl, image, i) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 }
 
-function draw_shader(shaders, width, height) {
+function draw_shader(shaders, width, height, seed) {
   let result = Cache.get(shaders);
   if (result) {
     return Promise.resolve(result);
@@ -78,6 +79,7 @@ function draw_shader(shaders, width, height) {
   fragment = add_uniform(fragment, 'uniform float u_time;');
   fragment = add_uniform(fragment, 'uniform float u_timeDelta;');
   fragment = add_uniform(fragment, 'uniform int u_frameIndex;');
+  fragment = add_uniform(fragment, 'uniform vec2 u_seed;');
   // fragment = add_uniform(fragment, 'uniform vec4 u_mouse;');
 
   // texture uniform
@@ -135,14 +137,17 @@ void main() {
     gl.uniform1i(gl.getUniformLocation(program, n.name), i);
   });
 
-  // two triangles to form a rectangle
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  // vec2 u_seed, u_seed.x = hash(doodle.seed) / 1e16, u_seed.y = Math.random()
+  const uSeed = gl.getUniformLocation(program, "u_seed");
+  if(uSeed) {
+    gl.uniform2f(uSeed, hash(seed) / 1e16, Math.random());
+  }
 
   // resolve image data in 72dpi :(
   const uTimeLoc = gl.getUniformLocation(program, "u_time");
   const uFrameLoc = gl.getUniformLocation(program, "u_frameIndex");
   const uTimeDelta = gl.getUniformLocation(program, "u_timeDelta");
-  if(uTimeLoc || uFrameLoc) {
+  if(uTimeLoc || uTimeDelta || uFrameLoc) {
     let frameIndex = 0;
     let currentTime = 0;
     return Promise.resolve(Cache.set(shaders, (t) => {
@@ -157,6 +162,7 @@ void main() {
       return canvas.toDataURL();
     }));
   } else {
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
     return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
   }
 }
