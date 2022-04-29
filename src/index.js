@@ -46,6 +46,10 @@ if (typeof customElements !== 'undefined') {
     }
 
     disconnectedCallback() {
+      this.cleanup();
+    }
+
+    cleanup() {
       Cache.clear();
       for (let animation of this.animations) {
         animation.cancel();
@@ -54,7 +58,7 @@ if (typeof customElements !== 'undefined') {
     }
 
     update(styles) {
-      this.disconnectedCallback();
+      this.cleanup();
 
       let use = this.get_use();
       if (!styles) styles = un_entity(this.innerHTML);
@@ -138,20 +142,6 @@ if (typeof customElements !== 'undefined') {
     set use(use) {
       this.attr('use', use);
       this.connectedCallback(true);
-    }
-
-    static get observedAttributes() {
-      return ['grid', 'use', 'seed'];
-    }
-
-    attributeChangedCallback(name, old_val, new_val) {
-      if (old_val == new_val) {
-        return false;
-      }
-      let observed = ['grid', 'use', 'seed'].includes(name);
-      if (observed && !is_nil(old_val)) {
-        this[name] = new_val;
-      }
     }
 
     get_grid() {
@@ -307,6 +297,7 @@ if (typeof customElements !== 'undefined') {
     }
 
     load(again) {
+      this.cleanup();
       let use = this.get_use();
       let parsed = parse_css(use + un_entity(this.innerHTML), this.extra);
       let compiled = this.generate(parsed);
