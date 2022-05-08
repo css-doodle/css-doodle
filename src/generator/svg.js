@@ -19,9 +19,24 @@ class Tag {
   isTextNode() {
     return this.name === 'text-node';
   }
+  find(target) {
+    let id = target.attrs.id;
+    let name = target.name;
+    if (Array.isArray(this.body)) {
+      return this.body.find(tag => tag.attrs.id === id && tag.name === name);
+    }
+  }
   append(tag) {
     if (!this.isTextNode()) {
       this.body.push(tag);
+    }
+  }
+  merge(tag) {
+    for (let [name, value] of Object.entries(tag.attrs)) {
+      this.attrs[name] = value;
+    }
+    if (Array.isArray(tag.body)) {
+      this.body.push(...tag.body);
     }
   }
   attr(name, value) {
@@ -100,7 +115,12 @@ function generate(token, element, parent, root) {
           el.attr('id', inlineId);
         }
       }
-      element.append(el);
+      let existedTag = root.find(el);
+      if (existedTag) {
+        existedTag.merge(el);
+      } else {
+        element.append(el);
+      }
     }
   }
   if (token.type === 'statement') {
