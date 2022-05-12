@@ -54,9 +54,16 @@ export default {
     return arg => literal.even(x + y);
   },
 
-  random({ random }) {
+  random({ random, count, x, y, grid }) {
     return (ratio = .5) => {
-      if (ratio >= 1 && ratio <= 0) ratio = .5;
+      if (/\D/.test(ratio)) {
+        return random() < calc('(' + ratio + ')', {
+          x, X: grid.x,
+          y, Y: grid.y,
+          i: count, I: grid.count,
+          random,
+        });
+      }
       return random() < ratio;
     }
   },
