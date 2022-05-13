@@ -208,6 +208,7 @@ class Rules {
   compose_pattern(code, {x, y, z}) {
     let id = unique_id('pattern');
     this.pattern[id] = {
+      id: '--' + id,
       code,
       cell: cell_id(x, y, z)
     };

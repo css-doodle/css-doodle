@@ -225,9 +225,9 @@ if (typeof customElements !== 'undefined') {
       });
     }
 
-    pattern_to_image({ code, cell }, fn) {
+    pattern_to_image({ code, cell, id }, fn) {
       let shader = draw_pattern(code, this.extra);
-      this.shader_to_image({ shader, cell }, fn);
+      this.shader_to_image({ shader, cell, id }, fn);
     }
 
     canvas_to_image({ code }, fn) {
@@ -372,7 +372,7 @@ if (typeof customElements !== 'undefined') {
             /* canvas uses css painting api */
             if (/^canvas/.test(id)) target = value;
             /* shader uses css vars */
-            if (/^shader/.test(id)) target = `var(--${id})`;
+            if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
             input = input.replaceAll('${' + id + '}', target);
           }
           return input;
