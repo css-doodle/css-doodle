@@ -10,7 +10,7 @@ function generate_shader(input, grid) {
       float i = x + (y - 1.0) * y;
       return vec3(x, y, i);
     }
-    vec4 getColor(float x, float y, float i, float I, float X, float Y) {
+    vec4 getColor(float x, float y, float i, float I, float X, float Y, float t) {
       vec4 color = vec4(0, 0, 0, 0);
       ${input}
       return color;
@@ -19,7 +19,7 @@ function generate_shader(input, grid) {
       vec2 uv = gl_FragCoord.xy/u_resolution.xy;
       vec2 grid = vec2(${grid.x}, ${grid.y});
       vec3 p = mapping(uv, grid);
-      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y);
+      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y, u_time);
     }
   `;
 }
