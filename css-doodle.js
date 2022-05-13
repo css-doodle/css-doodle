@@ -1,4 +1,4 @@
-/*! css-doodle@0.27.1 */
+/*! css-doodle@0.27.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -1365,9 +1365,24 @@
     isTextNode() {
       return this.name === 'text-node';
     }
+    find(target) {
+      let id = target.attrs.id;
+      let name = target.name;
+      if (Array.isArray(this.body)) {
+        return this.body.find(tag => tag.attrs.id === id && tag.name === name);
+      }
+    }
     append(tag) {
       if (!this.isTextNode()) {
         this.body.push(tag);
+      }
+    }
+    merge(tag) {
+      for (let [name, value] of Object.entries(tag.attrs)) {
+        this.attrs[name] = value;
+      }
+      if (Array.isArray(tag.body)) {
+        this.body.push(...tag.body);
       }
     }
     attr(name, value) {
@@ -1446,7 +1461,12 @@
             el.attr('id', inlineId);
           }
         }
-        element.append(el);
+        let existedTag = root.find(el);
+        if (existedTag) {
+          existedTag.merge(el);
+        } else {
+          element.append(el);
+        }
       }
     }
     if (token.type === 'statement') {
@@ -3588,9 +3608,16 @@
       return arg => literal.even(x + y);
     },
 
-    random({ random }) {
+    random({ random, count, x, y, grid }) {
       return (ratio = .5) => {
-        if (ratio >= 1 && ratio <= 0) ratio = .5;
+        if (/\D/.test(ratio)) {
+          return random() < calc$1('(' + ratio + ')', {
+            x, X: grid.x,
+            y, Y: grid.y,
+            i: count, I: grid.count,
+            random,
+          });
+        }
         return random() < ratio;
       }
     },
@@ -3807,6 +3834,7 @@
     compose_pattern(code, {x, y, z}) {
       let id = unique_id('pattern');
       this.pattern[id] = {
+        id: '--' + id,
         code,
         cell: cell_id(x, y, z)
       };
@@ -4616,7 +4644,7 @@ void main() {
       float i = x + (y - 1.0) * y;
       return vec3(x, y, i);
     }
-    vec4 getColor(float x, float y, float i, float I, float X, float Y) {
+    vec4 getColor(float x, float y, float i, float I, float X, float Y, float t) {
       vec4 color = vec4(0, 0, 0, 0);
       ${input}
       return color;
@@ -4625,7 +4653,7 @@ void main() {
       vec2 uv = gl_FragCoord.xy/u_resolution.xy;
       vec2 grid = vec2(${grid.x}, ${grid.y});
       vec3 p = mapping(uv, grid);
-      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y);
+      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y, u_time);
     }
   `;
   }
@@ -5127,6 +5155,10 @@ void main() {
       }
 
       disconnectedCallback() {
+        this.cleanup();
+      }
+
+      cleanup() {
         Cache.clear();
         for (let animation of this.animations) {
           animation.cancel();
@@ -5135,7 +5167,7 @@ void main() {
       }
 
       update(styles) {
-        this.disconnectedCallback();
+        this.cleanup();
 
         let use = this.get_use();
         if (!styles) styles = un_entity(this.innerHTML);
@@ -5221,20 +5253,6 @@ void main() {
         this.connectedCallback(true);
       }
 
-      static get observedAttributes() {
-        return ['grid', 'use', 'seed'];
-      }
-
-      attributeChangedCallback(name, old_val, new_val) {
-        if (old_val == new_val) {
-          return false;
-        }
-        let observed = ['grid', 'use', 'seed'].includes(name);
-        if (observed && !is_nil(old_val)) {
-          this[name] = new_val;
-        }
-      }
-
       get_grid() {
         return parse_grid(this.attr('grid'));
       }
@@ -5316,9 +5334,9 @@ void main() {
         });
       }
 
-      pattern_to_image({ code, cell }, fn) {
+      pattern_to_image({ code, cell, id }, fn) {
         let shader = draw_pattern(code, this.extra);
-        this.shader_to_image({ shader, cell }, fn);
+        this.shader_to_image({ shader, cell, id }, fn);
       }
 
       canvas_to_image({ code }, fn) {
@@ -5388,6 +5406,7 @@ void main() {
       }
 
       load(again) {
+        this.cleanup();
         let use = this.get_use();
         let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
         let compiled = this.generate(parsed);
@@ -5461,7 +5480,7 @@ void main() {
               /* canvas uses css painting api */
               if (/^canvas/.test(id)) target = value;
               /* shader uses css vars */
-              if (/^shader/.test(id)) target = `var(--${id})`;
+              if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
               input = input.replaceAll('${' + id + '}', target);
             }
             return input;

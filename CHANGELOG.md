@@ -1,3 +1,16 @@
+## 0.27.2
+
+* Add `t` variable to represent `u_time` in pattern (#85)
+* Fix pattern function caused by missing CSS vars (#84)
+* Simplify calc in random selector (#83)
+* Group SVG elements with identical id (#82)
+* Prevent duplicated calls by removing attribute reflection hook (#81)
+* Add vec2 `u_seed` to shader (#80) by @akira-cn
+
+<br /> <br />
+
+
+
 ## 0.27.1
 
 * Add `pause/resume` to Shader and CSS animations. (#78)
