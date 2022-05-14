@@ -291,10 +291,9 @@ function read_arguments(it, composition, doodle) {
         if (arg.length) {
           if (!group.length) {
             group.push(Tokens.text(get_text_value(arg)));
-          } else {
+          } else if (/\S/.test(arg)) {
             group.push(Tokens.text(arg));
           }
-
           if (arg.startsWith('±') && !doodle) {
             let raw = arg.substr(1);
             let cloned = clone(group);
@@ -317,7 +316,6 @@ function read_arguments(it, composition, doodle) {
       }
       arg += c;
     }
-
     if (composition && (it.curr(1) == ')' || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
       if (group.length) {
         args.push(normalize_argument(group));
