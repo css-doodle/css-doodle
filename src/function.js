@@ -318,8 +318,27 @@ const Expose = add_alias({
   }),
 
   filter: lazy((...args) => {
-    let value = args.map(input => get_value(input())).join(',');
+    let values = args.map(input => get_value(input()));
+    let value = values.join(',');
     let id = unique_id('filter-');
+    // shorthand
+    if (values.every(n => /^[\d.]/.test(n))) {
+      let [fq = 1, scale = 1, seed, octave] = values;
+      let [bx, by = bx] = parse_value_group(fq);
+      octave = octave ? `numOctaves: ${octave};` : '';
+      seed = seed ? `seed: ${seed};` : '';
+      value = `
+        feTurbulence {
+          type: fractalNoise;
+          baseFrequency: ${bx} ${by};
+          ${seed} ${octave}
+        }
+        feDisplacementMap {
+          in: SourceGraphic;
+          scale: ${scale};
+        }
+      `
+    }
     if (!value.startsWith('<')) {
       let parsed = parse_svg(value, {
         type: 'block',
