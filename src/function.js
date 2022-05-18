@@ -339,6 +339,7 @@ const Expose = add_alias({
         }
       `
     }
+    // new svg syntax
     if (!value.startsWith('<')) {
       let parsed = parse_svg(value, {
         type: 'block',
