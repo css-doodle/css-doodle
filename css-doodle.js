@@ -1,4 +1,4 @@
-/*! css-doodle@0.27.2 */
+/*! css-doodle@0.27.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -812,10 +812,9 @@
           if (arg.length) {
             if (!group.length) {
               group.push(Tokens.text(get_text_value(arg)));
-            } else {
+            } else if (/\S/.test(arg)) {
               group.push(Tokens.text(arg));
             }
-
             if (arg.startsWith('±') && !doodle) {
               let raw = arg.substr(1);
               let cloned = clone(group);
@@ -838,7 +837,6 @@
         }
         arg += c;
       }
-
       if (composition && (it.curr(1) == ')' || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
         if (group.length) {
           args.push(normalize_argument(group));
@@ -3133,8 +3131,28 @@
     }),
 
     filter: lazy((...args) => {
-      let value = args.map(input => get_value(input())).join(',');
+      let values = args.map(input => get_value(input()));
+      let value = values.join(',');
       let id = unique_id('filter-');
+      // shorthand
+      if (values.every(n => /^[\d.]/.test(n))) {
+        let [fq = 1, scale = 1, octave, seed] = values;
+        let [bx, by = bx] = parse$4(fq);
+        octave = octave ? `numOctaves: ${octave};` : '';
+        seed = seed ? `seed: ${seed};` : '';
+        value = `
+        feTurbulence {
+          type: fractalNoise;
+          baseFrequency: ${bx} ${by};
+          ${octave} ${seed}
+        }
+        feDisplacementMap {
+          in: SourceGraphic;
+          scale: ${scale};
+        }
+      `;
+      }
+      // new svg syntax
       if (!value.startsWith('<')) {
         let parsed = parse$2(value, {
           type: 'block',
