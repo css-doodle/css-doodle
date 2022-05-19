@@ -323,7 +323,7 @@ const Expose = add_alias({
     let id = unique_id('filter-');
     // shorthand
     if (values.every(n => /^[\d.]/.test(n))) {
-      let [fq = 1, scale = 1, seed, octave] = values;
+      let [fq = 1, scale = 1, octave, seed] = values;
       let [bx, by = bx] = parse_value_group(fq);
       octave = octave ? `numOctaves: ${octave};` : '';
       seed = seed ? `seed: ${seed};` : '';
@@ -331,7 +331,7 @@ const Expose = add_alias({
         feTurbulence {
           type: fractalNoise;
           baseFrequency: ${bx} ${by};
-          ${seed} ${octave}
+          ${octave} ${seed}
         }
         feDisplacementMap {
           in: SourceGraphic;
