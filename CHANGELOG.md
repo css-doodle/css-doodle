@@ -1,3 +1,8 @@
+## 0.27.4
+
+* Put the `seed` argument at the end.
+
+
 ## 0.27.3
 
 * Add shorthand for frequently used svg filter (#88)

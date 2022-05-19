@@ -1,4 +1,4 @@
-/*! css-doodle@0.27.3 */
+/*! css-doodle@0.27.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -3136,7 +3136,7 @@
       let id = unique_id('filter-');
       // shorthand
       if (values.every(n => /^[\d.]/.test(n))) {
-        let [fq = 1, scale = 1, seed, octave] = values;
+        let [fq = 1, scale = 1, octave, seed] = values;
         let [bx, by = bx] = parse$4(fq);
         octave = octave ? `numOctaves: ${octave};` : '';
         seed = seed ? `seed: ${seed};` : '';
@@ -3144,7 +3144,7 @@
         feTurbulence {
           type: fractalNoise;
           baseFrequency: ${bx} ${by};
-          ${seed} ${octave}
+          ${octave} ${seed}
         }
         feDisplacementMap {
           in: SourceGraphic;
