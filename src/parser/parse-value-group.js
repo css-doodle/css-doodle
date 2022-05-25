@@ -1,7 +1,7 @@
 import { is_empty } from '../utils/index.js';
 import { scan, iterator } from './tokenizer.js';
 
-function parse(input, noSpace) {
+function parse(input, option = {symbol: ',', noSpace: false}) {
   let group = [];
   let skip = false;
   let tokens = [];
@@ -15,10 +15,11 @@ function parse(input, noSpace) {
   let iter = iterator(scan(input));
 
   function isSeperator(token) {
-    if (noSpace) {
-      return token.isSymbol(',');
+    let symbol = option.symbol || ',';
+    if (option.noSpace) {
+      return token.isSymbol(symbol);
     }
-    return token.isSymbol(',') || token.isSpace();
+    return token.isSymbol(symbol) || token.isSpace();
   }
 
   while (iter.next()) {
@@ -35,7 +36,13 @@ function parse(input, noSpace) {
     if (curr.status === 'close') {
       quoteStack.pop();
     }
-    if (isSeperator(curr) && !parenStack.length && !quoteStack.length) {
+    let emptyStack = (!parenStack.length && !quoteStack.length);
+    if (emptyStack) {
+      let isNextSpace = option.noSpace && curr.isSpace() && isSeperator(next);
+      let isPrevSpace = option.noSpace && curr.isSpace() && isSeperator(prev);
+      if (isNextSpace || isPrevSpace) continue;
+    }
+    if (emptyStack && isSeperator(curr)) {
       group.push(joinTokens(tokens));
       tokens = [];
     } else {

@@ -38,9 +38,9 @@ test('clamp value', t => {
 
   compare(t, '0x1', defaultGrid);
 
-  compare(t, '70000,1', { x: 65536, y: 1, z: 1, count: 65536, ratio: 65536 });
+  compare(t, '70000,1', { x: 4096, y: 1, z: 1, count: 4096, ratio: 4096 });
 
-  compare(t, '70000', { x: 256, y: 256, z: 1, count: 65536, ratio: 1 });
+  compare(t, '70000', { x: 64, y: 64, z: 1, count: 4096, ratio: 1 });
 
   compare(t, '0.5', defaultGrid);
 

@@ -1,8 +1,8 @@
 import { clamp } from '../utils/index.js';
 
-const [ min, max, total ] = [ 1, 256, 256 * 256 ];
+export default function parse_grid(size, GRID = 64) {
+  const [min, max, total] = [1, GRID, GRID * GRID];
 
-export default function parse_grid(size) {
   let [x, y, z] = (size + '')
     .replace(/\s+/g, '')
     .replace(/[,，xX]+/g, 'x')

@@ -39,7 +39,7 @@ test('basic value group', t => {
 test('no space option', t => {
 
   compare.use(input => {
-    return parseValueGroup(input, true);
+    return parseValueGroup(input, { noSpace: true });
   });
 
   compare(t, 'a b', ['a b']);
@@ -53,3 +53,21 @@ test('no space option', t => {
   compare(t, 'a, b', ['a', 'b']);
 
 });
+
+
+test('grid value', t => {
+
+  compare.use(input => {
+    return parseValueGroup(input, { symbol: '/', noSpace: true });
+  });
+
+  compare(t, '5 / 100%', ['5', '100%']);
+
+  compare(t, '5/100%', ['5', '100%']);
+
+  compare(t, '5 / calc(100% / 5)', ['5', 'calc(100% / 5)']);
+
+  compare(t, '5x10 / @r(100px)', ['5x10', '@r(100px)']);
+
+});
+
