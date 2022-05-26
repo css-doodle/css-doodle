@@ -144,8 +144,12 @@ if (typeof customElements !== 'undefined') {
       this.connectedCallback(true);
     }
 
+    get_max_grid() {
+      return this.hasAttribute('experimental') ? 256 : 64;
+    }
+
     get_grid() {
-      return parse_grid(this.attr('grid'));
+      return parse_grid(this.attr('grid'), this.get_max_grid());
     }
 
     get_use() {
@@ -176,7 +180,7 @@ if (typeof customElements !== 'undefined') {
       this._seed_value = seed;
 
       let random = this.random = seedrandom(seed);
-      let compiled = this.compiled = generate_css(parsed, grid, random);
+      let compiled = this.compiled = generate_css(parsed, grid, random, this.get_max_grid());
       return compiled;
     }
 
@@ -187,8 +191,8 @@ if (typeof customElements !== 'undefined') {
       }
       code = ':doodle { width:100%;height:100% }' + code;
       let parsed = parse_css(code, this.extra);
-      let _grid = parse_grid({});
-      let compiled = generate_css(parsed, _grid, this.random);
+      let _grid = parse_grid('');
+      let compiled = generate_css(parsed, _grid, this.random, this.get_max_grid());
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
 

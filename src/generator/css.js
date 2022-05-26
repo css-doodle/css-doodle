@@ -89,7 +89,7 @@ class Rules {
       let type = typeof arg.value;
       let is_string_or_number = (type === 'number' || type === 'string');
       if (!arg.cluster && (is_string_or_number)) {
-        input.push(...parse_value_group(arg.value, true));
+        input.push(...parse_value_group(arg.value, { noSpace: true }));
       }
       else {
         if (typeof arg === 'function') {
@@ -402,6 +402,7 @@ class Rules {
       let transformed = Property[name](value, {
         is_special_selector: is_special_selector(selector),
         grid: coords.grid,
+        max_grid: coords.max_grid,
         extra
       });
       switch (name) {
@@ -413,7 +414,8 @@ class Rules {
             if (!this.is_grid_defined) {
               transformed = Property[name](value, {
                 is_special_selector: true,
-                grid: coords.grid
+                grid: coords.grid,
+                max_grid: coords.max_grid
               });
               this.add_rule(':host', transformed.size || '');
             }
@@ -459,7 +461,9 @@ class Rules {
         }, []);
         let value = value_group.join(', ');
         let name = prop.substr(1);
-        let transformed = Property[name](value, {});
+        let transformed = Property[name](value, {
+          max_grid: _coords.max_grid
+        });
         this.grid = transformed.grid;
         break;
       }
@@ -614,7 +618,7 @@ class Rules {
 
 }
 
-function generate_css(tokens, grid_size, random) {
+function generate_css(tokens, grid_size, random, max_grid) {
   let rules = new Rules(tokens);
   let context = {};
 
@@ -646,6 +650,7 @@ function generate_css(tokens, grid_size, random) {
     x: 1, y: 1, z: 1, count: 1, context: {},
     grid: { x: 1, y: 1, z: 1, count: 1 },
     random, rand, pick, shuffle,
+    max_grid,
   });
 
   let { grid } = rules.output();
@@ -659,6 +664,7 @@ function generate_css(tokens, grid_size, random) {
           x, y, z: 1,
           count: ++count, grid: grid_size, context,
           random, rand, pick, shuffle,
+          max_grid,
         });
       }
     }
@@ -669,6 +675,7 @@ function generate_css(tokens, grid_size, random) {
         x: 1, y: 1, z,
         count: ++count, grid: grid_size, context,
         random, rand, pick, shuffle,
+        max_grid,
       });
     }
   }

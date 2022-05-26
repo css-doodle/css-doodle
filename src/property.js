@@ -65,10 +65,9 @@ export default add_alias({
   },
 
   grid(value, options) {
-    let [grid, ...size] = value.split('/').map(s => s.trim());
-    size = size.join(' / ');
+    let [grid, size] = parse_value_group(value, { symbol: '/', noSpace: true });
     return {
-      grid: parse_grid(grid),
+      grid: parse_grid(grid, options.max_grid),
       size: size ? this.size(size, options) : ''
     };
   },
