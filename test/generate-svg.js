@@ -97,6 +97,23 @@ test('text node', t => {
   );
 });
 
+test('title and desc', t => {
+  compare(t,
+    `title {
+      content: hello;
+    }
+    desc {
+      content: world;
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <title>hello</title>
+        <desc>world</desc>
+      </svg>
+    `)
+  );
+});
+
 test('multiple content', t => {
   compare(t,
     `svg {
