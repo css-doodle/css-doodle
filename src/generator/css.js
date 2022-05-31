@@ -120,7 +120,11 @@ class Rules {
 
   read_var(value, coords) {
     let count = coords.count;
-    let group = this.custom_properties[count] || {};
+    let group = Object.assign({},
+      this.custom_properties['host'],
+      this.custom_properties['container'],
+      this.custom_properties[count]
+    );
     if (group[value] !== undefined) {
       let result = String(group[value]).trim();
       if (result[0] == '(') {
@@ -237,10 +241,11 @@ class Rules {
   }
 
   inject_variables(value, count) {
-    let group = this.custom_properties[count];
-    if (is_nil(group)) {
-      return value;
-    }
+    let group = Object.assign({},
+      this.custom_properties['host'],
+      this.custom_properties['container'],
+      this.custom_properties[count]
+    );
     let result = [];
     for (let [name, key] of Object.entries(group)) {
       result.push(`${name}: ${key};`);
@@ -391,10 +396,17 @@ class Rules {
     }
 
     if (/^\-\-/.test(prop)) {
-      if (!this.custom_properties[_coords.count]) {
-        this.custom_properties[_coords.count] = {};
+      let key = _coords.count;
+      if (is_parent_selector(selector)) {
+        key = 'container';
       }
-      this.custom_properties[_coords.count][prop] = value;
+      if (is_host_selector(selector)) {
+        key = 'host';
+      }
+      if (!this.custom_properties[key]) {
+        this.custom_properties[key] = {};
+      }
+      this.custom_properties[key][prop] = value;
     }
 
     if (/^@/.test(prop) && Property[prop.substr(1)]) {
