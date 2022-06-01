@@ -246,11 +246,15 @@ class Rules {
       this.custom_properties['container'],
       this.custom_properties[count]
     );
-    let result = [];
+    let variables = [];
     for (let [name, key] of Object.entries(group)) {
-      result.push(`${name}: ${key};`);
+      variables.push(`${name}: ${key};`);
     }
-    return result.join('') + value;
+    variables = variables.join('');
+    if (variables.length) {
+      return `:doodle { ${variables} }` + value;
+    }
+    return value;
   }
 
   compose_value(value, coords) {
