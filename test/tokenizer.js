@@ -270,7 +270,8 @@ test('svg', t => {
   compare(t, '<circle r="@r(10)" />', [
     { type: 'Word', value: '<circle' },
     { type: 'Space', value: ' ' },
-    { type: 'Word', value: 'r=' },
+    { type: 'Word', value: 'r' },
+    { type: 'Symbol', value: '=' },
     { type: 'Symbol', value: '"', status: 'open' },
     { type: 'Symbol', value: '@' },
     { type: 'Word', value: 'r' },
