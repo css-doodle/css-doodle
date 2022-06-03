@@ -11,6 +11,7 @@ import { memo } from './utils/memo.js';
 import { expand } from './utils/expand.js';
 import Stack from './utils/stack.js';
 import Noise from './utils/noise.js';
+import get_named_arguments from './utils/get-named-arguments.js';
 
 import { shapes, create_shape_points } from './generator/shapes.js';
 import parse_value_group from './parser/parse-value-group.js';
@@ -222,21 +223,24 @@ const Expose = add_alias({
     let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
     let isSeqContext = (ni && nm);
     return (...args) => {
-      let [start, end = start, freq = 1, amp = 1] = args;
+      let {from = 0, to = from, frequency = 1, amplitude = 1} = get_named_arguments(args, [
+        'from', 'to', 'frequency', 'amplitude'
+      ]);
+
       if (args.length == 1) {
-        [start, end] = [0, start];
+        [from, to] = [0, from];
       }
       if (!context[counter]) {
         context[counter] = new Noise(shuffle);
       }
-      freq = clamp(freq, 0, Infinity);
-      amp = clamp(amp, 0, Infinity);
-      let transform = [start, end].every(is_letter) ? by_charcode : by_unit;
+      frequency = clamp(frequency, 0, Infinity);
+      amplitude = clamp(amplitude, 0, Infinity);
+      let transform = [from, to].every(is_letter) ? by_charcode : by_unit;
       let t = isSeqContext
-        ? context[counter].noise((nx - 1)/NX * freq, (ny - 1)/NY * freq, 0)
-        : context[counter].noise((x - 1)/grid.x * freq, (y - 1)/grid.y * freq, 0);
-      let fn = transform((start, end) => map2d(t * amp, start, end, amp));
-      let value = fn(start, end);
+        ? context[counter].noise((nx - 1)/NX * frequency, (ny - 1)/NY * frequency, 0)
+        : context[counter].noise((x - 1)/grid.x * frequency, (y - 1)/grid.y * frequency, 0);
+      let fn = transform((from, to) => map2d(t * amplitude, from, to, amplitude));
+      let value = fn(from, to);
       return push_stack(context, 'last_rand', value);
     };
   },
@@ -322,8 +326,10 @@ const Expose = add_alias({
     let value = values.join(',');
     let id = unique_id('filter-');
     // shorthand
-    if (values.every(n => /^[\d.]/.test(n))) {
-      let [fq = 1, scale = 1, octave, seed] = values;
+    if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
+      let { frequency = 1, scale = 1, octave, seed } = get_named_arguments(values, [
+        'frequency', 'scale', 'octave', 'seed'
+      ]);
       let [bx, by = bx] = parse_value_group(fq);
       octave = octave ? `numOctaves: ${octave};` : '';
       seed = seed ? `seed: ${seed};` : '';
