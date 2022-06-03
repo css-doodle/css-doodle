@@ -442,7 +442,6 @@ class Rules {
           this.is_grid_defined = true;
           break;
         }
-
         case 'seed': {
           if (!this.is_seed_defined) {
             this.seed = value;
@@ -653,9 +652,8 @@ class Rules {
 
 function generate_css(tokens, grid_size, seed_value, max_grid) {
   let rules = new Rules(tokens);
-  let context = {};
-
   let random = seedrandom(String(seed_value));
+  let context = {};
 
   function rand(start = 0, end) {
     if (arguments.length == 1) {
@@ -693,14 +691,12 @@ function generate_css(tokens, grid_size, seed_value, max_grid) {
   if (grid) {
     grid_size = grid;
   }
-
   if (is_nil(seed)) {
     seed = seed_value;
     if (is_nil(seed)) {
       seed = Date.now();
     }
   }
-
   seed = String(seed);
   random = seedrandom(seed);
   rules.seed = seed;
