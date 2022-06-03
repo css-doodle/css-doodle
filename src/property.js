@@ -72,6 +72,10 @@ export default add_alias({
     };
   },
 
+  seed(value) {
+    return value;
+  },
+
   shape: memo('shape-property', value => {
     let [type, ...args] = parse_value_group(value);
     if (typeof shapes[type] !== 'function') return '';

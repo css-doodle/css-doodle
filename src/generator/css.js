@@ -5,6 +5,7 @@ import parse_value_group from '../parser/parse-value-group.js';
 import { uniform_time } from '../uniforms.js';
 import { prefixer } from '../utils/prefixer.js';
 import calc from '../calc.js';
+import { seedrandom } from '../lib/seedrandom.js';
 
 import { maybe, cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
 import { join, make_array, remove_empty_values } from '../utils/list.js'
@@ -40,6 +41,7 @@ class Rules {
     this.props = {};
     this.keyframes = {};
     this.grid = null;
+    this.seed = null;
     this.is_grid_defined = false;
     this.coords = [];
     this.doodles = {};
@@ -440,6 +442,15 @@ class Rules {
           this.is_grid_defined = true;
           break;
         }
+
+        case 'seed': {
+          if (!this.is_seed_defined) {
+            this.seed = value;
+            this.is_seed_defined = true;
+          }
+          rule = '';
+          break;
+        }
         case 'place-cell':
         case 'position':
         case 'offset': {
@@ -469,6 +480,11 @@ class Rules {
     let prop = token.property;
 
     switch (prop) {
+      case '@seed': {
+        this.seed = get_value(this.compose_value(token.value[0], coords));
+        this.is_seed_defined = true;
+        break;
+      }
       case '@grid': {
         let value_group = token.value.reduce((ret, v) => {
           let composed = this.compose_value(v, coords);
@@ -624,6 +640,7 @@ class Rules {
       props: this.props,
       styles: this.styles,
       grid: this.grid,
+      seed: this.seed,
       doodles: this.doodles,
       shaders: this.shaders,
       canvas: this.canvas,
@@ -634,9 +651,11 @@ class Rules {
 
 }
 
-function generate_css(tokens, grid_size, random, max_grid) {
+function generate_css(tokens, grid_size, seed_value, max_grid) {
   let rules = new Rules(tokens);
   let context = {};
+
+  let random = seedrandom(String(seed_value));
 
   function rand(start = 0, end) {
     if (arguments.length == 1) {
@@ -669,8 +688,22 @@ function generate_css(tokens, grid_size, random, max_grid) {
     max_grid,
   });
 
-  let { grid } = rules.output();
-  if (grid) grid_size = grid;
+  let { grid, seed } = rules.output();
+
+  if (grid) {
+    grid_size = grid;
+  }
+
+  if (is_nil(seed)) {
+    seed = seed_value;
+    if (is_nil(seed)) {
+      seed = Date.now();
+    }
+  }
+
+  seed = String(seed);
+  random = seedrandom(seed);
+  rules.seed = seed;
   rules.reset();
 
   if (grid_size.z == 1) {

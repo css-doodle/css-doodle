@@ -8,7 +8,6 @@ import { draw_pattern } from './generator/pattern.js';
 import { draw_canvas } from './generator/canvas.js';
 import { svg_to_png } from './generator/svg-to-png.js';
 
-import { seedrandom } from './lib/seedrandom.js';
 import * as Uniforms from './uniforms.js';
 
 import { get_props } from './utils/get-props.js';
@@ -171,16 +170,13 @@ if (typeof customElements !== 'undefined') {
     generate(parsed) {
       let grid = this.get_grid();
       let seed = this.attr('seed') || this.attr('data-seed');
-
       if (is_nil(seed)) {
         seed = Date.now();
       }
-
-      seed = String(seed);
-      this._seed_value = seed;
-
-      let random = this.random = seedrandom(seed);
-      let compiled = this.compiled = generate_css(parsed, grid, random, this.get_max_grid());
+      let compiled = this.compiled = generate_css(
+        parsed, grid, seed, this.get_max_grid()
+      );
+      this._seed_value = compiled.seed;
       return compiled;
     }
 
@@ -192,7 +188,7 @@ if (typeof customElements !== 'undefined') {
       code = ':doodle { width:100%;height:100% }' + code;
       let parsed = parse_css(code, this.extra);
       let _grid = parse_grid('');
-      let compiled = generate_css(parsed, _grid, this.random, this.get_max_grid());
+      let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid());
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
 
