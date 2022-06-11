@@ -1,3 +1,5 @@
+// I need to rewrite this
+
 import parse_var from './parse-var.js';
 import { first, last, clone } from '../utils/list.js';
 
@@ -103,6 +105,9 @@ function iterator(input = '') {
     },
     index(n) {
       return (n === undefined ? index : index = n);
+    },
+    range(start, end) {
+      return input.substring(start, end);
     },
     next() {
       let next = input[index++];
@@ -543,6 +548,7 @@ function read_pseudo(it, extra) {
 
 function read_rule(it, extra) {
   let rule = Tokens.rule(), c;
+  let start = it.index();
   while (!it.end()) {
     c = it.curr();
     if (c == '/' && it.curr(1) == '*') {
@@ -564,6 +570,8 @@ function read_rule(it, extra) {
     }
     it.next();
   }
+  let end = it.index();
+  rule.raw = () => it.range(start, end).trim();
   return rule;
 }
 

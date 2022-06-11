@@ -326,6 +326,9 @@ class Rules {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
     let extra;
+    if (prop === '@seed') {
+      return '';
+    }
     let value_group = token.value.reduce((ret, v) => {
       let composed = this.compose_value(v, coords);
       if (composed) {
@@ -443,10 +446,6 @@ class Rules {
           break;
         }
         case 'seed': {
-          if (!this.is_seed_defined) {
-            this.seed = value;
-            this.is_seed_defined = true;
-          }
           rule = '';
           break;
         }
@@ -474,16 +473,25 @@ class Rules {
     return rule;
   }
 
+  get_raw_value(token) {
+    let raw = token.raw();
+    if (is_nil(raw)){
+      raw = '';
+    }
+    let [_, ...rest] = raw.split(token.property);
+    // It's not accurate, will be solved after the rewrite of css parser.
+    rest = rest.join(token.property)
+      .replace(/^\s*:\s*/, '')
+      .replace(/[;}<]$/, '').trim()
+      .replace(/[;}<]$/, '');
+    return rest;
+  }
+
   pre_compose_rule(token, _coords) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
 
     switch (prop) {
-      case '@seed': {
-        this.seed = get_value(this.compose_value(token.value[0], coords));
-        this.is_seed_defined = true;
-        break;
-      }
       case '@grid': {
         let value_group = token.value.reduce((ret, v) => {
           let composed = this.compose_value(v, coords);
@@ -508,7 +516,25 @@ class Rules {
   }
 
   pre_compose(coords, tokens) {
-    (tokens || this.tokens).forEach(token => {
+    if (is_nil(this.seed)) {
+      // get seed first
+      ;(tokens || this.tokens).forEach(token => {
+        if (token.type === 'rule' && token.property === '@seed') {
+          this.seed = this.get_raw_value(token);
+        }
+        if (token.type === 'pseudo' && is_host_selector(token.selector)) {
+          for (let t of make_array(token.styles)) {
+            if (t.type === 'rule' && t.property === '@seed') {
+              this.seed = this.get_raw_value(t);
+            }
+          }
+        }
+      });
+      if (!is_nil(this.seed)) {
+        coords.update_random(this.seed);
+      }
+    }
+    ;(tokens || this.tokens).forEach(token => {
       switch (token.type) {
         case 'rule': {
           this.pre_compose_rule(token, coords)
@@ -655,6 +681,10 @@ function generate_css(tokens, grid_size, seed_value, max_grid) {
   let random = seedrandom(String(seed_value));
   let context = {};
 
+  function update_random(seed) {
+    random = seedrandom(String(seed));
+  }
+
   function rand(start = 0, end) {
     if (arguments.length == 1) {
       [start, end] = [0, start];
@@ -683,7 +713,7 @@ function generate_css(tokens, grid_size, seed_value, max_grid) {
     x: 1, y: 1, z: 1, count: 1, context: {},
     grid: { x: 1, y: 1, z: 1, count: 1 },
     random, rand, pick, shuffle,
-    max_grid,
+    max_grid, update_random,
   });
 
   let { grid, seed } = rules.output();

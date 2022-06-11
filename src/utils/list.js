@@ -1,6 +1,7 @@
 import { is_nil } from './index.js';
 
 function make_array(arr) {
+  if (is_nil(arr)) return [];
   return Array.isArray(arr) ? arr : [arr];
 }
 
