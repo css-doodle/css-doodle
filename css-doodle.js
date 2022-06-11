@@ -1,4 +1,4 @@
-/*! css-doodle@0.27.4 */
+/*! css-doodle@0.28.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -13,7 +13,7 @@
   const symbols$1 = [
     ':', ';', ',', '(', ')', '[', ']',
     '{', '}', 'π', '±', '+', '-', '*',
-    '/', '%', '"', "'", '`', '@',
+    '/', '%', '"', "'", '`', '@', '=',
   ];
 
   const is$1 = {
@@ -487,6 +487,7 @@
   }
 
   function make_array(arr) {
+    if (is_nil(arr)) return [];
     return Array.isArray(arr) ? arr : [arr];
   }
 
@@ -521,6 +522,8 @@
       !is_nil(v) && String(v).trim().length
     ));
   }
+
+  // I need to rewrite this
 
   const Tokens = {
     func(name = '') {
@@ -624,6 +627,9 @@
       },
       index(n) {
         return (n === undefined ? index : index = n);
+      },
+      range(start, end) {
+        return input.substring(start, end);
       },
       next() {
         let next = input[index++];
@@ -1064,6 +1070,7 @@
 
   function read_rule(it, extra) {
     let rule = Tokens.rule(), c;
+    let start = it.index();
     while (!it.end()) {
       c = it.curr();
       if (c == '/' && it.curr(1) == '*') {
@@ -1085,6 +1092,8 @@
       }
       it.next();
     }
+    let end = it.index();
+    rule.raw = () => it.range(start, end).trim();
     return rule;
   }
 
@@ -1208,9 +1217,9 @@
     return Tokens;
   }
 
-  const [ min, max, total ] = [ 1, 256, 256 * 256 ];
+  function parse_grid(size, GRID = 64) {
+    const [min, max, total] = [1, GRID, GRID * GRID];
 
-  function parse_grid(size) {
     let [x, y, z] = (size + '')
       .replace(/\s+/g, '')
       .replace(/[,，xX]+/g, 'x')
@@ -1468,7 +1477,7 @@
       }
     }
     if (token.type === 'statement') {
-      let isTextNode = parent && /^(text|tspan|textPath)$/i.test(parent.name);
+      let isTextNode = parent && /^(text|tspan|textPath|title|desc)$/i.test(parent.name);
       if (isTextNode && token.name === 'content') {
         let text = new Tag('text-node', token.value);
         element.append(text);
@@ -2027,7 +2036,90 @@
     }
   }
 
-  function parse$5(input) {
+  function parse$5(input, option = {symbol: ',', noSpace: false}) {
+    let group = [];
+    let tokens = [];
+    let parenStack = [];
+    let quoteStack = [];
+
+    if (is_empty(input)) {
+      return group;
+    }
+
+    let iter = iterator$1(scan(input));
+
+    function isSeperator(token) {
+      let symbol = option.symbol || ',';
+      if (option.noSpace) {
+        return token.isSymbol(symbol);
+      }
+      return token.isSymbol(symbol) || token.isSpace();
+    }
+
+    while (iter.next()) {
+      let { prev, curr, next }  = iter.get();
+      if (curr.isSymbol('(')) {
+        parenStack.push(curr.value);
+      }
+      if (curr.isSymbol(')')) {
+        parenStack.pop();
+      }
+      if (curr.status === 'open') {
+        quoteStack.push(curr.value);
+      }
+      if (curr.status === 'close') {
+        quoteStack.pop();
+      }
+      let emptyStack = (!parenStack.length && !quoteStack.length);
+      if (emptyStack) {
+        let isNextSpace = option.noSpace && curr.isSpace() && isSeperator(next);
+        let isPrevSpace = option.noSpace && curr.isSpace() && isSeperator(prev);
+        if (isNextSpace || isPrevSpace) continue;
+      }
+      if (emptyStack && isSeperator(curr)) {
+        group.push(joinTokens$1(tokens));
+        tokens = [];
+      } else {
+        tokens.push(curr);
+      }
+    }
+
+    if (tokens.length) {
+      group.push(joinTokens$1(tokens));
+    }
+
+    return group;
+  }
+
+  function joinTokens$1(tokens) {
+    return tokens.map(n => n.value).join('');
+  }
+
+  function get_named_arguments(args, names) {
+    let result = {};
+    let order = true;
+    for (let i = 0; i < args.length; ++i) {
+      let arg = args[i];
+      let arg_name = names[i];
+      if (/=/.test(arg)) {
+        let [name, value] = parse$5(arg, { symbol: '=', noSpace: true });
+        if (value !== undefined) {
+          if (names.includes(name)) {
+            result[name] = value;
+          }
+          // ignore the rest unnamed arguments
+          order = false;
+        } else {
+          result[arg_name] = arg;
+        }
+      } else if (order) {
+        result[arg_name] = arg;
+      }
+    }
+    return result;
+  }
+
+  function parse$4(input) {
     let iter = iterator$1(scan(input));
     let commands = {};
     let tokens = [];
@@ -2036,10 +2128,10 @@
     while (iter.next()) {
       let { prev, curr, next } = iter.get();
       if (curr.isSymbol(':') && !name) {
-        name = joinTokens$1(tokens);
+        name = joinTokens(tokens);
         tokens = [];
       } else if (curr.isSymbol(';') && name) {
-        commands[name] = transformNegative(name, joinTokens$1(tokens), negative);
+        commands[name] = transformNegative(name, joinTokens(tokens), negative);
         tokens = [];
         name = null;
         negative = false;
@@ -2059,7 +2151,7 @@
       }
     }
     if (tokens.length && name) {
-      commands[name] = transformNegative(name, joinTokens$1(tokens), negative);
+      commands[name] = transformNegative(name, joinTokens(tokens), negative);
     }
     return commands;
   }
@@ -2070,58 +2162,6 @@
       return value;
     }
     return negative ? `-1 * (${ value })` : value;
-  }
-
-  function joinTokens$1(tokens) {
-    return tokens.map(n => n.value).join('');
-  }
-
-  function parse$4(input, noSpace) {
-    let group = [];
-    let tokens = [];
-    let parenStack = [];
-    let quoteStack = [];
-
-    if (is_empty(input)) {
-      return group;
-    }
-
-    let iter = iterator$1(scan(input));
-
-    function isSeperator(token) {
-      if (noSpace) {
-        return token.isSymbol(',');
-      }
-      return token.isSymbol(',') || token.isSpace();
-    }
-
-    while (iter.next()) {
-      let { prev, curr, next }  = iter.get();
-      if (curr.isSymbol('(')) {
-        parenStack.push(curr.value);
-      }
-      if (curr.isSymbol(')')) {
-        parenStack.pop();
-      }
-      if (curr.status === 'open') {
-        quoteStack.push(curr.value);
-      }
-      if (curr.status === 'close') {
-        quoteStack.pop();
-      }
-      if (isSeperator(curr) && !parenStack.length && !quoteStack.length) {
-        group.push(joinTokens(tokens));
-        tokens = [];
-      } else {
-        tokens.push(curr);
-      }
-    }
-
-    if (tokens.length) {
-      group.push(joinTokens(tokens));
-    }
-
-    return group;
   }
 
   function joinTokens(tokens) {
@@ -2183,7 +2223,7 @@
 
   const _ = make_tag_function(c => {
     return create_shape_points(
-      parse$5(c), {min: 3, max: 3600}
+      parse$4(c), {min: 3, max: 3600}
     );
   });
 
@@ -2432,7 +2472,7 @@
   }
 
   function translate(x, y, offset) {
-    let [dx, dy = dx] = parse$4(offset).map(Number);
+    let [dx, dy = dx] = parse$5(offset).map(Number);
     return [
       x + (dx || 0),
       y - (dy || 0),
@@ -2442,7 +2482,7 @@
   }
 
   function scale(x, y, factor) {
-    let [fx, fy = fx] = parse$4(factor).map(Number);
+    let [fx, fy = fx] = parse$5(factor).map(Number);
     return [
       x * fx,
       y * fy
@@ -2632,7 +2672,7 @@
           name: 'unkown',
           value: ''
         });
-        let groupdValue = parse$4(statement.value);
+        let groupdValue = parse$5(statement.value);
         let expand = (props.length > 1 && groupdValue.length === props.length);
 
         props.forEach((prop, i) => {
@@ -3035,21 +3075,24 @@
       let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
       let isSeqContext = (ni && nm);
       return (...args) => {
-        let [start, end = start, freq = 1, amp = 1] = args;
+        let {from = 0, to = from, frequency = 1, amplitude = 1} = get_named_arguments(args, [
+          'from', 'to', 'frequency', 'amplitude'
+        ]);
+
         if (args.length == 1) {
-          [start, end] = [0, start];
+          [from, to] = [0, from];
         }
         if (!context[counter]) {
           context[counter] = new Perlin(shuffle);
         }
-        freq = clamp(freq, 0, Infinity);
-        amp = clamp(amp, 0, Infinity);
-        let transform = [start, end].every(is_letter) ? by_charcode : by_unit;
+        frequency = clamp(frequency, 0, Infinity);
+        amplitude = clamp(amplitude, 0, Infinity);
+        let transform = [from, to].every(is_letter) ? by_charcode : by_unit;
         let t = isSeqContext
-          ? context[counter].noise((nx - 1)/NX * freq, (ny - 1)/NY * freq, 0)
-          : context[counter].noise((x - 1)/grid.x * freq, (y - 1)/grid.y * freq, 0);
-        let fn = transform((start, end) => map2d(t * amp, start, end, amp));
-        let value = fn(start, end);
+          ? context[counter].noise((nx - 1)/NX * frequency, (ny - 1)/NY * frequency, 0)
+          : context[counter].noise((x - 1)/grid.x * frequency, (y - 1)/grid.y * frequency, 0);
+        let fn = transform((from, to) => map2d(t * amplitude, from, to, amplitude));
+        let value = fn(from, to);
         return push_stack(context, 'last_rand', value);
       };
     },
@@ -3092,7 +3135,7 @@
           return '';
         }
         colors.forEach(step => {
-          let [_, size] = parse$4(step);
+          let [_, size] = parse$5(step);
           if (size !== undefined) custom_sizes.push(size);
           else default_count += 1;
         });
@@ -3101,7 +3144,7 @@
           : `100% / ${max}`;
         return colors.map((step, i) => {
           if (custom_sizes.length) {
-            let [color, size] = parse$4(step);
+            let [color, size] = parse$5(step);
             let prefix = prev ? (prev + ' + ') : '';
             prev = prefix + (size !== undefined ? size : default_size);
             return `${color} 0 calc(${ prev })`
@@ -3135,9 +3178,11 @@
       let value = values.join(',');
       let id = unique_id('filter-');
       // shorthand
-      if (values.every(n => /^[\d.]/.test(n))) {
-        let [fq = 1, scale = 1, octave, seed] = values;
-        let [bx, by = bx] = parse$4(fq);
+      if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
+        let { frequency = 1, scale = 1, octave, seed } = get_named_arguments(values, [
+          'frequency', 'scale', 'octave', 'seed'
+        ]);
+        let [bx, by = bx] = parse$5(fq);
         octave = octave ? `numOctaves: ${octave};` : '';
         seed = seed ? `seed: ${seed};` : '';
         value = `
@@ -3197,7 +3242,7 @@
       return commands => {
         let [idx = count, _, __, max = grid.count] = lastExtra || [];
         if (!context[key]) {
-          let config = parse$5(commands);
+          let config = parse$4(commands);
           delete config['fill'];
           delete config['fill-rule'];
           delete config['frame'];
@@ -3221,7 +3266,7 @@
             if (rest.length) {
               commands = type + ',' + rest;
             }
-            let config = parse$5(commands);
+            let config = parse$4(commands);
             points = create_shape_points(config, {min: 3, max: 3600});
           }
         }
@@ -3499,7 +3544,7 @@
   var Property = add_alias({
 
     size(value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$4(value);
+      let [w, h = w] = parse$5(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -3521,7 +3566,7 @@
     },
 
     position(value, { extra }) {
-      let [left, top = '50%'] = parse$4(value);
+      let [left, top = '50%'] = parse$5(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
       const cw = 'var(--internal-cell-width, 25%)';
@@ -3541,16 +3586,19 @@
     },
 
     grid(value, options) {
-      let [grid, ...size] = value.split('/').map(s => s.trim());
-      size = size.join(' / ');
+      let [grid, size] = parse$5(value, { symbol: '/', noSpace: true });
       return {
-        grid: parse_grid(grid),
+        grid: parse_grid(grid, options.max_grid),
         size: size ? this.size(size, options) : ''
       };
     },
 
+    seed(value) {
+      return value;
+    },
+
     shape: memo('shape-property', value => {
-      let [type, ...args] = parse$4(value);
+      let [type, ...args] = parse$5(value);
       if (typeof shapes[type] !== 'function') return '';
       let prop = 'clip-path';
       let points = shapes[type](...args);
@@ -3653,6 +3701,228 @@
 
   };
 
+  /*
+  Copyright 2019 David Bau.
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  */
+
+  var global = globalThis;
+  var math = Math;
+  var pool = [];
+
+  //
+  // The following constants are related to IEEE 754 limits.
+  //
+
+  var width = 256,        // each RC4 output is 0 <= x < 256
+      chunks = 6,         // at least six RC4 outputs for each double
+      digits = 52,        // there are 52 significant digits in a double
+      rngname = 'random', // rngname: name for Math.random and Math.seedrandom
+      startdenom = math.pow(width, chunks),
+      significance = math.pow(2, digits),
+      overflow = significance * 2,
+      mask = width - 1,
+      nodecrypto;         // node.js crypto module, initialized at the bottom.
+
+  //
+  // seedrandom()
+  // This is the seedrandom function described above.
+  //
+  function seedrandom(seed, options, callback) {
+    var key = [];
+    options = (options == true) ? { entropy: true } : (options || {});
+
+    // Flatten the seed string or build one from local entropy if needed.
+    var shortseed = mixkey(flatten(
+      options.entropy ? [seed, tostring(pool)] :
+      (seed == null) ? autoseed() : seed, 3), key);
+
+    // Use the seed to initialize an ARC4 generator.
+    var arc4 = new ARC4(key);
+
+    // This function returns a random double in [0, 1) that contains
+    // randomness in every bit of the mantissa of the IEEE 754 value.
+    var prng = function() {
+      var n = arc4.g(chunks),             // Start with a numerator n < 2 ^ 48
+          d = startdenom,                 //   and denominator d = 2 ^ 48.
+          x = 0;                          //   and no 'extra last byte'.
+      while (n < significance) {          // Fill up all significant digits by
+        n = (n + x) * width;              //   shifting numerator and
+        d *= width;                       //   denominator and generating a
+        x = arc4.g(1);                    //   new least-significant-byte.
+      }
+      while (n >= overflow) {             // To avoid rounding up, before adding
+        n /= 2;                           //   last byte, shift everything
+        d /= 2;                           //   right using integer math until
+        x >>>= 1;                         //   we have exactly the desired bits.
+      }
+      return (n + x) / d;                 // Form the number within [0, 1).
+    };
+
+    prng.int32 = function() { return arc4.g(4) | 0; };
+    prng.quick = function() { return arc4.g(4) / 0x100000000; };
+    prng.double = prng;
+
+    // Mix the randomness into accumulated entropy.
+    mixkey(tostring(arc4.S), pool);
+
+    // Calling convention: what to return as a function of prng, seed, is_math.
+    return (options.pass || callback ||
+        function(prng, seed, is_math_call, state) {
+          if (state) {
+            // Load the arc4 state from the given state if it has an S array.
+            if (state.S) { copy(state, arc4); }
+            // Only provide the .state method if requested via options.state.
+            prng.state = function() { return copy(arc4, {}); };
+          }
+
+          // If called as a method of Math (Math.seedrandom()), mutate
+          // Math.random because that is how seedrandom.js has worked since v1.0.
+          if (is_math_call) { math[rngname] = prng; return seed; }
+
+          // Otherwise, it is a newer calling convention, so return the
+          // prng directly.
+          else return prng;
+        })(
+    prng,
+    shortseed,
+    'global' in options ? options.global : (this == math),
+    options.state);
+  }
+
+  //
+  // ARC4
+  //
+  // An ARC4 implementation.  The constructor takes a key in the form of
+  // an array of at most (width) integers that should be 0 <= x < (width).
+  //
+  // The g(count) method returns a pseudorandom integer that concatenates
+  // the next (count) outputs from ARC4.  Its return value is a number x
+  // that is in the range 0 <= x < (width ^ count).
+  //
+  function ARC4(key) {
+    var t, keylen = key.length,
+        me = this, i = 0, j = me.i = me.j = 0, s = me.S = [];
+
+    // The empty key [] is treated as [0].
+    if (!keylen) { key = [keylen++]; }
+
+    // Set up S using the standard key scheduling algorithm.
+    while (i < width) {
+      s[i] = i++;
+    }
+    for (i = 0; i < width; i++) {
+      s[i] = s[j = mask & (j + key[i % keylen] + (t = s[i]))];
+      s[j] = t;
+    }
+
+    // The "g" method returns the next (count) outputs as one number.
+    (me.g = function(count) {
+      // Using instance members instead of closure state nearly doubles speed.
+      var t, r = 0,
+          i = me.i, j = me.j, s = me.S;
+      while (count--) {
+        t = s[i = mask & (i + 1)];
+        r = r * width + s[mask & ((s[i] = s[j = mask & (j + t)]) + (s[j] = t))];
+      }
+      me.i = i; me.j = j;
+      return r;
+      // For robust unpredictability, the function call below automatically
+      // discards an initial batch of values.  This is called RC4-drop[256].
+      // See http://google.com/search?q=rsa+fluhrer+response&btnI
+    })(width);
+  }
+
+  //
+  // copy()
+  // Copies internal state of ARC4 to or from a plain object.
+  //
+  function copy(f, t) {
+    t.i = f.i;
+    t.j = f.j;
+    t.S = f.S.slice();
+    return t;
+  }
+  //
+  // flatten()
+  // Converts an object tree to nested arrays of strings.
+  //
+  function flatten(obj, depth) {
+    var result = [], typ = (typeof obj), prop;
+    if (depth && typ == 'object') {
+      for (prop in obj) {
+        try { result.push(flatten(obj[prop], depth - 1)); } catch (e) {}
+      }
+    }
+    return (result.length ? result : typ == 'string' ? obj : obj + '\0');
+  }
+
+  //
+  // mixkey()
+  // Mixes a string seed into a key that is an array of integers, and
+  // returns a shortened string seed that is equivalent to the result key.
+  //
+  function mixkey(seed, key) {
+    var stringseed = seed + '', smear, j = 0;
+    while (j < stringseed.length) {
+      key[mask & j] =
+        mask & ((smear ^= key[mask & j] * 19) + stringseed.charCodeAt(j++));
+    }
+    return tostring(key);
+  }
+
+  //
+  // autoseed()
+  // Returns an object for autoseeding, using window.crypto and Node crypto
+  // module if available.
+  //
+  function autoseed() {
+    try {
+      var out;
+      if (nodecrypto && (out = nodecrypto.randomBytes)) ; else {
+        out = new Uint8Array(width);
+        (global.crypto || global.msCrypto).getRandomValues(out);
+      }
+      return tostring(out);
+    } catch (e) {
+      var browser = global.navigator,
+          plugins = browser && browser.plugins;
+      return [+new Date, global, plugins, global.screen, tostring(pool)];
+    }
+  }
+
+  //
+  // tostring()
+  // Converts an array of charcodes to a string
+  //
+  function tostring(a) {
+    return String.fromCharCode.apply(0, a);
+  }
+
+  //
+  // When seedrandom.js is loaded, we immediately mix a few bits
+  // from the built-in RNG into the entropy pool.  Because we do
+  // not want to interfere with deterministic PRNG state later,
+  // seedrandom will not call math.random on its own again after
+  // initialization.
+  //
+  mixkey(math.random(), pool);
+
   function is_host_selector(s) {
     return /^\:(host|doodle)/.test(s);
   }
@@ -3684,6 +3954,7 @@
       this.props = {};
       this.keyframes = {};
       this.grid = null;
+      this.seed = null;
       this.is_grid_defined = false;
       this.coords = [];
       this.doodles = {};
@@ -3733,7 +4004,7 @@
         let type = typeof arg.value;
         let is_string_or_number = (type === 'number' || type === 'string');
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$4(arg.value, true));
+          input.push(...parse$5(arg.value, { noSpace: true }));
         }
         else {
           if (typeof arg === 'function') {
@@ -3764,7 +4035,11 @@
 
     read_var(value, coords) {
       let count = coords.count;
-      let group = this.custom_properties[count] || {};
+      let group = Object.assign({},
+        this.custom_properties['host'],
+        this.custom_properties['container'],
+        this.custom_properties[count]
+      );
       if (group[value] !== undefined) {
         let result = String(group[value]).trim();
         if (result[0] == '(') {
@@ -3881,15 +4156,20 @@
     }
 
     inject_variables(value, count) {
-      let group = this.custom_properties[count];
-      if (is_nil(group)) {
-        return value;
-      }
-      let result = [];
+      let group = Object.assign({},
+        this.custom_properties['host'],
+        this.custom_properties['container'],
+        this.custom_properties[count]
+      );
+      let variables = [];
       for (let [name, key] of Object.entries(group)) {
-        result.push(`${name}: ${key};`);
+        variables.push(`${name}: ${key};`);
       }
-      return result.join('') + value;
+      variables = variables.join('');
+      if (variables.length) {
+        return `:doodle { ${variables} }` + value;
+      }
+      return value;
     }
 
     compose_value(value, coords) {
@@ -3959,6 +4239,9 @@
       let coords = Object.assign({}, _coords);
       let prop = token.property;
       let extra;
+      if (prop === '@seed') {
+        return '';
+      }
       let value_group = token.value.reduce((ret, v) => {
         let composed = this.compose_value(v, coords);
         if (composed) {
@@ -4035,10 +4318,17 @@
       }
 
       if (/^\-\-/.test(prop)) {
-        if (!this.custom_properties[_coords.count]) {
-          this.custom_properties[_coords.count] = {};
+        let key = _coords.count;
+        if (is_parent_selector(selector)) {
+          key = 'container';
         }
-        this.custom_properties[_coords.count][prop] = value;
+        if (is_host_selector(selector)) {
+          key = 'host';
+        }
+        if (!this.custom_properties[key]) {
+          this.custom_properties[key] = {};
+        }
+        this.custom_properties[key][prop] = value;
       }
 
       if (/^@/.test(prop) && Property[prop.substr(1)]) {
@@ -4046,6 +4336,7 @@
         let transformed = Property[name](value, {
           is_special_selector: is_special_selector(selector),
           grid: coords.grid,
+          max_grid: coords.max_grid,
           extra
         });
         switch (name) {
@@ -4057,13 +4348,18 @@
               if (!this.is_grid_defined) {
                 transformed = Property[name](value, {
                   is_special_selector: true,
-                  grid: coords.grid
+                  grid: coords.grid,
+                  max_grid: coords.max_grid
                 });
                 this.add_rule(':host', transformed.size || '');
               }
             }
             this.grid = coords.grid;
             this.is_grid_defined = true;
+            break;
+          }
+          case 'seed': {
+            rule = '';
             break;
           }
           case 'place-cell':
@@ -4090,6 +4386,20 @@
       return rule;
     }
 
+    get_raw_value(token) {
+      let raw = token.raw();
+      if (is_nil(raw)){
+        raw = '';
+      }
+      let [_, ...rest] = raw.split(token.property);
+      // It's not accurate, will be solved after the rewrite of css parser.
+      rest = rest.join(token.property)
+        .replace(/^\s*:\s*/, '')
+        .replace(/[;}<]$/, '').trim()
+        .replace(/[;}<]$/, '');
+      return rest;
+    }
+
     pre_compose_rule(token, _coords) {
       let coords = Object.assign({}, _coords);
       let prop = token.property;
@@ -4103,7 +4413,9 @@
           }, []);
           let value = value_group.join(', ');
           let name = prop.substr(1);
-          let transformed = Property[name](value, {});
+          let transformed = Property[name](value, {
+            max_grid: _coords.max_grid
+          });
           this.grid = transformed.grid;
           break;
         }
@@ -4117,7 +4429,24 @@
     }
 
     pre_compose(coords, tokens) {
-      (tokens || this.tokens).forEach(token => {
+      if (is_nil(this.seed)) {
+  (tokens || this.tokens).forEach(token => {
+          if (token.type === 'rule' && token.property === '@seed') {
+            this.seed = this.get_raw_value(token);
+          }
+          if (token.type === 'pseudo' && is_host_selector(token.selector)) {
+            for (let t of make_array(token.styles)) {
+              if (t.type === 'rule' && t.property === '@seed') {
+                this.seed = this.get_raw_value(t);
+              }
+            }
+          }
+        });
+        if (!is_nil(this.seed)) {
+          coords.update_random(this.seed);
+        }
+      }
+  (tokens || this.tokens).forEach(token => {
         switch (token.type) {
           case 'rule': {
             this.pre_compose_rule(token, coords);
@@ -4248,6 +4577,7 @@
         props: this.props,
         styles: this.styles,
         grid: this.grid,
+        seed: this.seed,
         doodles: this.doodles,
         shaders: this.shaders,
         canvas: this.canvas,
@@ -4258,9 +4588,14 @@
 
   }
 
-  function generate_css(tokens, grid_size, random) {
+  function generate_css(tokens, grid_size, seed_value, max_grid) {
     let rules = new Rules(tokens);
+    let random = seedrandom(String(seed_value));
     let context = {};
+
+    function update_random(seed) {
+      random = seedrandom(String(seed));
+    }
 
     function rand(start = 0, end) {
       if (arguments.length == 1) {
@@ -4290,10 +4625,23 @@
       x: 1, y: 1, z: 1, count: 1, context: {},
       grid: { x: 1, y: 1, z: 1, count: 1 },
       random, rand, pick, shuffle,
+      max_grid, update_random,
     });
 
-    let { grid } = rules.output();
-    if (grid) grid_size = grid;
+    let { grid, seed } = rules.output();
+
+    if (grid) {
+      grid_size = grid;
+    }
+    if (is_nil(seed)) {
+      seed = seed_value;
+      if (is_nil(seed)) {
+        seed = Date.now();
+      }
+    }
+    seed = String(seed);
+    random = seedrandom(seed);
+    rules.seed = seed;
     rules.reset();
 
     if (grid_size.z == 1) {
@@ -4303,6 +4651,7 @@
             x, y, z: 1,
             count: ++count, grid: grid_size, context,
             random, rand, pick, shuffle,
+            max_grid,
           });
         }
       }
@@ -4313,6 +4662,7 @@
           x: 1, y: 1, z,
           count: ++count, grid: grid_size, context,
           random, rand, pick, shuffle,
+          max_grid,
         });
       }
     }
@@ -4831,228 +5181,6 @@ void main() {
     });
   }
 
-  /*
-  Copyright 2019 David Bau.
-  Permission is hereby granted, free of charge, to any person obtaining
-  a copy of this software and associated documentation files (the
-  "Software"), to deal in the Software without restriction, including
-  without limitation the rights to use, copy, modify, merge, publish,
-  distribute, sublicense, and/or sell copies of the Software, and to
-  permit persons to whom the Software is furnished to do so, subject to
-  the following conditions:
-  The above copyright notice and this permission notice shall be
-  included in all copies or substantial portions of the Software.
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  */
-
-  var global = globalThis;
-  var math = Math;
-  var pool = [];
-
-  //
-  // The following constants are related to IEEE 754 limits.
-  //
-
-  var width = 256,        // each RC4 output is 0 <= x < 256
-      chunks = 6,         // at least six RC4 outputs for each double
-      digits = 52,        // there are 52 significant digits in a double
-      rngname = 'random', // rngname: name for Math.random and Math.seedrandom
-      startdenom = math.pow(width, chunks),
-      significance = math.pow(2, digits),
-      overflow = significance * 2,
-      mask = width - 1,
-      nodecrypto;         // node.js crypto module, initialized at the bottom.
-
-  //
-  // seedrandom()
-  // This is the seedrandom function described above.
-  //
-  function seedrandom(seed, options, callback) {
-    var key = [];
-    options = (options == true) ? { entropy: true } : (options || {});
-
-    // Flatten the seed string or build one from local entropy if needed.
-    var shortseed = mixkey(flatten(
-      options.entropy ? [seed, tostring(pool)] :
-      (seed == null) ? autoseed() : seed, 3), key);
-
-    // Use the seed to initialize an ARC4 generator.
-    var arc4 = new ARC4(key);
-
-    // This function returns a random double in [0, 1) that contains
-    // randomness in every bit of the mantissa of the IEEE 754 value.
-    var prng = function() {
-      var n = arc4.g(chunks),             // Start with a numerator n < 2 ^ 48
-          d = startdenom,                 //   and denominator d = 2 ^ 48.
-          x = 0;                          //   and no 'extra last byte'.
-      while (n < significance) {          // Fill up all significant digits by
-        n = (n + x) * width;              //   shifting numerator and
-        d *= width;                       //   denominator and generating a
-        x = arc4.g(1);                    //   new least-significant-byte.
-      }
-      while (n >= overflow) {             // To avoid rounding up, before adding
-        n /= 2;                           //   last byte, shift everything
-        d /= 2;                           //   right using integer math until
-        x >>>= 1;                         //   we have exactly the desired bits.
-      }
-      return (n + x) / d;                 // Form the number within [0, 1).
-    };
-
-    prng.int32 = function() { return arc4.g(4) | 0; };
-    prng.quick = function() { return arc4.g(4) / 0x100000000; };
-    prng.double = prng;
-
-    // Mix the randomness into accumulated entropy.
-    mixkey(tostring(arc4.S), pool);
-
-    // Calling convention: what to return as a function of prng, seed, is_math.
-    return (options.pass || callback ||
-        function(prng, seed, is_math_call, state) {
-          if (state) {
-            // Load the arc4 state from the given state if it has an S array.
-            if (state.S) { copy(state, arc4); }
-            // Only provide the .state method if requested via options.state.
-            prng.state = function() { return copy(arc4, {}); };
-          }
-
-          // If called as a method of Math (Math.seedrandom()), mutate
-          // Math.random because that is how seedrandom.js has worked since v1.0.
-          if (is_math_call) { math[rngname] = prng; return seed; }
-
-          // Otherwise, it is a newer calling convention, so return the
-          // prng directly.
-          else return prng;
-        })(
-    prng,
-    shortseed,
-    'global' in options ? options.global : (this == math),
-    options.state);
-  }
-
-  //
-  // ARC4
-  //
-  // An ARC4 implementation.  The constructor takes a key in the form of
-  // an array of at most (width) integers that should be 0 <= x < (width).
-  //
-  // The g(count) method returns a pseudorandom integer that concatenates
-  // the next (count) outputs from ARC4.  Its return value is a number x
-  // that is in the range 0 <= x < (width ^ count).
-  //
-  function ARC4(key) {
-    var t, keylen = key.length,
-        me = this, i = 0, j = me.i = me.j = 0, s = me.S = [];
-
-    // The empty key [] is treated as [0].
-    if (!keylen) { key = [keylen++]; }
-
-    // Set up S using the standard key scheduling algorithm.
-    while (i < width) {
-      s[i] = i++;
-    }
-    for (i = 0; i < width; i++) {
-      s[i] = s[j = mask & (j + key[i % keylen] + (t = s[i]))];
-      s[j] = t;
-    }
-
-    // The "g" method returns the next (count) outputs as one number.
-    (me.g = function(count) {
-      // Using instance members instead of closure state nearly doubles speed.
-      var t, r = 0,
-          i = me.i, j = me.j, s = me.S;
-      while (count--) {
-        t = s[i = mask & (i + 1)];
-        r = r * width + s[mask & ((s[i] = s[j = mask & (j + t)]) + (s[j] = t))];
-      }
-      me.i = i; me.j = j;
-      return r;
-      // For robust unpredictability, the function call below automatically
-      // discards an initial batch of values.  This is called RC4-drop[256].
-      // See http://google.com/search?q=rsa+fluhrer+response&btnI
-    })(width);
-  }
-
-  //
-  // copy()
-  // Copies internal state of ARC4 to or from a plain object.
-  //
-  function copy(f, t) {
-    t.i = f.i;
-    t.j = f.j;
-    t.S = f.S.slice();
-    return t;
-  }
-  //
-  // flatten()
-  // Converts an object tree to nested arrays of strings.
-  //
-  function flatten(obj, depth) {
-    var result = [], typ = (typeof obj), prop;
-    if (depth && typ == 'object') {
-      for (prop in obj) {
-        try { result.push(flatten(obj[prop], depth - 1)); } catch (e) {}
-      }
-    }
-    return (result.length ? result : typ == 'string' ? obj : obj + '\0');
-  }
-
-  //
-  // mixkey()
-  // Mixes a string seed into a key that is an array of integers, and
-  // returns a shortened string seed that is equivalent to the result key.
-  //
-  function mixkey(seed, key) {
-    var stringseed = seed + '', smear, j = 0;
-    while (j < stringseed.length) {
-      key[mask & j] =
-        mask & ((smear ^= key[mask & j] * 19) + stringseed.charCodeAt(j++));
-    }
-    return tostring(key);
-  }
-
-  //
-  // autoseed()
-  // Returns an object for autoseeding, using window.crypto and Node crypto
-  // module if available.
-  //
-  function autoseed() {
-    try {
-      var out;
-      if (nodecrypto && (out = nodecrypto.randomBytes)) ; else {
-        out = new Uint8Array(width);
-        (global.crypto || global.msCrypto).getRandomValues(out);
-      }
-      return tostring(out);
-    } catch (e) {
-      var browser = global.navigator,
-          plugins = browser && browser.plugins;
-      return [+new Date, global, plugins, global.screen, tostring(pool)];
-    }
-  }
-
-  //
-  // tostring()
-  // Converts an array of charcodes to a string
-  //
-  function tostring(a) {
-    return String.fromCharCode.apply(0, a);
-  }
-
-  //
-  // When seedrandom.js is loaded, we immediately mix a few bits
-  // from the built-in RNG into the entropy pool.  Because we do
-  // not want to interfere with deterministic PRNG state later,
-  // seedrandom will not call math.random on its own again after
-  // initialization.
-  //
-  mixkey(math.random(), pool);
-
   function get_all_variables(element) {
     if (typeof getComputedStyle === 'undefined') {
       return '';
@@ -5271,8 +5399,12 @@ void main() {
         this.connectedCallback(true);
       }
 
+      get_max_grid() {
+        return this.hasAttribute('experimental') ? 256 : 64;
+      }
+
       get_grid() {
-        return parse_grid(this.attr('grid'));
+        return parse_grid(this.attr('grid'), this.get_max_grid());
       }
 
       get_use() {
@@ -5294,16 +5426,13 @@ void main() {
       generate(parsed) {
         let grid = this.get_grid();
         let seed = this.attr('seed') || this.attr('data-seed');
-
         if (is_nil(seed)) {
           seed = Date.now();
         }
-
-        seed = String(seed);
-        this._seed_value = seed;
-
-        let random = this.random = seedrandom(seed);
-        let compiled = this.compiled = generate_css(parsed, grid, random);
+        let compiled = this.compiled = generate_css(
+          parsed, grid, seed, this.get_max_grid()
+        );
+        this._seed_value = compiled.seed;
         return compiled;
       }
 
@@ -5314,8 +5443,8 @@ void main() {
         }
         code = ':doodle { width:100%;height:100% }' + code;
         let parsed = parse$8(code, this.extra);
-        let _grid = parse_grid({});
-        let compiled = generate_css(parsed, _grid, this.random);
+        let _grid = parse_grid('');
+        let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid());
         let grid = compiled.grid ? compiled.grid : _grid;
         const { keyframes, host, container, cells } = compiled.styles;
 
