@@ -1,6 +1,22 @@
+## 0.28.0
+
+* Reduce the default maximum grid size to `64x64`.
+  It can be up to `256x256` if the `experimental` attribute is provided (#91)
+* Support `title` and `desc` element (#92)
+* Fix broken var inheritance (#94)
+* Support named arguments for `@svg-filter` and `@rn` (#95)
+* Support reading seed value from source code (#96)
+
+<br /> <br />
+
+
+
 ## 0.27.4
 
 * Put the `seed` argument at the end.
+
+<br /> <br />
+
 
 
 ## 0.27.3
