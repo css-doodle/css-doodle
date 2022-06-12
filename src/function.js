@@ -330,7 +330,7 @@ const Expose = add_alias({
       let { frequency = 1, scale = 1, octave, seed } = get_named_arguments(values, [
         'frequency', 'scale', 'octave', 'seed'
       ]);
-      let [bx, by = bx] = parse_value_group(fq);
+      let [bx, by = bx] = parse_value_group(frequency);
       octave = octave ? `numOctaves: ${octave};` : '';
       seed = seed ? `seed: ${seed};` : '';
       value = `
