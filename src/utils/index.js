@@ -49,7 +49,9 @@ function is_empty(value) {
 }
 
 function lazy(fn) {
-  let wrap = () => fn;
+  let wrap = (upstream) => {
+    return (...args) => fn(...[upstream, ...args]);
+  }
   wrap.lazy = true;
   return wrap;
 }

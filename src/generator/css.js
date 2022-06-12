@@ -738,7 +738,8 @@ function generate_css(tokens, grid_size, seed_value, max_grid) {
         rules.compose({
           x, y, z: 1,
           count: ++count, grid: grid_size, context,
-          random, rand, pick, shuffle,
+          rand, pick, shuffle,
+          random, seed,
           max_grid,
         });
       }
@@ -749,7 +750,8 @@ function generate_css(tokens, grid_size, seed_value, max_grid) {
       rules.compose({
         x: 1, y: 1, z,
         count: ++count, grid: grid_size, context,
-        random, rand, pick, shuffle,
+        rand, pick, shuffle,
+        random, seed,
         max_grid,
       });
     }

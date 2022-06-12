@@ -22,7 +22,7 @@ import parse_svg_path from './parser/parse-svg-path.js';
 import * as Uniforms from './uniforms.js';
 
 function make_sequence(c) {
-  return lazy((n, ...actions) => {
+  return lazy((_, n, ...actions) => {
     if (!actions || !n) return '';
     let count = get_value(n());
     let evaluated = count;
@@ -311,7 +311,7 @@ const Expose = add_alias({
     return value => parseInt(get_value(value)).toString(16);
   },
 
-  svg: lazy((...args) => {
+  svg: lazy((_, ...args) => {
     let value = args.map(input => get_value(input())).join(',');
     if (!value.startsWith('<')) {
       let parsed = parse_svg(value);
@@ -321,23 +321,23 @@ const Expose = add_alias({
     return create_svg_url(svg);
   }),
 
-  filter: lazy((...args) => {
+  filter: lazy((upstream, ...args) => {
     let values = args.map(input => get_value(input()));
     let value = values.join(',');
     let id = unique_id('filter-');
     // shorthand
     if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-      let { frequency = 1, scale = 1, octave, seed } = get_named_arguments(values, [
+      let { frequency = 1, scale = 1, octave, seed = upstream.seed } = get_named_arguments(values, [
         'frequency', 'scale', 'octave', 'seed'
       ]);
       let [bx, by = bx] = parse_value_group(frequency);
       octave = octave ? `numOctaves: ${octave};` : '';
-      seed = seed ? `seed: ${seed};` : '';
       value = `
         feTurbulence {
           type: fractalNoise;
           baseFrequency: ${bx} ${by};
-          ${octave} ${seed}
+          seed: ${seed};
+          ${octave}
         }
         feDisplacementMap {
           in: SourceGraphic;
