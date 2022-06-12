@@ -1,4 +1,4 @@
-/*! css-doodle@0.28.0 */
+/*! css-doodle@0.28.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -388,7 +388,9 @@
   }
 
   function lazy(fn) {
-    let wrap = () => fn;
+    let wrap = (upstream) => {
+      return (...args) => fn(...[upstream, ...args]);
+    };
     wrap.lazy = true;
     return wrap;
   }
@@ -2875,7 +2877,7 @@
   });
 
   function make_sequence(c) {
-    return lazy((n, ...actions) => {
+    return lazy((_, n, ...actions) => {
       if (!actions || !n) return '';
       let count = get_value(n());
       let evaluated = count;
@@ -3163,7 +3165,7 @@
       return value => parseInt(get_value(value)).toString(16);
     },
 
-    svg: lazy((...args) => {
+    svg: lazy((_, ...args) => {
       let value = args.map(input => get_value(input())).join(',');
       if (!value.startsWith('<')) {
         let parsed = parse$2(value);
@@ -3173,23 +3175,23 @@
       return create_svg_url(svg);
     }),
 
-    filter: lazy((...args) => {
+    filter: lazy((upstream, ...args) => {
       let values = args.map(input => get_value(input()));
       let value = values.join(',');
       let id = unique_id('filter-');
       // shorthand
       if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-        let { frequency = 1, scale = 1, octave, seed } = get_named_arguments(values, [
+        let { frequency = 1, scale = 1, octave, seed = upstream.seed } = get_named_arguments(values, [
           'frequency', 'scale', 'octave', 'seed'
         ]);
-        let [bx, by = bx] = parse$5(fq);
+        let [bx, by = bx] = parse$5(frequency);
         octave = octave ? `numOctaves: ${octave};` : '';
-        seed = seed ? `seed: ${seed};` : '';
         value = `
         feTurbulence {
           type: fractalNoise;
           baseFrequency: ${bx} ${by};
-          ${octave} ${seed}
+          seed: ${seed};
+          ${octave}
         }
         feDisplacementMap {
           in: SourceGraphic;
@@ -4578,6 +4580,7 @@
         styles: this.styles,
         grid: this.grid,
         seed: this.seed,
+        random: this.random,
         doodles: this.doodles,
         shaders: this.shaders,
         canvas: this.canvas,
@@ -4588,9 +4591,9 @@
 
   }
 
-  function generate_css(tokens, grid_size, seed_value, max_grid) {
+  function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
     let rules = new Rules(tokens);
-    let random = seedrandom(String(seed_value));
+    let random = seed_random || seedrandom(String(seed_value));
     let context = {};
 
     function update_random(seed) {
@@ -4633,15 +4636,22 @@
     if (grid) {
       grid_size = grid;
     }
-    if (is_nil(seed)) {
+
+    if (seed) {
+      seed = String(seed);
+      random = seedrandom(seed);
+    } else {
       seed = seed_value;
-      if (is_nil(seed)) {
-        seed = Date.now();
-      }
     }
+
+    if (is_nil(seed)) {
+      seed = Date.now();
+      random = seedrandom(seed);
+    }
+
     seed = String(seed);
-    random = seedrandom(seed);
     rules.seed = seed;
+    rules.random = random;
     rules.reset();
 
     if (grid_size.z == 1) {
@@ -4650,7 +4660,8 @@
           rules.compose({
             x, y, z: 1,
             count: ++count, grid: grid_size, context,
-            random, rand, pick, shuffle,
+            rand, pick, shuffle,
+            random, seed,
             max_grid,
           });
         }
@@ -4661,7 +4672,8 @@
         rules.compose({
           x: 1, y: 1, z,
           count: ++count, grid: grid_size, context,
-          random, rand, pick, shuffle,
+          rand, pick, shuffle,
+          random, seed,
           max_grid,
         });
       }
@@ -5433,6 +5445,7 @@ void main() {
           parsed, grid, seed, this.get_max_grid()
         );
         this._seed_value = compiled.seed;
+        this._seed_random = compiled.random;
         return compiled;
       }
 
@@ -5444,7 +5457,7 @@ void main() {
         code = ':doodle { width:100%;height:100% }' + code;
         let parsed = parse$8(code, this.extra);
         let _grid = parse_grid('');
-        let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid());
+        let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
         let grid = compiled.grid ? compiled.grid : _grid;
         const { keyframes, host, container, cells } = compiled.styles;
 

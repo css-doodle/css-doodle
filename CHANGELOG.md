@@ -1,3 +1,13 @@
+## 0.28.1
+
+* Fix frequency variable name.
+* Fix seed random inside `@doodle` function.
+* Use seed for default svg filter seed.
+
+<br /> <br />
+
+
+
 ## 0.28.0
 
 * Reduce the default maximum grid size to `64x64`.
