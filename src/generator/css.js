@@ -666,6 +666,7 @@ class Rules {
       styles: this.styles,
       grid: this.grid,
       seed: this.seed,
+      random: this.random,
       doodles: this.doodles,
       shaders: this.shaders,
       canvas: this.canvas,
@@ -676,9 +677,9 @@ class Rules {
 
 }
 
-function generate_css(tokens, grid_size, seed_value, max_grid) {
+function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
   let rules = new Rules(tokens);
-  let random = seedrandom(String(seed_value));
+  let random = seed_random || seedrandom(String(seed_value));
   let context = {};
 
   function update_random(seed) {
@@ -721,15 +722,22 @@ function generate_css(tokens, grid_size, seed_value, max_grid) {
   if (grid) {
     grid_size = grid;
   }
-  if (is_nil(seed)) {
+
+  if (seed) {
+    seed = String(seed);
+    random = seedrandom(seed);
+  } else {
     seed = seed_value;
-    if (is_nil(seed)) {
-      seed = Date.now();
-    }
   }
+
+  if (is_nil(seed)) {
+    seed = Date.now();
+    random = seedrandom(seed);
+  }
+
   seed = String(seed);
-  random = seedrandom(seed);
   rules.seed = seed;
+  rules.random = random;
   rules.reset();
 
   if (grid_size.z == 1) {

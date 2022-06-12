@@ -177,6 +177,7 @@ if (typeof customElements !== 'undefined') {
         parsed, grid, seed, this.get_max_grid()
       );
       this._seed_value = compiled.seed;
+      this._seed_random = compiled.random;
       return compiled;
     }
 
@@ -188,7 +189,7 @@ if (typeof customElements !== 'undefined') {
       code = ':doodle { width:100%;height:100% }' + code;
       let parsed = parse_css(code, this.extra);
       let _grid = parse_grid('');
-      let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid());
+      let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
 
