@@ -327,23 +327,54 @@ const Expose = add_alias({
     let id = unique_id('filter-');
     // shorthand
     if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-      let { frequency = 1, scale = 1, octave, seed = upstream.seed } = get_named_arguments(values, [
-        'frequency', 'scale', 'octave', 'seed'
+      let { frequency, scale = 1, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
+        'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
       ]);
       let [bx, by = bx] = parse_value_group(frequency);
       octave = octave ? `numOctaves: ${octave};` : '';
       value = `
-        feTurbulence {
-          type: fractalNoise;
-          baseFrequency: ${bx} ${by};
-          seed: ${seed};
-          ${octave}
-        }
-        feDisplacementMap {
-          in: SourceGraphic;
-          scale: ${scale};
-        }
-      `
+        x: -20%;
+        y: -20%;
+        width: 140%;
+        height: 140%;
+      `;
+      if (dilate) {
+        value += `
+          feMorphology {
+            operator: dilate;
+            radius: ${dilate};
+          }
+        `
+      }
+      if (erode) {
+        value += `
+          feMorphology {
+            operator: erode;
+            radius: ${erode};
+          }
+        `
+      }
+      if (blur) {
+        value += `
+          feGaussianBlur {
+            stdDeviation: ${blur};
+          }
+        `
+      }
+      if (frequency) {
+        value += `
+          feTurbulence {
+            type: fractalNoise;
+            baseFrequency: ${bx} ${by};
+            seed: ${seed};
+            ${octave}
+          }
+          feDisplacementMap {
+            in: SourceGraphic;
+            scale: ${scale};
+          }
+        `
+      }
     }
     // new svg syntax
     if (!value.startsWith('<')) {
