@@ -240,3 +240,22 @@ test('grouped text node with tspan', t => {
     `)
   );
 });
+
+test('do not group elements for empty id', t => {
+  compare(t,
+    `svg {
+      circle {
+        fill: red
+      }
+      circle {
+        cx, cy, r: 5;
+      }
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <circle fill="red"></circle>
+        <circle cx="5" cy="5" r="5"></circle>
+      </svg>
+    `)
+  );
+});
