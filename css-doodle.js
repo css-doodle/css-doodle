@@ -1,4 +1,4 @@
-/*! css-doodle@0.28.1 */
+/*! css-doodle@0.28.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -1377,7 +1377,7 @@
     find(target) {
       let id = target.attrs.id;
       let name = target.name;
-      if (Array.isArray(this.body)) {
+      if (Array.isArray(this.body) && id !== undefined) {
         return this.body.find(tag => tag.attrs.id === id && tag.name === name);
       }
     }
@@ -3181,23 +3181,54 @@
       let id = unique_id('filter-');
       // shorthand
       if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-        let { frequency = 1, scale = 1, octave, seed = upstream.seed } = get_named_arguments(values, [
-          'frequency', 'scale', 'octave', 'seed'
+        let { frequency, scale = 1, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
+          'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
         ]);
-        let [bx, by = bx] = parse$5(frequency);
-        octave = octave ? `numOctaves: ${octave};` : '';
         value = `
-        feTurbulence {
-          type: fractalNoise;
-          baseFrequency: ${bx} ${by};
-          seed: ${seed};
-          ${octave}
-        }
-        feDisplacementMap {
-          in: SourceGraphic;
-          scale: ${scale};
-        }
+        x: -20%;
+        y: -20%;
+        width: 140%;
+        height: 140%;
       `;
+        if (!is_nil(dilate)) {
+          value += `
+          feMorphology {
+            operator: dilate;
+            radius: ${dilate};
+          }
+        `;
+        }
+        if (!is_nil(erode)) {
+          value += `
+          feMorphology {
+            operator: erode;
+            radius: ${erode};
+          }
+        `;
+        }
+        if (!is_nil(blur)) {
+          value += `
+          feGaussianBlur {
+            stdDeviation: ${blur};
+          }
+        `;
+        }
+        if (!is_nil(frequency)) {
+          let [bx, by = bx] = parse$5(frequency);
+          octave = octave ? `numOctaves: ${octave};` : '';
+          value += `
+          feTurbulence {
+            type: fractalNoise;
+            baseFrequency: ${bx} ${by};
+            seed: ${seed};
+            ${octave}
+          }
+          feDisplacementMap {
+            in: SourceGraphic;
+            scale: ${scale};
+          }
+        `;
+        }
       }
       // new svg syntax
       if (!value.startsWith('<')) {
@@ -3615,6 +3646,7 @@
     },
 
   }, {
+    'place': 'position',
 
     // legacy names.
     'place-cell': 'position',
@@ -4365,6 +4397,7 @@
             break;
           }
           case 'place-cell':
+          case 'place':
           case 'position':
           case 'offset': {
             if (!is_host_selector(selector)) {
