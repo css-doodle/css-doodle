@@ -1,7 +1,7 @@
 import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { generate_svg } from './generator/svg.js';
 
-import { cell_id, is_letter, add_alias, unique_id, lerp } from './utils/index.js';
+import { cell_id, is_letter, is_nil, add_alias, unique_id, lerp } from './utils/index.js';
 import { lazy, clamp, sequence, get_value } from './utils/index.js';
 import { by_unit, by_charcode } from './utils/transform.js';
 import { last } from './utils/list.js';
@@ -327,23 +327,54 @@ const Expose = add_alias({
     let id = unique_id('filter-');
     // shorthand
     if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-      let { frequency = 1, scale = 1, octave, seed = upstream.seed } = get_named_arguments(values, [
-        'frequency', 'scale', 'octave', 'seed'
+      let { frequency, scale = 1, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
+        'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
       ]);
-      let [bx, by = bx] = parse_value_group(frequency);
-      octave = octave ? `numOctaves: ${octave};` : '';
       value = `
-        feTurbulence {
-          type: fractalNoise;
-          baseFrequency: ${bx} ${by};
-          seed: ${seed};
-          ${octave}
-        }
-        feDisplacementMap {
-          in: SourceGraphic;
-          scale: ${scale};
-        }
-      `
+        x: -20%;
+        y: -20%;
+        width: 140%;
+        height: 140%;
+      `;
+      if (!is_nil(dilate)) {
+        value += `
+          feMorphology {
+            operator: dilate;
+            radius: ${dilate};
+          }
+        `
+      }
+      if (!is_nil(erode)) {
+        value += `
+          feMorphology {
+            operator: erode;
+            radius: ${erode};
+          }
+        `
+      }
+      if (!is_nil(blur)) {
+        value += `
+          feGaussianBlur {
+            stdDeviation: ${blur};
+          }
+        `
+      }
+      if (!is_nil(frequency)) {
+        let [bx, by = bx] = parse_value_group(frequency);
+        octave = octave ? `numOctaves: ${octave};` : '';
+        value += `
+          feTurbulence {
+            type: fractalNoise;
+            baseFrequency: ${bx} ${by};
+            seed: ${seed};
+            ${octave}
+          }
+          feDisplacementMap {
+            in: SourceGraphic;
+            scale: ${scale};
+          }
+        `
+      }
     }
     // new svg syntax
     if (!value.startsWith('<')) {
