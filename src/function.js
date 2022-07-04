@@ -331,10 +331,10 @@ const Expose = add_alias({
         'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
       ]);
       value = `
-        x: -25%;
-        y: -25%;
-        width: 150%;
-        height: 150%;
+        x: -20%;
+        y: -20%;
+        width: 140%;
+        height: 140%;
       `;
       if (!is_nil(dilate)) {
         value += `
