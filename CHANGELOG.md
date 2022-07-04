@@ -1,3 +1,13 @@
+## 0.28.2
+
+* Add `@place` alias for `@position`.
+* Do not SVG group elements for empty id.
+* Extend `@svg-filter` to add `blur`, `erode`, and `dilate` commands.
+
+<br /> <br />
+
+
+
 ## 0.28.1
 
 * Fix frequency variable name.
