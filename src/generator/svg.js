@@ -22,7 +22,7 @@ class Tag {
   find(target) {
     let id = target.attrs.id;
     let name = target.name;
-    if (Array.isArray(this.body)) {
+    if (Array.isArray(this.body) && id !== undefined) {
       return this.body.find(tag => tag.attrs.id === id && tag.name === name);
     }
   }
