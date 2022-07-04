@@ -92,6 +92,7 @@ export default add_alias({
   },
 
 }, {
+  'place': 'position',
 
   // legacy names.
   'place-cell': 'position',
