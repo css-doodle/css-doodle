@@ -321,3 +321,20 @@ test('statement end on quotes', t => {
     }]
   });
 });
+
+test('times syntas', t => {
+  compare(t, `
+    circle*10 {}
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'circle*10',
+      pureName: 'circle',
+      times: '10',
+      value: []
+    }]
+  });
+
+});

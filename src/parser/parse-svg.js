@@ -25,18 +25,19 @@ function readStatement(iter, token) {
       }
       let tokenName = selectors.pop();
       let skip = isSkip(...selectors, tokenName);
-      inlineBlock = resolveId(walk(iter, {
+      inlineBlock = resolveId(walk(iter, splitTimes(tokenName, {
         type: 'block',
-        name: tokenName,
         inline: true,
-        value: []
-      }), skip);
+        name: tokenName,
+        value: [],
+      })), skip);
+
       while (tokenName = selectors.pop()) {
-        inlineBlock = resolveId({
+        inlineBlock = resolveId(splitTimes(tokenName, {
           type: 'block',
           name: tokenName,
           value: [inlineBlock]
-        }, skip);
+        }), skip);
       }
       break;
     }
@@ -94,17 +95,17 @@ function walk(iter, parentToken) {
       }
       let tokenName = selectors.pop();
       let skip = isSkip(...selectors, parentToken.name, tokenName);
-      let block = resolveId(walk(iter, {
+      let block = resolveId(walk(iter, splitTimes(tokenName, {
         type: 'block',
         name: tokenName,
         value: []
-      }), skip);
+      })), skip);
       while (tokenName = selectors.pop()) {
-        block = resolveId({
+        block = resolveId(splitTimes(tokenName, {
           type: 'block',
           name: tokenName,
           value: [block]
-        }, skip);
+        }), skip);
       }
       rules.push(block);
       fragment = [];
@@ -203,6 +204,18 @@ function getGroups(tokens, fn) {
     group.push(joinToken(temp));
   }
   return group;
+}
+
+function splitTimes(name, object) {
+  let target = Object.assign({}, object);
+  if (/\*[0-9]/.test(name)) {
+    let [tokenName, times] = name.split('*');
+    if (times) {
+      target.times = times;
+      target.pureName = tokenName;
+    }
+  }
+  return target;
 }
 
 function isSkip(...names) {
