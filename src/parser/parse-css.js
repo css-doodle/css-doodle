@@ -1,6 +1,8 @@
 // I need to rewrite this
 
 import parse_var from './parse-var.js';
+import parse_svg from './parse-svg.js';
+import { generate_svg_extended } from '../generator/svg-extended.js';
 import { first, last, clone } from '../utils/list.js';
 
 const Tokens = {
@@ -260,8 +262,10 @@ function read_property(it) {
 
 function read_arguments(it, composition, doodle) {
   let args = [], group = [], stack = [], arg = '', c;
+  let raw = '';
   while (!it.end()) {
     c = it.curr();
+    let start = it.index();
     if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
       if (stack.length) {
         if (c != '(' && c === last(stack)) {
@@ -291,7 +295,6 @@ function read_arguments(it, composition, doodle) {
         }
         arg += c;
       }
-
       else {
         if (arg.length) {
           if (!group.length) {
@@ -328,10 +331,11 @@ function read_arguments(it, composition, doodle) {
       break;
     }
     else {
+      raw += it.range(start, it.index() + 1);
       it.next();
     }
   }
-  return skip_last_empty_args(args);
+  return [skip_last_empty_args(args), raw];
 }
 
 function skip_last_empty_args(args) {
@@ -390,6 +394,11 @@ function seperate_func_name(name) {
   return { fname, extra };
 }
 
+function has_times_syntax(token) {
+  let str = JSON.stringify(token);
+  return str.includes('pureName') && str.includes('times');
+}
+
 function read_func(it) {
   let func = Tokens.func();
   let name = '@', c;
@@ -403,7 +412,18 @@ function read_func(it) {
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
-      func.arguments = read_arguments(it, composition, composible(name));
+      let [args, raw_args] = read_arguments(it, composition, composible(name));
+      if (name === '@svg' && /\d\s*{/.test(raw_args)) {
+        let parsed_svg = parse_svg(raw_args);
+        if (has_times_syntax(parsed_svg)) {
+          let svg = generate_svg_extended(parsed_svg);
+          // compatible with old iterator
+          svg += ')';
+          let extended = read_arguments(iterator(svg), composition, composible(name));
+          args = extended[0];
+        }
+      }
+      func.arguments = args;
       break;
     } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
       name += c;
@@ -504,7 +524,7 @@ function read_cond_selector(it) {
   while (!it.end()) {
     if ((c = it.curr()) == '(') {
       it.next();
-      selector.arguments = read_arguments(it);
+      selector.arguments = read_arguments(it)[0];
     }
     else if (/[){]/.test(c)) break;
     else if (!is.white_space(c)) selector.name += c;

@@ -4,45 +4,52 @@ import parseValueGroup from './parse-value-group.js';
 function readStatement(iter, token) {
   let fragment = [];
   let inlineBlock;
-  let stack = [];
+  let stackQuote = [];
+  let stackParen = [];
   while (iter.next()) {
     let { curr, next } = iter.get();
-    let isStatementBreak = !stack.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+    let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+    if (curr.isSymbol('(')) {
+      stackParen.push(curr);
+    } else if (curr.isSymbol(')')) {
+      stackParen.pop();
+    }
     if (curr.isSymbol("'", '"')) {
       if (curr.status === 'open') {
-        stack.push(curr);
+        stackQuote.push(curr);
       } else {
-        stack.pop();
+        stackQuote.pop();
       }
-      if (next.isSymbol('}') && !stack.length) {
+      if (next.isSymbol('}') && !stackQuote.length) {
         isStatementBreak = true;
       }
     }
-    if (!stack.length && curr.isSymbol('{')) {
+    if (!stackParen.length && !stackQuote.length && curr.isSymbol('{')) {
       let selectors = getGroups(fragment, token => token.isSpace());
       if (!selectors.length) {
         continue;
       }
       let tokenName = selectors.pop();
       let skip = isSkip(...selectors, tokenName);
-      inlineBlock = resolveId(walk(iter, {
+      inlineBlock = resolveId(walk(iter, splitTimes(tokenName, {
         type: 'block',
-        name: tokenName,
         inline: true,
-        value: []
-      }), skip);
+        name: tokenName,
+        value: [],
+      })), skip);
+
       while (tokenName = selectors.pop()) {
-        inlineBlock = resolveId({
+        inlineBlock = resolveId(splitTimes(tokenName, {
           type: 'block',
           name: tokenName,
           value: [inlineBlock]
-        }, skip);
+        }), skip);
       }
       break;
     }
     // skip quotes
-    let skip = (curr.status == 'open' && stack.length == 1)
-      || (curr.status == 'close' && !stack.length);
+    let skip = (curr.status == 'open' && stackQuote.length == 1)
+      || (curr.status == 'close' && !stackQuote.length);
 
     if (!skip) {
       fragment.push(curr);
@@ -55,6 +62,9 @@ function readStatement(iter, token) {
     token.value = joinToken(fragment);
   } else if (inlineBlock) {
     token.value = inlineBlock;
+  }
+  if (token.origin) {
+    token.origin.value = token.value;
   }
   return token
 }
@@ -94,17 +104,17 @@ function walk(iter, parentToken) {
       }
       let tokenName = selectors.pop();
       let skip = isSkip(...selectors, parentToken.name, tokenName);
-      let block = resolveId(walk(iter, {
+      let block = resolveId(walk(iter, splitTimes(tokenName, {
         type: 'block',
         name: tokenName,
         value: []
-      }), skip);
+      })), skip);
       while (tokenName = selectors.pop()) {
-        block = resolveId({
+        block = resolveId(splitTimes(tokenName, {
           type: 'block',
           name: tokenName,
           value: [block]
-        }, skip);
+        }), skip);
       }
       rules.push(block);
       fragment = [];
@@ -116,11 +126,18 @@ function walk(iter, parentToken) {
       && fragment.length
     ) {
       let props = getGroups(fragment, token => token.isSymbol(','));
-      let statement = readStatement(iter, {
+      let intial = {
         type: 'statement',
         name: 'unkown',
         value: ''
-      });
+      }
+      if (props.length > 1) {
+        intial.origin = {
+          name: props
+        };
+      }
+      let statement = readStatement(iter, intial);
+
       let groupdValue = parseValueGroup(statement.value);
       let expand = (props.length > 1 && groupdValue.length === props.length);
 
@@ -203,6 +220,18 @@ function getGroups(tokens, fn) {
     group.push(joinToken(temp));
   }
   return group;
+}
+
+function splitTimes(name, object) {
+  let target = Object.assign({}, object);
+  if (/\*[0-9]/.test(name)) {
+    let [tokenName, times] = name.split('*');
+    if (times) {
+      target.times = times;
+      target.pureName = tokenName;
+    }
+  }
+  return target;
 }
 
 function isSkip(...names) {
