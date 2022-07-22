@@ -13,7 +13,7 @@ test('code transformation', t => {
   compare(t,
     `circle {}`,
     `svg{circle{}}`
-  );
+  ,);
 
   compare(t,
     `circle*10 {}`,

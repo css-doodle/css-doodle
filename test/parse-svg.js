@@ -122,8 +122,8 @@ test('group property', t => {
     name: 'svg',
     type: 'block',
     value: [
-      { type: 'statement', name: 'cx', value: '5'},
-      { type: 'statement', name: 'cy', value: '5'},
+      { type: 'statement', origin: { name: ['cx', 'cy'], value: '5' }, name: 'cx', value: '5'},
+      { type: 'statement', origin: { name: ['cx', 'cy'], value: '5' }, name: 'cy', value: '5'},
     ]
   });
 
@@ -131,8 +131,8 @@ test('group property', t => {
     name: 'svg',
     type: 'block',
     value: [
-      { type: 'statement', name: 'cx', value: '5'},
-      { type: 'statement', name: 'cy', value: '6'},
+      { type: 'statement', origin: { name: ['cx', 'cy'], value: '5 6' }, name: 'cx', value: '5'},
+      { type: 'statement', origin: { name: ['cx', 'cy'], value: '5 6' }, name: 'cy', value: '6'},
     ]
   });
 
@@ -322,7 +322,7 @@ test('statement end on quotes', t => {
   });
 });
 
-test('times syntas', t => {
+test('times syntax', t => {
   compare(t, `
     circle*10 {}
   `, {
@@ -336,5 +336,24 @@ test('times syntas', t => {
       value: []
     }]
   });
+});
 
+test('complex values with parens', t => {
+  compare(t, `
+    p {
+      d: @plot(r: 1; unit: none);
+    }
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'p',
+      value: [{
+        type: 'statement',
+        name: 'd',
+        value: '@plot(r:1;unit:none)'
+      }]
+    }]
+  });
 });

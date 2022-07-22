@@ -1,26 +1,27 @@
-function generate(token, indent = 0) {
+function generate(token, last) {
   let result = '';
   if (token.type === 'block') {
-    if (token.times) {
-      result += '@M' + token.times + '(' + token.pureName + '{';
-    } else {
-      result += token.name + '{';
-    }
+    result += token.times
+      ? ('@M' + token.times + '(' + token.pureName + '{')
+      : (token.name + '{');
     if (Array.isArray(token.value) && token.value.length) {
+      let lastGroup = '';
       for (let t of token.value) {
-        result += generate(t, indent + 2);
+        result += generate(t, lastGroup);;
+        if (t.origin) {
+          lastGroup = t.origin.name.join(',');
+        }
       }
     }
-    if (token.times) {
-      result += '})';
-    } else {
-      result += '}';
-    }
+    result += token.times ? '})' : '}';
   } else if (token.type === 'statement') {
-    if (token.value && token.value.type) {
-      result += token.name + ':' + generate(token.value, indent);
-    } else {
-      result += token.name + ':' + token.value + ';';
+    let skip = (token.origin && last === token.origin.name.join(','));
+    let name = token.origin ? token.origin.name.join(',') : token.name;
+    let value = token.origin ? token.origin.value : token.value;
+    if (!skip) {
+      result += (value && value.type)
+        ? (name + ':' + generate(value))
+        : (name + ':' + value + ';');
     }
   }
   return result;
