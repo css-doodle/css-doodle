@@ -414,13 +414,15 @@ function read_func(it) {
       it.next();
       let [args, raw_args] = read_arguments(it, composition, composible(name));
       if (name === '@svg') {
-        let parsed_svg = parse_svg(raw_args);
-        if (has_times_syntax(parsed_svg)) {
-          let svg = generate_svg_extended(parsed_svg);
-          // compatible with old iterator
-          svg += ')';
-          let extended = read_arguments(iterator(svg), composition, composible(name));
-          args = extended[0];
+        if (/\d\s*{/.test(raw_args)) {
+          let parsed_svg = parse_svg(raw_args);
+          if (has_times_syntax(parsed_svg)) {
+            let svg = generate_svg_extended(parsed_svg);
+            // compatible with old iterator
+            svg += ')';
+            let extended = read_arguments(iterator(svg), composition, composible(name));
+            args = extended[0];
+          }
         }
       }
       func.arguments = args;
