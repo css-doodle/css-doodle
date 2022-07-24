@@ -1,3 +1,25 @@
+## 0.29.0
+
+* Add Emmet-like syntax for generating SVG element.
+
+  ```less
+  line*10 {
+
+  }
+  ```
+
+  Equals to
+
+  ```less
+  @M10(line {
+
+  })
+  ```
+
+<br /> <br />
+
+
+
 ## 0.28.2
 
 * Add `@place` alias for `@position`.

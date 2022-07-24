@@ -1,4 +1,4 @@
-/*! css-doodle@0.28.2 */
+/*! css-doodle@0.29.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -488,6 +488,357 @@
     return prefix + Math.random().toString(32).substr(2);
   }
 
+  function parse$8(input, option = {symbol: ',', noSpace: false}) {
+    let group = [];
+    let tokens = [];
+    let parenStack = [];
+    let quoteStack = [];
+
+    if (is_empty(input)) {
+      return group;
+    }
+
+    let iter = iterator$1(scan(input));
+
+    function isSeperator(token) {
+      let symbol = option.symbol || ',';
+      if (option.noSpace) {
+        return token.isSymbol(symbol);
+      }
+      return token.isSymbol(symbol) || token.isSpace();
+    }
+
+    while (iter.next()) {
+      let { prev, curr, next }  = iter.get();
+      if (curr.isSymbol('(')) {
+        parenStack.push(curr.value);
+      }
+      if (curr.isSymbol(')')) {
+        parenStack.pop();
+      }
+      if (curr.status === 'open') {
+        quoteStack.push(curr.value);
+      }
+      if (curr.status === 'close') {
+        quoteStack.pop();
+      }
+      let emptyStack = (!parenStack.length && !quoteStack.length);
+      if (emptyStack) {
+        let isNextSpace = option.noSpace && curr.isSpace() && isSeperator(next);
+        let isPrevSpace = option.noSpace && curr.isSpace() && isSeperator(prev);
+        if (isNextSpace || isPrevSpace) continue;
+      }
+      if (emptyStack && isSeperator(curr)) {
+        group.push(joinTokens$1(tokens));
+        tokens = [];
+      } else {
+        tokens.push(curr);
+      }
+    }
+
+    if (tokens.length) {
+      group.push(joinTokens$1(tokens));
+    }
+
+    return group;
+  }
+
+  function joinTokens$1(tokens) {
+    return tokens.map(n => n.value).join('');
+  }
+
+  function readStatement$1(iter, token) {
+    let fragment = [];
+    let inlineBlock;
+    let stackQuote = [];
+    let stackParen = [];
+    while (iter.next()) {
+      let { curr, next } = iter.get();
+      let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+      if (curr.isSymbol('(')) {
+        stackParen.push(curr);
+      } else if (curr.isSymbol(')')) {
+        stackParen.pop();
+      }
+      if (curr.isSymbol("'", '"')) {
+        if (curr.status === 'open') {
+          stackQuote.push(curr);
+        } else {
+          stackQuote.pop();
+        }
+        if (next.isSymbol('}') && !stackQuote.length) {
+          isStatementBreak = true;
+        }
+      }
+      if (!stackParen.length && !stackQuote.length && curr.isSymbol('{')) {
+        let selectors = getGroups(fragment, token => token.isSpace());
+        if (!selectors.length) {
+          continue;
+        }
+        let tokenName = selectors.pop();
+        let skip = isSkip(...selectors, tokenName);
+        inlineBlock = resolveId(walk$1(iter, splitTimes(tokenName, {
+          type: 'block',
+          inline: true,
+          name: tokenName,
+          value: [],
+        })), skip);
+
+        while (tokenName = selectors.pop()) {
+          inlineBlock = resolveId(splitTimes(tokenName, {
+            type: 'block',
+            name: tokenName,
+            value: [inlineBlock]
+          }), skip);
+        }
+        break;
+      }
+      // skip quotes
+      let skip = (curr.status == 'open' && stackQuote.length == 1)
+        || (curr.status == 'close' && !stackQuote.length);
+
+      if (!skip) {
+        fragment.push(curr);
+      }
+      if (isStatementBreak) {
+        break;
+      }
+    }
+    if (fragment.length && !inlineBlock) {
+      token.value = joinToken$2(fragment);
+    } else if (inlineBlock) {
+      token.value = inlineBlock;
+    }
+    if (token.origin) {
+      token.origin.value = token.value;
+    }
+    return token
+  }
+
+  function walk$1(iter, parentToken) {
+    let rules = [];
+    let fragment = [];
+    let tokenType = parentToken && parentToken.type || '';
+    let stack = [];
+
+    while (iter.next()) {
+      let { prev, curr, next } = iter.get();
+      let isBlockBreak = !next || curr.isSymbol('}');
+      if (curr.isSymbol('(')) {
+        stack.push(curr.value);
+      }
+      if (curr.isSymbol(')')) {
+        stack.pop();
+      }
+      if (isBlock(tokenType) && isBlockBreak) {
+        if (!next && rules.length && !curr.isSymbol('}')) {
+          let last = rules[rules.length - 1].value;
+          if (typeof last === 'string') {
+            rules[rules.length - 1].value += (';' + curr.value);
+          }
+        }
+        parentToken.value = rules;
+        break;
+      }
+      else if (curr.isSymbol('{')) {
+        let selectors = getGroups(fragment, token => token.isSpace());
+        if (!selectors.length) {
+          continue;
+        }
+        if (isSkip(parentToken.name)) {
+          selectors = [joinToken$2(fragment)];
+        }
+        let tokenName = selectors.pop();
+        let skip = isSkip(...selectors, parentToken.name, tokenName);
+        let block = resolveId(walk$1(iter, splitTimes(tokenName, {
+          type: 'block',
+          name: tokenName,
+          value: []
+        })), skip);
+        while (tokenName = selectors.pop()) {
+          block = resolveId(splitTimes(tokenName, {
+            type: 'block',
+            name: tokenName,
+            value: [block]
+          }), skip);
+        }
+        rules.push(block);
+        fragment = [];
+      }
+      else if (
+        curr.isSymbol(':')
+        && !stack.length
+        && !isSpecialProperty(prev, next)
+        && fragment.length
+      ) {
+        let props = getGroups(fragment, token => token.isSymbol(','));
+        let intial = {
+          type: 'statement',
+          name: 'unkown',
+          value: ''
+        };
+        if (props.length > 1) {
+          intial.origin = {
+            name: props
+          };
+        }
+        let statement = readStatement$1(iter, intial);
+
+        let groupdValue = parse$8(statement.value);
+        let expand = (props.length > 1 && groupdValue.length === props.length);
+
+        props.forEach((prop, i) => {
+          let item = Object.assign({}, statement, { name: prop });
+          if (expand) {
+            item.value = groupdValue[i];
+          }
+          rules.push(item);
+        });
+        if (isBlock(tokenType)) {
+          parentToken.value = rules;
+        }
+        fragment = [];
+      }
+      else if (curr.isSymbol(';')) {
+        if (rules.length && fragment.length) {
+          rules[rules.length - 1].value += (';' + joinToken$2(fragment));
+          fragment = [];
+        }
+      }
+      else {
+        fragment.push(curr);
+      }
+    }
+
+    if (rules.length && isBlock(tokenType)) {
+      parentToken.value = rules;
+    }
+    return tokenType ? parentToken : rules;
+  }
+
+  function isSpecialProperty(prev, next) {
+    const names = [
+      'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
+      'xlink:show',    'xlink:title',   'xlink:type',
+      'xml:base',      'xml:lang',      'xml:space',
+    ];
+    let prevValue = prev && prev.value;
+    let nextValue = next && next.value;
+    return names.includes(prevValue + ':' + nextValue);
+  }
+
+  function joinToken$2(tokens) {
+    return tokens
+      .filter((token, i) => {
+        if (token.isSymbol(';', '}') && i === tokens.length - 1) return false;
+        return true;
+      })
+      .map(n => n.value).join('');
+  }
+
+  function resolveId(block, skip) {
+    let name = block.name || '';
+    let [tokenName, ...ids] = name.split(/#/);
+    let id = ids[ids.length - 1];
+    if (tokenName && id && !skip) {
+      block.name = tokenName;
+      block.value.push({
+        type: 'statement',
+        name: 'id',
+        value: id,
+      });
+    }
+    return block;
+  }
+
+  function getGroups(tokens, fn) {
+    let group = [];
+    let temp = [];
+    tokens.forEach(token => {
+      if (fn(token)) {
+        group.push(joinToken$2(temp));
+        temp = [];
+      } else {
+        temp.push(token);
+      }
+    });
+    if (temp.length) {
+      group.push(joinToken$2(temp));
+    }
+    return group;
+  }
+
+  function splitTimes(name, object) {
+    let target = Object.assign({}, object);
+    if (/\*[0-9]/.test(name)) {
+      let [tokenName, times] = name.split('*');
+      if (times) {
+        target.times = times;
+        target.pureName = tokenName;
+      }
+    }
+    return target;
+  }
+
+  function isSkip(...names) {
+    return names.some(n => n === 'style');
+  }
+
+  function isBlock(type) {
+    return type === 'block';
+  }
+
+  function skipHeadSVG(block) {
+    let head = block && block.value && block.value[0];
+    if (head && head.name === 'svg' && isBlock(head.type)) {
+      return skipHeadSVG(head);
+    } else {
+      return block;
+    }
+  }
+
+  function parse$7(source, root) {
+    let iter = iterator$1(scan(source));
+    let tokens = walk$1(iter, root || {
+      type: 'block',
+      name: 'svg',
+      value: []
+    });
+    return skipHeadSVG(tokens);
+  }
+
+  function generate$2(token, last) {
+    let result = '';
+    if (token.type === 'block') {
+      result += token.times
+        ? ('@M' + token.times + '(' + token.pureName + '{')
+        : (token.name + '{');
+      if (Array.isArray(token.value) && token.value.length) {
+        let lastGroup = '';
+        for (let t of token.value) {
+          result += generate$2(t, lastGroup);        if (t.origin) {
+            lastGroup = t.origin.name.join(',');
+          }
+        }
+      }
+      result += token.times ? '})' : '}';
+    } else if (token.type === 'statement') {
+      let skip = (token.origin && last === token.origin.name.join(','));
+      let name = token.origin ? token.origin.name.join(',') : token.name;
+      let value = token.origin ? token.origin.value : token.value;
+      if (!skip) {
+        result += (value && value.type)
+          ? (name + ':' + generate$2(value))
+          : (name + ':' + value + ';');
+      }
+    }
+    return result;
+  }
+
+  function generate_svg_extended(token) {
+    return generate$2(token).trim();
+  }
+
   function make_array(arr) {
     if (is_nil(arr)) return [];
     return Array.isArray(arr) ? arr : [arr];
@@ -784,8 +1135,10 @@
 
   function read_arguments(it, composition, doodle) {
     let args = [], group = [], stack = [], arg = '', c;
+    let raw = '';
     while (!it.end()) {
       c = it.curr();
+      let start = it.index();
       if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
         if (stack.length) {
           if (c != '(' && c === last(stack)) {
@@ -815,7 +1168,6 @@
           }
           arg += c;
         }
-
         else {
           if (arg.length) {
             if (!group.length) {
@@ -852,10 +1204,11 @@
         break;
       }
       else {
+        raw += it.range(start, it.index() + 1);
         it.next();
       }
     }
-    return skip_last_empty_args(args);
+    return [skip_last_empty_args(args), raw];
   }
 
   function skip_last_empty_args(args) {
@@ -914,6 +1267,11 @@
     return { fname, extra };
   }
 
+  function has_times_syntax(token) {
+    let str = JSON.stringify(token);
+    return str.includes('pureName') && str.includes('times');
+  }
+
   function read_func(it) {
     let func = Tokens.func();
     let name = '@', c;
@@ -927,7 +1285,18 @@
       if (c == '(' || composition) {
         has_argument = true;
         it.next();
-        func.arguments = read_arguments(it, composition, composible(name));
+        let [args, raw_args] = read_arguments(it, composition, composible(name));
+        if (name === '@svg' && /\d\s*{/.test(raw_args)) {
+          let parsed_svg = parse$7(raw_args);
+          if (has_times_syntax(parsed_svg)) {
+            let svg = generate_svg_extended(parsed_svg);
+            // compatible with old iterator
+            svg += ')';
+            let extended = read_arguments(iterator(svg), composition, composible(name));
+            args = extended[0];
+          }
+        }
+        func.arguments = args;
         break;
       } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
         name += c;
@@ -1028,7 +1397,7 @@
     while (!it.end()) {
       if ((c = it.curr()) == '(') {
         it.next();
-        selector.arguments = read_arguments(it);
+        selector.arguments = read_arguments(it)[0];
       }
       else if (/[){]/.test(c)) break;
       else if (!is.white_space(c)) selector.name += c;
@@ -1154,7 +1523,7 @@
             });
           }
           try {
-            parsed = parse$8(rule, extra);
+            parsed = parse$6(rule, extra);
           } catch (e) { }
           if (parsed) {
             ret.push.apply(ret, parsed);
@@ -1183,7 +1552,7 @@
     }, []);
   }
 
-  function parse$8(input, extra) {
+  function parse$6(input, extra) {
     const it = iterator(input);
     const Tokens = [];
     while (!it.end()) {
@@ -1243,7 +1612,7 @@
     });
   }
 
-  function parse$7(input) {
+  function parse$5(input) {
     let scanOptions = {
       preserveLineBreak: true,
       ignoreInlineComment: true,
@@ -1260,7 +1629,7 @@
       let { curr, next } = iter.get();
       if (curr.isSymbol('{')) {
         if (!stack.length) {
-          let name = joinToken$2(tokens);
+          let name = joinToken$1(tokens);
           if (isIdentifier(name)) {
             identifier = name;
             tokens = [];
@@ -1275,7 +1644,7 @@
       else if (curr.isSymbol('}')) {
         stack.pop();
         if (!stack.length && identifier) {
-          let value = joinToken$2(tokens);
+          let value = joinToken$1(tokens);
           if (identifier && value.length) {
             if (identifier.startsWith('texture')) {
               result.textures.push({
@@ -1306,7 +1675,7 @@
     }
 
     if (is_empty(result.fragment)) {
-      result.fragment = joinToken$2(tokens);
+      result.fragment = joinToken$1(tokens);
       result.textures = result.textures || [];
     }
     return result;
@@ -1331,7 +1700,7 @@
     return tokens;
   }
 
-  function joinToken$2(tokens) {
+  function joinToken$1(tokens) {
     return removeParens(tokens).map(n => n.value).join('');
   }
 
@@ -1518,7 +1887,7 @@
     return generate$1(token);
   }
 
-  function parse$6(input) {
+  function parse$4(input) {
     let iter = iterator$1(scan(input));
     let ret = {};
     let matched = false;
@@ -1545,7 +1914,7 @@
     return (...args) => {
       let units = [], values = [];
       for (let arg of args) {
-        let { unit, value } = parse$6(arg);
+        let { unit, value } = parse$4(arg);
         if (unit !== undefined) {
           units.push(unit);
         }
@@ -2038,65 +2407,6 @@
     }
   }
 
-  function parse$5(input, option = {symbol: ',', noSpace: false}) {
-    let group = [];
-    let tokens = [];
-    let parenStack = [];
-    let quoteStack = [];
-
-    if (is_empty(input)) {
-      return group;
-    }
-
-    let iter = iterator$1(scan(input));
-
-    function isSeperator(token) {
-      let symbol = option.symbol || ',';
-      if (option.noSpace) {
-        return token.isSymbol(symbol);
-      }
-      return token.isSymbol(symbol) || token.isSpace();
-    }
-
-    while (iter.next()) {
-      let { prev, curr, next }  = iter.get();
-      if (curr.isSymbol('(')) {
-        parenStack.push(curr.value);
-      }
-      if (curr.isSymbol(')')) {
-        parenStack.pop();
-      }
-      if (curr.status === 'open') {
-        quoteStack.push(curr.value);
-      }
-      if (curr.status === 'close') {
-        quoteStack.pop();
-      }
-      let emptyStack = (!parenStack.length && !quoteStack.length);
-      if (emptyStack) {
-        let isNextSpace = option.noSpace && curr.isSpace() && isSeperator(next);
-        let isPrevSpace = option.noSpace && curr.isSpace() && isSeperator(prev);
-        if (isNextSpace || isPrevSpace) continue;
-      }
-      if (emptyStack && isSeperator(curr)) {
-        group.push(joinTokens$1(tokens));
-        tokens = [];
-      } else {
-        tokens.push(curr);
-      }
-    }
-
-    if (tokens.length) {
-      group.push(joinTokens$1(tokens));
-    }
-
-    return group;
-  }
-
-  function joinTokens$1(tokens) {
-    return tokens.map(n => n.value).join('');
-  }
-
   function get_named_arguments(args, names) {
     let result = {};
     let order = true;
@@ -2104,7 +2414,7 @@
       let arg = args[i];
       let arg_name = names[i];
       if (/=/.test(arg)) {
-        let [name, value] = parse$5(arg, { symbol: '=', noSpace: true });
+        let [name, value] = parse$8(arg, { symbol: '=', noSpace: true });
         if (value !== undefined) {
           if (names.includes(name)) {
             result[name] = value;
@@ -2121,7 +2431,7 @@
     return result;
   }
 
-  function parse$4(input) {
+  function parse$3(input) {
     let iter = iterator$1(scan(input));
     let commands = {};
     let tokens = [];
@@ -2173,7 +2483,7 @@
   const keywords = ['auto', 'reverse'];
   const units = ['deg', 'rad', 'grad', 'turn'];
 
-  function parse$3(input) {
+  function parse$2(input) {
     let iter = iterator$1(scan(input));
     let matched = false;
     let unit = '';
@@ -2225,7 +2535,7 @@
 
   const _ = make_tag_function(c => {
     return create_shape_points(
-      parse$4(c), {min: 3, max: 3600}
+      parse$3(c), {min: 3, max: 3600}
     );
   });
 
@@ -2390,7 +2700,7 @@
     let turn = option.turn || 1;
     let frame = option.frame;
     let fill = option['fill'] || option['fill-rule'];
-    let direction = parse$3(option['direction'] || option['dir'] || '');
+    let direction = parse$2(option['direction'] || option['dir'] || '');
     let unit = option.unit;
 
     let rad = (PI * 2) * turn / split;
@@ -2474,7 +2784,7 @@
   }
 
   function translate(x, y, offset) {
-    let [dx, dy = dx] = parse$5(offset).map(Number);
+    let [dx, dy = dx] = parse$8(offset).map(Number);
     return [
       x + (dx || 0),
       y - (dy || 0),
@@ -2484,7 +2794,7 @@
   }
 
   function scale(x, y, factor) {
-    let [fx, fy = fx] = parse$5(factor).map(Number);
+    let [fx, fy = fx] = parse$8(factor).map(Number);
     return [
       x * fx,
       y * fy
@@ -2497,7 +2807,7 @@
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
     let pr = is_empty(props.r) ? ''       : props.r;
 
-    let { unit, value } = parse$6(pr);
+    let { unit, value } = parse$4(pr);
     if (unit && !props[unit] && unit !== 't') {
       if (is_empty(props.unit)) {
         props.unit = unit;
@@ -2552,237 +2862,6 @@
       }
       return [x, y, dx, dy];
     });
-  }
-
-  function readStatement$1(iter, token) {
-    let fragment = [];
-    let inlineBlock;
-    let stack = [];
-    while (iter.next()) {
-      let { curr, next } = iter.get();
-      let isStatementBreak = !stack.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
-      if (curr.isSymbol("'", '"')) {
-        if (curr.status === 'open') {
-          stack.push(curr);
-        } else {
-          stack.pop();
-        }
-        if (next.isSymbol('}') && !stack.length) {
-          isStatementBreak = true;
-        }
-      }
-      if (!stack.length && curr.isSymbol('{')) {
-        let selectors = getGroups(fragment, token => token.isSpace());
-        if (!selectors.length) {
-          continue;
-        }
-        let tokenName = selectors.pop();
-        let skip = isSkip(...selectors, tokenName);
-        inlineBlock = resolveId(walk$1(iter, {
-          type: 'block',
-          name: tokenName,
-          inline: true,
-          value: []
-        }), skip);
-        while (tokenName = selectors.pop()) {
-          inlineBlock = resolveId({
-            type: 'block',
-            name: tokenName,
-            value: [inlineBlock]
-          }, skip);
-        }
-        break;
-      }
-      // skip quotes
-      let skip = (curr.status == 'open' && stack.length == 1)
-        || (curr.status == 'close' && !stack.length);
-
-      if (!skip) {
-        fragment.push(curr);
-      }
-      if (isStatementBreak) {
-        break;
-      }
-    }
-    if (fragment.length && !inlineBlock) {
-      token.value = joinToken$1(fragment);
-    } else if (inlineBlock) {
-      token.value = inlineBlock;
-    }
-    return token
-  }
-
-  function walk$1(iter, parentToken) {
-    let rules = [];
-    let fragment = [];
-    let tokenType = parentToken && parentToken.type || '';
-    let stack = [];
-
-    while (iter.next()) {
-      let { prev, curr, next } = iter.get();
-      let isBlockBreak = !next || curr.isSymbol('}');
-      if (curr.isSymbol('(')) {
-        stack.push(curr.value);
-      }
-      if (curr.isSymbol(')')) {
-        stack.pop();
-      }
-      if (isBlock(tokenType) && isBlockBreak) {
-        if (!next && rules.length && !curr.isSymbol('}')) {
-          let last = rules[rules.length - 1].value;
-          if (typeof last === 'string') {
-            rules[rules.length - 1].value += (';' + curr.value);
-          }
-        }
-        parentToken.value = rules;
-        break;
-      }
-      else if (curr.isSymbol('{')) {
-        let selectors = getGroups(fragment, token => token.isSpace());
-        if (!selectors.length) {
-          continue;
-        }
-        if (isSkip(parentToken.name)) {
-          selectors = [joinToken$1(fragment)];
-        }
-        let tokenName = selectors.pop();
-        let skip = isSkip(...selectors, parentToken.name, tokenName);
-        let block = resolveId(walk$1(iter, {
-          type: 'block',
-          name: tokenName,
-          value: []
-        }), skip);
-        while (tokenName = selectors.pop()) {
-          block = resolveId({
-            type: 'block',
-            name: tokenName,
-            value: [block]
-          }, skip);
-        }
-        rules.push(block);
-        fragment = [];
-      }
-      else if (
-        curr.isSymbol(':')
-        && !stack.length
-        && !isSpecialProperty(prev, next)
-        && fragment.length
-      ) {
-        let props = getGroups(fragment, token => token.isSymbol(','));
-        let statement = readStatement$1(iter, {
-          type: 'statement',
-          name: 'unkown',
-          value: ''
-        });
-        let groupdValue = parse$5(statement.value);
-        let expand = (props.length > 1 && groupdValue.length === props.length);
-
-        props.forEach((prop, i) => {
-          let item = Object.assign({}, statement, { name: prop });
-          if (expand) {
-            item.value = groupdValue[i];
-          }
-          rules.push(item);
-        });
-        if (isBlock(tokenType)) {
-          parentToken.value = rules;
-        }
-        fragment = [];
-      }
-      else if (curr.isSymbol(';')) {
-        if (rules.length && fragment.length) {
-          rules[rules.length - 1].value += (';' + joinToken$1(fragment));
-          fragment = [];
-        }
-      }
-      else {
-        fragment.push(curr);
-      }
-    }
-
-    if (rules.length && isBlock(tokenType)) {
-      parentToken.value = rules;
-    }
-    return tokenType ? parentToken : rules;
-  }
-
-  function isSpecialProperty(prev, next) {
-    const names = [
-      'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
-      'xlink:show',    'xlink:title',   'xlink:type',
-      'xml:base',      'xml:lang',      'xml:space',
-    ];
-    let prevValue = prev && prev.value;
-    let nextValue = next && next.value;
-    return names.includes(prevValue + ':' + nextValue);
-  }
-
-  function joinToken$1(tokens) {
-    return tokens
-      .filter((token, i) => {
-        if (token.isSymbol(';', '}') && i === tokens.length - 1) return false;
-        return true;
-      })
-      .map(n => n.value).join('');
-  }
-
-  function resolveId(block, skip) {
-    let name = block.name || '';
-    let [tokenName, ...ids] = name.split(/#/);
-    let id = ids[ids.length - 1];
-    if (tokenName && id && !skip) {
-      block.name = tokenName;
-      block.value.push({
-        type: 'statement',
-        name: 'id',
-        value: id,
-      });
-    }
-    return block;
-  }
-
-  function getGroups(tokens, fn) {
-    let group = [];
-    let temp = [];
-    tokens.forEach(token => {
-      if (fn(token)) {
-        group.push(joinToken$1(temp));
-        temp = [];
-      } else {
-        temp.push(token);
-      }
-    });
-    if (temp.length) {
-      group.push(joinToken$1(temp));
-    }
-    return group;
-  }
-
-  function isSkip(...names) {
-    return names.some(n => n === 'style');
-  }
-
-  function isBlock(type) {
-    return type === 'block';
-  }
-
-  function skipHeadSVG(block) {
-    let head = block && block.value && block.value[0];
-    if (head && head.name === 'svg' && isBlock(head.type)) {
-      return skipHeadSVG(head);
-    } else {
-      return block;
-    }
-  }
-
-  function parse$2(source, root) {
-    let iter = iterator$1(scan(source));
-    let tokens = walk$1(iter, root || {
-      type: 'block',
-      name: 'svg',
-      value: []
-    });
-    return skipHeadSVG(tokens);
   }
 
   const commands = 'MmLlHhVvCcSsQqTtAaZz';
@@ -3137,7 +3216,7 @@
           return '';
         }
         colors.forEach(step => {
-          let [_, size] = parse$5(step);
+          let [_, size] = parse$8(step);
           if (size !== undefined) custom_sizes.push(size);
           else default_count += 1;
         });
@@ -3146,7 +3225,7 @@
           : `100% / ${max}`;
         return colors.map((step, i) => {
           if (custom_sizes.length) {
-            let [color, size] = parse$5(step);
+            let [color, size] = parse$8(step);
             let prefix = prev ? (prev + ' + ') : '';
             prev = prefix + (size !== undefined ? size : default_size);
             return `${color} 0 calc(${ prev })`
@@ -3168,7 +3247,7 @@
     svg: lazy((_, ...args) => {
       let value = args.map(input => get_value(input())).join(',');
       if (!value.startsWith('<')) {
-        let parsed = parse$2(value);
+        let parsed = parse$7(value);
         value = generate_svg(parsed);
       }
       let svg = normalize_svg(value);
@@ -3214,7 +3293,7 @@
         `;
         }
         if (!is_nil(frequency)) {
-          let [bx, by = bx] = parse$5(frequency);
+          let [bx, by = bx] = parse$8(frequency);
           octave = octave ? `numOctaves: ${octave};` : '';
           value += `
           feTurbulence {
@@ -3232,7 +3311,7 @@
       }
       // new svg syntax
       if (!value.startsWith('<')) {
-        let parsed = parse$2(value, {
+        let parsed = parse$7(value, {
           type: 'block',
           name: 'filter'
         });
@@ -3275,7 +3354,7 @@
       return commands => {
         let [idx = count, _, __, max = grid.count] = lastExtra || [];
         if (!context[key]) {
-          let config = parse$4(commands);
+          let config = parse$3(commands);
           delete config['fill'];
           delete config['fill-rule'];
           delete config['frame'];
@@ -3299,7 +3378,7 @@
             if (rest.length) {
               commands = type + ',' + rest;
             }
-            let config = parse$4(commands);
+            let config = parse$3(commands);
             points = create_shape_points(config, {min: 3, max: 3600});
           }
         }
@@ -3577,7 +3656,7 @@
   var Property = add_alias({
 
     size(value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$5(value);
+      let [w, h = w] = parse$8(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -3599,7 +3678,7 @@
     },
 
     position(value, { extra }) {
-      let [left, top = '50%'] = parse$5(value);
+      let [left, top = '50%'] = parse$8(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
       const cw = 'var(--internal-cell-width, 25%)';
@@ -3619,7 +3698,7 @@
     },
 
     grid(value, options) {
-      let [grid, size] = parse$5(value, { symbol: '/', noSpace: true });
+      let [grid, size] = parse$8(value, { symbol: '/', noSpace: true });
       return {
         grid: parse_grid(grid, options.max_grid),
         size: size ? this.size(size, options) : ''
@@ -3631,7 +3710,7 @@
     },
 
     shape: memo('shape-property', value => {
-      let [type, ...args] = parse$5(value);
+      let [type, ...args] = parse$8(value);
       if (typeof shapes[type] !== 'function') return '';
       let prop = 'clip-path';
       let points = shapes[type](...args);
@@ -4038,7 +4117,7 @@
         let type = typeof arg.value;
         let is_string_or_number = (type === 'number' || type === 'string');
         if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$5(arg.value, { noSpace: true }));
+          input.push(...parse$8(arg.value, { noSpace: true }));
         }
         else {
           if (typeof arg === 'function') {
@@ -5371,7 +5450,7 @@ void main() {
         let { x: gx, y: gy, z: gz } = this.grid_size;
 
         const compiled = this.generate(
-          parse$8(use + styles, this.extra)
+          parse$6(use + styles, this.extra)
         );
 
         if (!this.shadowRoot.innerHTML) {
@@ -5393,7 +5472,7 @@ void main() {
           if (gx !== x || gy !== y || gz !== z) {
             Object.assign(this.grid_size, grid);
             return this.build_grid(
-              this.generate(parse$8(use + styles, this.extra)),
+              this.generate(parse$6(use + styles, this.extra)),
               grid
             );
           }
@@ -5488,7 +5567,7 @@ void main() {
           options = null;
         }
         code = ':doodle { width:100%;height:100% }' + code;
-        let parsed = parse$8(code, this.extra);
+        let parsed = parse$6(code, this.extra);
         let _grid = parse_grid('');
         let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
         let grid = compiled.grid ? compiled.grid : _grid;
@@ -5551,7 +5630,7 @@ void main() {
       }
 
       shader_to_image({ shader, cell, id }, fn) {
-        let parsed = typeof shader === 'string' ?  parse$7(shader) : shader;
+        let parsed = typeof shader === 'string' ?  parse$5(shader) : shader;
         let element = this.doodle.getElementById(cell);
         const seed = this.seed;
 
@@ -5601,7 +5680,7 @@ void main() {
       load(again) {
         this.cleanup();
         let use = this.get_use();
-        let parsed = parse$8(use + un_entity(this.innerHTML), this.extra);
+        let parsed = parse$6(use + un_entity(this.innerHTML), this.extra);
         let compiled = this.generate(parsed);
 
         if (!again) {
