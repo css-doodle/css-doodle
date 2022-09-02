@@ -1,4 +1,4 @@
-/*! css-doodle@0.29.0 */
+/*! css-doodle@0.29.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -5532,8 +5532,10 @@ void main() {
       }
 
       get_use() {
-        let use = this.attr('use') || '';
-        if (use) use = `@use:${ use };`;
+        let use = String(this.attr('use') || '').trim();
+        if (/^var\(/.test(use)) {
+          use = `@use:${ use };`;
+        }
         return use;
       }
 

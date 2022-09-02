@@ -1,3 +1,14 @@
+## 0.29.1
+
+* Extend `use` attribute to support rules in pure string'.
+  ```html
+  <css-doodle use="@grid: 5 / 200px"></css-doodle>
+  ```
+
+<br /> <br />
+
+
+
 ## 0.29.0
 
 * Add Emmet-like syntax for generating SVG element.
