@@ -152,8 +152,10 @@ if (typeof customElements !== 'undefined') {
     }
 
     get_use() {
-      let use = this.attr('use') || '';
-      if (use) use = `@use:${ use };`;
+      let use = String(this.attr('use') || '').trim();
+      if (/^var\(/.test(use)) {
+        use = `@use:${ use };`;
+      }
       return use;
     }
 
