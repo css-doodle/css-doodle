@@ -432,6 +432,24 @@ const Expose = add_alias({
     };
   },
 
+  Plot({ count, context, extra, position, grid }) {
+    let key = 'Offset-points' + position;
+    let lastExtra = last(extra);
+    return commands => {
+      let [idx = count, _, __, max = grid.count] = lastExtra || [];
+      if (!context[key]) {
+        let config = parse_shape_commands(commands);
+        delete config['fill'];
+        delete config['fill-rule'];
+        delete config['frame'];
+        config.points = max;
+        config.unit = config.unit || 'none';
+        context[key] = create_shape_points(config, {min: 1, max: 65536});
+      }
+      return context[key][idx - 1];
+    };
+  },
+
   shape() {
     return memo('shape-function', (type = '', ...args) => {
       type = String(type).trim();
