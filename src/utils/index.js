@@ -131,7 +131,7 @@ function hash(str, seed = 0) {
 function make_tag_function(fn) {
   let get_value = v => is_nil(v) ? '' : v;
   return (input, ...vars) => {
-    let string = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+    let string = make_array(input).reduce((s, c, i) => s + c + get_value(vars[i]), '');
     return fn(string);
   };
 }
@@ -147,6 +147,11 @@ function lerp(t, a, b) {
 
 function unique_id(prefix = '') {
   return prefix + Math.random().toString(32).substr(2);
+}
+
+function make_array(arr) {
+  if (is_nil(arr)) return [];
+  return Array.isArray(arr) ? arr : [arr];
 }
 
 export {

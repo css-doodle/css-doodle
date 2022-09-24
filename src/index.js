@@ -674,6 +674,17 @@ const CSSDoodle = make_tag_function(rules => {
   return doodle;
 });
 
+const svg = rules => {
+  let result = generate_css(
+    parse_css(`background: @svg(${rules});`),
+    parse_grid('1x1')
+  );
+  let raw = result && result.styles && result.styles.cells || '';
+  let cut = raw.substring(52, raw.length - 5);
+  return decodeURIComponent(cut);
+};
+
 export {
   CSSDoodle,
+  svg,
 }
