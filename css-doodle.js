@@ -1,4 +1,4 @@
-/*! css-doodle@0.29.1 */
+/*! css-doodle@0.29.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -571,7 +571,7 @@
         }
       }
       if (!stackParen.length && !stackQuote.length && curr.isSymbol('{')) {
-        let selectors = getGroups(fragment, token => token.isSpace());
+        let selectors = getSelectors(fragment);
         if (!selectors.length) {
           continue;
         }
@@ -641,7 +641,7 @@
         break;
       }
       else if (curr.isSymbol('{')) {
-        let selectors = getGroups(fragment, token => token.isSpace());
+        let selectors = getSelectors(fragment);
         if (!selectors.length) {
           continue;
         }
@@ -768,13 +768,40 @@
     return group;
   }
 
+  function getSelectors(tokens) {
+    let result = [];
+    let it = iterator$1(tokens);
+    let hasSymbol;
+    while (it.next()) {
+      let { prev, curr, next } = it.get();
+      let isTimeSymbol = (
+        prev && next &&
+        curr.value === 'x' &&
+        prev.isNumber()  &&
+        next.isNumber()
+      );
+      if (curr.isWord() && !hasSymbol && !isTimeSymbol) {
+        result.push(curr.value.trim());
+      } else {
+        result[result.length - 1] =
+          (result[result.length - 1] + curr.value).trim();
+      }
+      if (curr.isSymbol()) {
+        hasSymbol = true;
+      } else if (!curr.isSpace()) {
+        hasSymbol = false;
+      }
+    }
+    return result;
+  }
+
   function splitTimes(name, object) {
     let target = Object.assign({}, object);
-    if (/\*[0-9]/.test(name)) {
+    if (/\*\s*[0-9]/.test(name)) {
       let [tokenName, times] = name.split('*');
       if (times) {
-        target.times = times;
-        target.pureName = tokenName;
+        target.times = times.trim();
+        target.pureName = tokenName.trim();
       }
     }
     return target;
@@ -810,9 +837,12 @@
   function generate$2(token, last) {
     let result = '';
     if (token.type === 'block') {
-      result += token.times
-        ? ('@M' + token.times + '(' + token.pureName + '{')
-        : (token.name + '{');
+      let isInline = Array.isArray(token.value) && token.value[0] && token.value[0].inline;
+      if (token.times) {
+        result += ('@M' + token.times + '(' + token.pureName + '{');
+      } else {
+        result += token.name + (isInline ? ' ' : '{');
+      }
       if (Array.isArray(token.value) && token.value.length) {
         let lastGroup = '';
         for (let t of token.value) {
@@ -821,7 +851,11 @@
           }
         }
       }
-      result += token.times ? '})' : '}';
+      if (token.times) {
+        result += '})';
+      } else if (!isInline) {
+        result += '}';
+      }
     } else if (token.type === 'statement') {
       let skip = (token.origin && last === token.origin.name.join(','));
       let name = token.origin ? token.origin.name.join(',') : token.name;
@@ -3359,6 +3393,24 @@
           delete config['fill-rule'];
           delete config['frame'];
           config.points = max;
+          context[key] = create_shape_points(config, {min: 1, max: 65536});
+        }
+        return context[key][idx - 1];
+      };
+    },
+
+    Plot({ count, context, extra, position, grid }) {
+      let key = 'Offset-points' + position;
+      let lastExtra = last(extra);
+      return commands => {
+        let [idx = count, _, __, max = grid.count] = lastExtra || [];
+        if (!context[key]) {
+          let config = parse$3(commands);
+          delete config['fill'];
+          delete config['fill-rule'];
+          delete config['frame'];
+          config.points = max;
+          config.unit = config.unit || 'none';
           context[key] = create_shape_points(config, {min: 1, max: 65536});
         }
         return context[key][idx - 1];

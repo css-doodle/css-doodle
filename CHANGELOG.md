@@ -1,6 +1,16 @@
+## 0.29.2
+
+* Restore `Plot` function for unitless points.
+* Allow spaces around `times` operator.
+* Fix inline SVG element generator.
+
+<br /> <br />
+
+
+
 ## 0.29.1
 
-* Extend `use` attribute to support rules in pure string'.
+* Extend `use` attribute to support rules in pure string.
   ```html
   <css-doodle use="@grid: 5 / 200px"></css-doodle>
   ```
