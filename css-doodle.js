@@ -1,4 +1,4 @@
-/*! css-doodle@0.29.2 */
+/*! css-doodle@0.29.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -470,7 +470,7 @@
   function make_tag_function(fn) {
     let get_value = v => is_nil(v) ? '' : v;
     return (input, ...vars) => {
-      let string = input.reduce((s, c, i) => s + c + get_value(vars[i]), '');
+      let string = make_array$1(input).reduce((s, c, i) => s + c + get_value(vars[i]), '');
       return fn(string);
     };
   }
@@ -486,6 +486,11 @@
 
   function unique_id(prefix = '') {
     return prefix + Math.random().toString(32).substr(2);
+  }
+
+  function make_array$1(arr) {
+    if (is_nil(arr)) return [];
+    return Array.isArray(arr) ? arr : [arr];
   }
 
   function parse$8(input, option = {symbol: ',', noSpace: false}) {
@@ -6105,7 +6110,18 @@ void main() {
     return doodle;
   });
 
+  const svg = rules => {
+    let result = generate_css(
+      parse$6(`background: @svg(${rules});`),
+      parse_grid('1x1')
+    );
+    let raw = result && result.styles && result.styles.cells || '';
+    let cut = raw.substring(52, raw.length - 5);
+    return decodeURIComponent(cut);
+  };
+
   exports.CSSDoodle = CSSDoodle;
+  exports.svg = svg;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 
