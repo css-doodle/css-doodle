@@ -25,7 +25,7 @@ function readStatement(iter, token) {
       }
     }
     if (!stackParen.length && !stackQuote.length && curr.isSymbol('{')) {
-      let selectors = getGroups(fragment, token => token.isSpace());
+      let selectors = getSelectors(fragment);
       if (!selectors.length) {
         continue;
       }
@@ -95,7 +95,7 @@ function walk(iter, parentToken) {
       break;
     }
     else if (curr.isSymbol('{')) {
-      let selectors = getGroups(fragment, token => token.isSpace());
+      let selectors = getSelectors(fragment);
       if (!selectors.length) {
         continue;
       }
@@ -222,13 +222,41 @@ function getGroups(tokens, fn) {
   return group;
 }
 
+function getSelectors(tokens) {
+  let result = [];
+  let it = iterator(tokens);
+  let temp = [];
+  let hasSymbol;
+  while (it.next()) {
+    let { prev, curr, next } = it.get();
+    let isTimeSymbol = (
+      prev && next &&
+      curr.value === 'x' &&
+      prev.isNumber()  &&
+      next.isNumber()
+    );
+    if (curr.isWord() && !hasSymbol && !isTimeSymbol) {
+      result.push(curr.value.trim());
+    } else {
+      result[result.length - 1] =
+        (result[result.length - 1] + curr.value).trim();
+    }
+    if (curr.isSymbol()) {
+      hasSymbol = true;
+    } else if (!curr.isSpace()) {
+      hasSymbol = false;
+    }
+  }
+  return result;
+}
+
 function splitTimes(name, object) {
   let target = Object.assign({}, object);
-  if (/\*[0-9]/.test(name)) {
+  if (/\*\s*[0-9]/.test(name)) {
     let [tokenName, times] = name.split('*');
     if (times) {
-      target.times = times;
-      target.pureName = tokenName;
+      target.times = times.trim();
+      target.pureName = tokenName.trim();
     }
   }
   return target;

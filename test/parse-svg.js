@@ -336,6 +336,22 @@ test('times syntax', t => {
       value: []
     }]
   });
+
+  compare(t, `
+    circle * 5 {}
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'circle*5',
+      pureName: 'circle',
+      times: '5',
+      value: []
+    }]
+  });
+
+
 });
 
 test('complex values with parens', t => {
