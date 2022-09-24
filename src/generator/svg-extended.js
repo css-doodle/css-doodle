@@ -1,9 +1,12 @@
 function generate(token, last) {
   let result = '';
   if (token.type === 'block') {
-    result += token.times
-      ? ('@M' + token.times + '(' + token.pureName + '{')
-      : (token.name + '{');
+    let isInline = Array.isArray(token.value) && token.value[0] && token.value[0].inline;
+    if (token.times) {
+      result += ('@M' + token.times + '(' + token.pureName + '{');
+    } else {
+      result += token.name + (isInline ? ' ' : '{');
+    }
     if (Array.isArray(token.value) && token.value.length) {
       let lastGroup = '';
       for (let t of token.value) {
@@ -13,7 +16,11 @@ function generate(token, last) {
         }
       }
     }
-    result += token.times ? '})' : '}';
+    if (token.times) {
+      result += '})';
+    } else if (!isInline) {
+      result += '}';
+    }
   } else if (token.type === 'statement') {
     let skip = (token.origin && last === token.origin.name.join(','));
     let name = token.origin ? token.origin.name.join(',') : token.name;
