@@ -666,25 +666,10 @@ function create_grid(grid_obj) {
   return grid.outerHTML;
 }
 
-const CSSDoodle = make_tag_function(rules => {
+export default make_tag_function(rules => {
   let doodle = document.createElement('css-doodle');
   if (doodle.update) {
     doodle.update(rules);
   }
   return doodle;
 });
-
-const svg = rules => {
-  let result = generate_css(
-    parse_css(`background: @svg(${rules});`),
-    parse_grid('1x1')
-  );
-  let raw = result && result.styles && result.styles.cells || '';
-  let cut = raw.substring(52, raw.length - 5);
-  return decodeURIComponent(cut);
-};
-
-export {
-  CSSDoodle,
-  svg,
-}

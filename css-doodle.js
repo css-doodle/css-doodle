@@ -1,9 +1,9 @@
-/*! css-doodle@0.29.4 */
+/*! css-doodle@0.30.0 */
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.CSSDoodle = {}));
-})(this, (function (exports) { 'use strict';
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
+})(this, (function () { 'use strict';
 
   /**
    * This is totally rewrite for the old parser module
@@ -6102,7 +6102,7 @@ void main() {
     return grid.outerHTML;
   }
 
-  const CSSDoodle = make_tag_function(rules => {
+  var index = make_tag_function(rules => {
     let doodle = document.createElement('css-doodle');
     if (doodle.update) {
       doodle.update(rules);
@@ -6110,19 +6110,6 @@ void main() {
     return doodle;
   });
 
-  const svg = rules => {
-    let result = generate_css(
-      parse$6(`background: @svg(${rules});`),
-      parse_grid('1x1')
-    );
-    let raw = result && result.styles && result.styles.cells || '';
-    let cut = raw.substring(52, raw.length - 5);
-    return decodeURIComponent(cut);
-  };
-
-  exports.CSSDoodle = CSSDoodle;
-  exports.svg = svg;
-
-  Object.defineProperty(exports, '__esModule', { value: true });
+  return index;
 
 }));

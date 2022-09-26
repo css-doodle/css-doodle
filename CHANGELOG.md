@@ -1,3 +1,36 @@
+## 0.30.0
+
+* Add exports.
+
+  ```js
+  import CSSDoodle from 'css-doodle';
+  import { svg, shape } from 'css-doodle/generator';
+  import { tokenizer } from 'css-doodle/parser';
+
+  document.appendChild(CSSDoodle`
+    @grid: 10 / 200px;
+    background: @p(red, blue);
+    margin: 1px;
+  `);
+
+  let code = svg(`
+    viewBox: 0 0 10 10;
+    circle {
+      cx, cy, r: 5;
+    }
+  `);
+
+  let polygon = shape(`
+    points: 200;
+    r: sin(t);
+  `);
+
+  let tokens = tokenizer.scan(`
+    color: red
+  `);
+  ```
+
+
 ## 0.29.2
 
 * Restore `Plot` function for unitless points.

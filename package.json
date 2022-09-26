@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.29.4",
+  "version": "0.30.0",
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
@@ -28,9 +28,12 @@
     "src"
   ],
   "exports": {
-    ".": "./css-doodle.js",
-    "./module": {
-      "import": "./src/index.js"
+    ".": "./src/index.js",
+    "./generator": {
+      "import": "./src/exports/generator/index.js"
+    },
+    "./parser": {
+      "import": "./src/exports/parser/index.js"
     }
   },
   "keywords": [
