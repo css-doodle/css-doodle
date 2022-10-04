@@ -8,12 +8,12 @@ function readStatement(iter, token) {
   let stackParen = [];
   while (iter.next()) {
     let { curr, next } = iter.get();
-    let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
     if (curr.isSymbol('(')) {
       stackParen.push(curr);
     } else if (curr.isSymbol(')')) {
       stackParen.pop();
     }
+    let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
     if (curr.isSymbol("'", '"')) {
       if (curr.status === 'open') {
         stackQuote.push(curr);
@@ -77,13 +77,13 @@ function walk(iter, parentToken) {
 
   while (iter.next()) {
     let { prev, curr, next } = iter.get();
-    let isBlockBreak = !next || curr.isSymbol('}');
     if (curr.isSymbol('(')) {
       stack.push(curr.value);
     }
     if (curr.isSymbol(')')) {
       stack.pop();
     }
+    let isBlockBreak = !next || curr.isSymbol('}');
     if (isBlock(tokenType) && isBlockBreak) {
       if (!next && rules.length && !curr.isSymbol('}')) {
         let last = rules[rules.length - 1].value;
