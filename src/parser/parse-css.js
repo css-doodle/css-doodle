@@ -377,14 +377,14 @@ function normalize_argument(group) {
 
 function seperate_func_name(name) {
   let fname = '', extra = '';
-  if ((/\D$/.test(name) && !/\d+x\d+/.test(name)) || Math[name.substr(1)]) {
+  if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.substr(1)]) {
     return { fname: name, extra }
   }
   for (let i = name.length - 1; i >= 0; i--) {
     let c = name[i];
     let prev = name[i - 1];
     let next = name[i + 1];
-    if (/[\d.]/.test(c) || ((c == 'x') && /\d/.test(prev) && /\d/.test(next))) {
+    if (/[\d.]/.test(c) || ((c == 'x' || c == '-') && /\d/.test(prev) && /\d/.test(next))) {
       extra = c + extra;
     } else {
       fname = name.substring(0, i + 1);

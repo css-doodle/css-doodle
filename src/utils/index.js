@@ -57,17 +57,40 @@ function lazy(fn) {
 }
 
 function sequence(count, fn) {
-  let [x, y = 1] = String(count).split('x');
+  let [x, y = 1] = String(count).split(/[x-]/);
   x = clamp(Math.ceil(x) || 1, 1, 65536);
   y = clamp(Math.ceil(y) || 1, 1, 65536);
   let max = x * y;
   let ret = [];
   let index = 1;
-  for (let i = 1; i <= y; ++i) {
-    for (let j = 1; j <= x; ++j) {
-      ret.push(fn(index++, j, i, max, x, y));
+
+  if (/x/.test(count)) {
+    for (let i = 1; i <= y; ++i) {
+      for (let j = 1; j <= x; ++j) {
+        ret.push(fn(index++, j, i, max, x, y));
+      }
     }
   }
+
+  else if (/-/.test(count)) {
+    max = Math.abs(x - y) + 1;
+    if (x <= y) {
+      for (let i = x; i <= y; ++i) {
+        ret.push(fn(i, i, 1, max, max, 1));
+      }
+    } else {
+      for (let i = x; i >= y; --i) {
+        ret.push(fn(i, i, 1, max, max, 1));
+      }
+    }
+  }
+
+  else {
+    for (let i = 1; i <= x; ++i) {
+      ret.push(fn(i, i, 1, x, x, 1));
+    }
+  }
+
   return ret;
 }
 
