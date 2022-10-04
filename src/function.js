@@ -26,7 +26,7 @@ function make_sequence(c) {
     if (!actions || !n) return '';
     let count = get_value(n());
     let evaluated = count;
-    if (/\D/.test(count)){
+    if (/\D/.test(count) && !/^\d$/.test(count) && !/\d+[x-]\d+/.test(count)) {
       evaluated = calc(count);
       if (evaluated === 0) {
         evaluated = count;
