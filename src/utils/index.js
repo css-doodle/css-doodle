@@ -19,7 +19,7 @@ function range(start, stop, step) {
     || (step < 0 && start > stop)) {
     range.push(start);
     start += step;
-    if (count++ >= 1000) break;
+    if (count++ >= 65535) break;
   }
   if (!range.length) range.push(old);
   return range;
