@@ -75,6 +75,7 @@ function composeStyle(block) {
 }
 
 function removeQuotes(text) {
+  text = String(text);
   let double = text.startsWith('"') && text.endsWith('"');
   let single = text.startsWith("'") && text.endsWith("'");
   if (double || single) {
