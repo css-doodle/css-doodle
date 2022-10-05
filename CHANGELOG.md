@@ -1,8 +1,16 @@
+## 0.30.2
+
+* Fix type error.
+
+<br /> <br />
+
+
+
 ## 0.30.1
 
 * Fix CSS and SVG parser on quotes and parens.
 * Add range support for `@m` function.
-  ```
+  ```css
   ::after {
     /* 5 4 3 2 1 */
     content: @M5-1.@n;

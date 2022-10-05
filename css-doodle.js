@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.1 */
+/*! css-doodle@0.30.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1858,6 +1858,7 @@
   }
 
   function removeQuotes(text) {
+    text = String(text);
     let double = text.startsWith('"') && text.endsWith('"');
     let single = text.startsWith("'") && text.endsWith("'");
     if (double || single) {
