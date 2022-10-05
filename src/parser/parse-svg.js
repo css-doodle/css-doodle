@@ -8,9 +8,9 @@ function readStatement(iter, token) {
   let stackParen = [];
   while (iter.next()) {
     let { curr, next } = iter.get();
-    if (curr.isSymbol('(')) {
+    if (curr.isSymbol('(') && !stackQuote.length) {
       stackParen.push(curr);
-    } else if (curr.isSymbol(')')) {
+    } else if (curr.isSymbol(')') && !stackQuote.length) {
       stackParen.pop();
     }
     let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
@@ -47,13 +47,7 @@ function readStatement(iter, token) {
       }
       break;
     }
-    // skip quotes
-    let skip = (curr.status == 'open' && stackQuote.length == 1)
-      || (curr.status == 'close' && !stackQuote.length);
-
-    if (!skip) {
-      fragment.push(curr);
-    }
+    fragment.push(curr);
     if (isStatementBreak) {
       break;
     }

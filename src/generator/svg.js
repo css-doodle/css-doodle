@@ -49,7 +49,7 @@ class Tag {
   }
   toString() {
     if (this.isTextNode()) {
-      return this.body;
+      return removeQuotes(this.body);
     }
     let attrs = [''];
     let body = [];
@@ -72,6 +72,15 @@ function composeStyle(block) {
     .map(n => (n.type === 'block') ? composeStyle(n) : composeStyleRule(n.name, n.value))
     .join('');
   return `${block.name}{${style}}`;
+}
+
+function removeQuotes(text) {
+  let double = text.startsWith('"') && text.endsWith('"');
+  let single = text.startsWith("'") && text.endsWith("'");
+  if (double || single) {
+    return text.substring(1, text.length - 1);
+  }
+  return text;
 }
 
 function generate(token, element, parent, root) {
@@ -124,8 +133,7 @@ function generate(token, element, parent, root) {
     }
   }
   if (token.type === 'statement') {
-    let isTextNode = parent && /^(text|tspan|textPath|title|desc)$/i.test(parent.name);
-    if (isTextNode && token.name === 'content') {
+    if (token.name === 'content') {
       let text = new Tag('text-node', token.value);
       element.append(text);
     }

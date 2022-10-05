@@ -268,6 +268,9 @@ function read_arguments(it, composition, doodle) {
     let start = it.index();
     if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
       if (stack.length) {
+        if ((c !== '(') && last(stack) === '(') {
+          stack.pop();
+        }
         if (c != '(' && c === last(stack)) {
           stack.pop();
         } else {
@@ -290,7 +293,7 @@ function read_arguments(it, composition, doodle) {
     }
     else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
       if (stack.length) {
-        if (c == ')') {
+        if (c == ')' && last(stack) === '(') {
           stack.pop();
         }
         arg += c;

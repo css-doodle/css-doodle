@@ -130,6 +130,30 @@ test('multiple content', t => {
   );
 });
 
+test('remove quotes around text', t => {
+  compare(t,
+    `text {
+      content: "hello";
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text>hello</text>
+      </svg>
+    `)
+  );
+
+  compare(t,
+    `text {
+      content: 'hello';
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text>hello</text>
+      </svg>
+    `)
+  );
+});
+
 test('style tag', t => {
   compare(t,
     `svg {

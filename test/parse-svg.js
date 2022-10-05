@@ -312,12 +312,30 @@ test('statement end on quotes', t => {
       value: [{
         name: 'content',
         type: 'statement',
-        value: ''
+        value: '\'\''
       }]
     }, {
       name: 'g',
       type: 'block',
       value: []
+    }]
+  });
+});
+
+test('content values', t => {
+  compare(t, `
+    text { content: "world;}" }
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'text',
+      value: [{
+        name: 'content',
+        type: 'statement',
+        value: '"world;}"'
+      }]
     }]
   });
 });
