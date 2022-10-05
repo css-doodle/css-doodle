@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.0 */
+/*! css-doodle@0.30.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -358,7 +358,7 @@
       || (step < 0 && start > stop)) {
       range.push(start);
       start += step;
-      if (count++ >= 1000) break;
+      if (count++ >= 65535) break;
     }
     if (!range.length) range.push(old);
     return range;
@@ -396,17 +396,40 @@
   }
 
   function sequence(count, fn) {
-    let [x, y = 1] = String(count).split('x');
+    let [x, y = 1] = String(count).split(/[x-]/);
     x = clamp(Math.ceil(x) || 1, 1, 65536);
     y = clamp(Math.ceil(y) || 1, 1, 65536);
     let max = x * y;
     let ret = [];
     let index = 1;
-    for (let i = 1; i <= y; ++i) {
-      for (let j = 1; j <= x; ++j) {
-        ret.push(fn(index++, j, i, max, x, y));
+
+    if (/x/.test(count)) {
+      for (let i = 1; i <= y; ++i) {
+        for (let j = 1; j <= x; ++j) {
+          ret.push(fn(index++, j, i, max, x, y));
+        }
       }
     }
+
+    else if (/-/.test(count)) {
+      max = Math.abs(x - y) + 1;
+      if (x <= y) {
+        for (let i = x; i <= y; ++i) {
+          ret.push(fn(i, i, 1, max, max, 1));
+        }
+      } else {
+        for (let i = x; i >= y; --i) {
+          ret.push(fn(i, i, 1, max, max, 1));
+        }
+      }
+    }
+
+    else {
+      for (let i = 1; i <= x; ++i) {
+        ret.push(fn(i, i, 1, x, x, 1));
+      }
+    }
+
     return ret;
   }
 
@@ -559,12 +582,12 @@
     let stackParen = [];
     while (iter.next()) {
       let { curr, next } = iter.get();
-      let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
-      if (curr.isSymbol('(')) {
+      if (curr.isSymbol('(') && !stackQuote.length) {
         stackParen.push(curr);
-      } else if (curr.isSymbol(')')) {
+      } else if (curr.isSymbol(')') && !stackQuote.length) {
         stackParen.pop();
       }
+      let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
       if (curr.isSymbol("'", '"')) {
         if (curr.status === 'open') {
           stackQuote.push(curr);
@@ -598,13 +621,7 @@
         }
         break;
       }
-      // skip quotes
-      let skip = (curr.status == 'open' && stackQuote.length == 1)
-        || (curr.status == 'close' && !stackQuote.length);
-
-      if (!skip) {
-        fragment.push(curr);
-      }
+      fragment.push(curr);
       if (isStatementBreak) {
         break;
       }
@@ -628,13 +645,13 @@
 
     while (iter.next()) {
       let { prev, curr, next } = iter.get();
-      let isBlockBreak = !next || curr.isSymbol('}');
       if (curr.isSymbol('(')) {
         stack.push(curr.value);
       }
       if (curr.isSymbol(')')) {
         stack.pop();
       }
+      let isBlockBreak = !next || curr.isSymbol('}');
       if (isBlock(tokenType) && isBlockBreak) {
         if (!next && rules.length && !curr.isSymbol('}')) {
           let last = rules[rules.length - 1].value;
@@ -1180,6 +1197,9 @@
       let start = it.index();
       if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
         if (stack.length) {
+          if ((c !== '(') && last(stack) === '(') {
+            stack.pop();
+          }
           if (c != '(' && c === last(stack)) {
             stack.pop();
           } else {
@@ -1202,7 +1222,7 @@
       }
       else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
         if (stack.length) {
-          if (c == ')') {
+          if (c == ')' && last(stack) === '(') {
             stack.pop();
           }
           arg += c;
@@ -1289,14 +1309,14 @@
 
   function seperate_func_name(name) {
     let fname = '', extra = '';
-    if ((/\D$/.test(name) && !/\d+x\d+/.test(name)) || Math[name.substr(1)]) {
+    if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.substr(1)]) {
       return { fname: name, extra }
     }
     for (let i = name.length - 1; i >= 0; i--) {
       let c = name[i];
       let prev = name[i - 1];
       let next = name[i + 1];
-      if (/[\d.]/.test(c) || ((c == 'x') && /\d/.test(prev) && /\d/.test(next))) {
+      if (/[\d.]/.test(c) || ((c == 'x' || c == '-') && /\d/.test(prev) && /\d/.test(next))) {
         extra = c + extra;
       } else {
         fname = name.substring(0, i + 1);
@@ -1812,7 +1832,7 @@
     }
     toString() {
       if (this.isTextNode()) {
-        return this.body;
+        return removeQuotes(this.body);
       }
       let attrs = [''];
       let body = [];
@@ -1835,6 +1855,15 @@
       .map(n => (n.type === 'block') ? composeStyle(n) : composeStyleRule(n.name, n.value))
       .join('');
     return `${block.name}{${style}}`;
+  }
+
+  function removeQuotes(text) {
+    let double = text.startsWith('"') && text.endsWith('"');
+    let single = text.startsWith("'") && text.endsWith("'");
+    if (double || single) {
+      return text.substring(1, text.length - 1);
+    }
+    return text;
   }
 
   function generate$1(token, element, parent, root) {
@@ -1887,8 +1916,7 @@
       }
     }
     if (token.type === 'statement') {
-      let isTextNode = parent && /^(text|tspan|textPath|title|desc)$/i.test(parent.name);
-      if (isTextNode && token.name === 'content') {
+      if (token.name === 'content') {
         let text = new Tag('text-node', token.value);
         element.append(text);
       }
@@ -2999,7 +3027,7 @@
       if (!actions || !n) return '';
       let count = get_value(n());
       let evaluated = count;
-      if (/\D/.test(count)){
+      if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {
         evaluated = calc$1(count);
         if (evaluated === 0) {
           evaluated = count;

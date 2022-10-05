@@ -1,3 +1,18 @@
+## 0.30.1
+
+* Fix CSS and SVG parser on quotes and parens.
+* Add range support for `@m` function.
+  ```
+  ::after {
+    /* 5 4 3 2 1 */
+    content: @M5-1.@n;
+  }
+  ```
+
+<br /> <br />
+
+
+
 ## 0.30.0
 
 * Add exports.
