@@ -10,5 +10,9 @@ export default function svg(rules) {
   );
   let raw = result && result.styles && result.styles.cells || '';
   let cut = raw.substring(52, raw.length - 5);
-  return decodeURIComponent(cut);
+  try {
+    return decodeURIComponent(cut);
+  } catch (e) {
+    return '';
+  }
 }
