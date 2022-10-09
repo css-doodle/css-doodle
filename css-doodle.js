@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.2 */
+/*! css-doodle@0.30.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -594,7 +594,7 @@
         } else {
           stackQuote.pop();
         }
-        if (next.isSymbol('}') && !stackQuote.length) {
+        if ((next && next.isSymbol('}')) && !stackQuote.length) {
           isStatementBreak = true;
         }
       }
@@ -4512,7 +4512,7 @@
         }
       }
 
-      if (prop === 'background' && (value.includes('shader') || value.includes('canvas') || value.includes('pattern'))) {
+      if (prop === 'background' && (value.includes('@shader') || value.includes('@canvas') || value.includes('@pattern'))) {
         rule += 'background-size: 100% 100%;';
       }
 

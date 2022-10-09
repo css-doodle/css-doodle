@@ -1,3 +1,12 @@
+## 0.30.3
+
+* Do not break for decodeURI.
+* Fix SVG generator on cutting values.
+
+<br /> <br />
+
+
+
 ## 0.30.2
 
 * Fix type error.
