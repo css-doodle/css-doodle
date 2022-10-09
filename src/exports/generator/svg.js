@@ -9,7 +9,7 @@ export default function svg(rules) {
     parse_grid('1x1')
   );
   let raw = result && result.styles && result.styles.cells || '';
-  let cut = raw.substring(52, raw.length - 5);
+  let cut = raw.substring(raw.indexOf('%3'), raw.lastIndexOf('");'));
   try {
     return decodeURIComponent(cut);
   } catch (e) {

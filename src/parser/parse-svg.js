@@ -20,7 +20,7 @@ function readStatement(iter, token) {
       } else {
         stackQuote.pop();
       }
-      if (next.isSymbol('}') && !stackQuote.length) {
+      if ((next && next.isSymbol('}')) && !stackQuote.length) {
         isStatementBreak = true;
       }
     }
