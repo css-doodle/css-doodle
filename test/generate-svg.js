@@ -283,3 +283,28 @@ test('do not group elements for empty id', t => {
     `)
   );
 });
+
+test('Normalize quoted attribute values', t => {
+  compare(t,
+    `circle {
+        name: "hello";
+      }
+    `,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <circle name="hello"></circle>
+      </svg>
+    `)
+  );
+  compare(t,
+    `circle {
+        name: 'hello';
+      }
+    `,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <circle name="hello"></circle>
+      </svg>
+    `)
+  );
+});

@@ -54,6 +54,7 @@ class Tag {
     let attrs = [''];
     let body = [];
     for (let [name, value] of Object.entries(this.attrs)) {
+      value = removeQuotes(value);
       attrs.push(`${name}="${value}"`);
     }
     for (let tag of this.body) {
