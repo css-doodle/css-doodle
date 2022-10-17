@@ -1,3 +1,11 @@
+## 0.30.4
+
+* Normalize quoted SVG attribute values.
+
+<br /> <br />
+
+
+
 ## 0.30.3
 
 * Do not break for decodeURI.
@@ -61,6 +69,9 @@
     color: red
   `);
   ```
+
+<br /> <br />
+
 
 
 ## 0.29.2

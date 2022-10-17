@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.3 */
+/*! css-doodle@0.30.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1837,6 +1837,7 @@
       let attrs = [''];
       let body = [];
       for (let [name, value] of Object.entries(this.attrs)) {
+        value = removeQuotes(value);
         attrs.push(`${name}="${value}"`);
       }
       for (let tag of this.body) {
