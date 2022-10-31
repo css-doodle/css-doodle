@@ -1,3 +1,11 @@
+## 0.30.5
+
+* Always add `background-size:100%` to background properties.
+
+<br /> <br />
+
+
+
 ## 0.30.4
 
 * Normalize quoted SVG attribute values.

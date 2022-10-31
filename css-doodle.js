@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.4 */
+/*! css-doodle@0.30.5 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -4513,7 +4513,7 @@
         }
       }
 
-      if (prop === 'background' && (value.includes('@shader') || value.includes('@canvas') || value.includes('@pattern'))) {
+      if (prop === 'background' || prop === 'background-image') {
         rule += 'background-size: 100% 100%;';
       }
 
