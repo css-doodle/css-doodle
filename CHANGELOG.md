@@ -1,3 +1,11 @@
+## 0.30.6
+
+I was wrong. Only set `background-size:100%` to `pattern`, `canvas`, and `shader`.
+
+<br /> <br />
+
+
+
 ## 0.30.5
 
 * Always add `background-size:100%` to background properties.
