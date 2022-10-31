@@ -400,7 +400,11 @@ class Rules {
       }
     }
 
-    if (prop === 'background' || prop === 'background-image') {
+    let is_bg = (prop === 'background' || prop === 'background-image');
+    let is_canvas = /\$\{canvas/.test(value);
+    let is_shader = /\$\{shader/.test(value);
+    let is_pattern = /\${pattern/.test(value);
+    if (is_bg && (is_canvas || is_shader || is_pattern)) {
       rule += 'background-size: 100% 100%;';
     }
 
