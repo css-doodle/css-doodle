@@ -71,3 +71,15 @@ test('grid value', t => {
 
 });
 
+test('space as separator', t => {
+
+  compare.use(input => {
+    return parseValueGroup(input, { symbol: ' ' });
+  });
+
+  compare(t, '5  100%', ['5', '100%']);
+  compare(t, '5,100%', ['5,100%']);
+  compare(t, '5, 100% 5', ['5,100%', '5']);
+  compare(t, '5, 100% 5 8', ['5,100%', '5', '8']);
+
+});

@@ -549,6 +549,21 @@ const Expose = add_alias({
     }
   },
 
+  cycle() {
+    return input => {
+      let list = parse_value_group(input, { symbol: ' ' });
+      let size = list.length - 1;
+      let result = [list.join(' ')];
+      // Just ignore the performance
+      for (let i = 0; i < size; ++i) {
+        let item = list.pop();
+        list.unshift(item);
+        result.push(list.join(' '));
+      }
+      return result;
+    }
+  },
+
 }, {
 
   'index': 'i',
