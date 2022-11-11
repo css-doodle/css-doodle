@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.6 */
+/*! css-doodle@0.30.7 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -3548,6 +3548,21 @@
         return parsed.commands.reverse().map(({ name, value }) => {
           return name + value.join(' ');
         }).join(' ');
+      }
+    },
+
+    cycle() {
+      return input => {
+        let list = parse$8(input, { symbol: ' ' });
+        let size = list.length - 1;
+        let result = [list.join(' ')];
+        // Just ignore the performance
+        for (let i = 0; i < size; ++i) {
+          let item = list.pop();
+          list.unshift(item);
+          result.push(list.join(' '));
+        }
+        return result;
       }
     },
 

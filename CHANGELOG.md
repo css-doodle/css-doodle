@@ -1,3 +1,11 @@
+## 0.30.7
+
+Experimenting the new added `cycle()` function.
+
+<br /> <br />
+
+
+
 ## 0.30.6
 
 I was wrong. Only set `background-size:100%` to `pattern`, `canvas`, and `shader`.
