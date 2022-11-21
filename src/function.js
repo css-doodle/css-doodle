@@ -182,6 +182,22 @@ const Expose = add_alias({
     });
   },
 
+  pr({ context, extra, position }) {
+    let lastExtra = last(extra);
+    let sig = lastExtra ? last(lastExtra) : '';
+    let counter = 'pr-counter' + position + sig;
+    return expand((...args) => {
+      args.reverse();
+      if (!context[counter]) context[counter] = 0;
+      context[counter] += 1;
+      let max = args.length;
+      let [idx = context[counter]] = lastExtra || [];
+      let pos = (idx - 1) % max;
+      let value = args[pos];
+      return push_stack(context, 'last_pick', value);
+    });
+  }
+
   pd({ context, extra, position, shuffle }) {
     let lastExtra = last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
@@ -572,6 +588,7 @@ const Expose = add_alias({
   'depth': 'z',
   'rand': 'r',
   'pick': 'p',
+  'pl':   'pn',
 
   // error prone
   'stripes': 'stripe',
