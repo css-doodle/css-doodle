@@ -196,7 +196,7 @@ const Expose = add_alias({
       let value = args[pos];
       return push_stack(context, 'last_pick', value);
     });
-  }
+  },
 
   pd({ context, extra, position, shuffle }) {
     let lastExtra = last(extra);
