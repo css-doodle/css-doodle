@@ -1,3 +1,10 @@
+## 0.30.8
+
+Experimenting the new added `pr` function.
+
+<br /> <br />
+
+
 ## 0.30.7
 
 Experimenting the new added `cycle()` function.
