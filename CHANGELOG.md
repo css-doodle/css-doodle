@@ -1,3 +1,11 @@
+## 0.30.10
+
+* Add `@pnr` alias for `@pr`.
+
+<br /> <br />
+
+
+
 ## 0.30.9
 
 * Support variables in standalone SVG export function.
@@ -7,6 +15,7 @@
 * Use `@pn` and `@position` as aliases.
 
 <br /> <br />
+
 
 
 ## 0.30.8

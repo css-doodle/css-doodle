@@ -588,6 +588,7 @@ const Expose = add_alias({
   'rand': 'r',
   'pick': 'p',
   'pn':   'pl',
+  'pnr':  'pr',
 
   // error prone
   'stripes': 'stripe',
