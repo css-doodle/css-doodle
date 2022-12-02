@@ -88,7 +88,6 @@ test('edge cases', t => {
 
 });
 
-
 test('statement', t => {
 
   compare(t, 'viewBox: 0 0 0 10', {
@@ -116,7 +115,6 @@ test('statement', t => {
 
 });
 
-
 test('group property', t => {
   compare(t, 'cx, cy: 5', {
     name: 'svg',
@@ -135,9 +133,7 @@ test('group property', t => {
       { type: 'statement', origin: { name: ['cx', 'cy'], value: '5 6' }, name: 'cy', value: '6'},
     ]
   });
-
 });
-
 
 test('semicolon separated values', t => {
   compare(t, 'values: 60; 100; 180', {
@@ -158,7 +154,6 @@ test('semicolon separated values', t => {
   });
 });
 
-
 test('colon separated properties', t => {
   compare(t, 'xlink:href: url(#app)', {
     name: 'svg',
@@ -176,7 +171,6 @@ test('colon separated properties', t => {
     ]
   });
 });
-
 
 test('block names', t => {
   compare(t, 'g circle { } ', {
@@ -230,7 +224,6 @@ test('block names', t => {
       }
     ]
   });
-
 });
 
 test('id expand', t => {
@@ -272,7 +265,6 @@ test('id expand', t => {
       ]
     }]
   });
-
 });
 
 test('empty id expand', t => {
@@ -368,8 +360,6 @@ test('times syntax', t => {
       value: []
     }]
   });
-
-
 });
 
 test('complex values with parens', t => {
@@ -388,6 +378,30 @@ test('complex values with parens', t => {
         name: 'd',
         value: '@plot(r:1;unit:none)'
       }]
+    }]
+  });
+});
+
+test('svg variable', t => {
+  compare(t, '--a: 1', {
+    name: 'svg',
+    type: 'block',
+    value: [{
+      type: 'statement',
+      name: '--a',
+      value: '1',
+      variable: true
+    }]
+  });
+
+  compare(t, '--a: 1; svg {}', {
+    name: 'svg',
+    type: 'block',
+    value: [{
+      type: 'statement',
+      name: '--a',
+      value: '1',
+      variable: true
     }]
   });
 });

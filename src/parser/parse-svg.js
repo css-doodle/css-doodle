@@ -137,6 +137,9 @@ function walk(iter, parentToken) {
 
       props.forEach((prop, i) => {
         let item = Object.assign({}, statement, { name: prop });
+        if (/^\-\-/.test(prop)) {
+          item.variable = true;
+        }
         if (expand) {
           item.value = groupdValue[i];
         }
@@ -265,12 +268,20 @@ function isBlock(type) {
 }
 
 function skipHeadSVG(block) {
-  let head = block && block.value && block.value[0];
-  if (head && head.name === 'svg' && isBlock(head.type)) {
-    return skipHeadSVG(head);
-  } else {
-    return block;
+  let headSVG, headVariables = [];
+  for (let item of block.value) {
+    if (item.name === 'svg') {
+      headSVG = item;
+    }
+    if (item.variable) {
+      headVariables.push(item);
+    }
   }
+  if (headSVG) {
+    headSVG.value.push(...headVariables);
+    return headSVG;
+  }
+  return block;
 }
 
 function parse(source, root) {
