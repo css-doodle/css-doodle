@@ -60,7 +60,7 @@ export default add_alias({
       margin-top: calc(${ ch } / -2);
       grid-area: unset;
       --plot-angle: ${ extra || 0 };
-      transform: rotate(${ extra || 0 }deg);
+      rotate: ${ extra || 0 }deg;
     `;
   },
 
