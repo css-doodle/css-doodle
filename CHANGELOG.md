@@ -1,8 +1,20 @@
+## 0.30.9
+
+* Support variables in standalone SVG export function.
+* Compute index instead of reversing the whole array.
+* Use single rotate for inner `@place` transformation.
+* Simplify image detection
+* Use `@pn` and `@position` as aliases.
+
+<br /> <br />
+
+
 ## 0.30.8
 
 Experimenting the new added `pr` function.
 
 <br /> <br />
+
 
 
 ## 0.30.7

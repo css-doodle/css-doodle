@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.8 */
+/*! css-doodle@0.30.9 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -711,6 +711,9 @@
 
         props.forEach((prop, i) => {
           let item = Object.assign({}, statement, { name: prop });
+          if (/^\-\-/.test(prop)) {
+            item.variable = true;
+          }
           if (expand) {
             item.value = groupdValue[i];
           }
@@ -838,12 +841,20 @@
   }
 
   function skipHeadSVG(block) {
-    let head = block && block.value && block.value[0];
-    if (head && head.name === 'svg' && isBlock(head.type)) {
-      return skipHeadSVG(head);
-    } else {
-      return block;
+    let headSVG, headVariables = [];
+    for (let item of block.value) {
+      if (item.name === 'svg') {
+        headSVG = item;
+      }
+      if (item.variable) {
+        headVariables.push(item);
+      }
     }
+    if (headSVG) {
+      headSVG.value.push(...headVariables);
+      return headSVG;
+    }
+    return block;
   }
 
   function parse$7(source, root) {
@@ -3170,10 +3181,10 @@
       });
     },
 
-    pn({ context, extra, position }) {
+    pl({ context, extra, position }) {
       let lastExtra = last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
-      let counter = 'pn-counter' + position + sig;
+      let counter = 'pl-counter' + position + sig;
       return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
@@ -3190,13 +3201,12 @@
       let sig = lastExtra ? last(lastExtra) : '';
       let counter = 'pr-counter' + position + sig;
       return expand((...args) => {
-        args.reverse();
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
         let [idx = context[counter]] = lastExtra || [];
         let pos = (idx - 1) % max;
-        let value = args[pos];
+        let value = args[max - pos - 1];
         return push_stack(context, 'last_pick', value);
       });
     },
@@ -3590,7 +3600,7 @@
     'depth': 'z',
     'rand': 'r',
     'pick': 'p',
-    'pl':   'pn',
+    'pn':   'pl',
 
     // error prone
     'stripes': 'stripe',
@@ -3622,8 +3632,8 @@
     'sz': 'Z',
     'size-z': 'Z',
     'size-depth': 'Z',
-    'pick-by-turn': 'pn',
-    'pick-n': 'pn',
+    'pick-by-turn': 'pl',
+    'pick-n': 'pl',
     'pick-d': 'pd',
     'offset': 'plot',
     'Offset': 'Plot',
@@ -3796,7 +3806,7 @@
       return styles;
     },
 
-    position(value, { extra }) {
+    place(value, { extra }) {
       let [left, top = '50%'] = parse$8(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
@@ -3812,7 +3822,7 @@
       margin-top: calc(${ ch } / -2);
       grid-area: unset;
       --plot-angle: ${ extra || 0 };
-      transform: rotate(${ extra || 0 }deg);
+      rotate: ${ extra || 0 }deg;
     `;
     },
 
@@ -3844,12 +3854,10 @@
     },
 
   }, {
-    'place': 'position',
-
     // legacy names.
-    'place-cell': 'position',
-    'offset': 'position',
-
+    'place-cell': 'place',
+    'offset': 'place',
+    'position': 'place',
   });
 
   const literal = {
@@ -4545,11 +4553,11 @@
         }
       }
 
-      let is_bg = (prop === 'background' || prop === 'background-image');
-      let is_canvas = /\$\{canvas/.test(value);
-      let is_shader = /\$\{shader/.test(value);
-      let is_pattern = /\${pattern/.test(value);
-      if (is_bg && (is_canvas || is_shader || is_pattern)) {
+      let is_image = (
+        /^(background|background\-image)$/.test(prop) &&
+        /\$\{(canvas|shader|pattern)/.test(value)
+      );
+      if (is_image) {
         rule += 'background-size: 100% 100%;';
       }
 
