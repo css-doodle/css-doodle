@@ -187,13 +187,12 @@ const Expose = add_alias({
     let sig = lastExtra ? last(lastExtra) : '';
     let counter = 'pr-counter' + position + sig;
     return expand((...args) => {
-      args.reverse();
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
       let max = args.length;
       let [idx = context[counter]] = lastExtra || [];
       let pos = (idx - 1) % max;
-      let value = args[pos];
+      let value = args[max - pos - 1];
       return push_stack(context, 'last_pick', value);
     });
   },
