@@ -44,7 +44,7 @@ export default add_alias({
     return styles;
   },
 
-  position(value, { extra }) {
+  place(value, { extra }) {
     let [left, top = '50%'] = parse_value_group(value);
     left = map_left_right[left] || left;
     top = map_top_bottom[top] || top;
@@ -92,10 +92,8 @@ export default add_alias({
   },
 
 }, {
-  'place': 'position',
-
   // legacy names.
-  'place-cell': 'position',
-  'offset': 'position',
-
+  'place-cell': 'place',
+  'offset': 'place',
+  'position': 'place',
 });

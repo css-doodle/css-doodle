@@ -167,10 +167,10 @@ const Expose = add_alias({
     });
   },
 
-  pn({ context, extra, position }) {
+  pl({ context, extra, position }) {
     let lastExtra = last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
-    let counter = 'pn-counter' + position + sig;
+    let counter = 'pl-counter' + position + sig;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -587,7 +587,7 @@ const Expose = add_alias({
   'depth': 'z',
   'rand': 'r',
   'pick': 'p',
-  'pl':   'pn',
+  'pn':   'pl',
 
   // error prone
   'stripes': 'stripe',
@@ -619,8 +619,8 @@ const Expose = add_alias({
   'sz': 'Z',
   'size-z': 'Z',
   'size-depth': 'Z',
-  'pick-by-turn': 'pn',
-  'pick-n': 'pn',
+  'pick-by-turn': 'pl',
+  'pick-n': 'pl',
   'pick-d': 'pd',
   'offset': 'plot',
   'Offset': 'Plot',
