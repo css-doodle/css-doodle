@@ -134,7 +134,7 @@ function generate(token, element, parent, root) {
       }
     }
   }
-  if (token.type === 'statement') {
+  if (token.type === 'statement' && !token.variable) {
     if (token.name === 'content') {
       let text = new Tag('text-node', token.value);
       element.append(text);
