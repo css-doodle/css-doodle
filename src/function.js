@@ -554,13 +554,18 @@ const Expose = add_alias({
     }
   },
 
-  reverse(...args) {
-    return commands => {
-      let parsed = parse_svg_path(commands);
-      if (!parsed.valid) return commands;
-      return parsed.commands.reverse().map(({ name, value }) => {
-        return name + value.join(' ');
-      }).join(' ');
+  reverse() {
+    return (...args) => {
+      let commands = args.map(get_value);
+      let parsed = parse_svg_path(commands.join(','));
+      if (parsed.valid) {
+        for (let i = parsed.commands.length - 1; i >= 0; --i) {
+          let { name, value } = parsed.commands[i];
+          result.push(name + value.join(' '));
+        }
+        return result.join(' ');
+      }
+      return commands.reverse();
     }
   },
 
