@@ -63,6 +63,25 @@ function readStatement(iter, token) {
   return token
 }
 
+function readStyle(iter) {
+  let stack = [];
+  let style = [];
+  while (iter.next()) {
+    let { curr } = iter.get();
+    if (curr.isSymbol('{')) {
+      stack.push(curr.value);
+    } else if (curr.isSymbol('}')) {
+      if (stack.length) {
+        stack.pop();
+      } else {
+        break;
+      }
+    }
+    style.push(curr.value);
+  }
+  return style.join('');
+}
+
 function walk(iter, parentToken) {
   let rules = [];
   let fragment = [];
@@ -98,19 +117,29 @@ function walk(iter, parentToken) {
       }
       let tokenName = selectors.pop();
       let skip = isSkip(...selectors, parentToken.name, tokenName);
-      let block = resolveId(walk(iter, splitTimes(tokenName, {
-        type: 'block',
-        name: tokenName,
-        value: []
-      })), skip);
-      while (tokenName = selectors.pop()) {
-        block = resolveId(splitTimes(tokenName, {
+
+      if (tokenName === 'style') {
+        rules.push({
           type: 'block',
           name: tokenName,
-          value: [block]
-        }), skip);
+          value: readStyle(iter)
+        });
+      } else {
+        let block = resolveId(walk(iter, splitTimes(tokenName, {
+          type: 'block',
+          name: tokenName,
+          value: []
+        })), skip);
+
+        while (tokenName = selectors.pop()) {
+          block = resolveId(splitTimes(tokenName, {
+            type: 'block',
+            name: tokenName,
+            value: [block]
+          }), skip);
+        }
+        rules.push(block);
       }
-      rules.push(block);
       fragment = [];
     }
     else if (

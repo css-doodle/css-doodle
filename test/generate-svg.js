@@ -162,6 +162,8 @@ test('style tag', t => {
         circle {
           fill: red;
         }
+        circle:nth-child(1) {
+        }
       }
     }`,
     trim(`
@@ -169,6 +171,7 @@ test('style tag', t => {
         <circle></circle>
         <style>
           circle{fill:red;}
+          circle:nth-child(1){}
         </style>
       </svg>
     `)

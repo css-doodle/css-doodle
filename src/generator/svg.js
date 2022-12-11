@@ -68,13 +68,6 @@ function composeStyleRule(name, value) {
   return `${name}:${value};`
 }
 
-function composeStyle(block) {
-  const style = block.value
-    .map(n => (n.type === 'block') ? composeStyle(n) : composeStyleRule(n.name, n.value))
-    .join('');
-  return `${block.name}{${style}}`;
-}
-
 function removeQuotes(text) {
   text = String(text);
   let double = text.startsWith('"') && text.endsWith('"');
@@ -93,17 +86,9 @@ function generate(token, element, parent, root) {
   if (token.type === 'block') {
     // style tag
     if (token.name === 'style') {
-      if (Array.isArray(token.value)) {
-        let el = new Tag('style');
-        let styles = [];
-        for (let block of token.value) {
-          if (block.type === 'block') {
-            styles.push(composeStyle(block));
-          }
-        }
-        el.append(styles.join(''));
-        element.append(el);
-      }
+      let el = new Tag('style');
+      el.append(token.value);
+      element.append(el);
     }
     // normal svg elements
     else {
