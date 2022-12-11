@@ -1,4 +1,4 @@
-/*! css-doodle@0.30.10 */
+/*! css-doodle@0.31.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -637,6 +637,25 @@
     return token
   }
 
+  function readStyle(iter) {
+    let stack = [];
+    let style = [];
+    while (iter.next()) {
+      let { curr } = iter.get();
+      if (curr.isSymbol('{')) {
+        stack.push(curr.value);
+      } else if (curr.isSymbol('}')) {
+        if (stack.length) {
+          stack.pop();
+        } else {
+          break;
+        }
+      }
+      style.push(curr.value);
+    }
+    return style.join('');
+  }
+
   function walk$1(iter, parentToken) {
     let rules = [];
     let fragment = [];
@@ -672,19 +691,29 @@
         }
         let tokenName = selectors.pop();
         let skip = isSkip(...selectors, parentToken.name, tokenName);
-        let block = resolveId(walk$1(iter, splitTimes(tokenName, {
-          type: 'block',
-          name: tokenName,
-          value: []
-        })), skip);
-        while (tokenName = selectors.pop()) {
-          block = resolveId(splitTimes(tokenName, {
+
+        if (tokenName === 'style') {
+          rules.push({
             type: 'block',
             name: tokenName,
-            value: [block]
-          }), skip);
+            value: readStyle(iter)
+          });
+        } else {
+          let block = resolveId(walk$1(iter, splitTimes(tokenName, {
+            type: 'block',
+            name: tokenName,
+            value: []
+          })), skip);
+
+          while (tokenName = selectors.pop()) {
+            block = resolveId(splitTimes(tokenName, {
+              type: 'block',
+              name: tokenName,
+              value: [block]
+            }), skip);
+          }
+          rules.push(block);
         }
-        rules.push(block);
         fragment = [];
       }
       else if (
@@ -1205,8 +1234,9 @@
     let raw = '';
     while (!it.end()) {
       c = it.curr();
+      let prev = it.curr(-1);
       let start = it.index();
-      if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
+      if ((/[\('"`]/.test(c) && prev !== '\\')) {
         if (stack.length) {
           if ((c !== '(') && last(stack) === '(') {
             stack.pop();
@@ -1221,7 +1251,7 @@
         }
         arg += c;
       }
-      else if (c == '@' && !doodle) {
+      else if ((c == '@' || (prev === '.' && composition)) && !doodle) {
         if (!group.length) {
           arg = arg.trimLeft();
         }
@@ -1344,14 +1374,16 @@
 
   function read_func(it) {
     let func = Tokens.func();
-    let name = '@', c;
+    let name = it.curr(), c;
     let has_argument = false;
     it.next();
-
+    if (name !== '@') {
+      name = '@' + name;
+    }
     while (!it.end()) {
       c = it.curr();
-      let composition = (c == '.' && it.curr(1) == '@');
       let next = it.curr(1);
+      let composition = (c == '.' && (next == '@' || /[a-zA-Z]/.test(next)));
       if (c == '(' || composition) {
         has_argument = true;
         it.next();
@@ -1862,13 +1894,6 @@
     return `${name}:${value};`
   }
 
-  function composeStyle(block) {
-    const style = block.value
-      .map(n => (n.type === 'block') ? composeStyle(n) : composeStyleRule(n.name, n.value))
-      .join('');
-    return `${block.name}{${style}}`;
-  }
-
   function removeQuotes(text) {
     text = String(text);
     let double = text.startsWith('"') && text.endsWith('"');
@@ -1887,17 +1912,9 @@
     if (token.type === 'block') {
       // style tag
       if (token.name === 'style') {
-        if (Array.isArray(token.value)) {
-          let el = new Tag('style');
-          let styles = [];
-          for (let block of token.value) {
-            if (block.type === 'block') {
-              styles.push(composeStyle(block));
-            }
-          }
-          el.append(styles.join(''));
-          element.append(el);
-        }
+        let el = new Tag('style');
+        el.append(token.value);
+        element.append(el);
       }
       // normal svg elements
       else {
@@ -1928,7 +1945,7 @@
         }
       }
     }
-    if (token.type === 'statement') {
+    if (token.type === 'statement' && !token.variable) {
       if (token.name === 'content') {
         let text = new Tag('text-node', token.value);
         element.append(text);
@@ -3567,13 +3584,18 @@
       }
     },
 
-    reverse(...args) {
-      return commands => {
-        let parsed = parse$1(commands);
-        if (!parsed.valid) return commands;
-        return parsed.commands.reverse().map(({ name, value }) => {
-          return name + value.join(' ');
-        }).join(' ');
+    reverse() {
+      return (...args) => {
+        let commands = args.map(get_value);
+        let parsed = parse$1(commands.join(','));
+        if (parsed.valid) {
+          for (let i = parsed.commands.length - 1; i >= 0; --i) {
+            let { name, value } = parsed.commands[i];
+            result.push(name + value.join(' '));
+          }
+          return result.join(' ');
+        }
+        return commands.reverse();
       }
     },
 
@@ -3852,6 +3874,10 @@
       if (rules.length > 2) {
         return rules;
       }
+    },
+
+    content(value) {
+      return value;
     },
 
   }, {
@@ -4176,6 +4202,10 @@
     return is_host_selector(s) || is_parent_selector(s);
   }
 
+  function is_pseudo_selecotr(s) {
+    return /\:before|\:after/.test(s);
+  }
+
   const MathFunc = {};
   for (let name of Object.getOwnPropertyNames(Math)) {
     MathFunc[name] = () => (...args) => {
@@ -4205,6 +4235,7 @@
       this.reset();
       this.custom_properties = {};
       this.uniforms = {};
+      this.content = {};
     }
 
     reset() {
@@ -4219,6 +4250,7 @@
       this.canvas = {};
       this.pattern = {};
       this.shaders = {};
+      this.content = {};
       for (let key in this.rules) {
         if (key.startsWith('#c')) {
           delete this.rules[key];
@@ -4603,6 +4635,12 @@
             this.is_grid_defined = true;
             break;
           }
+          case 'content': {
+            rule = '';
+            if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
+              this.content[this.compose_selector(coords)] = transformed;
+            }
+          }
           case 'seed': {
             rule = '';
             break;
@@ -4830,6 +4868,7 @@
         canvas: this.canvas,
         pattern: this.pattern,
         uniforms: this.uniforms,
+        content: this.content,
       }
     }
 
@@ -5590,9 +5629,11 @@ void main() {
           return this.build_grid(compiled, compiled.grid);
         }
 
+        let has_content = Object.keys(compiled.content).length;
+
         if (compiled.grid) {
           let { x, y, z } = compiled.grid;
-          if (gx !== x || gy !== y || gz !== z) {
+          if (gx !== x || gy !== y || gz !== z || has_content) {
             Object.assign(this.grid_size, compiled.grid);
             return this.build_grid(compiled, compiled.grid);
           }
@@ -5601,7 +5642,7 @@ void main() {
         else {
           let grid = this.get_grid();
           let { x, y, z } = grid;
-          if (gx !== x || gy !== y || gz !== z) {
+          if (gx !== x || gy !== y || gz !== z || has_content) {
             Object.assign(this.grid_size, grid);
             return this.build_grid(
               this.generate(parse$6(use + styles, this.extra)),
@@ -5708,7 +5749,7 @@ void main() {
         const { keyframes, host, container, cells } = compiled.styles;
 
         let replace = this.replace(compiled);
-        let grid_container = create_grid(grid);
+        let grid_container = create_grid(grid, compiled.content);
 
         let size = (options && options.width && options.height)
           ? `width="${ options.width }" height="${ options.height }"`
@@ -5902,7 +5943,7 @@ void main() {
         let style_container = get_grid_styles(grid) + host + container;
         let style_cells = has_delay ? '' : cells;
 
-        const { uniforms } = compiled;
+        const { uniforms, content } = compiled;
 
         let replace = this.replace(compiled);
 
@@ -5912,7 +5953,7 @@ void main() {
         <style class="style-container">${ style_container }</style>
         <style class="style-cells">${ style_cells }</style>
         <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
-        ${ create_grid(grid) }
+        ${ create_grid(grid, content) }
       `;
 
         this.set_content('.style-container', replace(style_container));
@@ -6099,7 +6140,7 @@ void main() {
     return `
     *, *::after, *::before {
       box-sizing: border-box;
-      animation-play-state: var(--cssd-animation-play-state) !important;
+      animation-play-state: var(--cssd-animation-play-state) !important
     }
     :host, .host {
       display: block;
@@ -6118,20 +6159,19 @@ void main() {
       display: grid;
       ${ inherited_grid_props }
     }
-    cell:empty {
+    cell {
       position: relative;
-      line-height: 1;
       display: grid;
       place-items: center
     }
     svg {
       position: absolute;
       width: 100%;
-      height: 100%;
+      height: 100%
     }
     :host([cssd-paused-animation]) {
       --cssd-animation-play-state: paused;
-      animation-play-state: paused !important;
+      animation-play-state: paused !important
     }
   `;
   }
@@ -6146,27 +6186,28 @@ void main() {
   `;
   }
 
-  function create_cell(x, y, z) {
+  function create_cell(x, y, z, content) {
     let cell = document.createElement('cell');
     cell.id = cell_id(x, y, z);
+    cell.textContent = content['#' + cell.id];
     return cell;
   }
 
-  function create_grid(grid_obj) {
+  function create_grid(grid_obj, content) {
     let { x, y, z } = grid_obj || {};
     let grid = document.createElement('grid');
     let root = document.createDocumentFragment();
     if (z == 1) {
       for (let j = 1; j <= y; ++j) {
         for (let i = 1; i <= x; ++i) {
-          root.appendChild(create_cell(i, j, 1));
+          root.appendChild(create_cell(i, j, 1, content));
         }
       }
     }
     else {
       let temp = null;
       for (let i = 1; i <= z; ++i) {
-        let cell = create_cell(1, 1, i);
+        let cell = create_cell(1, 1, i, content);
         (temp || root).appendChild(cell);
         temp = cell;
       }

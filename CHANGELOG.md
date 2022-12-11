@@ -1,3 +1,15 @@
+## 0.31.0
+
+* Add `@content` property for text content so that they can be selectable.
+* The `@` symbol can be ommited if the functions are chained together.
+* Patch reverse function to support both SVG path commands and general arguments.
+* Skip variable properties for SVG generation.
+* Fix style tag parsing inside SVG for complex CSS selectors.
+
+<br /> <br />
+
+
+
 ## 0.30.10
 
 * Add `@pnr` alias for `@pr`.
@@ -11,7 +23,7 @@
 * Support variables in standalone SVG export function.
 * Compute index instead of reversing the whole array.
 * Use single rotate for inner `@place` transformation.
-* Simplify image detection
+* Simplify image detection.
 * Use `@pn` and `@position` as aliases.
 
 <br /> <br />
