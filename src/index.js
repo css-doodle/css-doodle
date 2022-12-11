@@ -78,9 +78,11 @@ if (typeof customElements !== 'undefined') {
         return this.build_grid(compiled, compiled.grid);
       }
 
+      let has_content = Object.keys(compiled.content).length;
+
       if (compiled.grid) {
         let { x, y, z } = compiled.grid;
-        if (gx !== x || gy !== y || gz !== z) {
+        if (gx !== x || gy !== y || gz !== z || has_content) {
           Object.assign(this.grid_size, compiled.grid);
           return this.build_grid(compiled, compiled.grid);
         }
@@ -89,7 +91,7 @@ if (typeof customElements !== 'undefined') {
       else {
         let grid = this.get_grid();
         let { x, y, z } = grid;
-        if (gx !== x || gy !== y || gz !== z) {
+        if (gx !== x || gy !== y || gz !== z || has_content) {
           Object.assign(this.grid_size, grid);
           return this.build_grid(
             this.generate(parse_css(use + styles, this.extra)),
@@ -196,7 +198,7 @@ if (typeof customElements !== 'undefined') {
       const { keyframes, host, container, cells } = compiled.styles;
 
       let replace = this.replace(compiled);
-      let grid_container = create_grid(grid);
+      let grid_container = create_grid(grid, compiled.content);
 
       let size = (options && options.width && options.height)
         ? `width="${ options.width }" height="${ options.height }"`
@@ -391,7 +393,7 @@ if (typeof customElements !== 'undefined') {
       let style_container = get_grid_styles(grid) + host + container;
       let style_cells = has_delay ? '' : cells;
 
-      const { uniforms } = compiled;
+      const { uniforms, content } = compiled;
 
       let replace = this.replace(compiled);
 
@@ -401,7 +403,7 @@ if (typeof customElements !== 'undefined') {
         <style class="style-container">${ style_container }</style>
         <style class="style-cells">${ style_cells }</style>
         <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
-        ${ create_grid(grid) }
+        ${ create_grid(grid, content) }
       `;
 
       this.set_content('.style-container', replace(style_container));
@@ -588,7 +590,7 @@ function get_basic_styles() {
   return `
     *, *::after, *::before {
       box-sizing: border-box;
-      animation-play-state: var(--cssd-animation-play-state) !important;
+      animation-play-state: var(--cssd-animation-play-state) !important
     }
     :host, .host {
       display: block;
@@ -607,20 +609,19 @@ function get_basic_styles() {
       display: grid;
       ${ inherited_grid_props }
     }
-    cell:empty {
+    cell {
       position: relative;
-      line-height: 1;
       display: grid;
       place-items: center
     }
     svg {
       position: absolute;
       width: 100%;
-      height: 100%;
+      height: 100%
     }
     :host([cssd-paused-animation]) {
       --cssd-animation-play-state: paused;
-      animation-play-state: paused !important;
+      animation-play-state: paused !important
     }
   `;
 }
@@ -635,27 +636,28 @@ function get_grid_styles(grid_obj) {
   `;
 }
 
-function create_cell(x, y, z) {
+function create_cell(x, y, z, content) {
   let cell = document.createElement('cell');
   cell.id = cell_id(x, y, z);
+  cell.textContent = content['#' + cell.id];
   return cell;
 }
 
-function create_grid(grid_obj) {
+function create_grid(grid_obj, content) {
   let { x, y, z } = grid_obj || {};
   let grid = document.createElement('grid');
   let root = document.createDocumentFragment();
   if (z == 1) {
     for (let j = 1; j <= y; ++j) {
       for (let i = 1; i <= x; ++i) {
-        root.appendChild(create_cell(i, j, 1));
+        root.appendChild(create_cell(i, j, 1, content));
       }
     }
   }
   else {
     let temp = null;
     for (let i = 1; i <= z; ++i) {
-      let cell = create_cell(1, 1, i);
+      let cell = create_cell(1, 1, i, content);
       (temp || root).appendChild(cell);
       temp = cell;
     }

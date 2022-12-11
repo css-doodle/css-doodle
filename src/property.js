@@ -91,6 +91,10 @@ export default add_alias({
     }
   },
 
+  content(value) {
+    return value;
+  },
+
 }, {
   // legacy names.
   'place-cell': 'place',

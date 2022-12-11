@@ -22,6 +22,10 @@ function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
 }
 
+function is_pseudo_selecotr(s) {
+  return /\:before|\:after/.test(s);
+}
+
 const MathFunc = {};
 for (let name of Object.getOwnPropertyNames(Math)) {
   MathFunc[name] = () => (...args) => {
@@ -51,6 +55,7 @@ class Rules {
     this.reset();
     this.custom_properties = {};
     this.uniforms = {};
+    this.content = {};
   }
 
   reset() {
@@ -65,6 +70,7 @@ class Rules {
     this.canvas = {};
     this.pattern = {};
     this.shaders = {};
+    this.content = {};
     for (let key in this.rules) {
       if (key.startsWith('#c')) {
         delete this.rules[key];
@@ -449,6 +455,12 @@ class Rules {
           this.is_grid_defined = true;
           break;
         }
+        case 'content': {
+          rule = '';
+          if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
+            this.content[this.compose_selector(coords)] = transformed;
+          }
+        }
         case 'seed': {
           rule = '';
           break;
@@ -677,6 +689,7 @@ class Rules {
       canvas: this.canvas,
       pattern: this.pattern,
       uniforms: this.uniforms,
+      content: this.content,
     }
   }
 
