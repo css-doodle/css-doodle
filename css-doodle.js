@@ -1,4 +1,4 @@
-/*! css-doodle@0.31.0 */
+/*! css-doodle@0.31.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -3589,6 +3589,7 @@
         let commands = args.map(get_value);
         let parsed = parse$1(commands.join(','));
         if (parsed.valid) {
+          let result = [];
           for (let i = parsed.commands.length - 1; i >= 0; --i) {
             let { name, value } = parsed.commands[i];
             result.push(name + value.join(' '));

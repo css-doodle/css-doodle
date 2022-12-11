@@ -1,3 +1,8 @@
+## 0.31.1
+
+* Fix bad reverse function implementation.
+
+
 ## 0.31.0
 
 * Add `@content` property for text content so that they can be selectable.

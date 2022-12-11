@@ -559,6 +559,7 @@ const Expose = add_alias({
       let commands = args.map(get_value);
       let parsed = parse_svg_path(commands.join(','));
       if (parsed.valid) {
+        let result = [];
         for (let i = parsed.commands.length - 1; i >= 0; --i) {
           let { name, value } = parsed.commands[i];
           result.push(name + value.join(' '));
