@@ -265,8 +265,9 @@ function read_arguments(it, composition, doodle) {
   let raw = '';
   while (!it.end()) {
     c = it.curr();
+    let prev = it.curr(-1);
     let start = it.index();
-    if ((/[\('"`]/.test(c) && it.curr(-1) !== '\\')) {
+    if ((/[\('"`]/.test(c) && prev !== '\\')) {
       if (stack.length) {
         if ((c !== '(') && last(stack) === '(') {
           stack.pop();
@@ -281,7 +282,7 @@ function read_arguments(it, composition, doodle) {
       }
       arg += c;
     }
-    else if (c == '@' && !doodle) {
+    else if ((c == '@' || (prev === '.' && composition)) && !doodle) {
       if (!group.length) {
         arg = arg.trimLeft();
       }
@@ -404,14 +405,16 @@ function has_times_syntax(token) {
 
 function read_func(it) {
   let func = Tokens.func();
-  let name = '@', c;
+  let name = it.curr(), c;
   let has_argument = false;
   it.next();
-
+  if (name !== '@') {
+    name = '@' + name;
+  }
   while (!it.end()) {
     c = it.curr();
-    let composition = (c == '.' && it.curr(1) == '@');
     let next = it.curr(1);
+    let composition = (c == '.' && (next == '@' || /\w/.test(next)));
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
