@@ -1,4 +1,4 @@
-/*! css-doodle@0.31.1 */
+/*! css-doodle@0.31.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -905,7 +905,10 @@
       } else {
         result += token.name + (isInline ? ' ' : '{');
       }
-      if (Array.isArray(token.value) && token.value.length) {
+      if (token.name === 'style') {
+        result += token.value;
+      }
+      else if (Array.isArray(token.value) && token.value.length) {
         let lastGroup = '';
         for (let t of token.value) {
           result += generate$2(t, lastGroup);        if (t.origin) {

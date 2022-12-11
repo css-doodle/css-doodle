@@ -1,6 +1,17 @@
+## 0.31.2
+
+* Fix svg-extended style tag generation.
+
+<br /> <br />
+
+
+
 ## 0.31.1
 
 * Fix bad reverse function implementation.
+
+<br /> <br />
+
 
 
 ## 0.31.0

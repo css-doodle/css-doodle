@@ -7,7 +7,10 @@ function generate(token, last) {
     } else {
       result += token.name + (isInline ? ' ' : '{');
     }
-    if (Array.isArray(token.value) && token.value.length) {
+    if (token.name === 'style') {
+      result += token.value;
+    }
+    else if (Array.isArray(token.value) && token.value.length) {
       let lastGroup = '';
       for (let t of token.value) {
         result += generate(t, lastGroup);;
