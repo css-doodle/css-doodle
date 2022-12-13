@@ -58,46 +58,42 @@ if (typeof customElements !== 'undefined') {
 
     update(styles) {
       this.cleanup();
-
-      let use = this.get_use();
-      if (!styles) styles = un_entity(this.innerHTML);
-      this.innerHTML = styles;
-
+      // Use old rules to update
+      if (!styles) {
+        styles = un_entity(this.innerHTML);
+      }
+      if (this.innerHTML !== styles) {
+        this.innerHTML = styles;
+      }
       if (!this.grid_size) {
         this.grid_size = this.get_grid();
       }
 
-      let { x: gx, y: gy, z: gz } = this.grid_size;
+      const { x: gx, y: gy, z: gz } = this.grid_size;
+      const use = this.get_use();
 
-      const compiled = this.generate(
-        parse_css(use + styles, this.extra)
+      let old_content = '';
+      if (this.compiled) {
+        old_content = this.compiled.content;
+      }
+
+      const compiled = this.generate(parse_css(use + styles, this.extra));
+
+      let grid = compiled.grid || this.get_grid();
+      let { x, y, z } = grid;
+
+      let should_rebuild = (
+           !this.shadowRoot.innerHTML
+        || (gx !== x || gy !== y || gz !== z)
+        || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
       );
 
-      if (!this.shadowRoot.innerHTML) {
-        Object.assign(this.grid_size, compiled.grid);
-        return this.build_grid(compiled, compiled.grid);
-      }
+      Object.assign(this.grid_size, grid);
 
-      let has_content = Object.keys(compiled.content).length;
-
-      if (compiled.grid) {
-        let { x, y, z } = compiled.grid;
-        if (gx !== x || gy !== y || gz !== z || has_content) {
-          Object.assign(this.grid_size, compiled.grid);
-          return this.build_grid(compiled, compiled.grid);
-        }
-        Object.assign(this.grid_size, compiled.grid);
-      }
-      else {
-        let grid = this.get_grid();
-        let { x, y, z } = grid;
-        if (gx !== x || gy !== y || gz !== z || has_content) {
-          Object.assign(this.grid_size, grid);
-          return this.build_grid(
-            this.generate(parse_css(use + styles, this.extra)),
-            grid
-          );
-        }
+      if (should_rebuild) {
+        return compiled.grid
+          ? this.build_grid(compiled, grid)
+          : this.build_grid(this.generate(parse_css(use + styles, this.extra)), grid);
       }
 
       let replace = this.replace(compiled);
