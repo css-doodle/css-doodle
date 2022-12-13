@@ -571,15 +571,23 @@ const Expose = add_alias({
   },
 
   cycle() {
-    return input => {
-      let list = parse_value_group(input, { symbol: ' ' });
+    return (...args) => {
+      let list = [];
+      let separator;
+      if (args.length == 1) {
+        separator = ' ';;
+        list = parse_value_group(args[0], { symbol: separator });
+      } else {
+        separator = ',';
+        list = parse_value_group(args.map(get_value).join(separator), { symbol: separator});
+      }
       let size = list.length - 1;
-      let result = [list.join(' ')];
+      let result = [list.join(separator)];
       // Just ignore the performance
       for (let i = 0; i < size; ++i) {
         let item = list.pop();
         list.unshift(item);
-        result.push(list.join(' '));
+        result.push(list.join(separator));
       }
       return result;
     }
