@@ -593,6 +593,24 @@ const Expose = add_alias({
     }
   },
 
+  mirror() {
+    return (...args) => {
+      for (let i = args.length - 1; i >= 0; --i) {
+        args.push(args[i]);
+      }
+      return args;
+    }
+  },
+
+  Mirror() {
+    return (...args) => {
+      for (let i = args.length - 2; i >= 0; --i) {
+        args.push(args[i]);
+      }
+      return args;
+    }
+  },
+
 }, {
 
   'index': 'i',
