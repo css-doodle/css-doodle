@@ -1,7 +1,7 @@
 import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { generate_svg } from './generator/svg.js';
 
-import { cell_id, is_letter, is_nil, add_alias, unique_id, lerp } from './utils/index.js';
+import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp } from './utils/index.js';
 import { lazy, clamp, sequence, get_value } from './utils/index.js';
 import { by_unit, by_charcode } from './utils/transform.js';
 import { last } from './utils/list.js';
@@ -61,38 +61,69 @@ function map2d(value, min, max, amp = 1) {
   return lerp((value - ma) / (mb - ma), min * amp, max * amp);
 }
 
+function calc_with(base) {
+  return v => {
+    if (is_empty(v)) {
+      return base;
+    }
+    if (/^[+*-\/%][.\d\s]/.test(v)) {
+      let op = v[0];
+      let num = Number(v.substr(1).trim()) || 0;
+      switch (op) {
+        case '+': return base + num;
+        case '-': return base - num;
+        case '*': return base * num;
+        case '/': return base / num;
+        case '%': return base % num;
+      }
+    }
+    else if (/[+*-\/%]$/.test(v)) {
+      let op = v.substr(-1);
+      let num = Number(v.substr(0, v.length - 1).trim()) || 0;
+      switch (op) {
+        case '+': return num + base;
+        case '-': return num - base;
+        case '*': return num * base;
+        case '/': return num / base;
+        case '%': return num % base;
+      }
+    }
+    return base + (Number(v) || 0);
+  }
+}
+
 const Expose = add_alias({
 
   i({ count }) {
-    return _ => count;
+    return calc_with(count);
   },
 
   y({ y }) {
-    return _ => y;
+    return calc_with(y);
   },
 
   x({ x }) {
-    return _ => x;
+    return calc_with(x);
   },
 
   z({ z }) {
-    return _ => z;
+    return calc_with(z);
   },
 
   I({ grid }) {
-    return _ => grid.count;
+    return calc_with(grid.count);
   },
 
   Y({ grid }) {
-    return _ => grid.y;
+    return calc_with(grid.y);
   },
 
   X({ grid }) {
-    return _ => grid.x;
+    return calc_with(grid.x);
   },
 
   Z({ grid }) {
-    return _ => grid.z;
+    return calc_with(grid.z);
   },
 
   id({ x, y, z }) {
@@ -101,22 +132,22 @@ const Expose = add_alias({
 
   n({ extra }) {
     let lastExtra = last(extra);
-    return n => lastExtra ? (lastExtra[0] + (Number(n) || 0)) : '@n';
+    return lastExtra ? calc_with(lastExtra[0]) : '@n';
   },
 
   nx({ extra }) {
     let lastExtra = last(extra);
-    return n => lastExtra ? (lastExtra[1] + (Number(n) || 0)) : '@nx';
+    return lastExtra ? calc_with(lastExtra[1]) : '@nx';
   },
 
   ny({ extra }) {
     let lastExtra = last(extra);
-    return n => lastExtra ? (lastExtra[2] + (Number(n) || 0)) : '@ny';
+    return lastExtra ? calc_with(lastExtra[2]) : '@ny';
   },
 
   N({ extra }) {
     let lastExtra = last(extra);
-    return n => lastExtra ? (lastExtra[3] + (Number(n) || 0)) : '@N';
+    return lastExtra ? calc_with(lastExtra[3]) : '@N';
   },
 
   m: make_sequence(','),
