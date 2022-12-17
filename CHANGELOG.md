@@ -1,3 +1,66 @@
+## 0.32.0
+
+### Features
+
+* Add `@unicode` function to insert Unicode and it can be used both in HTML and CSS.
+
+  ```css
+  /* in HTML */
+  @content: @unicode(0x2500);
+
+  /* in CSS */
+  :after {
+    content: @unicode(0x2500);
+  }
+  ```
+
+  A sequence of Unicode characters.
+
+  ```css
+  @content: @pn.unicode(0x2500, 0x257f, 0x2588);
+  ```
+
+* Add `@mirror/@Mirror` function to transform input items, simlar to `@cycle` and `@reverse`.
+
+  ```css
+  /* 1, 2, 3, 4, 5, 5, 4, 3, 2, 1 */
+  @mirror(1, 2, 3, 4, 5);
+
+  /* 1, 2, 3, 4, 5, 4, 3, 2, 1 */
+  @Mirror(1, 2, 3, 4, 5);
+  ```
+
+* All index functions, `@i/I`, `@x/X`, `@y/Y`, and `@n/N/nx/ny` accept extra arguments to do calulations.
+
+  ```css
+  @i5 === @calc(@i + 5)
+
+  @i(*10) === @calc(@i * 10)
+  @i(-10) === @calc(@i - 10)
+  @i(/10) === @calc(@i / 10)
+  @i(%10) === @calc(@i % 10)
+
+  @i(10/) === @calc(10 / @i)
+  @i(10-) === @calc(10 - @i)
+  ```
+
+### Patches
+
+* Reduce imports of the exported svg function.
+* Improve `@cycle` to support comma-separated values.
+* Fix grid build for `@content`.
+* Fix parsing quotes in content.
+
+  ```css
+  /* There used to be bugs` */
+  content: '");';
+  ```
+
+<br /> <br />
+
+
+
+
 ## 0.31.2
 
 * Fix svg-extended style tag generation.

@@ -1,4 +1,4 @@
-/*! css-doodle@0.31.2 */
+/*! css-doodle@0.32.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1429,8 +1429,9 @@
 
   function read_value(it) {
     let text = Tokens.text(), idx = 0, skip = true, c;
-    const value = [], stack = [];
+    const value = [];
     value[idx] = [];
+    let stack = [], quote_stack = [];
 
     while (!it.end()) {
       c = it.curr();
@@ -1453,19 +1454,28 @@
         value[++idx] = [];
         skip = true;
       }
-      else if (/[;}<]/.test(c)) {
+      else if (/[;}<]/.test(c) && !quote_stack.length) {
         if (text.value.length) {
           value[idx].push(text);
           text = Tokens.text();
         }
         break;
       }
-      else if (c == '@') {
+      else if (c == '@' && /\w/.test(it.curr(1))) {
         if (text.value.length) {
           value[idx].push(text);
           text = Tokens.text();
         }
         value[idx].push(read_func(it));
+      }
+      else if (c === '"' || c === "'") {
+        let quote = last(quote_stack);
+        if (c === quote) {
+          quote_stack.pop();
+        } else if (!quote_stack.length) {
+          quote_stack.push(c);
+        }
+        text.value += c;
       }
       else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
         if (c == '(') stack.push(c);
@@ -1474,7 +1484,6 @@
         if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
           c = symbols[c];
         }
-
         text.value += c;
       }
       it.next();
@@ -3095,38 +3104,69 @@
     return lerp((value - ma) / (mb - ma), min * amp, max * amp);
   }
 
+  function calc_with(base) {
+    return v => {
+      if (is_empty(v)) {
+        return base;
+      }
+      if (/^[+*-\/%][.\d\s]/.test(v)) {
+        let op = v[0];
+        let num = Number(v.substr(1).trim()) || 0;
+        switch (op) {
+          case '+': return base + num;
+          case '-': return base - num;
+          case '*': return base * num;
+          case '/': return base / num;
+          case '%': return base % num;
+        }
+      }
+      else if (/[+*-\/%]$/.test(v)) {
+        let op = v.substr(-1);
+        let num = Number(v.substr(0, v.length - 1).trim()) || 0;
+        switch (op) {
+          case '+': return num + base;
+          case '-': return num - base;
+          case '*': return num * base;
+          case '/': return num / base;
+          case '%': return num % base;
+        }
+      }
+      return base + (Number(v) || 0);
+    }
+  }
+
   const Expose = add_alias({
 
     i({ count }) {
-      return _ => count;
+      return calc_with(count);
     },
 
     y({ y }) {
-      return _ => y;
+      return calc_with(y);
     },
 
     x({ x }) {
-      return _ => x;
+      return calc_with(x);
     },
 
     z({ z }) {
-      return _ => z;
+      return calc_with(z);
     },
 
     I({ grid }) {
-      return _ => grid.count;
+      return calc_with(grid.count);
     },
 
     Y({ grid }) {
-      return _ => grid.y;
+      return calc_with(grid.y);
     },
 
     X({ grid }) {
-      return _ => grid.x;
+      return calc_with(grid.x);
     },
 
     Z({ grid }) {
-      return _ => grid.z;
+      return calc_with(grid.z);
     },
 
     id({ x, y, z }) {
@@ -3135,22 +3175,22 @@
 
     n({ extra }) {
       let lastExtra = last(extra);
-      return n => lastExtra ? (lastExtra[0] + (Number(n) || 0)) : '@n';
+      return lastExtra ? calc_with(lastExtra[0]) : '@n';
     },
 
     nx({ extra }) {
       let lastExtra = last(extra);
-      return n => lastExtra ? (lastExtra[1] + (Number(n) || 0)) : '@nx';
+      return lastExtra ? calc_with(lastExtra[1]) : '@nx';
     },
 
     ny({ extra }) {
       let lastExtra = last(extra);
-      return n => lastExtra ? (lastExtra[2] + (Number(n) || 0)) : '@ny';
+      return lastExtra ? calc_with(lastExtra[2]) : '@ny';
     },
 
     N({ extra }) {
       let lastExtra = last(extra);
-      return n => lastExtra ? (lastExtra[3] + (Number(n) || 0)) : '@N';
+      return lastExtra ? calc_with(lastExtra[3]) : '@N';
     },
 
     m: make_sequence(','),
@@ -3604,17 +3644,48 @@
     },
 
     cycle() {
-      return input => {
-        let list = parse$8(input, { symbol: ' ' });
+      return (...args) => {
+        let list = [];
+        let separator;
+        if (args.length == 1) {
+          separator = ' ';        list = parse$8(args[0], { symbol: separator });
+        } else {
+          separator = ',';
+          list = parse$8(args.map(get_value).join(separator), { symbol: separator});
+        }
         let size = list.length - 1;
-        let result = [list.join(' ')];
+        let result = [list.join(separator)];
         // Just ignore the performance
         for (let i = 0; i < size; ++i) {
           let item = list.pop();
           list.unshift(item);
-          result.push(list.join(' '));
+          result.push(list.join(separator));
         }
         return result;
+      }
+    },
+
+    mirror() {
+      return (...args) => {
+        for (let i = args.length - 1; i >= 0; --i) {
+          args.push(args[i]);
+        }
+        return args;
+      }
+    },
+
+    Mirror() {
+      return (...args) => {
+        for (let i = args.length - 2; i >= 0; --i) {
+          args.push(args[i]);
+        }
+        return args;
+      }
+    },
+
+    unicode() {
+      return (...args) => {
+        return args.map(code => String.fromCharCode(code));
       }
     },
 
@@ -5613,46 +5684,42 @@ void main() {
 
       update(styles) {
         this.cleanup();
-
-        let use = this.get_use();
-        if (!styles) styles = un_entity(this.innerHTML);
-        this.innerHTML = styles;
-
+        // Use old rules to update
+        if (!styles) {
+          styles = un_entity(this.innerHTML);
+        }
+        if (this.innerHTML !== styles) {
+          this.innerHTML = styles;
+        }
         if (!this.grid_size) {
           this.grid_size = this.get_grid();
         }
 
-        let { x: gx, y: gy, z: gz } = this.grid_size;
+        const { x: gx, y: gy, z: gz } = this.grid_size;
+        const use = this.get_use();
 
-        const compiled = this.generate(
-          parse$6(use + styles, this.extra)
+        let old_content = '';
+        if (this.compiled) {
+          old_content = this.compiled.content;
+        }
+
+        const compiled = this.generate(parse$6(use + styles, this.extra));
+
+        let grid = compiled.grid || this.get_grid();
+        let { x, y, z } = grid;
+
+        let should_rebuild = (
+             !this.shadowRoot.innerHTML
+          || (gx !== x || gy !== y || gz !== z)
+          || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
         );
 
-        if (!this.shadowRoot.innerHTML) {
-          Object.assign(this.grid_size, compiled.grid);
-          return this.build_grid(compiled, compiled.grid);
-        }
+        Object.assign(this.grid_size, grid);
 
-        let has_content = Object.keys(compiled.content).length;
-
-        if (compiled.grid) {
-          let { x, y, z } = compiled.grid;
-          if (gx !== x || gy !== y || gz !== z || has_content) {
-            Object.assign(this.grid_size, compiled.grid);
-            return this.build_grid(compiled, compiled.grid);
-          }
-          Object.assign(this.grid_size, compiled.grid);
-        }
-        else {
-          let grid = this.get_grid();
-          let { x, y, z } = grid;
-          if (gx !== x || gy !== y || gz !== z || has_content) {
-            Object.assign(this.grid_size, grid);
-            return this.build_grid(
-              this.generate(parse$6(use + styles, this.extra)),
-              grid
-            );
-          }
+        if (should_rebuild) {
+          return compiled.grid
+            ? this.build_grid(compiled, grid)
+            : this.build_grid(this.generate(parse$6(use + styles, this.extra)), grid);
         }
 
         let replace = this.replace(compiled);
