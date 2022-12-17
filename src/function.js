@@ -642,6 +642,12 @@ const Expose = add_alias({
     }
   },
 
+  unicode() {
+    return (...args) => {
+      return args.map(code => String.fromCharCode(code));
+    }
+  },
+
 }, {
 
   'index': 'i',

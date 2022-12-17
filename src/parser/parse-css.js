@@ -512,7 +512,6 @@ function read_value(it) {
       if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
         c = symbols[c];
       }
-
       text.value += c;
     }
     it.next();
