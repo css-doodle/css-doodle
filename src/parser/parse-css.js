@@ -457,8 +457,9 @@ function read_func(it) {
 
 function read_value(it) {
   let text = Tokens.text(), idx = 0, skip = true, c;
-  const value = [], stack = [];
+  const value = [];
   value[idx] = [];
+  let stack = [], quote_stack = [];
 
   while (!it.end()) {
     c = it.curr();
@@ -481,19 +482,28 @@ function read_value(it) {
       value[++idx] = [];
       skip = true;
     }
-    else if (/[;}<]/.test(c)) {
+    else if (/[;}<]/.test(c) && !quote_stack.length) {
       if (text.value.length) {
         value[idx].push(text);
         text = Tokens.text();
       }
       break;
     }
-    else if (c == '@') {
+    else if (c == '@' && /\w/.test(it.curr(1))) {
       if (text.value.length) {
         value[idx].push(text);
         text = Tokens.text();
       }
       value[idx].push(read_func(it));
+    }
+    else if (c === '"' || c === "'") {
+      let quote = last(quote_stack);
+      if (c === quote) {
+        quote_stack.pop();
+      } else if (!quote_stack.length) {
+        quote_stack.push(c);
+      }
+      text.value += c;
     }
     else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
       if (c == '(') stack.push(c);
