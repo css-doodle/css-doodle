@@ -632,42 +632,38 @@ function get_grid_styles(grid_obj) {
   `;
 }
 
-function create_cell(x, y, z, content) {
-  let cell = document.createElement('cell');
-  cell.id = cell_id(x, y, z);
-  cell.textContent = content['#' + cell.id];
-  return cell;
+function create_cell(x, y, z, content, child = '') {
+  let id = cell_id(x, y, z);
+  return `<cell id="${id}">${content['#' + id]??''}${child??''}</cell>`;
 }
 
 function create_grid(grid_obj, content) {
   let { x, y, z } = grid_obj || {};
-  let grid = document.createElement('grid');
-  let root = document.createDocumentFragment();
+  let result = '';
   if (z == 1) {
     for (let j = 1; j <= y; ++j) {
       for (let i = 1; i <= x; ++i) {
-        root.appendChild(create_cell(i, j, 1, content));
+        result += create_cell(i, j, 1, content);
       }
     }
   }
   else {
-    let temp = null;
-    for (let i = 1; i <= z; ++i) {
-      let cell = create_cell(1, 1, i, content);
-      (temp || root).appendChild(cell);
-      temp = cell;
+    let child = '';
+    for (let i = z; i >= 1; i--) {
+      let cell = create_cell(1, 1, i, content, child);
+      child = cell;
     }
-    temp = null;
+    result = child;
   }
-  grid.className = 'container';
-  grid.appendChild(root);
-  return grid.outerHTML;
+  return `<grid class="container">${result}</grid>`;
 }
 
 export default make_tag_function(rules => {
-  let doodle = document.createElement('css-doodle');
-  if (doodle.update) {
-    doodle.update(rules);
+  if (typeof document !== 'undefined') {
+    let doodle = document.createElement('css-doodle');
+    if (doodle.update) {
+      doodle.update(rules);
+    }
+    return doodle;
   }
-  return doodle;
 });
