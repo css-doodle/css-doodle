@@ -407,9 +407,10 @@ function read_func(it) {
   let func = Tokens.func();
   let name = it.curr(), c;
   let has_argument = false;
-  it.next();
-  if (name !== '@') {
-    name = '@' + name;
+  if (name === '@') {
+    it.next();
+  } else {
+    name = '@';
   }
   while (!it.end()) {
     c = it.curr();
@@ -431,16 +432,14 @@ function read_func(it) {
       }
       func.arguments = args;
       break;
-    } else if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
+    } else if (/[0-9a-zA-Z_\-.]/.test(c)) {
       name += c;
-      break;
     }
-    else {
-      name += c;
+    if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
+      break;
     }
     it.next();
   }
-
   let { fname, extra } = seperate_func_name(name);
   func.name = fname;
 
