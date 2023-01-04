@@ -1,3 +1,12 @@
+## 0.32.1
+
+* Build grid without DOM object.
+* Fix CSS parser for reading tail function names.
+
+<br /> <br />
+
+
+
 ## 0.32.0
 
 ### Features
