@@ -632,9 +632,15 @@ function get_grid_styles(grid_obj) {
   `;
 }
 
+function get_content(input) {
+  return is_nil(input) ? '' : input;
+}
+
 function create_cell(x, y, z, content, child = '') {
   let id = cell_id(x, y, z);
-  return `<cell id="${id}">${content['#' + id]??''}${child??''}</cell>`;
+  let head = get_content(content['#' + id]);
+  let tail = get_content(child);
+  return `<cell id="${id}">${head}${tail}</cell>`;
 }
 
 function create_grid(grid_obj, content) {

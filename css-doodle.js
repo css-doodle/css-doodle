@@ -1,4 +1,4 @@
-/*! css-doodle@0.32.1 */
+/*! css-doodle@0.32.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -6256,9 +6256,15 @@ void main() {
   `;
   }
 
+  function get_content(input) {
+    return is_nil(input) ? '' : input;
+  }
+
   function create_cell(x, y, z, content, child = '') {
     let id = cell_id(x, y, z);
-    return `<cell id="${id}">${content['#' + id]??''}${child??''}</cell>`;
+    let head = get_content(content['#' + id]);
+    let tail = get_content(child);
+    return `<cell id="${id}">${head}${tail}</cell>`;
   }
 
   function create_grid(grid_obj, content) {

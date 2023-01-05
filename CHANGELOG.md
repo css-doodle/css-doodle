@@ -1,3 +1,11 @@
+## 0.32.2
+
+* Do not use `??` operator at the moment.
+
+<br /> <br />
+
+
+
 ## 0.32.1
 
 * Build grid without DOM object.
