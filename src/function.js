@@ -367,6 +367,15 @@ const Expose = add_alias({
     return create_svg_url(svg);
   }),
 
+  Svg: lazy((_, ...args) => {
+    let value = args.map(input => get_value(input())).join(',');
+    if (!value.startsWith('<')) {
+      let parsed = parse_svg(value);
+      value = generate_svg(parsed);
+    }
+    return normalize_svg(value);
+  }),
+
   filter: lazy((upstream, ...args) => {
     let values = args.map(input => get_value(input()));
     let value = values.join(',');
