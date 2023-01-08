@@ -63,7 +63,7 @@ function map2d(value, min, max, amp = 1) {
 
 function calc_with(base) {
   return v => {
-    if (is_empty(v)) {
+    if (is_empty(v) || is_empty(base)) {
       return base;
     }
     if (/^[+*-\/%][.\d\s]/.test(v)) {
