@@ -437,6 +437,20 @@ const Expose = add_alias({
     return create_svg_url(svg, id);
   }),
 
+  'svg-pattern': lazy((_, ...args) => {
+    let value = args.map(input => get_value(input())).join(',');
+    let parsed = parse_svg(`
+      viewBox: 0 0 1 1;
+      preserveAspectRatio: xMidYMid slice;
+      rect {
+        width, height: 100%;
+        fill: defs pattern { ${ value } }
+      }
+    `);
+    let svg = generate_svg(parsed);
+    return create_svg_url(svg);
+  }),
+
   var() {
     return value => `var(${ get_value(value) })`;
   },
