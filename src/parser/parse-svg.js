@@ -283,6 +283,9 @@ function getSelectors(tokens) {
 function parseViewBox(value, tokens) {
   const viewBox = { value: [] };
   let temp;
+  if (!Array.isArray(tokens)) {
+    return viewBox;
+  }
   for (let token of tokens) {
     if (token.isSpace() || token.isSymbol(',', ';')) {
       continue;

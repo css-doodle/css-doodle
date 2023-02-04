@@ -79,8 +79,12 @@ function removeQuotes(text) {
 }
 
 function transformViewBox(token) {
-  let [x, y, w, h] = token.detail.value;
+  let viewBox = token.detail.value;
   let p = token.detail.padding;
+  if (!viewBox.length) {
+    return '';
+  }
+  let [x, y, w, h] = viewBox;
   if (p) {
     [x, y, w, h] = [x-p, x-p, w+p*2, h+p*2];
   }
@@ -152,9 +156,13 @@ function generate(token, element, parent, root) {
         }
       }
       if (/viewBox/i.test(token.name)) {
-        value = transformViewBox(token);
+        value = transformViewBox(token, value);
+        if (value) {
+          element.attr(token.name, value);
+        }
+      } else {
+        element.attr(token.name, value);
       }
-      element.attr(token.name, value);
       if (token.name.includes('xlink:')) {
         root.attr('xmlns:xlink', NSXLink);
       }
