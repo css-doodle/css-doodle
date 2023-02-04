@@ -1,4 +1,4 @@
-/*! css-doodle@0.32.2 */
+/*! css-doodle@0.33.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -627,6 +627,7 @@
       }
     }
     if (fragment.length && !inlineBlock) {
+      token._valueTokens = fragment;
       token.value = joinToken$2(fragment);
     } else if (inlineBlock) {
       token.value = inlineBlock;
@@ -634,7 +635,7 @@
     if (token.origin) {
       token.origin.value = token.value;
     }
-    return token
+    return token;
   }
 
   function readStyle(iter) {
@@ -734,7 +735,6 @@
           };
         }
         let statement = readStatement$1(iter, intial);
-
         let groupdValue = parse$8(statement.value);
         let expand = (props.length > 1 && groupdValue.length === props.length);
 
@@ -746,6 +746,10 @@
           if (expand) {
             item.value = groupdValue[i];
           }
+          if (/viewBox/i.test(prop)) {
+            item.detail = parseViewBox(item.value, item._valueTokens);
+          }
+          delete item._valueTokens;
           rules.push(item);
         });
         if (isBlock(tokenType)) {
@@ -847,6 +851,30 @@
       }
     }
     return result;
+  }
+
+  function parseViewBox(value, tokens) {
+    const viewBox = { value: [] };
+    let temp;
+    if (!Array.isArray(tokens)) {
+      return viewBox;
+    }
+    for (let token of tokens) {
+      if (token.isSpace() || token.isSymbol(',', ';')) {
+        continue;
+      }
+      if (viewBox.value.length < 4 && token.isNumber()) {
+        viewBox.value.push(Number(token.value));
+      }
+      else if (token.isNumber() && temp) {
+        viewBox[temp] = Number(token.value);
+        temp = null;
+      }
+      else if (token.isWord()) {
+        temp = token.value;
+      }
+    }
+    return viewBox;
   }
 
   function splitTimes(name, object) {
@@ -1915,6 +1943,19 @@
     return text;
   }
 
+  function transformViewBox(token) {
+    let viewBox = token.detail.value;
+    let p = token.detail.padding || token.detail.expand;
+    if (!viewBox.length) {
+      return '';
+    }
+    let [x, y, w, h] = viewBox;
+    if (p) {
+      [x, y, w, h] = [x-p, x-p, w+p*2, h+p*2];
+    }
+    return `${x} ${y} ${w} ${h}`;
+  }
+
   function generate$1(token, element, parent, root) {
     let inlineId;
     if (!element) {
@@ -1979,7 +2020,14 @@
             value = `#${id}`;
           }
         }
-        element.attr(token.name, value);
+        if (/viewBox/i.test(token.name)) {
+          value = transformViewBox(token);
+          if (value) {
+            element.attr(token.name, value);
+          }
+        } else {
+          element.attr(token.name, value);
+        }
         if (token.name.includes('xlink:')) {
           root.attr('xmlns:xlink', NSXLink);
         }
@@ -3105,7 +3153,7 @@
 
   function calc_with(base) {
     return v => {
-      if (is_empty(v)) {
+      if (is_empty(v) || is_empty(base)) {
         return base;
       }
       if (/^[+*-\/%][.\d\s]/.test(v)) {
@@ -3408,6 +3456,15 @@
       return create_svg_url(svg);
     }),
 
+    Svg: lazy((_, ...args) => {
+      let value = args.map(input => get_value(input())).join(',');
+      if (!value.startsWith('<')) {
+        let parsed = parse$7(value);
+        value = generate_svg(parsed);
+      }
+      return normalize_svg(value);
+    }),
+
     filter: lazy((upstream, ...args) => {
       let values = args.map(input => get_value(input()));
       let value = values.join(',');
@@ -3476,6 +3533,20 @@
         `<filter id="${ id }"$1`
       );
       return create_svg_url(svg, id);
+    }),
+
+    'svg-pattern': lazy((_, ...args) => {
+      let value = args.map(input => get_value(input())).join(',');
+      let parsed = parse$7(`
+      viewBox: 0 0 1 1;
+      preserveAspectRatio: xMidYMid slice;
+      rect {
+        width, height: 100%;
+        fill: defs pattern { ${ value } }
+      }
+    `);
+      let svg = generate_svg(parsed);
+      return create_svg_url(svg);
     }),
 
     var() {

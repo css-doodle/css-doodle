@@ -1,3 +1,39 @@
+## 0.33.0
+
+* Added new `@svg-pattern` function to reduce boilerplate code.
+
+  ```css
+  background: @svg-pattern(
+    width, height: 10%;
+    viewBox: 0 0 10 10;
+    circle { }
+  );
+  ```
+
+* Added new `@Svg` function to return raw SVG code rather than encoded URI value.
+
+  ```css
+  @content: @Svg(
+    viewBox: -1 -1 2 2;
+    circle {
+      r: 1;
+    }
+  );
+  ```
+
+* Added `padding` value for SVG `viewBox` property.
+
+  ```css
+  viewBox: -1 -1 2 2 padding 1;
+
+  /* equals to */
+
+  viewBox: -2 2 4 4;
+  ```
+<br /> <br />
+
+
+
 ## 0.32.2
 
 * Do not use `??` operator at the moment.
