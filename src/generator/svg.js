@@ -80,7 +80,7 @@ function removeQuotes(text) {
 
 function transformViewBox(token) {
   let viewBox = token.detail.value;
-  let p = token.detail.padding;
+  let p = token.detail.padding || token.detail.expand;
   if (!viewBox.length) {
     return '';
   }
