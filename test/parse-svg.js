@@ -96,7 +96,24 @@ test('statement', t => {
     value: [{
       type: 'statement',
       name: 'viewBox',
-      value: '0 0 0 10'
+      value: '0 0 0 10',
+      detail: {
+        value: [0, 0, 0, 10]
+      }
+    }]
+  });
+
+  compare(t, 'viewBox: 0 0 10 10 padding .2', {
+    name: 'svg',
+    type: 'block',
+    value: [{
+      type: 'statement',
+      name: 'viewBox',
+      value: '0 0 10 10 padding .2',
+      detail: {
+        value: [0, 0, 10, 10],
+        padding: .2
+      }
     }]
   });
 

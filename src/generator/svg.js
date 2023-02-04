@@ -78,6 +78,15 @@ function removeQuotes(text) {
   return text;
 }
 
+function transformViewBox(token) {
+  let [x, y, w, h] = token.detail.value;
+  let p = token.detail.padding;
+  if (p) {
+    [x, y, w, h] = [x-p, x-p, w+p*2, h+p*2];
+  }
+  return `${x} ${y} ${w} ${h}`;
+}
+
 function generate(token, element, parent, root) {
   let inlineId;
   if (!element) {
@@ -141,6 +150,9 @@ function generate(token, element, parent, root) {
         if (token.name === 'xlink:href' || token.name === 'href') {
           value = `#${id}`;
         }
+      }
+      if (/viewBox/i.test(token.name)) {
+        value = transformViewBox(token);
       }
       element.attr(token.name, value);
       if (token.name.includes('xlink:')) {

@@ -53,6 +53,7 @@ function readStatement(iter, token) {
     }
   }
   if (fragment.length && !inlineBlock) {
+    token._valueTokens = fragment;
     token.value = joinToken(fragment);
   } else if (inlineBlock) {
     token.value = inlineBlock;
@@ -60,7 +61,7 @@ function readStatement(iter, token) {
   if (token.origin) {
     token.origin.value = token.value;
   }
-  return token
+  return token;
 }
 
 function readStyle(iter) {
@@ -160,7 +161,6 @@ function walk(iter, parentToken) {
         };
       }
       let statement = readStatement(iter, intial);
-
       let groupdValue = parseValueGroup(statement.value);
       let expand = (props.length > 1 && groupdValue.length === props.length);
 
@@ -172,6 +172,10 @@ function walk(iter, parentToken) {
         if (expand) {
           item.value = groupdValue[i];
         }
+        if (/viewBox/i.test(prop)) {
+          item.detail = parseViewBox(item.value, item._valueTokens);
+        }
+        delete item._valueTokens;
         rules.push(item);
       });
       if (isBlock(tokenType)) {
@@ -274,6 +278,27 @@ function getSelectors(tokens) {
     }
   }
   return result;
+}
+
+function parseViewBox(value, tokens) {
+  const viewBox = { value: [] };
+  let temp;
+  for (let token of tokens) {
+    if (token.isSpace() || token.isSymbol(',', ';')) {
+      continue;
+    }
+    if (viewBox.value.length < 4 && token.isNumber()) {
+      viewBox.value.push(Number(token.value));
+    }
+    else if (token.isNumber() && temp) {
+      viewBox[temp] = Number(token.value);
+      temp = null;
+    }
+    else if (token.isWord()) {
+      temp = token.value;
+    }
+  }
+  return viewBox;
 }
 
 function splitTimes(name, object) {
