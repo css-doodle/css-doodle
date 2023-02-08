@@ -1,3 +1,12 @@
+## 0.33.1
+
+* Fixed `@Svg` function detection for transforming the `multiplication` feature.
+* Fixed `@pn` index value inside `@m` function.
+
+<br /> <br />
+
+
+
 ## 0.33.0
 
 * Added new `@svg-pattern` function to reduce boilerplate code.

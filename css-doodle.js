@@ -1,4 +1,4 @@
-/*! css-doodle@0.33.0 */
+/*! css-doodle@0.33.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -406,7 +406,7 @@
     if (/x/.test(count)) {
       for (let i = 1; i <= y; ++i) {
         for (let j = 1; j <= x; ++j) {
-          ret.push(fn(index++, j, i, max, x, y));
+          ret.push(fn(index++, j, i, max, x, y, index));
         }
       }
     }
@@ -415,18 +415,18 @@
       max = Math.abs(x - y) + 1;
       if (x <= y) {
         for (let i = x; i <= y; ++i) {
-          ret.push(fn(i, i, 1, max, max, 1));
+          ret.push(fn(i, i, 1, max, max, 1, index++));
         }
       } else {
         for (let i = x; i >= y; --i) {
-          ret.push(fn(i, i, 1, max, max, 1));
+          ret.push(fn(i, i, 1, max, max, 1, index++));
         }
       }
     }
 
     else {
       for (let i = 1; i <= x; ++i) {
-        ret.push(fn(i, i, 1, x, x, 1));
+        ret.push(fn(i, i, 1, x, x, 1, index++));
       }
     }
 
@@ -1403,6 +1403,10 @@
     return str.includes('pureName') && str.includes('times');
   }
 
+  function is_svg(name) {
+    return /^@svg$/i.test(name);
+  }
+
   function read_func(it) {
     let func = Tokens.func();
     let name = it.curr(), c;
@@ -1420,7 +1424,7 @@
         has_argument = true;
         it.next();
         let [args, raw_args] = read_arguments(it, composition, composible(name));
-        if (name === '@svg' && /\d\s*{/.test(raw_args)) {
+        if (is_svg(name) && /\d\s*{/.test(raw_args)) {
           let parsed_svg = parse$7(raw_args);
           if (has_times_syntax(parsed_svg)) {
             let svg = generate_svg_extended(parsed_svg);
@@ -3296,7 +3300,8 @@
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
-        let [idx = context[counter]] = lastExtra || [];
+        let idx = lastExtra && lastExtra[6];
+        if (is_nil(idx)) idx = context[counter];
         let pos = (idx - 1) % max;
         let value = args[pos];
         return push_stack(context, 'last_pick', value);
@@ -3311,7 +3316,8 @@
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
-        let [idx = context[counter]] = lastExtra || [];
+        let idx = lastExtra && lastExtra[6];
+        if (is_nil(idx)) idx = context[counter];
         let pos = (idx - 1) % max;
         let value = args[max - pos - 1];
         return push_stack(context, 'last_pick', value);
@@ -3329,7 +3335,8 @@
           context[values] = shuffle(args || []);
         }
         let max = args.length;
-        let [idx = context[counter]] = lastExtra || [];
+        let idx = lastExtra && lastExtra[6];
+        if (is_nil(idx)) idx = context[counter];
         let pos = (idx - 1) % max;
         let value = context[values][pos];
         return push_stack(context, 'last_pick', value);
