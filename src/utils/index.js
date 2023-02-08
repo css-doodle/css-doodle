@@ -67,7 +67,7 @@ function sequence(count, fn) {
   if (/x/.test(count)) {
     for (let i = 1; i <= y; ++i) {
       for (let j = 1; j <= x; ++j) {
-        ret.push(fn(index++, j, i, max, x, y));
+        ret.push(fn(index++, j, i, max, x, y, index));
       }
     }
   }
@@ -76,18 +76,18 @@ function sequence(count, fn) {
     max = Math.abs(x - y) + 1;
     if (x <= y) {
       for (let i = x; i <= y; ++i) {
-        ret.push(fn(i, i, 1, max, max, 1));
+        ret.push(fn(i, i, 1, max, max, 1, index++));
       }
     } else {
       for (let i = x; i >= y; --i) {
-        ret.push(fn(i, i, 1, max, max, 1));
+        ret.push(fn(i, i, 1, max, max, 1, index++));
       }
     }
   }
 
   else {
     for (let i = 1; i <= x; ++i) {
-      ret.push(fn(i, i, 1, x, x, 1));
+      ret.push(fn(i, i, 1, x, x, 1, index++));
     }
   }
 
