@@ -403,6 +403,10 @@ function has_times_syntax(token) {
   return str.includes('pureName') && str.includes('times');
 }
 
+function is_svg(name) {
+  return /^@svg$/i.test(name);
+}
+
 function read_func(it) {
   let func = Tokens.func();
   let name = it.curr(), c;
@@ -420,7 +424,7 @@ function read_func(it) {
       has_argument = true;
       it.next();
       let [args, raw_args] = read_arguments(it, composition, composible(name));
-      if (name === '@svg' && /\d\s*{/.test(raw_args)) {
+      if (is_svg(name) && /\d\s*{/.test(raw_args)) {
         let parsed_svg = parse_svg(raw_args);
         if (has_times_syntax(parsed_svg)) {
           let svg = generate_svg_extended(parsed_svg);
