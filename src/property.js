@@ -23,7 +23,7 @@ const map_top_bottom = {
 export default add_alias({
 
   size(value, { is_special_selector, grid }) {
-    let [w, h = w] = parse_value_group(value);
+    let [w, h = w, ratio] = parse_value_group(value);
     if (is_preset(w)) {
       [w, h] = get_preset(w, h);
     }
@@ -33,7 +33,14 @@ export default add_alias({
     `;
     if (is_special_selector) {
       if (w === 'auto' || h === 'auto') {
-        styles += `aspect-ratio: ${ grid.ratio };`;
+        if (ratio) {
+          if (/^\(.+\)$/.test(ratio)) {
+            ratio = ratio.substring(1, ratio.length - 1);
+          } else if (!/^calc/.test(ratio)) {
+            ratio = `calc(${ratio})`;
+          }
+        }
+        styles += `aspect-ratio: ${ ratio || grid.ratio };`;
       }
     } else {
       styles += `
