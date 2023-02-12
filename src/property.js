@@ -104,6 +104,10 @@ export default add_alias({
     return result;
   },
 
+  gap(value) {
+    return value;
+  },
+
   seed(value) {
     return value;
   },

@@ -480,6 +480,10 @@ class Rules {
           this.is_grid_defined = true;
           break;
         }
+        case 'gap': {
+          rule = '';
+          this.add_rule(':container', `gap: ${transformed};`);
+        }
         case 'content': {
           rule = '';
           if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
