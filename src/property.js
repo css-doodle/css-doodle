@@ -31,18 +31,22 @@ export default add_alias({
       width: ${ w };
       height: ${ h };
     `;
-    if (is_special_selector) {
-      if (w === 'auto' || h === 'auto') {
-        if (ratio) {
-          if (/^\(.+\)$/.test(ratio)) {
-            ratio = ratio.substring(1, ratio.length - 1);
-          } else if (!/^calc/.test(ratio)) {
-            ratio = `calc(${ratio})`;
-          }
+    if (w === 'auto' || h === 'auto') {
+      if (ratio) {
+        if (/^\(.+\)$/.test(ratio)) {
+          ratio = ratio.substring(1, ratio.length - 1);
+        } else if (!/^calc/.test(ratio)) {
+          ratio = `calc(${ratio})`;
         }
+        if (!is_special_selector) {
+          styles += `aspect-ratio: ${ ratio };`;
+        }
+      }
+      if (is_special_selector) {
         styles += `aspect-ratio: ${ ratio || grid.ratio };`;
       }
-    } else {
+    }
+    if (!is_special_selector) {
       styles += `
         --internal-cell-width: ${ w };
         --internal-cell-height: ${ h };
