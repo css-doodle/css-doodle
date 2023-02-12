@@ -72,18 +72,36 @@ export default add_alias({
   },
 
   grid(value, options) {
-    let clip = true;
+    let result = {
+      clip: true,
+    };
     if (/no\-*clip/i.test(value)) {
-      clip = false;
+      result.clip = false;
       value = value.replace(/no\-*clip/i, '');
     }
-    let [grid, size, fill] = parse_value_group(value, { symbol: '/', noSpace: true });
-    return {
-      grid: parse_grid(grid, options.max_grid),
-      size: size ? this.size(size, options) : '',
-      fill: fill || '',
-      clip: clip,
-    };
+    let groups = parse_value_group(value, {
+      symbol: ['/', '+', '*', '|', '-'],
+      noSpace: true,
+      verbose: true
+    });
+    for (let { group, value } of groups) {
+      if (group === '+') result.scale = value;
+      if (group === '*') result.rotate = value;
+      if (group === '/') {
+        if (result.size === undefined) result.size = this.size(value, options);
+        else result.fill = value;
+      }
+      if ((group === '|' || group == '-' || group == '') && !result.grid) {
+        result.grid = parse_grid(value, options.max_grid);
+        if (group === '|') {
+          result.flexColumn = true;
+        }
+        if (group === '-') {
+          result.flexRow = true;
+        }
+      }
+    }
+    return result;
   },
 
   seed(value) {

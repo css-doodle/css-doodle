@@ -83,3 +83,17 @@ test('space as separator', t => {
   compare(t, '5, 100% 5 8', ['5,100%', '5', '8']);
 
 });
+
+test('verbose option', t => {
+
+  compare.use(input => {
+    return parseValueGroup(input, { symbol: ['v', 'h'], noSpace: true, verbose: true });
+  });
+
+  compare(t, 'v 10 h -10 v 5', [
+    { group: 'v', value: '10' },
+    { group: 'h', value: '-10' },
+    { group: 'v', value: '5' },
+  ]);
+
+});

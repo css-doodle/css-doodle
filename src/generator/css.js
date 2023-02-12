@@ -328,6 +328,29 @@ class Rules {
     }
   }
 
+  add_grid_style({ fill, clip, rotate, scale, flexRow, flexColumn }) {
+    if (fill) {
+      this.add_rule(':host', `background-color: ${fill};`);
+    }
+    if (!clip) {
+      this.add_rule(':host', 'contain: none;');
+    }
+    if (rotate) {
+      this.add_rule(':container', `rotate: ${rotate};`);
+    }
+    if (scale) {
+      this.add_rule(':container', `scale: ${scale};`);
+    }
+    if (flexRow) {
+      this.add_rule(':container', `display: flex`);
+      this.add_rule('cell', `flex: 1`);
+    }
+    if (flexColumn) {
+      this.add_rule(':container', `display: flex; flex-direction: column;`);
+      this.add_rule('cell', `flex: 1`);
+    }
+  }
+
   compose_rule(token, _coords, selector) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
@@ -440,13 +463,7 @@ class Rules {
         case 'grid': {
           if (is_host_selector(selector)) {
             rule = transformed.size || '';
-            let { fill, clip } = transformed;
-            if (fill) {
-              this.add_rule(':host', `background-color: ${fill};`);
-            }
-            if (!clip) {
-              this.add_rule(':host', 'contain: none;');
-            }
+            this.add_grid_style(transformed);
           } else {
             rule = '';
             if (!this.is_grid_defined) {
@@ -456,13 +473,7 @@ class Rules {
                 max_grid: coords.max_grid
               });
               this.add_rule(':host', transformed.size || '');
-              let { fill, clip } = transformed;
-              if (fill) {
-                this.add_rule(':host', `background-color: ${fill};`);
-              }
-              if (!clip) {
-                this.add_rule(':host', 'contain: none');
-              }
+              this.add_grid_style(transformed);
             }
           }
           this.grid = coords.grid;

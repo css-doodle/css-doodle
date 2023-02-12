@@ -1,12 +1,13 @@
 import { is_empty } from '../utils/index.js';
 import { scan, iterator } from './tokenizer.js';
 
-function parse(input, option = {symbol: ',', noSpace: false}) {
+function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
   let group = [];
   let skip = false;
   let tokens = [];
   let parenStack = [];
   let quoteStack = [];
+  let lastGroupName = '';
 
   if (is_empty(input)) {
     return group;
@@ -15,11 +16,25 @@ function parse(input, option = {symbol: ',', noSpace: false}) {
   let iter = iterator(scan(input));
 
   function isSeperator(token) {
-    let symbol = option.symbol || ',';
-    if (option.noSpace) {
-      return token.isSymbol(symbol);
+    let symbol = option.symbol || [','];
+    if (!Array.isArray(symbol)) {
+      symbol = [symbol];
     }
-    return token.isSymbol(symbol) || token.isSpace();
+    if (option.noSpace) {
+      return token.isSymbol(...symbol);
+    }
+    return token.isSymbol(...symbol) || token.isSpace();
+  }
+
+  function addGroup(tokens) {
+    let value = joinTokens(tokens);
+    if (option.verbose) {
+      if (lastGroupName.length || value.length) {
+        group.push({ group: lastGroupName, value });
+      }
+    } else {
+      group.push(value);
+    }
   }
 
   while (iter.next()) {
@@ -43,7 +58,9 @@ function parse(input, option = {symbol: ',', noSpace: false}) {
       if (isNextSpace || isPrevSpace) continue;
     }
     if (emptyStack && isSeperator(curr)) {
-      group.push(joinTokens(tokens));
+      let groupName = lastGroupName;
+      addGroup(tokens);
+      lastGroupName = curr.value;
       tokens = [];
     } else {
       tokens.push(curr);
@@ -51,7 +68,7 @@ function parse(input, option = {symbol: ',', noSpace: false}) {
   }
 
   if (tokens.length) {
-    group.push(joinTokens(tokens));
+    addGroup(tokens);
   }
 
   return group;
