@@ -72,11 +72,17 @@ export default add_alias({
   },
 
   grid(value, options) {
+    let clip = true;
+    if (/no\-*clip/i.test(value)) {
+      clip = false;
+      value = value.replace(/no\-*clip/i, '');
+    }
     let [grid, size, fill] = parse_value_group(value, { symbol: '/', noSpace: true });
     return {
       grid: parse_grid(grid, options.max_grid),
       size: size ? this.size(size, options) : '',
       fill: fill || '',
+      clip: clip,
     };
   },
 

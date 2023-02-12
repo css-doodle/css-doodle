@@ -440,9 +440,12 @@ class Rules {
         case 'grid': {
           if (is_host_selector(selector)) {
             rule = transformed.size || '';
-            let fill = transformed.fill;
+            let { fill, clip } = transformed;
             if (fill) {
               this.add_rule(':host', `background-color: ${fill};`);
+            }
+            if (!clip) {
+              this.add_rule(':host', 'contain: none;');
             }
           } else {
             rule = '';
@@ -453,9 +456,12 @@ class Rules {
                 max_grid: coords.max_grid
               });
               this.add_rule(':host', transformed.size || '');
-              let fill = transformed.fill;
+              let { fill, clip } = transformed;
               if (fill) {
                 this.add_rule(':host', `background-color: ${fill};`);
+              }
+              if (!clip) {
+                this.add_rule(':host', 'contain: none');
               }
             }
           }
