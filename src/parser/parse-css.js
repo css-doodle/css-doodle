@@ -518,6 +518,9 @@ function read_value(it) {
       }
       text.value += c;
     }
+    if (it.curr() === ';' || it.curr() == '}') {
+      break;
+    }
     it.next();
   }
   if (text.value.length) {
