@@ -130,6 +130,20 @@ const Expose = add_alias({
     return _ => cell_id(x, y, z);
   },
 
+  dx({ x, grid }) {
+    return n => {
+      n = Number(n) || 0;
+      return x - .5 - n - grid.x / 2;
+    }
+  },
+
+  dy({ y, grid }) {
+    return n => {
+      n = Number(n) || 0;
+      return y - .5 - n - grid.y / 2;
+    }
+  },
+
   n({ extra }) {
     let lastExtra = last(extra);
     return lastExtra ? calc_with(lastExtra[0]) : '@n';
