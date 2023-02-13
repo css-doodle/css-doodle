@@ -593,8 +593,6 @@ function get_basic_styles() {
       visibility: visible;
       width: auto;
       height: auto;
-      overflow: hidden;
-      overflow: clip;
       contain: content;
       --${ uniform_time.name }: 0
     }
