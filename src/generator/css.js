@@ -576,9 +576,10 @@ class Rules {
           }
         }
       });
-      if (!is_nil(this.seed)) {
-        coords.update_random(this.seed);
+      if (is_nil(this.seed)) {
+        this.seed = coords.seed_value;
       }
+      coords.update_random(this.seed);
     }
     ;(tokens || this.tokens).forEach(token => {
       switch (token.type) {
@@ -762,6 +763,7 @@ function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
     grid: { x: 1, y: 1, z: 1, count: 1 },
     random, rand, pick, shuffle,
     max_grid, update_random,
+    seed_value,
   });
 
   let { grid, seed } = rules.output();
