@@ -578,8 +578,9 @@ class Rules {
       });
       if (is_nil(this.seed)) {
         this.seed = coords.seed_value;
+      } else {
+        coords.update_random(this.seed);
       }
-      coords.update_random(this.seed);
     }
     ;(tokens || this.tokens).forEach(token => {
       switch (token.type) {
