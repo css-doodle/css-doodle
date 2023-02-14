@@ -2,11 +2,12 @@ import Func from '../function.js';
 import Property from '../property.js';
 import Selector from '../selector.js';
 import parse_value_group from '../parser/parse-value-group.js';
-import { uniform_time } from '../uniforms.js';
-import { prefixer } from '../utils/prefixer.js';
+
 import calc from '../calc.js';
+import { uniform_time } from '../uniforms.js';
 import { seedrandom } from '../lib/seedrandom.js';
 
+import { prefixer } from '../utils/prefixer.js';
 import { maybe, cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
 import { join, make_array, remove_empty_values } from '../utils/list.js'
 
@@ -47,6 +48,7 @@ class Rules {
     this.grid = null;
     this.seed = null;
     this.is_grid_defined = false;
+    this.is_gap_defined = false;
     this.coords = [];
     this.doodles = {};
     this.canvas = {};
@@ -482,7 +484,11 @@ class Rules {
         }
         case 'gap': {
           rule = '';
-          this.add_rule(':container', `gap: ${transformed};`);
+          if (!this.is_gap_defined) {
+            this.add_rule(':container', `gap: ${transformed};`);
+            this.is_gap_defined = true;
+          }
+          break;
         }
         case 'content': {
           rule = '';
