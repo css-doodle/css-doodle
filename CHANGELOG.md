@@ -1,3 +1,108 @@
+## 0.34.0
+
+### Breaking
+
+* The css-doodle element now is by default restrict the visible area to its dimension,
+  which means it's overflow hidden. There are two ways to change this behavior:
+
+  1. Append the <code>noclip</code> keyword to the `@grid` property:
+
+     ```css
+     @grid: 1 / 400px noclip;
+     ```
+
+  2. Overide the `contain` property:
+
+     ```css
+     :doodle {
+       @grid: 1 / 400px;
+       contain: none;
+     }
+     ```
+
+### Features
+
+  * Extended `@grid` to support doodle background color, after the second `/` symbol.
+
+    ```css
+    @grid: 1 / 400px / #000;
+    ```
+
+  * Extended `@grid` and `@size` to support <code>aspect-ratio</code> if one of the `width` and `width` is `auto`.
+
+    ```css
+    @grid: 1 / 400px auto 2;
+    @grid: 1 / 400px auto (4/3);
+
+    @size: 100px auto 1.5;
+    ```
+
+  * Extended `@grid` to support <code>rotate</code> and <code>scale</code> to <code>:container</code>.
+
+    ```css
+    @grid: 1 / 400px + 2;  /* + means scale */
+    @grid: 1 / 400px * 45deg;  /* * means scale */
+
+    @grid: 1 / 400px + 2 * 45deg;
+    ```
+
+ * Extended `@grid` to change the layout to `Flex` layout.
+
+    ```css
+    @grid: - 8x2 / 400px;  /* - means using flex */
+    @grid: | 8x2 / 400px;  /* | means using flex and vertical direction */
+    ```
+
+
+ * Added support for 0 index value in `@m` function.
+
+    ```css
+    /* 0 1 2 3 4 */
+    @content: @M0-4.n
+    ```
+
+ * Added `@gap` property.
+
+   ```css
+   @grid: 10 / 400px;
+   @gap: 1px;
+   ```
+
+ * Added `@dx` and `@dy` functions.
+
+   ```css
+   /* -2,-2  -1,-2  0,-2  1,-2  2,-2
+      -2,-1  -1,-1  0,-1  1,-1  2,-1
+      -2,0   -1,0   0,0   1,0   2,0
+      -2,1   -1,1   0,1   1,1   2,1
+      -2,2   -1,2   0,2   1,2   2,2 */
+   @grid: 5 / 400px;
+   @content: @dx, @dy;
+   ```
+   Adjust offset.
+
+   ```css
+   /* -3,-3  -2,-3  -1,-3  0,-3  1,-3
+      -3,-2  -2,-2  -1,-2  0,-2  1,-2
+      -3,-1  -2,-1  -1,-1  0,-1  1,-1
+      -3,0   -2,0   -1,0   0,0   1,0
+      -3,1   -2,1   -1,1   0,1   1,1 */
+   @grid: 5 / 400px;
+   @content: @dx(1), @dy(1);
+   ```
+
+
+### Fixes
+
+* Fixed CSS parsing on function composition.
+* Fixed seed value at pre-compose phase.
+
+
+
+<br /> <br />
+
+
+
 ## 0.33.1
 
 * Fixed `@Svg` function detection for transforming the `multiplication` feature.

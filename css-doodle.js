@@ -1,4 +1,4 @@
-/*! css-doodle@0.33.1 */
+/*! css-doodle@0.34.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -14,6 +14,7 @@
     ':', ';', ',', '(', ')', '[', ']',
     '{', '}', 'π', '±', '+', '-', '*',
     '/', '%', '"', "'", '`', '@', '=',
+    '^',
   ];
 
   const is$1 = {
@@ -397,8 +398,11 @@
 
   function sequence(count, fn) {
     let [x, y = 1] = String(count).split(/[x-]/);
-    x = clamp(Math.ceil(x) || 1, 1, 65536);
-    y = clamp(Math.ceil(y) || 1, 1, 65536);
+    let [cx, cy] = [Math.ceil(x), Math.ceil(y)];
+    if (is_invalid_number(cx)) cx = 1;
+    if (is_invalid_number(cy)) cy = 1;
+    x = clamp(cx, 0, 65536);
+    y = clamp(cy, 0, 65536);
     let max = x * y;
     let ret = [];
     let index = 1;
@@ -516,11 +520,12 @@
     return Array.isArray(arr) ? arr : [arr];
   }
 
-  function parse$8(input, option = {symbol: ',', noSpace: false}) {
+  function parse$8(input, option = {symbol: ',', noSpace: false, verbose: false }) {
     let group = [];
     let tokens = [];
     let parenStack = [];
     let quoteStack = [];
+    let lastGroupName = '';
 
     if (is_empty(input)) {
       return group;
@@ -529,11 +534,25 @@
     let iter = iterator$1(scan(input));
 
     function isSeperator(token) {
-      let symbol = option.symbol || ',';
-      if (option.noSpace) {
-        return token.isSymbol(symbol);
+      let symbol = option.symbol || [','];
+      if (!Array.isArray(symbol)) {
+        symbol = [symbol];
       }
-      return token.isSymbol(symbol) || token.isSpace();
+      if (option.noSpace) {
+        return token.isSymbol(...symbol);
+      }
+      return token.isSymbol(...symbol) || token.isSpace();
+    }
+
+    function addGroup(tokens) {
+      let value = joinTokens$1(tokens);
+      if (option.verbose) {
+        if (lastGroupName.length || value.length) {
+          group.push({ group: lastGroupName, value });
+        }
+      } else {
+        group.push(value);
+      }
     }
 
     while (iter.next()) {
@@ -557,7 +576,8 @@
         if (isNextSpace || isPrevSpace) continue;
       }
       if (emptyStack && isSeperator(curr)) {
-        group.push(joinTokens$1(tokens));
+        addGroup(tokens);
+        lastGroupName = curr.value;
         tokens = [];
       } else {
         tokens.push(curr);
@@ -565,7 +585,7 @@
     }
 
     if (tokens.length) {
-      group.push(joinTokens$1(tokens));
+      addGroup(tokens);
     }
 
     return group;
@@ -1266,6 +1286,7 @@
     while (!it.end()) {
       c = it.curr();
       let prev = it.curr(-1);
+      let next = it.curr(1);
       let start = it.index();
       if ((/[\('"`]/.test(c) && prev !== '\\')) {
         if (stack.length) {
@@ -1328,7 +1349,7 @@
         }
         arg += c;
       }
-      if (composition && (it.curr(1) == ')' || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
+      if (composition && ((next == ')' || next == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
         if (group.length) {
           args.push(normalize_argument(group));
         }
@@ -1516,6 +1537,9 @@
           c = symbols[c];
         }
         text.value += c;
+      }
+      if (it.curr() === ';' || it.curr() == '}') {
+        break;
       }
       it.next();
     }
@@ -3224,6 +3248,20 @@
       return _ => cell_id(x, y, z);
     },
 
+    dx({ x, grid }) {
+      return n => {
+        n = Number(n) || 0;
+        return x - .5 - n - grid.x / 2;
+      }
+    },
+
+    dy({ y, grid }) {
+      return n => {
+        n = Number(n) || 0;
+        return y - .5 - n - grid.y / 2;
+      }
+    },
+
     n({ extra }) {
       let lastExtra = last(extra);
       return lastExtra ? calc_with(lastExtra[0]) : '@n';
@@ -3960,7 +3998,7 @@
   var Property = add_alias({
 
     size(value, { is_special_selector, grid }) {
-      let [w, h = w] = parse$8(value);
+      let [w, h = w, ratio] = parse$8(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
@@ -3968,11 +4006,22 @@
       width: ${ w };
       height: ${ h };
     `;
-      if (is_special_selector) {
-        if (w === 'auto' || h === 'auto') {
-          styles += `aspect-ratio: ${ grid.ratio };`;
+      if (w === 'auto' || h === 'auto') {
+        if (ratio) {
+          if (/^\(.+\)$/.test(ratio)) {
+            ratio = ratio.substring(1, ratio.length - 1);
+          } else if (!/^calc/.test(ratio)) {
+            ratio = `calc(${ratio})`;
+          }
+          if (!is_special_selector) {
+            styles += `aspect-ratio: ${ ratio };`;
+          }
         }
-      } else {
+        if (is_special_selector) {
+          styles += `aspect-ratio: ${ ratio || grid.ratio };`;
+        }
+      }
+      if (!is_special_selector) {
         styles += `
         --internal-cell-width: ${ w };
         --internal-cell-height: ${ h };
@@ -4002,11 +4051,40 @@
     },
 
     grid(value, options) {
-      let [grid, size] = parse$8(value, { symbol: '/', noSpace: true });
-      return {
-        grid: parse_grid(grid, options.max_grid),
-        size: size ? this.size(size, options) : ''
+      let result = {
+        clip: true,
       };
+      if (/no\-*clip/i.test(value)) {
+        result.clip = false;
+        value = value.replace(/no\-*clip/i, '');
+      }
+      let groups = parse$8(value, {
+        symbol: ['/', '+', '*', '|', '-'],
+        noSpace: true,
+        verbose: true
+      });
+      for (let { group, value } of groups) {
+        if (group === '+') result.scale = value;
+        if (group === '*') result.rotate = value;
+        if (group === '/') {
+          if (result.size === undefined) result.size = this.size(value, options);
+          else result.fill = value;
+        }
+        if ((group === '|' || group == '-' || group == '') && !result.grid) {
+          result.grid = parse_grid(value, options.max_grid);
+          if (group === '|') {
+            result.flexColumn = true;
+          }
+          if (group === '-') {
+            result.flexRow = true;
+          }
+        }
+      }
+      return result;
+    },
+
+    gap(value) {
+      return value;
     },
 
     seed(value) {
@@ -4660,6 +4738,29 @@
       }
     }
 
+    add_grid_style({ fill, clip, rotate, scale, flexRow, flexColumn }) {
+      if (fill) {
+        this.add_rule(':host', `background-color: ${fill};`);
+      }
+      if (!clip) {
+        this.add_rule(':host', 'contain: none;');
+      }
+      if (rotate) {
+        this.add_rule(':container', `rotate: ${rotate};`);
+      }
+      if (scale) {
+        this.add_rule(':container', `scale: ${scale};`);
+      }
+      if (flexRow) {
+        this.add_rule(':container', `display: flex`);
+        this.add_rule('cell', `flex: 1`);
+      }
+      if (flexColumn) {
+        this.add_rule(':container', `display: flex; flex-direction: column;`);
+        this.add_rule('cell', `flex: 1`);
+      }
+    }
+
     compose_rule(token, _coords, selector) {
       let coords = Object.assign({}, _coords);
       let prop = token.property;
@@ -4772,6 +4873,7 @@
           case 'grid': {
             if (is_host_selector(selector)) {
               rule = transformed.size || '';
+              this.add_grid_style(transformed);
             } else {
               rule = '';
               if (!this.is_grid_defined) {
@@ -4781,11 +4883,16 @@
                   max_grid: coords.max_grid
                 });
                 this.add_rule(':host', transformed.size || '');
+                this.add_grid_style(transformed);
               }
             }
             this.grid = coords.grid;
             this.is_grid_defined = true;
             break;
+          }
+          case 'gap': {
+            rule = '';
+            this.add_rule(':container', `gap: ${transformed};`);
           }
           case 'content': {
             rule = '';
@@ -4878,7 +4985,9 @@
             }
           }
         });
-        if (!is_nil(this.seed)) {
+        if (is_nil(this.seed)) {
+          this.seed = coords.seed_value;
+        } else {
           coords.update_random(this.seed);
         }
       }
@@ -5064,6 +5173,7 @@
       grid: { x: 1, y: 1, z: 1, count: 1 },
       random, rand, pick, shuffle,
       max_grid, update_random,
+      seed_value,
     });
 
     let { grid, seed } = rules.output();
@@ -6295,6 +6405,7 @@ void main() {
       visibility: visible;
       width: auto;
       height: auto;
+      contain: content;
       --${ uniform_time.name }: 0
     }
     :host([hidden]), .host[hidden] {
