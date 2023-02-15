@@ -1,3 +1,11 @@
+## 0.34.1
+
+* Fix gap property break and remove redundant styles.
+
+<br /> <br />
+
+
+
 ## 0.34.0
 
 ### Breaking

@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.0 */
+/*! css-doodle@0.34.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -4457,6 +4457,7 @@
       this.grid = null;
       this.seed = null;
       this.is_grid_defined = false;
+      this.is_gap_defined = false;
       this.coords = [];
       this.doodles = {};
       this.canvas = {};
@@ -4892,7 +4893,11 @@
           }
           case 'gap': {
             rule = '';
-            this.add_rule(':container', `gap: ${transformed};`);
+            if (!this.is_gap_defined) {
+              this.add_rule(':container', `gap: ${transformed};`);
+              this.is_gap_defined = true;
+            }
+            break;
           }
           case 'content': {
             rule = '';
