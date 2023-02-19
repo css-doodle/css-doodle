@@ -688,6 +688,16 @@ const Expose = add_alias({
     }
   },
 
+  once({ context, extra, position }) {
+    let counter = 'once-counter' + position;
+    return (...args) => {
+      if (is_nil(context[counter])) {
+        context[counter] = args;
+      }
+      return context[counter];
+    }
+  },
+
 }, {
 
   'index': 'i',
