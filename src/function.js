@@ -656,8 +656,8 @@ const Expose = add_alias({
       let result = [list.join(separator)];
       // Just ignore the performance
       for (let i = 0; i < size; ++i) {
-        let item = list.pop();
-        list.unshift(item);
+        let item = list.shift();
+        list.push(item);
         result.push(list.join(separator));
       }
       return result;
