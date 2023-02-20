@@ -1,3 +1,13 @@
+## 0.34.2
+
+* Change `cycle` shift direction to match the "reduced Latin square".
+* Add experimental `once` function.
+* Fix rading complex value in `cycle`.
+
+<br /> <br />
+
+
+
 ## 0.34.1
 
 * Fix gap property break and remove redundant styles.
@@ -10,7 +20,7 @@
 
 ### Breaking
 
-* The css-doodle element now is by default restrict the visible area to its dimension,
+* The css-doodle element now by default restricts the visible area to its dimension,
   which means it's overflow hidden. There are two ways to change this behavior:
 
   1. Append the <code>noclip</code> keyword to the `@grid` property:

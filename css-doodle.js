@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.1 */
+/*! css-doodle@0.34.2 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -3760,6 +3760,7 @@
 
     cycle() {
       return (...args) => {
+        args = args.map(n => '(' + n + ')');
         let list = [];
         let separator;
         if (args.length == 1) {
@@ -3768,12 +3769,13 @@
           separator = ',';
           list = parse$8(args.map(get_value).join(separator), { symbol: separator});
         }
+        list = list.map(n => n.replace(/^\(|\)$/g,''));
         let size = list.length - 1;
         let result = [list.join(separator)];
         // Just ignore the performance
         for (let i = 0; i < size; ++i) {
-          let item = list.pop();
-          list.unshift(item);
+          let item = list.shift();
+          list.push(item);
           result.push(list.join(separator));
         }
         return result;
@@ -3801,6 +3803,16 @@
     unicode() {
       return (...args) => {
         return args.map(code => String.fromCharCode(code));
+      }
+    },
+
+    once({ context, extra, position }) {
+      let counter = 'once-counter' + position;
+      return (...args) => {
+        if (is_nil(context[counter])) {
+          context[counter] = args;
+        }
+        return context[counter];
       }
     },
 
