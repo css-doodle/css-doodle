@@ -643,6 +643,7 @@ const Expose = add_alias({
 
   cycle() {
     return (...args) => {
+      args = args.map(n => '(' + n + ')');
       let list = [];
       let separator;
       if (args.length == 1) {
@@ -652,6 +653,7 @@ const Expose = add_alias({
         separator = ',';
         list = parse_value_group(args.map(get_value).join(separator), { symbol: separator});
       }
+      list = list.map(n => n.replace(/^\(|\)$/g,''));
       let size = list.length - 1;
       let result = [list.join(separator)];
       // Just ignore the performance
