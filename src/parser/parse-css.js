@@ -266,7 +266,6 @@ function read_arguments(it, composition, doodle) {
   while (!it.end()) {
     c = it.curr();
     let prev = it.curr(-1);
-    let next = it.curr(1);
     let start = it.index();
     if ((/[\('"`]/.test(c) && prev !== '\\')) {
       if (stack.length) {
@@ -329,7 +328,7 @@ function read_arguments(it, composition, doodle) {
       }
       arg += c;
     }
-    if (composition && ((next == ')' || next == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
+    if (composition && ((it.curr(1) == ')' || it.curr(1) == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
       if (group.length) {
         args.push(normalize_argument(group));
       }
