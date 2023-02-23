@@ -586,7 +586,6 @@ function get_basic_styles() {
   return `
     *, *::after, *::before {
       box-sizing: border-box;
-      animation-play-state: var(--cssd-animation-play-state) !important
     }
     :host, .host {
       display: block;
@@ -616,8 +615,8 @@ function get_basic_styles() {
       width: 100%;
       height: 100%
     }
-    :host([cssd-paused-animation]) {
-      --cssd-animation-play-state: paused;
+    :host([cssd-paused-animation]),
+    :host([cssd-paused-animation]) * {
       animation-play-state: paused !important
     }
   `;
