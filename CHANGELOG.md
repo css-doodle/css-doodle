@@ -1,3 +1,12 @@
+## 0.34.3
+
+* Fix CSS parsing on reading iterator
+* Correctly set `animation-delay` on paused only.
+
+<br /> <br />
+
+
+
 ## 0.34.2
 
 * Change `cycle` shift direction to match the "reduced Latin square".

@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.2 */
+/*! css-doodle@0.34.3 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1286,7 +1286,6 @@
     while (!it.end()) {
       c = it.curr();
       let prev = it.curr(-1);
-      let next = it.curr(1);
       let start = it.index();
       if ((/[\('"`]/.test(c) && prev !== '\\')) {
         if (stack.length) {
@@ -1349,7 +1348,7 @@
         }
         arg += c;
       }
-      if (composition && ((next == ')' || next == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
+      if (composition && ((it.curr(1) == ')' || it.curr(1) == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
         if (group.length) {
           args.push(normalize_argument(group));
         }
@@ -6415,7 +6414,6 @@ void main() {
     return `
     *, *::after, *::before {
       box-sizing: border-box;
-      animation-play-state: var(--cssd-animation-play-state) !important
     }
     :host, .host {
       display: block;
@@ -6445,8 +6443,8 @@ void main() {
       width: 100%;
       height: 100%
     }
-    :host([cssd-paused-animation]) {
-      --cssd-animation-play-state: paused;
+    :host([cssd-paused-animation]),
+    :host([cssd-paused-animation]) * {
       animation-play-state: paused !important
     }
   `;
