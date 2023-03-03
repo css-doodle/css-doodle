@@ -319,26 +319,6 @@ const Expose = add_alias({
     };
   },
 
-  noise({ context, grid, position, ...rest }) {
-    let vars = {
-      i: rest.count, I: grid.count,
-      x: rest.x, X: grid.x,
-      y: rest.y, Y: grid.y,
-      z: rest.z, Z: grid.z,
-    };
-    return (x, y, z = 0) => {
-      let counter = 'raw-noise-2d' + position;
-      if (!context[counter]) {
-        context[counter] = new Noise();
-      }
-      return context[counter].noise(
-        calc(x, vars),
-        calc(y, vars),
-        calc(z, vars)
-      );
-    };
-  },
-
   stripe() {
     return (...input) => {
       let colors = input.map(get_value);
