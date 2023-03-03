@@ -281,7 +281,7 @@ const Expose = add_alias({
     };
   },
 
-  rn({ x, y, context, position, grid, extra, shuffle }) {
+  rn({ x, y, context, position, grid, extra, random }) {
     let counter = 'noise-2d' + position;
     let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
     let isSeqContext = (ni && nm);
@@ -294,14 +294,18 @@ const Expose = add_alias({
         [from, to] = [0, from];
       }
       if (!context[counter]) {
-        context[counter] = new Noise(shuffle);
+        context[counter] = new Noise();
+        context[counter + 'offset'] = random();
       }
       frequency = clamp(frequency, 0, Infinity);
       amplitude = clamp(amplitude, 0, Infinity);
       let transform = [from, to].every(is_letter) ? by_charcode : by_unit;
-      let t = isSeqContext
-        ? context[counter].noise((nx - 1)/NX * frequency, (ny - 1)/NY * frequency, 0)
-        : context[counter].noise((x - 1)/grid.x * frequency, (y - 1)/grid.y * frequency, 0);
+      let _x = isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x);
+      let _y = isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y);
+      let offset = context[counter + 'offset'];
+      _x = (_x + offset) % 1;
+      _y = (_y + offset) % 1;
+      let t = context[counter].noise(_x * frequency, _y * frequency, 0);
       let fn = transform((from, to) => map2d(t * amplitude, from, to, amplitude));
       let value = fn(from, to);
       return push_stack(context, 'last_rand', value);
@@ -315,7 +319,7 @@ const Expose = add_alias({
     };
   },
 
-  noise({ context, grid, position, shuffle, ...rest }) {
+  noise({ context, grid, position, ...rest }) {
     let vars = {
       i: rest.count, I: grid.count,
       x: rest.x, X: grid.x,
@@ -325,7 +329,7 @@ const Expose = add_alias({
     return (x, y, z = 0) => {
       let counter = 'raw-noise-2d' + position;
       if (!context[counter]) {
-        context[counter] = new Noise(shuffle);
+        context[counter] = new Noise();
       }
       return context[counter].noise(
         calc(x, vars),
