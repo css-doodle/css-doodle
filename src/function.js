@@ -283,32 +283,52 @@ const Expose = add_alias({
 
   rn({ x, y, context, position, grid, extra, random }) {
     let counter = 'noise-2d' + position;
+    let counterX = counter + 'offset-x';
+    let counterY = counter + 'offset-y';
     let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
     let isSeqContext = (ni && nm);
     return (...args) => {
-      let {from = 0, to = from, frequency = 1, amplitude = 1} = get_named_arguments(args, [
-        'from', 'to', 'frequency', 'amplitude'
+      let {from = 0, to = from, frequency = 1, scale = 1, octave = 1} = get_named_arguments(args, [
+        'from', 'to', 'frequency', 'scale', 'octave'
       ]);
 
-      if (args.length == 1) {
-        [from, to] = [0, from];
-      }
-      if (!context[counter]) {
-        context[counter] = new Noise();
-        context[counter + 'offset'] = random();
-      }
       frequency = clamp(frequency, 0, Infinity);
-      amplitude = clamp(amplitude, 0, Infinity);
-      let transform = [from, to].every(is_letter) ? by_charcode : by_unit;
-      let _x = isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x);
-      let _y = isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y);
-      let offset = context[counter + 'offset'];
-      _x = (_x + offset) % 1;
-      _y = (_y + offset) % 1;
-      let t = context[counter].noise(_x * frequency, _y * frequency, 0);
-      let fn = transform((from, to) => map2d(t * amplitude, from, to, amplitude));
-      let value = fn(from, to);
-      return push_stack(context, 'last_rand', value);
+      scale = clamp(scale, 0, Infinity);
+      octave = clamp(octave, 1, 100);
+
+      if (args.length == 1) [from, to] = [0, from];
+      if (!context[counter]) context[counter] = new Noise();
+      if (!context[counterX]) context[counterX] = random();
+      if (!context[counterY]) context[counterY] = random();
+
+      let transform = (is_letter(from) && is_letter(to)) ? by_charcode : by_unit;
+      let noise2d = context[counter];
+      let offsetX = context[counterX];
+      let offsetY = context[counterY];
+      let _x = (isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x)) + offsetX;
+      let _y = (isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y)) + offsetY;
+
+      // 1-dimentional
+      if (NX <= 1 || grid.x <= 1) _x = 0;
+      if (NY <= 1 || grid.y <= 1) _y = 0;
+
+      // 1x1
+      if (_x == 0 && _y == 0) {
+        _x = offsetX;
+        _y = offsetY;
+      }
+
+      let total = 0;
+      let max = 0;
+      let _scale = scale;
+      let t = noise2d.noise(_x * frequency, _y * frequency, 0) * scale;
+
+      for (let i = 1; i < octave; ++i) {
+        let i2 = i * 2;
+        t += noise2d.noise(_x * frequency * i2, _y * frequency * i2, 0) * (scale / i2);
+      }
+      let fn = transform((from, to) => map2d(t, from, to, scale));
+      return push_stack(context, 'last_rand', fn(from, to));
     };
   },
 
