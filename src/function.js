@@ -55,8 +55,8 @@ function flip_value(num) {
 }
 
 function map2d(value, min, max, amp = 1) {
-  let dimention = 2;
-  let v = Math.sqrt(dimention / 4) * amp;
+  let dimension = 2;
+  let v = Math.sqrt(dimension / 4) * amp;
   let [ma, mb] = [-v, v];
   return lerp((value - ma) / (mb - ma), min * amp, max * amp);
 }
@@ -318,9 +318,6 @@ const Expose = add_alias({
         _y = offsetY;
       }
 
-      let total = 0;
-      let max = 0;
-      let _scale = scale;
       let t = noise2d.noise(_x * frequency, _y * frequency, 0) * scale;
 
       for (let i = 1; i < octave; ++i) {
