@@ -76,6 +76,27 @@ test('should break line on any starts with # ', t => {
   compare(t, input, result);
 });
 
+test('should ignore # inside textures', t => {
+  let input = `
+    texture_0 {
+      background: #000;
+    }
+    fragment {
+      void main() {}
+    }
+  `;
+  let result = {
+    fragment: 'void main(){}',
+    textures: [
+      {
+        name: 'texture_0',
+        value: 'background:#000;'
+      }
+    ]
+  }
+  compare(t, input, result);
+});
+
 test('handle parens around raw fragment', t => {
   let input = `(
     void main() {}
