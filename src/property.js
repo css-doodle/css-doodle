@@ -84,13 +84,14 @@ export default add_alias({
       value = value.replace(/no\-*clip/i, '');
     }
     let groups = parse_value_group(value, {
-      symbol: ['/', '+', '*', '|', '-'],
+      symbol: ['/', '+', '*', '|', '-', '~'],
       noSpace: true,
       verbose: true
     });
     for (let { group, value } of groups) {
       if (group === '+') result.scale = value;
       if (group === '*') result.rotate = value;
+      if (group === '~') result.translate = value;
       if (group === '/') {
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;

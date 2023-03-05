@@ -330,7 +330,7 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, scale, flexRow, flexColumn }) {
+  add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
     if (fill) {
       this.add_rule(':host', `background-color: ${fill};`);
     }
@@ -342,6 +342,9 @@ class Rules {
     }
     if (scale) {
       this.add_rule(':container', `scale: ${scale};`);
+    }
+    if (translate) {
+      this.add_rule(':container', `translate: ${translate};`);
     }
     if (flexRow) {
       this.add_rule(':container', `display: flex`);
