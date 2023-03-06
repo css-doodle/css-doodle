@@ -400,7 +400,7 @@ const Expose = add_alias({
     let id = unique_id('filter-');
     // shorthand
     if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-      let { frequency, scale = 1, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
+      let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
         'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
       ]);
       value = `
@@ -442,11 +442,15 @@ const Expose = add_alias({
             seed: ${seed};
             ${octave}
           }
-          feDisplacementMap {
-            in: SourceGraphic;
-            scale: ${scale};
-          }
-        `
+        `;
+        if (scale) {
+          value += `
+            feDisplacementMap {
+              in: SourceGraphic;
+              scale: ${scale};
+            }
+          `;
+        }
       }
     }
     // new svg syntax
