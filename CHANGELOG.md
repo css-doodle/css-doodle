@@ -1,3 +1,15 @@
+## 0.34.4
+
+* Fix perlin noise seed by using random offsets.
+* Fix reading `#` symbol inside textures.
+* Add support for translate command `~`.
+* Improve noise function to support octave params.
+* Improve `svg-filter` to add displacement only when the `scale` value is given.
+
+<br /> <br />
+
+
+
 ## 0.34.3
 
 * Fix CSS parsing on reading iterator

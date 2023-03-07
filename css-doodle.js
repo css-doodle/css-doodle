@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.3 */
+/*! css-doodle@0.34.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1834,9 +1834,11 @@
           tokens.push(lineBreak());
           line = null;
         }
-        if (curr.isWord() && curr.value.startsWith('#')) {
-          tokens.push(lineBreak());
-          line = next.pos[1];
+        if (!identifier || !identifier.startsWith('texture')) {
+          if (curr.isWord() && curr.value.startsWith('#')) {
+            tokens.push(lineBreak());
+            line = next.pos[1];
+          }
         }
         tokens.push(curr);
       }
@@ -2541,8 +2543,8 @@
    */
 
   class Perlin {
-    constructor(shuffle) {
-      this.p = duplicate(shuffle([
+    constructor() {
+      this.p = duplicate([
         151,160,137,91,90,15,
         131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
         190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
@@ -2556,7 +2558,7 @@
         251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
         49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
         138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
-      ]));
+      ]);
     }
 
     // Convert LO 4 bits of hash code into 12 gradient directions.
@@ -3172,8 +3174,8 @@
   }
 
   function map2d(value, min, max, amp = 1) {
-    let dimention = 2;
-    let v = Math.sqrt(dimention / 4) * amp;
+    let dimension = 2;
+    let v = Math.sqrt(dimension / 4) * amp;
     let [ma, mb] = [-v, v];
     return lerp((value - ma) / (mb - ma), min * amp, max * amp);
   }
@@ -3397,30 +3399,51 @@
       };
     },
 
-    rn({ x, y, context, position, grid, extra, shuffle }) {
+    rn({ x, y, context, position, grid, extra, random }) {
       let counter = 'noise-2d' + position;
+      let counterX = counter + 'offset-x';
+      let counterY = counter + 'offset-y';
       let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
       let isSeqContext = (ni && nm);
       return (...args) => {
-        let {from = 0, to = from, frequency = 1, amplitude = 1} = get_named_arguments(args, [
-          'from', 'to', 'frequency', 'amplitude'
+        let {from = 0, to = from, frequency = 1, scale = 1, octave = 1} = get_named_arguments(args, [
+          'from', 'to', 'frequency', 'scale', 'octave'
         ]);
 
-        if (args.length == 1) {
-          [from, to] = [0, from];
-        }
-        if (!context[counter]) {
-          context[counter] = new Perlin(shuffle);
-        }
         frequency = clamp(frequency, 0, Infinity);
-        amplitude = clamp(amplitude, 0, Infinity);
-        let transform = [from, to].every(is_letter) ? by_charcode : by_unit;
-        let t = isSeqContext
-          ? context[counter].noise((nx - 1)/NX * frequency, (ny - 1)/NY * frequency, 0)
-          : context[counter].noise((x - 1)/grid.x * frequency, (y - 1)/grid.y * frequency, 0);
-        let fn = transform((from, to) => map2d(t * amplitude, from, to, amplitude));
-        let value = fn(from, to);
-        return push_stack(context, 'last_rand', value);
+        scale = clamp(scale, 0, Infinity);
+        octave = clamp(octave, 1, 100);
+
+        if (args.length == 1) [from, to] = [0, from];
+        if (!context[counter]) context[counter] = new Perlin();
+        if (!context[counterX]) context[counterX] = random();
+        if (!context[counterY]) context[counterY] = random();
+
+        let transform = (is_letter(from) && is_letter(to)) ? by_charcode : by_unit;
+        let noise2d = context[counter];
+        let offsetX = context[counterX];
+        let offsetY = context[counterY];
+        let _x = (isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x)) + offsetX;
+        let _y = (isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y)) + offsetY;
+
+        // 1-dimentional
+        if (NX <= 1 || grid.x <= 1) _x = 0;
+        if (NY <= 1 || grid.y <= 1) _y = 0;
+
+        // 1x1
+        if (_x == 0 && _y == 0) {
+          _x = offsetX;
+          _y = offsetY;
+        }
+
+        let t = noise2d.noise(_x * frequency, _y * frequency, 0) * scale;
+
+        for (let i = 1; i < octave; ++i) {
+          let i2 = i * 2;
+          t += noise2d.noise(_x * frequency * i2, _y * frequency * i2, 0) * (scale / i2);
+        }
+        let fn = transform((from, to) => map2d(t, from, to, scale));
+        return push_stack(context, 'last_rand', fn(from, to));
       };
     },
 
@@ -3428,26 +3451,6 @@
       return (n = 1) => {
         let stack = context.last_rand;
         return stack ? stack.last(n) : '';
-      };
-    },
-
-    noise({ context, grid, position, shuffle, ...rest }) {
-      let vars = {
-        i: rest.count, I: grid.count,
-        x: rest.x, X: grid.x,
-        y: rest.y, Y: grid.y,
-        z: rest.z, Z: grid.z,
-      };
-      return (x, y, z = 0) => {
-        let counter = 'raw-noise-2d' + position;
-        if (!context[counter]) {
-          context[counter] = new Perlin(shuffle);
-        }
-        return context[counter].noise(
-          calc$1(x, vars),
-          calc$1(y, vars),
-          calc$1(z, vars)
-        );
       };
     },
 
@@ -3515,7 +3518,7 @@
       let id = unique_id('filter-');
       // shorthand
       if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-        let { frequency, scale = 1, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
+        let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
           'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
         ]);
         value = `
@@ -3557,11 +3560,15 @@
             seed: ${seed};
             ${octave}
           }
-          feDisplacementMap {
-            in: SourceGraphic;
-            scale: ${scale};
-          }
         `;
+          if (scale) {
+            value += `
+            feDisplacementMap {
+              in: SourceGraphic;
+              scale: ${scale};
+            }
+          `;
+          }
         }
       }
       // new svg syntax
@@ -4070,13 +4077,14 @@
         value = value.replace(/no\-*clip/i, '');
       }
       let groups = parse$8(value, {
-        symbol: ['/', '+', '*', '|', '-'],
+        symbol: ['/', '+', '*', '|', '-', '~'],
         noSpace: true,
         verbose: true
       });
       for (let { group, value } of groups) {
         if (group === '+') result.scale = value;
         if (group === '*') result.rotate = value;
+        if (group === '~') result.translate = value;
         if (group === '/') {
           if (result.size === undefined) result.size = this.size(value, options);
           else result.fill = value;
@@ -4750,7 +4758,7 @@
       }
     }
 
-    add_grid_style({ fill, clip, rotate, scale, flexRow, flexColumn }) {
+    add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
       if (fill) {
         this.add_rule(':host', `background-color: ${fill};`);
       }
@@ -4762,6 +4770,9 @@
       }
       if (scale) {
         this.add_rule(':container', `scale: ${scale};`);
+      }
+      if (translate) {
+        this.add_rule(':container', `translate: ${translate};`);
       }
       if (flexRow) {
         this.add_rule(':container', `display: flex`);
