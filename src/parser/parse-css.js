@@ -90,7 +90,7 @@ const symbols = {
 };
 
 function composible(name) {
-  return ['@canvas', '@shaders', '@doodle'].includes(name);
+  return /^@(canvas|shaders|doodle)/.test(name);
 }
 
 function iterator(input = '') {

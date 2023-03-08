@@ -13,6 +13,7 @@ import * as Uniforms from './uniforms.js';
 import { get_props } from './utils/get-props.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { get_rgba_color } from './utils/get-rgba-color.js';
+import { get_grid } from './utils/index.js';
 import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
@@ -193,6 +194,14 @@ if (typeof customElements !== 'undefined') {
       let grid = compiled.grid ? compiled.grid : _grid;
       const { keyframes, host, container, cells } = compiled.styles;
 
+      let viewBox = '';
+      if (options && options.arg) {
+        let v = get_grid(options.arg);
+        if (v.x && v.y) {
+          viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
+        }
+      }
+
       let replace = this.replace(compiled);
       let grid_container = create_grid(grid, compiled.content);
 
@@ -201,9 +210,9 @@ if (typeof customElements !== 'undefined') {
         : '';
 
       replace(`
-        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" ${viewBox}>
           <foreignObject width="100%" height="100%">
-            <div class="host" xmlns="http://www.w3.org/1999/xhtml">
+            <div class="host" width="100%" height="100%" xmlns="http://www.w3.org/1999/xhtml">
               <style>
                 ${ get_basic_styles() }
                 ${ get_grid_styles(grid) }
@@ -331,7 +340,8 @@ if (typeof customElements !== 'undefined') {
           doodle_ids.map(id => {
             if (input.includes(id)) {
               return new Promise(resolve => {
-                this.doodle_to_image(doodles[id], value => resolve({ id, value }));
+                let { arg, doodle } = doodles[id];
+                this.doodle_to_image(doodle, { arg }, value => resolve({ id, value }));
               });
             } else {
               return Promise.resolve('');

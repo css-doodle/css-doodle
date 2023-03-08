@@ -180,6 +180,17 @@ function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
 
+function get_grid(input) {
+  let [x, y = x] = String(input + '')
+    .replace(/\s+/g, '')
+    .replace(/[,，xX]+/g, 'x')
+    .split('x')
+    .map(n => parseInt(n));
+  if (!x || x < 1) x = 1;
+  if (!y || y < 1) y = 1;
+  return { x, y }
+}
+
 export {
   clamp,
   maybe,
@@ -203,4 +214,5 @@ export {
   next_id,
   lerp,
   unique_id,
+  get_grid,
 }

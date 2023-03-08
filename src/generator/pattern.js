@@ -1,5 +1,6 @@
 import Cache from '../utils/cache.js';
 import parse_pattern from '../parser/parse-pattern.js';
+import { get_grid } from '../utils/index.js';
 
 function generate_shader(input, grid) {
   return `
@@ -65,17 +66,6 @@ function generate_block(token, extra) {
 
 function float(n) {
   return String(n).includes('.') ? n : n + '.0';
-}
-
-function get_grid(input) {
-  let [x, y = x] = String(input + '')
-    .replace(/\s+/g, '')
-    .replace(/[,，xX]+/g, 'x')
-    .split('x')
-    .map(n => parseInt(n));
-  if (!x || x < 1) x = 1;
-  if (!y || y < 1) y = 1;
-  return { x, y }
 }
 
 function draw_pattern(code, extra) {

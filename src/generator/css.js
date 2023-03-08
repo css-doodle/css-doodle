@@ -168,10 +168,17 @@ class Rules {
           this.check_uniforms(fname);
           if (this.is_composable(fname)) {
             let value = get_value((arg.arguments[0] || [])[0]);
+            let temp_arg;
+            if (fname === 'doodle') {
+              if (/^\d/.test(value)) {
+                temp_arg = value;
+                value = get_value((val.arguments[1] || [])[0]);
+              }
+            }
             if (!is_nil(value)) {
               switch (fname) {
                 case 'doodle':
-                  return this.compose_doodle(this.inject_variables(value, coords.count));
+                  return this.compose_doodle(this.inject_variables(value, coords.count), temp_arg);
                 case 'shaders':
                   return this.compose_shaders(value, coords);
                 case 'canvas':
@@ -203,9 +210,9 @@ class Rules {
     }
   }
 
-  compose_doodle(doodle) {
+  compose_doodle(doodle, arg) {
     let id = unique_id('doodle');
-    this.doodles[id] = doodle;
+    this.doodles[id] = { doodle, arg };
     return '${' + id + '}';
   }
 
@@ -288,10 +295,17 @@ class Rules {
             this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((val.arguments[0] || [])[0]);
+              let temp_arg;
+              if (fname === 'doodle') {
+                if (/^\d/.test(value)) {
+                  temp_arg = value;
+                  value = get_value((val.arguments[1] || [])[0]);
+                }
+              }
               if (!is_nil(value)) {
                 switch (fname) {
                   case 'doodle':
-                    result += this.compose_doodle(this.inject_variables(value, coords.count)); break;
+                    result += this.compose_doodle(this.inject_variables(value, coords.count), temp_arg); break;
                   case 'shaders':
                     result += this.compose_shaders(value, coords); break;
                   case 'pattern':
