@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.4 */
+/*! css-doodle@0.34.5 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -518,6 +518,17 @@
   function make_array$1(arr) {
     if (is_nil(arr)) return [];
     return Array.isArray(arr) ? arr : [arr];
+  }
+
+  function get_grid(input) {
+    let [x, y = x] = String(input + '')
+      .replace(/\s+/g, '')
+      .replace(/[,，xX]+/g, 'x')
+      .split('x')
+      .map(n => parseInt(n));
+    if (!x || x < 1) x = 1;
+    if (!y || y < 1) y = 1;
+    return { x, y }
   }
 
   function parse$8(input, option = {symbol: ',', noSpace: false, verbose: false }) {
@@ -1110,7 +1121,7 @@
   };
 
   function composible(name) {
-    return ['@canvas', '@shaders', '@doodle'].includes(name);
+    return /^@(canvas|shaders|doodle)/.test(name);
   }
 
   function iterator(input = '') {
@@ -4596,10 +4607,17 @@
             this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((arg.arguments[0] || [])[0]);
+              let temp_arg;
+              if (fname === 'doodle') {
+                if (/^\d/.test(value)) {
+                  temp_arg = value;
+                  value = get_value((val.arguments[1] || [])[0]);
+                }
+              }
               if (!is_nil(value)) {
                 switch (fname) {
                   case 'doodle':
-                    return this.compose_doodle(this.inject_variables(value, coords.count));
+                    return this.compose_doodle(this.inject_variables(value, coords.count), temp_arg);
                   case 'shaders':
                     return this.compose_shaders(value, coords);
                   case 'canvas':
@@ -4631,9 +4649,9 @@
       }
     }
 
-    compose_doodle(doodle) {
+    compose_doodle(doodle, arg) {
       let id = unique_id('doodle');
-      this.doodles[id] = doodle;
+      this.doodles[id] = { doodle, arg };
       return '${' + id + '}';
     }
 
@@ -4716,10 +4734,17 @@
               this.check_uniforms(fname);
               if (this.is_composable(fname)) {
                 let value = get_value((val.arguments[0] || [])[0]);
+                let temp_arg;
+                if (fname === 'doodle') {
+                  if (/^\d/.test(value)) {
+                    temp_arg = value;
+                    value = get_value((val.arguments[1] || [])[0]);
+                  }
+                }
                 if (!is_nil(value)) {
                   switch (fname) {
                     case 'doodle':
-                      result += this.compose_doodle(this.inject_variables(value, coords.count)); break;
+                      result += this.compose_doodle(this.inject_variables(value, coords.count), temp_arg); break;
                     case 'shaders':
                       result += this.compose_shaders(value, coords); break;
                     case 'pattern':
@@ -4839,7 +4864,7 @@
       }
 
       if (prop === 'content') {
-        if (!/["']|^none$|^(var|counter|counters|attr|url)\(/.test(value)) {
+        if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
           value = `'${ value }'`;
         }
       }
@@ -5653,17 +5678,6 @@ void main() {
     return String(n).includes('.') ? n : n + '.0';
   }
 
-  function get_grid(input) {
-    let [x, y = x] = String(input + '')
-      .replace(/\s+/g, '')
-      .replace(/[,，xX]+/g, 'x')
-      .split('x')
-      .map(n => parseInt(n));
-    if (!x || x < 1) x = 1;
-    if (!y || y < 1) y = 1;
-    return { x, y }
-  }
-
   function draw_pattern(code, extra) {
     let tokens = parse(code);
     let result = [];
@@ -6033,6 +6047,14 @@ void main() {
         let grid = compiled.grid ? compiled.grid : _grid;
         const { keyframes, host, container, cells } = compiled.styles;
 
+        let viewBox = '';
+        if (options && options.arg) {
+          let v = get_grid(options.arg);
+          if (v.x && v.y) {
+            viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
+          }
+        }
+
         let replace = this.replace(compiled);
         let grid_container = create_grid(grid, compiled.content);
 
@@ -6041,9 +6063,9 @@ void main() {
           : '';
 
         replace(`
-        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" ${viewBox}>
           <foreignObject width="100%" height="100%">
-            <div class="host" xmlns="http://www.w3.org/1999/xhtml">
+            <div class="host" width="100%" height="100%" xmlns="http://www.w3.org/1999/xhtml">
               <style>
                 ${ get_basic_styles() }
                 ${ get_grid_styles(grid) }
@@ -6170,7 +6192,8 @@ void main() {
             doodle_ids.map(id => {
               if (input.includes(id)) {
                 return new Promise(resolve => {
-                  this.doodle_to_image(doodles[id], value => resolve({ id, value }));
+                  let { arg, doodle } = doodles[id];
+                  this.doodle_to_image(doodle, { arg }, value => resolve({ id, value }));
                 });
               } else {
                 return Promise.resolve('');

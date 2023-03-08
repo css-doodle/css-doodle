@@ -1,3 +1,12 @@
+## 0.34.5
+
+* Support `viewBox` to `@doodle` function.
+* Ignore space after `none` for content property.
+
+<br /> <br />
+
+
+
 ## 0.34.4
 
 * Fix perlin noise seed by using random offsets.
