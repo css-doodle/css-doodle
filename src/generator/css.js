@@ -112,8 +112,10 @@ class Rules {
       }
     });
     input = remove_empty_values(input);
-    let result = _fn(...make_array(input));
-    return result;
+    if (typeof _fn === 'function') {
+      return _fn(...make_array(input));
+    }
+    return _fn;
   }
 
   compose_aname(...args) {
