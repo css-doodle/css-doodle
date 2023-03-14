@@ -401,7 +401,7 @@ const Expose = add_alias({
     let value = values.join(',');
     let id = unique_id('filter-');
     // shorthand
-    if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
+    if (values.every(n => /^[\-\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
       let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
         'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
       ]);
