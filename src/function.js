@@ -18,6 +18,7 @@ import parse_value_group from './parser/parse-value-group.js';
 import parse_shape_commands from './parser/parse-shape-commands.js';
 import parse_svg from './parser/parse-svg.js';
 import parse_svg_path from './parser/parse-svg-path.js';
+import parse_compound_value from './parser/parse-compound-value.js';
 
 import * as Uniforms from './uniforms.js';
 
@@ -61,6 +62,17 @@ function map2d(value, min, max, amp = 1) {
   return lerp((value - ma) / (mb - ma), min * amp, max * amp);
 }
 
+function compute(op, a, b) {
+  switch (op) {
+    case '+': return a + b;
+    case '-': return a - b;
+    case '*': return a * b;
+    case '/': return a / b;
+    case '%': return a % b;
+    default: return 0;
+  }
+}
+
 function calc_with(base) {
   return v => {
     if (is_empty(v) || is_empty(base)) {
@@ -68,27 +80,17 @@ function calc_with(base) {
     }
     if (/^[+*-\/%][.\d\s]/.test(v)) {
       let op = v[0];
-      let num = Number(v.substr(1).trim()) || 0;
-      switch (op) {
-        case '+': return base + num;
-        case '-': return base - num;
-        case '*': return base * num;
-        case '/': return base / num;
-        case '%': return base % num;
-      }
+      let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
+      return compute(op, base, value) + unit;
     }
     else if (/[+*-\/%]$/.test(v)) {
       let op = v.substr(-1);
-      let num = Number(v.substr(0, v.length - 1).trim()) || 0;
-      switch (op) {
-        case '+': return num + base;
-        case '-': return num - base;
-        case '*': return num * base;
-        case '/': return num / base;
-        case '%': return num % base;
-      }
+      let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
+      return compute(op, value, base) + unit;
+    } else {
+      let { unit = '', value } = parse_compound_value(v || 0);
+      return (base + value) + unit;
     }
-    return base + (Number(v) || 0);
   }
 }
 
