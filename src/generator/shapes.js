@@ -280,6 +280,7 @@ function create_shape_points(props, {min, max}) {
   let px = is_empty(props.x) ? 'cos(t)' : props.x;
   let py = is_empty(props.y) ? 'sin(t)' : props.y;
   let pr = is_empty(props.r) ? ''       : props.r;
+  let pt = is_empty(props.t) ? ''       : props.t;
 
   let { unit, value } = parse_compound_value(pr);
   if (unit && !props[unit] && unit !== 't') {
@@ -301,8 +302,8 @@ function create_shape_points(props, {min, max}) {
 
   return create_polygon_points(option, (t, i) => {
     let context = Object.assign({}, props, {
-      't': t,
-      'θ': t,
+      't': pt || t,
+      'θ': pt || t,
       'i': (i + 1),
       seq(...list) {
         if (!list.length) return '';
@@ -324,6 +325,9 @@ function create_shape_points(props, {min, max}) {
       let r = calc(pr, context);
       if (r == 0) {
         r = .00001;
+      }
+      if (pt) {
+        t = calc(pt, context);
       }
       x = r * cos(t);
       y = r * sin(t);
