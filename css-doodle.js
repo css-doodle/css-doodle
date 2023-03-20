@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.5 */
+/*! css-doodle@0.34.6 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -2224,7 +2224,7 @@
         else {
           let right = stack.pop();
           let left = stack.pop();
-          stack.push(compute(
+          stack.push(compute$1(
             value, Number(left), Number(right)
           ));
         }
@@ -2371,7 +2371,7 @@
     return expr;
   }
 
-  function compute(op, a, b) {
+  function compute$1(op, a, b) {
     switch (op) {
       case '+': return a + b;
       case '-': return a - b;
@@ -3002,6 +3002,7 @@
     let px = is_empty(props.x) ? 'cos(t)' : props.x;
     let py = is_empty(props.y) ? 'sin(t)' : props.y;
     let pr = is_empty(props.r) ? ''       : props.r;
+    let pt = is_empty(props.t) ? ''       : props.t;
 
     let { unit, value } = parse$4(pr);
     if (unit && !props[unit] && unit !== 't') {
@@ -3023,8 +3024,8 @@
 
     return create_polygon_points(option, (t, i) => {
       let context = Object.assign({}, props, {
-        't': t,
-        'θ': t,
+        't': pt || t,
+        'θ': pt || t,
         'i': (i + 1),
         seq(...list) {
           if (!list.length) return '';
@@ -3046,6 +3047,9 @@
         let r = calc$1(pr, context);
         if (r == 0) {
           r = .00001;
+        }
+        if (pt) {
+          t = calc$1(pt, context);
         }
         x = r * cos(t);
         y = r * sin(t);
@@ -3191,6 +3195,17 @@
     return lerp((value - ma) / (mb - ma), min * amp, max * amp);
   }
 
+  function compute(op, a, b) {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return a / b;
+      case '%': return a % b;
+      default: return 0;
+    }
+  }
+
   function calc_with(base) {
     return v => {
       if (is_empty(v) || is_empty(base)) {
@@ -3198,27 +3213,17 @@
       }
       if (/^[+*-\/%][.\d\s]/.test(v)) {
         let op = v[0];
-        let num = Number(v.substr(1).trim()) || 0;
-        switch (op) {
-          case '+': return base + num;
-          case '-': return base - num;
-          case '*': return base * num;
-          case '/': return base / num;
-          case '%': return base % num;
-        }
+        let { unit = '', value } = parse$4(v.substr(1).trim() || 0);
+        return compute(op, base, value) + unit;
       }
       else if (/[+*-\/%]$/.test(v)) {
         let op = v.substr(-1);
-        let num = Number(v.substr(0, v.length - 1).trim()) || 0;
-        switch (op) {
-          case '+': return num + base;
-          case '-': return num - base;
-          case '*': return num * base;
-          case '/': return num / base;
-          case '%': return num % base;
-        }
+        let { unit = '', value } = parse$4(v.substr(0, v.length - 1).trim() || 0);
+        return compute(op, value, base) + unit;
+      } else {
+        let { unit = '', value } = parse$4(v || 0);
+        return (base + value) + unit;
       }
-      return base + (Number(v) || 0);
     }
   }
 
@@ -3528,7 +3533,7 @@
       let value = values.join(',');
       let id = unique_id('filter-');
       // shorthand
-      if (values.every(n => /^[\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
+      if (values.every(n => /^[\-\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
         let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
           'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
         ]);
@@ -4551,8 +4556,10 @@
         }
       });
       input = remove_empty_values(input);
-      let result = _fn(...make_array(input));
-      return result;
+      if (typeof _fn === 'function') {
+        return _fn(...make_array(input));
+      }
+      return _fn;
     }
 
     compose_aname(...args) {

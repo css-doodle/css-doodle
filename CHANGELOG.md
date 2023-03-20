@@ -1,3 +1,13 @@
+## 0.34.6
+
+* Fix `@n` value outside of `@m` function.
+* Add unit calculation.
+* Support negative value for dict in svg filter.
+* Support custom angle in shapes builder.
+
+<br /> <br />
+
+
 ## 0.34.5
 
 * Support `viewBox` to `@doodle` function.

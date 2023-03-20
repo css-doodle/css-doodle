@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.34.5",
+  "version": "0.34.6",
   "description": "A web component for drawing patterns with CSS",
   "main": "css-doodle.js",
   "scripts": {
