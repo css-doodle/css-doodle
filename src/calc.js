@@ -66,7 +66,7 @@ function calc(expr, context, repeat = []) {
         negative = true;
         name = name.substr(1);
       }
-      let output = value.map(v => calc(v, context));
+      let output = value.map(v => calc(v, context, repeat));
       let fns = name.split('.');
       let fname;
       while (fname = fns.pop()) {
