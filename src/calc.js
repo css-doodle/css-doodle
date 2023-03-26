@@ -39,11 +39,11 @@ function calc(expr, context, repeat = []) {
         result = Math[value];
       }
       if (is_invalid_number(result)) {
-        result = expand(value, context);
+        result = expand(value, context, repeat);
       }
       if (is_invalid_number(result)) {
         if (/^\-\D/.test(value)) {
-          result = expand('-1' + value.substr(1), context);
+          result = expand('-1' + value.substr(1), context, repeat);
         }
       }
       if (result === undefined) {
@@ -255,7 +255,7 @@ function compute(op, a, b) {
   }
 }
 
-function expand(value, context) {
+function expand(value, context, repeat) {
   let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
   let v = context[variable];
   if (v === undefined) {
@@ -264,7 +264,13 @@ function expand(value, context) {
   if (typeof v === 'number') {
     return Number(num) * v;
   } else {
-    return num * calc(infix_to_postfix(v), context);
+    repeat.push(v);
+    if (is_cycle(repeat)) {
+      repeat = [];
+      return 0;
+    } else {
+      return num * calc(infix_to_postfix(v), context, repeat);
+    }
   }
 }
 

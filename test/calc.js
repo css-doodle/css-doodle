@@ -35,3 +35,14 @@ test('negative functions', t => {
   compare(t, ['-fn() + 2', { fn: () => 5 }], -3);
   compare(t, ['--fn()', { fn: () => 5 }], 0);
 });
+
+test('cyclic reference', t => {
+  compare(t, ['cos(t)', { t: '2t' }], Math.cos(0));
+  compare(t, ['cos(t)', { t: '2*t' }], Math.cos(0));
+  compare(t, ['cos(t)', { t: 'x(t)' }], Math.cos(0));
+  compare(t, ['cos(t)', { t: 'x' }], Math.cos(0));
+  compare(t, ['cos(t)', { t: '2x' }], Math.cos(0));
+  compare(t, ['cos(t)', { t: 'sin(t)' }], Math.cos(0));
+  compare(t, ['cos(t)', { t: 'cos(t)' }], Math.cos(Math.cos(Math.cos(Math.cos(0)))));
+  compare(t, ['t', { t: 'sin(t)' }], 0);
+});
