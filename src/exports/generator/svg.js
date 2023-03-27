@@ -26,7 +26,7 @@ export default function svg(rules) {
 svg.element = function(rules) {
   const output = svg(rules);
   if (typeof DOMParser !== 'undefined') {
-    const doc = (new DOMParser()).parseFromString(output, 'application/xml');
+    const doc = (new DOMParser()).parseFromString(output, 'image/svg+xml');
     const errorNode = doc.querySelector('parsererror');
     if (!errorNode) {
       return doc.firstChild;
