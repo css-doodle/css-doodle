@@ -22,3 +22,14 @@ export default function svg(rules) {
     return '';
   }
 }
+
+svg.element = function(rules) {
+  const output = svg(rules);
+  if (typeof DOMParser !== 'undefined') {
+    const doc = (new DOMParser()).parseFromString(output, 'application/xml');
+    const errorNode = doc.querySelector('parsererror');
+    if (!errorNode) {
+      return doc.firstChild;
+    }
+  }
+}
