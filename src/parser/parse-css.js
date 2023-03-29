@@ -269,10 +269,12 @@ function read_arguments(it, composition, doodle) {
     let start = it.index();
     if ((/[\('"`]/.test(c) && prev !== '\\')) {
       if (stack.length) {
+        /*
         if ((c !== '(') && last(stack) === '(') {
           stack.pop();
         }
-        if (c != '(' && c === last(stack)) {
+        */
+        if (c !== '(' && c === last(stack)) {
           stack.pop();
         } else {
           stack.push(c);
