@@ -1,3 +1,10 @@
+## 0.34.7
+
+* Add `svg.element()` to svg generator.
+* Fix cycle detection in `calc()`.
+* Fix backward compatibility for `@doodle()`.
+
+
 ## 0.34.6
 
 * Fix `@n` value outside of `@m` function.

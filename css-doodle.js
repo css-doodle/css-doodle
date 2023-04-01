@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.6 */
+/*! css-doodle@0.34.7 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1300,10 +1300,12 @@
       let start = it.index();
       if ((/[\('"`]/.test(c) && prev !== '\\')) {
         if (stack.length) {
+          /*
           if ((c !== '(') && last(stack) === '(') {
             stack.pop();
           }
-          if (c != '(' && c === last(stack)) {
+          */
+          if (c !== '(' && c === last(stack)) {
             stack.pop();
           } else {
             stack.push(c);
@@ -2178,11 +2180,11 @@
           result = Math[value];
         }
         if (is_invalid_number(result)) {
-          result = expand$1(value, context);
+          result = expand$1(value, context, repeat);
         }
         if (is_invalid_number(result)) {
           if (/^\-\D/.test(value)) {
-            result = expand$1('-1' + value.substr(1), context);
+            result = expand$1('-1' + value.substr(1), context, repeat);
           }
         }
         if (result === undefined) {
@@ -2205,7 +2207,7 @@
           negative = true;
           name = name.substr(1);
         }
-        let output = value.map(v => calc(v, context));
+        let output = value.map(v => calc(v, context, repeat));
         let fns = name.split('.');
         let fname;
         while (fname = fns.pop()) {
@@ -2394,7 +2396,7 @@
     }
   }
 
-  function expand$1(value, context) {
+  function expand$1(value, context, repeat) {
     let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
     let v = context[variable];
     if (v === undefined) {
@@ -2403,7 +2405,13 @@
     if (typeof v === 'number') {
       return Number(num) * v;
     } else {
-      return num * calc(infix_to_postfix(v), context);
+      repeat.push(v);
+      if (is_cycle(repeat)) {
+        repeat = [];
+        return 0;
+      } else {
+        return num * calc(infix_to_postfix(v), context, repeat);
+      }
     }
   }
 
@@ -5044,9 +5052,7 @@
             }
           }
         });
-        if (is_nil(this.seed)) {
-          this.seed = coords.seed_value;
-        } else {
+        if (is_nil(this.seed)) ; else {
           coords.update_random(this.seed);
         }
       }
