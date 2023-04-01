@@ -5,6 +5,8 @@
 import { last } from './utils/list.js';
 import { is_invalid_number } from './utils/index.js';
 
+const cache = new Map();
+
 const default_context = {
   'π': Math.PI,
   gcd: (a, b) => {
@@ -95,6 +97,9 @@ function calc(expr, context, repeat = []) {
 }
 
 function get_tokens(input) {
+  if (cache.has(input)) {
+    return cache.get(input);
+  }
   let expr = String(input);
   let tokens = [], num = '';
 
@@ -147,6 +152,7 @@ function get_tokens(input) {
   if (num.length) {
     tokens.push({ type: 'number', value: num });
   }
+  cache.set(input, tokens);
   return tokens;
 }
 
@@ -275,7 +281,14 @@ function expand(value, context, repeat) {
 }
 
 function is_cycle(array) {
-  return (array[0] == array[2] && array[1] == array[3]);
+  if (array.length > 50) return true;
+  let tail = last(array);
+  for (let i = 2; i <= 4; ++i) {
+    let item = array[array.length - i];
+    if (item === undefined) return false;
+    if (tail !== item) return false;
+  }
+  return true;
 }
 
 export default function(input, context) {

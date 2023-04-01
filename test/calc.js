@@ -45,4 +45,6 @@ test('cyclic reference', t => {
   compare(t, ['cos(t)', { t: 'sin(t)' }], Math.cos(0));
   compare(t, ['cos(t)', { t: 'cos(t)' }], Math.cos(Math.cos(Math.cos(Math.cos(0)))));
   compare(t, ['t', { t: 'sin(t)' }], 0);
+  compare(t, ['t', { t: 'sin(t)' }], 0);
+  compare(t, ['sin(t)', { t: '2s', s: 't', 'b': 'sin(a)', a: 'b' }], 0);
 });
