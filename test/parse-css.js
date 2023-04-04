@@ -78,3 +78,35 @@ test('pseudo quotes', t => {
   );
 
 });
+
+test('quotes in SVG', t => {
+
+  function getValue(value) {
+    return [
+      {
+        "type": "cond",
+        "name": "@svg",
+        "styles": [],
+        "arguments": [
+          [
+            {
+              "type": "text",
+              "value": `text { content: \"${value}\"; }`
+            }
+          ]
+        ]
+      }
+    ];
+  }
+
+  compare(t,
+    `@svg( text { content: ""; } )`,
+    getValue(""),
+  );
+
+  compare(t,
+    `@svg( text { content: "}"; } )`,
+    getValue("}"),
+  );
+
+});

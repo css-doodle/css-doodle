@@ -154,6 +154,21 @@ test('remove quotes around text', t => {
   );
 });
 
+
+test('special character inside quotes', t => {
+  compare(t,
+    `text {
+      content: "}";
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text>}</text>
+      </svg>
+    `)
+  );
+});
+
+
 test('style tag', t => {
   compare(t,
     `svg {

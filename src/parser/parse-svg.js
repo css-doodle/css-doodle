@@ -13,13 +13,18 @@ function readStatement(iter, token) {
     } else if (curr.isSymbol(')') && !stackQuote.length) {
       stackParen.pop();
     }
-    let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
     if (curr.isSymbol("'", '"')) {
       if (curr.status === 'open') {
         stackQuote.push(curr);
       } else {
         stackQuote.pop();
       }
+    }
+    let isStatementBreak = !stackQuote.length
+      && !stackParen.length
+      && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+
+    if (curr.isSymbol("'", '"')) {
       if ((next && next.isSymbol('}')) && !stackQuote.length) {
         isStatementBreak = true;
       }

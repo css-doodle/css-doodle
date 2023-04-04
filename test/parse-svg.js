@@ -347,6 +347,22 @@ test('content values', t => {
       }]
     }]
   });
+
+  compare(t, `
+    text { content: "}"; }
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'text',
+      value: [{
+        name: 'content',
+        type: 'statement',
+        value: '"}"'
+      }]
+    }]
+  });
 });
 
 test('times syntax', t => {
