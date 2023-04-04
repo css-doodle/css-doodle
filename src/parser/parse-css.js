@@ -519,7 +519,7 @@ function read_value(it) {
       }
       text.value += c;
     }
-    if (it.curr() === ';' || it.curr() == '}') {
+    if ((it.curr() === ';' || it.curr() == '}') && !quote_stack.length) {
       break;
     }
     it.next();
