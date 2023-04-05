@@ -61,10 +61,10 @@ if (typeof customElements !== 'undefined') {
       this.cleanup();
       // Use old rules to update
       if (!styles) {
-        styles = un_entity(this.innerHTML);
+        styles = un_entity(this._innerHTML);
       }
-      if (this.innerHTML !== styles) {
-        this.innerHTML = styles;
+      if (this._innerHTML !== styles) {
+        this._innerHTML = styles;
       }
       if (!this.grid_size) {
         this.grid_size = this.get_grid();
@@ -324,6 +324,8 @@ if (typeof customElements !== 'undefined') {
         : this.get_grid();
 
       this.build_grid(compiled, this.grid_size);
+      this._innerHTML = this.innerHTML;
+      this.innerHTML = '';
     }
 
     replace({ doodles, shaders, canvas, pattern }) {
