@@ -77,6 +77,11 @@ test('pseudo quotes', t => {
     getValue("x;")
   );
 
+  compare(t,
+    `:after { content: "x;";;; }`,
+    getValue("x;")
+  );
+
 });
 
 test('quotes in SVG', t => {

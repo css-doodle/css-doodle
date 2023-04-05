@@ -579,7 +579,7 @@ function read_pseudo(it, extra) {
         pseudo.styles = pseudo.styles.concat(
           rule.value
         );
-      } else {
+      } else if (rule.property) {
         pseudo.styles.push(rule);
       }
       if (it.curr() == '}') break;
