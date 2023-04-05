@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.7 */
+/*! css-doodle@0.34.8 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -618,13 +618,18 @@
       } else if (curr.isSymbol(')') && !stackQuote.length) {
         stackParen.pop();
       }
-      let isStatementBreak = !stackQuote.length && !stackParen.length && (!next || curr.isSymbol(';') || next.isSymbol('}'));
       if (curr.isSymbol("'", '"')) {
         if (curr.status === 'open') {
           stackQuote.push(curr);
         } else {
           stackQuote.pop();
         }
+      }
+      let isStatementBreak = !stackQuote.length
+        && !stackParen.length
+        && (!next || curr.isSymbol(';') || next.isSymbol('}'));
+
+      if (curr.isSymbol("'", '"')) {
         if ((next && next.isSymbol('}')) && !stackQuote.length) {
           isStatementBreak = true;
         }
@@ -1550,7 +1555,7 @@
         }
         text.value += c;
       }
-      if (it.curr() === ';' || it.curr() == '}') {
+      if ((it.curr() === ';' || it.curr() == '}') && !quote_stack.length) {
         break;
       }
       it.next();
@@ -1610,7 +1615,7 @@
           pseudo.styles = pseudo.styles.concat(
             rule.value
           );
-        } else {
+        } else if (rule.property) {
           pseudo.styles.push(rule);
         }
         if (it.curr() == '}') break;
@@ -2146,6 +2151,8 @@
    * Based on the Shunting-yard algorithm.
    */
 
+  const cache = new Map();
+
   const default_context = {
     'π': Math.PI,
     gcd: (a, b) => {
@@ -2236,6 +2243,9 @@
   }
 
   function get_tokens$1(input) {
+    if (cache.has(input)) {
+      return cache.get(input);
+    }
     let expr = String(input);
     let tokens = [], num = '';
 
@@ -2288,6 +2298,7 @@
     if (num.length) {
       tokens.push({ type: 'number', value: num });
     }
+    cache.set(input, tokens);
     return tokens;
   }
 
@@ -2416,7 +2427,14 @@
   }
 
   function is_cycle(array) {
-    return (array[0] == array[2] && array[1] == array[3]);
+    if (array.length > 50) return true;
+    let tail = last(array);
+    for (let i = 2; i <= 4; ++i) {
+      let item = array[array.length - i];
+      if (item === undefined) return false;
+      if (tail !== item) return false;
+    }
+    return true;
   }
 
   function calc$1(input, context) {
@@ -5927,10 +5945,10 @@ void main() {
         this.cleanup();
         // Use old rules to update
         if (!styles) {
-          styles = un_entity(this.innerHTML);
+          styles = un_entity(this._innerHTML);
         }
-        if (this.innerHTML !== styles) {
-          this.innerHTML = styles;
+        if (this._innerHTML !== styles) {
+          this._innerHTML = styles;
         }
         if (!this.grid_size) {
           this.grid_size = this.get_grid();
@@ -6189,6 +6207,8 @@ void main() {
           : this.get_grid();
 
         this.build_grid(compiled, this.grid_size);
+        this._innerHTML = this.innerHTML;
+        this.innerHTML = '';
       }
 
       replace({ doodles, shaders, canvas, pattern }) {

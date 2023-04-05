@@ -1,8 +1,23 @@
+## 0.34.8
+
+* Cache tokens and fix cyclic references.
+* Fix pseudo quotes.
+* Fix SVG parser for special characters inside `content`.
+* Ignore empty properties in pseudo.
+* Clear innerHTML to avoid side effects.
+
+<br /> <br />
+
+
+
 ## 0.34.7
 
 * Add `svg.element()` to svg generator.
 * Fix cycle detection in `calc()`.
 * Fix backward compatibility for `@doodle()`.
+
+<br /> <br />
+
 
 
 ## 0.34.6
@@ -13,6 +28,7 @@
 * Support custom angle in shapes builder.
 
 <br /> <br />
+
 
 
 ## 0.34.5
