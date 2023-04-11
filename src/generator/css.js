@@ -512,7 +512,7 @@ class Rules {
         case 'content': {
           rule = '';
           if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
-            this.content[this.compose_selector(coords)] = transformed;
+            this.content[this.compose_selector(coords)] = remove_quotes(String(transformed));
           }
         }
         case 'seed': {
@@ -749,6 +749,15 @@ class Rules {
     }
   }
 
+}
+
+function remove_quotes(input) {
+  let remove = (input.startsWith('"') && input.endsWith('"'))
+    || (input.startsWith("'") && input.endsWith("'"));
+  if (remove) {
+    return input.substring(1, input.length - 1);
+  }
+  return input;
 }
 
 function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {

@@ -115,3 +115,34 @@ test('quotes in SVG', t => {
   );
 
 });
+
+test('quotes in content', t => {
+
+  function getValue(value) {
+    return [
+      {
+        "property": '@content',
+        "type": "rule",
+        "value": [
+          [
+            {
+              type: 'text',
+              value: `${value}`,
+            }
+          ]
+        ],
+      }
+    ];
+  }
+
+  compare(t,
+    `@content: hello;`,
+    getValue('hello')
+  );
+
+  compare(t,
+    `@content: "hello";`,
+    getValue('"hello"')
+  )
+
+},);
