@@ -19,6 +19,9 @@ function first(arr) {
 }
 
 function clone(arr) {
+  if (typeof structuredClone !== 'undefined') {
+    return structuredClone(arr);
+  }
   return JSON.parse(JSON.stringify(arr));
 }
 
