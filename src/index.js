@@ -605,6 +605,7 @@ function get_basic_styles() {
       width: auto;
       height: auto;
       contain: content;
+      box-sizing: border-box;
       --${ uniform_time.name }: 0
     }
     :host([hidden]), .host[hidden] {
