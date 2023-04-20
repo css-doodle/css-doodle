@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.8 */
+/*! css-doodle@0.34.9 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1021,6 +1021,9 @@
   }
 
   function clone(arr) {
+    if (typeof structuredClone !== 'undefined') {
+      return structuredClone(arr);
+    }
     return JSON.parse(JSON.stringify(arr));
   }
 
@@ -1992,7 +1995,7 @@
 
   function transformViewBox(token) {
     let viewBox = token.detail.value;
-    let p = token.detail.padding || token.detail.expand;
+    let p = token.detail.padding || token.detail.p || token.detail.expand;
     if (!viewBox.length) {
       return '';
     }
@@ -4982,7 +4985,7 @@
           case 'content': {
             rule = '';
             if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
-              this.content[this.compose_selector(coords)] = transformed;
+              this.content[this.compose_selector(coords)] = remove_quotes(String(transformed));
             }
           }
           case 'seed': {
@@ -5216,6 +5219,15 @@
       }
     }
 
+  }
+
+  function remove_quotes(input) {
+    let remove = (input.startsWith('"') && input.endsWith('"'))
+      || (input.startsWith("'") && input.endsWith("'"));
+    if (remove) {
+      return input.substring(1, input.length - 1);
+    }
+    return input;
   }
 
   function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
@@ -6488,6 +6500,7 @@ void main() {
       width: auto;
       height: auto;
       contain: content;
+      box-sizing: border-box;
       --${ uniform_time.name }: 0
     }
     :host([hidden]), .host[hidden] {

@@ -1,3 +1,14 @@
+## 0.34.9
+
+* Fix `box-sizing` value for `:host`.
+* Clone objects using `structuredClone`.
+* Remove quotes around `content` values.
+* Add shortcut `p` alias for `viewBox` padding.
+
+<br /> <br />
+
+
+
 ## 0.34.8
 
 * Cache tokens and fix cyclic references.
