@@ -1,3 +1,11 @@
+## 0.34.10
+
+* Fix generated doodle image size.
+
+<br /> <br />
+
+
+
 ## 0.34.9
 
 * Fix `box-sizing` value for `:host`.

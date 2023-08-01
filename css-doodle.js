@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.9 */
+/*! css-doodle@0.34.10 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -6094,6 +6094,8 @@ void main() {
         if (options && options.arg) {
           let v = get_grid(options.arg);
           if (v.x && v.y) {
+            options.width = v.x + 'px';
+            options.height = v.y + 'px';
             viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
           }
         }
