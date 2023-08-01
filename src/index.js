@@ -198,6 +198,8 @@ if (typeof customElements !== 'undefined') {
       if (options && options.arg) {
         let v = get_grid(options.arg);
         if (v.x && v.y) {
+          options.width = v.x + 'px';
+          options.height = v.y + 'px';
           viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
         }
       }
