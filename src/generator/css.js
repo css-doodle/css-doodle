@@ -363,12 +363,12 @@ class Rules {
       this.add_rule(':container', `translate: ${translate};`);
     }
     if (flexRow) {
-      this.add_rule(':container', `display: flex`);
-      this.add_rule('cell', `flex: 1`);
+      this.add_rule(':container', `display: flex;`);
+      this.add_rule('cell', `flex: 1;`);
     }
     if (flexColumn) {
       this.add_rule(':container', `display: flex; flex-direction: column;`);
-      this.add_rule('cell', `flex: 1`);
+      this.add_rule('cell', `flex: 1;`);
     }
   }
 
