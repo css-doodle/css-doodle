@@ -1,3 +1,11 @@
+## 0.34.11
+
+* Fix rule breaks.
+
+<br /> <br />
+
+
+
 ## 0.34.10
 
 * Fix generated doodle image size.
