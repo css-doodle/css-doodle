@@ -484,6 +484,38 @@ const Expose = add_alias({
     return create_svg_url(svg);
   }),
 
+  'svg-polygon': lazy((_, ...args) => {
+    let value = args.map(input => get_value(input())).join(',');
+    let config = parse_shape_commands(value);
+    delete config.frame;
+    config.unit = 'none';
+
+    let strokeWidth = `stroke-width: ${config['stroke-width'] ?? .01};`;
+    let stroke = `stroke: ${config['stroke'] ?? '#000'};`;
+    let fill = `fill: ${config['fill'] ?? 'none'};`;
+
+    let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
+    let animate = config.animate ? `
+      stroke-dasharray: ${config.points}; pathLength: ${config.points};
+      animate {
+        attributeName: stroke-dashoffset;
+        from, to, dur: ${config.points}, 0, ${config.animate};
+      }` : '';
+    let rest = '';
+    for (let prop of Object.keys(config)) {
+      if (/^(stroke|fill|clip|marker|mask)/.test(prop)) {
+        rest += `${prop}: ${config[prop]};`
+      }
+    };
+    let parsed = parse_svg(`
+      viewBox: -1 -1 2 2;
+      polygon {
+        ${fill} ${stroke} ${strokeWidth} ${rest} ${points} ${animate}
+      }
+    `);
+    return create_svg_url(generate_svg(parsed));
+  }),
+
   var() {
     return value => `var(${ get_value(value) })`;
   },
