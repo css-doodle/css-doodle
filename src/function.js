@@ -387,16 +387,7 @@ const Expose = add_alias({
     return create_svg_url(svg);
   }),
 
-  Svg: lazy((_, ...args) => {
-    let value = args.map(input => get_value(input())).join(',');
-    if (!value.startsWith('<')) {
-      let parsed = parse_svg(value);
-      value = generate_svg(parsed);
-    }
-    return normalize_svg(value);
-  }),
-
-  filter: lazy((upstream, ...args) => {
+  'svg-filter': lazy((upstream, ...args) => {
     let values = args.map(input => get_value(input()));
     let value = values.join(',');
     let id = unique_id('filter-');
@@ -739,6 +730,27 @@ const Expose = add_alias({
     }
   },
 
+  raw() {
+    return (raw = '') => {
+      try {
+        let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
+        if (raw.startsWith('url("data:image/svg+xml;utf8')) {
+          return decodeURIComponent(cut);
+        }
+        /* future forms */
+        if (raw.startsWith('url("data:image/svg+xml;base64')) {
+          return atob(cut);
+        }
+        if (raw.startsWith('url("data:image/png;base64')) {
+          return `<img src="${raw}" alt="" />`;
+        }
+      } catch (e) {
+        /* ignore */
+      }
+      return raw;
+    }
+  }
+
 }, {
 
   'index': 'i',
@@ -759,7 +771,7 @@ const Expose = add_alias({
 
   // legacy names, keep them before 1.0
   't': 'ut',
-  'svg-filter': 'filter',
+  'filter': 'svg-filter',
   'last-rand': 'lr',
   'last-pick': 'lp',
   'multiple': 'm',
@@ -780,6 +792,7 @@ const Expose = add_alias({
   'sz': 'Z',
   'size-z': 'Z',
   'size-depth': 'Z',
+  'Svg': 'svg',
   'pick-by-turn': 'pl',
   'pick-n': 'pl',
   'pick-d': 'pd',

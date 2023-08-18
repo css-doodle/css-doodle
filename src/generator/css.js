@@ -511,9 +511,11 @@ class Rules {
         }
         case 'content': {
           rule = '';
+          let key = this.compose_selector(coords);
           if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
-            this.content[this.compose_selector(coords)] = remove_quotes(String(transformed));
+            this.content[key] = remove_quotes(String(transformed));
           }
+          this.content[key] = Func.raw()(this.content[key] || '');
         }
         case 'seed': {
           rule = '';
