@@ -1,4 +1,4 @@
-/*! css-doodle@0.34.11 */
+/*! css-doodle@0.35.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1573,11 +1573,12 @@
     let selector = '', c;
     while (!it.end()) {
       if ((c = it.curr()) == '{') break;
-      else if (!is.white_space(c)) {
+      else {
         selector += c;
       }
       it.next();
     }
+    selector = selector.trim();
     return selector;
   }
 
@@ -1589,9 +1590,12 @@
         selector.arguments = read_arguments(it)[0];
       }
       else if (/[){]/.test(c)) break;
-      else if (!is.white_space(c)) selector.name += c;
+      else selector.name += c;
       it.next();
     }
+    let [name, ...addition] = selector.name.trim().split(/\s+/);
+    selector.name = name;
+    selector.addition = addition;
     return selector;
   }
 
@@ -3548,16 +3552,7 @@
       return create_svg_url(svg);
     }),
 
-    Svg: lazy((_, ...args) => {
-      let value = args.map(input => get_value(input())).join(',');
-      if (!value.startsWith('<')) {
-        let parsed = parse$7(value);
-        value = generate_svg(parsed);
-      }
-      return normalize_svg(value);
-    }),
-
-    filter: lazy((upstream, ...args) => {
+    'svg-filter': lazy((upstream, ...args) => {
       let values = args.map(input => get_value(input()));
       let value = values.join(',');
       let id = unique_id('filter-');
@@ -3643,6 +3638,38 @@
     `);
       let svg = generate_svg(parsed);
       return create_svg_url(svg);
+    }),
+
+    'svg-polygon': lazy((_, ...args) => {
+      let value = args.map(input => get_value(input())).join(',');
+      let config = parse$3(value);
+
+      delete config.frame;
+      config['unit'] = 'none';
+      config['stroke-width'] ??= .01;
+      config['stroke'] ??= '#000';
+      config['fill'] ??= 'none';
+
+      let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
+      let animate = config.animate ? `
+      stroke-dasharray: ${config.points};
+      pathLength: ${config.points};
+      animate {
+        attributeName: stroke-dashoffset;
+        from, to, dur: ${config.points}, 0, ${config.animate};
+      }` : '';
+      let props = '';
+      for (let name of Object.keys(config)) {
+        if (/^(stroke|fill|clip|marker|mask)/.test(name)) {
+          props += `${name}: ${config[name]};`;
+        }
+      }    let parsed = parse$7(`
+      viewBox: -1 -1 2 2 p ${Number(config['stroke-width'])/2};
+      polygon {
+        ${props} ${points} ${animate}
+      }
+    `);
+      return create_svg_url(generate_svg(parsed));
     }),
 
     var() {
@@ -3867,6 +3894,27 @@
       }
     },
 
+    raw() {
+      return (raw = '') => {
+        try {
+          let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
+          if (raw.startsWith('url("data:image/svg+xml;utf8')) {
+            return decodeURIComponent(cut);
+          }
+          /* future forms */
+          if (raw.startsWith('url("data:image/svg+xml;base64')) {
+            return atob(cut);
+          }
+          if (raw.startsWith('url("data:image/png;base64')) {
+            return `<img src="${raw}" alt="" />`;
+          }
+        } catch (e) {
+          /* ignore */
+        }
+        return raw;
+      }
+    }
+
   }, {
 
     'index': 'i',
@@ -3887,7 +3935,7 @@
 
     // legacy names, keep them before 1.0
     't': 'ut',
-    'svg-filter': 'filter',
+    'filter': 'svg-filter',
     'last-rand': 'lr',
     'last-pick': 'lp',
     'multiple': 'm',
@@ -3908,6 +3956,7 @@
     'sz': 'Z',
     'size-z': 'Z',
     'size-depth': 'Z',
+    'Svg': 'svg',
     'pick-by-turn': 'pl',
     'pick-n': 'pl',
     'pick-d': 'pd',
@@ -4984,9 +5033,11 @@
           }
           case 'content': {
             rule = '';
+            let key = this.compose_selector(coords);
             if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
-              this.content[this.compose_selector(coords)] = remove_quotes(String(transformed));
+              this.content[key] = remove_quotes(String(transformed));
             }
+            this.content[key] = Expose.raw()(this.content[key] || '');
           }
           case 'seed': {
             rule = '';
@@ -5137,8 +5188,13 @@
               let args = token.arguments.map(arg => {
                 return this.compose_argument(arg, coords);
               });
-              let result = this.apply_func(fn, coords, args);
-              if (result) {
+              let cond = this.apply_func(fn, coords, args);
+              if (Array.isArray(token.addition)) {
+                for (let c of token.addition) {
+                  if (c === 'not') cond = !cond;
+                }
+              }
+              if (cond) {
                 this.compose(coords, token.styles);
               }
             }

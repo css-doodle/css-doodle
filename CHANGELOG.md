@@ -1,3 +1,15 @@
+## 0.35.0
+
+* Add `@svg-polygon()`.
+* Add `@raw()` to choose format explicitly.
+* Add `not` condition for selectors.
+* Deprecate `@Svg()`, use `@svg()` instead.
+* Decode uri format for `@content` property automatically.
+
+<br /> <br />
+
+
+
 ## 0.34.11
 
 * Fix rule breaks.
