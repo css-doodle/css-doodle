@@ -90,6 +90,7 @@ test('quotes in SVG', t => {
     return [
       {
         "type": "cond",
+        "addition": [],
         "name": "@svg",
         "styles": [],
         "arguments": [
