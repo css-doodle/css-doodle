@@ -669,8 +669,13 @@ class Rules {
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            let result = this.apply_func(fn, coords, args);
-            if (result) {
+            let cond = this.apply_func(fn, coords, args);
+            if (Array.isArray(token.addition)) {
+              for (let c of token.addition) {
+                if (c === 'not') cond = !cond;
+              }
+            }
+            if (cond) {
               this.compose(coords, token.styles);
             }
           }

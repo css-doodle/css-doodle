@@ -534,11 +534,12 @@ function read_selector(it) {
   let selector = '', c;
   while (!it.end()) {
     if ((c = it.curr()) == '{') break;
-    else if (!is.white_space(c)) {
+    else {
       selector += c;
     }
     it.next();
   }
+  selector = selector.trim();
   return selector;
 }
 
@@ -550,9 +551,12 @@ function read_cond_selector(it) {
       selector.arguments = read_arguments(it)[0];
     }
     else if (/[){]/.test(c)) break;
-    else if (!is.white_space(c)) selector.name += c;
+    else selector.name += c;
     it.next();
   }
+  let [name, ...addition] = selector.name.trim().split(/\s+/);
+  selector.name = name;
+  selector.addition = addition;
   return selector;
 }
 
