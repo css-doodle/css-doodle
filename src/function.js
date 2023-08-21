@@ -46,7 +46,7 @@ function make_sequence(c) {
 }
 
 function push_stack(context, name, value) {
-  if (!context[name]) context[name] = new Stack();
+  if (!context[name]) context[name] = new Stack(1024);
   context[name].push(value);
   return value;
 }
