@@ -339,7 +339,7 @@ function skipHeadSVG(block) {
       headVariables.push(item);
     }
   }
-  if (headSVG) {
+  if (headSVG && Array.isArray(headSVG.value)) {
     headSVG.value.push(...headVariables);
     return headSVG;
   }
