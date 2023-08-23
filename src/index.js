@@ -85,6 +85,7 @@ if (typeof customElements !== 'undefined') {
 
       let should_rebuild = (
            !this.shadowRoot.innerHTML
+        ||  this.shadowRoot.querySelector('css-doodle')
         || (gx !== x || gy !== y || gz !== z)
         || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
       );

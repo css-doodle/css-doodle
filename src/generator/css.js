@@ -515,7 +515,11 @@ class Rules {
           if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
             this.content[key] = remove_quotes(String(transformed));
           }
-          this.content[key] = Func.raw()(this.content[key] || '');
+          this.content[key] = Func.raw({
+            rules: {
+              doodles: this.doodles
+            }
+          })(this.content[key] || '');
         }
         case 'seed': {
           rule = '';
@@ -806,6 +810,7 @@ function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
     random, rand, pick, shuffle,
     max_grid, update_random,
     seed_value,
+    rules,
   });
 
   let { grid, seed } = rules.output();
@@ -840,6 +845,7 @@ function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
           rand, pick, shuffle,
           random, seed,
           max_grid,
+          rules,
         });
       }
     }
@@ -852,6 +858,7 @@ function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
         rand, pick, shuffle,
         random, seed,
         max_grid,
+        rules,
       });
     }
   }

@@ -731,10 +731,17 @@ const Expose = add_alias({
     }
   },
 
-  raw() {
+  raw({ rules }) {
     return (raw = '') => {
       try {
         let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
+        if (raw.startsWith('${doodle') && raw.endsWith('}')) {
+          let key = raw.substring(2, raw.length - 1);
+          let doodles = rules.doodles;
+          if (doodles && doodles[key]) {
+            return `<css-doodle>${doodles[key].doodle}</css-doodle>`
+          }
+        }
         if (raw.startsWith('url("data:image/svg+xml;utf8')) {
           return decodeURIComponent(cut);
         }
