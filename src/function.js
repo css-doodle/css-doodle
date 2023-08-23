@@ -482,7 +482,7 @@ const Expose = add_alias({
     delete config.frame;
     config['unit'] = 'none';
     config['stroke-width'] ??= .01;
-    config['stroke'] ??= '#000';
+    config['stroke'] ??= 'currentColor';
     config['fill'] ??= 'none';
 
     let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
