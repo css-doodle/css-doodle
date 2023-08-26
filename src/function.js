@@ -488,7 +488,7 @@ const Expose = add_alias({
     let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
     let props = '';
     for (let name of Object.keys(config)) {
-      if (/^(stroke|fill|clip|marker|mask|animate)/.test(name)) {
+      if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
         props += `${name}: ${config[name]};`
       }
     };

@@ -171,7 +171,7 @@ function generate(token, element, parent, root) {
           element.attr(token.name, value);
         }
       }
-      else if (token.name === 'animate-stroke' && isGraphicElement(parent && parent.name)) {
+      else if ((token.name === 'draw' || token.name === 'animate') && isGraphicElement(parent && parent.name)) {
         element.attr('stroke-dasharray', 10);
         element.attr('pathLength', 10);
         let animate = new Tag('animate');
