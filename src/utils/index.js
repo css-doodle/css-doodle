@@ -70,7 +70,8 @@ function sequence(count, fn) {
   if (/x/.test(count)) {
     for (let i = 1; i <= y; ++i) {
       for (let j = 1; j <= x; ++j) {
-        ret.push(fn(index++, j, i, max, x, y, index));
+        ret.push(fn(index, j, i, max, x, y, index));
+        index++;
       }
     }
   }
