@@ -78,7 +78,7 @@ function calc_with(base) {
     if (is_empty(v) || is_empty(base)) {
       return base;
     }
-    if (/^[+*-\/%][.\d\s]/.test(v)) {
+    if (/^[+*-\/%][\-.\d\s]/.test(v)) {
       let op = v[0];
       let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
       return compute(op, base, value) + unit;
