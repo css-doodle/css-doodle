@@ -327,10 +327,10 @@ test('Normalize quoted attribute values', t => {
   );
 });
 
-test('animate-stroke', t => {
+test('draw', t => {
   compare(t,
     `path {
-      animate-stroke: 2s;
+      draw: 2s;
     }`,
 
     trim(`
