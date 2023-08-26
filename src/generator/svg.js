@@ -91,6 +91,16 @@ function transformViewBox(token) {
   return `${x} ${y} ${w} ${h}`;
 }
 
+function isGraphicElement(name) {
+  return name === 'path'
+    || name === 'line'
+    || name === 'circle'
+    || name === 'ellipse'
+    || name === 'rect'
+    || name === 'polygon'
+    || name === 'polyline';
+}
+
 function generate(token, element, parent, root) {
   let inlineId;
   if (!element) {
@@ -160,7 +170,18 @@ function generate(token, element, parent, root) {
         if (value) {
           element.attr(token.name, value);
         }
-      } else {
+      }
+      else if (token.name === 'animate-stroke' && isGraphicElement(parent && parent.name)) {
+        element.attr('stroke-dasharray', 10);
+        element.attr('pathLength', 10);
+        let animate = new Tag('animate');
+        animate.attr('attributeName', 'stroke-dashoffset');
+        animate.attr('from', 10);
+        animate.attr('to', 0);
+        animate.attr('dur', value);
+        element.append(animate);
+      }
+      else {
         element.attr(token.name, value);
       }
       if (token.name.includes('xlink:')) {

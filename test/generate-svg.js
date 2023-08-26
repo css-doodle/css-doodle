@@ -326,3 +326,21 @@ test('Normalize quoted attribute values', t => {
     `)
   );
 });
+
+test('animate-stroke', t => {
+  compare(t,
+    `path {
+      animate-stroke: 2s;
+    }`,
+
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <path stroke-dasharray="10" pathLength="10">
+          <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s"></animate>
+        </path>
+      </svg>
+
+    `)
+  );
+
+});
