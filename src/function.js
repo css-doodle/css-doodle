@@ -486,23 +486,16 @@ const Expose = add_alias({
     config['fill'] ??= 'none';
 
     let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
-    let animate = config.animate ? `
-      stroke-dasharray: ${config.points};
-      pathLength: ${config.points};
-      animate {
-        attributeName: stroke-dashoffset;
-        from, to, dur: ${config.points}, 0, ${config.animate};
-      }` : '';
     let props = '';
     for (let name of Object.keys(config)) {
-      if (/^(stroke|fill|clip|marker|mask)/.test(name)) {
+      if (/^(stroke|fill|clip|marker|mask|animate)/.test(name)) {
         props += `${name}: ${config[name]};`
       }
     };
     let parsed = parse_svg(`
       viewBox: -1 -1 2 2 p ${Number(config['stroke-width'])/2};
       polygon {
-        ${props} ${points} ${animate}
+        ${props} ${points}
       }
     `);
     return create_svg_url(generate_svg(parsed));
