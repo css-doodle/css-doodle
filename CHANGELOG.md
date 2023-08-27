@@ -1,3 +1,32 @@
+## 0.35.1
+
+* Support nested css-doodle element via `@content: @doodle()`.
+
+  ```css
+  @grid: 2 / 400px;
+  @content: @doodle(
+    @grid: 2 / 100%;
+    background: @p(red, blue);
+  );
+  ```
+
+* Add path animation with property `draw` in nomral SVG element.
+
+  ```css
+  @conent: @svg(
+    path {
+      d: '..';
+      draw: 5s;
+    }
+  )
+  ```
+
+* Change property `animate` to `draw` inside `@svg-polygon`.
+* Change default `@svg-polygon` stroke color to `currentColor`.
+* Fix sequence generator index.
+* Fix negative calculation in generator functions.
+
+
 ## 0.35.0
 
 * Add `@svg-polygon()`.

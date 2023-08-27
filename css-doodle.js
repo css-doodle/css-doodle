@@ -1,4 +1,4 @@
-/*! css-doodle@0.35.0 */
+/*! css-doodle@0.35.1 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -410,7 +410,8 @@
     if (/x/.test(count)) {
       for (let i = 1; i <= y; ++i) {
         for (let j = 1; j <= x; ++j) {
-          ret.push(fn(index++, j, i, max, x, y, index));
+          ret.push(fn(index, j, i, max, x, y, index));
+          index++;
         }
       }
     }
@@ -943,7 +944,7 @@
         headVariables.push(item);
       }
     }
-    if (headSVG) {
+    if (headSVG && Array.isArray(headSVG.value)) {
       headSVG.value.push(...headVariables);
       return headSVG;
     }
@@ -2010,6 +2011,16 @@
     return `${x} ${y} ${w} ${h}`;
   }
 
+  function isGraphicElement(name) {
+    return name === 'path'
+      || name === 'line'
+      || name === 'circle'
+      || name === 'ellipse'
+      || name === 'rect'
+      || name === 'polygon'
+      || name === 'polyline';
+  }
+
   function generate$1(token, element, parent, root) {
     let inlineId;
     if (!element) {
@@ -2079,7 +2090,18 @@
           if (value) {
             element.attr(token.name, value);
           }
-        } else {
+        }
+        else if ((token.name === 'draw' || token.name === 'animate') && isGraphicElement(parent && parent.name)) {
+          element.attr('stroke-dasharray', 10);
+          element.attr('pathLength', 10);
+          let animate = new Tag('animate');
+          animate.attr('attributeName', 'stroke-dashoffset');
+          animate.attr('from', 10);
+          animate.attr('to', 0);
+          animate.attr('dur', value);
+          element.append(animate);
+        }
+        else {
           element.attr(token.name, value);
         }
         if (token.name.includes('xlink:')) {
@@ -3212,7 +3234,7 @@
   }
 
   function push_stack(context, name, value) {
-    if (!context[name]) context[name] = new Stack();
+    if (!context[name]) context[name] = new Stack(1024);
     context[name].push(value);
     return value;
   }
@@ -3244,7 +3266,7 @@
       if (is_empty(v) || is_empty(base)) {
         return base;
       }
-      if (/^[+*-\/%][.\d\s]/.test(v)) {
+      if (/^[+*-\/%][\-.\d\s]/.test(v)) {
         let op = v[0];
         let { unit = '', value } = parse$4(v.substr(1).trim() || 0);
         return compute(op, base, value) + unit;
@@ -3647,26 +3669,19 @@
       delete config.frame;
       config['unit'] = 'none';
       config['stroke-width'] ??= .01;
-      config['stroke'] ??= '#000';
+      config['stroke'] ??= 'currentColor';
       config['fill'] ??= 'none';
 
       let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
-      let animate = config.animate ? `
-      stroke-dasharray: ${config.points};
-      pathLength: ${config.points};
-      animate {
-        attributeName: stroke-dashoffset;
-        from, to, dur: ${config.points}, 0, ${config.animate};
-      }` : '';
       let props = '';
       for (let name of Object.keys(config)) {
-        if (/^(stroke|fill|clip|marker|mask)/.test(name)) {
+        if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
           props += `${name}: ${config[name]};`;
         }
       }    let parsed = parse$7(`
       viewBox: -1 -1 2 2 p ${Number(config['stroke-width'])/2};
       polygon {
-        ${props} ${points} ${animate}
+        ${props} ${points}
       }
     `);
       return create_svg_url(generate_svg(parsed));
@@ -3894,10 +3909,17 @@
       }
     },
 
-    raw() {
+    raw({ rules }) {
       return (raw = '') => {
         try {
           let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
+          if (raw.startsWith('${doodle') && raw.endsWith('}')) {
+            let key = raw.substring(2, raw.length - 1);
+            let doodles = rules.doodles;
+            if (doodles && doodles[key]) {
+              return `<css-doodle>${doodles[key].doodle}</css-doodle>`
+            }
+          }
           if (raw.startsWith('url("data:image/svg+xml;utf8')) {
             return decodeURIComponent(cut);
           }
@@ -5037,7 +5059,11 @@
             if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
               this.content[key] = remove_quotes(String(transformed));
             }
-            this.content[key] = Expose.raw()(this.content[key] || '');
+            this.content[key] = Expose.raw({
+              rules: {
+                doodles: this.doodles
+              }
+            })(this.content[key] || '');
           }
           case 'seed': {
             rule = '';
@@ -5325,6 +5351,7 @@
       random, rand, pick, shuffle,
       max_grid, update_random,
       seed_value,
+      rules,
     });
 
     let { grid, seed } = rules.output();
@@ -5359,6 +5386,7 @@
             rand, pick, shuffle,
             random, seed,
             max_grid,
+            rules,
           });
         }
       }
@@ -5371,6 +5399,7 @@
           rand, pick, shuffle,
           random, seed,
           max_grid,
+          rules,
         });
       }
     }
@@ -6037,6 +6066,7 @@ void main() {
 
         let should_rebuild = (
              !this.shadowRoot.innerHTML
+          ||  this.shadowRoot.querySelector('css-doodle')
           || (gx !== x || gy !== y || gz !== z)
           || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
         );
