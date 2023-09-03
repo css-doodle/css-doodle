@@ -55,7 +55,7 @@ if (typeof customElements !== 'undefined') {
         animation.cancel();
       }
       this.animations = [];
-      this.register_hover();
+      this.remove_hover();
       this.remove_uniform_mouse();
     }
 
@@ -433,7 +433,6 @@ if (typeof customElements !== 'undefined') {
       } else {
         this.remove_hover();
       }
-
       if (uniforms.time) {
         this.register_uniform_time();
       }
