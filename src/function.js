@@ -2,7 +2,7 @@ import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { generate_svg } from './generator/svg.js';
 
 import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp } from './utils/index.js';
-import { lazy, clamp, sequence, get_value } from './utils/index.js';
+import { lazy, clamp, sequence, get_value, round } from './utils/index.js';
 import { by_unit, by_charcode } from './utils/transform.js';
 import { last } from './utils/list.js';
 
@@ -66,8 +66,8 @@ function compute(op, a, b) {
   switch (op) {
     case '+': return a + b;
     case '-': return a - b;
-    case '*': return a * b;
-    case '/': return a / b;
+    case '*': return round(a * b);
+    case '/': return round(a / b);
     case '%': return a % b;
     default: return 0;
   }
