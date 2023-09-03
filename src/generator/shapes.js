@@ -1,4 +1,4 @@
-import { clamp, is_empty, make_tag_function } from '../utils/index.js';
+import { clamp, is_empty, make_tag_function, round } from '../utils/index.js';
 import parse_shape_commands from '../parser/parse-shape-commands.js';
 import parse_value_group from '../parser/parse-value-group.js';
 import parse_direction from '../parser/parse-direction.js';
@@ -191,14 +191,14 @@ function create_polygon_points(option, fn) {
     let angle = calc_angle(x, y, dx1, dy2, direction);
     if (unit !== undefined && unit !== '%') {
       if (unit !== 'none') {
-        x += unit;
-        y += unit;
+        x += round(x) + unit;
+        y = round(y) + unit;
       }
     } else {
-      x = (x + 1) * 50 + '%';
-      y = (y + 1) * 50 + '%';
+      x = round((x + 1) * 50) + '%';
+      y = round((y + 1) * 50) + '%';
     }
-    points.push(new Point(x, y, angle));
+    points.push(new Point(x, y, round(angle)));
   }
 
   if (fill == 'nonzero' || fill == 'evenodd') {
@@ -338,7 +338,7 @@ function create_shape_points(props, {min, max}) {
     if (props.move) {
       [x, y, dx, dy] = translate(x, y, props.move);
     }
-    return [x, y, dx, dy];
+    return [round(x), round(y), round(dx), round(dy)];
   });
 }
 

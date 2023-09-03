@@ -192,6 +192,13 @@ function get_grid(input) {
   return { x, y }
 }
 
+function round(value, precision = 6) {
+  const power = Math.pow(10, precision)
+  let result = Math.round((value * power) + (Number.EPSILON * power)) / power;
+  if (Number.isNaN(result)) result = 0;
+  return result;
+}
+
 export {
   clamp,
   maybe,
@@ -216,4 +223,5 @@ export {
   lerp,
   unique_id,
   get_grid,
+  round,
 }

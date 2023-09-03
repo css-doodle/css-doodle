@@ -3,7 +3,7 @@
  */
 
 import { last } from './utils/list.js';
-import { is_invalid_number } from './utils/index.js';
+import { is_invalid_number, round } from './utils/index.js';
 
 const cache = new Map();
 
@@ -93,7 +93,7 @@ function calc(expr, context, repeat = []) {
       }
     }
   }
-  return Number(stack[0]) || 0;
+  return Number(round(stack[0])) || 0;
 }
 
 function get_tokens(input) {
