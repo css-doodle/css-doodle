@@ -193,7 +193,7 @@ function get_grid(input) {
 }
 
 function round(value, precision = 6) {
-  const power = Math.pow(10, precision)
+  const power = Math.pow(10, precision + 1)
   let result = Math.round((value * power) + (Number.EPSILON * power)) / power;
   if (Number.isNaN(result)) result = 0;
   return result;
