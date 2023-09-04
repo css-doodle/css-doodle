@@ -1,7 +1,6 @@
 import test from 'ava';
 import calc from '../src/calc.js';
 import compare from './_compare.js';
-import { round } from '../src/utils/index.js';
 
 compare.use(calc);
 
@@ -20,9 +19,9 @@ test('precedence', t => {
 });
 
 test('Math functions and constants', t => {
-  compare(t, 'π * 2', round(Math.PI * 2));
-  compare(t, 'cos(2)', round(Math.cos(2)));
-  compare(t, 'sin(π) * cos(2)', round(Math.sin(Math.PI) * Math.cos(2)));
+  compare(t, 'π * 2', Math.PI * 2);
+  compare(t, 'cos(2)', Math.cos(2));
+  compare(t, 'sin(π) * cos(2)', Math.sin(Math.PI) * Math.cos(2));
 });
 
 test('context values', t => {
@@ -44,7 +43,7 @@ test('cyclic reference', t => {
   compare(t, ['cos(t)', { t: 'x' }], Math.cos(0));
   compare(t, ['cos(t)', { t: '2x' }], Math.cos(0));
   compare(t, ['cos(t)', { t: 'sin(t)' }], Math.cos(0));
-  compare(t, ['cos(t)', { t: 'cos(t)' }], round(Math.cos(Math.cos(Math.cos(Math.cos(0))))));
+  compare(t, ['cos(t)', { t: 'cos(t)' }], Math.cos(Math.cos(Math.cos(Math.cos(0)))));
   compare(t, ['t', { t: 'sin(t)' }], 0);
   compare(t, ['t', { t: 'sin(t)' }], 0);
   compare(t, ['sin(t)', { t: '2s', s: 't', 'b': 'sin(a)', a: 'b' }], 0);
