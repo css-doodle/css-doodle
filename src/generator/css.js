@@ -57,6 +57,7 @@ class Rules {
     this.reset();
     this.custom_properties = {};
     this.uniforms = {};
+    this.hover = false;
     this.content = {};
   }
 
@@ -167,7 +168,6 @@ class Rules {
         let fname = arg.name.substr(1);
         let fn = this.pick_func(fname);
         if (typeof fn === 'function') {
-          this.check_uniforms(fname);
           if (this.is_composable(fname)) {
             let value = get_value((arg.arguments[0] || [])[0]);
             let temp_arg;
@@ -294,7 +294,6 @@ class Rules {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
-            this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((val.arguments[0] || [])[0]);
               let temp_arg;
@@ -668,8 +667,12 @@ class Rules {
         }
 
         case 'cond': {
-          let fn = Selector[token.name.substr(1)];
+          let name = token.name.substr(1);
+          let fn = Selector[name];
           if (fn) {
+            if (name === 'hover') {
+              this.hover = true;
+            }
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
@@ -680,7 +683,29 @@ class Rules {
               }
             }
             if (cond) {
-              this.compose(coords, token.styles);
+              if (cond.selector) {
+                token.styles.forEach(_token => {
+                  if (_token.type === 'rule') {
+                    this.add_rule(
+                      cond.selector.replaceAll('$', this.compose_selector(coords)),
+                      this.compose_rule(_token, coords)
+                    )
+                  }
+                  if (_token.type === 'pseudo') {
+                    _token.selector.split(',').forEach(selector => {
+                      let pseudo = _token.styles.map(s =>
+                        this.compose_rule(s, coords, selector)
+                      );
+                      this.add_rule(
+                        (cond.selector + selector).replaceAll('$', this.compose_selector(coords)),
+                        pseudo
+                      );
+                    });
+                  }
+                });
+              } else {
+                this.compose(coords, token.styles);
+              }
             }
           }
           break;
@@ -714,8 +739,10 @@ class Rules {
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         let value = join(rule).trim();
-        let name = (target === 'host') ? `${ selector }, .host` : selector;
-        this.styles[target] += `${ name } { ${ value  } }`;
+        if (value.length) {
+          let name = (target === 'host') ? `${ selector }, .host` : selector;
+          this.styles[target] += `${ name } { ${ value  } }`;
+        }
       }
     }
 
@@ -757,6 +784,7 @@ class Rules {
       pattern: this.pattern,
       uniforms: this.uniforms,
       content: this.content,
+      hover: this.hover,
     }
   }
 
