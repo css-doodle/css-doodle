@@ -198,7 +198,7 @@ function create_polygon_points(option, fn) {
       x = round((x + 1) * 50) + '%';
       y = round((y + 1) * 50) + '%';
     }
-    points.push(new Point(x, y, round(angle)));
+    points.push(new Point(x, y, angle));
   }
 
   if (fill == 'nonzero' || fill == 'evenodd') {
