@@ -19,13 +19,13 @@ function nth(input, curr, max) {
 function get_selector(offset) {
   let selector = '';
   if (offset == 0) {
-    selector = '$.hover';
+    selector = '$:hover';
   }
   else if (offset > 0) {
-    selector = `$.hover ${'+*'.repeat(offset)}`;
+    selector = `$:hover ${'+*'.repeat(offset)}`;
   }
   else {
-    selector = `:has(+ ${'*+'.repeat(Math.abs(offset + 1))} $.hover)`;
+    selector = `:has(+ ${'*+'.repeat(Math.abs(offset + 1))} $:hover)`;
   }
   return selector;
 }

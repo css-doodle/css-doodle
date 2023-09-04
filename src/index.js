@@ -55,7 +55,6 @@ if (typeof customElements !== 'undefined') {
         animation.cancel();
       }
       this.animations = [];
-      this.remove_hover();
       this.remove_uniform_mouse();
     }
 
@@ -405,7 +404,7 @@ if (typeof customElements !== 'undefined') {
       let style_container = get_grid_styles(grid) + host + container;
       let style_cells = has_delay ? '' : cells;
 
-      const { uniforms, content, hover } = compiled;
+      const { uniforms, content } = compiled;
 
       let replace = this.replace(compiled);
 
@@ -428,11 +427,6 @@ if (typeof customElements !== 'undefined') {
         this.set_content('.style-cells', replace(cells));
       }
 
-      if (hover) {
-        this.register_hover();
-      } else {
-        this.remove_hover();
-      }
       if (uniforms.time) {
         this.register_uniform_time();
       }
@@ -445,35 +439,6 @@ if (typeof customElements !== 'undefined') {
         this.register_uniform_resolution(uniforms);
       } else {
         this.remove_uniform_resolution();
-      }
-    }
-
-    register_hover() {
-      if (!this.hover_callback) {
-        this.hover_callback = e => {
-          e.target.classList.add('hover');
-          this.hovered_element = e.target;
-        }
-      }
-      if (!this.hover_out_callback) {
-        this.hover_out_callback = e => {
-          if (this.hovered_element) {
-            this.hovered_element.classList.remove('hover');
-          }
-        }
-      }
-      this.doodle.addEventListener('pointerover', this.hover_callback);
-      this.doodle.addEventListener('pointerout', this.hover_out_callback);
-    }
-
-    remove_hover() {
-      if (this.hover_callback) {
-        this.doodle.removeEventListener('pointerover', this.hover_callback);
-        this.doodle.removeEventListener('pointerout', this.hover_out_callback);
-        let el = this.doodle.querySelector('.hover');
-        if (el) {
-          el.classList.remove('hover');
-        }
       }
     }
 

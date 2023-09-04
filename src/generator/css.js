@@ -57,7 +57,6 @@ class Rules {
     this.reset();
     this.custom_properties = {};
     this.uniforms = {};
-    this.hover = false;
     this.content = {};
   }
 
@@ -670,9 +669,6 @@ class Rules {
           let name = token.name.substr(1);
           let fn = Selector[name];
           if (fn) {
-            if (name === 'hover') {
-              this.hover = true;
-            }
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
@@ -784,7 +780,6 @@ class Rules {
       pattern: this.pattern,
       uniforms: this.uniforms,
       content: this.content,
-      hover: this.hover,
     }
   }
 
