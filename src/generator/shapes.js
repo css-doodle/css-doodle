@@ -191,7 +191,7 @@ function create_polygon_points(option, fn) {
     let angle = calc_angle(x, y, dx1, dy2, direction);
     if (unit !== undefined && unit !== '%') {
       if (unit !== 'none') {
-        x += round(x) + unit;
+        x = round(x) + unit;
         y = round(y) + unit;
       }
     } else {
