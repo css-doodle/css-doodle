@@ -1,4 +1,4 @@
-/*! css-doodle@0.35.1 */
+/*! css-doodle@0.36.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -530,6 +530,13 @@
     if (!x || x < 1) x = 1;
     if (!y || y < 1) y = 1;
     return { x, y }
+  }
+
+  function round(value, precision = 6) {
+    const power = Math.pow(10, precision + 1);
+    let result = Math.round((value * power) + (Number.EPSILON * power)) / power;
+    if (Number.isNaN(result)) result = 0;
+    return result;
   }
 
   function parse$8(input, option = {symbol: ',', noSpace: false, verbose: false }) {
@@ -2968,12 +2975,12 @@
       let angle = calc_angle(x, y, dx1, dy2, direction);
       if (unit !== undefined && unit !== '%') {
         if (unit !== 'none') {
-          x += unit;
-          y += unit;
+          x = round(x) + unit;
+          y = round(y) + unit;
         }
       } else {
-        x = (x + 1) * 50 + '%';
-        y = (y + 1) * 50 + '%';
+        x = round((x + 1) * 50) + '%';
+        y = round((y + 1) * 50) + '%';
       }
       points.push(new Point(x, y, angle));
     };
@@ -3115,7 +3122,7 @@
       if (props.move) {
         [x, y, dx, dy] = translate(x, y, props.move);
       }
-      return [x, y, dx, dy];
+      return [round(x), round(y), round(dx), round(dy)];
     });
   }
 
@@ -4268,6 +4275,20 @@
     }
   }
 
+  function get_selector(offset) {
+    let selector = '';
+    if (offset == 0) {
+      selector = '$:hover';
+    }
+    else if (offset > 0) {
+      selector = `$:hover ${'+*'.repeat(offset)}`;
+    }
+    else {
+      selector = `:has(+ ${'*+'.repeat(Math.abs(offset + 1))} $:hover)`;
+    }
+    return selector;
+  }
+
   var Selector = {
 
     at({ x, y }) {
@@ -4328,6 +4349,39 @@
           i: count, I: grid.count,
           random,
         });
+      }
+    },
+
+    hover({ count, x, y, grid, random }) {
+      return (...args) => {
+        let selectors = [];
+        if (!args.length) {
+          selectors.push(get_selector(0));
+        }
+        for (let arg of args) {
+          let [dx, dy] = String(arg).split(/\s+/);
+          dx = Number(dx);
+          dy = Number(dy);
+          // @hover(1, 2, 3)
+          if (Number.isNaN(dy) && !Number.isNaN(dx)) {
+            selectors.push(get_selector(dx));
+          }
+          // @hover(1 -1, 0 1)
+          if (!Number.isNaN(dx) && !Number.isNaN(dy)) {
+            let rx = dx + x;
+            let ry = dy + y;
+            if (rx >= 1 && rx <= grid.x && ry >= 1 && ry <= grid.y) {
+              let offset = (dy * grid.y) + dx;
+              selectors.push(get_selector(offset));
+            }
+          }
+        }
+        if (!selectors.length) {
+          return false;
+        }
+        return {
+          selector: selectors.join(',')
+        }
       }
     },
 
@@ -5209,7 +5263,8 @@
           }
 
           case 'cond': {
-            let fn = Selector[token.name.substr(1)];
+            let name = token.name.substr(1);
+            let fn = Selector[name];
             if (fn) {
               let args = token.arguments.map(arg => {
                 return this.compose_argument(arg, coords);
@@ -5221,7 +5276,29 @@
                 }
               }
               if (cond) {
-                this.compose(coords, token.styles);
+                if (cond.selector) {
+                  token.styles.forEach(_token => {
+                    if (_token.type === 'rule') {
+                      this.add_rule(
+                        cond.selector.replaceAll('$', this.compose_selector(coords)),
+                        this.compose_rule(_token, coords)
+                      );
+                    }
+                    if (_token.type === 'pseudo') {
+                      _token.selector.split(',').forEach(selector => {
+                        let pseudo = _token.styles.map(s =>
+                          this.compose_rule(s, coords, selector)
+                        );
+                        this.add_rule(
+                          (cond.selector + selector).replaceAll('$', this.compose_selector(coords)),
+                          pseudo
+                        );
+                      });
+                    }
+                  });
+                } else {
+                  this.compose(coords, token.styles);
+                }
               }
             }
             break;
@@ -5255,8 +5332,10 @@
         } else {
           let target = is_host_selector(selector) ? 'host' : 'cells';
           let value = join(rule).trim();
-          let name = (target === 'host') ? `${ selector }, .host` : selector;
-          this.styles[target] += `${ name } { ${ value  } }`;
+          if (value.length) {
+            let name = (target === 'host') ? `${ selector }, .host` : selector;
+            this.styles[target] += `${ name } { ${ value  } }`;
+          }
         }
       }
 
