@@ -55,7 +55,6 @@ if (typeof customElements !== 'undefined') {
         animation.cancel();
       }
       this.animations = [];
-      this.remove_uniform_mouse();
     }
 
     update(styles) {

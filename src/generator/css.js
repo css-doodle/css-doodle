@@ -167,6 +167,7 @@ class Rules {
         let fname = arg.name.substr(1);
         let fn = this.pick_func(fname);
         if (typeof fn === 'function') {
+          this.check_uniforms(fname);
           if (this.is_composable(fname)) {
             let value = get_value((arg.arguments[0] || [])[0]);
             let temp_arg;
@@ -293,6 +294,7 @@ class Rules {
           let fname = val.name.substr(1);
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
+            this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((val.arguments[0] || [])[0]);
               let temp_arg;
