@@ -172,13 +172,23 @@ function generate(token, element, parent, root) {
         }
       }
       else if ((token.name === 'draw' || token.name === 'animate') && isGraphicElement(parent && parent.name)) {
+        let [dur, repeatCount] = String(value).split(/\s+/);
+        if (dur === 'indefinite' || dur === 'infinite' || /\d$/.test(dur)) {
+          [dur, repeatCount] = [repeatCount, dur];
+        }
+        if (repeatCount === 'infinite') {
+          repeatCount = 'indefinite';
+        }
         element.attr('stroke-dasharray', 10);
         element.attr('pathLength', 10);
         let animate = new Tag('animate');
         animate.attr('attributeName', 'stroke-dashoffset');
         animate.attr('from', 10);
         animate.attr('to', 0);
-        animate.attr('dur', value);
+        animate.attr('dur', dur);
+        if (repeatCount) {
+          animate.attr('repeatCount', repeatCount);
+        }
         element.append(animate);
       }
       else {
