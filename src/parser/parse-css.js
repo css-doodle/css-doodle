@@ -422,7 +422,7 @@ function read_func(it) {
   while (!it.end()) {
     c = it.curr();
     let next = it.curr(1);
-    let composition = (c == '.' && (next == '@' || /[a-zA-Z]/.test(next)));
+    let composition = (c == '.' && (/[a-zA-Z@$]/.test(next)));
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
