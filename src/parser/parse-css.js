@@ -284,7 +284,7 @@ function read_arguments(it, composition, doodle) {
       }
       arg += c;
     }
-    else if ((c == '@' || (prev === '.' && composition)) && !doodle) {
+    else if (!doodle && ((c == '@' || c === '$') || (prev === '.' && composition))) {
       if (!group.length) {
         arg = arg.trimLeft();
       }
@@ -413,6 +413,7 @@ function read_func(it) {
   let func = Tokens.func();
   let name = it.curr(), c;
   let has_argument = false;
+  let is_calc = name === '$';;
   if (name === '@') {
     it.next();
   } else {
@@ -447,13 +448,29 @@ function read_func(it) {
     it.next();
   }
   let { fname, extra } = seperate_func_name(name);
-  func.name = fname;
-
+  func.name = is_calc ? '@$' + name.substr(1) : fname;
   if (extra.length) {
     func.arguments.unshift([{
       type: 'text',
       value: extra
     }]);
+  }
+
+  if (is_calc && func.name.length > 2) {
+    if (!func.arguments.length) {
+      let name = func.name.substring(0, 2);
+      let value = func.name.substring(2);
+      func.name = name;
+      func.arguments.push(
+        [{ type: 'text', value: value }]
+      );
+    }
+    if (/\d$/.test(func.name)) {
+      let name = func.name.substring(0, 2);
+      let value = func.name.substring(2);
+      func.name = name;
+      func.arguments[0][0].value = value;
+    }
   }
 
   func.position = it.info().index;
@@ -494,7 +511,7 @@ function read_value(it) {
       }
       break;
     }
-    else if (c == '@' && /\w/.test(it.curr(1))) {
+    else if ((c === '@' || c === '$') && /[\w-\(]/.test(it.curr(1))) {
       if (text.value.length) {
         value[idx].push(text);
         text = Tokens.text();
