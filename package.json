@@ -20,8 +20,8 @@
   },
   "devDependencies": {
     "ava": "^4.3.1",
-    "rollup": "^2.77.0",
-    "terser": "^5.14.2"
+    "rollup": "^3.29.0",
+    "terser": "^5.19.4"
   },
   "files": [
     "css-doodle*.js",
