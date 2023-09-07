@@ -370,7 +370,7 @@ const Expose = add_alias({
   },
 
   calc() {
-    return function _calc(value, context) {
+    return (value, context) => {
       return calc(get_value(value), context);
     }
   },
