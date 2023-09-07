@@ -89,7 +89,7 @@ class Rules {
   }
 
   pick_func(name) {
-    if (name === '$') name = 'calc';
+    if (name.startsWith('$')) name = 'calc';
     return Func[name] || MathFunc[name];
   }
 
@@ -114,17 +114,21 @@ class Rules {
     });
     input = make_array(remove_empty_values(input));
     if (typeof _fn === 'function') {
-      if (fname === '$') {
+      if (fname.startsWith('$')) {
         let group = Object.assign({},
           this.custom_properties['host'],
           this.custom_properties['container'],
           this.custom_properties[coords.count]
         );
         let context = {};
+        let unit = '';
         for (let [name, key] of Object.entries(group)) {
           context[name.substr(2)] = key;
         }
-        return _fn(input, context);
+        if (fname.length > 1) {
+          unit = fname.split('$')[1] ?? '';
+        }
+        return _fn(input, context) + unit;
       }
       return _fn(...input);
     }
