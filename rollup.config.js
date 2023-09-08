@@ -1,4 +1,4 @@
-import info from './package.json';
+import info from './package.json' assert { type: 'json' };
 
 export default {
   input: 'src/index.js',

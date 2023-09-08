@@ -89,10 +89,11 @@ class Rules {
   }
 
   pick_func(name) {
+    if (name.startsWith('$')) name = 'calc';
     return Func[name] || MathFunc[name];
   }
 
-  apply_func(fn, coords, args) {
+  apply_func(fn, coords, args, fname) {
     let _fn = fn(...make_array(coords));
     let input = [];
     args.forEach(arg => {
@@ -111,9 +112,25 @@ class Rules {
         }
       }
     });
-    input = remove_empty_values(input);
+    input = make_array(remove_empty_values(input));
     if (typeof _fn === 'function') {
-      return _fn(...make_array(input));
+      if (fname.startsWith('$')) {
+        let group = Object.assign({},
+          this.custom_properties['host'],
+          this.custom_properties['container'],
+          this.custom_properties[coords.count]
+        );
+        let context = {};
+        let unit = '';
+        for (let [name, key] of Object.entries(group)) {
+          context[name.substr(2)] = key;
+        }
+        if (fname.length > 1) {
+          unit = fname.split('$')[1] ?? '';
+        }
+        return _fn(input, context) + unit;
+      }
+      return _fn(...input);
     }
     return _fn;
   }
@@ -196,7 +213,7 @@ class Rules {
               ? (...extra) => this.compose_argument(n, coords, extra, arg)
               : this.compose_argument(n, coords, extra, arg);
           });
-          let value = this.apply_func(fn, coords, args);
+          let value = this.apply_func(fn, coords, args, fname);
           return value;
         } else {
           return arg.name;
@@ -324,7 +341,7 @@ class Rules {
                   : this.compose_argument(arg, coords, [], val);
               });
 
-              let output = this.apply_func(fn, coords, args);
+              let output = this.apply_func(fn, coords, args, fname);
               if (!is_nil(output)) {
                 result += output;
                 if (output.extra) {
@@ -674,7 +691,7 @@ class Rules {
             let args = token.arguments.map(arg => {
               return this.compose_argument(arg, coords);
             });
-            let cond = this.apply_func(fn, coords, args);
+            let cond = this.apply_func(fn, coords, args, name);
             if (Array.isArray(token.addition)) {
               for (let c of token.addition) {
                 if (c === 'not') cond = !cond;
