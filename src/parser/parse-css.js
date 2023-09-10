@@ -260,7 +260,7 @@ function read_property(it) {
   return prop;
 }
 
-function read_arguments(it, composition, doodle) {
+function read_arguments(it, composition, doodle, variables = {}) {
   let args = [], group = [], stack = [], arg = '', c;
   let raw = '';
   while (!it.end()) {
@@ -292,7 +292,7 @@ function read_arguments(it, composition, doodle) {
         group.push(Tokens.text(arg));
         arg = '';
       }
-      group.push(read_func(it));
+      group.push(read_func(it, variables));
     }
     else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
       if (stack.length) {
@@ -409,7 +409,7 @@ function is_svg(name) {
   return /^@svg$/i.test(name);
 }
 
-function read_func(it) {
+function read_func(it, variables = {}) {
   let func = Tokens.func();
   let name = it.curr(), c;
   let has_argument = false;
@@ -426,18 +426,24 @@ function read_func(it) {
     if (c == '(' || composition) {
       has_argument = true;
       it.next();
-      let [args, raw_args] = read_arguments(it, composition, composible(name));
-      if (is_svg(name) && /\d\s*{/.test(raw_args)) {
+      let [args, raw_args] = read_arguments(it, composition, composible(name), variables);
+      if (is_svg(name)) {
         let parsed_svg = parse_svg(raw_args);
-        if (has_times_syntax(parsed_svg)) {
+        for (let item of parsed_svg.value) {
+          if (item.variable) {
+            variables[item.name] = (parse(`${item.name}: ${item.value}`))[0].value;
+          }
+        }
+        if (/\d\s*{/.test(raw_args) && has_times_syntax(parsed_svg)) {
           let svg = generate_svg_extended(parsed_svg);
           // compatible with old iterator
           svg += ')';
-          let extended = read_arguments(iterator(svg), composition, composible(name));
+          let extended = read_arguments(iterator(svg), composition, composible(name), variables);
           args = extended[0];
         }
       }
       func.arguments = args;
+      func.variables = variables;
       break;
     } else if (/[0-9a-zA-Z_\-.]/.test(c)) {
       name += c;

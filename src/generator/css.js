@@ -118,7 +118,8 @@ class Rules {
         let group = Object.assign({},
           this.custom_properties['host'],
           this.custom_properties['container'],
-          this.custom_properties[coords.count]
+          this.custom_properties[coords.count],
+          coords.context['v-counter'] || {}
         );
         let context = {};
         let unit = '';
@@ -152,7 +153,8 @@ class Rules {
     let group = Object.assign({},
       this.custom_properties['host'],
       this.custom_properties['container'],
-      this.custom_properties[count]
+      this.custom_properties[count],
+      coords.context['v-counter'] || {}
     );
     if (group[value] !== undefined) {
       let result = String(group[value]).trim();
@@ -293,7 +295,18 @@ class Rules {
     return value;
   }
 
-  compose_value(value, coords) {
+  compose_variables(variables, coords) {
+    let counter = 'v-counter';
+    if (!coords.context[counter]) {
+      coords.context[counter] = {};
+    }
+    for (let [name, value] of Object.entries(variables)) {
+      coords.context[counter][name] =
+        this.compose_value(value[0], coords, coords.context[counter]).value;
+    }
+  }
+
+  compose_value(value, coords, contextedVariable) {
     if (!Array.isArray(value)) {
       return {
         value: '',
@@ -335,9 +348,18 @@ class Rules {
               }
             } else {
               coords.position = val.position;
+              if (val.variables) {
+                this.compose_variables(val.variables, coords);
+              }
               let args = val.arguments.map(arg => {
                 return fn.lazy
-                  ? (...extra) => this.compose_argument(arg, coords, extra, val)
+                  ? (...extra) => {
+                      let composed = this.compose_argument(arg, coords, extra, val)
+                      if (val.variables) {
+                        coords.context['v-counter'] = {};
+                      }
+                      return composed;
+                  }
                   : this.compose_argument(arg, coords, [], val);
               });
 
