@@ -1,4 +1,4 @@
-/*! css-doodle@0.36.0 */
+/*! css-doodle@0.37.0 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -1052,6 +1052,7 @@
 
   // I need to rewrite this
 
+
   const Tokens = {
     func(name = '') {
       return {
@@ -1307,7 +1308,7 @@
     return prop;
   }
 
-  function read_arguments(it, composition, doodle) {
+  function read_arguments(it, composition, doodle, variables = {}) {
     let args = [], group = [], stack = [], arg = '', c;
     let raw = '';
     while (!it.end()) {
@@ -1331,7 +1332,7 @@
         }
         arg += c;
       }
-      else if ((c == '@' || (prev === '.' && composition)) && !doodle) {
+      else if (!doodle && ((c == '@' || c === '$') || (prev === '.' && composition))) {
         if (!group.length) {
           arg = arg.trimLeft();
         }
@@ -1339,7 +1340,7 @@
           group.push(Tokens.text(arg));
           arg = '';
         }
-        group.push(read_func(it));
+        group.push(read_func(it, variables));
       }
       else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
         if (stack.length) {
@@ -1456,11 +1457,11 @@
     return /^@svg$/i.test(name);
   }
 
-  function read_func(it) {
+  function read_func(it, variables = {}) {
     let func = Tokens.func();
     let name = it.curr(), c;
     let has_argument = false;
-    if (name === '@') {
+    let is_calc = name === '$';  if (name === '@') {
       it.next();
     } else {
       name = '@';
@@ -1468,22 +1469,28 @@
     while (!it.end()) {
       c = it.curr();
       let next = it.curr(1);
-      let composition = (c == '.' && (next == '@' || /[a-zA-Z]/.test(next)));
+      let composition = (c == '.' && (/[a-zA-Z@$]/.test(next)));
       if (c == '(' || composition) {
         has_argument = true;
         it.next();
-        let [args, raw_args] = read_arguments(it, composition, composible(name));
-        if (is_svg(name) && /\d\s*{/.test(raw_args)) {
+        let [args, raw_args] = read_arguments(it, composition, composible(name), variables);
+        if (is_svg(name)) {
           let parsed_svg = parse$7(raw_args);
-          if (has_times_syntax(parsed_svg)) {
+          for (let item of parsed_svg.value) {
+            if (item.variable) {
+              variables[item.name] = (parse$6(`${item.name}: ${item.value}`))[0].value;
+            }
+          }
+          if (/\d\s*{/.test(raw_args) && has_times_syntax(parsed_svg)) {
             let svg = generate_svg_extended(parsed_svg);
             // compatible with old iterator
             svg += ')';
-            let extended = read_arguments(iterator(svg), composition, composible(name));
+            let extended = read_arguments(iterator(svg), composition, composible(name), variables);
             args = extended[0];
           }
         }
         func.arguments = args;
+        func.variables = variables;
         break;
       } else if (/[0-9a-zA-Z_\-.]/.test(c)) {
         name += c;
@@ -1494,13 +1501,29 @@
       it.next();
     }
     let { fname, extra } = seperate_func_name(name);
-    func.name = fname;
-
+    func.name = is_calc ? '@$' + name.substr(1) : fname;
     if (extra.length) {
       func.arguments.unshift([{
         type: 'text',
         value: extra
       }]);
+    }
+
+    if (is_calc && func.name.length > 2) {
+      if (!func.arguments.length) {
+        let name = func.name.substring(0, 2);
+        let value = func.name.substring(2);
+        func.name = name;
+        func.arguments.push(
+          [{ type: 'text', value: value }]
+        );
+      }
+      if (/\d$/.test(func.name)) {
+        let name = func.name.substring(0, 2);
+        let value = func.name.substring(2);
+        func.name = name;
+        func.arguments[0][0].value = value;
+      }
     }
 
     func.position = it.info().index;
@@ -1541,7 +1564,7 @@
         }
         break;
       }
-      else if (c == '@' && /\w/.test(it.curr(1))) {
+      else if ((c === '@' || c === '$') && /[\w-\(]/.test(it.curr(1))) {
         if (text.value.length) {
           value[idx].push(text);
           text = Tokens.text();
@@ -2099,13 +2122,23 @@
           }
         }
         else if ((token.name === 'draw' || token.name === 'animate') && isGraphicElement(parent && parent.name)) {
+          let [dur, repeatCount] = String(value).split(/\s+/);
+          if (dur === 'indefinite' || dur === 'infinite' || /\d$/.test(dur)) {
+            [dur, repeatCount] = [repeatCount, dur];
+          }
+          if (repeatCount === 'infinite') {
+            repeatCount = 'indefinite';
+          }
           element.attr('stroke-dasharray', 10);
           element.attr('pathLength', 10);
           let animate = new Tag('animate');
           animate.attr('attributeName', 'stroke-dashoffset');
           animate.attr('from', 10);
           animate.attr('to', 0);
-          animate.attr('dur', value);
+          animate.attr('dur', dur);
+          if (repeatCount) {
+            animate.attr('repeatCount', repeatCount);
+          }
           element.append(animate);
         }
         else {
@@ -2186,6 +2219,7 @@
   /**
    * Based on the Shunting-yard algorithm.
    */
+
 
   const cache = new Map();
 
@@ -2614,6 +2648,7 @@
    * Improved noise by Ken Perlin
    * Translated from: https://mrl.nyu.edu/~perlin/noise/
    */
+
 
   class Perlin {
     constructor() {
@@ -3210,11 +3245,11 @@
 
   var Uniforms = /*#__PURE__*/Object.freeze({
     __proto__: null,
-    uniform_time: uniform_time,
+    uniform_height: uniform_height,
     uniform_mousex: uniform_mousex,
     uniform_mousey: uniform_mousey,
-    uniform_width: uniform_width,
-    uniform_height: uniform_height
+    uniform_time: uniform_time,
+    uniform_width: uniform_width
   });
 
   function make_sequence(c) {
@@ -3564,7 +3599,9 @@
     },
 
     calc() {
-      return value => calc$1(get_value(value));
+      return (value, context) => {
+        return calc$1(get_value(value), context);
+      }
     },
 
     hex() {
@@ -4687,10 +4724,11 @@
     }
 
     pick_func(name) {
+      if (name.startsWith('$')) name = 'calc';
       return Expose[name] || MathFunc[name];
     }
 
-    apply_func(fn, coords, args) {
+    apply_func(fn, coords, args, fname) {
       let _fn = fn(...make_array(coords));
       let input = [];
       args.forEach(arg => {
@@ -4709,9 +4747,26 @@
           }
         }
       });
-      input = remove_empty_values(input);
+      input = make_array(remove_empty_values(input));
       if (typeof _fn === 'function') {
-        return _fn(...make_array(input));
+        if (fname.startsWith('$')) {
+          let group = Object.assign({},
+            this.custom_properties['host'],
+            this.custom_properties['container'],
+            this.custom_properties[coords.count],
+            coords.context['v-counter'] || {}
+          );
+          let context = {};
+          let unit = '';
+          for (let [name, key] of Object.entries(group)) {
+            context[name.substr(2)] = key;
+          }
+          if (fname.length > 1) {
+            unit = fname.split('$')[1] ?? '';
+          }
+          return _fn(input, context) + unit;
+        }
+        return _fn(...input);
       }
       return _fn;
     }
@@ -4733,7 +4788,8 @@
       let group = Object.assign({},
         this.custom_properties['host'],
         this.custom_properties['container'],
-        this.custom_properties[count]
+        this.custom_properties[count],
+        coords.context['v-counter'] || {}
       );
       if (group[value] !== undefined) {
         let result = String(group[value]).trim();
@@ -4794,7 +4850,7 @@
                 ? (...extra) => this.compose_argument(n, coords, extra, arg)
                 : this.compose_argument(n, coords, extra, arg);
             });
-            let value = this.apply_func(fn, coords, args);
+            let value = this.apply_func(fn, coords, args, fname);
             return value;
           } else {
             return arg.name;
@@ -4874,7 +4930,18 @@
       return value;
     }
 
-    compose_value(value, coords) {
+    compose_variables(variables, coords) {
+      let counter = 'v-counter';
+      if (!coords.context[counter]) {
+        coords.context[counter] = {};
+      }
+      for (let [name, value] of Object.entries(variables)) {
+        coords.context[counter][name] =
+          this.compose_value(value[0], coords, coords.context[counter]).value;
+      }
+    }
+
+    compose_value(value, coords, contextedVariable) {
       if (!Array.isArray(value)) {
         return {
           value: '',
@@ -4916,13 +4983,22 @@
                 }
               } else {
                 coords.position = val.position;
+                if (val.variables) {
+                  this.compose_variables(val.variables, coords);
+                }
                 let args = val.arguments.map(arg => {
                   return fn.lazy
-                    ? (...extra) => this.compose_argument(arg, coords, extra, val)
+                    ? (...extra) => {
+                        let composed = this.compose_argument(arg, coords, extra, val);
+                        if (val.variables) {
+                          coords.context['v-counter'] = {};
+                        }
+                        return composed;
+                    }
                     : this.compose_argument(arg, coords, [], val);
                 });
 
-                let output = this.apply_func(fn, coords, args);
+                let output = this.apply_func(fn, coords, args, fname);
                 if (!is_nil(output)) {
                   result += output;
                   if (output.extra) {
@@ -5269,7 +5345,7 @@
               let args = token.arguments.map(arg => {
                 return this.compose_argument(arg, coords);
               });
-              let cond = this.apply_func(fn, coords, args);
+              let cond = this.apply_func(fn, coords, args, name);
               if (Array.isArray(token.addition)) {
                 for (let c of token.addition) {
                   if (c === 'not') cond = !cond;

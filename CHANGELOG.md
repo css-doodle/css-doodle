@@ -1,3 +1,40 @@
+## 0.37.0
+
+### Features
+
+* New `$` function for reading and evaluating numeric variables.
+
+  ```css
+  --a: 2;
+  --b: $(a * 2);
+
+  --c: $b;
+
+  /* 30px */
+  --d: $px(10 + 20);
+  ```
+
+* Add repeatCount to `draw`
+
+  ```css
+  draw: 10s indefinite;
+  draw: 10s infinite;
+  ```
+
+* Variables can be put directly inside `@svg()` now.
+
+  ```css
+  @content: @svg(
+    --size: 10;
+
+    viewBox: 0 0 $size $size;
+  );
+  ```
+
+<br /> <br />
+
+
+
 ## 0.36.0
 
 * Add `@hover` selector.
