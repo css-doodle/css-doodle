@@ -340,7 +340,11 @@ function skipHeadSVG(block) {
     }
   }
   if (headSVG && Array.isArray(headSVG.value)) {
-    headSVG.value.push(...headVariables);
+    for (let variable of headVariables) {
+      if (!headSVG.value.find(n => n.name == variable.name)) {
+        headSVG.value.unshift(variable);
+      }
+    }
     return headSVG;
   }
   return block;

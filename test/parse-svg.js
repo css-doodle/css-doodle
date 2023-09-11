@@ -438,3 +438,33 @@ test('svg variable', t => {
     }]
   });
 });
+
+
+test('svg variable order', t => {
+  compare(t, '--a: 1; svg { --a: 2 }', {
+    name: 'svg',
+    type: 'block',
+    value: [{
+      type: 'statement',
+      name: '--a',
+      value: '2',
+      variable: true
+    }]
+  });
+
+  compare(t, '--b: 1; svg { --a: 2 }', {
+    name: 'svg',
+    type: 'block',
+    value: [{
+      type: 'statement',
+      name: '--b',
+      value: '1',
+      variable: true
+    }, {
+      type: 'statement',
+      name: '--a',
+      value: '2',
+      variable: true
+    }]
+  });
+});
