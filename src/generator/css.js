@@ -93,7 +93,7 @@ class Rules {
     return Func[name] || MathFunc[name];
   }
 
-  apply_func(fn, coords, args, fname) {
+  apply_func(fn, coords, args, fname, contextedVariable = {}) {
     let _fn = fn(...make_array(coords));
     let input = [];
     args.forEach(arg => {
@@ -119,7 +119,7 @@ class Rules {
           this.custom_properties['host'],
           this.custom_properties['container'],
           this.custom_properties[coords.count],
-          coords.context['v-counter'] || {}
+          contextedVariable
         );
         let context = {};
         let unit = '';
@@ -148,13 +148,13 @@ class Rules {
     return ['doodle', 'shaders', 'canvas', 'pattern'].includes(name);
   }
 
-  read_var(value, coords) {
+  read_var(value, coords, contextedVariable) {
     let count = coords.count;
     let group = Object.assign({},
       this.custom_properties['host'],
       this.custom_properties['container'],
       this.custom_properties[count],
-      coords.context['v-counter'] || {}
+      contextedVariable
     );
     if (group[value] !== undefined) {
       let result = String(group[value]).trim();
@@ -169,7 +169,7 @@ class Rules {
     return value;
   }
 
-  compose_argument(argument, coords, extra = [], parent) {
+  compose_argument(argument, coords, extra = [], parent, contextedVariable) {
     if (!coords.extra) coords.extra = [];
     coords.extra.push(extra);
     let result = argument.map(arg => {
@@ -178,7 +178,7 @@ class Rules {
           if (parent && parent.name === '@var') {
             return arg.value;
           }
-          return this.read_var(arg.value, coords);
+          return this.read_var(arg.value, coords, contextedVariable);
         }
         return arg.value;
       }
@@ -212,11 +212,10 @@ class Rules {
           coords.position = arg.position;
           let args = arg.arguments.map(n => {
             return fn.lazy
-              ? (...extra) => this.compose_argument(n, coords, extra, arg)
-              : this.compose_argument(n, coords, extra, arg);
+              ? (...extra) => this.compose_argument(n, coords, extra, arg, contextedVariable)
+              : this.compose_argument(n, coords, extra, arg, contextedVariable);
           });
-          let value = this.apply_func(fn, coords, args, fname);
-          return value;
+          return this.apply_func(fn, coords, args, fname, contextedVariable);
         } else {
           return arg.name;
         }
@@ -295,18 +294,21 @@ class Rules {
     return value;
   }
 
-  compose_variables(variables, coords) {
-    let counter = 'v-counter';
-    if (!coords.context[counter]) {
-      coords.context[counter] = {};
-    }
+  compose_variables(variables, coords, result = {}) {
     for (let [name, value] of Object.entries(variables)) {
-      coords.context[counter][name] =
-        this.compose_value(value[0], coords, coords.context[counter]).value;
+      let value_group = value.reduce((ret, v) => {
+        let composed = this.compose_value(v, coords, result);
+        if (composed && composed.value) {
+          ret.push(composed.value);
+        }
+        return ret;
+      }, []);
+      result[name] = value_group.join(', ');
     }
+    return result;
   }
 
-  compose_value(value, coords, contextedVariable) {
+  compose_value(value, coords, contextedVariable = {}) {
     if (!Array.isArray(value)) {
       return {
         value: '',
@@ -349,21 +351,15 @@ class Rules {
             } else {
               coords.position = val.position;
               if (val.variables) {
-                this.compose_variables(val.variables, coords);
+                this.compose_variables(val.variables, coords, contextedVariable);
               }
               let args = val.arguments.map(arg => {
                 return fn.lazy
-                  ? (...extra) => {
-                      let composed = this.compose_argument(arg, coords, extra, val)
-                      if (val.variables) {
-                        coords.context['v-counter'] = {};
-                      }
-                      return composed;
-                  }
-                  : this.compose_argument(arg, coords, [], val);
+                  ? (...extra) => this.compose_argument(arg, coords, extra, val, contextedVariable)
+                  : this.compose_argument(arg, coords, [], val, contextedVariable);
               });
 
-              let output = this.apply_func(fn, coords, args, fname);
+              let output = this.apply_func(fn, coords, args, fname, contextedVariable);
               if (!is_nil(output)) {
                 result += output;
                 if (output.extra) {

@@ -429,9 +429,10 @@ function read_func(it, variables = {}) {
       let [args, raw_args] = read_arguments(it, composition, composible(name), variables);
       if (is_svg(name)) {
         let parsed_svg = parse_svg(raw_args);
+        let line = 0;
         for (let item of parsed_svg.value) {
           if (item.variable) {
-            variables[item.name] = (parse(`${item.name}: ${item.value}`))[0].value;
+            variables[item.name] = (parse(`${'\n'.repeat(line++)} ${item.name}: ${item.value}`))[0].value;
           }
         }
         if (/\d\s*{/.test(raw_args) && has_times_syntax(parsed_svg)) {
