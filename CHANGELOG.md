@@ -1,3 +1,11 @@
+## 0.37.1
+
+* Fix variable orders inside `@svg()`.
+* Fix variable context.
+
+<br /> <br />
+
+
 ## 0.37.0
 
 ### Features
@@ -30,7 +38,6 @@
     viewBox: 0 0 $size $size;
   );
   ```
-
 <br /> <br />
 
 
