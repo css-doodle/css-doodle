@@ -86,7 +86,7 @@ function transformViewBox(token) {
   }
   let [x, y, w, h] = viewBox;
   if (p) {
-    [x, y, w, h] = [x-p, x-p, w+p*2, h+p*2];
+    [x, y, w, h] = [x-p, y-p, w+p*2, h+p*2];
   }
   return `${x} ${y} ${w} ${h}`;
 }
