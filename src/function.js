@@ -710,7 +710,7 @@ const Expose = add_alias({
     }
   },
 
-  unicode() {
+  code() {
     return (...args) => {
       return args.map(code => String.fromCharCode(code));
     }
@@ -804,6 +804,7 @@ const Expose = add_alias({
   'point': 'plot',
   'Point': 'Plot',
   'paint': 'canvas',
+  'unicode': 'code'
 });
 
 export default Expose;
