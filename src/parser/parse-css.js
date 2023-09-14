@@ -446,10 +446,10 @@ function read_func(it, variables = {}) {
       func.arguments = args;
       func.variables = variables;
       break;
-    } else if (/[0-9a-zA-Z_\-.]/.test(c)) {
+    } else if (/[0-9a-zA-Z_\-.%]/.test(c)) {
       name += c;
     }
-    if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.]/.test(next)) {
+    if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.%]/.test(next)) {
       break;
     }
     it.next();
@@ -518,7 +518,7 @@ function read_value(it) {
       }
       break;
     }
-    else if ((c === '@' || c === '$') && /[\w-\(]/.test(it.curr(1))) {
+    else if ((c === '@' || c === '$') && /[\w-\(%]/.test(it.curr(1))) {
       if (text.value.length) {
         value[idx].push(text);
         text = Tokens.text();
