@@ -1,3 +1,13 @@
+## 0.37.2
+
+* Fix viewBox padding calculation.
+* Fix CSS parser to read % as an unit value for expressions like `$%(10)`.
+* Change `@unicode` to `@code` internally.
+
+<br /> <br />
+
+
+
 ## 0.37.1
 
 * Fix variable orders inside `@svg()`.
