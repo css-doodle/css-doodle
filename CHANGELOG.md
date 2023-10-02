@@ -1,3 +1,10 @@
+## 0.37.3
+
+* Fix build.
+
+<br /> <br />
+
+
 ## 0.37.2
 
 * Fix viewBox padding calculation.
