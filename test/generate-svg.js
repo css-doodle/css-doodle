@@ -31,7 +31,7 @@ test('wrapped by default', t => {
     'g {}',
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <g></g>
+        <g/>
       </svg>
     `)
   );
@@ -47,9 +47,9 @@ test('inline svg element', t => {
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="linearGradient-1"></linearGradient>
+          <linearGradient id="linearGradient-1"/>
         </defs>
-        <circle filter="url(#linearGradient-1)"></circle>
+        <circle filter="url(#linearGradient-1)"/>
       </svg>
     `)
   );
@@ -65,9 +65,9 @@ test('inline href', t => {
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <circle id="circle-2"></circle>
+          <circle id="circle-2"/>
         </defs>
-        <use href="#circle-2"></use>
+        <use href="#circle-2"/>
       </svg>
     `)
   );
@@ -78,7 +78,7 @@ test('id shorthand', t => {
     `circle#id {}`,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle id="id"></circle>
+        <circle id="id"/>
       </svg>
     `)
   );
@@ -183,7 +183,7 @@ test('style tag', t => {
     }`,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle></circle>
+        <circle/>
         <style>
           circle{fill:red;}
           circle:nth-child(1){}
@@ -203,7 +203,7 @@ test('inline style', t => {
     }`,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle style="fill:red;r:1;"></circle>
+        <circle style="fill:red;r:1;"/>
       </svg>
     `)
   );
@@ -218,8 +218,8 @@ test('group id', t => {
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <g id="id">
-          <circle></circle>
-          <rect></rect>
+          <circle/>
+          <rect/>
         </g>
       </svg>
     `)
@@ -238,7 +238,7 @@ test('group id and all its attributes', t => {
     }`,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle fill="red" id="a" cx="5" cy="5" r="5"></circle>
+        <circle fill="red" id="a" cx="5" cy="5" r="5"/>
       </svg>
     `)
   );
@@ -295,8 +295,8 @@ test('do not group elements for empty id', t => {
     }`,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle fill="red"></circle>
-        <circle cx="5" cy="5" r="5"></circle>
+        <circle fill="red"/>
+        <circle cx="5" cy="5" r="5"/>
       </svg>
     `)
   );
@@ -310,7 +310,7 @@ test('Normalize quoted attribute values', t => {
     `,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle name="hello"></circle>
+        <circle name="hello"/>
       </svg>
     `)
   );
@@ -321,7 +321,7 @@ test('Normalize quoted attribute values', t => {
     `,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
-        <circle name="hello"></circle>
+        <circle name="hello"/>
       </svg>
     `)
   );
@@ -336,7 +336,7 @@ test('draw', t => {
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <path stroke-dasharray="10" pathLength="10">
-          <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s"></animate>
+          <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s"/>
         </path>
       </svg>
 

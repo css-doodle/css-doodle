@@ -60,7 +60,11 @@ class Tag {
     for (let tag of this.body) {
       body.push(tag.toString());
     }
-    return `<${this.name}${attrs.join(' ')}>${body.join('')}</${this.name}>`;
+    let content = body.join('');
+    if (content.length || /svg/i.test(this.name)) {
+      return `<${this.name}${attrs.join(' ')}>${body.join('')}</${this.name}>`;
+    }
+    return `<${this.name}${attrs.join(' ')}/>`;
   }
 }
 
