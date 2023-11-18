@@ -226,6 +226,27 @@ test('group id', t => {
   );
 });
 
+test('group ids only when they are at the same level', t => {
+  compare(t,
+    `svg {
+      g g#id { circle {} }
+      g#id { rect {} }
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <g>
+          <g id="id">
+            <circle/>
+          </g>
+        </g>
+        <g id="id">
+          <rect/>
+        </g>
+      </svg>
+    `)
+  );
+});
+
 test('group id and all its attributes', t => {
   compare(t,
     `svg {
