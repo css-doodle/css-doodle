@@ -342,5 +342,61 @@ test('draw', t => {
 
     `)
   );
+});
 
+test('combile defs elements into one', t => {
+  compare(t,
+    `defs {}
+     defs {}`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs/>
+      </svg>
+    `)
+  );
+
+  compare(t,
+    `defs g {}
+     defs path {}`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <g/>
+          <path/>
+        </defs>
+      </svg>
+    `)
+  );
+});
+
+test('generate single defs id', t => {
+  compare(t,
+    `defs g#1 {}
+     defs g#1 {}`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <g id="1"/>
+        </defs>
+      </svg>
+    `)
+  );
+
+  compare(t,
+    `path {
+      href: defs g#1 {}
+    }
+    path {
+      href: defs g#1 {}
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <g id="1"/>
+        </defs>
+        <path href="#1"/>
+        <path href="#1"/>
+      </svg>
+    `)
+  );
 });

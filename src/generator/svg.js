@@ -124,6 +124,14 @@ function generate(token, element, parent, root) {
         root = el;
         root.attr('xmlns', NS);
       }
+      let defsElement = null;
+      if (token.name === 'defs') {
+        defsElement = root.body.find(n => n.name === 'defs');
+        // replace with existing defs
+        if (defsElement) {
+          el = defsElement;
+        }
+      }
       for (let block of token.value) {
         let id = generate(block, el, token, root);
         if (id) { inlineId = id }
@@ -138,11 +146,18 @@ function generate(token, element, parent, root) {
           el.attr('id', inlineId);
         }
       }
-      let existedTag = root.find(el);
+      let existedTag = element.find(el);
       if (existedTag) {
         existedTag.merge(el);
       } else {
-        element.append(el);
+        if (token.name === 'defs') {
+          // append only when there's no defs
+          if (!defsElement) {
+            root.append(el);
+          }
+        } else {
+          element.append(el);
+        }
       }
     }
   }
