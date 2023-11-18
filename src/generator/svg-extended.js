@@ -5,7 +5,7 @@ function generate(token, last) {
     if (token.times) {
       result += ('@M' + token.times + '(' + token.pureName + '{');
     } else {
-      result += token.name + (isInline ? ' ' : '{');
+      result += token.name + '{';
     }
     if (token.name === 'style') {
       result += token.value;
