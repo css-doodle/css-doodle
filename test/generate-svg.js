@@ -421,3 +421,67 @@ test('generate single defs id', t => {
     `)
   );
 });
+
+test('put id at right element', t => {
+  compare(t,
+    `svg {
+      circle {
+        filter: defs g circle {}
+      }
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <g id="g-3">
+            <circle/>
+          </g>
+        </defs>
+        <circle filter="url(#g-3)"/>
+      </svg>
+    `)
+  );
+
+  compare(t,
+    `svg {
+      circle {
+        filter: defs g g g circle {}
+      }
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <g id="g-4">
+            <g>
+              <g>
+                <circle/>
+              </g>
+            </g>
+          </g>
+        </defs>
+        <circle filter="url(#g-4)"/>
+      </svg>
+    `)
+  );
+});
+
+test('no id for multiple inline defs child elements', t => {
+  compare(t,
+    `svg {
+      circle {
+        filter: defs {
+          a {}
+          b {}
+        }
+      }
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <a/>
+          <b/>
+        </defs>
+        <circle filter=""/>
+      </svg>
+    `)
+  );
+});

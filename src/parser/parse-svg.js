@@ -6,6 +6,7 @@ function readStatement(iter, token) {
   let inlineBlock;
   let stackQuote = [];
   let stackParen = [];
+  let isInline = false;
   while (iter.next()) {
     let { curr, next } = iter.get();
     if (curr.isSymbol('(') && !stackQuote.length) {
@@ -38,7 +39,6 @@ function readStatement(iter, token) {
       let skip = isSkip(...selectors, tokenName);
       inlineBlock = resolveId(walk(iter, splitTimes(tokenName, {
         type: 'block',
-        inline: true,
         name: tokenName,
         value: [],
       })), skip);
@@ -50,6 +50,7 @@ function readStatement(iter, token) {
           value: [inlineBlock]
         }), skip);
       }
+      isInline = true;
       break;
     }
     fragment.push(curr);
@@ -62,6 +63,9 @@ function readStatement(iter, token) {
     token.value = joinToken(fragment);
   } else if (inlineBlock) {
     token.value = inlineBlock;
+  }
+  if (isInline) {
+    token.value.inline = true;
   }
   if (token.origin) {
     token.origin.value = token.value;

@@ -1,4 +1,4 @@
-import { next_id } from '../utils/index.js';
+import { next_id, is_nil } from '../utils/index.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const NSXLink = 'http://www.w3.org/1999/xlink';
@@ -133,15 +133,20 @@ function generate(token, element, parent, root) {
         }
       }
       for (let block of token.value) {
+        token.parent = parent;
         let id = generate(block, el, token, root);
         if (id) { inlineId = id }
       }
-      // generate id for inline block if no id is found
-      if (token.inline) {
+      let isInlineAndNotDefs = token && token.inline && token.name !== 'defs';
+      let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
+      let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
+
+      if (isInlineAndNotDefs || isParentInlineDefs) {
+        // generate id for inline block if no id is found
         let found = token.value.find(n => n.type === 'statement' && n.name === 'id');
         if (found) {
           inlineId = found.value;
-        } else {
+        } else if (isSingleDefChild || isInlineAndNotDefs) {
           inlineId = nextId(token.name);
           el.attr('id', inlineId);
         }
@@ -179,9 +184,13 @@ function generate(token, element, parent, root) {
       // handle inline block value
       if (value && value.type === 'block') {
         let id = generate(token.value, root, token, root);
-        value = `url(#${id})`;
-        if (token.name === 'xlink:href' || token.name === 'href') {
-          value = `#${id}`;
+        if (is_nil(id)) {
+          value = '';
+        } else {
+          value = `url(#${id})`;
+          if (token.name === 'xlink:href' || token.name === 'href') {
+            value = `#${id}`;
+          }
         }
       }
       if (/viewBox/i.test(token.name)) {

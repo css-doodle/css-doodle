@@ -29,7 +29,7 @@ test('code transformation', t => {
     `path {
        href: defs g circle*2 {}
     }`,
-    `svg{path{href:defs{g{@M2(circle{})}}}`
+    `svg{path{href:defs{g{@M2(circle{})}}}}`
   );
 
 });
