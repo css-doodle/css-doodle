@@ -390,6 +390,25 @@ test('combile defs elements into one', t => {
   );
 });
 
+test('handle nested defs', t => {
+  compare(t,
+    `path {
+      fill: defs g {
+        mask: defs g {}
+      }
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <g id="g-3"/>
+          <g mask="url(#g-3)" id="g-4"/>
+        </defs>
+        <path fill="url(#g-4)"/>
+      </svg>
+    `)
+  );
+});
+
 test('generate single defs id', t => {
   compare(t,
     `defs g#1 {}
@@ -432,11 +451,11 @@ test('put id at right element', t => {
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <g id="g-3">
+          <g id="g-5">
             <circle/>
           </g>
         </defs>
-        <circle filter="url(#g-3)"/>
+        <circle filter="url(#g-5)"/>
       </svg>
     `)
   );
@@ -450,7 +469,7 @@ test('put id at right element', t => {
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <g id="g-4">
+          <g id="g-6">
             <g>
               <g>
                 <circle/>
@@ -458,7 +477,7 @@ test('put id at right element', t => {
             </g>
           </g>
         </defs>
-        <circle filter="url(#g-4)"/>
+        <circle filter="url(#g-6)"/>
       </svg>
     `)
   );

@@ -9,6 +9,7 @@ class Tag {
     if (!name) {
       throw new Error("Tag name is required");
     }
+    this.id = Symbol();
     this.name = name;
     this.body = [];
     this.attrs = {};
@@ -26,9 +27,17 @@ class Tag {
       return this.body.find(tag => tag.attrs.id === id && tag.name === name);
     }
   }
-  append(tag) {
-    if (!this.isTextNode()) {
-      this.body.push(tag);
+  findSpareDefs() {
+    return this.body.find(n => n.name === 'defs' && !n.attrs.id);
+  }
+  append(tags) {
+    if (!Array.isArray(tags)) {
+      tags = [tags];
+    }
+    for (let tag of tags) {
+      if (!this.isTextNode()) {
+        this.body.push(tag);
+      }
     }
   }
   merge(tag) {
@@ -124,9 +133,8 @@ function generate(token, element, parent, root) {
         root = el;
         root.attr('xmlns', NS);
       }
-      let defsElement = null;
       if (token.name === 'defs') {
-        defsElement = root.body.find(n => n.name === 'defs');
+        let defsElement = root.findSpareDefs();
         // replace with existing defs
         if (defsElement) {
           el = defsElement;
@@ -156,8 +164,13 @@ function generate(token, element, parent, root) {
         existedTag.merge(el);
       } else {
         if (token.name === 'defs') {
-          // append only when there's no defs
-          if (!defsElement) {
+          // append only when there's no defs and spare defs
+          let defsElement = root.findSpareDefs();
+          if (defsElement && !el.attrs.id) {
+            if (el.id !== defsElement.id) {
+              defsElement.append(el.body);
+            }
+          } else {
             root.append(el);
           }
         } else {
