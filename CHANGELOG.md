@@ -1,3 +1,13 @@
+## 0.37.4
+
+* Use self-closing tags for generated SVG elements.
+* Flatten nested `defs` blocks and combine them into one.
+* Fix curly braces in nested SVG elements.
+* Fix id generation for inline SVG `defs` elements.
+
+<br /> <br />
+
+
 ## 0.37.3
 
 * Fix build.

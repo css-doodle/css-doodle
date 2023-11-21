@@ -1,4 +1,4 @@
-/*! css-doodle@0.37.3 */
+/*! css-doodle@0.37.4 */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -619,6 +619,7 @@
     let inlineBlock;
     let stackQuote = [];
     let stackParen = [];
+    let isInline = false;
     while (iter.next()) {
       let { curr, next } = iter.get();
       if (curr.isSymbol('(') && !stackQuote.length) {
@@ -651,7 +652,6 @@
         let skip = isSkip(...selectors, tokenName);
         inlineBlock = resolveId(walk$1(iter, splitTimes(tokenName, {
           type: 'block',
-          inline: true,
           name: tokenName,
           value: [],
         })), skip);
@@ -663,6 +663,7 @@
             value: [inlineBlock]
           }), skip);
         }
+        isInline = true;
         break;
       }
       fragment.push(curr);
@@ -675,6 +676,9 @@
       token.value = joinToken$2(fragment);
     } else if (inlineBlock) {
       token.value = inlineBlock;
+    }
+    if (isInline) {
+      token.value.inline = true;
     }
     if (token.origin) {
       token.origin.value = token.value;
@@ -979,7 +983,7 @@
       if (token.times) {
         result += ('@M' + token.times + '(' + token.pureName + '{');
       } else {
-        result += token.name + (isInline ? ' ' : '{');
+        result += token.name + '{';
       }
       if (token.name === 'style') {
         result += token.value;
@@ -1964,6 +1968,7 @@
       if (!name) {
         throw new Error("Tag name is required");
       }
+      this.id = Symbol();
       this.name = name;
       this.body = [];
       this.attrs = {};
@@ -1981,9 +1986,17 @@
         return this.body.find(tag => tag.attrs.id === id && tag.name === name);
       }
     }
-    append(tag) {
-      if (!this.isTextNode()) {
-        this.body.push(tag);
+    findSpareDefs() {
+      return this.body.find(n => n.name === 'defs' && !n.attrs.id);
+    }
+    append(tags) {
+      if (!Array.isArray(tags)) {
+        tags = [tags];
+      }
+      for (let tag of tags) {
+        if (!this.isTextNode()) {
+          this.body.push(tag);
+        }
       }
     }
     merge(tag) {
@@ -2015,7 +2028,11 @@
       for (let tag of this.body) {
         body.push(tag.toString());
       }
-      return `<${this.name}${attrs.join(' ')}>${body.join('')}</${this.name}>`;
+      let content = body.join('');
+      if (content.length || /svg/i.test(this.name)) {
+        return `<${this.name}${attrs.join(' ')}>${body.join('')}</${this.name}>`;
+      }
+      return `<${this.name}${attrs.join(' ')}/>`;
     }
   }
 
@@ -2075,25 +2092,49 @@
           root = el;
           root.attr('xmlns', NS);
         }
+        if (token.name === 'defs') {
+          let defsElement = root.findSpareDefs();
+          // replace with existing defs
+          if (defsElement) {
+            el = defsElement;
+          }
+        }
         for (let block of token.value) {
+          token.parent = parent;
           let id = generate$1(block, el, token, root);
           if (id) { inlineId = id; }
         }
-        // generate id for inline block if no id is found
-        if (token.inline) {
+        let isInlineAndNotDefs = token && token.inline && token.name !== 'defs';
+        let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
+        let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
+
+        if (isInlineAndNotDefs || isParentInlineDefs) {
+          // generate id for inline block if no id is found
           let found = token.value.find(n => n.type === 'statement' && n.name === 'id');
           if (found) {
             inlineId = found.value;
-          } else {
+          } else if (isSingleDefChild || isInlineAndNotDefs) {
             inlineId = nextId$1(token.name);
             el.attr('id', inlineId);
           }
         }
-        let existedTag = root.find(el);
+        let existedTag = element.find(el);
         if (existedTag) {
           existedTag.merge(el);
         } else {
-          element.append(el);
+          if (token.name === 'defs') {
+            // append only when there's no defs and spare defs
+            let defsElement = root.findSpareDefs();
+            if (defsElement && !el.attrs.id) {
+              if (el.id !== defsElement.id) {
+                defsElement.append(el.body);
+              }
+            } else {
+              root.append(el);
+            }
+          } else {
+            element.append(el);
+          }
         }
       }
     }
@@ -2115,9 +2156,13 @@
         // handle inline block value
         if (value && value.type === 'block') {
           let id = generate$1(token.value, root, token, root);
-          value = `url(#${id})`;
-          if (token.name === 'xlink:href' || token.name === 'href') {
-            value = `#${id}`;
+          if (is_nil(id)) {
+            value = '';
+          } else {
+            value = `url(#${id})`;
+            if (token.name === 'xlink:href' || token.name === 'href') {
+              value = `#${id}`;
+            }
           }
         }
         if (/viewBox/i.test(token.name)) {
