@@ -181,13 +181,6 @@ function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
 
-function round(value, precision = 6) {
-  const power = Math.pow(10, precision + 1)
-  let result = Math.round((value * power) + (Number.EPSILON * power)) / power;
-  if (Number.isNaN(result)) result = 0;
-  return result;
-}
-
 export {
   clamp,
   maybe,
@@ -211,5 +204,4 @@ export {
   next_id,
   lerp,
   unique_id,
-  round,
 }
