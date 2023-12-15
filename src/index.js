@@ -678,13 +678,3 @@ function create_grid(grid_obj, content) {
   }
   return `<grid class="container">${result}</grid>`;
 }
-
-export default make_tag_function(rules => {
-  if (typeof document !== 'undefined') {
-    let doodle = document.createElement('css-doodle');
-    if (doodle.update) {
-      doodle.update(rules);
-    }
-    return doodle;
-  }
-});

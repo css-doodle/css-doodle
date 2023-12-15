@@ -28,7 +28,9 @@
     "src"
   ],
   "exports": {
-    ".": "./src/index.js",
+    "./core": {
+      "import": "./src/exports/core/index.js"
+    },
     "./generator": {
       "import": "./src/exports/generator/index.js"
     },
