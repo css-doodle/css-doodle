@@ -1,4 +1,4 @@
-import { last, flat_map } from './list.js';
+import { last } from './list.js';
 
 import { range } from './index.js';
 import { memo } from './memo.js';
@@ -46,7 +46,7 @@ function get_tokens(input) {
 
 const build_range = memo('build_range', (input) => {
   let tokens = get_tokens(input);
-  return flat_map(tokens, ({ type, value }) => {
+  return tokens.flatMap(({ type, value }) => {
     if (type == 'char') return value;
     let [ from, to ] = value;
     let reverse = false;
@@ -61,9 +61,9 @@ const build_range = memo('build_range', (input) => {
 });
 
 function expand(fn) {
-  return (...args) => fn(...flat_map(args, n =>
+  return (...args) => fn(...(args.flatMap(n =>
     String(n).startsWith('[') ? build_range(n) : n
-  ));
+  )));
 }
 
 export {
