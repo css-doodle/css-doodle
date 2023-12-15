@@ -3,28 +3,6 @@ function clamp(num, min, max) {
   return Math.max(min, Math.min(max, num));
 }
 
-function maybe(cond, value) {
-  if (!cond) return '';
-  return (typeof value === 'function') ? value() : value;
-}
-
-function range(start, stop, step) {
-  let count = 0, old = start;
-  let initial = n => (n > 0 && n < 1) ? .1 : 1;
-  let length = arguments.length;
-  if (length == 1) [start, stop] = [initial(start), start];
-  if (length < 3) step = initial(start);
-  let range = [];
-  while ((step >= 0 && start <= stop)
-    || (step < 0 && start > stop)) {
-    range.push(start);
-    start += step;
-    if (count++ >= 65535) break;
-  }
-  if (!range.length) range.push(old);
-  return range;
-}
-
 function add_alias(obj, names) {
   for (let [alias, name] of Object.entries(names)) {
     obj[alias] = obj[name];
@@ -176,15 +154,8 @@ function unique_id(prefix = '') {
   return prefix + Math.random().toString(32).substr(2);
 }
 
-function make_array(arr) {
-  if (is_nil(arr)) return [];
-  return Array.isArray(arr) ? arr : [arr];
-}
-
 export {
   clamp,
-  maybe,
-  range,
   add_alias,
   is_letter,
   is_nil,

@@ -17,11 +17,9 @@ import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
 import {
-  make_tag_function,
   cell_id, is_nil,
   normalize_png_name, cache_image,
   is_safari, entity, un_entity,
-  maybe
 } from './utils/index.js';
 
 if (typeof customElements !== 'undefined') {

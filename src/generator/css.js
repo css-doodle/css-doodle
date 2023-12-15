@@ -8,7 +8,7 @@ import { uniform_time } from '../uniforms.js';
 import { seedrandom } from '../lib/seedrandom.js';
 
 import { prefixer } from '../utils/prefixer.js';
-import { maybe, cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
+import { cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
 import { join, make_array, remove_empty_values } from '../utils/list.js'
 
 function is_host_selector(s) {
@@ -797,7 +797,7 @@ class Rules {
       for (let [name, keyframe] of Object.entries(this.keyframes)) {
         let aname = this.compose_aname(name, coords.count);
         this.styles.keyframes += `
-          ${ maybe(i === 0, `@keyframes ${ name } { ${ keyframe(coords) } }`)}
+          ${ i === 0 ? `@keyframes ${ name } { ${ keyframe(coords) } }` : ''}
           @keyframes ${ aname } {
             ${ keyframe(coords) }
           }
