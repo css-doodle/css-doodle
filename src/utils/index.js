@@ -181,17 +181,6 @@ function make_array(arr) {
   return Array.isArray(arr) ? arr : [arr];
 }
 
-function get_grid(input) {
-  let [x, y = x] = String(input + '')
-    .replace(/\s+/g, '')
-    .replace(/[,，xX]+/g, 'x')
-    .split('x')
-    .map(n => parseInt(n));
-  if (!x || x < 1) x = 1;
-  if (!y || y < 1) y = 1;
-  return { x, y }
-}
-
 function round(value, precision = 6) {
   const power = Math.pow(10, precision + 1)
   let result = Math.round((value * power) + (Number.EPSILON * power)) / power;
@@ -222,6 +211,5 @@ export {
   next_id,
   lerp,
   unique_id,
-  get_grid,
   round,
 }

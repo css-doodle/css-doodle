@@ -13,7 +13,6 @@ import * as Uniforms from './uniforms.js';
 import { get_props } from './utils/get-props.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { get_rgba_color } from './utils/get-rgba-color.js';
-import { get_grid } from './utils/index.js';
 import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
@@ -197,7 +196,7 @@ if (typeof customElements !== 'undefined') {
 
       let viewBox = '';
       if (options && options.arg) {
-        let v = get_grid(options.arg);
+        let v = parse_grid(options.arg, Infinity);
         if (v.x && v.y) {
           options.width = v.x + 'px';
           options.height = v.y + 'px';

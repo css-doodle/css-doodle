@@ -1,6 +1,6 @@
 import Cache from '../utils/cache.js';
 import parse_pattern from '../parser/parse-pattern.js';
-import { get_grid } from '../utils/index.js';
+import parse_grid from '../parser/parse-grid.js';
 
 function generate_shader(input, grid) {
   return `
@@ -79,7 +79,7 @@ function draw_pattern(code, extra) {
         result.push(statement.value);
       }
       if (statement.type === 'grid') {
-        grid = get_grid(statement.value);
+        grid = parse_grid(statement.value, Infinity);
       }
     } else if (token.type === 'block') {
       result.push(generate_block(token, extra));
