@@ -1,7 +1,7 @@
 import parse_value_group from './parser/parse-value-group.js';
 import parse_grid from './parser/parse-grid.js';
+import { create_shape } from './generator/shapes.js';
 
-import { shapes } from './generator/shapes.js';
 import { is_preset, get_preset } from './preset-size.js';
 
 import { prefixer } from './utils/prefixer.js';
@@ -118,12 +118,11 @@ export default add_alias({
   },
 
   shape: memo('shape-property', value => {
-    let [type, ...args] = parse_value_group(value);
-    if (typeof shapes[type] !== 'function') return '';
+    let { points, preset} = create_shape(value);
+    if (!preset) return '';
     let prop = 'clip-path';
-    let points = shapes[type](...args);
-    let rules = `${ prop }: polygon(${points.join(',')});`;
-    return prefixer(prop, rules) + 'overflow: hidden;';
+    let style = `${ prop }: polygon(${points.join(',')});`;
+    return prefixer(prop, style) + 'overflow: hidden;';
   }),
 
   use(rules) {

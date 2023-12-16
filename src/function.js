@@ -13,9 +13,8 @@ import Stack from './utils/stack.js';
 import Noise from './utils/noise.js';
 import get_named_arguments from './utils/get-named-arguments.js';
 
-import { shapes, create_shape_points } from './generator/shapes.js';
+import { create_shape } from './generator/shapes.js';
 import parse_value_group from './parser/parse-value-group.js';
-import parse_shape_commands from './parser/parse-shape-commands.js';
 import parse_svg from './parser/parse-svg.js';
 import parse_svg_path from './parser/parse-svg-path.js';
 import parse_compound_value from './parser/parse-compound-value.js';
@@ -478,26 +477,26 @@ const Expose = add_alias({
   }),
 
   'svg-polygon': lazy((_, ...args) => {
-    let value = args.map(input => get_value(input())).join(',');
-    let config = parse_shape_commands(value);
-
-    delete config.frame;
-    config['unit'] = 'none';
-    config['stroke-width'] ??= .01;
-    config['stroke'] ??= 'currentColor';
-    config['fill'] ??= 'none';
-
-    let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
+    let commands = args.map(input => get_value(input())).join(',');
+    let { rules, points } = create_shape(commands, 3, 65535, rules => {
+      delete rules.frame;
+      rules['unit'] = 'none';
+      rules['stroke-width'] ??= .01;
+      rules['stroke'] ??= 'currentColor';
+      rules['fill'] ??= 'none';
+      return rules;
+    });
+    let style = `points: ${points};`;
     let props = '';
-    for (let name of Object.keys(config)) {
+    for (let name of Object.keys(rules)) {
       if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
-        props += `${name}: ${config[name]};`
+        props += `${name}: ${rules[name]};`
       }
     };
     let parsed = parse_svg(`
-      viewBox: -1 -1 2 2 p ${Number(config['stroke-width'])/2};
+      viewBox: -1 -1 2 2 p ${Number(rules['stroke-width'])/2};
       polygon {
-        ${props} ${points}
+        ${props} ${style}
       }
     `);
     return create_svg_url(generate_svg(parsed));
@@ -530,15 +529,19 @@ const Expose = add_alias({
   plot({ count, context, extra, position, grid }) {
     let key = 'offset-points' + position;
     let lastExtra = last(extra);
-    return commands => {
+    return (...args) => {
+      let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
       if (!context[key]) {
-        let config = parse_shape_commands(commands);
-        delete config['fill'];
-        delete config['fill-rule'];
-        delete config['frame'];
-        config.points = max;
-        context[key] = create_shape_points(config, {min: 1, max: 65536});
+        let { points } = create_shape(commands, 1, 65536, rules => {
+          delete rules['fill'];
+          delete rules['fill-rule'];
+          delete rules['frame'];
+          rules.points = max;
+          return rules;
+        });
+        context[key] = points;
+
       }
       return context[key][idx - 1];
     };
@@ -547,38 +550,28 @@ const Expose = add_alias({
   Plot({ count, context, extra, position, grid }) {
     let key = 'Offset-points' + position;
     let lastExtra = last(extra);
-    return commands => {
+    return (...args) => {
+      let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
       if (!context[key]) {
-        let config = parse_shape_commands(commands);
-        delete config['fill'];
-        delete config['fill-rule'];
-        delete config['frame'];
-        config.points = max;
-        config.unit = config.unit || 'none';
-        context[key] = create_shape_points(config, {min: 1, max: 65536});
+        let { points } = create_shape(commands, 1, 65536, rules => {
+          delete rules['fill'];
+          delete rules['fill-rule'];
+          delete rules['frame'];
+          rules.points = max;
+          rules.unit = rules.unit || 'none';
+          return rules;
+        });
+        context[key] = points;
       }
       return context[key][idx - 1];
     };
   },
 
   shape() {
-    return memo('shape-function', (type = '', ...args) => {
-      type = String(type).trim();
-      let points = [];
-      if (type.length) {
-        if (typeof shapes[type] === 'function') {
-          points = shapes[type](args);
-        } else {
-          let commands = type;
-          let rest = args.join(',');
-          if (rest.length) {
-            commands = type + ',' + rest;
-          }
-          let config = parse_shape_commands(commands);
-          points = create_shape_points(config, {min: 3, max: 3600});
-        }
-      }
+    return memo('shape-function', (...args) => {
+      let commands = args.join(',');
+      let { points } = create_shape(commands, 3, 3600);
       return `polygon(${points.join(',')})`;
     });
   },

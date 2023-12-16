@@ -1,62 +1,57 @@
-import { clamp, is_empty, make_tag_function } from '../utils/index.js';
-import parse_shape_commands from '../parser/parse-shape-commands.js';
 import parse_value_group from '../parser/parse-value-group.js';
 import parse_direction from '../parser/parse-direction.js';
 import parse_compound_value from '../parser/parse-compound-value.js';
+import parse_shape_commands from '../parser/parse-shape-commands.js';
+
+import { clamp, is_empty } from '../utils/index.js';
 import calc from '../calc.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
 
-const _ = make_tag_function(c => {
-  return create_shape_points(
-    parse_shape_commands(c), {min: 3, max: 3600}
-  );
-});
-
-const shapes = {
-  circle: () => _`
+const preset_shapes = {
+  circle: `
     split: 180;
     scale: .99
   `,
 
-  triangle: () => _`
+  triangle: `
     rotate: 30;
     scale: 1.1;
     move: 0 .2
   `,
 
-  pentagon: () => _`
+  pentagon: `
     split: 5;
     rotate: 54
   `,
 
-  hexagon: () => _`
+  hexagon: `
     split: 6;
     rotate: 30;
     scale: .98
   `,
 
-  octagon: () => _`
+  octagon: `
     split: 8;
     rotat: 22.5;
     scale: .99
   `,
 
-  star: () => _`
+  star: `
     split: 10;
     r: cos(5t);
     rotate: -18;
     scale: .99
   `,
 
-  infinity: () => _`
+  infinity: `
     split: 180;
     scale: .99;
     x: cos(t)*.99 / (sin(t)^2 + 1);
     y: x * sin(t)
   `,
 
-  heart: () => _`
+  heart: `
     split: 180;
     rotate: 180;
     a: cos(t)*13/18 - cos(2t)*5/18;
@@ -65,19 +60,19 @@ const shapes = {
     y: (a - b + .2) * -1.1
   `,
 
-  bean: () => _`
+  bean: `
     split: 180;
     r: sin(t)^3 + cos(t)^3;
     move: -.35 .35;
   `,
 
-  bicorn: () => _`
+  bicorn: `
     split: 180;
     x: cos(t);
     y: sin(t)^2 / (2 + sin(t)) - .5
   `,
 
-  drop: () => _`
+  drop: `
     split: 180;
     rotate: 90;
     scale: .95;
@@ -85,13 +80,13 @@ const shapes = {
     y: (1 + sin(t)) * cos(t) / 1.6
   `,
 
-  fish: () => _`
+  fish: `
     split: 240;
     x: cos(t) - sin(t)^2 / sqrt(2) - .04;
     y: sin(2t)/2
   `,
 
-  whale: () => _`
+  whale: `
     split: 240;
     rotate: 180;
     R: 3.4 * (sin(t)^2 - .5) * cos(t);
@@ -99,7 +94,7 @@ const shapes = {
     y: sin(t) * R * 1.2
   `,
 
-  windmill:  () => _`
+  windmill: `
     split: 18;
     R: seq(.618, 1, 0);
     T: seq(t-.55, t, t);
@@ -107,27 +102,27 @@ const shapes = {
     y: R * sin(T)
   `,
 
-  vase: () => _`
+  vase: `
     split: 240;
     scale: .3;
     x: sin(4t) + sin(t) * 1.4;
     y: cos(t) + cos(t) * 4.8 + .3
   `,
 
-  clover: (k = 3) => {
+  clover(k = 3) {
     k = clamp(k, 3, 5);
     if (k == 4) k = 2;
-    return _`
+    return `
       split: 240;
       r: cos(${k}t);
       scale: .98
     `;
   },
 
-  hypocycloid: (k = 3) => {
+  hypocycloid(k = 3) {
     k = clamp(k, 3, 5);
-    let scale = [0, 0, 0, .34, .25, .19][k];
-    return _`
+    let scale = [.34, .25, .19][k - 3];
+    return `
       split: 240;
       scale: ${scale};
       k: ${k};
@@ -136,9 +131,9 @@ const shapes = {
     `;
   },
 
-  bud: (k = 3) => {
+  bud(k = 3) {
     k = clamp(k, 3, 10);
-    return _`
+    return `
       split: 240;
       scale: .8;
       r: 1 + .2 * cos(${k}t)
@@ -161,15 +156,9 @@ class Point {
 }
 
 function create_polygon_points(option, fn) {
-  if (typeof arguments[0] == 'function') {
-    fn = option;
-    option = {};
-  }
-
   if (!fn) {
     fn = t => [ cos(t), sin(t) ];
   }
-
   let split = option.split || 180;
   let turn = option.turn || 1;
   let frame = option.frame;
@@ -298,9 +287,9 @@ function create_shape_points(props, {min, max}) {
     props.move = props.origin;
   }
 
-  let option = Object.assign({}, props, { split });
+  props.split = split;
 
-  return create_polygon_points(option, (t, i) => {
+  return create_polygon_points(props, (t, i) => {
     let context = Object.assign({}, props, {
       't': pt || t,
       'θ': pt || t,
@@ -342,8 +331,29 @@ function create_shape_points(props, {min, max}) {
   });
 }
 
-export {
-  create_polygon_points,
-  create_shape_points,
-  shapes,
+export function create_shape(input, min, max, modifier) {
+  let commands = '';
+  let [name, ...args] = parse_value_group(input);
+  let preset = false;
+  switch (typeof preset_shapes[name]) {
+    case 'function':
+      commands = preset_shapes[name](...args);
+      preset = true;
+      break;
+    case 'string':
+      commands = preset_shapes[name];
+      preset = true;
+      break;
+    default: {
+      commands = input;
+    }
+  }
+  let rules = parse_shape_commands(commands);
+  if (typeof modifier === 'function') {
+    rules = modifier(rules);
+  }
+  let points = create_shape_points(rules, {min, max});
+  return {
+    rules, points, preset
+  }
 }

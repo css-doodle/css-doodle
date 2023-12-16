@@ -133,14 +133,6 @@ function hash(str, seed = 0) {
   return 4294967296 * (2097151 & h2) + (h1>>>0);
 }
 
-function make_tag_function(fn) {
-  let get_value = v => is_nil(v) ? '' : v;
-  return (input, ...vars) => {
-    let string = make_array(input).reduce((s, c, i) => s + c + get_value(vars[i]), '');
-    return fn(string);
-  };
-}
-
 function next_id() {
   let id = 0;
   return (prefix = '') => `${prefix}-${++id}`;
@@ -171,7 +163,6 @@ export {
   un_entity,
   entity,
   hash,
-  make_tag_function,
   next_id,
   lerp,
   unique_id,
