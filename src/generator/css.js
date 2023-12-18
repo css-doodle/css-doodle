@@ -457,11 +457,6 @@ class Rules {
     let rule = `${ prop }: ${ value };`
     rule = prefixer(prop, rule);
 
-    if (prop === 'clip-path') {
-      // fix clip bug
-      rule += ';overflow: hidden;';
-    }
-
     if (prop === 'width' || prop === 'height') {
       if (!is_special_selector(selector)) {
         rule += `--internal-cell-${ prop }: ${ value };`;

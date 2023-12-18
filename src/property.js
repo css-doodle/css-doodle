@@ -122,7 +122,7 @@ export default add_alias({
     if (!preset) return '';
     let prop = 'clip-path';
     let style = `${ prop }: polygon(${points.join(',')});`;
-    return prefixer(prop, style) + 'overflow: hidden;';
+    return prefixer(prop, style);
   }),
 
   use(rules) {
