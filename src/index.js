@@ -15,11 +15,14 @@ import { get_rgba_color } from './utils/get-rgba-color.js';
 import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
+import { NS, NSXHtml} from './utils/svg.js';
+
 import {
   cell_id, is_nil,
   normalize_png_name, cache_image,
   is_safari, entity, un_entity,
 } from './utils/index.js';
+
 
 if (typeof customElements !== 'undefined') {
   class Doodle extends HTMLElement {
@@ -209,9 +212,9 @@ if (typeof customElements !== 'undefined') {
         : '';
 
       replace(`
-        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" ${viewBox}>
+        <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
           <foreignObject width="100%" height="100%">
-            <div class="host" width="100%" height="100%" xmlns="http://www.w3.org/1999/xhtml">
+            <div class="host" width="100%" height="100%" ${NSXHtml}>
               <style>
                 ${ get_basic_styles() }
                 ${ get_grid_styles(grid) }
@@ -220,7 +223,7 @@ if (typeof customElements !== 'undefined') {
                 ${ cells }
                 ${ keyframes }
               </style>
-              <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0; height:0"></svg>
+              <svg id="defs" ${NS} style="width:0; height:0"></svg>
               ${ grid_container }
             </div>
           </foreignObject>
@@ -392,7 +395,7 @@ if (typeof customElements !== 'undefined') {
         <style class="style-keyframes">${ keyframes }</style>
         <style class="style-container">${ style_container }</style>
         <style class="style-cells">${ style_cells }</style>
-        <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
+        <svg id="defs" ${NS} style="width:0;height:0"></svg>
         ${ create_grid(grid, content) }
       `;
 
@@ -512,7 +515,7 @@ if (typeof customElements !== 'undefined') {
         let h = height * scale;
 
         let svg = `
-          <svg xmlns="http://www.w3.org/2000/svg"
+          <svg ${NS}
             preserveAspectRatio="none"
             viewBox="0 0 ${ width } ${ height }"
             ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
@@ -520,7 +523,7 @@ if (typeof customElements !== 'undefined') {
             <foreignObject width="100%" height="100%">
               <div
                 class="host"
-                xmlns="http://www.w3.org/1999/xhtml"
+                ${NSXHtml}
                 style="width: ${ width }px; height: ${ height }px; "
               >
                 <style>.host { ${entity(variables)} }</style>

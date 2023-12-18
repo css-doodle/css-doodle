@@ -1,7 +1,6 @@
 import { next_id, is_nil } from '../utils/index.js';
+import {NS, NSXLink} from '../utils/svg.js';
 
-const NS = 'http://www.w3.org/2000/svg';
-const NSXLink = 'http://www.w3.org/1999/xlink';
 const nextId = next_id();
 
 class Tag {
@@ -131,7 +130,7 @@ function generate(token, element, parent, root) {
       let el = new Tag(token.name);
       if (!root) {
         root = el;
-        root.attr('xmlns', NS);
+        root.attr('xmlns', NS.split('=')[1]);
       }
       if (token.name === 'defs') {
         let defsElement = root.findSpareDefs();
@@ -236,7 +235,7 @@ function generate(token, element, parent, root) {
         element.attr(token.name, value);
       }
       if (token.name.includes('xlink:')) {
-        root.attr('xmlns:xlink', NSXLink);
+        root.attr('xmlns:xlink', NSXLink.split('=')[1]);
       }
     }
   }
