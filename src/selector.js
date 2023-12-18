@@ -1,19 +1,12 @@
 import calc from './calc.js';
+import parse_linear_expr from './parser/parse-linear-expr.js';
 
-const literal = {
-  even: n => !(n % 2),
-  odd:  n => !!(n % 2),
-};
+function odd(n) {
+  return n % 2;
+}
 
-/**
- * TODO: optimization
- */
-function nth(input, curr, max) {
-  for (let i = 0; i <= max; ++i) {
-    if (calc(input, { n: i }) == curr) {
-      return true;
-    }
-  }
+function even(n) {
+  return !odd(n);
 }
 
 function get_selector(offset) {
@@ -30,6 +23,28 @@ function get_selector(offset) {
   return selector;
 }
 
+function compare(rule, value) {
+  if (rule === 'even') {
+    return even(value);
+  }
+  if (rule === 'odd') {
+    return odd(value);
+  }
+  if (rule == 'n') {
+    return true;
+  }
+  let { a, b, error } = parse_linear_expr(rule);
+  if (error) {
+    return false;
+  }
+  if (a === 0) {
+    return value === b;
+  } else {
+    let result = (value - b) / a;
+    return result >= 0 && Number.isInteger(result);
+  }
+}
+
 export default {
 
   at({ x, y }) {
@@ -37,35 +52,35 @@ export default {
   },
 
   nth({ count, grid }) {
-    return (...exprs) => exprs.some(expr =>
-      literal[expr]
-        ? literal[expr](count)
-        : nth(expr, count, grid.count)
-    );
+    return (...exprs) => {
+      for (let expr of exprs) {
+        if (compare(expr, count)) return true;
+      }
+    }
   },
 
   row({ y, grid }) {
-    return (...exprs) => exprs.some(expr =>
-      literal[expr]
-        ? literal[expr](y)
-        : nth(expr, y, grid.y)
-    );
+    return (...exprs) => {
+      for (let expr of exprs) {
+        if (compare(expr, y)) return true;
+      }
+    };
   },
 
   col({ x, grid }) {
-    return (...exprs) => exprs.some(expr =>
-      literal[expr]
-        ? literal[expr](x)
-        : nth(expr, x, grid.x)
-    );
+    return (...exprs) => {
+      for (let expr of exprs) {
+        if (compare(expr, x)) return true;
+      }
+    };
   },
 
-  even({ count, grid, x, y }) {
-    return arg => literal.odd(x + y);
+  even({ x, y }) {
+    return _ => odd(x + y);
   },
 
-  odd({ count, grid, x, y}) {
-    return arg => literal.even(x + y);
+  odd({ x, y}) {
+    return _ => even(x + y);
   },
 
   random({ random, count, x, y, grid }) {
