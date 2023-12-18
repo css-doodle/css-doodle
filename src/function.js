@@ -584,10 +584,6 @@ const Expose = add_alias({
     return value => value;
   },
 
-  canvas() {
-    return value => value;
-  },
-
   pattern() {
     return value => value;
   },
@@ -796,7 +792,6 @@ const Expose = add_alias({
   'Offset': 'Plot',
   'point': 'plot',
   'Point': 'Plot',
-  'paint': 'canvas',
   'unicode': 'code'
 });
 

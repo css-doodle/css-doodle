@@ -51,7 +51,6 @@ class Rules {
     this.is_gap_defined = false;
     this.coords = [];
     this.doodles = {};
-    this.canvas = {};
     this.pattern = {};
     this.shaders = {};
     this.reset();
@@ -69,7 +68,6 @@ class Rules {
     }
     this.coords = [];
     this.doodles = {};
-    this.canvas = {};
     this.pattern = {};
     this.shaders = {};
     this.content = {};
@@ -145,7 +143,7 @@ class Rules {
   }
 
   is_composable(name) {
-    return ['doodle', 'shaders', 'canvas', 'pattern'].includes(name);
+    return ['doodle', 'shaders', 'pattern'].includes(name);
   }
 
   read_var(value, coords, contextedVariable) {
@@ -202,8 +200,6 @@ class Rules {
                   return this.compose_doodle(this.inject_variables(value, coords.count), temp_arg);
                 case 'shaders':
                   return this.compose_shaders(value, coords);
-                case 'canvas':
-                  return this.compose_canvas(value, arg.arguments.slice(1));
                 case 'pattern':
                   return this.compose_pattern(value, coords);
               }
@@ -253,17 +249,6 @@ class Rules {
       code,
       cell: cell_id(x, y, z)
     };
-    return '${' + id + '}';
-  }
-
-  compose_canvas(code, rest = []) {
-    let commands = code;
-    let result = rest.map(group => get_value(group[0])).join(',');
-    if (result.length) {
-      commands = code + ',' + result;
-    }
-    let id = unique_id('canvas');
-    this.canvas[id] = { code: commands };
     return '${' + id + '}';
   }
 
@@ -344,8 +329,6 @@ class Rules {
                     result += this.compose_shaders(value, coords); break;
                   case 'pattern':
                     result += this.compose_pattern(value, coords); break;
-                  case 'canvas':
-                    result += this.compose_canvas(value, val.arguments.slice(1)); break;
                 }
               }
             } else {
@@ -487,7 +470,7 @@ class Rules {
 
     let is_image = (
       /^(background|background\-image)$/.test(prop) &&
-      /\$\{(canvas|shader|pattern)/.test(value)
+      /\$\{(shader|pattern)/.test(value)
     );
     if (is_image) {
       rule += 'background-size: 100% 100%;';
@@ -813,7 +796,6 @@ class Rules {
       random: this.random,
       doodles: this.doodles,
       shaders: this.shaders,
-      canvas: this.canvas,
       pattern: this.pattern,
       uniforms: this.uniforms,
       content: this.content,

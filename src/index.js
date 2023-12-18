@@ -5,7 +5,6 @@ import parse_shaders from './parser/parse-shaders.js';
 import { generate_css } from './generator/css.js';
 import { draw_shader } from './generator/shader.js';
 import { draw_pattern } from './generator/pattern.js';
-import { draw_canvas } from './generator/canvas.js';
 import { svg_to_png } from './generator/svg-to-png.js';
 
 import * as Uniforms from './uniforms.js';
@@ -240,10 +239,6 @@ if (typeof customElements !== 'undefined') {
       this.shader_to_image({ shader, cell, id }, fn);
     }
 
-    canvas_to_image({ code }, fn) {
-      draw_canvas(code).then(fn);
-    }
-
     pause() {
       this.setAttribute('cssd-paused-animation', true);
       for (let animation of this.animations) {
@@ -327,12 +322,11 @@ if (typeof customElements !== 'undefined') {
       this.innerHTML = '';
     }
 
-    replace({ doodles, shaders, canvas, pattern }) {
+    replace({ doodles, shaders, pattern }) {
       let doodle_ids = Object.keys(doodles);
       let shader_ids = Object.keys(shaders);
-      let canvas_ids = Object.keys(canvas);
       let pattern_ids = Object.keys(pattern);
-      let length = doodle_ids.length + canvas_ids.length + shader_ids.length + pattern_ids.length;
+      let length = doodle_ids.length + shader_ids.length + pattern_ids.length;
       return input => {
         if (!length) {
           return Promise.resolve(input);
@@ -357,15 +351,6 @@ if (typeof customElements !== 'undefined') {
               return Promise.resolve('');
             }
           }),
-          canvas_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.canvas_to_image(canvas[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
           pattern_ids.map(id => {
             if (input.includes(id)) {
               return new Promise(resolve => {
@@ -381,8 +366,6 @@ if (typeof customElements !== 'undefined') {
           for (let {id, value} of mapping) {
             /* default to data-uri for doodle and pattern */
             let target = `url(${value})`;
-            /* canvas uses css painting api */
-            if (/^canvas/.test(id)) target = value;
             /* shader uses css vars */
             if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
             input = input.replaceAll('${' + id + '}', target);
