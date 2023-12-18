@@ -331,7 +331,7 @@ function create_shape_points(props, {min, max}) {
   });
 }
 
-export function create_shape(input, min, max, modifier) {
+export function create_shape(input, min=3, max=3600, modifier) {
   let commands = '';
   let [name, ...args] = parse_value_group(input);
   let preset = false;

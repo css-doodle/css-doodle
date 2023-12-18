@@ -478,7 +478,7 @@ const Expose = add_alias({
 
   'svg-polygon': lazy((_, ...args) => {
     let commands = args.map(input => get_value(input())).join(',');
-    let { rules, points } = create_shape(commands, 3, 65535, rules => {
+    let { rules, points } = create_shape(commands, 3, 65536, rules => {
       delete rules.frame;
       rules['unit'] = 'none';
       rules['stroke-width'] ??= .01;
@@ -571,7 +571,7 @@ const Expose = add_alias({
   shape() {
     return memo('shape-function', (...args) => {
       let commands = args.join(',');
-      let { points } = create_shape(commands, 3, 3600);
+      let { points } = create_shape(commands);
       return `polygon(${points.join(',')})`;
     });
   },
