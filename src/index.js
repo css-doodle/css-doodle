@@ -98,20 +98,20 @@ if (typeof customElements !== 'undefined') {
       }
 
       let replace = this.replace(compiled);
-      this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
+      this.set_content('.s-kf', replace(compiled.styles.keyframes));
 
       if (compiled.props.has_animation) {
-        this.set_content('.style-cells', '');
-        this.set_content('.style-container', '');
+        this.set_content('.s-cells', '');
+        this.set_content('.s-grid', '');
       }
 
       setTimeout(() => {
-        this.set_content('.style-container', replace(
+        this.set_content('.s-grid', replace(
             get_grid_styles(this.grid_size)
           + compiled.styles.host
           + compiled.styles.container
         ));
-        this.set_content('.style-cells', replace(compiled.styles.cells));
+        this.set_content('.s-cells', replace(compiled.styles.cells));
       });
     }
 
@@ -216,15 +216,15 @@ if (typeof customElements !== 'undefined') {
           <foreignObject width="100%" height="100%">
             <div class="host" width="100%" height="100%" ${NSXHtml}>
               <style>
-                ${ get_basic_styles() }
-                ${ get_grid_styles(grid) }
-                ${ host }
-                ${ container }
-                ${ cells }
-                ${ keyframes }
+                ${get_basic_styles()}
+                ${get_grid_styles(grid)}
+                ${host}
+                ${container}
+                ${cells}
+                ${keyframes}
               </style>
               <svg id="defs" ${NS} style="width:0; height:0"></svg>
-              ${ grid_container }
+              ${grid_container}
             </div>
           </foreignObject>
         </svg>
@@ -391,43 +391,43 @@ if (typeof customElements !== 'undefined') {
       let replace = this.replace(compiled);
 
       this.doodle.innerHTML = `
-        <style>${ get_basic_styles() }</style>
-        <style class="style-keyframes">${ keyframes }</style>
-        <style class="style-container">${ style_container }</style>
-        <style class="style-cells">${ style_cells }</style>
+        <style>${get_basic_styles()}</style>
+        <style class="s-kf">${keyframes }</style>
+        <style class="s-grid">${style_container}</style>
+        <style class="s-cells">${style_cells}</style>
         <svg id="defs" ${NS} style="width:0;height:0"></svg>
-        ${ create_grid(grid, content) }
+        ${create_grid(grid, content)}
       `;
 
-      this.set_content('.style-container', replace(style_container));
+      this.set_content('.s-grid', replace(style_container));
 
       if (has_delay) {
         setTimeout(() => {
-          this.set_content('.style-cells', replace(cells));
+          this.set_content('.s-cells', replace(cells));
         }, 50);
       } else {
-        this.set_content('.style-cells', replace(cells));
+        this.set_content('.s-cells', replace(cells));
       }
 
       if (uniforms.time) {
-        this.register_uniform_time();
+        this.register_utime();
       }
       if (uniforms.mousex || uniforms.mousey) {
-        this.register_uniform_mouse(uniforms);
+        this.register_umouse(uniforms);
       } else {
-        this.remove_uniform_mouse();
+        this.remove_umouse();
       }
       if (uniforms.width || uniforms.height) {
-        this.register_uniform_resolution(uniforms);
+        this.register_usize(uniforms);
       } else {
-        this.remove_uniform_resolution();
+        this.remove_usize();
       }
     }
 
-    register_uniform_mouse(uniforms) {
-      if (!this.uniform_mouse_callback) {
+    register_umouse(uniforms) {
+      if (!this.umouse_fn) {
         let { uniform_mousex, uniform_mousey } = Uniforms;
-        this.uniform_mouse_callback = e => {
+        this.umouse_fn = e => {
           let data = e.detail || e;
           if (uniforms.mousex) {
             this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
@@ -436,24 +436,24 @@ if (typeof customElements !== 'undefined') {
             this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
           }
         }
-        this.addEventListener('pointermove', this.uniform_mouse_callback);
+        this.addEventListener('pointermove', this.umouse_fn);
         let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
         this.dispatchEvent(event);
       }
     }
 
-    remove_uniform_mouse() {
-      if (this.uniform_mouse_callback) {
+    remove_umouse() {
+      if (this.umouse_fn) {
         let { uniform_mousex, uniform_mousey } = Uniforms;
         this.style.removeProperty('--' + uniform_mousex.name);
         this.style.removeProperty('--' + uniform_mousey.name);
-        this.removeEventListener('pointermove', this.uniform_mouse_callback);
-        this.uniform_mouse_callback = null;
+        this.removeEventListener('pointermove', this.umouse_fn);
+        this.umouse_fn = null;
       }
     }
 
-    register_uniform_resolution(uniforms) {
-      if (!this.uniform_resolution_observer) {
+    register_usize(uniforms) {
+      if (!this.uniform_size_observer) {
         let { uniform_width, uniform_height } = Uniforms;
         const setProperty = () => {
           let box = this.getBoundingClientRect();
@@ -465,31 +465,31 @@ if (typeof customElements !== 'undefined') {
           }
         };
         setProperty();
-        this.uniform_resolution_observer = new ResizeObserver(entries => {
+        this.usize_observer = new ResizeObserver(entries => {
           for (let entry of entries) {
             let data = entry.contentBoxSize || entry.contentRect;
             if (data) setProperty();
           }
         });
-        this.uniform_resolution_observer.observe(this);
+        this.usize_observer.observe(this);
       }
     }
 
-    remove_uniform_resolution() {
-      if (this.uniform_resolution_observer) {
+    remove_usize() {
+      if (this.usize_observer) {
         let { uniform_width, uniform_height } = Uniforms;
         this.style.removeProperty('--' + uniform_width.name);
         this.style.removeProperty('--' + uniform_height.name);
-        this.uniform_resolution_observer.unobserve(this);
-        this.uniform_resolution_observer = null;
+        this.usize_observer.unobserve(this);
+        this.usize_observer = null;
       }
     }
 
-    register_uniform_time() {
+    register_utime() {
       if (!window.CSS || !window.CSS.registerProperty) {
         return false;
       }
-      if (!this.is_uniform_time_registered) {
+      if (!this.is_utime_set) {
         let { uniform_time } = Uniforms;
         try {
           CSS.registerProperty({
@@ -499,7 +499,7 @@ if (typeof customElements !== 'undefined') {
             inherits: true
           });
         } catch (e) {}
-        this.is_uniform_time_registered = true;
+        this.is_utime_set = true;
       }
     }
 
@@ -518,16 +518,12 @@ if (typeof customElements !== 'undefined') {
           <svg ${NS}
             preserveAspectRatio="none"
             viewBox="0 0 ${ width } ${ height }"
-            ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
+            ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
           >
             <foreignObject width="100%" height="100%">
-              <div
-                class="host"
-                ${NSXHtml}
-                style="width: ${ width }px; height: ${ height }px; "
-              >
-                <style>.host { ${entity(variables)} }</style>
-                ${ html }
+              <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
+                <style>.host {${entity(variables)}}</style>
+                ${html}
               </div>
             </foreignObject>
           </svg>
@@ -581,7 +577,7 @@ function get_basic_styles() {
     .map(n => `${ n }: inherit;`)
     .join('');
   return `
-    *, *::after, *::before {
+    *,*::after,*::before {
       box-sizing: border-box;
     }
     :host, .host {
@@ -591,17 +587,17 @@ function get_basic_styles() {
       height: auto;
       contain: content;
       box-sizing: border-box;
-      --${ uniform_time.name }: 0
+      --${uniform_time.name}: 0
     }
     :host([hidden]), .host[hidden] {
       display: none
     }
-    .container {
+    .grid {
       position: relative;
       width: 100%;
       height: 100%;
       display: grid;
-      ${ inherited_grid_props }
+      ${inherited_grid_props}
     }
     cell {
       position: relative;
@@ -624,8 +620,8 @@ function get_grid_styles(grid_obj) {
   let { x, y } = grid_obj || {};
   return `
     :host, .host {
-      grid-template-rows: repeat(${ y }, 1fr);
-      grid-template-columns: repeat(${ x }, 1fr);
+      grid-template-rows: repeat(${y}, 1fr);
+      grid-template-columns: repeat(${x}, 1fr);
     }
   `;
 }
@@ -659,5 +655,5 @@ function create_grid(grid_obj, content) {
     }
     result = child;
   }
-  return `<grid class="container">${result}</grid>`;
+  return `<grid class="grid">${result}</grid>`;
 }
