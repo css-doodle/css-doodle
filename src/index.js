@@ -15,7 +15,7 @@ import { get_rgba_color } from './utils/get-rgba-color.js';
 import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
-import { NS, NSXHtml} from './utils/svg.js';
+import { NS, NSXHtml } from './utils/svg.js';
 
 import {
   cell_id, is_nil,

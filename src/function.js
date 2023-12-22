@@ -80,11 +80,17 @@ function calc_with(base) {
     if (/^[+*-\/%][\-.\d\s]/.test(v)) {
       let op = v[0];
       let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
+      if (/^var/.test(base)) {
+        return `calc((${base} ${op} ${value}) * 1${unit})`;
+      }
       return compute(op, base, value) + unit;
     }
     else if (/[+*-\/%]$/.test(v)) {
       let op = v.substr(-1);
       let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
+      if (/^var/.test(base)) {
+        return `calc((${value} ${op} ${base}) * 1${unit})`;
+      }
       return compute(op, value, base) + unit;
     } else {
       let { unit = '', value } = parse_compound_value(v || 0);
@@ -507,23 +513,23 @@ const Expose = add_alias({
   },
 
   ut() {
-    return value => `var(--${ Uniforms.uniform_time.name })`;
+    return calc_with(`var(--${ Uniforms.uniform_time.name })`);
   },
 
   uw() {
-    return value => `var(--${ Uniforms.uniform_width.name })`;
+    return calc_with(`var(--${ Uniforms.uniform_width.name })`);
   },
 
   uh() {
-    return value => `var(--${ Uniforms.uniform_height.name })`;
+    return calc_with(`var(--${ Uniforms.uniform_height.name })`);
   },
 
   ux() {
-    return value => `var(--${ Uniforms.uniform_mousex.name })`;
+    return calc_with(`var(--${ Uniforms.uniform_mousex.name })`);
   },
 
   uy() {
-    return value => `var(--${ Uniforms.uniform_mousey.name })`;
+    return calc_with(`var(--${ Uniforms.uniform_mousey.name })`);
   },
 
   plot({ count, context, extra, position, grid }) {
