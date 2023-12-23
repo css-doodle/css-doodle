@@ -7,8 +7,6 @@ import { draw_shader } from './generator/shader.js';
 import { draw_pattern } from './generator/pattern.js';
 import { svg_to_png } from './generator/svg-to-png.js';
 
-import * as Uniforms from './uniforms.js';
-
 import { get_props } from './utils/get-props.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { get_rgba_color } from './utils/get-rgba-color.js';
@@ -16,13 +14,13 @@ import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
 import { NS, NSXHtml } from './utils/svg.js';
+import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import {
   cell_id, is_nil,
   normalize_png_name, cache_image,
   is_safari, entity, un_entity,
 } from './utils/index.js';
-
 
 if (typeof customElements !== 'undefined') {
   class Doodle extends HTMLElement {
@@ -243,14 +241,14 @@ if (typeof customElements !== 'undefined') {
     }
 
     pause() {
-      this.setAttribute('cssd-paused-animation', true);
+      this.setAttribute('cssd-paused', true);
       for (let animation of this.animations) {
         animation.pause();
       }
     }
 
     resume() {
-      this.removeAttribute('cssd-paused-animation');
+      this.removeAttribute('cssd-paused');
       for (let animation of this.animations) {
         animation.resume();
       }
@@ -426,14 +424,13 @@ if (typeof customElements !== 'undefined') {
 
     register_umouse(uniforms) {
       if (!this.umouse_fn) {
-        let { uniform_mousex, uniform_mousey } = Uniforms;
         this.umouse_fn = e => {
           let data = e.detail || e;
           if (uniforms.mousex) {
-            this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
+            this.style.setProperty('--' + umousex.name, data.offsetX);
           }
           if (uniforms.mousey) {
-            this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
+            this.style.setProperty('--' + umousey.name, data.offsetY);
           }
         }
         this.addEventListener('pointermove', this.umouse_fn);
@@ -444,24 +441,22 @@ if (typeof customElements !== 'undefined') {
 
     remove_umouse() {
       if (this.umouse_fn) {
-        let { uniform_mousex, uniform_mousey } = Uniforms;
-        this.style.removeProperty('--' + uniform_mousex.name);
-        this.style.removeProperty('--' + uniform_mousey.name);
+        this.style.removeProperty('--' + umousex.name);
+        this.style.removeProperty('--' + umousey.name);
         this.removeEventListener('pointermove', this.umouse_fn);
         this.umouse_fn = null;
       }
     }
 
     register_usize(uniforms) {
-      if (!this.uniform_size_observer) {
-        let { uniform_width, uniform_height } = Uniforms;
+      if (!this.usize_observer) {
         const setProperty = () => {
           let box = this.getBoundingClientRect();
           if (uniforms.width) {
-            this.style.setProperty('--' + uniform_width.name, box.width);
+            this.style.setProperty('--' + uwidth.name, box.width);
           }
           if (uniforms.height) {
-            this.style.setProperty('--' + uniform_height.name, box.height);
+            this.style.setProperty('--' + uheight.name, box.height);
           }
         };
         setProperty();
@@ -477,9 +472,8 @@ if (typeof customElements !== 'undefined') {
 
     remove_usize() {
       if (this.usize_observer) {
-        let { uniform_width, uniform_height } = Uniforms;
-        this.style.removeProperty('--' + uniform_width.name);
-        this.style.removeProperty('--' + uniform_height.name);
+        this.style.removeProperty('--' + uwidth.name);
+        this.style.removeProperty('--' + uheight.name);
         this.usize_observer.unobserve(this);
         this.usize_observer = null;
       }
@@ -490,10 +484,9 @@ if (typeof customElements !== 'undefined') {
         return false;
       }
       if (!this.is_utime_set) {
-        let { uniform_time } = Uniforms;
         try {
           CSS.registerProperty({
-            name: '--' + uniform_time.name,
+            name: '--' + utime.name,
             syntax: '<number>',
             initialValue: 0,
             inherits: true
@@ -572,7 +565,6 @@ if (typeof customElements !== 'undefined') {
 }
 
 function get_basic_styles() {
-  let { uniform_time } = Uniforms;
   const inherited_grid_props = get_props(/grid/)
     .map(n => `${ n }: inherit;`)
     .join('');
@@ -587,7 +579,7 @@ function get_basic_styles() {
       height: auto;
       contain: content;
       box-sizing: border-box;
-      --${uniform_time.name}: 0
+      --${utime.name}: 0
     }
     :host([hidden]), .host[hidden] {
       display: none
@@ -609,8 +601,8 @@ function get_basic_styles() {
       width: 100%;
       height: 100%
     }
-    :host([cssd-paused-animation]),
-    :host([cssd-paused-animation]) * {
+    :host([cssd-paused]),
+    :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
   `;

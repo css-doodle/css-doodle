@@ -19,7 +19,7 @@ import parse_svg from './parser/parse-svg.js';
 import parse_svg_path from './parser/parse-svg-path.js';
 import parse_compound_value from './parser/parse-compound-value.js';
 
-import * as Uniforms from './uniforms.js';
+import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 function make_sequence(c) {
   return lazy((_, n, ...actions) => {
@@ -509,27 +509,27 @@ const Expose = add_alias({
   }),
 
   var() {
-    return value => `var(${ get_value(value) })`;
+    return value => `var(${get_value(value)})`;
   },
 
   ut() {
-    return calc_with(`var(--${ Uniforms.uniform_time.name })`);
+    return calc_with(`var(--${utime.name})`);
   },
 
   uw() {
-    return calc_with(`var(--${ Uniforms.uniform_width.name })`);
+    return calc_with(`var(--${uwidth.name})`);
   },
 
   uh() {
-    return calc_with(`var(--${ Uniforms.uniform_height.name })`);
+    return calc_with(`var(--${uheight.name})`);
   },
 
   ux() {
-    return calc_with(`var(--${ Uniforms.uniform_mousex.name })`);
+    return calc_with(`var(--${umousex.name})`);
   },
 
   uy() {
-    return calc_with(`var(--${ Uniforms.uniform_mousey.name })`);
+    return calc_with(`var(--${umousey.name})`);
   },
 
   plot({ count, context, extra, position, grid }) {

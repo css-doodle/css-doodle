@@ -1,6 +1,6 @@
-const uniform_time = {
-  'name': 'cssd-uniform-time',
-  'animation-name': 'cssd-uniform-time-animation',
+const utime = {
+  'name': 'cssd-utime',
+  'animation-name': 'cssd-utime-animation',
   'animation-duration': 31536000000, /* one year in ms */
   'animation-iteration-count': 'infinite',
   'animation-delay': '0s',
@@ -10,34 +10,34 @@ const uniform_time = {
   'animation-timing-function': 'linear',
 };
 
-uniform_time['animation'] = `
-  ${ uniform_time['animation-duration'] }ms
-  ${ uniform_time['animation-timing-function'] }
-  ${ uniform_time['animation-delay'] }
-  ${ uniform_time['animation-iteration-count'] }
-  ${ uniform_time['animation-name'] }
+utime['animation'] = `
+  ${utime['animation-duration']}ms
+  ${utime['animation-timing-function']}
+  ${utime['animation-delay']}
+  ${utime['animation-iteration-count']}
+  ${utime['animation-name']}
 `;
 
-const uniform_mousex = {
-  name: 'cssd-uniform-mousex',
+const umousex = {
+  name: 'cssd-umousex',
 };
 
-const uniform_mousey = {
-  name: 'cssd-uniform-mousey',
+const umousey = {
+  name: 'cssd-umousey',
 };
 
-const uniform_width = {
-  name: 'cssd-uniform-width',
+const uwidth = {
+  name: 'cssd-uwidth',
 };
 
-const uniform_height = {
-  name: 'cssd-uniform-height',
+const uheight = {
+  name: 'cssd-uheight',
 };
 
 export {
-  uniform_time,
-  uniform_mousex,
-  uniform_mousey,
-  uniform_width,
-  uniform_height,
+  utime,
+  umousex,
+  umousey,
+  uwidth,
+  uheight,
 }

@@ -4,7 +4,7 @@ import Selector from '../selector.js';
 import parse_value_group from '../parser/parse-value-group.js';
 
 import calc from '../calc.js';
-import { uniform_time } from '../uniforms.js';
+import { utime } from '../uniforms.js';
 import { seedrandom } from '../lib/seedrandom.js';
 
 import { prefixer } from '../utils/prefixer.js';
@@ -416,7 +416,7 @@ class Rules {
       this.props.has_animation = true;
 
       if (is_host_selector(selector)) {
-        let prefix = uniform_time[prop];
+        let prefix = utime[prop];
         if (prefix && value) {
           value =  prefix + ',' + value;
         }
@@ -760,13 +760,13 @@ class Rules {
     if (this.uniforms.time) {
       this.styles.container += `
         :host, .host {
-          animation: ${ uniform_time.animation };
+          animation: ${ utime.animation };
         }
       `;
       this.styles.keyframes += `
-       @keyframes ${ uniform_time['animation-name'] } {
-         from { --${ uniform_time.name }: 0 }
-         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] / 10 } }
+       @keyframes ${ utime['animation-name'] } {
+         from { --${ utime.name }: 0 }
+         to { --${ utime.name }: ${ utime['animation-duration'] / 10 } }
        }
       `;
     }
