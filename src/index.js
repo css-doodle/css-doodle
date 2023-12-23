@@ -96,21 +96,21 @@ if (typeof customElements !== 'undefined') {
       }
 
       let replace = this.replace(compiled);
-      this.set_content('.s-kf', replace(compiled.styles.keyframes));
+      let { keyframes, host, container, cells } = compiled.styles;
 
+      let new_styles = replace(
+        get_basic_styles() +
+        get_grid_styles(this.grid_size) +
+        keyframes + host + container + cells
+      );
       if (compiled.props.has_animation) {
-        this.set_content('.s-cells', '');
-        this.set_content('.s-grid', '');
+        this.set_content('style', '');
+        setTimeout(() => {
+          this.set_content('style', new_styles);
+        });
+      } else {
+        this.set_content('style', new_styles);
       }
-
-      setTimeout(() => {
-        this.set_content('.s-grid', replace(
-            get_grid_styles(this.grid_size)
-          + compiled.styles.host
-          + compiled.styles.container
-        ));
-        this.set_content('.s-cells', replace(compiled.styles.cells));
-      });
     }
 
     get grid() {
@@ -378,31 +378,28 @@ if (typeof customElements !== 'undefined') {
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       let has_delay = (has_transition || has_animation);
-
       const { keyframes, host, container, cells } = compiled.styles;
-      let style_container = get_grid_styles(grid) + host + container;
-      let style_cells = has_delay ? '' : cells;
-
       const { uniforms, content } = compiled;
 
       let replace = this.replace(compiled);
 
       this.doodle.innerHTML = `
-        <style>${get_basic_styles()}</style>
-        <style class="s-kf">${keyframes }</style>
-        <style class="s-grid">${style_container}</style>
-        <style class="s-cells">${style_cells}</style>
+        <style></style>
         ${create_grid(grid, content)}
       `;
 
-      this.set_content('.s-grid', replace(style_container));
+      let styles = replace(
+        get_basic_styles() +
+        get_grid_styles(grid) +
+        keyframes + host + container + cells
+      );
 
       if (has_delay) {
         setTimeout(() => {
-          this.set_content('.s-cells', replace(cells));
+          this.set_content('style', styles);
         }, 50);
       } else {
-        this.set_content('.s-cells', replace(cells));
+        this.set_content('style', styles);
       }
 
       if (uniforms.time) {
@@ -508,7 +505,7 @@ if (typeof customElements !== 'undefined') {
         let svg = `
           <svg ${NS}
             preserveAspectRatio="none"
-            viewBox="0 0 ${ width } ${ height }"
+            viewBox="0 0 ${width} ${height}"
             ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
           >
             <foreignObject width="100%" height="100%">
