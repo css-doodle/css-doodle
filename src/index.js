@@ -11,14 +11,14 @@ import get_props from './utils/get-props.js';
 import get_rgba_color from './utils/get-rgba-color.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import Cache from './utils/cache.js';
-import create_animation_frame from './utils/create-animation-frame.js';
+import create_animation from './utils/create-animation.js';
 
 import { NS, NSXHtml } from './utils/svg.js';
 import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import {
   cell_id, is_nil,
-  normalize_png_name, cache_image,
+  get_png_name, cache_image,
   is_safari, entity, un_entity,
 } from './utils/index.js';
 
@@ -151,16 +151,17 @@ if (typeof customElements !== 'undefined') {
     get_use() {
       let use = String(this.attr('use') || '').trim();
       if (/^var\(/.test(use)) {
-        use = `@use:${ use };`;
+        use = `@use:${use};`;
       }
       return use;
     }
 
     attr(name, value) {
-      if (arguments.length === 1) {
+      let len = arguments.length;
+      if (len === 1) {
         return this.getAttribute(name);
       }
-      if (arguments.length === 2) {
+      if (len === 2) {
         this.setAttribute(name, value);
         return value;
       }
@@ -185,7 +186,7 @@ if (typeof customElements !== 'undefined') {
         fn = options;
         options = null;
       }
-      code = ':doodle { width:100%;height:100% }' + code;
+      code = ':doodle {width:100%;height:100%}' + code;
       let parsed = parse_css(code, this.extra);
       let _grid = parse_grid('');
       let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
@@ -525,7 +526,7 @@ if (typeof customElements !== 'undefined') {
               });
               if (download) {
                 let a = document.createElement('a');
-                a.download = normalize_png_name(name);
+                a.download = get_png_name(name);
                 a.href = url;
                 a.click();
               }
@@ -560,9 +561,6 @@ if (typeof customElements !== 'undefined') {
 }
 
 function get_basic_styles() {
-  const inherited_grid_props = get_props(/grid/)
-    .map(n => `${ n }: inherit;`)
-    .join('');
   return `
     *,*::after,*::before {
       box-sizing: border-box;
@@ -584,7 +582,7 @@ function get_basic_styles() {
       width: 100%;
       height: 100%;
       display: grid;
-      ${inherited_grid_props}
+      ${get_props(/grid/).map(n => `${n}:inherit;`).join('')}
     }
     cell {
       position: relative;

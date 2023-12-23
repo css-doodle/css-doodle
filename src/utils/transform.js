@@ -1,6 +1,6 @@
 import parse_compound_value from '../parser/parse-compound-value.js';
 
-function by_unit(fn) {
+export function by_unit(fn) {
   return (...args) => {
     let units = [], values = [];
     for (let arg of args) {
@@ -24,7 +24,7 @@ function by_unit(fn) {
   }
 }
 
-function by_charcode(fn) {
+export function by_charcode(fn) {
   return (...args) => {
     let codes = args.map(n => String(n).charCodeAt(0));
     let result = fn(...codes);
@@ -32,9 +32,4 @@ function by_charcode(fn) {
       ? result.map(n => String.fromCharCode(n))
       : String.fromCharCode(result);
   }
-}
-
-export {
-  by_unit,
-  by_charcode,
 }

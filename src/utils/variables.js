@@ -1,4 +1,4 @@
-function get_all_variables(element) {
+export function get_all_variables(element) {
   if (typeof getComputedStyle === 'undefined') {
     return '';
   }
@@ -20,7 +20,7 @@ function get_all_variables(element) {
   return inline(ret);
 }
 
-function get_variable(element, name) {
+export function get_variable(element, name) {
   if (typeof getComputedStyle === 'undefined') {
     return '';
   }
@@ -35,9 +35,4 @@ function inline(map) {
     result.push(prop + ':' + value);
   }
   return result.join(';');
-}
-
-export {
-  get_all_variables,
-  get_variable,
 }

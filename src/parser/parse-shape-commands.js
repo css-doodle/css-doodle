@@ -42,7 +42,7 @@ function transformNegative(name, value, negative) {
   if (excludes.includes(name)) {
     return value;
   }
-  return negative ? `-1 * (${ value })` : value;
+  return negative ? `-1 * (${value})` : value;
 }
 
 function joinTokens(tokens) {

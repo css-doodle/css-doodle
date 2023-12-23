@@ -47,14 +47,14 @@ class Rules {
     this.keyframes = {};
     this.grid = null;
     this.seed = null;
-    this.is_grid_defined = false;
-    this.is_gap_defined = false;
+    this.is_grid_set = false;
+    this.is_gap_set = false;
     this.coords = [];
     this.doodles = {};
     this.pattern = {};
     this.shaders = {};
     this.reset();
-    this.custom_properties = {};
+    this.vars = {};
     this.uniforms = {};
     this.content = {};
   }
@@ -114,9 +114,9 @@ class Rules {
     if (typeof _fn === 'function') {
       if (fname.startsWith('$')) {
         let group = Object.assign({},
-          this.custom_properties['host'],
-          this.custom_properties['container'],
-          this.custom_properties[coords.count],
+          this.vars['host'],
+          this.vars['container'],
+          this.vars[coords.count],
           contextedVariable
         );
         let context = {};
@@ -149,9 +149,9 @@ class Rules {
   read_var(value, coords, contextedVariable) {
     let count = coords.count;
     let group = Object.assign({},
-      this.custom_properties['host'],
-      this.custom_properties['container'],
-      this.custom_properties[count],
+      this.vars['host'],
+      this.vars['container'],
+      this.vars[count],
       contextedVariable
     );
     if (group[value] !== undefined) {
@@ -264,9 +264,9 @@ class Rules {
 
   inject_variables(value, count) {
     let group = Object.assign({},
-      this.custom_properties['host'],
-      this.custom_properties['container'],
-      this.custom_properties[count]
+      this.vars['host'],
+      this.vars['container'],
+      this.vars[count]
     );
     let variables = [];
     for (let [name, key] of Object.entries(group)) {
@@ -274,7 +274,7 @@ class Rules {
     }
     variables = variables.join('');
     if (variables.length) {
-      return `:doodle { ${variables} }` + value;
+      return `:doodle {${variables}}` + value;
     }
     return value;
   }
@@ -366,27 +366,27 @@ class Rules {
 
   add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
     if (fill) {
-      this.add_rule(':host', `background-color: ${fill};`);
+      this.add_rule(':host', `background-color:${fill};`);
     }
     if (!clip) {
-      this.add_rule(':host', 'contain: none;');
+      this.add_rule(':host', 'contain:none;');
     }
     if (rotate) {
-      this.add_rule(':container', `rotate: ${rotate};`);
+      this.add_rule(':container', `rotate:${rotate};`);
     }
     if (scale) {
-      this.add_rule(':container', `scale: ${scale};`);
+      this.add_rule(':container', `scale:${scale};`);
     }
     if (translate) {
-      this.add_rule(':container', `translate: ${translate};`);
+      this.add_rule(':container', `translate:${translate};`);
     }
     if (flexRow) {
-      this.add_rule(':container', `display: flex;`);
+      this.add_rule(':container', `display:flex;`);
       this.add_rule('cell', `flex: 1;`);
     }
     if (flexColumn) {
-      this.add_rule(':container', `display: flex; flex-direction: column;`);
-      this.add_rule('cell', `flex: 1;`);
+      this.add_rule(':container', `display:flex;flex-direction:column;`);
+      this.add_rule('cell', `flex:1;`);
     }
   }
 
@@ -479,10 +479,10 @@ class Rules {
       if (is_host_selector(selector)) {
         key = 'host';
       }
-      if (!this.custom_properties[key]) {
-        this.custom_properties[key] = {};
+      if (!this.vars[key]) {
+        this.vars[key] = {};
       }
-      this.custom_properties[key][prop] = value;
+      this.vars[key][prop] = value;
     }
 
     if (/^@/.test(prop) && Property[prop.substr(1)]) {
@@ -500,7 +500,7 @@ class Rules {
             this.add_grid_style(transformed);
           } else {
             rule = '';
-            if (!this.is_grid_defined) {
+            if (!this.is_grid_set) {
               transformed = Property[name](value, {
                 is_special_selector: true,
                 grid: coords.grid,
@@ -511,14 +511,14 @@ class Rules {
             }
           }
           this.grid = coords.grid;
-          this.is_grid_defined = true;
+          this.is_grid_set = true;
           break;
         }
         case 'gap': {
           rule = '';
-          if (!this.is_gap_defined) {
-            this.add_rule(':container', `gap: ${transformed};`);
-            this.is_gap_defined = true;
+          if (!this.is_gap_set) {
+            this.add_rule(':container', `gap:${transformed};`);
+            this.is_gap_set = true;
           }
           break;
         }
@@ -747,7 +747,7 @@ class Rules {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         let value = join(rule).trim();
         if (value.length) {
-          let name = (target === 'host') ? `${selector}, .host` : selector;
+          let name = (target === 'host') ? `${selector},.host` : selector;
           this.styles[target] += `${name} {${value}}`;
         }
       }
@@ -755,14 +755,14 @@ class Rules {
 
     if (this.uniforms.time) {
       this.styles.container += `
-        :host, .host {
+        :host,.host {
           animation: ${utime.animation};
         }
       `;
       this.styles.keyframes += `
        @keyframes ${utime['animation-name']} {
-         from {--${utime.name }: 0}
-         to {--${utime.name}: ${utime['animation-duration'] / 10 }}
+         from {--${utime.name }:0}
+         to {--${utime.name}:${utime['animation-duration'] / 10 }}
        }
       `;
     }
