@@ -742,17 +742,13 @@ class Rules {
   output() {
     for (let [selector, rule] of Object.entries(this.rules)) {
       if (is_parent_selector(selector)) {
-        this.styles.container += `
-          .container {
-            ${ join(rule) }
-          }
-        `;
+        this.styles.container += `grid {${join(rule)}}`;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         let value = join(rule).trim();
         if (value.length) {
-          let name = (target === 'host') ? `${ selector }, .host` : selector;
-          this.styles[target] += `${ name } { ${ value  } }`;
+          let name = (target === 'host') ? `${selector}, .host` : selector;
+          this.styles[target] += `${name} {${value}}`;
         }
       }
     }
@@ -760,13 +756,13 @@ class Rules {
     if (this.uniforms.time) {
       this.styles.container += `
         :host, .host {
-          animation: ${ utime.animation };
+          animation: ${utime.animation};
         }
       `;
       this.styles.keyframes += `
-       @keyframes ${ utime['animation-name'] } {
-         from { --${ utime.name }: 0 }
-         to { --${ utime.name }: ${ utime['animation-duration'] / 10 } }
+       @keyframes ${utime['animation-name']} {
+         from {--${utime.name }: 0}
+         to {--${utime.name}: ${utime['animation-duration'] / 10 }}
        }
       `;
     }
@@ -775,10 +771,8 @@ class Rules {
       for (let [name, keyframe] of Object.entries(this.keyframes)) {
         let aname = this.compose_aname(name, coords.count);
         this.styles.keyframes += `
-          ${ i === 0 ? `@keyframes ${ name } { ${ keyframe(coords) } }` : ''}
-          @keyframes ${ aname } {
-            ${ keyframe(coords) }
-          }
+          ${ i === 0 ? `@keyframes ${name} {${keyframe(coords)}}` : ''}
+          @keyframes ${aname} {${keyframe(coords)}}
         `;
       }
     });

@@ -206,7 +206,7 @@ if (typeof customElements !== 'undefined') {
       let grid_container = create_grid(grid, compiled.content);
 
       let size = (options && options.width && options.height)
-        ? `width="${ options.width }" height="${ options.height }"`
+        ? `width="${options.width}" height="${options.height}"`
         : '';
 
       replace(`
