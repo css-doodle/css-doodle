@@ -1,6 +1,6 @@
 import { last } from './list.js';
-import { memo } from './memo.js';
 import { by_charcode } from './transform.js';
+import memo from './memo.js';
 
 function Type(type, value) {
   return { type, value };
@@ -75,7 +75,7 @@ const build_range = memo('build_range', (input) => {
   });
 });
 
-export function expand(fn) {
+export default function expand(fn) {
   return (...args) => fn(...(args.flatMap(n =>
     String(n).startsWith('[') ? build_range(n) : n
   )));

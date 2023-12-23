@@ -1,7 +1,7 @@
-import { create_shape } from '../../generator/shapes.js';
+import generate_shape from '../../generator/shapes.js';
 
 export default function shape(...args) {
   let commands = args.join(',');
-  let { points } = create_shape(commands);
+  let { points } = generate_shape(commands);
   return `polygon(${points.join(',')})`;
 }

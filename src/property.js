@@ -1,11 +1,11 @@
 import parse_value_group from './parser/parse-value-group.js';
 import parse_grid from './parser/parse-grid.js';
-import { create_shape } from './generator/shapes.js';
+import generate_shape from './generator/shapes.js';
 
 import { is_preset, get_preset } from './preset-size.js';
 
-import { prefixer } from './utils/prefixer.js';
-import { memo } from './utils/memo.js';
+import prefixer from './utils/prefixer.js';
+import memo from './utils/memo.js';
 import { add_alias } from './utils/index.js';
 
 const map_left_right = {
@@ -118,7 +118,7 @@ export default add_alias({
   },
 
   shape: memo('shape-property', value => {
-    let { points, preset} = create_shape(value);
+    let { points, preset} = generate_shape(value);
     if (!preset) return '';
     let prop = 'clip-path';
     let style = `${ prop }: polygon(${points.join(',')});`;

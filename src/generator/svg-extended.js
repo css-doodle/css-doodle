@@ -37,10 +37,6 @@ function generate(token, last) {
   return result;
 }
 
-function generate_svg_extended(token) {
+export default function generate_svg_extended(token) {
   return generate(token).trim();
-}
-
-export {
-  generate_svg_extended,
 }

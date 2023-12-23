@@ -224,6 +224,4 @@ function tostring(a) {
 //
 mixkey(math.random(), pool);
 
-export {
-  seedrandom,
-}
+export default seedrandom

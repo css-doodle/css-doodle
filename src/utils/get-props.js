@@ -1,6 +1,6 @@
 let all_props = [];
 
-function get_props(arg) {
+export default function get_props(arg) {
   if (!all_props.length) {
     let props = new Set();
     if (typeof document !== 'undefined') {
@@ -18,8 +18,4 @@ function get_props(arg) {
   return (arg instanceof RegExp)
     ? all_props.filter(n => arg.test(n))
     : all_props;
-}
-
-export {
-  get_props,
 }

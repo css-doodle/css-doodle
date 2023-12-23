@@ -5,9 +5,9 @@ import parse_value_group from '../parser/parse-value-group.js';
 
 import calc from '../calc.js';
 import { utime } from '../uniforms.js';
-import { seedrandom } from '../lib/seedrandom.js';
+import seedrandom from '../lib/seedrandom.js';
 
-import { prefixer } from '../utils/prefixer.js';
+import prefixer from '../utils/prefixer.js';
 import { cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
 import { join, make_array, remove_empty_values } from '../utils/list.js'
 
@@ -808,7 +808,7 @@ function remove_quotes(input) {
   return input;
 }
 
-function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
+export default function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
   let rules = new Rules(tokens);
   let random = seed_random || seedrandom(String(seed_value));
   let context = {};
@@ -901,8 +901,4 @@ function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
   }
 
   return rules.output();
-}
-
-export {
-  generate_css,
 }

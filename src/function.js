@@ -1,5 +1,4 @@
 import { create_svg_url, normalize_svg } from './utils/svg.js';
-import { generate_svg } from './generator/svg.js';
 
 import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp } from './utils/index.js';
 import { lazy, clamp, sequence, get_value } from './utils/index.js';
@@ -7,19 +6,21 @@ import { by_unit, by_charcode } from './utils/transform.js';
 import { last } from './utils/list.js';
 
 import calc from './calc.js';
-import { memo } from './utils/memo.js';
-import { expand } from './utils/expand.js';
+import memo from './utils/memo.js';
+import expand from './utils/expand.js';
 import Stack from './utils/stack.js';
 import Noise from './utils/noise.js';
 import get_named_arguments from './utils/get-named-arguments.js';
 
-import { create_shape } from './generator/shapes.js';
+import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
+
 import parse_value_group from './parser/parse-value-group.js';
 import parse_svg from './parser/parse-svg.js';
 import parse_svg_path from './parser/parse-svg-path.js';
 import parse_compound_value from './parser/parse-compound-value.js';
 
-import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
+import generate_svg from './generator/svg.js';
+import generate_shape from './generator/shapes.js';
 
 function make_sequence(c) {
   return lazy((_, n, ...actions) => {
@@ -484,7 +485,7 @@ const Expose = add_alias({
 
   'svg-polygon': lazy((_, ...args) => {
     let commands = args.map(input => get_value(input())).join(',');
-    let { rules, points } = create_shape(commands, 3, 65536, rules => {
+    let { rules, points } = generate_shape(commands, 3, 65536, rules => {
       delete rules.frame;
       rules['unit'] = 'none';
       rules['stroke-width'] ??= .01;
@@ -539,7 +540,7 @@ const Expose = add_alias({
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
       if (!context[key]) {
-        let { points } = create_shape(commands, 1, 65536, rules => {
+        let { points } = generate_shape(commands, 1, 65536, rules => {
           delete rules['fill'];
           delete rules['fill-rule'];
           delete rules['frame'];
@@ -560,7 +561,7 @@ const Expose = add_alias({
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
       if (!context[key]) {
-        let { points } = create_shape(commands, 1, 65536, rules => {
+        let { points } = generate_shape(commands, 1, 65536, rules => {
           delete rules['fill'];
           delete rules['fill-rule'];
           delete rules['frame'];
@@ -577,7 +578,7 @@ const Expose = add_alias({
   shape() {
     return memo('shape-function', (...args) => {
       let commands = args.join(',');
-      let { points } = create_shape(commands);
+      let { points } = generate_shape(commands);
       return `polygon(${points.join(',')})`;
     });
   },

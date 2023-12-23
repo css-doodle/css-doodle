@@ -58,7 +58,7 @@ function load_texture(gl, image, i) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 }
 
-function draw_shader(shaders, width, height, seed) {
+export default function draw_shader(shaders, width, height, seed) {
   let result = Cache.get(shaders);
   if (result) {
     return Promise.resolve(result);
@@ -165,8 +165,4 @@ void main() {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
   }
-}
-
-export {
-  draw_shader,
 }

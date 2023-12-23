@@ -2,7 +2,7 @@
 
 import parse_var from './parse-var.js';
 import parse_svg from './parse-svg.js';
-import { generate_svg_extended } from '../generator/svg-extended.js';
+import generate_svg_extended from '../generator/svg-extended.js';
 import { first, last, clone } from '../utils/list.js';
 
 const Tokens = {

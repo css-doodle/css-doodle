@@ -1,4 +1,4 @@
-import { generate_css } from '../../generator/css.js';
+import generate_css from '../../generator/css.js';
 import parse_css from './../../parser/parse-css.js';
 
 export default function svg(rules) {

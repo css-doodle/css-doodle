@@ -1,5 +1,5 @@
 import { next_id, is_nil } from '../utils/index.js';
-import {NS, NSXLink} from '../utils/svg.js';
+import { NS, NSXLink } from '../utils/svg.js';
 
 const nextId = next_id();
 
@@ -245,10 +245,6 @@ function generate(token, element, parent, root) {
   return inlineId;
 }
 
-function generate_svg(token) {
+export default function generate_svg(token) {
   return generate(token);
-}
-
-export {
-  generate_svg,
 }

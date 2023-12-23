@@ -2,14 +2,14 @@ import parse_css from './parser/parse-css.js';
 import parse_grid from './parser/parse-grid.js';
 import parse_shaders from './parser/parse-shaders.js';
 
-import { generate_css } from './generator/css.js';
-import { draw_shader } from './generator/shader.js';
-import { draw_pattern } from './generator/pattern.js';
-import { svg_to_png } from './generator/svg-to-png.js';
+import generate_css from './generator/css.js';
+import generate_shader from './generator/shader.js';
+import generate_pattern from './generator/pattern.js';
+import generate_png from './generator/svg-to-png.js';
 
-import { get_props } from './utils/get-props.js';
+import get_props from './utils/get-props.js';
+import get_rgba_color from './utils/get-rgba-color.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
-import { get_rgba_color } from './utils/get-rgba-color.js';
 import Cache from './utils/cache.js';
 import create_animation_frame from './utils/create-animation-frame.js';
 
@@ -235,7 +235,7 @@ if (typeof customElements !== 'undefined') {
     }
 
     pattern_to_image({ code, cell, id }, fn) {
-      let shader = draw_pattern(code, this.extra);
+      let shader = generate_pattern(code, this.extra);
       this.shader_to_image({ shader, cell, id }, fn);
     }
 
@@ -279,7 +279,7 @@ if (typeof customElements !== 'undefined') {
 
       let ratio = window.devicePixelRatio || 1;
       if (!parsed.textures.length || parsed.ticker) {
-        draw_shader(parsed, width, height, seed).then(tick).then(fn);
+        generate_shader(parsed, width, height, seed).then(tick).then(fn);
       }
       // Need to bind textures first
       else {
@@ -296,7 +296,7 @@ if (typeof customElements !== 'undefined') {
         });
         Promise.all(transforms).then(textures => {
           parsed.textures = textures;
-          draw_shader(parsed, width, height, seed).then(tick).then(fn);
+          generate_shader(parsed, width, height, seed).then(tick).then(fn);
         });
       }
     }
@@ -521,7 +521,7 @@ if (typeof customElements !== 'undefined') {
         `;
 
         if (download || detail) {
-          svg_to_png(svg, w, h, scale)
+          generate_png(svg, w, h, scale)
             .then(({ source, url, blob }) => {
               resolve({
                 width: w, height: h, svg, blob, source

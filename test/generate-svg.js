@@ -1,5 +1,5 @@
 import test from 'ava';
-import { generate_svg } from '../src/generator/svg.js';
+import generate_svg from '../src/generator/svg.js';
 import parse_svg from '../src/parser/parse-svg.js';
 
 import compare from './_compare.js';

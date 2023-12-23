@@ -68,7 +68,7 @@ function float(n) {
   return String(n).includes('.') ? n : n + '.0';
 }
 
-function draw_pattern(code, extra) {
+export default function draw_pattern(code, extra) {
   let tokens = parse_pattern(code);
   let result = [];
   let grid = {x: 1, y: 1 };
@@ -86,8 +86,4 @@ function draw_pattern(code, extra) {
     }
   });
   return generate_shader(result.join(''), grid);
-}
-
-export {
-  draw_pattern,
 }

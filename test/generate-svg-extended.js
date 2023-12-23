@@ -1,7 +1,7 @@
 import test from 'ava';
 
 import parseSvg from '../src/parser/parse-svg.js';
-import { generate_svg_extended } from '../src/generator/svg-extended.js';
+import generate_svg_extended from '../src/generator/svg-extended.js';
 import compare from './_compare.js';
 
 compare.use(input => {
