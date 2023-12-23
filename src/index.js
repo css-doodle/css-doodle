@@ -221,7 +221,6 @@ if (typeof customElements !== 'undefined') {
                 ${cells}
                 ${keyframes}
               </style>
-              <svg id="defs" ${NS} style="width:0; height:0"></svg>
               ${grid_container}
             </div>
           </foreignObject>
@@ -393,7 +392,6 @@ if (typeof customElements !== 'undefined') {
         <style class="s-kf">${keyframes }</style>
         <style class="s-grid">${style_container}</style>
         <style class="s-cells">${style_cells}</style>
-        <svg id="defs" ${NS} style="width:0;height:0"></svg>
         ${create_grid(grid, content)}
       `;
 
@@ -584,7 +582,7 @@ function get_basic_styles() {
     :host([hidden]), .host[hidden] {
       display: none
     }
-    .grid {
+    grid {
       position: relative;
       width: 100%;
       height: 100%;
@@ -647,5 +645,5 @@ function create_grid(grid_obj, content) {
     }
     result = child;
   }
-  return `<grid class="grid">${result}</grid>`;
+  return `<grid>${result}</grid>`;
 }

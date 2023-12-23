@@ -6,7 +6,7 @@ function transform(color) {
 }
 
 function get_rgba_color(root, value) {
-  let element = root.querySelector('#defs');
+  let element = root.querySelector('style');
   if (!element) {
     return { r: 0, g: 0, b: 0, a: 1 }
   }
