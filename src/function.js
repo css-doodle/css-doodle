@@ -712,15 +712,13 @@ const Expose = add_alias({
     }
   },
 
-  once({ context, extra, position }) {
+  once: lazy(({context, extra, position}, ...args) => {
     let counter = 'once-counter' + position;
-    return (...args) => {
-      if (is_nil(context[counter])) {
-        context[counter] = args;
-      }
-      return context[counter];
+    if (is_nil(context[counter])) {
+      return context[counter] = args.map(input => get_value(input())).join(',');
     }
-  },
+    return context[counter];
+  }),
 
   raw({ rules }) {
     return (raw = '') => {
