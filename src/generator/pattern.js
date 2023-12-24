@@ -2,7 +2,7 @@ import Cache from '../utils/cache.js';
 import parse_pattern from '../parser/parse-pattern.js';
 import parse_grid from '../parser/parse-grid.js';
 
-function generate_shader(input, grid) {
+function generate_shader(input, {x, y}) {
   return `
     vec3 mapping(vec2 uv, vec2 grid) {
       vec2 _grid = 1.0/grid;
@@ -18,9 +18,9 @@ function generate_shader(input, grid) {
     }
     void main() {
       vec2 uv = gl_FragCoord.xy/u_resolution.xy;
-      vec2 grid = vec2(${grid.x}, ${grid.y});
-      vec3 p = mapping(uv, grid);
-      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y, u_time);
+      vec2 v = vec2(${x}, ${y});
+      vec3 p = mapping(uv, v);
+      FragColor = getColor(p.x, p.y, p.z, v.x * v.y, v.x, v.y, u_time);
     }
   `;
 }
@@ -71,7 +71,7 @@ function float(n) {
 export default function draw_pattern(code, extra) {
   let tokens = parse_pattern(code);
   let result = [];
-  let grid = {x: 1, y: 1 };
+  let grid = {x: 1, y: 1};
   tokens.forEach(token => {
     if (token.type === 'statement') {
       let statement = generate_statement(token, extra);

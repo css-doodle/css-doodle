@@ -256,7 +256,7 @@ if (typeof customElements !== 'undefined') {
 
       const tick = (value) => {
         if (typeof value === 'function') {
-          let animation = create_animation_frame(t => {
+          let animation = create_animation(t => {
             set_shader_prop(value(t));
           });
           this.animations.push(animation);
@@ -376,15 +376,14 @@ if (typeof customElements !== 'undefined') {
       let has_delay = (has_transition || has_animation);
       const { uniforms, content, styles } = compiled;
 
-      let replace = this.replace(compiled);
-
       this.doodle.innerHTML = `
-        <style></style>
+        <style>${get_basic_styles() + get_grid_styles(grid) + styles}</style>
         ${create_grid(grid, content)}
       `;
       if (has_delay) {
         this.reflow();
       }
+      let replace = this.replace(compiled);
       this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(grid) +

@@ -128,8 +128,10 @@ void main() {
 
   gl.useProgram(program);
 
+  const getUniform = name => gl.getUniformLocation(program, name);
+
   // resolve uniforms
-  const uResolutionLoc = gl.getUniformLocation(program, "u_resolution");
+  const uResolutionLoc = getUniform('u_resolution');
   gl.uniform2fv(uResolutionLoc, [width, height]);
 
   shaders.textures.forEach((n, i) => {
@@ -138,23 +140,23 @@ void main() {
   });
 
   // vec2 u_seed, u_seed.x = hash(doodle.seed) / 1e16, u_seed.y = Math.random()
-  const uSeed = gl.getUniformLocation(program, "u_seed");
-  if(uSeed) {
+  const uSeed = getUniform('u_seed');
+  if (uSeed) {
     gl.uniform2f(uSeed, hash(seed) / 1e16, Math.random());
   }
 
   // resolve image data in 72dpi :(
-  const uTimeLoc = gl.getUniformLocation(program, "u_time");
-  const uFrameLoc = gl.getUniformLocation(program, "u_frameIndex");
-  const uTimeDelta = gl.getUniformLocation(program, "u_timeDelta");
-  if(uTimeLoc || uTimeDelta || uFrameLoc) {
+  const uTimeLoc = getUniform('u_time');
+  const uFrameLoc = getUniform('u_frameIndex');
+  const uTimeDelta = getUniform('u_timeDelta');
+  if (uTimeLoc || uTimeDelta || uFrameLoc) {
     let frameIndex = 0;
     let currentTime = 0;
     return Promise.resolve(Cache.set(shaders, (t) => {
       gl.clear(gl.COLOR_BUFFER_BIT);
-      if(uTimeLoc) gl.uniform1f(uTimeLoc, t / 1000);
-      if(uFrameLoc) gl.uniform1i(uFrameLoc, frameIndex++);
-      if(uTimeDelta) {
+      if (uTimeLoc) gl.uniform1f(uTimeLoc, t / 1000);
+      if (uFrameLoc) gl.uniform1i(uFrameLoc, frameIndex++);
+      if (uTimeDelta) {
         gl.uniform1f(uTimeDelta, (currentTime - t) / 1000);
         currentTime = t;
       }
