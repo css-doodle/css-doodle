@@ -98,19 +98,18 @@ if (typeof customElements !== 'undefined') {
       let replace = this.replace(compiled);
       let { keyframes, host, container, cells } = compiled.styles;
 
-      let new_styles = replace(
+      if (compiled.props.has_animation) {
+        let el = this.shadowRoot.querySelector('style');
+        if (el) {
+          this.set_style(el.textContent.replace(/animation/g, 'x'));
+          this.reflow();
+        }
+      }
+      this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(this.grid_size) +
         keyframes + host + container + cells
-      );
-      if (compiled.props.has_animation) {
-        this.set_content('style', '');
-        setTimeout(() => {
-          this.set_content('style', new_styles);
-        });
-      } else {
-        this.set_content('style', new_styles);
-      }
+      ));
     }
 
     get grid() {
@@ -376,6 +375,10 @@ if (typeof customElements !== 'undefined') {
       }
     }
 
+    reflow() {
+      this.shadowRoot.querySelector('grid').offsetWidth;
+    }
+
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       let has_delay = (has_transition || has_animation);
@@ -388,21 +391,14 @@ if (typeof customElements !== 'undefined') {
         <style></style>
         ${create_grid(grid, content)}
       `;
-
-      let styles = replace(
+      if (has_delay) {
+        this.reflow();
+      }
+      this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(grid) +
         keyframes + host + container + cells
-      );
-
-      if (has_delay) {
-        setTimeout(() => {
-          this.set_content('style', styles);
-        }, 50);
-      } else {
-        this.set_content('style', styles);
-      }
-
+      ));
       if (uniforms.time) {
         this.register_utime();
       }
@@ -542,15 +538,15 @@ if (typeof customElements !== 'undefined') {
       });
     }
 
-    set_content(selector, styles) {
+    set_style(styles) {
       if (styles instanceof Promise) {
-        styles.then(value => {
-          this.set_content(selector, value);
+        styles.then(v => {
+          this.set_style(v);
         });
       } else {
-        const el = this.shadowRoot.querySelector(selector);
+        const el = this.shadowRoot.querySelector('style');
         el && (el.styleSheet
-          ? (el.styleSheet.cssText = styles )
+          ? (el.styleSheet.cssText = styles)
           : (el.innerHTML = styles));
       }
     }
