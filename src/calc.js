@@ -2,8 +2,7 @@
  * Based on the Shunting-yard algorithm.
  */
 
-import { last } from './utils/list.js';
-import { is_invalid_number } from './utils/index.js';
+import { is_invalid_number, last } from './utils/index.js';
 
 const cache = new Map();
 

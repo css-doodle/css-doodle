@@ -8,8 +8,10 @@ import { utime } from '../uniforms.js';
 import seedrandom from '../lib/seedrandom.js';
 
 import prefixer from '../utils/prefixer.js';
-import { cell_id, is_nil, get_value, lerp, unique_id } from '../utils/index.js';
-import { join, make_array, remove_empty_values } from '../utils/list.js'
+
+import {
+  cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values
+} from '../utils/index.js'
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);

@@ -1,4 +1,4 @@
-import { last } from './list.js';
+import { last } from './index.js';
 import { by_charcode } from './transform.js';
 import memo from './memo.js';
 
