@@ -777,9 +777,11 @@ class Rules {
       }
     });
 
+    let { keyframes, host, container, cells } = this.styles;
+
     return {
       props: this.props,
-      styles: this.styles,
+      styles: keyframes + host + container + cells,
       grid: this.grid,
       seed: this.seed,
       random: this.random,

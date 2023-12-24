@@ -71,8 +71,10 @@ if (typeof customElements !== 'undefined') {
       const use = this.get_use();
 
       let old_content = '';
+      let old_styles = '';
       if (this.compiled) {
         old_content = this.compiled.content;
+        old_styles = this.compiled.styles;
       }
 
       const compiled = this.generate(parse_css(use + styles, this.extra));
@@ -96,19 +98,14 @@ if (typeof customElements !== 'undefined') {
       }
 
       let replace = this.replace(compiled);
-      let { keyframes, host, container, cells } = compiled.styles;
-
       if (compiled.props.has_animation) {
-        let el = this.shadowRoot.querySelector('style');
-        if (el) {
-          this.set_style(el.textContent.replace(/animation/g, 'x'));
-          this.reflow();
-        }
+        this.set_style(old_styles.replace(/animation/g, 'x'));
+        this.reflow();
       }
       this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(this.grid_size) +
-        keyframes + host + container + cells
+        compiled.styles
       ));
     }
 
@@ -190,8 +187,6 @@ if (typeof customElements !== 'undefined') {
       let _grid = parse_grid('');
       let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
       let grid = compiled.grid ? compiled.grid : _grid;
-      const { keyframes, host, container, cells } = compiled.styles;
-
       let viewBox = '';
       if (options && options.arg) {
         let v = parse_grid(options.arg, Infinity);
@@ -216,10 +211,7 @@ if (typeof customElements !== 'undefined') {
               <style>
                 ${get_basic_styles()}
                 ${get_grid_styles(grid)}
-                ${host}
-                ${container}
-                ${cells}
-                ${keyframes}
+                ${compiled.styles}
               </style>
               ${grid_container}
             </div>
@@ -382,8 +374,7 @@ if (typeof customElements !== 'undefined') {
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       let has_delay = (has_transition || has_animation);
-      const { keyframes, host, container, cells } = compiled.styles;
-      const { uniforms, content } = compiled;
+      const { uniforms, content, styles } = compiled;
 
       let replace = this.replace(compiled);
 
@@ -397,7 +388,7 @@ if (typeof customElements !== 'undefined') {
       this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(grid) +
-        keyframes + host + container + cells
+        styles
       ));
       if (uniforms.time) {
         this.register_utime();
