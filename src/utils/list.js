@@ -18,17 +18,6 @@ export function first(arr) {
   return arr[0];
 }
 
-export function clone(arr) {
-  if (typeof structuredClone !== 'undefined') {
-    return structuredClone(arr);
-  }
-  return JSON.parse(JSON.stringify(arr));
-}
-
-export function duplicate(arr) {
-  return [].concat(arr, arr);
-}
-
 export function remove_empty_values(arr) {
   return arr.filter(v => (
     !is_nil(v) && String(v).trim().length

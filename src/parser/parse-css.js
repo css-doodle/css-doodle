@@ -3,7 +3,7 @@
 import parse_var from './parse-var.js';
 import parse_svg from './parse-svg.js';
 import generate_svg_extended from '../generator/svg-extended.js';
-import { first, last, clone } from '../utils/list.js';
+import { first, last } from '../utils/list.js';
 
 const Tokens = {
   func(name = '') {
@@ -310,7 +310,7 @@ function read_arguments(it, composition, doodle, variables = {}) {
           }
           if (arg.startsWith('±') && !doodle) {
             let raw = arg.substr(1);
-            let cloned = clone(group);
+            let cloned = sturcturedClone(group);
             last(cloned).value = '-' + raw;
             args.push(normalize_argument(cloned));
             last(group).value = raw;
