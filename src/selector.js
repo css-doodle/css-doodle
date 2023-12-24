@@ -1,5 +1,6 @@
 import calc from './calc.js';
 import parse_linear_expr from './parser/parse-linear-expr.js';
+import { add_alias } from './utils/index.js';
 
 function odd(n) {
   return n % 2;
@@ -45,7 +46,7 @@ function compare(rule, value) {
   }
 }
 
-export default {
+export default add_alias({
 
   at({ x, y }) {
     return (x1, y1) => (x == x1 && y == y1);
@@ -59,7 +60,7 @@ export default {
     }
   },
 
-  row({ y, grid }) {
+  y({ y, grid }) {
     return (...exprs) => {
       for (let expr of exprs) {
         if (compare(expr, y)) return true;
@@ -67,7 +68,7 @@ export default {
     };
   },
 
-  col({ x, grid }) {
+  x({ x, grid }) {
     return (...exprs) => {
       for (let expr of exprs) {
         if (compare(expr, x)) return true;
@@ -141,4 +142,7 @@ export default {
     }
   },
 
-}
+}, {
+  col: 'x',
+  row: 'y',
+});
