@@ -780,10 +780,11 @@ class Rules {
     });
 
     let { keyframes, host, container, cells } = this.styles;
+    let main = keyframes + host + container;
 
     return {
       props: this.props,
-      styles: keyframes + host + container + cells,
+      styles: { main, cells, all: main + cells },
       grid: this.grid,
       seed: this.seed,
       random: this.random,

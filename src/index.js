@@ -74,7 +74,7 @@ if (typeof customElements !== 'undefined') {
       let old_styles = '';
       if (this.compiled) {
         old_content = this.compiled.content;
-        old_styles = this.compiled.styles;
+        old_styles = this.compiled.styles.all;
       }
 
       const compiled = this.generate(parse_css(use + styles, this.extra));
@@ -105,7 +105,7 @@ if (typeof customElements !== 'undefined') {
       this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(this.grid_size) +
-        compiled.styles
+        compiled.styles.all
       ));
     }
 
@@ -211,7 +211,7 @@ if (typeof customElements !== 'undefined') {
               <style>
                 ${get_basic_styles()}
                 ${get_grid_styles(grid)}
-                ${compiled.styles}
+                ${compiled.styles.all}
               </style>
               ${grid_container}
             </div>
@@ -377,7 +377,7 @@ if (typeof customElements !== 'undefined') {
       const { uniforms, content, styles } = compiled;
 
       this.doodle.innerHTML = `
-        <style>${get_basic_styles() + get_grid_styles(grid) + styles}</style>
+        <style>${get_basic_styles() + get_grid_styles(grid) + styles.main}</style>
         ${create_grid(grid, content)}
       `;
       if (has_delay) {
@@ -387,7 +387,7 @@ if (typeof customElements !== 'undefined') {
       this.set_style(replace(
         get_basic_styles() +
         get_grid_styles(grid) +
-        styles
+        styles.all
       ));
       if (uniforms.time) {
         this.register_utime();

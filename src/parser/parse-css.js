@@ -310,7 +310,7 @@ function read_arguments(it, composition, doodle, variables = {}) {
           }
           if (arg.startsWith('±') && !doodle) {
             let raw = arg.substr(1);
-            let cloned = sturcturedClone(group);
+            let cloned = structuredClone(group);
             last(cloned).value = '-' + raw;
             args.push(normalize_argument(cloned));
             last(group).value = raw;
