@@ -173,7 +173,7 @@ function read_step(it, extra) {
       continue;
     }
     else if (!step.name.length) {
-      step.name = read_selector(it);
+      step.name = read_value(it, c => c === '{');
     }
     else {
       step.styles.push(read_rule(it, extra));
@@ -484,7 +484,7 @@ function read_func(it, variables = {}) {
   return func;
 }
 
-function read_value(it) {
+function read_value(it, check_break = () => {}) {
   let text = Tokens.text(), idx = 0, skip = true, c;
   const value = [];
   value[idx] = [];
@@ -511,7 +511,7 @@ function read_value(it) {
       value[++idx] = [];
       skip = true;
     }
-    else if (/[;}<]/.test(c) && !quote_stack.length) {
+    else if ((/[;}<]/.test(c) || check_break(c)) && !quote_stack.length) {
       if (text.value.length) {
         value[idx].push(text);
         text = Tokens.text();
@@ -543,7 +543,9 @@ function read_value(it) {
       }
       text.value += c;
     }
-    if ((it.curr() === ';' || it.curr() == '}') && !quote_stack.length) {
+
+    let cc = it.curr();
+    if ((cc === ';' || cc == '}' || check_break(cc)) && !quote_stack.length) {
       break;
     }
     it.next();

@@ -283,14 +283,7 @@ class Rules {
 
   compose_variables(variables, coords, result = {}) {
     for (let [name, value] of Object.entries(variables)) {
-      let value_group = value.reduce((ret, v) => {
-        let composed = this.compose_value(v, coords, result);
-        if (composed && composed.value) {
-          ret.push(composed.value);
-        }
-        return ret;
-      }, []);
-      result[name] = value_group.join(', ');
+      result[name] = this.get_composed_value(value, coords, result).value;
     }
     return result;
   }
@@ -366,6 +359,23 @@ class Rules {
     }
   }
 
+  get_composed_value(value, coords, context) {
+    let extra, group = [];
+    if (Array.isArray(value)) {
+      group = value.reduce((ret, v) => {
+        let composed = this.compose_value(v, coords, context || {});
+        if (composed) {
+          if (composed.value) ret.push(composed.value);
+          if (extra) extra = composed.extra;
+        }
+        return ret;
+      }, []);
+    }
+    return {
+      extra, group, value: group.join(',')
+    }
+  }
+
   add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
     if (fill) {
       this.add_rule(':host', `background-color:${fill};`);
@@ -395,24 +405,12 @@ class Rules {
   compose_rule(token, _coords, selector) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
-    let extra;
     if (prop === '@seed') {
       return '';
     }
-    let value_group = token.value.reduce((ret, v) => {
-      let composed = this.compose_value(v, coords);
-      if (composed) {
-        if (composed.value) {
-          ret.push(composed.value);
-        }
-        if (composed.extra) {
-          extra = composed.extra;
-        }
-      }
-      return ret;
-    }, []);
-
-    let value = value_group.join(', ');
+    let composed = this.get_composed_value(token.value, coords);
+    let extra = composed.extra;
+    let value = composed.value;
 
     if (/^animation(\-name)?$/.test(prop)) {
       this.props.has_animation = true;
@@ -428,19 +426,19 @@ class Rules {
         let { count } = coords;
         switch (prop) {
           case 'animation-name': {
-            value = value_group
+            value = composed.group
               .map(n => this.compose_aname(n, count))
-              .join(', ');
+              .join(',');
             break;
           }
           case 'animation': {
-            value = value_group
+            value = composed.group
               .map(n => {
                 let group = (n || '').split(/\s+/);
                 group[0] = this.compose_aname(group[0], count);
                 return group.join(' ');
               })
-              .join(', ');
+              .join(',');
           }
         }
       }
@@ -448,7 +446,7 @@ class Rules {
 
     if (prop === 'content') {
       if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
-        value = `'${ value }'`;
+        value = `'${value}'`;
       }
     }
 
@@ -585,12 +583,7 @@ class Rules {
 
     switch (prop) {
       case '@grid': {
-        let value_group = token.value.reduce((ret, v) => {
-          let composed = this.compose_value(v, coords);
-          if (composed && composed.value) ret.push(composed.value);
-          return ret;
-        }, []);
-        let value = value_group.join(', ');
+        let value = this.get_composed_value(token.value, coords).value;
         let name = prop.substr(1);
         let transformed = Property[name](value, {
           max_grid: _coords.max_grid
@@ -727,13 +720,11 @@ class Rules {
         case 'keyframes': {
           if (!this.keyframes[token.name]) {
             this.keyframes[token.name] = coords => `
-              ${ join(token.steps.map(step => `
-                ${ step.name } {
-                  ${ join(
-                    step.styles.map(s => this.compose_rule(s, coords))
-                  )}
+              ${join(token.steps.map(step =>  `
+                ${this.get_composed_value(step.name, coords).value} {
+                  ${join(step.styles.map(s => this.compose_rule(s, coords)))}
                 }
-              `)) }
+              `))}
             `;
           }
         }
