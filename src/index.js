@@ -103,8 +103,7 @@ if (typeof customElements !== 'undefined') {
         this.reflow();
       }
       this.set_style(replace(
-        get_basic_styles() +
-        get_grid_styles(this.grid_size) +
+        get_basic_styles(this.grid_size) +
         compiled.styles.all
       ));
     }
@@ -209,8 +208,7 @@ if (typeof customElements !== 'undefined') {
           <foreignObject width="100%" height="100%">
             <div class="host" width="100%" height="100%" ${NSXHtml}>
               <style>
-                ${get_basic_styles()}
-                ${get_grid_styles(grid)}
+                ${get_basic_styles(grid)}
                 ${compiled.styles.all}
               </style>
               ${grid_container}
@@ -377,7 +375,7 @@ if (typeof customElements !== 'undefined') {
       const { uniforms, content, styles } = compiled;
 
       this.doodle.innerHTML = `
-        <style>${get_basic_styles() + get_grid_styles(grid) + styles.main}</style>
+        <style>${get_basic_styles(grid) + styles.main}</style>
         ${create_grid(grid, content)}
       `;
       if (has_delay) {
@@ -385,8 +383,7 @@ if (typeof customElements !== 'undefined') {
       }
       let replace = this.replace(compiled);
       this.set_style(replace(
-        get_basic_styles() +
-        get_grid_styles(grid) +
+        get_basic_styles(grid) +
         styles.all
       ));
       if (uniforms.time) {
@@ -546,12 +543,13 @@ if (typeof customElements !== 'undefined') {
   }
 }
 
-function get_basic_styles() {
+function get_basic_styles(grid) {
+  let { x, y } = grid || {};
   return `
     *,*::after,*::before {
       box-sizing: border-box;
     }
-    :host, .host {
+    :host,.host {
       display: block;
       visibility: visible;
       width: auto;
@@ -560,7 +558,7 @@ function get_basic_styles() {
       box-sizing: border-box;
       --${utime.name}: 0
     }
-    :host([hidden]), .host[hidden] {
+    :host([hidden]),[hidden] {
       display: none
     }
     grid {
@@ -584,15 +582,9 @@ function get_basic_styles() {
     :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
-  `;
-}
-
-function get_grid_styles(grid_obj) {
-  let { x, y } = grid_obj || {};
-  return `
     :host, .host {
-      grid-template-rows: repeat(${y}, 1fr);
-      grid-template-columns: repeat(${x}, 1fr);
+      grid-template-rows: repeat(${y},1fr);
+      grid-template-columns: repeat(${x},1fr)
     }
   `;
 }
