@@ -12,7 +12,7 @@ export default function svg_to_png(svg, width, height, scale) {
         let canvas = document.createElement('canvas');
         let ctx = canvas.getContext('2d');
 
-        let dpr = window.devicePixelRatio || 1;
+        let dpr = devicePixelRatio || 1;
         /* scale with devicePixelRatio only when the scale equals 1 */
         if (scale != 1) {
           dpr = 1;

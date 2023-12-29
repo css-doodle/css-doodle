@@ -49,26 +49,25 @@ function load_texture(gl, image, i) {
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
-
   // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  return texture;
 }
 
-export default function draw_shader(shaders, width, height, seed) {
+export default function draw_shader(shaders, seed) {
   let result = Cache.get(shaders);
   if (result) {
     return Promise.resolve(result);
   }
   let canvas = document.createElement('canvas');
-  let ratio = window.devicePixelRatio || 1;
-  width *= ratio;
-  height *= ratio;
-  canvas.width = width;
-  canvas.height = height;
+  let ratio = devicePixelRatio || 1;
+  let width = canvas.width = shaders.width * ratio;
+  let height = canvas.height = shaders.height * ratio;
+  let texture_list = [];
 
   let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
   if (!gl) return Promise.resolve('');
@@ -84,8 +83,8 @@ export default function draw_shader(shaders, width, height, seed) {
 
   // texture uniform
   shaders.textures.forEach(n => {
-    let uniform = `uniform sampler2D ${ n.name };`;
-    fragment =  add_uniform(fragment, uniform);
+    let uniform = `uniform sampler2D ${n.name};`;
+    fragment = add_uniform(fragment, uniform);
   });
 
   const isShaderToyFragment = /(^|[^\w\_])void\s+mainImage\(\s*out\s+vec4\s+fragColor,\s*in\s+vec2\s+fragCoord\s*\)/mg.test(fragment);
@@ -135,7 +134,7 @@ void main() {
   gl.uniform2fv(uResolutionLoc, [width, height]);
 
   shaders.textures.forEach((n, i) => {
-    load_texture(gl, n.value, i);
+    texture_list.push(load_texture(gl, n.value, i));
     gl.uniform1i(gl.getUniformLocation(program, n.name), i);
   });
 
@@ -152,8 +151,22 @@ void main() {
   if (uTimeLoc || uTimeDelta || uFrameLoc) {
     let frameIndex = 0;
     let currentTime = 0;
-    return Promise.resolve(Cache.set(shaders, (t) => {
+    return Promise.resolve(Cache.set(shaders, (t, w, h, textures) => {
       gl.clear(gl.COLOR_BUFFER_BIT);
+      // update textures and resolutions
+      if (shaders.width !== w || shaders.height !== h) {
+        textures.forEach((n, i) => {
+          gl.bindTexture(gl.TEXTURE_2D, texture_list[i]);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, n.value);
+        });
+        shaders.width = w;
+        shaders.height = h;
+        canvas.width = w * ratio;
+        canvas.height = h * ratio;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2fv(uResolutionLoc, [canvas.width, canvas.height]);
+      }
+
       if (uTimeLoc) gl.uniform1f(uTimeLoc, t / 1000);
       if (uFrameLoc) gl.uniform1i(uFrameLoc, frameIndex++);
       if (uTimeDelta) {

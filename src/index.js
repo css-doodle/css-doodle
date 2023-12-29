@@ -216,7 +216,7 @@ if (typeof customElements !== 'undefined') {
           </foreignObject>
         </svg>
       `).then(result => {
-        let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(result))) }`;
+        let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
         if (is_safari()) {
           cache_image(source);
         }
@@ -244,50 +244,67 @@ if (typeof customElements !== 'undefined') {
     }
 
     shader_to_image({ shader, cell, id }, fn) {
-      let parsed = typeof shader === 'string' ?  parse_shaders(shader) : shader;
-      let element = this.doodle.getElementById(cell);
-      const seed = this.seed;
+      const element = this.doodle.getElementById(cell);
+      if (!element) {
+        return false;
+      }
+      let { width, height } = element.getBoundingClientRect();
+      let ratio = devicePixelRatio || 1;
+      let seed = this.seed;
+      let parsed = typeof shader === 'string' ? parse_shaders(shader) : shader;
+      parsed.width = width;
+      parsed.height = height;
 
-      const set_shader_prop = (v) => {
+      let sources = parsed.textures;
+      let images = [];
+
+      const set_shader_prop = v => {
         element.style.setProperty(id, `url(${v})`);
       }
 
-      const tick = (value) => {
-        if (typeof value === 'function') {
-          let animation = create_animation(t => {
-            set_shader_prop(value(t));
-          });
-          this.animations.push(animation);
-          return '';
+      const tick = v => {
+        if (typeof v === 'function') {
+          this.animations.push(create_animation(t => {
+            set_shader_prop(v(t, width, height, images));
+          }));
+        } else {
+          set_shader_prop(v);
         }
-        set_shader_prop(value);
       }
 
-      let { width, height } = element && element.getBoundingClientRect() || {
-        width: 0, height: 0
-      };
-
-      let ratio = window.devicePixelRatio || 1;
-      if (!parsed.textures.length || parsed.ticker) {
-        generate_shader(parsed, width, height, seed).then(tick).then(fn);
-      }
-      // Need to bind textures first
-      else {
-        let transforms = parsed.textures.map(texture => {
+      const transform = (sources, fn) => {
+        Promise.all(sources.map(({ name, value }) => {
           return new Promise(resolve => {
-            this.doodle_to_image(texture.value, { width, height }, src => {
+            this.doodle_to_image(value, {width, height}, src => {
               let img = new Image();
               img.width = width * ratio;
-              img.height = height * ratio;
-              img.onload = () => resolve({ name: texture.name, value: img });
+              img.height = width * ratio;
+              img.onload = () => resolve({ name, value: img });
               img.src = src;
             });
           });
+        })).then(fn);
+      }
+
+      if (!element.observer) {
+        element.observer = new ResizeObserver(() => {
+          let rect = element.getBoundingClientRect();
+          width = rect.width;
+          height = rect.height;
+          transform(sources, result => images = result);
         });
-        Promise.all(transforms).then(textures => {
-          parsed.textures = textures;
-          generate_shader(parsed, width, height, seed).then(tick).then(fn);
+        element.observer.observe(element);
+      }
+
+      if (sources.length) {
+        transform(sources, result => {
+          parsed.textures = images = result;
+          parsed.width = width;
+          parsed.height = height;
+          generate_shader(parsed, seed).then(tick).then(fn);
         });
+      } else {
+        generate_shader(parsed, seed).then(tick).then(fn);
       }
     }
 
@@ -429,20 +446,13 @@ if (typeof customElements !== 'undefined') {
 
     register_usize(uniforms) {
       if (!this.usize_observer) {
-        const setProperty = () => {
+        this.usize_observer = new ResizeObserver(() => {
           let box = this.getBoundingClientRect();
           if (uniforms.width) {
             this.style.setProperty('--' + uwidth.name, box.width);
           }
           if (uniforms.height) {
             this.style.setProperty('--' + uheight.name, box.height);
-          }
-        };
-        setProperty();
-        this.usize_observer = new ResizeObserver(entries => {
-          for (let entry of entries) {
-            let data = entry.contentBoxSize || entry.contentRect;
-            if (data) setProperty();
           }
         });
         this.usize_observer.observe(this);
@@ -459,9 +469,6 @@ if (typeof customElements !== 'undefined') {
     }
 
     register_utime() {
-      if (!window.CSS || !window.CSS.registerProperty) {
-        return false;
-      }
       if (!this.is_utime_set) {
         try {
           CSS.registerProperty({
