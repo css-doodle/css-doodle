@@ -1,3 +1,18 @@
+## 0.38.0
+
+* Update bundle format from `umd` to `iife`.
+* Add `@x, @y` selectors.
+* Add support for function inside `@keyframes` step names.
+* Fix `@cycle()` grouping.
+* Fix shader background resize.
+* Improve calc speed inside `@nth`.
+* Improve performance of `@once`.
+* Optimize initial styles update when there's delay or animation.
+* Remove `@canvas()` because I barely used it.
+* Reduce preset-size list.
+* Remove compatible fix for old Safari.
+
+
 ## 0.37.4
 
 * Use self-closing tags for generated SVG elements.

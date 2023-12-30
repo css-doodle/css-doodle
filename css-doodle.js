@@ -1,9 +1,6 @@
-/*! css-doodle@0.37.4 */
-(function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-  typeof define === 'function' && define.amd ? define(factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.CSSDoodle = factory());
-})(this, (function () { 'use strict';
+/*! css-doodle@0.38.0 */
+(function () {
+  'use strict';
 
   /**
    * This is totally rewrite for the old parser module
@@ -278,7 +275,7 @@
     return tokens;
   }
 
-  function parse$9(input) {
+  function parse$a(input) {
     let iter = iterator$1(scan(input));
     return walk$2(iter);
   }
@@ -343,28 +340,6 @@
     return Math.max(min, Math.min(max, num));
   }
 
-  function maybe(cond, value) {
-    if (!cond) return '';
-    return (typeof value === 'function') ? value() : value;
-  }
-
-  function range(start, stop, step) {
-    let count = 0, old = start;
-    let initial = n => (n > 0 && n < 1) ? .1 : 1;
-    let length = arguments.length;
-    if (length == 1) [start, stop] = [initial(start), start];
-    if (length < 3) step = initial(start);
-    let range = [];
-    while ((step >= 0 && start <= stop)
-      || (step < 0 && start > stop)) {
-      range.push(start);
-      start += step;
-      if (count++ >= 65535) break;
-    }
-    if (!range.length) range.push(old);
-    return range;
-  }
-
   function add_alias(obj, names) {
     for (let [alias, name] of Object.entries(names)) {
       obj[alias] = obj[name];
@@ -406,7 +381,6 @@
     let max = x * y;
     let ret = [];
     let index = 1;
-
     if (/x/.test(count)) {
       for (let i = 1; i <= y; ++i) {
         for (let j = 1; j <= x; ++j) {
@@ -414,9 +388,7 @@
           index++;
         }
       }
-    }
-
-    else if (/-/.test(count)) {
+    } else if (/-/.test(count)) {
       max = Math.abs(x - y) + 1;
       if (x <= y) {
         for (let i = x; i <= y; ++i) {
@@ -427,14 +399,11 @@
           ret.push(fn(i, i, 1, max, max, 1, index++));
         }
       }
-    }
-
-    else {
+    } else {
       for (let i = 1; i <= x; ++i) {
         ret.push(fn(i, i, 1, x, x, 1, index++));
       }
     }
-
     return ret;
   }
 
@@ -448,7 +417,7 @@
     return is_nil(v) ? '' : v;
   }
 
-  function normalize_png_name(name) {
+  function get_png_name(name) {
     let prefix = is_nil(name)
       ? Date.now()
       : String(name).replace(/\/.png$/g, '');
@@ -495,14 +464,6 @@
     return 4294967296 * (2097151 & h2) + (h1>>>0);
   }
 
-  function make_tag_function(fn) {
-    let get_value = v => is_nil(v) ? '' : v;
-    return (input, ...vars) => {
-      let string = make_array$1(input).reduce((s, c, i) => s + c + get_value(vars[i]), '');
-      return fn(string);
-    };
-  }
-
   function next_id() {
     let id = 0;
     return (prefix = '') => `${prefix}-${++id}`;
@@ -516,30 +477,31 @@
     return prefix + Math.random().toString(32).substr(2);
   }
 
-  function make_array$1(arr) {
+  function make_array(arr) {
     if (is_nil(arr)) return [];
     return Array.isArray(arr) ? arr : [arr];
   }
 
-  function get_grid(input) {
-    let [x, y = x] = String(input + '')
-      .replace(/\s+/g, '')
-      .replace(/[,，xX]+/g, 'x')
-      .split('x')
-      .map(n => parseInt(n));
-    if (!x || x < 1) x = 1;
-    if (!y || y < 1) y = 1;
-    return { x, y }
+  function join(arr, spliter = '\n') {
+    return (arr || []).join(spliter);
   }
 
-  function round(value, precision = 6) {
-    const power = Math.pow(10, precision + 1);
-    let result = Math.round((value * power) + (Number.EPSILON * power)) / power;
-    if (Number.isNaN(result)) result = 0;
-    return result;
+  function last(arr, n = 1) {
+    if (is_nil(arr)) return '';
+    return arr[arr.length - n];
   }
 
-  function parse$8(input, option = {symbol: ',', noSpace: false, verbose: false }) {
+  function first(arr) {
+    return arr[0];
+  }
+
+  function remove_empty_values(arr) {
+    return arr.filter(v => (
+      !is_nil(v) && String(v).trim().length
+    ));
+  }
+
+  function parse$9(input, option = {symbol: ',', noSpace: false, verbose: false }) {
     let group = [];
     let tokens = [];
     let parenStack = [];
@@ -783,7 +745,7 @@
           };
         }
         let statement = readStatement$1(iter, intial);
-        let groupdValue = parse$8(statement.value);
+        let groupdValue = parse$9(statement.value);
         let expand = (props.length > 1 && groupdValue.length === props.length);
 
         props.forEach((prop, i) => {
@@ -966,7 +928,7 @@
     return block;
   }
 
-  function parse$7(source, root) {
+  function parse$8(source, root) {
     let iter = iterator$1(scan(source));
     let tokens = walk$1(iter, root || {
       type: 'block',
@@ -976,7 +938,7 @@
     return skipHeadSVG(tokens);
   }
 
-  function generate$2(token, last) {
+  function generate$1(token, last) {
     let result = '';
     if (token.type === 'block') {
       let isInline = Array.isArray(token.value) && token.value[0] && token.value[0].inline;
@@ -991,7 +953,7 @@
       else if (Array.isArray(token.value) && token.value.length) {
         let lastGroup = '';
         for (let t of token.value) {
-          result += generate$2(t, lastGroup);        if (t.origin) {
+          result += generate$1(t, lastGroup);        if (t.origin) {
             lastGroup = t.origin.name.join(',');
           }
         }
@@ -1007,7 +969,7 @@
       let value = token.origin ? token.origin.value : token.value;
       if (!skip) {
         result += (value && value.type)
-          ? (name + ':' + generate$2(value))
+          ? (name + ':' + generate$1(value))
           : (name + ':' + value + ';');
       }
     }
@@ -1015,47 +977,7 @@
   }
 
   function generate_svg_extended(token) {
-    return generate$2(token).trim();
-  }
-
-  function make_array(arr) {
-    if (is_nil(arr)) return [];
-    return Array.isArray(arr) ? arr : [arr];
-  }
-
-  function join(arr, spliter = '\n') {
-    return (arr || []).join(spliter);
-  }
-
-  function last(arr, n = 1) {
-    if (is_nil(arr)) return '';
-    return arr[arr.length - n];
-  }
-
-  function first(arr) {
-    return arr[0];
-  }
-
-  function clone(arr) {
-    if (typeof structuredClone !== 'undefined') {
-      return structuredClone(arr);
-    }
-    return JSON.parse(JSON.stringify(arr));
-  }
-
-  function duplicate(arr) {
-    return [].concat(arr, arr);
-  }
-
-  function flat_map(arr, fn) {
-    if (Array.prototype.flatMap) return arr.flatMap(fn);
-    return arr.reduce((acc, x) => acc.concat(fn(x)), []);
-  }
-
-  function remove_empty_values(arr) {
-    return arr.filter(v => (
-      !is_nil(v) && String(v).trim().length
-    ));
+    return generate$1(token).trim();
   }
 
   // I need to rewrite this
@@ -1229,7 +1151,7 @@
         continue;
       }
       else if (!step.name.length) {
-        step.name = read_selector(it);
+        step.name = read_value(it, c => c === '{');
       }
       else {
         step.styles.push(read_rule(it, extra));
@@ -1366,7 +1288,7 @@
             }
             if (arg.startsWith('±') && !doodle) {
               let raw = arg.substr(1);
-              let cloned = clone(group);
+              let cloned = structuredClone(group);
               last(cloned).value = '-' + raw;
               args.push(normalize_argument(cloned));
               last(group).value = raw;
@@ -1483,11 +1405,11 @@
         it.next();
         let [args, raw_args] = read_arguments(it, composition, composible(name), variables);
         if (is_svg(name)) {
-          let parsed_svg = parse$7(raw_args);
+          let parsed_svg = parse$8(raw_args);
           let line = 0;
           for (let item of parsed_svg.value) {
             if (item.variable) {
-              variables[item.name] = (parse$6(`${'\n'.repeat(line++)} ${item.name}: ${item.value}`))[0].value;
+              variables[item.name] = (parse$7(`${'\n'.repeat(line++)} ${item.name}: ${item.value}`))[0].value;
             }
           }
           if (/\d\s*{/.test(raw_args) && has_times_syntax(parsed_svg)) {
@@ -1539,7 +1461,7 @@
     return func;
   }
 
-  function read_value(it) {
+  function read_value(it, check_break = () => {}) {
     let text = Tokens.text(), idx = 0, skip = true, c;
     const value = [];
     value[idx] = [];
@@ -1566,7 +1488,7 @@
         value[++idx] = [];
         skip = true;
       }
-      else if (/[;}<]/.test(c) && !quote_stack.length) {
+      else if ((/[;}<]/.test(c) || check_break(c)) && !quote_stack.length) {
         if (text.value.length) {
           value[idx].push(text);
           text = Tokens.text();
@@ -1598,7 +1520,9 @@
         }
         text.value += c;
       }
-      if ((it.curr() === ';' || it.curr() == '}') && !quote_stack.length) {
+
+      let cc = it.curr();
+      if ((cc === ';' || cc == '}' || check_break(cc)) && !quote_stack.length) {
         break;
       }
       it.next();
@@ -1742,7 +1666,7 @@
   function evaluate_value(values, extra) {
     values.forEach && values.forEach(v => {
       if (v.type == 'text' && v.value) {
-        let vars = parse$9(v.value);
+        let vars = parse$a(v.value);
         v.value = vars.reduce((ret, p) => {
           let rule = '', other = '', parsed;
           rule = read_variable(extra, p.name);
@@ -1756,7 +1680,7 @@
             });
           }
           try {
-            parsed = parse$6(rule, extra);
+            parsed = parse$7(rule, extra);
           } catch (e) { }
           if (parsed) {
             ret.push.apply(ret, parsed);
@@ -1785,7 +1709,7 @@
     }, []);
   }
 
-  function parse$6(input, extra) {
+  function parse$7(input, extra) {
     const it = iterator(input);
     const Tokens = [];
     while (!it.end()) {
@@ -1845,7 +1769,7 @@
     });
   }
 
-  function parse$5(input) {
+  function parse$6(input) {
     let scanOptions = {
       preserveLineBreak: true,
       ignoreInlineComment: true,
@@ -1939,8 +1863,9 @@
     return removeParens(tokens).map(n => n.value).join('');
   }
 
-  const NS$1 = 'http://www.w3.org/2000/svg';
-  const NSXLink$1 = 'http://www.w3.org/1999/xlink';
+  const NS = `xmlns="http://www.w3.org/2000/svg"`;
+  const NSXHtml = `xmlns="http://www.w3.org/1999/xhtml"`;
+  const NSXLink = `xmlns:xlink="http://www.w3.org/1999/xlink"`;
 
   function create_svg_url(svg, id) {
     let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
@@ -1948,20 +1873,682 @@
   }
 
   function normalize_svg(input) {
-    const xmlns = `xmlns="${ NS$1 }"`;
-    const xmlnsXLink = `xmlns:xlink="${ NSXLink$1 }"`;
     if (!input.includes('<svg')) {
-      input = `<svg ${ xmlns } ${ xmlnsXLink }>${ input }</svg>`;
+      input = `<svg ${NS} ${NSXLink}>${input}</svg>`;
     }
     if (!input.includes('xmlns')) {
-      input = input.replace(/<svg([\s>])/, `<svg ${ xmlns } ${ xmlnsXLink }$1`);
+      input = input.replace(/<svg([\s>])/, `<svg ${NS} ${NSXLink}$1`);
     }
     return input;
   }
 
-  const NS = 'http://www.w3.org/2000/svg';
-  const NSXLink = 'http://www.w3.org/1999/xlink';
-  const nextId$1 = next_id();
+  function parse$5(input) {
+    let iter = iterator$1(scan(input));
+    let ret = {};
+    let matched = false;
+    while (iter.next()) {
+      let { prev, curr, next} = iter.get();
+      let isUnit = matched
+        && (curr.isWord() || curr.isSymbol())
+        && prev && prev.isNumber()
+        && !next;
+      if (curr.isNumber()) {
+        ret.value = Number(curr.value);
+        matched = true;
+      }
+      else if (isUnit) {
+        ret.unit = curr.value;
+      } else {
+        break;
+      }
+    }
+    return ret;
+  }
+
+  function by_unit(fn) {
+    return (...args) => {
+      let units = [], values = [];
+      for (let arg of args) {
+        let { unit, value } = parse$5(arg);
+        if (unit !== undefined) {
+          units.push(unit);
+        }
+        if (value !== undefined) {
+          values.push(value);
+        }
+      }
+      let result = fn(...values);
+      let unit = units.find(n => n !== undefined);
+      if (unit === undefined) {
+        return result;
+      }
+      if (Array.isArray(result)) {
+        return result.map(n => n + unit);
+      }
+      return result + unit;
+    }
+  }
+
+  function by_charcode(fn) {
+    return (...args) => {
+      let codes = args.map(n => String(n).charCodeAt(0));
+      let result = fn(...codes);
+      return Array.isArray(result)
+        ? result.map(n => String.fromCharCode(n))
+        : String.fromCharCode(result);
+    }
+  }
+
+  class CacheValue {
+    constructor() {
+      this.cache = {};
+    }
+    clear() {
+      this.cache = {};
+    }
+    set(input, value) {
+      if (is_nil(input)) {
+        return '';
+      }
+      let key = this.getKey(input);
+      return this.cache[key] = value;
+    }
+    get(input) {
+      let key = this.getKey(input);
+      return this.cache[key];
+    }
+    getKey(input) {
+      return (typeof input === 'string')
+        ? hash(input)
+        : hash(JSON.stringify(input));
+    }
+  }
+
+  var Cache = new CacheValue();
+
+  function memo(prefix, fn) {
+    return (...args) => {
+      let key = prefix + args.join('-');    return Cache.get(key) || Cache.set(key, fn(...args));
+    }
+  }
+
+  function Type(type, value) {
+    return { type, value };
+  }
+
+  function range(start, stop, step) {
+    let count = 0, old = start;
+    let initial = n => (n > 0 && n < 1) ? .1 : 1;
+    let length = arguments.length;
+    if (length == 1) [start, stop] = [initial(start), start];
+    if (length < 3) step = initial(start);
+    let range = [];
+    while ((step >= 0 && start <= stop)
+      || (step < 0 && start > stop)) {
+      range.push(start);
+      start += step;
+      if (count++ >= 65535) break;
+    }
+    if (!range.length) range.push(old);
+    return range;
+  }
+
+  function get_tokens$1(input) {
+    let expr = String(input);
+    let tokens = [], stack = [];
+    if (!expr.startsWith('[') || !expr.endsWith(']')) {
+      return tokens;
+    }
+
+    for (let i = 1; i < expr.length - 1; ++i) {
+      let c = expr[i];
+      if (c == '-' && expr[i - 1] == '-') {
+        continue;
+      }
+      if (c == '-') {
+        stack.push(c);
+        continue;
+      }
+      if (last(stack) == '-') {
+        stack.pop();
+        let from = stack.pop();
+        tokens.push(from
+          ? Type('range', [ from, c ])
+          : Type('char', c)
+        );
+        continue;
+      }
+      if (stack.length) {
+        tokens.push(Type('char', stack.pop()));
+      }
+      stack.push(c);
+    }
+    if (stack.length) {
+      tokens.push(Type('char', stack.pop()));
+    }
+    return tokens;
+  }
+
+  const build_range = memo('build_range', (input) => {
+    let tokens = get_tokens$1(input);
+    return tokens.flatMap(({ type, value }) => {
+      if (type == 'char') return value;
+      let [ from, to ] = value;
+      let reverse = false;
+      if (from > to) {
+        [from, to] = [ to, from ];
+        reverse = true;
+      }
+      let result = by_charcode(range)(from, to);
+      if (reverse) result.reverse();
+      return result;
+    });
+  });
+
+  function expand$1(fn) {
+    return (...args) => fn(...(args.flatMap(n =>
+      String(n).startsWith('[') ? build_range(n) : n
+    )));
+  }
+
+  class Node {
+    constructor(data) {
+      this.prev = this.next = null;
+      this.data = data;
+    }
+  }
+
+  class Stack {
+    constructor(limit = 20) {
+      this._limit = limit;
+      this._size = 0;
+    }
+    push(data) {
+      if (this._size >= this._limit) {
+        this.root = this.root.next;
+        this.root.prev = null;
+      }
+      let node = new Node(data);
+      if (!this.root) {
+        this.root = this.tail = node;
+      } else {
+        node.prev = this.tail;
+        this.tail.next = node;
+        this.tail = node;
+      }
+      this._size++;
+    }
+    last(n = 1) {
+      let node = this.tail;
+      while (--n) {
+        if (!node.prev) break;
+        node = node.prev;
+      }
+      return node.data;
+    }
+  }
+
+  /**
+   * Improved noise by Ken Perlin
+   * Translated from: https://mrl.nyu.edu/~perlin/noise/
+   */
+
+
+  const map = [
+    151,160,137,91,90,15,
+    131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+    88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,
+    77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
+    135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
+    5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+    223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
+    129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
+    251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
+    49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
+    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+  ];
+
+  class Perlin {
+    constructor() {
+      this.p = [].concat(map, map);
+    }
+
+    // Convert LO 4 bits of hash code into 12 gradient directions.
+    grad(hash, x, y, z) {
+      let h = hash & 15,
+          u = h < 8 ? x : y,
+          v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+      return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
+    }
+
+    noise(x, y, z) {
+      let { p, grad } = this;
+      // Find unit cube that contains point.
+      let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
+      // Find relative x, y, z of point in cube.
+      [x, y, z] = [x, y, z].map(n => n - Math.floor(n));
+      // Compute fade curves for each of x, y, z.
+      let [u, v, w] = [x, y, z].map(n => n * n * n * (n * (n * 6 - 15) + 10));
+      // hash coordinates of the 8 cube corners.
+      let A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
+          B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
+      // And add blended results from 8 corners of cube.
+      return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ),
+                                     grad(p[BA  ], x-1, y  , z   )),
+                             lerp(u, grad(p[AB  ], x  , y-1, z   ),
+                                     grad(p[BB  ], x-1, y-1, z   ))),
+                     lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),
+                                     grad(p[BA+1], x-1, y  , z-1 )),
+                             lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
+                                     grad(p[BB+1], x-1, y-1, z-1 ))));
+    }
+  }
+
+  function get_named_arguments(args, names) {
+    let result = {};
+    let order = true;
+    for (let i = 0; i < args.length; ++i) {
+      let arg = args[i];
+      let arg_name = names[i];
+      if (/=/.test(arg)) {
+        let [name, value] = parse$9(arg, { symbol: '=', noSpace: true });
+        if (value !== undefined) {
+          if (names.includes(name)) {
+            result[name] = value;
+          }
+          // ignore the rest unnamed arguments
+          order = false;
+        } else {
+          result[arg_name] = arg;
+        }
+      } else if (order) {
+        result[arg_name] = arg;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Based on the Shunting-yard algorithm.
+   */
+
+
+  const cache = new Map();
+
+  const default_context = {
+    'π': Math.PI,
+    gcd: (a, b) => {
+      while (b) [a, b] = [b, a % b];
+      return a;
+    }
+  };
+
+  const operator = {
+    '^': 7,
+    '*': 6, '/': 6, '÷': 6, '%': 6,
+    '&': 5, '|': 5,
+    '+': 4, '-': 4,
+    '<': 3, '<<': 3,
+    '>': 3, '>>': 3,
+    '=': 3, '==': 3,
+    '≤': 3, '<=': 3,
+    '≥': 3, '>=': 3,
+    '≠': 3, '!=': 3,
+    '∧': 2, '&&': 2,
+    '∨': 2, '||': 2,
+    '(': 1 , ')': 1,
+  };
+
+  function calc(expr, context, repeat = []) {
+    let stack = [];
+    while (expr.length) {
+      let { name, value, type } = expr.shift();
+      if (type === 'variable') {
+        let result = context[value];
+        if (is_invalid_number(result)) {
+          result = Math[value];
+        }
+        if (is_invalid_number(result)) {
+          result = expand(value, context, repeat);
+        }
+        if (is_invalid_number(result)) {
+          if (/^\-\D/.test(value)) {
+            result = expand('-1' + value.substr(1), context, repeat);
+          }
+        }
+        if (result === undefined) {
+          result = 0;
+        }
+        if (typeof result !== 'number') {
+          repeat.push(result);
+          if (is_cycle(repeat)) {
+            result = 0;
+            repeat = [];
+          } else {
+            result = calc(infix_to_postfix(result), context, repeat);
+          }
+        }
+        stack.push(result);
+      }
+      else if (type === 'function') {
+        let negative = false;
+        if (/^\-/.test(name)) {
+          negative = true;
+          name = name.substr(1);
+        }
+        let output = value.map(v => calc(v, context, repeat));
+        let fns = name.split('.');
+        let fname;
+        while (fname = fns.pop()) {
+          if (!fname) continue;
+          let fn = context[fname] || Math[fname];
+          output = (typeof fn === 'function')
+            ? (Array.isArray(output) ? fn(...output) : fn(output))
+            : 0;
+        }
+        if (negative) {
+          output = -1 * output;
+        }
+        stack.push(output);
+      } else {
+        if (/\d+/.test(value)) stack.push(value);
+        else {
+          let right = stack.pop();
+          let left = stack.pop();
+          stack.push(compute$1(
+            value, Number(left), Number(right)
+          ));
+        }
+      }
+    }
+    return Number(stack[0]) || 0;
+  }
+
+  function get_tokens(input) {
+    if (cache.has(input)) {
+      return cache.get(input);
+    }
+    let expr = String(input);
+    let tokens = [], num = '';
+
+    for (let i = 0; i < expr.length; ++i) {
+      let c = expr[i];
+      if (operator[c]) {
+        let last_token = last(tokens);
+        if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
+          last_token.value += c;
+        }
+        else if (/^[|&<>]$/.test(c) && last_token && last_token.value == c) {
+          last_token.value += c;
+        }
+        else if (c == '-' && expr[i - 1] == 'e') {
+          num += c;
+        }
+        else if (!tokens.length && !num.length && /[+-]/.test(c)) {
+          num += c;
+        } else {
+          let { type, value } = last_token || {};
+          if (type == 'operator'
+              && !num.length
+              && /[^()]/.test(c)
+              && /[^()]/.test(value)) {
+            num += c;
+          } else {
+            if (num.length) {
+              tokens.push({ type: 'number', value: num });
+              num = '';
+            }
+            tokens.push({ type: 'operator', value: c });
+          }
+        }
+      }
+      else if (/\S/.test(c)) {
+        if (c == ',') {
+          tokens.push({ type: 'number', value: num });
+          num = '';
+          tokens.push({ type: 'comma', value: c });
+        } else if (c == '!') {
+          tokens.push({ type: 'number', value: num });
+          tokens.push({ type: 'operator', value: c });
+          num = '';
+        } else {
+          num += c;
+        }
+      }
+    }
+
+    if (num.length) {
+      tokens.push({ type: 'number', value: num });
+    }
+    cache.set(input, tokens);
+    return tokens;
+  }
+
+  function infix_to_postfix(input) {
+    let tokens = get_tokens(input);
+    const op_stack = [], expr = [];
+
+    for (let i = 0; i < tokens.length; ++i) {
+      let { type, value } = tokens[i];
+      let next = tokens[i + 1] || {};
+      if (type == 'number') {
+        if (next.value == '(' && /[^\d.\-]/.test(value)) {
+          let func_body = '';
+          let stack = [];
+          let values = [];
+
+          i += 1;
+          while (tokens[i++] !== undefined) {
+            let token = tokens[i];
+            if (token === undefined) break;
+            let c = token.value;
+            if (c == ')') {
+              if (!stack.length) break;
+              stack.pop();
+              func_body += c;
+            }
+            else {
+              if (c == '(') stack.push(c);
+              if (c == ',' && !stack.length) {
+                let arg = infix_to_postfix(func_body);
+                if (arg.length) values.push(arg);
+                func_body = '';
+              } else {
+                func_body += c;
+              }
+            }
+          }
+
+          if (func_body.length) {
+            values.push(infix_to_postfix(func_body));
+          }
+
+          expr.push({
+            type: 'function',
+            name: value,
+            value: values
+          });
+        }
+        else if (/[^\d.\-]/.test(value)) {
+          expr.push({ type: 'variable', value });
+        }
+        else {
+          expr.push({ type: 'number', value });
+        }
+      }
+
+      else if (type == 'operator') {
+        if (value == '(') {
+          op_stack.push(value);
+        }
+
+        else if (value == ')') {
+          while (op_stack.length && last(op_stack) != '(') {
+            expr.push({ type: 'operator', value: op_stack.pop() });
+          }
+          op_stack.pop();
+        }
+
+        else {
+          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
+            let op = op_stack.pop();
+            if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
+          }
+          op_stack.push(value);
+        }
+      }
+    }
+
+    while (op_stack.length) {
+      expr.push({ type: 'operator', value: op_stack.pop() });
+    }
+
+    return expr;
+  }
+
+  function compute$1(op, a, b) {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '%': return a % b;
+      case '|': return a | b;
+      case '&': return a & b;
+      case '<': return a < b;
+      case '>': return a > b;
+      case '^': return Math.pow(a, b);
+      case '÷': case '/': return a / b;
+      case '=': case '==': return a == b;
+      case '≤': case '<=': return a <= b;
+      case '≥': case '>=': return a >= b;
+      case '≠': case '!=': return a != b;
+      case '∧': case '&&': return a && b;
+      case '∨': case '||': return a || b;
+      case '<<': return a << b;
+      case '>>': return a >> b;
+    }
+  }
+
+  function expand(value, context, repeat) {
+    let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
+    let v = context[variable];
+    if (v === undefined) {
+      return v;
+    }
+    if (typeof v === 'number') {
+      return Number(num) * v;
+    } else {
+      repeat.push(v);
+      if (is_cycle(repeat)) {
+        repeat = [];
+        return 0;
+      } else {
+        return num * calc(infix_to_postfix(v), context, repeat);
+      }
+    }
+  }
+
+  function is_cycle(array) {
+    if (array.length > 50) return true;
+    let tail = last(array);
+    for (let i = 2; i <= 4; ++i) {
+      let item = array[array.length - i];
+      if (item === undefined) return false;
+      if (tail !== item) return false;
+    }
+    return true;
+  }
+
+  function calc$1(input, context) {
+    const expr = infix_to_postfix(input);
+    return calc(expr, Object.assign({}, default_context, context));
+  }
+
+  const utime = {
+    'name': 'cssd-utime',
+    'animation-name': 'cssd-utime-animation',
+    'animation-duration': 31536000000, /* one year in ms */
+    'animation-iteration-count': 'infinite',
+    'animation-delay': '0s',
+    'animation-direction': 'normal',
+    'animation-fill-mode': 'none',
+    'animation-play-state': 'running',
+    'animation-timing-function': 'linear',
+  };
+
+  utime['animation'] = `
+  ${utime['animation-duration']}ms
+  ${utime['animation-timing-function']}
+  ${utime['animation-delay']}
+  ${utime['animation-iteration-count']}
+  ${utime['animation-name']}
+`;
+
+  const umousex = {
+    name: 'cssd-umousex',
+  };
+
+  const umousey = {
+    name: 'cssd-umousey',
+  };
+
+  const uwidth = {
+    name: 'cssd-uwidth',
+  };
+
+  const uheight = {
+    name: 'cssd-uheight',
+  };
+
+  const commands = 'MmLlHhVvCcSsQqTtAaZz';
+  const relatives = 'mlhvcsqtaz';
+
+  function parse$4(input) {
+    let iter = iterator$1(scan(input));
+    let temp = {};
+    let result = {
+      commands: [],
+      valid: true
+    };
+    while (iter.next()) {
+      let { curr } = iter.get();
+      if (curr.isSpace() || curr.isSymbol(',')) {
+        continue;
+      }
+      if (curr.isWord()) {
+        if (temp.name) {
+          result.commands.push(temp);
+          temp = {};
+        }
+        temp.name = curr.value;
+        temp.value = [];
+        if (!commands.includes(curr.value)) {
+          temp.type = 'unknown';
+          result.valid = false;
+        } else if (relatives.includes(curr.value)) {
+          temp.type = 'relative';
+        } else {
+          temp.type = 'absolute';
+        }
+      } else if (temp.value) {
+        let value = curr.value;
+        if (curr.isNumber()) {
+          value = Number(curr.value);
+        }
+        temp.value.push(value);
+      } else if (!temp.name) {
+        result.valid = false;
+      }
+    }
+    if (temp.name) {
+      result.commands.push(temp);
+    }
+    return result;
+  }
+
+  const nextId = next_id();
 
   class Tag {
     constructor(name, value = '') {
@@ -2073,7 +2660,7 @@
       || name === 'polyline';
   }
 
-  function generate$1(token, element, parent, root) {
+  function generate(token, element, parent, root) {
     let inlineId;
     if (!element) {
       element = new Tag('root');
@@ -2090,7 +2677,7 @@
         let el = new Tag(token.name);
         if (!root) {
           root = el;
-          root.attr('xmlns', NS);
+          root.attr('xmlns', NS.split('=')[1]);
         }
         if (token.name === 'defs') {
           let defsElement = root.findSpareDefs();
@@ -2101,7 +2688,7 @@
         }
         for (let block of token.value) {
           token.parent = parent;
-          let id = generate$1(block, el, token, root);
+          let id = generate(block, el, token, root);
           if (id) { inlineId = id; }
         }
         let isInlineAndNotDefs = token && token.inline && token.name !== 'defs';
@@ -2114,7 +2701,7 @@
           if (found) {
             inlineId = found.value;
           } else if (isSingleDefChild || isInlineAndNotDefs) {
-            inlineId = nextId$1(token.name);
+            inlineId = nextId(token.name);
             el.attr('id', inlineId);
           }
         }
@@ -2155,7 +2742,7 @@
         let value = token.value;
         // handle inline block value
         if (value && value.type === 'block') {
-          let id = generate$1(token.value, root, token, root);
+          let id = generate(token.value, root, token, root);
           if (is_nil(id)) {
             value = '';
           } else {
@@ -2195,7 +2782,7 @@
           element.attr(token.name, value);
         }
         if (token.name.includes('xlink:')) {
-          root.attr('xmlns:xlink', NSXLink);
+          root.attr('xmlns:xlink', NSXLink.split('=')[1]);
         }
       }
     }
@@ -2206,627 +2793,13 @@
   }
 
   function generate_svg(token) {
-    return generate$1(token);
-  }
-
-  function parse$4(input) {
-    let iter = iterator$1(scan(input));
-    let ret = {};
-    let matched = false;
-    while (iter.next()) {
-      let { prev, curr, next} = iter.get();
-      let isUnit = matched
-        && (curr.isWord() || curr.isSymbol())
-        && prev && prev.isNumber()
-        && !next;
-      if (curr.isNumber()) {
-        ret.value = Number(curr.value);
-        matched = true;
-      }
-      else if (isUnit) {
-        ret.unit = curr.value;
-      } else {
-        break;
-      }
-    }
-    return ret;
-  }
-
-  function by_unit(fn) {
-    return (...args) => {
-      let units = [], values = [];
-      for (let arg of args) {
-        let { unit, value } = parse$4(arg);
-        if (unit !== undefined) {
-          units.push(unit);
-        }
-        if (value !== undefined) {
-          values.push(value);
-        }
-      }
-      let result = fn(...values);
-      let unit = units.find(n => n !== undefined);
-      if (unit === undefined) {
-        return result;
-      }
-      if (Array.isArray(result)) {
-        return result.map(n => n + unit);
-      }
-      return result + unit;
-    }
-  }
-
-  function by_charcode(fn) {
-    return (...args) => {
-      let codes = args.map(n => String(n).charCodeAt(0));
-      let result = fn(...codes);
-      return Array.isArray(result)
-        ? result.map(n => String.fromCharCode(n))
-        : String.fromCharCode(result);
-    }
-  }
-
-  /**
-   * Based on the Shunting-yard algorithm.
-   */
-
-
-  const cache = new Map();
-
-  const default_context = {
-    'π': Math.PI,
-    gcd: (a, b) => {
-      while (b) [a, b] = [b, a % b];
-      return a;
-    }
-  };
-
-  const operator = {
-    '^': 7,
-    '*': 6, '/': 6, '÷': 6, '%': 6,
-    '&': 5, '|': 5,
-    '+': 4, '-': 4,
-    '<': 3, '<<': 3,
-    '>': 3, '>>': 3,
-    '=': 3, '==': 3,
-    '≤': 3, '<=': 3,
-    '≥': 3, '>=': 3,
-    '≠': 3, '!=': 3,
-    '∧': 2, '&&': 2,
-    '∨': 2, '||': 2,
-    '(': 1 , ')': 1,
-  };
-
-  function calc(expr, context, repeat = []) {
-    let stack = [];
-    while (expr.length) {
-      let { name, value, type } = expr.shift();
-      if (type === 'variable') {
-        let result = context[value];
-        if (is_invalid_number(result)) {
-          result = Math[value];
-        }
-        if (is_invalid_number(result)) {
-          result = expand$1(value, context, repeat);
-        }
-        if (is_invalid_number(result)) {
-          if (/^\-\D/.test(value)) {
-            result = expand$1('-1' + value.substr(1), context, repeat);
-          }
-        }
-        if (result === undefined) {
-          result = 0;
-        }
-        if (typeof result !== 'number') {
-          repeat.push(result);
-          if (is_cycle(repeat)) {
-            result = 0;
-            repeat = [];
-          } else {
-            result = calc(infix_to_postfix(result), context, repeat);
-          }
-        }
-        stack.push(result);
-      }
-      else if (type === 'function') {
-        let negative = false;
-        if (/^\-/.test(name)) {
-          negative = true;
-          name = name.substr(1);
-        }
-        let output = value.map(v => calc(v, context, repeat));
-        let fns = name.split('.');
-        let fname;
-        while (fname = fns.pop()) {
-          if (!fname) continue;
-          let fn = context[fname] || Math[fname];
-          output = (typeof fn === 'function')
-            ? (Array.isArray(output) ? fn(...output) : fn(output))
-            : 0;
-        }
-        if (negative) {
-          output = -1 * output;
-        }
-        stack.push(output);
-      } else {
-        if (/\d+/.test(value)) stack.push(value);
-        else {
-          let right = stack.pop();
-          let left = stack.pop();
-          stack.push(compute$1(
-            value, Number(left), Number(right)
-          ));
-        }
-      }
-    }
-    return Number(stack[0]) || 0;
-  }
-
-  function get_tokens$1(input) {
-    if (cache.has(input)) {
-      return cache.get(input);
-    }
-    let expr = String(input);
-    let tokens = [], num = '';
-
-    for (let i = 0; i < expr.length; ++i) {
-      let c = expr[i];
-      if (operator[c]) {
-        let last_token = last(tokens);
-        if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
-          last_token.value += c;
-        }
-        else if (/^[|&<>]$/.test(c) && last_token && last_token.value == c) {
-          last_token.value += c;
-        }
-        else if (c == '-' && expr[i - 1] == 'e') {
-          num += c;
-        }
-        else if (!tokens.length && !num.length && /[+-]/.test(c)) {
-          num += c;
-        } else {
-          let { type, value } = last_token || {};
-          if (type == 'operator'
-              && !num.length
-              && /[^()]/.test(c)
-              && /[^()]/.test(value)) {
-            num += c;
-          } else {
-            if (num.length) {
-              tokens.push({ type: 'number', value: num });
-              num = '';
-            }
-            tokens.push({ type: 'operator', value: c });
-          }
-        }
-      }
-      else if (/\S/.test(c)) {
-        if (c == ',') {
-          tokens.push({ type: 'number', value: num });
-          num = '';
-          tokens.push({ type: 'comma', value: c });
-        } else if (c == '!') {
-          tokens.push({ type: 'number', value: num });
-          tokens.push({ type: 'operator', value: c });
-          num = '';
-        } else {
-          num += c;
-        }
-      }
-    }
-
-    if (num.length) {
-      tokens.push({ type: 'number', value: num });
-    }
-    cache.set(input, tokens);
-    return tokens;
-  }
-
-  function infix_to_postfix(input) {
-    let tokens = get_tokens$1(input);
-    const op_stack = [], expr = [];
-
-    for (let i = 0; i < tokens.length; ++i) {
-      let { type, value } = tokens[i];
-      let next = tokens[i + 1] || {};
-      if (type == 'number') {
-        if (next.value == '(' && /[^\d.\-]/.test(value)) {
-          let func_body = '';
-          let stack = [];
-          let values = [];
-
-          i += 1;
-          while (tokens[i++] !== undefined) {
-            let token = tokens[i];
-            if (token === undefined) break;
-            let c = token.value;
-            if (c == ')') {
-              if (!stack.length) break;
-              stack.pop();
-              func_body += c;
-            }
-            else {
-              if (c == '(') stack.push(c);
-              if (c == ',' && !stack.length) {
-                let arg = infix_to_postfix(func_body);
-                if (arg.length) values.push(arg);
-                func_body = '';
-              } else {
-                func_body += c;
-              }
-            }
-          }
-
-          if (func_body.length) {
-            values.push(infix_to_postfix(func_body));
-          }
-
-          expr.push({
-            type: 'function',
-            name: value,
-            value: values
-          });
-        }
-        else if (/[^\d.\-]/.test(value)) {
-          expr.push({ type: 'variable', value });
-        }
-        else {
-          expr.push({ type: 'number', value });
-        }
-      }
-
-      else if (type == 'operator') {
-        if (value == '(') {
-          op_stack.push(value);
-        }
-
-        else if (value == ')') {
-          while (op_stack.length && last(op_stack) != '(') {
-            expr.push({ type: 'operator', value: op_stack.pop() });
-          }
-          op_stack.pop();
-        }
-
-        else {
-          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
-            let op = op_stack.pop();
-            if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
-          }
-          op_stack.push(value);
-        }
-      }
-    }
-
-    while (op_stack.length) {
-      expr.push({ type: 'operator', value: op_stack.pop() });
-    }
-
-    return expr;
-  }
-
-  function compute$1(op, a, b) {
-    switch (op) {
-      case '+': return a + b;
-      case '-': return a - b;
-      case '*': return a * b;
-      case '%': return a % b;
-      case '|': return a | b;
-      case '&': return a & b;
-      case '<': return a < b;
-      case '>': return a > b;
-      case '^': return Math.pow(a, b);
-      case '÷': case '/': return a / b;
-      case '=': case '==': return a == b;
-      case '≤': case '<=': return a <= b;
-      case '≥': case '>=': return a >= b;
-      case '≠': case '!=': return a != b;
-      case '∧': case '&&': return a && b;
-      case '∨': case '||': return a || b;
-      case '<<': return a << b;
-      case '>>': return a >> b;
-    }
-  }
-
-  function expand$1(value, context, repeat) {
-    let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
-    let v = context[variable];
-    if (v === undefined) {
-      return v;
-    }
-    if (typeof v === 'number') {
-      return Number(num) * v;
-    } else {
-      repeat.push(v);
-      if (is_cycle(repeat)) {
-        repeat = [];
-        return 0;
-      } else {
-        return num * calc(infix_to_postfix(v), context, repeat);
-      }
-    }
-  }
-
-  function is_cycle(array) {
-    if (array.length > 50) return true;
-    let tail = last(array);
-    for (let i = 2; i <= 4; ++i) {
-      let item = array[array.length - i];
-      if (item === undefined) return false;
-      if (tail !== item) return false;
-    }
-    return true;
-  }
-
-  function calc$1(input, context) {
-    const expr = infix_to_postfix(input);
-    return calc(expr, Object.assign({}, default_context, context));
-  }
-
-  class CacheValue {
-    constructor() {
-      this.cache = {};
-    }
-    clear() {
-      this.cache = {};
-    }
-    set(input, value) {
-      if (is_nil(input)) {
-        return '';
-      }
-      let key = this.getKey(input);
-      return this.cache[key] = value;
-    }
-    get(input) {
-      let key = this.getKey(input);
-      return this.cache[key];
-    }
-    getKey(input) {
-      return (typeof input === 'string')
-        ? hash(input)
-        : hash(JSON.stringify(input));
-    }
-  }
-
-  var Cache = new CacheValue();
-
-  function memo(prefix, fn) {
-    return (...args) => {
-      let key = prefix + args.join('-');    return Cache.get(key) || Cache.set(key, fn(...args));
-    }
-  }
-
-  function Type(type, value) {
-    return { type, value };
-  }
-
-  function get_tokens(input) {
-    let expr = String(input);
-    let tokens = [], stack = [];
-    if (!expr.startsWith('[') || !expr.endsWith(']')) {
-      return tokens;
-    }
-
-    for (let i = 1; i < expr.length - 1; ++i) {
-      let c = expr[i];
-      if (c == '-' && expr[i - 1] == '-') {
-        continue;
-      }
-      if (c == '-') {
-        stack.push(c);
-        continue;
-      }
-      if (last(stack) == '-') {
-        stack.pop();
-        let from = stack.pop();
-        tokens.push(from
-          ? Type('range', [ from, c ])
-          : Type('char', c)
-        );
-        continue;
-      }
-      if (stack.length) {
-        tokens.push(Type('char', stack.pop()));
-      }
-      stack.push(c);
-    }
-    if (stack.length) {
-      tokens.push(Type('char', stack.pop()));
-    }
-    return tokens;
-  }
-
-  const build_range = memo('build_range', (input) => {
-    let tokens = get_tokens(input);
-    return flat_map(tokens, ({ type, value }) => {
-      if (type == 'char') return value;
-      let [ from, to ] = value;
-      let reverse = false;
-      if (from > to) {
-        [from, to] = [ to, from ];
-        reverse = true;
-      }
-      let result = by_charcode(range)(from, to);
-      if (reverse) result.reverse();
-      return result;
-    });
-  });
-
-  function expand(fn) {
-    return (...args) => fn(...flat_map(args, n =>
-      String(n).startsWith('[') ? build_range(n) : n
-    ));
-  }
-
-  class Node {
-    constructor(data) {
-      this.prev = this.next = null;
-      this.data = data;
-    }
-  }
-
-  class Stack {
-    constructor(limit = 20) {
-      this._limit = limit;
-      this._size = 0;
-    }
-    push(data) {
-      if (this._size >= this._limit) {
-        this.root = this.root.next;
-        this.root.prev = null;
-      }
-      let node = new Node(data);
-      if (!this.root) {
-        this.root = this.tail = node;
-      } else {
-        node.prev = this.tail;
-        this.tail.next = node;
-        this.tail = node;
-      }
-      this._size++;
-    }
-    last(n = 1) {
-      let node = this.tail;
-      while (--n) {
-        if (!node.prev) break;
-        node = node.prev;
-      }
-      return node.data;
-    }
-  }
-
-  /**
-   * Improved noise by Ken Perlin
-   * Translated from: https://mrl.nyu.edu/~perlin/noise/
-   */
-
-
-  class Perlin {
-    constructor() {
-      this.p = duplicate([
-        151,160,137,91,90,15,
-        131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-        190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-        88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,
-        77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-        102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
-        135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
-        5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-        223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
-        129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
-        251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
-        49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
-        138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
-      ]);
-    }
-
-    // Convert LO 4 bits of hash code into 12 gradient directions.
-    grad(hash, x, y, z) {
-      let h = hash & 15,
-          u = h < 8 ? x : y,
-          v = h < 4 ? y : h == 12 || h == 14 ? x : z;
-      return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
-    }
-
-    noise(x, y, z) {
-      let { p, grad } = this;
-      // Find unit cube that contains point.
-      let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
-      // Find relative x, y, z of point in cube.
-      [x, y, z] = [x, y, z].map(n => n - Math.floor(n));
-      // Compute fade curves for each of x, y, z.
-      let [u, v, w] = [x, y, z].map(n => n * n * n * (n * (n * 6 - 15) + 10));
-      // hash coordinates of the 8 cube corners.
-      let A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
-          B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
-      // And add blended results from 8 corners of cube.
-      return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ),
-                                     grad(p[BA  ], x-1, y  , z   )),
-                             lerp(u, grad(p[AB  ], x  , y-1, z   ),
-                                     grad(p[BB  ], x-1, y-1, z   ))),
-                     lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),
-                                     grad(p[BA+1], x-1, y  , z-1 )),
-                             lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
-                                     grad(p[BB+1], x-1, y-1, z-1 ))));
-    }
-  }
-
-  function get_named_arguments(args, names) {
-    let result = {};
-    let order = true;
-    for (let i = 0; i < args.length; ++i) {
-      let arg = args[i];
-      let arg_name = names[i];
-      if (/=/.test(arg)) {
-        let [name, value] = parse$8(arg, { symbol: '=', noSpace: true });
-        if (value !== undefined) {
-          if (names.includes(name)) {
-            result[name] = value;
-          }
-          // ignore the rest unnamed arguments
-          order = false;
-        } else {
-          result[arg_name] = arg;
-        }
-      } else if (order) {
-        result[arg_name] = arg;
-      }
-    }
-    return result;
-  }
-
-  function parse$3(input) {
-    let iter = iterator$1(scan(input));
-    let commands = {};
-    let tokens = [];
-    let name;
-    let negative = false;
-    while (iter.next()) {
-      let { prev, curr, next } = iter.get();
-      if (curr.isSymbol(':') && !name) {
-        name = joinTokens(tokens);
-        tokens = [];
-      } else if (curr.isSymbol(';') && name) {
-        commands[name] = transformNegative(name, joinTokens(tokens), negative);
-        tokens = [];
-        name = null;
-        negative = false;
-      } else if (!curr.isSymbol(';')) {
-        let prevMinus = prev && prev.isSymbol('-');
-        let nextMinus = next && next.isSymbol('-');
-        let currMinus = curr.isSymbol('-');
-        if (!name && !tokens.length && currMinus && !prevMinus && !nextMinus) {
-          if (next && next.isSymbol(':')) {
-            tokens.push(curr);
-          } else {
-            negative = true;
-          }
-        } else {
-          tokens.push(curr);
-        }
-      }
-    }
-    if (tokens.length && name) {
-      commands[name] = transformNegative(name, joinTokens(tokens), negative);
-    }
-    return commands;
-  }
-
-  function transformNegative(name, value, negative) {
-    let excludes = ['fill-rule', 'fill'];
-    if (excludes.includes(name)) {
-      return value;
-    }
-    return negative ? `-1 * (${ value })` : value;
-  }
-
-  function joinTokens(tokens) {
-    return tokens.map(n => n.value).join('');
+    return generate(token);
   }
 
   const keywords = ['auto', 'reverse'];
   const units = ['deg', 'rad', 'grad', 'turn'];
 
-  function parse$2(input) {
+  function parse$3(input) {
     let iter = iterator$1(scan(input));
     let matched = false;
     let unit = '';
@@ -2874,58 +2847,101 @@
     return Object.assign({}, input, { angle });
   }
 
+  function parse$2(input) {
+    let iter = iterator$1(scan(input));
+    let commands = {};
+    let tokens = [];
+    let name;
+    let negative = false;
+    while (iter.next()) {
+      let { prev, curr, next } = iter.get();
+      if (curr.isSymbol(':') && !name) {
+        name = joinTokens(tokens);
+        tokens = [];
+      } else if (curr.isSymbol(';') && name) {
+        commands[name] = transformNegative(name, joinTokens(tokens), negative);
+        tokens = [];
+        name = null;
+        negative = false;
+      } else if (!curr.isSymbol(';')) {
+        let prevMinus = prev && prev.isSymbol('-');
+        let nextMinus = next && next.isSymbol('-');
+        let currMinus = curr.isSymbol('-');
+        if (!name && !tokens.length && currMinus && !prevMinus && !nextMinus) {
+          if (next && next.isSymbol(':')) {
+            tokens.push(curr);
+          } else {
+            negative = true;
+          }
+        } else {
+          tokens.push(curr);
+        }
+      }
+    }
+    if (tokens.length && name) {
+      commands[name] = transformNegative(name, joinTokens(tokens), negative);
+    }
+    return commands;
+  }
+
+  function transformNegative(name, value, negative) {
+    let excludes = ['fill-rule', 'fill'];
+    if (excludes.includes(name)) {
+      return value;
+    }
+    return negative ? `-1 * (${value})` : value;
+  }
+
+  function joinTokens(tokens) {
+    return tokens.map(n => n.value).join('');
+  }
+
   const { cos, sin, abs, atan2, PI } = Math;
 
-  const _ = make_tag_function(c => {
-    return create_shape_points(
-      parse$3(c), {min: 3, max: 3600}
-    );
-  });
-
-  const shapes = {
-    circle: () => _`
+  const preset_shapes = {
+    circle: `
     split: 180;
     scale: .99
   `,
 
-    triangle: () => _`
+    triangle: `
     rotate: 30;
     scale: 1.1;
     move: 0 .2
   `,
 
-    pentagon: () => _`
+    pentagon: `
     split: 5;
     rotate: 54
   `,
 
-    hexagon: () => _`
+    hexagon: `
     split: 6;
     rotate: 30;
     scale: .98
   `,
 
-    octagon: () => _`
+    octagon: `
     split: 8;
     rotat: 22.5;
     scale: .99
   `,
 
-    star: () => _`
+    star: `
     split: 10;
     r: cos(5t);
     rotate: -18;
     scale: .99
   `,
 
-    infinity: () => _`
+    infinity: `
     split: 180;
     scale: .99;
     x: cos(t)*.99 / (sin(t)^2 + 1);
     y: x * sin(t)
   `,
 
-    heart: () => _`
+    heart: `
     split: 180;
     rotate: 180;
     a: cos(t)*13/18 - cos(2t)*5/18;
@@ -2934,19 +2950,19 @@
     y: (a - b + .2) * -1.1
   `,
 
-    bean: () => _`
+    bean: `
     split: 180;
     r: sin(t)^3 + cos(t)^3;
     move: -.35 .35;
   `,
 
-    bicorn: () => _`
+    bicorn: `
     split: 180;
     x: cos(t);
     y: sin(t)^2 / (2 + sin(t)) - .5
   `,
 
-    drop: () => _`
+    drop: `
     split: 180;
     rotate: 90;
     scale: .95;
@@ -2954,13 +2970,13 @@
     y: (1 + sin(t)) * cos(t) / 1.6
   `,
 
-    fish: () => _`
+    fish: `
     split: 240;
     x: cos(t) - sin(t)^2 / sqrt(2) - .04;
     y: sin(2t)/2
   `,
 
-    whale: () => _`
+    whale: `
     split: 240;
     rotate: 180;
     R: 3.4 * (sin(t)^2 - .5) * cos(t);
@@ -2968,7 +2984,7 @@
     y: sin(t) * R * 1.2
   `,
 
-    windmill:  () => _`
+    windmill: `
     split: 18;
     R: seq(.618, 1, 0);
     T: seq(t-.55, t, t);
@@ -2976,27 +2992,27 @@
     y: R * sin(T)
   `,
 
-    vase: () => _`
+    vase: `
     split: 240;
     scale: .3;
     x: sin(4t) + sin(t) * 1.4;
     y: cos(t) + cos(t) * 4.8 + .3
   `,
 
-    clover: (k = 3) => {
+    clover(k = 3) {
       k = clamp(k, 3, 5);
       if (k == 4) k = 2;
-      return _`
+      return `
       split: 240;
       r: cos(${k}t);
       scale: .98
     `;
     },
 
-    hypocycloid: (k = 3) => {
+    hypocycloid(k = 3) {
       k = clamp(k, 3, 5);
-      let scale = [0, 0, 0, .34, .25, .19][k];
-      return _`
+      let scale = [.34, .25, .19][k - 3];
+      return `
       split: 240;
       scale: ${scale};
       k: ${k};
@@ -3005,9 +3021,9 @@
     `;
     },
 
-    bud: (k = 3) => {
+    bud(k = 3) {
       k = clamp(k, 3, 10);
-      return _`
+      return `
       split: 240;
       scale: .8;
       r: 1 + .2 * cos(${k}t)
@@ -3030,20 +3046,14 @@
   }
 
   function create_polygon_points(option, fn) {
-    if (typeof arguments[0] == 'function') {
-      fn = option;
-      option = {};
-    }
-
     if (!fn) {
       fn = t => [ cos(t), sin(t) ];
     }
-
     let split = option.split || 180;
     let turn = option.turn || 1;
     let frame = option.frame;
     let fill = option['fill'] || option['fill-rule'];
-    let direction = parse$2(option['direction'] || option['dir'] || '');
+    let direction = parse$3(option['direction'] || option['dir'] || '');
     let unit = option.unit;
 
     let rad = (PI * 2) * turn / split;
@@ -3060,12 +3070,12 @@
       let angle = calc_angle(x, y, dx1, dy2, direction);
       if (unit !== undefined && unit !== '%') {
         if (unit !== 'none') {
-          x = round(x) + unit;
-          y = round(y) + unit;
+          x += unit;
+          y += unit;
         }
       } else {
-        x = round((x + 1) * 50) + '%';
-        y = round((y + 1) * 50) + '%';
+        x = (x + 1) * 50 + '%';
+        y = (y + 1) * 50 + '%';
       }
       points.push(new Point(x, y, angle));
     };
@@ -3127,7 +3137,7 @@
   }
 
   function translate(x, y, offset) {
-    let [dx, dy = dx] = parse$8(offset).map(Number);
+    let [dx, dy = dx] = parse$9(offset).map(Number);
     return [
       x + (dx || 0),
       y - (dy || 0),
@@ -3137,7 +3147,7 @@
   }
 
   function scale(x, y, factor) {
-    let [fx, fy = fx] = parse$8(factor).map(Number);
+    let [fx, fy = fx] = parse$9(factor).map(Number);
     return [
       x * fx,
       y * fy
@@ -3151,7 +3161,7 @@
     let pr = is_empty(props.r) ? ''       : props.r;
     let pt = is_empty(props.t) ? ''       : props.t;
 
-    let { unit, value } = parse$4(pr);
+    let { unit, value } = parse$5(pr);
     if (unit && !props[unit] && unit !== 't') {
       if (is_empty(props.unit)) {
         props.unit = unit;
@@ -3167,9 +3177,9 @@
       props.move = props.origin;
     }
 
-    let option = Object.assign({}, props, { split });
+    props.split = split;
 
-    return create_polygon_points(option, (t, i) => {
+    return create_polygon_points(props, (t, i) => {
       let context = Object.assign({}, props, {
         't': pt || t,
         'θ': pt || t,
@@ -3207,100 +3217,36 @@
       if (props.move) {
         [x, y, dx, dy] = translate(x, y, props.move);
       }
-      return [round(x), round(y), round(dx), round(dy)];
+      return [x, y, dx, dy];
     });
   }
 
-  const commands = 'MmLlHhVvCcSsQqTtAaZz';
-  const relatives = 'mlhvcsqtaz';
-
-  function parse$1(input) {
-    let iter = iterator$1(scan(input));
-    let temp = {};
-    let result = {
-      commands: [],
-      valid: true
-    };
-    while (iter.next()) {
-      let { curr } = iter.get();
-      if (curr.isSpace() || curr.isSymbol(',')) {
-        continue;
-      }
-      if (curr.isWord()) {
-        if (temp.name) {
-          result.commands.push(temp);
-          temp = {};
-        }
-        temp.name = curr.value;
-        temp.value = [];
-        if (!commands.includes(curr.value)) {
-          temp.type = 'unknown';
-          result.valid = false;
-        } else if (relatives.includes(curr.value)) {
-          temp.type = 'relative';
-        } else {
-          temp.type = 'absolute';
-        }
-      } else if (temp.value) {
-        let value = curr.value;
-        if (curr.isNumber()) {
-          value = Number(curr.value);
-        }
-        temp.value.push(value);
-      } else if (!temp.name) {
-        result.valid = false;
+  function generate_shape(input, min=3, max=3600, modifier) {
+    let commands = '';
+    let [name, ...args] = parse$9(input);
+    let preset = false;
+    switch (typeof preset_shapes[name]) {
+      case 'function':
+        commands = preset_shapes[name](...args);
+        preset = true;
+        break;
+      case 'string':
+        commands = preset_shapes[name];
+        preset = true;
+        break;
+      default: {
+        commands = input;
       }
     }
-    if (temp.name) {
-      result.commands.push(temp);
+    let rules = parse$2(commands);
+    if (typeof modifier === 'function') {
+      rules = modifier(rules);
     }
-    return result;
+    let points = create_shape_points(rules, {min, max});
+    return {
+      rules, points, preset
+    }
   }
-
-  const uniform_time = {
-    'name': 'cssd-uniform-time',
-    'animation-name': 'cssd-uniform-time-animation',
-    'animation-duration': 31536000000, /* one year in ms */
-    'animation-iteration-count': 'infinite',
-    'animation-delay': '0s',
-    'animation-direction': 'normal',
-    'animation-fill-mode': 'none',
-    'animation-play-state': 'running',
-    'animation-timing-function': 'linear',
-  };
-
-  uniform_time['animation'] = `
-  ${ uniform_time['animation-duration'] }ms
-  ${ uniform_time['animation-timing-function'] }
-  ${ uniform_time['animation-delay'] }
-  ${ uniform_time['animation-iteration-count'] }
-  ${ uniform_time['animation-name'] }
-`;
-
-  const uniform_mousex = {
-    name: 'cssd-uniform-mousex',
-  };
-
-  const uniform_mousey = {
-    name: 'cssd-uniform-mousey',
-  };
-
-  const uniform_width = {
-    name: 'cssd-uniform-width',
-  };
-
-  const uniform_height = {
-    name: 'cssd-uniform-height',
-  };
-
-  var Uniforms = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    uniform_height: uniform_height,
-    uniform_mousex: uniform_mousex,
-    uniform_mousey: uniform_mousey,
-    uniform_time: uniform_time,
-    uniform_width: uniform_width
-  });
 
   function make_sequence(c) {
     return lazy((_, n, ...actions) => {
@@ -3360,15 +3306,21 @@
       }
       if (/^[+*-\/%][\-.\d\s]/.test(v)) {
         let op = v[0];
-        let { unit = '', value } = parse$4(v.substr(1).trim() || 0);
+        let { unit = '', value } = parse$5(v.substr(1).trim() || 0);
+        if (/^var/.test(base)) {
+          return `calc((${base} ${op} ${value}) * 1${unit})`;
+        }
         return compute(op, base, value) + unit;
       }
       else if (/[+*-\/%]$/.test(v)) {
         let op = v.substr(-1);
-        let { unit = '', value } = parse$4(v.substr(0, v.length - 1).trim() || 0);
+        let { unit = '', value } = parse$5(v.substr(0, v.length - 1).trim() || 0);
+        if (/^var/.test(base)) {
+          return `calc((${value} ${op} ${base}) * 1${unit})`;
+        }
         return compute(op, value, base) + unit;
       } else {
-        let { unit = '', value } = parse$4(v || 0);
+        let { unit = '', value } = parse$5(v || 0);
         return (base + value) + unit;
       }
     }
@@ -3453,7 +3405,7 @@
     µ: make_sequence(''),
 
     p({ context, pick }) {
-      return expand((...args) => {
+      return expand$1((...args) => {
         if (!args.length) {
           args = context.last_pick_args || [];
         }
@@ -3465,7 +3417,7 @@
 
     P({ context, pick, position }) {
       let counter = 'P-counter' + position;
-      return expand((...args) => {
+      return expand$1((...args) => {
         let normal = true;
         if (!args.length) {
           args = context.last_pick_args || [];
@@ -3498,7 +3450,7 @@
       let lastExtra = last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
       let counter = 'pl-counter' + position + sig;
-      return expand((...args) => {
+      return expand$1((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
@@ -3514,7 +3466,7 @@
       let lastExtra = last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
       let counter = 'pr-counter' + position + sig;
-      return expand((...args) => {
+      return expand$1((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
@@ -3530,7 +3482,7 @@
       let lastExtra = last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
       let counter = 'pd-counter' + position  + sig;
-      let values = 'pd-values' + position + sig;    return expand((...args) => {
+      let values = 'pd-values' + position + sig;    return expand$1((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         if (!context[values]) {
@@ -3628,7 +3580,7 @@
           return '';
         }
         colors.forEach(step => {
-          let [_, size] = parse$8(step);
+          let [_, size] = parse$9(step);
           if (size !== undefined) custom_sizes.push(size);
           else default_count += 1;
         });
@@ -3637,7 +3589,7 @@
           : `100% / ${max}`;
         return colors.map((step, i) => {
           if (custom_sizes.length) {
-            let [color, size] = parse$8(step);
+            let [color, size] = parse$9(step);
             let prefix = prev ? (prev + ' + ') : '';
             prev = prefix + (size !== undefined ? size : default_size);
             return `${color} 0 calc(${ prev })`
@@ -3661,7 +3613,7 @@
     svg: lazy((_, ...args) => {
       let value = args.map(input => get_value(input())).join(',');
       if (!value.startsWith('<')) {
-        let parsed = parse$7(value);
+        let parsed = parse$8(value);
         value = generate_svg(parsed);
       }
       let svg = normalize_svg(value);
@@ -3707,7 +3659,7 @@
         `;
         }
         if (!is_nil(frequency)) {
-          let [bx, by = bx] = parse$8(frequency);
+          let [bx, by = bx] = parse$9(frequency);
           octave = octave ? `numOctaves: ${octave};` : '';
           value += `
           feTurbulence {
@@ -3729,7 +3681,7 @@
       }
       // new svg syntax
       if (!value.startsWith('<')) {
-        let parsed = parse$7(value, {
+        let parsed = parse$8(value, {
           type: 'block',
           name: 'filter'
         });
@@ -3744,7 +3696,7 @@
 
     'svg-pattern': lazy((_, ...args) => {
       let value = args.map(input => get_value(input())).join(',');
-      let parsed = parse$7(`
+      let parsed = parse$8(`
       viewBox: 0 0 1 1;
       preserveAspectRatio: xMidYMid slice;
       rect {
@@ -3757,66 +3709,70 @@
     }),
 
     'svg-polygon': lazy((_, ...args) => {
-      let value = args.map(input => get_value(input())).join(',');
-      let config = parse$3(value);
-
-      delete config.frame;
-      config['unit'] = 'none';
-      config['stroke-width'] ??= .01;
-      config['stroke'] ??= 'currentColor';
-      config['fill'] ??= 'none';
-
-      let points = `points: ${create_shape_points(config, {min: 3, max: 65536})};`;
+      let commands = args.map(input => get_value(input())).join(',');
+      let { rules, points } = generate_shape(commands, 3, 65536, rules => {
+        delete rules.frame;
+        rules['unit'] = 'none';
+        rules['stroke-width'] ??= .01;
+        rules['stroke'] ??= 'currentColor';
+        rules['fill'] ??= 'none';
+        return rules;
+      });
+      let style = `points: ${points};`;
       let props = '';
-      for (let name of Object.keys(config)) {
+      for (let name of Object.keys(rules)) {
         if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
-          props += `${name}: ${config[name]};`;
+          props += `${name}: ${rules[name]};`;
         }
-      }    let parsed = parse$7(`
-      viewBox: -1 -1 2 2 p ${Number(config['stroke-width'])/2};
+      }    let parsed = parse$8(`
+      viewBox: -1 -1 2 2 p ${Number(rules['stroke-width'])/2};
       polygon {
-        ${props} ${points}
+        ${props} ${style}
       }
     `);
       return create_svg_url(generate_svg(parsed));
     }),
 
     var() {
-      return value => `var(${ get_value(value) })`;
+      return value => `var(${get_value(value)})`;
     },
 
     ut() {
-      return value => `var(--${ uniform_time.name })`;
+      return calc_with(`var(--${utime.name})`);
     },
 
     uw() {
-      return value => `var(--${ uniform_width.name })`;
+      return calc_with(`var(--${uwidth.name})`);
     },
 
     uh() {
-      return value => `var(--${ uniform_height.name })`;
+      return calc_with(`var(--${uheight.name})`);
     },
 
     ux() {
-      return value => `var(--${ uniform_mousex.name })`;
+      return calc_with(`var(--${umousex.name})`);
     },
 
     uy() {
-      return value => `var(--${ uniform_mousey.name })`;
+      return calc_with(`var(--${umousey.name})`);
     },
 
     plot({ count, context, extra, position, grid }) {
       let key = 'offset-points' + position;
       let lastExtra = last(extra);
-      return commands => {
+      return (...args) => {
+        let commands = args.join(',');
         let [idx = count, _, __, max = grid.count] = lastExtra || [];
         if (!context[key]) {
-          let config = parse$3(commands);
-          delete config['fill'];
-          delete config['fill-rule'];
-          delete config['frame'];
-          config.points = max;
-          context[key] = create_shape_points(config, {min: 1, max: 65536});
+          let { points } = generate_shape(commands, 1, 65536, rules => {
+            delete rules['fill'];
+            delete rules['fill-rule'];
+            delete rules['frame'];
+            rules.points = max;
+            return rules;
+          });
+          context[key] = points;
+
         }
         return context[key][idx - 1];
       };
@@ -3825,38 +3781,28 @@
     Plot({ count, context, extra, position, grid }) {
       let key = 'Offset-points' + position;
       let lastExtra = last(extra);
-      return commands => {
+      return (...args) => {
+        let commands = args.join(',');
         let [idx = count, _, __, max = grid.count] = lastExtra || [];
         if (!context[key]) {
-          let config = parse$3(commands);
-          delete config['fill'];
-          delete config['fill-rule'];
-          delete config['frame'];
-          config.points = max;
-          config.unit = config.unit || 'none';
-          context[key] = create_shape_points(config, {min: 1, max: 65536});
+          let { points } = generate_shape(commands, 1, 65536, rules => {
+            delete rules['fill'];
+            delete rules['fill-rule'];
+            delete rules['frame'];
+            rules.points = max;
+            rules.unit = rules.unit || 'none';
+            return rules;
+          });
+          context[key] = points;
         }
         return context[key][idx - 1];
       };
     },
 
     shape() {
-      return memo('shape-function', (type = '', ...args) => {
-        type = String(type).trim();
-        let points = [];
-        if (type.length) {
-          if (typeof shapes[type] === 'function') {
-            points = shapes[type](args);
-          } else {
-            let commands = type;
-            let rest = args.join(',');
-            if (rest.length) {
-              commands = type + ',' + rest;
-            }
-            let config = parse$3(commands);
-            points = create_shape_points(config, {min: 3, max: 3600});
-          }
-        }
+      return memo('shape-function', (...args) => {
+        let commands = args.join(',');
+        let { points } = generate_shape(commands);
         return `polygon(${points.join(',')})`;
       });
     },
@@ -3869,17 +3815,13 @@
       return value => value;
     },
 
-    canvas() {
-      return value => value;
-    },
-
     pattern() {
       return value => value;
     },
 
     invert() {
       return commands => {
-        let parsed = parse$1(commands);
+        let parsed = parse$4(commands);
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
@@ -3895,7 +3837,7 @@
 
     flipH() {
       return commands => {
-        let parsed = parse$1(commands);
+        let parsed = parse$4(commands);
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
@@ -3909,7 +3851,7 @@
 
     flipV() {
       return commands => {
-        let parsed = parse$1(commands);
+        let parsed = parse$4(commands);
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
@@ -3932,7 +3874,7 @@
     reverse() {
       return (...args) => {
         let commands = args.map(get_value);
-        let parsed = parse$1(commands.join(','));
+        let parsed = parse$4(commands.join(','));
         if (parsed.valid) {
           let result = [];
           for (let i = parsed.commands.length - 1; i >= 0; --i) {
@@ -3947,16 +3889,16 @@
 
     cycle() {
       return (...args) => {
-        args = args.map(n => '(' + n + ')');
+        args = args.map(n => '<' + n + '>');
         let list = [];
         let separator;
         if (args.length == 1) {
-          separator = ' ';        list = parse$8(args[0], { symbol: separator });
+          separator = ' ';        list = parse$9(args[0], { symbol: separator });
         } else {
           separator = ',';
-          list = parse$8(args.map(get_value).join(separator), { symbol: separator});
+          list = parse$9(args.map(get_value).join(separator), { symbol: separator});
         }
-        list = list.map(n => n.replace(/^\(|\)$/g,''));
+        list = list.map(n => n.replace(/^\<|>$/g,''));
         let size = list.length - 1;
         let result = [list.join(separator)];
         // Just ignore the performance
@@ -3993,15 +3935,13 @@
       }
     },
 
-    once({ context, extra, position }) {
+    once: lazy(({context, extra, position}, ...args) => {
       let counter = 'once-counter' + position;
-      return (...args) => {
-        if (is_nil(context[counter])) {
-          context[counter] = args;
-        }
-        return context[counter];
+      if (is_nil(context[counter])) {
+        return context[counter] = args.map(input => get_value(input())).join(',');
       }
-    },
+      return context[counter];
+    }),
 
     raw({ rules }) {
       return (raw = '') => {
@@ -4080,53 +4020,32 @@
     'Offset': 'Plot',
     'point': 'plot',
     'Point': 'Plot',
-    'paint': 'canvas',
     'unicode': 'code'
   });
 
   const presets = {
+    a0: [ 841, 1189 ],
+    a1: [ 594, 841 ],
+    a2: [ 420, 594 ],
+    a3: [ 297, 420 ],
+    a4: [ 210, 297 ],
+    a5: [ 148, 210 ],
+    a6: [ 105, 148 ],
 
-   '4a0': [ 1682, 2378 ],
-   '2a0': [ 1189, 1682 ],
-    a0:   [ 841, 1189 ],
-    a1:   [ 594, 841 ],
-    a2:   [ 420, 594 ],
-    a3:   [ 297, 420 ],
-    a4:   [ 210, 297 ],
-    a5:   [ 148, 210 ],
-    a6:   [ 105, 148 ],
-    a7:   [ 74, 105 ],
-    a8:   [ 52, 74 ],
-    a9:   [ 37, 52 ],
-    a10:  [ 26, 37 ],
+    b0: [ 1000, 1414 ],
+    b1: [ 707, 1000 ],
+    b2: [ 500, 707 ],
+    b3: [ 353, 500 ],
+    b4: [ 250, 353 ],
+    b5: [ 176, 250 ],
+    b6: [ 125, 176 ],
 
-    b0:  [ 1000, 1414 ],
-    b1:  [ 707, 1000 ],
-    b2:  [ 500, 707 ],
-    b3:  [ 353, 500 ],
-    b4:  [ 250, 353 ],
-    b5:  [ 176, 250 ],
-    b6:  [ 125, 176 ],
-    b7:  [ 88, 125 ],
-    b8:  [ 62, 88 ],
-    b9:  [ 44, 62 ],
-    b10: [ 31, 44 ],
-    b11: [ 22, 32 ],
-    b12: [ 16, 22 ],
-
-    c0:  [ 917, 1297 ],
-    c1:  [ 648, 917 ],
-    c2:  [ 458, 648 ],
-    c3:  [ 324, 458 ],
-    c4:  [ 229, 324 ],
-    c5:  [ 162, 229 ],
-    c6:  [ 114, 162 ],
-    c7:  [ 81, 114 ],
-    c8:  [ 57, 81 ],
-    c9:  [ 40, 57 ],
-    c10: [ 28, 40 ],
-    c11: [ 22, 32 ],
-    c12: [ 16, 22 ],
+    c0: [ 917, 1297 ],
+    c1: [ 648, 917 ],
+    c2: [ 458, 648 ],
+    c3: [ 324, 458 ],
+    c4: [ 229, 324 ],
+    c5: [ 162, 229 ],
 
     d0: [ 764, 1064 ],
     d1: [ 532, 760 ],
@@ -4227,13 +4146,13 @@
   var Property = add_alias({
 
     size(value, { is_special_selector, grid }) {
-      let [w, h = w, ratio] = parse$8(value);
+      let [w, h = w, ratio] = parse$9(value);
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
       let styles = `
-      width: ${ w };
-      height: ${ h };
+      width: ${w};
+      height: ${h};
     `;
       if (w === 'auto' || h === 'auto') {
         if (ratio) {
@@ -4243,39 +4162,39 @@
             ratio = `calc(${ratio})`;
           }
           if (!is_special_selector) {
-            styles += `aspect-ratio: ${ ratio };`;
+            styles += `aspect-ratio: ${ratio};`;
           }
         }
         if (is_special_selector) {
-          styles += `aspect-ratio: ${ ratio || grid.ratio };`;
+          styles += `aspect-ratio: ${ratio || grid.ratio};`;
         }
       }
       if (!is_special_selector) {
         styles += `
-        --internal-cell-width: ${ w };
-        --internal-cell-height: ${ h };
+        --internal-cell-width: ${w};
+        --internal-cell-height: ${h};
       `;
       }
       return styles;
     },
 
     place(value, { extra }) {
-      let [left, top = '50%'] = parse$8(value);
+      let [left, top = '50%'] = parse$9(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
       const cw = 'var(--internal-cell-width, 25%)';
       const ch = 'var(--internal-cell-height, 25%)';
       return `
       position: absolute;
-      left: ${ left };
-      top: ${ top };
-      width: ${ cw };
-      height: ${ ch };
-      margin-left: calc(${ cw } / -2);
-      margin-top: calc(${ ch } / -2);
+      left: ${left};
+      top: ${top};
+      width: ${cw};
+      height: ${ch};
+      margin-left: calc(${cw} / -2);
+      margin-top: calc(${ch} / -2);
       grid-area: unset;
-      --plot-angle: ${ extra || 0 };
-      rotate: ${ extra || 0 }deg;
+      --plot-angle: ${extra || 0};
+      rotate: ${extra || 0}deg;
     `;
     },
 
@@ -4287,7 +4206,7 @@
         result.clip = false;
         value = value.replace(/no\-*clip/i, '');
       }
-      let groups = parse$8(value, {
+      let groups = parse$9(value, {
         symbol: ['/', '+', '*', '|', '-', '~'],
         noSpace: true,
         verbose: true
@@ -4322,12 +4241,11 @@
     },
 
     shape: memo('shape-property', value => {
-      let [type, ...args] = parse$8(value);
-      if (typeof shapes[type] !== 'function') return '';
+      let { points, preset} = generate_shape(value);
+      if (!preset) return '';
       let prop = 'clip-path';
-      let points = shapes[type](...args);
-      let rules = `${ prop }: polygon(${points.join(',')});`;
-      return prefixer(prop, rules) + 'overflow: hidden;';
+      let style = `${prop}: polygon(${points.join(',')});`;
+      return prefixer(prop, style);
     }),
 
     use(rules) {
@@ -4347,20 +4265,71 @@
     'position': 'place',
   });
 
-  const literal = {
-    even: n => !(n % 2),
-    odd:  n => !!(n % 2),
-  };
-
-  /**
-   * TODO: optimization
-   */
-  function nth(input, curr, max) {
-    for (let i = 0; i <= max; ++i) {
-      if (calc$1(input, { n: i }) == curr) {
-        return true;
+  /* an +/- b */
+  function parse$1(input) {
+    let iter = iterator$1(scan(input));
+    let a = [], b = [], op, error;
+    while (iter.next()) {
+      let { prev, curr, next } = iter.get();
+      let v = curr.value;
+      if (curr.isSymbol()) {
+        if (v === '+' || v === '-') {
+          op = v;
+        } else {
+          error = 'Unexpected ' + curr.value;
+          break;
+        }
+      }
+      else if (curr.isNumber()) {
+        if ((a.length || b.length) && !op) {
+          error = 'Syntax error';
+          break;
+        }
+        v = withOp(Number(v), op);
+        op = null;
+        if (next && next.value === 'n') {
+          a.push(v);
+          iter.next();
+          continue;
+        } else {
+          b.push(v);
+        }
+      }
+      else if (v === 'n') {
+        if ((a.length || b.length) && !op) {
+          error = 'Syntax error';
+          break;
+        }
+        a.push(withOp(1, op));
+        op = null;
+      }
+      else if (!curr.isSpace()) {
+        error = 'Unexpected ' + v;
+        break;
       }
     }
+    if (error) {
+      return { a: 0, b: 0, error }
+    }
+    return { a: sum(a), b: sum(b) };
+  }
+
+  function withOp(num, op) {
+    if (op === '+') return num;
+    if (op === '-') return -1 * num;
+    return num;
+  }
+
+  function sum(list) {
+    return list.reduce((a, b) => a + b, 0);
+  }
+
+  function odd(n) {
+    return n % 2;
+  }
+
+  function even(n) {
+    return !odd(n);
   }
 
   function get_selector(offset) {
@@ -4377,42 +4346,64 @@
     return selector;
   }
 
-  var Selector = {
+  function compare(rule, value) {
+    if (rule === 'even') {
+      return even(value);
+    }
+    if (rule === 'odd') {
+      return odd(value);
+    }
+    if (rule == 'n') {
+      return true;
+    }
+    let { a, b, error } = parse$1(rule);
+    if (error) {
+      return false;
+    }
+    if (a === 0) {
+      return value === b;
+    } else {
+      let result = (value - b) / a;
+      return result >= 0 && Number.isInteger(result);
+    }
+  }
+
+  var Selector = add_alias({
 
     at({ x, y }) {
       return (x1, y1) => (x == x1 && y == y1);
     },
 
     nth({ count, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        literal[expr]
-          ? literal[expr](count)
-          : nth(expr, count, grid.count)
-      );
+      return (...exprs) => {
+        for (let expr of exprs) {
+          if (compare(expr, count)) return true;
+        }
+      }
     },
 
-    row({ y, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        literal[expr]
-          ? literal[expr](y)
-          : nth(expr, y, grid.y)
-      );
+    y({ y, grid }) {
+      return (...exprs) => {
+        for (let expr of exprs) {
+          if (compare(expr, y)) return true;
+        }
+      };
     },
 
-    col({ x, grid }) {
-      return (...exprs) => exprs.some(expr =>
-        literal[expr]
-          ? literal[expr](x)
-          : nth(expr, x, grid.x)
-      );
+    x({ x, grid }) {
+      return (...exprs) => {
+        for (let expr of exprs) {
+          if (compare(expr, x)) return true;
+        }
+      };
     },
 
-    even({ count, grid, x, y }) {
-      return arg => literal.odd(x + y);
+    even({ x, y }) {
+      return _ => odd(x + y);
     },
 
-    odd({ count, grid, x, y}) {
-      return arg => literal.even(x + y);
+    odd({ x, y}) {
+      return _ => even(x + y);
     },
 
     random({ random, count, x, y, grid }) {
@@ -4473,7 +4464,10 @@
       }
     },
 
-  };
+  }, {
+    col: 'x',
+    row: 'y',
+  });
 
   /*
   Copyright 2019 David Bau.
@@ -4733,17 +4727,16 @@
       this.keyframes = {};
       this.grid = null;
       this.seed = null;
-      this.is_grid_defined = false;
-      this.is_gap_defined = false;
+      this.is_grid_set = false;
+      this.is_gap_set = false;
       this.coords = [];
       this.doodles = {};
-      this.canvas = {};
       this.pattern = {};
       this.shaders = {};
-      this.reset();
-      this.custom_properties = {};
+      this.vars = {};
       this.uniforms = {};
       this.content = {};
+      this.reset();
     }
 
     reset() {
@@ -4755,7 +4748,6 @@
       };
       this.coords = [];
       this.doodles = {};
-      this.canvas = {};
       this.pattern = {};
       this.shaders = {};
       this.content = {};
@@ -4779,33 +4771,30 @@
       return Expose[name] || MathFunc[name];
     }
 
-    apply_func(fn, coords, args, fname, contextedVariable = {}) {
+    apply_func(fn, coords, args, fname, contextVariable = {}) {
       let _fn = fn(...make_array(coords));
       let input = [];
       args.forEach(arg => {
         let type = typeof arg.value;
-        let is_string_or_number = (type === 'number' || type === 'string');
-        if (!arg.cluster && (is_string_or_number)) {
-          input.push(...parse$8(arg.value, { noSpace: true }));
+        if (!arg.cluster && ((type === 'number' || type === 'string'))) {
+          input.push(...parse$9(arg.value, { noSpace: true }));
         }
-        else {
-          if (typeof arg === 'function') {
-            input.push(arg);
-          }
-          else if (!is_nil(arg.value)) {
-            let value = get_value(arg.value);
-            input.push(value);
-          }
+        else if (typeof arg === 'function') {
+          input.push(arg);
+        }
+        else if (!is_nil(arg.value)) {
+          let value = get_value(arg.value);
+          input.push(value);
         }
       });
       input = make_array(remove_empty_values(input));
       if (typeof _fn === 'function') {
         if (fname.startsWith('$')) {
           let group = Object.assign({},
-            this.custom_properties['host'],
-            this.custom_properties['container'],
-            this.custom_properties[coords.count],
-            contextedVariable
+            this.vars['host'],
+            this.vars['container'],
+            this.vars[coords.count],
+            contextVariable
           );
           let context = {};
           let unit = '';
@@ -4827,20 +4816,20 @@
     }
 
     compose_selector({ x, y, z}, pseudo = '') {
-      return `#${ cell_id(x, y, z) }${ pseudo }`;
+      return `#${cell_id(x, y, z)}${pseudo}`;
     }
 
     is_composable(name) {
-      return ['doodle', 'shaders', 'canvas', 'pattern'].includes(name);
+      return ['doodle', 'shaders', 'pattern'].includes(name);
     }
 
-    read_var(value, coords, contextedVariable) {
+    read_var(value, coords, contextVariable) {
       let count = coords.count;
       let group = Object.assign({},
-        this.custom_properties['host'],
-        this.custom_properties['container'],
-        this.custom_properties[count],
-        contextedVariable
+        this.vars['host'],
+        this.vars['container'],
+        this.vars[count],
+        contextVariable
       );
       if (group[value] !== undefined) {
         let result = String(group[value]).trim();
@@ -4855,7 +4844,7 @@
       return value;
     }
 
-    compose_argument(argument, coords, extra = [], parent, contextedVariable) {
+    compose_argument(argument, coords, extra = [], parent, contextVariable) {
       if (!coords.extra) coords.extra = [];
       coords.extra.push(extra);
       let result = argument.map(arg => {
@@ -4864,7 +4853,7 @@
             if (parent && parent.name === '@var') {
               return arg.value;
             }
-            return this.read_var(arg.value, coords, contextedVariable);
+            return this.read_var(arg.value, coords, contextVariable);
           }
           return arg.value;
         }
@@ -4875,21 +4864,17 @@
             this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((arg.arguments[0] || [])[0]);
-              let temp_arg;
-              if (fname === 'doodle') {
-                if (/^\d/.test(value)) {
-                  temp_arg = value;
-                  value = get_value((val.arguments[1] || [])[0]);
-                }
+              let temp;
+              if (fname === 'doodle' && /^\d/.test(value)) {
+                temp = value;
+                value = get_value((val.arguments[1] || [])[0]);
               }
               if (!is_nil(value)) {
                 switch (fname) {
                   case 'doodle':
-                    return this.compose_doodle(this.inject_variables(value, coords.count), temp_arg);
+                    return this.compose_doodle(this.inject_variables(value, coords.count), temp);
                   case 'shaders':
                     return this.compose_shaders(value, coords);
-                  case 'canvas':
-                    return this.compose_canvas(value, arg.arguments.slice(1));
                   case 'pattern':
                     return this.compose_pattern(value, coords);
                 }
@@ -4898,10 +4883,10 @@
             coords.position = arg.position;
             let args = arg.arguments.map(n => {
               return fn.lazy
-                ? (...extra) => this.compose_argument(n, coords, extra, arg, contextedVariable)
-                : this.compose_argument(n, coords, extra, arg, contextedVariable);
+                ? (...extra) => this.compose_argument(n, coords, extra, arg, contextVariable)
+                : this.compose_argument(n, coords, extra, arg, contextVariable);
             });
-            return this.apply_func(fn, coords, args, fname, contextedVariable);
+            return this.apply_func(fn, coords, args, fname, contextVariable);
           } else {
             return arg.name;
           }
@@ -4925,8 +4910,8 @@
     compose_shaders(shader, {x, y, z}) {
       let id = unique_id('shader');
       this.shaders[id] = {
-        id: '--' + id,
         shader,
+        id: '--' + id,
         cell: cell_id(x, y, z)
       };
       return '${' + id + '}';
@@ -4935,21 +4920,10 @@
     compose_pattern(code, {x, y, z}) {
       let id = unique_id('pattern');
       this.pattern[id] = {
-        id: '--' + id,
         code,
+        id: '--' + id,
         cell: cell_id(x, y, z)
       };
-      return '${' + id + '}';
-    }
-
-    compose_canvas(code, rest = []) {
-      let commands = code;
-      let result = rest.map(group => get_value(group[0])).join(',');
-      if (result.length) {
-        commands = code + ',' + result;
-      }
-      let id = unique_id('canvas');
-      this.canvas[id] = { code: commands };
       return '${' + id + '}';
     }
 
@@ -4965,9 +4939,9 @@
 
     inject_variables(value, count) {
       let group = Object.assign({},
-        this.custom_properties['host'],
-        this.custom_properties['container'],
-        this.custom_properties[count]
+        this.vars['host'],
+        this.vars['container'],
+        this.vars[count]
       );
       let variables = [];
       for (let [name, key] of Object.entries(group)) {
@@ -4975,26 +4949,19 @@
       }
       variables = variables.join('');
       if (variables.length) {
-        return `:doodle { ${variables} }` + value;
+        return `:doodle {${variables}}` + value;
       }
       return value;
     }
 
     compose_variables(variables, coords, result = {}) {
       for (let [name, value] of Object.entries(variables)) {
-        let value_group = value.reduce((ret, v) => {
-          let composed = this.compose_value(v, coords, result);
-          if (composed && composed.value) {
-            ret.push(composed.value);
-          }
-          return ret;
-        }, []);
-        result[name] = value_group.join(', ');
+        result[name] = this.get_composed_value(value, coords, result).value;
       }
       return result;
     }
 
-    compose_value(value, coords, contextedVariable = {}) {
+    compose_value(value, coords, contextVariable = {}) {
       if (!Array.isArray(value)) {
         return {
           value: '',
@@ -5015,37 +4982,35 @@
               this.check_uniforms(fname);
               if (this.is_composable(fname)) {
                 let value = get_value((val.arguments[0] || [])[0]);
-                let temp_arg;
+                let temp;
                 if (fname === 'doodle') {
                   if (/^\d/.test(value)) {
-                    temp_arg = value;
+                    temp = value;
                     value = get_value((val.arguments[1] || [])[0]);
                   }
                 }
                 if (!is_nil(value)) {
                   switch (fname) {
                     case 'doodle':
-                      result += this.compose_doodle(this.inject_variables(value, coords.count), temp_arg); break;
+                      result += this.compose_doodle(this.inject_variables(value, coords.count), temp); break;
                     case 'shaders':
                       result += this.compose_shaders(value, coords); break;
                     case 'pattern':
                       result += this.compose_pattern(value, coords); break;
-                    case 'canvas':
-                      result += this.compose_canvas(value, val.arguments.slice(1)); break;
                   }
                 }
               } else {
                 coords.position = val.position;
                 if (val.variables) {
-                  this.compose_variables(val.variables, coords, contextedVariable);
+                  this.compose_variables(val.variables, coords, contextVariable);
                 }
                 let args = val.arguments.map(arg => {
                   return fn.lazy
-                    ? (...extra) => this.compose_argument(arg, coords, extra, val, contextedVariable)
-                    : this.compose_argument(arg, coords, [], val, contextedVariable);
+                    ? (...extra) => this.compose_argument(arg, coords, extra, val, contextVariable)
+                    : this.compose_argument(arg, coords, [], val, contextVariable);
                 });
 
-                let output = this.apply_func(fn, coords, args, fname, contextedVariable);
+                let output = this.apply_func(fn, coords, args, fname, contextVariable);
                 if (!is_nil(output)) {
                   result += output;
                   if (output.extra) {
@@ -5067,59 +5032,64 @@
       }
     }
 
+    get_composed_value(value, coords, context) {
+      let extra, group = [];
+      if (Array.isArray(value)) {
+        group = value.reduce((ret, v) => {
+          let composed = this.compose_value(v, coords, context || {});
+          if (composed) {
+            if (composed.value) ret.push(composed.value);
+            if (composed.extra) extra = composed.extra;
+          }
+          return ret;
+        }, []);
+      }
+      return {
+        extra, group, value: group.join(',')
+      }
+    }
+
     add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
       if (fill) {
-        this.add_rule(':host', `background-color: ${fill};`);
+        this.add_rule(':host', `background-color:${fill};`);
       }
       if (!clip) {
-        this.add_rule(':host', 'contain: none;');
+        this.add_rule(':host', 'contain:none;');
       }
       if (rotate) {
-        this.add_rule(':container', `rotate: ${rotate};`);
+        this.add_rule(':container', `rotate:${rotate};`);
       }
       if (scale) {
-        this.add_rule(':container', `scale: ${scale};`);
+        this.add_rule(':container', `scale:${scale};`);
       }
       if (translate) {
-        this.add_rule(':container', `translate: ${translate};`);
+        this.add_rule(':container', `translate:${translate};`);
       }
       if (flexRow) {
-        this.add_rule(':container', `display: flex;`);
+        this.add_rule(':container', `display:flex;`);
         this.add_rule('cell', `flex: 1;`);
       }
       if (flexColumn) {
-        this.add_rule(':container', `display: flex; flex-direction: column;`);
-        this.add_rule('cell', `flex: 1;`);
+        this.add_rule(':container', `display:flex;flex-direction:column;`);
+        this.add_rule('cell', `flex:1;`);
       }
     }
 
     compose_rule(token, _coords, selector) {
       let coords = Object.assign({}, _coords);
       let prop = token.property;
-      let extra;
       if (prop === '@seed') {
         return '';
       }
-      let value_group = token.value.reduce((ret, v) => {
-        let composed = this.compose_value(v, coords);
-        if (composed) {
-          if (composed.value) {
-            ret.push(composed.value);
-          }
-          if (composed.extra) {
-            extra = composed.extra;
-          }
-        }
-        return ret;
-      }, []);
-
-      let value = value_group.join(', ');
+      let composed = this.get_composed_value(token.value, coords);
+      let extra = composed.extra;
+      let value = composed.value;
 
       if (/^animation(\-name)?$/.test(prop)) {
         this.props.has_animation = true;
 
         if (is_host_selector(selector)) {
-          let prefix = uniform_time[prop];
+          let prefix = utime[prop];
           if (prefix && value) {
             value =  prefix + ',' + value;
           }
@@ -5129,19 +5099,19 @@
           let { count } = coords;
           switch (prop) {
             case 'animation-name': {
-              value = value_group
+              value = composed.group
                 .map(n => this.compose_aname(n, count))
-                .join(', ');
+                .join(',');
               break;
             }
             case 'animation': {
-              value = value_group
+              value = composed.group
                 .map(n => {
                   let group = (n || '').split(/\s+/);
                   group[0] = this.compose_aname(group[0], count);
                   return group.join(' ');
                 })
-                .join(', ');
+                .join(',');
             }
           }
         }
@@ -5149,7 +5119,7 @@
 
       if (prop === 'content') {
         if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
-          value = `'${ value }'`;
+          value = `'${value}'`;
         }
       }
 
@@ -5160,11 +5130,6 @@
       let rule = `${ prop }: ${ value };`;
       rule = prefixer(prop, rule);
 
-      if (prop === 'clip-path') {
-        // fix clip bug
-        rule += ';overflow: hidden;';
-      }
-
       if (prop === 'width' || prop === 'height') {
         if (!is_special_selector(selector)) {
           rule += `--internal-cell-${ prop }: ${ value };`;
@@ -5173,7 +5138,7 @@
 
       let is_image = (
         /^(background|background\-image)$/.test(prop) &&
-        /\$\{(canvas|shader|pattern)/.test(value)
+        /\$\{(shader|pattern)/.test(value)
       );
       if (is_image) {
         rule += 'background-size: 100% 100%;';
@@ -5187,10 +5152,10 @@
         if (is_host_selector(selector)) {
           key = 'host';
         }
-        if (!this.custom_properties[key]) {
-          this.custom_properties[key] = {};
+        if (!this.vars[key]) {
+          this.vars[key] = {};
         }
-        this.custom_properties[key][prop] = value;
+        this.vars[key][prop] = value;
       }
 
       if (/^@/.test(prop) && Property[prop.substr(1)]) {
@@ -5208,7 +5173,7 @@
               this.add_grid_style(transformed);
             } else {
               rule = '';
-              if (!this.is_grid_defined) {
+              if (!this.is_grid_set) {
                 transformed = Property[name](value, {
                   is_special_selector: true,
                   grid: coords.grid,
@@ -5219,14 +5184,14 @@
               }
             }
             this.grid = coords.grid;
-            this.is_grid_defined = true;
+            this.is_grid_set = true;
             break;
           }
           case 'gap': {
             rule = '';
-            if (!this.is_gap_defined) {
-              this.add_rule(':container', `gap: ${transformed};`);
-              this.is_gap_defined = true;
+            if (!this.is_gap_set) {
+              this.add_rule(':container', `gap:${transformed};`);
+              this.is_gap_set = true;
             }
             break;
           }
@@ -5291,12 +5256,7 @@
 
       switch (prop) {
         case '@grid': {
-          let value_group = token.value.reduce((ret, v) => {
-            let composed = this.compose_value(v, coords);
-            if (composed && composed.value) ret.push(composed.value);
-            return ret;
-          }, []);
-          let value = value_group.join(', ');
+          let value = this.get_composed_value(token.value, coords).value;
           let name = prop.substr(1);
           let transformed = Property[name](value, {
             max_grid: _coords.max_grid
@@ -5430,13 +5390,11 @@
           case 'keyframes': {
             if (!this.keyframes[token.name]) {
               this.keyframes[token.name] = coords => `
-              ${ join(token.steps.map(step => `
-                ${ step.name } {
-                  ${ join(
-                    step.styles.map(s => this.compose_rule(s, coords))
-                  )}
+              ${join(token.steps.map(step =>  `
+                ${this.get_composed_value(step.name, coords).value} {
+                  ${join(step.styles.map(s => this.compose_rule(s, coords)))}
                 }
-              `)) }
+              `))}
             `;
             }
           }
@@ -5447,31 +5405,27 @@
     output() {
       for (let [selector, rule] of Object.entries(this.rules)) {
         if (is_parent_selector(selector)) {
-          this.styles.container += `
-          .container {
-            ${ join(rule) }
-          }
-        `;
+          this.styles.container += `grid {${join(rule)}}`;
         } else {
           let target = is_host_selector(selector) ? 'host' : 'cells';
           let value = join(rule).trim();
           if (value.length) {
-            let name = (target === 'host') ? `${ selector }, .host` : selector;
-            this.styles[target] += `${ name } { ${ value  } }`;
+            let name = (target === 'host') ? `${selector},.host` : selector;
+            this.styles[target] += `${name} {${value}}`;
           }
         }
       }
 
       if (this.uniforms.time) {
         this.styles.container += `
-        :host, .host {
-          animation: ${ uniform_time.animation };
+        :host,.host {
+          animation: ${utime.animation};
         }
       `;
         this.styles.keyframes += `
-       @keyframes ${ uniform_time['animation-name'] } {
-         from { --${ uniform_time.name }: 0 }
-         to { --${ uniform_time.name }: ${ uniform_time['animation-duration'] / 10 } }
+       @keyframes ${utime['animation-name']} {
+         from {--${utime.name }:0}
+         to {--${utime.name}:${utime['animation-duration'] / 10 }}
        }
       `;
       }
@@ -5480,23 +5434,23 @@
         for (let [name, keyframe] of Object.entries(this.keyframes)) {
           let aname = this.compose_aname(name, coords.count);
           this.styles.keyframes += `
-          ${ maybe(i === 0, `@keyframes ${ name } { ${ keyframe(coords) } }`)}
-          @keyframes ${ aname } {
-            ${ keyframe(coords) }
-          }
+          ${ i === 0 ? `@keyframes ${name} {${keyframe(coords)}}` : ''}
+          @keyframes ${aname} {${keyframe(coords)}}
         `;
         }
       });
 
+      let { keyframes, host, container, cells } = this.styles;
+      let main = keyframes + host + container;
+
       return {
         props: this.props,
-        styles: this.styles,
+        styles: { main, cells, all: main + cells },
         grid: this.grid,
         seed: this.seed,
         random: this.random,
         doodles: this.doodles,
         shaders: this.shaders,
-        canvas: this.canvas,
         pattern: this.pattern,
         uniforms: this.uniforms,
         content: this.content,
@@ -5656,26 +5610,25 @@
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
-
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return texture;
   }
 
-  function draw_shader(shaders, width, height, seed) {
+  function draw_shader(shaders, seed) {
     let result = Cache.get(shaders);
     if (result) {
       return Promise.resolve(result);
     }
     let canvas = document.createElement('canvas');
-    let ratio = window.devicePixelRatio || 1;
-    width *= ratio;
-    height *= ratio;
-    canvas.width = width;
-    canvas.height = height;
+    let ratio = devicePixelRatio || 1;
+    let width = canvas.width = shaders.width * ratio;
+    let height = canvas.height = shaders.height * ratio;
+    let texture_list = [];
 
     let gl = canvas.getContext('webgl2', {preserveDrawingBuffer: true});
     if (!gl) return Promise.resolve('');
@@ -5691,15 +5644,15 @@
 
     // texture uniform
     shaders.textures.forEach(n => {
-      let uniform = `uniform sampler2D ${ n.name };`;
-      fragment =  add_uniform(fragment, uniform);
+      let uniform = `uniform sampler2D ${n.name};`;
+      fragment = add_uniform(fragment, uniform);
     });
 
     const isShaderToyFragment = /(^|[^\w\_])void\s+mainImage\(\s*out\s+vec4\s+fragColor,\s*in\s+vec2\s+fragCoord\s*\)/mg.test(fragment);
-    
-    if(isShaderToyFragment) {
-      fragment = `// https://www.shadertoy.com/howto
 
+    // https://www.shadertoy.com/howto
+    if (isShaderToyFragment) {
+      fragment = `
 #define iResolution vec3(u_resolution, 0)
 #define iTime u_time
 #define iTimeDelta u_timeDelta
@@ -5735,33 +5688,49 @@ void main() {
 
     gl.useProgram(program);
 
+    const getUniform = name => gl.getUniformLocation(program, name);
+
     // resolve uniforms
-    const uResolutionLoc = gl.getUniformLocation(program, "u_resolution");
+    const uResolutionLoc = getUniform('u_resolution');
     gl.uniform2fv(uResolutionLoc, [width, height]);
 
     shaders.textures.forEach((n, i) => {
-      load_texture(gl, n.value, i);
+      texture_list.push(load_texture(gl, n.value, i));
       gl.uniform1i(gl.getUniformLocation(program, n.name), i);
     });
 
     // vec2 u_seed, u_seed.x = hash(doodle.seed) / 1e16, u_seed.y = Math.random()
-    const uSeed = gl.getUniformLocation(program, "u_seed");
-    if(uSeed) {
+    const uSeed = getUniform('u_seed');
+    if (uSeed) {
       gl.uniform2f(uSeed, hash(seed) / 1e16, Math.random());
     }
 
     // resolve image data in 72dpi :(
-    const uTimeLoc = gl.getUniformLocation(program, "u_time");
-    const uFrameLoc = gl.getUniformLocation(program, "u_frameIndex");
-    const uTimeDelta = gl.getUniformLocation(program, "u_timeDelta");
-    if(uTimeLoc || uTimeDelta || uFrameLoc) {
+    const uTimeLoc = getUniform('u_time');
+    const uFrameLoc = getUniform('u_frameIndex');
+    const uTimeDelta = getUniform('u_timeDelta');
+    if (uTimeLoc || uTimeDelta || uFrameLoc) {
       let frameIndex = 0;
       let currentTime = 0;
-      return Promise.resolve(Cache.set(shaders, (t) => {
+      return Promise.resolve(Cache.set(shaders, (t, w, h, textures) => {
         gl.clear(gl.COLOR_BUFFER_BIT);
-        if(uTimeLoc) gl.uniform1f(uTimeLoc, t / 1000);
-        if(uFrameLoc) gl.uniform1i(uFrameLoc, frameIndex++);
-        if(uTimeDelta) {
+        // update textures and resolutions
+        if (shaders.width !== w || shaders.height !== h) {
+          textures.forEach((n, i) => {
+            gl.bindTexture(gl.TEXTURE_2D, texture_list[i]);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, n.value);
+          });
+          shaders.width = w;
+          shaders.height = h;
+          canvas.width = w * ratio;
+          canvas.height = h * ratio;
+          gl.viewport(0, 0, canvas.width, canvas.height);
+          gl.uniform2fv(uResolutionLoc, [canvas.width, canvas.height]);
+        }
+
+        if (uTimeLoc) gl.uniform1f(uTimeLoc, t / 1000);
+        if (uFrameLoc) gl.uniform1i(uFrameLoc, frameIndex++);
+        if (uTimeDelta) {
           gl.uniform1f(uTimeDelta, (currentTime - t) / 1000);
           currentTime = t;
         }
@@ -5942,7 +5911,7 @@ void main() {
     return tokens;
   }
 
-  function generate_shader(input, grid) {
+  function generate_shader(input, {x, y}) {
     return `
     vec3 mapping(vec2 uv, vec2 grid) {
       vec2 _grid = 1.0/grid;
@@ -5958,9 +5927,9 @@ void main() {
     }
     void main() {
       vec2 uv = gl_FragCoord.xy/u_resolution.xy;
-      vec2 grid = vec2(${grid.x}, ${grid.y});
-      vec3 p = mapping(uv, grid);
-      FragColor = getColor(p.x, p.y, p.z, grid.x * grid.y, grid.x, grid.y, u_time);
+      vec2 v = vec2(${x}, ${y});
+      vec3 p = mapping(uv, v);
+      FragColor = getColor(p.x, p.y, p.z, v.x * v.y, v.x, v.y, u_time);
     }
   `;
   }
@@ -6011,7 +5980,7 @@ void main() {
   function draw_pattern(code, extra) {
     let tokens = parse(code);
     let result = [];
-    let grid = {x: 1, y: 1 };
+    let grid = {x: 1, y: 1};
     tokens.forEach(token => {
       if (token.type === 'statement') {
         let statement = generate_statement(token, extra);
@@ -6019,50 +5988,13 @@ void main() {
           result.push(statement.value);
         }
         if (statement.type === 'grid') {
-          grid = get_grid(statement.value);
+          grid = parse_grid(statement.value, Infinity);
         }
       } else if (token.type === 'block') {
         result.push(generate_block(token, extra));
       }
     });
     return generate_shader(result.join(''), grid);
-  }
-
-  const nextId = next_id();
-
-  function draw_canvas(code) {
-    let result = Cache.get(code);
-    if (result) {
-      return Promise.resolve(result);
-    }
-    let name = nextId('css-doodle-paint');
-    let wrapped = generate(name, code);
-
-    let blob = new Blob([wrapped], { type: 'text/javascript' });
-    try {
-      if (CSS.paintWorklet) {
-        CSS.paintWorklet.addModule(URL.createObjectURL(blob));
-      }
-    } catch(e) {}
-
-    return Promise.resolve(Cache.set(code, `paint(${name})`));
-  }
-
-  function generate(name, code) {
-    code = un_entity(code);
-    // make it so
-    if (!code.includes('paint(')) {
-      code = `
-      paint(ctx, {width, height}, props) {
-        ${code}
-      }
-    `;
-    }
-    return `
-    registerPaint('${name}', class {
-      ${ code }
-    })
-  `;
   }
 
   function svg_to_png(svg, width, height, scale) {
@@ -6077,7 +6009,7 @@ void main() {
           let canvas = document.createElement('canvas');
           let ctx = canvas.getContext('2d');
 
-          let dpr = window.devicePixelRatio || 1;
+          let dpr = devicePixelRatio || 1;
           /* scale with devicePixelRatio only when the scale equals 1 */
           if (scale != 1) {
             dpr = 1;
@@ -6107,6 +6039,22 @@ void main() {
         action();
       }
     });
+  }
+
+  function transform(color) {
+    let [r, g, b, a = 1] = color
+      .replace(/rgba?\((.+)\)/, (_, v) => v)
+      .split(/,\s*/);
+    return {r, g, b, a};
+  }
+
+  function get_rgba_color(root, value) {
+    let element = root.querySelector('style');
+    if (!element) {
+      return { r: 0, g: 0, b: 0, a: 1 }
+    }
+    element.style.color = value;
+    return transform(getComputedStyle(element).color);
   }
 
   function get_all_variables(element) {
@@ -6148,26 +6096,10 @@ void main() {
     return result.join(';');
   }
 
-  function transform(color) {
-    let [r, g, b, a = 1] = color
-      .replace(/rgba?\((.+)\)/, (_, v) => v)
-      .split(/,\s*/);
-    return {r, g, b, a};
-  }
-
-  function get_rgba_color(root, value) {
-    let element = root.querySelector('#defs');
-    if (!element) {
-      return { r: 0, g: 0, b: 0, a: 1 }
-    }
-    element.style.color = value;
-    return transform(getComputedStyle(element).color);
-  }
-
   const STEP60 = 1000 / 60; // 60fps
   const STEP1 = 1000 / 1;   // 1fps
 
-  function createAnimationFrame(fn) {
+  function createAnimation(fn) {
     let id;
     let time = 0;
     let lastTime = 0;
@@ -6257,11 +6189,13 @@ void main() {
         const use = this.get_use();
 
         let old_content = '';
+        let old_styles = '';
         if (this.compiled) {
           old_content = this.compiled.content;
+          old_styles = this.compiled.styles.all;
         }
 
-        const compiled = this.generate(parse$6(use + styles, this.extra));
+        const compiled = this.generate(parse$7(use + styles, this.extra));
 
         let grid = compiled.grid || this.get_grid();
         let { x, y, z } = grid;
@@ -6278,25 +6212,18 @@ void main() {
         if (should_rebuild) {
           return compiled.grid
             ? this.build_grid(compiled, grid)
-            : this.build_grid(this.generate(parse$6(use + styles, this.extra)), grid);
+            : this.build_grid(this.generate(parse$7(use + styles, this.extra)), grid);
         }
 
         let replace = this.replace(compiled);
-        this.set_content('.style-keyframes', replace(compiled.styles.keyframes));
-
         if (compiled.props.has_animation) {
-          this.set_content('.style-cells', '');
-          this.set_content('.style-container', '');
+          this.set_style(old_styles.replace(/animation/g, 'x'));
+          this.reflow();
         }
-
-        setTimeout(() => {
-          this.set_content('.style-container', replace(
-              get_grid_styles(this.grid_size)
-            + compiled.styles.host
-            + compiled.styles.container
-          ));
-          this.set_content('.style-cells', replace(compiled.styles.cells));
-        });
+        this.set_style(replace(
+          get_basic_styles(this.grid_size) +
+          compiled.styles.all
+        ));
       }
 
       get grid() {
@@ -6337,16 +6264,17 @@ void main() {
       get_use() {
         let use = String(this.attr('use') || '').trim();
         if (/^var\(/.test(use)) {
-          use = `@use:${ use };`;
+          use = `@use:${use};`;
         }
         return use;
       }
 
       attr(name, value) {
-        if (arguments.length === 1) {
+        let len = arguments.length;
+        if (len === 1) {
           return this.getAttribute(name);
         }
-        if (arguments.length === 2) {
+        if (len === 2) {
           this.setAttribute(name, value);
           return value;
         }
@@ -6371,16 +6299,14 @@ void main() {
           fn = options;
           options = null;
         }
-        code = ':doodle { width:100%;height:100% }' + code;
-        let parsed = parse$6(code, this.extra);
+        code = ':doodle {width:100%;height:100%}' + code;
+        let parsed = parse$7(code, this.extra);
         let _grid = parse_grid('');
         let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
         let grid = compiled.grid ? compiled.grid : _grid;
-        const { keyframes, host, container, cells } = compiled.styles;
-
         let viewBox = '';
         if (options && options.arg) {
-          let v = get_grid(options.arg);
+          let v = parse_grid(options.arg, Infinity);
           if (v.x && v.y) {
             options.width = v.x + 'px';
             options.height = v.y + 'px';
@@ -6392,28 +6318,23 @@ void main() {
         let grid_container = create_grid(grid, compiled.content);
 
         let size = (options && options.width && options.height)
-          ? `width="${ options.width }" height="${ options.height }"`
+          ? `width="${options.width}" height="${options.height}"`
           : '';
 
         replace(`
-        <svg ${ size } xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" ${viewBox}>
+        <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
           <foreignObject width="100%" height="100%">
-            <div class="host" width="100%" height="100%" xmlns="http://www.w3.org/1999/xhtml">
+            <div class="host" width="100%" height="100%" ${NSXHtml}>
               <style>
-                ${ get_basic_styles() }
-                ${ get_grid_styles(grid) }
-                ${ host }
-                ${ container }
-                ${ cells }
-                ${ keyframes }
+                ${get_basic_styles(grid)}
+                ${compiled.styles.all}
               </style>
-              <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0; height:0"></svg>
-              ${ grid_container }
+              ${grid_container}
             </div>
           </foreignObject>
         </svg>
       `).then(result => {
-          let source =`data:image/svg+xml;base64,${ window.btoa(unescape(encodeURIComponent(result))) }`;
+          let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
           if (is_safari()) {
             cache_image(source);
           }
@@ -6426,76 +6347,89 @@ void main() {
         this.shader_to_image({ shader, cell, id }, fn);
       }
 
-      canvas_to_image({ code }, fn) {
-        draw_canvas(code).then(fn);
-      }
-
       pause() {
-        this.setAttribute('cssd-paused-animation', true);
+        this.setAttribute('cssd-paused', true);
         for (let animation of this.animations) {
           animation.pause();
         }
       }
 
       resume() {
-        this.removeAttribute('cssd-paused-animation');
+        this.removeAttribute('cssd-paused');
         for (let animation of this.animations) {
           animation.resume();
         }
       }
 
       shader_to_image({ shader, cell, id }, fn) {
-        let parsed = typeof shader === 'string' ?  parse$5(shader) : shader;
-        let element = this.doodle.getElementById(cell);
-        const seed = this.seed;
+        const element = this.doodle.getElementById(cell);
+        if (!element) {
+          return false;
+        }
+        let { width, height } = element.getBoundingClientRect();
+        let ratio = devicePixelRatio || 1;
+        let seed = this.seed;
+        let parsed = typeof shader === 'string' ? parse$6(shader) : shader;
+        parsed.width = width;
+        parsed.height = height;
 
-        const set_shader_prop = (v) => {
+        let sources = parsed.textures;
+        let images = [];
+
+        const set_shader_prop = v => {
           element.style.setProperty(id, `url(${v})`);
         };
 
-        const tick = (value) => {
-          if (typeof value === 'function') {
-            let animation = createAnimationFrame(t => {
-              set_shader_prop(value(t));
-            });
-            this.animations.push(animation);
-            return '';
+        const tick = v => {
+          if (typeof v === 'function') {
+            this.animations.push(createAnimation(t => {
+              set_shader_prop(v(t, width, height, images));
+            }));
+          } else {
+            set_shader_prop(v);
           }
-          set_shader_prop(value);
         };
 
-        let { width, height } = element && element.getBoundingClientRect() || {
-          width: 0, height: 0
-        };
-
-        let ratio = window.devicePixelRatio || 1;
-        if (!parsed.textures.length || parsed.ticker) {
-          draw_shader(parsed, width, height, seed).then(tick).then(fn);
-        }
-        // Need to bind textures first
-        else {
-          let transforms = parsed.textures.map(texture => {
+        const transform = (sources, fn) => {
+          Promise.all(sources.map(({ name, value }) => {
             return new Promise(resolve => {
-              this.doodle_to_image(texture.value, { width, height }, src => {
+              this.doodle_to_image(value, {width, height}, src => {
                 let img = new Image();
                 img.width = width * ratio;
-                img.height = height * ratio;
-                img.onload = () => resolve({ name: texture.name, value: img });
+                img.height = width * ratio;
+                img.onload = () => resolve({ name, value: img });
                 img.src = src;
               });
             });
+          })).then(fn);
+        };
+
+        if (!element.observer) {
+          element.observer = new ResizeObserver(() => {
+            let rect = element.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+            transform(sources, result => images = result);
           });
-          Promise.all(transforms).then(textures => {
-            parsed.textures = textures;
-            draw_shader(parsed, width, height, seed).then(tick).then(fn);
+          element.observer.observe(element);
+        }
+
+        if (sources.length) {
+          transform(sources, result => {
+            parsed.textures = images = result;
+            parsed.width = width;
+            parsed.height = height;
+            draw_shader(parsed, seed).then(tick).then(fn);
           });
+        } else {
+          draw_shader(parsed, seed).then(tick).then(fn);
         }
       }
 
       load(again) {
         this.cleanup();
         let use = this.get_use();
-        let parsed = parse$6(use + un_entity(this.innerHTML), this.extra);
+        let parsed = parse$7(use + un_entity(this.innerHTML), this.extra);
         let compiled = this.generate(parsed);
 
         if (!again) {
@@ -6513,12 +6447,11 @@ void main() {
         this.innerHTML = '';
       }
 
-      replace({ doodles, shaders, canvas, pattern }) {
+      replace({ doodles, shaders, pattern }) {
         let doodle_ids = Object.keys(doodles);
         let shader_ids = Object.keys(shaders);
-        let canvas_ids = Object.keys(canvas);
         let pattern_ids = Object.keys(pattern);
-        let length = doodle_ids.length + canvas_ids.length + shader_ids.length + pattern_ids.length;
+        let length = doodle_ids.length + shader_ids.length + pattern_ids.length;
         return input => {
           if (!length) {
             return Promise.resolve(input);
@@ -6543,15 +6476,6 @@ void main() {
                 return Promise.resolve('');
               }
             }),
-            canvas_ids.map(id => {
-              if (input.includes(id)) {
-                return new Promise(resolve => {
-                  this.canvas_to_image(canvas[id], value => resolve({ id, value }));
-                });
-              } else {
-                return Promise.resolve('');
-              }
-            }),
             pattern_ids.map(id => {
               if (input.includes(id)) {
                 return new Promise(resolve => {
@@ -6567,8 +6491,6 @@ void main() {
             for (let {id, value} of mapping) {
               /* default to data-uri for doodle and pattern */
               let target = `url(${value})`;
-              /* canvas uses css painting api */
-              if (/^canvas/.test(id)) target = value;
               /* shader uses css vars */
               if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
               input = input.replaceAll('${' + id + '}', target);
@@ -6578,128 +6500,103 @@ void main() {
         }
       }
 
+      reflow() {
+        this.shadowRoot.querySelector('grid').offsetWidth;
+      }
+
       build_grid(compiled, grid) {
         const { has_transition, has_animation } = compiled.props;
         let has_delay = (has_transition || has_animation);
-
-        const { keyframes, host, container, cells } = compiled.styles;
-        let style_container = get_grid_styles(grid) + host + container;
-        let style_cells = has_delay ? '' : cells;
-
-        const { uniforms, content } = compiled;
-
-        let replace = this.replace(compiled);
+        const { uniforms, content, styles } = compiled;
 
         this.doodle.innerHTML = `
-        <style>${ get_basic_styles() }</style>
-        <style class="style-keyframes">${ keyframes }</style>
-        <style class="style-container">${ style_container }</style>
-        <style class="style-cells">${ style_cells }</style>
-        <svg id="defs" xmlns="http://www.w3.org/2000/svg" style="width:0;height:0"></svg>
-        ${ create_grid(grid, content) }
+        <style>${get_basic_styles(grid) + styles.main}</style>
+        ${create_grid(grid, content)}
       `;
-
-        this.set_content('.style-container', replace(style_container));
-
         if (has_delay) {
-          setTimeout(() => {
-            this.set_content('.style-cells', replace(cells));
-          }, 50);
-        } else {
-          this.set_content('.style-cells', replace(cells));
+          this.reflow();
         }
-
+        let replace = this.replace(compiled);
+        this.set_style(replace(
+          get_basic_styles(grid) +
+          styles.all
+        ));
         if (uniforms.time) {
-          this.register_uniform_time();
+          this.register_utime();
         }
         if (uniforms.mousex || uniforms.mousey) {
-          this.register_uniform_mouse(uniforms);
+          this.register_umouse(uniforms);
         } else {
-          this.remove_uniform_mouse();
+          this.remove_umouse();
         }
         if (uniforms.width || uniforms.height) {
-          this.register_uniform_resolution(uniforms);
+          this.register_usize(uniforms);
         } else {
-          this.remove_uniform_resolution();
+          this.remove_usize();
         }
       }
 
-      register_uniform_mouse(uniforms) {
-        if (!this.uniform_mouse_callback) {
-          let { uniform_mousex, uniform_mousey } = Uniforms;
-          this.uniform_mouse_callback = e => {
+      register_umouse(uniforms) {
+        if (!this.umouse_fn) {
+          this.umouse_fn = e => {
             let data = e.detail || e;
             if (uniforms.mousex) {
-              this.style.setProperty('--' + uniform_mousex.name, data.offsetX);
+              this.style.setProperty('--' + umousex.name, data.offsetX);
             }
             if (uniforms.mousey) {
-              this.style.setProperty('--' + uniform_mousey.name, data.offsetY);
+              this.style.setProperty('--' + umousey.name, data.offsetY);
             }
           };
-          this.addEventListener('pointermove', this.uniform_mouse_callback);
+          this.addEventListener('pointermove', this.umouse_fn);
           let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
           this.dispatchEvent(event);
         }
       }
 
-      remove_uniform_mouse() {
-        if (this.uniform_mouse_callback) {
-          let { uniform_mousex, uniform_mousey } = Uniforms;
-          this.style.removeProperty('--' + uniform_mousex.name);
-          this.style.removeProperty('--' + uniform_mousey.name);
-          this.removeEventListener('pointermove', this.uniform_mouse_callback);
-          this.uniform_mouse_callback = null;
+      remove_umouse() {
+        if (this.umouse_fn) {
+          this.style.removeProperty('--' + umousex.name);
+          this.style.removeProperty('--' + umousey.name);
+          this.removeEventListener('pointermove', this.umouse_fn);
+          this.umouse_fn = null;
         }
       }
 
-      register_uniform_resolution(uniforms) {
-        if (!this.uniform_resolution_observer) {
-          let { uniform_width, uniform_height } = Uniforms;
-          const setProperty = () => {
+      register_usize(uniforms) {
+        if (!this.usize_observer) {
+          this.usize_observer = new ResizeObserver(() => {
             let box = this.getBoundingClientRect();
             if (uniforms.width) {
-              this.style.setProperty('--' + uniform_width.name, box.width);
+              this.style.setProperty('--' + uwidth.name, box.width);
             }
             if (uniforms.height) {
-              this.style.setProperty('--' + uniform_height.name, box.height);
-            }
-          };
-          setProperty();
-          this.uniform_resolution_observer = new ResizeObserver(entries => {
-            for (let entry of entries) {
-              let data = entry.contentBoxSize || entry.contentRect;
-              if (data) setProperty();
+              this.style.setProperty('--' + uheight.name, box.height);
             }
           });
-          this.uniform_resolution_observer.observe(this);
+          this.usize_observer.observe(this);
         }
       }
 
-      remove_uniform_resolution() {
-        if (this.uniform_resolution_observer) {
-          let { uniform_width, uniform_height } = Uniforms;
-          this.style.removeProperty('--' + uniform_width.name);
-          this.style.removeProperty('--' + uniform_height.name);
-          this.uniform_resolution_observer.unobserve(this);
-          this.uniform_resolution_observer = null;
+      remove_usize() {
+        if (this.usize_observer) {
+          this.style.removeProperty('--' + uwidth.name);
+          this.style.removeProperty('--' + uheight.name);
+          this.usize_observer.unobserve(this);
+          this.usize_observer = null;
         }
       }
 
-      register_uniform_time() {
-        if (!window.CSS || !window.CSS.registerProperty) {
-          return false;
-        }
-        if (!this.is_uniform_time_registered) {
-          let { uniform_time } = Uniforms;
+      register_utime() {
+        if (!this.is_utime_set) {
           try {
             CSS.registerProperty({
-              name: '--' + uniform_time.name,
+              name: '--' + utime.name,
               syntax: '<number>',
               initialValue: 0,
               inherits: true
             });
           } catch (e) {}
-          this.is_uniform_time_registered = true;
+          this.is_utime_set = true;
         }
       }
 
@@ -6715,19 +6612,15 @@ void main() {
           let h = height * scale;
 
           let svg = `
-          <svg xmlns="http://www.w3.org/2000/svg"
+          <svg ${NS}
             preserveAspectRatio="none"
-            viewBox="0 0 ${ width } ${ height }"
-            ${ is_safari() ? '' : `width="${ w }px" height="${ h }px"` }
+            viewBox="0 0 ${width} ${height}"
+            ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
           >
             <foreignObject width="100%" height="100%">
-              <div
-                class="host"
-                xmlns="http://www.w3.org/1999/xhtml"
-                style="width: ${ width }px; height: ${ height }px; "
-              >
-                <style>.host { ${entity(variables)} }</style>
-                ${ html }
+              <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
+                <style>.host {${entity(variables)}}</style>
+                ${html}
               </div>
             </foreignObject>
           </svg>
@@ -6741,7 +6634,7 @@ void main() {
                 });
                 if (download) {
                   let a = document.createElement('a');
-                  a.download = normalize_png_name(name);
+                  a.download = get_png_name(name);
                   a.href = url;
                   a.click();
                 }
@@ -6757,15 +6650,15 @@ void main() {
         });
       }
 
-      set_content(selector, styles) {
+      set_style(styles) {
         if (styles instanceof Promise) {
-          styles.then(value => {
-            this.set_content(selector, value);
+          styles.then(v => {
+            this.set_style(v);
           });
         } else {
-          const el = this.shadowRoot.querySelector(selector);
+          const el = this.shadowRoot.querySelector('style');
           el && (el.styleSheet
-            ? (el.styleSheet.cssText = styles )
+            ? (el.styleSheet.cssText = styles)
             : (el.innerHTML = styles));
         }
       }
@@ -6775,33 +6668,30 @@ void main() {
     }
   }
 
-  function get_basic_styles() {
-    let { uniform_time } = Uniforms;
-    const inherited_grid_props = get_props(/grid/)
-      .map(n => `${ n }: inherit;`)
-      .join('');
+  function get_basic_styles(grid) {
+    let { x, y } = grid || {};
     return `
-    *, *::after, *::before {
+    *,*::after,*::before {
       box-sizing: border-box;
     }
-    :host, .host {
+    :host,.host {
       display: block;
       visibility: visible;
       width: auto;
       height: auto;
       contain: content;
       box-sizing: border-box;
-      --${ uniform_time.name }: 0
+      --${utime.name}: 0
     }
-    :host([hidden]), .host[hidden] {
+    :host([hidden]),[hidden] {
       display: none
     }
-    .container {
+    grid {
       position: relative;
       width: 100%;
       height: 100%;
       display: grid;
-      ${ inherited_grid_props }
+      ${get_props(/grid/).map(n => `${n}:inherit;`).join('')}
     }
     cell {
       position: relative;
@@ -6813,19 +6703,13 @@ void main() {
       width: 100%;
       height: 100%
     }
-    :host([cssd-paused-animation]),
-    :host([cssd-paused-animation]) * {
+    :host([cssd-paused]),
+    :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
-  `;
-  }
-
-  function get_grid_styles(grid_obj) {
-    let { x, y } = grid_obj || {};
-    return `
     :host, .host {
-      grid-template-rows: repeat(${ y }, 1fr);
-      grid-template-columns: repeat(${ x }, 1fr);
+      grid-template-rows: repeat(${y},1fr);
+      grid-template-columns: repeat(${x},1fr)
     }
   `;
   }
@@ -6859,19 +6743,7 @@ void main() {
       }
       result = child;
     }
-    return `<grid class="container">${result}</grid>`;
+    return `<grid>${result}</grid>`;
   }
 
-  var index = make_tag_function(rules => {
-    if (typeof document !== 'undefined') {
-      let doodle = document.createElement('css-doodle');
-      if (doodle.update) {
-        doodle.update(rules);
-      }
-      return doodle;
-    }
-  });
-
-  return index;
-
-}));
+})();
