@@ -4,8 +4,8 @@ import Selector from '../selector.js';
 import parse_value_group from '../parser/parse-value-group.js';
 
 import calc from '../calc.js';
-import { utime } from '../uniforms.js';
 import seedrandom from '../lib/seedrandom.js';
+import { utime } from '../uniforms.js';
 
 import prefixer from '../utils/prefixer.js';
 
@@ -55,10 +55,10 @@ class Rules {
     this.doodles = {};
     this.pattern = {};
     this.shaders = {};
-    this.reset();
     this.vars = {};
     this.uniforms = {};
     this.content = {};
+    this.reset();
   }
 
   reset() {
@@ -93,23 +93,20 @@ class Rules {
     return Func[name] || MathFunc[name];
   }
 
-  apply_func(fn, coords, args, fname, contextedVariable = {}) {
+  apply_func(fn, coords, args, fname, contextVariable = {}) {
     let _fn = fn(...make_array(coords));
     let input = [];
     args.forEach(arg => {
       let type = typeof arg.value;
-      let is_string_or_number = (type === 'number' || type === 'string');
-      if (!arg.cluster && (is_string_or_number)) {
+      if (!arg.cluster && ((type === 'number' || type === 'string'))) {
         input.push(...parse_value_group(arg.value, { noSpace: true }));
       }
-      else {
-        if (typeof arg === 'function') {
-          input.push(arg);
-        }
-        else if (!is_nil(arg.value)) {
-          let value = get_value(arg.value);
-          input.push(value);
-        }
+      else if (typeof arg === 'function') {
+        input.push(arg);
+      }
+      else if (!is_nil(arg.value)) {
+        let value = get_value(arg.value);
+        input.push(value);
       }
     });
     input = make_array(remove_empty_values(input));
@@ -119,7 +116,7 @@ class Rules {
           this.vars['host'],
           this.vars['container'],
           this.vars[coords.count],
-          contextedVariable
+          contextVariable
         );
         let context = {};
         let unit = '';
@@ -141,20 +138,20 @@ class Rules {
   }
 
   compose_selector({ x, y, z}, pseudo = '') {
-    return `#${ cell_id(x, y, z) }${ pseudo }`;
+    return `#${cell_id(x, y, z)}${pseudo}`;
   }
 
   is_composable(name) {
     return ['doodle', 'shaders', 'pattern'].includes(name);
   }
 
-  read_var(value, coords, contextedVariable) {
+  read_var(value, coords, contextVariable) {
     let count = coords.count;
     let group = Object.assign({},
       this.vars['host'],
       this.vars['container'],
       this.vars[count],
-      contextedVariable
+      contextVariable
     );
     if (group[value] !== undefined) {
       let result = String(group[value]).trim();
@@ -169,7 +166,7 @@ class Rules {
     return value;
   }
 
-  compose_argument(argument, coords, extra = [], parent, contextedVariable) {
+  compose_argument(argument, coords, extra = [], parent, contextVariable) {
     if (!coords.extra) coords.extra = [];
     coords.extra.push(extra);
     let result = argument.map(arg => {
@@ -178,7 +175,7 @@ class Rules {
           if (parent && parent.name === '@var') {
             return arg.value;
           }
-          return this.read_var(arg.value, coords, contextedVariable);
+          return this.read_var(arg.value, coords, contextVariable);
         }
         return arg.value;
       }
@@ -189,17 +186,15 @@ class Rules {
           this.check_uniforms(fname);
           if (this.is_composable(fname)) {
             let value = get_value((arg.arguments[0] || [])[0]);
-            let temp_arg;
-            if (fname === 'doodle') {
-              if (/^\d/.test(value)) {
-                temp_arg = value;
-                value = get_value((val.arguments[1] || [])[0]);
-              }
+            let temp;
+            if (fname === 'doodle' && /^\d/.test(value)) {
+              temp = value;
+              value = get_value((val.arguments[1] || [])[0]);
             }
             if (!is_nil(value)) {
               switch (fname) {
                 case 'doodle':
-                  return this.compose_doodle(this.inject_variables(value, coords.count), temp_arg);
+                  return this.compose_doodle(this.inject_variables(value, coords.count), temp);
                 case 'shaders':
                   return this.compose_shaders(value, coords);
                 case 'pattern':
@@ -210,10 +205,10 @@ class Rules {
           coords.position = arg.position;
           let args = arg.arguments.map(n => {
             return fn.lazy
-              ? (...extra) => this.compose_argument(n, coords, extra, arg, contextedVariable)
-              : this.compose_argument(n, coords, extra, arg, contextedVariable);
+              ? (...extra) => this.compose_argument(n, coords, extra, arg, contextVariable)
+              : this.compose_argument(n, coords, extra, arg, contextVariable);
           });
-          return this.apply_func(fn, coords, args, fname, contextedVariable);
+          return this.apply_func(fn, coords, args, fname, contextVariable);
         } else {
           return arg.name;
         }
@@ -237,8 +232,8 @@ class Rules {
   compose_shaders(shader, {x, y, z}) {
     let id = unique_id('shader');
     this.shaders[id] = {
-      id: '--' + id,
       shader,
+      id: '--' + id,
       cell: cell_id(x, y, z)
     };
     return '${' + id + '}';
@@ -247,8 +242,8 @@ class Rules {
   compose_pattern(code, {x, y, z}) {
     let id = unique_id('pattern');
     this.pattern[id] = {
-      id: '--' + id,
       code,
+      id: '--' + id,
       cell: cell_id(x, y, z)
     };
     return '${' + id + '}';
@@ -288,7 +283,7 @@ class Rules {
     return result;
   }
 
-  compose_value(value, coords, contextedVariable = {}) {
+  compose_value(value, coords, contextVariable = {}) {
     if (!Array.isArray(value)) {
       return {
         value: '',
@@ -309,17 +304,17 @@ class Rules {
             this.check_uniforms(fname);
             if (this.is_composable(fname)) {
               let value = get_value((val.arguments[0] || [])[0]);
-              let temp_arg;
+              let temp;
               if (fname === 'doodle') {
                 if (/^\d/.test(value)) {
-                  temp_arg = value;
+                  temp = value;
                   value = get_value((val.arguments[1] || [])[0]);
                 }
               }
               if (!is_nil(value)) {
                 switch (fname) {
                   case 'doodle':
-                    result += this.compose_doodle(this.inject_variables(value, coords.count), temp_arg); break;
+                    result += this.compose_doodle(this.inject_variables(value, coords.count), temp); break;
                   case 'shaders':
                     result += this.compose_shaders(value, coords); break;
                   case 'pattern':
@@ -329,15 +324,15 @@ class Rules {
             } else {
               coords.position = val.position;
               if (val.variables) {
-                this.compose_variables(val.variables, coords, contextedVariable);
+                this.compose_variables(val.variables, coords, contextVariable);
               }
               let args = val.arguments.map(arg => {
                 return fn.lazy
-                  ? (...extra) => this.compose_argument(arg, coords, extra, val, contextedVariable)
-                  : this.compose_argument(arg, coords, [], val, contextedVariable);
+                  ? (...extra) => this.compose_argument(arg, coords, extra, val, contextVariable)
+                  : this.compose_argument(arg, coords, [], val, contextVariable);
               });
 
-              let output = this.apply_func(fn, coords, args, fname, contextedVariable);
+              let output = this.apply_func(fn, coords, args, fname, contextVariable);
               if (!is_nil(output)) {
                 result += output;
                 if (output.extra) {
@@ -366,7 +361,7 @@ class Rules {
         let composed = this.compose_value(v, coords, context || {});
         if (composed) {
           if (composed.value) ret.push(composed.value);
-          if (extra) extra = composed.extra;
+          if (composed.extra) extra = composed.extra;
         }
         return ret;
       }, []);

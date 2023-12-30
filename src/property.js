@@ -28,8 +28,8 @@ export default add_alias({
       [w, h] = get_preset(w, h);
     }
     let styles = `
-      width: ${ w };
-      height: ${ h };
+      width: ${w};
+      height: ${h};
     `;
     if (w === 'auto' || h === 'auto') {
       if (ratio) {
@@ -39,17 +39,17 @@ export default add_alias({
           ratio = `calc(${ratio})`;
         }
         if (!is_special_selector) {
-          styles += `aspect-ratio: ${ ratio };`;
+          styles += `aspect-ratio: ${ratio};`;
         }
       }
       if (is_special_selector) {
-        styles += `aspect-ratio: ${ ratio || grid.ratio };`;
+        styles += `aspect-ratio: ${ratio || grid.ratio};`;
       }
     }
     if (!is_special_selector) {
       styles += `
-        --internal-cell-width: ${ w };
-        --internal-cell-height: ${ h };
+        --internal-cell-width: ${w};
+        --internal-cell-height: ${h};
       `;
     }
     return styles;
@@ -63,15 +63,15 @@ export default add_alias({
     const ch = 'var(--internal-cell-height, 25%)';
     return `
       position: absolute;
-      left: ${ left };
-      top: ${ top };
-      width: ${ cw };
-      height: ${ ch };
-      margin-left: calc(${ cw } / -2);
-      margin-top: calc(${ ch } / -2);
+      left: ${left};
+      top: ${top};
+      width: ${cw};
+      height: ${ch};
+      margin-left: calc(${cw} / -2);
+      margin-top: calc(${ch} / -2);
       grid-area: unset;
-      --plot-angle: ${ extra || 0 };
-      rotate: ${ extra || 0 }deg;
+      --plot-angle: ${extra || 0};
+      rotate: ${extra || 0}deg;
     `;
   },
 
@@ -121,7 +121,7 @@ export default add_alias({
     let { points, preset} = generate_shape(value);
     if (!preset) return '';
     let prop = 'clip-path';
-    let style = `${ prop }: polygon(${points.join(',')});`;
+    let style = `${prop}: polygon(${points.join(',')});`;
     return prefixer(prop, style);
   }),
 

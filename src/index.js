@@ -17,9 +17,7 @@ import { NS, NSXHtml } from './utils/svg.js';
 import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import {
-  cell_id, is_nil,
-  get_png_name, cache_image,
-  is_safari, entity, un_entity,
+  cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity
 } from './utils/index.js';
 
 if (typeof customElements !== 'undefined') {
