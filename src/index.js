@@ -7,7 +7,6 @@ import generate_shader from './generator/shader.js';
 import generate_pattern from './generator/pattern.js';
 import generate_png from './generator/svg-to-png.js';
 
-import get_props from './utils/get-props.js';
 import get_rgba_color from './utils/get-rgba-color.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import Cache from './utils/cache.js';
@@ -530,16 +529,17 @@ if (typeof customElements !== 'undefined') {
       });
     }
 
-    set_style(styles) {
-      if (styles instanceof Promise) {
-        styles.then(v => {
+    set_style(input) {
+      if (input instanceof Promise) {
+        input.then(v => {
           this.set_style(v);
         });
       } else {
         const el = this.shadowRoot.querySelector('style');
+        let v = input.replace(/\n\s+/g, '');
         el && (el.styleSheet
-          ? (el.styleSheet.cssText = styles)
-          : (el.innerHTML = styles));
+          ? (el.styleSheet.cssText = v)
+          : (el.innerHTML = v));
       }
     }
   }
@@ -566,30 +566,28 @@ function get_basic_styles(grid) {
     :host([hidden]),[hidden] {
       display: none
     }
-    grid {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      display: grid;
-      ${get_props(/grid/).map(n => `${n}:inherit;`).join('')}
-    }
-    cell {
-      position: relative;
-      display: grid;
-      place-items: center
-    }
-    svg {
-      position: absolute;
-      width: 100%;
-      height: 100%
-    }
     :host([cssd-paused]),
     :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
-    :host, .host {
-      grid-template-rows: repeat(${y},1fr);
-      grid-template-columns: repeat(${x},1fr)
+    grid, cell {
+      display: grid;
+      position: relative;
+    }
+    grid {
+      position: relative;
+      gap: inherit;
+      grid-template: repeat(${y},1fr)/repeat(${x},1fr)
+    }
+    cell {
+      place-items: center
+    }
+    svg {
+      position: absolute;
+    }
+    grid, svg {
+      width: 100%;
+      height: 100%
     }
   `;
 }
