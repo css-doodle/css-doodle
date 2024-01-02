@@ -536,7 +536,7 @@ if (typeof customElements !== 'undefined') {
         });
       } else {
         const el = this.shadowRoot.querySelector('style');
-        let v = input.replace(/\n\s+/g, '');
+        let v = input.replace(/\n\s+/g, ' ');
         el && (el.styleSheet
           ? (el.styleSheet.cssText = v)
           : (el.innerHTML = v));

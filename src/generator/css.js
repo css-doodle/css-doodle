@@ -371,7 +371,7 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
+  add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol }) {
     if (fill) {
       this.add_rule(':host', `background-color:${fill};`);
     }
@@ -387,11 +387,24 @@ class Rules {
     if (translate) {
       this.add_rule(':container', `translate:${translate};`);
     }
+    if (persp) {
+      this.add_rule(':container', `perspective:${persp};`);
+    }
+    if (enlarge) {
+      this.add_rule(':container', `
+        width:calc(${enlarge} * 100%);
+        height:calc(${enlarge} * 100%);
+        left: 50%;
+        top: 50%;
+        transform-origin: 0 0;
+        transform: translate(-50%, -50%);
+      `);
+    }
     if (flexRow) {
       this.add_rule(':container', `display:flex;`);
       this.add_rule('cell', `flex: 1;`);
     }
-    if (flexColumn) {
+    if (flexCol) {
       this.add_rule(':container', `display:flex;flex-direction:column;`);
       this.add_rule('cell', `flex:1;`);
     }
@@ -449,7 +462,7 @@ class Rules {
       this.props.has_transition = true;
     }
 
-    let rule = `${ prop }: ${ value };`
+    let rule = `${prop}:${value};`
     rule = prefixer(prop, rule);
 
     if (prop === 'width' || prop === 'height') {
@@ -488,6 +501,7 @@ class Rules {
         max_grid: coords.max_grid,
         extra
       });
+
       switch (name) {
         case 'grid': {
           if (is_host_selector(selector)) {
@@ -553,6 +567,11 @@ class Rules {
           rule = transformed;
         }
       }
+    }
+
+    if (/^grid/.test(prop) && is_host_selector(selector)) {
+      this.add_rule(':container', `${prop}:${value};`);
+      rule = '';
     }
 
     return rule;
