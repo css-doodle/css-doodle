@@ -28,6 +28,7 @@
     "src"
   ],
   "exports": {
+    ".": "./css-doodle.js",
     "./generator": {
       "import": "./src/exports/generator/index.js"
     },
