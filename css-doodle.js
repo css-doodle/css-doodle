@@ -1,4 +1,4 @@
-/*! css-doodle@0.38.0 */
+/*! css-doodle@0.38.1 */
 (function () {
   'use strict';
 
@@ -4207,14 +4207,16 @@
         value = value.replace(/no\-*clip/i, '');
       }
       let groups = parse$9(value, {
-        symbol: ['/', '+', '*', '|', '-', '~'],
+        symbol: ['/', '+', '^', '*', '|', '-', '~', '∆'],
         noSpace: true,
         verbose: true
       });
       for (let { group, value } of groups) {
         if (group === '+') result.scale = value;
+        if (group === '^') result.enlarge = value;
         if (group === '*') result.rotate = value;
         if (group === '~') result.translate = value;
+        if (group === '∆') result.persp = value;
         if (group === '/') {
           if (result.size === undefined) result.size = this.size(value, options);
           else result.fill = value;
@@ -5049,7 +5051,7 @@
       }
     }
 
-    add_grid_style({ fill, clip, rotate, scale, translate, flexRow, flexColumn }) {
+    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol }) {
       if (fill) {
         this.add_rule(':host', `background-color:${fill};`);
       }
@@ -5065,11 +5067,24 @@
       if (translate) {
         this.add_rule(':container', `translate:${translate};`);
       }
+      if (persp) {
+        this.add_rule(':container', `perspective:${persp};`);
+      }
+      if (enlarge) {
+        this.add_rule(':container', `
+        width:calc(${enlarge} * 100%);
+        height:calc(${enlarge} * 100%);
+        left: 50%;
+        top: 50%;
+        transform-origin: 0 0;
+        transform: translate(-50%, -50%);
+      `);
+      }
       if (flexRow) {
         this.add_rule(':container', `display:flex;`);
         this.add_rule('cell', `flex: 1;`);
       }
-      if (flexColumn) {
+      if (flexCol) {
         this.add_rule(':container', `display:flex;flex-direction:column;`);
         this.add_rule('cell', `flex:1;`);
       }
@@ -5127,7 +5142,7 @@
         this.props.has_transition = true;
       }
 
-      let rule = `${ prop }: ${ value };`;
+      let rule = `${prop}:${value};`;
       rule = prefixer(prop, rule);
 
       if (prop === 'width' || prop === 'height') {
@@ -5166,6 +5181,7 @@
           max_grid: coords.max_grid,
           extra
         });
+
         switch (name) {
           case 'grid': {
             if (is_host_selector(selector)) {
@@ -5231,6 +5247,11 @@
             rule = transformed;
           }
         }
+      }
+
+      if (/^grid/.test(prop) && is_host_selector(selector)) {
+        this.add_rule(':container', `${prop}:${value};`);
+        rule = '';
       }
 
       return rule;
@@ -6650,16 +6671,17 @@ void main() {
         });
       }
 
-      set_style(styles) {
-        if (styles instanceof Promise) {
-          styles.then(v => {
+      set_style(input) {
+        if (input instanceof Promise) {
+          input.then(v => {
             this.set_style(v);
           });
         } else {
           const el = this.shadowRoot.querySelector('style');
+          let v = input.replace(/\n\s+/g, ' ');
           el && (el.styleSheet
-            ? (el.styleSheet.cssText = styles)
-            : (el.innerHTML = styles));
+            ? (el.styleSheet.cssText = v)
+            : (el.innerHTML = v));
         }
       }
     }
@@ -6686,30 +6708,28 @@ void main() {
     :host([hidden]),[hidden] {
       display: none
     }
-    grid {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      display: grid;
-      ${get_props(/grid/).map(n => `${n}:inherit;`).join('')}
-    }
-    cell {
-      position: relative;
-      display: grid;
-      place-items: center
-    }
-    svg {
-      position: absolute;
-      width: 100%;
-      height: 100%
-    }
     :host([cssd-paused]),
     :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
-    :host, .host {
-      grid-template-rows: repeat(${y},1fr);
-      grid-template-columns: repeat(${x},1fr)
+    grid, cell {
+      display: grid;
+      position: relative;
+    }
+    grid {
+      position: relative;
+      gap: inherit;
+      grid-template: repeat(${y},1fr)/repeat(${x},1fr)
+    }
+    cell {
+      place-items: center
+    }
+    svg {
+      position: absolute;
+    }
+    grid, svg {
+      width: 100%;
+      height: 100%
     }
   `;
   }
