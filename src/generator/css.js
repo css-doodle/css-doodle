@@ -484,17 +484,7 @@ class Rules {
     }
 
     if (/^\-\-/.test(prop)) {
-      let key = _coords.count;
-      if (is_parent_selector(selector)) {
-        key = 'container';
-      }
-      if (is_host_selector(selector)) {
-        key = 'host';
-      }
-      if (!this.vars[key]) {
-        this.vars[key] = {};
-      }
-      this.vars[key][prop] = value;
+      this.compose_vars(_coords, selector, prop, value);
     }
 
     if (/^@/.test(prop) && Property[prop.substr(1)]) {
@@ -595,13 +585,35 @@ class Rules {
     return rest;
   }
 
-  pre_compose_rule(token, _coords) {
+  compose_vars(coords, selector, prop, value) {
+    let key = coords.count;
+    if (is_parent_selector(selector)) {
+      key = 'container';
+    }
+    if (is_host_selector(selector)) {
+      key = 'host';
+    }
+    if (!this.vars[key]) {
+      this.vars[key] = {};
+    }
+    this.vars[key][prop] = value; 
+  }
+
+  pre_compose_rule(token, _coords, selector) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
-
+    let context = Object.assign({},
+      this.vars['host'],
+      this.vars['container'],
+      this.vars[coords.count], 
+    );   
+    if (/^\-\-/.test(prop)) {
+      let value = this.get_composed_value(token.value, coords, context).value; 
+      this.compose_vars(_coords, selector, prop, value);
+    }  
     switch (prop) {
       case '@grid': {
-        let value = this.get_composed_value(token.value, coords).value;
+        let value = this.get_composed_value(token.value, coords, context).value;
         let name = prop.substr(1);
         let transformed = Property[name](value, {
           max_grid: _coords.max_grid
@@ -648,7 +660,7 @@ class Rules {
         case 'pseudo': {
           if (is_host_selector(token.selector)) {
             (token.styles || []).forEach(token => {
-              this.pre_compose_rule(token, coords);
+              this.pre_compose_rule(token, coords, token.selector);
             });
           }
           break;
