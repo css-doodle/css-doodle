@@ -101,7 +101,7 @@ export default add_alias({
       if ((group === '|' || group == '-' || group == '') && !result.grid) {
         result.grid = parse_grid(value, options.max_grid);
         if (group === '|') {
-          result.flexColumn = true;
+          result.flexCol = true;
         }
         if (group === '-') {
           result.flexRow = true;
