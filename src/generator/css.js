@@ -471,7 +471,7 @@ class Rules {
 
     if (prop === 'width' || prop === 'height') {
       if (!is_special_selector(selector)) {
-        rule += `--internal-cell-${ prop }: ${ value };`;
+        rule += `--_cell-${prop}: ${value};`;
       }
     }
 
@@ -596,7 +596,7 @@ class Rules {
     if (!this.vars[key]) {
       this.vars[key] = {};
     }
-    this.vars[key][prop] = value; 
+    this.vars[key][prop] = value;
   }
 
   pre_compose_rule(token, _coords, selector) {
@@ -605,12 +605,12 @@ class Rules {
     let context = Object.assign({},
       this.vars['host'],
       this.vars['container'],
-      this.vars[coords.count], 
-    );   
+      this.vars[coords.count],
+    );
     if (/^\-\-/.test(prop)) {
-      let value = this.get_composed_value(token.value, coords, context).value; 
+      let value = this.get_composed_value(token.value, coords, context).value;
       this.compose_vars(_coords, selector, prop, value);
-    }  
+    }
     switch (prop) {
       case '@grid': {
         let value = this.get_composed_value(token.value, coords, context).value;

@@ -8,6 +8,9 @@ import prefixer from './utils/prefixer.js';
 import memo from './utils/memo.js';
 import { add_alias } from './utils/index.js';
 
+const iw = '--_cell-width';
+const ih = '--_cell-height';
+
 const map_left_right = {
   center: '50%',
   left: '0%', right: '100%',
@@ -27,10 +30,7 @@ export default add_alias({
     if (is_preset(w)) {
       [w, h] = get_preset(w, h);
     }
-    let styles = `
-      width: ${w};
-      height: ${h};
-    `;
+    let styles = `width:${w};height:${h};`;
     if (w === 'auto' || h === 'auto') {
       if (ratio) {
         if (/^\(.+\)$/.test(ratio)) {
@@ -47,10 +47,7 @@ export default add_alias({
       }
     }
     if (!is_special_selector) {
-      styles += `
-        --internal-cell-width: ${w};
-        --internal-cell-height: ${h};
-      `;
+      styles += `${iw}:${w};${ih}:${h};`;
     }
     return styles;
   },
@@ -59,8 +56,8 @@ export default add_alias({
     let [left, top = '50%'] = parse_value_group(value);
     left = map_left_right[left] || left;
     top = map_top_bottom[top] || top;
-    const cw = 'var(--internal-cell-width, 25%)';
-    const ch = 'var(--internal-cell-height, 25%)';
+    let cw = `var(${iw}, 25%)`;
+    let ch = `var(${ih}, 25%)`;
     return `
       position: absolute;
       left: ${left};
