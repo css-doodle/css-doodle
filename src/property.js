@@ -93,7 +93,7 @@ export default add_alias({
       if (group === '^') result.enlarge = value;
       if (group === '*') result.rotate = value;
       if (group === '~') result.translate = value;
-      if (group === '∆') result.persp = value;
+      if (group === '∆') result.persp = parse_value_group(value, {symbol: ' '});
       if (group === '/') {
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;

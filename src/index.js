@@ -575,7 +575,6 @@ function get_basic_styles(grid) {
       position: relative;
     }
     grid {
-      position: relative;
       gap: inherit;
       grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }

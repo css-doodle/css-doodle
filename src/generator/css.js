@@ -388,7 +388,11 @@ class Rules {
       this.add_rule(':container', `translate:${translate};`);
     }
     if (persp) {
-      this.add_rule(':container', `perspective:${persp};`);
+      let [value, ...origin] = persp;
+      this.add_rule(':container', `perspective:${value};`);
+      if (origin.length) {
+        this.add_rule(':container', `perspective-origin:${origin.join(' ')};`);
+      }
     }
     if (enlarge) {
       this.add_rule(':container', `
