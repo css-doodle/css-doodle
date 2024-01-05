@@ -1,4 +1,4 @@
-/*! css-doodle@0.38.1 */
+/*! css-doodle@0.38.2 */
 (function () {
   'use strict';
 
@@ -3304,7 +3304,7 @@
       if (is_empty(v) || is_empty(base)) {
         return base;
       }
-      if (/^[+*-\/%][\-.\d\s]/.test(v)) {
+      if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
         let op = v[0];
         let { unit = '', value } = parse$5(v.substr(1).trim() || 0);
         if (/^var/.test(base)) {
@@ -3312,7 +3312,7 @@
         }
         return compute(op, base, value) + unit;
       }
-      else if (/[+*-\/%]$/.test(v)) {
+      else if (/[\+\*\-\/%]$/.test(v)) {
         let op = v.substr(-1);
         let { unit = '', value } = parse$5(v.substr(0, v.length - 1).trim() || 0);
         if (/^var/.test(base)) {
@@ -3360,6 +3360,10 @@
       return calc_with(grid.z);
     },
 
+    iI({ count, grid }) {
+      return calc_with(count/grid.count);
+    },
+
     id({ x, y, z }) {
       return _ => cell_id(x, y, z);
     },
@@ -3396,6 +3400,11 @@
     N({ extra }) {
       let lastExtra = last(extra);
       return lastExtra ? calc_with(lastExtra[3]) : '@N';
+    },
+
+    nN({ extra }) {
+      let lastExtra = last(extra);
+      return lastExtra ? calc_with(lastExtra[0]/lastExtra[3]) : '@nN';
     },
 
     m: make_sequence(','),
@@ -4131,6 +4140,9 @@
     return rule;
   }
 
+  const iw = '--_cell-width';
+  const ih = '--_cell-height';
+
   const map_left_right = {
     center: '50%',
     left: '0%', right: '100%',
@@ -4150,10 +4162,7 @@
       if (is_preset(w)) {
         [w, h] = get_preset(w, h);
       }
-      let styles = `
-      width: ${w};
-      height: ${h};
-    `;
+      let styles = `width:${w};height:${h};`;
       if (w === 'auto' || h === 'auto') {
         if (ratio) {
           if (/^\(.+\)$/.test(ratio)) {
@@ -4170,10 +4179,7 @@
         }
       }
       if (!is_special_selector) {
-        styles += `
-        --internal-cell-width: ${w};
-        --internal-cell-height: ${h};
-      `;
+        styles += `${iw}:${w};${ih}:${h};`;
       }
       return styles;
     },
@@ -4182,8 +4188,8 @@
       let [left, top = '50%'] = parse$9(value);
       left = map_left_right[left] || left;
       top = map_top_bottom[top] || top;
-      const cw = 'var(--internal-cell-width, 25%)';
-      const ch = 'var(--internal-cell-height, 25%)';
+      let cw = `var(${iw}, 25%)`;
+      let ch = `var(${ih}, 25%)`;
       return `
       position: absolute;
       left: ${left};
@@ -4216,7 +4222,7 @@
         if (group === '^') result.enlarge = value;
         if (group === '*') result.rotate = value;
         if (group === '~') result.translate = value;
-        if (group === '∆') result.persp = value;
+        if (group === '∆') result.persp = parse$9(value, {symbol: ' '});
         if (group === '/') {
           if (result.size === undefined) result.size = this.size(value, options);
           else result.fill = value;
@@ -4224,7 +4230,7 @@
         if ((group === '|' || group == '-' || group == '') && !result.grid) {
           result.grid = parse_grid(value, options.max_grid);
           if (group === '|') {
-            result.flexColumn = true;
+            result.flexCol = true;
           }
           if (group === '-') {
             result.flexRow = true;
@@ -4705,7 +4711,7 @@
     return is_host_selector(s) || is_parent_selector(s);
   }
 
-  function is_pseudo_selecotr(s) {
+  function is_pseudo_selector(s) {
     return /\:before|\:after/.test(s);
   }
 
@@ -5068,7 +5074,11 @@
         this.add_rule(':container', `translate:${translate};`);
       }
       if (persp) {
-        this.add_rule(':container', `perspective:${persp};`);
+        let [value, ...origin] = persp;
+        this.add_rule(':container', `perspective:${value};`);
+        if (origin.length) {
+          this.add_rule(':container', `perspective-origin:${origin.join(' ')};`);
+        }
       }
       if (enlarge) {
         this.add_rule(':container', `
@@ -5147,7 +5157,7 @@
 
       if (prop === 'width' || prop === 'height') {
         if (!is_special_selector(selector)) {
-          rule += `--internal-cell-${ prop }: ${ value };`;
+          rule += `--_cell-${prop}: ${value};`;
         }
       }
 
@@ -5160,17 +5170,7 @@
       }
 
       if (/^\-\-/.test(prop)) {
-        let key = _coords.count;
-        if (is_parent_selector(selector)) {
-          key = 'container';
-        }
-        if (is_host_selector(selector)) {
-          key = 'host';
-        }
-        if (!this.vars[key]) {
-          this.vars[key] = {};
-        }
-        this.vars[key][prop] = value;
+        this.compose_vars(_coords, selector, prop, value);
       }
 
       if (/^@/.test(prop) && Property[prop.substr(1)]) {
@@ -5214,7 +5214,7 @@
           case 'content': {
             rule = '';
             let key = this.compose_selector(coords);
-            if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
+            if (transformed !== undefined && !is_pseudo_selector(selector) && !is_parent_selector(selector)) {
               this.content[key] = remove_quotes(String(transformed));
             }
             this.content[key] = Expose.raw({
@@ -5271,13 +5271,35 @@
       return rest;
     }
 
-    pre_compose_rule(token, _coords) {
+    compose_vars(coords, selector, prop, value) {
+      let key = coords.count;
+      if (is_parent_selector(selector)) {
+        key = 'container';
+      }
+      if (is_host_selector(selector)) {
+        key = 'host';
+      }
+      if (!this.vars[key]) {
+        this.vars[key] = {};
+      }
+      this.vars[key][prop] = value;
+    }
+
+    pre_compose_rule(token, _coords, selector) {
       let coords = Object.assign({}, _coords);
       let prop = token.property;
-
+      let context = Object.assign({},
+        this.vars['host'],
+        this.vars['container'],
+        this.vars[coords.count],
+      );
+      if (/^\-\-/.test(prop)) {
+        let value = this.get_composed_value(token.value, coords, context).value;
+        this.compose_vars(_coords, selector, prop, value);
+      }
       switch (prop) {
         case '@grid': {
-          let value = this.get_composed_value(token.value, coords).value;
+          let value = this.get_composed_value(token.value, coords, context).value;
           let name = prop.substr(1);
           let transformed = Property[name](value, {
             max_grid: _coords.max_grid
@@ -5321,7 +5343,7 @@
           case 'pseudo': {
             if (is_host_selector(token.selector)) {
               (token.styles || []).forEach(token => {
-                this.pre_compose_rule(token, coords);
+                this.pre_compose_rule(token, coords, token.selector);
               });
             }
             break;
@@ -5353,7 +5375,7 @@
             if (special) {
               token.skip = true;
             }
-            token.selector.split(',').forEach(selector => {
+            parse$9(token.selector).forEach(selector => {
               let pseudo = token.styles.map(s =>
                 this.compose_rule(s, coords, selector)
               );
@@ -6717,7 +6739,6 @@ void main() {
       position: relative;
     }
     grid {
-      position: relative;
       gap: inherit;
       grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }

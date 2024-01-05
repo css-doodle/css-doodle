@@ -1,9 +1,18 @@
+## 0.38.2
+
+* Fix reading pseudo selectors.
+* Fix reading variables inside `@doodle`.
+* Fix flex column variable name.
+* Extend ∆ command to support `perspective-origin`.
+* Add `@iI` and `@nN`.
+
+
 ## 0.38.1
 
 * Fixed incorrect main/module/exports specified in package package.json (#120) By @zwtkito.
 * Improved the initial and the generated styles.
-* New experimantal commands for grid.  
-    `^`: similar to scale but it adjusts the canvas size instead of scale transform.   
+* New experimantal commands for grid.
+    `^`: similar to scale but it adjusts the canvas size instead of scale transform.
     `∆`: for container perspective.
 
 ## 0.38.0
