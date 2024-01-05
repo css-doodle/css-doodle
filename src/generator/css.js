@@ -692,7 +692,7 @@ class Rules {
           if (special) {
             token.skip = true;
           }
-          token.selector.split(',').forEach(selector => {
+          parse_value_group(token.selector).forEach(selector => {
             let pseudo = token.styles.map(s =>
               this.compose_rule(s, coords, selector)
             );
