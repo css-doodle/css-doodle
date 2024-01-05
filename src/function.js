@@ -79,7 +79,7 @@ function calc_with(base) {
     if (is_empty(v) || is_empty(base)) {
       return base;
     }
-    if (/^[+*-\/%][\-.\d\s]/.test(v)) {
+    if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
       let op = v[0];
       let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
       if (/^var/.test(base)) {
@@ -87,7 +87,7 @@ function calc_with(base) {
       }
       return compute(op, base, value) + unit;
     }
-    else if (/[+*-\/%]$/.test(v)) {
+    else if (/[\+\*\-\/%]$/.test(v)) {
       let op = v.substr(-1);
       let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
       if (/^var/.test(base)) {
@@ -135,6 +135,10 @@ const Expose = add_alias({
     return calc_with(grid.z);
   },
 
+  iI({ count, grid }) {
+    return calc_with(count/grid.count);
+  },
+
   id({ x, y, z }) {
     return _ => cell_id(x, y, z);
   },
@@ -171,6 +175,11 @@ const Expose = add_alias({
   N({ extra }) {
     let lastExtra = last(extra);
     return lastExtra ? calc_with(lastExtra[3]) : '@N';
+  },
+
+  nN({ extra }) {
+    let lastExtra = last(extra);
+    return lastExtra ? calc_with(lastExtra[0]/lastExtra[3]) : '@nN';
   },
 
   m: make_sequence(','),

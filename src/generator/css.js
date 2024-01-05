@@ -25,7 +25,7 @@ function is_special_selector(s) {
   return is_host_selector(s) || is_parent_selector(s);
 }
 
-function is_pseudo_selecotr(s) {
+function is_pseudo_selector(s) {
   return /\:before|\:after/.test(s);
 }
 
@@ -528,7 +528,7 @@ class Rules {
         case 'content': {
           rule = '';
           let key = this.compose_selector(coords);
-          if (transformed !== undefined && !is_pseudo_selecotr(selector) && !is_parent_selector(selector)) {
+          if (transformed !== undefined && !is_pseudo_selector(selector) && !is_parent_selector(selector)) {
             this.content[key] = remove_quotes(String(transformed));
           }
           this.content[key] = Func.raw({
