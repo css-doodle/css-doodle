@@ -1,4 +1,4 @@
-/*! css-doodle@0.38.2 */
+/*! css-doodle@0.38.3 */
 (function () {
   'use strict';
 
@@ -4875,7 +4875,7 @@
               let temp;
               if (fname === 'doodle' && /^\d/.test(value)) {
                 temp = value;
-                value = get_value((val.arguments[1] || [])[0]);
+                value = get_value((arg.arguments[1] || [])[0]);
               }
               if (!is_nil(value)) {
                 switch (fname) {

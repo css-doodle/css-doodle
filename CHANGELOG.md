@@ -1,3 +1,7 @@
+## 0.38.3
+
+* Fix bad variable name.
+
 ## 0.38.2
 
 * Fix reading pseudo selectors.
