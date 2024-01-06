@@ -189,7 +189,7 @@ class Rules {
             let temp;
             if (fname === 'doodle' && /^\d/.test(value)) {
               temp = value;
-              value = get_value((val.arguments[1] || [])[0]);
+              value = get_value((arg.arguments[1] || [])[0]);
             }
             if (!is_nil(value)) {
               switch (fname) {
