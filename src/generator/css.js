@@ -371,7 +371,7 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol }) {
+  add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d }) {
     if (fill) {
       this.add_rule(':host', `background-color:${fill};`);
     }
@@ -405,12 +405,17 @@ class Rules {
       `);
     }
     if (flexRow) {
-      this.add_rule(':container', `display:flex;`);
-      this.add_rule('cell', `flex: 1;`);
+      this.add_rule(':container', 'display:flex;');
+      this.add_rule('cell', 'flex: 1;');
     }
     if (flexCol) {
-      this.add_rule(':container', `display:flex;flex-direction:column;`);
-      this.add_rule('cell', `flex:1;`);
+      this.add_rule(':container', 'display:flex;flex-direction:column;');
+      this.add_rule('cell', 'flex:1;');
+    }
+    if (p3d) {
+      let s = 'transform-style:preserve-3d;';
+      this.add_rule(':host', s);
+      this.add_rule(':container', s);
     }
   }
 

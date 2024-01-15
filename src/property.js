@@ -75,12 +75,19 @@ export default add_alias({
   grid(value, options) {
     let result = {
       clip: true,
+      p3d: false,
     };
-    if (/no\-*clip/i.test(value)) {
-      result.clip = false;
-      value = value.replace(/no\-*clip/i, '');
+    let temp = [];
+    for (let item of parse_value_group(value, {symbol: ' '})) {
+      if (/^no\-*clip$/i.test(item)) {
+        result.clip = false;
+      } else if (/^p3d$/i.test(item)) {
+        result.p3d = true;
+      } else {
+        temp.push(item);
+      }
     }
-    let groups = parse_value_group(value, {
+    let groups = parse_value_group(temp.join(' '), {
       symbol: ['/', '+', '^', '*', '|', '-', '~', '∆'],
       noSpace: true,
       verbose: true
