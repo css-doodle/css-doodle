@@ -29,6 +29,9 @@
   ],
   "exports": {
     ".": "./css-doodle.min.js",
+    "./component": {
+      "import": "./src/exports/component/index.js"
+    },
     "./generator": {
       "import": "./src/exports/generator/index.js"
     },
