@@ -1,2 +1,2 @@
-import { CSSDoodle, register } from './component.js';
-register('css-doodle', CSSDoodle);
+import { CSSDoodle, define } from './component.js';
+define('css-doodle', CSSDoodle);

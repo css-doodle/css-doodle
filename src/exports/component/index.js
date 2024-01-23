@@ -1,5 +1,5 @@
-import { CSSDoodle, register } from '../../component.js';
+import { CSSDoodle, define } from '../../component.js';
 
 export {
-  CSSDoodle, register
+  CSSDoodle, define
 }

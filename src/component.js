@@ -543,7 +543,7 @@ export class CSSDoodle extends HTMLElement {
   }
 }
 
-export function register(name, element) {
+export function define(name, element) {
   if (customElements !== 'undefined' && !customElements.get(name)) {
     customElements.define(name, element);
   }
