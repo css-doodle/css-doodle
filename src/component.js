@@ -552,7 +552,7 @@ export function define(name, element) {
 function get_basic_styles(grid) {
   let { x, y } = grid || {};
   return `
-    *,*::after,*::before {
+    *,*::after,*::before,:host,.host {
       box-sizing: border-box;
     }
     :host,.host {
@@ -560,8 +560,7 @@ function get_basic_styles(grid) {
       visibility: visible;
       width: auto;
       height: auto;
-      contain: content;
-      box-sizing: border-box;
+      contain: strict;
       --${utime.name}: 0
     }
     :host([hidden]),[hidden] {
