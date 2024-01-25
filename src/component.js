@@ -44,10 +44,18 @@ export class CSSDoodle extends HTMLElement {
 
   cleanup() {
     Cache.clear();
-    for (let animation of this.animations) {
-      animation.cancel();
+    if (this.compiled) {
+      for (let animation of this.animations) {
+        animation.cancel();
+      }
+      this.animations = [];
+      let { pattern, shaders } = this.compiled;
+      if (Object.keys(pattern).length || Object.keys(shaders).length) {
+        for (let el of this.shadowRoot.querySelectorAll('cell')) {
+          el.style.cssText = '';
+        }
+      }
     }
-    this.animations = [];
   }
 
   update(styles) {
