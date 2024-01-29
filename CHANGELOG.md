@@ -1,3 +1,10 @@
+## 0.38.4
+
+* Cleanup inline styles on update.
+* Use `contain:strict` for css-doodle element.
+* New export `css-doodle/component` for importng CSSDoodle class itself.
+* Add `p3d` (preserve-3d) keyword for grid.
+
 ## 0.38.3
 
 * Fix bad variable name.

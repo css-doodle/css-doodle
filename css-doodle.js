@@ -1,4 +1,4 @@
-/*! css-doodle@0.38.3 */
+/*! css-doodle@0.38.4 */
 (function () {
   'use strict';
 
@@ -4207,12 +4207,19 @@
     grid(value, options) {
       let result = {
         clip: true,
+        p3d: false,
       };
-      if (/no\-*clip/i.test(value)) {
-        result.clip = false;
-        value = value.replace(/no\-*clip/i, '');
+      let temp = [];
+      for (let item of parse$9(value, {symbol: ' '})) {
+        if (/^no\-*clip$/i.test(item)) {
+          result.clip = false;
+        } else if (/^p3d$/i.test(item)) {
+          result.p3d = true;
+        } else {
+          temp.push(item);
+        }
       }
-      let groups = parse$9(value, {
+      let groups = parse$9(temp.join(' '), {
         symbol: ['/', '+', '^', '*', '|', '-', '~', '∆'],
         noSpace: true,
         verbose: true
@@ -5057,7 +5064,7 @@
       }
     }
 
-    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol }) {
+    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d }) {
       if (fill) {
         this.add_rule(':host', `background-color:${fill};`);
       }
@@ -5091,12 +5098,17 @@
       `);
       }
       if (flexRow) {
-        this.add_rule(':container', `display:flex;`);
-        this.add_rule('cell', `flex: 1;`);
+        this.add_rule(':container', 'display:flex;');
+        this.add_rule('cell', 'flex: 1;');
       }
       if (flexCol) {
-        this.add_rule(':container', `display:flex;flex-direction:column;`);
-        this.add_rule('cell', `flex:1;`);
+        this.add_rule(':container', 'display:flex;flex-direction:column;');
+        this.add_rule('cell', 'flex:1;');
+      }
+      if (p3d) {
+        let s = 'transform-style:preserve-3d;';
+        this.add_rule(':host', s);
+        this.add_rule(':container', s);
       }
     }
 
@@ -6183,539 +6195,548 @@ void main() {
     }
   }
 
-  if (typeof customElements !== 'undefined') {
-    class Doodle extends HTMLElement {
-      constructor() {
-        super();
-        this.doodle = this.attachShadow({ mode: 'open' });
-        this.animations = [];
-        this.extra = {
-          get_variable: name => get_variable(this, name),
-          get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
-        };
-      }
+  class CSSDoodle extends HTMLElement {
+    constructor() {
+      super();
+      this.doodle = this.attachShadow({ mode: 'open' });
+      this.animations = [];
+      this.extra = {
+        get_variable: name => get_variable(this, name),
+        get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
+      };
+    }
 
-      connectedCallback(again) {
-        if (this.innerHTML) {
-          this.load(again);
-        } else {
-          setTimeout(() => this.load(again));
-        }
+    connectedCallback(again) {
+      if (this.innerHTML) {
+        this.load(again);
+      } else {
+        setTimeout(() => this.load(again));
       }
+    }
 
-      disconnectedCallback() {
-        this.cleanup();
-      }
+    disconnectedCallback() {
+      this.cleanup();
+    }
 
-      cleanup() {
-        Cache.clear();
+    cleanup() {
+      Cache.clear();
+      if (this.compiled) {
         for (let animation of this.animations) {
           animation.cancel();
         }
         this.animations = [];
-      }
-
-      update(styles) {
-        this.cleanup();
-        // Use old rules to update
-        if (!styles) {
-          styles = un_entity(this._innerHTML);
-        }
-        if (this._innerHTML !== styles) {
-          this._innerHTML = styles;
-        }
-        if (!this.grid_size) {
-          this.grid_size = this.get_grid();
-        }
-
-        const { x: gx, y: gy, z: gz } = this.grid_size;
-        const use = this.get_use();
-
-        let old_content = '';
-        let old_styles = '';
-        if (this.compiled) {
-          old_content = this.compiled.content;
-          old_styles = this.compiled.styles.all;
-        }
-
-        const compiled = this.generate(parse$7(use + styles, this.extra));
-
-        let grid = compiled.grid || this.get_grid();
-        let { x, y, z } = grid;
-
-        let should_rebuild = (
-             !this.shadowRoot.innerHTML
-          ||  this.shadowRoot.querySelector('css-doodle')
-          || (gx !== x || gy !== y || gz !== z)
-          || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
-        );
-
-        Object.assign(this.grid_size, grid);
-
-        if (should_rebuild) {
-          return compiled.grid
-            ? this.build_grid(compiled, grid)
-            : this.build_grid(this.generate(parse$7(use + styles, this.extra)), grid);
-        }
-
-        let replace = this.replace(compiled);
-        if (compiled.props.has_animation) {
-          this.set_style(old_styles.replace(/animation/g, 'x'));
-          this.reflow();
-        }
-        this.set_style(replace(
-          get_basic_styles(this.grid_size) +
-          compiled.styles.all
-        ));
-      }
-
-      get grid() {
-        return Object.assign({}, this.grid_size);
-      }
-
-      set grid(grid) {
-        this.attr('grid', grid);
-        this.connectedCallback(true);
-      }
-
-      get seed() {
-        return this._seed_value;
-      }
-
-      set seed(seed) {
-        this.attr('seed', seed);
-        this.connectedCallback(true);
-      }
-
-      get use() {
-        return this.attr('use');
-      }
-
-      set use(use) {
-        this.attr('use', use);
-        this.connectedCallback(true);
-      }
-
-      get_max_grid() {
-        return this.hasAttribute('experimental') ? 256 : 64;
-      }
-
-      get_grid() {
-        return parse_grid(this.attr('grid'), this.get_max_grid());
-      }
-
-      get_use() {
-        let use = String(this.attr('use') || '').trim();
-        if (/^var\(/.test(use)) {
-          use = `@use:${use};`;
-        }
-        return use;
-      }
-
-      attr(name, value) {
-        let len = arguments.length;
-        if (len === 1) {
-          return this.getAttribute(name);
-        }
-        if (len === 2) {
-          this.setAttribute(name, value);
-          return value;
-        }
-      }
-
-      generate(parsed) {
-        let grid = this.get_grid();
-        let seed = this.attr('seed') || this.attr('data-seed');
-        if (is_nil(seed)) {
-          seed = Date.now();
-        }
-        let compiled = this.compiled = generate_css(
-          parsed, grid, seed, this.get_max_grid()
-        );
-        this._seed_value = compiled.seed;
-        this._seed_random = compiled.random;
-        return compiled;
-      }
-
-      doodle_to_image(code, options, fn) {
-        if (typeof options === 'function') {
-          fn = options;
-          options = null;
-        }
-        code = ':doodle {width:100%;height:100%}' + code;
-        let parsed = parse$7(code, this.extra);
-        let _grid = parse_grid('');
-        let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
-        let grid = compiled.grid ? compiled.grid : _grid;
-        let viewBox = '';
-        if (options && options.arg) {
-          let v = parse_grid(options.arg, Infinity);
-          if (v.x && v.y) {
-            options.width = v.x + 'px';
-            options.height = v.y + 'px';
-            viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
+        let { pattern, shaders } = this.compiled;
+        if (Object.keys(pattern).length || Object.keys(shaders).length) {
+          for (let el of this.shadowRoot.querySelectorAll('cell')) {
+            el.style.cssText = '';
           }
-        }
-
-        let replace = this.replace(compiled);
-        let grid_container = create_grid(grid, compiled.content);
-
-        let size = (options && options.width && options.height)
-          ? `width="${options.width}" height="${options.height}"`
-          : '';
-
-        replace(`
-        <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
-          <foreignObject width="100%" height="100%">
-            <div class="host" width="100%" height="100%" ${NSXHtml}>
-              <style>
-                ${get_basic_styles(grid)}
-                ${compiled.styles.all}
-              </style>
-              ${grid_container}
-            </div>
-          </foreignObject>
-        </svg>
-      `).then(result => {
-          let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
-          if (is_safari()) {
-            cache_image(source);
-          }
-          fn(source);
-        });
-      }
-
-      pattern_to_image({ code, cell, id }, fn) {
-        let shader = draw_pattern(code, this.extra);
-        this.shader_to_image({ shader, cell, id }, fn);
-      }
-
-      pause() {
-        this.setAttribute('cssd-paused', true);
-        for (let animation of this.animations) {
-          animation.pause();
-        }
-      }
-
-      resume() {
-        this.removeAttribute('cssd-paused');
-        for (let animation of this.animations) {
-          animation.resume();
-        }
-      }
-
-      shader_to_image({ shader, cell, id }, fn) {
-        const element = this.doodle.getElementById(cell);
-        if (!element) {
-          return false;
-        }
-        let { width, height } = element.getBoundingClientRect();
-        let ratio = devicePixelRatio || 1;
-        let seed = this.seed;
-        let parsed = typeof shader === 'string' ? parse$6(shader) : shader;
-        parsed.width = width;
-        parsed.height = height;
-
-        let sources = parsed.textures;
-        let images = [];
-
-        const set_shader_prop = v => {
-          element.style.setProperty(id, `url(${v})`);
-        };
-
-        const tick = v => {
-          if (typeof v === 'function') {
-            this.animations.push(createAnimation(t => {
-              set_shader_prop(v(t, width, height, images));
-            }));
-          } else {
-            set_shader_prop(v);
-          }
-        };
-
-        const transform = (sources, fn) => {
-          Promise.all(sources.map(({ name, value }) => {
-            return new Promise(resolve => {
-              this.doodle_to_image(value, {width, height}, src => {
-                let img = new Image();
-                img.width = width * ratio;
-                img.height = width * ratio;
-                img.onload = () => resolve({ name, value: img });
-                img.src = src;
-              });
-            });
-          })).then(fn);
-        };
-
-        if (!element.observer) {
-          element.observer = new ResizeObserver(() => {
-            let rect = element.getBoundingClientRect();
-            width = rect.width;
-            height = rect.height;
-            transform(sources, result => images = result);
-          });
-          element.observer.observe(element);
-        }
-
-        if (sources.length) {
-          transform(sources, result => {
-            parsed.textures = images = result;
-            parsed.width = width;
-            parsed.height = height;
-            draw_shader(parsed, seed).then(tick).then(fn);
-          });
-        } else {
-          draw_shader(parsed, seed).then(tick).then(fn);
-        }
-      }
-
-      load(again) {
-        this.cleanup();
-        let use = this.get_use();
-        let parsed = parse$7(use + un_entity(this.innerHTML), this.extra);
-        let compiled = this.generate(parsed);
-
-        if (!again) {
-          if (this.hasAttribute('click-to-update')) {
-            this.addEventListener('click', e => this.update());
-          }
-        }
-
-        this.grid_size = compiled.grid
-          ? compiled.grid
-          : this.get_grid();
-
-        this.build_grid(compiled, this.grid_size);
-        this._innerHTML = this.innerHTML;
-        this.innerHTML = '';
-      }
-
-      replace({ doodles, shaders, pattern }) {
-        let doodle_ids = Object.keys(doodles);
-        let shader_ids = Object.keys(shaders);
-        let pattern_ids = Object.keys(pattern);
-        let length = doodle_ids.length + shader_ids.length + pattern_ids.length;
-        return input => {
-          if (!length) {
-            return Promise.resolve(input);
-          }
-          let mappings = [].concat(
-            doodle_ids.map(id => {
-              if (input.includes(id)) {
-                return new Promise(resolve => {
-                  let { arg, doodle } = doodles[id];
-                  this.doodle_to_image(doodle, { arg }, value => resolve({ id, value }));
-                });
-              } else {
-                return Promise.resolve('');
-              }
-            }),
-            shader_ids.map(id => {
-              if (input.includes(id)) {
-                return new Promise(resolve => {
-                  this.shader_to_image(shaders[id], value => resolve({ id, value }));
-                });
-              } else {
-                return Promise.resolve('');
-              }
-            }),
-            pattern_ids.map(id => {
-              if (input.includes(id)) {
-                return new Promise(resolve => {
-                  this.pattern_to_image(pattern[id], value => resolve({ id, value }));
-                });
-              } else {
-                return Promise.resolve('');
-              }
-            }),
-          );
-
-          return Promise.all(mappings).then(mapping => {
-            for (let {id, value} of mapping) {
-              /* default to data-uri for doodle and pattern */
-              let target = `url(${value})`;
-              /* shader uses css vars */
-              if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
-              input = input.replaceAll('${' + id + '}', target);
-            }
-            return input;
-          });
-        }
-      }
-
-      reflow() {
-        this.shadowRoot.querySelector('grid').offsetWidth;
-      }
-
-      build_grid(compiled, grid) {
-        const { has_transition, has_animation } = compiled.props;
-        let has_delay = (has_transition || has_animation);
-        const { uniforms, content, styles } = compiled;
-
-        this.doodle.innerHTML = `
-        <style>${get_basic_styles(grid) + styles.main}</style>
-        ${create_grid(grid, content)}
-      `;
-        if (has_delay) {
-          this.reflow();
-        }
-        let replace = this.replace(compiled);
-        this.set_style(replace(
-          get_basic_styles(grid) +
-          styles.all
-        ));
-        if (uniforms.time) {
-          this.register_utime();
-        }
-        if (uniforms.mousex || uniforms.mousey) {
-          this.register_umouse(uniforms);
-        } else {
-          this.remove_umouse();
-        }
-        if (uniforms.width || uniforms.height) {
-          this.register_usize(uniforms);
-        } else {
-          this.remove_usize();
-        }
-      }
-
-      register_umouse(uniforms) {
-        if (!this.umouse_fn) {
-          this.umouse_fn = e => {
-            let data = e.detail || e;
-            if (uniforms.mousex) {
-              this.style.setProperty('--' + umousex.name, data.offsetX);
-            }
-            if (uniforms.mousey) {
-              this.style.setProperty('--' + umousey.name, data.offsetY);
-            }
-          };
-          this.addEventListener('pointermove', this.umouse_fn);
-          let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
-          this.dispatchEvent(event);
-        }
-      }
-
-      remove_umouse() {
-        if (this.umouse_fn) {
-          this.style.removeProperty('--' + umousex.name);
-          this.style.removeProperty('--' + umousey.name);
-          this.removeEventListener('pointermove', this.umouse_fn);
-          this.umouse_fn = null;
-        }
-      }
-
-      register_usize(uniforms) {
-        if (!this.usize_observer) {
-          this.usize_observer = new ResizeObserver(() => {
-            let box = this.getBoundingClientRect();
-            if (uniforms.width) {
-              this.style.setProperty('--' + uwidth.name, box.width);
-            }
-            if (uniforms.height) {
-              this.style.setProperty('--' + uheight.name, box.height);
-            }
-          });
-          this.usize_observer.observe(this);
-        }
-      }
-
-      remove_usize() {
-        if (this.usize_observer) {
-          this.style.removeProperty('--' + uwidth.name);
-          this.style.removeProperty('--' + uheight.name);
-          this.usize_observer.unobserve(this);
-          this.usize_observer = null;
-        }
-      }
-
-      register_utime() {
-        if (!this.is_utime_set) {
-          try {
-            CSS.registerProperty({
-              name: '--' + utime.name,
-              syntax: '<number>',
-              initialValue: 0,
-              inherits: true
-            });
-          } catch (e) {}
-          this.is_utime_set = true;
-        }
-      }
-
-      export({ scale, name, download, detail } = {}) {
-        return new Promise((resolve, reject) => {
-          let variables = get_all_variables(this);
-          let html = this.doodle.innerHTML;
-
-          let { width, height } = this.getBoundingClientRect();
-          scale = parseInt(scale) || 1;
-
-          let w = width * scale;
-          let h = height * scale;
-
-          let svg = `
-          <svg ${NS}
-            preserveAspectRatio="none"
-            viewBox="0 0 ${width} ${height}"
-            ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
-          >
-            <foreignObject width="100%" height="100%">
-              <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
-                <style>.host {${entity(variables)}}</style>
-                ${html}
-              </div>
-            </foreignObject>
-          </svg>
-        `;
-
-          if (download || detail) {
-            svg_to_png(svg, w, h, scale)
-              .then(({ source, url, blob }) => {
-                resolve({
-                  width: w, height: h, svg, blob, source
-                });
-                if (download) {
-                  let a = document.createElement('a');
-                  a.download = get_png_name(name);
-                  a.href = url;
-                  a.click();
-                }
-              })
-              .catch(error => {
-                reject(error);
-              });
-          } else {
-            resolve({
-              width: w, height: h, svg: svg
-            });
-          }
-        });
-      }
-
-      set_style(input) {
-        if (input instanceof Promise) {
-          input.then(v => {
-            this.set_style(v);
-          });
-        } else {
-          const el = this.shadowRoot.querySelector('style');
-          let v = input.replace(/\n\s+/g, ' ');
-          el && (el.styleSheet
-            ? (el.styleSheet.cssText = v)
-            : (el.innerHTML = v));
         }
       }
     }
-    if (!customElements.get('css-doodle')) {
-      customElements.define('css-doodle', Doodle);
+
+    update(styles) {
+      this.cleanup();
+      // Use old rules to update
+      if (!styles) {
+        styles = un_entity(this._innerHTML);
+      }
+      if (this._innerHTML !== styles) {
+        this._innerHTML = styles;
+      }
+      if (!this.grid_size) {
+        this.grid_size = this.get_grid();
+      }
+
+      const { x: gx, y: gy, z: gz } = this.grid_size;
+      const use = this.get_use();
+
+      let old_content = '';
+      let old_styles = '';
+      if (this.compiled) {
+        old_content = this.compiled.content;
+        old_styles = this.compiled.styles.all;
+      }
+
+      const compiled = this.generate(parse$7(use + styles, this.extra));
+
+      let grid = compiled.grid || this.get_grid();
+      let { x, y, z } = grid;
+
+      let should_rebuild = (
+           !this.shadowRoot.innerHTML
+        ||  this.shadowRoot.querySelector('css-doodle')
+        || (gx !== x || gy !== y || gz !== z)
+        || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
+      );
+
+      Object.assign(this.grid_size, grid);
+
+      if (should_rebuild) {
+        return compiled.grid
+          ? this.build_grid(compiled, grid)
+          : this.build_grid(this.generate(parse$7(use + styles, this.extra)), grid);
+      }
+
+      let replace = this.replace(compiled);
+      if (compiled.props.has_animation) {
+        this.set_style(old_styles.replace(/animation/g, 'x'));
+        this.reflow();
+      }
+      this.set_style(replace(
+        get_basic_styles(this.grid_size) +
+        compiled.styles.all
+      ));
+    }
+
+    get grid() {
+      return Object.assign({}, this.grid_size);
+    }
+
+    set grid(grid) {
+      this.attr('grid', grid);
+      this.connectedCallback(true);
+    }
+
+    get seed() {
+      return this._seed_value;
+    }
+
+    set seed(seed) {
+      this.attr('seed', seed);
+      this.connectedCallback(true);
+    }
+
+    get use() {
+      return this.attr('use');
+    }
+
+    set use(use) {
+      this.attr('use', use);
+      this.connectedCallback(true);
+    }
+
+    get_max_grid() {
+      return this.hasAttribute('experimental') ? 256 : 64;
+    }
+
+    get_grid() {
+      return parse_grid(this.attr('grid'), this.get_max_grid());
+    }
+
+    get_use() {
+      let use = String(this.attr('use') || '').trim();
+      if (/^var\(/.test(use)) {
+        use = `@use:${use};`;
+      }
+      return use;
+    }
+
+    attr(name, value) {
+      let len = arguments.length;
+      if (len === 1) {
+        return this.getAttribute(name);
+      }
+      if (len === 2) {
+        this.setAttribute(name, value);
+        return value;
+      }
+    }
+
+    generate(parsed) {
+      let grid = this.get_grid();
+      let seed = this.attr('seed') || this.attr('data-seed');
+      if (is_nil(seed)) {
+        seed = Date.now();
+      }
+      let compiled = this.compiled = generate_css(
+        parsed, grid, seed, this.get_max_grid()
+      );
+      this._seed_value = compiled.seed;
+      this._seed_random = compiled.random;
+      return compiled;
+    }
+
+    doodle_to_image(code, options, fn) {
+      if (typeof options === 'function') {
+        fn = options;
+        options = null;
+      }
+      code = ':doodle {width:100%;height:100%}' + code;
+      let parsed = parse$7(code, this.extra);
+      let _grid = parse_grid('');
+      let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
+      let grid = compiled.grid ? compiled.grid : _grid;
+      let viewBox = '';
+      if (options && options.arg) {
+        let v = parse_grid(options.arg, Infinity);
+        if (v.x && v.y) {
+          options.width = v.x + 'px';
+          options.height = v.y + 'px';
+          viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
+        }
+      }
+
+      let replace = this.replace(compiled);
+      let grid_container = create_grid(grid, compiled.content);
+
+      let size = (options && options.width && options.height)
+        ? `width="${options.width}" height="${options.height}"`
+        : '';
+
+      replace(`
+      <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
+        <foreignObject width="100%" height="100%">
+          <div class="host" width="100%" height="100%" ${NSXHtml}>
+            <style>
+              ${get_basic_styles(grid)}
+              ${compiled.styles.all}
+            </style>
+            ${grid_container}
+          </div>
+        </foreignObject>
+      </svg>
+    `).then(result => {
+        let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
+        if (is_safari()) {
+          cache_image(source);
+        }
+        fn(source);
+      });
+    }
+
+    pattern_to_image({ code, cell, id }, fn) {
+      let shader = draw_pattern(code, this.extra);
+      this.shader_to_image({ shader, cell, id }, fn);
+    }
+
+    pause() {
+      this.setAttribute('cssd-paused', true);
+      for (let animation of this.animations) {
+        animation.pause();
+      }
+    }
+
+    resume() {
+      this.removeAttribute('cssd-paused');
+      for (let animation of this.animations) {
+        animation.resume();
+      }
+    }
+
+    shader_to_image({ shader, cell, id }, fn) {
+      const element = this.doodle.getElementById(cell);
+      if (!element) {
+        return false;
+      }
+      let { width, height } = element.getBoundingClientRect();
+      let ratio = devicePixelRatio || 1;
+      let seed = this.seed;
+      let parsed = typeof shader === 'string' ? parse$6(shader) : shader;
+      parsed.width = width;
+      parsed.height = height;
+
+      let sources = parsed.textures;
+      let images = [];
+
+      const set_shader_prop = v => {
+        element.style.setProperty(id, `url(${v})`);
+      };
+
+      const tick = v => {
+        if (typeof v === 'function') {
+          this.animations.push(createAnimation(t => {
+            set_shader_prop(v(t, width, height, images));
+          }));
+        } else {
+          set_shader_prop(v);
+        }
+      };
+
+      const transform = (sources, fn) => {
+        Promise.all(sources.map(({ name, value }) => {
+          return new Promise(resolve => {
+            this.doodle_to_image(value, {width, height}, src => {
+              let img = new Image();
+              img.width = width * ratio;
+              img.height = width * ratio;
+              img.onload = () => resolve({ name, value: img });
+              img.src = src;
+            });
+          });
+        })).then(fn);
+      };
+
+      if (!element.observer) {
+        element.observer = new ResizeObserver(() => {
+          let rect = element.getBoundingClientRect();
+          width = rect.width;
+          height = rect.height;
+          transform(sources, result => images = result);
+        });
+        element.observer.observe(element);
+      }
+
+      if (sources.length) {
+        transform(sources, result => {
+          parsed.textures = images = result;
+          parsed.width = width;
+          parsed.height = height;
+          draw_shader(parsed, seed).then(tick).then(fn);
+        });
+      } else {
+        draw_shader(parsed, seed).then(tick).then(fn);
+      }
+    }
+
+    load(again) {
+      this.cleanup();
+      let use = this.get_use();
+      let parsed = parse$7(use + un_entity(this.innerHTML), this.extra);
+      let compiled = this.generate(parsed);
+
+      if (!again) {
+        if (this.hasAttribute('click-to-update')) {
+          this.addEventListener('click', e => this.update());
+        }
+      }
+
+      this.grid_size = compiled.grid
+        ? compiled.grid
+        : this.get_grid();
+
+      this.build_grid(compiled, this.grid_size);
+      this._innerHTML = this.innerHTML;
+      this.innerHTML = '';
+    }
+
+    replace({ doodles, shaders, pattern }) {
+      let doodle_ids = Object.keys(doodles);
+      let shader_ids = Object.keys(shaders);
+      let pattern_ids = Object.keys(pattern);
+      let length = doodle_ids.length + shader_ids.length + pattern_ids.length;
+      return input => {
+        if (!length) {
+          return Promise.resolve(input);
+        }
+        let mappings = [].concat(
+          doodle_ids.map(id => {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
+                let { arg, doodle } = doodles[id];
+                this.doodle_to_image(doodle, { arg }, value => resolve({ id, value }));
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          }),
+          shader_ids.map(id => {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
+                this.shader_to_image(shaders[id], value => resolve({ id, value }));
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          }),
+          pattern_ids.map(id => {
+            if (input.includes(id)) {
+              return new Promise(resolve => {
+                this.pattern_to_image(pattern[id], value => resolve({ id, value }));
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          }),
+        );
+
+        return Promise.all(mappings).then(mapping => {
+          for (let {id, value} of mapping) {
+            /* default to data-uri for doodle and pattern */
+            let target = `url(${value})`;
+            /* shader uses css vars */
+            if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
+            input = input.replaceAll('${' + id + '}', target);
+          }
+          return input;
+        });
+      }
+    }
+
+    reflow() {
+      this.shadowRoot.querySelector('grid').offsetWidth;
+    }
+
+    build_grid(compiled, grid) {
+      const { has_transition, has_animation } = compiled.props;
+      let has_delay = (has_transition || has_animation);
+      const { uniforms, content, styles } = compiled;
+
+      this.doodle.innerHTML = `
+      <style>${get_basic_styles(grid) + styles.main}</style>
+      ${create_grid(grid, content)}
+    `;
+      if (has_delay) {
+        this.reflow();
+      }
+      let replace = this.replace(compiled);
+      this.set_style(replace(
+        get_basic_styles(grid) +
+        styles.all
+      ));
+      if (uniforms.time) {
+        this.register_utime();
+      }
+      if (uniforms.mousex || uniforms.mousey) {
+        this.register_umouse(uniforms);
+      } else {
+        this.remove_umouse();
+      }
+      if (uniforms.width || uniforms.height) {
+        this.register_usize(uniforms);
+      } else {
+        this.remove_usize();
+      }
+    }
+
+    register_umouse(uniforms) {
+      if (!this.umouse_fn) {
+        this.umouse_fn = e => {
+          let data = e.detail || e;
+          if (uniforms.mousex) {
+            this.style.setProperty('--' + umousex.name, data.offsetX);
+          }
+          if (uniforms.mousey) {
+            this.style.setProperty('--' + umousey.name, data.offsetY);
+          }
+        };
+        this.addEventListener('pointermove', this.umouse_fn);
+        let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
+        this.dispatchEvent(event);
+      }
+    }
+
+    remove_umouse() {
+      if (this.umouse_fn) {
+        this.style.removeProperty('--' + umousex.name);
+        this.style.removeProperty('--' + umousey.name);
+        this.removeEventListener('pointermove', this.umouse_fn);
+        this.umouse_fn = null;
+      }
+    }
+
+    register_usize(uniforms) {
+      if (!this.usize_observer) {
+        this.usize_observer = new ResizeObserver(() => {
+          let box = this.getBoundingClientRect();
+          if (uniforms.width) {
+            this.style.setProperty('--' + uwidth.name, box.width);
+          }
+          if (uniforms.height) {
+            this.style.setProperty('--' + uheight.name, box.height);
+          }
+        });
+        this.usize_observer.observe(this);
+      }
+    }
+
+    remove_usize() {
+      if (this.usize_observer) {
+        this.style.removeProperty('--' + uwidth.name);
+        this.style.removeProperty('--' + uheight.name);
+        this.usize_observer.unobserve(this);
+        this.usize_observer = null;
+      }
+    }
+
+    register_utime() {
+      if (!this.is_utime_set) {
+        try {
+          CSS.registerProperty({
+            name: '--' + utime.name,
+            syntax: '<number>',
+            initialValue: 0,
+            inherits: true
+          });
+        } catch (e) {}
+        this.is_utime_set = true;
+      }
+    }
+
+    export({ scale, name, download, detail } = {}) {
+      return new Promise((resolve, reject) => {
+        let variables = get_all_variables(this);
+        let html = this.doodle.innerHTML;
+
+        let { width, height } = this.getBoundingClientRect();
+        scale = parseInt(scale) || 1;
+
+        let w = width * scale;
+        let h = height * scale;
+
+        let svg = `
+        <svg ${NS}
+          preserveAspectRatio="none"
+          viewBox="0 0 ${width} ${height}"
+          ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
+        >
+          <foreignObject width="100%" height="100%">
+            <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
+              <style>.host {${entity(variables)}}</style>
+              ${html}
+            </div>
+          </foreignObject>
+        </svg>
+      `;
+
+        if (download || detail) {
+          svg_to_png(svg, w, h, scale)
+            .then(({ source, url, blob }) => {
+              resolve({
+                width: w, height: h, svg, blob, source
+              });
+              if (download) {
+                let a = document.createElement('a');
+                a.download = get_png_name(name);
+                a.href = url;
+                a.click();
+              }
+            })
+            .catch(error => {
+              reject(error);
+            });
+        } else {
+          resolve({
+            width: w, height: h, svg: svg
+          });
+        }
+      });
+    }
+
+    set_style(input) {
+      if (input instanceof Promise) {
+        input.then(v => {
+          this.set_style(v);
+        });
+      } else {
+        const el = this.shadowRoot.querySelector('style');
+        let v = input.replace(/\n\s+/g, ' ');
+        el && (el.styleSheet
+          ? (el.styleSheet.cssText = v)
+          : (el.innerHTML = v));
+      }
+    }
+  }
+
+  function define(name, element) {
+    if (customElements !== 'undefined' && !customElements.get(name)) {
+      customElements.define(name, element);
     }
   }
 
   function get_basic_styles(grid) {
     let { x, y } = grid || {};
     return `
-    *,*::after,*::before {
+    *,*::after,*::before,:host,.host {
       box-sizing: border-box;
     }
     :host,.host {
@@ -6723,8 +6744,7 @@ void main() {
       visibility: visible;
       width: auto;
       height: auto;
-      contain: content;
-      box-sizing: border-box;
+      contain: strict;
       --${utime.name}: 0
     }
     :host([hidden]),[hidden] {
@@ -6786,5 +6806,7 @@ void main() {
     }
     return `<grid>${result}</grid>`;
   }
+
+  define('css-doodle', CSSDoodle);
 
 })();
