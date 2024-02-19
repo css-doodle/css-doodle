@@ -79,7 +79,9 @@ export default add_alias({
     };
     let temp = [];
     for (let item of parse_value_group(value, {symbol: ' '})) {
-      if (/^no\-*clip$/i.test(item)) {
+      if (/border:?/i.test(item)) {
+        result.border = item.split(':')[1] || '';
+      } else if (/^no\-*clip$/i.test(item)) {
         result.clip = false;
       } else if (/^p3d$/i.test(item)) {
         result.p3d = true;
