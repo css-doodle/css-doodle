@@ -239,7 +239,7 @@ const Expose = add_alias({
       context[counter] += 1;
       let max = args.length;
       let idx = lastExtra && lastExtra[6];
-      if (is_nil(idx)) idx = context[counter];
+      idx ??= context[counter];
       let pos = (idx - 1) % max;
       let value = args[pos];
       return push_stack(context, 'last_pick', value);
@@ -255,7 +255,7 @@ const Expose = add_alias({
       context[counter] += 1;
       let max = args.length;
       let idx = lastExtra && lastExtra[6];
-      if (is_nil(idx)) idx = context[counter];
+      idx ??= context[counter];
       let pos = (idx - 1) % max;
       let value = args[max - pos - 1];
       return push_stack(context, 'last_pick', value);
@@ -275,7 +275,7 @@ const Expose = add_alias({
       }
       let max = args.length;
       let idx = lastExtra && lastExtra[6];
-      if (is_nil(idx)) idx = context[counter];
+      idx ??= context[counter];
       let pos = (idx - 1) % max;
       let value = context[values][pos];
       return push_stack(context, 'last_pick', value);
@@ -724,10 +724,7 @@ const Expose = add_alias({
 
   once: lazy(({context, extra, position}, ...args) => {
     let counter = 'once-counter' + position;
-    if (is_nil(context[counter])) {
-      return context[counter] = args.map(input => get_value(input())).join(',');
-    }
-    return context[counter];
+    return context[counter] ??= args.map(input => get_value(input())).join(',');
   }),
 
   raw({ rules }) {

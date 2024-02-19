@@ -8,16 +8,13 @@ import generate_pattern from './generator/pattern.js';
 import generate_png from './generator/svg-to-png.js';
 
 import get_rgba_color from './utils/get-rgba-color.js';
-import { get_variable, get_all_variables } from './utils/variables.js';
 import Cache from './utils/cache.js';
 import create_animation from './utils/create-animation.js';
 
+import { get_variable, get_all_variables } from './utils/variables.js';
 import { NS, NSXHtml } from './utils/svg.js';
 import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
-
-import {
-  cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity
-} from './utils/index.js';
+import { cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity } from './utils/index.js';
 
 export class CSSDoodle extends HTMLElement {
   constructor() {
@@ -42,30 +39,14 @@ export class CSSDoodle extends HTMLElement {
     this.cleanup();
   }
 
-  cleanup() {
-    Cache.clear();
-    if (this.compiled) {
-      for (let animation of this.animations) {
-        animation.cancel();
-      }
-      this.animations = [];
-      let { pattern, shaders } = this.compiled;
-      if (Object.keys(pattern).length || Object.keys(shaders).length) {
-        for (let el of this.shadowRoot.querySelectorAll('cell')) {
-          el.style.cssText = '';
-        }
-      }
-    }
-  }
-
   update(styles) {
     this.cleanup();
     // Use old rules to update
     if (!styles) {
-      styles = un_entity(this._innerHTML);
+      styles = un_entity(this._code);
     }
-    if (this._innerHTML !== styles) {
-      this._innerHTML = styles;
+    if (this._code !== styles) {
+      this._code = styles;
     }
     if (!this.grid_size) {
       this.grid_size = this.get_grid();
@@ -112,6 +93,70 @@ export class CSSDoodle extends HTMLElement {
     ));
   }
 
+  pause() {
+    this.setAttribute('cssd-paused', true);
+    for (let am of this.animations) {
+      am.pause();
+    }
+  }
+
+  resume() {
+    this.removeAttribute('cssd-paused');
+    for (let am of this.animations) {
+      am.resume();
+    }
+  }
+
+  export({ scale, name, download, detail } = {}) {
+    return new Promise((resolve, reject) => {
+      let variables = get_all_variables(this);
+      let html = this.doodle.innerHTML;
+
+      let { width, height } = this.getBoundingClientRect();
+      scale = parseInt(scale) || 1;
+
+      let w = width * scale;
+      let h = height * scale;
+
+      let svg = `
+        <svg ${NS}
+          preserveAspectRatio="none"
+          viewBox="0 0 ${width} ${height}"
+          ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
+        >
+          <foreignObject width="100%" height="100%">
+            <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
+              <style>.host {${entity(variables)}}</style>
+              ${html}
+            </div>
+          </foreignObject>
+        </svg>
+      `;
+
+      if (download || detail) {
+        generate_png(svg, w, h, scale)
+          .then(({ source, url, blob }) => {
+            resolve({
+              width: w, height: h, svg, blob, source
+            });
+            if (download) {
+              let a = document.createElement('a');
+              a.download = get_png_name(name);
+              a.href = url;
+              a.click();
+            }
+          })
+          .catch(error => {
+            reject(error);
+          });
+      } else {
+        resolve({
+          width: w, height: h, svg: svg
+        });
+      }
+    });
+  }
+
   get grid() {
     return Object.assign({}, this.grid_size);
   }
@@ -153,6 +198,22 @@ export class CSSDoodle extends HTMLElement {
       use = `@use:${use};`;
     }
     return use;
+  }
+
+  cleanup() {
+    Cache.clear();
+    if (this.compiled) {
+      for (let am of this.animations) {
+        am.cancel();
+      }
+      this.animations = [];
+      let { pattern, shaders } = this.compiled;
+      if (Object.keys(pattern).length || Object.keys(shaders).length) {
+        for (let el of this.shadowRoot.querySelectorAll('cell')) {
+          el.style.cssText = '';
+        }
+      }
+    }
   }
 
   attr(name, value) {
@@ -231,20 +292,6 @@ export class CSSDoodle extends HTMLElement {
   pattern_to_image({ code, cell, id }, fn) {
     let shader = generate_pattern(code, this.extra);
     this.shader_to_image({ shader, cell, id }, fn);
-  }
-
-  pause() {
-    this.setAttribute('cssd-paused', true);
-    for (let animation of this.animations) {
-      animation.pause();
-    }
-  }
-
-  resume() {
-    this.removeAttribute('cssd-paused');
-    for (let animation of this.animations) {
-      animation.resume();
-    }
   }
 
   shader_to_image({ shader, cell, id }, fn) {
@@ -329,7 +376,7 @@ export class CSSDoodle extends HTMLElement {
       : this.get_grid();
 
     this.build_grid(compiled, this.grid_size);
-    this._innerHTML = this.innerHTML;
+    this._code = this.innerHTML;
     this.innerHTML = '';
   }
 
@@ -486,56 +533,6 @@ export class CSSDoodle extends HTMLElement {
     }
   }
 
-  export({ scale, name, download, detail } = {}) {
-    return new Promise((resolve, reject) => {
-      let variables = get_all_variables(this);
-      let html = this.doodle.innerHTML;
-
-      let { width, height } = this.getBoundingClientRect();
-      scale = parseInt(scale) || 1;
-
-      let w = width * scale;
-      let h = height * scale;
-
-      let svg = `
-        <svg ${NS}
-          preserveAspectRatio="none"
-          viewBox="0 0 ${width} ${height}"
-          ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
-        >
-          <foreignObject width="100%" height="100%">
-            <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
-              <style>.host {${entity(variables)}}</style>
-              ${html}
-            </div>
-          </foreignObject>
-        </svg>
-      `;
-
-      if (download || detail) {
-        generate_png(svg, w, h, scale)
-          .then(({ source, url, blob }) => {
-            resolve({
-              width: w, height: h, svg, blob, source
-            });
-            if (download) {
-              let a = document.createElement('a');
-              a.download = get_png_name(name);
-              a.href = url;
-              a.click();
-            }
-          })
-          .catch(error => {
-            reject(error);
-          });
-      } else {
-        resolve({
-          width: w, height: h, svg: svg
-        });
-      }
-    });
-  }
-
   set_style(input) {
     if (input instanceof Promise) {
       input.then(v => {
@@ -599,14 +596,10 @@ function get_basic_styles(grid) {
   `;
 }
 
-function get_content(input) {
-  return is_nil(input) ? '' : input;
-}
-
 function create_cell(x, y, z, content, child = '') {
   let id = cell_id(x, y, z);
-  let head = get_content(content['#' + id]);
-  let tail = get_content(child);
+  let head = content['#' + id] ?? '';
+  let tail = child ?? '';
   return `<cell id="${id}">${head}${tail}</cell>`;
 }
 

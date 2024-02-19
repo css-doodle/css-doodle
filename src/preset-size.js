@@ -51,7 +51,7 @@ function get_preset(name, mode) {
   name = String(name).toLowerCase();
 
   // Default to landscape mode
-  let [h, w] = presets[name] || [];
+  let [h, w] = presets[name] ?? [];
 
   if (modes[mode] == 'p') {
     [w, h] = [h, w];

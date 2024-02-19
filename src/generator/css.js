@@ -8,10 +8,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { utime } from '../uniforms.js';
 
 import prefixer from '../utils/prefixer.js';
-
-import {
-  cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values
-} from '../utils/index.js'
+import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values } from '../utils/index.js';
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -580,10 +577,7 @@ class Rules {
   }
 
   get_raw_value(token) {
-    let raw = token.raw();
-    if (is_nil(raw)){
-      raw = '';
-    }
+    let raw = token.raw() ?? '';
     let [_, ...rest] = raw.split(token.property);
     // It's not accurate, will be solved after the rewrite of css parser.
     rest = rest.join(token.property)
