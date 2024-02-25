@@ -7,7 +7,6 @@ import calc from '../calc.js';
 import seedrandom from '../lib/seedrandom.js';
 import { utime } from '../uniforms.js';
 
-import prefixer from '../utils/prefixer.js';
 import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values } from '../utils/index.js';
 
 function is_host_selector(s) {
@@ -472,7 +471,6 @@ class Rules {
     }
 
     let rule = `${prop}:${value};`
-    rule = prefixer(prop, rule);
 
     if (prop === 'width' || prop === 'height') {
       if (!is_special_selector(selector)) {

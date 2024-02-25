@@ -4,7 +4,6 @@ import generate_shape from './generator/shapes.js';
 
 import { is_preset, get_preset } from './preset-size.js';
 
-import prefixer from './utils/prefixer.js';
 import { add_alias } from './utils/index.js';
 import { memo } from './cache.js';
 
@@ -128,9 +127,7 @@ export default add_alias({
   shape: memo('shape-property', value => {
     let { points, preset} = generate_shape(value);
     if (!preset) return '';
-    let prop = 'clip-path';
-    let style = `${prop}: polygon(${points.join(',')});`;
-    return prefixer(prop, style);
+    return `clip-path: polygon(${points.join(',')});`;
   }),
 
   use(rules) {
