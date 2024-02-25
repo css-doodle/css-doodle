@@ -1,19 +1,19 @@
 import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { by_unit, by_charcode } from './utils/transform.js';
-import memo from './utils/memo.js';
 import expand from './utils/expand.js';
 import Stack from './utils/stack.js';
 import Noise from './utils/noise.js';
 import get_named_arguments from './utils/get-named-arguments.js';
 
-import calc from './calc.js';
-
-import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
-
 import {
   cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp,
   lazy, clamp, sequence, get_value, last
 } from './utils/index.js';
+
+import calc from './calc.js';
+import { memo } from './cache.js';
+
+import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import parse_value_group from './parser/parse-value-group.js';
 import parse_svg from './parser/parse-svg.js';

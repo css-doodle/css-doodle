@@ -1,4 +1,4 @@
-import Cache from '../utils/cache.js';
+import { cache } from '../cache.js';
 import { hash } from '../utils/index.js';
 
 function create_shader(gl, type, source) {
@@ -59,7 +59,7 @@ function load_texture(gl, image, i) {
 }
 
 export default function draw_shader(shaders, seed) {
-  let result = Cache.get(shaders);
+  let result = cache.get(shaders);
   if (result) {
     return Promise.resolve(result);
   }
@@ -151,7 +151,7 @@ void main() {
   if (uTimeLoc || uTimeDelta || uFrameLoc) {
     let frameIndex = 0;
     let currentTime = 0;
-    return Promise.resolve(Cache.set(shaders, (t, w, h, textures) => {
+    return Promise.resolve(cache.set(shaders, (t, w, h, textures) => {
       gl.clear(gl.COLOR_BUFFER_BIT);
       // update textures and resolutions
       if (shaders.width !== w || shaders.height !== h) {
@@ -178,6 +178,6 @@ void main() {
     }));
   } else {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-    return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
+    return Promise.resolve(cache.set(shaders, canvas.toDataURL()));
   }
 }

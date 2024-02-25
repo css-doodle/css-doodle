@@ -1,6 +1,6 @@
 import { last } from './index.js';
 import { by_charcode } from './transform.js';
-import memo from './memo.js';
+import { memo } from '../cache.js';
 
 function Type(type, value) {
   return { type, value };

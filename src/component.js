@@ -8,13 +8,14 @@ import generate_pattern from './generator/pattern.js';
 import generate_png from './generator/svg-to-png.js';
 
 import get_rgba_color from './utils/get-rgba-color.js';
-import Cache from './utils/cache.js';
 import create_animation from './utils/create-animation.js';
 
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { NS, NSXHtml } from './utils/svg.js';
 import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity } from './utils/index.js';
+
+import { cache } from './cache.js';
 
 export class CSSDoodle extends HTMLElement {
   constructor() {
@@ -201,7 +202,7 @@ export class CSSDoodle extends HTMLElement {
   }
 
   cleanup() {
-    Cache.clear();
+    cache.clear();
     if (this.compiled) {
       for (let am of this.animations) {
         am.cancel();

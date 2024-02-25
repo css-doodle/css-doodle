@@ -3,8 +3,7 @@
  */
 
 import { is_invalid_number, last } from './utils/index.js';
-
-const cache = new Map();
+import { cache } from './cache.js';
 
 const default_context = {
   'π': Math.PI,

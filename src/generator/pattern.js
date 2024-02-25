@@ -1,4 +1,3 @@
-import Cache from '../utils/cache.js';
 import parse_pattern from '../parser/parse-pattern.js';
 import parse_grid from '../parser/parse-grid.js';
 

@@ -5,8 +5,8 @@ import generate_shape from './generator/shapes.js';
 import { is_preset, get_preset } from './preset-size.js';
 
 import prefixer from './utils/prefixer.js';
-import memo from './utils/memo.js';
 import { add_alias } from './utils/index.js';
+import { memo } from './cache.js';
 
 const iw = '--_cell-width';
 const ih = '--_cell-height';
