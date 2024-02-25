@@ -3,7 +3,7 @@
  * Translated from: https://mrl.nyu.edu/~perlin/noise/
  */
 
-import { lerp } from './index.js';
+import { lerp } from '../utils/index.js';
 
 const map = [
   151,160,137,91,90,15,

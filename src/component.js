@@ -126,7 +126,7 @@ export class CSSDoodle extends HTMLElement {
           ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
         >
           <foreignObject width="100%" height="100%">
-            <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
+            <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
               <style>.host {${entity(variables)}}</style>
               ${html}
             </div>
@@ -456,21 +456,21 @@ export class CSSDoodle extends HTMLElement {
       styles.all
     ));
     if (uniforms.time) {
-      this.register_utime();
+      this.reg_utime();
     }
     if (uniforms.mousex || uniforms.mousey) {
-      this.register_umouse(uniforms);
+      this.reg_umouse(uniforms);
     } else {
-      this.remove_umouse();
+      this.off_umouse();
     }
     if (uniforms.width || uniforms.height) {
-      this.register_usize(uniforms);
+      this.reg_usize(uniforms);
     } else {
-      this.remove_usize();
+      this.off_usize();
     }
   }
 
-  register_umouse(uniforms) {
+  reg_umouse(uniforms) {
     if (!this.umouse_fn) {
       this.umouse_fn = e => {
         let data = e.detail || e;
@@ -487,7 +487,7 @@ export class CSSDoodle extends HTMLElement {
     }
   }
 
-  remove_umouse() {
+  off_umouse() {
     if (this.umouse_fn) {
       this.style.removeProperty('--' + umousex.name);
       this.style.removeProperty('--' + umousey.name);
@@ -496,7 +496,7 @@ export class CSSDoodle extends HTMLElement {
     }
   }
 
-  register_usize(uniforms) {
+  reg_usize(uniforms) {
     if (!this.usize_observer) {
       this.usize_observer = new ResizeObserver(() => {
         let box = this.getBoundingClientRect();
@@ -511,7 +511,7 @@ export class CSSDoodle extends HTMLElement {
     }
   }
 
-  remove_usize() {
+  off_usize() {
     if (this.usize_observer) {
       this.style.removeProperty('--' + uwidth.name);
       this.style.removeProperty('--' + uheight.name);
@@ -520,7 +520,7 @@ export class CSSDoodle extends HTMLElement {
     }
   }
 
-  register_utime() {
+  reg_utime() {
     if (!this.is_utime_set) {
       try {
         CSS.registerProperty({
