@@ -136,6 +136,14 @@ const Expose = add_alias({
     return calc_with(count/grid.count);
   },
 
+  xX({ x, grid }) {
+    return calc_with(x/grid.x);
+  },
+
+  yY({ y, grid }) {
+    return calc_with(y/grid.y);
+  },
+
   id({ x, y, z }) {
     return _ => cell_id(x, y, z);
   },
