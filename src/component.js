@@ -127,7 +127,7 @@ export class CSSDoodle extends HTMLElement {
         >
           <foreignObject width="100%" height="100%">
             <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
-              <style>.host {${entity(variables)}}</style>
+              <style>.host{${entity(variables)}}</style>
               ${html}
             </div>
           </foreignObject>

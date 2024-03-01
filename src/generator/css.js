@@ -474,12 +474,12 @@ class Rules {
 
     if (prop === 'width' || prop === 'height') {
       if (!is_special_selector(selector)) {
-        rule += `--_cell-${prop}: ${value};`;
+        rule += `--_cell-${prop}:${value};`;
       }
     }
 
     let is_image = (
-      /^(background|background\-image)$/.test(prop) &&
+      /^background(\-image)?$/.test(prop) &&
       /\$\{(shader|pattern)/.test(value)
     );
     if (is_image) {

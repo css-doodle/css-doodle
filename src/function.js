@@ -1,4 +1,3 @@
-
 import parse_value_group from './parser/parse-value-group.js';
 import parse_svg from './parser/parse-svg.js';
 import parse_svg_path from './parser/parse-svg-path.js';
