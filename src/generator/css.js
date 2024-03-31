@@ -7,7 +7,7 @@ import calc from '../calc.js';
 import seedrandom from '../lib/seedrandom.js';
 import { utime } from '../uniforms.js';
 
-import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values } from '../utils/index.js';
+import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values, hash } from '../utils/index.js';
 
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
@@ -465,6 +465,16 @@ class Rules {
       if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
         value = `'${value}'`;
       }
+      let reset = new Map();
+      value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/g, n => {
+        let name = 'c' + hash(n);
+        reset.set(name, `${name} calc(tan(atan2(${n},1)))`);
+        return `counter(${name})`;
+      });
+      return `
+        ${reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : ''}
+        content:${value};
+      `;
     }
 
     if (prop === 'transition') {
