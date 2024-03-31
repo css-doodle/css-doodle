@@ -5,6 +5,6 @@ export default {
   output: {
     format: 'iife',
     file: 'css-doodle.js',
-    banner: `/*! css-doodle@${ info.version } */`
+    banner: `/*! css-doodle v${info.version} MIT licensed */`
   }
 }

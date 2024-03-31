@@ -11,7 +11,6 @@ if (!target) {
 
 try {
   const content = fs.readFileSync(target, 'utf8')
-    .replace(/\n/g, '')
     .replace(/([>;{}])\\n/g, '$1')
     .replace(/([:;><{\`])\s+/g, '$1')
     .replace(/\s+([:;><}{\`])/g, '$1')
