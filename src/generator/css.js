@@ -675,7 +675,12 @@ class Rules {
     (tokens || this.tokens).forEach((token, i) => {
       if (token.skip) return false;
       if (initial && this.grid) return false;
-
+      if (token.property === '@gap' && this.is_gap_set) {
+        return false;
+      }
+      if (token.property === '@grid' && this.is_grid_set) {
+        return false;
+      }
       switch (token.type) {
         case 'rule': {
           this.add_rule(
