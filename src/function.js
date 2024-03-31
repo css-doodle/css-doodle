@@ -527,13 +527,14 @@ const Expose = add_alias({
     });
     let style = `points: ${points};`;
     let props = '';
+    let p = rules.padding ?? Number(rules['stroke-width']) / 2;
     for (let name of Object.keys(rules)) {
       if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
         props += `${name}: ${rules[name]};`
       }
     };
     let parsed = parse_svg(`
-      viewBox: -1 -1 2 2 p ${Number(rules['stroke-width'])/2};
+      viewBox: -1 -1 2 2 p ${p};
       polygon {
         ${props} ${style}
       }
