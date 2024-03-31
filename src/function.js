@@ -234,10 +234,12 @@ const Expose = add_alias({
     });
   },
 
-  pl({ context, extra, position }) {
-    let lastExtra = last(extra);
+  pl({ context, extra, upextra, position }, upstream) {
+    let lastExtra = upstream
+      ? last(upextra.length ? upextra : extra)
+      : last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
-    let counter = 'pl-counter' + position + sig;
+    let counter = (upstream ? 'PL-counter' : 'pl-counter') + position + sig;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -250,10 +252,16 @@ const Expose = add_alias({
     });
   },
 
-  pr({ context, extra, position }) {
-    let lastExtra = last(extra);
+  PL(arg) {
+    return Expose.pl(arg, true);
+  },
+
+  pr({ context, extra, position }, upstream) {
+    let lastExtra = upstream
+      ? last(upextra.length ? upextra : extra)
+      : last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
-    let counter = 'pr-counter' + position + sig;
+    let counter = (upstream ? 'PR-counter' : 'pr-counter') + position + sig;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -266,11 +274,17 @@ const Expose = add_alias({
     });
   },
 
-  pd({ context, extra, position, shuffle }) {
-    let lastExtra = last(extra);
+  PR(arg) {
+    return Expose.pr(arg, true);
+  },
+
+  pd({ context, extra, position, shuffle }, upstream) {
+    let lastExtra = upstream
+      ? last(upextra.length ? upextra : extra)
+      : last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
-    let counter = 'pd-counter' + position  + sig;
-    let values = 'pd-values' + position + sig;;
+    let counter = (upstream ? 'PD-counter' : 'pd-counter') + position  + sig;
+    let values = (upstream ? 'PD-valeus' : 'pd-values') + position + sig;;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -284,6 +298,10 @@ const Expose = add_alias({
       let value = context[values][pos];
       return push_stack(context, 'last_pick', value);
     });
+  },
+
+  PD(arg) {
+    return Expose.pd(arg, true);
   },
 
   lp({ context }) {
@@ -769,6 +787,8 @@ const Expose = add_alias({
   'pick': 'p',
   'pn':   'pl',
   'pnr':  'pr',
+  'PN':   'PL',
+  'PNR':  'PR',
 
   // error prone
   'stripes': 'stripe',

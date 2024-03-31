@@ -250,7 +250,7 @@ export class CSSDoodle extends HTMLElement {
     code = ':doodle {width:100%;height:100%}' + code;
     let parsed = parse_css(code, this.extra);
     let _grid = parse_grid('');
-    let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
+    let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random, options.upextra);
     let grid = compiled.grid ? compiled.grid : _grid;
     let viewBox = '';
     if (options && options.arg) {
@@ -394,8 +394,8 @@ export class CSSDoodle extends HTMLElement {
         doodle_ids.map(id => {
           if (input.includes(id)) {
             return new Promise(resolve => {
-              let { arg, doodle } = doodles[id];
-              this.doodle_to_image(doodle, { arg }, value => resolve({ id, value }));
+              let { arg, doodle, upextra } = doodles[id];
+              this.doodle_to_image(doodle, { arg, upextra }, value => resolve({ id, value }));
             });
           } else {
             return Promise.resolve('');

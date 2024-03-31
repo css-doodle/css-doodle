@@ -165,6 +165,7 @@ class Rules {
   compose_argument(argument, coords, extra = [], parent, contextVariable) {
     if (!coords.extra) coords.extra = [];
     coords.extra.push(extra);
+
     let result = argument.map(arg => {
       if (arg.type === 'text') {
         if (/^\-\-\w/.test(arg.value)) {
@@ -190,7 +191,7 @@ class Rules {
             if (!is_nil(value)) {
               switch (fname) {
                 case 'doodle':
-                  return this.compose_doodle(this.inject_variables(value, coords.count), temp);
+                  return this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra));
                 case 'shaders':
                   return this.compose_shaders(value, coords);
                 case 'pattern':
@@ -219,12 +220,12 @@ class Rules {
     }
   }
 
-  compose_doodle(doodle, arg) {
+  compose_doodle(doodle, arg, upextra) {
     let id = unique_id('doodle');
-    this.doodles[id] = { doodle, arg };
+    this.doodles[id] = {doodle, arg, upextra};
     return '${' + id + '}';
   }
-
+;
   compose_shaders(shader, {x, y, z}) {
     let id = unique_id('shader');
     this.shaders[id] = {
@@ -310,7 +311,7 @@ class Rules {
               if (!is_nil(value)) {
                 switch (fname) {
                   case 'doodle':
-                    result += this.compose_doodle(this.inject_variables(value, coords.count), temp); break;
+                    result += this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra)); break;
                   case 'shaders':
                     result += this.compose_shaders(value, coords); break;
                   case 'pattern':
@@ -828,7 +829,7 @@ function remove_quotes(input) {
   return input;
 }
 
-export default function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
+export default function generate_css(tokens, grid_size, seed_value, max_grid, seed_random, upextra = []) {
   let rules = new Rules(tokens);
   let random = seed_random || seedrandom(String(seed_value));
   let context = {};
@@ -868,6 +869,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
     max_grid, update_random,
     seed_value,
     rules,
+    upextra,
   });
 
   let { grid, seed } = rules.output();
@@ -902,6 +904,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
           rand, pick, shuffle,
           random, seed,
           max_grid,
+          upextra,
           rules,
         });
       }
@@ -916,9 +919,9 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
         random, seed,
         max_grid,
         rules,
+        upextra,
       });
     }
   }
-
   return rules.output();
 }
