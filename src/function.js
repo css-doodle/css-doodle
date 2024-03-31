@@ -79,6 +79,9 @@ function calc_with(base) {
       let op = v[0];
       let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
       if (/^var/.test(base)) {
+        if (op === '%') {
+          return `calc(mod(${base}, ${value}) * 1${unit})`;
+        }
         return `calc((${base} ${op} ${value}) * 1${unit})`;
       }
       return compute(op, base, value) + unit;
@@ -87,6 +90,9 @@ function calc_with(base) {
       let op = v.substr(-1);
       let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
       if (/^var/.test(base)) {
+        if (op === '%') {
+          return `calc(mod(${value}, ${base}) * 1${unit})`;
+        }
         return `calc((${value} ${op} ${base}) * 1${unit})`;
       }
       return compute(op, value, base) + unit;
