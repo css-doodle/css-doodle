@@ -70,36 +70,43 @@ function compute(op, a, b) {
   }
 }
 
+function calc_value(base, v) {
+  if (is_empty(v) || is_empty(base)) {
+    return base;
+  }
+  if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
+    let op = v[0];
+    let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
+    if (/var\(/.test(base)) {
+      if (op === '%') {
+        return `calc(mod(${base}, ${value}) * 1${unit})`;
+      }
+      return `calc((${base} ${op} ${value}) * 1${unit})`;
+    }
+    return compute(op, base, value) + unit;
+  }
+  else if (/[\+\*\-\/%]$/.test(v)) {
+    let op = v.substr(-1);
+    let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
+    if (/var\(/.test(base)) {
+      if (op === '%') {
+        return `calc(mod(${value}, ${base}) * 1${unit})`;
+      }
+      return `calc((${value} ${op} ${base}) * 1${unit})`;
+    }
+    return compute(op, value, base) + unit;
+  } else {
+    let { unit = '', value } = parse_compound_value(v || 0);
+    return (base + value) + unit;
+  }
+}
+
 function calc_with(base) {
-  return v => {
-    if (is_empty(v) || is_empty(base)) {
-      return base;
+  return (...args) => {
+    for (let v of args) {
+      base = calc_value(base, v);
     }
-    if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
-      let op = v[0];
-      let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
-      if (/^var/.test(base)) {
-        if (op === '%') {
-          return `calc(mod(${base}, ${value}) * 1${unit})`;
-        }
-        return `calc((${base} ${op} ${value}) * 1${unit})`;
-      }
-      return compute(op, base, value) + unit;
-    }
-    else if (/[\+\*\-\/%]$/.test(v)) {
-      let op = v.substr(-1);
-      let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
-      if (/^var/.test(base)) {
-        if (op === '%') {
-          return `calc(mod(${value}, ${base}) * 1${unit})`;
-        }
-        return `calc((${value} ${op} ${base}) * 1${unit})`;
-      }
-      return compute(op, value, base) + unit;
-    } else {
-      let { unit = '', value } = parse_compound_value(v || 0);
-      return (base + value) + unit;
-    }
+    return base;
   }
 }
 
