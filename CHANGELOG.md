@@ -1,3 +1,40 @@
+## 0.39.0
+
+* Use native `mod` function for variables.
+
+      /* mod(@t, 360deg) */
+      transform: rotate(@t(%360deg));
+
+* Support calc chain.
+
+      @content: @i(*2, +10, *100);
+
+* Add `@PN` and `@PD` for outside bouding to `@doodle`.
+
+      background: @m2.doodle(
+        @grid: @PN(2x1, 3x1);
+      );
+
+* Enable uniform value debugging through `content`.
+
+      :after {
+        content: @ux;
+      }
+
+* Add grid `border[:color]` for debugging purposes.
+
+      @grid: 1 / 100% border:red;
+
+* Add support viewbox `padding` inside `@svg-polygon`.
+
+      @content: @svg-polygon(
+        paddng: .2;
+      );
+
+* Add `@xX` and `@yY` similar to `@iI`.
+* Remove the feature of adding vendor prefixes to properties.
+
+
 ## 0.38.4
 
 * Cleanup inline styles on update.

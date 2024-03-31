@@ -1,4 +1,4 @@
-/*! css-doodle@0.38.4 */
+/*! css-doodle v0.39.0 MIT licensed */
 (function () {
   'use strict';
 
@@ -414,7 +414,7 @@
   function get_value(input) {
     let v = input;
     while (v && !is_nil(v.value)) v = v.value;
-    return is_nil(v) ? '' : v;
+    return v ?? '';
   }
 
   function get_png_name(name) {
@@ -1863,649 +1863,10 @@
     return removeParens(tokens).map(n => n.value).join('');
   }
 
-  const NS = `xmlns="http://www.w3.org/2000/svg"`;
-  const NSXHtml = `xmlns="http://www.w3.org/1999/xhtml"`;
-  const NSXLink = `xmlns:xlink="http://www.w3.org/1999/xlink"`;
-
-  function create_svg_url(svg, id) {
-    let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
-    return `url("data:image/svg+xml;utf8,${ encoded }")`;
-  }
-
-  function normalize_svg(input) {
-    if (!input.includes('<svg')) {
-      input = `<svg ${NS} ${NSXLink}>${input}</svg>`;
-    }
-    if (!input.includes('xmlns')) {
-      input = input.replace(/<svg([\s>])/, `<svg ${NS} ${NSXLink}$1`);
-    }
-    return input;
-  }
-
-  function parse$5(input) {
-    let iter = iterator$1(scan(input));
-    let ret = {};
-    let matched = false;
-    while (iter.next()) {
-      let { prev, curr, next} = iter.get();
-      let isUnit = matched
-        && (curr.isWord() || curr.isSymbol())
-        && prev && prev.isNumber()
-        && !next;
-      if (curr.isNumber()) {
-        ret.value = Number(curr.value);
-        matched = true;
-      }
-      else if (isUnit) {
-        ret.unit = curr.value;
-      } else {
-        break;
-      }
-    }
-    return ret;
-  }
-
-  function by_unit(fn) {
-    return (...args) => {
-      let units = [], values = [];
-      for (let arg of args) {
-        let { unit, value } = parse$5(arg);
-        if (unit !== undefined) {
-          units.push(unit);
-        }
-        if (value !== undefined) {
-          values.push(value);
-        }
-      }
-      let result = fn(...values);
-      let unit = units.find(n => n !== undefined);
-      if (unit === undefined) {
-        return result;
-      }
-      if (Array.isArray(result)) {
-        return result.map(n => n + unit);
-      }
-      return result + unit;
-    }
-  }
-
-  function by_charcode(fn) {
-    return (...args) => {
-      let codes = args.map(n => String(n).charCodeAt(0));
-      let result = fn(...codes);
-      return Array.isArray(result)
-        ? result.map(n => String.fromCharCode(n))
-        : String.fromCharCode(result);
-    }
-  }
-
-  class CacheValue {
-    constructor() {
-      this.cache = {};
-    }
-    clear() {
-      this.cache = {};
-    }
-    set(input, value) {
-      if (is_nil(input)) {
-        return '';
-      }
-      let key = this.getKey(input);
-      return this.cache[key] = value;
-    }
-    get(input) {
-      let key = this.getKey(input);
-      return this.cache[key];
-    }
-    getKey(input) {
-      return (typeof input === 'string')
-        ? hash(input)
-        : hash(JSON.stringify(input));
-    }
-  }
-
-  var Cache = new CacheValue();
-
-  function memo(prefix, fn) {
-    return (...args) => {
-      let key = prefix + args.join('-');    return Cache.get(key) || Cache.set(key, fn(...args));
-    }
-  }
-
-  function Type(type, value) {
-    return { type, value };
-  }
-
-  function range(start, stop, step) {
-    let count = 0, old = start;
-    let initial = n => (n > 0 && n < 1) ? .1 : 1;
-    let length = arguments.length;
-    if (length == 1) [start, stop] = [initial(start), start];
-    if (length < 3) step = initial(start);
-    let range = [];
-    while ((step >= 0 && start <= stop)
-      || (step < 0 && start > stop)) {
-      range.push(start);
-      start += step;
-      if (count++ >= 65535) break;
-    }
-    if (!range.length) range.push(old);
-    return range;
-  }
-
-  function get_tokens$1(input) {
-    let expr = String(input);
-    let tokens = [], stack = [];
-    if (!expr.startsWith('[') || !expr.endsWith(']')) {
-      return tokens;
-    }
-
-    for (let i = 1; i < expr.length - 1; ++i) {
-      let c = expr[i];
-      if (c == '-' && expr[i - 1] == '-') {
-        continue;
-      }
-      if (c == '-') {
-        stack.push(c);
-        continue;
-      }
-      if (last(stack) == '-') {
-        stack.pop();
-        let from = stack.pop();
-        tokens.push(from
-          ? Type('range', [ from, c ])
-          : Type('char', c)
-        );
-        continue;
-      }
-      if (stack.length) {
-        tokens.push(Type('char', stack.pop()));
-      }
-      stack.push(c);
-    }
-    if (stack.length) {
-      tokens.push(Type('char', stack.pop()));
-    }
-    return tokens;
-  }
-
-  const build_range = memo('build_range', (input) => {
-    let tokens = get_tokens$1(input);
-    return tokens.flatMap(({ type, value }) => {
-      if (type == 'char') return value;
-      let [ from, to ] = value;
-      let reverse = false;
-      if (from > to) {
-        [from, to] = [ to, from ];
-        reverse = true;
-      }
-      let result = by_charcode(range)(from, to);
-      if (reverse) result.reverse();
-      return result;
-    });
-  });
-
-  function expand$1(fn) {
-    return (...args) => fn(...(args.flatMap(n =>
-      String(n).startsWith('[') ? build_range(n) : n
-    )));
-  }
-
-  class Node {
-    constructor(data) {
-      this.prev = this.next = null;
-      this.data = data;
-    }
-  }
-
-  class Stack {
-    constructor(limit = 20) {
-      this._limit = limit;
-      this._size = 0;
-    }
-    push(data) {
-      if (this._size >= this._limit) {
-        this.root = this.root.next;
-        this.root.prev = null;
-      }
-      let node = new Node(data);
-      if (!this.root) {
-        this.root = this.tail = node;
-      } else {
-        node.prev = this.tail;
-        this.tail.next = node;
-        this.tail = node;
-      }
-      this._size++;
-    }
-    last(n = 1) {
-      let node = this.tail;
-      while (--n) {
-        if (!node.prev) break;
-        node = node.prev;
-      }
-      return node.data;
-    }
-  }
-
-  /**
-   * Improved noise by Ken Perlin
-   * Translated from: https://mrl.nyu.edu/~perlin/noise/
-   */
-
-
-  const map = [
-    151,160,137,91,90,15,
-    131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-    88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,
-    77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
-    135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
-    5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-    223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
-    129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
-    251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
-    49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
-    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
-  ];
-
-  class Perlin {
-    constructor() {
-      this.p = [].concat(map, map);
-    }
-
-    // Convert LO 4 bits of hash code into 12 gradient directions.
-    grad(hash, x, y, z) {
-      let h = hash & 15,
-          u = h < 8 ? x : y,
-          v = h < 4 ? y : h == 12 || h == 14 ? x : z;
-      return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
-    }
-
-    noise(x, y, z) {
-      let { p, grad } = this;
-      // Find unit cube that contains point.
-      let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
-      // Find relative x, y, z of point in cube.
-      [x, y, z] = [x, y, z].map(n => n - Math.floor(n));
-      // Compute fade curves for each of x, y, z.
-      let [u, v, w] = [x, y, z].map(n => n * n * n * (n * (n * 6 - 15) + 10));
-      // hash coordinates of the 8 cube corners.
-      let A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
-          B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
-      // And add blended results from 8 corners of cube.
-      return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ),
-                                     grad(p[BA  ], x-1, y  , z   )),
-                             lerp(u, grad(p[AB  ], x  , y-1, z   ),
-                                     grad(p[BB  ], x-1, y-1, z   ))),
-                     lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),
-                                     grad(p[BA+1], x-1, y  , z-1 )),
-                             lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
-                                     grad(p[BB+1], x-1, y-1, z-1 ))));
-    }
-  }
-
-  function get_named_arguments(args, names) {
-    let result = {};
-    let order = true;
-    for (let i = 0; i < args.length; ++i) {
-      let arg = args[i];
-      let arg_name = names[i];
-      if (/=/.test(arg)) {
-        let [name, value] = parse$9(arg, { symbol: '=', noSpace: true });
-        if (value !== undefined) {
-          if (names.includes(name)) {
-            result[name] = value;
-          }
-          // ignore the rest unnamed arguments
-          order = false;
-        } else {
-          result[arg_name] = arg;
-        }
-      } else if (order) {
-        result[arg_name] = arg;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Based on the Shunting-yard algorithm.
-   */
-
-
-  const cache = new Map();
-
-  const default_context = {
-    'π': Math.PI,
-    gcd: (a, b) => {
-      while (b) [a, b] = [b, a % b];
-      return a;
-    }
-  };
-
-  const operator = {
-    '^': 7,
-    '*': 6, '/': 6, '÷': 6, '%': 6,
-    '&': 5, '|': 5,
-    '+': 4, '-': 4,
-    '<': 3, '<<': 3,
-    '>': 3, '>>': 3,
-    '=': 3, '==': 3,
-    '≤': 3, '<=': 3,
-    '≥': 3, '>=': 3,
-    '≠': 3, '!=': 3,
-    '∧': 2, '&&': 2,
-    '∨': 2, '||': 2,
-    '(': 1 , ')': 1,
-  };
-
-  function calc(expr, context, repeat = []) {
-    let stack = [];
-    while (expr.length) {
-      let { name, value, type } = expr.shift();
-      if (type === 'variable') {
-        let result = context[value];
-        if (is_invalid_number(result)) {
-          result = Math[value];
-        }
-        if (is_invalid_number(result)) {
-          result = expand(value, context, repeat);
-        }
-        if (is_invalid_number(result)) {
-          if (/^\-\D/.test(value)) {
-            result = expand('-1' + value.substr(1), context, repeat);
-          }
-        }
-        if (result === undefined) {
-          result = 0;
-        }
-        if (typeof result !== 'number') {
-          repeat.push(result);
-          if (is_cycle(repeat)) {
-            result = 0;
-            repeat = [];
-          } else {
-            result = calc(infix_to_postfix(result), context, repeat);
-          }
-        }
-        stack.push(result);
-      }
-      else if (type === 'function') {
-        let negative = false;
-        if (/^\-/.test(name)) {
-          negative = true;
-          name = name.substr(1);
-        }
-        let output = value.map(v => calc(v, context, repeat));
-        let fns = name.split('.');
-        let fname;
-        while (fname = fns.pop()) {
-          if (!fname) continue;
-          let fn = context[fname] || Math[fname];
-          output = (typeof fn === 'function')
-            ? (Array.isArray(output) ? fn(...output) : fn(output))
-            : 0;
-        }
-        if (negative) {
-          output = -1 * output;
-        }
-        stack.push(output);
-      } else {
-        if (/\d+/.test(value)) stack.push(value);
-        else {
-          let right = stack.pop();
-          let left = stack.pop();
-          stack.push(compute$1(
-            value, Number(left), Number(right)
-          ));
-        }
-      }
-    }
-    return Number(stack[0]) || 0;
-  }
-
-  function get_tokens(input) {
-    if (cache.has(input)) {
-      return cache.get(input);
-    }
-    let expr = String(input);
-    let tokens = [], num = '';
-
-    for (let i = 0; i < expr.length; ++i) {
-      let c = expr[i];
-      if (operator[c]) {
-        let last_token = last(tokens);
-        if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
-          last_token.value += c;
-        }
-        else if (/^[|&<>]$/.test(c) && last_token && last_token.value == c) {
-          last_token.value += c;
-        }
-        else if (c == '-' && expr[i - 1] == 'e') {
-          num += c;
-        }
-        else if (!tokens.length && !num.length && /[+-]/.test(c)) {
-          num += c;
-        } else {
-          let { type, value } = last_token || {};
-          if (type == 'operator'
-              && !num.length
-              && /[^()]/.test(c)
-              && /[^()]/.test(value)) {
-            num += c;
-          } else {
-            if (num.length) {
-              tokens.push({ type: 'number', value: num });
-              num = '';
-            }
-            tokens.push({ type: 'operator', value: c });
-          }
-        }
-      }
-      else if (/\S/.test(c)) {
-        if (c == ',') {
-          tokens.push({ type: 'number', value: num });
-          num = '';
-          tokens.push({ type: 'comma', value: c });
-        } else if (c == '!') {
-          tokens.push({ type: 'number', value: num });
-          tokens.push({ type: 'operator', value: c });
-          num = '';
-        } else {
-          num += c;
-        }
-      }
-    }
-
-    if (num.length) {
-      tokens.push({ type: 'number', value: num });
-    }
-    cache.set(input, tokens);
-    return tokens;
-  }
-
-  function infix_to_postfix(input) {
-    let tokens = get_tokens(input);
-    const op_stack = [], expr = [];
-
-    for (let i = 0; i < tokens.length; ++i) {
-      let { type, value } = tokens[i];
-      let next = tokens[i + 1] || {};
-      if (type == 'number') {
-        if (next.value == '(' && /[^\d.\-]/.test(value)) {
-          let func_body = '';
-          let stack = [];
-          let values = [];
-
-          i += 1;
-          while (tokens[i++] !== undefined) {
-            let token = tokens[i];
-            if (token === undefined) break;
-            let c = token.value;
-            if (c == ')') {
-              if (!stack.length) break;
-              stack.pop();
-              func_body += c;
-            }
-            else {
-              if (c == '(') stack.push(c);
-              if (c == ',' && !stack.length) {
-                let arg = infix_to_postfix(func_body);
-                if (arg.length) values.push(arg);
-                func_body = '';
-              } else {
-                func_body += c;
-              }
-            }
-          }
-
-          if (func_body.length) {
-            values.push(infix_to_postfix(func_body));
-          }
-
-          expr.push({
-            type: 'function',
-            name: value,
-            value: values
-          });
-        }
-        else if (/[^\d.\-]/.test(value)) {
-          expr.push({ type: 'variable', value });
-        }
-        else {
-          expr.push({ type: 'number', value });
-        }
-      }
-
-      else if (type == 'operator') {
-        if (value == '(') {
-          op_stack.push(value);
-        }
-
-        else if (value == ')') {
-          while (op_stack.length && last(op_stack) != '(') {
-            expr.push({ type: 'operator', value: op_stack.pop() });
-          }
-          op_stack.pop();
-        }
-
-        else {
-          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
-            let op = op_stack.pop();
-            if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
-          }
-          op_stack.push(value);
-        }
-      }
-    }
-
-    while (op_stack.length) {
-      expr.push({ type: 'operator', value: op_stack.pop() });
-    }
-
-    return expr;
-  }
-
-  function compute$1(op, a, b) {
-    switch (op) {
-      case '+': return a + b;
-      case '-': return a - b;
-      case '*': return a * b;
-      case '%': return a % b;
-      case '|': return a | b;
-      case '&': return a & b;
-      case '<': return a < b;
-      case '>': return a > b;
-      case '^': return Math.pow(a, b);
-      case '÷': case '/': return a / b;
-      case '=': case '==': return a == b;
-      case '≤': case '<=': return a <= b;
-      case '≥': case '>=': return a >= b;
-      case '≠': case '!=': return a != b;
-      case '∧': case '&&': return a && b;
-      case '∨': case '||': return a || b;
-      case '<<': return a << b;
-      case '>>': return a >> b;
-    }
-  }
-
-  function expand(value, context, repeat) {
-    let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
-    let v = context[variable];
-    if (v === undefined) {
-      return v;
-    }
-    if (typeof v === 'number') {
-      return Number(num) * v;
-    } else {
-      repeat.push(v);
-      if (is_cycle(repeat)) {
-        repeat = [];
-        return 0;
-      } else {
-        return num * calc(infix_to_postfix(v), context, repeat);
-      }
-    }
-  }
-
-  function is_cycle(array) {
-    if (array.length > 50) return true;
-    let tail = last(array);
-    for (let i = 2; i <= 4; ++i) {
-      let item = array[array.length - i];
-      if (item === undefined) return false;
-      if (tail !== item) return false;
-    }
-    return true;
-  }
-
-  function calc$1(input, context) {
-    const expr = infix_to_postfix(input);
-    return calc(expr, Object.assign({}, default_context, context));
-  }
-
-  const utime = {
-    'name': 'cssd-utime',
-    'animation-name': 'cssd-utime-animation',
-    'animation-duration': 31536000000, /* one year in ms */
-    'animation-iteration-count': 'infinite',
-    'animation-delay': '0s',
-    'animation-direction': 'normal',
-    'animation-fill-mode': 'none',
-    'animation-play-state': 'running',
-    'animation-timing-function': 'linear',
-  };
-
-  utime['animation'] = `
-  ${utime['animation-duration']}ms
-  ${utime['animation-timing-function']}
-  ${utime['animation-delay']}
-  ${utime['animation-iteration-count']}
-  ${utime['animation-name']}
-`;
-
-  const umousex = {
-    name: 'cssd-umousex',
-  };
-
-  const umousey = {
-    name: 'cssd-umousey',
-  };
-
-  const uwidth = {
-    name: 'cssd-uwidth',
-  };
-
-  const uheight = {
-    name: 'cssd-uheight',
-  };
-
   const commands = 'MmLlHhVvCcSsQqTtAaZz';
   const relatives = 'mlhvcsqtaz';
 
-  function parse$4(input) {
+  function parse$5(input) {
     let iter = iterator$1(scan(input));
     let temp = {};
     let result = {
@@ -2546,6 +1907,48 @@
       result.commands.push(temp);
     }
     return result;
+  }
+
+  function parse$4(input) {
+    let iter = iterator$1(scan(input));
+    let ret = {};
+    let matched = false;
+    while (iter.next()) {
+      let { prev, curr, next} = iter.get();
+      let isUnit = matched
+        && (curr.isWord() || curr.isSymbol())
+        && prev && prev.isNumber()
+        && !next;
+      if (curr.isNumber()) {
+        ret.value = Number(curr.value);
+        matched = true;
+      }
+      else if (isUnit) {
+        ret.unit = curr.value;
+      } else {
+        break;
+      }
+    }
+    return ret;
+  }
+
+  const NS = `xmlns="http://www.w3.org/2000/svg"`;
+  const NSXHtml = `xmlns="http://www.w3.org/1999/xhtml"`;
+  const NSXLink = `xmlns:xlink="http://www.w3.org/1999/xlink"`;
+
+  function create_svg_url(svg, id) {
+    let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
+    return `url("data:image/svg+xml;utf8,${ encoded }")`;
+  }
+
+  function normalize_svg(input) {
+    if (!input.includes('<svg')) {
+      input = `<svg ${NS} ${NSXLink}>${input}</svg>`;
+    }
+    if (!input.includes('xmlns')) {
+      input = input.replace(/<svg([\s>])/, `<svg ${NS} ${NSXLink}$1`);
+    }
+    return input;
   }
 
   const nextId = next_id();
@@ -2896,6 +2299,336 @@
     return tokens.map(n => n.value).join('');
   }
 
+  class CacheValue {
+    #cache = new Map();
+
+    clear() {
+      this.#cache.clear();
+    }
+    set(input, value) {
+      if (is_nil(input)) {
+        return '';
+      }
+      let key = this.getKey(input);
+      this.#cache.set(key, value);
+      return value;
+    }
+    has(key) {
+      return this.#cache.has(key);
+    }
+    get(input) {
+      let key = this.getKey(input);
+      return this.#cache.get(key);
+    }
+    getKey(input) {
+      return (typeof input === 'string')
+        ? hash(input)
+        : hash(JSON.stringify(input));
+    }
+  }
+
+  const cache = new CacheValue();
+
+  function memo(prefix, fn) {
+    return (...args) => {
+      let key = prefix + args.join('-');    return cache.get(key) || cache.set(key, fn(...args));
+    }
+  }
+
+  /**
+   * Based on the Shunting-yard algorithm.
+   */
+
+
+  const default_context = {
+    'π': Math.PI,
+    gcd: (a, b) => {
+      while (b) [a, b] = [b, a % b];
+      return a;
+    }
+  };
+
+  const operator = {
+    '^': 7,
+    '*': 6, '/': 6, '÷': 6, '%': 6,
+    '&': 5, '|': 5,
+    '+': 4, '-': 4,
+    '<': 3, '<<': 3,
+    '>': 3, '>>': 3,
+    '=': 3, '==': 3,
+    '≤': 3, '<=': 3,
+    '≥': 3, '>=': 3,
+    '≠': 3, '!=': 3,
+    '∧': 2, '&&': 2,
+    '∨': 2, '||': 2,
+    '(': 1 , ')': 1,
+  };
+
+  function calc(expr, context, repeat = []) {
+    let stack = [];
+    while (expr.length) {
+      let { name, value, type } = expr.shift();
+      if (type === 'variable') {
+        let result = context[value];
+        if (is_invalid_number(result)) {
+          result = Math[value];
+        }
+        if (is_invalid_number(result)) {
+          result = expand$1(value, context, repeat);
+        }
+        if (is_invalid_number(result)) {
+          if (/^\-\D/.test(value)) {
+            result = expand$1('-1' + value.substr(1), context, repeat);
+          }
+        }
+        if (result === undefined) {
+          result = 0;
+        }
+        if (typeof result !== 'number') {
+          repeat.push(result);
+          if (is_cycle(repeat)) {
+            result = 0;
+            repeat = [];
+          } else {
+            result = calc(infix_to_postfix(result), context, repeat);
+          }
+        }
+        stack.push(result);
+      }
+      else if (type === 'function') {
+        let negative = false;
+        if (/^\-/.test(name)) {
+          negative = true;
+          name = name.substr(1);
+        }
+        let output = value.map(v => calc(v, context, repeat));
+        let fns = name.split('.');
+        let fname;
+        while (fname = fns.pop()) {
+          if (!fname) continue;
+          let fn = context[fname] || Math[fname];
+          output = (typeof fn === 'function')
+            ? (Array.isArray(output) ? fn(...output) : fn(output))
+            : 0;
+        }
+        if (negative) {
+          output = -1 * output;
+        }
+        stack.push(output);
+      } else {
+        if (/\d+/.test(value)) stack.push(value);
+        else {
+          let right = stack.pop();
+          let left = stack.pop();
+          stack.push(compute$1(
+            value, Number(left), Number(right)
+          ));
+        }
+      }
+    }
+    return Number(stack[0]) || 0;
+  }
+
+  function get_tokens$1(input) {
+    if (cache.has(input)) {
+      return cache.get(input);
+    }
+    let expr = String(input);
+    let tokens = [], num = '';
+
+    for (let i = 0; i < expr.length; ++i) {
+      let c = expr[i];
+      if (operator[c]) {
+        let last_token = last(tokens);
+        if (c == '=' && last_token && /^[!<>=]$/.test(last_token.value)) {
+          last_token.value += c;
+        }
+        else if (/^[|&<>]$/.test(c) && last_token && last_token.value == c) {
+          last_token.value += c;
+        }
+        else if (c == '-' && expr[i - 1] == 'e') {
+          num += c;
+        }
+        else if (!tokens.length && !num.length && /[+-]/.test(c)) {
+          num += c;
+        } else {
+          let { type, value } = last_token || {};
+          if (type == 'operator'
+              && !num.length
+              && /[^()]/.test(c)
+              && /[^()]/.test(value)) {
+            num += c;
+          } else {
+            if (num.length) {
+              tokens.push({ type: 'number', value: num });
+              num = '';
+            }
+            tokens.push({ type: 'operator', value: c });
+          }
+        }
+      }
+      else if (/\S/.test(c)) {
+        if (c == ',') {
+          tokens.push({ type: 'number', value: num });
+          num = '';
+          tokens.push({ type: 'comma', value: c });
+        } else if (c == '!') {
+          tokens.push({ type: 'number', value: num });
+          tokens.push({ type: 'operator', value: c });
+          num = '';
+        } else {
+          num += c;
+        }
+      }
+    }
+
+    if (num.length) {
+      tokens.push({ type: 'number', value: num });
+    }
+    cache.set(input, tokens);
+    return tokens;
+  }
+
+  function infix_to_postfix(input) {
+    let tokens = get_tokens$1(input);
+    const op_stack = [], expr = [];
+
+    for (let i = 0; i < tokens.length; ++i) {
+      let { type, value } = tokens[i];
+      let next = tokens[i + 1] || {};
+      if (type == 'number') {
+        if (next.value == '(' && /[^\d.\-]/.test(value)) {
+          let func_body = '';
+          let stack = [];
+          let values = [];
+
+          i += 1;
+          while (tokens[i++] !== undefined) {
+            let token = tokens[i];
+            if (token === undefined) break;
+            let c = token.value;
+            if (c == ')') {
+              if (!stack.length) break;
+              stack.pop();
+              func_body += c;
+            }
+            else {
+              if (c == '(') stack.push(c);
+              if (c == ',' && !stack.length) {
+                let arg = infix_to_postfix(func_body);
+                if (arg.length) values.push(arg);
+                func_body = '';
+              } else {
+                func_body += c;
+              }
+            }
+          }
+
+          if (func_body.length) {
+            values.push(infix_to_postfix(func_body));
+          }
+
+          expr.push({
+            type: 'function',
+            name: value,
+            value: values
+          });
+        }
+        else if (/[^\d.\-]/.test(value)) {
+          expr.push({ type: 'variable', value });
+        }
+        else {
+          expr.push({ type: 'number', value });
+        }
+      }
+
+      else if (type == 'operator') {
+        if (value == '(') {
+          op_stack.push(value);
+        }
+
+        else if (value == ')') {
+          while (op_stack.length && last(op_stack) != '(') {
+            expr.push({ type: 'operator', value: op_stack.pop() });
+          }
+          op_stack.pop();
+        }
+
+        else {
+          while (op_stack.length && operator[last(op_stack)] >= operator[value]) {
+            let op = op_stack.pop();
+            if (!/[()]/.test(op)) expr.push({ type: 'operator', value: op });
+          }
+          op_stack.push(value);
+        }
+      }
+    }
+
+    while (op_stack.length) {
+      expr.push({ type: 'operator', value: op_stack.pop() });
+    }
+
+    return expr;
+  }
+
+  function compute$1(op, a, b) {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '%': return a % b;
+      case '|': return a | b;
+      case '&': return a & b;
+      case '<': return a < b;
+      case '>': return a > b;
+      case '^': return Math.pow(a, b);
+      case '÷': case '/': return a / b;
+      case '=': case '==': return a == b;
+      case '≤': case '<=': return a <= b;
+      case '≥': case '>=': return a >= b;
+      case '≠': case '!=': return a != b;
+      case '∧': case '&&': return a && b;
+      case '∨': case '||': return a || b;
+      case '<<': return a << b;
+      case '>>': return a >> b;
+    }
+  }
+
+  function expand$1(value, context, repeat) {
+    let [_, num, variable] = value.match(/([\d.\-]+)(.*)/) || [];
+    let v = context[variable];
+    if (v === undefined) {
+      return v;
+    }
+    if (typeof v === 'number') {
+      return Number(num) * v;
+    } else {
+      repeat.push(v);
+      if (is_cycle(repeat)) {
+        repeat = [];
+        return 0;
+      } else {
+        return num * calc(infix_to_postfix(v), context, repeat);
+      }
+    }
+  }
+
+  function is_cycle(array) {
+    if (array.length > 50) return true;
+    let tail = last(array);
+    for (let i = 2; i <= 4; ++i) {
+      let item = array[array.length - i];
+      if (item === undefined) return false;
+      if (tail !== item) return false;
+    }
+    return true;
+  }
+
+  function calc$1(input, context) {
+    const expr = infix_to_postfix(input);
+    return calc(expr, Object.assign({}, default_context, context));
+  }
+
   const { cos, sin, abs, atan2, PI } = Math;
 
   const preset_shapes = {
@@ -3161,7 +2894,7 @@
     let pr = is_empty(props.r) ? ''       : props.r;
     let pt = is_empty(props.t) ? ''       : props.t;
 
-    let { unit, value } = parse$5(pr);
+    let { unit, value } = parse$4(pr);
     if (unit && !props[unit] && unit !== 't') {
       if (is_empty(props.unit)) {
         props.unit = unit;
@@ -3248,6 +2981,261 @@
     }
   }
 
+  /**
+   * Improved noise by Ken Perlin
+   * Translated from: https://mrl.nyu.edu/~perlin/noise/
+   */
+
+
+  const map = [
+    151,160,137,91,90,15,
+    131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+    88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,
+    77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
+    135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
+    5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+    223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
+    129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
+    251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
+    49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
+    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+  ];
+
+  class Perlin {
+    constructor() {
+      this.p = [].concat(map, map);
+    }
+
+    // Convert LO 4 bits of hash code into 12 gradient directions.
+    grad(hash, x, y, z) {
+      let h = hash & 15,
+          u = h < 8 ? x : y,
+          v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+      return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
+    }
+
+    noise(x, y, z) {
+      let { p, grad } = this;
+      // Find unit cube that contains point.
+      let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
+      // Find relative x, y, z of point in cube.
+      [x, y, z] = [x, y, z].map(n => n - Math.floor(n));
+      // Compute fade curves for each of x, y, z.
+      let [u, v, w] = [x, y, z].map(n => n * n * n * (n * (n * 6 - 15) + 10));
+      // hash coordinates of the 8 cube corners.
+      let A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
+          B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
+      // And add blended results from 8 corners of cube.
+      return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ),
+                                     grad(p[BA  ], x-1, y  , z   )),
+                             lerp(u, grad(p[AB  ], x  , y-1, z   ),
+                                     grad(p[BB  ], x-1, y-1, z   ))),
+                     lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),
+                                     grad(p[BA+1], x-1, y  , z-1 )),
+                             lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
+                                     grad(p[BB+1], x-1, y-1, z-1 ))));
+    }
+  }
+
+  const utime = {
+    'name': 'cssd-utime',
+    'animation-name': 'cssd-utime-animation',
+    'animation-duration': 31536000000, /* one year in ms */
+    'animation': '31536000000ms linear 0s infinite cssd-utime-animation',
+  };
+
+  const umousex = {
+    name: 'cssd-umousex',
+  };
+
+  const umousey = {
+    name: 'cssd-umousey',
+  };
+
+  const uwidth = {
+    name: 'cssd-uwidth',
+  };
+
+  const uheight = {
+    name: 'cssd-uheight',
+  };
+
+  function by_unit(fn) {
+    return (...args) => {
+      let units = [], values = [];
+      for (let arg of args) {
+        let { unit, value } = parse$4(arg);
+        if (unit !== undefined) {
+          units.push(unit);
+        }
+        if (value !== undefined) {
+          values.push(value);
+        }
+      }
+      let result = fn(...values);
+      let unit = units.find(n => n !== undefined);
+      if (unit === undefined) {
+        return result;
+      }
+      if (Array.isArray(result)) {
+        return result.map(n => n + unit);
+      }
+      return result + unit;
+    }
+  }
+
+  function by_charcode(fn) {
+    return (...args) => {
+      let codes = args.map(n => String(n).charCodeAt(0));
+      let result = fn(...codes);
+      return Array.isArray(result)
+        ? result.map(n => String.fromCharCode(n))
+        : String.fromCharCode(result);
+    }
+  }
+
+  function Type(type, value) {
+    return { type, value };
+  }
+
+  function range(start, stop, step) {
+    let count = 0, old = start;
+    let initial = n => (n > 0 && n < 1) ? .1 : 1;
+    let length = arguments.length;
+    if (length == 1) [start, stop] = [initial(start), start];
+    if (length < 3) step = initial(start);
+    let range = [];
+    while ((step >= 0 && start <= stop)
+      || (step < 0 && start > stop)) {
+      range.push(start);
+      start += step;
+      if (count++ >= 65535) break;
+    }
+    if (!range.length) range.push(old);
+    return range;
+  }
+
+  function get_tokens(input) {
+    let expr = String(input);
+    let tokens = [], stack = [];
+    if (!expr.startsWith('[') || !expr.endsWith(']')) {
+      return tokens;
+    }
+
+    for (let i = 1; i < expr.length - 1; ++i) {
+      let c = expr[i];
+      if (c == '-' && expr[i - 1] == '-') {
+        continue;
+      }
+      if (c == '-') {
+        stack.push(c);
+        continue;
+      }
+      if (last(stack) == '-') {
+        stack.pop();
+        let from = stack.pop();
+        tokens.push(from
+          ? Type('range', [ from, c ])
+          : Type('char', c)
+        );
+        continue;
+      }
+      if (stack.length) {
+        tokens.push(Type('char', stack.pop()));
+      }
+      stack.push(c);
+    }
+    if (stack.length) {
+      tokens.push(Type('char', stack.pop()));
+    }
+    return tokens;
+  }
+
+  const build_range = memo('build_range', (input) => {
+    let tokens = get_tokens(input);
+    return tokens.flatMap(({ type, value }) => {
+      if (type == 'char') return value;
+      let [ from, to ] = value;
+      let reverse = false;
+      if (from > to) {
+        [from, to] = [ to, from ];
+        reverse = true;
+      }
+      let result = by_charcode(range)(from, to);
+      if (reverse) result.reverse();
+      return result;
+    });
+  });
+
+  function expand(fn) {
+    return (...args) => fn(...(args.flatMap(n =>
+      String(n).startsWith('[') ? build_range(n) : n
+    )));
+  }
+
+  class Node {
+    constructor(data) {
+      this.prev = this.next = null;
+      this.data = data;
+    }
+  }
+
+  class Stack {
+    constructor(limit = 20) {
+      this._limit = limit;
+      this._size = 0;
+    }
+    push(data) {
+      if (this._size >= this._limit) {
+        this.root = this.root.next;
+        this.root.prev = null;
+      }
+      let node = new Node(data);
+      if (!this.root) {
+        this.root = this.tail = node;
+      } else {
+        node.prev = this.tail;
+        this.tail.next = node;
+        this.tail = node;
+      }
+      this._size++;
+    }
+    last(n = 1) {
+      let node = this.tail;
+      while (--n) {
+        if (!node.prev) break;
+        node = node.prev;
+      }
+      return node.data;
+    }
+  }
+
+  function get_named_arguments(args, names) {
+    let result = {};
+    let order = true;
+    for (let i = 0; i < args.length; ++i) {
+      let arg = args[i];
+      let arg_name = names[i];
+      if (/=/.test(arg)) {
+        let [name, value] = parse$9(arg, { symbol: '=', noSpace: true });
+        if (value !== undefined) {
+          if (names.includes(name)) {
+            result[name] = value;
+          }
+          // ignore the rest unnamed arguments
+          order = false;
+        } else {
+          result[arg_name] = arg;
+        }
+      } else if (order) {
+        result[arg_name] = arg;
+      }
+    }
+    return result;
+  }
+
   function make_sequence(c) {
     return lazy((_, n, ...actions) => {
       if (!actions || !n) return '';
@@ -3299,30 +3287,43 @@
     }
   }
 
+  function calc_value(base, v) {
+    if (is_empty(v) || is_empty(base)) {
+      return base;
+    }
+    if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
+      let op = v[0];
+      let { unit = '', value } = parse$4(v.substr(1).trim() || 0);
+      if (/var\(/.test(base)) {
+        if (op === '%') {
+          return `calc(mod(${base}, ${value}) * 1${unit})`;
+        }
+        return `calc((${base} ${op} ${value}) * 1${unit})`;
+      }
+      return compute(op, base, value) + unit;
+    }
+    else if (/[\+\*\-\/%]$/.test(v)) {
+      let op = v.substr(-1);
+      let { unit = '', value } = parse$4(v.substr(0, v.length - 1).trim() || 0);
+      if (/var\(/.test(base)) {
+        if (op === '%') {
+          return `calc(mod(${value}, ${base}) * 1${unit})`;
+        }
+        return `calc((${value} ${op} ${base}) * 1${unit})`;
+      }
+      return compute(op, value, base) + unit;
+    } else {
+      let { unit = '', value } = parse$4(v || 0);
+      return (base + value) + unit;
+    }
+  }
+
   function calc_with(base) {
-    return v => {
-      if (is_empty(v) || is_empty(base)) {
-        return base;
+    return (...args) => {
+      for (let v of args) {
+        base = calc_value(base, v);
       }
-      if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
-        let op = v[0];
-        let { unit = '', value } = parse$5(v.substr(1).trim() || 0);
-        if (/^var/.test(base)) {
-          return `calc((${base} ${op} ${value}) * 1${unit})`;
-        }
-        return compute(op, base, value) + unit;
-      }
-      else if (/[\+\*\-\/%]$/.test(v)) {
-        let op = v.substr(-1);
-        let { unit = '', value } = parse$5(v.substr(0, v.length - 1).trim() || 0);
-        if (/^var/.test(base)) {
-          return `calc((${value} ${op} ${base}) * 1${unit})`;
-        }
-        return compute(op, value, base) + unit;
-      } else {
-        let { unit = '', value } = parse$5(v || 0);
-        return (base + value) + unit;
-      }
+      return base;
     }
   }
 
@@ -3362,6 +3363,14 @@
 
     iI({ count, grid }) {
       return calc_with(count/grid.count);
+    },
+
+    xX({ x, grid }) {
+      return calc_with(x/grid.x);
+    },
+
+    yY({ y, grid }) {
+      return calc_with(y/grid.y);
     },
 
     id({ x, y, z }) {
@@ -3414,7 +3423,7 @@
     µ: make_sequence(''),
 
     p({ context, pick }) {
-      return expand$1((...args) => {
+      return expand((...args) => {
         if (!args.length) {
           args = context.last_pick_args || [];
         }
@@ -3426,7 +3435,7 @@
 
     P({ context, pick, position }) {
       let counter = 'P-counter' + position;
-      return expand$1((...args) => {
+      return expand((...args) => {
         let normal = true;
         if (!args.length) {
           args = context.last_pick_args || [];
@@ -3455,43 +3464,57 @@
       });
     },
 
-    pl({ context, extra, position }) {
-      let lastExtra = last(extra);
+    pl({ context, extra, upextra, position }, upstream) {
+      let lastExtra = upstream
+        ? last(upextra.length ? upextra : extra)
+        : last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
-      let counter = 'pl-counter' + position + sig;
-      return expand$1((...args) => {
+      let counter = (upstream ? 'PL-counter' : 'pl-counter') + position + sig;
+      return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
         let idx = lastExtra && lastExtra[6];
-        if (is_nil(idx)) idx = context[counter];
+        idx ??= context[counter];
         let pos = (idx - 1) % max;
         let value = args[pos];
         return push_stack(context, 'last_pick', value);
       });
     },
 
-    pr({ context, extra, position }) {
-      let lastExtra = last(extra);
+    PL(arg) {
+      return Expose.pl(arg, true);
+    },
+
+    pr({ context, extra, position }, upstream) {
+      let lastExtra = upstream
+        ? last(upextra.length ? upextra : extra)
+        : last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
-      let counter = 'pr-counter' + position + sig;
-      return expand$1((...args) => {
+      let counter = (upstream ? 'PR-counter' : 'pr-counter') + position + sig;
+      return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         let max = args.length;
         let idx = lastExtra && lastExtra[6];
-        if (is_nil(idx)) idx = context[counter];
+        idx ??= context[counter];
         let pos = (idx - 1) % max;
         let value = args[max - pos - 1];
         return push_stack(context, 'last_pick', value);
       });
     },
 
-    pd({ context, extra, position, shuffle }) {
-      let lastExtra = last(extra);
+    PR(arg) {
+      return Expose.pr(arg, true);
+    },
+
+    pd({ context, extra, position, shuffle }, upstream) {
+      let lastExtra = upstream
+        ? last(upextra.length ? upextra : extra)
+        : last(extra);
       let sig = lastExtra ? last(lastExtra) : '';
-      let counter = 'pd-counter' + position  + sig;
-      let values = 'pd-values' + position + sig;    return expand$1((...args) => {
+      let counter = (upstream ? 'PD-counter' : 'pd-counter') + position  + sig;
+      let values = (upstream ? 'PD-valeus' : 'pd-values') + position + sig;    return expand((...args) => {
         if (!context[counter]) context[counter] = 0;
         context[counter] += 1;
         if (!context[values]) {
@@ -3499,11 +3522,15 @@
         }
         let max = args.length;
         let idx = lastExtra && lastExtra[6];
-        if (is_nil(idx)) idx = context[counter];
+        idx ??= context[counter];
         let pos = (idx - 1) % max;
         let value = context[values][pos];
         return push_stack(context, 'last_pick', value);
       });
+    },
+
+    PD(arg) {
+      return Expose.pd(arg, true);
     },
 
     lp({ context }) {
@@ -3729,12 +3756,13 @@
       });
       let style = `points: ${points};`;
       let props = '';
+      let p = rules.padding ?? Number(rules['stroke-width']) / 2;
       for (let name of Object.keys(rules)) {
         if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
           props += `${name}: ${rules[name]};`;
         }
       }    let parsed = parse$8(`
-      viewBox: -1 -1 2 2 p ${Number(rules['stroke-width'])/2};
+      viewBox: -1 -1 2 2 p ${p};
       polygon {
         ${props} ${style}
       }
@@ -3830,7 +3858,7 @@
 
     invert() {
       return commands => {
-        let parsed = parse$4(commands);
+        let parsed = parse$5(commands);
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
@@ -3846,7 +3874,7 @@
 
     flipH() {
       return commands => {
-        let parsed = parse$4(commands);
+        let parsed = parse$5(commands);
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
@@ -3860,7 +3888,7 @@
 
     flipV() {
       return commands => {
-        let parsed = parse$4(commands);
+        let parsed = parse$5(commands);
         if (!parsed.valid) return commands;
         return parsed.commands.map(({ name, value }) => {
           switch (name) {
@@ -3883,7 +3911,7 @@
     reverse() {
       return (...args) => {
         let commands = args.map(get_value);
-        let parsed = parse$4(commands.join(','));
+        let parsed = parse$5(commands.join(','));
         if (parsed.valid) {
           let result = [];
           for (let i = parsed.commands.length - 1; i >= 0; --i) {
@@ -3946,10 +3974,7 @@
 
     once: lazy(({context, extra, position}, ...args) => {
       let counter = 'once-counter' + position;
-      if (is_nil(context[counter])) {
-        return context[counter] = args.map(input => get_value(input())).join(',');
-      }
-      return context[counter];
+      return context[counter] ??= args.map(input => get_value(input())).join(',');
     }),
 
     raw({ rules }) {
@@ -3990,6 +4015,8 @@
     'pick': 'p',
     'pn':   'pl',
     'pnr':  'pr',
+    'PN':   'PL',
+    'PNR':  'PR',
 
     // error prone
     'stripes': 'stripe',
@@ -4085,7 +4112,7 @@
     name = String(name).toLowerCase();
 
     // Default to landscape mode
-    let [h, w] = presets[name] || [];
+    let [h, w] = presets[name] ?? [];
 
     if (modes[mode] == 'p') {
       [w, h] = [h, w];
@@ -4096,48 +4123,6 @@
 
   function is_preset(name) {
     return !!presets[name];
-  }
-
-  let all_props = [];
-
-  function get_props(arg) {
-    if (!all_props.length) {
-      let props = new Set();
-      if (typeof document !== 'undefined') {
-        for (let n in document.head.style) {
-          if (!n.startsWith('-')) {
-            props.add(n.replace(/[A-Z]/g, '-$&').toLowerCase());
-          }
-        }
-      }
-      if (!props.has('grid-gap')) {
-        props.add('grid-gap');
-      }
-      all_props = Array.from(props);
-    }
-    return (arg instanceof RegExp)
-      ? all_props.filter(n => arg.test(n))
-      : all_props;
-  }
-
-  function build_mapping(prefix) {
-    let reg = new RegExp(`\\-?${ prefix }\\-?`);
-    return get_props(reg)
-      .map(n => n.replace(reg, ''))
-      .reduce((obj, n) => { return obj[n] = n, obj }, {});
-  }
-
-  const props_webkit_mapping = build_mapping('webkit');
-  const props_moz_mapping = build_mapping('moz');
-
-  function prefixer(prop, rule) {
-    if (props_webkit_mapping[prop]) {
-      return `-webkit-${ rule } ${ rule }`;
-    }
-    else if (props_moz_mapping[prop]) {
-      return `-moz-${ rule } ${ rule }`;
-    }
-    return rule;
   }
 
   const iw = '--_cell-width';
@@ -4211,7 +4196,9 @@
       };
       let temp = [];
       for (let item of parse$9(value, {symbol: ' '})) {
-        if (/^no\-*clip$/i.test(item)) {
+        if (/border:?/i.test(item)) {
+          result.border = item.split(':')[1] || '';
+        } else if (/^no\-*clip$/i.test(item)) {
           result.clip = false;
         } else if (/^p3d$/i.test(item)) {
           result.p3d = true;
@@ -4258,9 +4245,7 @@
     shape: memo('shape-property', value => {
       let { points, preset} = generate_shape(value);
       if (!preset) return '';
-      let prop = 'clip-path';
-      let style = `${prop}: polygon(${points.join(',')});`;
-      return prefixer(prop, style);
+      return `clip-path: polygon(${points.join(',')});`;
     }),
 
     use(rules) {
@@ -4862,6 +4847,7 @@
     compose_argument(argument, coords, extra = [], parent, contextVariable) {
       if (!coords.extra) coords.extra = [];
       coords.extra.push(extra);
+
       let result = argument.map(arg => {
         if (arg.type === 'text') {
           if (/^\-\-\w/.test(arg.value)) {
@@ -4887,7 +4873,7 @@
               if (!is_nil(value)) {
                 switch (fname) {
                   case 'doodle':
-                    return this.compose_doodle(this.inject_variables(value, coords.count), temp);
+                    return this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra));
                   case 'shaders':
                     return this.compose_shaders(value, coords);
                   case 'pattern':
@@ -4916,12 +4902,12 @@
       }
     }
 
-    compose_doodle(doodle, arg) {
+    compose_doodle(doodle, arg, upextra) {
       let id = unique_id('doodle');
-      this.doodles[id] = { doodle, arg };
+      this.doodles[id] = {doodle, arg, upextra};
       return '${' + id + '}';
     }
-
+  ;
     compose_shaders(shader, {x, y, z}) {
       let id = unique_id('shader');
       this.shaders[id] = {
@@ -5007,7 +4993,7 @@
                 if (!is_nil(value)) {
                   switch (fname) {
                     case 'doodle':
-                      result += this.compose_doodle(this.inject_variables(value, coords.count), temp); break;
+                      result += this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra)); break;
                     case 'shaders':
                       result += this.compose_shaders(value, coords); break;
                     case 'pattern':
@@ -5064,7 +5050,7 @@
       }
     }
 
-    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d }) {
+    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border }) {
       if (fill) {
         this.add_rule(':host', `background-color:${fill};`);
       }
@@ -5109,6 +5095,9 @@
         let s = 'transform-style:preserve-3d;';
         this.add_rule(':host', s);
         this.add_rule(':container', s);
+      }
+      if (border !== undefined) {
+        this.add_rule(':host', `border: 1px solid ${border};`);
       }
     }
 
@@ -5158,6 +5147,16 @@
         if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
           value = `'${value}'`;
         }
+        let reset = new Map();
+        value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/g, n => {
+          let name = 'c' + hash(n);
+          reset.set(name, `${name} calc(tan(atan2(${n},1)))`);
+          return `counter(${name})`;
+        });
+        return `
+        ${reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : ''}
+        content:${value};
+      `;
       }
 
       if (prop === 'transition') {
@@ -5165,16 +5164,15 @@
       }
 
       let rule = `${prop}:${value};`;
-      rule = prefixer(prop, rule);
 
       if (prop === 'width' || prop === 'height') {
         if (!is_special_selector(selector)) {
-          rule += `--_cell-${prop}: ${value};`;
+          rule += `--_cell-${prop}:${value};`;
         }
       }
 
       let is_image = (
-        /^(background|background\-image)$/.test(prop) &&
+        /^background(\-image)?$/.test(prop) &&
         /\$\{(shader|pattern)/.test(value)
       );
       if (is_image) {
@@ -5270,10 +5268,7 @@
     }
 
     get_raw_value(token) {
-      let raw = token.raw();
-      if (is_nil(raw)){
-        raw = '';
-      }
+      let raw = token.raw() ?? '';
       let [_, ...rest] = raw.split(token.property);
       // It's not accurate, will be solved after the rewrite of css parser.
       rest = rest.join(token.property)
@@ -5369,7 +5364,12 @@
       (tokens || this.tokens).forEach((token, i) => {
         if (token.skip) return false;
         if (initial && this.grid) return false;
-
+        if (token.property === '@gap' && this.is_gap_set) {
+          return false;
+        }
+        if (token.property === '@grid' && this.is_grid_set) {
+          return false;
+        }
         switch (token.type) {
           case 'rule': {
             this.add_rule(
@@ -5523,7 +5523,7 @@
     return input;
   }
 
-  function generate_css(tokens, grid_size, seed_value, max_grid, seed_random) {
+  function generate_css(tokens, grid_size, seed_value, max_grid, seed_random, upextra = []) {
     let rules = new Rules(tokens);
     let random = seed_random || seedrandom(String(seed_value));
     let context = {};
@@ -5563,6 +5563,7 @@
       max_grid, update_random,
       seed_value,
       rules,
+      upextra,
     });
 
     let { grid, seed } = rules.output();
@@ -5597,6 +5598,7 @@
             rand, pick, shuffle,
             random, seed,
             max_grid,
+            upextra,
             rules,
           });
         }
@@ -5611,10 +5613,10 @@
           random, seed,
           max_grid,
           rules,
+          upextra,
         });
       }
     }
-
     return rules.output();
   }
 
@@ -5675,7 +5677,7 @@
   }
 
   function draw_shader(shaders, seed) {
-    let result = Cache.get(shaders);
+    let result = cache.get(shaders);
     if (result) {
       return Promise.resolve(result);
     }
@@ -5767,7 +5769,7 @@ void main() {
     if (uTimeLoc || uTimeDelta || uFrameLoc) {
       let frameIndex = 0;
       let currentTime = 0;
-      return Promise.resolve(Cache.set(shaders, (t, w, h, textures) => {
+      return Promise.resolve(cache.set(shaders, (t, w, h, textures) => {
         gl.clear(gl.COLOR_BUFFER_BIT);
         // update textures and resolutions
         if (shaders.width !== w || shaders.height !== h) {
@@ -5794,7 +5796,7 @@ void main() {
       }));
     } else {
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      return Promise.resolve(Cache.set(shaders, canvas.toDataURL()));
+      return Promise.resolve(cache.set(shaders, canvas.toDataURL()));
     }
   }
 
@@ -6112,45 +6114,6 @@ void main() {
     return transform(getComputedStyle(element).color);
   }
 
-  function get_all_variables(element) {
-    if (typeof getComputedStyle === 'undefined') {
-      return '';
-    }
-    let ret = {};
-    if (element.computedStyleMap) {
-      for (let [prop, value] of element.computedStyleMap()) {
-        if (prop.startsWith('--')) {
-          ret[prop] = value[0][0];
-        }
-      }
-    } else {
-      let styles = getComputedStyle(element);
-      for (let prop of styles) {
-        if (prop.startsWith('--')) {
-          ret[prop] = styles.getPropertyValue(prop);
-        }
-      }
-    }
-    return inline(ret);
-  }
-
-  function get_variable(element, name) {
-    if (typeof getComputedStyle === 'undefined') {
-      return '';
-    }
-    return getComputedStyle(element).getPropertyValue(name)
-      .trim()
-      .replace(/^\(|\)$/g, '');
-  }
-
-  function inline(map) {
-    let result = [];
-    for (let [prop, value] of Object.entries(map)) {
-      result.push(prop + ':' + value);
-    }
-    return result.join(';');
-  }
-
   const STEP60 = 1000 / 60; // 60fps
   const STEP1 = 1000 / 1;   // 1fps
 
@@ -6195,6 +6158,45 @@ void main() {
     }
   }
 
+  function get_all_variables(element) {
+    if (typeof getComputedStyle === 'undefined') {
+      return '';
+    }
+    let ret = {};
+    if (element.computedStyleMap) {
+      for (let [prop, value] of element.computedStyleMap()) {
+        if (prop.startsWith('--')) {
+          ret[prop] = value[0][0];
+        }
+      }
+    } else {
+      let styles = getComputedStyle(element);
+      for (let prop of styles) {
+        if (prop.startsWith('--')) {
+          ret[prop] = styles.getPropertyValue(prop);
+        }
+      }
+    }
+    return inline(ret);
+  }
+
+  function get_variable(element, name) {
+    if (typeof getComputedStyle === 'undefined') {
+      return '';
+    }
+    return getComputedStyle(element).getPropertyValue(name)
+      .trim()
+      .replace(/^\(|\)$/g, '');
+  }
+
+  function inline(map) {
+    let result = [];
+    for (let [prop, value] of Object.entries(map)) {
+      result.push(prop + ':' + value);
+    }
+    return result.join(';');
+  }
+
   class CSSDoodle extends HTMLElement {
     constructor() {
       super();
@@ -6218,30 +6220,14 @@ void main() {
       this.cleanup();
     }
 
-    cleanup() {
-      Cache.clear();
-      if (this.compiled) {
-        for (let animation of this.animations) {
-          animation.cancel();
-        }
-        this.animations = [];
-        let { pattern, shaders } = this.compiled;
-        if (Object.keys(pattern).length || Object.keys(shaders).length) {
-          for (let el of this.shadowRoot.querySelectorAll('cell')) {
-            el.style.cssText = '';
-          }
-        }
-      }
-    }
-
     update(styles) {
       this.cleanup();
       // Use old rules to update
       if (!styles) {
-        styles = un_entity(this._innerHTML);
+        styles = un_entity(this._code);
       }
-      if (this._innerHTML !== styles) {
-        this._innerHTML = styles;
+      if (this._code !== styles) {
+        this._code = styles;
       }
       if (!this.grid_size) {
         this.grid_size = this.get_grid();
@@ -6288,6 +6274,70 @@ void main() {
       ));
     }
 
+    pause() {
+      this.setAttribute('cssd-paused', true);
+      for (let am of this.animations) {
+        am.pause();
+      }
+    }
+
+    resume() {
+      this.removeAttribute('cssd-paused');
+      for (let am of this.animations) {
+        am.resume();
+      }
+    }
+
+    export({ scale, name, download, detail } = {}) {
+      return new Promise((resolve, reject) => {
+        let variables = get_all_variables(this);
+        let html = this.doodle.innerHTML;
+
+        let { width, height } = this.getBoundingClientRect();
+        scale = parseInt(scale) || 1;
+
+        let w = width * scale;
+        let h = height * scale;
+
+        let svg = `
+        <svg ${NS}
+          preserveAspectRatio="none"
+          viewBox="0 0 ${width} ${height}"
+          ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
+        >
+          <foreignObject width="100%" height="100%">
+            <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
+              <style>.host{${entity(variables)}}</style>
+              ${html}
+            </div>
+          </foreignObject>
+        </svg>
+      `;
+
+        if (download || detail) {
+          svg_to_png(svg, w, h, scale)
+            .then(({ source, url, blob }) => {
+              resolve({
+                width: w, height: h, svg, blob, source
+              });
+              if (download) {
+                let a = document.createElement('a');
+                a.download = get_png_name(name);
+                a.href = url;
+                a.click();
+              }
+            })
+            .catch(error => {
+              reject(error);
+            });
+        } else {
+          resolve({
+            width: w, height: h, svg: svg
+          });
+        }
+      });
+    }
+
     get grid() {
       return Object.assign({}, this.grid_size);
     }
@@ -6331,6 +6381,22 @@ void main() {
       return use;
     }
 
+    cleanup() {
+      cache.clear();
+      if (this.compiled) {
+        for (let am of this.animations) {
+          am.cancel();
+        }
+        this.animations = [];
+        let { pattern, shaders } = this.compiled;
+        if (Object.keys(pattern).length || Object.keys(shaders).length) {
+          for (let el of this.shadowRoot.querySelectorAll('cell')) {
+            el.style.cssText = '';
+          }
+        }
+      }
+    }
+
     attr(name, value) {
       let len = arguments.length;
       if (len === 1) {
@@ -6364,7 +6430,7 @@ void main() {
       code = ':doodle {width:100%;height:100%}' + code;
       let parsed = parse$7(code, this.extra);
       let _grid = parse_grid('');
-      let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random);
+      let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random, options.upextra);
       let grid = compiled.grid ? compiled.grid : _grid;
       let viewBox = '';
       if (options && options.arg) {
@@ -6407,20 +6473,6 @@ void main() {
     pattern_to_image({ code, cell, id }, fn) {
       let shader = draw_pattern(code, this.extra);
       this.shader_to_image({ shader, cell, id }, fn);
-    }
-
-    pause() {
-      this.setAttribute('cssd-paused', true);
-      for (let animation of this.animations) {
-        animation.pause();
-      }
-    }
-
-    resume() {
-      this.removeAttribute('cssd-paused');
-      for (let animation of this.animations) {
-        animation.resume();
-      }
     }
 
     shader_to_image({ shader, cell, id }, fn) {
@@ -6505,7 +6557,7 @@ void main() {
         : this.get_grid();
 
       this.build_grid(compiled, this.grid_size);
-      this._innerHTML = this.innerHTML;
+      this._code = this.innerHTML;
       this.innerHTML = '';
     }
 
@@ -6522,8 +6574,8 @@ void main() {
           doodle_ids.map(id => {
             if (input.includes(id)) {
               return new Promise(resolve => {
-                let { arg, doodle } = doodles[id];
-                this.doodle_to_image(doodle, { arg }, value => resolve({ id, value }));
+                let { arg, doodle, upextra } = doodles[id];
+                this.doodle_to_image(doodle, { arg, upextra }, value => resolve({ id, value }));
               });
             } else {
               return Promise.resolve('');
@@ -6584,21 +6636,21 @@ void main() {
         styles.all
       ));
       if (uniforms.time) {
-        this.register_utime();
+        this.reg_utime();
       }
       if (uniforms.mousex || uniforms.mousey) {
-        this.register_umouse(uniforms);
+        this.reg_umouse(uniforms);
       } else {
-        this.remove_umouse();
+        this.off_umouse();
       }
       if (uniforms.width || uniforms.height) {
-        this.register_usize(uniforms);
+        this.reg_usize(uniforms);
       } else {
-        this.remove_usize();
+        this.off_usize();
       }
     }
 
-    register_umouse(uniforms) {
+    reg_umouse(uniforms) {
       if (!this.umouse_fn) {
         this.umouse_fn = e => {
           let data = e.detail || e;
@@ -6615,7 +6667,7 @@ void main() {
       }
     }
 
-    remove_umouse() {
+    off_umouse() {
       if (this.umouse_fn) {
         this.style.removeProperty('--' + umousex.name);
         this.style.removeProperty('--' + umousey.name);
@@ -6624,7 +6676,7 @@ void main() {
       }
     }
 
-    register_usize(uniforms) {
+    reg_usize(uniforms) {
       if (!this.usize_observer) {
         this.usize_observer = new ResizeObserver(() => {
           let box = this.getBoundingClientRect();
@@ -6639,7 +6691,7 @@ void main() {
       }
     }
 
-    remove_usize() {
+    off_usize() {
       if (this.usize_observer) {
         this.style.removeProperty('--' + uwidth.name);
         this.style.removeProperty('--' + uheight.name);
@@ -6648,7 +6700,7 @@ void main() {
       }
     }
 
-    register_utime() {
+    reg_utime() {
       if (!this.is_utime_set) {
         try {
           CSS.registerProperty({
@@ -6662,56 +6714,6 @@ void main() {
       }
     }
 
-    export({ scale, name, download, detail } = {}) {
-      return new Promise((resolve, reject) => {
-        let variables = get_all_variables(this);
-        let html = this.doodle.innerHTML;
-
-        let { width, height } = this.getBoundingClientRect();
-        scale = parseInt(scale) || 1;
-
-        let w = width * scale;
-        let h = height * scale;
-
-        let svg = `
-        <svg ${NS}
-          preserveAspectRatio="none"
-          viewBox="0 0 ${width} ${height}"
-          ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
-        >
-          <foreignObject width="100%" height="100%">
-            <div class="host" ${NSXHtml} style="width: ${width}px; height: ${height}px">
-              <style>.host {${entity(variables)}}</style>
-              ${html}
-            </div>
-          </foreignObject>
-        </svg>
-      `;
-
-        if (download || detail) {
-          svg_to_png(svg, w, h, scale)
-            .then(({ source, url, blob }) => {
-              resolve({
-                width: w, height: h, svg, blob, source
-              });
-              if (download) {
-                let a = document.createElement('a');
-                a.download = get_png_name(name);
-                a.href = url;
-                a.click();
-              }
-            })
-            .catch(error => {
-              reject(error);
-            });
-        } else {
-          resolve({
-            width: w, height: h, svg: svg
-          });
-        }
-      });
-    }
-
     set_style(input) {
       if (input instanceof Promise) {
         input.then(v => {
@@ -6719,10 +6721,9 @@ void main() {
         });
       } else {
         const el = this.shadowRoot.querySelector('style');
-        let v = input.replace(/\n\s+/g, ' ');
-        el && (el.styleSheet
-          ? (el.styleSheet.cssText = v)
-          : (el.innerHTML = v));
+        if (el) {
+          el.textContent = input.replace(/\n\s+/g, ' ');
+        }
       }
     }
   }
@@ -6775,14 +6776,10 @@ void main() {
   `;
   }
 
-  function get_content(input) {
-    return is_nil(input) ? '' : input;
-  }
-
   function create_cell(x, y, z, content, child = '') {
     let id = cell_id(x, y, z);
-    let head = get_content(content['#' + id]);
-    let tail = get_content(child);
+    let head = content['#' + id] ?? '';
+    let tail = child ?? '';
     return `<cell id="${id}">${head}${tail}</cell>`;
   }
 
