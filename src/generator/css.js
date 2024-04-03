@@ -466,10 +466,9 @@ class Rules {
         value = `'${value}'`;
       }
       let reset = new Map();
-      value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/g, n => {
-        let name = 'c' + hash(n);
-        reset.set(name, `${name} calc(tan(atan2(${n},1)))`);
-        return `counter(${name})`;
+      value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/g, (n, v) => {
+        reset.set(v, `${v} calc(${n})`);
+        return `counter(${v})`;
       });
       return `
         ${reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : ''}
