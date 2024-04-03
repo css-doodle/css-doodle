@@ -801,7 +801,7 @@ class Rules {
       this.styles.keyframes += `
        @keyframes ${utime['animation-name']} {
          from {--${utime.name }:0}
-         to {--${utime.name}:${utime['animation-duration'] / 10 }}
+         to {--${utime.name}:${utime['animation-duration'] / (1000/60) }}
        }
       `;
     }
