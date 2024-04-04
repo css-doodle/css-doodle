@@ -803,6 +803,7 @@ const Expose = add_alias({
   'pnr':  'pr',
   'PN':   'PL',
   'PNR':  'PR',
+  'R':    'rn',
 
   // error prone
   'stripes': 'stripe',
