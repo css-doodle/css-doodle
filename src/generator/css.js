@@ -9,6 +9,8 @@ import { utime, UTime } from '../uniforms.js';
 
 import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values, hash } from '../utils/index.js';
 
+const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
+
 function is_host_selector(s) {
   return /^\:(host|doodle)/.test(s);
 }
@@ -792,16 +794,15 @@ class Rules {
     }
 
     if (this.uniforms.time) {
-      let delay = new Date().setHours(0, 0, 0, 0) - Date.now();
       this.styles.container += `
         :host,.host {
-          animation:${utime.animation()},${UTime.animation(delay + 'ms')};
+          animation:${utime.animation()},${UTime.animation(DELAY + 'ms')};
         }
       `;
       this.styles.keyframes += `
         @keyframes ${utime['animation-name']} {
           from {--${utime.name}:0}
-          to {--${utime.name}:${Math.round(utime.ticks/(1000/60))}}
+          to {--${utime.name}:${Math.trunc(utime.ticks/(1000/60))}}
         }
         @keyframes ${UTime['animation-name']} {
           from {--${UTime.name}:0}
