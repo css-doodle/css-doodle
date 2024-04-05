@@ -5,7 +5,7 @@ import parse_value_group from '../parser/parse-value-group.js';
 
 import calc from '../calc.js';
 import seedrandom from '../lib/seedrandom.js';
-import { utime } from '../uniforms.js';
+import { utime, UTime } from '../uniforms.js';
 
 import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values, hash } from '../utils/index.js';
 
@@ -248,7 +248,7 @@ class Rules {
 
   check_uniforms(name) {
     switch (name) {
-      case 'ut': case 't': this.uniforms.time = true; break;
+      case 'ut': case 'UT': case 't': case 'T': this.uniforms.time = true; break;
       case 'ux': this.uniforms.mousex = true; break;
       case 'uy': this.uniforms.mousey = true; break;
       case 'uw': this.uniforms.width = true; break;
@@ -435,7 +435,7 @@ class Rules {
       if (is_host_selector(selector)) {
         let prefix = utime[prop];
         if (prefix && value) {
-          value =  prefix + ',' + value;
+          value =  prefix + ',' + UTime[prop] + ',' + value;
         }
       }
 
@@ -466,7 +466,7 @@ class Rules {
         value = `'${value}'`;
       }
       let reset = new Map();
-      value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/g, (n, v) => {
+      value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/gi, (n, v) => {
         reset.set(v, `${v} calc(${n})`);
         return `counter(${v})`;
       });
@@ -792,16 +792,21 @@ class Rules {
     }
 
     if (this.uniforms.time) {
+      let delay = new Date().setHours(0, 0, 0, 0) - Date.now();
       this.styles.container += `
         :host,.host {
-          animation: ${utime.animation};
+          animation:${utime.animation()},${UTime.animation(delay + 'ms')};
         }
       `;
       this.styles.keyframes += `
-       @keyframes ${utime['animation-name']} {
-         from {--${utime.name }:0}
-         to {--${utime.name}:${utime['animation-duration'] / (1000/60) }}
-       }
+        @keyframes ${utime['animation-name']} {
+          from {--${utime.name}:0}
+          to {--${utime.name}:${Math.round(utime.ticks/(1000/60))}}
+        }
+        @keyframes ${UTime['animation-name']} {
+          from {--${UTime.name}:0}
+          to {--${UTime.name}:${utime.ticks}}
+        }
       `;
     }
 

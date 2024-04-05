@@ -12,7 +12,7 @@ import create_animation from './utils/create-animation.js';
 
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { NS, NSXHtml } from './utils/svg.js';
-import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
+import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity } from './utils/index.js';
 
 import { cache } from './cache.js';
@@ -525,7 +525,13 @@ export class CSSDoodle extends HTMLElement {
       try {
         CSS.registerProperty({
           name: '--' + utime.name,
-          syntax: '<number>',
+          syntax: '<integer>',
+          initialValue: 0,
+          inherits: true
+        });
+        CSS.registerProperty({
+          name: '--' + UTime.name,
+          syntax: '<integer>',
           initialValue: 0,
           inherits: true
         });
@@ -566,7 +572,8 @@ function get_basic_styles(grid) {
       width: auto;
       height: auto;
       contain: strict;
-      --${utime.name}: 0
+      --${utime.name}: 0;
+      --${UTime.name}: 0
     }
     :host([hidden]),[hidden] {
       display: none

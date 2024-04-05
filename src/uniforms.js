@@ -1,9 +1,15 @@
-export const utime = {
-  'name': 'cssd-utime',
-  'animation-name': 'cssd-utime-animation',
-  'animation-duration': 31536000000, /* one year in ms */
-  'animation': '31536000000ms linear 0s infinite cssd-utime-animation',
-};
+function create_time_uniform(name) {
+  let ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
+  let aname = `${name}-animation`;
+  return {
+    name, ticks,
+    'animation-name': aname,
+    animation: (delay='0s') => `${ticks}ms linear ${delay} infinite ${aname}`
+  }
+}
+
+export const utime = create_time_uniform('cssd-utime');
+export const UTime = create_time_uniform('cssd-UTime');
 
 export const umousex = {
   name: 'cssd-umousex',

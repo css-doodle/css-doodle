@@ -10,7 +10,7 @@ import Noise from './lib/noise.js';
 import calc from './calc.js';
 import { memo } from './cache.js';
 
-import { utime, umousex, umousey, uwidth, uheight } from './uniforms.js';
+import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { create_svg_url, normalize_svg } from './utils/svg.js';
 import { by_unit, by_charcode } from './utils/transform.js';
@@ -563,6 +563,10 @@ const Expose = add_alias({
     return calc_with(`var(--${utime.name})`);
   },
 
+  UT() {
+    return calc_with(`var(--${UTime.name})`);
+  },
+
   uw() {
     return calc_with(`var(--${uwidth.name})`);
   },
@@ -804,6 +808,8 @@ const Expose = add_alias({
   'PN':   'PL',
   'PNR':  'PR',
   'R':    'rn',
+  'T':    'UT',
+  't':    'ut',
 
   // error prone
   'stripes': 'stripe',
@@ -813,7 +819,6 @@ const Expose = add_alias({
   'fliph': 'flipH',
 
   // legacy names, keep them before 1.0
-  't': 'ut',
   'filter': 'svg-filter',
   'last-rand': 'lr',
   'last-pick': 'lp',
