@@ -70,6 +70,10 @@ function compute(op, a, b) {
   }
 }
 
+function add_unit(input, unit) {
+  return unit ? `calc((${input}) * 1${unit})` : `calc(${input})`;
+}
+
 function calc_value(base, v) {
   if (is_empty(v) || is_empty(base)) {
     return base;
@@ -78,10 +82,9 @@ function calc_value(base, v) {
     let op = v[0];
     let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
     if (/var\(/.test(base)) {
-      if (op === '%') {
-        return `calc(mod(${base}, ${value}) * 1${unit})`;
-      }
-      return `calc((${base} ${op} ${value}) * 1${unit})`;
+      return op === '%'
+        ? add_unit(`mod(${base}, ${value})`, unit)
+        : add_unit(`${base} ${op} ${value}`, unit);
     }
     return compute(op, base, value) + unit;
   }
@@ -89,10 +92,9 @@ function calc_value(base, v) {
     let op = v.substr(-1);
     let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
     if (/var\(/.test(base)) {
-      if (op === '%') {
-        return `calc(mod(${value}, ${base}) * 1${unit})`;
-      }
-      return `calc((${value} ${op} ${base}) * 1${unit})`;
+      return op === '%'
+        ? add_unit(`mod(${value}, ${base})`, unit)
+        : add_unit(`${value} ${op} ${base}`, unit);
     }
     return compute(op, value, base) + unit;
   } else {
