@@ -563,6 +563,14 @@ const Expose = add_alias({
     return calc_with(`var(--${utime.name})`);
   },
 
+  ts() {
+    return calc_with(`calc(var(--${utime.name}) / 1000)`);
+  },
+
+  TS() {
+    return calc_with(`calc(var(--${UTime.name}) / 1000)`);
+  },
+
   UT() {
     return calc_with(`var(--${UTime.name})`);
   },

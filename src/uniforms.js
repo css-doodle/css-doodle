@@ -1,10 +1,11 @@
 function create_time_uniform(name) {
   let ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
+  let steps = ticks / (1000 / 60);
   let aname = `${name}-animation`;
   return {
     name, ticks,
     'animation-name': aname,
-    animation: (delay='0s') => `${ticks}ms linear ${delay} infinite ${aname}`
+    animation: (delay='0s') => `${ticks}ms steps(${steps}) ${delay} infinite ${aname}`
   }
 }
 

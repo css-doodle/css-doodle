@@ -250,7 +250,8 @@ class Rules {
 
   check_uniforms(name) {
     switch (name) {
-      case 'ut': case 'UT': case 't': case 'T': this.uniforms.time = true; break;
+      case 'ut': case 'UT': case 't': case 'T': case 'ts': case 'TS':
+        this.uniforms.time = true; break;
       case 'ux': this.uniforms.mousex = true; break;
       case 'uy': this.uniforms.mousey = true; break;
       case 'uw': this.uniforms.width = true; break;
@@ -794,19 +795,21 @@ class Rules {
     }
 
     if (this.uniforms.time) {
+      let n = 'animation-name';
+      let t = utime.ticks;
+      let un = utime.name;
+      let Un = UTime.name;
       this.styles.container += `
         :host,.host {
           animation:${utime.animation()},${UTime.animation(DELAY + 'ms')};
         }
       `;
       this.styles.keyframes += `
-        @keyframes ${utime['animation-name']} {
-          from {--${utime.name}:0}
-          to {--${utime.name}:${Math.trunc(utime.ticks/(1000/60))}}
+        @keyframes ${utime[n]} {
+          from {--${un}:0} to {--${un}:${t}}
         }
-        @keyframes ${UTime['animation-name']} {
-          from {--${UTime.name}:0}
-          to {--${UTime.name}:${utime.ticks}}
+        @keyframes ${UTime[n]} {
+          from {--${Un}:0} to {--${Un}:${t}}
         }
       `;
     }
