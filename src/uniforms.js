@@ -1,6 +1,6 @@
 function create_time_uniform(name) {
   let ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
-  let steps = ticks / (1000 / 60);
+  let steps = ticks / (1000 / 120);
   let aname = `${name}-animation`;
   return {
     name, ticks,
