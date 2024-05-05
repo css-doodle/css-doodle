@@ -1,3 +1,13 @@
+## 0.39.1
+
+* Add new time uniform `@T`, which increases in `ms` and starts from beginning of the day.
+* Add alias `R` for `@rn`.
+* Add `@ts` and `@TS`.
+* Simplify generated calc expressions.
+* Simplify counter-reset.
+* Restrict animation frame to 60fps.
+
+
 ## 0.39.0
 
 * Use native `mod` function for variables.

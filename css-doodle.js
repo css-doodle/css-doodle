@@ -1,4 +1,4 @@
-/*! css-doodle v0.39.0 MIT licensed */
+/*! css-doodle v0.39.1 MIT licensed */
 (function () {
   'use strict';
 
@@ -3039,12 +3039,19 @@
     }
   }
 
-  const utime = {
-    'name': 'cssd-utime',
-    'animation-name': 'cssd-utime-animation',
-    'animation-duration': 31536000000, /* one year in ms */
-    'animation': '31536000000ms linear 0s infinite cssd-utime-animation',
-  };
+  function create_time_uniform(name) {
+    let ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
+    let steps = ticks / (1000 / 120);
+    let aname = `${name}-animation`;
+    return {
+      name, ticks,
+      'animation-name': aname,
+      animation: (delay='0s') => `${ticks}ms steps(${steps}) ${delay} infinite ${aname}`
+    }
+  }
+
+  const utime = create_time_uniform('cssd-utime');
+  const UTime = create_time_uniform('cssd-UTime');
 
   const umousex = {
     name: 'cssd-umousex',
@@ -3287,6 +3294,10 @@
     }
   }
 
+  function add_unit(input, unit) {
+    return unit ? `calc((${input}) * 1${unit})` : `calc(${input})`;
+  }
+
   function calc_value(base, v) {
     if (is_empty(v) || is_empty(base)) {
       return base;
@@ -3295,10 +3306,9 @@
       let op = v[0];
       let { unit = '', value } = parse$4(v.substr(1).trim() || 0);
       if (/var\(/.test(base)) {
-        if (op === '%') {
-          return `calc(mod(${base}, ${value}) * 1${unit})`;
-        }
-        return `calc((${base} ${op} ${value}) * 1${unit})`;
+        return op === '%'
+          ? add_unit(`mod(${base}, ${value})`, unit)
+          : add_unit(`${base} ${op} ${value}`, unit);
       }
       return compute(op, base, value) + unit;
     }
@@ -3306,10 +3316,9 @@
       let op = v.substr(-1);
       let { unit = '', value } = parse$4(v.substr(0, v.length - 1).trim() || 0);
       if (/var\(/.test(base)) {
-        if (op === '%') {
-          return `calc(mod(${value}, ${base}) * 1${unit})`;
-        }
-        return `calc((${value} ${op} ${base}) * 1${unit})`;
+        return op === '%'
+          ? add_unit(`mod(${value}, ${base})`, unit)
+          : add_unit(`${value} ${op} ${base}`, unit);
       }
       return compute(op, value, base) + unit;
     } else {
@@ -3778,6 +3787,18 @@
       return calc_with(`var(--${utime.name})`);
     },
 
+    ts() {
+      return calc_with(`calc(var(--${utime.name}) / 1000)`);
+    },
+
+    TS() {
+      return calc_with(`calc(var(--${UTime.name}) / 1000)`);
+    },
+
+    UT() {
+      return calc_with(`var(--${UTime.name})`);
+    },
+
     uw() {
       return calc_with(`var(--${uwidth.name})`);
     },
@@ -4017,6 +4038,9 @@
     'pnr':  'pr',
     'PN':   'PL',
     'PNR':  'PR',
+    'R':    'rn',
+    'T':    'UT',
+    't':    'ut',
 
     // error prone
     'stripes': 'stripe',
@@ -4026,7 +4050,6 @@
     'fliph': 'flipH',
 
     // legacy names, keep them before 1.0
-    't': 'ut',
     'filter': 'svg-filter',
     'last-rand': 'lr',
     'last-pick': 'lp',
@@ -4691,6 +4714,8 @@
   //
   mixkey(math.random(), pool);
 
+  const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
+
   function is_host_selector(s) {
     return /^\:(host|doodle)/.test(s);
   }
@@ -4930,7 +4955,8 @@
 
     check_uniforms(name) {
       switch (name) {
-        case 'ut': case 't': this.uniforms.time = true; break;
+        case 'ut': case 'UT': case 't': case 'T': case 'ts': case 'TS':
+          this.uniforms.time = true; break;
         case 'ux': this.uniforms.mousex = true; break;
         case 'uy': this.uniforms.mousey = true; break;
         case 'uw': this.uniforms.width = true; break;
@@ -5117,7 +5143,7 @@
         if (is_host_selector(selector)) {
           let prefix = utime[prop];
           if (prefix && value) {
-            value =  prefix + ',' + value;
+            value =  prefix + ',' + UTime[prop] + ',' + value;
           }
         }
 
@@ -5148,10 +5174,9 @@
           value = `'${value}'`;
         }
         let reset = new Map();
-        value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/g, n => {
-          let name = 'c' + hash(n);
-          reset.set(name, `${name} calc(tan(atan2(${n},1)))`);
-          return `counter(${name})`;
+        value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/gi, (n, v) => {
+          reset.set(v, `${v} calc(${n})`);
+          return `counter(${v})`;
         });
         return `
         ${reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : ''}
@@ -5472,16 +5497,22 @@
       }
 
       if (this.uniforms.time) {
+        let n = 'animation-name';
+        let t = utime.ticks;
+        let un = utime.name;
+        let Un = UTime.name;
         this.styles.container += `
         :host,.host {
-          animation: ${utime.animation};
+          animation:${utime.animation()},${UTime.animation(DELAY + 'ms')};
         }
       `;
         this.styles.keyframes += `
-       @keyframes ${utime['animation-name']} {
-         from {--${utime.name }:0}
-         to {--${utime.name}:${utime['animation-duration'] / 10 }}
-       }
+        @keyframes ${utime[n]} {
+          from {--${un}:0} to {--${un}:${t}}
+        }
+        @keyframes ${UTime[n]} {
+          from {--${Un}:0} to {--${Un}:${t}}
+        }
       `;
       }
 
@@ -6705,7 +6736,13 @@ void main() {
         try {
           CSS.registerProperty({
             name: '--' + utime.name,
-            syntax: '<number>',
+            syntax: '<integer>',
+            initialValue: 0,
+            inherits: true
+          });
+          CSS.registerProperty({
+            name: '--' + UTime.name,
+            syntax: '<integer>',
             initialValue: 0,
             inherits: true
           });
@@ -6746,7 +6783,8 @@ void main() {
       width: auto;
       height: auto;
       contain: strict;
-      --${utime.name}: 0
+      --${utime.name}: 0;
+      --${UTime.name}: 0
     }
     :host([hidden]),[hidden] {
       display: none
