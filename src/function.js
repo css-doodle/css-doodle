@@ -86,7 +86,7 @@ function calc_value(base, v) {
         ? add_unit(`mod(${base}, ${value})`, unit)
         : add_unit(`${base} ${op} ${value}`, unit);
     }
-    return compute(op, base, value) + unit;
+    return compute(op, Number(base), Number(value)) + unit;
   }
   else if (/[\+\*\-\/%]$/.test(v)) {
     let op = v.substr(-1);
@@ -96,10 +96,10 @@ function calc_value(base, v) {
         ? add_unit(`mod(${value}, ${base})`, unit)
         : add_unit(`${value} ${op} ${base}`, unit);
     }
-    return compute(op, value, base) + unit;
+    return compute(op, Number(value), Number(base)) + unit;
   } else {
     let { unit = '', value } = parse_compound_value(v || 0);
-    return (base + value) + unit;
+    return (Number(base) + Number(value)) + unit;
   }
 }
 
