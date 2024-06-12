@@ -371,7 +371,7 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border }) {
+  add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border, gap }) {
     if (fill) {
       this.add_rule(':host', `background-color:${fill};`);
     }
@@ -419,6 +419,9 @@ class Rules {
     }
     if (border !== undefined) {
       this.add_rule(':host', `border: 1px solid ${border};`);
+    }
+    if (gap) {
+      this.add_rule(':container', `gap: ${gap};`);
     }
   }
 

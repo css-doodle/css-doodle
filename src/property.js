@@ -89,7 +89,7 @@ export default add_alias({
       }
     }
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/', '+', '^', '*', '|', '-', '~', '∆'],
+      symbol: ['/', '+', '^', '*', '|', '-', '~', '∆', '_'],
       noSpace: true,
       verbose: true
     });
@@ -99,6 +99,7 @@ export default add_alias({
       if (group === '*') result.rotate = value;
       if (group === '~') result.translate = value;
       if (group === '∆') result.persp = parse_value_group(value, {symbol: ' '});
+      if (group === '_') result.gap = value;
       if (group === '/') {
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;
