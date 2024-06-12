@@ -308,8 +308,8 @@ function read_arguments(it, composition, doodle, variables = {}) {
           } else if (/\S/.test(arg)) {
             group.push(Tokens.text(arg));
           }
-          if (arg.startsWith('±') && !doodle) {
-            let raw = arg.substr(1);
+          if (arg.trim().startsWith('±') && !doodle) {
+            let raw = arg.trim().substr(1);
             let cloned = structuredClone(group);
             last(cloned).value = '-' + raw;
             args.push(normalize_argument(cloned));
