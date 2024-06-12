@@ -861,7 +861,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
     random = seedrandom(String(seed));
   }
 
-  function rand(start = 0, end) {
+  function rand(start = 0, end = 1) {
     if (arguments.length == 1) {
       [start, end] = [0, start];
     }

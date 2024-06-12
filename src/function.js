@@ -328,7 +328,7 @@ const Expose = add_alias({
 
   r({ context, rand }) {
     return (...args) => {
-      let transform = args.every(is_letter)
+      let transform = (args.length && args.every(is_letter))
         ? by_charcode
         : by_unit;
       let value = transform(rand)(...args);
