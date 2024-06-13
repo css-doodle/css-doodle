@@ -1,4 +1,4 @@
-/*! css-doodle v0.39.1 MIT licensed */
+/*! css-doodle v0.39.2 MIT licensed */
 (function () {
   'use strict';
 
@@ -1286,8 +1286,8 @@
             } else if (/\S/.test(arg)) {
               group.push(Tokens.text(arg));
             }
-            if (arg.startsWith('±') && !doodle) {
-              let raw = arg.substr(1);
+            if (arg.trim().startsWith('±') && !doodle) {
+              let raw = arg.trim().substr(1);
               let cloned = structuredClone(group);
               last(cloned).value = '-' + raw;
               args.push(normalize_argument(cloned));
@@ -3310,7 +3310,7 @@
           ? add_unit(`mod(${base}, ${value})`, unit)
           : add_unit(`${base} ${op} ${value}`, unit);
       }
-      return compute(op, base, value) + unit;
+      return compute(op, Number(base), Number(value)) + unit;
     }
     else if (/[\+\*\-\/%]$/.test(v)) {
       let op = v.substr(-1);
@@ -3320,10 +3320,10 @@
           ? add_unit(`mod(${value}, ${base})`, unit)
           : add_unit(`${value} ${op} ${base}`, unit);
       }
-      return compute(op, value, base) + unit;
+      return compute(op, Number(value), Number(base)) + unit;
     } else {
       let { unit = '', value } = parse$4(v || 0);
-      return (base + value) + unit;
+      return (Number(base) + Number(value)) + unit;
     }
   }
 
@@ -3551,7 +3551,7 @@
 
     r({ context, rand }) {
       return (...args) => {
-        let transform = args.every(is_letter)
+        let transform = (args.length && args.every(is_letter))
           ? by_charcode
           : by_unit;
         let value = transform(rand)(...args);
@@ -4230,7 +4230,7 @@
         }
       }
       let groups = parse$9(temp.join(' '), {
-        symbol: ['/', '+', '^', '*', '|', '-', '~', '∆'],
+        symbol: ['/', '+', '^', '*', '|', '-', '~', '∆', '_'],
         noSpace: true,
         verbose: true
       });
@@ -4240,6 +4240,7 @@
         if (group === '*') result.rotate = value;
         if (group === '~') result.translate = value;
         if (group === '∆') result.persp = parse$9(value, {symbol: ' '});
+        if (group === '_') result.gap = value;
         if (group === '/') {
           if (result.size === undefined) result.size = this.size(value, options);
           else result.fill = value;
@@ -5076,7 +5077,7 @@
       }
     }
 
-    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border }) {
+    add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border, gap }) {
       if (fill) {
         this.add_rule(':host', `background-color:${fill};`);
       }
@@ -5124,6 +5125,9 @@
       }
       if (border !== undefined) {
         this.add_rule(':host', `border: 1px solid ${border};`);
+      }
+      if (gap) {
+        this.add_rule(':container', `gap: ${gap};`);
       }
     }
 
@@ -5362,7 +5366,11 @@
             }
           }
         });
-        if (is_nil(this.seed)) ; else {
+        if (is_nil(this.seed)) {
+          if (!coords.upextra.length) {
+            this.seed = coords.seed_value;
+          }
+        } else {
           coords.update_random(this.seed);
         }
       }
@@ -5563,7 +5571,7 @@
       random = seedrandom(String(seed));
     }
 
-    function rand(start = 0, end) {
+    function rand(start = 0, end = 1) {
       if (arguments.length == 1) {
         [start, end] = [0, start];
       }

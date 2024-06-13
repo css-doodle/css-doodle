@@ -1,3 +1,12 @@
+## 0.39.2
+
+* Fix seed generation in nested doodle element.
+* Fix calc type in function arguments.
+* Fix multiple `±` symbol detection.
+* Set default rand end to 1.
+* Experimenting with a gap shorthand to grid.
+
+
 ## 0.39.1
 
 * Add new time uniform `@T`, which increases in `ms` and starts from beginning of the day.
