@@ -271,7 +271,7 @@ const Expose = add_alias({
     return Expose.pl(arg, true);
   },
 
-  pr({ context, extra, position }, upstream) {
+  pr({ context, extra, upextra, position }, upstream) {
     let lastExtra = upstream
       ? last(upextra.length ? upextra : extra)
       : last(extra);
@@ -293,7 +293,7 @@ const Expose = add_alias({
     return Expose.pr(arg, true);
   },
 
-  pd({ context, extra, position, shuffle }, upstream) {
+  pd({ context, extra, upextra, position, shuffle }, upstream) {
     let lastExtra = upstream
       ? last(upextra.length ? upextra : extra)
       : last(extra);
