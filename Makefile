@@ -1,21 +1,27 @@
-# for saving keystrokes
-
-TARGET := ./css-doodle.js
-TARGET_MIN := ./css-doodle.min.js
+TARGET := ./css-doodle.min.js
 LIB := ./node_modules
 
-all: build minify
+all: build minify trim banner
 
 build: $(LIB)
 	@npm run build
 
 minify: $(TARGET)
 	@npm run minify
-	@./tools/trim.js $(TARGET_MIN)
+
+banner: $(TARGET)
+	@npm run banner
+
+trim: $(TARGET)
+	@npm run trim
 
 test:
 	@npm run test
-.PHONY: test
 
 $(LIB):
 	@npm install
+
+$(TARGET):
+	@npm run build
+
+.PHONY: $(TARGET) banner test
