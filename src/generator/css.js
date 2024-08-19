@@ -736,10 +736,8 @@ class Rules {
               return this.compose_argument(arg, coords);
             });
             let cond = this.apply_func(fn, coords, args, name);
-            if (Array.isArray(token.addition)) {
-              for (let c of token.addition) {
-                if (c === 'not') cond = !cond;
-              }
+            if (token.selector[0] && token.selector[0].keyword === 'not') {
+              cond = !cond;
             }
             if (cond) {
               if (cond.selector) {
@@ -766,6 +764,34 @@ class Rules {
                 this.compose(coords, token.styles);
               }
             }
+          } else {
+            let composed_selector = token.name + ' ' + token.segments.map(n => {
+              if (n.keyword) return n.keyword;
+              if (Array.isArray(n.arguments)) {
+                return '(' + n.arguments[0][0].value + ')'
+              }
+              return '';
+            }).join(' ');
+
+            token.styles.forEach(_token => {
+              if (_token.type === 'rule') {
+                this.add_rule(
+                  composed_selector,
+                  this.compose_rule(_token, coords)
+                )
+              }
+              if (_token.type === 'pseudo') {
+                _token.name.split(',').forEach(selector => {
+                  let pseudo = _token.styles.map(s =>
+                    this.compose_rule(s, coords, selector)
+                  );
+                  this.add_rule(
+                    (cond.selector + selector).replaceAll('$', this.compose_selector(coords)),
+                    pseudo
+                  );
+                });
+              }
+            });
           }
           break;
         }
