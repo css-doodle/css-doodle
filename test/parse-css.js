@@ -93,13 +93,18 @@ test('quotes in SVG', t => {
         "addition": [],
         "name": "@svg",
         "styles": [],
-        "arguments": [
-          [
-            {
-              "type": "text",
-              "value": `text { content: \"${value}\"; }`
-            }
-          ]
+        "arguments": [],
+        "segments": [
+          {
+            "arguments": [
+              [
+                {
+                  "type": "text",
+                  "value": `text { content: \"${value}\"; }`
+                }
+              ]
+            ]
+          }
         ]
       }
     ];

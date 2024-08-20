@@ -134,14 +134,18 @@ function get_text_value(input) {
   }
 }
 
-function read_until(fn) {
+function read_until(fn, include) {
   return function(it, reset) {
     let index = it.index();
     let word = '';
     while (!it.end()) {
       let c = it.next();
-      if (fn(c)) break;
-      else word += c;
+      if (fn(c)) {
+        if (include) word += c;
+        break;
+      } else {
+        word += c;
+      }
     }
     if (reset) {
       it.index(index);
@@ -161,7 +165,7 @@ function read_keyframe_name(it) {
 
 function read_line(it, reset) {
   let check = c => is.line_break(c) || c == '{';
-  return read_until(check)(it, reset);
+  return read_until(check, true)(it, reset);
 }
 
 function read_step(it, extra) {
@@ -570,21 +574,47 @@ function read_selector(it) {
 }
 
 function read_cond_selector(it) {
-  let selector = { name: '', arguments: [] }, c;
+  let keyword = '', c;
+  let segments = [];
+  let selector = {};
   while (!it.end()) {
-    if ((c = it.curr()) == '(') {
-      it.next();
-      selector.arguments = read_arguments(it)[0];
+    if (/[){]/.test(c)) {
+      break;
     }
-    else if (/[){]/.test(c)) break;
-    else selector.name += c;
+    if ((c = it.curr()) == '(') {
+      if (keyword) {
+        if (!selector.name) {
+          selector.name = keyword;
+        } else {
+          segments.push({ keyword: keyword });
+        }
+        keyword = '';
+      }
+      it.next();
+      let args = read_arguments(it)[0];
+      segments.push({ arguments: args });
+    }
+    else if (!is.white_space(c)) {
+      keyword += c;
+    }
+    else if (is.white_space(c) && !selector.name) {
+      selector.name = keyword;
+      keyword = '';
+    }
+    else if (is.white_space(c) && keyword.length) {
+      segments.push({ keyword: keyword });
+      keyword = '';
+    }
+
     it.next();
   }
   let [name, ...addition] = selector.name.trim().split(/\s+/);
   selector.name = name;
   selector.addition = addition;
+  selector.segments = segments;
   return selector;
 }
+
 
 function read_pseudo(it, extra) {
   let pseudo = Tokens.pseudo(), c;
@@ -752,7 +782,7 @@ export default function parse(input, extra) {
       let keyframes = read_keyframes(it, extra);
       Tokens.push(keyframes);
     }
-    else if (c == '@' && !read_line(it, true).includes(':')) {
+    else if (read_line(it, true).includes('{')) {
       let cond = read_cond(it, extra);
       if (cond.name.length) Tokens.push(cond);
     }
