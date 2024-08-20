@@ -90,14 +90,17 @@ export default function draw_shader(shaders, seed) {
   const isShaderToyFragment = /(^|[^\w\_])void\s+mainImage\(\s*out\s+vec4\s+fragColor,\s*in\s+vec2\s+fragCoord\s*\)/mg.test(fragment);
 
   // https://www.shadertoy.com/howto
+  const defines = [
+   '#define iResolution vec3(u_resolution, 0)',
+   '#define iTime u_time',
+   '#define iTimeDelta u_timeDelta',
+   '#define iFrame u_frameIndex',
+    ...shaders.textures.map((n, i) => `#define iChannel${i} ${n.name}`)
+  ].join('\n');
+
   if (isShaderToyFragment) {
     fragment = `
-#define iResolution vec3(u_resolution, 0)
-#define iTime u_time
-#define iTimeDelta u_timeDelta
-#define iFrame u_frameIndex
-
-${shaders.textures.map((n, i) => `#define iChannel${i} ${n.name}`).join('\n')}
+${defines}
 
 ${fragment}
 

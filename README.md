@@ -40,13 +40,6 @@ A web component for drawing patterns with CSS.
 ## Build
 
 ```bash
-# build css-doodle.js
-npm run build
-
-# generate css-doodle.min.js
-npm run minify
-
-# or just use make
 make
 ```
 
