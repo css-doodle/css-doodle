@@ -736,7 +736,7 @@ class Rules {
               return this.compose_argument(arg, coords);
             });
             let cond = this.apply_func(fn, coords, args, name);
-            if (token.selector[0] && token.selector[0].keyword === 'not') {
+            if (token.selector && token.selector[0] && token.selector[0].keyword === 'not') {
               cond = !cond;
             }
             if (cond) {
@@ -773,25 +773,22 @@ class Rules {
               return '';
             }).join(' ');
 
+            let rules = '';
+
             token.styles.forEach(_token => {
               if (_token.type === 'rule') {
-                this.add_rule(
-                  composed_selector,
-                  this.compose_rule(_token, coords)
-                )
+                rules += `${composed_selector} {${this.compose_rule(_token, coords)}}`;
               }
               if (_token.type === 'pseudo') {
                 _token.name.split(',').forEach(selector => {
                   let pseudo = _token.styles.map(s =>
                     this.compose_rule(s, coords, selector)
                   );
-                  this.add_rule(
-                    (cond.selector + selector).replaceAll('$', this.compose_selector(coords)),
-                    pseudo
-                  );
+                  rules += `${(cond.selector + selector).replaceAll('$', this.compose_selector(coords))} {${pseudo}}`;
                 });
               }
             });
+            this.add_rule(this.compose_selector(coords), rules);
           }
           break;
         }
