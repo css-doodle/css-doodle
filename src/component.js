@@ -40,7 +40,7 @@ export class CSSDoodle extends HTMLElement {
     this.cleanup();
   }
 
-  update(styles) {
+  _update(styles) {
     this.cleanup();
     // Use old rules to update
     if (!styles) {
@@ -92,6 +92,32 @@ export class CSSDoodle extends HTMLElement {
       get_basic_styles(this.grid_size) +
       compiled.styles.all
     ));
+  }
+
+  update(styles, options = {}) {
+    if (!document.startViewTransition) {
+      return this._update(styles);
+    }
+    if (!arguments.length) {
+      styles = '';
+      options = {};
+    }
+    if (typeof styles === 'object') {
+      options = styles;
+      styles = '';
+    }
+
+    let useAnimation = this.viewTransition;
+    if (useAnimation === undefined) {
+      useAnimation = this.hasAttribute('view-transition');
+    }
+    if (useAnimation) {
+      document.startViewTransition(() => {
+        this._update(styles);
+      });
+    } else {
+      this._update(styles);
+    }
   }
 
   pause() {
