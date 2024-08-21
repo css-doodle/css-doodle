@@ -731,12 +731,16 @@ class Rules {
         case 'cond': {
           let name = token.name.substr(1);
           let fn = Selector[name];
+          let args = [];
           if (fn) {
-            let args = token.arguments.map(arg => {
-              return this.compose_argument(arg, coords);
-            });
+            let firstGroup = token.segments.find(n => n.arguments);
+            if (firstGroup && firstGroup.arguments) {
+              args = firstGroup.arguments.map(arg => {
+                return this.compose_argument(arg, coords);
+              });
+            }
             let cond = this.apply_func(fn, coords, args, name);
-            if (token.selector && token.selector[0] && token.selector[0].keyword === 'not') {
+            if (token.segments && token.segments[0] && token.segments[0].keyword === 'not') {
               cond = !cond;
             }
             if (cond) {
