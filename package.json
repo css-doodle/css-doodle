@@ -2,7 +2,6 @@
   "name": "css-doodle",
   "version": "0.39.2",
   "description": "A web component for drawing patterns with CSS",
-  "main": "css-doodle.js",
   "scripts": {
     "build": "esbuild src/index.js --bundle --analyze --outfile=css-doodle.min.js",
     "minify": "terser -cm -o css-doodle.min.js --ecma 6 -b ascii_only=true -- css-doodle.min.js",
@@ -29,7 +28,7 @@
     "src"
   ],
   "exports": {
-    ".": "./css-doodle.min.js",
+    ".": "src/index.js",
     "./component": {
       "import": "./src/exports/component/index.js"
     },
