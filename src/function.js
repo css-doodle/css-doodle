@@ -191,6 +191,19 @@ const Expose = add_alias({
     return lastExtra ? calc_with(lastExtra[2]) : '@ny';
   },
 
+  nd({ extra }) {
+    let lastExtra = last(extra);
+    if (lastExtra) {
+      let n = lastExtra[0];
+      let N = lastExtra[3];
+      return d => {
+        d = Number(d) || 0;
+        return n - .5 - d - N / 2;
+      }
+    }
+    return '@nd';;
+  },
+
   N({ extra }) {
     let lastExtra = last(extra);
     return lastExtra ? calc_with(lastExtra[3]) : '@N';
