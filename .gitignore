@@ -8,3 +8,4 @@ _test/
 *.log
 package-lock.json
 yarn.lock
+css-doodle.min.js
