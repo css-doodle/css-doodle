@@ -1,4 +1,4 @@
-import test from 'ava';
+import it from 'node:test';
 
 import property from '../src/property.js';
 import compare from './_compare.js';
@@ -7,15 +7,15 @@ compare.use(input => {
   return property.grid(input, { is_special_selector: true, max_grid: 64*64 });
 });
 
-test('basic settings', t => {
-  compare(t, '1 / 100%', {
+it('basic settings', () => {
+  compare('1 / 100%', {
     clip: true,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
     size: 'width:100%;height:100%;'
   });
 
-  compare(t, '1 / 100% / #fff', {
+  compare('1 / 100% / #fff', {
     clip: true,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
@@ -24,8 +24,8 @@ test('basic settings', t => {
   });
 });
 
-test('aspect ratio', t => {
-  compare(t, '1 / 100% auto (3/2) / #fff', {
+it('aspect ratio', () => {
+  compare('1 / 100% auto (3/2) / #fff', {
     clip: true,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
@@ -33,7 +33,7 @@ test('aspect ratio', t => {
     fill: '#fff'
   });
 
-  compare(t, '1 / 100% auto .5 / #fff', {
+  compare('1 / 100% auto .5 / #fff', {
     clip: true,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
@@ -41,7 +41,7 @@ test('aspect ratio', t => {
     fill: '#fff'
   });
 
-  compare(t, '1 / 100% auto var(--s) / #fff', {
+  compare('1 / 100% auto var(--s) / #fff', {
     clip: true,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
@@ -50,20 +50,20 @@ test('aspect ratio', t => {
   });
 });
 
-test('clip and p3d', t => {
-  compare(t, '1 no-clip', {
+it('clip and p3d', () => {
+  compare('1 no-clip', {
     clip: false,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
   });
 
-  compare(t, '1 noclip p3d', {
+  compare('1 noclip p3d', {
     clip: false,
     p3d: true,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
   });
 
-  compare(t, 'noclip p3d 1 / 100%', {
+  compare('noclip p3d 1 / 100%', {
     clip: false,
     p3d: true,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
@@ -71,8 +71,8 @@ test('clip and p3d', t => {
   });
 });
 
-test('flex', t => {
-  compare(t, '| 1 / 100%', {
+it('flex', () => {
+  compare('| 1 / 100%', {
     clip: true,
     p3d: false,
     flexCol: true,
@@ -80,7 +80,7 @@ test('flex', t => {
     size: 'width:100%;height:100%;'
   });
 
-  compare(t, '- 1 / 100%', {
+  compare('- 1 / 100%', {
     clip: true,
     p3d: false,
     flexRow: true,
@@ -89,8 +89,8 @@ test('flex', t => {
   });
 });
 
-test('transform commands', t => {
-  compare(t, '1 / 100% + 1 ^.5 * 10deg ~ 10px 10px ∆ 100px 50%', {
+it('transform commands', () => {
+  compare('1 / 100% + 1 ^.5 * 10deg ~ 10px 10px ∆ 100px 50%', {
     clip: true,
     p3d: false,
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },

@@ -1,96 +1,96 @@
-import test from 'ava';
-
+import it  from 'node:test';
 import parseValueGroup from '../src/parser/parse-value-group.js';
+
 import compare from './_compare.js';
 
-test('basic value group', t => {
+it('basic value group', () => {
 
   compare.use(parseValueGroup);
 
-  compare(t, undefined, []);
+  compare(undefined, []);
 
-  compare(t, '', []);
+  compare('', []);
 
-  compare(t, 'a', ['a']);
+  compare('a', ['a']);
 
-  compare(t, 'a, b', ['a', 'b']);
+  compare('a, b', ['a', 'b']);
 
-  compare(t, 'a, b, c', ['a', 'b', 'c']);
+  compare('a, b, c', ['a', 'b', 'c']);
 
-  compare(t, 'a, b-c', ['a', 'b-c']);
+  compare('a, b-c', ['a', 'b-c']);
 
-  compare(t, 'a, var(--a,b)', ['a', 'var(--a,b)']);
+  compare('a, var(--a,b)', ['a', 'var(--a,b)']);
 
-  compare(t, 'a b', ['a', 'b']);
+  compare('a b', ['a', 'b']);
 
-  compare(t, 'a @p(a, b)', ['a', '@p(a,b)']);
+  compare('a @p(a, b)', ['a', '@p(a,b)']);
 
-  compare(t, 'a "hello world"', ['a', '"hello world"']);
+  compare('a "hello world"', ['a', '"hello world"']);
 
-  compare(t, 'a, "hello, world"', ['a', '"hello, world"']);
+  compare('a, "hello, world"', ['a', '"hello, world"']);
 
-  compare(t, 'a, , @p(a,b)', ['a', '', '@p(a,b)']);
+  compare('a, , @p(a,b)', ['a', '', '@p(a,b)']);
 
-  compare(t, '10px calc(10px / 5)', ['10px', 'calc(10px / 5)']);
+  compare('10px calc(10px / 5)', ['10px', 'calc(10px / 5)']);
 
 });
 
 
-test('no space option', t => {
+it('no space option', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { noSpace: true });
   });
 
-  compare(t, 'a b', ['a b']);
+  compare('a b', ['a b']);
 
-  compare(t, 'a  b', ['a b']);
+  compare('a  b', ['a b']);
 
-  compare(t, 'a "hello, world"', ['a "hello, world"']);
+  compare('a "hello, world"', ['a "hello, world"']);
 
-  compare(t, 'a,b', ['a', 'b']);
+  compare('a,b', ['a', 'b']);
 
-  compare(t, 'a, b', ['a', 'b']);
+  compare('a, b', ['a', 'b']);
 
 });
 
 
-test('grid value', t => {
+it('grid value', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { symbol: '/', noSpace: true });
   });
 
-  compare(t, '5 / 100%', ['5', '100%']);
+  compare('5 / 100%', ['5', '100%']);
 
-  compare(t, '5/100%', ['5', '100%']);
+  compare('5/100%', ['5', '100%']);
 
-  compare(t, '5 / calc(100% / 5)', ['5', 'calc(100% / 5)']);
+  compare('5 / calc(100% / 5)', ['5', 'calc(100% / 5)']);
 
-  compare(t, '5x10 / @r(100px)', ['5x10', '@r(100px)']);
+  compare('5x10 / @r(100px)', ['5x10', '@r(100px)']);
 
 });
 
-test('space as separator', t => {
+it('space as separator', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { symbol: ' ' });
   });
 
-  compare(t, '5  100%', ['5', '100%']);
-  compare(t, '5,100%', ['5,100%']);
-  compare(t, '5, 100% 5', ['5,100%', '5']);
-  compare(t, '5, 100% 5 8', ['5,100%', '5', '8']);
+  compare('5  100%', ['5', '100%']);
+  compare('5,100%', ['5,100%']);
+  compare('5, 100% 5', ['5,100%', '5']);
+  compare('5, 100% 5 8', ['5,100%', '5', '8']);
 
 });
 
-test('verbose option', t => {
+it('verbose option', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { symbol: ['v', 'h'], noSpace: true, verbose: true });
   });
 
-  compare(t, 'v 10 h -10 v 5', [
+  compare('v 10 h -10 v 5', [
     { group: 'v', value: '10' },
     { group: 'h', value: '-10' },
     { group: 'v', value: '5' },

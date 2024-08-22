@@ -1,4 +1,4 @@
-import test from 'ava';
+import it from 'node:test';
 
 import parseCSS from '../src/parser/parse-css.js';
 import compare from './_compare.js';
@@ -7,7 +7,7 @@ compare.use(input => {
   return JSON.parse(JSON.stringify(parseCSS(input)));
 });
 
-test('pseudo quotes', t => {
+it('pseudo quotes', () => {
 
   function getValue(value) {
     return [
@@ -32,60 +32,59 @@ test('pseudo quotes', t => {
     ]
   }
 
-  compare(t,
+  compare(
     `:after { content: ""; }`,
     getValue("")
   );
 
-  compare(t,
+  compare(
     `:after { content: "x"; }`,
     getValue("x")
   );
 
-  compare(t,
+  compare(
     `:after { content: ")"; }`,
     getValue(")")
   );
 
-  compare(t,
+  compare(
     `:after { content: "("; }`,
     getValue("(")
   );
 
-  compare(t,
+  compare(
     `:after { content: "}"; }`,
     getValue("}")
   );
 
-  compare(t,
+  compare(
     `:after { content: ";"; }`,
     getValue(";")
   );
 
-  compare(t,
+  compare(
     `:after { content: "()"; }`,
     getValue("()")
   );
 
-  compare(t,
+  compare(
     `:after { content: "'"; }`,
     getValue("'")
   );
 
-  compare(t,
+  compare(
     `:after { content: "x;"; }`,
     getValue("x;")
   );
 
-  compare(t,
+  compare(
     `:after { content: "x;";;; }`,
     getValue("x;")
   );
 
 });
 
-test('quotes in SVG', t => {
-
+it('quotes in SVG', () => {
   function getValue(value) {
     return [
       {
@@ -110,19 +109,19 @@ test('quotes in SVG', t => {
     ];
   }
 
-  compare(t,
+  compare(
     `@svg( text { content: ""; } )`,
     getValue(""),
   );
 
-  compare(t,
+  compare(
     `@svg( text { content: "}"; } )`,
     getValue("}"),
   );
 
 });
 
-test('quotes in content', t => {
+it('quotes in content', () => {
 
   function getValue(value) {
     return [
@@ -141,12 +140,12 @@ test('quotes in content', t => {
     ];
   }
 
-  compare(t,
+  compare(
     `@content: hello;`,
     getValue('hello')
   );
 
-  compare(t,
+  compare(
     `@content: "hello";`,
     getValue('"hello"')
   )

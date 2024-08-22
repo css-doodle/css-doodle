@@ -1,19 +1,20 @@
-import test from 'ava';
+import it from 'node:test';
 
 import parseShaders from '../src/parser/parse-shaders.js';
 import compare from './_compare.js';
+
 compare.use(parseShaders);
 
-test('empty content', t => {
+it('empty content', () => {
   let input = '';
   let result = {
     fragment: '',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('basic sturcture', t => {
+it('basic sturcture', () => {
   let input = `
     fragment {}
     vertex {}
@@ -23,10 +24,10 @@ test('basic sturcture', t => {
     fragment: '',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('read content', t => {
+it('read content', () => {
   let input = `
     fragment {
       void main() {
@@ -40,19 +41,19 @@ test('read content', t => {
     fragment: 'void main(){float PI = 3.14159;}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('read fragment shader by default', t => {
+it('read fragment shader by default', () => {
   let input = `void main() {}`;
   let result = {
     fragment: 'void main(){}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('should break line on #define ', t => {
+it('should break line on #define ', () => {
   let input = `
     #define CONST2
     void main() {}
@@ -61,10 +62,10 @@ test('should break line on #define ', t => {
     fragment: '\n#define CONST2\n\nvoid main(){}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('should break line on any starts with # ', t => {
+it('should break line on any starts with # ', () => {
   let input = `
     #define CONST2 xxx;
     void main() {}
@@ -73,10 +74,10 @@ test('should break line on any starts with # ', t => {
     fragment: '\n#define CONST2 xxx;\nvoid main(){}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('should ignore # inside textures', t => {
+it('should ignore # inside textures', () => {
   let input = `
     texture_0 {
       background: #000;
@@ -94,10 +95,10 @@ test('should ignore # inside textures', t => {
       }
     ]
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('handle parens around raw fragment', t => {
+it('handle parens around raw fragment', () => {
   let input = `(
     void main() {}
   )`;
@@ -105,10 +106,10 @@ test('handle parens around raw fragment', t => {
     fragment: 'void main(){}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('handle parens around group values', t => {
+it('handle parens around group values', () => {
   let input = `(
     fragment {
       (
@@ -120,10 +121,10 @@ test('handle parens around group values', t => {
     fragment: 'void main(){}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('handle nested parens', t => {
+it('handle nested parens', () => {
   let input = `
     fragment {
       ((
@@ -135,10 +136,10 @@ test('handle nested parens', t => {
     fragment: 'void main(){}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });
 
-test('ignore comments', t => {
+it('ignore comments', () => {
   let input = `
     // this is inline comment
     // this is another inline comment
@@ -155,5 +156,5 @@ test('ignore comments', t => {
     fragment: 'void main(){float PI = 3.14159;}',
     textures: []
   }
-  compare(t, input, result);
+  compare(input, result);
 });

@@ -1,4 +1,5 @@
-import test from 'ava';
+import it from 'node:test';
+
 import generate_svg from '../src/generator/svg.js';
 import parse_svg from '../src/parser/parse-svg.js';
 
@@ -12,22 +13,22 @@ function trim(input) {
   return input.split(/\n+/g).map(n => n.trim()).join('');
 }
 
-test('empty', t => {
-  compare(t,
+it('empty', () => {
+  compare(
     '',
     trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
   );
 });
 
-test('svg namespace', t => {
-  compare(t,
+it('svg namespace', () => {
+  compare(
     'svg {}',
     trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
   );
 });
 
-test('wrapped by default', t => {
-  compare(t,
+it('wrapped by default', () => {
+  compare(
     'g {}',
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -37,8 +38,8 @@ test('wrapped by default', t => {
   );
 });
 
-test('inline svg element', t => {
-  compare(t,
+it('inline svg element', () => {
+  compare(
     `svg {
       circle {
         filter: defs linearGradient {}
@@ -55,8 +56,8 @@ test('inline svg element', t => {
   );
 });
 
-test('inline href', t => {
-  compare(t,
+it('inline href', () => {
+  compare(
     `svg {
       use {
         href: defs circle {}
@@ -73,8 +74,8 @@ test('inline href', t => {
   );
 });
 
-test('id shorthand', t => {
-  compare(t,
+it('id shorthand', () => {
+  compare(
     `circle#id {}`,
     trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
@@ -84,8 +85,8 @@ test('id shorthand', t => {
   );
 });
 
-test('text node', t => {
-  compare(t,
+it('text node', () => {
+  compare(
     `text {
       content: hello;
     }`,
@@ -97,8 +98,8 @@ test('text node', t => {
   );
 });
 
-test('title and desc', t => {
-  compare(t,
+it('title and desc', () => {
+  compare(
     `title {
       content: hello;
     }
@@ -114,8 +115,8 @@ test('title and desc', t => {
   );
 });
 
-test('multiple content', t => {
-  compare(t,
+it('multiple content', () => {
+  compare(
     `svg {
       text {
         content: hello;
@@ -130,8 +131,8 @@ test('multiple content', t => {
   );
 });
 
-test('remove quotes around text', t => {
-  compare(t,
+it('remove quotes around text', () => {
+  compare(
     `text {
       content: "hello";
     }`,
@@ -142,7 +143,7 @@ test('remove quotes around text', t => {
     `)
   );
 
-  compare(t,
+  compare(
     `text {
       content: 'hello';
     }`,
@@ -155,8 +156,8 @@ test('remove quotes around text', t => {
 });
 
 
-test('special character inside quotes', t => {
-  compare(t,
+it('special character inside quotes', () => {
+  compare(
     `text {
       content: "}";
     }`,
@@ -169,8 +170,8 @@ test('special character inside quotes', t => {
 });
 
 
-test('style tag', t => {
-  compare(t,
+it('style tag', () => {
+  compare(
     `svg {
       circle {}
       style {
@@ -193,8 +194,8 @@ test('style tag', t => {
   );
 });
 
-test('inline style', t => {
-  compare(t,
+it('inline style', () => {
+  compare(
     `svg {
       circle {
         style fill: red;
@@ -209,8 +210,8 @@ test('inline style', t => {
   );
 });
 
-test('group id', t => {
-  compare(t,
+it('group id', () => {
+  compare(
     `svg {
       g#id { circle {} }
       g#id { rect {} }
@@ -226,8 +227,8 @@ test('group id', t => {
   );
 });
 
-test('group ids only when they are at the same level', t => {
-  compare(t,
+it('group ids only when they are at the same level', () => {
+  compare(
     `svg {
       g g#id { circle {} }
       g#id { rect {} }
@@ -247,8 +248,8 @@ test('group ids only when they are at the same level', t => {
   );
 });
 
-test('group id and all its attributes', t => {
-  compare(t,
+it('group id and all its attributes', () => {
+  compare(
     `svg {
       circle#a {
         fill: red
@@ -265,8 +266,8 @@ test('group id and all its attributes', t => {
   );
 });
 
-test('grouped text node', t => {
-  compare(t,
+it('grouped text node', () => {
+  compare(
     `svg {
       text#id {
         content: hello;
@@ -283,8 +284,8 @@ test('grouped text node', t => {
   );
 });
 
-test('grouped text node with tspan', t => {
-  compare(t,
+it('grouped text node with tspan', () => {
+  compare(
     `svg {
       text#id {
         content: hello;
@@ -304,8 +305,8 @@ test('grouped text node with tspan', t => {
   );
 });
 
-test('do not group elements for empty id', t => {
-  compare(t,
+it('do not group elements for empty id', () => {
+  compare(
     `svg {
       circle {
         fill: red
@@ -323,8 +324,8 @@ test('do not group elements for empty id', t => {
   );
 });
 
-test('Normalize quoted attribute values', t => {
-  compare(t,
+it('Normalize quoted attribute values', () => {
+  compare(
     `circle {
         name: "hello";
       }
@@ -335,7 +336,7 @@ test('Normalize quoted attribute values', t => {
       </svg>
     `)
   );
-  compare(t,
+  compare(
     `circle {
         name: 'hello';
       }
@@ -348,8 +349,8 @@ test('Normalize quoted attribute values', t => {
   );
 });
 
-test('draw', t => {
-  compare(t,
+it('draw', () => {
+  compare(
     `path {
       draw: 2s;
     }`,
@@ -365,8 +366,8 @@ test('draw', t => {
   );
 });
 
-test('combile defs elements into one', t => {
-  compare(t,
+it('combile defs elements into one', () => {
+  compare(
     `defs {}
      defs {}`,
     trim(`
@@ -376,7 +377,7 @@ test('combile defs elements into one', t => {
     `)
   );
 
-  compare(t,
+  compare(
     `defs g {}
      defs path {}`,
     trim(`
@@ -390,8 +391,8 @@ test('combile defs elements into one', t => {
   );
 });
 
-test('handle nested defs', t => {
-  compare(t,
+it('handle nested defs', () => {
+  compare(
     `path {
       fill: defs g {
         mask: defs g {}
@@ -409,8 +410,8 @@ test('handle nested defs', t => {
   );
 });
 
-test('generate single defs id', t => {
-  compare(t,
+it('generate single defs id', () => {
+  compare(
     `defs g#1 {}
      defs g#1 {}`,
     trim(`
@@ -422,7 +423,7 @@ test('generate single defs id', t => {
     `)
   );
 
-  compare(t,
+  compare(
     `path {
       href: defs g#1 {}
     }
@@ -441,8 +442,8 @@ test('generate single defs id', t => {
   );
 });
 
-test('put id at right element', t => {
-  compare(t,
+it('put id at right element', () => {
+  compare(
     `svg {
       circle {
         filter: defs g circle {}
@@ -460,7 +461,7 @@ test('put id at right element', t => {
     `)
   );
 
-  compare(t,
+  compare(
     `svg {
       circle {
         filter: defs g g g circle {}
@@ -483,8 +484,8 @@ test('put id at right element', t => {
   );
 });
 
-test('no id for multiple inline defs child elements', t => {
-  compare(t,
+it('no id for multiple inline defs child elements', () => {
+  compare(
     `svg {
       circle {
         filter: defs {

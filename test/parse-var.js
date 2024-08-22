@@ -1,49 +1,50 @@
-import test from 'ava';
+import it from 'node:test';
 
 import compare from './_compare.js';
 import parseVar from '../src/parser/parse-var.js';
+
 compare.use(parseVar);
 
-test('basic utility', t => {
+it('basic utility', () => {
 
-  compare(t, '', []);
+  compare('', []);
 
-  compare(t, 'var', []);
+  compare('var', []);
 
-  compare(t, 'var(', []);
+  compare('var(', []);
 
-  compare(t, 'var()', []);
+  compare('var()', []);
 
-  compare(t, 'var(--)', []);
+  compare('var(--)', []);
 
-  compare(t, 'var(---)', []);
+  compare('var(---)', []);
 
-  compare(t, 'var(abc)', []);
+  compare('var(abc)', []);
 
-  compare(t, 'var(-abc)', []);
+  compare('var(-abc)', []);
 
-  compare(t, 'var(--abc)', [{ name: '--abc' }]);
+  compare('var(--abc)', [{ name: '--abc' }]);
 
-  compare(t, 'var(--abc-d)', [{ name: '--abc-d' }]);
+  compare('var(--abc-d)', [{ name: '--abc-d' }]);
 
-  compare(t, 'var(--abc--d)', [{ name: '--abc--d' }]);
+  compare('var(--abc--d)', [{ name: '--abc--d' }]);
 
 });
 
 
-test('fallback values', t => {
+it('fallback values', () => {
 
-  compare(t, 'var(--a, var(--b))', [{
+  compare('var(--a, var(--b))', [{
     name: '--a',
     fallback: [{ name: '--b' }]
   }]);
 
-  compare(t, 'var(--a, var(--b), var(--c))', [{
+  compare('var(--a, var(--b), var(--c))', [{
     name: '--a',
     fallback: [{ name: '--b' }, { name: '--c' }]
   }]);
 
-  compare(t, 'var(--a, var(--b, var(--c))', [{
+  compare('var(--a, var(--b, var(--c))', [{
     name: '--a',
     fallback: [{ name: '--b', fallback: [{ name: '--c' }] }]
   }]);
@@ -51,23 +52,23 @@ test('fallback values', t => {
 });
 
 
-test('multiple vars', t => {
+it('multiple vars', () => {
 
-  compare(t, 'var(--a), var(--b)', [
+  compare('var(--a), var(--b)', [
     { name: '--a' },
     { name: '--b' },
   ]);
 
-  compare(t, 'var(--a),, var(--b)', [
+  compare('var(--a),, var(--b)', [
     { name: '--a' },
     { name: '--b' },
   ]);
 
-  compare(t, 'var(--a), var(abc)', [
+  compare('var(--a), var(abc)', [
     { name: '--a' },
   ]);
 
-  compare(t, 'var(--a), var(--b,,var(--c), d)', [
+  compare('var(--a), var(--b,,var(--c), d)', [
     { name: '--a' },
     { name: '--b', fallback: [{ name: '--c' }] },
   ]);

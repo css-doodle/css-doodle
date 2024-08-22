@@ -1,4 +1,6 @@
-function compare(t, input, output, print) {
+import assert from 'node:assert/strict';
+
+function compare(input, output, print) {
   if (typeof compare._compare !== 'function') {
     throw new Error("Missing comparison function.");
   }
@@ -9,7 +11,11 @@ function compare(t, input, output, print) {
     applied = compare._compare(input);
   }
   if (print) console.log(JSON.stringify(applied, null, 2));
-  t.deepEqual(output, applied);
+  if (typeof output === 'string') {
+    assert.equal(output, applied);
+  } else {
+    assert.deepStrictEqual(output, applied);
+  }
 }
 
 compare.use = _compare => {

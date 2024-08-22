@@ -1,7 +1,7 @@
 TARGET := ./css-doodle.min.js
 LIB := ./node_modules
 
-all: build minify trim banner
+all: test build minify trim banner
 
 build: $(LIB)
 	@npm run build

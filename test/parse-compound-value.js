@@ -1,43 +1,43 @@
-import test from 'ava';
+import it from 'node:test';
 
 import parseCompoundValue from '../src/parser/parse-compound-value.js';
 import compare from './_compare.js';
 
-test('direction group', t => {
+it('direction group', () => {
 
   compare.use(parseCompoundValue);
 
-  compare(t, '', {});
+  compare('', {});
 
-  compare(t, '10', {
+  compare('10', {
     value: 10,
   });
 
-  compare(t, '10em', {
+  compare('10em', {
     value: 10,
     unit: 'em'
   });
 
-  compare(t, '-10.5vw', {
+  compare('-10.5vw', {
     value: -10.5,
     unit: 'vw'
   });
 
-  compare(t, '-10.5 vw', {
+  compare('-10.5 vw', {
     value: -10.5,
   });
 
-  compare(t, '10%', {
+  compare('10%', {
     value: 10,
     unit: '%'
   });
 
   // should be treated as expression
-  compare(t, '10%2', {
+  compare('10%2', {
     value: 10,
   });
 
-  compare(t, '1/sin(t)', {
+  compare('1/sin(t)', {
     value: 1,
   });
 

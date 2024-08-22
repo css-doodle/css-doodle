@@ -1,32 +1,33 @@
-import test from 'ava';
+import it from 'node:test';
 
 import parsePattern from '../src/parser/parse-pattern.js';
 import compare from './_compare.js';
+
 compare.use(parsePattern);
 
-test('edge cased', t => {
-  compare(t, 'match()) {}', [{
+it('edge cased', () => {
+  compare('match()) {}', [{
     type: 'block',
     name: 'match',
     value: [],
     args: [],
   }]);
 
-  compare(t, 'match(1)) {}', [{
+  compare('match(1)) {}', [{
     type: 'block',
     name: 'match',
     value: [],
     args: ['1'],
   }]);
 
-  compare(t, 'a,,,{}', [{
+  compare('a,,,{}', [{
     type: 'block',
     name: 'a',
     value: [],
     args: [],
   }]);
 
-  compare(t, 'a, a {}', [{
+  compare('a, a {}', [{
     type: 'block',
     name: 'a',
     value: [],
@@ -34,40 +35,40 @@ test('edge cased', t => {
   }]);
 });
 
-test('statement', t => {
-  compare(t, 'color: red', [{
+it('statement', () => {
+  compare('color: red', [{
     type: 'statement',
     name: 'color',
     value: 'red'
   }]);
 
-  compare(t, 'color: red;', [{
+  compare('color: red;', [{
     type: 'statement',
     name: 'color',
     value: 'red'
   }]);
 });
 
-test('block', t => {
-  compare(t, 'match {}', [{
+it('block', () => {
+  compare('match {}', [{
     type: 'block',
     name: 'match',
     value: [],
     args: [],
   }]);
-  compare(t, 'match(x>y) {}', [{
+  compare('match(x>y) {}', [{
     type: 'block',
     name: 'match',
     value: [],
     args: ['x>y'],
   }]);
-  compare(t, 'match(x>y, 2*x-y == 0) {}', [{
+  compare('match(x>y, 2*x-y == 0) {}', [{
     type: 'block',
     name: 'match',
     value: [],
     args: ['x>y', '2*x-y == 0'],
   }]);
-  compare(t, 'a, b {}', [{
+  compare('a, b {}', [{
     type: 'block',
     name: 'a',
     value: [],
@@ -78,7 +79,7 @@ test('block', t => {
     value: [],
     args: [],
   }]);
-  compare(t, 'match(2), match {}', [{
+  compare('match(2), match {}', [{
     type: 'block',
     name: 'match',
     value: [],
@@ -91,7 +92,7 @@ test('block', t => {
   }]);
 });
 
-test('statement and block', t => {
+it('statement and block',  () => {
   let input = `
     color: red;
     match(x>y) {
@@ -99,7 +100,7 @@ test('statement and block', t => {
     }
   `;
 
-  compare(t, input, [{
+  compare(input, [{
     type: 'statement',
     name: 'color',
     value: 'red'

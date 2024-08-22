@@ -1,4 +1,4 @@
-import test from 'ava';
+import it from 'node:test';
 
 import { scan } from '../src/parser/tokenizer.js';
 import compare from './_compare.js';
@@ -16,31 +16,31 @@ compare.use(input => {
   });
 });
 
-test('basic', t => {
+it('basic', () => {
 
-  compare(t, '', []);
+  compare('', []);
 
-  compare(t, 'abc p', [
+  compare('abc p', [
     { type: 'Word', value: 'abc' },
     { type: 'Space', value: ' ' },
     { type: 'Word', value: 'p' },
   ]);
 
-  compare(t, 'abc @p', [
+  compare('abc @p', [
     { type: 'Word', value: 'abc' },
     { type: 'Space', value: ' ' },
     { type: 'Symbol', value: '@' },
     { type: 'Word', value: 'p' },
   ]);
 
-  compare(t, 'color: red;', [
+  compare('color: red;', [
     { type: 'Word', value: 'color' },
     { type: 'Symbol', value: ':' },
     { type: 'Word', value: 'red' },
     { type: 'Symbol', value: ';' },
   ]);
 
-  compare(t, '@pick(red, blue)', [
+  compare('@pick(red, blue)', [
     { type: 'Symbol', value: '@' },
     { type: 'Word', value: 'pick' },
     { type: 'Symbol', value: '(' },
@@ -50,7 +50,7 @@ test('basic', t => {
     { type: 'Symbol', value: ')' },
   ]);
 
-  compare(t, '@position: top  right', [
+  compare('@position: top  right', [
     { type: 'Symbol', value: '@' },
     { type: 'Word', value: 'position' },
     { type: 'Symbol', value: ':' },
@@ -59,7 +59,7 @@ test('basic', t => {
     { type: 'Word', value: 'right' },
   ]);
 
-  compare(t, 'content: "hello: world"', [
+  compare('content: "hello: world"', [
     { type: 'Word', value: 'content' },
     { type: 'Symbol', value: ':' },
     { type: 'Symbol', value: '"', status: 'open' },
@@ -70,7 +70,7 @@ test('basic', t => {
     { type: 'Symbol', value: '"', status: 'close' },
   ]);
 
-  compare(t, 'x, y: red;', [
+  compare('x, y: red;', [
     { type: 'Word', value: 'x' },
     { type: 'Symbol', value: ',' },
     { type: 'Word', value: 'y' },
@@ -81,9 +81,9 @@ test('basic', t => {
 
 });
 
-test('escape', t => {
+it('escape', () => {
 
-  compare(t, 'content: "\\"hello"', [
+  compare('content: "\\"hello"', [
     { type: 'Word', value: 'content' },
     { type: 'Symbol', value: ':' },
     { type: 'Symbol', value: '"', status: 'open' },
@@ -91,7 +91,7 @@ test('escape', t => {
     { type: 'Symbol', value: '"', status: 'close' },
   ]);
 
-  compare(t, 'content: "\\@p"', [
+  compare('content: "\\@p"', [
     { type: 'Word', value: 'content' },
     { type: 'Symbol', value: ':' },
     { type: 'Symbol', value: '"', status: 'open' },
@@ -99,7 +99,7 @@ test('escape', t => {
     { type: 'Symbol', value: '"', status: 'close' },
   ]);
 
-  compare(t, 'content: \\"x"', [
+  compare('content: \\"x"', [
     { type: 'Word', value: 'content' },
     { type: 'Symbol', value: ':' },
     { type: 'Word', value: '\\' },
@@ -110,9 +110,9 @@ test('escape', t => {
 
 });
 
-test('numbers', t => {
+it('numbers', () => {
 
-  compare(t, 'padding: 0 10px', [
+  compare('padding: 0 10px', [
     { type: 'Word', value: 'padding' },
     { type: 'Symbol', value: ':' },
     { type: 'Number', value: '0' },
@@ -121,89 +121,89 @@ test('numbers', t => {
     { type: 'Word', value: 'px' },
   ]);
 
-  compare(t, 'opacity:.5', [
+  compare('opacity:.5', [
     { type: 'Word', value: 'opacity' },
     { type: 'Symbol', value: ':' },
     { type: 'Number', value: '.5' },
   ]);
 
-  compare(t, '0.5', [
+  compare('0.5', [
     { type: 'Number', value: '0.5' },
   ]);
 
-  compare(t, '.5', [
+  compare('.5', [
     { type: 'Number', value: '.5' },
   ]);
 
-  compare(t, '.5px', [
+  compare('.5px', [
     { type: 'Number', value: '.5' },
     { type: 'Word', value: 'px' },
   ]);
 
-  compare(t, '0..5', [
+  compare('0..5', [
     { type: 'Number', value: '0' },
     { type: 'Word', value: '..' },
     { type: 'Number', value: '5' },
   ]);
 
-  compare(t, '0.5.9', [
+  compare('0.5.9', [
     { type: 'Number', value: '0.5' },
     { type: 'Number', value: '.9' },
   ]);
 
-  compare(t, '10e9', [
+  compare('10e9', [
     { type: 'Number', value: '10e9' },
   ]);
-  compare(t, '.5E9px', [
+  compare('.5E9px', [
     { type: 'Number', value: '.5E9' },
     { type: 'Word', value: 'px' },
   ]);
 
-  compare(t, '10e+9', [
+  compare('10e+9', [
     { type: 'Number', value: '10e+9' },
   ]);
 
-  compare(t, '10e-9', [
+  compare('10e-9', [
     { type: 'Number', value: '10e-9' },
   ]);
 
-  compare(t, '10e+-9', [
+  compare('10e+-9', [
     { type: 'Number', value: '10' },
     { type: 'Word', value: 'e' },
     { type: 'Symbol', value: '+' },
     { type: 'Number', value: '-9' },
   ]);
 
-  compare(t, '0x', [
+  compare('0x', [
     { type: 'Number', value: '0' },
     { type: 'Word', value: 'x' },
   ]);
 
-  compare(t, '0x12af', [
+  compare('0x12af', [
     { type: 'Number', value: '0x12af' }
   ]);
 
-  compare(t, '0x12afga', [
+  compare('0x12afga', [
     { type: 'Number', value: '0x12af' },
     { type: 'Word', value: 'ga' },
   ]);
 
-  compare(t, '-10', [
+  compare('-10', [
     { type: 'Number', value: '-10' }
   ]);
 
-  compare(t, 'n-10', [
+  compare('n-10', [
     { type: 'Word', value: 'n' },
     { type: 'Number', value: '-10' },
   ]);
 
-  compare(t, '5-10', [
+  compare('5-10', [
     { type: 'Number', value: '5' },
     { type: 'Symbol', value: '-' },
     { type: 'Number', value: '10' },
   ]);
 
-  compare(t, 'n - 10', [
+  compare('n - 10', [
     { type: 'Word', value: 'n' },
     { type: 'Space', value: ' ' },
     { type: 'Symbol', value: '-' },
@@ -211,7 +211,7 @@ test('numbers', t => {
     { type: 'Number', value: '10' },
   ]);
 
-  compare(t, 'n -10', [
+  compare('n -10', [
     { type: 'Word', value: 'n' },
     { type: 'Space', value: ' ' },
     { type: 'Number', value: '-10' },
@@ -219,14 +219,14 @@ test('numbers', t => {
 
 });
 
-test('comments', t => {
+it('comments', () => {
 
-  compare(t, '/* color: red', []);
-  compare(t, '/* color: red */', []);
-  compare(t, '/*/', []);
-  compare(t, '/**/', []);
-  compare(t, '/***/', []);
-  compare(t,
+  compare('/* color: red', []);
+  compare('/* color: red */', []);
+  compare('/*/', []);
+  compare('/**/', []);
+  compare('/***/', []);
+  compare(
     `
       /**
        * ignore me
@@ -242,7 +242,7 @@ test('comments', t => {
     ]
   );
 
-  compare(t,
+  compare(
     `
       /* ignore me */
 
@@ -261,13 +261,13 @@ test('comments', t => {
 });
 
 
-test('svg', t => {
+it('svg', () => {
 
-  compare(t, '<svg></svg>', [
+  compare('<svg></svg>', [
     { type: 'Word', value: '<svg></svg>' }
   ]);
 
-  compare(t, '<circle r="@r(10)" />', [
+  compare('<circle r="@r(10)" />', [
     { type: 'Word', value: '<circle' },
     { type: 'Space', value: ' ' },
     { type: 'Word', value: 'r' },

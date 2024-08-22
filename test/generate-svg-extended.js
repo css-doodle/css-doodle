@@ -1,31 +1,31 @@
-import test from 'ava';
+import it from 'node:test';
+import compare from './_compare.js';
 
 import parseSvg from '../src/parser/parse-svg.js';
 import generate_svg_extended from '../src/generator/svg-extended.js';
-import compare from './_compare.js';
 
 compare.use(input => {
   return generate_svg_extended(parseSvg(input));
 });
 
-test('code transformation', t => {
+it('code transformation', () => {
 
-  compare(t,
+  compare(
     `circle {}`,
     `svg{circle{}}`
   ,);
 
-  compare(t,
+  compare(
     `circle*10 {}`,
     `svg{@M10(circle{})}`
   );
 
-  compare(t,
+  compare(
     `g circle*10x10 {}`,
     `svg{g{@M10x10(circle{})}}`
   );
 
-  compare(t,
+  compare(
     `path {
        href: defs g circle*2 {}
     }`,

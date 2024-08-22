@@ -1,24 +1,25 @@
-import test from 'ava';
+import it  from 'node:test';
 
 import parseSvg from '../src/parser/parse-svg.js';
 import compare from './_compare.js';
+
 compare.use(parseSvg);
 
-test('edge cases', t => {
+it('edge cases', () => {
 
-  compare(t, '', {
+  compare('', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  compare(t, 'any', {
+  compare('any', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  compare(t, 'any:;', {
+  compare('any:;', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -28,7 +29,7 @@ test('edge cases', t => {
     }]
   });
 
-  compare(t, 'circle {}', {
+  compare('circle {}', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -38,7 +39,7 @@ test('edge cases', t => {
     }]
   });
 
-  compare(t, 'circle { name: } ', {
+  compare('circle { name: } ', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -52,31 +53,31 @@ test('edge cases', t => {
     }]
   });
 
-  compare(t, '{}', {
+  compare('{}', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  compare(t, '{', {
+  compare('{', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  compare(t, '}', {
+  compare('}', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  compare(t, '{any}', {
+  compare('{any}', {
     type: 'block',
     name: 'svg',
     value: []
   });
 
-  compare(t, 'text { {} }', {
+  compare('text { {} }', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -88,9 +89,9 @@ test('edge cases', t => {
 
 });
 
-test('statement', t => {
+it('statement', () => {
 
-  compare(t, 'viewBox: 0 0 0 10', {
+  compare('viewBox: 0 0 0 10', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -103,7 +104,7 @@ test('statement', t => {
     }]
   });
 
-  compare(t, 'viewBox: 0 0 10 10 padding .2', {
+  compare('viewBox: 0 0 10 10 padding .2', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -117,7 +118,7 @@ test('statement', t => {
     }]
   });
 
-  compare(t, 'circle { cx: 5; cy: 5 }', {
+  compare('circle { cx: 5; cy: 5 }', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -132,8 +133,8 @@ test('statement', t => {
 
 });
 
-test('group property', t => {
-  compare(t, 'cx, cy: 5', {
+it('group property', () => {
+  compare('cx, cy: 5', {
     name: 'svg',
     type: 'block',
     value: [
@@ -142,7 +143,7 @@ test('group property', t => {
     ]
   });
 
-  compare(t, 'cx, cy: 5 6', {
+  compare('cx, cy: 5 6', {
     name: 'svg',
     type: 'block',
     value: [
@@ -152,8 +153,8 @@ test('group property', t => {
   });
 });
 
-test('semicolon separated values', t => {
-  compare(t, 'values: 60; 100; 180', {
+it('semicolon separated values', () => {
+  compare('values: 60; 100; 180', {
     name: 'svg',
     type: 'block',
     value: [
@@ -161,7 +162,7 @@ test('semicolon separated values', t => {
     ]
   });
 
-  compare(t, 'values: 20 50; 100; 110; cy: 10', {
+  compare('values: 20 50; 100; 110; cy: 10', {
     name: 'svg',
     type: 'block',
     value: [
@@ -171,8 +172,8 @@ test('semicolon separated values', t => {
   });
 });
 
-test('colon separated properties', t => {
-  compare(t, 'xlink:href: url(#app)', {
+it('colon separated properties', () => {
+  compare('xlink:href: url(#app)', {
     name: 'svg',
     type: 'block',
     value: [
@@ -180,7 +181,7 @@ test('colon separated properties', t => {
     ]
   });
 
-  compare(t, 'xlink:title: hello:world', {
+  compare('xlink:title: hello:world', {
     name: 'svg',
     type: 'block',
     value: [
@@ -189,8 +190,8 @@ test('colon separated properties', t => {
   });
 });
 
-test('block names', t => {
-  compare(t, 'g circle { } ', {
+it('block names', () => {
+  compare('g circle { } ', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -204,7 +205,7 @@ test('block names', t => {
     }]
   });
 
-  compare(t, 'g circle { name: value } ', {
+  compare('g circle { name: value } ', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -222,7 +223,7 @@ test('block names', t => {
     }]
   });
 
-  compare(t, `
+  compare(`
     circle {}
     circle {}
   `, {
@@ -243,8 +244,8 @@ test('block names', t => {
   });
 });
 
-test('id expand', t => {
-  compare(t, 'g circle#id { } ', {
+it('id expand', () => {
+  compare('g circle#id { } ', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -262,7 +263,7 @@ test('id expand', t => {
     }]
   });
 
-  compare(t, 'g#id circle {} ', {
+  compare('g#id circle {} ', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -284,8 +285,8 @@ test('id expand', t => {
   });
 });
 
-test('empty id expand', t => {
-  compare(t, '#abc {}', {
+it('empty id expand', () => {
+  compare('#abc {}', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -296,8 +297,8 @@ test('empty id expand', t => {
   });
 });
 
-test('ignore tail semicolons', t => {
-  compare(t, 'path {};', {
+it('ignore tail semicolons', () => {
+  compare('path {};', {
     type: 'block',
     name: 'svg',
     value: [{
@@ -308,8 +309,8 @@ test('ignore tail semicolons', t => {
   });
 });
 
-test('statement end on quotes', t => {
-  compare(t, `
+it('statement end on quotes', () => {
+  compare(`
     text { content: '' }
     g {}
   `, {
@@ -331,8 +332,8 @@ test('statement end on quotes', t => {
   });
 });
 
-test('content values', t => {
-  compare(t, `
+it('content values', () => {
+  compare(`
     text { content: "world;}" }
   `, {
     type: 'block',
@@ -348,7 +349,7 @@ test('content values', t => {
     }]
   });
 
-  compare(t, `
+  compare(`
     text { content: "}"; }
   `, {
     type: 'block',
@@ -365,8 +366,8 @@ test('content values', t => {
   });
 });
 
-test('times syntax', t => {
-  compare(t, `
+it('times syntax', () => {
+  compare(`
     circle*10 {}
   `, {
     type: 'block',
@@ -380,7 +381,7 @@ test('times syntax', t => {
     }]
   });
 
-  compare(t, `
+  compare(`
     circle * 5 {}
   `, {
     type: 'block',
@@ -395,8 +396,8 @@ test('times syntax', t => {
   });
 });
 
-test('complex values with parens', t => {
-  compare(t, `
+it('complex values with parens', () => {
+  compare(`
     p {
       d: @plot(r: 1; unit: none);
     }
@@ -415,8 +416,8 @@ test('complex values with parens', t => {
   });
 });
 
-test('svg variable', t => {
-  compare(t, '--a: 1', {
+it('svg variable', () => {
+  compare('--a: 1', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -427,7 +428,7 @@ test('svg variable', t => {
     }]
   });
 
-  compare(t, '--a: 1; svg {}', {
+  compare('--a: 1; svg {}', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -440,8 +441,8 @@ test('svg variable', t => {
 });
 
 
-test('svg variable order', t => {
-  compare(t, '--a: 1; svg { --a: 2 }', {
+it('svg variable order', () => {
+  compare('--a: 1; svg { --a: 2 }', {
     name: 'svg',
     type: 'block',
     value: [{
@@ -452,7 +453,7 @@ test('svg variable order', t => {
     }]
   });
 
-  compare(t, '--b: 1; svg { --a: 2 }', {
+  compare('--b: 1; svg { --a: 2 }', {
     name: 'svg',
     type: 'block',
     value: [{
