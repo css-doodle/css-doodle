@@ -96,7 +96,7 @@ export default add_alias({
     for (let { group, value } of groups) {
       if (group === '+') result.scale = value;
       if (group === '^') result.enlarge = value;
-      if (group === '*') result.rotate = value;
+      if (group === '*') result.rotate = parse_value_group(value, {symbol: ' '});
       if (group === '~') result.translate = value;
       if (group === '∆') result.persp = parse_value_group(value, {symbol: ' '});
       if (group === '_') result.gap = value;

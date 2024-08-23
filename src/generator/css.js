@@ -379,7 +379,12 @@ class Rules {
       this.add_rule(':host', 'contain:none;');
     }
     if (rotate) {
-      this.add_rule(':container', `rotate:${rotate};`);
+      let [value, ...rest] = rotate;
+      if (value === 'h') {
+        this.add_rule(':container', `filter:hue-rotate(${rest.join(' ')});`);
+      } else {
+        this.add_rule(':container', `rotate:${value} ${rest.join(' ')};`);
+      }
     }
     if (scale) {
       this.add_rule(':container', `scale:${scale};`);
