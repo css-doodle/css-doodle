@@ -97,8 +97,19 @@ it('transform commands', () => {
     size: 'width:100%;height:100%;',
     scale: '1',
     enlarge: '.5',
-    rotate: ['x', '10deg'],
+    rotate: 'x 10deg',
     translate: '10px 10px',
     persp: ['100px', '50%']
+  });
+});
+
+it('multiple * commands', () => {
+  compare('1 / 100% *10deg *h 10deg', {
+    clip: true,
+    p3d: false,
+    grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+    size: 'width:100%;height:100%;',
+    rotate: '10deg',
+    hueRotate: '10deg',
   });
 });

@@ -371,7 +371,7 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border, gap }) {
+  add_grid_style({ fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border, gap }) {
     if (fill) {
       this.add_rule(':host', `background-color:${fill};`);
     }
@@ -379,12 +379,10 @@ class Rules {
       this.add_rule(':host', 'contain:none;');
     }
     if (rotate) {
-      let [value, ...rest] = rotate;
-      if (value === 'h') {
-        this.add_rule(':container', `filter:hue-rotate(${rest.join(' ')});`);
-      } else {
-        this.add_rule(':container', `rotate:${value} ${rest.join(' ')};`);
-      }
+      this.add_rule(':container', `rotate:${rotate};`);
+    }
+    if (hueRotate) {
+      this.add_rule(':container', `filter:hue-rotate(${hueRotate});`);
     }
     if (scale) {
       this.add_rule(':container', `scale:${scale};`);

@@ -96,10 +96,17 @@ export default add_alias({
     for (let { group, value } of groups) {
       if (group === '+') result.scale = value;
       if (group === '^') result.enlarge = value;
-      if (group === '*') result.rotate = parse_value_group(value, {symbol: ' '});
       if (group === '~') result.translate = value;
       if (group === '∆') result.persp = parse_value_group(value, {symbol: ' '});
       if (group === '_') result.gap = value;
+      if (group === '*') {
+        let [head, ...rest] = parse_value_group(value, {symbol: ' '});
+        if (head == 'h') {
+          result.hueRotate = rest.join(' ');;
+        } else {
+          result.rotate = value;
+        }
+      }
       if (group === '/') {
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;
