@@ -318,7 +318,7 @@ if (typeof HTMLElement !== 'undefined') {
           </foreignObject>
         </svg>
       `).then(result => {
-        let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
+        let source =`data:image/svg+xml;utf8,${btoa(unescape(encodeURIComponent(entity(result))))}`;
         if (is_safari()) {
           cache_image(source);
         }
@@ -603,6 +603,7 @@ function get_basic_styles(grid) {
       width: auto;
       height: auto;
       contain: strict;
+      view-transition-name: css-doodle;
       --${utime.name}: 0;
       --${UTime.name}: 0
     }
