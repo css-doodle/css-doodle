@@ -382,7 +382,7 @@ class Rules {
       this.add_rule(':container', `rotate:${rotate};`);
     }
     if (hueRotate) {
-      this.add_rule(':container', `filter:hue-rotate(${hueRotate});`);
+      this.add_rule(':host', `filter:hue-rotate(${hueRotate});`);
     }
     if (scale) {
       this.add_rule(':container', `scale:${scale};`);
