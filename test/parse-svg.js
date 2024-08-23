@@ -1,11 +1,11 @@
-import it  from 'node:test';
+import test  from 'node:test';
 
 import parseSvg from '../src/parser/parse-svg.js';
 import compare from './_compare.js';
 
 compare.use(parseSvg);
 
-it('edge cases', () => {
+test('edge cases', () => {
 
   compare('', {
     type: 'block',
@@ -89,7 +89,7 @@ it('edge cases', () => {
 
 });
 
-it('statement', () => {
+test('statement', () => {
 
   compare('viewBox: 0 0 0 10', {
     name: 'svg',
@@ -133,7 +133,7 @@ it('statement', () => {
 
 });
 
-it('group property', () => {
+test('group property', () => {
   compare('cx, cy: 5', {
     name: 'svg',
     type: 'block',
@@ -153,7 +153,7 @@ it('group property', () => {
   });
 });
 
-it('semicolon separated values', () => {
+test('semicolon separated values', () => {
   compare('values: 60; 100; 180', {
     name: 'svg',
     type: 'block',
@@ -172,7 +172,7 @@ it('semicolon separated values', () => {
   });
 });
 
-it('colon separated properties', () => {
+test('colon separated properties', () => {
   compare('xlink:href: url(#app)', {
     name: 'svg',
     type: 'block',
@@ -190,7 +190,7 @@ it('colon separated properties', () => {
   });
 });
 
-it('block names', () => {
+test('block names', () => {
   compare('g circle { } ', {
     name: 'svg',
     type: 'block',
@@ -244,7 +244,7 @@ it('block names', () => {
   });
 });
 
-it('id expand', () => {
+test('id expand', () => {
   compare('g circle#id { } ', {
     type: 'block',
     name: 'svg',
@@ -285,7 +285,7 @@ it('id expand', () => {
   });
 });
 
-it('empty id expand', () => {
+test('empty id expand', () => {
   compare('#abc {}', {
     type: 'block',
     name: 'svg',
@@ -297,7 +297,7 @@ it('empty id expand', () => {
   });
 });
 
-it('ignore tail semicolons', () => {
+test('ignore tail semicolons', () => {
   compare('path {};', {
     type: 'block',
     name: 'svg',
@@ -309,7 +309,7 @@ it('ignore tail semicolons', () => {
   });
 });
 
-it('statement end on quotes', () => {
+test('statement end on quotes', () => {
   compare(`
     text { content: '' }
     g {}
@@ -332,7 +332,7 @@ it('statement end on quotes', () => {
   });
 });
 
-it('content values', () => {
+test('content values', () => {
   compare(`
     text { content: "world;}" }
   `, {
@@ -366,7 +366,7 @@ it('content values', () => {
   });
 });
 
-it('times syntax', () => {
+test('times syntax', () => {
   compare(`
     circle*10 {}
   `, {
@@ -396,7 +396,7 @@ it('times syntax', () => {
   });
 });
 
-it('complex values with parens', () => {
+test('complex values with parens', () => {
   compare(`
     p {
       d: @plot(r: 1; unit: none);
@@ -416,7 +416,7 @@ it('complex values with parens', () => {
   });
 });
 
-it('svg variable', () => {
+test('svg variable', () => {
   compare('--a: 1', {
     name: 'svg',
     type: 'block',
@@ -441,7 +441,7 @@ it('svg variable', () => {
 });
 
 
-it('svg variable order', () => {
+test('svg variable order', () => {
   compare('--a: 1; svg { --a: 2 }', {
     name: 'svg',
     type: 'block',

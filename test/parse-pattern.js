@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parsePattern from '../src/parser/parse-pattern.js';
 import compare from './_compare.js';
 
 compare.use(parsePattern);
 
-it('edge cased', () => {
+test('edge cased', () => {
   compare('match()) {}', [{
     type: 'block',
     name: 'match',
@@ -35,7 +35,7 @@ it('edge cased', () => {
   }]);
 });
 
-it('statement', () => {
+test('statement', () => {
   compare('color: red', [{
     type: 'statement',
     name: 'color',
@@ -49,7 +49,7 @@ it('statement', () => {
   }]);
 });
 
-it('block', () => {
+test('block', () => {
   compare('match {}', [{
     type: 'block',
     name: 'match',
@@ -92,7 +92,7 @@ it('block', () => {
   }]);
 });
 
-it('statement and block',  () => {
+test('statement and block',  () => {
   let input = `
     color: red;
     match(x>y) {

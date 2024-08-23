@@ -1,4 +1,4 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import property from '../src/property.js';
 import compare from './_compare.js';
@@ -7,7 +7,7 @@ compare.use(input => {
   return property.grid(input, { is_special_selector: true, max_grid: 64*64 });
 });
 
-it('basic settings', () => {
+test('basic settings', () => {
   compare('1 / 100%', {
     clip: true,
     p3d: false,
@@ -24,7 +24,7 @@ it('basic settings', () => {
   });
 });
 
-it('aspect ratio', () => {
+test('aspect ratio', () => {
   compare('1 / 100% auto (3/2) / #fff', {
     clip: true,
     p3d: false,
@@ -50,7 +50,7 @@ it('aspect ratio', () => {
   });
 });
 
-it('clip and p3d', () => {
+test('clip and p3d', () => {
   compare('1 no-clip', {
     clip: false,
     p3d: false,
@@ -71,7 +71,7 @@ it('clip and p3d', () => {
   });
 });
 
-it('flex', () => {
+test('flex', () => {
   compare('| 1 / 100%', {
     clip: true,
     p3d: false,
@@ -89,7 +89,7 @@ it('flex', () => {
   });
 });
 
-it('transform commands', () => {
+test('transform commands', () => {
   compare('1 / 100% + 1 ^.5 * x 10deg ~ 10px 10px ∆ 100px 50%', {
     clip: true,
     p3d: false,
@@ -103,7 +103,7 @@ it('transform commands', () => {
   });
 });
 
-it('multiple * commands', () => {
+test('multiple * commands', () => {
   compare('1 / 100% *10deg *h 10deg', {
     clip: true,
     p3d: false,

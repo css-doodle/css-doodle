@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parseShapeCommands from '../src/parser/parse-shape-commands.js';
 import compare from './_compare.js';
 
 compare.use(parseShapeCommands);
 
-it('single statement', () => {
+test('single statement', () => {
 
   compare('split: 10', { split: '10' });
 
@@ -15,7 +15,7 @@ it('single statement', () => {
 
 });
 
-it('multiple statements', () => {
+test('multiple statements', () => {
 
   compare(`
     a: 10;
@@ -43,7 +43,7 @@ it('multiple statements', () => {
 
 });
 
-it('ignore comments', () => {
+test('ignore comments', () => {
 
   compare(`
     /* comments */
@@ -57,7 +57,7 @@ it('ignore comments', () => {
 
 });
 
-it('complex forms', () => {
+test('complex forms', () => {
 
   compare('a: b:c;', { a: 'b:c' });
 
@@ -75,7 +75,7 @@ it('complex forms', () => {
 
 });
 
-it('negative variable', () => {
+test('negative variable', () => {
 
   compare('-: 10', {'-': '10'});
 

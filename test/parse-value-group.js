@@ -1,9 +1,9 @@
-import it  from 'node:test';
+import test  from 'node:test';
 import parseValueGroup from '../src/parser/parse-value-group.js';
 
 import compare from './_compare.js';
 
-it('basic value group', () => {
+test('basic value group', () => {
 
   compare.use(parseValueGroup);
 
@@ -36,7 +36,7 @@ it('basic value group', () => {
 });
 
 
-it('no space option', () => {
+test('no space option', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { noSpace: true });
@@ -55,7 +55,7 @@ it('no space option', () => {
 });
 
 
-it('grid value', () => {
+test('grid value', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { symbol: '/', noSpace: true });
@@ -71,7 +71,7 @@ it('grid value', () => {
 
 });
 
-it('space as separator', () => {
+test('space as separator', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { symbol: ' ' });
@@ -84,7 +84,7 @@ it('space as separator', () => {
 
 });
 
-it('verbose option', () => {
+test('verbose option', () => {
 
   compare.use(input => {
     return parseValueGroup(input, { symbol: ['v', 'h'], noSpace: true, verbose: true });

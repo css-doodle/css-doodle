@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import compare from './_compare.js';
 import get_named_arguments from '../src/utils/get-named-arguments.js';
 
 compare.use(get_named_arguments);
 
-it('named arguments', () => {
+test('named arguments', () => {
 
   compare([['a', 'b'], ['a', 'b']], {
     a: 'a',

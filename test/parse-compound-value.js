@@ -1,9 +1,9 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parseCompoundValue from '../src/parser/parse-compound-value.js';
 import compare from './_compare.js';
 
-it('direction group', () => {
+test('direction group', () => {
 
   compare.use(parseCompoundValue);
 

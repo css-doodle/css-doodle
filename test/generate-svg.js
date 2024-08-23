@@ -1,4 +1,4 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import generate_svg from '../src/generator/svg.js';
 import parse_svg from '../src/parser/parse-svg.js';
@@ -13,21 +13,21 @@ function trim(input) {
   return input.split(/\n+/g).map(n => n.trim()).join('');
 }
 
-it('empty', () => {
+test('empty', () => {
   compare(
     '',
     trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
   );
 });
 
-it('svg namespace', () => {
+test('svg namespace', () => {
   compare(
     'svg {}',
     trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
   );
 });
 
-it('wrapped by default', () => {
+test('wrapped by default', () => {
   compare(
     'g {}',
     trim(`
@@ -38,7 +38,7 @@ it('wrapped by default', () => {
   );
 });
 
-it('inline svg element', () => {
+test('inline svg element', () => {
   compare(
     `svg {
       circle {
@@ -56,7 +56,7 @@ it('inline svg element', () => {
   );
 });
 
-it('inline href', () => {
+test('inline href', () => {
   compare(
     `svg {
       use {
@@ -74,7 +74,7 @@ it('inline href', () => {
   );
 });
 
-it('id shorthand', () => {
+test('id shorthand', () => {
   compare(
     `circle#id {}`,
     trim(`
@@ -85,7 +85,7 @@ it('id shorthand', () => {
   );
 });
 
-it('text node', () => {
+test('text node', () => {
   compare(
     `text {
       content: hello;
@@ -98,7 +98,7 @@ it('text node', () => {
   );
 });
 
-it('title and desc', () => {
+test('title and desc', () => {
   compare(
     `title {
       content: hello;
@@ -115,7 +115,7 @@ it('title and desc', () => {
   );
 });
 
-it('multiple content', () => {
+test('multiple content', () => {
   compare(
     `svg {
       text {
@@ -131,7 +131,7 @@ it('multiple content', () => {
   );
 });
 
-it('remove quotes around text', () => {
+test('remove quotes around text', () => {
   compare(
     `text {
       content: "hello";
@@ -156,7 +156,7 @@ it('remove quotes around text', () => {
 });
 
 
-it('special character inside quotes', () => {
+test('special character inside quotes', () => {
   compare(
     `text {
       content: "}";
@@ -170,7 +170,7 @@ it('special character inside quotes', () => {
 });
 
 
-it('style tag', () => {
+test('style tag', () => {
   compare(
     `svg {
       circle {}
@@ -194,7 +194,7 @@ it('style tag', () => {
   );
 });
 
-it('inline style', () => {
+test('inline style', () => {
   compare(
     `svg {
       circle {
@@ -210,7 +210,7 @@ it('inline style', () => {
   );
 });
 
-it('group id', () => {
+test('group id', () => {
   compare(
     `svg {
       g#id { circle {} }
@@ -227,7 +227,7 @@ it('group id', () => {
   );
 });
 
-it('group ids only when they are at the same level', () => {
+test('group ids only when they are at the same level', () => {
   compare(
     `svg {
       g g#id { circle {} }
@@ -248,7 +248,7 @@ it('group ids only when they are at the same level', () => {
   );
 });
 
-it('group id and all its attributes', () => {
+test('group id and all its attributes', () => {
   compare(
     `svg {
       circle#a {
@@ -266,7 +266,7 @@ it('group id and all its attributes', () => {
   );
 });
 
-it('grouped text node', () => {
+test('grouped text node', () => {
   compare(
     `svg {
       text#id {
@@ -284,7 +284,7 @@ it('grouped text node', () => {
   );
 });
 
-it('grouped text node with tspan', () => {
+test('grouped text node with tspan', () => {
   compare(
     `svg {
       text#id {
@@ -305,7 +305,7 @@ it('grouped text node with tspan', () => {
   );
 });
 
-it('do not group elements for empty id', () => {
+test('do not group elements for empty id', () => {
   compare(
     `svg {
       circle {
@@ -324,7 +324,7 @@ it('do not group elements for empty id', () => {
   );
 });
 
-it('Normalize quoted attribute values', () => {
+test('Normalize quoted attribute values', () => {
   compare(
     `circle {
         name: "hello";
@@ -349,7 +349,7 @@ it('Normalize quoted attribute values', () => {
   );
 });
 
-it('draw', () => {
+test('draw', () => {
   compare(
     `path {
       draw: 2s;
@@ -366,7 +366,7 @@ it('draw', () => {
   );
 });
 
-it('combile defs elements into one', () => {
+test('combile defs elements into one', () => {
   compare(
     `defs {}
      defs {}`,
@@ -391,7 +391,7 @@ it('combile defs elements into one', () => {
   );
 });
 
-it('handle nested defs', () => {
+test('handle nested defs', () => {
   compare(
     `path {
       fill: defs g {
@@ -410,7 +410,7 @@ it('handle nested defs', () => {
   );
 });
 
-it('generate single defs id', () => {
+test('generate single defs id', () => {
   compare(
     `defs g#1 {}
      defs g#1 {}`,
@@ -442,7 +442,7 @@ it('generate single defs id', () => {
   );
 });
 
-it('put id at right element', () => {
+test('put id at right element', () => {
   compare(
     `svg {
       circle {
@@ -484,7 +484,7 @@ it('put id at right element', () => {
   );
 });
 
-it('no id for multiple inline defs child elements', () => {
+test('no id for multiple inline defs child elements', () => {
   compare(
     `svg {
       circle {

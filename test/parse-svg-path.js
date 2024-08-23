@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 import parseSvgPath from '../src/parser/parse-svg-path.js';
 
 import compare from './_compare.js';
 
 compare.use(parseSvgPath);
 
-it('svg path', () => {
+test('svg path', () => {
 
   compare('', {
     valid: true,

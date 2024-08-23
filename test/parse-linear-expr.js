@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parse from '../src/parser/parse-linear-expr.js';
 import compare from './_compare.js';
 
 compare.use(parse);
 
-it('linear expression', () => {
+test('linear expression', () => {
 
   compare('2n + 3', { a: 2, b: 3 });
   compare('2n - 3', { a: 2, b: -3 });

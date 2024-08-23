@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parseShaders from '../src/parser/parse-shaders.js';
 import compare from './_compare.js';
 
 compare.use(parseShaders);
 
-it('empty content', () => {
+test('empty content', () => {
   let input = '';
   let result = {
     fragment: '',
@@ -14,7 +14,7 @@ it('empty content', () => {
   compare(input, result);
 });
 
-it('basic sturcture', () => {
+test('basic sturcture', () => {
   let input = `
     fragment {}
     vertex {}
@@ -27,7 +27,7 @@ it('basic sturcture', () => {
   compare(input, result);
 });
 
-it('read content', () => {
+test('read content', () => {
   let input = `
     fragment {
       void main() {
@@ -44,7 +44,7 @@ it('read content', () => {
   compare(input, result);
 });
 
-it('read fragment shader by default', () => {
+test('read fragment shader by default', () => {
   let input = `void main() {}`;
   let result = {
     fragment: 'void main(){}',
@@ -53,7 +53,7 @@ it('read fragment shader by default', () => {
   compare(input, result);
 });
 
-it('should break line on #define ', () => {
+test('should break line on #define ', () => {
   let input = `
     #define CONST2
     void main() {}
@@ -65,7 +65,7 @@ it('should break line on #define ', () => {
   compare(input, result);
 });
 
-it('should break line on any starts with # ', () => {
+test('should break line on any starts with # ', () => {
   let input = `
     #define CONST2 xxx;
     void main() {}
@@ -77,7 +77,7 @@ it('should break line on any starts with # ', () => {
   compare(input, result);
 });
 
-it('should ignore # inside textures', () => {
+test('should ignore # inside textures', () => {
   let input = `
     texture_0 {
       background: #000;
@@ -98,7 +98,7 @@ it('should ignore # inside textures', () => {
   compare(input, result);
 });
 
-it('handle parens around raw fragment', () => {
+test('handle parens around raw fragment', () => {
   let input = `(
     void main() {}
   )`;
@@ -109,7 +109,7 @@ it('handle parens around raw fragment', () => {
   compare(input, result);
 });
 
-it('handle parens around group values', () => {
+test('handle parens around group values', () => {
   let input = `(
     fragment {
       (
@@ -124,7 +124,7 @@ it('handle parens around group values', () => {
   compare(input, result);
 });
 
-it('handle nested parens', () => {
+test('handle nested parens', () => {
   let input = `
     fragment {
       ((
@@ -139,7 +139,7 @@ it('handle nested parens', () => {
   compare(input, result);
 });
 
-it('ignore comments', () => {
+test('ignore comments', () => {
   let input = `
     // this is inline comment
     // this is another inline comment

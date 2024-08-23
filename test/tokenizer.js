@@ -1,4 +1,4 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import { scan } from '../src/parser/tokenizer.js';
 import compare from './_compare.js';
@@ -16,7 +16,7 @@ compare.use(input => {
   });
 });
 
-it('basic', () => {
+test('basic', () => {
 
   compare('', []);
 
@@ -81,7 +81,7 @@ it('basic', () => {
 
 });
 
-it('escape', () => {
+test('escape', () => {
 
   compare('content: "\\"hello"', [
     { type: 'Word', value: 'content' },
@@ -110,7 +110,7 @@ it('escape', () => {
 
 });
 
-it('numbers', () => {
+test('numbers', () => {
 
   compare('padding: 0 10px', [
     { type: 'Word', value: 'padding' },
@@ -219,7 +219,7 @@ it('numbers', () => {
 
 });
 
-it('comments', () => {
+test('comments', () => {
 
   compare('/* color: red', []);
   compare('/* color: red */', []);
@@ -261,7 +261,7 @@ it('comments', () => {
 });
 
 
-it('svg', () => {
+test('svg', () => {
 
   compare('<svg></svg>', [
     { type: 'Word', value: '<svg></svg>' }

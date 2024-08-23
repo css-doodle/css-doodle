@@ -1,9 +1,9 @@
-import it from 'node:test'
+import test from 'node:test'
 
 import parseDirection from '../src/parser/parse-direction.js';
 import compare from './_compare.js';
 
-it('direction group', () => {
+test('direction group', () => {
 
   compare.use(parseDirection);
 
@@ -39,7 +39,7 @@ it('direction group', () => {
 
 });
 
-it('direction unit', () => {
+test('direction unit', () => {
 
   compare.use(input => {
     return parseDirection(input).angle;

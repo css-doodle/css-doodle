@@ -1,4 +1,4 @@
-import it from 'node:test';
+import test from 'node:test';
 import compare from './_compare.js';
 
 import parseSvg from '../src/parser/parse-svg.js';
@@ -8,7 +8,7 @@ compare.use(input => {
   return generate_svg_extended(parseSvg(input));
 });
 
-it('code transformation', () => {
+test('code transformation', () => {
 
   compare(
     `circle {}`,

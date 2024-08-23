@@ -1,4 +1,4 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parseGrid from '../src/parser/parse-grid.js';
 import compare from './_compare.js';
@@ -9,13 +9,13 @@ const defaultGrid = {
   x: 1, y: 1, z: 1, count: 1, ratio: 1
 };
 
-it('invalid values', () => {
+test('invalid values', () => {
   compare('random', defaultGrid);
   compare('', defaultGrid);
   compare('-1', defaultGrid);
 });
 
-it('seperator', () => {
+test('seperator', () => {
   compare('1x1', defaultGrid);
   compare('1X1', defaultGrid);
   compare('1,1', defaultGrid);
@@ -25,7 +25,7 @@ it('seperator', () => {
 
 });
 
-it('clamp value', () => {
+test('clamp value', () => {
 
   compare('0', defaultGrid);
   compare('0x1', defaultGrid);

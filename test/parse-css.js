@@ -1,4 +1,4 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import parseCSS from '../src/parser/parse-css.js';
 import compare from './_compare.js';
@@ -7,7 +7,7 @@ compare.use(input => {
   return JSON.parse(JSON.stringify(parseCSS(input)));
 });
 
-it('pseudo quotes', () => {
+test('pseudo quotes', () => {
 
   function getValue(value) {
     return [
@@ -84,7 +84,7 @@ it('pseudo quotes', () => {
 
 });
 
-it('quotes in SVG', () => {
+test('quotes in SVG', () => {
   function getValue(value) {
     return [
       {
@@ -121,7 +121,7 @@ it('quotes in SVG', () => {
 
 });
 
-it('quotes in content', () => {
+test('quotes in content', () => {
 
   function getValue(value) {
     return [

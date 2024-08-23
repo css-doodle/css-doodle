@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import calc from '../src/calc.js';
 import compare from './_compare.js';
 
 compare.use(calc);
 
-it('basic operations', () => {
+test('basic operations', () => {
   compare('2 + 2', 4);
   compare('2 - 2', 0);
   compare('2 * 2', 4);
@@ -13,31 +13,31 @@ it('basic operations', () => {
   compare('2 % 7', 2);
 });
 
-it('precedence', () => {
+test('precedence', () => {
   compare('(1 + 2) * 10', 30);
   compare('1 + 2 * 10', 21);
   compare('10 - (5 - 2 / 2)', 6);
 });
 
-it('Math functions and constants', () => {
+test('Math functions and constants', () => {
   compare('π * 2', Math.PI * 2);
   compare('cos(2)', Math.cos(2));
   compare('sin(π) * cos(2)', Math.sin(Math.PI) * Math.cos(2));
 });
 
-it('context values', () => {
+test('context values', () => {
   compare(['a + b + 2', { a: 2, b: 3 }], 7);
   compare(['a + x + 2', { a: 2 }], 4);
   compare(['-a + 2', { a: 2 }], 0);
 });
 
-it('negative functions', t => {
+test('negative functions', t => {
   compare(['-fn()', { fn: () => 5 }], -5);
   compare(['-fn() + 2', { fn: () => 5 }], -3);
   compare(['--fn()', { fn: () => 5 }], 0);
 });
 
-it('cyclic reference', () => {
+test('cyclic reference', () => {
   compare(['cos(t)', { t: '2t' }], Math.cos(0));
   compare(['cos(t)', { t: '2*t' }], Math.cos(0));
   compare(['cos(t)', { t: 'x(t)' }], Math.cos(0));

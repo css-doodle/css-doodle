@@ -1,11 +1,11 @@
-import it from 'node:test';
+import test from 'node:test';
 
 import compare from './_compare.js';
 import parseVar from '../src/parser/parse-var.js';
 
 compare.use(parseVar);
 
-it('basic utility', () => {
+test('basic utility', () => {
 
   compare('', []);
 
@@ -32,7 +32,7 @@ it('basic utility', () => {
 });
 
 
-it('fallback values', () => {
+test('fallback values', () => {
 
   compare('var(--a, var(--b))', [{
     name: '--a',
@@ -52,7 +52,7 @@ it('fallback values', () => {
 });
 
 
-it('multiple vars', () => {
+test('multiple vars', () => {
 
   compare('var(--a), var(--b)', [
     { name: '--a' },
