@@ -318,7 +318,7 @@ if (typeof HTMLElement !== 'undefined') {
           </foreignObject>
         </svg>
       `).then(result => {
-        let source =`data:image/svg+xml;utf8,${btoa(unescape(encodeURIComponent(entity(result))))}`;
+        let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
         if (is_safari()) {
           cache_image(source);
         }
