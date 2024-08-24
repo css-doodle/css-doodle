@@ -1,3 +1,16 @@
+## 0.40.0
+
+* Prevent hash and possible build error.
+* Fix error in SSR.
+* Fix bad variables.
+* Switch to `exbuild`.
+* Improve selector parsing to support media query.
+* Add View Transition via `view-transition` attribute or `viewTransition` option in `update()`.
+* Use native NodeJS test runner.
+* Extend `*` command to support `hue-rotate()`.
+* Add `@nd` in the context of `@m/@M`, similar to `@dx/@dy`.
+
+
 ## 0.39.2
 
 * Fix seed generation in nested doodle element.

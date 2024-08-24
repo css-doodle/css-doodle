@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.39.2",
+  "version": "0.40.0",
   "description": "A web component for drawing patterns with CSS",
   "scripts": {
     "build": "esbuild src/index.js --bundle --analyze --outfile=css-doodle.min.js",
