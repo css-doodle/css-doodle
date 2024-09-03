@@ -379,9 +379,15 @@ class Rules {
       this.add_rule(':host', 'contain:none;');
     }
     if (rotate) {
+      if (/[0-9]$/.test(rotate)) {
+        rotate += 'deg';
+      }
       this.add_rule(':container', `rotate:${rotate};`);
     }
     if (hueRotate) {
+      if (/[0-9]$/.test(hueRotate)) {
+        hueRotate += 'deg';
+      }
       this.add_rule(':host', `filter:hue-rotate(${hueRotate});`);
     }
     if (scale) {
