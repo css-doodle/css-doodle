@@ -3,8 +3,6 @@
  * Translated from: https://mrl.nyu.edu/~perlin/noise/
  */
 
-import { lerp } from '../utils/index.js';
-
 const map = [
   151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -21,21 +19,25 @@ const map = [
   138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
 ];
 
+function lerp(t, a, b) {
+  return a + t * (b - a);
+};
+
+// Convert LO 4 bits of hash code into 12 gradient directions.
+function  grad(hash, x, y, z) {
+  let h = hash & 15,
+      u = h < 8 ? x : y,
+      v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+  return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
+}
+
 export default class Perlin {
   constructor() {
     this.p = [].concat(map, map);
   }
 
-  // Convert LO 4 bits of hash code into 12 gradient directions.
-  grad(hash, x, y, z) {
-    let h = hash & 15,
-        u = h < 8 ? x : y,
-        v = h < 4 ? y : h == 12 || h == 14 ? x : z;
-    return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
-  }
-
   noise(x, y, z) {
-    let { p, grad } = this;
+    let { p } = this;
     // Find unit cube that contains point.
     let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
     // Find relative x, y, z of point in cube.
