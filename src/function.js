@@ -71,7 +71,10 @@ function compute(op, a, b) {
 }
 
 function add_unit(input, unit) {
-  return unit ? `calc((${input}) * 1${unit})` : `calc(${input})`;
+  let value = unit
+    ? `calc((${input}) * 1${unit})`
+    : `calc(${input})`;
+  return [value];
 }
 
 function calc_value(base, v) {
@@ -86,7 +89,7 @@ function calc_value(base, v) {
         ? add_unit(`mod(${base}, ${value})`, unit)
         : add_unit(`${base} ${op} ${value}`, unit);
     }
-    return compute(op, Number(base), Number(value)) + unit;
+    return [compute(op, Number(base), Number(value)), unit];
   }
   else if (/[\+\*\-\/%]$/.test(v)) {
     let op = v.substr(-1);
@@ -96,19 +99,24 @@ function calc_value(base, v) {
         ? add_unit(`mod(${value}, ${base})`, unit)
         : add_unit(`${value} ${op} ${base}`, unit);
     }
-    return compute(op, Number(value), Number(base)) + unit;
+    return [compute(op, Number(value), Number(base)), unit];
   } else {
     let { unit = '', value } = parse_compound_value(v || 0);
-    return (Number(base) + Number(value)) + unit;
+    return [(Number(base) + Number(value)), unit];
   }
 }
 
 function calc_with(base) {
+  let unit = '';
   return (...args) => {
     for (let v of args) {
-      base = calc_value(base, v);
+      let [output, output_unit] = calc_value(base, v);
+      base = output;
+      if (!unit) {
+        unit = output_unit;
+      }
     }
-    return base;
+    return base + unit;
   }
 }
 
