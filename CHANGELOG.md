@@ -1,3 +1,10 @@
+## 0.40.1
+
+* Fix export path.
+* Improve unit handleing in calc chain.
+* Improve noise implementation code.
+* Set default degree unit form `*` command.
+
 ## 0.40.0
 
 * Prevent hash and possible build error.
