@@ -26,7 +26,7 @@
     "src"
   ],
   "exports": {
-    ".": "src/index.js",
+    ".": "./css-doodle.min.js",
     "./component": {
       "import": "./src/exports/component/index.js"
     },
