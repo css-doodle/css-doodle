@@ -1,3 +1,9 @@
+## 0.40.2
+
+* Fix css selector parsing.
+* Fix animation name in root element.
+
+
 ## 0.40.1
 
 * Fix export path.
