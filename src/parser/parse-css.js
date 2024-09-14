@@ -79,6 +79,42 @@ const is = {
   },
   pair_of(c, n) {
     return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
+  },
+  selector(it) {
+    let index = it.index();
+    let c;
+    let stack_paren = [];
+    let stack_quote = [];
+    let result = false;
+    while (!it.end()) {
+      c = it.next();
+      if (c === '"' || c === "'" || c === '`') {
+        let quote = last(stack_quote);
+        if (c === quote) {
+          stack_quote.pop();
+        } else if (!stack_quote.length) {
+          stack_quote.push(c);
+        }
+      }
+      if (c == '(') {
+        stack_paren.push(c);
+      }
+      if (c == ')') {
+        stack_paren.pop();
+      }
+      if (!stack_paren.length && !stack_quote.length) {
+        if (c === '{') {
+          result = true;
+          break;
+        }
+        if (c === ';' || c === '}') {
+          result = false;
+          break;
+        }
+      }
+    }
+    it.index(index);
+    return result;
   }
 };
 
@@ -782,7 +818,7 @@ export default function parse(input, extra) {
       let keyframes = read_keyframes(it, extra);
       Tokens.push(keyframes);
     }
-    else if (read_line(it, true).includes('{')) {
+    else if (is.selector(it)) {
       let cond = read_cond(it, extra);
       if (cond.name.length) Tokens.push(cond);
     }

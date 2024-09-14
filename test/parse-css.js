@@ -88,34 +88,37 @@ test('quotes in SVG', () => {
   function getValue(value) {
     return [
       {
-        "type": "cond",
-        "addition": [],
-        "name": "@svg",
-        "styles": [],
-        "arguments": [],
-        "segments": [
-          {
-            "arguments": [
-              [
-                {
-                  "type": "text",
-                  "value": `text { content: \"${value}\"; }`
-                }
+        "type": "rule",
+        "property": "@content",
+        "value": [
+          [
+            {
+              "name": "@svg",
+              "position": 38,
+              "type": "func",
+              "variables": {},
+              "arguments": [
+                [
+                  {
+                    "type": "text",
+                    "value": `text { content: \"${value}\"; }`
+                  }
+                ]
               ]
-            ]
-          }
+            }
+          ]
         ]
       }
     ];
   }
 
   compare(
-    `@svg( text { content: ""; } )`,
+    `@content: @svg( text { content: ""; } )`,
     getValue(""),
   );
 
   compare(
-    `@svg( text { content: "}"; } )`,
+    `@content: @svg( text { content: "}"; })`,
     getValue("}"),
   );
 
@@ -150,4 +153,4 @@ test('quotes in content', () => {
     getValue('"hello"')
   )
 
-},);
+});
