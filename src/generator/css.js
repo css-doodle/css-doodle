@@ -448,9 +448,10 @@ class Rules {
       this.props.has_animation = true;
 
       if (is_host_selector(selector)) {
-        let prefix = utime[prop];
+        let n = 'animation-name';
+        let prefix = utime['n'] + ',' + UTime['n'];
         if (prefix && value) {
-          value =  prefix + ',' + UTime[prop] + ',' + value;
+          value =  prefix + ',' + value;
         }
       }
 
