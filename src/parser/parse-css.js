@@ -644,7 +644,7 @@ function read_cond_selector(it) {
 
     it.next();
   }
-  let [name, ...addition] = selector.name.trim().split(/\s+/);
+  let [name, ...addition] = (selector.name || '').trim().split(/\s+/);
   selector.name = name;
   selector.addition = addition;
   selector.segments = segments;
