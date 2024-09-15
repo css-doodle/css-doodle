@@ -158,12 +158,24 @@ const Expose = add_alias({
     return calc_with(count/grid.count);
   },
 
+  Ii({ count, grid }) {
+    return calc_with((grid.count - count + 1) / grid.count);
+  },
+
   xX({ x, grid }) {
     return calc_with(x/grid.x);
   },
 
+  Xx({ x, grid }) {
+    return calc_with((grid.x - x + 1) / grid.x);
+  },
+
   yY({ y, grid }) {
     return calc_with(y/grid.y);
+  },
+
+  Yy({ y, grid }) {
+    return calc_with((grid.y - y + 1) / grid.y);
   },
 
   id({ x, y, z }) {
@@ -220,6 +232,16 @@ const Expose = add_alias({
   nN({ extra }) {
     let lastExtra = last(extra);
     return lastExtra ? calc_with(lastExtra[0]/lastExtra[3]) : '@nN';
+  },
+
+  Nn({ extra }) {
+    let lastExtra = last(extra);
+    if (lastExtra) {
+      let n = lastExtra[0];
+      let N = lastExtra[3];
+      return calc_with((N - n + 1) / N);
+    }
+    return '@Nn';
   },
 
   m: make_sequence(','),
