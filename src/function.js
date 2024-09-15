@@ -79,7 +79,7 @@ function add_unit(input, unit) {
 
 function calc_value(base, v) {
   if (is_empty(v) || is_empty(base)) {
-    return base;
+    return [];
   }
   if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
     let op = v[0];
