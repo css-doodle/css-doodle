@@ -77,8 +77,17 @@ export default add_alias({
       p3d: false,
     };
     let temp = [];
+    let pos = 0;
     for (let item of parse_value_group(value, {symbol: ' '})) {
-      if (/border:?/i.test(item)) {
+      if (!pos && !result.grid && (item === '|' || item === '-')) {
+        result.grid = parse_grid(value, options.max_grid);
+        if (item === '|') {
+          result.flexCol = true;
+        }
+        if (item === '-') {
+          result.flexRow = true;
+        }
+      } else if (/border:?/i.test(item)) {
         result.border = item.split(':')[1] || '';
       } else if (/^no\-*clip$/i.test(item)) {
         result.clip = false;
@@ -87,9 +96,10 @@ export default add_alias({
       } else {
         temp.push(item);
       }
+      pos += 1;
     }
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/', '+', '^', '*', '|', '-', '~', '∆', '_'],
+      symbol: ['/', '+', '^', '*', '~', '∆', '_'],
       noSpace: true,
       verbose: true
     });
@@ -111,14 +121,8 @@ export default add_alias({
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;
       }
-      if ((group === '|' || group == '-' || group == '') && !result.grid) {
+      if (group === '' && !result.grid) {
         result.grid = parse_grid(value, options.max_grid);
-        if (group === '|') {
-          result.flexCol = true;
-        }
-        if (group === '-') {
-          result.flexRow = true;
-        }
       }
     }
     return result;

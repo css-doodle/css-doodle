@@ -373,7 +373,7 @@ class Rules {
 
   add_grid_style({ fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp, flexRow, flexCol, p3d, border, gap }) {
     if (fill) {
-      this.add_rule(':host', `background-color:${fill};`);
+      this.add_rule(':host', `background:${fill};`);
     }
     if (!clip) {
       this.add_rule(':host', 'contain:none;');
