@@ -648,7 +648,7 @@ const Expose = add_alias({
         rules.points = max;
         return rules;
       });
-      return points;
+      return points[idx - 1];
     };
   },
 
@@ -665,7 +665,7 @@ const Expose = add_alias({
         rules.unit = rules.unit || 'none';
         return rules;
       });
-      return points;
+      return points[idx - 1];
     };
   },
 
