@@ -637,44 +637,35 @@ const Expose = add_alias({
   },
 
   plot({ count, context, extra, position, grid }) {
-    let key = 'offset-points' + position;
     let lastExtra = last(extra);
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      if (!context[key]) {
-        let { points } = generate_shape(commands, 1, 65536, rules => {
-          delete rules['fill'];
-          delete rules['fill-rule'];
-          delete rules['frame'];
-          rules.points = max;
-          return rules;
-        });
-        context[key] = points;
-
-      }
-      return context[key][idx - 1];
+      let { points } = generate_shape(commands, 1, 65536, rules => {
+        delete rules['fill'];
+        delete rules['fill-rule'];
+        delete rules['frame'];
+        rules.points = max;
+        return rules;
+      });
+      return points;
     };
   },
 
   Plot({ count, context, extra, position, grid }) {
-    let key = 'Offset-points' + position;
     let lastExtra = last(extra);
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      if (!context[key]) {
-        let { points } = generate_shape(commands, 1, 65536, rules => {
-          delete rules['fill'];
-          delete rules['fill-rule'];
-          delete rules['frame'];
-          rules.points = max;
-          rules.unit = rules.unit || 'none';
-          return rules;
-        });
-        context[key] = points;
-      }
-      return context[key][idx - 1];
+      let { points } = generate_shape(commands, 1, 65536, rules => {
+        delete rules['fill'];
+        delete rules['fill-rule'];
+        delete rules['frame'];
+        rules.points = max;
+        rules.unit = rules.unit || 'none';
+        return rules;
+      });
+      return points;
     };
   },
 
