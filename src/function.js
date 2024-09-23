@@ -112,7 +112,7 @@ function calc_with(base) {
     for (let v of args) {
       let [output, output_unit] = calc_value(base, v);
       base = output;
-      if (!unit) {
+      if (!unit && output_unit) {
         unit = output_unit;
       }
     }
