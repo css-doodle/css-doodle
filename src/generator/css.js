@@ -16,7 +16,7 @@ function is_host_selector(s) {
 }
 
 function is_parent_selector(s) {
-  return /^\:(container|parent)/.test(s);
+  return /^\:container/.test(s);
 }
 
 function is_special_selector(s) {
@@ -825,7 +825,8 @@ class Rules {
   output() {
     for (let [selector, rule] of Object.entries(this.rules)) {
       if (is_parent_selector(selector)) {
-        this.styles.container += `grid {${join(rule)}}`;
+        let name = selector.replace(/^:container\(?/, 'grid').replace(/\)?$/, '');
+        this.styles.container += `${name} {${join(rule)}}`;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         let value = join(rule).trim();
