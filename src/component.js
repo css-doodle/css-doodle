@@ -91,6 +91,8 @@ if (typeof HTMLElement !== 'undefined') {
         return compiled.grid
           ? this.build_grid(compiled, grid)
           : this.build_grid(this.generate(parse_css(use + styles, this.extra)), grid);
+      } else {
+        this.bind_uniforms(compiled.uniforms);
       }
 
       let replace = this.replace(compiled);
@@ -474,6 +476,22 @@ if (typeof HTMLElement !== 'undefined') {
       this.shadowRoot.querySelector('grid').offsetWidth;
     }
 
+    bind_uniforms({ time, mousex, mousey, width, height }) {
+      if (time) {
+        this.reg_utime();
+      }
+      if (mousex || mousey) {
+        this.reg_umouse(mousex, mousey);
+      } else {
+        this.off_umouse();
+      }
+      if (width || height) {
+        this.reg_usize(width, height);
+      } else {
+        this.off_usize();
+      }
+    }
+
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
       let has_delay = (has_transition || has_animation);
@@ -491,35 +509,26 @@ if (typeof HTMLElement !== 'undefined') {
         get_basic_styles(grid) +
         styles.all
       ));
-      if (uniforms.time) {
-        this.reg_utime();
-      }
-      if (uniforms.mousex || uniforms.mousey) {
-        this.reg_umouse(uniforms);
-      } else {
-        this.off_umouse();
-      }
-      if (uniforms.width || uniforms.height) {
-        this.reg_usize(uniforms);
-      } else {
-        this.off_usize();
-      }
+
+      this.bind_uniforms(uniforms);
     }
 
-    reg_umouse(uniforms) {
+    reg_umouse(mousex, mousey) {
       if (!this.umouse_fn) {
         this.umouse_fn = e => {
           let data = e.detail || e;
-          if (uniforms.mousex) {
+          if (mousex || mousey) {
             this.style.setProperty('--' + umousex.name, data.offsetX);
-          }
-          if (uniforms.mousey) {
             this.style.setProperty('--' + umousey.name, data.offsetY);
           }
         }
         this.addEventListener('pointermove', this.umouse_fn);
         let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
         this.dispatchEvent(event);
+      } else {
+        if (!(mousex || mousey)) {
+          this.off_umouse();
+        }
       }
     }
 
@@ -532,18 +541,20 @@ if (typeof HTMLElement !== 'undefined') {
       }
     }
 
-    reg_usize(uniforms) {
+    reg_usize(width, height) {
       if (!this.usize_observer) {
         this.usize_observer = new ResizeObserver(() => {
           let box = this.getBoundingClientRect();
-          if (uniforms.width) {
+          if (width || height) {
             this.style.setProperty('--' + uwidth.name, box.width);
-          }
-          if (uniforms.height) {
             this.style.setProperty('--' + uheight.name, box.height);
           }
         });
         this.usize_observer.observe(this);
+      } else {
+        if (!(width || height)) {
+          this.off_usize();
+        }
       }
     }
 
