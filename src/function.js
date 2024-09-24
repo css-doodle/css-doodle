@@ -70,11 +70,8 @@ function compute(op, a, b) {
   }
 }
 
-function add_unit(input, unit) {
-  let value = unit
-    ? `calc((${input}) * 1${unit})`
-    : `calc(${input})`;
-  return [value];
+function compute_var(input, unit) {
+  return [`calc(${input})`, unit];
 }
 
 function calc_value(base, v) {
@@ -86,8 +83,8 @@ function calc_value(base, v) {
     let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
     if (/var\(/.test(base)) {
       return op === '%'
-        ? add_unit(`mod(${base}, ${value})`, unit)
-        : add_unit(`${base} ${op} ${value}`, unit);
+        ? compute_var(`mod(${base}, ${value})`, unit)
+        : compute_var(`${base} ${op} ${value}`, unit);
     }
     return [compute(op, Number(base), Number(value)), unit];
   }
@@ -96,8 +93,8 @@ function calc_value(base, v) {
     let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
     if (/var\(/.test(base)) {
       return op === '%'
-        ? add_unit(`mod(${value}, ${base})`, unit)
-        : add_unit(`${value} ${op} ${base}`, unit);
+        ? compute_var(`mod(${value}, ${base})`, unit)
+        : compute_var(`${value} ${op} ${base}`, unit);
     }
     return [compute(op, Number(value), Number(base)), unit];
   } else {
@@ -115,6 +112,10 @@ function calc_with(base) {
       if (!unit && output_unit) {
         unit = output_unit;
       }
+    }
+
+    if (/^calc\(/.test(base)) {
+      return `calc(${base} * 1${unit})`;
     }
     return base + unit;
   }
