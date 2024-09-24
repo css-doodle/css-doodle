@@ -1,12 +1,12 @@
 {
   "name": "css-doodle",
-  "version": "0.40.2",
+  "version": "0.40.3",
   "description": "A web component for drawing patterns with CSS",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --analyze --outfile=css-doodle.min.js",
-    "minify": "terser -cm -o css-doodle.min.js --ecma 6 -b ascii_only=true -- css-doodle.min.js",
-    "trim": "./build/trim.js css-doodle.min.js",
-    "banner": "./build/banner.js css-doodle.min.js",
+    "build": "esbuild src/index.js --bundle --analyze --outfile=css-doodle.js",
+    "minify": "terser -cm -o css-doodle.js --ecma 6 -b ascii_only=true -- css-doodle.js",
+    "trim": "./build/trim.js css-doodle.js",
+    "banner": "./build/banner.js css-doodle.js",
     "test": "node --test --test-reporter dot 'test/**/!(_*.js)'"
   },
   "repository": {
@@ -22,11 +22,11 @@
     "terser": "^5.31.6"
   },
   "files": [
-    "css-doodle*.js",
+    "css-doodle.js",
     "src"
   ],
   "exports": {
-    ".": "./css-doodle.min.js",
+    ".": "./css-doodle.js",
     "./component": {
       "import": "./src/exports/component/index.js"
     },

@@ -1,5 +1,18 @@
 ## 0.40.2
 
+* Add `@Ii`, `@Xx`, `@Yy` and `@Nn`.
+* Quick addition to support container hover selector.
+* Use `background` instead of `background-color` for grid bg value.
+* Return empty list for invalid iteration value.
+* Remove cached value for plot function.
+* Fix empty selector name.
+* Fix returned plot points value.
+* Fix undefined unit.
+* Fix calc with `var()`.
+
+
+## 0.40.2
+
 * Fix css selector parsing.
 * Fix animation name in root element.
 
