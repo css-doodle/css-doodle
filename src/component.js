@@ -400,8 +400,9 @@ if (typeof HTMLElement !== 'undefined') {
 
     load(again) {
       this.cleanup();
+      let code = this._code || this.innerHTML;
       let use = this.get_use();
-      let parsed = parse_css(use + un_entity(this.innerHTML), this.extra);
+      let parsed = parse_css(use + un_entity(code), this.extra);
       let compiled = this.generate(parsed);
 
       if (!again) {
@@ -415,7 +416,7 @@ if (typeof HTMLElement !== 'undefined') {
         : this.get_grid();
 
       this.build_grid(compiled, this.grid_size);
-      this._code = this.innerHTML;
+      this._code = code;
       this.innerHTML = '';
     }
 
