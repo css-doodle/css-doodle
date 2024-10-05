@@ -114,9 +114,11 @@ if (typeof HTMLElement !== 'undefined') {
         ));
       }
 
-      this.triggerEvent('render');
-      this.triggerEvent('afterUpdate');
-      this.triggerEvent('update');
+      setTimeout(() => {
+        this.triggerEvent('render');
+        this.triggerEvent('afterUpdate');
+        this.triggerEvent('update');
+      });
     }
 
     update(styles, options = {}) {
@@ -433,7 +435,9 @@ if (typeof HTMLElement !== 'undefined') {
       this._code = code;
       this.innerHTML = '';
 
-      this.triggerEvent('render');
+      setTimeout(() => {
+        this.triggerEvent('render');
+      });
     }
 
     replace({ doodles, shaders, pattern }) {
