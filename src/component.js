@@ -50,6 +50,16 @@ if (typeof HTMLElement !== 'undefined') {
       this.cleanup();
     }
 
+    triggerEvent(name, detail = {}) {
+      return this.dispatchEvent(
+        new CustomEvent(name, {
+          detail,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+
     _update(styles) {
       this.cleanup();
       // Use old rules to update
@@ -88,25 +98,29 @@ if (typeof HTMLElement !== 'undefined') {
       Object.assign(this.grid_size, grid);
 
       if (should_rebuild) {
-        return compiled.grid
+        compiled.grid
           ? this.build_grid(compiled, grid)
           : this.build_grid(this.generate(parse_css(use + styles, this.extra)), grid);
       } else {
         this.bind_uniforms(compiled.uniforms);
+        let replace = this.replace(compiled);
+        if (compiled.props.has_animation) {
+          this.set_style(old_styles.replace(/animation/g, 'x'));
+          this.reflow();
+        }
+        this.set_style(replace(
+          get_basic_styles(this.grid_size) +
+          compiled.styles.all
+        ));
       }
 
-      let replace = this.replace(compiled);
-      if (compiled.props.has_animation) {
-        this.set_style(old_styles.replace(/animation/g, 'x'));
-        this.reflow();
-      }
-      this.set_style(replace(
-        get_basic_styles(this.grid_size) +
-        compiled.styles.all
-      ));
+      this.triggerEvent('render');
+      this.triggerEvent('afterUpdate');
+      this.triggerEvent('update');
     }
 
     update(styles, options = {}) {
+      this.triggerEvent('beforeUpdate');
       if (!document.startViewTransition) {
         return this._update(styles);
       }
@@ -418,6 +432,8 @@ if (typeof HTMLElement !== 'undefined') {
       this.build_grid(compiled, this.grid_size);
       this._code = code;
       this.innerHTML = '';
+
+      this.triggerEvent('render');
     }
 
     replace({ doodles, shaders, pattern }) {
