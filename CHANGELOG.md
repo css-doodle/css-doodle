@@ -1,3 +1,12 @@
+## 0.40.6
+
+* Add `create()` function to `css-doodle/component.
+* Add `render`, `update`, `beforeUpdate`, and `afterUpdate` custom events.
+
+## 0.40.5
+
+* No change.
+
 ## 0.40.4
 
 * No change.
