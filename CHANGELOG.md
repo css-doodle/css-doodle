@@ -1,3 +1,7 @@
+## 0.40.7
+
+* Fix token reading order.
+
 ## 0.40.6
 
 * Add `create()` function to `css-doodle/component.
