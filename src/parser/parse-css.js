@@ -818,12 +818,12 @@ export default function parse(input, extra) {
       let keyframes = read_keyframes(it, extra);
       Tokens.push(keyframes);
     }
+    else if (c == '<') {
+      skip_tag(it);
+    }
     else if (is.selector(it)) {
       let cond = read_cond(it, extra);
       if (cond.name.length) Tokens.push(cond);
-    }
-    else if (c == '<') {
-      skip_tag(it);
     }
     else if (!is.white_space(c)) {
       let rule = read_rule(it, extra);
