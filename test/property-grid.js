@@ -75,7 +75,7 @@ test('flex', () => {
   compare('| 1 / 100%', {
     clip: true,
     p3d: false,
-    flexCol: true,
+    flex: 'column',
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
     size: 'width:100%;height:100%;'
   });
@@ -83,7 +83,7 @@ test('flex', () => {
   compare('- 1 / 100%', {
     clip: true,
     p3d: false,
-    flexRow: true,
+    flex: 'row',
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
     size: 'width:100%;height:100%;'
   });

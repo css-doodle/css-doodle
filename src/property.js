@@ -79,25 +79,22 @@ export default add_alias({
     let temp = [];
     let pos = 0;
     for (let item of parse_value_group(value, {symbol: ' '})) {
-      if (!pos && !result.grid && (item === '|' || item === '-')) {
-        result.grid = parse_grid(value, options.max_grid);
-        if (item === '|') {
-          result.flexCol = true;
-        }
-        if (item === '-') {
-          result.flexRow = true;
-        }
+      if (pos === 0 && (item === '|' || item === '-')) {
+        result.flex = item === '|' ? 'column' : 'row';
       } else if (/border:?/i.test(item)) {
         result.border = item.split(':')[1] || '';
       } else if (/^no\-*clip$/i.test(item)) {
         result.clip = false;
       } else if (/^p3d$/i.test(item)) {
         result.p3d = true;
+      } else if (!result.grid) {
+        result.grid = parse_grid(item, options.max_grid);
       } else {
         temp.push(item);
       }
       pos += 1;
     }
+
     let groups = parse_value_group(temp.join(' '), {
       symbol: ['/', '+', '^', '*', '~', '∆', '_'],
       noSpace: true,
