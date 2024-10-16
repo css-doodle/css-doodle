@@ -1,10 +1,14 @@
+## 0.40.8
+
+* Fix grid parsing.
+
 ## 0.40.7
 
 * Fix token reading order.
 
 ## 0.40.6
 
-* Add `create()` function to `css-doodle/component.
+* Add `create()` function to `css-doodle/component`.
 * Add `render`, `update`, `beforeUpdate`, and `afterUpdate` custom events.
 
 ## 0.40.5
