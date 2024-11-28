@@ -81,12 +81,16 @@ export default add_alias({
     for (let item of parse_value_group(value, {symbol: ' '})) {
       if (pos === 0 && (item === '|' || item === '-')) {
         result.flex = item === '|' ? 'column' : 'row';
+        temp.push('§');
       } else if (/border:?/i.test(item)) {
         result.border = item.split(':')[1] || '';
+        temp.push('§');
       } else if (/^no\-*clip$/i.test(item)) {
         result.clip = false;
+        temp.push('§');
       } else if (/^p3d$/i.test(item)) {
         result.p3d = true;
+        temp.push('§');
       } else if (!result.grid) {
         result.grid = parse_grid(item, options.max_grid);
       } else {
@@ -96,7 +100,7 @@ export default add_alias({
     }
 
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/', '+', '^', '*', '~', '∆', '_'],
+      symbol: ['/', '+', '^', '*', '~', '∆', '_', '§'],
       noSpace: true,
       verbose: true
     });
