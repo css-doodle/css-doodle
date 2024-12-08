@@ -24,25 +24,27 @@ function get_selector(offset) {
   return selector;
 }
 
-function compare(rule, value) {
+function compare(rule, value, x, y) {
   if (rule === 'even') {
-    return even(value);
+    return { value: odd(x + y) }
   }
   if (rule === 'odd') {
-    return odd(value);
+    return { value: even(x + y) }
   }
-  if (rule == 'n') {
-    return true;
+  if (rule === 'n') {
+    return { value: true }
   }
   let { a, b, error } = parse_linear_expr(rule);
   if (error) {
-    return false;
+    return { value: false, error }
   }
   if (a === 0) {
-    return value === b;
+    return { value: value === b }
   } else {
     let result = (value - b) / a;
-    return result >= 0 && Number.isInteger(result);
+    return {
+      value: result >= 0 && Number.isInteger(result),
+    }
   }
 }
 
@@ -55,7 +57,7 @@ export default add_alias({
   nth({ count, grid }) {
     return (...exprs) => {
       for (let expr of exprs) {
-        if (compare(expr, count)) return true;
+        if (compare(expr, count).value) return true;
       }
     }
   },
@@ -63,7 +65,7 @@ export default add_alias({
   y({ y, grid }) {
     return (...exprs) => {
       for (let expr of exprs) {
-        if (compare(expr, y)) return true;
+        if (compare(expr, y).value) return true;
       }
     };
   },
@@ -71,7 +73,7 @@ export default add_alias({
   x({ x, grid }) {
     return (...exprs) => {
       for (let expr of exprs) {
-        if (compare(expr, x)) return true;
+        if (compare(expr, x).value) return true;
       }
     };
   },
@@ -106,6 +108,27 @@ export default add_alias({
         i: count, I: grid.count,
         random,
       });
+    }
+  },
+
+  cell({ count, grid, x, y, random }) {
+    return (...args) => {
+      if (!args.length) {
+        return true;
+      }
+      let result = args.map(arg => {
+        let { value, error } = compare(arg, count, x, y);
+        if (!error) {
+          return value;
+        }
+        return !!calc('(' + arg + ')', {
+          x, X: grid.x,
+          y, Y: grid.y,
+          i: count, I: grid.count,
+          random,
+        });
+      });
+      return result.some(Boolean);
     }
   },
 
