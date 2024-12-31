@@ -1,3 +1,9 @@
+## 0.41.0
+
+* Add `@cell` selector to replace `@nth`, `@at`, `@match`, `@x`, `@y`, `@even`, and `@odd` in future.
+* Ignore unrecognized values in `@grid`.
+
+
 ## 0.40.8
 
 * Fix grid parsing.
