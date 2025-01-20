@@ -33,8 +33,9 @@ A web component for drawing patterns with CSS.
 
 ## Resources
 
-* [How to Draw Patterns with CSS Using CSS Doodle](https://webdesign.tutsplus.com/tutorials/how-to-draw-patterns-with-css-using-css-doodle--cms-33110), by Adi Purdila
+* [An Introduction to css-doodle](https://yuanchuan.dev/an-introduction-to-css-doodle), by Yuan Chuan
 * [Arte generativo con CSS](https://www.youtube.com/watch?v=KKg6Uo1pVLU), by Sonia Ruiz
+* [How to Draw Patterns with CSS Using CSS Doodle](https://webdesign.tutsplus.com/tutorials/how-to-draw-patterns-with-css-using-css-doodle--cms-33110), by Adi Purdila
 
 
 ## Build
