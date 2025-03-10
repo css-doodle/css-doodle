@@ -113,3 +113,23 @@ test('multiple * commands', () => {
     hueRotate: '10deg',
   });
 });
+
+
+test('border ß command', () => {
+  function compareBorder(input, output) {
+    compare(input, {
+      clip: true,
+      p3d: false,
+      border: output,
+      grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+    });
+  }
+  compareBorder('1 ß1', '1px solid');
+  compareBorder('1 ß1px', '1px solid');
+  compareBorder('1 ßred', 'red 1px solid');
+  compareBorder('1 ß#000', '#000 1px solid');
+  compareBorder('1 ß 1px solid', '1px solid');
+  compareBorder('1 ßsolid', 'solid 1px');
+  compareBorder('1 ßdotted', 'dotted 1px');
+  compareBorder('1 ßnone', 'none 1px solid');
+});

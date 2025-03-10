@@ -121,14 +121,14 @@ export default add_alias({
       }
       if (group === 'ß') {
         let values = parse_value_group(value, {symbol: ' '});
-        if (values.length === 1 && !Number(values[0])) {
-          values.push('1px');
-        }
         for (let i = 0; i < values.length; i++) {
           if (Number(values[i])) {
             values[i] += 'px';
             break;
           }
+        }
+        if (values.length === 1 && /^\D/.test(values[0])) {
+          values.push('1px');
         }
         if (!/solid|dotted|dashed|double|groove|ridge|inset|outset/.test(value)) {
           values.push('solid');
