@@ -328,6 +328,8 @@ if (typeof HTMLElement !== 'undefined') {
           <foreignObject width="100%" height="100%">
             <div class="host" width="100%" height="100%" ${NSXHtml}>
               <style>
+                @property --${utime.name} { syntax: "&lt;integer&gt;"; initial-value: 0; inherits: true; }
+                @property --${UTime.name} { syntax: "&lt;integer&gt;"; initial-value: 0; inherits: true; }
                 ${get_basic_styles(grid)}
                 ${compiled.styles.all}
               </style>
