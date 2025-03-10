@@ -426,7 +426,7 @@ class Rules {
       this.add_rule(':container', s);
     }
     if (border !== undefined) {
-      this.add_rule(':host', `border: 1px solid ${border};`);
+      this.add_rule(':host', `border: ${border};`);
     }
     if (gap) {
       this.add_rule(':container', `gap: ${gap};`);

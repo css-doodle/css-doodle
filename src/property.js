@@ -82,9 +82,6 @@ export default add_alias({
       if (pos === 0 && (item === '|' || item === '-')) {
         result.flex = item === '|' ? 'column' : 'row';
         temp.push('§');
-      } else if (/border:?/i.test(item)) {
-        result.border = item.split(':')[1] || '';
-        temp.push('§');
       } else if (/^no\-*clip$/i.test(item)) {
         result.clip = false;
         temp.push('§');
@@ -100,7 +97,7 @@ export default add_alias({
     }
 
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/', '+', '^', '*', '~', '∆', '_', '§'],
+      symbol: ['/', '+', '^', '*', '~', '∆', '_', 'ß', '§'],
       noSpace: true,
       verbose: true
     });
@@ -121,6 +118,22 @@ export default add_alias({
       if (group === '/') {
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;
+      }
+      if (group === 'ß') {
+        let values = parse_value_group(value, {symbol: ' '});
+        if (values.length === 1 && !Number(values[0])) {
+          values.push('1px');
+        }
+        for (let i = 0; i < values.length; i++) {
+          if (Number(values[i])) {
+            values[i] += 'px';
+            break;
+          }
+        }
+        if (!/solid|dotted|dashed|double|groove|ridge|inset|outset/.test(value)) {
+          values.push('solid');
+        }
+        result.border = values.join(' ');
       }
       if (group === '' && !result.grid) {
         result.grid = parse_grid(value, options.max_grid);
