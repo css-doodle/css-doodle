@@ -672,9 +672,7 @@ class Rules {
         }
       });
       if (is_nil(this.seed)) {
-        if (!coords.upextra.length) {
-          this.seed = coords.seed_value;
-        }
+        //this.seed = coords.seed_value;
       } else {
         coords.update_random(this.seed);
       }
