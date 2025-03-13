@@ -71,6 +71,7 @@ class Rules {
     this.pattern = {};
     this.shaders = {};
     this.content = {};
+    this.vars = {};
     for (let key in this.rules) {
       if (key.startsWith('#c')) {
         delete this.rules[key];
