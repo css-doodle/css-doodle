@@ -1,3 +1,11 @@
+## 0.42.0
+
+* New `ß` symbol for for `grid` property to replace `border` keyword.
+* Fix time uniforms in background so that `@t` can be used in `@doodle()` function.
+* Fix variables resetting.
+* Revert "Fix seed generation in nested doodle element", random seed should be generated for each doodle element.
+
+
 ## 0.41.0
 
 * Add `@cell` selector to replace `@nth`, `@at`, `@match`, `@x`, `@y`, `@even`, and `@odd` in future.
