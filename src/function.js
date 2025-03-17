@@ -642,14 +642,18 @@ const Expose = add_alias({
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points } = generate_shape(commands, 1, 65536, rules => {
+      let { points, rules } = generate_shape(commands, 1, 65536, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
         delete rules['frame'];
-        rules.points = max;
+        if (rules.split || rules.points) {
+          rules.hasPoints = true;
+        } else {
+          rules.points = max;
+        }
         return rules;
       });
-      return points[idx - 1];
+      return rules.hasPoints ? points : points[idx - 1];
     };
   },
 
@@ -658,15 +662,19 @@ const Expose = add_alias({
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points } = generate_shape(commands, 1, 65536, rules => {
+      let { points, rules } = generate_shape(commands, 1, 65536, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
         delete rules['frame'];
-        rules.points = max;
+        if (rules.split || rules.points) {
+          rules.hasPoints = true;
+        } else {
+          rules.points = max;
+        }
         rules.unit = rules.unit || 'none';
         return rules;
       });
-      return points[idx - 1];
+      return rules.hasPoints ? points : points[idx - 1];
     };
   },
 
