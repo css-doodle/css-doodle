@@ -1,3 +1,8 @@
+## 0.42.1
+
+* Support `points` property inside `@plot` function.
+
+
 ## 0.42.0
 
 * New `ß` symbol for for `grid` property to replace `border` keyword.
