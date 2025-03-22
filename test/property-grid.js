@@ -132,4 +132,7 @@ test('border ß command', () => {
   compareBorder('1 ßsolid', 'solid 1px');
   compareBorder('1 ßdotted', 'dotted 1px');
   compareBorder('1 ßnone', 'none 1px solid');
+  compareBorder('1 ß.5', '.5px solid');
+  compareBorder('1 ß.5px', '.5px solid');
+  compareBorder('1 ß.5px dotted', '.5px dotted');
 });

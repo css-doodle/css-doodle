@@ -127,7 +127,8 @@ export default add_alias({
             break;
           }
         }
-        if (values.length === 1 && /^\D/.test(values[0])) {
+        // simplify the regex
+        if (values.length === 1 && (/^\D/.test(values[0]) && !/^\.\d/.test(values[0]))) {
           values.push('1px');
         }
         if (!/solid|dotted|dashed|double|groove|ridge|inset|outset/.test(value)) {
