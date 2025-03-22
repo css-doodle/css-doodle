@@ -12,9 +12,9 @@ function compare(input, output, print) {
   }
   if (print) console.log(JSON.stringify(applied, null, 2));
   if (typeof output === 'string') {
-    assert.equal(output, applied);
+    assert.equal(applied, output);
   } else {
-    assert.deepStrictEqual(output, applied);
+    assert.deepStrictEqual(applied, output);
   }
 }
 

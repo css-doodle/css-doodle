@@ -90,6 +90,7 @@ export default add_alias({
         temp.push('§');
       } else if (!result.grid) {
         result.grid = parse_grid(item, options.max_grid);
+        temp.push(item);
       } else {
         temp.push(item);
       }
