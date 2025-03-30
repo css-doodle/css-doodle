@@ -399,9 +399,9 @@ class Rules {
     }
     if (persp) {
       let [value, ...origin] = persp;
-      this.add_rule(':container', `perspective:${value};`);
+      this.add_rule(':host', `perspective:${value};`);
       if (origin.length) {
-        this.add_rule(':container', `perspective-origin:${origin.join(' ')};`);
+        this.add_rule(':host', `perspective-origin:${origin.join(' ')};`);
       }
     }
     if (enlarge) {
