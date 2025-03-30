@@ -1,3 +1,10 @@
+## 0.42.2
+
+* Fix fractional number in `ß` grid command.
+* Fix grid parsing on spaces.
+* Apply perspective to host element instead of container.
+
+
 ## 0.42.1
 
 * Support `points` property inside `@plot` function.
