@@ -340,9 +340,19 @@ if (typeof HTMLElement !== 'undefined') {
       `).then(result => {
         let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
         if (is_safari()) {
-          cache_image(source);
+          if (size) {
+            generate_png(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2).then(({ blob }) => {
+              let url = URL.createObjectURL(blob);
+              cache_image(url);
+              fn(url);
+            });
+          } else {
+            cache_image(source);
+            fn(source);
+          }
+        } else {
+          fn(source);
         }
-        fn(source);
       });
     }
 
