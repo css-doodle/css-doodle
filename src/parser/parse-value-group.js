@@ -8,22 +8,37 @@ function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
   let parenStack = [];
   let quoteStack = [];
   let lastGroupName = '';
+  let symbolList = option.symbol || ',';
+  let symbolCounter = {};
+  let symbolCounterMax = {};
+  let symbolsToCompare = [];
 
   if (is_empty(input)) {
     return group;
   }
+  if (!Array.isArray(symbolList)) {
+    symbolList = [symbolList];
+  }
+  symbolList.forEach(item => {
+    let [symbol, max = Infinity] = String(item).split(/\s+/);
+    symbolCounter[symbol] = 0;
+    symbolCounterMax[symbol] = max;
+  });
 
-  let iter = iterator(scan(input));
+  const allSymbols = Object.keys(symbolCounterMax);
+  const iter = iterator(scan(input));
+  updateSymbols();
+
+  function updateSymbols() {
+    symbolsToCompare = allSymbols.filter(s => {
+      return symbolCounter[s] < symbolCounterMax[s];
+    });
+  }
 
   function isSeperator(token) {
-    let symbol = option.symbol || [','];
-    if (!Array.isArray(symbol)) {
-      symbol = [symbol];
-    }
-    if (option.noSpace) {
-      return token.isSymbol(...symbol);
-    }
-    return token.isSymbol(...symbol) || token.isSpace();
+    return option.noSpace
+       ? token.isSymbol(symbolsToCompare)
+       : (token.isSymbol(symbolsToCompare) || token.isSpace());
   }
 
   function addGroup(tokens) {
@@ -55,18 +70,24 @@ function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
     if (emptyStack) {
       let isNextSpace = option.noSpace && curr.isSpace() && isSeperator(next);
       let isPrevSpace = option.noSpace && curr.isSpace() && isSeperator(prev);
-      if (isNextSpace || isPrevSpace) continue;
+      if (curr.isSpace() && !tokens.length) {
+        continue;
+      }
+      if (isNextSpace || isPrevSpace) {
+        continue;
+      }
     }
     if (emptyStack && isSeperator(curr)) {
+      symbolCounter[curr.value] += 1;
       let groupName = lastGroupName;
       addGroup(tokens);
       lastGroupName = curr.value;
       tokens = [];
+      updateSymbols();
     } else {
       tokens.push(curr);
     }
   }
-
   if (tokens.length) {
     addGroup(tokens);
   }

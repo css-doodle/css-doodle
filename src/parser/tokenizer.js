@@ -39,10 +39,17 @@ class Token {
       this.status = status;
     }
   }
-  isSymbol(...values) {
-    let isSymbol = this.type == 'Symbol';
-    if (!values.length) return isSymbol;
-    return values.some(c => c === this.value);
+  isSymbol(values) {
+    if (arguments.length == 0) {
+      return this.type == 'Symbol';
+    }
+    if (arguments.length > 1) {
+      values = Array.from(arguments);
+    }
+    if (Array.isArray(values)) {
+      return values.some(c => c === this.value);
+    }
+    return values === this.value;
   }
   isSpace() {
     return this.type == 'Space';

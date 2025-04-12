@@ -98,7 +98,7 @@ export default add_alias({
     }
 
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/', '+', '^', '*', '~', '∆', '_', 'ß', '§'],
+      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', '§'],
       noSpace: true,
       verbose: true
     });

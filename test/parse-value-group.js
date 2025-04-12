@@ -48,6 +48,7 @@ test('no space option', () => {
 
   compare('a "hello, world"', ['a "hello, world"']);
 
+
   compare('a,b', ['a', 'b']);
 
   compare('a, b', ['a', 'b']);
@@ -104,4 +105,12 @@ test('dot symbol', () => {
   });
 
   compare('1 _.5px', ['1', '.5px']);
+});
+
+test('symbol max counter', () => {
+  compare.use(input => {
+    return parseValueGroup(input, { symbol: '/ 2', noSpace: true });
+  });
+  compare('1 / 2 / 3', ['1', '2', '3']);
+  compare('1 / 2 / 3 / 4', ['1', '2', '3 / 4']);
 });
