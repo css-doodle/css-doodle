@@ -284,3 +284,13 @@ test('svg', () => {
   ]);
 
 });
+
+test('dot symbols', () => {
+  compare('1 _.1px', [
+    { type: 'Number', value: '1' },
+    { type: 'Space', value: ' ' },
+    { type: 'Symbol', value: '_' },
+    { type: 'Number', value: '.1' },
+    { type: 'Word', value: 'px' },
+  ])
+});

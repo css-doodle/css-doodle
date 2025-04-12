@@ -97,3 +97,11 @@ test('verbose option', () => {
   ]);
 
 });
+
+test('dot symbol', () => {
+  compare.use(input => {
+    return parseValueGroup(input, { symbol: '_', noSpace: true });
+  });
+
+  compare('1 _.5px', ['1', '.5px']);
+});

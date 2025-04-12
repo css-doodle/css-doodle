@@ -164,3 +164,17 @@ test('border ß command', () => {
   compareBorder('1 ß.5px', '.5px solid');
   compareBorder('1 ß.5px dotted', '.5px dotted');
 });
+
+
+test('gap _ command', () => {
+  function compareGap(input, output) {
+    compare(input, {
+      clip: true,
+      p3d: false,
+      gap: output,
+      grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+    });
+  }
+  compareGap('1 _1px', '1px');
+  compareGap('1 _.5px', '.5px');
+});
