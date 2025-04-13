@@ -77,10 +77,10 @@ if (typeof HTMLElement !== 'undefined') {
       const use = this.get_use();
 
       let old_content = '';
-      let old_styles = '';
+      let old_styles = {};
       if (this.compiled) {
         old_content = this.compiled.content;
-        old_styles = this.compiled.styles.all;
+        old_styles = this.compiled.styles;
       }
 
       const compiled = this.generate(parse_css(use + styles, this.extra));
@@ -93,6 +93,7 @@ if (typeof HTMLElement !== 'undefined') {
         ||  this.shadowRoot.querySelector('css-doodle')
         || (gx !== x || gy !== y || gz !== z)
         || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
+        || (!old_styles.cells || !compiled.styles.cells)
       );
 
       Object.assign(this.grid_size, grid);
@@ -105,7 +106,7 @@ if (typeof HTMLElement !== 'undefined') {
         this.bind_uniforms(compiled.uniforms);
         let replace = this.replace(compiled);
         if (compiled.props.has_animation) {
-          this.set_style(old_styles.replace(/animation/g, 'x'));
+          this.set_style(old_styles.all.replace(/animation/g, 'x'));
           this.reflow();
         }
         this.set_style(replace(
@@ -532,7 +533,7 @@ if (typeof HTMLElement !== 'undefined') {
 
       this.doodle.innerHTML = `
         <style>${get_basic_styles(grid) + styles.main}</style>
-        ${create_grid(grid, content)}
+        ${styles.cells ? create_grid(grid, content) : ''}
       `;
       if (has_delay) {
         this.reflow();
