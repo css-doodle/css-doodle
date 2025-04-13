@@ -1,3 +1,11 @@
+## 0.42.3
+
+* Workaround for Safari to genenerate doodle background.
+* Fix paring: treat `_` as symbol.
+* Add support for symbol usage limits in value group parser.
+* Generate the grid only when styles are applied to the cells.
+
+
 ## 0.42.2
 
 * Fix fractional number in `ß` grid command.
