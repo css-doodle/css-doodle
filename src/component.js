@@ -533,7 +533,7 @@ if (typeof HTMLElement !== 'undefined') {
 
       this.doodle.innerHTML = `
         <style>${get_basic_styles(grid) + styles.main}</style>
-        ${styles.cells ? create_grid(grid, content) : ''}
+        ${(styles.cells || Object.keys(content).length) ? create_grid(grid, content) : ''}
       `;
       if (has_delay) {
         this.reflow();
