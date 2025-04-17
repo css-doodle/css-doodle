@@ -665,8 +665,7 @@ function get_basic_styles(grid) {
     }
     grid {
       gap: inherit;
-      grid-template: repeat(${y},1fr)/repeat(${x},1fr);
-      container-type: size
+      grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
     cell {
       place-items: center
