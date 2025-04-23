@@ -437,7 +437,7 @@ const Expose = add_alias({
 
   stripe() {
     return (...input) => {
-      let colors = input.map(get_value);
+      let colors = input.map(get_value).flat();
       let max = colors.length;
       let default_count = 0;
       let custom_sizes = [];
