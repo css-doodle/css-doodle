@@ -18,8 +18,8 @@
     "url": "https://opencollective.com/css-doodle"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
-    "terser": "^5.31.6"
+    "esbuild": "^0.25.3",
+    "terser": "^5.39.0"
   },
   "files": [
     "css-doodle*.js",
