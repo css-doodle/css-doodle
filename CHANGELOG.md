@@ -1,3 +1,11 @@
+## 0.42.4
+
+* Add `part` attributes to support external styling outside of the component.
+* Fix `stripe()` argument reading from other generator functions.
+* Should build grid when there is content.
+* Remove default container-type.
+* Upgrade packages.
+
 ## 0.42.3
 
 * Workaround for Safari to genenerate doodle background.
