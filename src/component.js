@@ -684,7 +684,7 @@ function create_cell(x, y, z, content, child = '') {
   let id = cell_id(x, y, z);
   let head = content['#' + id] ?? '';
   let tail = child ?? '';
-  return `<cell id="${id}">${head}${tail}</cell>`;
+  return `<cell id="${id}" part="cell">${head}${tail}</cell>`;
 }
 
 function create_grid(grid_obj, content) {
@@ -705,9 +705,8 @@ function create_grid(grid_obj, content) {
     }
     result = child;
   }
-  return `<grid>${result}</grid>`;
+  return `<grid part="grid">${result}</grid>`;
 }
-
 
 export const CSSDoodle = Expose.CSSDoodle;
 export const define = Expose.define;
