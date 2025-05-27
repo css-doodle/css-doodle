@@ -31,6 +31,11 @@ A web component for drawing patterns with CSS.
 * [SVG playground](https://css-doodle.com/svg) -- Generate SVG code with new syntax
 
 
+## CLI Tools
+
+* [cssd](https://github.com/css-doodle/cli) -- Preview and generate images/videos
+
+
 ## Resources
 
 * [An Introduction to css-doodle](https://yuanchuan.dev/an-introduction-to-css-doodle), by Yuan Chuan
