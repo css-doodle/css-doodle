@@ -3,11 +3,8 @@
   "version": "0.42.4",
   "description": "A web component for drawing patterns with CSS",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --analyze --outfile=css-doodle.min.js",
-    "minify": "terser -cm -o css-doodle.min.js --ecma 6 -b ascii_only=true -- css-doodle.min.js",
-    "trim": "./build/trim.js css-doodle.min.js",
-    "banner": "./build/banner.js css-doodle.min.js",
-    "test": "node --test --test-reporter dot 'test/**/!(_*.js)'"
+    "test": "node --test --test-reporter dot 'test/**/!(_*.js)'",
+    "build": "node ./build/index.js"
   },
   "repository": {
     "type": "git",
@@ -18,8 +15,7 @@
     "url": "https://opencollective.com/css-doodle"
   },
   "devDependencies": {
-    "esbuild": "^0.25.4",
-    "terser": "^5.39.0"
+    "esbuild": "^0.25.4"
   },
   "files": [
     "css-doodle*.js",

@@ -1,19 +1,10 @@
 TARGET := ./css-doodle.min.js
 LIB := ./node_modules
 
-all: test build minify trim banner
+all: test build
 
 build: $(LIB)
 	@npm run build
-
-minify: $(TARGET)
-	@npm run minify
-
-banner: $(TARGET)
-	@npm run banner
-
-trim: $(TARGET)
-	@npm run trim
 
 test:
 	@npm run test
@@ -24,4 +15,4 @@ $(LIB):
 $(TARGET):
 	@npm run build
 
-.PHONY: $(TARGET) banner test
+.PHONY: $(TARGET) test build

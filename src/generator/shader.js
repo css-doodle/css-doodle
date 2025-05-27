@@ -101,9 +101,7 @@ export default function draw_shader(shaders, seed) {
   if (isShaderToyFragment) {
     fragment = `
 ${defines}
-
 ${fragment}
-
 void main() {
   mainImage(FragColor, gl_FragCoord.xy);
 }`
