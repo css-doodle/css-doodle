@@ -3,7 +3,7 @@ import parse_linear_expr from './parser/parse-linear-expr.js';
 import { add_alias } from './utils/index.js';
 
 function odd(n) {
-  return n % 2;
+  return n % 2 ? true : false;
 }
 
 function even(n) {
@@ -25,11 +25,12 @@ function get_selector(offset) {
 }
 
 function compare(rule, value, x, y) {
+  let local = x == undefined || y == undefined;
   if (rule === 'even') {
-    return { value: odd(x + y) }
+    return { value: local ? even(value) : odd(x + y) }
   }
   if (rule === 'odd') {
-    return { value: even(x + y) }
+    return { value: local ? odd(value) : even(x + y) }
   }
   if (rule === 'n') {
     return { value: true }
@@ -59,6 +60,7 @@ export default add_alias({
       for (let expr of exprs) {
         if (compare(expr, count).value) return true;
       }
+      return false;
     }
   },
 
@@ -67,6 +69,7 @@ export default add_alias({
       for (let expr of exprs) {
         if (compare(expr, y).value) return true;
       }
+      return false;
     };
   },
 
@@ -75,6 +78,7 @@ export default add_alias({
       for (let expr of exprs) {
         if (compare(expr, x).value) return true;
       }
+      return false;
     };
   },
 
