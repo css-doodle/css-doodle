@@ -184,17 +184,11 @@ const Expose = add_alias({
   },
 
   dx({ x, grid }) {
-    return n => {
-      n = Number(n) || 0;
-      return x - .5 - n - grid.x / 2;
-    }
+    return calc_with(x - .5 - grid.x / 2);
   },
 
   dy({ y, grid }) {
-    return n => {
-      n = Number(n) || 0;
-      return y - .5 - n - grid.y / 2;
-    }
+    return calc_with(y - .5 - grid.y / 2);
   },
 
   n({ extra }) {
