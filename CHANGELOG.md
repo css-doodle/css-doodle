@@ -1,3 +1,10 @@
+## 0.42.5
+
+ * Refactor build process and remove unnecessary scripts.
+ * Update the arguments handling in `@dx` and `@dy` to match the behavior of other functions.
+ * Fix col and row selector logic.
+
+
 ## 0.42.4
 
 * Add `part` attributes to support external styling outside of the component.
