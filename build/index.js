@@ -36,8 +36,8 @@ async function minifyWhitespace(file) {
     .replace(/([:;><{`])\s+/g, '$1')
     .replace(/\s+([:;><}`])/g, '$1')
     .replace(/\s+([{}])\s+/g, '$1')
+    .replace(/(\})\s+/g, '$1 ')
     .replace(/>\s+</g, '><')
-    .replace(/\s{2,}/g, ' ');
   await fs.writeFile(file, minified, 'utf8');
 }
 

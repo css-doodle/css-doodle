@@ -175,11 +175,7 @@ if (typeof HTMLElement !== 'undefined') {
         let h = height * scale;
 
         let svg = `
-          <svg ${NS}
-            preserveAspectRatio="none"
-            viewBox="0 0 ${width} ${height}"
-            ${is_safari() ? '' : `width="${w}px" height="${h}px"`}
-          >
+          <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
             <foreignObject width="100%" height="100%">
               <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
                 <style>.host{${entity(variables)}}</style>
