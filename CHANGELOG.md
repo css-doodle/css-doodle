@@ -1,3 +1,7 @@
+## 0.42.6
+
+ * Fix line breaks in build.
+
 ## 0.42.5
 
  * Refactor build process and remove unnecessary scripts.
