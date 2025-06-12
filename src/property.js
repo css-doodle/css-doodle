@@ -98,7 +98,7 @@ export default add_alias({
     }
 
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', '§'],
+      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', '«', '§'],
       noSpace: true,
       verbose: true
     });
@@ -137,6 +137,9 @@ export default add_alias({
           values.push('solid');
         }
         result.border = values.join(' ');
+      }
+      if (group === '«') {
+        result.backdropFilter = value;
       }
       if (group === '' && !result.grid) {
         result.grid = parse_grid(value, options.max_grid);

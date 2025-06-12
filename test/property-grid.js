@@ -142,7 +142,6 @@ test('multiple * commands', () => {
   });
 });
 
-
 test('border ß command', () => {
   function compareBorder(input, output) {
     compare(input, {
@@ -167,7 +166,6 @@ test('border ß command', () => {
   compareBorder('1 ß thin dotted', 'thin dotted');
 });
 
-
 test('gap _ command', () => {
   function compareGap(input, output) {
     compare(input, {
@@ -179,4 +177,16 @@ test('gap _ command', () => {
   }
   compareGap('1 _1px', '1px');
   compareGap('1 _.5px', '.5px');
+});
+
+test('backdrop filter « command', () => {
+  function compareBackdropFilter(input, output) {
+    compare(input, {
+      clip: true,
+      p3d: false,
+      backdropFilter: output,
+      grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+    });
+  }
+  compareBackdropFilter('1 « @svg-filter()', '@svg-filter()');
 });

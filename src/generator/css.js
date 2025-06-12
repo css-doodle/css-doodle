@@ -372,7 +372,7 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp, flex, p3d, border, gap }) {
+  add_grid_style({ fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp, flex, p3d, border, gap, backdropFilter}) {
     if (fill) {
       this.add_rule(':host', `background:${fill};`);
     }
@@ -431,6 +431,18 @@ class Rules {
     }
     if (gap) {
       this.add_rule(':container', `gap: ${gap};`);
+    }
+
+    if (backdropFilter) {
+      this.add_rule(':host', `
+        &:after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          backdrop-filter: ${backdropFilter};
+        }
+      `);
     }
   }
 
