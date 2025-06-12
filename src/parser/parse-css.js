@@ -614,15 +614,12 @@ function read_cond_selector(it) {
   let segments = [];
   let selector = {};
   while (!it.end()) {
-    if (/[){]/.test(c)) {
-      break;
-    }
     if ((c = it.curr()) == '(') {
       if (keyword) {
         if (!selector.name) {
           selector.name = keyword;
         } else {
-          segments.push({ keyword: keyword });
+          segments.push({ keyword });
         }
         keyword = '';
       }
@@ -631,24 +628,32 @@ function read_cond_selector(it) {
       segments.push({ arguments: args });
     }
     else if (!is.white_space(c)) {
-      keyword += c;
+      if (c == '{' || c == ')') {
+        if (!selector.name) {
+          selector.name = keyword;
+        }
+        segments.push({ keyword });
+        break;
+      } else {
+        keyword += c;
+      }
     }
     else if (is.white_space(c) && !selector.name) {
       selector.name = keyword;
       keyword = '';
     }
     else if (is.white_space(c) && keyword.length) {
-      segments.push({ keyword: keyword });
+      segments.push({ keyword });
       keyword = '';
     }
 
     it.next();
   }
   let [name, ...addition] = (selector.name || '').trim().split(/\s+/);
-  selector.name = name;
-  selector.addition = addition;
-  selector.segments = segments;
-  return selector;
+
+  return {
+    name, addition, segments
+  }
 }
 
 
