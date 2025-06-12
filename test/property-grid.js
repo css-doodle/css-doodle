@@ -163,6 +163,8 @@ test('border ß command', () => {
   compareBorder('1 ß.5', '.5px solid');
   compareBorder('1 ß.5px', '.5px solid');
   compareBorder('1 ß.5px dotted', '.5px dotted');
+  compareBorder('1 ß thin', 'thin solid');
+  compareBorder('1 ß thin dotted', 'thin dotted');
 });
 
 

@@ -129,7 +129,8 @@ export default add_alias({
           }
         }
         // simplify the regex
-        if (values.length === 1 && (/^\D/.test(values[0]) && !/^\.\d/.test(values[0]))) {
+        let v = values[0];
+        if (values.length === 1 && (/^\D/.test(v) && !/^\.\d/.test(v) && !/^(thin|thick|medium)$/.test(v) ) ) {
           values.push('1px');
         }
         if (!/solid|dotted|dashed|double|groove|ridge|inset|outset/.test(value)) {

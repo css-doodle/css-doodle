@@ -4,6 +4,7 @@
   "description": "A web component for drawing patterns with CSS",
   "scripts": {
     "test": "node --test --test-reporter dot 'test/**/!(_*.js)'",
+    "test:dev": "node --test 'test/**/!(_*.js)'",
     "build": "node ./build/index.js"
   },
   "repository": {
