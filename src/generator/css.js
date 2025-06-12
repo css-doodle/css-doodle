@@ -882,7 +882,7 @@ class Rules {
 
     return {
       props: this.props,
-      styles: { main, cells, all: main + cells },
+      styles: { main, cells, container, all: main + cells },
       grid: this.grid,
       seed: this.seed,
       random: this.random,
