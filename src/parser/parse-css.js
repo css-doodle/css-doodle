@@ -615,11 +615,11 @@ function read_cond_selector(it) {
   let selector = {};
   while (!it.end()) {
     if ((c = it.curr()) == '(') {
-      if (keyword) {
-        if (!selector.name) {
-          selector.name = keyword;
-        } else {
+      if (keyword.length) {
+        if (selector.name) {
           segments.push({ keyword });
+        } else {
+          selector.name = keyword;
         }
         keyword = '';
       }
@@ -629,10 +629,13 @@ function read_cond_selector(it) {
     }
     else if (!is.white_space(c)) {
       if (c == '{' || c == ')') {
-        if (!selector.name) {
-          selector.name = keyword;
+        if (keyword.length) {
+          if (selector.name) {
+            segments.push({ keyword });
+          } else {
+            selector.name = keyword;
+          }
         }
-        segments.push({ keyword });
         break;
       } else {
         keyword += c;
