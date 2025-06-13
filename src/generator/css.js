@@ -736,13 +736,28 @@ class Rules {
             token.skip = true;
           }
           parse_value_group(token.selector).forEach(selector => {
-            let pseudo = token.styles.map(s =>
-              this.compose_rule(s, coords, selector)
-            );
             let composed = special
               ? selector
               : this.compose_selector(coords, selector);
-            this.add_rule(composed, pseudo);
+
+            token.styles.forEach(s => {
+              if (s.type === 'rule') {
+                this.add_rule(composed, this.compose_rule(s, coords, selector));
+              }
+              if (s.type === 'pseudo') {
+                let result = s.styles.map(_s =>
+                  this.compose_rule(_s, coords, composed)
+                );
+                let selector = (composed + s.selector);
+                this.add_rule(selector, result);
+              }
+              if (s.type === 'cond' && s.name.startsWith('&')) {
+                let result = s.styles.map(_s =>
+                  this.compose_rule(_s, coords, composed)
+                ).join('');
+                this.add_rule(composed, s.name + '{' + result + '}');
+              }
+            });
           });
 
           break;
@@ -772,7 +787,7 @@ class Rules {
                       this.compose_rule(_token, coords)
                     )
                   }
-                  if (_token.type === 'pseudo') {
+                  if (_token.type === 'pseudo' && _token.selector) {
                     _token.selector.split(',').forEach(selector => {
                       let pseudo = _token.styles.map(s =>
                         this.compose_rule(s, coords, selector)

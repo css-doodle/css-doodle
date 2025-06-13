@@ -677,6 +677,13 @@ function read_pseudo(it, extra) {
     else if (!pseudo.selector) {
       pseudo.selector = read_selector(it);
     }
+    else if (c == ':') {
+      let nested = read_pseudo(it, extra);
+      if (nested.selector) pseudo.styles.push(nested);
+    }
+    else if (c == '&') {
+      pseudo.styles.push(read_cond(it, extra));
+    }
     else {
       let rule = read_rule(it, extra);
       if (rule.property == '@use') {
@@ -738,6 +745,9 @@ function read_cond(it, extra) {
     else if (c == ':') {
       let pseudo = read_pseudo(it);
       if (pseudo.selector) cond.styles.push(pseudo);
+    }
+    else if (c == '&') {
+      cond.styles.push(read_cond(it));
     }
     else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
