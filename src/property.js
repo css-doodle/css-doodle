@@ -82,6 +82,9 @@ export default add_alias({
       if (pos === 0 && (item === '|' || item === '-')) {
         result.flex = item === '|' ? 'column' : 'row';
         temp.push('§');
+      } else if (/border:?/i.test(item)) {
+        result.borderLegacy = item.split(':')[1] || '';
+        temp.push('§');
       } else if (/^no\-*clip$/i.test(item)) {
         result.clip = false;
         temp.push('§');

@@ -372,7 +372,10 @@ class Rules {
     }
   }
 
-  add_grid_style({ fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp, flex, p3d, border, gap, backdropFilter}) {
+  add_grid_style({
+    fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp,
+    flex, p3d, border, borderLegacy, gap, backdropFilter
+  }) {
     if (fill) {
       this.add_rule(':host', `background:${fill};`);
     }
@@ -425,6 +428,9 @@ class Rules {
       let s = 'transform-style:preserve-3d;';
       this.add_rule(':host', s);
       this.add_rule(':container', s);
+    }
+    if (borderLegacy !== undefined) {
+      this.add_rule(':host', `border: 1px solid ${borderLegacy};`);
     }
     if (border !== undefined) {
       this.add_rule(':host', `border: ${border};`);
