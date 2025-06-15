@@ -1,12 +1,22 @@
+## 0.43.0
+
+* Add support for `thin`, `thick`, and `medium` border values.
+* Add `«` symbol for backdrop filter in grid property.
+* Add `border` back so that some old examples still work.
+* Remove unused size preset list `b0 - d6`.
+* Fix reading selector keywords.
+* Improve pseudo selector parsing.
+
+
 ## 0.42.6
 
- * Fix line breaks in build.
+* Fix line breaks in build.
 
 ## 0.42.5
 
- * Refactor build process and remove unnecessary scripts.
- * Update the arguments handling in `@dx` and `@dy` to match the behavior of other functions.
- * Fix col and row selector logic.
+* Refactor build process and remove unnecessary scripts.
+* Update the arguments handling in `@dx` and `@dy` to match the behavior of other functions.
+* Fix col and row selector logic.
 
 
 ## 0.42.4
