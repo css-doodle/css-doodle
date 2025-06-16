@@ -1,3 +1,6 @@
+## 0.43.1
+* Use terser for minification.
+
 ## 0.43.0
 
 * Add support for `thin`, `thick`, and `medium` border values.
