@@ -1,17 +1,17 @@
 import fs from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import * as esbuild from 'esbuild';
+import { minify } from 'terser';
 import packageInfo from '../package.json' with { type: 'json' };
 
 try {
   const outputFile = join(import.meta.dirname, '../css-doodle.min.js');
   console.time('Build time');
 
-  const result = await esbuild.build({
+  const { metafile, outputFiles } = await esbuild.build({
     entryPoints: ['./src/index.js'],
-    outfile: outputFile,
     bundle: true,
-    minify: true,
+    write: false,
     platform: 'browser',
     metafile: true,
     banner: {
@@ -19,26 +19,32 @@ try {
     },
   });
 
-  console.log(await esbuild.analyzeMetafile(result.metafile));
+  const { code } = await minify(outputFiles[0].text, {
+    compress: true,
+    mangle: true,
+    format: {
+      ascii_only: true,
+    },
+  });
 
-  await minifyWhitespace(outputFile);
-  const size = await getReadableSize(outputFile);
-  console.log(`${basename(outputFile)} - ${size}`);
+  await fs.writeFile(outputFile, minifyWhitespace(code), 'utf8');
+
+  console.log(await esbuild.analyzeMetafile(metafile));
+  console.log(`${basename(outputFile)} - ${await getReadableSize(outputFile)}`);
   console.timeLog(`Build time`);
-} catch {
+} catch (e) {
+  console.log(e);
   process.exit(1);
 }
 
-async function minifyWhitespace(file) {
-  const text = await fs.readFile(file, 'utf8');
-  const minified = text
-    .replace(/([>;{}])\n/g, '$1')
-    .replace(/([:;><{`])\s+/g, '$1')
-    .replace(/\s+([:;><}`])/g, '$1')
+function minifyWhitespace(input) {
+  return input
+    .replace(/([>;{}])\\n/g, '$1')
+    .replace(/([:;><{\`])\s+/g, '$1')
+    .replace(/\s+([:;><}{\`])/g, '$1')
     .replace(/\s+([{}])\s+/g, '$1')
-    .replace(/(\})\s+/g, '$1 ')
     .replace(/>\s+</g, '><')
-  await fs.writeFile(file, minified, 'utf8');
+    .replace(/\s{2,}/g, ' ');
 }
 
 async function getReadableSize(file) {
