@@ -374,6 +374,17 @@ const Expose = add_alias({
     };
   },
 
+  ri({ context, rand }) {
+    return (...args) => {
+      let transform = args.every(is_letter)
+        ? by_charcode
+        : by_unit;
+      let rand_int = (...args) => Math.round(rand(...args));
+      let value = transform(rand_int)(...args);
+      return push_stack(context, 'last_rand', value);
+    }
+  },
+
   rn({ x, y, context, position, grid, extra, random }) {
     let counter = 'noise-2d' + position;
     let counterX = counter + 'offset-x';
