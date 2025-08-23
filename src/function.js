@@ -18,6 +18,7 @@ import expand from './utils/expand.js';
 import Stack from './utils/stack.js';
 import get_named_arguments from './utils/get-named-arguments.js';
 import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
+import { getEasingFunction } from './easing.js';
 
 function make_sequence(c) {
   return lazy((_, n, ...actions) => {
@@ -121,6 +122,16 @@ function calc_with(base) {
   }
 }
 
+function calc_with_easing(t) {
+  return (head, ...args) => {
+    if (/^[a-zA-Z]/.test(head)) {
+      let easing = getEasingFunction(head);
+      return calc_with(easing(t))(...args);
+    }
+    return calc_with(t)(head, ...args);
+  }
+}
+
 const Expose = add_alias({
 
   i({ count }) {
@@ -156,27 +167,27 @@ const Expose = add_alias({
   },
 
   iI({ count, grid }) {
-    return calc_with(count/grid.count);
+    return calc_with_easing(count/grid.count);
   },
 
   Ii({ count, grid }) {
-    return calc_with((grid.count - count + 1) / grid.count);
+    return calc_with_easing((grid.count - count + 1) / grid.count);
   },
 
   xX({ x, grid }) {
-    return calc_with(x/grid.x);
+    return calc_with_easing(x/grid.x);
   },
 
   Xx({ x, grid }) {
-    return calc_with((grid.x - x + 1) / grid.x);
+    return calc_with_easing((grid.x - x + 1) / grid.x);
   },
 
   yY({ y, grid }) {
-    return calc_with(y/grid.y);
+    return calc_with_easing(y/grid.y);
   },
 
   Yy({ y, grid }) {
-    return calc_with((grid.y - y + 1) / grid.y);
+    return calc_with_easing((grid.y - y + 1) / grid.y);
   },
 
   id({ x, y, z }) {
@@ -216,7 +227,7 @@ const Expose = add_alias({
         return n - .5 - d - N / 2;
       }
     }
-    return '@nd';;
+    return '@nd';
   },
 
   N({ extra }) {
@@ -226,7 +237,7 @@ const Expose = add_alias({
 
   nN({ extra }) {
     let lastExtra = last(extra);
-    return lastExtra ? calc_with(lastExtra[0]/lastExtra[3]) : '@nN';
+    return lastExtra ? calc_with_easing(lastExtra[0]/lastExtra[3]) : '@nN';
   },
 
   Nn({ extra }) {
@@ -234,7 +245,7 @@ const Expose = add_alias({
     if (lastExtra) {
       let n = lastExtra[0];
       let N = lastExtra[3];
-      return calc_with((N - n + 1) / N);
+      return calc_with_easing((N - n + 1) / N);
     }
     return '@Nn';
   },
@@ -337,7 +348,7 @@ const Expose = add_alias({
       : last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
     let counter = (upstream ? 'PD-counter' : 'pd-counter') + position  + sig;
-    let values = (upstream ? 'PD-valeus' : 'pd-values') + position + sig;;
+    let values = (upstream ? 'PD-valeus' : 'pd-values') + position + sig;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -777,7 +788,7 @@ const Expose = add_alias({
       let list = [];
       let separator;
       if (args.length == 1) {
-        separator = ' ';;
+        separator = ' ';
         list = parse_value_group(args[0], { symbol: separator });
       } else {
         separator = ',';

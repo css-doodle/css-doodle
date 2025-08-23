@@ -114,7 +114,7 @@ export default add_alias({
       if (group === '*') {
         let [head, ...rest] = parse_value_group(value, {symbol: ' '});
         if (head == 'h') {
-          result.hueRotate = rest.join(' ');;
+          result.hueRotate = rest.join(' ');
         } else {
           result.rotate = value;
         }

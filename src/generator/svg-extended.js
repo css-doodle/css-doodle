@@ -13,7 +13,7 @@ function generate(token, last) {
     else if (Array.isArray(token.value) && token.value.length) {
       let lastGroup = '';
       for (let t of token.value) {
-        result += generate(t, lastGroup);;
+        result += generate(t, lastGroup);
         if (t.origin) {
           lastGroup = t.origin.name.join(',');
         }

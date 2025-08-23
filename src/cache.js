@@ -36,7 +36,7 @@ export const cache = new CacheValue();
 
 export function memo(prefix, fn) {
   return (...args) => {
-    let key = prefix + args.join('-');;
+    let key = prefix + args.join('-');
     return cache.get(key) || cache.set(key, fn(...args));
   }
 }

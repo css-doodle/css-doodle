@@ -453,7 +453,7 @@ function read_func(it, variables = {}) {
   let func = Tokens.func();
   let name = it.curr(), c;
   let has_argument = false;
-  let is_calc = name === '$';;
+  let is_calc = name === '$';
   if (name === '@') {
     it.next();
   } else {
