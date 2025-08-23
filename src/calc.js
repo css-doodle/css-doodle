@@ -29,7 +29,7 @@ const operator = {
   '(': 1 , ')': 1,
 }
 
-function calc(expr, context, repeat = []) {
+function calc(expr, context = {}, repeat = []) {
   let stack = [];
   while (expr.length) {
     let { name, value, type } = expr.shift();
@@ -85,9 +85,12 @@ function calc(expr, context, repeat = []) {
       else {
         let right = stack.pop();
         let left = stack.pop();
-        stack.push(compute(
-          value, Number(left), Number(right)
-        ));
+        if (!expr.length && left === undefined) {
+          // so that "3+2+" will work
+          stack.push(right);
+        } else {
+          stack.push(compute(value, Number(left), Number(right)));
+        }
       }
     }
   }
@@ -232,7 +235,6 @@ function infix_to_postfix(input) {
   while (op_stack.length) {
     expr.push({ type: 'operator', value: op_stack.pop() });
   }
-
   return expr;
 }
 
