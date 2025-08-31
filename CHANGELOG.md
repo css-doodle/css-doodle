@@ -1,3 +1,22 @@
+## 0.44.0
+
+* Add `@ri` function back to not break old examples.
+* Guard against undefined pseudo name in CSS generator.
+* Handle operand edge case in calc function.
+* Integrate easing into `@iI`, `@nN` functions
+
+  ```css
+  /* default to linear */
+  rotate: @iI(*360deg);
+  /* manually specify easing */
+  rotate: @iI(linear, *360deg);
+  rotate: @iI(ease, *360deg);
+  rotate: @iI(ease-in, *360deg);
+  rotate: @iI(ease-out, *360eg);
+  rotate: @iI(ease-in-out, *360deg);
+  ```
+
+
 ## 0.43.1
 * Use terser for minification.
 
