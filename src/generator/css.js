@@ -824,7 +824,7 @@ class Rules {
               if (_token.type === 'rule') {
                 rules += `${composed_selector} {${this.compose_rule(_token, coords)}}`;
               }
-              if (_token.type === 'pseudo') {
+              if (_token.type === 'pseudo' && _token.name) {
                 _token.name.split(',').forEach(selector => {
                   let pseudo = _token.styles.map(s =>
                     this.compose_rule(s, coords, selector)
