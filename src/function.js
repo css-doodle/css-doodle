@@ -123,12 +123,13 @@ function calc_with(base) {
 }
 
 function calc_with_easing(t) {
-  return (head, ...args) => {
+  return (head = '', ...args) => {
     if (/^[a-zA-Z]/.test(head)) {
       let easing = getEasingFunction(head);
       return calc_with(easing(t))(...args);
     }
-    return calc_with(t)(head, ...args);
+    let _args = [].concat(head, args).filter(n => n !== '');
+    return calc_with(t)(..._args);
   }
 }
 
