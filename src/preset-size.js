@@ -7,7 +7,6 @@ const presets = {
   a5: [ 148, 210 ],
   a6: [ 105, 148 ],
 
-  letter:   [ 216, 279 ],
   postcard: [ 100, 148 ],
   poster:   [ 390, 540 ],
 }
