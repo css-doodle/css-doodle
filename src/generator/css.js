@@ -408,9 +408,18 @@ class Rules {
       }
     }
     if (enlarge) {
+      let [sx, sy = sx] = enlarge;
+      let width = `calc(${sx} + 100%)`;
+      let height = `calc(${sy} + 100%)`;
+      if (/[0-9]$/.test(sx)) {
+        width = `calc(${sx} * 100%)`;
+      }
+      if (/[0-9]$/.test(sy)) {
+        height = `calc(${sy} * 100%)`;
+      }
       this.add_rule(':container', `
-        width:calc(${enlarge} * 100%);
-        height:calc(${enlarge} * 100%);
+        width: ${width};
+        height: ${height};
         left: 50%;
         top: 50%;
         transform-origin: 0 0;
