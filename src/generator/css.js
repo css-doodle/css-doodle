@@ -64,6 +64,7 @@ class Rules {
       host: '',
       container: '',
       cells: '',
+      backdrop: '',
       keyframes: ''
     }
     this.coords = [];
@@ -447,16 +448,9 @@ class Rules {
     if (gap) {
       this.add_rule(':container', `gap: ${gap};`);
     }
-
     if (backdropFilter) {
-      this.add_rule(':host', `
-        &:after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          backdrop-filter: ${backdropFilter};
-        }
+      this.add_rule('.backdrop', `
+        backdrop-filter: ${backdropFilter};
       `);
     }
   }
@@ -869,6 +863,9 @@ class Rules {
         this.styles.container += `${name} {${join(rule)}}`;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
+        if (selector === '.backdrop') {
+          target = 'backdrop';
+        }
         let value = join(rule).trim();
         if (value.length) {
           let name = (target === 'host') ? `${selector},.host` : selector;
@@ -907,12 +904,12 @@ class Rules {
       }
     });
 
-    let { keyframes, host, container, cells } = this.styles;
+    let { keyframes, host, container, cells, backdrop } = this.styles;
     let main = keyframes + host + container;
 
     return {
       props: this.props,
-      styles: { main, cells, container, all: main + cells },
+      styles: { main, cells, container, backdrop, all: main + backdrop + cells },
       grid: this.grid,
       seed: this.seed,
       random: this.random,

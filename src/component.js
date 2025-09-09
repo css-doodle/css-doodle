@@ -314,7 +314,7 @@ if (typeof HTMLElement !== 'undefined') {
       }
 
       let replace = this.replace(compiled);
-      let grid_container = create_grid(grid, compiled.content);
+      let grid_container = create_grid(grid, compiled);
 
       let size = (options && options.width && options.height)
         ? `width="${options.width}" height="${options.height}"`
@@ -526,10 +526,9 @@ if (typeof HTMLElement !== 'undefined') {
       const { has_transition, has_animation } = compiled.props;
       let has_delay = (has_transition || has_animation);
       const { uniforms, content, styles } = compiled;
-
       this.doodle.innerHTML = `
         <style>${get_basic_styles(grid) + styles.main}</style>
-        ${(styles.cells || styles.container || Object.keys(content).length) ? create_grid(grid, content) : ''}
+        ${(styles.cells || styles.container || Object.keys(content).length) ? create_grid(grid, compiled) : ''}
       `;
       if (has_delay) {
         this.reflow();
@@ -663,6 +662,11 @@ function get_basic_styles(grid) {
       gap: inherit;
       grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
+    .backdrop {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
     cell {
       place-items: center
     }
@@ -683,8 +687,9 @@ function create_cell(x, y, z, content, child = '') {
   return `<cell id="${id}" part="cell">${head}${tail}</cell>`;
 }
 
-function create_grid(grid_obj, content) {
+function create_grid(grid_obj, compiled) {
   let { x, y, z } = grid_obj || {};
+  let { content, styles } = compiled;
   let result = '';
   if (z == 1) {
     for (let j = 1; j <= y; ++j) {
@@ -701,7 +706,11 @@ function create_grid(grid_obj, content) {
     }
     result = child;
   }
-  return `<grid part="grid">${result}</grid>`;
+  let html = `<grid part="grid">${result}</grid>`;
+  if (styles.backdrop) {
+    html += `<div class="backdrop"></div>`;
+  }
+  return html;
 }
 
 export const CSSDoodle = Expose.CSSDoodle;
