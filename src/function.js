@@ -838,7 +838,8 @@ const Expose = add_alias({
   }),
 
   raw({ rules }) {
-    return (raw = '') => {
+    return (...args) => {
+      let raw = args.join(',');
       try {
         let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
         if (raw.startsWith('${doodle') && raw.endsWith('}')) {
