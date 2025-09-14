@@ -94,6 +94,7 @@ if (typeof HTMLElement !== 'undefined') {
         || (gx !== x || gy !== y || gz !== z)
         || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
         || (!old_styles.cells || !compiled.styles.cells)
+        || (!old_styles.backdrop || !compiled.styles.backdrop)
       );
 
       Object.assign(this.grid_size, grid);
@@ -662,7 +663,7 @@ function get_basic_styles(grid) {
       gap: inherit;
       grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
-    .backdrop {
+    b {
       position: absolute;
       inset: 0;
       pointer-events: none;
@@ -708,7 +709,7 @@ function create_grid(grid_obj, compiled) {
   }
   let html = `<grid part="grid">${result}</grid>`;
   if (styles.backdrop) {
-    html += `<div class="backdrop"></div>`;
+    html += '<b></b>'
   }
   return html;
 }

@@ -449,7 +449,7 @@ class Rules {
       this.add_rule(':container', `gap: ${gap};`);
     }
     if (backdropFilter) {
-      this.add_rule('.backdrop', `
+      this.add_rule('b', `
         backdrop-filter: ${backdropFilter};
       `);
     }
@@ -863,7 +863,7 @@ class Rules {
         this.styles.container += `${name} {${join(rule)}}`;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
-        if (selector === '.backdrop') {
+        if (selector === 'b') {
           target = 'backdrop';
         }
         let value = join(rule).trim();
