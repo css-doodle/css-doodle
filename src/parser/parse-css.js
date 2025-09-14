@@ -749,6 +749,10 @@ function read_cond(it, extra) {
     else if (c == '&') {
       cond.styles.push(read_cond(it));
     }
+    else if (c == '@' && read_word(it, true) === '@keyframes') {
+      let keyframes = read_keyframes(it, extra);
+      cond.styles.push(keyframes);
+    }
     else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
     }
