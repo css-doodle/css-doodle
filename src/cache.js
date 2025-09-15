@@ -15,7 +15,8 @@ class CacheValue {
     this.cache.set(key, value);
     return value;
   }
-  has(key) {
+  has(input) {
+    let key = this.getKey(input);
     return this.cache.has(key);
   }
   get(input) {

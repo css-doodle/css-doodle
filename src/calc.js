@@ -153,8 +153,7 @@ function get_tokens(input) {
   if (num.length) {
     tokens.push({ type: 'number', value: num });
   }
-  cache.set(input, tokens);
-  return tokens;
+  return cache.set(input, tokens);
 }
 
 function infix_to_postfix(input) {

@@ -5,6 +5,7 @@ import parse_shape_commands from '../parser/parse-shape-commands.js';
 
 import { clamp, is_empty } from '../utils/index.js';
 import calc from '../calc.js';
+import { cache } from '../cache.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
 
@@ -332,6 +333,9 @@ function create_shape_points(props, {min, max}) {
 }
 
 export default function generate_shape(input, min=3, max=3600, modifier) {
+  if (cache.has(input)) {
+    return cache.get(input);
+  }
   let commands = '';
   let [name, ...args] = parse_value_group(input);
   let preset = false;
@@ -353,7 +357,7 @@ export default function generate_shape(input, min=3, max=3600, modifier) {
     rules = modifier(rules);
   }
   let points = create_shape_points(rules, {min, max});
-  return {
+  return cache.set(input, {
     rules, points, preset
-  }
+  });
 }
