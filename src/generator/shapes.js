@@ -332,8 +332,11 @@ function create_shape_points(props, {min, max}) {
   });
 }
 
-export default function generate_shape(input, min=3, max=3600, modifier) {
-  if (cache.has(input)) {
+export default function generate_shape(input, range = {}, modifier) {
+  let key = input + JSON.stringify(range) + (modifier ? modifier.toString() : '');
+  let min = range.min || 3;
+  let max = range.max || 3600;
+  if (cache.has(key)) {
     return cache.get(input);
   }
   let commands = '';
@@ -357,7 +360,7 @@ export default function generate_shape(input, min=3, max=3600, modifier) {
     rules = modifier(rules);
   }
   let points = create_shape_points(rules, {min, max});
-  return cache.set(input, {
+  return cache.set(key, {
     rules, points, preset
   });
 }

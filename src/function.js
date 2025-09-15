@@ -593,7 +593,7 @@ const Expose = add_alias({
 
   'svg-polygon': lazy((_, ...args) => {
     let commands = args.map(input => get_value(input())).join(',');
-    let { rules, points } = generate_shape(commands, 3, 65536, rules => {
+    let { rules, points } = generate_shape(commands, {min: 3, max: 65536}, rules => {
       delete rules.frame;
       rules['unit'] = 'none';
       rules['stroke-width'] ??= .01;
@@ -659,7 +659,7 @@ const Expose = add_alias({
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points, rules } = generate_shape(commands, 1, 65536, rules => {
+      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max}, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
         delete rules['frame'];
@@ -679,7 +679,7 @@ const Expose = add_alias({
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points, rules } = generate_shape(commands, 1, 65536, rules => {
+      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max}, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
         delete rules['frame'];
