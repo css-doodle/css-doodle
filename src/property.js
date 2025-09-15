@@ -66,7 +66,7 @@ export default add_alias({
       margin-left: calc(${cw} / -2);
       margin-top: calc(${ch} / -2);
       grid-area: unset;
-      ${extra ? `rotate: ${extra || 0}deg`: ''}
+      ${extra ? `rotate: ${extra || 0}deg;` : ''}
     `;
   },
 
