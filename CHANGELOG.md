@@ -1,3 +1,22 @@
+## 0.45.1
+
+* Refactor generate_shape to accept more accurate cached key.
+* Fix missing semicolon to rotate style.
+
+
+## 0.45.0
+
+* Use cache for shape generation and fix cache key handling.
+* Parse @keyframes blocks in nested selectors.
+* Fix backdrop display on update().
+* Update raw function to handle args correctly.
+* Remove unused --plot-angle variable, conditionally apply rotation in @place.
+* Implement backdrop filter with extra element instead of pseudo element.
+* Support 2D enlarge values by unit and fix enlarge parsing logic.
+* Remove letter preset from preset-size.js.
+* Handle empty head and filter empty args in easing calculation.
+
+
 ## 0.44.0
 
 * Add `@ri` function back to not break old examples.
