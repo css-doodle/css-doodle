@@ -31,6 +31,7 @@ if (typeof HTMLElement !== 'undefined') {
     static observedAttributes = [
       'grid', 'seed', 'use', 'experimental',
       'click-to-update', 'click:update',
+      'auto:update',
     ];
 
     constructor() {
@@ -153,6 +154,9 @@ if (typeof HTMLElement !== 'undefined') {
       } else {
         this._update(styles);
       }
+      if (this.hasAttribute('auto:update')) {
+        this.autoUpdate();
+      }
     }
 
     pause() {
@@ -251,6 +255,11 @@ if (typeof HTMLElement !== 'undefined') {
           if (newValue && !oldValue) {
             this.addEventListener('click', this.bindClickToUpdate);
           }
+        } else if (name === 'auto:update') {
+          this.cancelAutoUpdate();
+          if (newValue) {
+            this.autoUpdate();
+          }
         } else {
           this.connectedCallback(true);
         }
@@ -263,6 +272,38 @@ if (typeof HTMLElement !== 'undefined') {
 
     get_grid() {
       return parse_grid(this.attr('grid'), this.get_max_grid());
+    }
+
+    _get_auto_update_interval(interval) {
+      const MIN = 500;
+      const DEFAULT = 2000;
+      if (is_nil(interval)) {
+        interval = this.attr('auto:update') || DEFAULT;
+      }
+      interval = String(interval).trim();
+      if (/^([\d.]+)m$/.test(interval)) {
+        interval = parseFloat(interval) * 60 * 1000;
+      } else if (/^([\d.]+)s$/.test(interval)) {
+        interval = parseFloat(interval) * 1000;
+      } else {
+        interval = Number(interval);
+      }
+      if (isNaN(interval)) {
+        return DEFAULT;
+      }
+      return Math.max(interval, MIN);
+    }
+
+    autoUpdate(interval) {
+      this.cancelAutoUpdate();
+      this._auto_update_timer = setInterval(
+        () => this.update(),
+        this._get_auto_update_interval(interval)
+      );
+    }
+
+    cancelAutoUpdate() {
+      clearInterval(this._auto_update_timer);
     }
 
     get_use() {
