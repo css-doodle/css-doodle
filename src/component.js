@@ -28,6 +28,8 @@ const Expose = {
 
 if (typeof HTMLElement !== 'undefined') {
   Expose.CSSDoodle = class extends HTMLElement {
+    static observedAttributes = ['grid', 'seed', 'use', 'experimental'];
+
     constructor() {
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
@@ -216,7 +218,6 @@ if (typeof HTMLElement !== 'undefined') {
 
     set grid(grid) {
       this.attr('grid', grid);
-      this.connectedCallback(true);
     }
 
     get seed() {
@@ -225,7 +226,6 @@ if (typeof HTMLElement !== 'undefined') {
 
     set seed(seed) {
       this.attr('seed', seed);
-      this.connectedCallback(true);
     }
 
     get use() {
@@ -234,7 +234,12 @@ if (typeof HTMLElement !== 'undefined') {
 
     set use(use) {
       this.attr('use', use);
-      this.connectedCallback(true);
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (oldValue !== newValue && Expose.CSSDoodle.observedAttributes.includes(name)) {
+        this.connectedCallback(true);
+      }
     }
 
     get_max_grid() {
