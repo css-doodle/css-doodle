@@ -256,9 +256,10 @@ if (typeof HTMLElement !== 'undefined') {
             this.addEventListener('click', this.bindClickToUpdate);
           }
         } else if (name === 'auto:update') {
-          this.cancelAutoUpdate();
           if (newValue) {
             this.autoUpdate();
+          } else {
+            this.cancelAutoUpdate();
           }
         } else {
           this.connectedCallback(true);
@@ -286,7 +287,7 @@ if (typeof HTMLElement !== 'undefined') {
       } else if (/^([\d.]+)s$/.test(interval)) {
         interval = parseFloat(interval) * 1000;
       } else {
-        interval = Number(interval);
+        interval = parseFloat(interval);
       }
       if (isNaN(interval)) {
         return DEFAULT;
