@@ -154,7 +154,7 @@ if (typeof HTMLElement !== 'undefined') {
       } else {
         this._update(styles);
       }
-      if (this.hasAttribute('auto:update')) {
+      if (this.hasAttribute('auto:update') || this._auto_update_timer) {
         this.autoUpdate();
       }
     }
@@ -304,6 +304,8 @@ if (typeof HTMLElement !== 'undefined') {
 
     cancelAutoUpdate() {
       clearInterval(this._auto_update_timer);
+      this._auto_update_timer = null;
+      this.removeAttribute('auto:update');
     }
 
     get_use() {
