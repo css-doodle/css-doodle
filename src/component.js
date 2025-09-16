@@ -96,7 +96,7 @@ if (typeof HTMLElement !== 'undefined') {
         || (gx !== x || gy !== y || gz !== z)
         || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
         || (!old_styles.cells || !compiled.styles.cells)
-        || (!old_styles.backdrop || !compiled.styles.backdrop)
+        || (old_styles.backdrop !== compiled.styles.backdrop)
       );
 
       Object.assign(this.grid_size, grid);
