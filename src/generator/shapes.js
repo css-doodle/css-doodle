@@ -337,7 +337,7 @@ export default function generate_shape(input, range = {}, modifier) {
   let min = range.min || 3;
   let max = range.max || 3600;
   if (cache.has(key)) {
-    return cache.get(input);
+    return cache.get(key);
   }
   let commands = '';
   let [name, ...args] = parse_value_group(input);
