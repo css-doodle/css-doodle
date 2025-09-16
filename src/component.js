@@ -437,7 +437,7 @@ if (typeof HTMLElement !== 'undefined') {
       let compiled = this.generate(parsed);
 
       if (!again) {
-        if (this.hasAttribute('click-to-update')) {
+        if (this.hasAttribute('click-to-update' || this.hasAttribute('click:update'))) {
           this.addEventListener('click', e => this.update());
         }
       }
