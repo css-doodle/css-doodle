@@ -100,7 +100,7 @@ function calc_value(base, v) {
     return [compute(op, Number(value), Number(base)), unit];
   } else {
     let { unit = '', value } = parse_compound_value(v || 0);
-    return [(Number(base) + Number(value)), unit];
+    return [(Number(base) + (Number(value) || 0)), unit];
   }
 }
 
