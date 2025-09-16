@@ -28,7 +28,10 @@ const Expose = {
 
 if (typeof HTMLElement !== 'undefined') {
   Expose.CSSDoodle = class extends HTMLElement {
-    static observedAttributes = ['grid', 'seed', 'use', 'experimental'];
+    static observedAttributes = [
+      'grid', 'seed', 'use', 'experimental',
+      'click-to-update', 'click:update',
+    ];
 
     constructor() {
       super();
@@ -238,7 +241,19 @@ if (typeof HTMLElement !== 'undefined') {
 
     attributeChangedCallback(name, oldValue, newValue) {
       if (oldValue !== newValue && Expose.CSSDoodle.observedAttributes.includes(name)) {
-        this.connectedCallback(true);
+        if (name === 'click-to-update' || name === 'click:update') {
+          if (!newValue) {
+            this.removeEventListener('click', this.bindClickToUpdate);
+            // remove both in case one is used
+            this.removeAttribute('click-to-update');
+            this.removeAttribute('click:update');
+          }
+          if (newValue && !oldValue) {
+            this.addEventListener('click', this.bindClickToUpdate);
+          }
+        } else {
+          this.connectedCallback(true);
+        }
       }
     }
 
@@ -429,6 +444,10 @@ if (typeof HTMLElement !== 'undefined') {
       }
     }
 
+    bindClickToUpdate() {
+      this.update();
+    }
+
     load(again) {
       this.cleanup();
       let code = this._code || this.innerHTML;
@@ -437,8 +456,8 @@ if (typeof HTMLElement !== 'undefined') {
       let compiled = this.generate(parsed);
 
       if (!again) {
-        if (this.hasAttribute('click-to-update' || this.hasAttribute('click:update'))) {
-          this.addEventListener('click', e => this.update());
+        if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
+          this.addEventListener('click', this.bindClickToUpdate);
         }
       }
 
