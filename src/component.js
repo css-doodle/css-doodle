@@ -154,7 +154,7 @@ if (typeof HTMLElement !== 'undefined') {
       } else {
         this._update(styles);
       }
-      if (this.hasAttribute('auto:update') || this._auto_update_timer) {
+      if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
         this.autoUpdate();
       }
     }
@@ -278,7 +278,7 @@ if (typeof HTMLElement !== 'undefined') {
       const MIN = 500;
       const DEFAULT = 2000;
       if (is_nil(interval)) {
-        interval = this.attr('auto:update') || DEFAULT;
+        interval = this.dataset.interval || this.attr('auto:update') || DEFAULT;
       }
       interval = String(interval).trim();
       if (/^([\d.]+)m$/.test(interval)) {
@@ -295,17 +295,21 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     autoUpdate(interval) {
-      this.cancelAutoUpdate();
+      clearInterval(this._auto_update_timer);
+      if (!is_nil(interval)) {
+        this.dataset.interval = interval;
+      }
       this._auto_update_timer = setInterval(
-        () => this.update(),
+        () => this.update({ auto: true }),
         this._get_auto_update_interval(interval)
       );
     }
 
-    cancelAutoUpdate() {
+    cancelAutoUpdate(options = {}) {
       clearInterval(this._auto_update_timer);
       this._auto_update_timer = null;
       this.removeAttribute('auto:update');
+      this.removeAttribute('data-interval');
     }
 
     get_use() {
