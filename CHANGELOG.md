@@ -1,3 +1,18 @@
+## 0.46.0
+
+### Features
+
+* Add `auto:update` attribute for automatic update.
+* Add `click:update` attribute for updating on click, replacing the old `click-to-update`.
+
+### Fixes
+
+* Use correct cache key in shape generator.
+* Observe attribute change and automatically update.
+* Fix `should_rebuild` logic on backdrop.
+* Ignore invalid numbers inside calc.
+
+
 ## 0.45.1
 
 * Refactor generate_shape to accept more accurate cached key.
