@@ -225,7 +225,7 @@ const Expose = add_alias({
       let N = lastExtra[3];
       return d => {
         d = Number(d) || 0;
-        return n - .5 - d - N / 2;
+        return calc_with(n - .5 - d - N / 2);
       }
     }
     return '@nd';
