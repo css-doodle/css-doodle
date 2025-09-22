@@ -370,7 +370,8 @@ function read_arguments(it, composition, doodle, variables = {}) {
       }
       arg += c;
     }
-    if (composition && ((it.curr(1) == ')' || it.curr(1) == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
+    let next = it.curr(1);
+    if (composition && ((next == ')' || next === undefined || next == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
       if (group.length) {
         args.push(normalize_argument(group));
       }
