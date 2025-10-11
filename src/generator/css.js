@@ -815,8 +815,9 @@ class Rules {
           } else {
             let composed_selector = token.name + ' ' + token.segments.map(n => {
               if (n.keyword) return n.keyword;
-              if (Array.isArray(n.arguments)) {
-                return '(' + n.arguments[0][0].value + ')'
+              let args = n.arguments;
+              if (Array.isArray(args) && Array.isArray(args[0]) && args[0].length) {
+                return '(' + args[0][0].value + ')'
               }
               return '';
             }).join(' ');
