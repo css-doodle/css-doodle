@@ -47,8 +47,12 @@ if (typeof HTMLElement !== 'undefined') {
     connectedCallback(again) {
       if (this.innerHTML) {
         this.load(again);
+        this._rendering = true;
       } else {
-        setTimeout(() => this.load(again));
+        setTimeout(() => {
+          this.load(again);
+          this._rendering = true;
+        });;
       }
     }
 
@@ -497,6 +501,9 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     load(again) {
+      if (this._rendering) {
+        return false;
+      }
       this.cleanup();
       let code = this._code || this.innerHTML;
       let use = this.get_use();
@@ -518,6 +525,7 @@ if (typeof HTMLElement !== 'undefined') {
       this.innerHTML = '';
 
       setTimeout(() => {
+        this._rendering = false;
         this.triggerEvent('render');
       });
     }
