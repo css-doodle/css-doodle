@@ -250,17 +250,15 @@ if (typeof HTMLElement !== 'undefined') {
     attributeChangedCallback(name, oldValue, newValue) {
       if (oldValue !== newValue && Expose.CSSDoodle.observedAttributes.includes(name)) {
         if (name === 'click-to-update' || name === 'click:update') {
-          if (!newValue) {
+          if (newValue === null) {
             this.removeEventListener('click', this.bindClickToUpdate);
-            // remove both in case one is used
             this.removeAttribute('click-to-update');
             this.removeAttribute('click:update');
-          }
-          if (newValue && !oldValue) {
+          } else if(oldValue === null) {
             this.addEventListener('click', this.bindClickToUpdate);
           }
         } else if (name === 'auto:update') {
-          if (newValue) {
+          if (newValue !== null) {
             this.autoUpdate();
           } else {
             this.cancelAutoUpdate();
