@@ -49,6 +49,20 @@ function compare(rule, value, x, y) {
   }
 }
 
+function random_n(N, n, random) {
+  if (n > N) n = N;
+  const map = new Map();
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(random() * (N - i)) + 1;
+    const x = map.get(r) ?? r;
+    const y = map.get(N - i) ?? (N - i);
+    map.set(r, y);
+    result.push(x);
+  }
+  return result;
+}
+
 export default add_alias({
 
   at({ x, y }) {
@@ -90,15 +104,28 @@ export default add_alias({
     return _ => even(x + y);
   },
 
-  random({ random, count, x, y, grid }) {
+  random({ random, count, x, y, grid, context }) {
     return (ratio = .5) => {
-      if (/\D/.test(ratio)) {
-        return random() < calc('(' + ratio + ')', {
+      let value = ratio;
+      if (/\D/.test(value)) {
+        value = calc('(0 + ' + value + ')', {
           x, X: grid.x,
           y, Y: grid.y,
           i: count, I: grid.count,
           random,
         });
+      }
+      if (value >= grid.count) {
+        return true;
+      }
+      if (value <= 0) {
+        return false;
+      }
+      if (value >= 1) {
+        if (!context['random-cells']) {
+          context['random-cells'] = random_n(grid.count, value, random);
+        }
+        return context['random-cells'].includes(count);
       }
       return random() < ratio;
     }
