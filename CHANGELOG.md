@@ -1,3 +1,13 @@
+## 0.46.1
+
+* Wrap `@nd` calculation with calc_with so that it can handle unit values.
+* Fix end‑of‑string in parse-css argument parsing.
+* Add rendering guard to avoid double loads
+* Handle undefined arguments in CSS selector generation.
+* Fix handling watched properties.
+* Improve `random` selector to select a specific count of unique cells.
+
+
 ## 0.46.0
 
 ### Features
