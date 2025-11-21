@@ -424,17 +424,28 @@ if (typeof HTMLElement !== 'undefined') {
       });
     }
 
-    pattern_to_image({ code, cell, id }, fn) {
+    pattern_to_image({ code, cell, id, arg }, fn) {
       let shader = generate_pattern(code, this.extra);
-      this.shader_to_image({ shader, cell, id }, fn);
+      this.shader_to_image({ shader, cell, id, arg }, fn);
     }
 
-    shader_to_image({ shader, cell, id }, fn) {
+    shader_to_image({ shader, cell, id, arg }, fn) {
       let element = this.doodle.getElementById(cell);
       if (!element) {
         element = this;
       }
+
       let { width, height } = element.getBoundingClientRect();
+      let cs;
+
+      if (arg) {
+        cs = parse_grid(arg, Infinity);
+        if (cs.x && cs.y) {
+          width = Math.min(cs.x, width);
+          height = Math.min(cs.y, height);
+        }
+      }
+
       let ratio = devicePixelRatio || 1;
       let seed = this.seed;
       let parsed = typeof shader === 'string' ? parse_shaders(shader) : shader;
@@ -477,6 +488,10 @@ if (typeof HTMLElement !== 'undefined') {
           let rect = element.getBoundingClientRect();
           width = rect.width;
           height = rect.height;
+          if (cs && cs.x && cs.y) {
+            width = Math.min(cs.x, width);
+            height = Math.min(cs.y, height);
+          }
           transform(sources, result => images = result);
         });
         element.observer.observe(element);
