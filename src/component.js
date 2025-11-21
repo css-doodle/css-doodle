@@ -430,9 +430,9 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     shader_to_image({ shader, cell, id }, fn) {
-      const element = this.doodle.getElementById(cell);
+      let element = this.doodle.getElementById(cell);
       if (!element) {
-        return false;
+        element = this;
       }
       let { width, height } = element.getBoundingClientRect();
       let ratio = devicePixelRatio || 1;
@@ -445,7 +445,7 @@ if (typeof HTMLElement !== 'undefined') {
       let images = [];
 
       const set_shader_prop = v => {
-        element.style.setProperty(id, `url(${v})`);
+        element.style.setProperty('background', 'url("' + v + '") no-repeat 50%/cover');
       }
 
       const tick = v => {
