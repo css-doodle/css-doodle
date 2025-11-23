@@ -197,7 +197,7 @@ class Rules {
                 case 'doodle':
                   return this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra));
                 case 'shaders':
-                  return this.compose_shaders(value, coords, tmep);
+                  return this.compose_shaders(value, coords, temp);
                 case 'pattern':
                   return this.compose_pattern(value, coords, temp);
               }

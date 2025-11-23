@@ -3,7 +3,7 @@ import parse_grid from './parser/parse-grid.js';
 import parse_shaders from './parser/parse-shaders.js';
 
 import generate_css from './generator/css.js';
-import generate_shader from './generator/shader.js';
+import generate_shaders from './generator/shaders.js';
 import generate_pattern from './generator/pattern.js';
 import generate_png from './generator/svg-to-png.js';
 
@@ -334,6 +334,11 @@ if (typeof HTMLElement !== 'undefined') {
         if (Object.keys(pattern).length || Object.keys(shaders).length) {
           for (let el of this.shadowRoot.querySelectorAll('cell')) {
             el.style.cssText = '';
+            el.render_shaders = null;
+            if (el.observer) {
+              el.observer.disconnect();
+              el.observer = null;
+            }
           }
         }
       }
@@ -459,13 +464,16 @@ if (typeof HTMLElement !== 'undefined') {
         element.style.setProperty('background', 'url("' + v + '") no-repeat 50%/cover');
       }
 
-      const tick = v => {
-        if (typeof v === 'function') {
+      const tick = ([v, animated]) => {
+        if (animated) {
           this.animations.push(create_animation(t => {
             set_shader_prop(v(t, width, height, images));
           }));
         } else {
-          set_shader_prop(v);
+          if (!element.render_shaders) {
+            element.render_shaders = v;
+          }
+          set_shader_prop(v(0, width, height, images));
         }
       }
 
@@ -475,7 +483,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.doodle_to_image(value, {width, height}, src => {
               let img = new Image();
               img.width = width * ratio;
-              img.height = width * ratio;
+              img.height = height * ratio;
               img.onload = () => resolve({ name, value: img });
               img.src = src;
             });
@@ -492,7 +500,12 @@ if (typeof HTMLElement !== 'undefined') {
             width = Math.min(cs.x, width);
             height = Math.min(cs.y, height);
           }
-          transform(sources, result => images = result);
+          transform(sources, result => {
+            images = result;
+            if (element.render_shaders) {
+              set_shader_prop(element.render_shaders(0, width, height, images));
+            }
+          });
         });
         element.observer.observe(element);
       }
@@ -502,10 +515,10 @@ if (typeof HTMLElement !== 'undefined') {
           parsed.textures = images = result;
           parsed.width = width;
           parsed.height = height;
-          generate_shader(parsed, seed).then(tick).then(fn);
+          generate_shaders(parsed, seed).then(tick).then(fn);
         });
       } else {
-        generate_shader(parsed, seed).then(tick).then(fn);
+        generate_shaders(parsed, seed).then(tick).then(fn);
       }
     }
 
