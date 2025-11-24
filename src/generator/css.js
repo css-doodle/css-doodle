@@ -166,7 +166,7 @@ class Rules {
     return value;
   }
 
-  compose_argument(argument, coords, extra = [], parent, contextVariable) {
+  compose_argument(argument, coords, extra = [], parent, contextVariable, selector) {
     if (!coords.extra) coords.extra = [];
     coords.extra.push(extra);
 
@@ -197,17 +197,17 @@ class Rules {
                 case 'doodle':
                   return this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra));
                 case 'shaders':
-                  return this.compose_shaders(value, coords, temp);
+                  return this.compose_shaders(value, coords, temp, selector);
                 case 'pattern':
-                  return this.compose_pattern(value, coords, temp);
+                  return this.compose_pattern(value, coords, temp, selector);
               }
             }
           }
           coords.position = arg.position;
           let args = arg.arguments.map(n => {
             return fn.lazy
-              ? (...extra) => this.compose_argument(n, coords, extra, arg, contextVariable)
-              : this.compose_argument(n, coords, extra, arg, contextVariable);
+              ? (...extra) => this.compose_argument(n, coords, extra, arg, contextVariable, selector)
+              : this.compose_argument(n, coords, extra, arg, contextVariable, selector);
           });
           return this.apply_func(fn, coords, args, fname, contextVariable);
         } else {
@@ -230,10 +230,26 @@ class Rules {
     return '${' + id + '}';
   }
 
-  compose_shaders(shader, {x, y, z}, arg) {
+  get_target(selector) {
+    let target = 'cell';
+    if (selector && selector.property === '@grid') {
+      target = ':host';
+    }
+    if (is_special_selector(selector)) {
+      target = selector;
+    }
+    if (!selector) {
+      target = '';
+    }
+    return target;
+  }
+
+  compose_shaders(shader, {x, y, z}, arg, selector) {
     let id = unique_id('shader');
+    let target = this.get_target(selector);
     this.shaders[id] = {
       shader,
+      target,
       arg,
       id: '--' + id,
       cell: cell_id(x, y, z)
@@ -241,10 +257,12 @@ class Rules {
     return '${' + id + '}';
   }
 
-  compose_pattern(code, {x, y, z}, arg) {
+  compose_pattern(code, {x, y, z}, arg, selector) {
     let id = unique_id('pattern');
+    let target = this.get_target(selector);
     this.pattern[id] = {
       code,
+      target,
       arg,
       id: '--' + id,
       cell: cell_id(x, y, z)
@@ -287,7 +305,7 @@ class Rules {
     return result;
   }
 
-  compose_value(value, coords, contextVariable = {}) {
+  compose_value(value, coords, contextVariable = {}, selector) {
     if (!Array.isArray(value)) {
       return {
         value: '',
@@ -318,9 +336,9 @@ class Rules {
                   case 'doodle':
                     result += this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra)); break;
                   case 'shaders':
-                    result += this.compose_shaders(value, coords, temp); break;
+                    result += this.compose_shaders(value, coords, temp, selector); break;
                   case 'pattern':
-                    result += this.compose_pattern(value, coords, temp); break;
+                    result += this.compose_pattern(value, coords, temp, selector); break;
                 }
               }
             } else {
@@ -330,8 +348,8 @@ class Rules {
               }
               let args = val.arguments.map(arg => {
                 return fn.lazy
-                  ? (...extra) => this.compose_argument(arg, coords, extra, val, contextVariable)
-                  : this.compose_argument(arg, coords, [], val, contextVariable);
+                  ? (...extra) => this.compose_argument(arg, coords, extra, val, contextVariable, selector)
+                  : this.compose_argument(arg, coords, [], val, contextVariable, selector);
               });
 
               let output = this.apply_func(fn, coords, args, fname, contextVariable);
@@ -356,11 +374,11 @@ class Rules {
     }
   }
 
-  get_composed_value(value, coords, context) {
+  get_composed_value(value, coords, context, selector) {
     let extra, group = [];
     if (Array.isArray(value)) {
       group = value.reduce((ret, v) => {
-        let composed = this.compose_value(v, coords, context || {});
+        let composed = this.compose_value(v, coords, context || {}, selector);
         if (composed) {
           if (composed.value) ret.push(composed.value);
           if (composed.extra) extra = composed.extra;
@@ -461,7 +479,7 @@ class Rules {
     if (prop === '@seed') {
       return '';
     }
-    let composed = this.get_composed_value(token.value, coords);
+    let composed = this.get_composed_value(token.value, coords, {}, selector);
     let extra = composed.extra;
     let value = composed.value;
 
@@ -655,12 +673,12 @@ class Rules {
       this.vars[coords.count],
     );
     if (/^\-\-/.test(prop)) {
-      let value = this.get_composed_value(token.value, coords, context).value;
+      let value = this.get_composed_value(token.value, coords, context, selector).value;
       this.compose_vars(_coords, selector, prop, value);
     }
     switch (prop) {
       case '@grid': {
-        let value = this.get_composed_value(token.value, coords, context).value;
+        let value = this.get_composed_value(token.value, coords, context, selector).value;
         let name = prop.substr(1);
         let transformed = Property[name](value, {
           max_grid: _coords.max_grid
@@ -731,7 +749,7 @@ class Rules {
         case 'rule': {
           this.add_rule(
             this.compose_selector(coords),
-            this.compose_rule(token, coords)
+            this.compose_rule(token, coords, token)
           );
           break;
         }

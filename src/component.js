@@ -38,6 +38,8 @@ if (typeof HTMLElement !== 'undefined') {
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
       this.animations = [];
+      this.observers = new Map();
+      this.shader_renders = new Map();
       this.extra = {
         get_variable: name => get_variable(this, name),
         get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
@@ -334,13 +336,12 @@ if (typeof HTMLElement !== 'undefined') {
         if (Object.keys(pattern).length || Object.keys(shaders).length) {
           for (let el of this.shadowRoot.querySelectorAll('cell')) {
             el.style.cssText = '';
-            el.render_shaders = null;
-            if (el.observer) {
-              el.observer.disconnect();
-              el.observer = null;
-            }
           }
+          this.observers.forEach((observer, target) => {
+            observer.disconnect();
+          });
         }
+        this.shader_renders.clear();
       }
     }
 
@@ -434,10 +435,15 @@ if (typeof HTMLElement !== 'undefined') {
       this.shader_to_image({ shader, cell, id, arg }, fn);
     }
 
-    shader_to_image({ shader, cell, id, arg }, fn) {
-      let element = this.doodle.getElementById(cell);
-      if (!element) {
+    shader_to_image({ shader, cell, id, arg, target }, fn) {
+      let element;
+      if (target === ':host') {
         element = this;
+      } else if (target === ':container') {
+        element = this.shadowRoot.querySelector('grid');
+      } else {
+        target = cell;
+        element = this.doodle.getElementById(cell);
       }
 
       let { width, height } = element.getBoundingClientRect();
@@ -470,8 +476,8 @@ if (typeof HTMLElement !== 'undefined') {
             set_shader_prop(v(t, width, height, images));
           }));
         } else {
-          if (!element.render_shaders) {
-            element.render_shaders = v;
+          if (!this.shader_renders.has(target)) {
+            this.shader_renders.set(target, v);
           }
           set_shader_prop(v(0, width, height, images));
         }
@@ -491,8 +497,8 @@ if (typeof HTMLElement !== 'undefined') {
         })).then(fn);
       }
 
-      if (!element.observer) {
-        element.observer = new ResizeObserver(() => {
+      if (!this.observers.has(target)) {
+        let observer = new ResizeObserver(() => {
           let rect = element.getBoundingClientRect();
           width = rect.width;
           height = rect.height;
@@ -502,12 +508,14 @@ if (typeof HTMLElement !== 'undefined') {
           }
           transform(sources, result => {
             images = result;
-            if (element.render_shaders) {
-              set_shader_prop(element.render_shaders(0, width, height, images));
+            if (this.shader_renders.has(target)) {
+              let render = this.shader_renders.get(target);
+              set_shader_prop(render(0, width, height, images));
             }
           });
         });
-        element.observer.observe(element);
+        observer.observe(element);
+        this.observers.set(target, observer);
       }
 
       if (sources.length) {
