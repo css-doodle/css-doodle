@@ -478,7 +478,6 @@ if (typeof HTMLElement !== 'undefined') {
               v(t, width, height, images);
             }));
           } else {
-            let render = this.shader_renders.get(target.selector);
             if (!this.shader_renders.has(target.selector)) {
               this.shader_renders.set(target.selector, v);
             }
@@ -525,7 +524,11 @@ if (typeof HTMLElement !== 'undefined') {
             images = result;
             let render = this.shader_renders.get(target.selector);
             if (render) {
-              set_shader_prop(render(0, width, height, images).toDataURL());
+              if (target.type === 'content') {
+                render(0, width, height, images);
+              } else {
+                set_shader_prop(render(0, width, height, images).toDataURL());
+              }
             }
           });
         });
@@ -801,7 +804,9 @@ function get_basic_styles(grid) {
       pointer-events: none;
     }
     cell {
-      place-items: center
+      place-items: center;
+      min-height: 0;
+      min-width: 0;
     }
     svg {
       position: absolute;
