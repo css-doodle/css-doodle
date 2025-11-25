@@ -230,42 +230,50 @@ class Rules {
     return '${' + id + '}';
   }
 
-  get_target(selector) {
-    let target = 'cell';
+  get_target(selector, cell_selector) {
+    let target = {
+      selector: 'cell',
+      type: 'background'
+    };
+    if (selector && selector.property === '@content') {
+      target.type = 'content';
+    }
     if (selector && selector.property === '@grid') {
-      target = ':host';
+      target.selector = ':host';
     }
     if (is_special_selector(selector)) {
-      target = selector;
+      target.selector = selector;
     }
     if (!selector) {
-      target = '';
+      target.selector = cell_selector;
     }
     return target;
   }
 
   compose_shaders(shader, {x, y, z}, arg, selector) {
     let id = unique_id('shader');
-    let target = this.get_target(selector);
+    let cell_selector = cell_id(x, y, z);
+    let target = this.get_target(selector, cell_selector);
     this.shaders[id] = {
       shader,
       target,
       arg,
       id: '--' + id,
-      cell: cell_id(x, y, z)
+      cell: cell_selector
     };
     return '${' + id + '}';
   }
 
   compose_pattern(code, {x, y, z}, arg, selector) {
     let id = unique_id('pattern');
-    let target = this.get_target(selector);
+    let cell_selector = cell_id(x, y, z);
+    let target = this.get_target(selector, cell_selector);
     this.pattern[id] = {
       code,
       target,
       arg,
       id: '--' + id,
-      cell: cell_id(x, y, z)
+      cell: cell_selector
     };
     return '${' + id + '}';
   }

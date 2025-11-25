@@ -341,6 +341,7 @@ if (typeof HTMLElement !== 'undefined') {
             observer.disconnect();
           });
         }
+        this.observers.clear();
         this.shader_renders.clear();
       }
     }
@@ -437,12 +438,11 @@ if (typeof HTMLElement !== 'undefined') {
 
     shader_to_image({ shader, cell, id, arg, target }, fn) {
       let element;
-      if (target === ':host') {
+      if (target.selector === ':host') {
         element = this;
-      } else if (target === ':container') {
+      } else if (target.selector === ':container') {
         element = this.shadowRoot.querySelector('grid');
       } else {
-        target = cell;
         element = this.doodle.getElementById(cell);
       }
 
@@ -476,8 +476,9 @@ if (typeof HTMLElement !== 'undefined') {
             set_shader_prop(v(t, width, height, images));
           }));
         } else {
-          if (!this.shader_renders.has(target)) {
-            this.shader_renders.set(target, v);
+          let render = this.shader_renders.get(target.selector);
+          if (!this.shader_renders.has(target.selector)) {
+            this.shader_renders.set(target.selector, v);
           }
           set_shader_prop(v(0, width, height, images));
         }
@@ -508,14 +509,14 @@ if (typeof HTMLElement !== 'undefined') {
           }
           transform(sources, result => {
             images = result;
-            if (this.shader_renders.has(target)) {
-              let render = this.shader_renders.get(target);
+            let render = this.shader_renders.get(target.selector);
+            if (render) {
               set_shader_prop(render(0, width, height, images));
             }
           });
         });
         observer.observe(element);
-        this.observers.set(target, observer);
+        this.observers.set(target.selector, observer);
       }
 
       if (sources.length) {
