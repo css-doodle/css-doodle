@@ -164,3 +164,11 @@ export function remove_empty_values(arr) {
     !is_nil(v) && String(v).trim().length
   ));
 }
+
+export function debounce(fn, delay = 100) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}

@@ -13,7 +13,7 @@ import create_animation from './utils/create-animation.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { NS, NSXHtml } from './utils/svg.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
-import { cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity } from './utils/index.js';
+import { cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity, debounce } from './utils/index.js';
 
 import { cache } from './cache.js';
 
@@ -512,7 +512,7 @@ if (typeof HTMLElement !== 'undefined') {
       }
 
       if (!this.observers.has(target.selector)) {
-        let observer = new ResizeObserver(() => {
+        let observer = new ResizeObserver(debounce(() => {
           let rect = element.getBoundingClientRect();
           width = rect.width;
           height = rect.height;
@@ -531,7 +531,7 @@ if (typeof HTMLElement !== 'undefined') {
               }
             }
           });
-        });
+        }));
         observer.observe(element);
         this.observers.set(target.selector, observer);
       }
