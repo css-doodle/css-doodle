@@ -1,3 +1,12 @@
+## 0.47.0
+
+* Fix compatibility in shaders, both `gl_FragColor` and `FragColor` are supported now.
+* Add support for shader-based backgrounds on both the doodle and container elements.
+* Improve shader performance by using the canvas element through `@content` property.
+* Add debounce for re-rendering shaders on resize.
+* Support size argument for `@shaders` and `@pattern` functions.
+
+
 ## 0.46.1
 
 * Wrap `@nd` calculation with calc_with so that it can handle unit values.
