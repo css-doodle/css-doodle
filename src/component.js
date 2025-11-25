@@ -431,9 +431,9 @@ if (typeof HTMLElement !== 'undefined') {
       });
     }
 
-    pattern_to_image({ code, cell, id, arg }, fn) {
+    pattern_to_image({ code, cell, id, arg, target }, fn) {
       let shader = generate_pattern(code, this.extra);
-      this.shader_to_image({ shader, cell, id, arg }, fn);
+      this.shader_to_image({ shader, cell, id, arg, target }, fn);
     }
 
     shader_to_image({ shader, cell, id, arg, target }, fn) {
