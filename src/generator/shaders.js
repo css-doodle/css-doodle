@@ -1,4 +1,3 @@
-import { cache } from '../cache.js';
 import { hash } from '../utils/index.js';
 
 const DEFAULT_VERTEX_SHADER = `#version 300 es
@@ -7,6 +6,8 @@ const DEFAULT_VERTEX_SHADER = `#version 300 es
     gl_Position = position;
   }
 `;
+
+const SCREEN_QUAD_VERTICES = [-1, -1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1];
 
 function create_shader(gl, type, source) {
   const shader = gl.createShader(type);
@@ -31,6 +32,8 @@ function create_program(gl, vss, fss) {
     gl.deleteProgram(prog);
   }
 
+  gl.detachShader(prog, vs);
+  gl.detachShader(prog, fs);
   gl.deleteShader(vs);
   gl.deleteShader(fs);
 
@@ -73,11 +76,6 @@ function load_texture(gl, image, i) {
 }
 
 export default function draw_shader(shaders, seed) {
-  const result = cache.get(shaders);
-  if (result) {
-    return Promise.resolve(result);
-  }
-
   const canvas = document.createElement('canvas');
   const ratio = devicePixelRatio || 1;
 
@@ -124,8 +122,7 @@ export default function draw_shader(shaders, seed) {
   const positionAttributeLocation = gl.getAttribLocation(program, 'position');
   const positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  const vertices = [-1, -1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(SCREEN_QUAD_VERTICES), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(positionAttributeLocation);
   gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
@@ -156,7 +153,7 @@ export default function draw_shader(shaders, seed) {
   let frame_index = 0;
   let current_time = 0;
 
-  return Promise.resolve(cache.set(shaders, [(t, w, h, textures) => {
+  const render = (t, w, h, textures) => {
     gl.clear(gl.COLOR_BUFFER_BIT);
     if (shaders.width !== w || shaders.height !== h) {
       textures.forEach((n, i) => {
@@ -178,6 +175,7 @@ export default function draw_shader(shaders, seed) {
       current_time = t;
     }
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-    return canvas.toDataURL();
-  }, is_animated]));
+    return canvas;
+  }
+  return Promise.resolve([render, is_animated]);
 }

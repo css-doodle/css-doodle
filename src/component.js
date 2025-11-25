@@ -469,18 +469,32 @@ if (typeof HTMLElement !== 'undefined') {
       const set_shader_prop = v => {
         element.style.setProperty('background', 'url("' + v + '") no-repeat 50%/cover');
       }
-
       const tick = ([v, animated]) => {
-        if (animated) {
-          this.animations.push(create_animation(t => {
-            set_shader_prop(v(t, width, height, images));
-          }));
-        } else {
-          let render = this.shader_renders.get(target.selector);
-          if (!this.shader_renders.has(target.selector)) {
-            this.shader_renders.set(target.selector, v);
+        if (target.type === 'content') {
+          let canvas = v(0, width, height, images);
+          element.replaceChildren(canvas);
+          if (animated) {
+            this.animations.push(create_animation(t => {
+              v(t, width, height, images);
+            }));
+          } else {
+            let render = this.shader_renders.get(target.selector);
+            if (!this.shader_renders.has(target.selector)) {
+              this.shader_renders.set(target.selector, v);
+            }
           }
-          set_shader_prop(v(0, width, height, images));
+        } else {
+          if (animated) {
+            this.animations.push(create_animation(t => {
+              set_shader_prop(v(t, width, height, images).toDataURL());
+            }));
+          } else {
+            let render = this.shader_renders.get(target.selector);
+            if (!this.shader_renders.has(target.selector)) {
+              this.shader_renders.set(target.selector, v);
+            }
+            set_shader_prop(v(0, width, height, images).toDataURL());
+          }
         }
       }
 
@@ -498,7 +512,7 @@ if (typeof HTMLElement !== 'undefined') {
         })).then(fn);
       }
 
-      if (!this.observers.has(target)) {
+      if (!this.observers.has(target.selector)) {
         let observer = new ResizeObserver(() => {
           let rect = element.getBoundingClientRect();
           width = rect.width;
@@ -511,7 +525,7 @@ if (typeof HTMLElement !== 'undefined') {
             images = result;
             let render = this.shader_renders.get(target.selector);
             if (render) {
-              set_shader_prop(render(0, width, height, images));
+              set_shader_prop(render(0, width, height, images).toDataURL());
             }
           });
         });
@@ -640,11 +654,12 @@ if (typeof HTMLElement !== 'undefined') {
 
     build_grid(compiled, grid) {
       const { has_transition, has_animation } = compiled.props;
-      let has_delay = (has_transition || has_animation);
       const { uniforms, content, styles } = compiled;
+      let has_delay = (has_transition || has_animation);
+      let has_content = Object.keys(content).length;
       this.doodle.innerHTML = `
         <style>${get_basic_styles(grid) + styles.main}</style>
-        ${(styles.cells || styles.container || Object.keys(content).length) ? create_grid(grid, compiled) : ''}
+        ${(styles.cells || styles.container || has_content) ? create_grid(grid, compiled) : ''}
       `;
       if (has_delay) {
         this.reflow();
@@ -654,7 +669,9 @@ if (typeof HTMLElement !== 'undefined') {
         get_basic_styles(grid) +
         styles.all
       ));
-
+      if (has_content) {
+        replace(Object.values(compiled.content).join(' '));
+      }
       this.bind_uniforms(uniforms);
     }
 
@@ -789,7 +806,7 @@ function get_basic_styles(grid) {
     svg {
       position: absolute;
     }
-    grid, svg {
+    grid, svg, canvas {
       width: 100%;
       height: 100%
     }
@@ -798,8 +815,11 @@ function get_basic_styles(grid) {
 
 function create_cell(x, y, z, content, child = '') {
   let id = cell_id(x, y, z);
-  let head = content['#' + id] ?? '';
   let tail = child ?? '';
+  let head = content['#' + id] ?? '';
+  if (head.startsWith('${shader')) {
+    head = '';
+  }
   return `<cell id="${id}" part="cell">${head}${tail}</cell>`;
 }
 

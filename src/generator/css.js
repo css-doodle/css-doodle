@@ -237,14 +237,12 @@ class Rules {
     };
     if (selector && selector.property === '@content') {
       target.type = 'content';
-    }
-    if (selector && selector.property === '@grid') {
+    } else if (selector && selector.property === '@grid') {
       target.selector = ':host';
-    }
-    if (is_special_selector(selector)) {
+    } else if (is_special_selector(selector)) {
       target.selector = selector;
     }
-    if (!selector) {
+    if (target.selector === 'cell') {
       target.selector = cell_selector;
     }
     return target;
