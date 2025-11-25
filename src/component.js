@@ -341,9 +341,10 @@ if (typeof HTMLElement !== 'undefined') {
             observer.disconnect();
           });
         }
-        this.observers.clear();
-        this.shader_renders.clear();
       }
+      this.observers.clear();
+      this.shader_renders.clear();
+      this.style = '';
     }
 
     attr(name, value) {
