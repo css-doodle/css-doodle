@@ -7,7 +7,9 @@ const DEFAULT_VERTEX_SHADER = `#version 300 es
   }
 `;
 
-const SCREEN_QUAD_VERTICES = [-1, -1, -1, 1, 1, -1, 1, 1, -1, 1, 1, -1];
+const SCREEN_QUAD_VERTICES = new Float32Array([
+  -1, -1, 1, -1, -1, 1, 1, 1
+]);
 
 function create_shader(gl, type, source) {
   const shader = gl.createShader(type);
@@ -40,25 +42,63 @@ function create_program(gl, vss, fss) {
   return prog;
 }
 
-function add_uniform(fragment, uniform) {
-  if (!fragment.includes(uniform)) {
-    return uniform + '\n' + fragment;
-  }
-  return fragment;
-}
+function generateFragment(fragment, textures) {
+  const is_shadertoy = fragment.includes('void mainImage');
+  const has_precision = /precision\s+(highp|mediump|lowp)\s+float/.test(fragment);
+  const has_output = /^\s*out\s+vec4\s+\w+/m.test(fragment);
+  const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
+  const has_texture2d = /texture2D\s*\(/.test(fragment);
+  const snippets = ['#version 300 es'];
 
-function prepend_fragment_head(source, is_shadertoy = false) {
-  let head = '#version 300 es\n';
-  if (!/precision\s+(highp|mediump|lowp)\s+float/.test(source)) {
-    head += 'precision highp float;\n';
-  }
-  if (!/out\s+vec4\s+\w+/.test(source) && !is_shadertoy) {
-    head += 'out vec4 FragColor;\n';
-    if (/=\s*gl_FragColor\s*;/.test(source) || /gl_FragColor\s*=/.test(source)) {
-      head += '\n#define gl_FragColor FragColor\n';
+  const push = (line) => {
+    if (!fragment.includes(line)) {
+      snippets.push(line);
     }
   }
-  return head + '\n' + source;
+
+  if (!has_precision) {
+    push('precision mediump float;');
+  }
+
+  if (!has_output) {
+    push('out vec4 FragColor;');
+  }
+
+  push('uniform vec2 u_resolution;');
+  push('uniform float u_time;');
+  push('uniform float u_timeDelta;');
+  push('uniform int u_frameIndex;');
+  push('uniform vec2 u_seed;');
+
+  textures.forEach(t => {
+    push(`uniform sampler2D ${t.name};`);
+  });
+
+  if (is_shadertoy) {
+    push('#define iResolution vec3(u_resolution, 0)');
+    push('#define iTime u_time');
+    push('#define iTimeDelta u_timeDelta');
+    push('#define iFrame u_frameIndex');
+    textures.forEach((n, i) => {
+      push(`#define iChannel${i} ${n.name}`);
+    });
+  }
+
+  if (has_glFragColor) {
+    push('#define gl_FragColor FragColor');
+  }
+
+  if (has_texture2d) {
+    push('#define texture2D texture');
+  }
+
+  snippets.push(fragment);
+
+  if (is_shadertoy) {
+    snippets.push(`void main() { mainImage(FragColor, gl_FragCoord.xy); }`);
+  }
+
+  return snippets.join('\n');
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
@@ -75,54 +115,31 @@ function load_texture(gl, image, i) {
   return texture;
 }
 
-export default function draw_shader(shaders, seed) {
+export default function draw_shader(shaders, seed, type) {
   const canvas = document.createElement('canvas');
-  const ratio = devicePixelRatio || 1;
+  const dpr = devicePixelRatio || 1;
 
-  let width = canvas.width = shaders.width * ratio;
-  let height = canvas.height = shaders.height * ratio;
+  let width = canvas.width = shaders.width * dpr;
+  let height = canvas.height = shaders.height * dpr;
 
   const texture_list = [];
 
-  const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+  const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: type === 'background' });
   if (!gl) {
     return Promise.resolve('');
-  }
-
-  let fragment = shaders.fragment || '';
-  fragment = add_uniform(fragment, 'uniform vec2 u_resolution;');
-  fragment = add_uniform(fragment, 'uniform float u_time;');
-  fragment = add_uniform(fragment, 'uniform float u_timeDelta;');
-  fragment = add_uniform(fragment, 'uniform int u_frameIndex;');
-  fragment = add_uniform(fragment, 'uniform vec2 u_seed;');
-
-  shaders.textures.forEach(t => {
-    fragment = add_uniform(fragment, `uniform sampler2D ${t.name};`);
-  });
-
-  const defines = [
-   '#define iResolution vec3(u_resolution, 0)',
-   '#define iTime u_time',
-   '#define iTimeDelta u_timeDelta',
-   '#define iFrame u_frameIndex',
-    ...shaders.textures.map((n, i) => `#define iChannel${i} ${n.name}`)
-  ].join('\n');
-
-  const is_shadertoy = /(^|[^\w\_])void\s+mainImage\(\s*out\s+vec4\s+fragColor,\s*in\s+vec2\s+fragCoord\s*\)/mg.test(fragment);
-  if (is_shadertoy) {
-    fragment = [defines, fragment, `void main() { mainImage(FragColor, gl_FragCoord.xy); }`].join('\n');
   }
 
   let program = create_program(
     gl,
     shaders.vertex || DEFAULT_VERTEX_SHADER,
-    prepend_fragment_head(fragment, is_shadertoy)
+    generateFragment(shaders.fragment || '', shaders.textures || [])
   );
 
   const positionAttributeLocation = gl.getAttribLocation(program, 'position');
   const positionBuffer = gl.createBuffer();
+
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(SCREEN_QUAD_VERTICES), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
   gl.enableVertexAttribArray(positionAttributeLocation);
   gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
@@ -162,19 +179,19 @@ export default function draw_shader(shaders, seed) {
       });
       shaders.width = w;
       shaders.height = h;
-      canvas.width = w * ratio;
-      canvas.height = h * ratio;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2fv(u_resolution, [canvas.width, canvas.height]);
     }
 
-    if (u_time) gl.uniform1f(u_time, t / 1000);
+    if (u_time) gl.uniform1f(u_time, t * 0.001);
     if (u_frame_index) gl.uniform1i(u_frame_index, frame_index++);
     if (u_time_delta) {
-      gl.uniform1f(u_time_delta, (current_time - t) / 1000);
+      gl.uniform1f(u_time_delta, (t - current_time) * 0.001);
       current_time = t;
     }
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     return canvas;
   }
   return Promise.resolve([render, is_animated]);

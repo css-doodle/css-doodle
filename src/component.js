@@ -458,7 +458,6 @@ if (typeof HTMLElement !== 'undefined') {
         }
       }
 
-      let ratio = devicePixelRatio || 1;
       let seed = this.seed;
       let parsed = typeof shader === 'string' ? parse_shaders(shader) : shader;
       parsed.width = width;
@@ -499,12 +498,13 @@ if (typeof HTMLElement !== 'undefined') {
       }
 
       const transform = (sources, fn) => {
+        let dpr = devicePixelRatio || 1;
         Promise.all(sources.map(({ name, value }) => {
           return new Promise(resolve => {
             this.doodle_to_image(value, {width, height}, src => {
               let img = new Image();
-              img.width = width * ratio;
-              img.height = height * ratio;
+              img.width = width * dpr;
+              img.height = height * dpr;
               img.onload = () => resolve({ name, value: img });
               img.src = src;
             });
@@ -542,10 +542,10 @@ if (typeof HTMLElement !== 'undefined') {
           parsed.textures = images = result;
           parsed.width = width;
           parsed.height = height;
-          generate_shaders(parsed, seed).then(tick).then(fn);
+          generate_shaders(parsed, seed, target.type).then(tick).then(fn);
         });
       } else {
-        generate_shaders(parsed, seed).then(tick).then(fn);
+        generate_shaders(parsed, seed, target.type).then(tick).then(fn);
       }
     }
 
@@ -809,12 +809,15 @@ function get_basic_styles(grid) {
       min-height: 0;
       min-width: 0;
     }
-    svg {
+    svg, canvas {
       position: absolute;
     }
     grid, svg, canvas {
       width: 100%;
       height: 100%
+    }
+    canvas {
+      object-fit: cover;
     }
   `;
 }
