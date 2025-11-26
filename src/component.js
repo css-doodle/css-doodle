@@ -469,30 +469,32 @@ if (typeof HTMLElement !== 'undefined') {
       const set_shader_prop = v => {
         element.style.setProperty('background', 'url("' + v + '") no-repeat 50%/cover');
       }
-      const tick = ([v, animated]) => {
+      const tick = ([render, animated, canvas]) => {
         if (target.type === 'content') {
-          let canvas = v(0, width, height, images);
+          render(0, width, height, images);
           element.replaceChildren(canvas);
           if (animated) {
             this.animations.push(create_animation(t => {
-              v(t, width, height, images);
+              render(t, width, height, images);
             }));
           } else {
             if (!this.shader_renders.has(target.selector)) {
-              this.shader_renders.set(target.selector, v);
+              this.shader_renders.set(target.selector, render);
             }
           }
         } else {
           if (animated) {
             this.animations.push(create_animation(t => {
-              set_shader_prop(v(t, width, height, images).toDataURL());
+              render(t, width, height, images);
+              set_shader_prop(canvas.toDataURL());
             }));
           } else {
             let render = this.shader_renders.get(target.selector);
-            if (!this.shader_renders.has(target.selector)) {
-              this.shader_renders.set(target.selector, v);
+            if (!render) {
+              this.shader_renders.set(target.selector, render);
             }
-            set_shader_prop(v(0, width, height, images).toDataURL());
+            render(0, width, height, images);
+            set_shader_prop(canvas.toDataURL());
           }
         }
       }

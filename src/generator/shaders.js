@@ -192,7 +192,6 @@ export default function draw_shader(shaders, seed, type) {
       current_time = t;
     }
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    return canvas;
   }
-  return Promise.resolve([render, is_animated]);
+  return Promise.resolve([render, is_animated, canvas]);
 }
