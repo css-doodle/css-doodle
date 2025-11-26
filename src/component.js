@@ -344,7 +344,7 @@ if (typeof HTMLElement !== 'undefined') {
       }
       this.observers.clear();
       this.shader_renders.clear();
-      this.style = '';
+      this.style.background = '';
     }
 
     attr(name, value) {
