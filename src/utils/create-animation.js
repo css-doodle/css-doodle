@@ -36,6 +36,13 @@ export default function createAnimationFrame(fn, fps = 60) {
         paused = false;
         id = requestAnimationFrame(loop);
       }
+    },
+    cancel() {
+      if (id) {
+        paused = false;
+        cancelAnimationFrame(id);
+        id = null;
+      }
     }
   };
 }
