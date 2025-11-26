@@ -1,3 +1,10 @@
+## 0.47.1
+
+* Correct animation frame rate calculation.
+* Clear background instead of the whole style.
+* Improve shader generation and optimize WebGL drawing.
+* Get canvas object directly instead of retrieving it inside the render loop.
+
 ## 0.47.0
 
 * Fix compatibility in shaders, both `gl_FragColor` and `FragColor` are supported now.
