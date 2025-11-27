@@ -257,6 +257,19 @@ const Expose = add_alias({
 
   µ: make_sequence(''),
 
+  match({ extra, x, y, z, count, grid }) {
+    let [n, nx, ny, N] = last(extra) || [];
+    let variables = { x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z };
+    if (!is_nil(n)) variables.n = n;
+    if (!is_nil(nx)) variables.nx = nx;
+    if (!is_nil(ny)) variables.ny = ny;
+    if (!is_nil(N)) variables.N = N;
+    return (expr, pass, fail = '') => {
+      let result = !!calc(expr, variables);
+      return result ? pass : fail;
+    }
+  },
+
   p({ context, pick }) {
     return expand((...args) => {
       if (!args.length) {
