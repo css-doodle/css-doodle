@@ -654,9 +654,10 @@ function read_cond_selector(it) {
     it.next();
   }
   let [name, ...addition] = (selector.name || '').trim().split(/\s+/);
+  let position = it.info().index;
 
   return {
-    name, addition, segments
+    name, addition, segments, position
   }
 }
 

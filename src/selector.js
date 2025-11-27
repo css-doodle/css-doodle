@@ -104,7 +104,8 @@ export default add_alias({
     return _ => even(x + y);
   },
 
-  random({ random, count, x, y, grid, context }) {
+  random({ random, count, x, y, grid, context, position }) {
+    let counter = 'random-cells' + position;
     return (ratio = .5) => {
       let value = ratio;
       if (/\D/.test(value)) {
@@ -122,10 +123,10 @@ export default add_alias({
         return false;
       }
       if (value >= 1) {
-        if (!context['random-cells']) {
-          context['random-cells'] = random_n(grid.count, value, random);
+        if (!context[counter]) {
+          context[counter] = random_n(grid.count, value, random);
         }
-        return context['random-cells'].includes(count);
+        return context[counter].includes(count);
       }
       return random() < ratio;
     }
@@ -142,7 +143,8 @@ export default add_alias({
     }
   },
 
-  cell({ count, grid, x, y, random }) {
+  cell({ count, grid, x, y, random, context, position }) {
+    let counter = 'random-cells' + position;
     return (...args) => {
       if (!args.length) {
         return true;
@@ -151,6 +153,22 @@ export default add_alias({
         let { value, error } = compare(arg, count, x, y);
         if (!error) {
           return value;
+        }
+        if (arg.startsWith('random')) {
+          let num = arg.slice(6).trim();
+          if (!num) {
+            return random() < 0.5;
+          }
+          num = Number(num);
+          if (!Number.isNaN(num)) {
+            if (num >= 1) {
+              if (!context[counter]) {
+                context[counter] = random_n(grid.count, num, random);
+              }
+              return context[counter].includes(count);
+            }
+            return random() < num;
+          }
         }
         return !!calc('(' + arg + ')', {
           x, X: grid.x,

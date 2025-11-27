@@ -809,6 +809,7 @@ class Rules {
                 return this.compose_argument(arg, coords);
               });
             }
+            coords.position = token.position;
             let cond = this.apply_func(fn, coords, args, name);
             if (token.segments && token.segments[0] && token.segments[0].keyword === 'not') {
               cond = !cond;
