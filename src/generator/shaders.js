@@ -69,6 +69,7 @@ function generateFragment(fragment, textures) {
   push('uniform float u_timeDelta;');
   push('uniform int u_frameIndex;');
   push('uniform vec2 u_seed;');
+  push('uniform vec2 u_mouse;');
 
   textures.forEach(t => {
     push(`uniform sampler2D ${t.name};`);
@@ -79,6 +80,7 @@ function generateFragment(fragment, textures) {
     push('#define iTime u_time');
     push('#define iTimeDelta u_timeDelta');
     push('#define iFrame u_frameIndex');
+    push('#define iMouse vec4(u_mouse, 0, 0)');
     textures.forEach((n, i) => {
       push(`#define iChannel${i} ${n.name}`);
     });
@@ -165,12 +167,13 @@ export default function draw_shader(shaders, seed, type) {
   const u_time = gl.getUniformLocation(program, 'u_time');
   const u_frame_index = gl.getUniformLocation(program, 'u_frameIndex');
   const u_time_delta = gl.getUniformLocation(program, 'u_timeDelta');
+  const u_mouse = gl.getUniformLocation(program, 'u_mouse');
   const is_animated = u_time || u_frame_index || u_time_delta;
 
   let frame_index = 0;
   let current_time = 0;
 
-  const render = (t, w, h, textures) => {
+  const render = (t, w, h, m, textures) => {
     gl.clear(gl.COLOR_BUFFER_BIT);
     if (shaders.width !== w || shaders.height !== h) {
       textures.forEach((n, i) => {
@@ -187,6 +190,7 @@ export default function draw_shader(shaders, seed, type) {
 
     if (u_time) gl.uniform1f(u_time, t * 0.001);
     if (u_frame_index) gl.uniform1i(u_frame_index, frame_index++);
+    if (u_mouse) gl.uniform2f(u_mouse, m.x * dpr, (h - m.y) * dpr);
     if (u_time_delta) {
       gl.uniform1f(u_time_delta, (t - current_time) * 0.001);
       current_time = t;

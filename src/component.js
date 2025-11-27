@@ -471,11 +471,11 @@ if (typeof HTMLElement !== 'undefined') {
       }
       const tick = ([render, animated, canvas]) => {
         if (target.type === 'content') {
-          render(0, width, height, images);
+          render(0, width, height, this._umouse, images);
           element.replaceChildren(canvas);
           if (animated) {
             this.animations.push(create_animation(t => {
-              render(t, width, height, images);
+              render(t, width, height, this._umouse, images);
             }));
           } else {
             if (!this.shader_renders.has(target.selector)) {
@@ -485,7 +485,7 @@ if (typeof HTMLElement !== 'undefined') {
         } else {
           if (animated) {
             this.animations.push(create_animation(t => {
-              render(t, width, height, images);
+              render(t, width, height, this._umouse, images);
               set_shader_prop(canvas.toDataURL());
             }));
           } else {
@@ -493,7 +493,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (!render) {
               this.shader_renders.set(target.selector, render);
             }
-            render(0, width, height, images);
+            render(0, width, height, this._umouse, images);
             set_shader_prop(canvas.toDataURL());
           }
         }
@@ -528,9 +528,9 @@ if (typeof HTMLElement !== 'undefined') {
             let render = this.shader_renders.get(target.selector);
             if (render) {
               if (target.type === 'content') {
-                render(0, width, height, images);
+                render(0, width, height, this._umouse, images);
               } else {
-                set_shader_prop(render(0, width, height, images).toDataURL());
+                set_shader_prop(render(0, width, height, this._umouse, images).toDataURL());
               }
             }
           });
@@ -642,12 +642,12 @@ if (typeof HTMLElement !== 'undefined') {
       this.shadowRoot.querySelector('grid').offsetWidth;
     }
 
-    bind_uniforms({ time, mousex, mousey, width, height }) {
+    bind_uniforms({ time, mousex, mousey, mouse, width, height }) {
       if (time) {
         this.reg_utime();
       }
-      if (mousex || mousey) {
-        this.reg_umouse(mousex, mousey);
+      if (mousex || mousey || mouse) {
+        this.reg_umouse(mousex, mousey, mouse);
       } else {
         this.off_umouse();
       }
@@ -681,10 +681,13 @@ if (typeof HTMLElement !== 'undefined') {
       this.bind_uniforms(uniforms);
     }
 
-    reg_umouse(mousex, mousey) {
+    reg_umouse(mousex, mousey, mouse) {
       if (!this.umouse_fn) {
         this.umouse_fn = e => {
           let data = e.detail || e;
+          if (mouse) {
+            this._umouse = { x: data.offsetX, y: data.offsetY };
+          }
           if (mousex || mousey) {
             this.style.setProperty('--' + umousex.name, data.offsetX);
             this.style.setProperty('--' + umousey.name, data.offsetY);
@@ -694,7 +697,7 @@ if (typeof HTMLElement !== 'undefined') {
         let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
         this.dispatchEvent(event);
       } else {
-        if (!(mousex || mousey)) {
+        if (!(mousex || mousey || mouse)) {
           this.off_umouse();
         }
       }
@@ -706,6 +709,7 @@ if (typeof HTMLElement !== 'undefined') {
         this.style.removeProperty('--' + umousey.name);
         this.removeEventListener('pointermove', this.umouse_fn);
         this.umouse_fn = null;
+        delete this._umouse;
       }
     }
 

@@ -284,6 +284,7 @@ class Rules {
       case 'uy': this.uniforms.mousey = true; break;
       case 'uw': this.uniforms.width = true; break;
       case 'uh': this.uniforms.height = true; break;
+      case 'shaders': this.uniforms.mouse = true; break;
     }
   }
 
