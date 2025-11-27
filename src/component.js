@@ -479,7 +479,7 @@ if (typeof HTMLElement !== 'undefined') {
             }));
           } else {
             if (!this.shader_renders.has(target.selector)) {
-              this.shader_renders.set(target.selector, render);
+              this.shader_renders.set(target.selector, { render, canvas });
             }
           }
         } else {
@@ -489,9 +489,9 @@ if (typeof HTMLElement !== 'undefined') {
               set_shader_prop(canvas.toDataURL());
             }));
           } else {
-            let render = this.shader_renders.get(target.selector);
-            if (!render) {
-              this.shader_renders.set(target.selector, render);
+            let _render = this.shader_renders.get(target.selector);
+            if (!_render) {
+              this.shader_renders.set(target.selector, { render, canvas });
             }
             render(0, width, height, this._umouse, images);
             set_shader_prop(canvas.toDataURL());
@@ -527,10 +527,9 @@ if (typeof HTMLElement !== 'undefined') {
             images = result;
             let render = this.shader_renders.get(target.selector);
             if (render) {
-              if (target.type === 'content') {
-                render(0, width, height, this._umouse, images);
-              } else {
-                set_shader_prop(render(0, width, height, this._umouse, images).toDataURL());
+              render.render(0, width, height, this._umouse, images);
+              if (target.type === 'background') {
+                set_shader_prop(render.canvas.toDataURL());
               }
             }
           });
