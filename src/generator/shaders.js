@@ -126,7 +126,13 @@ export default function draw_shader(shaders, seed, type) {
 
   const texture_list = [];
 
-  const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: type === 'background' });
+  const gl = canvas.getContext('webgl2', {
+    powerPreference: 'high-performance',
+    antialias: false,
+    failIfMajorPerformanceCaveat: true,
+    preserveDrawingBuffer: type === 'background'
+  });
+
   if (!gl) {
     return Promise.resolve('');
   }
