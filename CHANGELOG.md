@@ -1,3 +1,10 @@
+## 0.47.2
+
+* Fix missing cancel() method for animation.
+* Add `u_mouse` to shaders.
+* Configure WebGL2 context for high performance and disable antialiasing.
+
+
 ## 0.47.1
 
 * Correct animation frame rate calculation.
