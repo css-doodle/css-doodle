@@ -264,9 +264,25 @@ const Expose = add_alias({
     if (!is_nil(nx)) variables.nx = nx;
     if (!is_nil(ny)) variables.ny = ny;
     if (!is_nil(N)) variables.N = N;
-    return (expr, pass, fail = '') => {
-      let result = !!calc(expr, variables);
-      return result ? pass : fail;
+    return (...args) => {
+      if (args.length <= 1) {
+        return '';
+      }
+      if (args.length <= 3) {
+        let [expr, pass, fail = ''] = args;
+        let result = !!calc(expr, variables);
+        return result ? pass : fail;
+      }
+      for (let i = 0; i < args.length; i += 2) {
+        let expr = args[i];
+        let pass = args[i + 1];
+        if (is_nil(pass)) {
+          return expr;
+        }
+        if (!!calc(expr, variables)) {
+          return pass;
+        }
+      }
     }
   },
 
