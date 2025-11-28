@@ -1,3 +1,17 @@
+## 0.48.0
+
+### Features
+
+* Enhence `@cell` selector to support random keyword.
+* Add `@match` function for conditional expression evaluation.
+* Add support for multiple conditions in `@match` function. (#137 by @xuelu-kylin).
+
+### Fixes
+
+* Fix rendering and canvas caching in shaders background.
+* Fix seed generation again.
+
+
 ## 0.47.2
 
 * Fix missing cancel() method for animation.
