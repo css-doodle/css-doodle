@@ -737,8 +737,6 @@ class Rules {
 
     if (this.seed) {
       coords.update_random(this.seed);
-    } else if (coords.seed_value) {
-      coords.update_random(coords.seed_value);
     }
   }
 
