@@ -13,7 +13,7 @@ import create_animation from './utils/create-animation.js';
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { NS, NSXHtml } from './utils/svg.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
-import { cell_id, is_nil, get_png_name, cache_image, is_safari, entity, un_entity, debounce } from './utils/index.js';
+import { cell_id, is_nil, get_png_name, cache_image, is_safari, un_entity, debounce } from './utils/index.js';
 
 import { cache } from './cache.js';
 
@@ -194,7 +194,9 @@ if (typeof HTMLElement !== 'undefined') {
           <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
             <foreignObject width="100%" height="100%">
               <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
-                <style>.host{${entity(variables)}}</style>
+                <style><![CDATA[
+                  .host{${variables}}
+                ]]></style>
                 ${html}
               </div>
             </foreignObject>
@@ -381,6 +383,7 @@ if (typeof HTMLElement !== 'undefined') {
       let parsed = parse_css(code, this.extra);
       let _grid = parse_grid('');
       let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random, options.upextra);
+      let styles = compiled.styles || {};
       let grid = compiled.grid ? compiled.grid : _grid;
       let viewBox = '';
       if (options && options.arg) {
@@ -403,12 +406,12 @@ if (typeof HTMLElement !== 'undefined') {
         <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
           <foreignObject width="100%" height="100%">
             <div class="host" width="100%" height="100%" ${NSXHtml}>
-              <style>
-                @property --${utime.name} { syntax: "&lt;integer&gt;"; initial-value: 0; inherits: true; }
-                @property --${UTime.name} { syntax: "&lt;integer&gt;"; initial-value: 0; inherits: true; }
+              <style><![CDATA[
+                @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
                 ${get_basic_styles(grid)}
-                ${compiled.styles.all}
-              </style>
+                ${styles.all}
+              ]]></style>
               ${grid_container}
             </div>
           </foreignObject>

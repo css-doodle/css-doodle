@@ -106,14 +106,6 @@ export function un_entity(code) {
   return textarea.value;
 }
 
-export function entity(code) {
-  return code
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 /* cyrb53 */
 export function hash(str, seed = 0) {
   str = String(str);
