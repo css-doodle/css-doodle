@@ -34,6 +34,31 @@ if (typeof HTMLElement !== 'undefined') {
       'auto:update',
     ];
 
+    static _loadedFonts = new Set();
+
+    // https://issues.chromium.org/issues/41085401
+    static _loadGoogleFont(fonts) {
+      let families = [];
+      if (!Array.isArray(fonts)) {
+        return;
+      }
+      for (let name of fonts) {
+        if (this._loadedFonts.has(name)) {
+          continue;
+        }
+        this._loadedFonts.add(name);
+        families.push(name);
+      }
+      if (!families.length) {
+        return;
+      }
+      let names = families.map(name => 'family=' + encodeURIComponent(name)).join('&');
+      let link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css?display=swap&" + names;
+      document.head.appendChild(link);
+    }
+
     constructor() {
       super();
       this.doodle = this.attachShadow({ mode: 'open' });
@@ -121,6 +146,9 @@ if (typeof HTMLElement !== 'undefined') {
         if (compiled.props.has_animation) {
           this.set_style(old_styles.all.replace(/animation/g, 'x'));
           this.reflow();
+        }
+        if (compiled.styles.gf) {
+          Expose.CSSDoodle._loadGoogleFont(compiled.styles.gf);
         }
         this.set_style(replace(
           compiled.styles.top +
@@ -680,6 +708,9 @@ if (typeof HTMLElement !== 'undefined') {
         get_basic_styles(grid) +
         styles.all
       ));
+      if (styles.gf) {
+        Expose.CSSDoodle._loadGoogleFont(styles.gf);
+      }
       if (has_content) {
         replace(Object.values(compiled.content).join(' '));
       }

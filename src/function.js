@@ -893,7 +893,13 @@ const Expose = add_alias({
       }
       return raw;
     }
-  }
+  },
+
+  'google-font': () => {
+    return (name) => {
+      return { value: name, gf: true };
+    }
+  },
 
 }, {
 

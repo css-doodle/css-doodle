@@ -67,6 +67,7 @@ class Rules {
       backdrop: '',
       keyframes: '',
       top: '',
+      gf: [],
     }
     this.coords = [];
     this.doodles = {};
@@ -86,7 +87,10 @@ class Rules {
     if (!rules) {
       rules = this.rules[selector] = [];
     }
-    if (!rule || (selector === ':top:' && rules.includes(rule))) {
+    if (!rule) {
+      return false;
+    }
+    if ((selector === ':top:' || selector === ':gf:') && rules.includes(rule)) {
       return false;
     }
     this.rules[selector] = rules.concat(rule);
@@ -365,9 +369,12 @@ class Rules {
 
               let output = this.apply_func(fn, coords, args, fname, contextVariable);
               if (!is_nil(output)) {
-                result += output;
+                result += get_value(output);
                 if (output.extra) {
                   extra = output.extra;
+                }
+                if (output.gf) {
+                  this.add_rule(':gf:', output.value);
                 }
               }
             }
@@ -910,6 +917,8 @@ class Rules {
         this.styles.container += `${name} {${join(rule)}}`;
       } else if (selector === ':top:') {
         this.styles.top += join(rule);
+      } else if (selector === ':gf:') {
+        this.styles.gf = rule;
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         if (selector === 'b') {
@@ -953,12 +962,12 @@ class Rules {
       }
     });
 
-    let { keyframes, host, container, cells, backdrop, top } = this.styles;
+    let { keyframes, host, container, cells, backdrop, top, gf } = this.styles;
     let main = keyframes + host + container;
 
     return {
       props: this.props,
-      styles: { main, cells, container, backdrop, top, all: main + backdrop + cells },
+      styles: { main, cells, container, backdrop, gf, top, all: main + backdrop + cells },
       grid: this.grid,
       seed: this.seed,
       random: this.random,
