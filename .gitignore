@@ -10,3 +10,4 @@ package-lock.json
 yarn.lock
 css-doodle.min.js
 css-doodle.js
+test/perf

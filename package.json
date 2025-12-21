@@ -3,8 +3,8 @@
   "version": "0.48.0",
   "description": "A web component for visual art & creative coding",
   "scripts": {
-    "test": "node --test --test-reporter dot 'test/**/!(_*.js)'",
-    "test:dev": "node --test 'test/**/!(_*.js)'",
+    "test": "node --test --test-reporter dot 'test/!(_*.js)*.js'",
+    "test:dev": "node --test 'test/!(_*.js)*.js'",
     "build": "node ./build/index.js"
   },
   "repository": {
