@@ -145,6 +145,7 @@ test('nested functions', () => {
   compare('abs(sin(-1))', Math.abs(Math.sin(-1)));
   compare('sqrt(abs(-16))', 4);
   compare('max(sin(0), cos(0))', 1);
+  compare('sqrt.abs(-16)', 4);
 });
 
 test('variable with coefficient', () => {
@@ -207,7 +208,7 @@ test('complex nested context', () => {
     k: k,
     t: t
   };
-  
+
   compare(['px', context], (k-1)*Math.cos(t) + Math.cos((k-1)*t));
   compare(['py', context], (k-1)*Math.sin(t) - Math.sin((k-1)*t));
 });
@@ -217,32 +218,29 @@ test('implicit multiplication edge cases', () => {
   compare(['x1', { x1: 99 }], 99);
   compare(['y2', { y2: 88 }], 88);
   compare(['x1', { x: 5 }], 0); // x1 is undefined, returns 0
-  
+
   // Variable followed by constant - implicit multiplication
   compare(['xπ', { x: 2 }], 2 * Math.PI);
-  
+
   // Constant followed by variable - implicit multiplication
   compare(['πx', { x: 2 }], Math.PI * 2);
 
   compare(['bb', { b: 2 }], 0)
-  
+
   // Constant followed by constant - implicit multiplication
   compare('ππ', Math.PI * Math.PI);
-  
+
   // Number followed by parenthesis - implicit multiplication
   compare('2(3+4)', 14);
   compare('3(2+1)', 9);
-  
+
   // Parenthesis followed by number/variable/parenthesis - implicit multiplication
   compare('(2+3)4', 20);
   compare(['(2+3)x', { x: 2 }], 10);
   compare('(1+2)(3+4)', 21);
   compare('2(3)(4)', 24);
-  
+
   // Scientific notation followed by variable - implicit multiplication
   compare(['1e2x', { x: 3 }], 300);
   compare(['2e1y', { y: 5 }], 100);
-  
-  // Note: Ambiguous cases like "2x3" are treated as "2x" followed by "3" (not multiplied)
-  // Users should use explicit operators for clarity: "2*x*3"
 });
