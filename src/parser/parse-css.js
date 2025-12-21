@@ -292,9 +292,32 @@ function skip_tag(it) {
 
 function read_property(it) {
   let prop = '', c;
+  let stack_paren = [];
+  let stack_quote = [];
+
   while (!it.end()) {
-    if ((c = it.curr()) == ':') break;
-    else if (!is.white_space(c)) prop += c;
+    let c = it.curr();
+    if (c === '"' || c === "'" || c === '`') {
+      let quote = last(stack_quote);
+      if (c === quote) {
+        stack_quote.pop();
+      } else if (!stack_quote.length) {
+        stack_quote.push(c);
+      }
+    }
+    if (c == '(') {
+      stack_paren.push(c);
+    }
+    if (c == ')') {
+      stack_paren.pop();
+    }
+    if (!stack_paren.length && !stack_quote.length) {
+      if (c === ':' || c === ';') {
+        break;
+      }
+    } else {
+      prop += c;
+    }
     it.next();
   }
   return prop;
@@ -705,25 +728,56 @@ function read_pseudo(it, extra) {
 function read_rule(it, extra) {
   let rule = Tokens.rule(), c;
   let start = it.index();
+  let stack_paren = [];
+  let stack_quote = [];
+  let temp = '';
+
   while (!it.end()) {
     c = it.curr();
     if (c == '/' && it.curr(1) == '*') {
       read_comments(it);
     }
-    else if (c == ';') {
-      break;
-    }
-    else if (!rule.property.length) {
-      rule.property = read_property(it);
-      if (rule.property == '@use') {
-        rule.value = read_var(it, extra);
-        break;
+    if (c === '"' || c === "'" || c === '`') {
+      let quote = last(stack_quote);
+      if (c === quote) {
+        stack_quote.pop();
+      } else if (!stack_quote.length) {
+        stack_quote.push(c);
       }
     }
-    else {
-      rule.value = read_value(it);
-      break;
+    if (c == '(') {
+      stack_paren.push(c);
     }
+    if (c == ')') {
+      stack_paren.pop();
+    }
+    if (!stack_paren.length && !stack_quote.length) {
+      if (c == '}') {
+        break;
+      }
+      if (c === ';' && temp.trim().length) {
+        if (!rule.property.length) {
+          rule.type = 'at-rule';
+          rule.value = temp + c;
+        }
+        it.next();
+        break;
+      } else if (c === ':') {
+        rule.property = temp.trim();
+        if (rule.property == '@use') {
+          rule.value = read_var(it, extra);
+        } else {
+          it.next();
+          rule.value = read_value(it);
+        }
+        break;
+      } else {
+        temp += c;
+      }
+    } else {
+      temp += c;
+    }
+
     it.next();
   }
   let end = it.index();
@@ -758,7 +812,11 @@ function read_cond(it, extra) {
     else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
     }
-    else if (!is.white_space(c)) {
+    else if (is.selector(it)) {
+      let nested = read_cond(it, extra);
+      if (nested.name.length) cond.styles.push(nested);
+    }
+    else if (is.white_space(c)) {
       let rule = read_rule(it, extra);
       if (rule.property) cond.styles.push(rule);
       if (it.curr() == '}') break;
@@ -851,7 +909,7 @@ export default function parse(input, extra) {
     }
     else if (!is.white_space(c)) {
       let rule = read_rule(it, extra);
-      if (rule.property) Tokens.push(rule);
+      if (rule.property || rule.type === 'at-rule') Tokens.push(rule);
     }
     it.next();
   }

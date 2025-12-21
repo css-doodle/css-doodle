@@ -123,6 +123,7 @@ if (typeof HTMLElement !== 'undefined') {
           this.reflow();
         }
         this.set_style(replace(
+          compiled.styles.top +
           get_basic_styles(this.grid_size) +
           compiled.styles.all
         ));
@@ -407,6 +408,7 @@ if (typeof HTMLElement !== 'undefined') {
           <foreignObject width="100%" height="100%">
             <div class="host" width="100%" height="100%" ${NSXHtml}>
               <style><![CDATA[
+                ${styles.top}
                 @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
                 @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
                 ${get_basic_styles(grid)}
@@ -674,6 +676,7 @@ if (typeof HTMLElement !== 'undefined') {
       }
       let replace = this.replace(compiled);
       this.set_style(replace(
+        styles.top +
         get_basic_styles(grid) +
         styles.all
       ));

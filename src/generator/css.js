@@ -65,7 +65,8 @@ class Rules {
       container: '',
       cells: '',
       backdrop: '',
-      keyframes: ''
+      keyframes: '',
+      top: '',
     }
     this.coords = [];
     this.doodles = {};
@@ -85,7 +86,10 @@ class Rules {
     if (!rules) {
       rules = this.rules[selector] = [];
     }
-    rules.push.apply(rules, make_array(rule));
+    if (!rule || (selector === ':top:' && rules.includes(rule))) {
+      return false;
+    }
+    this.rules[selector] = rules.concat(rule);
   }
 
   pick_func(name) {
@@ -740,6 +744,41 @@ class Rules {
     }
   }
 
+  compose_cond(token, coords) {
+    let args = [];
+    let composed_selector = token.name + ' ' + token.segments.map(n => {
+      if (n.keyword) return n.keyword;
+      let args = n.arguments;
+      if (Array.isArray(args)) {
+        let names = args.map(arg => {
+          return this.compose_argument(arg, coords).value;
+        }).join(', ');
+        return '(' + names + ')'
+      }
+      return '';
+    }).join(' ');
+
+    let rules = '';
+
+    token.styles.forEach(_token => {
+      if (_token.type === 'rule') {
+        rules += this.compose_rule(_token, coords);
+      }
+      if (_token.type === 'pseudo' && _token.name) {
+        _token.name.split(',').forEach(selector => {
+          let pseudo = _token.styles.map(s =>
+            this.compose_rule(s, coords, selector)
+          );
+          rules += `${(cond.selector + selector).replaceAll('$', this.compose_selector(coords))} {${pseudo}}`;
+        });
+      }
+      if (_token.type === 'cond') {
+        rules += this.compose_cond(_token, coords);
+      }
+    });
+    return `${composed_selector} {${rules}}`;
+  }
+
   compose(coords, tokens, initial) {
     this.coords.push(coords);
     (tokens || this.tokens).forEach((token, i) => {
@@ -838,31 +877,7 @@ class Rules {
               }
             }
           } else {
-            let composed_selector = token.name + ' ' + token.segments.map(n => {
-              if (n.keyword) return n.keyword;
-              let args = n.arguments;
-              if (Array.isArray(args) && Array.isArray(args[0]) && args[0].length) {
-                return '(' + args[0][0].value + ')'
-              }
-              return '';
-            }).join(' ');
-
-            let rules = '';
-
-            token.styles.forEach(_token => {
-              if (_token.type === 'rule') {
-                rules += `${composed_selector} {${this.compose_rule(_token, coords)}}`;
-              }
-              if (_token.type === 'pseudo' && _token.name) {
-                _token.name.split(',').forEach(selector => {
-                  let pseudo = _token.styles.map(s =>
-                    this.compose_rule(s, coords, selector)
-                  );
-                  rules += `${(cond.selector + selector).replaceAll('$', this.compose_selector(coords))} {${pseudo}}`;
-                });
-              }
-            });
-            this.add_rule(this.compose_selector(coords), rules);
+            this.add_rule(':top:', this.compose_cond(token, coords));
           }
           break;
         }
@@ -877,6 +892,12 @@ class Rules {
               `))}
             `;
           }
+          break;
+        }
+
+        case 'at-rule': {
+          this.add_rule(':top:', token.value);
+          break;
         }
       }
     });
@@ -887,6 +908,8 @@ class Rules {
       if (is_parent_selector(selector)) {
         let name = selector.replace(/^:container\(?/, 'grid').replace(/\)?$/, '');
         this.styles.container += `${name} {${join(rule)}}`;
+      } else if (selector === ':top:') {
+        this.styles.top += join(rule);
       } else {
         let target = is_host_selector(selector) ? 'host' : 'cells';
         if (selector === 'b') {
@@ -930,12 +953,12 @@ class Rules {
       }
     });
 
-    let { keyframes, host, container, cells, backdrop } = this.styles;
+    let { keyframes, host, container, cells, backdrop, top } = this.styles;
     let main = keyframes + host + container;
 
     return {
       props: this.props,
-      styles: { main, cells, container, backdrop, all: main + backdrop + cells },
+      styles: { main, cells, container, backdrop, top, all: main + backdrop + cells },
       grid: this.grid,
       seed: this.seed,
       random: this.random,
