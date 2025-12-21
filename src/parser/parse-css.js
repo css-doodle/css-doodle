@@ -812,11 +812,15 @@ function read_cond(it, extra) {
     else if (c == '@' && !read_line(it, true).includes(':')) {
       cond.styles.push(read_cond(it));
     }
+    else if (is.white_space(c)) {
+      it.next();
+      continue;
+    }
     else if (is.selector(it)) {
       let nested = read_cond(it, extra);
       if (nested.name.length) cond.styles.push(nested);
     }
-    else if (is.white_space(c)) {
+    else {
       let rule = read_rule(it, extra);
       if (rule.property) cond.styles.push(rule);
       if (it.curr() == '}') break;
