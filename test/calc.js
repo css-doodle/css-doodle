@@ -73,6 +73,8 @@ test('comparison operators', () => {
   compare('2 > 3', 0);
   compare('3 < 2', 0);
   compare('2 < 3', 1);
+  compare(['n< 3', { n: 2 }], 1);
+  compare('2 < 3', 1);
   compare('3 >= 3', 1);
   compare('3 <= 3', 1);
   compare('3 == 3', 1);

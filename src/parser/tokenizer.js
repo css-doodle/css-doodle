@@ -7,7 +7,7 @@ const symbols = [
   ':', ';', ',', '(', ')', '[', ']',
   '{', '}', 'π', '±', '+', '-', '*',
   '/', '%', '"', "'", '`', '@', '=',
-  '^', 'ß', '_'
+  '^', 'ß', '_', '<', '>'
 ];
 
 const is = {
@@ -199,7 +199,7 @@ function scan(source, options = {}) {
         type: 'Number', value: num, pos
       }));
     }
-    else if (is.symbol(curr) && !is.selfClosedTag(curr, next)) {
+    else if (is.symbol(curr)) {
       let lastToken = last(tokens);
       // negative
       let isNextDigit = is.digit(next) || (is.dot(next) && is.digit(next2));

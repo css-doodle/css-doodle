@@ -264,11 +264,18 @@ test('comments', () => {
 test('svg', () => {
 
   compare('<svg></svg>', [
-    { type: 'Word', value: '<svg></svg>' }
+    { type: 'Symbol', value: '<' },
+    { type: 'Word', value: 'svg' },
+    { type: 'Symbol', value: '>' },
+    { type: 'Symbol', value: '<' },
+    { type: 'Symbol', value: '/' },
+    { type: 'Word', value: 'svg' },
+    { type: 'Symbol', value: '>' }
   ]);
 
   compare('<circle r="@r(10)" />', [
-    { type: 'Word', value: '<circle' },
+    { type: 'Symbol', value: '<' },
+    { type: 'Word', value: 'circle' },
     { type: 'Space', value: ' ' },
     { type: 'Word', value: 'r' },
     { type: 'Symbol', value: '=' },
@@ -280,7 +287,8 @@ test('svg', () => {
     { type: 'Symbol', value: ')' },
     { type: 'Symbol', value: '"', status: 'close' },
     { type: 'Space', value: ' ' },
-    { type: 'Word', value: '/>' },
+    { type: 'Symbol', value: '/' },
+    { type: 'Symbol', value: '>' }
   ]);
 
 });
