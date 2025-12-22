@@ -164,3 +164,9 @@ export function debounce(fn, delay = 100) {
     timer = setTimeout(() => fn(...args), delay);
   };
 }
+
+export function unique(arr) {
+  return arr.filter(function(v, i, self) {
+    return self.indexOf(v) === i;
+  });
+}

@@ -16,6 +16,7 @@ import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { cell_id, is_nil, get_png_name, cache_image, is_safari, un_entity, debounce } from './utils/index.js';
 
 import { cache } from './cache.js';
+import { loadGoogleFontEmbed, loadGoogleFontLink } from './utils/google-font.js';
 
 const Expose = {
   CSSDoodle: class {},
@@ -33,31 +34,6 @@ if (typeof HTMLElement !== 'undefined') {
       'click-to-update', 'click:update',
       'auto:update',
     ];
-
-    static _loadedFonts = new Set();
-
-    // https://issues.chromium.org/issues/41085401
-    static _loadGoogleFont(fonts) {
-      let families = [];
-      if (!Array.isArray(fonts)) {
-        return;
-      }
-      for (let name of fonts) {
-        if (this._loadedFonts.has(name)) {
-          continue;
-        }
-        this._loadedFonts.add(name);
-        families.push(name);
-      }
-      if (!families.length) {
-        return;
-      }
-      let names = families.map(name => 'family=' + encodeURIComponent(name)).join('&');
-      let link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://fonts.googleapis.com/css?display=swap&" + names;
-      document.head.appendChild(link);
-    }
 
     constructor() {
       super();
@@ -148,7 +124,7 @@ if (typeof HTMLElement !== 'undefined') {
           this.reflow();
         }
         if (compiled.styles.gf) {
-          Expose.CSSDoodle._loadGoogleFont(compiled.styles.gf);
+          loadGoogleFontLink(compiled.styles.gf);
         }
         this.set_style(replace(
           compiled.styles.top +
@@ -209,7 +185,7 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     export({ scale, name, download, detail } = {}) {
-      return new Promise((resolve, reject) => {
+      return new Promise(async (resolve, reject) => {
         let variables = get_all_variables(this);
         let html = this.doodle.innerHTML;
 
@@ -218,12 +194,13 @@ if (typeof HTMLElement !== 'undefined') {
 
         let w = width * scale;
         let h = height * scale;
-
+        let fonts = await loadGoogleFontEmbed();
         let svg = `
           <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
             <foreignObject width="100%" height="100%">
               <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
                 <style><![CDATA[
+                  ${fonts}
                   .host{${variables}}
                 ]]></style>
                 ${html}
@@ -431,37 +408,40 @@ if (typeof HTMLElement !== 'undefined') {
         ? `width="${options.width}" height="${options.height}"`
         : '';
 
-      replace(`
-        <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
-          <foreignObject width="100%" height="100%">
-            <div class="host" width="100%" height="100%" ${NSXHtml}>
-              <style><![CDATA[
-                ${styles.top}
-                @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-                @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-                ${get_basic_styles(grid)}
-                ${styles.all}
-              ]]></style>
-              ${grid_container}
-            </div>
-          </foreignObject>
-        </svg>
-      `).then(result => {
-        let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
-        if (is_safari()) {
-          if (size) {
-            generate_png(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2).then(({ blob }) => {
-              let url = URL.createObjectURL(blob);
-              cache_image(url);
-              fn(url);
-            });
+      loadGoogleFontEmbed(styles.gf || []).then((importedFonts) => {
+        replace(`
+          <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
+            <foreignObject width="100%" height="100%">
+              <div class="host" width="100%" height="100%" ${NSXHtml}>
+                <style><![CDATA[
+                  ${importedFonts}
+                  ${styles.top}
+                  @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                  @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                  ${get_basic_styles(grid)}
+                  ${styles.all}
+                ]]></style>
+                ${grid_container}
+              </div>
+            </foreignObject>
+          </svg>
+        `).then(result => {
+          let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
+          if (is_safari()) {
+            if (size) {
+              generate_png(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2).then(({ blob }) => {
+                let url = URL.createObjectURL(blob);
+                cache_image(url);
+                fn(url);
+              });
+            } else {
+              cache_image(source);
+              fn(source);
+            }
           } else {
-            cache_image(source);
             fn(source);
           }
-        } else {
-          fn(source);
-        }
+        });
       });
     }
 
@@ -709,7 +689,7 @@ if (typeof HTMLElement !== 'undefined') {
         styles.all
       ));
       if (styles.gf) {
-        Expose.CSSDoodle._loadGoogleFont(styles.gf);
+        loadGoogleFontLink(styles.gf);
       }
       if (has_content) {
         replace(Object.values(compiled.content).join(' '));

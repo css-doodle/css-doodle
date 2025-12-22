@@ -217,7 +217,11 @@ class Rules {
               ? (...extra) => this.compose_argument(n, coords, extra, arg, contextVariable, selector)
               : this.compose_argument(n, coords, extra, arg, contextVariable, selector);
           });
-          return this.apply_func(fn, coords, args, fname, contextVariable);
+          let output = this.apply_func(fn, coords, args, fname, contextVariable);
+          if (output.gf) {
+            this.add_rule(':gf:', output.value);
+          }
+          return get_value(output);
         } else {
           return arg.name;
         }
