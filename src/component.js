@@ -799,9 +799,9 @@ function get_basic_styles(grid) {
     :host,.host {
       display: block;
       visibility: visible;
-      width: auto;
-      height: auto;
-      contain: strict;
+      width: fit-content;
+      height: fit-content;
+      contain: content;
       view-transition-name: css-doodle;
       --${utime.name}: 0;
       --${UTime.name}: 0
