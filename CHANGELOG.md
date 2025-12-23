@@ -1,3 +1,24 @@
+## 0.49.0
+
+### Features
+
+* Add `@google-font` function to load google font.
+  ```css
+  font-family: @google-font("Alfa Slab One");
+  ```
+* Support CSS At-rules like `@charset: utf8`
+* Improve calc function to support more Math notation handling
+  ```css
+  2**2 /* js-like operator for ^ */
+  (2+3)4 /* implicit multiplication
+  ```
+### Fixes
+
+* Fix `^` calc precedence.
+* Prevent CSS parsing issues in SVG, use CDATA for inline styles.
+* Switch to `fit-content` for width/height and use `contain: content` for default.
+
+
 ## 0.48.0
 
 ### Features
