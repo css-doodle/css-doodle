@@ -819,7 +819,9 @@ function get_basic_styles(grid) {
     }
     grid {
       gap: inherit;
-      grid-template: repeat(${y},1fr)/repeat(${x},1fr)
+      grid-template: repeat(${y},1fr)/repeat(${x},1fr);
+      width: inherit;
+      height: inherit;
     }
     b {
       position: absolute;
@@ -833,10 +835,8 @@ function get_basic_styles(grid) {
     }
     svg, canvas {
       position: absolute;
-    }
-    grid, svg, canvas {
       width: 100%;
-      height: 100%
+      height: 100%;
     }
     canvas {
       object-fit: cover;
