@@ -1,91 +1,107 @@
 import parse_pattern from '../parser/parse-pattern.js';
 import parse_grid from '../parser/parse-grid.js';
-
 import transform from './glsl-math-transformer.js';
 
-function generate_shader(input, { x, y }) {
+const CIRCLE_MASK = `
+vec2 cellUV = fract(uv * v) - 0.5;
+float dist = length(cellUV);
+shapeMask = 1.0 - smoothstep(0.5 - fwidth(dist), 0.5, dist);
+`;
+
+const float = n => String(n).includes('.') ? n : n + '.0';
+
+const STATEMENT_HANDLERS = {
+  fill(token, extra) {
+    let { r, g, b, a } = extra.get_rgba_color(token.value);
+    return {
+      type: 'statement',
+      value: `\ncolor = vec4(${float(r / 255)}, ${float(g / 255)}, ${float(b / 255)}, ${float(a)});\n`,
+    };
+  },
+  grid(token) {
+    return { type: 'grid', value: token.value };
+  },
+  shape(token, _, insideBlock) {
+    let shape = token.value.trim();
+    if (insideBlock && shape) {
+      return {
+        type: 'statement',
+        value: shape === 'circle' ? CIRCLE_MASK : '\nshapeMask = 1.0;\n',
+      };
+    }
+    return { type: 'shape', value: shape };
+  },
+};
+
+function generate_statement(token, extra, insideBlock = false) {
+  let handler = STATEMENT_HANDLERS[token.name];
+  return handler
+    ? handler(token, extra, insideBlock)
+    : { type: 'statement', value: '' };
+}
+
+function generate_block(token, extra) {
+  if (token.name !== 'match') {
+    return '';
+  }
+  let cond = transform(token.args[0], { expect: 'bool' });
+  let body = token.value
+    .map(t => generate_statement(t, extra, true))
+    .filter(s => s.type === 'statement')
+    .map(s => s.value)
+    .join('');
+  return `
+    if (${cond}) {
+      ${body}
+    }
+  `;
+}
+
+function generate_shader(input, { x, y }, shape) {
+  let shapeInit = shape === 'circle' ? CIRCLE_MASK : '';
   return `
     vec3 mapping(vec2 uv, vec2 grid) {
       vec2 _grid = 1.0/grid;
       float x = ceil(uv.x/_grid.x);
       float y = ceil(grid.y - uv.y/_grid.y);
-      float i = x + (y - 1.0) * y;
+      float i = x + (y - 1.0) * grid.x;
       return vec3(x, y, i);
     }
-    vec4 getColor(float x, float y, float i, float I, float X, float Y, float t) {
+    vec4 getColor(float x, float y, float i, float I, float X, float Y, float t, vec2 uv, vec2 v) {
       vec4 color = vec4(0, 0, 0, 0);
+      float shapeMask = 1.0;
+      ${shapeInit}
       ${input}
+      color.a *= shapeMask;
       return color;
     }
     void main() {
       vec2 uv = gl_FragCoord.xy/u_resolution.xy;
       vec2 v = vec2(${x}, ${y});
       vec3 p = mapping(uv, v);
-      FragColor = getColor(p.x, p.y, p.z, v.x * v.y, v.x, v.y, u_time);
+      FragColor = getColor(p.x, p.y, p.z, v.x * v.y, v.x, v.y, u_time, uv, v);
     }
   `;
-}
-
-function generate_statement(token, extra) {
-  if (token.name === 'fill') {
-    let { r, g, b, a } = extra.get_rgba_color(token.value);
-    return {
-      type: 'statement',
-      value: `\ncolor = vec4(${float(r / 255)}, ${float(g / 255)}, ${float(b / 255)}, ${float(a)});\n`,
-    }
-  }
-  if (token.name == 'grid') {
-    return {
-      type: 'grid',
-      value: token.value,
-    }
-  }
-  return {
-    type: 'statement',
-    value: ''
-  }
-}
-
-function generate_block(token, extra) {
-  if (token.name === 'match') {
-    let cond = token.args[0];
-    cond = transform(cond, { expect: 'bool' });
-    let values = [];
-    token.value.forEach(t => {
-      let statement = generate_statement(t, extra);
-      if (statement.type == 'statement') {
-        values.push(statement.value);
-      }
-    });
-    return `
-      if (${cond}) {
-        ${values.join('')}
-      }
-    `
-  }
-  return '';
-}
-
-function float(n) {
-  return String(n).includes('.') ? n : n + '.0';
 }
 
 export default function draw_pattern(code, extra) {
   let tokens = parse_pattern(code);
   let result = [];
   let grid = { x: 1, y: 1 };
-  tokens.forEach(token => {
+  let shape = null;
+
+  for (let token of tokens) {
     if (token.type === 'statement') {
-      let statement = generate_statement(token, extra);
-      if (statement.type == 'statement') {
-        result.push(statement.value);
-      }
-      if (statement.type === 'grid') {
-        grid = parse_grid(statement.value, Infinity);
+      let stmt = generate_statement(token, extra);
+      switch (stmt.type) {
+        case 'statement': result.push(stmt.value); break;
+        case 'grid': grid = parse_grid(stmt.value, Infinity); break;
+        case 'shape': shape = stmt.value; break;
       }
     } else if (token.type === 'block') {
       result.push(generate_block(token, extra));
     }
-  });
-  return generate_shader(result.join(''), grid);
+  }
+
+  return generate_shader(result.join(''), grid, shape);
 }
