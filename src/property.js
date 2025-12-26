@@ -100,7 +100,7 @@ export default add_alias({
     }
 
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', '«', '§'],
+      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', 'β', '«', '§'],
       noSpace: true,
       verbose: true
     });
@@ -122,7 +122,7 @@ export default add_alias({
         if (result.size === undefined) result.size = this.size(value, options);
         else result.fill = value;
       }
-      if (group === 'ß') {
+      if (group === 'β' || group === 'ß') {
         let values = parse_value_group(value, {symbol: ' '});
         for (let i = 0; i < values.length; i++) {
           if (Number(values[i])) {
