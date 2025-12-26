@@ -1,7 +1,9 @@
 import parse_pattern from '../parser/parse-pattern.js';
 import parse_grid from '../parser/parse-grid.js';
 
-function generate_shader(input, {x, y}) {
+import transform from './glsl-math-transformer.js';
+
+function generate_shader(input, { x, y }) {
   return `
     vec3 mapping(vec2 uv, vec2 grid) {
       vec2 _grid = 1.0/grid;
@@ -26,10 +28,10 @@ function generate_shader(input, {x, y}) {
 
 function generate_statement(token, extra) {
   if (token.name === 'fill') {
-    let {r, g, b, a} = extra.get_rgba_color(token.value);
+    let { r, g, b, a } = extra.get_rgba_color(token.value);
     return {
       type: 'statement',
-      value: `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`,
+      value: `\ncolor = vec4(${float(r / 255)}, ${float(g / 255)}, ${float(b / 255)}, ${float(a)});\n`,
     }
   }
   if (token.name == 'grid') {
@@ -47,6 +49,7 @@ function generate_statement(token, extra) {
 function generate_block(token, extra) {
   if (token.name === 'match') {
     let cond = token.args[0];
+    cond = transform(cond, { expect: 'bool' });
     let values = [];
     token.value.forEach(t => {
       let statement = generate_statement(t, extra);
@@ -70,7 +73,7 @@ function float(n) {
 export default function draw_pattern(code, extra) {
   let tokens = parse_pattern(code);
   let result = [];
-  let grid = {x: 1, y: 1};
+  let grid = { x: 1, y: 1 };
   tokens.forEach(token => {
     if (token.type === 'statement') {
       let statement = generate_statement(token, extra);
