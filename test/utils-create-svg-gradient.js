@@ -5,7 +5,6 @@ import compare from './_compare.js';
 
 describe('create_svg_gradient', () => {
 
-  // Wrapper that handles lazy function wrapping
   const gradient = (type, ...values) => create_svg_gradient(type, values.map(v => () => v));
 
   compare.use({
@@ -35,12 +34,12 @@ describe('create_svg_gradient', () => {
 
   test('color stops without offset', () => {
     compare.linear(['red', 'green', 'blue'],
-      'linearGradient {  stop { stop-color: red } stop { stop-color: green } stop { stop-color: blue } }');
+      'linearGradient {  stop { offset: 0%; stop-color: red } stop { offset: 50%; stop-color: green } stop { offset: 100%; stop-color: blue } }');
   });
 
   test('mixed color stops with and without offset', () => {
     compare.linear(['red 0%', 'green', 'blue 100%'],
-      'linearGradient {  stop { offset: 0%; stop-color: red } stop { stop-color: green } stop { offset: 100%; stop-color: blue } }');
+      'linearGradient {  stop { offset: 0%; stop-color: red } stop { offset: 50%; stop-color: green } stop { offset: 100%; stop-color: blue } }');
   });
 
   test('combined transformations', () => {
@@ -65,23 +64,42 @@ describe('create_svg_gradient', () => {
 
   test('single color stop', () => {
     compare.radial(['red'],
-      'radialGradient {  stop { stop-color: red } }');
+      'radialGradient {  stop { offset: 0%; stop-color: red } }');
   });
 
   test('empty args', () => {
     compare.linear([],
       'linearGradient {   }');
   });
-  
+
   test('tail extra ,', () => {
-    compare.linear(['red', 'green', ','],  
-      'linearGradient {  stop { stop-color: red } stop { stop-color: green } }');
+    compare.linear(['red', 'green', ','],
+      'linearGradient {  stop { offset: 0%; stop-color: red } stop { offset: 100%; stop-color: green } }');
   });
 
   test('head extra ,', () => {
-    compare.linear([',', 'red', 'green'],  
-      'linearGradient {  stop { stop-color: red } stop { stop-color: green } }');
+    compare.linear([',', 'red', 'green'],
+      'linearGradient {  stop { offset: 0%; stop-color: red } stop { offset: 100%; stop-color: green } }');
   });
 
+  test('number shorthand for rotate', () => {
+    compare.linear(['45', 'red', 'blue'],
+      'linearGradient { gradientTransform: rotate(45); stop { offset: 0%; stop-color: red } stop { offset: 100%; stop-color: blue } }');
+  });
+
+  test('negative number shorthand for rotate', () => {
+    compare.linear(['-30', 'pink', 'purple'],
+      'linearGradient { gradientTransform: rotate(-30); stop { offset: 0%; stop-color: pink } stop { offset: 100%; stop-color: purple } }');
+  });
+
+  test('angle with deg unit', () => {
+    compare.linear(['90deg', 'red', 'blue'],
+      'linearGradient { gradientTransform: rotate(90); stop { offset: 0%; stop-color: red } stop { offset: 100%; stop-color: blue } }');
+  });
+
+  test('angle with turn unit', () => {
+    compare.linear(['0.25turn', 'red', 'blue'],
+      'linearGradient { gradientTransform: rotate(90); stop { offset: 0%; stop-color: red } stop { offset: 100%; stop-color: blue } }');
+  });
 
 });
