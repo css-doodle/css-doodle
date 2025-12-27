@@ -18,6 +18,7 @@ import expand from './utils/expand.js';
 import Stack from './utils/stack.js';
 import get_named_arguments from './utils/get-named-arguments.js';
 import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
+import { create_svg_gradient } from './utils/create-svg-gradient.js';
 import { getEasingFunction } from './easing.js';
 
 function make_sequence(c) {
@@ -646,6 +647,10 @@ const Expose = add_alias({
     `);
     return create_svg_url(generate_svg(parsed));
   }),
+
+  linearGradient: lazy((_, ...args) => create_svg_gradient('linearGradient', args)),
+
+  radialGradient: lazy((_, ...args) => create_svg_gradient('radialGradient', args)),
 
   var() {
     return value => `var(${get_value(value)})`;
