@@ -9,7 +9,6 @@ export function create_svg_gradient(type, args) {
 
   if (values.length > 0) {
     let first = values[0];
-    // Check if it's an angle (starts with number)
     if (/^-?[\d.]/.test(first)) {
       let { angle } = parse_direction(first);
       transform = `gradientTransform: rotate(${angle});`;
@@ -26,7 +25,8 @@ export function create_svg_gradient(type, args) {
     let color = parts[0];
     if (!color) continue;
     let offset = parts[1] || null;
-    colorStops.push({ color, offset });
+    let opacity = parts[2] || null;
+    colorStops.push({ color, offset, opacity });
   }
 
   let total = colorStops.length;
@@ -35,10 +35,14 @@ export function create_svg_gradient(type, args) {
     if (!offset && total >= 1) {
       offset = `${total > 1 ? (i / (total - 1)) * 100 : 0}%`;
     }
-    if (offset) {
-      return `stop { offset: ${offset}; stop-color: ${stop.color} }`;
+    let props = `stop-color: ${stop.color}`;
+    if (stop.opacity) {
+      props += `; stop-opacity: ${stop.opacity}`;
     }
-    return `stop { stop-color: ${stop.color} }`;
+    if (offset) {
+      return `stop { offset: ${offset}; ${props} }`;
+    }
+    return `stop { ${props} }`;
   });
 
   return `${type} { ${transform} ${stops.join(' ')} }`;

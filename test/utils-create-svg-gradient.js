@@ -102,4 +102,14 @@ describe('create_svg_gradient', () => {
       'linearGradient { gradientTransform: rotate(90); stop { offset: 0%; stop-color: red } stop { offset: 100%; stop-color: blue } }');
   });
 
+  test('color stop with opacity', () => {
+    compare.linear(['red 0% 0.5', 'blue 100% 1'],
+      'linearGradient {  stop { offset: 0%; stop-color: red; stop-opacity: 0.5 } stop { offset: 100%; stop-color: blue; stop-opacity: 1 } }');
+  });
+
+  test('color stop with opacity no offset', () => {
+    compare.radial(['red', 'blue 50% 0.8', 'green'],
+      'radialGradient {  stop { offset: 0%; stop-color: red } stop { offset: 50%; stop-color: blue; stop-opacity: 0.8 } stop { offset: 100%; stop-color: green } }');
+  });
+
 });
