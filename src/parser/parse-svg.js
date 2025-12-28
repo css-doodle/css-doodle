@@ -263,7 +263,6 @@ function getGroups(tokens, fn) {
 function getSelectors(tokens) {
   let result = [];
   let it = iterator(tokens);
-  let temp = [];
   let hasSymbol;
   while (it.next()) {
     let { prev, curr, next } = it.get();
@@ -326,7 +325,7 @@ function splitTimes(name, object) {
 }
 
 function isSkip(...names) {
-  return names.some(n => n === 'style');
+  return names.includes('style');
 }
 
 function isBlock(type) {
