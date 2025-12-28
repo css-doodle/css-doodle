@@ -89,8 +89,13 @@ export default function transform(code, { expect = null } = {}) {
   const call = (val) => {
     consume();
     let args = [];
-    if (peek().value !== ')') {
-      do { args.push(parse()); } while (peek().value === ',' && consume());
+
+    let next = peek();
+    if (next && next.value !== ')') {
+      do {
+        args.push(parse());
+        next = peek();
+      } while (next && next.value === ',' && consume() && (next = peek()));
     }
     consume();
     return { type: 'Call', val, args };
