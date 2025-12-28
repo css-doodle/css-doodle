@@ -204,7 +204,7 @@ function scan(source, options = {}) {
       let lastToken = last(tokens);
       // negative
       let isNextDigit = is.digit(next) || (is.dot(next) && is.digit(next2));
-      let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isSymbol(')'));
+      let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')'));
       if (curr === '-' && isNextDigit && !isAfterValue) {
         let num = readNumber(iter);
         tokens.push(new Token({

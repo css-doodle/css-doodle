@@ -255,3 +255,17 @@ test('subtraction after closing parenthesis', () => {
   compare(['50*abs.sin(2.5t)-81', { t: Math.PI / 4 }], 50 * Math.abs(Math.sin(2.5 * Math.PI / 4)) - 81);
   compare(['50*abs.sin(2.5t) - 81', { t: Math.PI / 4 }], 50 * Math.abs(Math.sin(2.5 * Math.PI / 4)) - 81);
 });
+
+test('subtraction with implicit multiplication', () => {
+  // Issue: 'x-9.01' was being tokenized as 'x' followed by '-9.01' (negative number)
+  // causing implicit multiplication parsing bugs
+  compare(['2x-3t', { x: 2, t: 0.5 }], 2*2 - 3*0.5);  // 4 - 1.5 = 2.5
+  compare(['2x - 3t', { x: 2, t: 0.5 }], 2*2 - 3*0.5);
+  compare(['13.6x-9.01t', { x: 2, t: 0.5 }], 13.6*2 - 9.01*0.5);  // 22.695
+  compare(['13.6x - 9.01t', { x: 2, t: 0.5 }], 13.6*2 - 9.01*0.5);
+  
+  // Inside function arguments - previously parseFunctionArgs lost spaces
+  compare(['sin(2x-3t)', { x: 2, t: 0.5 }], Math.sin(2*2 - 3*0.5));
+  compare(['sin(2x - 3t)', { x: 2, t: 0.5 }], Math.sin(2*2 - 3*0.5));
+  compare(['sin(13.6x-9.01t)', { x: 2, t: 0.5 }], Math.sin(13.6*2 - 9.01*0.5));
+});

@@ -194,7 +194,8 @@ test('numbers', () => {
 
   compare('n-10', [
     { type: 'Word', value: 'n' },
-    { type: 'Number', value: '-10' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Number', value: '10' },
   ]);
 
   compare('5-10', [
