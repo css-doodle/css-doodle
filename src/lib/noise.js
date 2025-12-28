@@ -21,10 +21,22 @@ const map = [
 
 function lerp(t, a, b) {
   return a + t * (b - a);
-};
+}
+
+function shuffle(arr, random) {
+  let ret = [...arr];
+  let m = arr.length;
+  while (m) {
+    let i = ~~(random() * m--);
+    let t = ret[m];
+    ret[m] = ret[i];
+    ret[i] = t;
+  }
+  return ret;
+}
 
 // Convert LO 4 bits of hash code into 12 gradient directions.
-function  grad(hash, x, y, z) {
+function grad(hash, x, y, z) {
   let h = hash & 15,
       u = h < 8 ? x : y,
       v = h < 4 ? y : h == 12 || h == 14 ? x : z;
@@ -32,8 +44,9 @@ function  grad(hash, x, y, z) {
 }
 
 export default class Perlin {
-  constructor() {
-    this.p = [].concat(map, map);
+  constructor(random = Math.random) {
+    let shuffled = shuffle(map, random);
+    this.p = [].concat(shuffled, shuffled);
   }
 
   noise(x, y, z) {

@@ -55,10 +55,10 @@ function flip_value(num) {
 }
 
 function map2d(value, min, max, amp = 1) {
-  let dimension = 2;
-  let v = Math.sqrt(dimension / 4) * amp;
-  let [ma, mb] = [-v, v];
-  return lerp((value - ma) / (mb - ma), min * amp, max * amp);
+  let v = Math.sqrt(2 / 4) * amp;
+  let normalized = (value + v) / (2 * v);
+  normalized = clamp(normalized, 0, 1);
+  return lerp(normalized, min * amp, max * amp);
 }
 
 function compute(op, a, b) {
@@ -443,7 +443,7 @@ const Expose = add_alias({
       octave = clamp(octave, 1, 100);
 
       if (args.length == 1) [from, to] = [0, from];
-      if (!context[counter]) context[counter] = new Noise();
+      if (!context[counter]) context[counter] = new Noise(random);
       if (!context[counterX]) context[counterX] = random();
       if (!context[counterY]) context[counterY] = random();
 
@@ -454,9 +454,9 @@ const Expose = add_alias({
       let _x = (isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x)) + offsetX;
       let _y = (isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y)) + offsetY;
 
-      // 1-dimentional
-      if (NX <= 1 || grid.x <= 1) _x = 0;
-      if (NY <= 1 || grid.y <= 1) _y = 0;
+      // 1-dimentional - use offset to avoid x=0 degenerate case
+      if (NX <= 1 || grid.x <= 1) _x = offsetX + 0.5;
+      if (NY <= 1 || grid.y <= 1) _y = offsetY + 0.5;
 
       // 1x1
       if (_x == 0 && _y == 0) {
