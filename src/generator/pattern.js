@@ -61,9 +61,8 @@ function generate_shader(input, { x, y }, shape) {
   let shapeInit = shape === 'circle' ? CIRCLE_MASK : '';
   return `
     vec3 mapping(vec2 uv, vec2 grid) {
-      vec2 _grid = 1.0/grid;
-      float x = ceil(uv.x/_grid.x);
-      float y = ceil(grid.y - uv.y/_grid.y);
+      float x = floor(uv.x * grid.x) + 1.0;
+      float y = floor((1.0 - uv.y) * grid.y) + 1.0;
       float i = x + (y - 1.0) * grid.x;
       return vec3(x, y, i);
     }
