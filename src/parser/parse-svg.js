@@ -1,6 +1,12 @@
 import { scan, iterator } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
 
+const SPECIAL_NAMESPACE_PREFIXES = [
+  'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
+  'xlink:show',    'xlink:title',   'xlink:type',
+  'xml:base',      'xml:lang',      'xml:space',
+];
+
 function readStatement(iter, token) {
   let fragment = [];
   let inlineBlock;
@@ -25,10 +31,8 @@ function readStatement(iter, token) {
       && !stackParen.length
       && (!next || curr.isSymbol(';') || next.isSymbol('}'));
 
-    if (curr.isSymbol("'", '"')) {
-      if ((next && next.isSymbol('}')) && !stackQuote.length) {
-        isStatementBreak = true;
-      }
+    if (curr.isSymbol("'", '"') && next && next.isSymbol('}') && !stackQuote.length) {
+      isStatementBreak = true;
     }
     if (!stackParen.length && !stackQuote.length && curr.isSymbol('{')) {
       let selectors = getSelectors(fragment);
@@ -103,7 +107,7 @@ function walk(iter, parentToken) {
     if (curr.isSymbol('(')) {
       stack.push(curr.value);
     }
-    if (curr.isSymbol(')')) {
+    if (curr.isSymbol(')') && stack.length) {
       stack.pop();
     }
     let isBlockBreak = !next || curr.isSymbol('}');
@@ -159,17 +163,17 @@ function walk(iter, parentToken) {
       && fragment.length
     ) {
       let props = getGroups(fragment, token => token.isSymbol(','));
-      let intial = {
+      let initial = {
         type: 'statement',
-        name: 'unkown',
+        name: 'unknown',
         value: ''
-      }
+      };
       if (props.length > 1) {
-        intial.origin = {
+        initial.origin = {
           name: props
         };
       }
-      let statement = readStatement(iter, intial);
+      let statement = readStatement(iter, initial);
       let groupdValue = parseValueGroup(statement.value);
       let expand = (props.length > 1 && groupdValue.length === props.length);
 
@@ -210,14 +214,9 @@ function walk(iter, parentToken) {
 }
 
 function isSpecialProperty(prev, next) {
-  const names = [
-    'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
-    'xlink:show',    'xlink:title',   'xlink:type',
-    'xml:base',      'xml:lang',      'xml:space',
-  ];
   let prevValue = prev && prev.value;
   let nextValue = next && next.value;
-  return names.includes(prevValue + ':' + nextValue);
+  return SPECIAL_NAMESPACE_PREFIXES.includes(prevValue + ':' + nextValue);
 }
 
 function joinToken(tokens) {
@@ -276,9 +275,10 @@ function getSelectors(tokens) {
     );
     if (curr.isWord() && !hasSymbol && !isTimeSymbol) {
       result.push(curr.value.trim());
+    } else if (result.length) {
+      result[result.length - 1] = (result[result.length - 1] + curr.value).trim();
     } else {
-      result[result.length - 1] =
-        (result[result.length - 1] + curr.value).trim();
+      result.push(curr.value.trim());
     }
     if (curr.isSymbol()) {
       hasSymbol = true;
