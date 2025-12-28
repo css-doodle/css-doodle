@@ -34,7 +34,7 @@ const preset_shapes = {
 
   octagon: `
     split: 8;
-    rotat: 22.5;
+    rotate: 22.5;
     scale: .99
   `,
 
