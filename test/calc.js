@@ -246,3 +246,12 @@ test('implicit multiplication edge cases', () => {
   compare(['1e2x', { x: 3 }], 300);
   compare(['2e1y', { y: 5 }], 100);
 });
+
+test('subtraction after closing parenthesis', () => {
+  // Issue: ')-81' was being tokenized as ')' followed by '-81' (negative number)
+  // instead of ')' '-' '81' (subtraction operator)
+  compare('(1+2)-3', 0);
+  compare('(1+2) - 3', 0);
+  compare(['50*abs.sin(2.5t)-81', { t: Math.PI / 4 }], 50 * Math.abs(Math.sin(2.5 * Math.PI / 4)) - 81);
+  compare(['50*abs.sin(2.5t) - 81', { t: Math.PI / 4 }], 50 * Math.abs(Math.sin(2.5 * Math.PI / 4)) - 81);
+});

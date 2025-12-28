@@ -302,3 +302,50 @@ test('dot symbols', () => {
     { type: 'Word', value: 'px' },
   ])
 });
+
+test('subtraction after closing parenthesis', () => {
+  // Issue: ')-81' was being tokenized as ')' followed by '-81' (negative number)
+  // instead of ')' '-' '81' (subtraction operator)
+
+  compare('(1)-2', [
+    { type: 'Symbol', value: '(' },
+    { type: 'Number', value: '1' },
+    { type: 'Symbol', value: ')' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Number', value: '2' },
+  ]);
+
+  compare('(1) - 2', [
+    { type: 'Symbol', value: '(' },
+    { type: 'Number', value: '1' },
+    { type: 'Symbol', value: ')' },
+    { type: 'Space', value: ' ' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Space', value: ' ' },
+    { type: 'Number', value: '2' },
+  ]);
+
+  compare('sin(x)-81', [
+    { type: 'Word', value: 'sin' },
+    { type: 'Symbol', value: '(' },
+    { type: 'Word', value: 'x' },
+    { type: 'Symbol', value: ')' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Number', value: '81' },
+  ]);
+
+  // Negative number is still valid at the start or after operators
+  compare('(-5)', [
+    { type: 'Symbol', value: '(' },
+    { type: 'Number', value: '-5' },
+    { type: 'Symbol', value: ')' },
+  ]);
+
+  compare('1+(-5)', [
+    { type: 'Number', value: '1' },
+    { type: 'Symbol', value: '+' },
+    { type: 'Symbol', value: '(' },
+    { type: 'Number', value: '-5' },
+    { type: 'Symbol', value: ')' },
+  ]);
+});
