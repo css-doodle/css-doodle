@@ -444,6 +444,38 @@ test('content values', () => {
   });
 });
 
+test('style with css selectors', () => {
+  compare('style { a { fill: red } }', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'style',
+      value: 'a{fill:red}'
+    }]
+  });
+
+  compare('style a { fill: red }', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'style',
+      value: 'a{fill:red}'
+    }]
+  });
+
+  compare('style .cls { stroke: blue }', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'style',
+      value: '.cls{stroke:blue}'
+    }]
+  });
+});
+
 test('times syntax', () => {
   compare(`
     circle*10 {}

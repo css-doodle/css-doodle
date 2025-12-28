@@ -132,11 +132,24 @@ function walk(iter, parentToken) {
       let tokenName = selectors.pop();
       let skip = isSkip(...selectors, parentToken.name, tokenName);
 
-      if (tokenName === 'style') {
+      const allSelectors = [...selectors, tokenName];
+      const styleIndex = allSelectors.indexOf('style');
+
+      // handle style block separately
+      if (styleIndex >= 0) {
+        let styleContent = '';
+        const cssSelectors = allSelectors.slice(styleIndex + 1);
+        if (cssSelectors.length > 0) {
+          styleContent = cssSelectors.join(' ') + '{';
+        }
+        styleContent += readStyle(iter);
+        if (cssSelectors.length > 0) {
+          styleContent += '}';
+        }
         rules.push({
           type: 'block',
-          name: tokenName,
-          value: readStyle(iter)
+          name: 'style',
+          value: styleContent
         });
       } else {
         let block = resolveId(walk(iter, splitTimes(tokenName, {
