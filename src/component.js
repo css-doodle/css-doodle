@@ -351,6 +351,11 @@ if (typeof HTMLElement !== 'undefined') {
         }
       }
       this.observers.clear();
+      this.shader_renders.forEach(({ canvas }) => {
+        if (canvas && canvas.loseContext) {
+          canvas.loseContext();
+        }
+      });
       this.shader_renders.clear();
       this.style.background = '';
     }

@@ -137,6 +137,13 @@ export default function draw_shader(shaders, seed, type) {
     return Promise.resolve('');
   }
 
+  canvas.loseContext = () => {
+    const ext = gl.getExtension('WEBGL_lose_context');
+    if (ext) {
+      ext.loseContext();
+    }
+  }
+
   let program = create_program(
     gl,
     shaders.vertex || DEFAULT_VERTEX_SHADER,
