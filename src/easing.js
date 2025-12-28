@@ -78,9 +78,9 @@ function normalize(str) {
   return str
     .trim()
     .toLowerCase()
+    .replace('easeinout', 'ease-in-out')
     .replace('easein', 'ease-in')
     .replace('easeout', 'ease-out')
-    .replace('easeinout', 'ease-in-out')
     .replace(/-([a-z])/g, (_, c) => c.toUpperCase())
 }
 
