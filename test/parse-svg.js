@@ -285,6 +285,84 @@ test('id expand', () => {
   });
 });
 
+test('class expand', () => {
+  compare('g.container circle { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [
+        {
+          type: 'block',
+          name: 'circle',
+          value: []
+        },
+        {
+          type: 'statement',
+          name: 'class',
+          value: 'container'
+        },
+      ]
+    }]
+  });
+
+  compare('g circle.highlight { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'block',
+        name: 'circle',
+        value: [{
+          type: 'statement',
+          name: 'class',
+          value: 'highlight'
+        }]
+      }]
+    }]
+  });
+
+  // Multiple classes
+  compare('g.foo.bar { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [{
+        type: 'statement',
+        name: 'class',
+        value: 'foo bar'
+      }]
+    }]
+  });
+
+  // Combined id and class
+  compare('g#myid.myclass { } ', {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'g',
+      value: [
+        {
+          type: 'statement',
+          name: 'id',
+          value: 'myid'
+        },
+        {
+          type: 'statement',
+          name: 'class',
+          value: 'myclass'
+        },
+      ]
+    }]
+  });
+});
+
 test('empty id expand', () => {
   compare('#abc {}', {
     type: 'block',

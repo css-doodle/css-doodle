@@ -230,16 +230,32 @@ function joinToken(tokens) {
 
 function resolveId(block, skip) {
   let name = block.name || '';
-  let [tokenName, ...ids] = name.split(/#/);
-  let id = ids[ids.length - 1];
-  if (tokenName && id && !skip) {
-    block.name = tokenName;
+  if (skip) {
+    return block;
+  }
+  let baseName = name.split(/[#.]/)[0];
+  if (!baseName) {
+    return block;
+  }
+  let idMatch = name.match(/#([^.#]+)/);
+  if (idMatch) {
     block.value.push({
       type: 'statement',
       name: 'id',
-      value: id,
+      value: idMatch[1],
     });
   }
+  let classMatches = name.match(/\.([^.#]+)/g);
+  if (classMatches) {
+    let classes = classMatches.map(c => c.slice(1)).join(' ');
+    block.value.push({
+      type: 'statement',
+      name: 'class',
+      value: classes,
+    });
+  }
+
+  block.name = baseName;
   return block;
 }
 
