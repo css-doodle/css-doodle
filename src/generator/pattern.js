@@ -3,9 +3,9 @@ import parse_grid from '../parser/parse-grid.js';
 import transform from './glsl-math-transformer.js';
 
 const CIRCLE_MASK = `
-vec2 cellUV = fract(uv * v) - 0.5;
-float dist = length(cellUV);
-shapeMask = 1.0 - smoothstep(0.5 - fwidth(dist), 0.5, dist);
+  vec2 cellUV = fract(uv * v) - 0.5;
+  float dist = length(cellUV);
+  shapeMask = 1.0 - smoothstep(0.5 - fwidth(dist), 0.5, dist);
 `;
 
 const float = n => String(n).includes('.') ? n : n + '.0';
@@ -33,20 +33,39 @@ const STATEMENT_HANDLERS = {
   },
 };
 
-function generate_statement(token, extra, insideBlock = false) {
+function generate_statement(token, extra, insideBlock = false, vars = {}) {
+  if (token.name.startsWith('--')) {
+    let varName = token.name.slice(2).trim();
+    return { type: 'variable', name: varName, value: token.value.trim() };
+  }
   let handler = STATEMENT_HANDLERS[token.name];
   return handler
     ? handler(token, extra, insideBlock)
     : { type: 'statement', value: '' };
 }
 
-function generate_block(token, extra) {
+function substitute_variables(expr, vars, depth = 0, excludeName = null) {
+  if (depth > 10) return expr;
+  let names = Object.keys(vars).sort((a, b) => b.length - a.length);
+  for (let name of names) {
+    if (name === excludeName) continue;
+    let regex = new RegExp(`\\b${name}\\b`, 'g');
+    if (regex.test(expr)) {
+      let resolved = substitute_variables(vars[name], vars, depth + 1, name);
+      expr = expr.replace(regex, `(${resolved})`);
+    }
+  }
+  return expr;
+}
+
+function generate_block(token, extra, vars = {}) {
   if (token.name !== 'match') {
     return '';
   }
-  let cond = transform(token.args[0], { expect: 'bool' });
+  let expr = substitute_variables(token.args[0], vars);
+  let cond = transform(expr, { expect: 'bool' });
   let body = token.value
-    .map(t => generate_statement(t, extra, true))
+    .map(t => generate_statement(t, extra, true, vars))
     .filter(s => s.type === 'statement')
     .map(s => s.value)
     .join('');
@@ -88,6 +107,7 @@ export default function draw_pattern(code, extra) {
   let result = [];
   let grid = { x: 1, y: 1 };
   let shape = null;
+  let vars = {};
 
   for (let token of tokens) {
     if (token.type === 'statement') {
@@ -96,9 +116,10 @@ export default function draw_pattern(code, extra) {
         case 'statement': result.push(stmt.value); break;
         case 'grid': grid = parse_grid(stmt.value, Infinity); break;
         case 'shape': shape = stmt.value; break;
+        case 'variable': vars[stmt.name] = stmt.value; break;
       }
     } else if (token.type === 'block') {
-      result.push(generate_block(token, extra));
+      result.push(generate_block(token, extra, vars));
     }
   }
 
