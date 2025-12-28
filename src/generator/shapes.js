@@ -248,21 +248,17 @@ function rotate(x, y, deg) {
 }
 
 function translate(x, y, offset) {
-  let [dx, dy = dx] = parse_value_group(offset).map(Number);
-  return [
-    x + (dx || 0),
-    y - (dy || 0),
-    dx,
-    dy
-  ];
+  let parsed = parse_value_group(offset);
+  let dx = parseFloat(parsed[0]) || 0;
+  let dy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 0 : dx;
+  return [x + dx, y - dy, dx, dy];
 }
 
 function scale(x, y, factor) {
-  let [fx, fy = fx] = parse_value_group(factor).map(Number);
-  return [
-    x * fx,
-    y * fy
-  ];
+  let parsed = parse_value_group(factor);
+  let fx = parseFloat(parsed[0]) || 1;
+  let fy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 1 : fx;
+  return [x * fx, y * fy];
 }
 
 function create_shape_points(props, {min, max}) {
@@ -290,23 +286,30 @@ function create_shape_points(props, {min, max}) {
 
   props.split = split;
 
+  let rotateAngle = props.rotate ? Number(props.rotate) || 0 : 0;
+  let currentIndex = 0;
+  let context = Object.assign({}, props, {
+    't': 0,
+    'θ': 0,
+    'i': 0,
+    seq(...list) {
+      if (!list.length) return '';
+      return list[currentIndex % list.length];
+    },
+    range(a, b = 0) {
+      a = Number(a) || 0;
+      b = Number(b) || 0;
+      if (a > b) [a, b] = [b, a];
+      let step = abs(b - a) / (split - 1);
+      return a + step * currentIndex;
+    }
+  });
+
   return create_polygon_points(props, (t, i) => {
-    let context = Object.assign({}, props, {
-      't': pt || t,
-      'θ': pt || t,
-      'i': (i + 1),
-      seq(...list) {
-        if (!list.length) return '';
-        return list[i % list.length];
-      },
-      range(a, b = 0) {
-        a = Number(a) || 0;
-        b = Number(b) || 0;
-        if (a > b) [a, b] = [b, a];
-        let step = abs(b - a) / (split - 1);
-        return a + step * i;
-      }
-    });
+    currentIndex = i;
+    context['t'] = context['θ'] = pt || t;
+    context['i'] = i + 1;
+
     let x = calc(px, context);
     let y = calc(py, context);
     let dx = 0;
@@ -322,8 +325,8 @@ function create_shape_points(props, {min, max}) {
       x = r * cos(t);
       y = r * sin(t);
     }
-    if (props.rotate) {
-      [x, y] = rotate(x, y, Number(props.rotate) || 0);
+    if (rotateAngle) {
+      [x, y] = rotate(x, y, rotateAngle);
     }
     if (props.move) {
       [x, y, dx, dy] = translate(x, y, props.move);
@@ -333,9 +336,9 @@ function create_shape_points(props, {min, max}) {
 }
 
 export default function generate_shape(input, range = {}, modifier) {
-  let key = input + JSON.stringify(range) + (modifier ? modifier.toString() : '');
   let min = range.min || 3;
   let max = range.max || 3600;
+  let key = input + '|' + min + '|' + max + (modifier ? '|m' : '');
   if (cache.has(key)) {
     return cache.get(key);
   }
