@@ -39,6 +39,13 @@ test('boolean logic', () => {
   compare('(x > y) & 1', '(int((x > y)) & 1)');
 });
 
+test('single = treated as ==', () => {
+  compare('x = y', '(x == y)');
+  compare('x % 2 = 0', '(mod(x, 2.0) == 0.0)');
+  compare('x % y = 0', '(mod(x, y) == 0.0)');
+  compare('(x + 1) % 3 = 0', '(mod((x + 1.0), 3.0) == 0.0)');
+});
+
 test('operator precedence', () => {
   compare('x + y * z', '(x + (y * z))');
   compare('(x + y) * z', '((x + y) * z)');
