@@ -46,6 +46,13 @@ test('single = treated as ==', () => {
   compare('(x + 1) % 3 = 0', '(mod((x + 1.0), 3.0) == 0.0)');
 });
 
+test('unicode comparison operators', () => {
+  compare('x ≤ 5', '(x <= 5.0)');
+  compare('x ≥ 5', '(x >= 5.0)');
+  compare('x ≠ 0', '(x != 0.0)');
+  compare('x ≥ 1 && x ≤ 10', '(bool((x >= 1.0)) && bool((x <= 10.0)))');
+});
+
 test('operator precedence', () => {
   compare('x + y * z', '(x + (y * z))');
   compare('(x + y) * z', '((x + y) * z)');

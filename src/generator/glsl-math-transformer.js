@@ -1,11 +1,26 @@
 import { scan } from '../parser/tokenizer.js';
 
 const PREC = {
-  '(': 20, ')': 20, '.': 19, '[': 19, '!': 16, '~': 16, 'u-': 16,
-  '*': 14, '/': 14, '%': 14, '+': 13, '-': 13,
-  '<<': 12, '>>': 12, '<': 11, '<=': 11, '>': 11, '>=': 11,
-  '==': 10, '!=': 10, '&': 9, '^': 8, '|': 7,
-  '&&': 6, '||': 5, '?': 3, ',': 1
+  '(': 20, ')': 20,
+  '.': 19, '[': 19,
+  '!': 16, '~': 16,
+  '*': 14, '/': 14, '%': 14,
+  '+': 13, '-': 13,
+  '<<': 12, '>>': 12,
+  '<': 11, '<=': 11, '>': 11, '>=': 11, '≤': 11, '≥': 11,
+  '==': 10, '!=': 10, '=': 10, '≠': 10,
+  '&': 9,
+  '^': 8,
+  '|': 7,
+  '&&': 6,
+  '||': 5
+};
+
+const OP_ALIAS = {
+  '=': '==',
+  '≤': '<=',
+  '≥': '>=',
+  '≠': '!='
 };
 
 const RE_BITWISE = /^[&^|]$/;
@@ -39,9 +54,6 @@ const preprocessTokens = (rawTokens) => {
         tokens.push(t);
         continue;
       }
-    }
-    if (t.value === '=') {
-      t.value = '==';
     }
     tokens.push(t);
   }
@@ -142,6 +154,8 @@ export default function transform(code, { expect = null } = {}) {
         break;
       case '==':
       case '!=':
+      case '=':
+      case '≠':
         res = 'bool';
         argExp = 'float';
         break;
@@ -149,6 +163,8 @@ export default function transform(code, { expect = null } = {}) {
       case '>':
       case '<=':
       case '>=':
+      case '≤':
+      case '≥':
         res = 'bool';
         argExp = 'float';
         break;
@@ -156,7 +172,8 @@ export default function transform(code, { expect = null } = {}) {
 
     const l = gen(n.left, argExp);
     const r = gen(n.right, argExp);
-    const out = (op === '%') ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`;
+    const glslOp = OP_ALIAS[op] || op;
+    const out = (op === '%') ? `mod(${l}, ${r})` : `(${l} ${glslOp} ${r})`;
 
     if (res === 'bool' && exp) return `${exp}(${out})`;
     if (res !== exp && exp) {
