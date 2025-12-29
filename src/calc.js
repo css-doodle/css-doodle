@@ -6,9 +6,12 @@ import { cache } from './cache.js';
 
 const defaultContext = {
   'π': Math.PI,
-  gcd: (a, b) => {
+  gcd(a, b) {
     while (b) [a, b] = [b, a % b];
     return a;
+  },
+  match(c, a, b) {
+    return c ? a : b
   }
 };
 
@@ -60,7 +63,7 @@ function transformTokens(rawTokens) {
       const nextIsOp = next && (isOperator(next.value) || RE_OPERATOR_CHARS.test(next.value) || next.value === '!');
       const nextIsStructural = next && next.type === 'Symbol' && /[,]/.test(next.value);
       const isScientific = /e[+-]?\d+$/i.test(value);
-      
+
       // "2(3+4)" → "2*(3+4)"
       if (next && next.value === '(') {
         tokens.push({ type: 'number', value });
@@ -68,7 +71,7 @@ function transformTokens(rawTokens) {
         i++;
         continue;
       }
-      
+
       // Scientific notation: insert * instead of combining
       if (isScientific && next && next.type === 'Word') {
         tokens.push({ type: 'number', value });
@@ -76,7 +79,7 @@ function transformTokens(rawTokens) {
         i++;
         continue;
       }
-      
+
       if (next && (next.type === 'Word' || next.type === 'Symbol') && !nextIsOp && !nextIsStructural) {
         tokens.push({ type: 'number', value: value + next.value });
         i += 2;
@@ -103,7 +106,7 @@ function transformTokens(rawTokens) {
         i++;
         continue;
       }
-      
+
       // "k-1" → subtraction, not multiplication
       const next = rawTokens[i + 1];
       if (next && next.type === 'Number' && RE_STARTS_WITH_MINUS.test(next.value)) {
@@ -113,21 +116,21 @@ function transformTokens(rawTokens) {
         i += 2;
         continue;
       }
-      
+
       // "x1", "y2" → variable names, not implicit multiplication
       if (next && next.type === 'Number' && !RE_STARTS_WITH_MINUS.test(next.value)) {
         tokens.push({ type: 'number', value: value + next.value });
         i += 2;
         continue;
       }
-      
+
       // Function call: don't add multiplication before "("
       if (next && next.value === '(') {
         tokens.push({ type: 'number', value });
         i++;
         continue;
       }
-      
+
       const nextIsStructural = next && next.type === 'Symbol' && /[(),]/.test(next.value);
       const nextIsOp = next && (isOperator(next.value) || RE_OPERATOR_CHARS.test(next.value) || next.value === '!');
       if (next && next.type === 'Symbol' && !nextIsStructural && !nextIsOp) {
