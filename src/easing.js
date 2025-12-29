@@ -1,3 +1,5 @@
+import calc from './calc.js';
+
 const EPSILON = 1e-6;
 const MAX_NEWTON = 8;
 const MAX_BISECT = 20;
@@ -31,6 +33,10 @@ function cubicBezier(p1x, p1y, p2x, p2y) {
   return x => x <= 0 ? 0 : x >= 1 ? 1 : bezier(ay, by, cy, solve(x));
 }
 
+function createCustomEasing(formula) {
+  return t => calc(formula, { t });
+}
+
 export const linear = t => t;
 export const ease = cubicBezier(0.25, 0.1, 0.25, 1);
 export const easeIn = cubicBezier(0.42, 0, 1, 1);
@@ -41,9 +47,28 @@ const easingFunctions = { ease, easeIn, easeOut, easeInOut, linear };
 
 function normalize(str) {
   return str.trim().toLowerCase().replace(/[-\s]/g, '')
-    .replace(/(in|out)/g, s => s[0].toUpperCase() + s.slice(1));
+    .replace(/(?<=ease|in|out)(in|out)/gi, s => s[0].toUpperCase() + s.slice(1));
+}
+
+function parseCubicBezier(str) {
+  if (!/^cubic-bezier\s*\(/i.test(str)) {
+    return null;
+  }
+  const values = str.match(/-?[\d.]+/g)?.map(Number);
+  if (values?.length === 4 && values.every(n => !isNaN(n))) {
+    return values;
+  }
+  return null;
 }
 
 export function getEasingFunction(easing) {
-  return easingFunctions[normalize(easing)] || linear;
+  if (typeof easing === 'function') return easing;
+  const str = String(easing).trim();
+  const preset = easingFunctions[normalize(str)];
+  if (preset) return preset;
+  const bezierValues = parseCubicBezier(str);
+  if (bezierValues) {
+    return cubicBezier(...bezierValues);
+  }
+  return createCustomEasing(str);
 }
