@@ -34,14 +34,15 @@ const STATEMENT_HANDLERS = {
 };
 
 function generate_statement(token, extra, insideBlock = false, vars = {}) {
-  if (token.name.startsWith('--')) {
-    let varName = token.name.slice(2).trim();
+  let handler = STATEMENT_HANDLERS[token.name];
+  if (handler) {
+    return handler(token, extra, insideBlock);
+  }
+  let varName = token.name.startsWith('--') ? token.name.slice(2).trim() : token.name.trim();
+  if (varName) {
     return { type: 'variable', name: varName, value: token.value.trim() };
   }
-  let handler = STATEMENT_HANDLERS[token.name];
-  return handler
-    ? handler(token, extra, insideBlock)
-    : { type: 'statement', value: '' };
+  return { type: 'statement', value: '' };
 }
 
 function substitute_variables(expr, vars, depth = 0, excludeName = null) {
