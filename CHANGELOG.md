@@ -1,3 +1,31 @@
+## 0.50.0
+
+### Features
+
+* Add functional-style ternary syntax `match` in calc function.
+* Support custom easing formulas and cubic-bezier().
+* Implement seeded noise with improved coordinate/value mapping.
+* Add SVG linearGradient and radialGradient functions.
+* Support variables inside pattern function.
+* Add emmet-like class selectors in SVG.
+* Add circle shape masks and refactored shader generation.
+* Add `β` as an alias for `ß` in value grouping.
+* JS → GLSL calc token transformer (no type annotations needed in pattern function).
+
+### Fixes
+
+* Fix UV → grid coordinate mapping in pattern function.
+* Clean up WebGL context on component clearing.
+* Handle <style> elements separately in SVG parsing.
+* Improve SVG parser robustness and selector parsing.
+* Fix subtraction tokenization edge cases (- handling).
+* Correct typo in rotat shape property.
+* Improve math operator handling in GLSL transformer.
+* Improve shape generation performance.
+* Simplify easing definitions and cubic-bezier logic.
+* Simplify seedrandom to a minimal core.
+
+
 ## 0.49.0
 
 ### Features
