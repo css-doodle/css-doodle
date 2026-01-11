@@ -23,15 +23,11 @@ const OP_ALIAS = {
   '≠': '!='
 };
 
-const RE_BITWISE = /^[&^|]$/;
-const RE_SHIFT = /^(<<|>>)$/;
-const RE_LOGICAL = /^(&&|\|\|)$/;
-const RE_EQUALITY = /^(==|!=)$/;
-const RE_COMPARISON = /^[<>]=?$/;
+const TWO_CHAR_OPS = new Set([
+  '<<', '>>', '==', '!=', '<=', '>=', '&&', '||'
+]);
 
-const TWO_CHAR_OPS = new Set(['<<', '>>', '==', '!=', '<=', '>=', '&&', '||']);
-
-const preprocessTokens = (rawTokens) => {
+function preprocessTokens(rawTokens) {
   const tokens = [];
   for (let i = 0; i < rawTokens.length; i++) {
     const t = rawTokens[i];
@@ -58,7 +54,7 @@ const preprocessTokens = (rawTokens) => {
     tokens.push(t);
   }
   return tokens;
-};
+}
 
 export default function transform(code, { expect = null } = {}) {
   const tokens = preprocessTokens(scan(code));
@@ -67,7 +63,7 @@ export default function transform(code, { expect = null } = {}) {
   const peek = () => tokens[pos];
   const consume = () => tokens[pos++];
 
-  const parse = (min = 0) => {
+  function parse(min = 0) {
     const t = consume();
     if (!t) return null;
 
@@ -98,9 +94,9 @@ export default function transform(code, { expect = null } = {}) {
       n = { type: 'Bin', val: op.value, left: n, right: parse(p + 1) };
     }
     return n;
-  };
+  }
 
-  const call = (val) => {
+  function call(val) {
     consume();
     let args = [];
 
@@ -113,9 +109,9 @@ export default function transform(code, { expect = null } = {}) {
     }
     consume();
     return { type: 'Call', val, args };
-  };
+  }
 
-  const gen = (n, exp) => {
+  function gen(n, exp) {
     if (!n) return '';
     if (n.type === 'Lit') {
       if (exp === 'bool') return `bool(${n.val.includes('.') ? n.val : n.val + '.0'})`;
@@ -182,7 +178,7 @@ export default function transform(code, { expect = null } = {}) {
       if (exp === 'float') return `float(${out})`;
     }
     return out;
-  };
+  }
 
   try { return gen(parse(), expect); }
   catch (e) { console.error(e); return code; }
