@@ -134,6 +134,31 @@ function calc_with_easing(t) {
   }
 }
 
+function createPlotFunction(withUnit) {
+  return ({ count, extra, grid }) => {
+    let lastExtra = last(extra);
+    return (...args) => {
+      let commands = args.join(',');
+      let [idx = count, _, __, max = grid.count] = lastExtra || [];
+      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max}, rules => {
+        delete rules['fill'];
+        delete rules['fill-rule'];
+        delete rules['frame'];
+        if (rules.split || rules.points) {
+          rules.hasPoints = true;
+        } else {
+          rules.points = max;
+        }
+        if (withUnit) {
+          rules.unit = rules.unit || 'none';
+        }
+        return rules;
+      });
+      return rules.hasPoints ? points : points[idx - 1];
+    };
+  };
+}
+
 const Expose = add_alias({
 
   i({ count }) {
@@ -688,46 +713,9 @@ const Expose = add_alias({
     return calc_with(`var(--${umousey.name})`);
   },
 
-  plot({ count, context, extra, position, grid }) {
-    let lastExtra = last(extra);
-    return (...args) => {
-      let commands = args.join(',');
-      let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max}, rules => {
-        delete rules['fill'];
-        delete rules['fill-rule'];
-        delete rules['frame'];
-        if (rules.split || rules.points) {
-          rules.hasPoints = true;
-        } else {
-          rules.points = max;
-        }
-        return rules;
-      });
-      return rules.hasPoints ? points : points[idx - 1];
-    };
-  },
+  plot: createPlotFunction(false),
 
-  Plot({ count, context, extra, position, grid }) {
-    let lastExtra = last(extra);
-    return (...args) => {
-      let commands = args.join(',');
-      let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max}, rules => {
-        delete rules['fill'];
-        delete rules['fill-rule'];
-        delete rules['frame'];
-        if (rules.split || rules.points) {
-          rules.hasPoints = true;
-        } else {
-          rules.points = max;
-        }
-        rules.unit = rules.unit || 'none';
-        return rules;
-      });
-      return rules.hasPoints ? points : points[idx - 1];
-    };
-  },
+  Plot: createPlotFunction(true),
 
   shape() {
     return memo('shape-function', (...args) => {
