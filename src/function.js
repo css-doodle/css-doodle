@@ -134,7 +134,7 @@ function calc_with_easing(t) {
   }
 }
 
-function createPlotFunction(withUnit) {
+function create_plot(unit) {
   return ({ count, extra, grid }) => {
     let lastExtra = last(extra);
     return (...args) => {
@@ -149,13 +149,54 @@ function createPlotFunction(withUnit) {
         } else {
           rules.points = max;
         }
-        if (withUnit) {
+        if (unit) {
           rules.unit = rules.unit || 'none';
         }
         return rules;
       });
       return rules.hasPoints ? points : points[idx - 1];
     };
+  };
+}
+
+function create_mirror(even) {
+  let offset = even ? 1 : 2;
+  return () => (...args) => {
+    for (let i = args.length - offset; i >= 0; --i) {
+      args.push(args[i]);
+    }
+    return args;
+  };
+}
+
+function create_pick(name, fn, random = false) {
+  return ({ context, extra, upextra, position, shuffle }, upstream) => {
+    let lastExtra = upstream
+      ? last(upextra.length ? upextra : extra)
+      : last(extra);
+    let sig = lastExtra ? last(lastExtra) : '';
+    let prefix = upstream ? name.toUpperCase() : name;
+    let suffix = position + sig;
+    let counter = `${prefix}-counter${suffix}`;
+    let valuesKey = `${prefix}-values${suffix}`;
+
+    return expand((...args) => {
+      if (!context[counter]) context[counter] = 0;
+      context[counter] += 1;
+      let source = args;
+      if (random) {
+        if (!context[valuesKey]) {
+          context[valuesKey] = shuffle(args || []);
+        }
+        source = context[valuesKey];
+      }
+      let max = args.length;
+      let idx = lastExtra && lastExtra[6];
+      idx ??= context[counter];
+      let pos = (idx - 1) % max;
+      let value = fn(source, pos, max);
+      return push_stack(context, 'last_pick', value);
+    });
   };
 }
 
@@ -354,71 +395,19 @@ const Expose = add_alias({
     });
   },
 
-  pl({ context, extra, upextra, position }, upstream) {
-    let lastExtra = upstream
-      ? last(upextra.length ? upextra : extra)
-      : last(extra);
-    let sig = lastExtra ? last(lastExtra) : '';
-    let counter = (upstream ? 'PL-counter' : 'pl-counter') + position + sig;
-    return expand((...args) => {
-      if (!context[counter]) context[counter] = 0;
-      context[counter] += 1;
-      let max = args.length;
-      let idx = lastExtra && lastExtra[6];
-      idx ??= context[counter];
-      let pos = (idx - 1) % max;
-      let value = args[pos];
-      return push_stack(context, 'last_pick', value);
-    });
-  },
+  pl: create_pick('pl', (args, pos) => args[pos]),
 
   PL(arg) {
     return Expose.pl(arg, true);
   },
 
-  pr({ context, extra, upextra, position }, upstream) {
-    let lastExtra = upstream
-      ? last(upextra.length ? upextra : extra)
-      : last(extra);
-    let sig = lastExtra ? last(lastExtra) : '';
-    let counter = (upstream ? 'PR-counter' : 'pr-counter') + position + sig;
-    return expand((...args) => {
-      if (!context[counter]) context[counter] = 0;
-      context[counter] += 1;
-      let max = args.length;
-      let idx = lastExtra && lastExtra[6];
-      idx ??= context[counter];
-      let pos = (idx - 1) % max;
-      let value = args[max - pos - 1];
-      return push_stack(context, 'last_pick', value);
-    });
-  },
+  pr: create_pick('pr', (args, pos, max) => args[max - pos - 1]),
 
   PR(arg) {
     return Expose.pr(arg, true);
   },
 
-  pd({ context, extra, upextra, position, shuffle }, upstream) {
-    let lastExtra = upstream
-      ? last(upextra.length ? upextra : extra)
-      : last(extra);
-    let sig = lastExtra ? last(lastExtra) : '';
-    let counter = (upstream ? 'PD-counter' : 'pd-counter') + position  + sig;
-    let values = (upstream ? 'PD-values' : 'pd-values') + position + sig;
-    return expand((...args) => {
-      if (!context[counter]) context[counter] = 0;
-      context[counter] += 1;
-      if (!context[values]) {
-        context[values] = shuffle(args || []);
-      }
-      let max = args.length;
-      let idx = lastExtra && lastExtra[6];
-      idx ??= context[counter];
-      let pos = (idx - 1) % max;
-      let value = context[values][pos];
-      return push_stack(context, 'last_pick', value);
-    });
-  },
+  pd: create_pick('pd', (args, pos) => args[pos], true),
 
   PD(arg) {
     return Expose.pd(arg, true);
@@ -713,9 +702,9 @@ const Expose = add_alias({
     return calc_with(`var(--${umousey.name})`);
   },
 
-  plot: createPlotFunction(false),
+  plot: create_plot(false),
 
-  Plot: createPlotFunction(true),
+  Plot: create_plot(true),
 
   shape() {
     return memo('shape-function', (...args) => {
@@ -830,23 +819,9 @@ const Expose = add_alias({
     }
   },
 
-  mirror() {
-    return (...args) => {
-      for (let i = args.length - 1; i >= 0; --i) {
-        args.push(args[i]);
-      }
-      return args;
-    }
-  },
+  mirror: create_mirror(true),
 
-  Mirror() {
-    return (...args) => {
-      for (let i = args.length - 2; i >= 0; --i) {
-        args.push(args[i]);
-      }
-      return args;
-    }
-  },
+  Mirror: create_mirror(false),
 
   code() {
     return (...args) => {
@@ -882,7 +857,7 @@ const Expose = add_alias({
           return `<img src="${raw}" alt="" />`;
         }
       } catch (e) {
-        /* ignore */
+        // ignore
       }
       return raw;
     }
@@ -902,18 +877,18 @@ const Expose = add_alias({
   'depth': 'z',
   'rand': 'r',
   'pick': 'p',
-  'pn':   'pl',
-  'pnr':  'pr',
-  'PN':   'PL',
-  'PNR':  'PR',
-  'R':    'rn',
-  'T':    'UT',
-  't':    'ut',
+  'pn': 'pl',
+  'pnr': 'pr',
+  'PN': 'PL',
+  'PNR': 'PR',
+  'R': 'rn',
+  'T': 'UT',
+  't': 'ut',
 
   // error prone
   'stripes': 'stripe',
-  'strip':   'stripe',
-  'patern':  'pattern',
+  'strip': 'stripe',
+  'patern': 'pattern',
   'flipv': 'flipV',
   'fliph': 'flipH',
 
@@ -926,7 +901,7 @@ const Expose = add_alias({
   'rep': 'µ',
   'repeat': 'µ',
   'ms': 'M',
-  's':  'I',
+  's': 'I',
   'size': 'I',
   'sx': 'X',
   'size-x': 'X',
