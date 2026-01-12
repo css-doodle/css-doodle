@@ -379,7 +379,7 @@ const Expose = add_alias({
       : last(extra);
     let sig = lastExtra ? last(lastExtra) : '';
     let counter = (upstream ? 'PD-counter' : 'pd-counter') + position  + sig;
-    let values = (upstream ? 'PD-valeus' : 'pd-values') + position + sig;
+    let values = (upstream ? 'PD-values' : 'pd-values') + position + sig;
     return expand((...args) => {
       if (!context[counter]) context[counter] = 0;
       context[counter] += 1;
@@ -454,7 +454,7 @@ const Expose = add_alias({
       let _x = (isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x)) + offsetX;
       let _y = (isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y)) + offsetY;
 
-      // 1-dimentional - use offset to avoid x=0 degenerate case
+      // 1-dimensional - use offset to avoid x=0 degenerate case
       if (NX <= 1 || grid.x <= 1) _x = offsetX + 0.5;
       if (NY <= 1 || grid.y <= 1) _y = offsetY + 0.5;
 
