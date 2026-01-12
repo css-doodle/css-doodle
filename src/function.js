@@ -807,13 +807,11 @@ const Expose = add_alias({
         list = parse_value_group(args.map(get_value).join(separator), { symbol: separator});
       }
       list = list.map(n => n.replace(/^\<|>$/g,''));
-      let size = list.length - 1;
-      let result = [list.join(separator)];
-      // Just ignore the performance
+      let size = list.length;
+      let result = [];
       for (let i = 0; i < size; ++i) {
-        let item = list.shift();
-        list.push(item);
-        result.push(list.join(separator));
+        let rotated = list.slice(i).concat(list.slice(0, i));
+        result.push(rotated.join(separator));
       }
       return result;
     }
