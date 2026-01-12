@@ -3,7 +3,13 @@ import { scan, iterator } from './tokenizer.js';
 const commands = 'MmLlHhVvCcSsQqTtAaZz';
 const relatives = 'mlhvcsqtaz';
 
+const cache = new Map();
+
 function parse(input) {
+  if (cache.has(input)) {
+    return cache.get(input);
+  }
+
   let iter = iterator(scan(input));
   let temp = {};
   let result = {
@@ -43,6 +49,8 @@ function parse(input) {
   if (temp.name) {
     result.commands.push(temp);
   }
+
+  cache.set(input, result);
   return result;
 }
 
