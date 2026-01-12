@@ -130,7 +130,7 @@ export function lerp(t, a, b) {
 }
 
 export function unique_id(prefix = '') {
-  return prefix + Math.random().toString(32).substr(2);
+  return prefix + Math.random().toString(32).slice(2);
 }
 
 export function make_array(arr) {

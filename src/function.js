@@ -88,7 +88,7 @@ function calc_value(base, v) {
   }
   if (RE_OP_PREFIX.test(v)) {
     let op = v[0];
-    let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
+    let { unit = '', value } = parse_compound_value(v.slice(1).trim() || 0);
     if (RE_VAR.test(base)) {
       return op === '%'
         ? compute_var(`mod(${base}, ${value})`, unit)
@@ -97,8 +97,8 @@ function calc_value(base, v) {
     return [compute(op, Number(base), Number(value)), unit];
   }
   else if (RE_OP_SUFFIX.test(v)) {
-    let op = v.substr(-1);
-    let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
+    let op = v.slice(-1);
+    let { unit = '', value } = parse_compound_value(v.slice(0, -1).trim() || 0);
     if (RE_VAR.test(base)) {
       return op === '%'
         ? compute_var(`mod(${value}, ${base})`, unit)

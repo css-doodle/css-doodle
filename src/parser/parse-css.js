@@ -372,7 +372,7 @@ function read_arguments(it, composition, doodle, variables = {}) {
             group.push(Tokens.text(arg));
           }
           if (arg.trim().startsWith('±') && !doodle) {
-            let raw = arg.trim().substr(1);
+            let raw = arg.trim().slice(1);
             let cloned = structuredClone(group);
             last(cloned).value = '-' + raw;
             args.push(normalize_argument(cloned));
@@ -447,7 +447,7 @@ function normalize_argument(group) {
 
 function seperate_func_name(name) {
   let fname = '', extra = '';
-  if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.substr(1)]) {
+  if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
     return { fname: name, extra }
   }
   for (let i = name.length - 1; i >= 0; i--) {
@@ -519,7 +519,7 @@ function read_func(it, variables = {}) {
     it.next();
   }
   let { fname, extra } = seperate_func_name(name);
-  func.name = is_calc ? '@$' + name.substr(1) : fname;
+  func.name = is_calc ? '@$' + name.slice(1) : fname;
   if (extra.length) {
     func.arguments.unshift([{
       type: 'text',

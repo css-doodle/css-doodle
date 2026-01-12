@@ -129,7 +129,7 @@ class Rules {
         let context = {};
         let unit = '';
         for (let [name, key] of Object.entries(group)) {
-          context[name.substr(2)] = key;
+          context[name.slice(2)] = key;
         }
         if (fname.length > 1) {
           unit = fname.split('$')[1] ?? '';
@@ -189,7 +189,7 @@ class Rules {
         return arg.value;
       }
       else if (arg.type === 'func') {
-        let fname = arg.name.substr(1);
+        let fname = arg.name.slice(1);
         let fn = this.pick_func(fname);
         if (typeof fn === 'function') {
           this.check_uniforms(fname);
@@ -339,7 +339,7 @@ class Rules {
           break;
         }
         case 'func': {
-          let fname = val.name.substr(1);
+          let fname = val.name.slice(1);
           let fn = this.pick_func(fname);
           if (typeof fn === 'function') {
             this.check_uniforms(fname);
@@ -577,8 +577,8 @@ class Rules {
       this.compose_vars(_coords, selector, prop, value);
     }
 
-    if (/^@/.test(prop) && Property[prop.substr(1)]) {
-      let name = prop.substr(1);
+    if (/^@/.test(prop) && Property[prop.slice(1)]) {
+      let name = prop.slice(1);
       let transformed = Property[name](value, {
         is_special_selector: is_special_selector(selector),
         grid: coords.grid,
@@ -701,7 +701,7 @@ class Rules {
     switch (prop) {
       case '@grid': {
         let value = this.get_composed_value(token.value, coords, context, selector).value;
-        let name = prop.substr(1);
+        let name = prop.slice(1);
         let transformed = Property[name](value, {
           max_grid: _coords.max_grid
         });
@@ -847,7 +847,7 @@ class Rules {
         }
 
         case 'cond': {
-          let name = token.name.substr(1);
+          let name = token.name.slice(1);
           let fn = Selector[name];
           let args = [];
           if (fn) {
