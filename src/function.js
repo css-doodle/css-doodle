@@ -21,6 +21,12 @@ import get_named_arguments from './utils/get-named-arguments.js';
 import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
 import { getEasingFunction } from './easing.js';
 
+const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
+const RE_OP_SUFFIX = /[\+\*\-\/%]$/;
+const RE_VAR = /var\(/;
+const RE_CALC = /^calc\(/;
+const RE_LETTER = /^[a-zA-Z]/;
+
 function make_sequence(c) {
   return lazy((_, n, ...actions) => {
     if (!actions || !n) return '';
@@ -80,20 +86,20 @@ function calc_value(base, v) {
   if (is_empty(v) || is_empty(base)) {
     return [];
   }
-  if (/^[\+\*\-\/%][\-\.\d\s]/.test(v)) {
+  if (RE_OP_PREFIX.test(v)) {
     let op = v[0];
     let { unit = '', value } = parse_compound_value(v.substr(1).trim() || 0);
-    if (/var\(/.test(base)) {
+    if (RE_VAR.test(base)) {
       return op === '%'
         ? compute_var(`mod(${base}, ${value})`, unit)
         : compute_var(`${base} ${op} ${value}`, unit);
     }
     return [compute(op, Number(base), Number(value)), unit];
   }
-  else if (/[\+\*\-\/%]$/.test(v)) {
+  else if (RE_OP_SUFFIX.test(v)) {
     let op = v.substr(-1);
     let { unit = '', value } = parse_compound_value(v.substr(0, v.length - 1).trim() || 0);
-    if (/var\(/.test(base)) {
+    if (RE_VAR.test(base)) {
       return op === '%'
         ? compute_var(`mod(${value}, ${base})`, unit)
         : compute_var(`${value} ${op} ${base}`, unit);
@@ -116,7 +122,7 @@ function calc_with(base) {
       }
     }
 
-    if (/^calc\(/.test(base)) {
+    if (RE_CALC.test(base)) {
       return `calc(${base} * 1${unit})`;
     }
     return base + unit;
@@ -125,7 +131,7 @@ function calc_with(base) {
 
 function calc_with_easing(t) {
   return (head = '', ...args) => {
-    if (/^[a-zA-Z]/.test(head)) {
+    if (RE_LETTER.test(head)) {
       let easing = getEasingFunction(head);
       return calc_with(easing(t))(...args);
     }
