@@ -1,78 +1,69 @@
-import { last } from './index.js';
-import { by_charcode } from './transform.js';
 import { memo } from '../cache.js';
 
-function Type(type, value) {
-  return { type, value };
-}
-
-function range(start, stop, step) {
-  let count = 0, old = start;
-  let initial = n => (n > 0 && n < 1) ? .1 : 1;
-  let length = arguments.length;
-  if (length == 1) [start, stop] = [initial(start), start];
-  if (length < 3) step = initial(start);
-  let range = [];
-  while ((step >= 0 && start <= stop)
-    || (step < 0 && start > stop)) {
-    range.push(start);
-    start += step;
-    if (count++ >= 65535) break;
+function* range(start, end) {
+  let from = start.charCodeAt(0);
+  let to = end.charCodeAt(0);
+  let step = from <= to ? 1 : -1;
+  let length = Math.abs(to - from) + 1;
+  for (let i = 0; i < length; i++) {
+    yield String.fromCharCode(from + i * step);
   }
-  if (!range.length) range.push(old);
-  return range;
 }
 
 function get_tokens(input) {
   let expr = String(input);
-  let tokens = [], stack = [];
-  if (!expr.startsWith('[') || !expr.endsWith(']')) {
-    return tokens;
+  if (expr.charCodeAt(0) !== 91 || expr.charCodeAt(expr.length - 1) !== 93) {
+    return [];
   }
 
-  for (let i = 1; i < expr.length - 1; ++i) {
+  let tokens = [];
+  let prev = '';
+  let hasDash = false;
+
+  for (let i = 1, len = expr.length - 1; i < len; ++i) {
     let c = expr[i];
-    if (c == '-' && expr[i - 1] == '-') {
+    if (c === '-') {
+      if (hasDash) continue;
+      hasDash = true;
       continue;
     }
-    if (c == '-') {
-      stack.push(c);
+    if (hasDash) {
+      hasDash = false;
+      if (prev) {
+        tokens.push([prev, c]);
+        prev = '';
+      } else {
+        tokens.push(c);
+      }
       continue;
     }
-    if (last(stack) == '-') {
-      stack.pop();
-      let from = stack.pop();
-      tokens.push(from
-        ? Type('range', [ from, c ])
-        : Type('char', c)
-      );
-      continue;
+    if (prev) {
+      tokens.push(prev);
     }
-    if (stack.length) {
-      tokens.push(Type('char', stack.pop()));
-    }
-    stack.push(c);
+    prev = c;
   }
-  if (stack.length) {
-    tokens.push(Type('char', stack.pop()));
+  if (prev) {
+    tokens.push(prev);
+  }
+  if (hasDash) {
+    tokens.push('-');
   }
   return tokens;
 }
 
-const build_range = memo('build_range', (input) => {
-  let tokens = get_tokens(input);
-  return tokens.flatMap(({ type, value }) => {
-    if (type == 'char') return value;
-    let [ from, to ] = value;
-    let reverse = false;
-    if (from > to) {
-      [from, to] = [ to, from ];
-      reverse = true;
+function* build_range_gen(tokens) {
+  for (let i = 0, len = tokens.length; i < len; i++) {
+    let token = tokens[i];
+    if (typeof token === 'string') {
+      yield token;
+    } else {
+      yield* range(token[0], token[1]);
     }
-    let result = by_charcode(range)(from, to);
-    if (reverse) result.reverse();
-    return result;
-  });
+  }
+}
+
+const build_range = memo('build_range', (input) => {
+  return [...build_range_gen(get_tokens(input))];
 });
 
 export default function expand(fn) {

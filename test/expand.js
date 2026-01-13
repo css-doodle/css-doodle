@@ -56,9 +56,8 @@ describe('expand', () => {
   });
 
   describe('edge cases', () => {
-    test('hyphen at end loses previous char', () => {
-      // Due to stack-based implementation, 'b' is lost when hyphen is at end
-      compare('[ab-]', ['a', '-']);
+    test('hyphen at end is treated as literal', () => {
+      compare('[ab-]', ['a', 'b', '-']);
     });
 
     test('double hyphen is skipped', () => {
@@ -76,6 +75,14 @@ describe('expand', () => {
 
     test('unicode characters', () => {
       compare('[αβγ]', ['α', 'β', 'γ']);
+    });
+
+    test('large unicode range', () => {
+      // Range from 'A' (65) to 'Ɓ' (385) = 321 chars
+      const result = identity('[A-Ɓ]');
+      assert.strictEqual(result.length, 321);
+      assert.strictEqual(result[0], 'A');
+      assert.strictEqual(result[result.length - 1], 'Ɓ');
     });
   });
 
