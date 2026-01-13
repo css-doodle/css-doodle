@@ -50,4 +50,21 @@ test('svg path', () => {
     ]
   });
 
+  compare('h-43 v5 h-10 v-5 h-10 v16 h-32 v10 h10 v-26 h -10', {
+    valid: true,
+    commands: [
+      {name: 'h', 'type': 'relative', value: [-43]},
+      {name: 'v', 'type': 'relative', value: [5]},
+      {name: 'h', 'type': 'relative', value: [-10]},
+      {name: 'v', 'type': 'relative', value: [-5]},
+      {name: 'h', 'type': 'relative', value: [-10]},
+      {name: 'v', 'type': 'relative', value: [16]},
+      {name: 'h', 'type': 'relative', value: [-32]},
+      {name: 'v', 'type': 'relative', value: [10]},
+      {name: 'h', 'type': 'relative', value: [10]},
+      {name: 'v', 'type': 'relative', value: [-26]},
+      {name: 'h', 'type': 'relative', value: [-10]}
+    ]
+  });
+
 });

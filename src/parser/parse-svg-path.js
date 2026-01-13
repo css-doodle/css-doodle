@@ -40,6 +40,12 @@ function parse(input) {
       let value = curr.value;
       if (curr.isNumber()) {
         value = Number(curr.value);
+      } else if (curr.isSymbol('-') || curr.isSymbol('+')) {
+        let { next } = iter.get();
+        if (next && next.isNumber()) {
+          iter.next();
+          value = Number(curr.value + next.value);
+        }
       }
       temp.value.push(value);
     } else if (!temp.name) {
