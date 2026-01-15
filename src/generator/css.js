@@ -218,7 +218,7 @@ class Rules {
               : this.compose_argument(n, coords, extra, arg, contextVariable, selector);
           });
           let output = this.apply_func(fn, coords, args, fname, contextVariable);
-          if (output.gf) {
+          if (output && output.gf) {
             this.add_rule(':gf:', output.value);
           }
           return get_value(output);
@@ -377,7 +377,7 @@ class Rules {
                 if (output.extra) {
                   extra = output.extra;
                 }
-                if (output.gf) {
+                if (output && output.gf) {
                   this.add_rule(':gf:', output.value);
                 }
               }
