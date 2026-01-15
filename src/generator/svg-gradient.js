@@ -15,6 +15,13 @@ export default function create_svg_gradient(type, args) {
     } else if (/^(rotate|translate|scale|skewX|skewY|matrix)\s*\(/.test(first)) {
       transform = `gradientTransform: ${first};`;
     }
+
+    if (values.length == 1 && first.indexOf(',') > -1) {
+       let groups = parse_value_group(first, { noSpace: true });
+       if (groups.length > 1) {
+         values = groups;
+       }
+    }
   }
 
   if (transform) {

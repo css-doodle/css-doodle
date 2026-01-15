@@ -77,6 +77,9 @@ export function cell_id(x, y, z) {
 export function get_value(input) {
   let v = input;
   while (v && !is_nil(v.value)) v = v.value;
+  if (typeof v == 'object' && 'value' in v) {
+    return v.value ?? '';
+  }
   return v ?? '';
 }
 
