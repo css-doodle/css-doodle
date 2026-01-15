@@ -1,3 +1,10 @@
+## 0.50.1
+
+* Fix svg path parser for handling negative numbers
+* Refactor to simplify and cleanup dead code.
+* Improve performance of regex parsing and  list rotation in `cycle`.
+
+
 ## 0.50.0
 
 ### Features
