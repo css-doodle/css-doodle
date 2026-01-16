@@ -1,3 +1,9 @@
+## 0.50.2
+
+* Fix value retrieval in get_value and enhance SVG gradient parsing.
+* Fix null check for output in CSS rule generation.
+
+
 ## 0.50.1
 
 * Fix svg path parser for handling negative numbers
