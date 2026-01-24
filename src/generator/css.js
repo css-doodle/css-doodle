@@ -567,10 +567,10 @@ class Rules {
 
     let is_image = (
       /^background(\-image)?$/.test(prop) &&
-      /\$\{(shader|pattern)/.test(value)
+      /\$\{(shader|pattern|doodle)/.test(value)
     );
     if (is_image) {
-      rule += 'background-size: 100% 100%;';
+      rule = 'background-size: 100% 100%;' + rule;
     }
 
     if (/^\-\-/.test(prop)) {
