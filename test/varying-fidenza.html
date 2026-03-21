@@ -7,38 +7,133 @@
     body {
       margin: 0;
       background: #eaeaea;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      height: 100vh;
+      overflow: hidden;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      overflow: hidden;
+      position: relative;
+    }
+
+    .card::after {
+      content: attr(data-title);
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-family: sans-serif;
+      font-size: 12px;
+      font-weight: bold;
+      color: #888;
+      background: rgba(255,255,255,0.8);
+      padding: 2px 5px;
+      border-radius: 3px;
     }
   </style>
   <script src="../css-doodle.min.js"></script>
 </head>
 <body>
 
-  <css-doodle click-to-update>
-    :doodle {
-      @grid: 1 / 80vmin;
-      background: #fdfdfd;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      cursor: pointer;
-    }
+  <!-- Line shape with varying width and colors -->
+  <div class="card" data-title="Line - Varying Widths & Colors">
+    <css-doodle>
+      :doodle {
+        @grid: 1 / 400px;
+        background: #fdfdfd;
+        background-image: @flow(
+          grid: 100,
+          lines: 600,
+          length: "80, 250",
+          step: 0.005,
+          scale: 3,
+          spacing: 1.2,
+          turn: 1.5,
+          color: "#e63946, #457b9d, #1d3557, #f4a261, #2a9d8f",
+          stroke-width: "0.1, 1.2",
+          seed: 42
+        );
+      }
+    </css-doodle>
+  </div>
 
-    background: @flow(
-      grid: 200,
-      lines: @r(400, 1200),
-      length: @r(80, 250),
-      step: 0.005,
-      scale: @r(1.5, 5),
-      spacing: @r(0.8, 2.0),
-      turn: @r(0.5, 2.5),
-      color: @p(#222, #111, #3a405a, #2f3e46),
-      stroke-width: @r(0.1, 0.4),
-      seed: @r(1, 99999)
-    );
-  </css-doodle>
+  <!-- Circle shape -->
+  <div class="card" data-title="Circle Shape">
+    <css-doodle>
+      :doodle {
+        @grid: 1 / 400px;
+        background: #fdfdfd;
+        background-image: @flow(
+          grid: 100,
+          lines: 400,
+          length: "100, 200",
+          step: 0.005,
+          scale: 4,
+          spacing: 1.8,
+          turn: 2,
+          color: "#ff9f1c, #2ec4b6, #e71d36, #011627",
+          stroke-width: "0.2, 0.8",
+          shape: circle,
+          seed: 99
+        );
+      }
+    </css-doodle>
+  </div>
+
+  <!-- Square shape -->
+  <div class="card" data-title="Square Shape">
+    <css-doodle>
+      :doodle {
+        @grid: 1 / 400px;
+        background: #fdfdfd;
+        background-image: @flow(
+          grid: 100,
+          lines: 300,
+          length: "50, 150",
+          step: 0.005,
+          scale: 2.5,
+          spacing: 2.5,
+          turn: 1,
+          color: "#5f0f40, #9a031e, #fb8b24, #e36414, #0f4c5c",
+          stroke-width: "0.5, 1.5",
+          shape: square,
+          seed: 123
+        );
+      }
+    </css-doodle>
+  </div>
+
+  <!-- Triangle shape -->
+  <div class="card" data-title="Triangle Shape">
+    <css-doodle>
+      :doodle {
+        @grid: 1 / 400px;
+        background: #fdfdfd;
+        background-image: @flow(
+          grid: 100,
+          lines: 400,
+          length: "50, 150",
+          step: 0.005,
+          scale: 3,
+          spacing: 2,
+          turn: 1.8,
+          color: "#118ab2, #06d6a0, #ffd166, #ef476f, #073b4c",
+          stroke-width: "0.3, 1.0",
+          shape: triangle,
+          seed: 777
+        );
+      }
+    </css-doodle>
+  </div>
 
 </body>
 </html>

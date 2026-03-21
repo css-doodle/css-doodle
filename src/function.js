@@ -556,31 +556,44 @@ const Expose = add_alias({
   flow: lazy((upstream, ...args) => {
     let values = args.map(input => get_value(input()));
     let parsed_args = get_named_arguments(values, [
-      'grid', 'step', 'length', 'scale', 'seed', 'lines', 'spacing', 'color', 'stroke-width', 'turn'
+      'grid', 'step', 'length', 'scale', 'seed', 'lines', 'spacing', 'color', 'stroke-width', 'turn', 'shape'
     ]);
-    let grid = parsed_args.grid ?? 100;
-    let step = parsed_args.step ?? 0.01;
-    let length = parsed_args.length ?? 100;
-    let scale = parsed_args.scale ?? 1;
-    let seed = parsed_args.seed ?? upstream.seed;
-    let lines = parsed_args.lines ?? 500;
-    let spacing = parsed_args.spacing ?? 1.5;
-    let color = parsed_args.color ?? 'currentColor';
-    let stroke_width = parsed_args['stroke-width'] ?? 1;
-    let turn = parsed_args.turn ?? 1;
 
-    grid = parseInt(grid) || 100;
-    lines = parseInt(lines) || 500;
-    length = parseInt(length) || 100;
-    step = parseFloat(step) || 0.01;
-    scale = parseFloat(scale) || 1;
-    spacing = parseFloat(spacing) || 1.5;
-    turn = parseFloat(turn) || 1;
+    // Default values
+    let grid = parseInt(parsed_args.grid) || 100;
+    let step = parseFloat(parsed_args.step) || 0.01;
+    let scale = parseFloat(parsed_args.scale) || 1;
+    let seed = parsed_args.seed ?? upstream.seed;
+    let lines = parseInt(parsed_args.lines) || 500;
+    let spacing = parseFloat(parsed_args.spacing) || 1.5;
+    let turn = parseFloat(parsed_args.turn) || 1;
+    let shape = parsed_args.shape || 'line';
+
+    // Parse list of colors and range options
+    let parse_list = val => {
+      if (!val) return null;
+      val = String(val);
+      // Clean up string (e.g., if preceded by "color:")
+      if (val.startsWith('color:')) val = val.substring(6);
+      return val.split(',').map(s => s.trim().replace(/["']/g, '')).filter(Boolean);
+    };
+
+    let colors = parse_list(parsed_args.color) || ['currentColor'];
+    let lengths = parse_list(parsed_args.length) || ['100'];
+    let stroke_widths = parse_list(parsed_args['stroke-width']) || ['1'];
 
     let current_seed = isNaN(parseFloat(seed)) ? 1 : parseFloat(seed);
     let rand = () => {
       current_seed = (current_seed * 16807) % 2147483647;
       return (current_seed - 1) / 2147483646;
+    };
+
+    let pick = arr => arr[Math.floor(rand() * arr.length)];
+    let pick_range = arr => {
+      if (arr.length === 1) return parseFloat(arr[0]) || 1;
+      let min = parseFloat(arr[0]) || 0;
+      let max = parseFloat(arr[1]) || 1;
+      return min + rand() * (max - min);
     };
 
     let noise2d = new Noise(rand);
@@ -625,10 +638,14 @@ const Expose = add_alias({
       let y = rand();
       let path = [[x, y]];
 
+      let line_length = Math.floor(pick_range(lengths));
+      let line_color = pick(colors);
+      let line_width = pick_range(stroke_widths);
+
       if (is_colliding(x, y, i)) continue;
       mark_grid(x, y, i);
 
-      for (let j = 0; j < length; j++) {
+      for (let j = 0; j < line_length; j++) {
         let n = noise2d.noise(x * scale, y * scale, 0);
         let angle = n * Math.PI * 2 * turn;
         x += Math.cos(angle) * step;
@@ -642,34 +659,53 @@ const Expose = add_alias({
       }
 
       if (path.length > 1) {
-        paths.push(path);
+        paths.push({ points: path, color: line_color, width: line_width });
       }
     }
 
-    let d = paths.map(p => {
-      return 'M' + p.map(point => `${(point[0] * 100).toFixed(2)} ${(point[1] * 100).toFixed(2)}`).join(' L');
-    }).join(' ');
+    let elements = '';
 
-    // Prevent errors when path length is huge, CSS syntax is more strict. Let's make sure values are clean.
-    d = d.replace(/NaN/g, '0'); // Safe fallback
+    if (shape === 'line') {
+      elements = paths.map(p => {
+        let d = 'M' + p.points.map(point => `${(point[0] * 100).toFixed(2)} ${(point[1] * 100).toFixed(2)}`).join(' L');
+        d = d.replace(/NaN/g, '0');
+        return `
+          path {
+            d: ${d};
+            fill: none;
+            stroke: ${p.color};
+            stroke-width: ${p.width.toFixed(2)};
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+        `;
+      }).join('\\n');
+    } else {
+      elements = paths.map(p => {
+        // Only sample points across the path to draw shapes so it doesn't overlap completely
+        let skip = Math.max(1, Math.floor(p.width * 2 / step / 100)); // space shapes apart
+        let shapes = p.points.filter((_, idx) => idx % skip === 0).map(point => {
+          let cx = (point[0] * 100).toFixed(2);
+          let cy = (point[1] * 100).toFixed(2);
+          let w = p.width.toFixed(2);
 
-    // `color` string might include quotes depending on parser, ensure it's unquoted and valid
-    color = String(color).replace(/["']/g, '');
-    if (color.startsWith('color:')) color = color.substring(6);
-    color = color.trim();
-
-    stroke_width = parseFloat(stroke_width) || 1;
+          if (shape === 'circle') {
+            return `circle { cx: ${cx}; cy: ${cy}; r: ${w}; fill: ${p.color}; }`;
+          } else if (shape === 'square') {
+            return `rect { x: ${cx - w}; y: ${cy - w}; width: ${w*2}; height: ${w*2}; fill: ${p.color}; }`;
+          } else if (shape === 'triangle') {
+            let s = w * 1.5;
+            return `polygon { points: ${cx},${cy - s} ${cx - s},${parseFloat(cy) + s} ${parseFloat(cx) + s},${parseFloat(cy) + s}; fill: ${p.color}; }`;
+          }
+          return '';
+        }).join('\\n');
+        return shapes;
+      }).join('\\n');
+    }
 
     let parsed = parse_svg(`
       viewBox: 0 0 100 100;
-      path {
-        d: ${d};
-        fill: none;
-        stroke: ${color};
-        stroke-width: ${stroke_width};
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
+      ${elements}
     `);
 
     let svg = generate_svg(parsed);
