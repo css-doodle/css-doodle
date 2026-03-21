@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Varying Fidenza Art</title>
+  <style>
+    body {
+      margin: 0;
+      background: #eaeaea;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+  </style>
+  <script src="../css-doodle.min.js"></script>
+</head>
+<body>
+
+  <css-doodle click-to-update>
+    :doodle {
+      @grid: 1 / 80vmin;
+      background: #fdfdfd;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      cursor: pointer;
+    }
+
+    background: @flow(
+      grid: 200,
+      lines: @r(400, 1200),
+      length: @r(80, 250),
+      step: 0.005,
+      scale: @r(1.5, 5),
+      spacing: @r(0.8, 2.0),
+      turn: @r(0.5, 2.5),
+      color: @p(#222, #111, #3a405a, #2f3e46),
+      stroke-width: @r(0.1, 0.4),
+      seed: @r(1, 99999)
+    );
+  </css-doodle>
+
+</body>
+</html>
