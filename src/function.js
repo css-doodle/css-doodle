@@ -553,6 +553,129 @@ const Expose = add_alias({
     return create_svg_url(svg);
   }),
 
+  flow: lazy((upstream, ...args) => {
+    let values = args.map(input => get_value(input()));
+    let parsed_args = get_named_arguments(values, [
+      'grid', 'step', 'length', 'scale', 'seed', 'lines', 'spacing', 'color', 'stroke-width', 'turn'
+    ]);
+    let grid = parsed_args.grid ?? 100;
+    let step = parsed_args.step ?? 0.01;
+    let length = parsed_args.length ?? 100;
+    let scale = parsed_args.scale ?? 1;
+    let seed = parsed_args.seed ?? upstream.seed;
+    let lines = parsed_args.lines ?? 500;
+    let spacing = parsed_args.spacing ?? 1.5;
+    let color = parsed_args.color ?? 'currentColor';
+    let stroke_width = parsed_args['stroke-width'] ?? 1;
+    let turn = parsed_args.turn ?? 1;
+
+    grid = parseInt(grid) || 100;
+    lines = parseInt(lines) || 500;
+    length = parseInt(length) || 100;
+    step = parseFloat(step) || 0.01;
+    scale = parseFloat(scale) || 1;
+    spacing = parseFloat(spacing) || 1.5;
+    turn = parseFloat(turn) || 1;
+
+    let current_seed = isNaN(parseFloat(seed)) ? 1 : parseFloat(seed);
+    let rand = () => {
+      current_seed = (current_seed * 16807) % 2147483647;
+      return (current_seed - 1) / 2147483646;
+    };
+
+    let noise2d = new Noise(rand);
+
+    let paths = [];
+    let collision_grid = new Float32Array(grid * grid).fill(-1);
+
+    let get_grid_idx = (x, y) => {
+      let gx = Math.floor(x * grid);
+      let gy = Math.floor(y * grid);
+      if (gx < 0 || gx >= grid || gy < 0 || gy >= grid) return -1;
+      return gy * grid + gx;
+    };
+
+    let is_colliding = (x, y, current_path_idx) => {
+      let gx = Math.floor(x * grid);
+      let gy = Math.floor(y * grid);
+      let r = Math.ceil(spacing);
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          let nx = gx + dx;
+          let ny = gy + dy;
+          if (nx >= 0 && nx < grid && ny >= 0 && ny < grid) {
+            let idx = collision_grid[ny * grid + nx];
+            if (idx !== -1 && idx !== current_path_idx) {
+              let dist = Math.sqrt(dx*dx + dy*dy);
+              if (dist <= spacing) return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
+
+    let mark_grid = (x, y, path_idx) => {
+      let idx = get_grid_idx(x, y);
+      if (idx !== -1) collision_grid[idx] = path_idx;
+    };
+
+    for (let i = 0; i < lines; i++) {
+      let x = rand();
+      let y = rand();
+      let path = [[x, y]];
+
+      if (is_colliding(x, y, i)) continue;
+      mark_grid(x, y, i);
+
+      for (let j = 0; j < length; j++) {
+        let n = noise2d.noise(x * scale, y * scale, 0);
+        let angle = n * Math.PI * 2 * turn;
+        x += Math.cos(angle) * step;
+        y += Math.sin(angle) * step;
+
+        if (x < 0 || x > 1 || y < 0 || y > 1) break;
+        if (is_colliding(x, y, i)) break;
+
+        path.push([x, y]);
+        mark_grid(x, y, i);
+      }
+
+      if (path.length > 1) {
+        paths.push(path);
+      }
+    }
+
+    let d = paths.map(p => {
+      return 'M' + p.map(point => `${(point[0] * 100).toFixed(2)} ${(point[1] * 100).toFixed(2)}`).join(' L');
+    }).join(' ');
+
+    // Prevent errors when path length is huge, CSS syntax is more strict. Let's make sure values are clean.
+    d = d.replace(/NaN/g, '0'); // Safe fallback
+
+    // `color` string might include quotes depending on parser, ensure it's unquoted and valid
+    color = String(color).replace(/["']/g, '');
+    if (color.startsWith('color:')) color = color.substring(6);
+    color = color.trim();
+
+    stroke_width = parseFloat(stroke_width) || 1;
+
+    let parsed = parse_svg(`
+      viewBox: 0 0 100 100;
+      path {
+        d: ${d};
+        fill: none;
+        stroke: ${color};
+        stroke-width: ${stroke_width};
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    `);
+
+    let svg = generate_svg(parsed);
+    return create_svg_url(svg);
+  }),
+
   'svg-filter': lazy((upstream, ...args) => {
     let values = args.map(input => get_value(input()));
     let value = values.join(',');

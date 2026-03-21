@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fidenza css-doodle Test</title>
+  <style>
+    body {
+      margin: 0;
+      background: #fdfdfd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+  </style>
+  <script src="../css-doodle.js"></script>
+</head>
+<body>
+  <css-doodle>
+    :doodle {
+      @grid: 1 / 800px;
+      background: @flow(
+        grid: 200,
+        lines: 800,
+        length: 150,
+        step: 0.005,
+        scale: 3,
+        spacing: 1.2,
+        turn: 1.5,
+        color: #333,
+        stroke-width: 0.2
+      );
+    }
+  </css-doodle>
+</body>
+</html>
