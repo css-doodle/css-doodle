@@ -1,5 +1,19 @@
 import { hash } from '../utils/index.js';
 
+// Global WebGL context limiter
+const MAX_WEBGL_CONTEXTS = 4;
+const activeContexts = [];
+
+function manageContextLimit(newContext) {
+  activeContexts.push(newContext);
+  if (activeContexts.length > MAX_WEBGL_CONTEXTS) {
+    const old = activeContexts.shift();
+    if (old && old.loseContext) {
+      old.loseContext();
+    }
+  }
+}
+
 const DEFAULT_VERTEX_SHADER = `#version 300 es
   in vec4 position;
   void main() {
@@ -104,7 +118,7 @@ function generateFragment(fragment, textures) {
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
-function load_texture(gl, image, i) {
+function load_texture(gl, image, i, maxSize = 4096) {
   const texture = gl.createTexture();
   gl.activeTexture(gl['TEXTURE' + i]);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -113,7 +127,20 @@ function load_texture(gl, image, i) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+
+  // Check if image needs resizing
+  let src = image;
+  if (image.width > maxSize || image.height > maxSize) {
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(maxSize / image.width, maxSize / image.height);
+    canvas.width = image.width * scale;
+    canvas.height = image.height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    src = canvas;
+  }
+
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
   return texture;
 }
 
@@ -121,8 +148,11 @@ export default function draw_shader(shaders, seed, type) {
   const canvas = document.createElement('canvas');
   const dpr = devicePixelRatio || 1;
 
-  let width = canvas.width = shaders.width * dpr;
-  let height = canvas.height = shaders.height * dpr;
+  const MAX_TEXTURE_SIZE = 4096;
+  let width = Math.min(shaders.width * dpr, MAX_TEXTURE_SIZE);
+  let height = Math.min(shaders.height * dpr, MAX_TEXTURE_SIZE);
+  canvas.width = width;
+  canvas.height = height;
 
   const texture_list = [];
 
@@ -138,11 +168,25 @@ export default function draw_shader(shaders, seed, type) {
   }
 
   canvas.loseContext = () => {
+    // Remove from active contexts
+    const idx = activeContexts.indexOf(canvas);
+    if (idx > -1) activeContexts.splice(idx, 1);
+    // Delete textures first
+    texture_list.forEach(texture => {
+      gl.deleteTexture(texture);
+    });
+    texture_list.length = 0;
+    // Delete program and buffers
+    gl.deleteProgram(program);
+    gl.deleteBuffer(positionBuffer);
+    // Lose context
     const ext = gl.getExtension('WEBGL_lose_context');
     if (ext) {
       ext.loseContext();
     }
-  }
+  };
+
+  manageContextLimit(canvas);
 
   let program = create_program(
     gl,
@@ -168,7 +212,7 @@ export default function draw_shader(shaders, seed, type) {
   gl.uniform2fv(u_resolution, [width, height]);
 
   shaders.textures.forEach((n, i) => {
-    texture_list.push(load_texture(gl, n.value, i));
+    texture_list.push(load_texture(gl, n.value, i, MAX_TEXTURE_SIZE));
     gl.uniform1i(gl.getUniformLocation(program, n.name), i);
   });
 

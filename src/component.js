@@ -349,6 +349,13 @@ if (typeof HTMLElement !== 'undefined') {
             observer.disconnect();
           });
         }
+        // Clear shader CSS variables
+        for (let id of Object.keys(shaders)) {
+          this.style.removeProperty('--' + id);
+        }
+        for (let id of Object.keys(pattern)) {
+          this.style.removeProperty('--' + id);
+        }
       }
       this.observers.clear();
       this.shader_renders.forEach(({ canvas }) => {
@@ -485,9 +492,15 @@ if (typeof HTMLElement !== 'undefined') {
       let images = [];
 
       const set_shader_prop = v => {
-        element.style.setProperty('background', 'url("' + v + '") no-repeat 50%/cover');
+        this.style.setProperty(id, 'url("' + v + '")');
       }
       const tick = ([render, animated, canvas]) => {
+        // Destroy any existing render for this target first
+        let existing = this.shader_renders.get(target.selector);
+        if (existing && existing.canvas && existing.canvas.loseContext) {
+          existing.canvas.loseContext();
+        }
+
         if (target.type === 'content') {
           render(0, width, height, this._umouse, images);
           element.replaceChildren(canvas);
@@ -496,9 +509,7 @@ if (typeof HTMLElement !== 'undefined') {
               render(t, width, height, this._umouse, images);
             }));
           } else {
-            if (!this.shader_renders.has(target.selector)) {
-              this.shader_renders.set(target.selector, { render, canvas });
-            }
+            this.shader_renders.set(target.selector, { render, canvas });
           }
         } else {
           if (animated) {
@@ -507,10 +518,7 @@ if (typeof HTMLElement !== 'undefined') {
               set_shader_prop(canvas.toDataURL());
             }));
           } else {
-            let _render = this.shader_renders.get(target.selector);
-            if (!_render) {
-              this.shader_renders.set(target.selector, { render, canvas });
-            }
+            this.shader_renders.set(target.selector, { render, canvas });
             render(0, width, height, this._umouse, images);
             set_shader_prop(canvas.toDataURL());
           }

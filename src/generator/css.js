@@ -27,6 +27,10 @@ function is_pseudo_selector(s) {
   return /\:before|\:after/.test(s);
 }
 
+function is_image_value(value) {
+  return /\$\{(shader|pattern|doodle)/.test(value);
+}
+
 const MathFunc = {};
 for (let name of Object.getOwnPropertyNames(Math)) {
   MathFunc[name] = () => (...args) => {
@@ -565,12 +569,11 @@ class Rules {
       }
     }
 
-    let is_image = (
-      /^background(\-image)?$/.test(prop) &&
-      /\$\{(shader|pattern|doodle)/.test(value)
-    );
-    if (is_image) {
-      rule = 'background-size: 100% 100%;' + rule;
+    if (/^background(\-image)?$/.test(prop) && is_image_value(value)) {
+      let sizes = parse_value_group(value, { noSpace: true })
+        .map(v => is_image_value(v) ? '100% 100%' : 'auto')
+        .join(',');
+      rule = `background-size:${sizes};` + rule;
     }
 
     if (/^\-\-/.test(prop)) {
