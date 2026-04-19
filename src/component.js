@@ -184,18 +184,17 @@ if (typeof HTMLElement !== 'undefined') {
       }
     }
 
-    export({ scale, name, download, detail } = {}) {
-      return new Promise(async (resolve, reject) => {
-        let variables = get_all_variables(this);
-        let html = this.doodle.innerHTML;
+    async export({ scale, name, download, detail } = {}) {
+      let variables = get_all_variables(this);
+      let html = this.doodle.innerHTML;
 
-        let { width, height } = this.getBoundingClientRect();
-        scale = parseInt(scale) || 1;
+      let { width, height } = this.getBoundingClientRect();
+      scale = parseInt(scale) || 1;
 
-        let w = width * scale;
-        let h = height * scale;
-        let fonts = await loadGoogleFontEmbed();
-        let svg = `
+      let w = width * scale;
+      let h = height * scale;
+      let fonts = await loadGoogleFontEmbed();
+      let svg = `
           <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
             <foreignObject width="100%" height="100%">
               <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
@@ -209,28 +208,17 @@ if (typeof HTMLElement !== 'undefined') {
           </svg>
         `;
 
-        if (download || detail) {
-          generate_png(svg, w, h, scale)
-            .then(({ source, url, blob }) => {
-              resolve({
-                width: w, height: h, svg, blob, source
-              });
-              if (download) {
-                let a = document.createElement('a');
-                a.download = get_png_name(name);
-                a.href = url;
-                a.click();
-              }
-            })
-            .catch(error => {
-              reject(error);
-            });
-        } else {
-          resolve({
-            width: w, height: h, svg: svg
-          });
+      if (download || detail) {
+        let { source, url, blob } = await generate_png(svg, w, h, scale);
+        if (download) {
+          let a = document.createElement('a');
+          a.download = get_png_name(name);
+          a.href = url;
+          a.click();
         }
-      });
+        return { width: w, height: h, svg, blob, source };
+      }
+      return { width: w, height: h, svg };
     }
 
     get grid() {
@@ -420,8 +408,8 @@ if (typeof HTMLElement !== 'undefined') {
         ? `width="${options.width}" height="${options.height}"`
         : '';
 
-      loadGoogleFontEmbed(styles.gf || []).then((importedFonts) => {
-        replace(`
+      loadGoogleFontEmbed(styles.gf || [])
+        .then(importedFonts => replace(`
           <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
             <foreignObject width="100%" height="100%">
               <div class="host" width="100%" height="100%" ${NSXHtml}>
@@ -437,24 +425,27 @@ if (typeof HTMLElement !== 'undefined') {
               </div>
             </foreignObject>
           </svg>
-        `).then(result => {
-          let source =`data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
-          if (is_safari()) {
-            if (size) {
-              generate_png(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2).then(({ blob }) => {
+        `))
+        .then(result => {
+          let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
+          if (is_safari() && size) {
+            return generate_png(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2)
+              .then(({ blob }) => {
                 let url = URL.createObjectURL(blob);
                 cache_image(url);
-                fn(url);
+                return url;
               });
-            } else {
-              cache_image(source);
-              fn(source);
-            }
-          } else {
-            fn(source);
           }
+          if (is_safari()) {
+            cache_image(source);
+          }
+          return source;
+        })
+        .then(fn)
+        .catch(err => {
+          console.error(err);
+          fn('');
         });
-      });
     }
 
     pattern_to_image({ code, cell, id, arg, target }, fn) {
@@ -530,10 +521,15 @@ if (typeof HTMLElement !== 'undefined') {
         Promise.all(sources.map(({ name, value }) => {
           return new Promise(resolve => {
             this.doodle_to_image(value, {width, height}, src => {
+              if (!src) {
+                resolve({ name, value: null });
+                return;
+              }
               let img = new Image();
               img.width = width * dpr;
               img.height = height * dpr;
               img.onload = () => resolve({ name, value: img });
+              img.onerror = () => resolve({ name, value: null });
               img.src = src;
             });
           });
@@ -564,15 +560,23 @@ if (typeof HTMLElement !== 'undefined') {
         this.observers.set(target.selector, observer);
       }
 
+      const render_shaders = () => generate_shaders(parsed, seed, target.type)
+        .then(tick)
+        .then(fn)
+        .catch(err => {
+          console.error(err);
+          fn('');
+        });
+
       if (sources.length) {
         transform(sources, result => {
           parsed.textures = images = result;
           parsed.width = width;
           parsed.height = height;
-          generate_shaders(parsed, seed, target.type).then(tick).then(fn);
+          render_shaders();
         });
       } else {
-        generate_shaders(parsed, seed, target.type).then(tick).then(fn);
+        render_shaders();
       }
     }
 
@@ -658,6 +662,9 @@ if (typeof HTMLElement !== 'undefined') {
             if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
             input = input.replaceAll('${' + id + '}', target);
           }
+          return input;
+        }).catch(err => {
+          console.error(err);
           return input;
         });
       }
@@ -790,9 +797,7 @@ if (typeof HTMLElement !== 'undefined') {
 
     set_style(input) {
       if (input instanceof Promise) {
-        input.then(v => {
-          this.set_style(v);
-        });
+        input.then(v => this.set_style(v)).catch(console.error);
       } else {
         const el = this.shadowRoot.querySelector('style');
         if (el) {
