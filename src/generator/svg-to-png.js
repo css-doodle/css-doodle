@@ -8,6 +8,8 @@ export default function svg_to_png(svg, width, height, scale) {
       img.crossOrigin = 'anonymous';
       img.src = source;
 
+      img.onerror = reject;
+
       img.onload = () => {
         let canvas = document.createElement('canvas');
         let ctx = canvas.getContext('2d');
