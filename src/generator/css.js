@@ -473,7 +473,7 @@ class Rules {
     }
     if (flex) {
       this.add_rule(':container', 'display:flex;');
-      this.add_rule('cell', 'flex: 1;');
+      this.add_rule('cssd-cell', 'flex: 1;');
       if (flex === 'column') {
         this.add_rule(':container', 'flex-direction:column;');
       }
@@ -926,7 +926,7 @@ class Rules {
   output() {
     for (let [selector, rule] of Object.entries(this.rules)) {
       if (is_parent_selector(selector)) {
-        let name = selector.replace(/^:container\(?/, 'grid').replace(/\)?$/, '');
+        let name = selector.replace(/^:container\(?/, 'cssd-grid').replace(/\)?$/, '');
         this.styles.container += `${name} {${join(rule)}}`;
       } else if (selector === ':top:') {
         this.styles.top += join(rule);
