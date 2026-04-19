@@ -14,7 +14,7 @@ function getGoogleFontLink(names) {
 export function loadGoogleFontLink(fonts) {
   let names = [];
   if (!Array.isArray(fonts)) {
-    return;
+    return Promise.resolve();
   }
   for (let name of fonts) {
     if (linkFonts.has(name)) {
@@ -24,15 +24,20 @@ export function loadGoogleFontLink(fonts) {
     names.push(name);
   }
   if (!names.length) {
-    return;
+    return Promise.resolve();
   }
 
   if (typeof document !== 'undefined') {
-    let link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = getGoogleFontLink(names);
-    document.head.appendChild(link);
+    return new Promise(resolve => {
+      let link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = getGoogleFontLink(names);
+      link.onload = resolve;
+      link.onerror = resolve;
+      document.head.appendChild(link);
+    });
   }
+  return Promise.resolve();
 }
 
 async function fetchCSS(names) {

@@ -695,15 +695,15 @@ if (typeof HTMLElement !== 'undefined') {
       if (has_delay) {
         this.reflow();
       }
+      if (styles.gf) {
+        loadGoogleFontLink(styles.gf);
+      }
       let replace = this.replace(compiled);
       this.set_style(replace(
         styles.top +
         get_basic_styles(grid) +
         styles.all
       ));
-      if (styles.gf) {
-        loadGoogleFontLink(styles.gf);
-      }
       if (has_content) {
         replace(Object.values(compiled.content).join(' '));
       }
