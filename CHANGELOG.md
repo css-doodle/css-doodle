@@ -1,3 +1,18 @@
+## 0.51.0
+
+### Features
+
+* Add `click:cell` event dispatched on the host with `{ x, y, z, element, originalEvent }` detail.
+* Rename internal shadow-DOM tags to `cssd-grid` and `cssd-cell` (`part="grid"` and `part="cell"` preserved).
+
+### Fixes
+
+* Fix `background-size` being reset by `background` shorthand.
+* Improve WebGL resource management and support multi-layer `background-size`.
+* Load Google fonts before styles so text renders with the correct font.
+* Reject `svg_to_png` promise on image load failure and catch promise errors.
+
+
 ## 0.50.2
 
 * Fix value retrieval in get_value and enhance SVG gradient parsing.
