@@ -45,7 +45,6 @@ if (typeof HTMLElement !== 'undefined') {
         get_variable: name => get_variable(this, name),
         get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
       };
-      this.addEventListener('click', this.dispatchCellClick.bind(this));
     }
 
     dispatchCellClick(event) {
@@ -54,10 +53,10 @@ if (typeof HTMLElement !== 'undefined') {
       let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
       if (!match) return;
       this.triggerEvent('click:cell', {
-        cell,
         x: Number(match[1]),
         y: Number(match[2]),
         z: Number(match[3]),
+        element: cell,
         originalEvent: event,
       });
     }
@@ -613,6 +612,7 @@ if (typeof HTMLElement !== 'undefined') {
         if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
           this.addEventListener('click', this.bindClickToUpdate);
         }
+        this.addEventListener('click', this.dispatchCellClick);
       }
 
       this.grid_size = compiled.grid
