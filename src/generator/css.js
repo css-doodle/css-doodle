@@ -561,6 +561,10 @@ class Rules {
       this.props.has_transition = true;
     }
 
+    if (prop === 'background-size') {
+      _coords.has_bgsize = true;
+    }
+
     let rule = `${prop}:${value};`
 
     if (prop === 'width' || prop === 'height') {
@@ -571,9 +575,11 @@ class Rules {
 
     if (/^background(\-image)?$/.test(prop) && is_image_value(value)) {
       let sizes = parse_value_group(value, { noSpace: true })
-        .map(v => is_image_value(v) ? '100% 100%' : 'auto')
+        .map(v => is_image_value(v) ? 'cover' : 'auto')
         .join(',');
-      rule = `background-size:${sizes};` + rule;
+      if (!_coords.has_bgsize) {
+        rule = `background-size:${sizes};` + rule;
+      }
     }
 
     if (/^\-\-/.test(prop)) {
