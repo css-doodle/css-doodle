@@ -473,7 +473,7 @@ class Rules {
     }
     if (flex) {
       this.add_rule(':container', 'display:flex;');
-      this.add_rule('cell', 'flex: 1;');
+      this.add_rule('grid-cell', 'flex: 1;');
       if (flex === 'column') {
         this.add_rule(':container', 'flex-direction:column;');
       }

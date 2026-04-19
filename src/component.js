@@ -45,6 +45,21 @@ if (typeof HTMLElement !== 'undefined') {
         get_variable: name => get_variable(this, name),
         get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
       };
+      this.addEventListener('click', this.dispatchCellClick.bind(this));
+    }
+
+    dispatchCellClick(event) {
+      let cell = event.composedPath().find(el => el.tagName === 'GRID-CELL');
+      if (!cell) return;
+      let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
+      if (!match) return;
+      this.triggerEvent('click:cell', {
+        cell,
+        x: Number(match[1]),
+        y: Number(match[2]),
+        z: Number(match[3]),
+        originalEvent: event,
+      });
     }
 
     connectedCallback(again) {
@@ -342,7 +357,7 @@ if (typeof HTMLElement !== 'undefined') {
         this.animations = [];
         let { pattern, shaders } = this.compiled;
         if (Object.keys(pattern).length || Object.keys(shaders).length) {
-          for (let el of this.shadowRoot.querySelectorAll('cell')) {
+          for (let el of this.shadowRoot.querySelectorAll('grid-cell')) {
             el.style.cssText = '';
           }
           this.observers.forEach((observer, target) => {
@@ -826,7 +841,7 @@ function get_basic_styles(grid) {
     :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
-    grid, cell {
+    grid, grid-cell {
       display: grid;
       position: relative;
     }
@@ -839,7 +854,7 @@ function get_basic_styles(grid) {
       inset: 0;
       pointer-events: none;
     }
-    cell {
+    grid-cell {
       place-items: center;
       min-height: 0;
       min-width: 0;
@@ -864,7 +879,7 @@ function create_cell(x, y, z, content, child = '') {
   if (head.startsWith('${shader')) {
     head = '';
   }
-  return `<cell id="${id}" part="cell">${head}${tail}</cell>`;
+  return `<grid-cell id="${id}" part="cell">${head}${tail}</grid-cell>`;
 }
 
 function create_grid(grid_obj, compiled) {
