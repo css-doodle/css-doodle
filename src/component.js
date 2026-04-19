@@ -49,7 +49,7 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     dispatchCellClick(event) {
-      let cell = event.composedPath().find(el => el.tagName === 'GRID-CELL');
+      let cell = event.composedPath().find(el => el.tagName === 'CSSD-CELL');
       if (!cell) return;
       let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
       if (!match) return;
@@ -357,7 +357,7 @@ if (typeof HTMLElement !== 'undefined') {
         this.animations = [];
         let { pattern, shaders } = this.compiled;
         if (Object.keys(pattern).length || Object.keys(shaders).length) {
-          for (let el of this.shadowRoot.querySelectorAll('grid-cell')) {
+          for (let el of this.shadowRoot.querySelectorAll('cssd-cell')) {
             el.style.cssText = '';
           }
           this.observers.forEach((observer, target) => {
@@ -482,7 +482,7 @@ if (typeof HTMLElement !== 'undefined') {
       if (target.selector === ':host') {
         element = this;
       } else if (target.selector === ':container') {
-        element = this.shadowRoot.querySelector('grid');
+        element = this.shadowRoot.querySelector('cssd-grid');
       } else {
         element = this.doodle.getElementById(cell);
       }
@@ -679,7 +679,7 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     reflow() {
-      this.shadowRoot.querySelector('grid').offsetWidth;
+      this.shadowRoot.querySelector('cssd-grid').offsetWidth;
     }
 
     bind_uniforms({ time, mousex, mousey, mouse, width, height }) {
@@ -841,11 +841,11 @@ function get_basic_styles(grid) {
     :host([cssd-paused]) * {
       animation-play-state: paused !important
     }
-    grid, grid-cell {
+    cssd-grid, cssd-cell {
       display: grid;
       position: relative;
     }
-    grid {
+    cssd-grid {
       gap: inherit;
       grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
@@ -854,7 +854,7 @@ function get_basic_styles(grid) {
       inset: 0;
       pointer-events: none;
     }
-    grid-cell {
+    cssd-cell {
       place-items: center;
       min-height: 0;
       min-width: 0;
@@ -862,7 +862,7 @@ function get_basic_styles(grid) {
     svg, canvas {
       position: absolute;
     }
-    grid, svg, canvas {
+    cssd-grid, svg, canvas {
       width: 100%;
       height: 100%
     }
@@ -879,7 +879,7 @@ function create_cell(x, y, z, content, child = '') {
   if (head.startsWith('${shader')) {
     head = '';
   }
-  return `<grid-cell id="${id}" part="cell">${head}${tail}</grid-cell>`;
+  return `<cssd-cell id="${id}" part="cell">${head}${tail}</cssd-cell>`;
 }
 
 function create_grid(grid_obj, compiled) {
@@ -901,7 +901,7 @@ function create_grid(grid_obj, compiled) {
     }
     result = child;
   }
-  let html = `<grid part="grid">${result}</grid>`;
+  let html = `<cssd-grid part="grid">${result}</cssd-grid>`;
   if (styles.backdrop) {
     html += '<b></b>'
   }
