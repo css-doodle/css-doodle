@@ -136,7 +136,11 @@ export default function transform(code, { expect = null } = {}) {
     }
     if (n.type === 'Call') {
       let args = n.args.map(a => gen(a, 'float')).join(', ');
-      if (n.val === 'int') return exp === 'float' ? `float(int(${args}))` : `int(${args})`;
+      if (n.val === 'int') {
+        if (exp === 'float') return `float(int(${args}))`;
+        if (exp === 'bool') return `bool(int(${args}))`;
+        return `int(${args})`;
+      }
       if (n.val === 'float') return exp === 'bool' ? `bool(${args})` : args;
       const out = `${n.val}(${args})`;
       return exp === 'bool' ? `bool(${out})` : out;

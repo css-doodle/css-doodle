@@ -2,6 +2,13 @@ import parse_pattern from '../parser/parse-pattern.js';
 import parse_grid from '../parser/parse-grid.js';
 import transform from './glsl-math-transformer.js';
 
+const CELL_INDEX = `
+  float dx = x - (v.x + 1.0) * 0.5;
+  float dy = y - (v.y + 1.0) * 0.5;
+  float r = length(vec2(dx, dy));
+  float theta = atan(dy, dx);
+`;
+
 const CIRCLE_MASK = `
   vec2 cellUV = fract(uv * v) - 0.5;
   float dist = length(cellUV);
@@ -74,9 +81,13 @@ function generate_block(token, extra, vars = {}) {
     .map(a => transform(substitute_variables(a, vars), { expect: 'bool' }))
     .join(' && ');
   let body = token.value
-    .map(t => generate_statement(t, extra, true, vars))
-    .filter(s => s.type === 'statement')
-    .map(s => s.value)
+    .map(t => {
+      if (t.type === 'block') {
+        return generate_block(t, extra, vars);
+      }
+      let s = generate_statement(t, extra, true, vars);
+      return s.type === 'statement' ? s.value : '';
+    })
     .join('');
   return `
     if (${cond}) {
@@ -88,6 +99,7 @@ function generate_block(token, extra, vars = {}) {
 function generate_shader(input, { x, y }, shape) {
   let shapeInit = shape === 'circle' ? CIRCLE_MASK : '';
   return `
+    const float PI = 3.1415926535897932;
     vec3 mapping(vec2 uv, vec2 grid) {
       float x = floor(uv.x * grid.x) + 1.0;
       float y = floor((1.0 - uv.y) * grid.y) + 1.0;
@@ -97,6 +109,7 @@ function generate_shader(input, { x, y }, shape) {
     vec4 getColor(float x, float y, float i, float I, float X, float Y, float t, vec2 uv, vec2 v) {
       vec4 color = vec4(0, 0, 0, 0);
       float shapeMask = 1.0;
+      ${CELL_INDEX}
       ${shapeInit}
       ${input}
       color.a *= shapeMask;
