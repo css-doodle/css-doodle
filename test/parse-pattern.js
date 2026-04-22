@@ -90,6 +90,18 @@ test('block', () => {
     value: [],
     args: [],
   }]);
+  compare('match(atan(y, x) > 3) {}', [{
+    type: 'block',
+    name: 'match',
+    value: [],
+    args: ['atan(y,x) > 3'],
+  }]);
+  compare('match(max(x, y) > 3, min(a, b) < 1) {}', [{
+    type: 'block',
+    name: 'match',
+    value: [],
+    args: ['max(x,y) > 3', 'min(a,b) < 1'],
+  }]);
 });
 
 test('statement and block',  () => {

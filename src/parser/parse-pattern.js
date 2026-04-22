@@ -123,7 +123,9 @@ function parseSelector(tokens) {
       }
     }
     else if (curr.isSymbol(',')) {
-      if (stack.length) {
+      if (stack.length > 1) {
+        fragments.push(curr.value);
+      } else if (stack.length === 1) {
         args.push(fragments.join(''));
         fragments = [];
       } else {
