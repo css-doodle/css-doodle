@@ -71,9 +71,19 @@ test('complex nesting', () => {
 test('unary operators', () => {
   compare('-x', '-x');
   compare('-(x + y)', '-(x + y)');
-  compare('!x', '!x');
+  compare('!x', '!bool(x)');
   compare('~x', '~int(x)');
   compare('-~x', '-~int(x)');
+});
+
+test('bool coercion at root', () => {
+  compare(['x', { expect: 'bool' }], 'bool(x)');
+  compare(['(x)', { expect: 'bool' }], 'bool(x)');
+  compare(['sin(x)', { expect: 'bool' }], 'bool(sin(x))');
+  compare(['atan(y, x)', { expect: 'bool' }], 'bool(atan(y, x))');
+  compare(['-x', { expect: 'bool' }], 'bool(-x)');
+  compare(['~x', { expect: 'bool' }], 'bool(~int(x))');
+  compare(['!x', { expect: 'bool' }], '!bool(x)');
 });
 
 test('edge cases', () => {

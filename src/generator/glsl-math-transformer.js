@@ -118,17 +118,26 @@ export default function transform(code, { expect = null } = {}) {
       if (exp === 'int') return String(Math.floor(n.val));
       return n.val.includes('.') ? n.val : n.val + '.0';
     }
-    if (n.type === 'Var') return exp === 'int' ? `int(${n.val})` : n.val;
+    if (n.type === 'Var') {
+      if (exp === 'bool') return `bool(${n.val})`;
+      if (exp === 'int') return `int(${n.val})`;
+      return n.val;
+    }
     if (n.type === 'Pre') {
       if (n.val === '!') return `!${gen(n.right, 'bool')}`;
-      if (n.val === '~') return `~${gen(n.right, 'int')}`;
+      if (n.val === '~') {
+        const out = `~${gen(n.right, 'int')}`;
+        return exp === 'bool' ? `bool(${out})` : out;
+      }
+      if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
       return `-${gen(n.right, exp)}`;
     }
     if (n.type === 'Call') {
       let args = n.args.map(a => gen(a, 'float')).join(', ');
       if (n.val === 'int') return exp === 'float' ? `float(int(${args}))` : `int(${args})`;
-      if (n.val === 'float') return args;
-      return `${n.val}(${args})`;
+      if (n.val === 'float') return exp === 'bool' ? `bool(${args})` : args;
+      const out = `${n.val}(${args})`;
+      return exp === 'bool' ? `bool(${out})` : out;
     }
 
     const op = n.val;
