@@ -76,6 +76,13 @@ test('unary operators', () => {
   compare('-~x', '-~int(x)');
 });
 
+test('chained comparisons desugar to &&', () => {
+  compare('1 < x < 5', '(bool((1.0 < x)) && (x < 5.0))');
+  compare('1 <= x < 5', '(bool((1.0 <= x)) && (x < 5.0))');
+  compare('a < b < c < d', '((bool((a < b)) && (b < c)) && (c < d))');
+  compare(['x > y > 0', { expect: 'bool' }], '(bool((x > y)) && (y > 0.0))');
+});
+
 test('bool coercion at root', () => {
   compare(['x', { expect: 'bool' }], 'bool(x)');
   compare(['(x)', { expect: 'bool' }], 'bool(x)');

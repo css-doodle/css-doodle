@@ -27,6 +27,8 @@ const TWO_CHAR_OPS = new Set([
   '<<', '>>', '==', '!=', '<=', '>=', '&&', '||'
 ]);
 
+const RELATIONAL_OPS = new Set(['<', '>', '<=', '>=', '≤', '≥']);
+
 function preprocessTokens(rawTokens) {
   const tokens = [];
   for (let i = 0; i < rawTokens.length; i++) {
@@ -141,6 +143,19 @@ export default function transform(code, { expect = null } = {}) {
     }
 
     const op = n.val;
+
+    if (RELATIONAL_OPS.has(op)
+        && n.left.type === 'Bin'
+        && RELATIONAL_OPS.has(n.left.val)) {
+      const leftChain = gen(n.left, 'bool');
+      const mid = gen(n.left.right, 'float');
+      const right = gen(n.right, 'float');
+      const glslOp = OP_ALIAS[op] || op;
+      const out = `(${leftChain} && (${mid} ${glslOp} ${right}))`;
+      if (exp && exp !== 'bool') return `${exp}(${out})`;
+      return out;
+    }
+
     let res = 'float', argExp = 'float';
     switch (op) {
       case '%':

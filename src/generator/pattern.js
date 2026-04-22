@@ -34,6 +34,9 @@ const STATEMENT_HANDLERS = {
 };
 
 function generate_statement(token, extra, insideBlock = false, vars = {}) {
+  if (token.type !== 'statement') {
+    return { type: 'statement', value: '' };
+  }
   let handler = STATEMENT_HANDLERS[token.name];
   if (handler) {
     return handler(token, extra, insideBlock);
@@ -63,8 +66,13 @@ function generate_block(token, extra, vars = {}) {
   if (token.name !== 'match') {
     return '';
   }
-  let expr = substitute_variables(token.args[0], vars);
-  let cond = transform(expr, { expect: 'bool' });
+  let args = (token.args || []).map(a => (a || '').trim()).filter(Boolean);
+  if (!args.length) {
+    return '';
+  }
+  let cond = args
+    .map(a => transform(substitute_variables(a, vars), { expect: 'bool' }))
+    .join(' && ');
   let body = token.value
     .map(t => generate_statement(t, extra, true, vars))
     .filter(s => s.type === 'statement')
