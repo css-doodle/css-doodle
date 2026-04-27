@@ -276,6 +276,18 @@ const Expose = add_alias({
     return calc_with(y - .5 - grid.y / 2);
   },
 
+  dr({ x, y, grid }) {
+    let dx = x - .5 - grid.x / 2;
+    let dy = y - .5 - grid.y / 2;
+    return calc_with(Math.hypot(dx, dy));
+  },
+
+  theta({ x, y, grid }) {
+    let dx = x - .5 - grid.x / 2;
+    let dy = y - .5 - grid.y / 2;
+    return calc_with(Math.atan2(dy, dx));
+  },
+
   n({ extra }) {
     let lastExtra = last(extra);
     return lastExtra ? calc_with(lastExtra[0]) : '@n';

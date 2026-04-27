@@ -5,7 +5,7 @@ import transform from './glsl-math-transformer.js';
 const CELL_INDEX = `
   float dx = x - (v.x + 1.0) * 0.5;
   float dy = y - (v.y + 1.0) * 0.5;
-  float r = length(vec2(dx, dy));
+  float dr = length(vec2(dx, dy));
   float theta = atan(dy, dx);
 `;
 

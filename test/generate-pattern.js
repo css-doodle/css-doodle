@@ -44,10 +44,10 @@ test('non-comparison root is bool-coerced', () => {
   compare('match(sin(x)) { fill: red }', 'if (bool(sin(x))) {');
 });
 
-test('r, theta, PI built-ins', () => {
-  let shader = draw('match(r < 3) { fill: red }', extra);
-  if (!/float r = length\(vec2\(dx, dy\)\);/.test(shader)) {
-    throw new Error('missing r definition');
+test('dr, theta, PI built-ins', () => {
+  let shader = draw('match(dr < 3) { fill: red }', extra);
+  if (!/float dr = length\(vec2\(dx, dy\)\);/.test(shader)) {
+    throw new Error('missing dr definition');
   }
   if (!/float theta = atan\(dy, dx\);/.test(shader)) {
     throw new Error('missing theta definition');
@@ -55,7 +55,7 @@ test('r, theta, PI built-ins', () => {
   if (!/const float PI = 3\.14159/.test(shader)) {
     throw new Error('missing PI constant');
   }
-  compare('match(r < 3) { fill: red }', 'if (bool((r < 3.0))) {');
+  compare('match(dr < 3) { fill: red }', 'if (bool((dr < 3.0))) {');
   compare('match(theta > 0) { fill: red }', 'if (bool((theta > 0.0))) {');
   compare(
     'match(theta > -PI/4 && theta < PI/4) { fill: red }',
