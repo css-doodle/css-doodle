@@ -1,4 +1,5 @@
 import { hash } from '../utils/index.js';
+import { glsl } from '../utils/tagged-template.js';
 
 // Global WebGL context limiter
 const MAX_WEBGL_CONTEXTS = 4;
@@ -14,7 +15,7 @@ function manageContextLimit(newContext) {
   }
 }
 
-const DEFAULT_VERTEX_SHADER = `#version 300 es
+const DEFAULT_VERTEX_SHADER = glsl`#version 300 es
   in vec4 position;
   void main() {
     gl_Position = position;

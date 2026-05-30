@@ -20,6 +20,7 @@ import Stack from './utils/stack.js';
 import get_named_arguments from './utils/get-named-arguments.js';
 import { cell_id, cell_metrics, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
 import { getEasingFunction } from './easing.js';
+import { css } from './utils/tagged-template.js';
 
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
 const RE_OP_SUFFIX = /[\+\*\-\/%]$/;
@@ -585,14 +586,14 @@ const Expose = add_alias({
       let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
         'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
       ]);
-      value = `
+      value = css`
         x: -20%;
         y: -20%;
         width: 140%;
         height: 140%;
       `;
       if (!is_nil(dilate)) {
-        value += `
+        value += css`
           feMorphology {
             operator: dilate;
             radius: ${dilate};
@@ -600,7 +601,7 @@ const Expose = add_alias({
         `
       }
       if (!is_nil(erode)) {
-        value += `
+        value += css`
           feMorphology {
             operator: erode;
             radius: ${erode};
@@ -608,7 +609,7 @@ const Expose = add_alias({
         `
       }
       if (!is_nil(blur)) {
-        value += `
+        value += css`
           feGaussianBlur {
             stdDeviation: ${blur};
           }
@@ -617,7 +618,7 @@ const Expose = add_alias({
       if (!is_nil(frequency)) {
         let [bx, by = bx] = parse_value_group(frequency);
         octave = octave ? `numOctaves: ${octave};` : '';
-        value += `
+        value += css`
           feTurbulence {
             type: fractalNoise;
             baseFrequency: ${bx} ${by};
@@ -626,7 +627,7 @@ const Expose = add_alias({
           }
         `;
         if (scale) {
-          value += `
+          value += css`
             feDisplacementMap {
               in: SourceGraphic;
               scale: ${scale};
@@ -652,7 +653,7 @@ const Expose = add_alias({
 
   'svg-pattern': lazy((_, ...args) => {
     let value = args.map(input => get_value(input())).join(',');
-    let parsed = parse_svg(`
+    let parsed = parse_svg(css`
       viewBox: 0 0 1 1;
       preserveAspectRatio: xMidYMid slice;
       rect {
@@ -682,7 +683,7 @@ const Expose = add_alias({
         props += `${name}: ${rules[name]};`
       }
     };
-    let parsed = parse_svg(`
+    let parsed = parse_svg(css`
       viewBox: -1 -1 2 2 p ${p};
       polygon {
         ${props} ${style}

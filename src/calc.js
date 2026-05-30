@@ -31,6 +31,11 @@ const operators = {
   '(': 1, ')': 1,
 };
 
+const NUMBER = 'number';
+const OPERATOR = 'operator';
+const VARIABLE = 'variable';
+const FUNCTION = 'function';
+
 const compoundOps = new Set(['**', '==', '!=', '<=', '>=', '&&', '||', '<<', '>>']);
 const RE_NUMBER = /^-?(\d+\.?\d*|\d*\.?\d+)(e[+-]?\d+)?$/i;
 const RE_STARTS_WITH_MINUS = /^-/;
@@ -38,6 +43,10 @@ const RE_HAS_DIGIT = /\d/;
 const RE_OPERATOR_CHARS = /^[<>&|]+$/;
 const RE_PARENS = /[()]/;
 const RE_NEGATIVE_VAR = /^-\D/;
+
+function tk(type, value) {
+  return { type, value };
+}
 
 function isOperator(value) {
   return Object.prototype.hasOwnProperty.call(operators, value);
@@ -66,26 +75,26 @@ function transformTokens(rawTokens) {
 
       // "2(3+4)" → "2*(3+4)"
       if (next && next.value === '(') {
-        tokens.push({ type: 'number', value });
-        tokens.push({ type: 'operator', value: '*' });
+        tokens.push(tk(NUMBER, value));
+        tokens.push(tk(OPERATOR, '*'));
         i++;
         continue;
       }
 
       // Scientific notation: insert * instead of combining
       if (isScientific && next && next.type === 'Word') {
-        tokens.push({ type: 'number', value });
-        tokens.push({ type: 'operator', value: '*' });
+        tokens.push(tk(NUMBER, value));
+        tokens.push(tk(OPERATOR, '*'));
         i++;
         continue;
       }
 
       if (next && (next.type === 'Word' || next.type === 'Symbol') && !nextIsOp && !nextIsStructural) {
-        tokens.push({ type: 'number', value: value + next.value });
+        tokens.push(tk(NUMBER, value + next.value));
         i += 2;
         continue;
       }
-      tokens.push({ type: 'number', value });
+      tokens.push(tk(NUMBER, value));
       i++;
       continue;
     }
@@ -97,12 +106,12 @@ function transformTokens(rawTokens) {
         if (next && (next.type === 'Word' || next.type === 'Symbol')) {
           const compound = value + next.value;
           if (compoundOps.has(compound)) {
-            tokens.push({ type: 'operator', value: compound });
+            tokens.push(tk(OPERATOR, compound));
             i += 2;
             continue;
           }
         }
-        tokens.push({ type: 'operator', value });
+        tokens.push(tk(OPERATOR, value));
         i++;
         continue;
       }
@@ -110,23 +119,23 @@ function transformTokens(rawTokens) {
       // "k-1" → subtraction, not multiplication
       const next = rawTokens[i + 1];
       if (next && next.type === 'Number' && RE_STARTS_WITH_MINUS.test(next.value)) {
-        tokens.push({ type: 'number', value });
-        tokens.push({ type: 'operator', value: '-' });
-        tokens.push({ type: 'number', value: next.value.slice(1) });
+        tokens.push(tk(NUMBER, value));
+        tokens.push(tk(OPERATOR, '-'));
+        tokens.push(tk(NUMBER, next.value.slice(1)));
         i += 2;
         continue;
       }
 
       // "x1", "y2" → variable names, not implicit multiplication
       if (next && next.type === 'Number' && !RE_STARTS_WITH_MINUS.test(next.value)) {
-        tokens.push({ type: 'number', value: value + next.value });
+        tokens.push(tk(NUMBER, value + next.value));
         i += 2;
         continue;
       }
 
       // Function call: don't add multiplication before "("
       if (next && next.value === '(') {
-        tokens.push({ type: 'number', value });
+        tokens.push(tk(NUMBER, value));
         i++;
         continue;
       }
@@ -135,19 +144,19 @@ function transformTokens(rawTokens) {
       const nextIsOp = next && (isOperator(next.value) || RE_OPERATOR_CHARS.test(next.value) || next.value === '!');
       if (next && next.type === 'Symbol' && !nextIsStructural && !nextIsOp) {
         // "xπ" → "x*π"
-        tokens.push({ type: 'number', value });
-        tokens.push({ type: 'operator', value: '*' });
+        tokens.push(tk(NUMBER, value));
+        tokens.push(tk(OPERATOR, '*'));
         i++;
         continue;
       }
-      tokens.push({ type: 'number', value });
+      tokens.push(tk(NUMBER, value));
       i++;
       continue;
     }
 
     if (type === 'Symbol') {
       if (value === ',') {
-        tokens.push({ type: 'comma', value });
+        tokens.push(tk('comma', value));
         i++;
         continue;
       }
@@ -155,18 +164,18 @@ function transformTokens(rawTokens) {
       if (value === '!') {
         const next = rawTokens[i + 1];
         if (next && next.value === '=') {
-          tokens.push({ type: 'operator', value: '!=' });
+          tokens.push(tk(OPERATOR, '!='));
           i += 2;
           continue;
         }
-        tokens.push({ type: 'operator', value });
+        tokens.push(tk(OPERATOR, value));
         i++;
         continue;
       }
 
       // "(2+3)4" → "(2+3)*4", "(1+2)(3+4)" → "(1+2)*(3+4)"
       if (value === ')') {
-        tokens.push({ type: 'operator', value });
+        tokens.push(tk(OPERATOR, value));
         const next = rawTokens[i + 1];
         const nextIsOp = next && (isOperator(next.value) || RE_OPERATOR_CHARS.test(next.value) || next.value === '!');
         const shouldMultiply = next && (
@@ -176,7 +185,7 @@ function transformTokens(rawTokens) {
           (next.type === 'Symbol' && !nextIsOp && next.value !== ',' && next.value !== ')')
         );
         if (shouldMultiply) {
-          tokens.push({ type: 'operator', value: '*' });
+          tokens.push(tk(OPERATOR, '*'));
         }
         i++;
         continue;
@@ -185,7 +194,7 @@ function transformTokens(rawTokens) {
       if (next && next.type === 'Symbol') {
         const compound = value + next.value;
         if (compoundOps.has(compound)) {
-          tokens.push({ type: 'operator', value: compound });
+          tokens.push(tk(OPERATOR, compound));
           i += 2;
           continue;
         }
@@ -193,7 +202,7 @@ function transformTokens(rawTokens) {
       if (value === '+' || value === '-') {
         const lastToken = last(tokens);
         const isSign = !tokens.length ||
-          (lastToken && lastToken.type === 'operator' && !RE_PARENS.test(lastToken.value));
+          (lastToken && lastToken.type === OPERATOR && !RE_PARENS.test(lastToken.value));
 
         if (isSign) {
           let combinedSign = value === '-' ? -1 : 1;
@@ -213,20 +222,20 @@ function transformTokens(rawTokens) {
 
           if (nextToken && (nextToken.type === 'Number' || nextToken.type === 'Word')) {
             const signedValue = (combinedSign === -1 ? '-' : '') + nextToken.value;
-            tokens.push({ type: 'number', value: signedValue });
+            tokens.push(tk(NUMBER, signedValue));
             i = j + 1;
             continue;
           } else if (!tokens.length) {
             // Handle unary minus: "-(" → "-1*("
-            tokens.push({ type: 'number', value: combinedSign === -1 ? '-1' : '1' });
-            tokens.push({ type: 'operator', value: '*' });
+            tokens.push(tk(NUMBER, combinedSign === -1 ? '-1' : '1'));
+            tokens.push(tk(OPERATOR, '*'));
             i = j;
             continue;
           }
         }
       }
       if (isOperator(value)) {
-        tokens.push({ type: 'operator', value });
+        tokens.push(tk(OPERATOR, value));
         i++;
         continue;
       }
@@ -235,12 +244,12 @@ function transformTokens(rawTokens) {
       const nextIsStructural = next && next.type === 'Symbol' && /[(),]/.test(next.value);
       const nextIsOp = next && (isOperator(next.value) || RE_OPERATOR_CHARS.test(next.value) || next.value === '!');
       if (next && (next.type === 'Number' || next.type === 'Word' || next.type === 'Symbol') && !nextIsStructural && !nextIsOp) {
-        tokens.push({ type: 'number', value });
-        tokens.push({ type: 'operator', value: '*' });
+        tokens.push(tk(NUMBER, value));
+        tokens.push(tk(OPERATOR, '*'));
         i++;
         continue;
       }
-      tokens.push({ type: 'number', value });
+      tokens.push(tk(NUMBER, value));
       i++;
       continue;
     }
@@ -271,27 +280,23 @@ function infixToPostfix(input) {
     const { type, value } = tokens[i];
     const next = tokens[i + 1] || {};
 
-    if (type === 'number') {
+    if (type === NUMBER) {
       const isNumber = RE_NUMBER.test(value) || value === '-' || value === '+';
       if (next.value === '(' && !isNumber) {
         const { args, endIndex } = parseFunctionArgs(tokens, i + 1);
-        expr.push({
-          type: 'function',
-          name: value,
-          value: args
-        });
+        expr.push({ type: FUNCTION, name: value, value: args });
         i = endIndex;
       } else if (!isNumber) {
-        expr.push({ type: 'variable', value });
+        expr.push(tk(VARIABLE, value));
       } else {
-        expr.push({ type: 'number', value });
+        expr.push(tk(NUMBER, value));
       }
-    } else if (type === 'operator') {
+    } else if (type === OPERATOR) {
       if (value === '(') {
         opStack.push(value);
       } else if (value === ')') {
         while (opStack.length && last(opStack) !== '(') {
-          expr.push({ type: 'operator', value: opStack.pop() });
+          expr.push(tk(OPERATOR, opStack.pop()));
         }
         opStack.pop();
       } else {
@@ -303,7 +308,7 @@ function infixToPostfix(input) {
           if (isRightAssoc ? topPrec > currPrec : topPrec >= currPrec) {
             const op = opStack.pop();
             if (!RE_PARENS.test(op)) {
-              expr.push({ type: 'operator', value: op });
+              expr.push(tk(OPERATOR, op));
             }
           } else {
             break;
@@ -315,7 +320,7 @@ function infixToPostfix(input) {
   }
 
   while (opStack.length) {
-    expr.push({ type: 'operator', value: opStack.pop() });
+    expr.push(tk(OPERATOR, opStack.pop()));
   }
 
   return expr;
@@ -368,7 +373,7 @@ function calc(expr, context = {}, history = []) {
   while (idx < expr.length) {
     let { name, value, type } = expr[idx++];
 
-    if (type === 'variable') {
+    if (type === VARIABLE) {
       let result = context[value];
 
       if (is_invalid_number(result)) {
@@ -395,7 +400,7 @@ function calc(expr, context = {}, history = []) {
         }
       }
       stack.push(result);
-    } else if (type === 'function') {
+    } else if (type === FUNCTION) {
       let negative = false;
       if (RE_STARTS_WITH_MINUS.test(name)) {
         negative = true;

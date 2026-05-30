@@ -6,6 +6,7 @@ import { is_preset, get_preset } from './preset-size.js';
 
 import { add_alias } from './utils/index.js';
 import { memo } from './cache.js';
+import { css } from './utils/tagged-template.js';
 
 const iw = '--_cell-width';
 const ih = '--_cell-height';
@@ -57,7 +58,7 @@ export default add_alias({
     top = map_top_bottom[top] || top;
     let cw = `var(${iw}, 25%)`;
     let ch = `var(${ih}, 25%)`;
-    return `
+    return css`
       position: absolute;
       left: ${left};
       top: ${top};

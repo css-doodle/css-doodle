@@ -16,6 +16,7 @@ import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { cell_id, is_nil, get_png_name, cache_image, is_safari, un_entity, debounce } from './utils/index.js';
 
 import { cache } from './cache.js';
+import { css } from './utils/tagged-template.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './utils/google-font.js';
 
 const Expose = {
@@ -208,7 +209,7 @@ if (typeof HTMLElement !== 'undefined') {
       let w = width * scale;
       let h = height * scale;
       let fonts = await loadGoogleFontEmbed();
-      let svg = `
+      let svg = css`
           <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
             <foreignObject width="100%" height="100%">
               <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
@@ -423,7 +424,7 @@ if (typeof HTMLElement !== 'undefined') {
         : '';
 
       loadGoogleFontEmbed(styles.gf || [])
-        .then(importedFonts => replace(`
+        .then(importedFonts => replace(css`
           <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
             <foreignObject width="100%" height="100%">
               <div class="host" width="100%" height="100%" ${NSXHtml}>
@@ -710,7 +711,7 @@ if (typeof HTMLElement !== 'undefined') {
       const { uniforms, content, styles } = compiled;
       let has_delay = (has_transition || has_animation);
       let has_content = Object.keys(content).length;
-      this.doodle.innerHTML = `
+      this.doodle.innerHTML = css`
         <style>${get_basic_styles(grid) + styles.main}</style>
         ${(styles.cells || styles.container || has_content) ? create_grid(grid, compiled) : ''}
       `;
@@ -825,7 +826,7 @@ if (typeof HTMLElement !== 'undefined') {
 
 function get_basic_styles(grid) {
   let { x, y } = grid || {};
-  return `
+  return css`
     *,*::after,*::before,:host,.host {
       box-sizing: border-box;
     }

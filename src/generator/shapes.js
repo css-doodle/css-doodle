@@ -6,53 +6,54 @@ import parse_shape_commands from '../parser/parse-shape-commands.js';
 import { clamp, is_empty } from '../utils/index.js';
 import calc from '../calc.js';
 import { cache } from '../cache.js';
+import { css } from '../utils/tagged-template.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
 
 const preset_shapes = {
-  circle: `
+  circle: css`
     split: 180;
     scale: .99
   `,
 
-  triangle: `
+  triangle: css`
     rotate: 30;
     scale: 1.1;
     move: 0 .2
   `,
 
-  pentagon: `
+  pentagon: css`
     split: 5;
     rotate: 54
   `,
 
-  hexagon: `
+  hexagon: css`
     split: 6;
     rotate: 30;
     scale: .98
   `,
 
-  octagon: `
+  octagon: css`
     split: 8;
     rotate: 22.5;
     scale: .99
   `,
 
-  star: `
+  star: css`
     split: 10;
     r: cos(5t);
     rotate: -18;
     scale: .99
   `,
 
-  infinity: `
+  infinity: css`
     split: 180;
     scale: .99;
     x: cos(t)*.99 / (sin(t)^2 + 1);
     y: x * sin(t)
   `,
 
-  heart: `
+  heart: css`
     split: 180;
     rotate: 180;
     a: cos(t)*13/18 - cos(2t)*5/18;
@@ -61,19 +62,19 @@ const preset_shapes = {
     y: (a - b + .2) * -1.1
   `,
 
-  bean: `
+  bean: css`
     split: 180;
     r: sin(t)^3 + cos(t)^3;
     move: -.35 .35;
   `,
 
-  bicorn: `
+  bicorn: css`
     split: 180;
     x: cos(t);
     y: sin(t)^2 / (2 + sin(t)) - .5
   `,
 
-  drop: `
+  drop: css`
     split: 180;
     rotate: 90;
     scale: .95;
@@ -81,13 +82,13 @@ const preset_shapes = {
     y: (1 + sin(t)) * cos(t) / 1.6
   `,
 
-  fish: `
+  fish: css`
     split: 240;
     x: cos(t) - sin(t)^2 / sqrt(2) - .04;
     y: sin(2t)/2
   `,
 
-  whale: `
+  whale: css`
     split: 240;
     rotate: 180;
     R: 3.4 * (sin(t)^2 - .5) * cos(t);
@@ -95,7 +96,7 @@ const preset_shapes = {
     y: sin(t) * R * 1.2
   `,
 
-  windmill: `
+  windmill: css`
     split: 18;
     R: seq(.618, 1, 0);
     T: seq(t-.55, t, t);
@@ -103,7 +104,7 @@ const preset_shapes = {
     y: R * sin(T)
   `,
 
-  vase: `
+  vase: css`
     split: 240;
     scale: .3;
     x: sin(4t) + sin(t) * 1.4;
@@ -113,7 +114,7 @@ const preset_shapes = {
   clover(k = 3) {
     k = clamp(k, 3, 5);
     if (k == 4) k = 2;
-    return `
+    return css`
       split: 240;
       r: cos(${k}t);
       scale: .98
@@ -123,7 +124,7 @@ const preset_shapes = {
   hypocycloid(k = 3) {
     k = clamp(k, 3, 5);
     let scale = [.34, .25, .19][k - 3];
-    return `
+    return css`
       split: 240;
       scale: ${scale};
       k: ${k};
@@ -134,7 +135,7 @@ const preset_shapes = {
 
   bud(k = 3) {
     k = clamp(k, 3, 10);
-    return `
+    return css`
       split: 240;
       scale: .8;
       r: 1 + .2 * cos(${k}t)

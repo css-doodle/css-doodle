@@ -109,7 +109,7 @@ export async function loadGoogleFontEmbed(names = Array.from(linkFonts)) {
     let embedded = await Promise.all(
       fonts.map(async ({ family, url }) => {
         let base64 = await toBase64(url);
-        return `@font-face {\n  font-family: "${family}";\n  src: url("data:font/woff2;base64,${base64}") format("woff2");\n}`;
+        return `@font-face{font-family:"${family}";src:url("data:font/woff2;base64,${base64}") format("woff2");}`;
       })
     );
     return embedded.join('\n');

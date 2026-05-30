@@ -8,6 +8,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { utime, UTime } from '../uniforms.js';
 
 import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values, hash } from '../utils/index.js';
+import { css } from '../utils/tagged-template.js';
 
 const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
 
@@ -462,7 +463,7 @@ class Rules {
       if (/[0-9]$/.test(sy)) {
         height = `calc(${sy} * 100%)`;
       }
-      this.add_rule(':container', `
+      this.add_rule(':container', css`
         width: ${width};
         height: ${height};
         left: 50%;
@@ -493,7 +494,7 @@ class Rules {
       this.add_rule(':container', `gap: ${gap};`);
     }
     if (backdropFilter) {
-      this.add_rule('b', `
+      this.add_rule('b', css`
         backdrop-filter: ${backdropFilter};
       `);
     }
@@ -551,7 +552,7 @@ class Rules {
         reset.set(v, `${v} calc(${n})`);
         return `counter(${v})`;
       });
-      return `
+      return css`
         ${reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : ''}
         content:${value};
       `;
@@ -904,8 +905,8 @@ class Rules {
 
         case 'keyframes': {
           if (!this.keyframes[token.name]) {
-            this.keyframes[token.name] = coords => `
-              ${join(token.steps.map(step =>  `
+            this.keyframes[token.name] = coords => css`
+              ${join(token.steps.map(step =>  css`
                 ${this.get_composed_value(step.name, coords).value} {
                   ${join(step.styles.map(s => this.compose_rule(s, coords)))}
                 }
@@ -950,12 +951,12 @@ class Rules {
       let t = utime.ticks;
       let un = utime.name;
       let Un = UTime.name;
-      this.styles.container += `
+      this.styles.container += css`
         :host,.host {
           animation:${utime.animation()},${UTime.animation(DELAY + 'ms')};
         }
       `;
-      this.styles.keyframes += `
+      this.styles.keyframes += css`
         @keyframes ${utime[n]} {
           from {--${un}:0} to {--${un}:${t}}
         }
@@ -968,7 +969,7 @@ class Rules {
     this.coords.forEach((coords, i) => {
       for (let [name, keyframe] of Object.entries(this.keyframes)) {
         let aname = this.compose_aname(name, coords.count);
-        this.styles.keyframes += `
+        this.styles.keyframes += css`
           ${ i === 0 ? `@keyframes ${name} {${keyframe(coords)}}` : ''}
           @keyframes ${aname} {${keyframe(coords)}}
         `;

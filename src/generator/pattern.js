@@ -1,8 +1,9 @@
 import parse_pattern from '../parser/parse-pattern.js';
 import parse_grid from '../parser/parse-grid.js';
 import transform from './glsl-math-transformer.js';
+import { glsl } from '../utils/tagged-template.js';
 
-const CELL_INDEX = `
+const CELL_INDEX = glsl`
   float dx = x - (v.x + 1.0) * 0.5;
   float dy = y - (v.y + 1.0) * 0.5;
   float dr = length(vec2(dx, dy));
@@ -12,7 +13,7 @@ const CELL_INDEX = `
   float de = min(min(x - 1.0, v.x - x), min(y - 1.0, v.y - y));
 `;
 
-const CIRCLE_MASK = `
+const CIRCLE_MASK = glsl`
   vec2 cellUV = fract(uv * v) - 0.5;
   float dist = length(cellUV);
   shapeMask = 1.0 - smoothstep(0.5 - fwidth(dist), 0.5, dist);
@@ -92,7 +93,7 @@ function generate_block(token, extra, vars = {}) {
       return s.type === 'statement' ? s.value : '';
     })
     .join('');
-  return `
+  return glsl`
     if (${cond}) {
       ${body}
     }
@@ -101,7 +102,7 @@ function generate_block(token, extra, vars = {}) {
 
 function generate_shader(input, { x, y }, shape) {
   let shapeInit = shape === 'circle' ? CIRCLE_MASK : '';
-  return `
+  return glsl`
     const float PI = 3.1415926535897932;
     vec3 mapping(vec2 uv, vec2 grid) {
       float x = floor(uv.x * grid.x) + 1.0;

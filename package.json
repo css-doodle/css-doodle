@@ -16,6 +16,7 @@
     "url": "https://opencollective.com/css-doodle"
   },
   "devDependencies": {
+    "acorn": "^8.15.0",
     "esbuild": "^0.25.4",
     "terser": "^5.42.0"
   },
