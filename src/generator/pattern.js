@@ -103,6 +103,7 @@ function generate_block(token, extra, vars = {}) {
 function generate_shader(input, { x, y }, shape) {
   let shapeInit = shape === 'circle' ? CIRCLE_MASK : '';
   return glsl`
+    precision highp float;
     const float PI = 3.1415926535897932;
     vec3 mapping(vec2 uv, vec2 grid) {
       float x = floor(uv.x * grid.x) + 1.0;

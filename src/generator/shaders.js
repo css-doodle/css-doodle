@@ -59,7 +59,7 @@ function create_program(gl, vss, fss) {
 
 function generateFragment(fragment, textures) {
   const is_shadertoy = fragment.includes('void mainImage');
-  const has_precision = /precision\s+(highp|mediump|lowp)\s+float/.test(fragment);
+  const precision_match = fragment.match(/precision\s+(highp|mediump|lowp)\s+float\s*;/);
   const has_output = /^\s*out\s+vec4\s+\w+/m.test(fragment);
   const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
   const has_texture2d = /texture2D\s*\(/.test(fragment);
@@ -70,10 +70,10 @@ function generateFragment(fragment, textures) {
       snippets.push(line);
     }
   }
-
-  if (!has_precision) {
-    push('precision mediump float;');
+  if (precision_match) {
+    fragment = fragment.replace(precision_match[0], '');
   }
+  push(`precision ${precision_match ? precision_match[1] : 'mediump'} float;`);
 
   if (!has_output) {
     push('out vec4 FragColor;');
