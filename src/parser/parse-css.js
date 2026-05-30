@@ -434,7 +434,8 @@ function normalize_argument(group) {
     let cf = first(ft.value);
     let ce  = last(ed.value);
     if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-      if (is.pair_of(cf, ce)) {
+      // Only strip a surrounding pair when it actually wraps the whole argument.
+      if (is.pair_of(cf, ce) && (cf !== '(' || parens_wrap_whole(result))) {
         ft.value = ft.value.slice(1);
         ed.value = ed.value.slice(0, ed.value.length - 1);
         result.cluster = true;
@@ -443,6 +444,23 @@ function normalize_argument(group) {
   }
 
   return result;
+}
+
+function parens_wrap_whole(result) {
+  let str = result
+    .filter(token => token.type == 'text' && typeof token.value == 'string')
+    .map(token => token.value)
+    .join('');
+  let depth = 0;
+  for (let i = 0; i < str.length; i++) {
+    let c = str[i];
+    if (c === '(') depth++;
+    else if (c === ')') {
+      depth--;
+      if (depth === 0 && i !== str.length - 1) return false;
+    }
+  }
+  return depth === 0;
 }
 
 function seperate_func_name(name) {

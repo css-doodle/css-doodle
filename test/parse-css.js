@@ -154,3 +154,21 @@ test('quotes in content', () => {
   )
 
 });
+
+test('calc argument with adjacent paren groups', () => {
+
+  function argTextOf(input) {
+    let func = parseCSS(input)[0].value[0][0];
+    return func.arguments[0][0].value;
+  }
+
+  // Only a pair that wraps the whole argument should be stripped. Here the
+  // leading `(` and trailing `)` belong to separate groups, so they must stay.
+  compare(`width: $((5) % (3));`, '(5) % (3)', false, argTextOf);
+  compare(`width: $((5 + 20) % (3));`, '(5 + 20) % (3)', false, argTextOf);
+  compare(`width: $(((10)) % ((3)));`, '((10)) % ((3))', false, argTextOf);
+
+  // A pair that genuinely wraps the whole argument is still unwrapped.
+  compare(`width: $((5 % 3));`, '5 % 3', false, argTextOf);
+
+});
