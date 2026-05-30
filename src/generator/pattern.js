@@ -6,7 +6,10 @@ const CELL_INDEX = `
   float dx = x - (v.x + 1.0) * 0.5;
   float dy = y - (v.y + 1.0) * 0.5;
   float dr = length(vec2(dx, dy));
+  float dc = max(abs(dx), abs(dy));
+  float dm = abs(dx) + abs(dy);
   float theta = atan(dy, dx);
+  float de = min(min(x - 1.0, v.x - x), min(y - 1.0, v.y - y));
 `;
 
 const CIRCLE_MASK = `

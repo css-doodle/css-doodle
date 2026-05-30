@@ -63,6 +63,31 @@ test('dr, theta, PI built-ins', () => {
   );
 });
 
+test('dc, dm distance built-ins', () => {
+  let shader = draw('match(dc < 2) { fill: red }', extra);
+  if (!/float dc = max\(abs\(dx\), abs\(dy\)\);/.test(shader)) {
+    throw new Error('missing dc definition');
+  }
+  if (!/float dm = abs\(dx\) \+ abs\(dy\);/.test(shader)) {
+    throw new Error('missing dm definition');
+  }
+  compare('match(dc < 2) { fill: red }', 'if (bool((dc < 2.0))) {');
+  compare('match(dm < 3) { fill: red }', 'if (bool((dm < 3.0))) {');
+});
+
+test('de edge-distance built-in', () => {
+  let shader = draw('match(de == 0) { fill: red }', extra);
+  if (!/float de = min\(min\(x - 1\.0, v\.x - x\), min\(y - 1\.0, v\.y - y\)\);/.test(shader)) {
+    throw new Error('missing de definition');
+  }
+  compare('match(de == 0) { fill: red }', 'if (bool((de == 0.0))) {');
+  compare('match(de < 2) { fill: red }', 'if (bool((de < 2.0))) {');
+  compare(
+    'match(int(de) % 2 == 0) { fill: red }',
+    'if (bool((mod(float(int(de)), 2.0) == 0.0))) {'
+  );
+});
+
 test('dx/dy grid-centered cell index', () => {
   let shader = draw('match(dx > 0) { fill: red }', extra);
   if (!/float dx = x - \(v\.x \+ 1\.0\) \* 0\.5;/.test(shader)) {

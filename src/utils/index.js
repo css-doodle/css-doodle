@@ -74,6 +74,21 @@ export function cell_id(x, y, z) {
   return 'c-' + x + '-' + y + '-' + z;
 }
 
+export function cell_metrics(x, y, grid) {
+  let dx = x - .5 - grid.x / 2;
+  let dy = y - .5 - grid.y / 2;
+  let ax = Math.abs(dx);
+  let ay = Math.abs(dy);
+  return {
+    dx, dy,
+    dr: Math.sqrt(dx * dx + dy * dy),
+    dc: Math.max(ax, ay),
+    dm: ax + ay,
+    theta: Math.atan2(dy, dx),
+    de: Math.min(x - 1, grid.x - x, y - 1, grid.y - y),
+  };
+}
+
 export function get_value(input) {
   let v = input;
   while (v && !is_nil(v.value)) v = v.value;

@@ -1,6 +1,6 @@
 import calc from './calc.js';
 import parse_linear_expr from './parser/parse-linear-expr.js';
-import { add_alias } from './utils/index.js';
+import { add_alias, cell_metrics } from './utils/index.js';
 
 function odd(n) {
   return n % 2 ? true : false;
@@ -47,6 +47,16 @@ function compare(rule, value, x, y) {
       value: result >= 0 && Number.isInteger(result),
     }
   }
+}
+
+function calc_context({ x, y, count, grid, random }) {
+  return {
+    x, X: grid.x,
+    y, Y: grid.y,
+    i: count, I: grid.count,
+    ...cell_metrics(x, y, grid),
+    random,
+  };
 }
 
 function random_n(N, n, random) {
@@ -109,12 +119,7 @@ export default add_alias({
     return (ratio = .5) => {
       let value = ratio;
       if (/\D/.test(value)) {
-        value = calc('(0 + ' + value + ')', {
-          x, X: grid.x,
-          y, Y: grid.y,
-          i: count, I: grid.count,
-          random,
-        });
+        value = calc('(0 + ' + value + ')', calc_context({ x, y, count, grid, random }));
       }
       if (value >= grid.count) {
         return true;
@@ -134,12 +139,7 @@ export default add_alias({
 
   match({ count, grid, x, y, random }) {
     return expr => {
-      return !!calc('(' + expr + ')', {
-        x, X: grid.x,
-        y, Y: grid.y,
-        i: count, I: grid.count,
-        random,
-      });
+      return !!calc('(' + expr + ')', calc_context({ x, y, count, grid, random }));
     }
   },
 
@@ -170,12 +170,7 @@ export default add_alias({
             return random() < num;
           }
         }
-        return !!calc('(' + arg + ')', {
-          x, X: grid.x,
-          y, Y: grid.y,
-          i: count, I: grid.count,
-          random,
-        });
+        return !!calc('(' + arg + ')', calc_context({ x, y, count, grid, random }));
       });
       return result.some(Boolean);
     }

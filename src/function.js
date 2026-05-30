@@ -18,7 +18,7 @@ import { by_unit, by_charcode } from './utils/transform.js';
 import expand from './utils/expand.js';
 import Stack from './utils/stack.js';
 import get_named_arguments from './utils/get-named-arguments.js';
-import { cell_id, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
+import { cell_id, cell_metrics, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
 import { getEasingFunction } from './easing.js';
 
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
@@ -268,24 +268,32 @@ const Expose = add_alias({
     return _ => cell_id(x, y, z);
   },
 
-  dx({ x, grid }) {
-    return calc_with(x - .5 - grid.x / 2);
+  dx({ x, y, grid }) {
+    return calc_with(cell_metrics(x, y, grid).dx);
   },
 
-  dy({ y, grid }) {
-    return calc_with(y - .5 - grid.y / 2);
+  dy({ x, y, grid }) {
+    return calc_with(cell_metrics(x, y, grid).dy);
   },
 
   dr({ x, y, grid }) {
-    let dx = x - .5 - grid.x / 2;
-    let dy = y - .5 - grid.y / 2;
-    return calc_with(Math.hypot(dx, dy));
+    return calc_with(cell_metrics(x, y, grid).dr);
+  },
+
+  dc({ x, y, grid }) {
+    return calc_with(cell_metrics(x, y, grid).dc);
+  },
+
+  dm({ x, y, grid }) {
+    return calc_with(cell_metrics(x, y, grid).dm);
   },
 
   theta({ x, y, grid }) {
-    let dx = x - .5 - grid.x / 2;
-    let dy = y - .5 - grid.y / 2;
-    return calc_with(Math.atan2(dy, dx));
+    return calc_with(cell_metrics(x, y, grid).theta);
+  },
+
+  de({ x, y, grid }) {
+    return calc_with(cell_metrics(x, y, grid).de);
   },
 
   n({ extra }) {
@@ -344,7 +352,10 @@ const Expose = add_alias({
 
   match({ extra, x, y, z, count, grid }) {
     let [n, nx, ny, N] = last(extra) || [];
-    let variables = { x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z };
+    let variables = {
+      x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z,
+      ...cell_metrics(x, y, grid),
+    };
     if (!is_nil(n)) variables.n = n;
     if (!is_nil(nx)) variables.nx = nx;
     if (!is_nil(ny)) variables.ny = ny;
