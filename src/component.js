@@ -496,42 +496,56 @@ if (typeof HTMLElement !== 'undefined') {
 
       let sources = parsed.textures;
       let images = [];
+      let ready = false;
+      let last_w = 0, last_h = 0;
 
       const set_shader_prop = v => {
         this.style.setProperty(id, 'url("' + v + '")');
       }
+
       const tick = ([render, animated, canvas]) => {
-        // Destroy any existing render for this target first
+        // Release any context still held for this target before drawing again.
         let existing = this.shader_renders.get(target.selector);
         if (existing && existing.canvas && existing.canvas.loseContext) {
           existing.canvas.loseContext();
         }
+        this.shader_renders.delete(target.selector);
 
-        if (target.type === 'content') {
-          render(0, width, height, this._umouse, images);
-          element.replaceChildren(canvas);
-          if (animated) {
+        render(0, width, height, this._umouse, images);
+        last_w = width;
+        last_h = height;
+        ready = true;
+
+        if (animated) {
+          if (target.type === 'content') {
+            element.replaceChildren(canvas);
             this.animations.push(create_animation(t => {
               render(t, width, height, this._umouse, images);
             }));
           } else {
-            this.shader_renders.set(target.selector, { render, canvas });
-          }
-        } else {
-          if (animated) {
             this.animations.push(create_animation(t => {
               render(t, width, height, this._umouse, images);
               set_shader_prop(canvas.toDataURL());
             }));
+          }
+          this.shader_renders.set(target.selector, { render, canvas, animated: true });
+        } else {
+          let data_url = canvas.toDataURL();
+          if (target.type === 'content') {
+            let img = new Image();
+            img.style.cssText = 'position:absolute;width:100%;height:100%;object-fit:cover';
+            img.src = data_url;
+            element.replaceChildren(img);
           } else {
-            this.shader_renders.set(target.selector, { render, canvas });
-            render(0, width, height, this._umouse, images);
-            set_shader_prop(canvas.toDataURL());
+            set_shader_prop(data_url);
+          }
+          if (canvas.loseContext) {
+            canvas.loseContext();
           }
         }
       }
 
-      const transform = (sources, fn) => {
+      const transform = (sources, cb) => {
         let dpr = devicePixelRatio || 1;
         Promise.all(sources.map(({ name, value }) => {
           return new Promise(resolve => {
@@ -548,11 +562,36 @@ if (typeof HTMLElement !== 'undefined') {
               img.src = src;
             });
           });
-        })).then(fn);
+        })).then(cb);
+      }
+
+      const draw = after => {
+        parsed.textures = images;
+        parsed.width = width;
+        parsed.height = height;
+        return generate_shaders(parsed, seed, target.type)
+          .then(tick)
+          .then(after)
+          .catch(err => {
+            console.error(err);
+            if (after) after('');
+          });
+      }
+
+      const run = after => {
+        if (sources.length) {
+          transform(sources, result => {
+            images = result;
+            draw(after);
+          });
+        } else {
+          draw(after);
+        }
       }
 
       if (!this.observers.has(target.selector)) {
         let observer = new ResizeObserver(debounce(() => {
+          if (!ready) return;
           let rect = element.getBoundingClientRect();
           width = rect.width;
           height = rect.height;
@@ -560,39 +599,24 @@ if (typeof HTMLElement !== 'undefined') {
             width = Math.min(cs.x, width);
             height = Math.min(cs.y, height);
           }
-          transform(sources, result => {
-            images = result;
-            let render = this.shader_renders.get(target.selector);
-            if (render) {
-              render.render(0, width, height, this._umouse, images);
-              if (target.type === 'background') {
-                set_shader_prop(render.canvas.toDataURL());
-              }
-            }
-          });
+          if (width === last_w && height === last_h) return;
+          last_w = width;
+          last_h = height;
+          let live = this.shader_renders.get(target.selector);
+          if (live && live.animated) {
+            // Live context adapts to the new size on its next frame; just
+            // refresh the textures the loop reads from the closure.
+            transform(sources, result => { images = result; });
+          } else {
+            // Static render was baked to an image and its context freed: redraw.
+            run();
+          }
         }));
         observer.observe(element);
         this.observers.set(target.selector, observer);
       }
 
-      const render_shaders = () => generate_shaders(parsed, seed, target.type)
-        .then(tick)
-        .then(fn)
-        .catch(err => {
-          console.error(err);
-          fn('');
-        });
-
-      if (sources.length) {
-        transform(sources, result => {
-          parsed.textures = images = result;
-          parsed.width = width;
-          parsed.height = height;
-          render_shaders();
-        });
-      } else {
-        render_shaders();
-      }
+      run(fn);
     }
 
     bindClickToUpdate() {

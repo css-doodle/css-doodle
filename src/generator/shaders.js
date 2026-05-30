@@ -1,20 +1,6 @@
 import { hash } from '../utils/index.js';
 import { glsl } from '../utils/tagged-template.js';
 
-// Global WebGL context limiter
-const MAX_WEBGL_CONTEXTS = 4;
-const activeContexts = [];
-
-function manageContextLimit(newContext) {
-  activeContexts.push(newContext);
-  if (activeContexts.length > MAX_WEBGL_CONTEXTS) {
-    const old = activeContexts.shift();
-    if (old && old.loseContext) {
-      old.loseContext();
-    }
-  }
-}
-
 const DEFAULT_VERTEX_SHADER = glsl`#version 300 es
   in vec4 position;
   void main() {
@@ -161,7 +147,7 @@ export default function draw_shader(shaders, seed, type) {
     powerPreference: 'high-performance',
     antialias: false,
     failIfMajorPerformanceCaveat: true,
-    preserveDrawingBuffer: type === 'background'
+    preserveDrawingBuffer: true
   });
 
   if (!gl) {
@@ -169,9 +155,6 @@ export default function draw_shader(shaders, seed, type) {
   }
 
   canvas.loseContext = () => {
-    // Remove from active contexts
-    const idx = activeContexts.indexOf(canvas);
-    if (idx > -1) activeContexts.splice(idx, 1);
     // Delete textures first
     texture_list.forEach(texture => {
       gl.deleteTexture(texture);
@@ -186,8 +169,6 @@ export default function draw_shader(shaders, seed, type) {
       ext.loseContext();
     }
   };
-
-  manageContextLimit(canvas);
 
   let program = create_program(
     gl,
