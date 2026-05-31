@@ -199,13 +199,14 @@ class Rules {
         if (typeof fn === 'function') {
           this.check_uniforms(fname);
           if (this.is_composable(fname)) {
-            let value = get_value((arg.arguments[0] || [])[0]);
+            let parts = (arg.arguments || []).map(a => get_value((a || [])[0]));
             let temp;
-            if (/^\d/.test(value)) {
-              temp = value;
-              value = get_value((arg.arguments[1] || [])[0]);
+            if (parts.length && /^\d/.test(parts[0])) {
+              temp = parts[0];
+              parts = parts.slice(1);
             }
-            if (!is_nil(value)) {
+            let value = parts.join(',');
+            if (!is_nil(value) && value !== '') {
               switch (fname) {
                 case 'doodle':
                   return this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra));
@@ -349,13 +350,14 @@ class Rules {
           if (typeof fn === 'function') {
             this.check_uniforms(fname);
             if (this.is_composable(fname)) {
-              let value = get_value((val.arguments[0] || [])[0]);
+              let parts = (val.arguments || []).map(a => get_value((a || [])[0]));
               let temp;
-              if (this.is_composable(fname) && /^\d/.test(value)) {
-                temp = value;
-                value = get_value((val.arguments[1] || [])[0]);
+              if (parts.length && /^\d/.test(parts[0])) {
+                temp = parts[0];
+                parts = parts.slice(1);
               }
-              if (!is_nil(value)) {
+              let value = parts.join(',');
+              if (!is_nil(value) && value !== '') {
                 switch (fname) {
                   case 'doodle':
                     result += this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra)); break;

@@ -1,6 +1,33 @@
 import { hash } from '../utils/index.js';
 import { glsl } from '../utils/tagged-template.js';
 
+
+// Rendering queue
+const MAX_CONCURRENT = 24;
+const pending = [];
+let active = 0;
+
+function pump() {
+  while (active < MAX_CONCURRENT && pending.length) {
+    active++;
+    pending.shift()();
+  }
+}
+
+function acquireSlot() {
+  return new Promise(resolve => { pending.push(resolve); pump(); });
+}
+
+function makeRelease() {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    active = Math.max(0, active - 1);
+    pump();
+  };
+}
+
 const DEFAULT_VERTEX_SHADER = glsl`#version 300 es
   in vec4 position;
   void main() {
@@ -132,6 +159,11 @@ function load_texture(gl, image, i, maxSize = 4096) {
 }
 
 export default function draw_shader(shaders, seed, type) {
+  return acquireSlot().then(() => render_shader(shaders, seed, type));
+}
+
+function render_shader(shaders, seed, type) {
+  const release = makeRelease();
   const canvas = document.createElement('canvas');
   const dpr = devicePixelRatio || 1;
 
@@ -151,10 +183,15 @@ export default function draw_shader(shaders, seed, type) {
   });
 
   if (!gl) {
-    return Promise.resolve('');
+    release();
+    return '';
   }
 
+  let watchdog = setTimeout(release, 10000);
+
   canvas.loseContext = () => {
+    clearTimeout(watchdog);
+    release();
     // Delete textures first
     texture_list.forEach(texture => {
       gl.deleteTexture(texture);
@@ -209,6 +246,11 @@ export default function draw_shader(shaders, seed, type) {
   const u_mouse = gl.getUniformLocation(program, 'u_mouse');
   const is_animated = u_time || u_frame_index || u_time_delta;
 
+  if (is_animated) {
+    clearTimeout(watchdog);
+    release();
+  }
+
   let frame_index = 0;
   let current_time = 0;
 
@@ -236,5 +278,5 @@ export default function draw_shader(shaders, seed, type) {
     }
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
-  return Promise.resolve([render, is_animated, canvas]);
+  return [render, is_animated, canvas];
 }

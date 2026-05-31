@@ -745,15 +745,15 @@ const Expose = add_alias({
   },
 
   doodle() {
-    return value => value;
+    return (...args) => args.join(',');
   },
 
   shaders() {
-    return value => value;
+    return (...args) => args.join(',');
   },
 
   pattern() {
-    return value => value;
+    return (...args) => args.join(',');
   },
 
   invert() {
