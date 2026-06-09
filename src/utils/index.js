@@ -84,8 +84,8 @@ export function cell_metrics(x, y, grid) {
     dr: Math.sqrt(dx * dx + dy * dy),
     dc: Math.max(ax, ay),
     dm: ax + ay,
-    dt: Math.atan2(dy, dx),
-    de: Math.min(x - 1, grid.x - x, y - 1, grid.y - y),
+    da: Math.atan2(dy, dx),
+    db: Math.min(x - 1, grid.x - x, y - 1, grid.y - y),
   };
 }
 

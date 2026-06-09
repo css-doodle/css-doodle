@@ -44,22 +44,22 @@ test('non-comparison root is bool-coerced', () => {
   compare('match(sin(x)) { fill: red }', 'if (bool(sin(x))) {');
 });
 
-test('dr, dt, PI built-ins', () => {
+test('dr, da, PI built-ins', () => {
   let shader = draw('match(dr < 3) { fill: red }', extra);
   if (!/float dr = length\(vec2\(dx, dy\)\);/.test(shader)) {
     throw new Error('missing dr definition');
   }
-  if (!/float dt = atan\(dy, dx\);/.test(shader)) {
-    throw new Error('missing dt definition');
+  if (!/float da = atan\(dy, dx\);/.test(shader)) {
+    throw new Error('missing da definition');
   }
   if (!/const float PI = 3\.14159/.test(shader)) {
     throw new Error('missing PI constant');
   }
   compare('match(dr < 3) { fill: red }', 'if (bool((dr < 3.0))) {');
-  compare('match(dt > 0) { fill: red }', 'if (bool((dt > 0.0))) {');
+  compare('match(da > 0) { fill: red }', 'if (bool((da > 0.0))) {');
   compare(
-    'match(dt > -PI/4 && dt < PI/4) { fill: red }',
-    'if (bool((bool((dt > (-PI / 4.0))) && bool((dt < (PI / 4.0)))))) {'
+    'match(da > -PI/4 && da < PI/4) { fill: red }',
+    'if (bool((bool((da > (-PI / 4.0))) && bool((da < (PI / 4.0)))))) {'
   );
 });
 
@@ -75,16 +75,16 @@ test('dc, dm distance built-ins', () => {
   compare('match(dm < 3) { fill: red }', 'if (bool((dm < 3.0))) {');
 });
 
-test('de edge-distance built-in', () => {
-  let shader = draw('match(de == 0) { fill: red }', extra);
-  if (!/float de = min\(min\(x - 1\.0, v\.x - x\), min\(y - 1\.0, v\.y - y\)\);/.test(shader)) {
-    throw new Error('missing de definition');
+test('db boundary-distance built-in', () => {
+  let shader = draw('match(db == 0) { fill: red }', extra);
+  if (!/float db = min\(min\(x - 1\.0, v\.x - x\), min\(y - 1\.0, v\.y - y\)\);/.test(shader)) {
+    throw new Error('missing db definition');
   }
-  compare('match(de == 0) { fill: red }', 'if (bool((de == 0.0))) {');
-  compare('match(de < 2) { fill: red }', 'if (bool((de < 2.0))) {');
+  compare('match(db == 0) { fill: red }', 'if (bool((db == 0.0))) {');
+  compare('match(db < 2) { fill: red }', 'if (bool((db < 2.0))) {');
   compare(
-    'match(int(de) % 2 == 0) { fill: red }',
-    'if (bool((mod(float(int(de)), 2.0) == 0.0))) {'
+    'match(int(db) % 2 == 0) { fill: red }',
+    'if (bool((mod(float(int(db)), 2.0) == 0.0))) {'
   );
 });
 
