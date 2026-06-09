@@ -289,8 +289,8 @@ const Expose = add_alias({
     return calc_with(cell_metrics(x, y, grid).dm);
   },
 
-  theta({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).theta);
+  dt({ x, y, grid }) {
+    return calc_with(cell_metrics(x, y, grid).dt);
   },
 
   de({ x, y, grid }) {
