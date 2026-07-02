@@ -23,7 +23,7 @@ function readStatement(iter, token) {
     if (curr.isSymbol("'", '"')) {
       if (curr.status === 'open') {
         stackQuote.push(curr);
-      } else {
+      } else if (curr.status === 'close') {
         stackQuote.pop();
       }
     }

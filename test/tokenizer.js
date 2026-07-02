@@ -1,10 +1,11 @@
 import test from 'node:test';
+import assert from 'node:assert/strict';
 
 import { scan } from '../src/parser/tokenizer.js';
 import compare from './_compare.js';
 
-compare.use(input => {
-  return Array.from(scan(input)).map(n => {
+compare.use((input, options) => {
+  return Array.from(scan(input, options)).map(n => {
     let ret = {
       type: n.type,
       value: n.value
@@ -81,6 +82,34 @@ test('basic', () => {
 
 });
 
+test('quotes', () => {
+
+  // A different quote inside a string is literal content
+  compare(`content: "it's fine"`, [
+    { type: 'Word', value: 'content' },
+    { type: 'Symbol', value: ':' },
+    { type: 'Symbol', value: '"', status: 'open' },
+    { type: 'Word', value: 'it' },
+    { type: 'Symbol', value: "'" },
+    { type: 'Word', value: 's' },
+    { type: 'Space', value: ' ' },
+    { type: 'Word', value: 'fine' },
+    { type: 'Symbol', value: '"', status: 'close' },
+  ]);
+
+  compare(`"url('#id')"`, [
+    { type: 'Symbol', value: '"', status: 'open' },
+    { type: 'Word', value: 'url' },
+    { type: 'Symbol', value: '(' },
+    { type: 'Symbol', value: "'" },
+    { type: 'Word', value: '#id' },
+    { type: 'Symbol', value: "'" },
+    { type: 'Symbol', value: ')' },
+    { type: 'Symbol', value: '"', status: 'close' },
+  ]);
+
+});
+
 test('escape', () => {
 
   compare('content: "\\"hello"', [
@@ -105,6 +134,25 @@ test('escape', () => {
     { type: 'Word', value: '\\' },
     { type: 'Symbol', value: '"', status: 'open' },
     { type: 'Word', value: 'x' },
+    { type: 'Symbol', value: '"', status: 'close' },
+  ]);
+
+  compare('content: "say \\"hi\\""', [
+    { type: 'Word', value: 'content' },
+    { type: 'Symbol', value: ':' },
+    { type: 'Symbol', value: '"', status: 'open' },
+    { type: 'Word', value: 'say' },
+    { type: 'Space', value: ' ' },
+    { type: 'Word', value: '"hi' },
+    { type: 'Word', value: '"' },
+    { type: 'Symbol', value: '"', status: 'close' },
+  ]);
+
+  // Escaped backslash
+  compare('"a\\\\"', [
+    { type: 'Symbol', value: '"', status: 'open' },
+    { type: 'Word', value: 'a' },
+    { type: 'Word', value: '\\' },
     { type: 'Symbol', value: '"', status: 'close' },
   ]);
 
@@ -259,6 +307,58 @@ test('comments', () => {
     ]
   );
 
+  // A comment separates tokens like a space does
+  compare('a/* x */b', [
+    { type: 'Word', value: 'a' },
+    { type: 'Space', value: ' ' },
+    { type: 'Word', value: 'b' },
+  ]);
+
+  compare('red;/* x */blue', [
+    { type: 'Word', value: 'red' },
+    { type: 'Symbol', value: ';' },
+    { type: 'Word', value: 'blue' },
+  ]);
+
+  // Comment inside a string is literal content
+  compare('"a /* b */ c"', [
+    { type: 'Symbol', value: '"', status: 'open' },
+    { type: 'Word', value: 'a' },
+    { type: 'Space', value: ' ' },
+    { type: 'Symbol', value: '/' },
+    { type: 'Symbol', value: '*' },
+    { type: 'Space', value: ' ' },
+    { type: 'Word', value: 'b' },
+    { type: 'Space', value: ' ' },
+    { type: 'Symbol', value: '*' },
+    { type: 'Symbol', value: '/' },
+    { type: 'Space', value: ' ' },
+    { type: 'Word', value: 'c' },
+    { type: 'Symbol', value: '"', status: 'close' },
+  ]);
+
+});
+
+test('line breaks', () => {
+
+  compare(['a \nb', { preserveLineBreak: true }], [
+    { type: 'Word', value: 'a' },
+    { type: 'Space', value: '\n' },
+    { type: 'Word', value: 'b' },
+  ]);
+
+  compare(['a // hi\nb', { preserveLineBreak: true, ignoreInlineComment: true }], [
+    { type: 'Word', value: 'a' },
+    { type: 'Space', value: '\n' },
+    { type: 'Word', value: 'b' },
+  ]);
+
+});
+
+test('token position', () => {
+  let tokens = scan('ab\ncd');
+  assert.deepEqual(tokens[0].pos, [0, 0]);
+  assert.deepEqual(tokens[2].pos, [0, 1]);
 });
 
 
@@ -348,5 +448,15 @@ test('subtraction after closing parenthesis', () => {
     { type: 'Symbol', value: '(' },
     { type: 'Number', value: '-5' },
     { type: 'Symbol', value: ')' },
+  ]);
+
+  // Same for closing brackets
+  compare('v[1]-2', [
+    { type: 'Word', value: 'v' },
+    { type: 'Symbol', value: '[' },
+    { type: 'Number', value: '1' },
+    { type: 'Symbol', value: ']' },
+    { type: 'Symbol', value: '-' },
+    { type: 'Number', value: '2' },
   ]);
 });

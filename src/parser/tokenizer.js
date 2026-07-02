@@ -1,6 +1,5 @@
 /**
- * This is totally rewrite for the old parser module
- * I'll improve and replace them little by little.
+ * Tokenizer for css-doodle rules and expressions.
  */
 
 const symbols = [
@@ -14,7 +13,7 @@ const symbols = [
 
 const is = {
   escape: c => c == '\\',
-  space: c => /[\r\n\t\s]/.test(c),
+  space: c => /\s/.test(c),
   digit: c => /^[0-9]$/.test(c),
   sign: c => /^[+-]$/.test(c),
   dot: c => c == '.',
@@ -28,7 +27,6 @@ const is = {
   letter: (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
   comment: (a, b) => a == '/' && b == '*',
   inlineComment: (a, b) => a == '/' && b === '/',
-  selfClosedTag: (a, b) => a == '/' && b == '>',
   closedTag: (a, b) => a == '<' && b == '/',
 }
 
@@ -74,7 +72,7 @@ function iterator(input) {
     },
     next(n = 1) {
       let next = input[pointer += n];
-      if (next === '\n') row++, col = 0;
+      if (next === '\n') row++, col = -1;
       else col += n;
       return next;
     },
@@ -102,8 +100,10 @@ function skipComments(iter) {
 }
 
 function skipInlineComments(iter) {
-  while (iter.next()) {
-    if (iter.curr() === '\n') break;
+  // Stop before the line break so it gets tokenized as space
+  while (!iter.end()) {
+    if (iter.curr(1) === '\n') break;
+    iter.next();
   }
 }
 
@@ -111,12 +111,18 @@ function ignoreSpacingSymbol(value) {
   return [':', ';', ',', '{', '}', '(', ')', '[', ']'].includes(value);
 }
 
+function ignoreSpacingAround(prev, next) {
+  let ignoreLeft = ignoreSpacingSymbol(prev) && prev !== ')';
+  let ignoreRight = ignoreSpacingSymbol(next) && next !== '(';
+  return ignoreLeft || ignoreRight;
+}
+
 function readWord(iter) {
   let temp = '';
   while (!iter.end()) {
     let { curr, next } = iter.get();
     temp += curr;
-    let isBreak = is.symbol(next) || is.space(next) || is.digit(next);
+    let isBreak = is.symbol(next) || is.space(next) || is.digit(next) || is.escape(next);
     if (temp.length && isBreak) {
       if (!is.closedTag(curr, next)) break;
     }
@@ -182,10 +188,19 @@ function scan(source, options = {}) {
 
   while (iter.next()) {
     let { prev, curr, next, next2, pos } = iter.get();
-    if (is.comment(curr, next)) {
+    if (!quoteStack.length && is.comment(curr, next)) {
       skipComments(iter);
+      // A comment separates tokens like a space does
+      let lastToken = last(tokens);
+      let after = iter.curr(1);
+      if (lastToken && !lastToken.isSpace() && after && !is.space(after)
+          && !ignoreSpacingAround(lastToken.value, after)) {
+        tokens.push(new Token({
+          type: 'Space', value: ' ', pos
+        }));
+      }
     }
-    else if (options.ignoreInlineComment && is.inlineComment(curr, next)) {
+    else if (options.ignoreInlineComment && !quoteStack.length && is.inlineComment(curr, next)) {
       skipInlineComments(iter);
     }
     else if (is.hex(curr, next, next2)) {
@@ -201,11 +216,20 @@ function scan(source, options = {}) {
         type: 'Number', value: num, pos
       }));
     }
+    else if (quoteStack.length && is.escape(curr)) {
+      iter.next();
+      let word = readWord(iter);
+      if (word.length) {
+        tokens.push(new Token({
+          type: 'Word', value: word, pos
+        }));
+      }
+    }
     else if (is.symbol(curr)) {
       let lastToken = last(tokens);
       // negative
       let isNextDigit = is.digit(next) || (is.dot(next) && is.digit(next2));
-      let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')'));
+      let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'));
       if (curr === '-' && isNextDigit && !isAfterValue) {
         let num = readNumber(iter);
         tokens.push(new Token({
@@ -217,30 +241,17 @@ function scan(source, options = {}) {
       let token = {
         type: 'Symbol', value: curr, pos
       }
-      // Escaped symbols
-      if (quoteStack.length && is.escape(lastToken.value)) {
-        tokens.pop();
-        let word = readWord(iter);
-        if (word.length) {
-          tokens.push(new Token({
-            type: 'Word', value: word, pos
-          }));
+      if (is.quote(curr)) {
+        let lastQuote = last(quoteStack);
+        if (lastQuote == curr) {
+          quoteStack.pop();
+          token.status = 'close';
+        } else if (!quoteStack.length) {
+          quoteStack.push(curr);
+          token.status = 'open';
         }
       }
-      else {
-        if (is.quote(curr)) {
-          let lastQuote = last(quoteStack);
-          if (lastQuote == curr) {
-            quoteStack.pop();
-            token.status = 'close';
-          } else {
-            quoteStack.push(curr);
-            token.status = 'open';
-          }
-        }
-
-        tokens.push(new Token(token));
-      }
+      tokens.push(new Token(token));
     }
     else if (is.space(curr)) {
       let spaces = readSpaces(iter);
@@ -248,13 +259,15 @@ function scan(source, options = {}) {
       let { next } = iter.get();
       // Reduce unnecessary spaces
       if (!quoteStack.length && lastToken) {
-        let prev = lastToken.value;
-        let ignoreLeft = (ignoreSpacingSymbol(prev) && prev !== ')');
-        let ignoreRight = (ignoreSpacingSymbol(next) && next !== '(');
-        if (ignoreLeft || ignoreRight) {
+        if (ignoreSpacingAround(lastToken.value, next)) {
           continue;
-        } else {
-          spaces = options.preserveLineBreak ? curr : ' ';
+        }
+        spaces = (options.preserveLineBreak && spaces.includes('\n')) ? '\n' : ' ';
+        if (lastToken.isSpace()) {
+          if (spaces === '\n') {
+            lastToken.value = '\n';
+          }
+          continue;
         }
       }
       if (tokens.length && (next && next.trim())) {
