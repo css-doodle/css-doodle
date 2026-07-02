@@ -70,7 +70,6 @@ function hasTag(src) {
   return /\b(?:css|svg|glsl)`/.test(src);
 }
 
-// CSS / SVG / css-doodle declarations: all whitespace is insignificant.
 function cssCollapse(s) {
   return s
     .replace(/([:;><{])\s+/g, '$1')
@@ -80,16 +79,20 @@ function cssCollapse(s) {
     .replace(/\s{2,}/g, ' ');
 }
 
-// Shader source: trim indentation and collapse horizontal runs, but keep a
-// newline whenever either adjacent line needs one (a `#` preprocessor directive
-// or a `//` line comment), which GLSL requires to stay valid.
 function glslCollapse(s) {
-  const lines = s.split('\n').map(l => l.replace(/[^\S\n]{2,}/g, ' ').replace(/^\s+|\s+$/g, ''));
-  let out = lines[0] ?? '';
-  for (let i = 1; i < lines.length; i++) {
-    const prev = lines[i - 1], cur = lines[i];
-    const keepNewline = /^#/.test(prev) || prev.includes('//') || /^#/.test(cur);
-    out += (keepNewline ? '\n' : ' ') + cur;
+  const lines = s.split('\n')
+    .map(l => l.replace(/\/\/.*$/, '').replace(/[^\S\n]{2,}/g, ' ').replace(/^\s+|\s+$/g, ''));
+  const kept = [];
+  for (let i = 0; i < lines.length; i++) {
+    // Drop interior blank lines only: the first and last line of a quasi may
+    // continue a line split by an interpolation, so their boundaries stay.
+    if (lines[i] === '' && i > 0 && i < lines.length - 1) continue;
+    kept.push(lines[i]);
+  }
+  let out = kept[0] ?? '';
+  for (let i = 1; i < kept.length; i++) {
+    const keepNewline = /^#/.test(kept[i - 1]) || /^#/.test(kept[i]);
+    out += (keepNewline ? '\n' : ' ') + kept[i];
   }
   return out;
 }

@@ -1,9 +1,8 @@
 import { hash } from '../utils/index.js';
 import { glsl } from '../utils/tagged-template.js';
 
-
 // Rendering queue
-const MAX_CONCURRENT = 24;
+const MAX_CONCURRENT = 12;
 const pending = [];
 let active = 0;
 

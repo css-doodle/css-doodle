@@ -23,11 +23,10 @@ const OP_ALIAS = {
   '≠': '!='
 };
 
-const TWO_CHAR_OPS = new Set([
-  '<<', '>>', '==', '!=', '<=', '>=', '&&', '||'
-]);
-
+const TWO_CHAR_OPS = new Set(['<<', '>>', '==', '!=', '<=', '>=', '&&', '||' ]);
 const RELATIONAL_OPS = new Set(['<', '>', '<=', '>=', '≤', '≥']);
+const WORD_OPS = new Map([['and', '&&'], ['or', '||']]);
+const WORD_NOT = 'not';
 
 function preprocessTokens(rawTokens) {
   const tokens = [];
@@ -38,10 +37,13 @@ function preprocessTokens(rawTokens) {
     const next = rawTokens[i + 1];
 
     if (next && t.isWord() && next.isNumber()) {
-      t.value += next.value;
-      i++;
-      tokens.push(t);
-      continue;
+      const w = t.value.toLowerCase();
+      if (!WORD_OPS.has(w) && w !== WORD_NOT) {
+        t.value += next.value;
+        i++;
+        tokens.push(t);
+        continue;
+      }
     }
 
     if (next) {
@@ -73,8 +75,12 @@ export default function transform(code, { expect = null } = {}) {
     if (t.isNumber()) {
       n = { type: 'Lit', val: t.value };
     } else if (t.isWord()) {
-      const next = peek();
-      n = (next && next.isSymbol('(')) ? call(t.value) : { type: 'Var', val: t.value };
+      if (t.value.toLowerCase() === WORD_NOT) {
+        n = { type: 'Pre', val: '!', right: parse(PREC['&&'] + 1) };
+      } else {
+        const next = peek();
+        n = (next && next.isSymbol('(')) ? call(t.value) : { type: 'Var', val: t.value };
+      }
     } else if (t.value === '(') {
       n = parse();
       consume();
@@ -89,11 +95,19 @@ export default function transform(code, { expect = null } = {}) {
     }
     while (pos < tokens.length) {
       const op = peek();
-      if (!op.isSymbol() || op.value === ')' || op.value === ',') break;
-      const p = PREC[op.value];
+      let val = null;
+      if (op.isSymbol() && op.value !== ')' && op.value !== ',') {
+        val = op.value;
+      } else if (op.isWord()) {
+        val = WORD_OPS.get(op.value.toLowerCase()) || null;
+      }
+      if (!val) break;
+      const p = PREC[val];
       if (!p || p < min) break;
       consume();
-      n = { type: 'Bin', val: op.value, left: n, right: parse(p + 1) };
+      const right = parse(p + 1);
+      if (!right) break;
+      n = { type: 'Bin', val, left: n, right };
     }
     return n;
   }
@@ -126,7 +140,11 @@ export default function transform(code, { expect = null } = {}) {
       return n.val;
     }
     if (n.type === 'Pre') {
-      if (n.val === '!') return `!${gen(n.right, 'bool')}`;
+      if (!n.right) return gen({ type: 'Lit', val: '0' }, exp);
+      if (n.val === '!') {
+        const out = `!${gen(n.right, 'bool')}`;
+        return (exp === 'int' || exp === 'float') ? `${exp}(${out})` : out;
+      }
       if (n.val === '~') {
         const out = `~${gen(n.right, 'int')}`;
         return exp === 'bool' ? `bool(${out})` : out;
@@ -141,9 +159,15 @@ export default function transform(code, { expect = null } = {}) {
         if (exp === 'bool') return `bool(int(${args}))`;
         return `int(${args})`;
       }
-      if (n.val === 'float') return exp === 'bool' ? `bool(${args})` : args;
+      if (n.val === 'float') {
+        if (exp === 'bool') return `bool(${args})`;
+        if (exp === 'int') return `int(${args})`;
+        return args;
+      }
       const out = `${n.val}(${args})`;
-      return exp === 'bool' ? `bool(${out})` : out;
+      if (exp === 'bool') return `bool(${out})`;
+      if (exp === 'int') return `int(${out})`;
+      return out;
     }
 
     const op = n.val;
