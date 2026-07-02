@@ -256,6 +256,36 @@ test('subtraction after closing parenthesis', () => {
   compare(['50*abs.sin(2.5t) - 81', { t: Math.PI / 4 }], 50 * Math.abs(Math.sin(2.5 * Math.PI / 4)) - 81);
 });
 
+test('implicit multiplication with functions', () => {
+  // Issue: '2sin(1)' was glued into a single unknown function name '2sin' → 0
+  compare('2sin(1)', 2 * Math.sin(1));
+  compare('-2sin(1)', -2 * Math.sin(1));
+  compare('2min(3, 4)', 6);
+  // Issue: everything after a glued '2π' was silently dropped
+  compare('2πsin(1)', 2 * Math.PI * Math.sin(1));
+  compare(['sin(2πt)', { t: 0.25 }], Math.sin(2 * Math.PI * 0.25));
+  compare(['2πx', { x: 3 }], 2 * Math.PI * 3);
+  compare(['3 + -2x', { x: 4 }], -5);
+});
+
+test('space-separated adjacency', () => {
+  // Issue: a space between two values dropped the second one
+  compare('2 sin(1)', 2 * Math.sin(1));
+  compare(['2 x', { x: 3 }], 6);
+  compare('2 (3)', 6);
+  // '-1' tokenized as a negative number after a space → subtraction
+  compare(['k -1', { k: 3 }], 2);
+  compare('2 -1', 1);
+});
+
+test('unary minus in arguments', () => {
+  compare(['sin(-x)', { x: 2 }], Math.sin(-2));
+  compare(['max(1, -x)', { x: 2 }], 1);
+  compare(['max(-x, 5)', { x: 2 }], 5);
+  compare('sin(-(3))', Math.sin(-3));
+  compare(['-x1', { x1: 5 }], -5);
+});
+
 test('subtraction with implicit multiplication', () => {
   // Issue: 'x-9.01' was being tokenized as 'x' followed by '-9.01' (negative number)
   // causing implicit multiplication parsing bugs

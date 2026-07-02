@@ -3,9 +3,14 @@ import { hash, is_nil } from './utils/index.js';
 class CacheValue {
   constructor() {
     this.cache = new Map();
+    this.clearFns = [];
   }
   clear() {
     this.cache.clear();
+    for (let fn of this.clearFns) fn();
+  }
+  onClear(fn) {
+    this.clearFns.push(fn);
   }
   set(input, value) {
     if (is_nil(input)) {
