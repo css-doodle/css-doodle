@@ -158,9 +158,6 @@ class Point {
 }
 
 function create_polygon_points(option, fn) {
-  if (!fn) {
-    fn = t => [ cos(t), sin(t) ];
-  }
   let split = option.split || 180;
   let turn = option.turn || 1;
   let frame = option.frame;
@@ -173,13 +170,20 @@ function create_polygon_points(option, fn) {
   let first_point, first_point2;
 
   let factor = (option.scale === undefined) ? 1 : option.scale;
+  let [fx, fy] = parse_scale_factor(factor);
+  // A bare angle like "dir: 30" is constant; auto/reverse need atan2 per point
+  let staticAngle = direction.direction ? null : 90 + (direction.angle || 0);
   let add = ([x1, y1, dx = 0, dy = 0]) => {
     if (x1 == 'evenodd' || x1 == 'nonzero') {
       return points.push(new Point(x1, '', ''));
     }
-    let [x, y] = scale(x1, -y1, factor);
-    let [dx1, dy2] = scale(dx, -dy, factor);
-    let angle = calc_angle(x, y, dx1, dy2, direction);
+    let x = x1 * fx;
+    let y = -y1 * fy;
+    let dx1 = dx * fx;
+    let dy2 = -dy * fy;
+    let angle = (staticAngle === null)
+      ? calc_angle(x, y, dx1, dy2, direction)
+      : staticAngle;
     if (unit !== undefined && unit !== '%') {
       if (unit !== 'none') {
         x += unit;
@@ -231,35 +235,24 @@ function calc_angle(x, y, dx, dy, option) {
   if (option.direction === 'reverse') {
     base -= 180;
   }
-  if (!option.direction) {
-    base = 90;
-  }
   if (option.angle) {
     base += option.angle;
   }
   return base;
 }
 
-function rotate(x, y, deg) {
-  let rad = -PI / 180 * deg;
-  return [
-    x * cos(rad) - y * sin(rad),
-    y * cos(rad) + x * sin(rad)
-  ];
-}
-
-function translate(x, y, offset) {
-  let parsed = parse_value_group(offset);
-  let dx = parseFloat(parsed[0]) || 0;
-  let dy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 0 : dx;
-  return [x + dx, y - dy, dx, dy];
-}
-
-function scale(x, y, factor) {
+function parse_scale_factor(factor) {
   let parsed = parse_value_group(factor);
   let fx = parseFloat(parsed[0]) || 1;
   let fy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 1 : fx;
-  return [x * fx, y * fy];
+  return [fx, fy];
+}
+
+function parse_move_offset(offset) {
+  let parsed = parse_value_group(offset);
+  let dx = parseFloat(parsed[0]) || 0;
+  let dy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 0 : dx;
+  return [dx, dy];
 }
 
 function create_shape_points(props, {min, max}) {
@@ -288,6 +281,13 @@ function create_shape_points(props, {min, max}) {
   props.split = split;
 
   let rotateAngle = props.rotate ? Number(props.rotate) || 0 : 0;
+  let cosR = 1, sinR = 0;
+  if (rotateAngle) {
+    let rad = -PI / 180 * rotateAngle;
+    cosR = cos(rad);
+    sinR = sin(rad);
+  }
+  let move = props.move ? parse_move_offset(props.move) : null;
   let currentIndex = 0;
   let context = Object.assign({}, props, {
     't': 0,
@@ -327,10 +327,14 @@ function create_shape_points(props, {min, max}) {
       y = r * sin(t);
     }
     if (rotateAngle) {
-      [x, y] = rotate(x, y, rotateAngle);
+      let rx = x * cosR - y * sinR;
+      y = y * cosR + x * sinR;
+      x = rx;
     }
-    if (props.move) {
-      [x, y, dx, dy] = translate(x, y, props.move);
+    if (move) {
+      [dx, dy] = move;
+      x += dx;
+      y -= dy;
     }
     return [x, y, dx, dy];
   });
@@ -339,7 +343,11 @@ function create_shape_points(props, {min, max}) {
 export default function generate_shape(input, range = {}, modifier) {
   let min = range.min || 3;
   let max = range.max || 3600;
-  let key = input + '|' + min + '|' + max + (modifier ? '|m' : '');
+  // count/unit distinguish modifiers that close over caller state (@plot/@Plot)
+  let key = input + '|' + min + '|' + max
+    + (range.count ? '|' + range.count : '')
+    + (range.unit ? '|u' : '')
+    + (modifier ? '|m' : '');
   if (cache.has(key)) {
     return cache.get(key);
   }

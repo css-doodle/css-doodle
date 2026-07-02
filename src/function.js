@@ -147,7 +147,7 @@ function create_plot(unit) {
     return (...args) => {
       let commands = args.join(',');
       let [idx = count, _, __, max = grid.count] = lastExtra || [];
-      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max}, rules => {
+      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
         delete rules['frame'];
