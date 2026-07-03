@@ -30,6 +30,43 @@ const is = {
   closedTag: (a, b) => a == '<' && b == '/',
 }
 
+/* Charcode classification table for the scanning hot path */
+
+const SYMBOL = 1, DIGIT = 2, SPACE = 4, HEX = 8;
+
+const ctype = new Uint8Array(128);
+for (let i = 48; i <= 57; ++i) ctype[i] = DIGIT | HEX;
+for (let i = 97; i <= 102; ++i) ctype[i] |= HEX;
+for (let i = 65; i <= 70; ++i) ctype[i] |= HEX;
+for (let c of [9, 10, 11, 12, 13, 32]) ctype[c] |= SPACE;
+
+const wideSymbols = new Set();
+for (let s of symbols) {
+  let c = s.charCodeAt(0);
+  if (c < 128) ctype[c] |= SYMBOL;
+  else wideSymbols.add(c);
+}
+
+function isSymbolCode(c) {
+  return c < 128 ? (ctype[c] & SYMBOL) > 0 : wideSymbols.has(c);
+}
+
+function isSpaceCode(c) {
+  if (c < 128) return (ctype[c] & SPACE) > 0;
+  // Non-ASCII part of /\s/
+  return c === 0xa0 || c === 0x1680 || (c >= 0x2000 && c <= 0x200a)
+      || c === 0x2028 || c === 0x2029 || c === 0x202f || c === 0x205f
+      || c === 0x3000 || c === 0xfeff;
+}
+
+function isDigitCode(c) {
+  return c >= 48 && c <= 57;
+}
+
+function isHexCode(c) {
+  return c < 128 && (ctype[c] & HEX) > 0;
+}
+
 class Token {
   constructor({ type, value, pos, status }) {
     this.type = type;
@@ -92,23 +129,10 @@ function iterator(input) {
   }
 }
 
-function skipComments(iter) {
-  while (iter.next()) {
-    let { curr, prev } = iter.get();
-    if (is.comment(curr, prev)) break;
-  }
-}
-
-function skipInlineComments(iter) {
-  // Stop before the line break so it gets tokenized as space
-  while (!iter.end()) {
-    if (iter.curr(1) === '\n') break;
-    iter.next();
-  }
-}
+const spacingIgnoredSymbols = new Set([':', ';', ',', '{', '}', '(', ')', '[', ']']);
 
 function ignoreSpacingSymbol(value) {
-  return [':', ';', ',', '{', '}', '(', ')', '[', ']'].includes(value);
+  return spacingIgnoredSymbols.has(value);
 }
 
 function ignoreSpacingAround(prev, next) {
@@ -117,64 +141,54 @@ function ignoreSpacingAround(prev, next) {
   return ignoreLeft || ignoreRight;
 }
 
-function readWord(iter) {
-  let temp = '';
-  while (!iter.end()) {
-    let { curr, next } = iter.get();
-    temp += curr;
-    let isBreak = is.symbol(next) || is.space(next) || is.digit(next) || is.escape(next);
-    if (temp.length && isBreak) {
-      if (!is.closedTag(curr, next)) break;
+/*
+ * The read* functions return the end index (exclusive) of the token
+ * starting at i. charCodeAt returns NaN past the end of input, and NaN
+ * fails every comparison, so lookaheads need no bounds checks.
+ */
+
+function readWord(input, i, len) {
+  let j = i;
+  while (j < len - 1) {
+    let next = input.charCodeAt(j + 1);
+    if (isSymbolCode(next) || isSpaceCode(next) || isDigitCode(next) || next === 92 /* \ */) {
+      // "</" inside a word stays together for closing tags
+      if (!(next === 47 && input.charCodeAt(j) === 60)) break;
     }
-    iter.next();
+    j++;
   }
-  return temp.trim();
+  return j + 1;
 }
 
-function readSpaces(iter) {
-  let temp = '';
-  while (!iter.end()) {
-    let { curr, next } = iter.get();
-    temp += curr;
-    if (!is.space(next)) break;
-    iter.next();
-  }
-  return temp;
-}
-
-function readNumber(iter) {
-  let temp = '';
+function readNumber(input, i) {
+  let j = i;
   let hasDot = false;
-  while (!iter.end()) {
-    let { curr, next, next2, next3 } = iter.get();
-    temp += curr;
-    if (hasDot && is.dot(next)) break;
-    if (is.dot(curr)) hasDot = true;
-    if (is.dots(next, next2)) break;
-    if (is.expWithSign(next, next2, next3)) {
-      temp += iter.next() + iter.next();
+  while (true) {
+    let next = input.charCodeAt(j + 1);
+    if (hasDot && next === 46 /* . */) break;
+    if (input.charCodeAt(j) === 46) hasDot = true;
+    if (next === 46 && input.charCodeAt(j + 2) === 46) break;
+    if (next === 101 || next === 69 /* e E */) {
+      let next2 = input.charCodeAt(j + 2);
+      if ((next2 === 43 || next2 === 45 /* + - */) && isDigitCode(input.charCodeAt(j + 3))) {
+        j += 3;
+        continue;
+      }
+      if (isDigitCode(next2)) {
+        j += 2;
+        continue;
+      }
     }
-    else if (is.exp(next, next2)) {
-      temp += iter.next();
-    }
-    else if (!is.digit(next) && !is.dot(next)) {
-      break;
-    }
-    iter.next();
+    if (!isDigitCode(next) && next !== 46) break;
+    j++;
   }
-  return temp;
+  return j + 1;
 }
 
-function readHexNumber(iter) {
-  let temp = '0x';
-  iter.next(2);
-  while (!iter.end()) {
-    let { curr, next } = iter.get();
-    temp += curr;
-    if (!is.hexNum(next)) break;
-    iter.next();
-  }
-  return temp;
+function readHexNumber(input, i, len) {
+  let j = i + 2;
+  while (j < len - 1 && isHexCode(input.charCodeAt(j + 1))) j++;
+  return j + 1;
 }
 
 function last(array) {
@@ -182,107 +196,163 @@ function last(array) {
 }
 
 function scan(source, options = {}) {
-  let iter = iterator(String(source).trim());
+  let input = String(source).trim();
+  let len = input.length;
   let tokens = [];
-  let quoteStack = [];
+  let quote = '';
+  let i = 0, row = 0, lineStart = 0;
 
-  while (iter.next()) {
-    let { prev, curr, next, next2, pos } = iter.get();
-    if (!quoteStack.length && is.comment(curr, next)) {
-      skipComments(iter);
+  while (i < len) {
+    let curr = input.charCodeAt(i);
+    if (curr === 10 /* \n */) {
+      row++;
+      lineStart = i + 1;
+    }
+    let pos = [i - lineStart, row];
+    let next = input.charCodeAt(i + 1);
+
+    if (!quote && curr === 47 && next === 42 /* slash-star */) {
+      let found = input.indexOf('*/', i + 1);
+      let end = found === -1 ? len : found + 2;
+      for (let n = input.indexOf('\n', i + 2); n !== -1 && n < end; n = input.indexOf('\n', n + 1)) {
+        row++;
+        lineStart = n + 1;
+      }
       // A comment separates tokens like a space does
       let lastToken = last(tokens);
-      let after = iter.curr(1);
-      if (lastToken && !lastToken.isSpace() && after && !is.space(after)
+      let after = input[end];
+      if (lastToken && !lastToken.isSpace() && after && !isSpaceCode(input.charCodeAt(end))
           && !ignoreSpacingAround(lastToken.value, after)) {
         tokens.push(new Token({
           type: 'Space', value: ' ', pos
         }));
       }
+      i = end;
     }
-    else if (options.ignoreInlineComment && !quoteStack.length && is.inlineComment(curr, next)) {
-      skipInlineComments(iter);
+    else if (options.ignoreInlineComment && !quote && curr === 47 && next === 47) {
+      // Stop before the line break so it gets tokenized as space
+      let found = input.indexOf('\n', i + 1);
+      i = found === -1 ? len : found;
     }
-    else if (is.hex(curr, next, next2)) {
-      let num = readHexNumber(iter);
+    else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
+      let end = readHexNumber(input, i, len);
       tokens.push(new Token({
-        type: 'Number', value: num, pos
+        type: 'Number', value: '0x' + input.slice(i + 2, end), pos
       }));
+      i = end;
     }
-    else if (is.digit(curr) || (
-      is.digit(next) && is.dot(curr) && !is.dots(prev, curr))) {
-      let num = readNumber(iter);
+    else if (isDigitCode(curr) || (
+      curr === 46 && isDigitCode(next) && input.charCodeAt(i - 1) !== 46)) {
+      let end = readNumber(input, i);
       tokens.push(new Token({
-        type: 'Number', value: num, pos
+        type: 'Number', value: input.slice(i, end), pos
       }));
+      i = end;
     }
-    else if (quoteStack.length && is.escape(curr)) {
-      iter.next();
-      let word = readWord(iter);
-      if (word.length) {
-        tokens.push(new Token({
-          type: 'Word', value: word, pos
-        }));
+    else if (quote && curr === 92 /* \ */) {
+      let start = i + 1;
+      if (start < len) {
+        let end = readWord(input, start, len);
+        // The escaped char may be a line break
+        for (let n = start; n < end; n++) {
+          if (input.charCodeAt(n) === 10) {
+            row++;
+            lineStart = n + 1;
+          }
+        }
+        let word = input.slice(start, end).trim();
+        if (word.length) {
+          tokens.push(new Token({
+            type: 'Word', value: word, pos
+          }));
+        }
+        i = end;
+      } else {
+        i = start;
       }
     }
-    else if (is.symbol(curr)) {
-      let lastToken = last(tokens);
+    else if (isSymbolCode(curr)) {
+      let ch = input[i];
       // negative
-      let isNextDigit = is.digit(next) || (is.dot(next) && is.digit(next2));
-      let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'));
-      if (curr === '-' && isNextDigit && !isAfterValue) {
-        let num = readNumber(iter);
-        tokens.push(new Token({
-          type: 'Number', value: num, pos
-        }));
-        continue;
+      let isNextDigit = isDigitCode(next) || (next === 46 && isDigitCode(input.charCodeAt(i + 2)));
+      if (curr === 45 /* - */ && isNextDigit) {
+        let lastToken = last(tokens);
+        let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'));
+        if (!isAfterValue) {
+          let end = readNumber(input, i);
+          tokens.push(new Token({
+            type: 'Number', value: input.slice(i, end), pos
+          }));
+          i = end;
+          continue;
+        }
       }
 
       let token = {
-        type: 'Symbol', value: curr, pos
+        type: 'Symbol', value: ch, pos
       }
-      if (is.quote(curr)) {
-        let lastQuote = last(quoteStack);
-        if (lastQuote == curr) {
-          quoteStack.pop();
+      if (curr === 34 || curr === 39 || curr === 96 /* " ' ` */) {
+        if (quote === ch) {
+          quote = '';
           token.status = 'close';
-        } else if (!quoteStack.length) {
-          quoteStack.push(curr);
+        } else if (!quote) {
+          quote = ch;
           token.status = 'open';
         }
       }
       tokens.push(new Token(token));
+      i++;
     }
-    else if (is.space(curr)) {
-      let spaces = readSpaces(iter);
+    else if (isSpaceCode(curr)) {
+      let end = i + 1;
+      let hasLineBreak = curr === 10;
+      while (end < len) {
+        let c = input.charCodeAt(end);
+        if (!isSpaceCode(c)) break;
+        if (c === 10) {
+          hasLineBreak = true;
+          row++;
+          lineStart = end + 1;
+        }
+        end++;
+      }
       let lastToken = last(tokens);
-      let { next } = iter.get();
+      let nextChar = input[end];
+      let start = i;
+      i = end;
       // Reduce unnecessary spaces
-      if (!quoteStack.length && lastToken) {
-        if (ignoreSpacingAround(lastToken.value, next)) {
+      if (!quote && lastToken) {
+        if (ignoreSpacingAround(lastToken.value, nextChar)) {
           continue;
         }
-        spaces = (options.preserveLineBreak && spaces.includes('\n')) ? '\n' : ' ';
+        let spaces = (options.preserveLineBreak && hasLineBreak) ? '\n' : ' ';
         if (lastToken.isSpace()) {
           if (spaces === '\n') {
             lastToken.value = '\n';
           }
           continue;
         }
+        if (nextChar && nextChar.trim()) {
+          tokens.push(new Token({
+            type: 'Space', value: spaces, pos
+          }));
+        }
       }
-      if (tokens.length && (next && next.trim())) {
+      else if (tokens.length && nextChar && nextChar.trim()) {
         tokens.push(new Token({
-          type: 'Space', value: spaces, pos
+          type: 'Space', value: input.slice(start, end), pos
         }));
       }
     }
     else {
-      let word = readWord(iter);
+      let end = readWord(input, i, len);
+      let word = input.slice(i, end).trim();
       if (word.length) {
         tokens.push(new Token({
           type: 'Word', value: word, pos
         }));
       }
+      i = end;
     }
   }
 
