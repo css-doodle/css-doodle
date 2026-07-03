@@ -3,11 +3,25 @@ import parse_linear_expr from './parser/parse-linear-expr.js';
 import { add_alias, cell_metrics } from './utils/index.js';
 
 function odd(n) {
-  return n % 2 ? true : false;
+  return n % 2 !== 0;
 }
 
 function even(n) {
-  return !odd(n);
+  return n % 2 === 0;
+}
+
+function match_any(value, exprs) {
+  return exprs.some(expr => compare(expr, value).value);
+}
+
+function random_cell(context, counter, grid, count, random, n) {
+  if (n >= 1) {
+    if (!context[counter]) {
+      context[counter] = random_n(grid.count, n, random);
+    }
+    return context[counter].includes(count);
+  }
+  return random() < n;
 }
 
 function compare(rule, value, x, y) {
@@ -65,47 +79,32 @@ export default add_alias({
     return (x1, y1) => (x == x1 && y == y1);
   },
 
-  nth({ count, grid }) {
-    return (...exprs) => {
-      for (let expr of exprs) {
-        if (compare(expr, count).value) return true;
-      }
-      return false;
-    }
+  nth({ count }) {
+    return (...exprs) => match_any(count, exprs);
   },
 
-  y({ y, grid }) {
-    return (...exprs) => {
-      for (let expr of exprs) {
-        if (compare(expr, y).value) return true;
-      }
-      return false;
-    };
+  y({ y }) {
+    return (...exprs) => match_any(y, exprs);
   },
 
-  x({ x, grid }) {
-    return (...exprs) => {
-      for (let expr of exprs) {
-        if (compare(expr, x).value) return true;
-      }
-      return false;
-    };
+  x({ x }) {
+    return (...exprs) => match_any(x, exprs);
   },
 
   even({ x, y }) {
     return _ => odd(x + y);
   },
 
-  odd({ x, y}) {
+  odd({ x, y }) {
     return _ => even(x + y);
   },
 
   random({ random, count, x, y, grid, context, position }) {
     let counter = 'random-cells' + position;
     return (ratio = .5) => {
-      let value = ratio;
-      if (/\D/.test(value)) {
-        value = calc('(0 + ' + value + ')', calc_context({ x, y, count, grid, random }));
+      let value = Number(ratio);
+      if (Number.isNaN(value)) {
+        value = calc('(0 + ' + ratio + ')', calc_context({ x, y, count, grid, random }));
       }
       if (value >= grid.count) {
         return true;
@@ -113,13 +112,7 @@ export default add_alias({
       if (value <= 0) {
         return false;
       }
-      if (value >= 1) {
-        if (!context[counter]) {
-          context[counter] = random_n(grid.count, value, random);
-        }
-        return context[counter].includes(count);
-      }
-      return random() < ratio;
+      return random_cell(context, counter, grid, count, random, value);
     }
   },
 
@@ -147,13 +140,7 @@ export default add_alias({
           }
           num = Number(num);
           if (!Number.isNaN(num)) {
-            if (num >= 1) {
-              if (!context[counter]) {
-                context[counter] = random_n(grid.count, num, random);
-              }
-              return context[counter].includes(count);
-            }
-            return random() < num;
+            return random_cell(context, counter, grid, count, random, num);
           }
         }
         return !!calc('(' + arg + ')', calc_context({ x, y, count, grid, random }));
