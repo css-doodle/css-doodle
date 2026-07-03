@@ -33,6 +33,27 @@ function resolve_place(value) {
   return [x ?? '50%', y ?? '50%'];
 }
 
+const border_styles = /solid|dotted|dashed|double|groove|ridge|inset|outset/;
+
+function format_border(value) {
+  let values = parse_value_group(value, { symbol: ' ' });
+  for (let i = 0; i < values.length; i++) {
+    if (Number(values[i])) {
+      values[i] += 'px';
+      break;
+    }
+  }
+  let head = values[0];
+  let is_width = /^\.?\d/.test(head) || /^(thin|thick|medium)$/.test(head);
+  if (values.length === 1 && !is_width) {
+    values.push('1px');
+  }
+  if (!border_styles.test(value)) {
+    values.push('solid');
+  }
+  return values.join(' ');
+}
+
 export default add_alias({
 
   size(value, { is_special_selector, grid }) {
@@ -82,29 +103,28 @@ export default add_alias({
       clip: true,
       p3d: false,
     };
-    let temp = [];
-    let pos = 0;
-    for (let item of parse_value_group(value, {symbol: ' '})) {
-      if (pos === 0 && (item === '|' || item === '-')) {
+    let temp = parse_value_group(value, { symbol: ' ' }).map((item, i) => {
+      if (i === 0 && (item === '|' || item === '-')) {
         result.flex = item === '|' ? 'column' : 'row';
-        temp.push('§');
-      } else if (/border:?/i.test(item)) {
-        result.borderLegacy = item.split(':')[1] || '';
-        temp.push('§');
-      } else if (/^no\-*clip$/i.test(item)) {
-        result.clip = false;
-        temp.push('§');
-      } else if (/^p3d$/i.test(item)) {
-        result.p3d = true;
-        temp.push('§');
-      } else if (!result.grid) {
-        result.grid = parse_grid(item, options.max_grid);
-        temp.push(item);
-      } else {
-        temp.push(item);
+        return '§';
       }
-      pos += 1;
-    }
+      if (/border:?/i.test(item)) {
+        result.borderLegacy = item.split(':')[1] || '';
+        return '§';
+      }
+      if (/^no\-*clip$/i.test(item)) {
+        result.clip = false;
+        return '§';
+      }
+      if (/^p3d$/i.test(item)) {
+        result.p3d = true;
+        return '§';
+      }
+      if (!result.grid) {
+        result.grid = parse_grid(item, options.max_grid);
+      }
+      return item;
+    });
 
     let groups = parse_value_group(temp.join(' '), {
       symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', 'β', '«', '§'],
@@ -112,46 +132,28 @@ export default add_alias({
       verbose: true
     });
     for (let { group, value } of groups) {
-      if (group === '+') result.scale = value;
-      if (group === '^') result.enlarge = parse_value_group(value, {symbol: ' '});
-      if (group === '~') result.translate = value;
-      if (group === '∆') result.persp = parse_value_group(value, {symbol: ' '});
-      if (group === '_') result.gap = value;
-      if (group === '*') {
-        let [head, ...rest] = parse_value_group(value, {symbol: ' '});
-        if (head == 'h') {
-          result.hueRotate = rest.join(' ');
-        } else {
-          result.rotate = value;
+      switch (group) {
+        case '+': result.scale = value; break;
+        case '~': result.translate = value; break;
+        case '_': result.gap = value; break;
+        case '«': result.backdropFilter = value; break;
+        case '^': result.enlarge = parse_value_group(value, { symbol: ' ' }); break;
+        case '∆': result.persp = parse_value_group(value, { symbol: ' ' }); break;
+        case '*': {
+          let [head, ...rest] = parse_value_group(value, { symbol: ' ' });
+          if (head === 'h') result.hueRotate = rest.join(' ');
+          else result.rotate = value;
+          break;
         }
-      }
-      if (group === '/') {
-        if (result.size === undefined) result.size = this.size(value, options);
-        else result.fill = value;
-      }
-      if (group === 'β' || group === 'ß') {
-        let values = parse_value_group(value, {symbol: ' '});
-        for (let i = 0; i < values.length; i++) {
-          if (Number(values[i])) {
-            values[i] += 'px';
-            break;
-          }
-        }
-        // simplify the regex
-        let v = values[0];
-        if (values.length === 1 && (/^\D/.test(v) && !/^\.\d/.test(v) && !/^(thin|thick|medium)$/.test(v) ) ) {
-          values.push('1px');
-        }
-        if (!/solid|dotted|dashed|double|groove|ridge|inset|outset/.test(value)) {
-          values.push('solid');
-        }
-        result.border = values.join(' ');
-      }
-      if (group === '«') {
-        result.backdropFilter = value;
-      }
-      if (group === '' && !result.grid) {
-        result.grid = parse_grid(value, options.max_grid);
+        case '/':
+          if (result.size === undefined) result.size = this.size(value, options);
+          else result.fill = value;
+          break;
+        case 'β':
+        case 'ß': result.border = format_border(value); break;
+        case '':
+          if (!result.grid) result.grid = parse_grid(value, options.max_grid);
+          break;
       }
     }
     return result;
