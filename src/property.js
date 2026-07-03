@@ -103,9 +103,13 @@ export default add_alias({
       clip: true,
       p3d: false,
     };
-    let temp = parse_value_group(value, { symbol: ' ' }).map((item, i) => {
-      if (i === 0 && (item === '|' || item === '-')) {
-        result.flex = item === '|' ? 'column' : 'row';
+    let temp = parse_value_group(value, { symbol: ' ' }).map(item => {
+      if (/^row$/i.test(item)) {
+        result.flex = 'row';
+        return '§';
+      }
+      if (/^col$/i.test(item)) {
+        result.flex = 'column';
         return '§';
       }
       if (/border:?/i.test(item)) {

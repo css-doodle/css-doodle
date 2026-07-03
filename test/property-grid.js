@@ -88,18 +88,18 @@ test('clip and p3d', () => {
 });
 
 test('flex', () => {
-  compare('| 1 / 100%', {
+  compare('row 1 / 100%', {
     clip: true,
     p3d: false,
-    flex: 'column',
+    flex: 'row',
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
     size: 'width:100%;height:100%;'
   });
 
-  compare('- 1 / 100%', {
+  compare('col 1 / 100%', {
     clip: true,
     p3d: false,
-    flex: 'row',
+    flex: 'column',
     grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
     size: 'width:100%;height:100%;'
   });
