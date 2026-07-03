@@ -179,7 +179,7 @@ test('gap _ command', () => {
   compareGap('1 _.5px', '.5px');
 });
 
-test('backdrop filter « command', () => {
+test('backdrop filter | command', () => {
   function compareBackdropFilter(input, output) {
     compare(input, {
       clip: true,
@@ -188,5 +188,6 @@ test('backdrop filter « command', () => {
       grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
     });
   }
-  compareBackdropFilter('1 « @svg-filter()', '@svg-filter()');
+  compareBackdropFilter('1 | @svg-filter()', '@svg-filter()');
+  compareBackdropFilter('1 | blur(2px)', 'blur(2px)');
 });

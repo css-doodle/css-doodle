@@ -131,7 +131,7 @@ export default add_alias({
     });
 
     let groups = parse_value_group(temp.join(' '), {
-      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', 'β', '«', '§'],
+      symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', 'β', '|', '§'],
       noSpace: true,
       verbose: true
     });
@@ -140,7 +140,7 @@ export default add_alias({
         case '+': result.scale = value; break;
         case '~': result.translate = value; break;
         case '_': result.gap = value; break;
-        case '«': result.backdropFilter = value; break;
+        case '|': result.backdropFilter = value; break;
         case '^': result.enlarge = parse_value_group(value, { symbol: ' ' }); break;
         case '∆': result.persp = parse_value_group(value, { symbol: ' ' }); break;
         case '*': {
