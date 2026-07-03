@@ -121,8 +121,7 @@ const is = {
 // This should not be in the parser
 // but I'll leave it here until the rewriting
 const symbols = {
-  'π': Math.PI,
-  '∏': Math.PI
+  'π': Math.PI
 };
 
 function composible(name) {
