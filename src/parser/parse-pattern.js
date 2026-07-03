@@ -1,12 +1,19 @@
 import { scan, iterator } from './tokenizer.js';
 
+function joinToken(tokens) {
+  let len = tokens.length;
+  if (len && tokens[len - 1].isSymbol(';')) {
+    tokens = tokens.slice(0, len - 1);
+  }
+  return tokens.map(n => n.value).join('');
+}
+
 function readStatement(iter, token) {
   let fragment = [];
   while (iter.next()) {
     let { curr, next } = iter.get();
-    let isStatementBreak = !next || curr.isSymbol(';') || next.isSymbol('}');
     fragment.push(curr);
-    if (isStatementBreak) {
+    if (!next || curr.isSymbol(';') || next.isSymbol('}')) {
       break;
     }
   }
@@ -16,6 +23,70 @@ function readStatement(iter, token) {
   return token;
 }
 
+function parseSelector(tokens) {
+  let groups = [];
+  let name = '';
+  let args = [];
+  let fragments = [];
+  let depth = 0;
+
+  const flushArg = () => {
+    if (fragments.length) {
+      args.push(fragments.join(''));
+      fragments = [];
+    }
+  };
+  const flushGroup = () => {
+    if (name) {
+      groups.push({ name, args });
+      name = '';
+      args = [];
+      fragments = [];
+    }
+  };
+
+  for (let curr of tokens) {
+    if (!name.length && curr.isWord()) {
+      name = curr.value;
+    }
+    else if (curr.isSymbol('(')) {
+      if (depth++) {
+        fragments.push(curr.value);
+      }
+    }
+    else if (curr.isSymbol(')')) {
+      if (depth > 1) {
+        depth--;
+        fragments.push(curr.value);
+      } else {
+        depth = 0;
+        flushArg();
+      }
+    }
+    else if (curr.isSymbol(',')) {
+      if (depth > 1) {
+        fragments.push(curr.value);
+      } else if (depth === 1) {
+        args.push(fragments.join(''));
+        fragments = [];
+      } else {
+        flushArg();
+        flushGroup();
+      }
+    }
+    else {
+      fragments.push(curr.value);
+    }
+  }
+  flushGroup();
+
+  let seen = new Set();
+  return groups.filter(n => {
+    let key = n.name + '(' + n.args.join('') + ')';
+    return seen.has(key) ? false : !!seen.add(key);
+  });
+}
+
 function walk(iter, parentToken) {
   let rules = [];
   let fragment = [];
@@ -23,13 +94,11 @@ function walk(iter, parentToken) {
   let stack = [];
 
   while (iter.next()) {
-    let { prev, curr, next } = iter.get();
-    let isBlockBreak = !next || curr.isSymbol('}');
-    if (tokenType === 'block' && isBlockBreak) {
+    let { curr, next } = iter.get();
+    if (tokenType === 'block' && (!next || curr.isSymbol('}'))) {
       if (!next && rules.length && !curr.isSymbol('}')) {
         rules[rules.length - 1].value += (';' + curr.value);
       }
-      parentToken.value = rules;
       break;
     }
     else if (curr.isSymbol('{') && fragment.length && !stack.length) {
@@ -37,31 +106,18 @@ function walk(iter, parentToken) {
       if (!selectors.length) {
         continue;
       }
-      let block = walk(iter, {
-        type: 'block',
-        name: 'unkown',
-        value: []
-      });
-
-      selectors.forEach(selector => {
-        let newBlock = Object.assign({}, block, {
-          name: selector.name,
-          args: selector.args
-        });
-        rules.push(newBlock);
+      let block = walk(iter, { type: 'block', name: 'unkown', value: [] });
+      selectors.forEach(({ name, args }) => {
+        rules.push(Object.assign({}, block, { name, args }));
       });
       fragment = [];
     }
     else if (curr.isSymbol(':') && fragment.length && !stack.length) {
-      let prop = joinToken(fragment);
       rules.push(readStatement(iter, {
         type: 'statement',
-        name: prop,
+        name: joinToken(fragment),
         value: ''
       }));
-      if (tokenType == 'block') {
-        parentToken.value = rules;
-      }
       fragment = [];
     }
     else if (curr.isSymbol(';')) {
@@ -69,7 +125,8 @@ function walk(iter, parentToken) {
         rules[rules.length - 1].value += (';' + joinToken(fragment));
         fragment = [];
       }
-    } else {
+    }
+    else {
       if (curr.isSymbol('(')) {
         stack.push(curr);
       }
@@ -80,94 +137,15 @@ function walk(iter, parentToken) {
     }
   }
 
-  if (rules.length && tokenType == 'block') {
+  if (tokenType === 'block') {
     parentToken.value = rules;
+    return parentToken;
   }
-  return tokenType ? parentToken : rules;
-}
-
-function joinToken(tokens) {
-  return tokens
-    .filter((token, i) => {
-      if (token.isSymbol(';') && i === tokens.length - 1) return false;
-      return true;
-    })
-    .map(n => n.value).join('');
-}
-
-function parseSelector(tokens) {
-  let iter = iterator(tokens);
-  let groups = [];
-  let selectorName = '';
-  let args = [];
-  let fragments = [];
-  let stack = [];
-  while (iter.next()) {
-    let { curr, next } = iter.get();
-    if (!selectorName.length && curr.isWord()) {
-      selectorName = curr.value;
-    }
-    else if (curr.isSymbol('(')) {
-      if (stack.length) {
-        fragments.push(curr.value);
-      }
-      stack.push(curr);
-    }
-    else if (curr.isSymbol(')')) {
-      stack.pop();
-      if (stack.length) {
-        fragments.push(curr.value);
-      } else if (fragments.length) {
-        args.push(fragments.join(''));
-        fragments = [];
-      }
-    }
-    else if (curr.isSymbol(',')) {
-      if (stack.length > 1) {
-        fragments.push(curr.value);
-      } else if (stack.length === 1) {
-        args.push(fragments.join(''));
-        fragments = [];
-      } else {
-        if (fragments.length) {
-          args.push(fragments.join(''));
-          fragments = [];
-        }
-        if (selectorName) {
-          groups.push({
-            name: selectorName,
-            args
-          });
-          selectorName = '';
-          args = [];
-          fragments = [];
-        }
-      }
-    }
-    else {
-      fragments.push(curr.value);
-    }
-  }
-
-  if (selectorName) {
-    groups.push({
-      name: selectorName,
-      args
-    });
-  }
-
-  return groups.filter((v, i, self) => {
-    let idx = self.findIndex(n => {
-      return (n.name === v.name && v.args.join('') == n.args.join(''));
-    });
-    return idx === i;
-  });
+  return rules;
 }
 
 function parse(source) {
-  let iter = iterator(scan(source));
-  let tokens = walk(iter);
-  return tokens;
+  return walk(iterator(scan(source)));
 }
 
 export default parse;

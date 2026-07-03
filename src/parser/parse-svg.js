@@ -7,12 +7,79 @@ const SPECIAL_NAMESPACE_PREFIXES = [
   'xml:base',      'xml:lang',      'xml:space',
 ];
 
+function isSkip(...names) {
+  return names.includes('style');
+}
+
+function isBlock(type) {
+  return type === 'block';
+}
+
+function joinToken(tokens) {
+  let len = tokens.length;
+  if (len && tokens[len - 1].isSymbol(';', '}')) {
+    tokens = tokens.slice(0, len - 1);
+  }
+  return tokens.map(n => n.value).join('');
+}
+
+function splitTimes(name, object) {
+  let target = Object.assign({}, object);
+  if (/\*\s*[0-9]/.test(name)) {
+    let [pureName, times] = name.split('*');
+    if (times) {
+      target.times = times.trim();
+      target.pureName = pureName.trim();
+    }
+  }
+  return target;
+}
+
+function resolveId(block, skip) {
+  let name = block.name || '';
+  let baseName = name.split(/[#.]/)[0];
+  if (skip || !baseName) {
+    return block;
+  }
+  let id = name.match(/#([^.#]+)/);
+  if (id) {
+    block.value.push({ type: 'statement', name: 'id', value: id[1] });
+  }
+  let classes = name.match(/\.([^.#]+)/g);
+  if (classes) {
+    block.value.push({
+      type: 'statement',
+      name: 'class',
+      value: classes.map(c => c.slice(1)).join(' ')
+    });
+  }
+  block.name = baseName;
+  return block;
+}
+
+// Build the (possibly nested) block for a selector chain like `g circle`.
+function readBlock(iter, selectors, skip) {
+  let name = selectors.pop();
+  let block = resolveId(walk(iter, splitTimes(name, {
+    type: 'block',
+    name,
+    value: []
+  })), skip);
+  while (name = selectors.pop()) {
+    block = resolveId(splitTimes(name, {
+      type: 'block',
+      name,
+      value: [block]
+    }), skip);
+  }
+  return block;
+}
+
 function readStatement(iter, token) {
   let fragment = [];
   let inlineBlock;
   let stackQuote = [];
   let stackParen = [];
-  let isInline = false;
   while (iter.next()) {
     let { curr, next } = iter.get();
     if (curr.isSymbol('(') && !stackQuote.length) {
@@ -39,22 +106,7 @@ function readStatement(iter, token) {
       if (!selectors.length) {
         continue;
       }
-      let tokenName = selectors.pop();
-      let skip = isSkip(...selectors, tokenName);
-      inlineBlock = resolveId(walk(iter, splitTimes(tokenName, {
-        type: 'block',
-        name: tokenName,
-        value: [],
-      })), skip);
-
-      while (tokenName = selectors.pop()) {
-        inlineBlock = resolveId(splitTimes(tokenName, {
-          type: 'block',
-          name: tokenName,
-          value: [inlineBlock]
-        }), skip);
-      }
-      isInline = true;
+      inlineBlock = readBlock(iter, selectors, isSkip(...selectors));
       break;
     }
     fragment.push(curr);
@@ -62,14 +114,12 @@ function readStatement(iter, token) {
       break;
     }
   }
-  if (fragment.length && !inlineBlock) {
+  if (inlineBlock) {
+    token.value = inlineBlock;
+    token.value.inline = true;
+  } else if (fragment.length) {
     token._valueTokens = fragment;
     token.value = joinToken(fragment);
-  } else if (inlineBlock) {
-    token.value = inlineBlock;
-  }
-  if (isInline) {
-    token.value.inline = true;
   }
   if (token.origin) {
     token.origin.value = token.value;
@@ -85,15 +135,27 @@ function readStyle(iter) {
     if (curr.isSymbol('{')) {
       stack.push(curr.value);
     } else if (curr.isSymbol('}')) {
-      if (stack.length) {
-        stack.pop();
-      } else {
+      if (!stack.length) {
         break;
       }
+      stack.pop();
     }
     style.push(curr.value);
   }
   return style.join('');
+}
+
+function readStyleBlock(iter, selectors) {
+  let cssSelectors = selectors.slice(selectors.indexOf('style') + 1);
+  let styleContent = readStyle(iter);
+  if (cssSelectors.length) {
+    styleContent = cssSelectors.join(' ') + '{' + styleContent + '}';
+  }
+  return {
+    type: 'block',
+    name: 'style',
+    value: styleContent
+  };
 }
 
 function walk(iter, parentToken) {
@@ -113,9 +175,9 @@ function walk(iter, parentToken) {
     let isBlockBreak = !next || curr.isSymbol('}');
     if (isBlock(tokenType) && isBlockBreak) {
       if (!next && rules.length && !curr.isSymbol('}')) {
-        let last = rules[rules.length - 1].value;
-        if (typeof last === 'string') {
-          rules[rules.length - 1].value += (';' + curr.value);
+        let last = rules[rules.length - 1];
+        if (typeof last.value === 'string') {
+          last.value += (';' + curr.value);
         }
       }
       parentToken.value = rules;
@@ -129,43 +191,11 @@ function walk(iter, parentToken) {
       if (isSkip(parentToken.name)) {
         selectors = [joinToken(fragment)];
       }
-      let tokenName = selectors.pop();
-      let skip = isSkip(...selectors, parentToken.name, tokenName);
-
-      const allSelectors = [...selectors, tokenName];
-      const styleIndex = allSelectors.indexOf('style');
-
-      // handle style block separately
-      if (styleIndex >= 0) {
-        let styleContent = '';
-        const cssSelectors = allSelectors.slice(styleIndex + 1);
-        if (cssSelectors.length > 0) {
-          styleContent = cssSelectors.join(' ') + '{';
-        }
-        styleContent += readStyle(iter);
-        if (cssSelectors.length > 0) {
-          styleContent += '}';
-        }
-        rules.push({
-          type: 'block',
-          name: 'style',
-          value: styleContent
-        });
+      if (selectors.includes('style')) {
+        rules.push(readStyleBlock(iter, selectors));
       } else {
-        let block = resolveId(walk(iter, splitTimes(tokenName, {
-          type: 'block',
-          name: tokenName,
-          value: []
-        })), skip);
-
-        while (tokenName = selectors.pop()) {
-          block = resolveId(splitTimes(tokenName, {
-            type: 'block',
-            name: tokenName,
-            value: [block]
-          }), skip);
-        }
-        rules.push(block);
+        let skip = isSkip(...selectors, parentToken.name);
+        rules.push(readBlock(iter, selectors, skip));
       }
       fragment = [];
     }
@@ -182,13 +212,11 @@ function walk(iter, parentToken) {
         value: ''
       };
       if (props.length > 1) {
-        initial.origin = {
-          name: props
-        };
+        initial.origin = { name: props };
       }
       let statement = readStatement(iter, initial);
-      let groupdValue = parseValueGroup(statement.value);
-      let expand = (props.length > 1 && groupdValue.length === props.length);
+      let groupedValue = parseValueGroup(statement.value);
+      let expand = (props.length > 1 && groupedValue.length === props.length);
 
       props.forEach((prop, i) => {
         let item = Object.assign({}, statement, { name: prop });
@@ -196,7 +224,7 @@ function walk(iter, parentToken) {
           item.variable = true;
         }
         if (expand) {
-          item.value = groupdValue[i];
+          item.value = groupedValue[i];
         }
         if (/viewBox/i.test(prop)) {
           item.detail = parseViewBox(item.value, item._valueTokens);
@@ -230,46 +258,6 @@ function isSpecialProperty(prev, next) {
   let prevValue = prev && prev.value;
   let nextValue = next && next.value;
   return SPECIAL_NAMESPACE_PREFIXES.includes(prevValue + ':' + nextValue);
-}
-
-function joinToken(tokens) {
-  return tokens
-    .filter((token, i) => {
-      if (token.isSymbol(';', '}') && i === tokens.length - 1) return false;
-      return true;
-    })
-    .map(n => n.value).join('');
-}
-
-function resolveId(block, skip) {
-  let name = block.name || '';
-  if (skip) {
-    return block;
-  }
-  let baseName = name.split(/[#.]/)[0];
-  if (!baseName) {
-    return block;
-  }
-  let idMatch = name.match(/#([^.#]+)/);
-  if (idMatch) {
-    block.value.push({
-      type: 'statement',
-      name: 'id',
-      value: idMatch[1],
-    });
-  }
-  let classMatches = name.match(/\.([^.#]+)/g);
-  if (classMatches) {
-    let classes = classMatches.map(c => c.slice(1)).join(' ');
-    block.value.push({
-      type: 'statement',
-      name: 'class',
-      value: classes,
-    });
-  }
-
-  block.name = baseName;
-  return block;
 }
 
 function getGroups(tokens, fn) {
@@ -319,46 +307,26 @@ function getSelectors(tokens) {
 
 function parseViewBox(value, tokens) {
   const viewBox = { value: [] };
-  let temp;
   if (!Array.isArray(tokens)) {
     return viewBox;
   }
+  let field;
   for (let token of tokens) {
     if (token.isSpace() || token.isSymbol(',', ';')) {
       continue;
     }
-    if (viewBox.value.length < 4 && token.isNumber()) {
-      viewBox.value.push(Number(token.value));
-    }
-    else if (token.isNumber() && temp) {
-      viewBox[temp] = Number(token.value);
-      temp = null;
-    }
-    else if (token.isWord()) {
-      temp = token.value;
+    if (token.isNumber()) {
+      if (viewBox.value.length < 4) {
+        viewBox.value.push(Number(token.value));
+      } else if (field) {
+        viewBox[field] = Number(token.value);
+        field = null;
+      }
+    } else if (token.isWord()) {
+      field = token.value;
     }
   }
   return viewBox;
-}
-
-function splitTimes(name, object) {
-  let target = Object.assign({}, object);
-  if (/\*\s*[0-9]/.test(name)) {
-    let [tokenName, times] = name.split('*');
-    if (times) {
-      target.times = times.trim();
-      target.pureName = tokenName.trim();
-    }
-  }
-  return target;
-}
-
-function isSkip(...names) {
-  return names.includes('style');
-}
-
-function isBlock(type) {
-  return type === 'block';
 }
 
 function skipHeadSVG(block) {
