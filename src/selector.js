@@ -10,20 +10,6 @@ function even(n) {
   return !odd(n);
 }
 
-function get_selector(offset) {
-  let selector = '';
-  if (offset == 0) {
-    selector = '$:hover';
-  }
-  else if (offset > 0) {
-    selector = `$:hover ${'+*'.repeat(offset)}`;
-  }
-  else {
-    selector = `:has(+ ${'*+'.repeat(Math.abs(offset + 1))} $:hover)`;
-  }
-  return selector;
-}
-
 function compare(rule, value, x, y) {
   let local = x == undefined || y == undefined;
   if (rule === 'even') {
@@ -173,39 +159,6 @@ export default add_alias({
         return !!calc('(' + arg + ')', calc_context({ x, y, count, grid, random }));
       });
       return result.some(Boolean);
-    }
-  },
-
-  hover({ count, x, y, grid, random }) {
-    return (...args) => {
-      let selectors = [];
-      if (!args.length) {
-        selectors.push(get_selector(0));
-      }
-      for (let arg of args) {
-        let [dx, dy] = String(arg).split(/\s+/);
-        dx = Number(dx);
-        dy = Number(dy);
-        // @hover(1, 2, 3)
-        if (Number.isNaN(dy) && !Number.isNaN(dx)) {
-          selectors.push(get_selector(dx));
-        }
-        // @hover(1 -1, 0 1)
-        if (!Number.isNaN(dx) && !Number.isNaN(dy)) {
-          let rx = dx + x;
-          let ry = dy + y;
-          if (rx >= 1 && rx <= grid.x && ry >= 1 && ry <= grid.y) {
-            let offset = (dy * grid.y) + dx;
-            selectors.push(get_selector(offset));
-          }
-        }
-      }
-      if (!selectors.length) {
-        return false;
-      }
-      return {
-        selector: selectors.join(',')
-      }
     }
   },
 

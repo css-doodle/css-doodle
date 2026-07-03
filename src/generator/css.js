@@ -875,29 +875,7 @@ class Rules {
               cond = !cond;
             }
             if (cond) {
-              if (cond.selector) {
-                token.styles.forEach(_token => {
-                  if (_token.type === 'rule') {
-                    this.add_rule(
-                      cond.selector.replaceAll('$', this.compose_selector(coords)),
-                      this.compose_rule(_token, coords)
-                    )
-                  }
-                  if (_token.type === 'pseudo' && _token.selector) {
-                    _token.selector.split(',').forEach(selector => {
-                      let pseudo = _token.styles.map(s =>
-                        this.compose_rule(s, coords, selector)
-                      );
-                      this.add_rule(
-                        (cond.selector + selector).replaceAll('$', this.compose_selector(coords)),
-                        pseudo
-                      );
-                    });
-                  }
-                });
-              } else {
-                this.compose(coords, token.styles);
-              }
+              this.compose(coords, token.styles);
             }
           } else {
             this.add_rule(':top:', this.compose_cond(token, coords));
