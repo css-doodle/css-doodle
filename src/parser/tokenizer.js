@@ -68,10 +68,11 @@ function isHexCode(c) {
 }
 
 class Token {
-  constructor({ type, value, pos, status }) {
+  constructor({ type, value, pos, index, status }) {
     this.type = type;
     this.value = value;
     this.pos = pos;
+    this.index = index;
     if (status) {
       this.status = status;
     }
@@ -209,6 +210,9 @@ function scan(source, options = {}) {
       lineStart = i + 1;
     }
     let pos = [i - lineStart, row];
+    // Char offset of the token's first raw char in the trimmed input.
+    // Captured here because some branches advance `i` before pushing.
+    let index = i;
     let next = input.charCodeAt(i + 1);
 
     if (!quote && curr === 47 && next === 42 /* slash-star */) {
@@ -224,7 +228,7 @@ function scan(source, options = {}) {
       if (lastToken && !lastToken.isSpace() && after && !isSpaceCode(input.charCodeAt(end))
           && !ignoreSpacingAround(lastToken.value, after)) {
         tokens.push(new Token({
-          type: 'Space', value: ' ', pos
+          type: 'Space', value: ' ', pos, index
         }));
       }
       i = end;
@@ -237,7 +241,7 @@ function scan(source, options = {}) {
     else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
       let end = readHexNumber(input, i, len);
       tokens.push(new Token({
-        type: 'Number', value: '0x' + input.slice(i + 2, end), pos
+        type: 'Number', value: '0x' + input.slice(i + 2, end), pos, index
       }));
       i = end;
     }
@@ -245,7 +249,7 @@ function scan(source, options = {}) {
       curr === 46 && isDigitCode(next) && input.charCodeAt(i - 1) !== 46)) {
       let end = readNumber(input, i);
       tokens.push(new Token({
-        type: 'Number', value: input.slice(i, end), pos
+        type: 'Number', value: input.slice(i, end), pos, index
       }));
       i = end;
     }
@@ -263,7 +267,7 @@ function scan(source, options = {}) {
         let word = input.slice(start, end).trim();
         if (word.length) {
           tokens.push(new Token({
-            type: 'Word', value: word, pos
+            type: 'Word', value: word, pos, index
           }));
         }
         i = end;
@@ -281,7 +285,7 @@ function scan(source, options = {}) {
         if (!isAfterValue) {
           let end = readNumber(input, i);
           tokens.push(new Token({
-            type: 'Number', value: input.slice(i, end), pos
+            type: 'Number', value: input.slice(i, end), pos, index
           }));
           i = end;
           continue;
@@ -289,7 +293,7 @@ function scan(source, options = {}) {
       }
 
       let token = {
-        type: 'Symbol', value: ch, pos
+        type: 'Symbol', value: ch, pos, index
       }
       if (curr === 34 || curr === 39 || curr === 96 /* " ' ` */) {
         if (quote === ch) {
@@ -334,13 +338,13 @@ function scan(source, options = {}) {
         }
         if (nextChar && nextChar.trim()) {
           tokens.push(new Token({
-            type: 'Space', value: spaces, pos
+            type: 'Space', value: spaces, pos, index
           }));
         }
       }
       else if (tokens.length && nextChar && nextChar.trim()) {
         tokens.push(new Token({
-          type: 'Space', value: input.slice(start, end), pos
+          type: 'Space', value: input.slice(start, end), pos, index
         }));
       }
     }
@@ -349,7 +353,7 @@ function scan(source, options = {}) {
       let word = input.slice(i, end).trim();
       if (word.length) {
         tokens.push(new Token({
-          type: 'Word', value: word, pos
+          type: 'Word', value: word, pos, index
         }));
       }
       i = end;

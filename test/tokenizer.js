@@ -361,6 +361,50 @@ test('token position', () => {
   assert.deepEqual(tokens[2].pos, [0, 1]);
 });
 
+test('token index', () => {
+  // For tokens whose value mirrors the raw text, index points at the
+  // token's first char in the trimmed source
+  let sources = [
+    'color: red;',
+    '@pick(red, blue)',
+    '  padding: 0 10px  ',
+    'a { width: 0x12af; height: 10e-9; }',
+    ':nth-child( 2n - 1 ) { opacity: .5; }',
+    'content: "hello: world"; v[1]-2',
+    'a/* x */b (1)-2',
+    'grid: 4x4 / 100%;',
+  ];
+  for (let source of sources) {
+    let input = source.trim();
+    for (let t of scan(source)) {
+      if (t.isSpace()) continue;
+      assert.equal(
+        input.slice(t.index, t.index + t.value.length), t.value,
+        `index mismatch for ${t.type} ${JSON.stringify(t.value)} in ${JSON.stringify(source)}`
+      );
+    }
+  }
+
+  // Space tokens index at the start of the whitespace (or comment) run
+  let tokens = scan('a  /* x */  b');
+  assert.deepEqual(
+    tokens.map(t => [t.value, t.index]),
+    [['a', 0], [' ', 1], ['b', 12]]
+  );
+
+  // Escaped words index at the backslash; the value excludes it
+  let escaped = scan('"say \\"hi\\""');
+  let word = escaped.find(t => t.value === '"hi');
+  assert.equal(word.index, 5);
+
+  // Indexes are strictly increasing
+  let prev = -1;
+  for (let t of scan(':after { content: @pick("a", "b"); }')) {
+    assert.ok(t.index > prev, `indexes not increasing at ${t.value}`);
+    prev = t.index;
+  }
+});
+
 
 test('svg', () => {
 
