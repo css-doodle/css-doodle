@@ -4,24 +4,34 @@ import generate_shape from './generator/shapes.js';
 
 import { is_preset, get_preset } from './preset-size.js';
 
-import { add_alias } from './utils/index.js';
+import { add_alias, is_empty } from './utils/index.js';
 import { memo } from './cache.js';
 import { css } from './utils/tagged-template.js';
 
 const iw = '--_cell-width';
 const ih = '--_cell-height';
+const cw = `var(${iw}, 25%)`;
+const ch = `var(${ih}, 25%)`;
 
-const map_left_right = {
-  center: '50%',
-  left: '0%', right: '100%',
-  top: '50%', bottom: '50%'
-};
-
-const map_top_bottom = {
-  center: '50%',
-  top: '0%', bottom: '100%',
-  left: '50%', right: '50%',
-};
+function resolve_place(value) {
+  let x, y, rest = [];
+  for (let token of parse_value_group(value)) {
+    if (is_empty(token)) continue;
+    switch (token) {
+      case 'left':   x = '0%';   break;
+      case 'right':  x = '100%'; break;
+      case 'top':    y = '0%';   break;
+      case 'bottom': y = '100%'; break;
+      case 'center': rest.push('50%'); break;
+      default:       rest.push(token);
+    }
+  }
+  for (let token of rest) {
+    if (x === undefined) x = token;
+    else if (y === undefined) y = token;
+  }
+  return [x ?? '50%', y ?? '50%'];
+}
 
 export default add_alias({
 
@@ -53,11 +63,7 @@ export default add_alias({
   },
 
   place(value, { extra }) {
-    let [left, top = '50%'] = parse_value_group(value);
-    left = map_left_right[left] || left;
-    top = map_top_bottom[top] || top;
-    let cw = `var(${iw}, 25%)`;
-    let ch = `var(${ih}, 25%)`;
+    let [left, top] = resolve_place(value);
     return css`
       position: absolute;
       left: ${left};
@@ -67,7 +73,7 @@ export default add_alias({
       margin-left: calc(${cw} / -2);
       margin-top: calc(${ch} / -2);
       grid-area: unset;
-      ${extra ? `rotate: ${extra || 0}deg;` : ''}
+      ${extra ? `rotate: ${extra}deg;` : ''}
     `;
   },
 
