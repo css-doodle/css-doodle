@@ -425,6 +425,9 @@ cache.onClear(() => compiledCache.clear());
 function compileInput(input) {
   let compiled = compiledCache.get(input);
   if (compiled === undefined) {
+    if (compiledCache.size >= 512) {
+      compiledCache.clear();
+    }
     compiled = compile(toPostfix(transformTokens(scan(String(input)))));
     compiledCache.set(input, compiled);
   }

@@ -7,17 +7,17 @@ import calc from '../calc.js';
 import seedrandom from '../lib/seedrandom.js';
 import { utime, UTime } from '../uniforms.js';
 
-import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values, hash } from '../utils/index.js';
+import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values } from '../utils/index.js';
 import { css } from '../utils/tagged-template.js';
 
 const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
 
 function is_host_selector(s) {
-  return /^\:(host|doodle)/.test(s);
+  return typeof s === 'string' && (s.startsWith(':host') || s.startsWith(':doodle'));
 }
 
 function is_parent_selector(s) {
-  return /^\:container/.test(s);
+  return typeof s === 'string' && s.startsWith(':container');
 }
 
 function is_special_selector(s) {
@@ -29,7 +29,7 @@ function is_pseudo_selector(s) {
 }
 
 function is_image_value(value) {
-  return /\$\{(shader|pattern|doodle)/.test(value);
+  return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
 }
 
 const MathFunc = {};
@@ -43,11 +43,61 @@ for (let name of Object.getOwnPropertyNames(Math)) {
   }
 }
 
+const NO_SPACE = { noSpace: true };
+const static_args = new WeakMap();
+
+function static_argument(argument) {
+  let cached = static_args.get(argument);
+  if (cached === undefined) {
+    cached = false;
+    let { values } = argument;
+    if (values.length === 1 && values[0].type === 'text'
+        && !/^\-\-\w/.test(values[0].value)) {
+      cached = { cluster: argument.cluster, value: values[0].value };
+    }
+    static_args.set(argument, cached);
+  }
+  return cached;
+}
+
+const func_cache = new Map();
+
+function find_func(name) {
+  let fn = func_cache.get(name);
+  if (fn === undefined) {
+    fn = Func[name.startsWith('$') ? 'calc' : name] || MathFunc[name] || null;
+    func_cache.set(name, fn);
+  }
+  return fn;
+}
+
+function is_static_rule(token) {
+  let prop = token.property;
+  if (prop.startsWith('@') || prop.startsWith('--')) return false;
+  if (prop.startsWith('animation')) return false;
+  if (prop === 'background-size') return false;
+  if (!Array.isArray(token.value)) return false;
+  return token.value.every(group =>
+    group.every(n => n.type === 'text' && typeof n.value !== 'object'));
+}
+
+function rule_flags(prop) {
+  return {
+    animation: /^animation(\-name)?$/.test(prop),
+    size: prop === 'width' || prop === 'height',
+    bg_image: /^background(\-image)?$/.test(prop),
+    var: prop.startsWith('--'),
+    at: (prop.startsWith('@') && Property[prop.slice(1)]) ? prop.slice(1) : null,
+    grid_like: /^grid/.test(prop),
+  };
+}
+
 class Rules {
 
   constructor(tokens) {
     this.tokens = tokens;
-    this.rules = {};
+    this.rules = new Map();
+    this.rule_keys = {};
     this.props = {};
     this.keyframes = {};
     this.grid = null;
@@ -61,6 +111,8 @@ class Rules {
     this.vars = {};
     this.uniforms = {};
     this.content = {};
+    this.skips = new WeakSet();
+    this.memo = new WeakMap();
     this.reset();
   }
 
@@ -80,48 +132,62 @@ class Rules {
     this.shaders = {};
     this.content = {};
     this.vars = {};
-    for (let key in this.rules) {
+    for (let key of this.rules.keys()) {
       if (key.startsWith('#c')) {
-        delete this.rules[key];
+        this.rules.delete(key);
       }
     }
   }
 
   add_rule(selector, rule) {
-    let rules = this.rules[selector];
+    let rules = this.rules.get(selector);
     if (!rules) {
-      rules = this.rules[selector] = [];
+      rules = [];
+      this.rules.set(selector, rules);
     }
     if (!rule) {
       return false;
     }
-    if ((selector === ':top:' || selector === ':gf:') && rules.includes(rule)) {
-      return false;
+    if (selector === ':top:' || selector === ':gf:') {
+      if (typeof rule === 'string') {
+        let seen = this.rule_keys[selector];
+        if (!seen) {
+          seen = this.rule_keys[selector] = new Set();
+        }
+        if (seen.has(rule)) {
+          return false;
+        }
+        seen.add(rule);
+      } else if (rules.includes(rule)) {
+        return false;
+      }
     }
-    this.rules[selector] = rules.concat(rule);
+    if (Array.isArray(rule)) {
+      rules.push(...rule);
+    } else {
+      rules.push(rule);
+    }
   }
 
   pick_func(name) {
-    if (name.startsWith('$')) name = 'calc';
-    return Func[name] || MathFunc[name];
+    return find_func(name);
   }
 
   apply_func(fn, coords, args, fname, contextVariable = {}) {
-    let _fn = fn(...make_array(coords));
+    let _fn = fn(coords);
     let input = [];
-    args.forEach(arg => {
+    for (let arg of args) {
       let type = typeof arg.value;
       if (!arg.cluster && ((type === 'number' || type === 'string'))) {
-        input.push(...parse_value_group(arg.value, { noSpace: true }));
+        input.push(...parse_value_group(arg.value, NO_SPACE));
       }
       else if (typeof arg === 'function') {
         input.push(arg);
       }
       else if (!is_nil(arg.value)) {
-        let value = get_value(arg.value);
-        input.push(value);
+        input.push(get_value(arg.value));
       }
-    });
+    }
     input = make_array(remove_empty_values(input));
     if (typeof _fn === 'function') {
       if (fname.startsWith('$')) {
@@ -150,12 +216,16 @@ class Rules {
     return args.join('-');
   }
 
-  compose_selector({ x, y, z}, pseudo = '') {
-    return `#${cell_id(x, y, z)}${pseudo}`;
+  compose_selector(coords, pseudo = '') {
+    let base = coords.__selector;
+    if (!base) {
+      base = coords.__selector = '#' + cell_id(coords.x, coords.y, coords.z);
+    }
+    return pseudo ? (base + pseudo) : base;
   }
 
   is_composable(name) {
-    return ['doodle', 'shaders', 'pattern'].includes(name);
+    return name === 'doodle' || name === 'shaders' || name === 'pattern';
   }
 
   read_var(value, coords, contextVariable) {
@@ -179,11 +249,68 @@ class Rules {
     return value;
   }
 
+  compose_composable(fname, node, coords, selector) {
+    let parts = (node.arguments || []).map(a => get_value((a.values || [])[0]));
+    let temp;
+    if (parts.length && /^\d/.test(parts[0])) {
+      temp = parts[0];
+      parts = parts.slice(1);
+    }
+    let value = parts.join(',');
+    if (!is_nil(value) && value !== '') {
+      switch (fname) {
+        case 'doodle':
+          return this.compose_doodle(
+            this.inject_variables(value, coords.count), temp,
+            coords.extra.length ? structuredClone(coords.extra) : undefined);
+        case 'shaders':
+          return this.compose_shaders(value, coords, temp, selector);
+        case 'pattern':
+          return this.compose_pattern(value, coords, temp, selector);
+      }
+    }
+  }
+
+  evaluate_func(node, coords, contextVariable, selector, extra, in_argument) {
+    let fname = node.name.slice(1);
+    let fn = this.pick_func(fname);
+    if (typeof fn !== 'function') {
+      return { literal: node.name };
+    }
+    this.check_uniforms(fname);
+    if (this.is_composable(fname)) {
+      let composed = this.compose_composable(fname, node, coords, selector);
+      if (composed !== undefined) {
+        return { composed };
+      }
+      if (!in_argument) {
+        return { composed: '' };
+      }
+    }
+    coords.position = node.position;
+    if (!in_argument && node.variables) {
+      this.compose_variables(node.variables, coords, contextVariable);
+    }
+    let args = node.arguments.map(arg => {
+      return fn.lazy
+        ? (...lazy) => this.compose_argument(arg, coords, lazy, node, contextVariable, selector)
+        : this.compose_argument(arg, coords, in_argument ? extra : [], node, contextVariable, selector);
+    });
+    let output = this.apply_func(fn, coords, args, fname, contextVariable);
+    if (output && output.gf) {
+      this.add_rule(':gf:', output.value);
+    }
+    return { output };
+  }
+
   compose_argument(argument, coords, extra = [], parent, contextVariable, selector) {
-    if (!coords.extra) coords.extra = [];
+    let static_result = static_argument(argument);
+    if (static_result) {
+      return static_result;
+    }
     coords.extra.push(extra);
 
-    let result = argument.map(arg => {
+    let result = argument.values.map(arg => {
       if (arg.type === 'text') {
         if (/^\-\-\w/.test(arg.value)) {
           if (parent && parent.name === '@var') {
@@ -193,44 +320,11 @@ class Rules {
         }
         return arg.value;
       }
-      else if (arg.type === 'func') {
-        let fname = arg.name.slice(1);
-        let fn = this.pick_func(fname);
-        if (typeof fn === 'function') {
-          this.check_uniforms(fname);
-          if (this.is_composable(fname)) {
-            let parts = (arg.arguments || []).map(a => get_value((a || [])[0]));
-            let temp;
-            if (parts.length && /^\d/.test(parts[0])) {
-              temp = parts[0];
-              parts = parts.slice(1);
-            }
-            let value = parts.join(',');
-            if (!is_nil(value) && value !== '') {
-              switch (fname) {
-                case 'doodle':
-                  return this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra));
-                case 'shaders':
-                  return this.compose_shaders(value, coords, temp, selector);
-                case 'pattern':
-                  return this.compose_pattern(value, coords, temp, selector);
-              }
-            }
-          }
-          coords.position = arg.position;
-          let args = arg.arguments.map(n => {
-            return fn.lazy
-              ? (...extra) => this.compose_argument(n, coords, extra, arg, contextVariable, selector)
-              : this.compose_argument(n, coords, extra, arg, contextVariable, selector);
-          });
-          let output = this.apply_func(fn, coords, args, fname, contextVariable);
-          if (output && output.gf) {
-            this.add_rule(':gf:', output.value);
-          }
-          return get_value(output);
-        } else {
-          return arg.name;
-        }
+      if (arg.type === 'func') {
+        let evaluated = this.evaluate_func(arg, coords, contextVariable, selector, extra, true);
+        if (evaluated.literal !== undefined) return evaluated.literal;
+        if (evaluated.composed !== undefined) return evaluated.composed;
+        return get_value(evaluated.output);
       }
     });
 
@@ -244,7 +338,7 @@ class Rules {
 
   compose_doodle(doodle, arg, upextra) {
     let id = unique_id('doodle');
-    this.doodles[id] = {doodle, arg, upextra};
+    this.doodles[id] = { doodle, arg, upextra };
     return '${' + id + '}';
   }
 
@@ -266,7 +360,7 @@ class Rules {
     return target;
   }
 
-  compose_shaders(shader, {x, y, z}, arg, selector) {
+  compose_shaders(shader, { x, y, z }, arg, selector) {
     let id = unique_id('shader');
     let cell_selector = cell_id(x, y, z);
     let target = this.get_target(selector, cell_selector);
@@ -280,7 +374,7 @@ class Rules {
     return '${' + id + '}';
   }
 
-  compose_pattern(code, {x, y, z}, arg, selector) {
+  compose_pattern(code, { x, y, z }, arg, selector) {
     let id = unique_id('pattern');
     let cell_selector = cell_id(x, y, z);
     let target = this.get_target(selector, cell_selector);
@@ -338,65 +432,28 @@ class Rules {
       }
     }
     let extra = '';
-    let output = value.reduce((result, val) => {
-      switch (val.type) {
-        case 'text': {
-          result += val.value;
-          break;
+    let output = '';
+    for (let val of value) {
+      if (val.type === 'text') {
+        output += val.value;
+        continue;
+      }
+      if (val.type === 'func') {
+        let evaluated = this.evaluate_func(val, coords, contextVariable, selector, [], false);
+        if (evaluated.literal !== undefined) {
+          output += evaluated.literal;
         }
-        case 'func': {
-          let fname = val.name.slice(1);
-          let fn = this.pick_func(fname);
-          if (typeof fn === 'function') {
-            this.check_uniforms(fname);
-            if (this.is_composable(fname)) {
-              let parts = (val.arguments || []).map(a => get_value((a || [])[0]));
-              let temp;
-              if (parts.length && /^\d/.test(parts[0])) {
-                temp = parts[0];
-                parts = parts.slice(1);
-              }
-              let value = parts.join(',');
-              if (!is_nil(value) && value !== '') {
-                switch (fname) {
-                  case 'doodle':
-                    result += this.compose_doodle(this.inject_variables(value, coords.count), temp, structuredClone(coords.extra)); break;
-                  case 'shaders':
-                    result += this.compose_shaders(value, coords, temp, selector); break;
-                  case 'pattern':
-                    result += this.compose_pattern(value, coords, temp, selector); break;
-                }
-              }
-            } else {
-              coords.position = val.position;
-              if (val.variables) {
-                this.compose_variables(val.variables, coords, contextVariable);
-              }
-              let args = val.arguments.map(arg => {
-                return fn.lazy
-                  ? (...extra) => this.compose_argument(arg, coords, extra, val, contextVariable, selector)
-                  : this.compose_argument(arg, coords, [], val, contextVariable, selector);
-              });
-
-              let output = this.apply_func(fn, coords, args, fname, contextVariable);
-              if (!is_nil(output)) {
-                result += get_value(output);
-                if (output.extra) {
-                  extra = output.extra;
-                }
-                if (output && output.gf) {
-                  this.add_rule(':gf:', output.value);
-                }
-              }
-            }
-          } else {
-            result += val.name;
+        else if (evaluated.composed !== undefined) {
+          output += evaluated.composed;
+        }
+        else if (!is_nil(evaluated.output)) {
+          output += get_value(evaluated.output);
+          if (evaluated.output.extra) {
+            extra = evaluated.output.extra;
           }
         }
       }
-      return result;
-    }, '');
-
+    }
     return {
       value: output,
       extra: extra,
@@ -404,16 +461,15 @@ class Rules {
   }
 
   get_composed_value(value, coords, context, selector) {
-    let extra, group = [];
+    let extra;
+    let group = [];
     if (Array.isArray(value)) {
-      group = value.reduce((ret, v) => {
-        let composed = this.compose_value(v, coords, context || {}, selector);
-        if (composed) {
-          if (composed.value) ret.push(composed.value);
-          if (composed.extra) extra = composed.extra;
-        }
-        return ret;
-      }, []);
+      let ctx = context || {};
+      for (let v of value) {
+        let composed = this.compose_value(v, coords, ctx, selector);
+        if (composed.value) group.push(composed.value);
+        if (composed.extra) extra = composed.extra;
+      }
     }
     return {
       extra, group, value: group.join(',')
@@ -502,8 +558,31 @@ class Rules {
     }
   }
 
-  compose_rule(token, _coords, selector) {
-    let coords = Object.assign({}, _coords);
+  compose_rule(token, coords, selector) {
+    let info = this.memo.get(token);
+    if (!info) {
+      info = {
+        static: is_static_rule(token),
+        flags: rule_flags(token.property),
+        cache: null,
+      };
+      this.memo.set(token, info);
+    }
+    if (!info.static) {
+      return this.compose_rule_value(token, coords, selector, info.flags);
+    }
+    if (!info.cache) {
+      info.cache = new Map();
+    }
+    let cached = info.cache.get(selector);
+    if (cached === undefined) {
+      cached = this.compose_rule_value(token, coords, selector, info.flags);
+      info.cache.set(selector, cached);
+    }
+    return cached;
+  }
+
+  compose_rule_value(token, coords, selector, flags) {
     let prop = token.property;
     if (prop === '@seed') {
       return '';
@@ -512,14 +591,13 @@ class Rules {
     let extra = composed.extra;
     let value = composed.value;
 
-    if (/^animation(\-name)?$/.test(prop)) {
+    if (flags.animation) {
       this.props.has_animation = true;
 
       if (is_host_selector(selector)) {
-        let n = 'animation-name';
         let prefix = utime['n'] + ',' + UTime['n'];
         if (prefix && value) {
-          value =  prefix + ',' + value;
+          value = prefix + ',' + value;
         }
       }
 
@@ -565,32 +643,32 @@ class Rules {
     }
 
     if (prop === 'background-size') {
-      _coords.has_bgsize = true;
+      coords.has_bgsize = true;
     }
 
     let rule = `${prop}:${value};`
 
-    if (prop === 'width' || prop === 'height') {
+    if (flags.size) {
       if (!is_special_selector(selector)) {
         rule += `--_cell-${prop}:${value};`;
       }
     }
 
-    if (/^background(\-image)?$/.test(prop) && is_image_value(value)) {
-      let sizes = parse_value_group(value, { noSpace: true })
+    if (flags.bg_image && is_image_value(value)) {
+      let sizes = parse_value_group(value, NO_SPACE)
         .map(v => is_image_value(v) ? 'cover' : 'auto')
         .join(',');
-      if (!_coords.has_bgsize) {
+      if (!coords.has_bgsize) {
         rule = `background-size:${sizes};` + rule;
       }
     }
 
-    if (/^\-\-/.test(prop)) {
-      this.compose_vars(_coords, selector, prop, value);
+    if (flags.var) {
+      this.compose_vars(coords, selector, prop, value);
     }
 
-    if (/^@/.test(prop) && Property[prop.slice(1)]) {
-      let name = prop.slice(1);
+    if (flags.at) {
+      let name = flags.at;
       let transformed = Property[name](value, {
         is_special_selector: is_special_selector(selector),
         grid: coords.grid,
@@ -665,23 +743,12 @@ class Rules {
       }
     }
 
-    if (/^grid/.test(prop) && is_host_selector(selector)) {
+    if (flags.grid_like && is_host_selector(selector)) {
       this.add_rule(':container', `${prop}:${value};`);
       rule = '';
     }
 
     return rule;
-  }
-
-  get_raw_value(token) {
-    let raw = token.raw() ?? '';
-    let [_, ...rest] = raw.split(token.property);
-    // It's not accurate, will be solved after the rewrite of css parser.
-    rest = rest.join(token.property)
-      .replace(/^\s*:\s*/, '')
-      .replace(/[;}<]$/, '').trim()
-      .replace(/[;}<]$/, '');
-    return rest;
   }
 
   compose_vars(coords, selector, prop, value) {
@@ -713,8 +780,7 @@ class Rules {
     switch (prop) {
       case '@grid': {
         let value = this.get_composed_value(token.value, coords, context, selector).value;
-        let name = prop.slice(1);
-        let transformed = Property[name](value, {
+        let transformed = Property['grid'](value, {
           max_grid: _coords.max_grid
         });
         this.grid = transformed.grid;
@@ -734,12 +800,12 @@ class Rules {
       // get seed first
       ;(tokens || this.tokens).forEach(token => {
         if (token.type === 'rule' && token.property === '@seed') {
-          this.seed = this.get_raw_value(token);
+          this.seed = token.rawValue();
         }
         if (token.type === 'pseudo' && is_host_selector(token.selector)) {
           for (let t of make_array(token.styles)) {
             if (t.type === 'rule' && t.property === '@seed') {
-              this.seed = this.get_raw_value(t);
+              this.seed = t.rawValue();
             }
           }
         }
@@ -768,50 +834,45 @@ class Rules {
   }
 
   compose_cond(token, coords) {
-    let args = [];
     let composed_selector = token.name + ' ' + token.segments.map(n => {
       if (n.keyword) return n.keyword;
-      let args = n.arguments;
-      if (Array.isArray(args)) {
-        let names = args.map(arg => {
+      if (Array.isArray(n.arguments)) {
+        let names = n.arguments.map(arg => {
           return this.compose_argument(arg, coords).value;
         }).join(', ');
-        return '(' + names + ')'
+        return '(' + names + ')';
       }
       return '';
     }).join(' ');
 
     let rules = '';
 
-    token.styles.forEach(_token => {
-      if (_token.type === 'rule') {
-        rules += this.compose_rule(_token, coords);
+    token.styles.forEach(t => {
+      if (t.type === 'rule') {
+        rules += this.compose_rule(t, coords);
       }
-      if (_token.type === 'pseudo' && _token.name) {
-        _token.name.split(',').forEach(selector => {
-          let pseudo = _token.styles.map(s =>
-            this.compose_rule(s, coords, selector)
-          );
-          rules += `${(cond.selector + selector).replaceAll('$', this.compose_selector(coords))} {${pseudo}}`;
-        });
+      if (t.type === 'pseudo' && t.selector) {
+        for (let selector of t.selectors) {
+          let styles = join(t.styles.map(s => this.compose_rule(s, coords, selector)));
+          rules += `${this.compose_selector(coords, selector)} {${styles}}`;
+        }
       }
-      if (_token.type === 'cond') {
-        rules += this.compose_cond(_token, coords);
+      if (t.type === 'cond') {
+        rules += this.compose_cond(t, coords);
       }
     });
     return `${composed_selector} {${rules}}`;
   }
 
-  compose(coords, tokens, initial) {
+  compose(coords, tokens) {
     this.coords.push(coords);
-    (tokens || this.tokens).forEach((token, i) => {
-      if (token.skip) return false;
-      if (initial && this.grid) return false;
+    for (let token of (tokens || this.tokens)) {
+      if (this.skips.has(token)) continue;
       if (token.property === '@gap' && this.is_gap_set) {
-        return false;
+        continue;
       }
       if (token.property === '@grid' && this.is_grid_set) {
-        return false;
+        continue;
       }
       switch (token.type) {
         case 'rule': {
@@ -823,14 +884,11 @@ class Rules {
         }
 
         case 'pseudo': {
-          if (token.selector.startsWith(':doodle')) {
-            token.selector = token.selector.replace(/^\:+doodle/, ':host');
-          }
           let special = is_special_selector(token.selector);
           if (special) {
-            token.skip = true;
+            this.skips.add(token);
           }
-          parse_value_group(token.selector).forEach(selector => {
+          token.selectors.forEach(selector => {
             let composed = special
               ? selector
               : this.compose_selector(coords, selector);
@@ -843,8 +901,7 @@ class Rules {
                 let result = s.styles.map(_s =>
                   this.compose_rule(_s, coords, composed)
                 );
-                let selector = (composed + s.selector);
-                this.add_rule(selector, result);
+                this.add_rule(composed + s.selector, result);
               }
               if (s.type === 'cond' && s.name.startsWith('&')) {
                 let result = s.styles.map(_s =>
@@ -861,8 +918,8 @@ class Rules {
         case 'cond': {
           let name = token.name.slice(1);
           let fn = Selector[name];
-          let args = [];
           if (fn) {
+            let args = [];
             let firstGroup = token.segments.find(n => n.arguments);
             if (firstGroup && firstGroup.arguments) {
               args = firstGroup.arguments.map(arg => {
@@ -885,13 +942,24 @@ class Rules {
 
         case 'keyframes': {
           if (!this.keyframes[token.name]) {
-            this.keyframes[token.name] = coords => css`
-              ${join(token.steps.map(step =>  css`
+            const compose_steps = coords => css`
+              ${join(token.steps.map(step => css`
                 ${this.get_composed_value(step.name, coords).value} {
                   ${join(step.styles.map(s => this.compose_rule(s, coords)))}
                 }
               `))}
             `;
+            // a keyframes body without functions reads the same for
+            // every cell; compose it once
+            let is_static = token.steps.every(step =>
+              step.name.every(group => group.every(n => n.type === 'text'))
+              && step.styles.every(is_static_rule));
+            if (is_static) {
+              let body = null;
+              this.keyframes[token.name] = coords => body ??= compose_steps(coords);
+            } else {
+              this.keyframes[token.name] = compose_steps;
+            }
           }
           break;
         }
@@ -901,11 +969,11 @@ class Rules {
           break;
         }
       }
-    });
+    }
   }
 
   output() {
-    for (let [selector, rule] of Object.entries(this.rules)) {
+    for (let [selector, rule] of this.rules) {
       if (is_parent_selector(selector)) {
         let name = selector.replace(/^:container\(?/, 'cssd-grid').replace(/\)?$/, '');
         this.styles.container += `${name} {${join(rule)}}`;
@@ -950,7 +1018,7 @@ class Rules {
       for (let [name, keyframe] of Object.entries(this.keyframes)) {
         let aname = this.compose_aname(name, coords.count);
         this.styles.keyframes += css`
-          ${ i === 0 ? `@keyframes ${name} {${keyframe(coords)}}` : ''}
+          ${i === 0 ? `@keyframes ${name} {${keyframe(coords)}}` : ''}
           @keyframes ${aname} {${keyframe(coords)}}
         `;
       }
@@ -1018,7 +1086,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
   }
 
   rules.pre_compose({
-    x: 1, y: 1, z: 1, count: 1, context: {},
+    x: 1, y: 1, z: 1, count: 1, context: {}, extra: [],
     grid: { x: 1, y: 1, z: 1, count: 1 },
     random, rand, pick, shuffle,
     max_grid, update_random,
@@ -1055,7 +1123,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
       for (let x = 1; x <= grid_size.x; ++x) {
         rules.compose({
           x, y, z: 1,
-          count: ++count, grid: grid_size, context,
+          count: ++count, grid: grid_size, context, extra: [],
           rand, pick, shuffle,
           random, seed,
           max_grid,
@@ -1069,7 +1137,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
     for (let z = 1, count = 0; z <= grid_size.z; ++z) {
       rules.compose({
         x: 1, y: 1, z,
-        count: ++count, grid: grid_size, context,
+        count: ++count, grid: grid_size, context, extra: [],
         rand, pick, shuffle,
         random, seed,
         max_grid,

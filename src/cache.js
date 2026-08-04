@@ -1,9 +1,10 @@
-import { hash, is_nil } from './utils/index.js';
+import { is_nil } from './utils/index.js';
 
 class CacheValue {
-  constructor() {
+  constructor(limit = 16384) {
     this.cache = new Map();
     this.clearFns = [];
+    this.limit = limit;
   }
   clear() {
     this.cache.clear();
@@ -18,6 +19,13 @@ class CacheValue {
     }
     let key = this.getKey(input);
     this.cache.set(key, value);
+    if (this.cache.size > this.limit) {
+      let n = this.limit >> 1;
+      for (let stale of this.cache.keys()) {
+        this.cache.delete(stale);
+        if (--n === 0) break;
+      }
+    }
     return value;
   }
   has(input) {
@@ -26,15 +34,20 @@ class CacheValue {
   }
   get(input) {
     let key = this.getKey(input);
-    return this.cache.get(key);
+    let value = this.cache.get(key);
+    if (value !== undefined && this.cache.size >= (this.limit >> 1)) {
+      this.cache.delete(key);
+      this.cache.set(key, value);
+    }
+    return value;
   }
   getKey(input) {
     if (is_nil(input)) {
       return '';
     }
     return (typeof input === 'string')
-      ? hash(input)
-      : hash(JSON.stringify(input));
+      ? input
+      : JSON.stringify(input);
   }
 }
 
@@ -42,7 +55,13 @@ export const cache = new CacheValue();
 
 export function memo(prefix, fn) {
   return (...args) => {
-    let key = prefix + args.join('-');
-    return cache.get(key) || cache.set(key, fn(...args));
+    let key = (args.length === 1 && typeof args[0] === 'string')
+      ? prefix + args[0]
+      : prefix + args.join('-');
+    let value = cache.get(key);
+    if (value === undefined) {
+      value = cache.set(key, fn(...args));
+    }
+    return value;
   }
 }

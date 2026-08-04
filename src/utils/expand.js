@@ -67,7 +67,20 @@ const build_range = memo('build_range', (input) => {
 });
 
 export default function expand(fn) {
-  return (...args) => fn(...(args.flatMap(n =>
-    String(n).startsWith('[') ? build_range(n) : n
-  )));
+  return (...args) => {
+    let needs_expand = false;
+    for (let n of args) {
+      if (Array.isArray(n)
+        || (typeof n === 'string' ? n.charCodeAt(0) === 91 /* [ */ : String(n)[0] === '[')) {
+        needs_expand = true;
+        break;
+      }
+    }
+    if (!needs_expand) {
+      return fn(...args);
+    }
+    return fn(...(args.flatMap(n =>
+      String(n).startsWith('[') ? build_range(n) : n
+    )));
+  };
 }

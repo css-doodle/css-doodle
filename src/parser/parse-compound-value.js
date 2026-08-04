@@ -1,4 +1,20 @@
+import { cache } from '../cache.js';
 import { iterator, scan } from './tokenizer.js';
+
+const memo = new Map();
+cache.onClear(() => memo.clear());
+
+function parse_cached(input) {
+  let result = memo.get(input);
+  if (result === undefined) {
+    if (memo.size >= 256) {
+      memo.clear();
+    }
+    result = parse(input);
+    memo.set(input, result);
+  }
+  return result;
+}
 
 function parse(input) {
   let iter = iterator(scan(input));
@@ -23,4 +39,4 @@ function parse(input) {
   return ret;
 }
 
-export default parse;
+export default parse_cached;

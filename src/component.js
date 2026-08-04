@@ -15,7 +15,6 @@ import { NS, NSXHtml } from './utils/svg.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { cell_id, is_nil, get_png_name, cache_image, is_safari, un_entity, debounce } from './utils/index.js';
 
-import { cache } from './cache.js';
 import { css } from './utils/tagged-template.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './utils/google-font.js';
 
@@ -26,6 +25,23 @@ const Expose = {
       customElements.define(name, element);
     }
   }
+}
+
+const parse_cache = new Map();
+
+function parse_css_cached(code, extra) {
+  if (code.includes('@use')) {
+    return parse_css(code, extra);
+  }
+  let parsed = parse_cache.get(code);
+  if (!parsed) {
+    if (parse_cache.size >= 64) {
+      parse_cache.clear();
+    }
+    parsed = parse_css(code, extra);
+    parse_cache.set(code, parsed);
+  }
+  return parsed;
 }
 
 if (typeof HTMLElement !== 'undefined') {
@@ -48,29 +64,16 @@ if (typeof HTMLElement !== 'undefined') {
       };
     }
 
-    dispatchCellClick(event) {
-      let cell = event.composedPath().find(el => el.tagName === 'CSSD-CELL');
-      if (!cell) return;
-      let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
-      if (!match) return;
-      this.triggerEvent('click:cell', {
-        x: Number(match[1]),
-        y: Number(match[2]),
-        z: Number(match[3]),
-        element: cell,
-        originalEvent: event,
-      });
-    }
-
     connectedCallback(again) {
       if (this.innerHTML) {
         this.load(again);
         this._rendering = true;
       } else {
+        // the source may not be parsed yet
         setTimeout(() => {
           this.load(again);
           this._rendering = true;
-        });;
+        });
       }
     }
 
@@ -78,162 +81,38 @@ if (typeof HTMLElement !== 'undefined') {
       this.cleanup();
     }
 
-    triggerEvent(name, detail = {}) {
-      return this.dispatchEvent(
-        new CustomEvent(name, {
-          detail,
-          bubbles: true,
-          composed: true,
-        })
-      );
-    }
-
-    _update(styles) {
-      this.cleanup();
-      // Use old rules to update
-      if (!styles) {
-        styles = un_entity(this._code);
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (oldValue === newValue) {
+        return;
       }
-      if (this._code !== styles) {
-        this._code = styles;
-      }
-      if (!this.grid_size) {
-        this.grid_size = this.get_grid();
-      }
-
-      const { x: gx, y: gy, z: gz } = this.grid_size;
-      const use = this.get_use();
-
-      let old_content = '';
-      let old_styles = {};
-      if (this.compiled) {
-        old_content = this.compiled.content;
-        old_styles = this.compiled.styles;
-      }
-
-      const compiled = this.generate(parse_css(use + styles, this.extra));
-
-      let grid = compiled.grid || this.get_grid();
-      let { x, y, z } = grid;
-
-      let should_rebuild = (
-           !this.shadowRoot.innerHTML
-        ||  this.shadowRoot.querySelector('css-doodle')
-        || (gx !== x || gy !== y || gz !== z)
-        || (JSON.stringify(old_content) !== JSON.stringify(compiled.content))
-        || (!old_styles.cells || !compiled.styles.cells)
-        || (old_styles.backdrop !== compiled.styles.backdrop)
-      );
-
-      Object.assign(this.grid_size, grid);
-
-      if (should_rebuild) {
-        compiled.grid
-          ? this.build_grid(compiled, grid)
-          : this.build_grid(this.generate(parse_css(use + styles, this.extra)), grid);
+      if (name === 'click-to-update' || name === 'click:update') {
+        if (newValue === null) {
+          this.removeEventListener('click', this.bindClickToUpdate);
+          this.removeAttribute('click-to-update');
+          this.removeAttribute('click:update');
+        } else if (oldValue === null) {
+          this.addEventListener('click', this.bindClickToUpdate);
+        }
+      } else if (name === 'auto:update') {
+        if (newValue !== null) {
+          this.autoUpdate();
+        } else {
+          this.cancelAutoUpdate();
+        }
       } else {
-        this.bind_uniforms(compiled.uniforms);
-        let replace = this.replace(compiled);
-        if (compiled.props.has_animation) {
-          this.set_style(old_styles.all.replace(/animation/g, 'x'));
-          this.reflow();
-        }
-        if (compiled.styles.gf) {
-          loadGoogleFontLink(compiled.styles.gf);
-        }
-        this.set_style(replace(
-          compiled.styles.top +
-          get_basic_styles(this.grid_size) +
-          compiled.styles.all
-        ));
-      }
-
-      setTimeout(() => {
-        this.triggerEvent('render');
-        this.triggerEvent('afterUpdate');
-        this.triggerEvent('update');
-      });
-    }
-
-    update(styles, options = {}) {
-      this.triggerEvent('beforeUpdate');
-      if (!document.startViewTransition) {
-        return this._update(styles);
-      }
-      if (!arguments.length) {
-        styles = '';
-        options = {};
-      }
-      if (typeof styles === 'object') {
-        options = styles;
-        styles = '';
-      }
-
-      let useAnimation = this.viewTransition;
-      if (useAnimation === undefined) {
-        useAnimation = this.hasAttribute('view-transition');
-      }
-      if (useAnimation) {
-        document.startViewTransition(() => {
-          this._update(styles);
-        });
-      } else {
-        this._update(styles);
-      }
-      if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
-        this.autoUpdate();
+        this.connectedCallback(true);
       }
     }
 
-    pause() {
-      this.setAttribute('cssd-paused', true);
-      for (let am of this.animations) {
-        am.pause();
+    attr(name, value) {
+      let len = arguments.length;
+      if (len === 1) {
+        return this.getAttribute(name);
       }
-    }
-
-    resume() {
-      this.removeAttribute('cssd-paused');
-      for (let am of this.animations) {
-        am.resume();
+      if (len === 2) {
+        this.setAttribute(name, value);
+        return value;
       }
-    }
-
-    async export({ scale, name, download, detail } = {}) {
-      let variables = get_all_variables(this);
-      let html = this.doodle.innerHTML;
-
-      let { width, height } = this.getBoundingClientRect();
-      scale = parseInt(scale) || 1;
-
-      let w = width * scale;
-      let h = height * scale;
-      let fonts = await loadGoogleFontEmbed();
-      let svg = css`
-          <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
-            <foreignObject width="100%" height="100%">
-              <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
-                <style><![CDATA[
-                  ${fonts}
-                  .host{${variables}}
-                ]]></style>
-                ${html}
-              </div>
-            </foreignObject>
-          </svg>
-        `;
-
-      if (download || detail) {
-        let { source, url, blob } = await generate_png(svg, w, h, scale);
-        if (download) {
-          let a = document.createElement('a');
-          a.download = get_png_name(name);
-          a.href = url;
-          a.click();
-        }
-        return { width: w, height: h, svg, blob, source };
-      }
-      return { width: w, height: h, svg };
     }
 
     get grid() {
@@ -260,34 +139,48 @@ if (typeof HTMLElement !== 'undefined') {
       this.attr('use', use);
     }
 
-    attributeChangedCallback(name, oldValue, newValue) {
-      if (oldValue !== newValue && Expose.CSSDoodle.observedAttributes.includes(name)) {
-        if (name === 'click-to-update' || name === 'click:update') {
-          if (newValue === null) {
-            this.removeEventListener('click', this.bindClickToUpdate);
-            this.removeAttribute('click-to-update');
-            this.removeAttribute('click:update');
-          } else if(oldValue === null) {
-            this.addEventListener('click', this.bindClickToUpdate);
-          }
-        } else if (name === 'auto:update') {
-          if (newValue !== null) {
-            this.autoUpdate();
-          } else {
-            this.cancelAutoUpdate();
-          }
-        } else {
-          this.connectedCallback(true);
-        }
-      }
-    }
-
     get_max_grid() {
       return this.hasAttribute('experimental') ? 256 : 64;
     }
 
     get_grid() {
       return parse_grid(this.attr('grid'), this.get_max_grid());
+    }
+
+    get_use() {
+      let use = String(this.attr('use') || '').trim();
+      if (/^var\(/.test(use)) {
+        use = `@use:${use};`;
+      }
+      return use;
+    }
+
+    triggerEvent(name, detail = {}) {
+      return this.dispatchEvent(
+        new CustomEvent(name, {
+          detail,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+
+    dispatchCellClick(event) {
+      let cell = event.composedPath().find(el => el.tagName === 'CSSD-CELL');
+      if (!cell) return;
+      let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
+      if (!match) return;
+      this.triggerEvent('click:cell', {
+        x: Number(match[1]),
+        y: Number(match[2]),
+        z: Number(match[3]),
+        element: cell,
+        originalEvent: event,
+      });
+    }
+
+    bindClickToUpdate() {
+      this.update();
     }
 
     _get_auto_update_interval(interval) {
@@ -321,23 +214,189 @@ if (typeof HTMLElement !== 'undefined') {
       );
     }
 
-    cancelAutoUpdate(options = {}) {
+    cancelAutoUpdate() {
       clearInterval(this._auto_update_timer);
       this._auto_update_timer = null;
       this.removeAttribute('auto:update');
       this.removeAttribute('data-interval');
     }
 
-    get_use() {
-      let use = String(this.attr('use') || '').trim();
-      if (/^var\(/.test(use)) {
-        use = `@use:${use};`;
+    generate(parsed) {
+      let grid = this.get_grid();
+      let seed = this.attr('seed') || this.attr('data-seed');
+      if (is_nil(seed)) {
+        seed = Date.now();
       }
-      return use;
+      let compiled = this.compiled = generate_css(
+        parsed, grid, seed, this.get_max_grid()
+      );
+      this._seed_value = compiled.seed;
+      this._seed_random = compiled.random;
+      return compiled;
+    }
+
+    load(again) {
+      if (this._rendering) {
+        return false;
+      }
+      this.cleanup();
+      let code = this._code || this.innerHTML;
+      let parsed = parse_css_cached(this.get_use() + un_entity(code), this.extra);
+      let compiled = this.generate(parsed);
+
+      if (!again) {
+        if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
+          this.addEventListener('click', this.bindClickToUpdate);
+        }
+        this.addEventListener('click', this.dispatchCellClick);
+      }
+
+      this.grid_size = compiled.grid || this.get_grid();
+      this.build_grid(compiled, this.grid_size);
+      this._code = code;
+      this.innerHTML = '';
+
+      setTimeout(() => {
+        this._rendering = false;
+        this.triggerEvent('render');
+      });
+    }
+
+    update(styles, options = {}) {
+      this.triggerEvent('beforeUpdate');
+      if (typeof styles === 'object' && styles !== null) {
+        options = styles;
+        styles = '';
+      }
+
+      let useAnimation = this.viewTransition;
+      if (useAnimation === undefined) {
+        useAnimation = this.hasAttribute('view-transition');
+      }
+      if (useAnimation && document.startViewTransition) {
+        document.startViewTransition(() => {
+          this._update(styles);
+        });
+      } else {
+        this._update(styles);
+      }
+      if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
+        this.autoUpdate();
+      }
+    }
+
+    _update(styles) {
+      this.cleanup();
+      // reuse the old rules when called without new code
+      if (!styles) {
+        styles = un_entity(this._code);
+      }
+      this._code = styles;
+      if (!this.grid_size) {
+        this.grid_size = this.get_grid();
+      }
+
+      const old = this.compiled;
+      const compiled = this.generate(
+        parse_css_cached(this.get_use() + styles, this.extra));
+      const grid = compiled.grid || this.get_grid();
+      const rebuild = this.should_rebuild(compiled, old, grid);
+
+      Object.assign(this.grid_size, grid);
+
+      if (rebuild) {
+        this.build_grid(compiled, grid);
+      } else {
+        this.patch(compiled, old.styles);
+      }
+
+      setTimeout(() => {
+        this.triggerEvent('render');
+        this.triggerEvent('afterUpdate');
+        this.triggerEvent('update');
+      });
+    }
+
+    should_rebuild(compiled, old, grid) {
+      if (!old) {
+        return true;
+      }
+      // no cells yet, or nested doodles pending as content
+      if (!this.shadowRoot.innerHTML || this.shadowRoot.querySelector('css-doodle')) {
+        return true;
+      }
+      let { x, y, z } = this.grid_size;
+      if (grid.x !== x || grid.y !== y || grid.z !== z) {
+        return true;
+      }
+      if (JSON.stringify(old.content) !== JSON.stringify(compiled.content)) {
+        return true;
+      }
+      if (!old.styles.cells || !compiled.styles.cells) {
+        return true;
+      }
+      return old.styles.backdrop !== compiled.styles.backdrop;
+    }
+
+    /* refresh styles in place, keeping the cell elements */
+    patch(compiled, old_styles) {
+      this.bind_uniforms(compiled.uniforms);
+      let replace = this.replace(compiled);
+      if (compiled.props.has_animation) {
+        // detach animations first so they restart with the new styles
+        this.set_style(old_styles.all.replace(/animation/g, 'x'));
+        this.reflow();
+      }
+      if (compiled.styles.gf) {
+        loadGoogleFontLink(compiled.styles.gf);
+      }
+      this.set_style(replace(
+        compiled.styles.top +
+        get_basic_styles(this.grid_size) +
+        compiled.styles.all
+      ));
+    }
+
+    build_grid(compiled, grid) {
+      const { has_transition, has_animation } = compiled.props;
+      const { uniforms, content, styles } = compiled;
+      const basic_styles = get_basic_styles(grid);
+      const has_content = Object.keys(content).length;
+
+      this.doodle.innerHTML = css`
+        <style>${basic_styles + styles.main}</style>
+        ${(styles.cells || styles.container || has_content) ? create_grid(grid, compiled) : ''}
+      `;
+      if (has_transition || has_animation) {
+        this.reflow();
+      }
+      if (styles.gf) {
+        loadGoogleFontLink(styles.gf);
+      }
+      let replace = this.replace(compiled);
+      this.set_style(replace(styles.top + basic_styles + styles.all));
+      if (has_content) {
+        replace(Object.values(content).join(' '));
+      }
+      this.bind_uniforms(uniforms);
+    }
+
+    set_style(input) {
+      if (input instanceof Promise) {
+        input.then(v => this.set_style(v)).catch(console.error);
+      } else {
+        const el = this.shadowRoot.querySelector('style');
+        if (el) {
+          el.textContent = input.replace(/\n\s+/g, ' ');
+        }
+      }
+    }
+
+    reflow() {
+      this.shadowRoot.querySelector('cssd-grid').offsetWidth;
     }
 
     cleanup() {
-      cache.clear();
       if (this.compiled) {
         for (let am of this.animations) {
           am.cancel();
@@ -348,11 +407,11 @@ if (typeof HTMLElement !== 'undefined') {
           for (let el of this.shadowRoot.querySelectorAll('cssd-cell')) {
             el.style.cssText = '';
           }
-          this.observers.forEach((observer, target) => {
+          this.observers.forEach(observer => {
             observer.disconnect();
           });
         }
-        // Clear shader CSS variables
+        // clear shader CSS variables
         for (let id of Object.keys(shaders)) {
           this.style.removeProperty('--' + id);
         }
@@ -370,29 +429,55 @@ if (typeof HTMLElement !== 'undefined') {
       this.style.background = '';
     }
 
-    attr(name, value) {
-      let len = arguments.length;
-      if (len === 1) {
-        return this.getAttribute(name);
-      }
-      if (len === 2) {
-        this.setAttribute(name, value);
-        return value;
+    pause() {
+      this.setAttribute('cssd-paused', true);
+      for (let am of this.animations) {
+        am.pause();
       }
     }
 
-    generate(parsed) {
-      let grid = this.get_grid();
-      let seed = this.attr('seed') || this.attr('data-seed');
-      if (is_nil(seed)) {
-        seed = Date.now();
+    resume() {
+      this.removeAttribute('cssd-paused');
+      for (let am of this.animations) {
+        am.resume();
       }
-      let compiled = this.compiled = generate_css(
-        parsed, grid, seed, this.get_max_grid()
-      );
-      this._seed_value = compiled.seed;
-      this._seed_random = compiled.random;
-      return compiled;
+    }
+
+    replace({ doodles, shaders, pattern }) {
+      const groups = [
+        [doodles, (v, fn) => this.doodle_to_image(v.doodle, { arg: v.arg, upextra: v.upextra }, fn)],
+        [shaders, (v, fn) => this.shader_to_image(v, fn)],
+        [pattern, (v, fn) => this.pattern_to_image(v, fn)],
+      ];
+      return input => {
+        let tasks = [];
+        for (let [map, to_image] of groups) {
+          for (let [id, value] of Object.entries(map)) {
+            if (input.includes(id)) {
+              tasks.push(new Promise(resolve => {
+                to_image(value, result => resolve({ id, result }));
+              }));
+            }
+          }
+        }
+        if (!tasks.length) {
+          return Promise.resolve(input);
+        }
+        return Promise.all(tasks).then(mappings => {
+          for (let { id, result } of mappings) {
+            /* doodle resolves to a data-uri, shader and pattern render
+             * into CSS variables */
+            let target = /^(shader|pattern)/.test(id)
+              ? `var(--${id})`
+              : `url(${result})`;
+            input = input.replaceAll('${' + id + '}', target);
+          }
+          return input;
+        }).catch(err => {
+          console.error(err);
+          return input;
+        });
+      }
     }
 
     doodle_to_image(code, options, fn) {
@@ -400,14 +485,15 @@ if (typeof HTMLElement !== 'undefined') {
         fn = options;
         options = null;
       }
+      options = options || {};
       code = ':doodle {width:100%;height:100%}' + code;
-      let parsed = parse_css(code, this.extra);
+      let parsed = parse_css_cached(code, this.extra);
       let _grid = parse_grid('');
       let compiled = generate_css(parsed, _grid, this._seed_value, this.get_max_grid(), this._seed_random, options.upextra);
       let styles = compiled.styles || {};
       let grid = compiled.grid ? compiled.grid : _grid;
       let viewBox = '';
-      if (options && options.arg) {
+      if (options.arg) {
         let v = parse_grid(options.arg, Infinity);
         if (v.x && v.y) {
           options.width = v.x + 'px';
@@ -419,7 +505,7 @@ if (typeof HTMLElement !== 'undefined') {
       let replace = this.replace(compiled);
       let grid_container = create_grid(grid, compiled);
 
-      let size = (options && options.width && options.height)
+      let size = (options.width && options.height)
         ? `width="${options.width}" height="${options.height}"`
         : '';
 
@@ -504,7 +590,7 @@ if (typeof HTMLElement !== 'undefined') {
       }
 
       const tick = ([render, animated, canvas]) => {
-        // Release any context still held for this target before drawing again.
+        // release any context still held for this target before drawing again
         let existing = this.shader_renders.get(target.selector);
         if (existing && existing.canvas && existing.canvas.loseContext) {
           existing.canvas.loseContext();
@@ -549,7 +635,7 @@ if (typeof HTMLElement !== 'undefined') {
         let dpr = devicePixelRatio || 1;
         Promise.all(sources.map(({ name, value }) => {
           return new Promise(resolve => {
-            this.doodle_to_image(value, {width, height}, src => {
+            this.doodle_to_image(value, { width, height }, src => {
               if (!src) {
                 resolve({ name, value: null });
                 return;
@@ -604,11 +690,11 @@ if (typeof HTMLElement !== 'undefined') {
           last_h = height;
           let live = this.shader_renders.get(target.selector);
           if (live && live.animated) {
-            // Live context adapts to the new size on its next frame; just
-            // refresh the textures the loop reads from the closure.
+            // live context adapts to the new size on its next frame; just
+            // refresh the textures the loop reads from the closure
             transform(sources, result => { images = result; });
           } else {
-            // Static render was baked to an image and its context freed: redraw.
+            // static render was baked to an image and its context freed: redraw
             run();
           }
         }));
@@ -617,101 +703,6 @@ if (typeof HTMLElement !== 'undefined') {
       }
 
       run(fn);
-    }
-
-    bindClickToUpdate() {
-      this.update();
-    }
-
-    load(again) {
-      if (this._rendering) {
-        return false;
-      }
-      this.cleanup();
-      let code = this._code || this.innerHTML;
-      let use = this.get_use();
-      let parsed = parse_css(use + un_entity(code), this.extra);
-      let compiled = this.generate(parsed);
-
-      if (!again) {
-        if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
-          this.addEventListener('click', this.bindClickToUpdate);
-        }
-        this.addEventListener('click', this.dispatchCellClick);
-      }
-
-      this.grid_size = compiled.grid
-        ? compiled.grid
-        : this.get_grid();
-
-      this.build_grid(compiled, this.grid_size);
-      this._code = code;
-      this.innerHTML = '';
-
-      setTimeout(() => {
-        this._rendering = false;
-        this.triggerEvent('render');
-      });
-    }
-
-    replace({ doodles, shaders, pattern }) {
-      let doodle_ids = Object.keys(doodles);
-      let shader_ids = Object.keys(shaders);
-      let pattern_ids = Object.keys(pattern);
-      let length = doodle_ids.length + shader_ids.length + pattern_ids.length;
-      return input => {
-        if (!length) {
-          return Promise.resolve(input);
-        }
-        let mappings = [].concat(
-          doodle_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                let { arg, doodle, upextra } = doodles[id];
-                this.doodle_to_image(doodle, { arg, upextra }, value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-          shader_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.shader_to_image(shaders[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-          pattern_ids.map(id => {
-            if (input.includes(id)) {
-              return new Promise(resolve => {
-                this.pattern_to_image(pattern[id], value => resolve({ id, value }));
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          }),
-        );
-
-        return Promise.all(mappings).then(mapping => {
-          for (let {id, value} of mapping) {
-            /* default to data-uri for doodle and pattern */
-            let target = `url(${value})`;
-            /* shader uses css vars */
-            if (/^shader|^pattern/.test(id)) target = `var(--${id})`;
-            input = input.replaceAll('${' + id + '}', target);
-          }
-          return input;
-        }).catch(err => {
-          console.error(err);
-          return input;
-        });
-      }
-    }
-
-    reflow() {
-      this.shadowRoot.querySelector('cssd-grid').offsetWidth;
     }
 
     bind_uniforms({ time, mousex, mousey, mouse, width, height }) {
@@ -727,91 +718,6 @@ if (typeof HTMLElement !== 'undefined') {
         this.reg_usize(width, height);
       } else {
         this.off_usize();
-      }
-    }
-
-    build_grid(compiled, grid) {
-      const { has_transition, has_animation } = compiled.props;
-      const { uniforms, content, styles } = compiled;
-      let has_delay = (has_transition || has_animation);
-      let has_content = Object.keys(content).length;
-      this.doodle.innerHTML = css`
-        <style>${get_basic_styles(grid) + styles.main}</style>
-        ${(styles.cells || styles.container || has_content) ? create_grid(grid, compiled) : ''}
-      `;
-      if (has_delay) {
-        this.reflow();
-      }
-      if (styles.gf) {
-        loadGoogleFontLink(styles.gf);
-      }
-      let replace = this.replace(compiled);
-      this.set_style(replace(
-        styles.top +
-        get_basic_styles(grid) +
-        styles.all
-      ));
-      if (has_content) {
-        replace(Object.values(compiled.content).join(' '));
-      }
-      this.bind_uniforms(uniforms);
-    }
-
-    reg_umouse(mousex, mousey, mouse) {
-      if (!this.umouse_fn) {
-        this.umouse_fn = e => {
-          let data = e.detail || e;
-          if (mouse) {
-            this._umouse = { x: data.offsetX, y: data.offsetY };
-          }
-          if (mousex || mousey) {
-            this.style.setProperty('--' + umousex.name, data.offsetX);
-            this.style.setProperty('--' + umousey.name, data.offsetY);
-          }
-        }
-        this.addEventListener('pointermove', this.umouse_fn);
-        let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0}});
-        this.dispatchEvent(event);
-      } else {
-        if (!(mousex || mousey || mouse)) {
-          this.off_umouse();
-        }
-      }
-    }
-
-    off_umouse() {
-      if (this.umouse_fn) {
-        this.style.removeProperty('--' + umousex.name);
-        this.style.removeProperty('--' + umousey.name);
-        this.removeEventListener('pointermove', this.umouse_fn);
-        this.umouse_fn = null;
-        delete this._umouse;
-      }
-    }
-
-    reg_usize(width, height) {
-      if (!this.usize_observer) {
-        this.usize_observer = new ResizeObserver(() => {
-          let box = this.getBoundingClientRect();
-          if (width || height) {
-            this.style.setProperty('--' + uwidth.name, box.width);
-            this.style.setProperty('--' + uheight.name, box.height);
-          }
-        });
-        this.usize_observer.observe(this);
-      } else {
-        if (!(width || height)) {
-          this.off_usize();
-        }
-      }
-    }
-
-    off_usize() {
-      if (this.usize_observer) {
-        this.style.removeProperty('--' + uwidth.name);
-        this.style.removeProperty('--' + uheight.name);
-        this.usize_observer.unobserve(this);
-        this.usize_observer = null;
       }
     }
 
@@ -835,15 +741,95 @@ if (typeof HTMLElement !== 'undefined') {
       }
     }
 
-    set_style(input) {
-      if (input instanceof Promise) {
-        input.then(v => this.set_style(v)).catch(console.error);
-      } else {
-        const el = this.shadowRoot.querySelector('style');
-        if (el) {
-          el.textContent = input.replace(/\n\s+/g, ' ');
+    reg_umouse(mousex, mousey, mouse) {
+      if (!this.umouse_fn) {
+        this.umouse_fn = e => {
+          let data = e.detail || e;
+          if (mouse) {
+            this._umouse = { x: data.offsetX, y: data.offsetY };
+          }
+          if (mousex || mousey) {
+            this.style.setProperty('--' + umousex.name, data.offsetX);
+            this.style.setProperty('--' + umousey.name, data.offsetY);
+          }
         }
+        this.addEventListener('pointermove', this.umouse_fn);
+        let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0 }});
+        this.dispatchEvent(event);
+      } else if (!(mousex || mousey || mouse)) {
+        this.off_umouse();
       }
+    }
+
+    off_umouse() {
+      if (this.umouse_fn) {
+        this.style.removeProperty('--' + umousex.name);
+        this.style.removeProperty('--' + umousey.name);
+        this.removeEventListener('pointermove', this.umouse_fn);
+        this.umouse_fn = null;
+        delete this._umouse;
+      }
+    }
+
+    reg_usize(width, height) {
+      if (!this.usize_observer) {
+        this.usize_observer = new ResizeObserver(() => {
+          let box = this.getBoundingClientRect();
+          if (width || height) {
+            this.style.setProperty('--' + uwidth.name, box.width);
+            this.style.setProperty('--' + uheight.name, box.height);
+          }
+        });
+        this.usize_observer.observe(this);
+      } else if (!(width || height)) {
+        this.off_usize();
+      }
+    }
+
+    off_usize() {
+      if (this.usize_observer) {
+        this.style.removeProperty('--' + uwidth.name);
+        this.style.removeProperty('--' + uheight.name);
+        this.usize_observer.unobserve(this);
+        this.usize_observer = null;
+      }
+    }
+
+    async export({ scale, name, download, detail } = {}) {
+      let variables = get_all_variables(this);
+      let html = this.doodle.innerHTML;
+
+      let { width, height } = this.getBoundingClientRect();
+      scale = parseInt(scale) || 1;
+
+      let w = width * scale;
+      let h = height * scale;
+      let fonts = await loadGoogleFontEmbed();
+      let svg = css`
+          <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
+            <foreignObject width="100%" height="100%">
+              <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
+                <style><![CDATA[
+                  ${fonts}
+                  .host{${variables}}
+                ]]></style>
+                ${html}
+              </div>
+            </foreignObject>
+          </svg>
+        `;
+
+      if (download || detail) {
+        let { source, url, blob } = await generate_png(svg, w, h, scale);
+        if (download) {
+          let a = document.createElement('a');
+          a.download = get_png_name(name);
+          a.href = url;
+          a.click();
+        }
+        return { width: w, height: h, svg, blob, source };
+      }
+      return { width: w, height: h, svg };
     }
   }
 }
@@ -926,8 +912,7 @@ function create_grid(grid_obj, compiled) {
   else {
     let child = '';
     for (let i = z; i >= 1; i--) {
-      let cell = create_cell(1, 1, i, content, child);
-      child = cell;
+      child = create_cell(1, 1, i, content, child);
     }
     result = child;
   }

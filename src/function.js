@@ -28,45 +28,16 @@ const RE_VAR = /var\(/;
 const RE_CALC = /^calc\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
-function make_sequence(c) {
-  return lazy((_, n, ...actions) => {
-    if (!actions || !n) return '';
-    let count = get_value(n());
-    let evaluated = count;
-    if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {
-      evaluated = calc(count);
-      if (evaluated === 0) {
-        evaluated = count;
-      }
-    }
-    let signature = Math.random();
-    return sequence(
-      evaluated,
-      (...args) => {
-        return actions.map(action => {
-          return get_value(action(...args, signature))
-        }).join(',');
-      }
-    ).join(c);
-  });
-}
-
-function push_stack(context, name, value) {
-  if (!context[name]) context[name] = new Stack(1024);
-  context[name].push(value);
-  return value;
-}
-
-function flip_value(num) {
-  return -1 * num;
-}
-
-function map2d(value, min, max, amp = 1) {
-  let v = Math.sqrt(2 / 4) * amp;
-  let normalized = (value + v) / (2 * v);
-  normalized = clamp(normalized, 0, 1);
-  return lerp(normalized, min * amp, max * amp);
-}
+const SEQ = {
+  n: 0,
+  x: 1,
+  y: 2,
+  max: 3,
+  X: 4,
+  Y: 5,
+  index: 6,
+  sig: 7
+};
 
 function compute(op, a, b) {
   switch (op) {
@@ -141,12 +112,69 @@ function calc_with_easing(t) {
   }
 }
 
+function map2d(value, min, max, amp = 1) {
+  let v = Math.sqrt(2 / 4) * amp;
+  let normalized = (value + v) / (2 * v);
+  normalized = clamp(normalized, 0, 1);
+  return lerp(normalized, min * amp, max * amp);
+}
+
+function flip_value(num) {
+  return -1 * num;
+}
+
+function push_stack(context, name, value) {
+  if (!context[name]) context[name] = new Stack(1024);
+  context[name].push(value);
+  return value;
+}
+
+// Distinguishes sequence invocations in the context keys of the pick
+// family, so e.g. two @pd inside one @m keep separate counters while
+// sharing state across that invocation's iterations.
+let seq_uid = 0;
+
+function make_sequence(c) {
+  return lazy((_, n, ...actions) => {
+    if (!n || !actions.length) return '';
+    let count = get_value(n());
+    let evaluated = count;
+    // Anything but plain numbers and 2x3/1-5 range forms goes through calc
+    if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {
+      evaluated = calc(count);
+      if (evaluated === 0) {
+        evaluated = count;
+      }
+    }
+    let signature = ++seq_uid;
+    return sequence(
+      evaluated,
+      (...args) => {
+        return actions.map(action => {
+          return get_value(action(...args, signature))
+        }).join(',');
+      }
+    ).join(c);
+  });
+}
+
+// The @n family: with no sequence tuple in scope the source token is
+// echoed back as-is (a non-function return passes through apply_func).
+// Argument composition pushes an empty tuple, which is no context either.
+function seq(token, make) {
+  return ({ extra }) => {
+    let e = last(extra);
+    return (e && e.length) ? make(e) : token;
+  };
+}
+
 function create_plot(unit) {
   return ({ count, extra, grid }) => {
-    let lastExtra = last(extra);
+    let e = last(extra) || [];
     return (...args) => {
       let commands = args.join(',');
-      let [idx = count, _, __, max = grid.count] = lastExtra || [];
+      let idx = e[SEQ.n] ?? count;
+      let max = e[SEQ.max] ?? grid.count;
       let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
@@ -176,8 +204,8 @@ function create_mirror(even) {
   };
 }
 
-function create_pick(name, fn, random = false) {
-  return ({ context, extra, upextra, position, shuffle }, upstream) => {
+function create_pick(name, fn, random = false, upstream = false) {
+  return ({ context, extra, upextra, position, shuffle }) => {
     let lastExtra = upstream
       ? last(upextra.length ? upextra : extra)
       : last(extra);
@@ -198,7 +226,7 @@ function create_pick(name, fn, random = false) {
         source = context[valuesKey];
       }
       let max = args.length;
-      let idx = lastExtra && lastExtra[6];
+      let idx = lastExtra && lastExtra[SEQ.index];
       idx ??= context[counter];
       let pos = (idx - 1) % max;
       let value = fn(source, pos, max);
@@ -207,143 +235,104 @@ function create_pick(name, fn, random = false) {
   };
 }
 
-const Expose = add_alias({
+function transform_path(tr) {
+  return commands => {
+    let parsed = parse_svg_path(commands);
+    if (!parsed.valid) return commands;
+    return parsed.commands.map(({ name, value }) => {
+      let [n, v] = tr(name, value);
+      return n + v.join(' ');
+    }).join(' ');
+  };
+}
 
-  i({ count }) {
-    return calc_with(count);
-  },
+const INVERT_COMMAND = { v: 'h', V: 'H', h: 'v', H: 'V' };
 
-  y({ y }) {
-    return calc_with(y);
-  },
+const invert_path = transform_path((name, value) =>
+  [INVERT_COMMAND[name] || name, value]);
 
-  x({ x }) {
-    return calc_with(x);
-  },
+const flipH_path = transform_path((name, value) =>
+  (name === 'h' || name === 'H') ? [name, value.map(flip_value)] : [name, value]);
 
-  z({ z }) {
-    return calc_with(z);
-  },
+const flipV_path = transform_path((name, value) =>
+  (name === 'v' || name === 'V') ? [name, value.map(flip_value)] : [name, value]);
 
-  I({ grid }) {
-    return calc_with(grid.count);
-  },
+function try_decode(raw, decode) {
+  let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
+  try {
+    return decode(cut);
+  } catch (e) {
+    return raw;
+  }
+}
 
-  Y({ grid }) {
-    return calc_with(grid.y);
-  },
+const compose_svg_url = memo('svg-function', value => {
+  if (!value.startsWith('<')) {
+    value = generate_svg(parse_svg(value));
+  }
+  return create_svg_url(normalize_svg(value));
+});
 
-  X({ grid }) {
-    return calc_with(grid.x);
-  },
+const compose_svg_polygon_url = memo('svg-polygon-function', commands => {
+  let { rules, points } = generate_shape(commands, {min: 3, max: 65536}, rules => {
+    delete rules.frame;
+    rules['unit'] = 'none';
+    rules['stroke-width'] ??= .01;
+    rules['stroke'] ??= 'currentColor';
+    rules['fill'] ??= 'none';
+    return rules;
+  });
+  let style = `points: ${points};`;
+  let props = '';
+  let p = rules.padding ?? Number(rules['stroke-width']) / 2;
+  for (let name of Object.keys(rules)) {
+    if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
+      props += `${name}: ${rules[name]};`
+    }
+  };
+  let parsed = parse_svg(css`
+    viewBox: -1 -1 2 2 p ${p};
+    polygon {
+      ${props} ${style}
+    }
+  `);
+  return create_svg_url(generate_svg(parsed));
+});
 
-  Z({ grid }) {
-    return calc_with(grid.z);
-  },
+const compose_svg_pattern_url = memo('svg-pattern-function', value => {
+  let parsed = parse_svg(css`
+    viewBox: 0 0 1 1;
+    preserveAspectRatio: xMidYMid slice;
+    rect {
+      width, height: 100%;
+      fill: defs pattern { ${ value } }
+    }
+  `);
+  return create_svg_url(generate_svg(parsed));
+});
 
-  iI({ count, grid }) {
-    return calc_with_easing(count/grid.count);
-  },
-
-  Ii({ count, grid }) {
-    return calc_with_easing((grid.count - count + 1) / grid.count);
-  },
-
-  xX({ x, grid }) {
-    return calc_with_easing(x/grid.x);
-  },
-
-  Xx({ x, grid }) {
-    return calc_with_easing((grid.x - x + 1) / grid.x);
-  },
-
-  yY({ y, grid }) {
-    return calc_with_easing(y/grid.y);
-  },
-
-  Yy({ y, grid }) {
-    return calc_with_easing((grid.y - y + 1) / grid.y);
-  },
+const Expose = {
 
   id({ x, y, z }) {
     return _ => cell_id(x, y, z);
   },
 
-  dx({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).dx);
-  },
+  n: seq('@n', e => calc_with(e[SEQ.n])),
 
-  dy({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).dy);
-  },
+  nx: seq('@nx', e => calc_with(e[SEQ.x])),
 
-  dr({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).dr);
-  },
+  ny: seq('@ny', e => calc_with(e[SEQ.y])),
 
-  dc({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).dc);
-  },
+  N: seq('@N', e => calc_with(e[SEQ.max])),
 
-  dm({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).dm);
-  },
+  nN: seq('@nN', e => calc_with_easing(e[SEQ.n] / e[SEQ.max])),
 
-  da({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).da);
-  },
+  Nn: seq('@Nn', e => calc_with_easing((e[SEQ.max] - e[SEQ.n] + 1) / e[SEQ.max])),
 
-  db({ x, y, grid }) {
-    return calc_with(cell_metrics(x, y, grid).db);
-  },
-
-  n({ extra }) {
-    let lastExtra = last(extra);
-    return lastExtra ? calc_with(lastExtra[0]) : '@n';
-  },
-
-  nx({ extra }) {
-    let lastExtra = last(extra);
-    return lastExtra ? calc_with(lastExtra[1]) : '@nx';
-  },
-
-  ny({ extra }) {
-    let lastExtra = last(extra);
-    return lastExtra ? calc_with(lastExtra[2]) : '@ny';
-  },
-
-  nd({ extra }) {
-    let lastExtra = last(extra);
-    if (lastExtra) {
-      let n = lastExtra[0];
-      let N = lastExtra[3];
-      return d => {
-        d = Number(d) || 0;
-        return calc_with(n - .5 - d - N / 2);
-      }
-    }
-    return '@nd';
-  },
-
-  N({ extra }) {
-    let lastExtra = last(extra);
-    return lastExtra ? calc_with(lastExtra[3]) : '@N';
-  },
-
-  nN({ extra }) {
-    let lastExtra = last(extra);
-    return lastExtra ? calc_with_easing(lastExtra[0]/lastExtra[3]) : '@nN';
-  },
-
-  Nn({ extra }) {
-    let lastExtra = last(extra);
-    if (lastExtra) {
-      let n = lastExtra[0];
-      let N = lastExtra[3];
-      return calc_with_easing((N - n + 1) / N);
-    }
-    return '@Nn';
-  },
+  nd: seq('@nd', e => d => {
+    d = Number(d) || 0;
+    return calc_with(e[SEQ.n] - .5 - d - e[SEQ.max] / 2)();
+  }),
 
   m: make_sequence(','),
 
@@ -352,15 +341,15 @@ const Expose = add_alias({
   µ: make_sequence(''),
 
   match({ extra, x, y, z, count, grid }) {
-    let [n, nx, ny, N] = last(extra) || [];
+    let e = last(extra) || [];
     let variables = {
       x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z,
       ...cell_metrics(x, y, grid),
     };
-    if (!is_nil(n)) variables.n = n;
-    if (!is_nil(nx)) variables.nx = nx;
-    if (!is_nil(ny)) variables.ny = ny;
-    if (!is_nil(N)) variables.N = N;
+    if (!is_nil(e[SEQ.n])) variables.n = e[SEQ.n];
+    if (!is_nil(e[SEQ.x])) variables.nx = e[SEQ.x];
+    if (!is_nil(e[SEQ.y])) variables.ny = e[SEQ.y];
+    if (!is_nil(e[SEQ.max])) variables.N = e[SEQ.max];
     return (...args) => {
       if (args.length <= 1) {
         return '';
@@ -427,21 +416,15 @@ const Expose = add_alias({
 
   pl: create_pick('pl', (args, pos) => args[pos]),
 
-  PL(arg) {
-    return Expose.pl(arg, true);
-  },
+  PL: create_pick('pl', (args, pos) => args[pos], false, true),
 
   pr: create_pick('pr', (args, pos, max) => args[max - pos - 1]),
 
-  PR(arg) {
-    return Expose.pr(arg, true);
-  },
+  PR: create_pick('pr', (args, pos, max) => args[max - pos - 1], false, true),
 
   pd: create_pick('pd', (args, pos) => args[pos], true),
 
-  PD(arg) {
-    return Expose.pd(arg, true);
-  },
+  PD: create_pick('pd', (args, pos) => args[pos], true, true),
 
   lp({ context }) {
     return (n = 1) => {
@@ -475,8 +458,9 @@ const Expose = add_alias({
     let counter = 'noise-2d' + position;
     let counterX = counter + 'offset-x';
     let counterY = counter + 'offset-y';
-    let [ni, nx, ny, nm, NX, NY] = last(extra) || [];
-    let isSeqContext = (ni && nm);
+    let e = last(extra) || [];
+    let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
+    let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
     return (...args) => {
       let {from = 0, to = from, frequency = 1, scale = 1, octave = 1} = get_named_arguments(args, [
         'from', 'to', 'frequency', 'scale', 'octave'
@@ -530,28 +514,28 @@ const Expose = add_alias({
     return (...input) => {
       let colors = input.map(get_value).flat();
       let max = colors.length;
-      let default_count = 0;
-      let custom_sizes = [];
-      let prev;
       if (!max) {
         return '';
       }
-      colors.forEach(step => {
-        let [_, size] = parse_value_group(step);
+      let default_count = 0;
+      let custom_sizes = [];
+      let pairs = colors.map(step => {
+        let [color, size] = parse_value_group(step);
         if (size !== undefined) custom_sizes.push(size);
         else default_count += 1;
+        return [color, size];
       });
       let default_size = custom_sizes.length
         ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
         : `100% / ${max}`
-      return colors.map((step, i) => {
+      let prev;
+      return pairs.map(([color, size], i) => {
         if (custom_sizes.length) {
-          let [color, size] = parse_value_group(step);
           let prefix = prev ? (prev + ' + ') : '';
           prev = prefix + (size !== undefined ? size : default_size);
           return `${color} 0 calc(${ prev })`
         }
-        return `${step} 0 ${100 / max * (i + 1)}%`
+        return `${colors[i]} 0 ${100 / max * (i + 1)}%`
       })
       .join(',');
     }
@@ -564,17 +548,15 @@ const Expose = add_alias({
   },
 
   hex() {
-    return value => parseInt(get_value(value)).toString(16);
+    return value => {
+      let n = parseInt(get_value(value));
+      return Number.isNaN(n) ? get_value(value) : n.toString(16);
+    };
   },
 
   svg: lazy((_, ...args) => {
     let value = args.map(input => get_value(input())).join(',');
-    if (!value.startsWith('<')) {
-      let parsed = parse_svg(value);
-      value = generate_svg(parsed);
-    }
-    let svg = normalize_svg(value);
-    return create_svg_url(svg);
+    return compose_svg_url(value);
   }),
 
   'svg-filter': lazy((upstream, ...args) => {
@@ -653,43 +635,12 @@ const Expose = add_alias({
 
   'svg-pattern': lazy((_, ...args) => {
     let value = args.map(input => get_value(input())).join(',');
-    let parsed = parse_svg(css`
-      viewBox: 0 0 1 1;
-      preserveAspectRatio: xMidYMid slice;
-      rect {
-        width, height: 100%;
-        fill: defs pattern { ${ value } }
-      }
-    `);
-    let svg = generate_svg(parsed);
-    return create_svg_url(svg);
+    return compose_svg_pattern_url(value);
   }),
 
   'svg-polygon': lazy((_, ...args) => {
     let commands = args.map(input => get_value(input())).join(',');
-    let { rules, points } = generate_shape(commands, {min: 3, max: 65536}, rules => {
-      delete rules.frame;
-      rules['unit'] = 'none';
-      rules['stroke-width'] ??= .01;
-      rules['stroke'] ??= 'currentColor';
-      rules['fill'] ??= 'none';
-      return rules;
-    });
-    let style = `points: ${points};`;
-    let props = '';
-    let p = rules.padding ?? Number(rules['stroke-width']) / 2;
-    for (let name of Object.keys(rules)) {
-      if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
-        props += `${name}: ${rules[name]};`
-      }
-    };
-    let parsed = parse_svg(css`
-      viewBox: -1 -1 2 2 p ${p};
-      polygon {
-        ${props} ${style}
-      }
-    `);
-    return create_svg_url(generate_svg(parsed));
+    return compose_svg_polygon_url(commands);
   }),
 
   linearGradient: lazy((_, ...args) => generate_svg_gradient('linearGradient', args)),
@@ -698,38 +649,6 @@ const Expose = add_alias({
 
   var() {
     return value => `var(${get_value(value)})`;
-  },
-
-  ut() {
-    return calc_with(`var(--${utime.name})`);
-  },
-
-  ts() {
-    return calc_with(`calc(var(--${utime.name}) / 1000)`);
-  },
-
-  TS() {
-    return calc_with(`calc(var(--${UTime.name}) / 1000)`);
-  },
-
-  UT() {
-    return calc_with(`var(--${UTime.name})`);
-  },
-
-  uw() {
-    return calc_with(`var(--${uwidth.name})`);
-  },
-
-  uh() {
-    return calc_with(`var(--${uheight.name})`);
-  },
-
-  ux() {
-    return calc_with(`var(--${umousex.name})`);
-  },
-
-  uy() {
-    return calc_with(`var(--${umousey.name})`);
   },
 
   plot: create_plot(false),
@@ -757,55 +676,19 @@ const Expose = add_alias({
   },
 
   invert() {
-    return commands => {
-      let parsed = parse_svg_path(commands);
-      if (!parsed.valid) return commands;
-      return parsed.commands.map(({ name, value }) => {
-        switch (name) {
-          case 'v': return 'h' + value.join(' ');
-          case 'V': return 'H' + value.join(' ');
-          case 'h': return 'v' + value.join(' ');
-          case 'H': return 'V' + value.join(' ');
-          default:  return name + value.join(' ');
-        }
-      }).join(' ');
-    };
+    return invert_path;
   },
 
   flipH() {
-    return commands => {
-      let parsed = parse_svg_path(commands);
-      if (!parsed.valid) return commands;
-      return parsed.commands.map(({ name, value }) => {
-        switch (name) {
-          case 'h':
-          case 'H': return name + value.map(flip_value).join(' ');
-          default:  return name + value.join(' ');
-        }
-      }).join(' ');
-    };
+    return flipH_path;
   },
 
   flipV() {
-    return commands => {
-      let parsed = parse_svg_path(commands);
-      if (!parsed.valid) return commands;
-      return parsed.commands.map(({ name, value }) => {
-        switch (name) {
-          case 'v':
-          case 'V': return name + value.map(flip_value).join(' ');
-          default:  return name + value.join(' ');
-        }
-      }).join(' ');
-    };
+    return flipV_path;
   },
 
-  flip(...args) {
-    let flipH = Expose.flipH(...args);
-    let flipV = Expose.flipV(...args);
-    return commands => {
-      return flipV(flipH(commands));
-    }
+  flip() {
+    return commands => flipV_path(flipH_path(commands));
   },
 
   reverse() {
@@ -865,27 +748,22 @@ const Expose = add_alias({
   raw({ rules }) {
     return (...args) => {
       let raw = args.join(',');
-      try {
-        let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
-        if (raw.startsWith('${doodle') && raw.endsWith('}')) {
-          let key = raw.substring(2, raw.length - 1);
-          let doodles = rules.doodles;
-          if (doodles && doodles[key]) {
-            return `<css-doodle>${doodles[key].doodle}</css-doodle>`
-          }
+      if (raw.startsWith('${doodle') && raw.endsWith('}')) {
+        let key = raw.substring(2, raw.length - 1);
+        let doodles = rules.doodles;
+        if (doodles && doodles[key]) {
+          return `<css-doodle>${doodles[key].doodle}</css-doodle>`
         }
-        if (raw.startsWith('url("data:image/svg+xml;utf8')) {
-          return decodeURIComponent(cut);
-        }
-        /* future forms */
-        if (raw.startsWith('url("data:image/svg+xml;base64')) {
-          return atob(cut);
-        }
-        if (raw.startsWith('url("data:image/png;base64')) {
-          return `<img src="${raw}" alt="" />`;
-        }
-      } catch (e) {
-        // ignore
+      }
+      if (raw.startsWith('url("data:image/svg+xml;utf8')) {
+        return try_decode(raw, decodeURIComponent);
+      }
+      if (raw.startsWith('url("data:image/svg+xml;base64')) {
+        return try_decode(raw, atob);
+      }
+      /* future forms */
+      if (raw.startsWith('url("data:image/png;base64')) {
+        return `<img src="${raw}" alt="" />`;
       }
       return raw;
     }
@@ -897,7 +775,41 @@ const Expose = add_alias({
     }
   },
 
-}, {
+};
+
+// generated: i x y z I X Y Z iI Ii xX Xx yY Yy
+const CELL_FIELDS = { i: 'count', x: 'x', y: 'y', z: 'z' };
+for (let [n, key] of Object.entries(CELL_FIELDS)) {
+  let N = n.toUpperCase();
+  Expose[n] = c => calc_with(c[key]);
+  Expose[N] = c => calc_with(c.grid[key]);
+  if (n !== 'z') {
+    Expose[n + N] = c => calc_with_easing(c[key] / c.grid[key]);
+    Expose[N + n] = c => calc_with_easing((c.grid[key] - c[key] + 1) / c.grid[key]);
+  }
+}
+
+// generated: dx dy dr dc dm da db
+for (let name of ['dx', 'dy', 'dr', 'dc', 'dm', 'da', 'db']) {
+  Expose[name] = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid)[name]);
+}
+
+// generated: ut ts UT TS uw uh ux uy
+const UNIFORMS = {
+  ut: `var(--${utime.name})`,
+  ts: `calc(var(--${utime.name}) / 1000)`,
+  UT: `var(--${UTime.name})`,
+  TS: `calc(var(--${UTime.name}) / 1000)`,
+  uw: `var(--${uwidth.name})`,
+  uh: `var(--${uheight.name})`,
+  ux: `var(--${umousex.name})`,
+  uy: `var(--${umousey.name})`,
+};
+for (let [name, value] of Object.entries(UNIFORMS)) {
+  Expose[name] = () => calc_with(value);
+}
+
+export default add_alias(Expose, {
 
   'index': 'i',
   'col': 'x',
@@ -952,5 +864,3 @@ const Expose = add_alias({
   'Point': 'Plot',
   'unicode': 'code'
 });
-
-export default Expose;

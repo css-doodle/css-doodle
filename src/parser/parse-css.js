@@ -1,471 +1,109 @@
-// I need to rewrite this
-
+/**
+ * AST:
+ *   rule       { type: 'rule', property, value: Group[] }
+ *              plus raw() and rawValue() reading the source span
+ *   at-rule    { type: 'at-rule', property: '', value: string }
+ *   pseudo     { type: 'pseudo', selector, selectors: string[], styles }
+ *   cond       { type: 'cond', name, addition, segments, position, styles }
+ *   keyframes  { type: 'keyframes', name, steps }
+ *   step       { type: 'step', name: Group[], styles }
+ *   func       { type: 'func', name, arguments: Argument[], position,
+ *                variables? (when an argument list was consumed) }
+ *   text       { type: 'text', value }
+ */
+import { scan, Token } from './tokenizer.js';
 import parse_var from './parse-var.js';
 import parse_svg from './parse-svg.js';
+import parse_value_group from './parse-value-group.js';
 import generate_svg_extended from '../generator/svg-extended.js';
-import { first, last } from '../utils/index.js';
 
-const Tokens = {
-  func(name = '') {
-    return {
-      type: 'func',
-      name,
-      arguments: []
-    };
-  },
-  argument() {
-    return {
-      type: 'argument',
-      value: []
-    };
-  },
-  text(value = '') {
-    return {
-      type: 'text',
-      value
-    };
-  },
-  pseudo(selector = '') {
-    return {
-      type: 'pseudo',
-      selector,
-      styles: []
-    };
-  },
-  cond(name = '') {
-    return {
-      type: 'cond',
-      name,
-      styles: [],
-      arguments: []
-    };
-  },
-  rule(property = '') {
-    return {
-      type: 'rule',
-      property,
-      value: []
-    };
-  },
-  keyframes(name = '') {
-    return {
-      type: 'keyframes',
-      name,
-      steps: []
-    }
-  },
+const PI = String(Math.PI);
+const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
+const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
 
-  step(name = '') {
-    return {
-      type: 'step',
-      name,
-      styles: []
-    }
+class Cursor {
+  constructor(source, ctx) {
+    this.source = source;
+    this.tokens = scan(source);
+    this.ctx = ctx;
+    this.i = 0;
   }
-};
-
-const is = {
-  white_space(c) {
-    return /[\s\n\t]/.test(c);
-  },
-  line_break(c) {
-    return /\n/.test(c);
-  },
-  number(n) {
-    return !isNaN(n);
-  },
-  pair(n) {
-    return ['"', '(', ')', "'"].includes(n);
-  },
-  pair_of(c, n) {
-    return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
-  },
-  selector(it) {
-    let index = it.index();
-    let c;
-    let stack_paren = [];
-    let stack_quote = [];
-    let result = false;
-    while (!it.end()) {
-      c = it.next();
-      if (c === '"' || c === "'" || c === '`') {
-        let quote = last(stack_quote);
-        if (c === quote) {
-          stack_quote.pop();
-        } else if (!stack_quote.length) {
-          stack_quote.push(c);
-        }
-      }
-      if (c == '(') {
-        stack_paren.push(c);
-      }
-      if (c == ')') {
-        stack_paren.pop();
-      }
-      if (!stack_paren.length && !stack_quote.length) {
-        if (c === '{') {
-          result = true;
-          break;
-        }
-        if (c === ';' || c === '}') {
-          result = false;
-          break;
-        }
-      }
-    }
-    it.index(index);
-    return result;
+  peek(n = 0) {
+    return this.tokens[this.i + n];
   }
-};
+  next() {
+    return this.tokens[this.i++];
+  }
+  end() {
+    return this.i >= this.tokens.length;
+  }
+  head_index() {
+    let t = this.tokens[this.i];
+    return t ? t.index : this.source.length;
+  }
+  tail_end() {
+    let t = this.tokens[this.i - 1];
+    return t ? token_end(t) : 0;
+  }
+  position() {
+    return ++this.ctx.position;
+  }
+}
 
-// This should not be in the parser
-// but I'll leave it here until the rewriting
-const symbols = {
-  'π': Math.PI
-};
+function token_end(token) {
+  return token.index + token.value.length;
+}
+
+function adjacent(a, b) {
+  return token_end(a) === b.index;
+}
+
+function throw_error(msg, pos = []) {
+  console.warn(`(at line ${pos[1] + 1}, column ${pos[0] + 1}) ${msg}`);
+}
+
+function is_number(n) {
+  return !isNaN(n);
+}
+
+function get_text_value(input) {
+  if (input.trim().length) {
+    return is_number(+input) ? +input : input.trim();
+  }
+  return input;
+}
+
+function is_pair_of(c, n) {
+  return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
+}
+
+function is_svg(name) {
+  return /^@svg$/i.test(name);
+}
 
 function composible(name) {
   return /^@(canvas|shaders|doodle)/.test(name);
 }
 
-function iterator(input = '') {
-  let index = 0, col = 1, line = 1;
-  return {
-    curr(n = 0) {
-      return input[index + n];
-    },
-    end() {
-      return input.length <= index;
-    },
-    info() {
-      return { index, col, line };
-    },
-    index(n) {
-      return (n === undefined ? index : index = n);
-    },
-    range(start, end) {
-      return input.substring(start, end);
-    },
-    next() {
-      let next = input[index++];
-      if (next == '\n') line++, col = 0;
-      else col++;
-      return next;
-    }
-  };
-}
-
-function throw_error(msg, { col, line }) {
-  console.warn(
-    `(at line ${ line }, column ${ col }) ${ msg }`
-  );
-}
-
-function get_text_value(input) {
-  if (input.trim().length) {
-    return is.number(+input) ? +input : input.trim()
-  } else {
-    return input;
-  }
-}
-
-function read_until(fn, include) {
-  return function(it, reset) {
-    let index = it.index();
-    let word = '';
-    while (!it.end()) {
-      let c = it.next();
-      if (fn(c)) {
-        if (include) word += c;
-        break;
-      } else {
-        word += c;
-      }
-    }
-    if (reset) {
-      it.index(index);
-    }
-    return word;
-  }
-}
-
-function read_word(it, reset) {
-  let check = c => /[^\w@]/.test(c);
-  return read_until(check)(it, reset);
-}
-
-function read_keyframe_name(it) {
-  return read_until(c => /[\s\{]/.test(c))(it);
-}
-
-function read_line(it, reset) {
-  let check = c => is.line_break(c) || c == '{';
-  return read_until(check, true)(it, reset);
-}
-
-function read_step(it, extra) {
-  let c, step = Tokens.step();
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    if (is.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else if (!step.name.length) {
-      step.name = read_value(it, c => c === '{');
-    }
-    else {
-      step.styles.push(read_rule(it, extra));
-      if (it.curr() == '}') break;
-    }
-    it.next();
-  }
-  return step;
-}
-
-function read_steps(it, extra) {
-  const steps = [];
-  let c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    else if (is.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else {
-      steps.push(read_step(it, extra));
-    }
-    it.next();
-  }
-  return steps;
-}
-
-function read_keyframes(it, extra) {
-  let keyframes = Tokens.keyframes(), c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '}') break;
-    else if (!keyframes.name.length) {
-      read_word(it);
-      keyframes.name = read_keyframe_name(it);
-      if (!keyframes.name.length) {
-        throw_error('missing keyframes name', it.info());
-        break;
-      }
-      continue;
-    }
-    else if (c == '{' || it.curr(-1) == '{') {
-      it.next();
-      keyframes.steps = read_steps(it, extra);
-      break;
-    }
-    it.next();
-  }
-  return keyframes;
-}
-
-function read_comments(it, flag = {}) {
-  it.next();
-  while (!it.end()) {
-    let c = it.curr();
-    if (flag.inline) {
-      if (c == '\n') break;
-    }
-    else {
-      if ((c = it.curr()) == '*' && it.curr(1) == '/') break;
-    }
-    it.next();
-  }
-  if (!flag.inline) {
-    it.next(); it.next();
-  }
-}
-
-function skip_tag(it) {
-  it.next();
-  while(!it.end()) {
-    let c = it.curr();
-    if (c == '>') break;
-    it.next();
-  }
-}
-
-function read_property(it) {
-  let prop = '', c;
-  let stack_paren = [];
-  let stack_quote = [];
-
-  while (!it.end()) {
-    let c = it.curr();
-    if (c === '"' || c === "'" || c === '`') {
-      let quote = last(stack_quote);
-      if (c === quote) {
-        stack_quote.pop();
-      } else if (!stack_quote.length) {
-        stack_quote.push(c);
-      }
-    }
-    if (c == '(') {
-      stack_paren.push(c);
-    }
-    if (c == ')') {
-      stack_paren.pop();
-    }
-    if (!stack_paren.length && !stack_quote.length) {
-      if (c === ':' || c === ';') {
-        break;
-      }
+function substitute_pi(input, prev) {
+  if (!input.includes('π')) return input;
+  let result = '';
+  for (let i = 0; i < input.length; ++i) {
+    let c = input[i];
+    if (c === 'π') {
+      let p = i > 0 ? input[i - 1] : prev;
+      result += (p >= '0' && p <= '9') ? c : PI;
     } else {
-      prop += c;
-    }
-    it.next();
-  }
-  return prop;
-}
-
-function read_arguments(it, composition, doodle, variables = {}) {
-  let args = [], group = [], stack = [], arg = '', c;
-  let raw = '';
-  while (!it.end()) {
-    c = it.curr();
-    let prev = it.curr(-1);
-    let start = it.index();
-    if ((/[\('"`]/.test(c) && prev !== '\\')) {
-      if (stack.length) {
-        /*
-        if ((c !== '(') && last(stack) === '(') {
-          stack.pop();
-        }
-        */
-        if (c !== '(' && c === last(stack)) {
-          stack.pop();
-        } else {
-          stack.push(c);
-        }
-      } else {
-        stack.push(c);
-      }
-      arg += c;
-    }
-    else if (!doodle && ((c == '@' || c === '$') || (prev === '.' && composition))) {
-      if (!group.length) {
-        arg = arg.trimLeft();
-      }
-      if (arg.length) {
-        group.push(Tokens.text(arg));
-        arg = '';
-      }
-      group.push(read_func(it, variables));
-    }
-    else if (doodle && /[)]/.test(c) || (!doodle && /[,)]/.test(c))) {
-      if (stack.length) {
-        if (c == ')' && last(stack) === '(') {
-          stack.pop();
-        }
-        arg += c;
-      }
-      else {
-        if (arg.length) {
-          if (!group.length) {
-            group.push(Tokens.text(get_text_value(arg)));
-          } else if (/\S/.test(arg)) {
-            group.push(Tokens.text(arg));
-          }
-          if (arg.trim().startsWith('±') && !doodle) {
-            let raw = arg.trim().slice(1);
-            let cloned = structuredClone(group);
-            last(cloned).value = '-' + raw;
-            args.push(normalize_argument(cloned));
-            last(group).value = raw;
-          }
-        }
-
-        args.push(normalize_argument(group));
-
-        [group, arg] = [[], ''];
-
-        if (c == ')') break;
-      }
-    }
-    else {
-      if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
-        c = symbols[c];
-      }
-      arg += c;
-    }
-    let next = it.curr(1);
-    if (composition && ((next == ')' || next === undefined || next == ';') || !/[0-9a-zA-Z_\-.]/.test(it.curr())) && !stack.length) {
-      if (group.length) {
-        args.push(normalize_argument(group));
-      }
-      break;
-    }
-    else {
-      raw += it.range(start, it.index() + 1);
-      it.next();
+      result += c;
     }
   }
-  return [skip_last_empty_args(args), raw];
-}
-
-function skip_last_empty_args(args) {
-  let arg = last(args[0]);
-  if (arg && arg.type === 'text' && !String(arg.value).trim().length) {
-    args[0] = args[0].slice(0, -1);
-  }
-  return args;
-}
-
-function normalize_argument(group) {
-  let result = group.map(arg => {
-    if (arg.type == 'text' && typeof arg.value == 'string') {
-      let value = String(arg.value);
-      if (value.includes('`')) {
-        arg.value = value = value.replace(/`/g, '"');
-      }
-      arg.value = value;
-    }
-    return arg;
-  });
-
-  let ft = first(result) || {};
-  let ed = last(result) || {};
-  if (ft.type == 'text' && ed.type == 'text') {
-    let cf = first(ft.value);
-    let ce  = last(ed.value);
-    if (typeof ft.value == 'string' && typeof ed.value == 'string') {
-      // Only strip a surrounding pair when it actually wraps the whole argument.
-      if (is.pair_of(cf, ce) && (cf !== '(' || parens_wrap_whole(result))) {
-        ft.value = ft.value.slice(1);
-        ed.value = ed.value.slice(0, ed.value.length - 1);
-        result.cluster = true;
-      }
-    }
-  }
-
   return result;
-}
-
-function parens_wrap_whole(result) {
-  let str = result
-    .filter(token => token.type == 'text' && typeof token.value == 'string')
-    .map(token => token.value)
-    .join('');
-  let depth = 0;
-  for (let i = 0; i < str.length; i++) {
-    let c = str[i];
-    if (c === '(') depth++;
-    else if (c === ')') {
-      depth--;
-      if (depth === 0 && i !== str.length - 1) return false;
-    }
-  }
-  return depth === 0;
 }
 
 function seperate_func_name(name) {
   let fname = '', extra = '';
   if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
-    return { fname: name, extra }
+    return { fname: name, extra };
   }
   for (let i = name.length - 1; i >= 0; i--) {
     let c = name[i];
@@ -486,453 +124,827 @@ function has_times_syntax(token) {
   return str.includes('pureName') && str.includes('times');
 }
 
-function is_svg(name) {
-  return /^@svg$/i.test(name);
+const Node = {
+  text(value) {
+    return { type: 'text', value };
+  },
+  func(name = '') {
+    return { type: 'func', name, arguments: [] };
+  },
+  argument(values, cluster = false) {
+    return { values, cluster };
+  },
+};
+
+function probe_selector(cur) {
+  let paren = 0, quote = false;
+  for (let i = cur.i; i < cur.tokens.length; ++i) {
+    let t = cur.tokens[i];
+    if (t.status === 'open') quote = true;
+    else if (t.status === 'close') quote = false;
+    if (t.isSymbol('(')) paren++;
+    else if (t.isSymbol(')')) paren = Math.max(0, paren - 1);
+    else if (paren === 0 && !quote) {
+      if (t.isSymbol('{')) return true;
+      if (t.isSymbol(';', '}')) return false;
+    }
+  }
+  return false;
 }
 
-function read_func(it, variables = {}) {
-  let func = Tokens.func();
-  let name = it.curr(), c;
-  let has_argument = false;
-  let is_calc = name === '$';
-  if (name === '@') {
-    it.next();
-  } else {
-    name = '@';
+function probe_block(cur) {
+  let paren = 0, quote = false;
+  for (let i = cur.i; i < cur.tokens.length; ++i) {
+    let t = cur.tokens[i];
+    if (t.status === 'open') quote = true;
+    else if (t.status === 'close') quote = false;
+    if (t.isSymbol('(')) paren++;
+    else if (t.isSymbol(')')) paren = Math.max(0, paren - 1);
+    else if (paren === 0 && !quote && t.isSymbol(':', ';', '{', '}')) {
+      return t.value;
+    }
   }
-  while (!it.end()) {
-    c = it.curr();
-    let next = it.curr(1);
-    let composition = (c == '.' && (/[a-zA-Z@$]/.test(next)));
-    if (c == '(' || composition) {
-      has_argument = true;
-      it.next();
-      let [args, raw_args] = read_arguments(it, composition, composible(name), variables);
-      if (is_svg(name)) {
-        let parsed_svg = parse_svg(raw_args);
-        let line = 0;
-        for (let item of parsed_svg.value) {
-          if (item.variable) {
-            variables[item.name] = (parse(`${'\n'.repeat(line++)} ${item.name}: ${item.value}`))[0].value;
-          }
-        }
-        if (/\d\s*{/.test(raw_args) && has_times_syntax(parsed_svg)) {
-          let svg = generate_svg_extended(parsed_svg);
-          // compatible with old iterator
-          svg += ')';
-          let extended = read_arguments(iterator(svg), composition, composible(name), variables);
-          args = extended[0];
+  return '';
+}
+
+function is_keyframes_at(cur) {
+  let at = cur.peek();
+  let word = cur.peek(1);
+  if (!at || !word) return false;
+  if (!at.isSymbol('@') || !word.isWord() || word.value !== 'keyframes') {
+    return false;
+  }
+  if (!adjacent(at, word)) return false;
+  let after = cur.peek(2);
+  // '@keyframes2' reads as a longer word in the legacy grammar
+  if (after && adjacent(word, after) && /^[\w@]/.test(after.value)) {
+    return false;
+  }
+  return true;
+}
+
+function parse_value(cur, extra, break_on) {
+  let groups = [[]];
+  let group = groups[0];
+  let buf = '';
+  let skip = true;
+  let paren = 0;
+  let quote = false;
+
+  const flush = () => {
+    if (buf.length) {
+      group.push(Node.text(buf));
+      buf = '';
+    }
+  };
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    let v = tok.value;
+
+    if (tok.isSpace()) {
+      if (skip) {
+        cur.next();
+        continue;
+      }
+      cur.next();
+      buf += quote ? v : ' ';
+      continue;
+    }
+    skip = false;
+
+    if (split_dollar(cur)) {
+      continue;
+    }
+
+    if (tok.isSymbol()) {
+      if (!quote && (v === ';' || v === '}' || v === '<' || v === break_on)) {
+        break;
+      }
+      if (v === ',' && paren === 0) {
+        cur.next();
+        flush();
+        group = [];
+        groups.push(group);
+        skip = true;
+        continue;
+      }
+      if ((v === '@' || v === '$') && is_func_start(cur)) {
+        flush();
+        group.push(parse_func(cur, extra));
+        continue;
+      }
+      if (tok.status === 'open') quote = true;
+      else if (tok.status === 'close') quote = false;
+      if (v === '(') paren++;
+      else if (v === ')') paren = Math.max(0, paren - 1);
+      cur.next();
+      if (v === 'π') {
+        let prev = cur.source[tok.index - 1];
+        buf += (prev >= '0' && prev <= '9') ? v : PI;
+      } else {
+        buf += v;
+      }
+      continue;
+    }
+
+    cur.next();
+    if (quote && tok.isWord() && cur.source[tok.index] === '\\') {
+      buf += '\\' + v;
+    } else {
+      buf += v;
+    }
+  }
+
+  flush();
+  return groups;
+}
+
+function is_func_start(cur) {
+  let tok = cur.peek();
+  let next = cur.peek(1);
+  return !!(next && adjacent(tok, next) && RE_FUNC_START.test(next.value[0]));
+}
+
+function split_dollar(cur) {
+  let tok = cur.peek();
+  if (!tok || !tok.isWord() || !tok.value.includes('$')) return false;
+  let k = tok.value.indexOf('$');
+  let parts = [];
+  if (k > 0) {
+    parts.push(new Token({
+      type: 'Word', value: tok.value.slice(0, k), pos: tok.pos, index: tok.index
+    }));
+  }
+  parts.push(new Token({
+    type: 'Symbol', value: '$', pos: tok.pos, index: tok.index + k
+  }));
+  if (k + 1 < tok.value.length) {
+    parts.push(new Token({
+      type: 'Word', value: tok.value.slice(k + 1), pos: tok.pos, index: tok.index + k + 1
+    }));
+  }
+  cur.tokens.splice(cur.i, 1, ...parts);
+  return true;
+}
+
+function parse_func(cur, extra, variables = {}) {
+  let tok = cur.next(); // '@' or '$'
+  let is_calc = tok.isSymbol('$');
+  let name = '@';
+  let end = tok.index + 1;
+
+  while (!cur.end()) {
+    let t = cur.peek();
+    if (t.index !== end) break;
+    if (t.isWord() && t.value.includes('$') && split_dollar(cur)) {
+      t = cur.peek();
+    }
+    if (t.isSymbol('(') || !RE_NAME_TOKEN.test(t.value)) {
+      break;
+    }
+    name += t.value;
+    end += t.value.length;
+    cur.next();
+  }
+  return finish_func(cur, name, end, is_calc, extra, variables);
+}
+
+function finish_func(cur, name, end, is_calc, extra, variables) {
+  let func = Node.func();
+  let has_arguments = false;
+
+  let dot = find_composition_dot(name, cur, end);
+  if (dot > 0) {
+    let inner;
+    if (dot < name.length - 1) {
+      inner = finish_func(cur, '@' + name.slice(dot + 1), end, false, extra, variables);
+    } else {
+      inner = parse_func(cur, extra);
+    }
+    name = name.slice(0, dot);
+    func.arguments = [Node.argument([inner])];
+    func.variables = variables;
+    has_arguments = true;
+  }
+  else {
+    let paren = cur.peek();
+    if (paren && paren.index === end && paren.isSymbol('(')) {
+      cur.next();
+      if (composible(name)) {
+        func.arguments = parse_doodle_body(cur, paren.index + 1);
+      } else {
+        let closed = parse_arguments(cur, paren.index + 1, extra, variables);
+        func.arguments = closed.args;
+        if (is_svg(name)) {
+          func.arguments = expand_svg(
+            cur, cur.source.slice(paren.index + 1, closed.end), closed.args, extra, variables);
         }
       }
-      func.arguments = args;
       func.variables = variables;
-      break;
-    } else if (/[0-9a-zA-Z_\-.%]/.test(c)) {
-      name += c;
+      has_arguments = true;
     }
-    if (!has_argument && next !== '(' && !/[0-9a-zA-Z_\-.%]/.test(next)) {
-      break;
-    }
-    it.next();
   }
-  let { fname, extra } = seperate_func_name(name);
+
+  let { fname, extra: extra_args } = seperate_func_name(name);
   func.name = is_calc ? '@$' + name.slice(1) : fname;
-  if (extra.length) {
-    func.arguments.unshift([{
-      type: 'text',
-      value: extra
-    }]);
+  if (extra_args.length) {
+    func.arguments.unshift(Node.argument([Node.text(extra_args)]));
   }
 
   if (is_calc && func.name.length > 2) {
     if (!func.arguments.length) {
-      let name = func.name.substring(0, 2);
       let value = func.name.substring(2);
-      func.name = name;
-      func.arguments.push(
-        [{ type: 'text', value: value }]
-      );
+      func.name = func.name.substring(0, 2);
+      func.arguments.push(Node.argument([Node.text(value)]));
     }
     if (/\d$/.test(func.name)) {
-      let name = func.name.substring(0, 2);
       let value = func.name.substring(2);
-      func.name = name;
-      func.arguments[0][0].value = value;
+      func.name = func.name.substring(0, 2);
+      func.arguments[0].values[0].value = value;
     }
   }
 
-  func.position = it.info().index;
+  func.position = cur.position();
   return func;
 }
 
-function read_value(it, check_break = () => {}) {
-  let text = Tokens.text(), idx = 0, skip = true, c;
-  const value = [];
-  value[idx] = [];
-  let stack = [], quote_stack = [];
-
-  while (!it.end()) {
-    c = it.curr();
-
-    if (skip && is.white_space(c)) {
-      it.next();
-      continue;
-    } else {
-      skip = false;
-    }
-
-    if (c == '\n' && !is.white_space(it.curr(-1))) {
-      text.value += ' ';
-    }
-    else if (c == ',' && !stack.length) {
-      if (text.value.length) {
-        value[idx].push(text);
-        text = Tokens.text();
+function find_composition_dot(name, cur, end) {
+  for (let i = 1; i < name.length; ++i) {
+    if (name[i] === '.') {
+      let next = name[i + 1];
+      if (next === undefined) {
+        let t = cur.peek();
+        if (t && t.index === end && t.isSymbol('@', '$')) {
+          return i;
+        }
+        return -1;
       }
-      value[++idx] = [];
-      skip = true;
-    }
-    else if ((/[;}<]/.test(c) || check_break(c)) && !quote_stack.length) {
-      if (text.value.length) {
-        value[idx].push(text);
-        text = Tokens.text();
+      if (/[a-zA-Z]/.test(next)) {
+        return i;
       }
-      break;
     }
-    else if ((c === '@' || c === '$') && /[\w-\(%]/.test(it.curr(1))) {
-      if (text.value.length) {
-        value[idx].push(text);
-        text = Tokens.text();
-      }
-      value[idx].push(read_func(it));
-    }
-    else if (c === '"' || c === "'") {
-      let quote = last(quote_stack);
-      if (c === quote) {
-        quote_stack.pop();
-      } else if (!quote_stack.length) {
-        quote_stack.push(c);
-      }
-      text.value += c;
-    }
-    else if (!is.white_space(c) || !is.white_space(it.curr(-1))) {
-      if (c == '(') stack.push(c);
-      if (c == ')') stack.pop();
-
-      if (symbols[c] && !/[0-9]/.test(it.curr(-1))) {
-        c = symbols[c];
-      }
-      text.value += c;
-    }
-
-    let cc = it.curr();
-    if ((cc === ';' || cc == '}' || check_break(cc)) && !quote_stack.length) {
-      break;
-    }
-    it.next();
   }
-  if (text.value.length) {
-    value[idx].push(text);
-  }
-  return value;
+  return -1;
 }
 
-function read_selector(it) {
-  let selector = '', c;
-  while (!it.end()) {
-    if ((c = it.curr()) == '{') break;
-    else {
-      selector += c;
-    }
-    it.next();
-  }
-  selector = selector.trim();
-  return selector;
-}
+function parse_arguments(cur, start, extra, variables) {
+  let args = [];
+  let values = [];
+  let run_start = start;
+  let last_run = '';
+  let paren = 0;
+  let quote = false;
+  let end = cur.source.length;
 
-function read_cond_selector(it) {
-  let keyword = '', c;
-  let segments = [];
-  let selector = {};
-  while (!it.end()) {
-    if ((c = it.curr()) == '(') {
-      if (keyword.length) {
-        if (selector.name) {
-          segments.push({ keyword });
-        } else {
-          selector.name = keyword;
-        }
-        keyword = '';
-      }
-      it.next();
-      let args = read_arguments(it)[0];
-      segments.push({ arguments: args });
-    }
-    else if (!is.white_space(c)) {
-      if (c == '{' || c == ')') {
-        if (keyword.length) {
-          if (selector.name) {
-            segments.push({ keyword });
-          } else {
-            selector.name = keyword;
-          }
-        }
-        break;
+  const flush_text = (to, at_func) => {
+    let text = substitute_pi(cur.source.slice(run_start, to), cur.source[run_start - 1]);
+    last_run = text;
+    if (!text.length) return;
+    if (values.length === 0) {
+      if (at_func) {
+        text = text.trimStart();
+        if (text.length) values.push(Node.text(text));
       } else {
-        keyword += c;
+        values.push(Node.text(get_text_value(text)));
       }
+    } else if (at_func || /\S/.test(text)) {
+      values.push(Node.text(text));
     }
-    else if (is.white_space(c) && !selector.name) {
-      selector.name = keyword;
-      keyword = '';
-    }
-    else if (is.white_space(c) && keyword.length) {
-      segments.push({ keyword });
-      keyword = '';
-    }
+  };
 
-    it.next();
-  }
-  let [name, ...addition] = (selector.name || '').trim().split(/\s+/);
-  let position = it.info().index;
-
-  return {
-    name, addition, segments, position
-  }
-}
-
-
-function read_pseudo(it, extra) {
-  let pseudo = Tokens.pseudo(), c;
-  while (!it.end()) {
-    c = it.curr();
-    if (c == '/' && it.curr(1) == '*') {
-      read_comments(it);
+  const push_argument = () => {
+    // ±x expands into two arguments: -x and x
+    if (last_run.trim().startsWith('±') && values.length) {
+      let raw = last_run.trim().slice(1);
+      let cloned = structuredClone(values);
+      cloned[cloned.length - 1].value = '-' + raw;
+      args.push(normalize_argument(cloned));
+      values[values.length - 1].value = raw;
     }
-    else if (c == '}') {
-      break;
-    }
-    else if (is.white_space(c)) {
-      it.next();
+    args.push(normalize_argument(values));
+    values = [];
+    last_run = '';
+  };
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.status === 'open') {
+      quote = true;
+      cur.next();
       continue;
     }
-    else if (!pseudo.selector) {
-      pseudo.selector = read_selector(it);
+    if (tok.status === 'close') {
+      quote = false;
+      cur.next();
+      continue;
     }
-    else if (c == ':') {
-      let nested = read_pseudo(it, extra);
-      if (nested.selector) pseudo.styles.push(nested);
+    // functions fire inside quotes too, like everywhere else
+    if (tok.isSymbol('@', '$')) {
+      flush_text(tok.index, true);
+      values.push(parse_func(cur, extra, variables));
+      run_start = cur.tail_end();
+      continue;
     }
-    else if (c == '&') {
-      pseudo.styles.push(read_cond(it, extra));
+    if (split_dollar(cur)) {
+      continue;
     }
-    else {
-      let rule = read_rule(it, extra);
-      if (rule.property == '@use') {
-        pseudo.styles = pseudo.styles.concat(
-          rule.value
-        );
-      } else if (rule.property) {
-        pseudo.styles.push(rule);
+    if (!quote && tok.isSymbol()) {
+      let v = tok.value;
+      if (v === '(') {
+        paren++;
+        cur.next();
+        continue;
       }
-      if (it.curr() == '}') break;
+      if (v === ')') {
+        if (paren > 0) {
+          paren--;
+          cur.next();
+          continue;
+        }
+        flush_text(tok.index, false);
+        push_argument();
+        end = tok.index;
+        cur.next();
+        return { args: skip_last_empty_args(args), end };
+      }
+      if (v === ',' && paren === 0) {
+        flush_text(tok.index, false);
+        push_argument();
+        cur.next();
+        run_start = tok.index + 1;
+        continue;
+      }
     }
-    it.next();
+    cur.next();
   }
-  return pseudo;
+  // unterminated argument list: pending values are dropped like before
+  return { args: skip_last_empty_args(args), end };
 }
 
-function read_rule(it, extra) {
-  let rule = Tokens.rule(), c;
-  let start = it.index();
-  let stack_paren = [];
-  let stack_quote = [];
-  let temp = '';
-
-  while (!it.end()) {
-    c = it.curr();
-    if (c == '/' && it.curr(1) == '*') {
-      read_comments(it);
+function skip_last_empty_args(args) {
+  let first = args[0];
+  if (first) {
+    let last = first.values[first.values.length - 1];
+    if (last && last.type === 'text' && !String(last.value).trim().length) {
+      first.values = first.values.slice(0, -1);
     }
-    if (c === '"' || c === "'" || c === '`') {
-      let quote = last(stack_quote);
-      if (c === quote) {
-        stack_quote.pop();
-      } else if (!stack_quote.length) {
-        stack_quote.push(c);
+  }
+  return args;
+}
+
+function normalize_argument(values) {
+  for (let v of values) {
+    if (v.type === 'text' && typeof v.value === 'string' && v.value.includes('`')) {
+      v.value = v.value.replace(/`/g, '"');
+    }
+  }
+  let cluster = false;
+  let ft = values[0];
+  let ed = values[values.length - 1];
+  if (ft && ed && ft.type === 'text' && ed.type === 'text'
+      && typeof ft.value === 'string' && typeof ed.value === 'string') {
+    let cf = ft.value[0];
+    let ce = ed.value[ed.value.length - 1];
+    // Only strip a surrounding pair when it actually wraps the whole argument
+    if (is_pair_of(cf, ce) && (cf !== '(' || parens_wrap_whole(values))) {
+      ft.value = ft.value.slice(1);
+      ed.value = ed.value.slice(0, ed.value.length - 1);
+      cluster = true;
+    }
+  }
+  return Node.argument(values, cluster);
+}
+
+function parens_wrap_whole(values) {
+  let str = values
+    .filter(v => v.type === 'text' && typeof v.value === 'string')
+    .map(v => v.value)
+    .join('');
+  let depth = 0;
+  for (let i = 0; i < str.length; ++i) {
+    let c = str[i];
+    if (c === '(') depth++;
+    else if (c === ')') {
+      depth--;
+      if (depth === 0 && i !== str.length - 1) return false;
+    }
+  }
+  return depth === 0;
+}
+
+function parse_doodle_body(cur, start) {
+  let paren = 0;
+  let quote = false;
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.status === 'open') {
+      quote = true;
+    } else if (tok.status === 'close') {
+      quote = false;
+    } else if (!quote && tok.isSymbol('(')) {
+      paren++;
+    } else if (!quote && tok.isSymbol(')')) {
+      if (paren === 0) {
+        let body = substitute_pi(cur.source.slice(start, tok.index), cur.source[start - 1]);
+        cur.next();
+        return [normalize_argument([Node.text(get_text_value(body))])];
+      }
+      paren--;
+    }
+    cur.next();
+  }
+  let body = substitute_pi(cur.source.slice(start), cur.source[start - 1]);
+  return [normalize_argument([Node.text(get_text_value(body))])];
+}
+
+function expand_svg(cur, raw, args, extra, variables) {
+  let parsed_svg = parse_svg(raw);
+  for (let item of parsed_svg.value) {
+    if (item.variable) {
+      let rules = parse_source(`${item.name}: ${item.value}`, extra, cur.ctx);
+      if (rules[0]) {
+        variables[item.name] = rules[0].value;
       }
     }
-    if (c == '(') {
-      stack_paren.push(c);
-    }
-    if (c == ')') {
-      stack_paren.pop();
-    }
-    if (!stack_paren.length && !stack_quote.length) {
-      if (c == '}') {
+  }
+  if (/\d\s*{/.test(raw) && has_times_syntax(parsed_svg)) {
+    let svg = generate_svg_extended(parsed_svg) + ')';
+    let sub = new Cursor(svg, cur.ctx);
+    return parse_arguments(sub, 0, extra, variables).args;
+  }
+  return args;
+}
+
+function parse_rule(cur, extra) {
+  let rule = { type: 'rule', property: '', value: [] };
+  let source = cur.source;
+  let start = cur.head_index();
+  let colon = -1;
+  let end = -1;
+  let buf = '';
+  let paren = 0;
+  let quote = false;
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    let v = tok.value;
+    if (tok.status === 'open') quote = true;
+    else if (tok.status === 'close') quote = false;
+
+    if (!quote && paren === 0 && tok.isSymbol()) {
+      if (v === '}') {
+        end = tok.index;
         break;
       }
-      if (c === ';' && temp.trim().length) {
-        if (!rule.property.length) {
+      if (v === ';') {
+        if (buf.trim().length && !rule.property.length) {
           rule.type = 'at-rule';
-          rule.value = temp + c;
+          rule.value = buf + ';';
+          cur.next();
+          end = tok.index + 1;
+          break;
         }
-        it.next();
-        break;
-      } else if (c === ':') {
-        rule.property = temp.trim();
-        if (rule.property == '@use') {
-          rule.value = read_var(it, extra);
-        } else {
-          it.next();
-          rule.value = read_value(it);
-        }
-        break;
-      } else {
-        temp += c;
+        buf += v;
+        cur.next();
+        continue;
       }
-    } else {
-      temp += c;
+      if (v === ':') {
+        rule.property = buf.trim();
+        colon = tok.index;
+        if (rule.property === '@use') {
+          rule.value = parse_use(cur, extra);
+        } else {
+          cur.next();
+          rule.value = parse_value(cur, extra);
+        }
+        end = cur.head_index();
+        if (!cur.end() && cur.peek().isSymbol(';')) {
+          cur.next();
+        }
+        break;
+      }
     }
-
-    it.next();
+    if (!quote) {
+      if (tok.isSymbol('(')) paren++;
+      else if (tok.isSymbol(')')) paren = Math.max(0, paren - 1);
+    }
+    cur.next();
+    buf += tok.isSpace() ? ' ' : v;
   }
-  let end = it.index();
-  rule.raw = () => it.range(start, end).trim();
+
+  if (end < 0) end = source.length;
+  rule.raw = () => source.slice(start, end).trim();
+  rule.rawValue = colon < 0
+    ? () => ''
+    : () => source.slice(colon + 1, end).trim();
   return rule;
 }
 
-function read_cond(it, extra) {
-  let cond = Tokens.cond(), c;
-  while (!it.end()) {
-    c = it.curr();
-    if (c == '/' && it.curr(1) == '*') {
-      read_comments(it);
+function parse_use(cur, extra) {
+  cur.next(); // ':'
+  let groups = parse_value(cur, extra);
+  let result = [];
+  for (let group of groups) {
+    evaluate_value(group, extra, cur.ctx);
+    let [token] = group;
+    if (token && token.value && token.value.length) {
+      result.push(...token.value);
     }
-    else if (c == '}') {
-      break;
-    }
-    else if (!cond.name.length) {
-      Object.assign(cond, read_cond_selector(it));
-    }
-    else if (c == ':') {
-      let pseudo = read_pseudo(it);
-      if (pseudo.selector) cond.styles.push(pseudo);
-    }
-    else if (c == '&') {
-      cond.styles.push(read_cond(it));
-    }
-    else if (c == '@' && read_word(it, true) === '@keyframes') {
-      let keyframes = read_keyframes(it, extra);
-      cond.styles.push(keyframes);
-    }
-    else if (c == '@' && !read_line(it, true).includes(':')) {
-      cond.styles.push(read_cond(it));
-    }
-    else if (is.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else if (is.selector(it)) {
-      let nested = read_cond(it, extra);
-      if (nested.name.length) cond.styles.push(nested);
-    }
-    else {
-      let rule = read_rule(it, extra);
-      if (rule.property) cond.styles.push(rule);
-      if (it.curr() == '}') break;
-    }
-    it.next();
   }
-  return cond;
+  return result;
 }
 
 function read_variable(extra, name) {
-  let rule = '';
-  if (extra && extra.get_variable) {
-    rule = extra.get_variable(name);
-  }
-  return rule;
+  return (extra && extra.get_variable) ? extra.get_variable(name) : '';
 }
 
-function evaluate_value(values, extra) {
-  values.forEach && values.forEach(v => {
-    if (v.type == 'text' && v.value) {
+function evaluate_value(values, extra, ctx) {
+  for (let v of values) {
+    if (v.type === 'text' && v.value) {
       let vars = parse_var(v.value);
       v.value = vars.reduce((ret, p) => {
-        let rule = '', other = '', parsed;
-        rule = read_variable(extra, p.name);
+        let rule = read_variable(extra, p.name);
         if (!rule && p.fallback) {
           p.fallback.every(n => {
-            other = read_variable(extra, n.name);
+            let other = read_variable(extra, n.name);
             if (other) {
               rule = other;
               return false;
             }
+            return true;
           });
         }
+        let parsed;
         try {
-          parsed = parse(rule, extra);
-        } catch (e) { }
+          parsed = parse_source(rule, extra, ctx);
+        } catch (e) {}
         if (parsed) {
-          ret.push.apply(ret, parsed);
+          ret.push(...parsed);
         }
         return ret;
       }, []);
     }
-    if (v.type == 'func' && v.arguments) {
-      v.arguments.forEach(arg => {
-        evaluate_value(arg, extra);
-      });
+    if (v.type === 'func' && v.arguments) {
+      for (let arg of v.arguments) {
+        evaluate_value(arg.values, extra, ctx);
+      }
     }
-  });
+  }
 }
 
-function read_var(it, extra) {
-  it.next();
-  let groups = read_value(it) || [];
-  return groups.reduce((ret, group) => {
-    evaluate_value(group, extra);
-    let [token] = group;
-    if (token.value && token.value.length) {
-      ret.push(...token.value);
+function parse_pseudo(cur, extra) {
+  let pseudo = { type: 'pseudo', selector: '', selectors: [], styles: [] };
+  let start = cur.head_index();
+
+  // selector runs to the first '{'
+  while (!cur.end() && !cur.peek().isSymbol('{')) {
+    cur.next();
+  }
+  let selector = cur.source.slice(start, cur.head_index()).trim();
+  if (cur.end() || !selector) {
+    cur.next();
+    return pseudo;
+  }
+  cur.next(); // '{'
+
+  if (selector.startsWith(':doodle')) {
+    selector = selector.replace(/^\:+doodle/, ':host');
+  }
+  pseudo.selector = selector;
+  pseudo.selectors = parse_value_group(selector);
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSpace()) {
+      cur.next();
+      continue;
     }
-    return ret;
-  }, []);
+    if (tok.isSymbol('}')) {
+      cur.next();
+      break;
+    }
+    if (tok.isSymbol(':')) {
+      let nested = parse_pseudo(cur, extra);
+      if (nested.selector) pseudo.styles.push(nested);
+      continue;
+    }
+    if (tok.isSymbol('&')) {
+      pseudo.styles.push(parse_cond(cur, extra));
+      continue;
+    }
+    let rule = parse_rule(cur, extra);
+    if (rule.property === '@use') {
+      pseudo.styles.push(...rule.value);
+    } else if (rule.property) {
+      pseudo.styles.push(rule);
+    }
+  }
+  return pseudo;
+}
+
+function parse_cond(cur, extra) {
+  let cond = { type: 'cond', name: '', styles: [] };
+  Object.assign(cond, parse_cond_selector(cur));
+  if (cur.end()) return cond;
+  cur.next(); // '{'
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSpace()) {
+      cur.next();
+      continue;
+    }
+    if (tok.isSymbol('}')) {
+      cur.next();
+      break;
+    }
+    if (tok.isSymbol(':')) {
+      let pseudo = parse_pseudo(cur, extra);
+      if (pseudo.selector) cond.styles.push(pseudo);
+      continue;
+    }
+    if (tok.isSymbol('&')) {
+      cond.styles.push(parse_cond(cur, extra));
+      continue;
+    }
+    if (is_keyframes_at(cur)) {
+      cond.styles.push(parse_keyframes(cur, extra));
+      continue;
+    }
+    if (tok.isSymbol('@') && probe_block(cur) === '{') {
+      cond.styles.push(parse_cond(cur, extra));
+      continue;
+    }
+    if (probe_selector(cur)) {
+      let nested = parse_cond(cur, extra);
+      if (nested.name.length) cond.styles.push(nested);
+      continue;
+    }
+    let rule = parse_rule(cur, extra);
+    if (rule.property) cond.styles.push(rule);
+  }
+  return cond;
+}
+
+function parse_cond_selector(cur) {
+  let name = '';
+  let keyword = '';
+  let segments = [];
+
+  const flush = () => {
+    if (keyword.length) {
+      if (name) {
+        segments.push({ keyword });
+      } else {
+        name = keyword;
+      }
+      keyword = '';
+    }
+  };
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSymbol('(')) {
+      flush();
+      cur.next();
+      let args = parse_arguments(cur, tok.index + 1, undefined, {}).args;
+      segments.push({ arguments: args });
+      continue;
+    }
+    if (tok.isSymbol('{')) {
+      flush();
+      break;
+    }
+    if (tok.isSymbol(')')) {
+      flush();
+      cur.next();
+      break;
+    }
+    if (tok.isSpace()) {
+      flush();
+      cur.next();
+      continue;
+    }
+    keyword += tok.value;
+    cur.next();
+  }
+
+  let [n, ...addition] = (name || '').trim().split(/\s+/);
+  return { name: n, addition, segments, position: cur.position() };
+}
+
+function parse_keyframes(cur, extra) {
+  let keyframes = { type: 'keyframes', name: '', steps: [] };
+  cur.next(); // '@'
+  cur.next(); // 'keyframes'
+
+  while (!cur.end() && cur.peek().isSpace()) cur.next();
+
+  // name runs to the next gap or '{'
+  let start = cur.peek();
+  if (start && !start.isSymbol('{')) {
+    let end = start.index;
+    while (!cur.end()) {
+      let t = cur.peek();
+      if (t.index !== end || t.isSymbol('{') || t.isSpace()) break;
+      end += t.value.length;
+      cur.next();
+    }
+    keyframes.name = cur.source.slice(start.index, end);
+  }
+  if (!keyframes.name.length) {
+    throw_error('missing keyframes name', start && start.pos);
+    return keyframes;
+  }
+
+  while (!cur.end() && !cur.peek().isSymbol('{')) cur.next();
+  cur.next(); // '{'
+
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSpace()) {
+      cur.next();
+      continue;
+    }
+    if (tok.isSymbol('}')) {
+      cur.next();
+      break;
+    }
+    keyframes.steps.push(parse_step(cur, extra));
+  }
+  return keyframes;
+}
+
+function parse_step(cur, extra) {
+  let step = { type: 'step', name: '', styles: [] };
+  step.name = parse_value(cur, extra, '{');
+  cur.next(); // '{'
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSpace()) {
+      cur.next();
+      continue;
+    }
+    if (tok.isSymbol('}')) {
+      cur.next();
+      break;
+    }
+    step.styles.push(parse_rule(cur, extra));
+  }
+  return step;
+}
+
+function skip_tag(cur) {
+  while (!cur.end() && !cur.peek().isSymbol('>')) {
+    cur.next();
+  }
+  cur.next();
+}
+
+function parse_statements(cur, extra) {
+  let statements = [];
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSpace()) {
+      cur.next();
+      continue;
+    }
+    if (tok.isSymbol(':')) {
+      let pseudo = parse_pseudo(cur, extra);
+      if (pseudo.selector) statements.push(pseudo);
+      continue;
+    }
+    if (is_keyframes_at(cur)) {
+      statements.push(parse_keyframes(cur, extra));
+      continue;
+    }
+    if (tok.isSymbol('<')) {
+      skip_tag(cur);
+      continue;
+    }
+    if (tok.isSymbol('}')) {
+      cur.next();
+      continue;
+    }
+    if (probe_selector(cur)) {
+      let cond = parse_cond(cur, extra);
+      if (cond.name.length) statements.push(cond);
+      continue;
+    }
+    let rule = parse_rule(cur, extra);
+    if (rule.property || rule.type === 'at-rule') {
+      statements.push(rule);
+    }
+  }
+  return statements;
+}
+
+function parse_source(input, extra, ctx) {
+  let source = String(input === undefined || input === null ? '' : input).trim();
+  return parse_statements(new Cursor(source, ctx), extra);
 }
 
 export default function parse(input, extra) {
-  const it = iterator(input);
-  const Tokens = [];
-  while (!it.end()) {
-    let c = it.curr();
-    if (is.white_space(c)) {
-      it.next();
-      continue;
-    }
-    else if (c == '/' && it.curr(1) == '*') {
-      read_comments(it);
-    }
-    else if (c == ':') {
-      let pseudo = read_pseudo(it, extra);
-      if (pseudo.selector) Tokens.push(pseudo);
-    }
-    else if (c == '@' && read_word(it, true) === '@keyframes') {
-      let keyframes = read_keyframes(it, extra);
-      Tokens.push(keyframes);
-    }
-    else if (c == '<') {
-      skip_tag(it);
-    }
-    else if (is.selector(it)) {
-      let cond = read_cond(it, extra);
-      if (cond.name.length) Tokens.push(cond);
-    }
-    else if (!is.white_space(c)) {
-      let rule = read_rule(it, extra);
-      if (rule.property || rule.type === 'at-rule') Tokens.push(rule);
-    }
-    it.next();
-  }
-  return Tokens;
+  return parse_source(input, extra, { position: 0 });
 }

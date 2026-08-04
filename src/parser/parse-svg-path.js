@@ -1,13 +1,19 @@
+import { cache as global_cache } from '../cache.js';
 import { scan, iterator } from './tokenizer.js';
 
 const commands = 'MmLlHhVvCcSsQqTtAaZz';
 const relatives = 'mlhvcsqtaz';
 
+// generated path strings vary per cell, so keep the cache bounded
 const cache = new Map();
+global_cache.onClear(() => cache.clear());
 
 function parse(input) {
   if (cache.has(input)) {
     return cache.get(input);
+  }
+  if (cache.size >= 256) {
+    cache.clear();
   }
 
   let iter = iterator(scan(input));

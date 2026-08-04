@@ -1,4 +1,5 @@
 import { is_empty } from '../utils/index.js';
+import { cache } from '../cache.js';
 import { scan, iterator } from './tokenizer.js';
 
 function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
@@ -99,4 +100,40 @@ function joinTokens(tokens) {
   return tokens.map(n => n.value).join('');
 }
 
-export default parse;
+/* Composed values repeat across cells and generations, so each unique
+ * (input, options) pair is parsed once. Results are shared: read-only. */
+const memo = new Map();
+cache.onClear(() => memo.clear());
+
+const RE_PLAIN = /[,()'"`\s]/;
+
+function parse_cached(input, option) {
+  // single plain values ('#60569e', '-45deg') split to themselves;
+  // only safe when the separator is the default comma
+  let symbol = option && option.symbol;
+  if ((symbol === undefined || symbol === ',')
+      && !(option && option.verbose)
+      && typeof input === 'string' && input.length
+      && !RE_PLAIN.test(input)) {
+    return [input];
+  }
+  let opt_key = option
+    ? (Array.isArray(symbol) ? symbol.join('\x01') : String(symbol))
+      + (option.noSpace ? 'n' : '') + (option.verbose ? 'v' : '')
+    : '';
+  let inner = memo.get(opt_key);
+  if (!inner) {
+    memo.set(opt_key, inner = new Map());
+  }
+  let result = inner.get(input);
+  if (result === undefined) {
+    if (inner.size >= 512) {
+      inner.clear();
+    }
+    result = parse(input, option);
+    inner.set(input, result);
+  }
+  return result;
+}
+
+export default parse_cached;

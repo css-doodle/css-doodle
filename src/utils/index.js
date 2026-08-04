@@ -170,9 +170,12 @@ export function first(arr) {
 }
 
 export function remove_empty_values(arr) {
-  return arr.filter(v => (
-    !is_nil(v) && String(v).trim().length
-  ));
+  return arr.filter(v => {
+    if (v === null || v === undefined) return false;
+    if (typeof v === 'number') return true;
+    if (typeof v === 'string') return v.trim().length > 0;
+    return String(v).trim().length > 0;
+  });
 }
 
 export function debounce(fn, delay = 100) {
