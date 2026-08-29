@@ -1,7 +1,6 @@
 function generate(token, last) {
   let result = '';
   if (token.type === 'block') {
-    let isInline = Array.isArray(token.value) && token.value[0] && token.value[0].inline;
     if (token.times) {
       result += ('@M' + token.times + '(' + token.pureName + '{');
     } else {
@@ -11,21 +10,17 @@ function generate(token, last) {
       result += token.value;
     }
     else if (Array.isArray(token.value) && token.value.length) {
-      let lastGroup = '';
+      let lastGroup = null;
       for (let t of token.value) {
         result += generate(t, lastGroup);
-        if (t.origin) {
-          lastGroup = t.origin.name.join(',');
-        }
+        lastGroup = t.origin || null;
       }
     }
-    if (token.times) {
-      result += '})';
-    } else if (!isInline) {
-      result += '}';
-    }
+    result += token.times ? '})' : '}';
   } else if (token.type === 'statement') {
-    let skip = (token.origin && last === token.origin.name.join(','));
+    // statements expanded from one group share the same origin object;
+    // compare identity so a later group with the same names isn't dropped
+    let skip = (token.origin && last === token.origin);
     let name = token.origin ? token.origin.name.join(',') : token.name;
     let value = token.origin ? token.origin.value : token.value;
     if (!skip) {
