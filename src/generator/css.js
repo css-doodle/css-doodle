@@ -1,50 +1,25 @@
-import Func from '../core/function.js';
+import Func, { MathFunc } from '../core/function.js';
 import Property from '../core/property.js';
 import Selector from '../core/selector.js';
 import parse_value_group from '../parser/parse-value-group.js';
 
-import calc from '../core/calc.js';
-import seedrandom from '../lib/seedrandom.js';
+import create_random from '../core/random.js';
 import { utime, UTime } from '../core/uniforms.js';
+import grid_style_rules from './grid-style.js';
 
 import { cell_id } from '../utils/cell.js';
 import { is_nil, get_value } from '../utils/type.js';
-import { lerp } from '../utils/math.js';
 import { unique_id } from '../utils/fn.js';
 import { join, make_array, remove_empty_values } from '../utils/list.js';
+import {
+  is_host_selector, is_parent_selector, is_special_selector, is_pseudo_selector
+} from '../utils/selector.js';
 import { css } from '../utils/tagged-template.js';
 
 const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
 
-function is_host_selector(s) {
-  return typeof s === 'string' && (s.startsWith(':host') || s.startsWith(':doodle'));
-}
-
-function is_parent_selector(s) {
-  return typeof s === 'string' && s.startsWith(':container');
-}
-
-function is_special_selector(s) {
-  return is_host_selector(s) || is_parent_selector(s);
-}
-
-function is_pseudo_selector(s) {
-  return /\:before|\:after/.test(s);
-}
-
 function is_image_value(value) {
   return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
-}
-
-const MathFunc = {};
-for (let name of Object.getOwnPropertyNames(Math)) {
-  MathFunc[name] = () => (...args) => {
-    if (typeof Math[name] === 'number') {
-      return Math[name];
-    }
-    args = args.map(n => calc(get_value(n)));
-    return Math[name](...args);
-  }
 }
 
 const NO_SPACE = { noSpace: true };
@@ -456,85 +431,9 @@ class Rules {
     }
   }
 
-  add_grid_style({
-    fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp,
-    flex, p3d, border, borderLegacy, gap, backdropFilter
-  }) {
-    if (fill) {
-      this.add_rule(':host', `background:${fill};`);
-    }
-    if (!clip) {
-      this.add_rule(':host', 'contain:none;');
-    }
-    if (rotate) {
-      if (/[0-9]$/.test(rotate)) {
-        rotate += 'deg';
-      }
-      this.add_rule(':container', `rotate:${rotate};`);
-    }
-    if (hueRotate) {
-      if (/[0-9]$/.test(hueRotate)) {
-        hueRotate += 'deg';
-      }
-      this.add_rule(':host', `filter:hue-rotate(${hueRotate});`);
-    }
-    if (scale) {
-      this.add_rule(':container', `scale:${scale};`);
-    }
-    if (translate) {
-      this.add_rule(':container', `translate:${translate};`);
-    }
-    if (persp) {
-      let [value, ...origin] = persp;
-      this.add_rule(':host', `perspective:${value};`);
-      if (origin.length) {
-        this.add_rule(':host', `perspective-origin:${origin.join(' ')};`);
-      }
-    }
-    if (enlarge) {
-      let [sx, sy = sx] = enlarge;
-      let width = `calc(${sx} + 100%)`;
-      let height = `calc(${sy} + 100%)`;
-      if (/[0-9]$/.test(sx)) {
-        width = `calc(${sx} * 100%)`;
-      }
-      if (/[0-9]$/.test(sy)) {
-        height = `calc(${sy} * 100%)`;
-      }
-      this.add_rule(':container', css`
-        width: ${width};
-        height: ${height};
-        left: 50%;
-        top: 50%;
-        transform-origin: 0 0;
-        transform: translate(-50%, -50%);
-      `);
-    }
-    if (flex) {
-      this.add_rule(':container', 'display:flex;');
-      this.add_rule('cssd-cell', 'flex: 1;');
-      if (flex === 'column') {
-        this.add_rule(':container', 'flex-direction:column;');
-      }
-    }
-    if (p3d) {
-      let s = 'transform-style:preserve-3d;';
-      this.add_rule(':host', s);
-      this.add_rule(':container', s);
-    }
-    if (borderLegacy !== undefined) {
-      this.add_rule(':host', `border: 1px solid ${borderLegacy};`);
-    }
-    if (border !== undefined) {
-      this.add_rule(':host', `border: ${border};`);
-    }
-    if (gap) {
-      this.add_rule(':container', `gap: ${gap};`);
-    }
-    if (backdropFilter) {
-      this.add_rule('b', css`
-        backdrop-filter: ${backdropFilter};
-      `);
+  add_grid_style(transformed) {
+    for (let [selector, rule] of grid_style_rules(transformed)) {
+      this.add_rule(selector, rule);
     }
   }
 
@@ -1030,41 +929,14 @@ function remove_quotes(input) {
 
 export default function generate_css(tokens, grid_size, seed_value, max_grid, seed_random, upextra = []) {
   let rules = new Rules(tokens);
-  let random = seed_random || seedrandom(String(seed_value));
   let context = {};
-
-  function update_random(seed) {
-    random = seedrandom(String(seed));
-  }
-
-  function rand(start = 0, end = 1) {
-    if (arguments.length == 1) {
-      [start, end] = [0, start];
-    }
-    return lerp(random(), start, end);
-  }
-
-  function pick(...items) {
-    let args = items.reduce((acc, n) => acc.concat(n), []);
-    return args[~~(random() * args.length)];
-  }
-
-  function shuffle(arr) {
-    let ret = [...arr];
-    let m = arr.length;
-    while (m) {
-      let i = ~~(random() * m--);
-      let t = ret[m];
-      ret[m] = ret[i];
-      ret[i] = t;
-    }
-    return ret;
-  }
+  let R = create_random(seed_random || String(seed_value));
+  let { rand, pick, shuffle, update_random } = R;
 
   rules.pre_compose({
     x: 1, y: 1, z: 1, count: 1, context: {}, extra: [],
     grid: { x: 1, y: 1, z: 1, count: 1 },
-    random, rand, pick, shuffle,
+    random: R.random, rand, pick, shuffle,
     max_grid, update_random,
     seed_value,
     rules,
@@ -1078,20 +950,19 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
   }
 
   if (seed) {
-    seed = String(seed);
-    random = seedrandom(seed);
+    update_random(seed);
   } else {
     seed = seed_value;
   }
 
   if (is_nil(seed)) {
     seed = Date.now();
-    random = seedrandom(seed);
+    update_random(seed);
   }
 
   seed = String(seed);
   rules.seed = seed;
-  rules.random = random;
+  rules.random = R.random;
   rules.reset();
 
   if (grid_size.z == 1) {
@@ -1101,7 +972,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
           x, y, z: 1,
           count: ++count, grid: grid_size, context, extra: [],
           rand, pick, shuffle,
-          random, seed,
+          random: R.random, seed,
           max_grid,
           upextra,
           rules,
@@ -1115,7 +986,7 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
         x: 1, y: 1, z,
         count: ++count, grid: grid_size, context, extra: [],
         rand, pick, shuffle,
-        random, seed,
+        random: R.random, seed,
         max_grid,
         rules,
         upextra,

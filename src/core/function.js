@@ -819,6 +819,18 @@ for (let [name, value] of Object.entries(UNIFORMS)) {
   Expose[name] = () => calc_with(value);
 }
 
+/* expose JS Math functions with css-doodle calc/value semantics */
+export const MathFunc = {};
+for (let name of Object.getOwnPropertyNames(Math)) {
+  MathFunc[name] = () => (...args) => {
+    if (typeof Math[name] === 'number') {
+      return Math[name];
+    }
+    args = args.map(n => calc(get_value(n)));
+    return Math[name](...args);
+  }
+}
+
 export default add_alias(Expose, {
 
   'index': 'i',
