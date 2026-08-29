@@ -484,6 +484,71 @@ test('put id at right element', () => {
   );
 });
 
+test('draw with bare number duration', () => {
+  compare(
+    `path {
+      draw: 2;
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <path stroke-dasharray="10" pathLength="10">
+          <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2"/>
+        </path>
+      </svg>
+    `)
+  );
+});
+
+test('draw with repeat count', () => {
+  compare(
+    `path {
+      draw: 2s infinite;
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <path stroke-dasharray="10" pathLength="10">
+          <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s" repeatCount="indefinite"/>
+        </path>
+      </svg>
+    `)
+  );
+
+  compare(
+    `path {
+      draw: infinite 2s;
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <path stroke-dasharray="10" pathLength="10">
+          <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s" repeatCount="indefinite"/>
+        </path>
+      </svg>
+    `)
+  );
+});
+
+test('viewBox with padding', () => {
+  compare(
+    `svg {
+      viewBox: 0 0 10 10 p 2;
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 14 14"></svg>
+    `)
+  );
+});
+
+test('drop incomplete viewBox', () => {
+  compare(
+    `svg {
+      viewBox: 0 0 10;
+    }`,
+    trim(`
+      <svg xmlns="http://www.w3.org/2000/svg"></svg>
+    `)
+  );
+});
+
 test('no id for multiple inline defs child elements', () => {
   compare(
     `svg {

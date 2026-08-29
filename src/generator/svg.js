@@ -70,7 +70,7 @@ class Tag {
     }
     let content = body.join('');
     if (content.length || /svg/i.test(this.name)) {
-      return `<${this.name}${attrs.join(' ')}>${body.join('')}</${this.name}>`;
+      return `<${this.name}${attrs.join(' ')}>${content}</${this.name}>`;
     }
     return `<${this.name}${attrs.join(' ')}/>`;
   }
@@ -93,7 +93,7 @@ function removeQuotes(text) {
 function transformViewBox(token) {
   let viewBox = token.detail.value;
   let p = token.detail.padding || token.detail.p || token.detail.expand;
-  if (!viewBox.length) {
+  if (viewBox.length < 4) {
     return '';
   }
   let [x, y, w, h] = viewBox;
@@ -140,7 +140,6 @@ function generate(token, element, parent, root) {
         }
       }
       for (let block of token.value) {
-        token.parent = parent;
         let id = generate(block, el, token, root);
         if (id) { inlineId = id }
       }
@@ -206,14 +205,16 @@ function generate(token, element, parent, root) {
         }
       }
       if (/viewBox/i.test(token.name)) {
-        value = transformViewBox(token, value);
+        value = transformViewBox(token);
         if (value) {
           element.attr(token.name, value);
         }
       }
       else if ((token.name === 'draw' || token.name === 'animate') && isGraphicElement(parent && parent.name)) {
         let [dur, repeatCount] = String(value).split(/\s+/);
-        if (dur === 'indefinite' || dur === 'infinite' || /\d$/.test(dur)) {
+        // a single bare number is a duration in seconds, not a repeat count
+        let isCount = dur === 'indefinite' || dur === 'infinite';
+        if (isCount || (repeatCount !== undefined && /\d$/.test(dur))) {
           [dur, repeatCount] = [repeatCount, dur];
         }
         if (repeatCount === 'infinite') {
