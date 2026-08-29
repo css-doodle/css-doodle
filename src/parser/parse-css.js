@@ -136,7 +136,8 @@ const Node = {
   },
 };
 
-function probe_selector(cur) {
+// first top-level, unquoted terminator symbol ahead of the cursor
+function probe(cur, ...terminators) {
   let paren = 0, quote = false;
   for (let i = cur.i; i < cur.tokens.length; ++i) {
     let t = cur.tokens[i];
@@ -144,27 +145,19 @@ function probe_selector(cur) {
     else if (t.status === 'close') quote = false;
     if (t.isSymbol('(')) paren++;
     else if (t.isSymbol(')')) paren = Math.max(0, paren - 1);
-    else if (paren === 0 && !quote) {
-      if (t.isSymbol('{')) return true;
-      if (t.isSymbol(';', '}')) return false;
-    }
-  }
-  return false;
-}
-
-function probe_block(cur) {
-  let paren = 0, quote = false;
-  for (let i = cur.i; i < cur.tokens.length; ++i) {
-    let t = cur.tokens[i];
-    if (t.status === 'open') quote = true;
-    else if (t.status === 'close') quote = false;
-    if (t.isSymbol('(')) paren++;
-    else if (t.isSymbol(')')) paren = Math.max(0, paren - 1);
-    else if (paren === 0 && !quote && t.isSymbol(':', ';', '{', '}')) {
+    else if (paren === 0 && !quote && t.isSymbol(...terminators)) {
       return t.value;
     }
   }
   return '';
+}
+
+function probe_selector(cur) {
+  return probe(cur, '{', ';', '}') === '{';
+}
+
+function probe_block(cur) {
+  return probe(cur, ':', ';', '{', '}');
 }
 
 function is_keyframes_at(cur) {
@@ -239,12 +232,7 @@ function parse_value(cur, extra, break_on) {
       if (v === '(') paren++;
       else if (v === ')') paren = Math.max(0, paren - 1);
       cur.next();
-      if (v === 'π') {
-        let prev = cur.source[tok.index - 1];
-        buf += (prev >= '0' && prev <= '9') ? v : PI;
-      } else {
-        buf += v;
-      }
+      buf += (v === 'π') ? substitute_pi(v, cur.source[tok.index - 1]) : v;
       continue;
     }
 
@@ -693,6 +681,60 @@ function evaluate_value(values, extra, ctx) {
   }
 }
 
+// Shared block-body loop. `level` selects the few branches that differ:
+// 'pseudo' spreads @use and takes no nested conds/keyframes,
+// 'top' has no '&', skips tags and stray '}', and keeps at-rules.
+function parse_block_body(cur, extra, level) {
+  let styles = [];
+  while (!cur.end()) {
+    let tok = cur.peek();
+    if (tok.isSpace()) {
+      cur.next();
+      continue;
+    }
+    if (tok.isSymbol('}')) {
+      cur.next();
+      if (level === 'top') continue;
+      break;
+    }
+    if (tok.isSymbol(':')) {
+      let pseudo = parse_pseudo(cur, extra);
+      if (pseudo.selector) styles.push(pseudo);
+      continue;
+    }
+    if (tok.isSymbol('&') && level !== 'top') {
+      styles.push(parse_cond(cur, extra));
+      continue;
+    }
+    if (level !== 'pseudo') {
+      if (is_keyframes_at(cur)) {
+        styles.push(parse_keyframes(cur, extra));
+        continue;
+      }
+      if (level === 'top' && tok.isSymbol('<')) {
+        skip_tag(cur);
+        continue;
+      }
+      if (level === 'cond' && tok.isSymbol('@') && probe_block(cur) === '{') {
+        styles.push(parse_cond(cur, extra));
+        continue;
+      }
+      if (probe_selector(cur)) {
+        let nested = parse_cond(cur, extra);
+        if (nested.name.length) styles.push(nested);
+        continue;
+      }
+    }
+    let rule = parse_rule(cur, extra);
+    if (level === 'pseudo' && rule.property === '@use') {
+      styles.push(...rule.value);
+    } else if (rule.property || (level === 'top' && rule.type === 'at-rule')) {
+      styles.push(rule);
+    }
+  }
+  return styles;
+}
+
 function parse_pseudo(cur, extra) {
   let pseudo = { type: 'pseudo', selector: '', selectors: [], styles: [] };
   let start = cur.head_index();
@@ -713,33 +755,7 @@ function parse_pseudo(cur, extra) {
   }
   pseudo.selector = selector;
   pseudo.selectors = parse_value_group(selector);
-
-  while (!cur.end()) {
-    let tok = cur.peek();
-    if (tok.isSpace()) {
-      cur.next();
-      continue;
-    }
-    if (tok.isSymbol('}')) {
-      cur.next();
-      break;
-    }
-    if (tok.isSymbol(':')) {
-      let nested = parse_pseudo(cur, extra);
-      if (nested.selector) pseudo.styles.push(nested);
-      continue;
-    }
-    if (tok.isSymbol('&')) {
-      pseudo.styles.push(parse_cond(cur, extra));
-      continue;
-    }
-    let rule = parse_rule(cur, extra);
-    if (rule.property === '@use') {
-      pseudo.styles.push(...rule.value);
-    } else if (rule.property) {
-      pseudo.styles.push(rule);
-    }
-  }
+  pseudo.styles = parse_block_body(cur, extra, 'pseudo');
   return pseudo;
 }
 
@@ -748,42 +764,7 @@ function parse_cond(cur, extra) {
   Object.assign(cond, parse_cond_selector(cur));
   if (cur.end()) return cond;
   cur.next(); // '{'
-
-  while (!cur.end()) {
-    let tok = cur.peek();
-    if (tok.isSpace()) {
-      cur.next();
-      continue;
-    }
-    if (tok.isSymbol('}')) {
-      cur.next();
-      break;
-    }
-    if (tok.isSymbol(':')) {
-      let pseudo = parse_pseudo(cur, extra);
-      if (pseudo.selector) cond.styles.push(pseudo);
-      continue;
-    }
-    if (tok.isSymbol('&')) {
-      cond.styles.push(parse_cond(cur, extra));
-      continue;
-    }
-    if (is_keyframes_at(cur)) {
-      cond.styles.push(parse_keyframes(cur, extra));
-      continue;
-    }
-    if (tok.isSymbol('@') && probe_block(cur) === '{') {
-      cond.styles.push(parse_cond(cur, extra));
-      continue;
-    }
-    if (probe_selector(cur)) {
-      let nested = parse_cond(cur, extra);
-      if (nested.name.length) cond.styles.push(nested);
-      continue;
-    }
-    let rule = parse_rule(cur, extra);
-    if (rule.property) cond.styles.push(rule);
-  }
+  cond.styles = parse_block_body(cur, extra, 'cond');
   return cond;
 }
 
@@ -903,41 +884,7 @@ function skip_tag(cur) {
 }
 
 function parse_statements(cur, extra) {
-  let statements = [];
-  while (!cur.end()) {
-    let tok = cur.peek();
-    if (tok.isSpace()) {
-      cur.next();
-      continue;
-    }
-    if (tok.isSymbol(':')) {
-      let pseudo = parse_pseudo(cur, extra);
-      if (pseudo.selector) statements.push(pseudo);
-      continue;
-    }
-    if (is_keyframes_at(cur)) {
-      statements.push(parse_keyframes(cur, extra));
-      continue;
-    }
-    if (tok.isSymbol('<')) {
-      skip_tag(cur);
-      continue;
-    }
-    if (tok.isSymbol('}')) {
-      cur.next();
-      continue;
-    }
-    if (probe_selector(cur)) {
-      let cond = parse_cond(cur, extra);
-      if (cond.name.length) statements.push(cond);
-      continue;
-    }
-    let rule = parse_rule(cur, extra);
-    if (rule.property || rule.type === 'at-rule') {
-      statements.push(rule);
-    }
-  }
-  return statements;
+  return parse_block_body(cur, extra, 'top');
 }
 
 function parse_source(input, extra, ctx) {

@@ -59,25 +59,19 @@ function calc_value(base, v) {
   if (is_empty(v) || is_empty(base)) {
     return [];
   }
-  if (RE_OP_PREFIX.test(v)) {
-    let op = v[0];
-    let { unit = '', value } = parse_compound_value(v.slice(1).trim() || 0);
+  let prefix = RE_OP_PREFIX.test(v);
+  if (prefix || RE_OP_SUFFIX.test(v)) {
+    let op = prefix ? v[0] : v.slice(-1);
+    let rest = prefix ? v.slice(1) : v.slice(0, -1);
+    let { unit = '', value } = parse_compound_value(rest.trim() || 0);
+    // prefix op: base comes first; suffix op: base comes last
+    let [a, b] = prefix ? [base, value] : [value, base];
     if (RE_VAR.test(base)) {
       return op === '%'
-        ? compute_var(`mod(${base}, ${value})`, unit)
-        : compute_var(`${base} ${op} ${value}`, unit);
+        ? compute_var(`mod(${a}, ${b})`, unit)
+        : compute_var(`${a} ${op} ${b}`, unit);
     }
-    return [compute(op, Number(base), Number(value)), unit];
-  }
-  else if (RE_OP_SUFFIX.test(v)) {
-    let op = v.slice(-1);
-    let { unit = '', value } = parse_compound_value(v.slice(0, -1).trim() || 0);
-    if (RE_VAR.test(base)) {
-      return op === '%'
-        ? compute_var(`mod(${value}, ${base})`, unit)
-        : compute_var(`${value} ${op} ${base}`, unit);
-    }
-    return [compute(op, Number(value), Number(base)), unit];
+    return [compute(op, Number(a), Number(b)), unit];
   } else {
     let { unit = '', value } = parse_compound_value(v || 0);
     return [(Number(base) + (Number(value) || 0)), unit];
