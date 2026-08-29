@@ -14,15 +14,12 @@ import { memo } from '../utils/cache.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { create_svg_url, normalize_svg } from '../utils/svg.js';
-import { by_unit, by_charcode } from '../utils/transform.js';
-import expand from '../utils/expand.js';
-import Stack from '../utils/stack.js';
-import get_named_arguments from '../utils/get-named-arguments.js';
+import { sequence, expand, by_unit, by_charcode, get_named_arguments } from './arguments.js';
 import { cell_id, cell_metrics } from '../utils/cell.js';
 import { is_letter, is_nil, is_empty, get_value } from '../utils/type.js';
 import { add_alias, unique_id, lazy } from '../utils/fn.js';
 import { lerp, clamp } from '../utils/math.js';
-import { sequence, last } from '../utils/list.js';
+import { last } from '../utils/list.js';
 import { getEasingFunction } from './easing.js';
 import { css } from '../utils/tagged-template.js';
 
@@ -127,10 +124,22 @@ function flip_value(num) {
   return -1 * num;
 }
 
+const STACK_LIMIT = 1024;
+
 function push_stack(context, name, value) {
-  if (!context[name]) context[name] = new Stack(1024);
-  context[name].push(value);
+  let stack = context[name] || (context[name] = []);
+  if (stack.length >= STACK_LIMIT) {
+    stack.shift();
+  }
+  stack.push(value);
   return value;
+}
+
+/* the nth value from the top, clamped to the oldest one */
+function last_of(stack, n = 1) {
+  if (stack === undefined) return '';
+  let i = stack.length - n;
+  return stack[i > 0 ? i : 0];
 }
 
 // Distinguishes sequence invocations in the context keys of the pick
@@ -395,8 +404,7 @@ const Expose = {
         args = context.last_pick_args || [];
         normal = false;
       }
-      let stack = context.last_pick;
-      let last = stack ? stack.last(1) : '';
+      let last = last_of(context.last_pick);
       if (normal) {
         if (!context[counter]) {
           context[counter] = {};
@@ -432,8 +440,7 @@ const Expose = {
 
   lp({ context }) {
     return (n = 1) => {
-      let stack = context.last_pick;
-      return stack ? stack.last(n) : '';
+      return last_of(context.last_pick, n);
     };
   },
 
@@ -509,8 +516,7 @@ const Expose = {
 
   lr({ context }) {
     return (n = 1) => {
-      let stack = context.last_rand;
-      return stack ? stack.last(n) : '';
+      return last_of(context.last_rand, n);
     };
   },
 

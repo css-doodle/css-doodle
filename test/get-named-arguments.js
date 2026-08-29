@@ -1,7 +1,7 @@
 import test from 'node:test';
 
 import compare from './_compare.js';
-import get_named_arguments from '../src/utils/get-named-arguments.js';
+import { get_named_arguments } from '../src/core/arguments.js';
 
 compare.use(get_named_arguments);
 

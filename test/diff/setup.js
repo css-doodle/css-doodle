@@ -13,9 +13,13 @@ export const BASELINE = process.env.DIFF_BASELINE || '597da30';
 // (parse-var.js, ...) resolve against the working tree. function.js is
 // snapshotted too, and the legacy generator is rewired to use it so the
 // harness compares legacy vs rewritten function.js as well.
-// The baseline predates the src/core + src/utils/cache.js layout, so legacy
-// snapshots need their imports remapped to where those modules live now.
-function remap(content, mapping) {
+// The baseline predates the src/core + src/component layout, so legacy
+// snapshots need their imports remapped (some statement-wise, where a
+// default export became a named one) to where those modules live now.
+function remap(content, mapping, statements = {}) {
+  for (let [from, to] of Object.entries(statements)) {
+    content = content.replace(from, to);
+  }
   for (let [from, to] of Object.entries(mapping)) {
     content = content.replaceAll(`'${from}'`, `'${to}'`);
   }
@@ -39,6 +43,23 @@ const snapshots = [
       './cache.js': './utils/cache.js',
       './uniforms.js': './core/uniforms.js',
       './easing.js': './core/easing.js',
+      './utils/transform.js': './core/arguments.js',
+    }, {
+      [`import expand from './utils/expand.js';`]:
+        `import { expand } from './core/arguments.js';`,
+      [`import get_named_arguments from './utils/get-named-arguments.js';`]:
+        `import { get_named_arguments } from './core/arguments.js';`,
+      // utils/stack.js was removed; the working tree uses plain arrays now
+      [`import Stack from './utils/stack.js';`]: [
+        `class Stack {`,
+        `  constructor(limit = 20) { this._limit = limit; this._data = []; }`,
+        `  push(data) {`,
+        `    if (this._data.length >= this._limit) this._data.shift();`,
+        `    this._data.push(data);`,
+        `  }`,
+        `  last(n = 1) { return this._data[Math.max(this._data.length - n, 0)]; }`,
+        `}`,
+      ].join('\n'),
     })],
 ];
 

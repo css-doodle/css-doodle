@@ -1,4 +1,4 @@
-import { unique } from './index.js';
+import { unique } from '../utils/list.js';
 
 let embedFonts = new Map();
 let linkFonts = new Set();

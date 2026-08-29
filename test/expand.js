@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import expand from '../src/utils/expand.js';
+import { expand } from '../src/core/arguments.js';
 import compare from './_compare.js';
 
 // Create a simple identity function to test expand

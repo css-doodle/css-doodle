@@ -11,13 +11,13 @@ import generate_shaders from '../generator/shaders.js';
 import generate_pattern from '../generator/pattern.js';
 import generate_png from '../generator/svg-to-png.js';
 
-import create_animation from '../utils/create-animation.js';
+import create_animation from './animation.js';
 import { NS, NSXHtml } from '../utils/svg.js';
 import { utime, UTime } from '../core/uniforms.js';
 import { cache_image, is_safari } from '../utils/browser.js';
 import { debounce } from '../utils/fn.js';
 import { css } from '../utils/tagged-template.js';
-import { loadGoogleFontEmbed } from '../utils/google-font.js';
+import { loadGoogleFontEmbed } from './google-font.js';
 
 import { parse_css_cached } from './parse-cache.js';
 import { get_basic_styles, create_grid } from './markup.js';

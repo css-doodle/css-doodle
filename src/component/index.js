@@ -3,18 +3,30 @@ import parse_grid from '../parser/parse-grid.js';
 import generate_css from '../generator/css.js';
 import generate_png from '../generator/svg-to-png.js';
 
-import get_rgba_color from '../utils/get-rgba-color.js';
-import { get_variable, get_all_variables } from '../utils/variables.js';
+import { get_rgba_color, get_variable, get_all_variables } from './computed-style.js';
 import { NS, NSXHtml } from '../utils/svg.js';
 import { is_nil } from '../utils/type.js';
-import { get_png_name, is_safari, un_entity } from '../utils/browser.js';
+import { is_safari } from '../utils/browser.js';
 import { css } from '../utils/tagged-template.js';
-import { loadGoogleFontEmbed, loadGoogleFontLink } from '../utils/google-font.js';
+import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { parse_css_cached } from './parse-cache.js';
 import { bind_uniforms } from './uniforms.js';
 import { create_replacer } from './embedded.js';
 import { get_basic_styles, create_grid } from './markup.js';
+
+function un_entity(code) {
+  let textarea = document.createElement('textarea');
+  textarea.innerHTML = code;
+  return textarea.value;
+}
+
+function get_png_name(name) {
+  let prefix = is_nil(name)
+    ? Date.now()
+    : String(name).replace(/\.png$/, '');
+  return prefix + '.png';
+}
 
 const Expose = {
   CSSDoodle: class {},
