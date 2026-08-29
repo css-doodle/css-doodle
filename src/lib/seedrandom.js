@@ -62,15 +62,8 @@ function autoseed() {
   }
 }
 
-function flatten(obj, depth = 3) {
-  if (depth && typeof obj === 'object') {
-    return Object.values(obj).map(v => flatten(v, depth - 1)).join('');
-  }
-  return typeof obj === 'string' ? obj : obj + '\0';
-}
-
 export default function seedrandom(seed) {
-  const key = mixkey(seed == null ? autoseed() : flatten(seed));
+  const key = mixkey(seed == null ? autoseed() : '' + seed);
   const arc4 = new ARC4(key);
 
   const prng = () => {
