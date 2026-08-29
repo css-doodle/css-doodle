@@ -3,7 +3,8 @@ import parse_direction from '../parser/parse-direction.js';
 import parse_compound_value from '../parser/parse-compound-value.js';
 import parse_shape_commands from '../parser/parse-shape-commands.js';
 
-import { clamp, is_empty } from '../utils/index.js';
+import { clamp } from '../utils/math.js';
+import { is_empty } from '../utils/type.js';
 import calc from '../core/calc.js';
 import { cache } from '../utils/cache.js';
 import { css } from '../utils/tagged-template.js';

@@ -1,4 +1,5 @@
-import { next_id, is_nil } from '../utils/index.js';
+import { next_id } from '../utils/fn.js';
+import { is_nil } from '../utils/type.js';
 import { NS, NSXLink } from '../utils/svg.js';
 
 const nextId = next_id();

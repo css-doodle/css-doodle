@@ -18,7 +18,11 @@ import { by_unit, by_charcode } from '../utils/transform.js';
 import expand from '../utils/expand.js';
 import Stack from '../utils/stack.js';
 import get_named_arguments from '../utils/get-named-arguments.js';
-import { cell_id, cell_metrics, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from '../utils/index.js';
+import { cell_id, cell_metrics } from '../utils/cell.js';
+import { is_letter, is_nil, is_empty, get_value } from '../utils/type.js';
+import { add_alias, unique_id, lazy } from '../utils/fn.js';
+import { lerp, clamp } from '../utils/math.js';
+import { sequence, last } from '../utils/list.js';
 import { getEasingFunction } from './easing.js';
 import { css } from '../utils/tagged-template.js';
 

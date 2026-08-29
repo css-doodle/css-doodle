@@ -1,0 +1,92 @@
+import { utime, UTime } from '../core/uniforms.js';
+import { cell_id } from '../utils/cell.js';
+import { css } from '../utils/tagged-template.js';
+
+export function get_basic_styles(grid) {
+  let { x, y } = grid || {};
+  return css`
+    *,*::after,*::before,:host,.host {
+      box-sizing: border-box;
+    }
+    :host,.host {
+      display: block;
+      visibility: visible;
+      width: fit-content;
+      height: fit-content;
+      contain: content;
+      view-transition-name: css-doodle;
+      --${utime.name}: 0;
+      --${UTime.name}: 0
+    }
+    :host([hidden]),[hidden] {
+      display: none
+    }
+    :host([cssd-paused]),
+    :host([cssd-paused]) * {
+      animation-play-state: paused !important
+    }
+    cssd-grid, cssd-cell {
+      display: grid;
+      position: relative;
+    }
+    cssd-grid {
+      gap: inherit;
+      grid-template: repeat(${y},1fr)/repeat(${x},1fr)
+    }
+    b {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    cssd-cell {
+      place-items: center;
+      min-height: 0;
+      min-width: 0;
+    }
+    svg, canvas {
+      position: absolute;
+    }
+    cssd-grid, svg, canvas {
+      width: 100%;
+      height: 100%
+    }
+    canvas {
+      object-fit: cover;
+    }
+  `;
+}
+
+function create_cell(x, y, z, content, child = '') {
+  let id = cell_id(x, y, z);
+  let tail = child ?? '';
+  let head = content['#' + id] ?? '';
+  if (head.startsWith('${shader')) {
+    head = '';
+  }
+  return `<cssd-cell id="${id}" part="cell">${head}${tail}</cssd-cell>`;
+}
+
+export function create_grid(grid_obj, compiled) {
+  let { x, y, z } = grid_obj || {};
+  let { content, styles } = compiled;
+  let result = '';
+  if (z == 1) {
+    for (let j = 1; j <= y; ++j) {
+      for (let i = 1; i <= x; ++i) {
+        result += create_cell(i, j, 1, content);
+      }
+    }
+  }
+  else {
+    let child = '';
+    for (let i = z; i >= 1; i--) {
+      child = create_cell(1, 1, i, content, child);
+    }
+    result = child;
+  }
+  let html = `<cssd-grid part="grid">${result}</cssd-grid>`;
+  if (styles.backdrop) {
+    html += '<b></b>'
+  }
+  return html;
+}

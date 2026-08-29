@@ -1,4 +1,4 @@
-import { hash } from '../utils/index.js';
+import { hash } from '../utils/math.js';
 import { glsl } from '../utils/tagged-template.js';
 
 // Rendering queue

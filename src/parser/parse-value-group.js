@@ -1,4 +1,4 @@
-import { is_empty } from '../utils/index.js';
+import { is_empty } from '../utils/type.js';
 import { cache } from '../utils/cache.js';
 import { scan, iterator } from './tokenizer.js';
 

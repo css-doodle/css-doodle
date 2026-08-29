@@ -1,4 +1,4 @@
-import { CSSDoodle, define } from '../../component.js';
+import { CSSDoodle, define } from '../../component/index.js';
 
 function create(code = '') {
   define('css-doodle', CSSDoodle);

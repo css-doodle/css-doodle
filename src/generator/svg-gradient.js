@@ -1,6 +1,6 @@
 import parse_value_group from '../parser/parse-value-group.js';
 import parse_direction from '../parser/parse-direction.js';
-import { get_value } from '../utils/index.js';
+import { get_value } from '../utils/type.js';
 
 export default function create_svg_gradient(type, args) {
   let values = args.map(input => get_value(input()));

@@ -1,5 +1,5 @@
 import { scan, iterator, Token } from './tokenizer.js';
-import { is_empty } from '../utils/index.js';
+import { is_empty } from '../utils/type.js';
 
 function parse(input) {
   let scanOptions = {

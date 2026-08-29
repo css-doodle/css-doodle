@@ -7,7 +7,11 @@ import calc from '../core/calc.js';
 import seedrandom from '../lib/seedrandom.js';
 import { utime, UTime } from '../core/uniforms.js';
 
-import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values } from '../utils/index.js';
+import { cell_id } from '../utils/cell.js';
+import { is_nil, get_value } from '../utils/type.js';
+import { lerp } from '../utils/math.js';
+import { unique_id } from '../utils/fn.js';
+import { join, make_array, remove_empty_values } from '../utils/list.js';
 import { css } from '../utils/tagged-template.js';
 
 const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();

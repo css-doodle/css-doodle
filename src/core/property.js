@@ -4,7 +4,8 @@ import generate_shape from '../generator/shapes.js';
 
 import { is_preset, get_preset } from './preset-size.js';
 
-import { add_alias, is_empty } from '../utils/index.js';
+import { add_alias } from '../utils/fn.js';
+import { is_empty } from '../utils/type.js';
 import { memo } from '../utils/cache.js';
 import { css } from '../utils/tagged-template.js';
 

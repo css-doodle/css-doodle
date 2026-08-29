@@ -1,4 +1,4 @@
-import { clamp } from '../utils/index.js';
+import { clamp } from '../utils/math.js';
 
 export default function parse_grid(size, GRID = 64) {
   let [x, y, z] = String(size)

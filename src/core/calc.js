@@ -1,4 +1,5 @@
-import { is_invalid_number, last } from '../utils/index.js';
+import { is_invalid_number } from '../utils/type.js';
+import { last } from '../utils/list.js';
 import { scan } from '../parser/tokenizer.js';
 import { cache } from '../utils/cache.js';
 

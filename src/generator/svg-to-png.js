@@ -1,4 +1,4 @@
-import { cache_image, is_safari } from '../utils/index.js';
+import { cache_image, is_safari } from '../utils/browser.js';
 
 export default function svg_to_png(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
