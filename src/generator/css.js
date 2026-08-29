@@ -173,8 +173,13 @@ class Rules {
     }
   }
 
-  pick_func(name) {
-    return find_func(name);
+  scoped_vars(count, extra) {
+    return Object.assign({},
+      this.vars['host'],
+      this.vars['container'],
+      this.vars[count],
+      extra
+    );
   }
 
   apply_func(fn, coords, args, fname, contextVariable = {}) {
@@ -195,12 +200,7 @@ class Rules {
     input = make_array(remove_empty_values(input));
     if (typeof _fn === 'function') {
       if (fname.startsWith('$')) {
-        let group = Object.assign({},
-          this.vars['host'],
-          this.vars['container'],
-          this.vars[coords.count],
-          contextVariable
-        );
+        let group = this.scoped_vars(coords.count, contextVariable);
         let context = {};
         let unit = '';
         for (let [name, key] of Object.entries(group)) {
@@ -233,13 +233,7 @@ class Rules {
   }
 
   read_var(value, coords, contextVariable) {
-    let count = coords.count;
-    let group = Object.assign({},
-      this.vars['host'],
-      this.vars['container'],
-      this.vars[count],
-      contextVariable
-    );
+    let group = this.scoped_vars(coords.count, contextVariable);
     if (group[value] !== undefined) {
       let result = String(group[value]).trim();
       if (result[0] == '(') {
@@ -268,16 +262,15 @@ class Rules {
             this.inject_variables(value, coords.count), temp,
             coords.extra.length ? structuredClone(coords.extra) : undefined);
         case 'shaders':
-          return this.compose_shaders(value, coords, temp, selector);
         case 'pattern':
-          return this.compose_pattern(value, coords, temp, selector);
+          return this.compose_paint(fname, value, coords, temp, selector);
       }
     }
   }
 
   evaluate_func(node, coords, contextVariable, selector, extra, in_argument) {
     let fname = node.name.slice(1);
-    let fn = this.pick_func(fname);
+    let fn = find_func(fname);
     if (typeof fn !== 'function') {
       return { literal: node.name };
     }
@@ -364,27 +357,14 @@ class Rules {
     return target;
   }
 
-  compose_shaders(shader, { x, y, z }, arg, selector) {
-    let id = unique_id('shader');
+  compose_paint(fname, source, { x, y, z }, arg, selector) {
+    // the renderer reads `shader` for shaders and `code` for patterns
+    let is_shader = fname === 'shaders';
+    let id = unique_id(is_shader ? 'shader' : 'pattern');
     let cell_selector = cell_id(x, y, z);
-    let target = this.get_target(selector, cell_selector);
-    this.shaders[id] = {
-      shader,
-      target,
-      arg,
-      id: '--' + id,
-      cell: cell_selector
-    };
-    return '${' + id + '}';
-  }
-
-  compose_pattern(code, { x, y, z }, arg, selector) {
-    let id = unique_id('pattern');
-    let cell_selector = cell_id(x, y, z);
-    let target = this.get_target(selector, cell_selector);
-    this.pattern[id] = {
-      code,
-      target,
+    this[is_shader ? 'shaders' : 'pattern'][id] = {
+      [is_shader ? 'shader' : 'code']: source,
+      target: this.get_target(selector, cell_selector),
       arg,
       id: '--' + id,
       cell: cell_selector
@@ -405,11 +385,7 @@ class Rules {
   }
 
   inject_variables(value, count) {
-    let group = Object.assign({},
-      this.vars['host'],
-      this.vars['container'],
-      this.vars[count]
-    );
+    let group = this.scoped_vars(count);
     let variables = [];
     for (let [name, key] of Object.entries(group)) {
       variables.push(`${name}: ${key};`);
@@ -772,11 +748,7 @@ class Rules {
   pre_compose_rule(token, _coords, selector) {
     let coords = Object.assign({}, _coords);
     let prop = token.property;
-    let context = Object.assign({},
-      this.vars['host'],
-      this.vars['container'],
-      this.vars[coords.count],
-    );
+    let context = this.scoped_vars(coords.count);
     if (/^\-\-/.test(prop)) {
       let value = this.get_composed_value(token.value, coords, context, selector).value;
       this.compose_vars(_coords, selector, prop, value);
