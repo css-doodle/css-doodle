@@ -23,6 +23,7 @@ function is_image_value(value) {
 }
 
 const NO_SPACE = { noSpace: true };
+const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
 const static_args = new WeakMap();
 
 function static_argument(argument) {
@@ -83,13 +84,7 @@ class Rules {
     this.seed = null;
     this.is_grid_set = false;
     this.is_gap_set = false;
-    this.coords = [];
-    this.doodles = {};
-    this.pattern = {};
-    this.shaders = {};
-    this.vars = {};
     this.uniforms = {};
-    this.content = {};
     this.skips = new WeakSet();
     this.memo = new WeakMap();
     this.reset();
@@ -121,24 +116,20 @@ class Rules {
   add_rule(selector, rule) {
     let rules = this.rules.get(selector);
     if (!rules) {
-      rules = [];
-      this.rules.set(selector, rules);
+      this.rules.set(selector, rules = []);
     }
     if (!rule) {
-      return false;
+      return;
     }
     if (selector === ':top:' || selector === ':gf:') {
       if (typeof rule === 'string') {
-        let seen = this.rule_keys[selector];
-        if (!seen) {
-          seen = this.rule_keys[selector] = new Set();
-        }
+        let seen = this.rule_keys[selector] ??= new Set();
         if (seen.has(rule)) {
-          return false;
+          return;
         }
         seen.add(rule);
       } else if (rules.includes(rule)) {
-        return false;
+        return;
       }
     }
     if (Array.isArray(rule)) {
@@ -162,7 +153,7 @@ class Rules {
     let input = [];
     for (let arg of args) {
       let type = typeof arg.value;
-      if (!arg.cluster && ((type === 'number' || type === 'string'))) {
+      if (!arg.cluster && (type === 'number' || type === 'string')) {
         input.push(...parse_value_group(arg.value, NO_SPACE));
       }
       else if (typeof arg === 'function') {
@@ -203,19 +194,12 @@ class Rules {
     return pseudo ? (base + pseudo) : base;
   }
 
-  is_composable(name) {
-    return name === 'doodle' || name === 'shaders' || name === 'pattern';
-  }
-
   read_var(value, coords, contextVariable) {
     let group = this.scoped_vars(coords.count, contextVariable);
     if (group[value] !== undefined) {
       let result = String(group[value]).trim();
-      if (result[0] == '(') {
-        let last = result[result.length - 1];
-        if (last === ')') {
-          result = result.substring(1, result.length - 1);
-        }
+      if (result.startsWith('(') && result.endsWith(')')) {
+        result = result.slice(1, -1);
       }
       return result.replace(/;+$/g, '');
     }
@@ -247,16 +231,17 @@ class Rules {
     let fname = node.name.slice(1);
     let fn = find_func(fname);
     if (typeof fn !== 'function') {
-      return { literal: node.name };
+      // unrecognized functions read as literal text
+      return { value: node.name };
     }
     this.check_uniforms(fname);
-    if (this.is_composable(fname)) {
+    if (COMPOSABLE.has(fname)) {
       let composed = this.compose_composable(fname, node, coords, selector);
       if (composed !== undefined) {
-        return { composed };
+        return { value: composed };
       }
       if (!in_argument) {
-        return { composed: '' };
+        return { value: '' };
       }
     }
     coords.position = node.position;
@@ -272,7 +257,7 @@ class Rules {
     if (output && output.gf) {
       this.add_rule(':gf:', output.value);
     }
-    return { output };
+    return { value: get_value(output), extra: output?.extra };
   }
 
   compose_argument(argument, coords, extra = [], parent, contextVariable, selector) {
@@ -293,10 +278,7 @@ class Rules {
         return arg.value;
       }
       if (arg.type === 'func') {
-        let evaluated = this.evaluate_func(arg, coords, contextVariable, selector, extra, true);
-        if (evaluated.literal !== undefined) return evaluated.literal;
-        if (evaluated.composed !== undefined) return evaluated.composed;
-        return get_value(evaluated.output);
+        return this.evaluate_func(arg, coords, contextVariable, selector, extra, true).value;
       }
     });
 
@@ -395,17 +377,9 @@ class Rules {
       }
       if (val.type === 'func') {
         let evaluated = this.evaluate_func(val, coords, contextVariable, selector, [], false);
-        if (evaluated.literal !== undefined) {
-          output += evaluated.literal;
-        }
-        else if (evaluated.composed !== undefined) {
-          output += evaluated.composed;
-        }
-        else if (!is_nil(evaluated.output)) {
-          output += get_value(evaluated.output);
-          if (evaluated.output.extra) {
-            extra = evaluated.output.extra;
-          }
+        output += evaluated.value;
+        if (evaluated.extra) {
+          extra = evaluated.extra;
         }
       }
     }
@@ -595,6 +569,7 @@ class Rules {
               doodles: this.doodles
             }
           })(this.content[key] || '');
+          break;
         }
         case 'seed': {
           rule = '';
@@ -794,13 +769,10 @@ class Rules {
           let name = token.name.slice(1);
           let fn = Selector[name];
           if (fn) {
-            let args = [];
-            let firstGroup = token.segments.find(n => n.arguments);
-            if (firstGroup && firstGroup.arguments) {
-              args = firstGroup.arguments.map(arg => {
-                return this.compose_argument(arg, coords);
-              });
-            }
+            let group = token.segments.find(n => n.arguments);
+            let args = group
+              ? group.arguments.map(arg => this.compose_argument(arg, coords))
+              : [];
             coords.position = token.position;
             let cond = this.apply_func(fn, coords, args, name);
             if (token.segments && token.segments[0] && token.segments[0].keyword === 'not') {
@@ -857,10 +829,8 @@ class Rules {
       } else if (selector === ':gf:') {
         this.styles.gf = rule;
       } else {
-        let target = is_host_selector(selector) ? 'host' : 'cells';
-        if (selector === 'b') {
-          target = 'backdrop';
-        }
+        let target = (selector === 'b') ? 'backdrop'
+          : is_host_selector(selector) ? 'host' : 'cells';
         let value = join(rule).trim();
         if (value.length) {
           let name = (target === 'host') ? `${selector},.host` : selector;
@@ -965,32 +935,29 @@ export default function generate_css(tokens, grid_size, seed_value, max_grid, se
   rules.random = R.random;
   rules.reset();
 
+  let count = 0;
+  function compose_cell(x, y, z) {
+    rules.compose({
+      x, y, z,
+      count: ++count, grid: grid_size, context, extra: [],
+      rand, pick, shuffle,
+      random: R.random, seed,
+      max_grid,
+      upextra,
+      rules,
+    });
+  }
+
   if (grid_size.z == 1) {
-    for (let y = 1, count = 0; y <= grid_size.y; ++y) {
+    for (let y = 1; y <= grid_size.y; ++y) {
       for (let x = 1; x <= grid_size.x; ++x) {
-        rules.compose({
-          x, y, z: 1,
-          count: ++count, grid: grid_size, context, extra: [],
-          rand, pick, shuffle,
-          random: R.random, seed,
-          max_grid,
-          upextra,
-          rules,
-        });
+        compose_cell(x, y, 1);
       }
     }
   }
   else {
-    for (let z = 1, count = 0; z <= grid_size.z; ++z) {
-      rules.compose({
-        x: 1, y: 1, z,
-        count: ++count, grid: grid_size, context, extra: [],
-        rand, pick, shuffle,
-        random: R.random, seed,
-        max_grid,
-        rules,
-        upextra,
-      });
+    for (let z = 1; z <= grid_size.z; ++z) {
+      compose_cell(1, 1, z);
     }
   }
   return rules.output();
