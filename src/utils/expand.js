@@ -1,4 +1,4 @@
-import { memo } from '../cache.js';
+import { memo } from './cache.js';
 
 function* range(start, end) {
   let from = start.charCodeAt(0);

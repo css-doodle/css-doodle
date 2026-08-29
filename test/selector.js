@@ -1,7 +1,7 @@
 import test, { beforeEach, describe } from 'node:test';
 
 import compare from './_compare.js';
-import selector from '../src/selector.js';
+import selector from '../src/core/selector.js';
 
 describe('selector logic', () => {
 

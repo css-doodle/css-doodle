@@ -12,7 +12,7 @@ import create_animation from './utils/create-animation.js';
 
 import { get_variable, get_all_variables } from './utils/variables.js';
 import { NS, NSXHtml } from './utils/svg.js';
-import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
+import { utime, UTime, umousex, umousey, uwidth, uheight } from './core/uniforms.js';
 import { cell_id, is_nil, get_png_name, cache_image, is_safari, un_entity, debounce } from './utils/index.js';
 
 import { css } from './utils/tagged-template.js';

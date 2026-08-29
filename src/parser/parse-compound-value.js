@@ -1,4 +1,4 @@
-import { cache } from '../cache.js';
+import { cache } from '../utils/cache.js';
 import { iterator, scan } from './tokenizer.js';
 
 const memo = new Map();

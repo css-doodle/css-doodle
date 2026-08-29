@@ -33,7 +33,7 @@ const new_generate = (await import('../../src/generator/css.js')).default;
 // The memo() cache (e.g. shape-function) is a module-level singleton shared
 // by both function.js snapshots; clear it around each generate so values
 // cached by one pipeline never serve the other.
-const { cache } = await import('../../src/cache.js');
+const { cache } = await import('../../src/utils/cache.js');
 function fresh(generate, ...args) {
   cache.clear();
   return generate(...args);

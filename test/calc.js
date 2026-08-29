@@ -1,6 +1,6 @@
 import test from 'node:test';
 
-import calc from '../src/calc.js';
+import calc from '../src/core/calc.js';
 import compare from './_compare.js';
 
 compare.use(calc);

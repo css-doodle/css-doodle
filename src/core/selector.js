@@ -1,6 +1,6 @@
 import calc from './calc.js';
-import parse_linear_expr from './parser/parse-linear-expr.js';
-import { add_alias, cell_metrics } from './utils/index.js';
+import parse_linear_expr from '../parser/parse-linear-expr.js';
+import { add_alias, cell_metrics } from '../utils/index.js';
 
 function odd(n) {
   return n % 2 !== 0;

@@ -1,12 +1,12 @@
-import parse_value_group from './parser/parse-value-group.js';
-import parse_grid from './parser/parse-grid.js';
-import generate_shape from './generator/shapes.js';
+import parse_value_group from '../parser/parse-value-group.js';
+import parse_grid from '../parser/parse-grid.js';
+import generate_shape from '../generator/shapes.js';
 
 import { is_preset, get_preset } from './preset-size.js';
 
-import { add_alias, is_empty } from './utils/index.js';
-import { memo } from './cache.js';
-import { css } from './utils/tagged-template.js';
+import { add_alias, is_empty } from '../utils/index.js';
+import { memo } from '../utils/cache.js';
+import { css } from '../utils/tagged-template.js';
 
 const iw = '--_cell-width';
 const ih = '--_cell-height';

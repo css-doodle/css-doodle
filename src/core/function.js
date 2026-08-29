@@ -1,26 +1,26 @@
-import parse_value_group from './parser/parse-value-group.js';
-import parse_svg from './parser/parse-svg.js';
-import parse_svg_path from './parser/parse-svg-path.js';
-import parse_compound_value from './parser/parse-compound-value.js';
+import parse_value_group from '../parser/parse-value-group.js';
+import parse_svg from '../parser/parse-svg.js';
+import parse_svg_path from '../parser/parse-svg-path.js';
+import parse_compound_value from '../parser/parse-compound-value.js';
 
-import generate_svg from './generator/svg.js';
-import generate_shape from './generator/shapes.js';
-import generate_svg_gradient from './generator/svg-gradient.js';
+import generate_svg from '../generator/svg.js';
+import generate_shape from '../generator/shapes.js';
+import generate_svg_gradient from '../generator/svg-gradient.js';
 
-import Noise from './lib/noise.js';
+import Noise from '../lib/noise.js';
 import calc from './calc.js';
-import { memo } from './cache.js';
+import { memo } from '../utils/cache.js';
 
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
-import { create_svg_url, normalize_svg } from './utils/svg.js';
-import { by_unit, by_charcode } from './utils/transform.js';
-import expand from './utils/expand.js';
-import Stack from './utils/stack.js';
-import get_named_arguments from './utils/get-named-arguments.js';
-import { cell_id, cell_metrics, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from './utils/index.js';
+import { create_svg_url, normalize_svg } from '../utils/svg.js';
+import { by_unit, by_charcode } from '../utils/transform.js';
+import expand from '../utils/expand.js';
+import Stack from '../utils/stack.js';
+import get_named_arguments from '../utils/get-named-arguments.js';
+import { cell_id, cell_metrics, is_letter, is_nil, is_empty, add_alias, unique_id, lerp, lazy, clamp, sequence, get_value, last } from '../utils/index.js';
 import { getEasingFunction } from './easing.js';
-import { css } from './utils/tagged-template.js';
+import { css } from '../utils/tagged-template.js';
 
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
 const RE_OP_SUFFIX = /[\+\*\-\/%]$/;

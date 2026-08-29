@@ -1,4 +1,4 @@
-import { is_nil } from './utils/index.js';
+import { is_nil } from './index.js';
 
 class CacheValue {
   constructor(limit = 16384) {

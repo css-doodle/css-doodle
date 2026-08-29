@@ -1,11 +1,11 @@
-import Func from '../function.js';
-import Property from '../property.js';
-import Selector from '../selector.js';
+import Func from '../core/function.js';
+import Property from '../core/property.js';
+import Selector from '../core/selector.js';
 import parse_value_group from '../parser/parse-value-group.js';
 
-import calc from '../calc.js';
+import calc from '../core/calc.js';
 import seedrandom from '../lib/seedrandom.js';
-import { utime, UTime } from '../uniforms.js';
+import { utime, UTime } from '../core/uniforms.js';
 
 import { cell_id, is_nil, get_value, lerp, unique_id, join, make_array, remove_empty_values } from '../utils/index.js';
 import { css } from '../utils/tagged-template.js';

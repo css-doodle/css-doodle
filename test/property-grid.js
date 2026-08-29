@@ -1,6 +1,6 @@
 import test from 'node:test';
 
-import property from '../src/property.js';
+import property from '../src/core/property.js';
 import compare from './_compare.js';
 
 compare.use(input => {

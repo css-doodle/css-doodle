@@ -1,4 +1,4 @@
-import { cache as global_cache } from '../cache.js';
+import { cache as global_cache } from '../utils/cache.js';
 import { scan, iterator } from './tokenizer.js';
 
 const commands = 'MmLlHhVvCcSsQqTtAaZz';

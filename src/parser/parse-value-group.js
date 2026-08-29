@@ -1,5 +1,5 @@
 import { is_empty } from '../utils/index.js';
-import { cache } from '../cache.js';
+import { cache } from '../utils/cache.js';
 import { scan, iterator } from './tokenizer.js';
 
 function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {

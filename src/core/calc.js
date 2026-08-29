@@ -1,6 +1,6 @@
-import { is_invalid_number, last } from './utils/index.js';
-import { scan } from './parser/tokenizer.js';
-import { cache } from './cache.js';
+import { is_invalid_number, last } from '../utils/index.js';
+import { scan } from '../parser/tokenizer.js';
+import { cache } from '../utils/cache.js';
 
 const defaultContext = {
   'π': Math.PI,
