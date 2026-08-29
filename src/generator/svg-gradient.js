@@ -7,6 +7,13 @@ export default function create_svg_gradient(type, args) {
   let transform = '';
   let colorStops = [];
 
+  if (values.length == 1 && typeof values[0] === 'string' && values[0].indexOf(',') > -1) {
+    let groups = parse_value_group(values[0], { noSpace: true });
+    if (groups.length > 1) {
+      values = groups;
+    }
+  }
+
   if (values.length > 0) {
     let first = values[0];
     if (/^-?[\d.]/.test(first)) {
@@ -14,13 +21,6 @@ export default function create_svg_gradient(type, args) {
       transform = `gradientTransform: rotate(${angle});`;
     } else if (/^(rotate|translate|scale|skewX|skewY|matrix)\s*\(/.test(first)) {
       transform = `gradientTransform: ${first};`;
-    }
-
-    if (values.length == 1 && first.indexOf(',') > -1) {
-       let groups = parse_value_group(first, { noSpace: true });
-       if (groups.length > 1) {
-         values = groups;
-       }
     }
   }
 
