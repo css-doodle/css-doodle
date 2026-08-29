@@ -15,6 +15,8 @@ function match_any(value, exprs) {
   return exprs.some(expr => compare(expr, value).value);
 }
 
+// n >= 1 selects that many distinct cells, drawn once per call site
+// (cached in `context` under `counter`); n < 1 is a per-cell probability
 function random_cell(context, counter, grid, count, random, n) {
   if (n >= 1) {
     if (!context[counter]) {
@@ -25,6 +27,9 @@ function random_cell(context, counter, grid, count, random, n) {
   return random() < n;
 }
 
+// one nth-style expression against a value: even/odd, bare `n` matches
+// all, anything else reads as an+b; with x and y given the parity rules
+// switch to checkerboard mode over x+y instead
 function compare(rule, value, x, y) {
   let local = x == undefined || y == undefined;
   if (rule === 'even') {
@@ -50,6 +55,7 @@ function compare(rule, value, x, y) {
   }
 }
 
+/* the variable scope for arithmetic selector expressions */
 function calc_context({ x, y, count, grid, random }) {
   return {
     x, X: grid.x,
@@ -60,6 +66,7 @@ function calc_context({ x, y, count, grid, random }) {
   };
 }
 
+// n distinct integers from 1..N, partial Fisher-Yates over a sparse map
 function random_n(N, n, random) {
   if (n > N) n = N;
   const map = new Map();
@@ -74,83 +81,105 @@ function random_n(N, n, random) {
   return result;
 }
 
-export default add_alias({
+/*
+ * Cell selectors: the `@name(...) { ... }` blocks in the doodle source.
+ */
+const Selector = {};
 
-  at({ x, y }) {
-    return (x1, y1) => (x == x1 && y == y1);
-  },
+// @at(x, y): the exact cell
 
-  nth({ count }) {
-    return (...exprs) => match_any(count, exprs);
-  },
+Selector.at = ({ x, y }) => {
+  return (x1, y1) => (x == x1 && y == y1);
+};
 
-  y({ y }) {
-    return (...exprs) => match_any(y, exprs);
-  },
+// @nth / @x / @y: nth-style expressions (an+b, even, odd) against the
+// cell index, column, or row; any matching argument wins
 
-  x({ x }) {
-    return (...exprs) => match_any(x, exprs);
-  },
+Selector.nth = ({ count }) => {
+  return (...exprs) => match_any(count, exprs);
+};
 
-  even({ x, y }) {
-    return _ => odd(x + y);
-  },
+Selector.y = ({ y }) => {
+  return (...exprs) => match_any(y, exprs);
+};
 
-  odd({ x, y }) {
-    return _ => even(x + y);
-  },
+Selector.x = ({ x }) => {
+  return (...exprs) => match_any(x, exprs);
+};
 
-  random({ random, count, x, y, grid, context, position }) {
-    let counter = 'random-cells' + position;
-    return (ratio = .5) => {
-      let value = Number(ratio);
-      if (Number.isNaN(value)) {
-        value = calc('(0 + ' + ratio + ')', calc_context({ x, y, count, grid, random }));
-      }
-      if (value >= grid.count) {
-        return true;
-      }
-      if (value <= 0) {
-        return false;
-      }
-      return random_cell(context, counter, grid, count, random, value);
+// @even / @odd: checkerboard parity over x+y — coords are 1-based,
+// so the top-left cell lands on the odd square
+
+Selector.even = ({ x, y }) => {
+  return _ => odd(x + y);
+};
+
+Selector.odd = ({ x, y }) => {
+  return _ => even(x + y);
+};
+
+// @random(ratio): ratio < 1 is a per-cell probability (default .5),
+// ratio >= 1 a count of distinct cells; expressions are calc-ed with
+// the cell variables in scope
+
+Selector.random = ({ random, count, x, y, grid, context, position }) => {
+  let counter = 'random-cells' + position;
+  return (ratio = .5) => {
+    let value = Number(ratio);
+    if (Number.isNaN(value)) {
+      value = calc('(0 + ' + ratio + ')', calc_context({ x, y, count, grid, random }));
     }
-  },
-
-  match({ count, grid, x, y, random }) {
-    return expr => {
-      return !!calc('(' + expr + ')', calc_context({ x, y, count, grid, random }));
+    if (value >= grid.count) {
+      return true;
     }
-  },
+    if (value <= 0) {
+      return false;
+    }
+    return random_cell(context, counter, grid, count, random, value);
+  }
+};
 
-  cell({ count, grid, x, y, random, context, position }) {
-    let counter = 'random-cells' + position;
-    return (...args) => {
-      if (!args.length) {
-        return true;
+// @match(expr): an arbitrary arithmetic expression over the cell
+// variables (x/y/i and friends, dx..db metrics)
+
+Selector.match = ({ count, grid, x, y, random }) => {
+  return expr => {
+    return !!calc('(' + expr + ')', calc_context({ x, y, count, grid, random }));
+  }
+};
+
+// @cell(...): mixed arguments — nth-style expressions against the cell
+// index, `random n`, or arithmetic expressions; any match wins, and no
+// arguments match every cell
+
+Selector.cell = ({ count, grid, x, y, random, context, position }) => {
+  let counter = 'random-cells' + position;
+  return (...args) => {
+    if (!args.length) {
+      return true;
+    }
+    let result = args.map(arg => {
+      let { value, error } = compare(arg, count, x, y);
+      if (!error) {
+        return value;
       }
-      let result = args.map(arg => {
-        let { value, error } = compare(arg, count, x, y);
-        if (!error) {
-          return value;
+      if (arg.startsWith('random')) {
+        let num = arg.slice(6).trim();
+        if (!num) {
+          return random() < 0.5;
         }
-        if (arg.startsWith('random')) {
-          let num = arg.slice(6).trim();
-          if (!num) {
-            return random() < 0.5;
-          }
-          num = Number(num);
-          if (!Number.isNaN(num)) {
-            return random_cell(context, counter, grid, count, random, num);
-          }
+        num = Number(num);
+        if (!Number.isNaN(num)) {
+          return random_cell(context, counter, grid, count, random, num);
         }
-        return !!calc('(' + arg + ')', calc_context({ x, y, count, grid, random }));
-      });
-      return result.some(Boolean);
-    }
-  },
+      }
+      return !!calc('(' + arg + ')', calc_context({ x, y, count, grid, random }));
+    });
+    return result.some(Boolean);
+  }
+};
 
-}, {
+export default add_alias(Selector, {
   col: 'x',
   row: 'y',
 });
