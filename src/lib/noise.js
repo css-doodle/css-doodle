@@ -23,6 +23,10 @@ function lerp(t, a, b) {
   return a + t * (b - a);
 }
 
+function fade(t) {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
 function shuffle(arr, random) {
   let ret = [...arr];
   let m = arr.length;
@@ -49,14 +53,15 @@ export default class Perlin {
     this.p = [].concat(shuffled, shuffled);
   }
 
-  noise(x, y, z) {
+  noise(x, y, z = 0) {
     let { p } = this;
+    let fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
     // Find unit cube that contains point.
-    let [X, Y, Z] = [x, y, z].map(n => Math.floor(n) & 255);
+    let X = fx & 255, Y = fy & 255, Z = fz & 255;
     // Find relative x, y, z of point in cube.
-    [x, y, z] = [x, y, z].map(n => n - Math.floor(n));
+    x -= fx; y -= fy; z -= fz;
     // Compute fade curves for each of x, y, z.
-    let [u, v, w] = [x, y, z].map(n => n * n * n * (n * (n * 6 - 15) + 10));
+    let u = fade(x), v = fade(y), w = fade(z);
     // hash coordinates of the 8 cube corners.
     let A = p[X  ]+Y, AA = p[A]+Z, AB = p[A+1]+Z,
         B = p[X+1]+Y, BA = p[B]+Z, BB = p[B+1]+Z;
