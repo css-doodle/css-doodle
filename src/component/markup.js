@@ -33,7 +33,7 @@ export function getBasicStyles(grid) {
       gap: inherit;
       grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
-    b {
+    cssd-b {
       position: absolute;
       inset: 0;
       pointer-events: none;
@@ -58,12 +58,11 @@ export function getBasicStyles(grid) {
 
 function createCell(x, y, z, content, child = '') {
   let id = cellId(x, y, z);
-  let tail = child ?? '';
   let head = content['#' + id] ?? '';
-  if (head.startsWith('${shader')) {
+  if (/^\$\{(shader|pattern)/.test(head)) {
     head = '';
   }
-  return `<cssd-cell id="${id}" part="cell">${head}${tail}</cssd-cell>`;
+  return `<cssd-cell id="${id}" part="cell">${head}${child}</cssd-cell>`;
 }
 
 export function createGrid(gridObj, compiled) {
@@ -86,7 +85,7 @@ export function createGrid(gridObj, compiled) {
   }
   let html = `<cssd-grid part="grid">${result}</cssd-grid>`;
   if (styles.backdrop) {
-    html += '<b></b>'
+    html += '<cssd-b></cssd-b>'
   }
   return html;
 }

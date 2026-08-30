@@ -81,7 +81,7 @@ export default function gridStyleRules({
     add(':container', `gap: ${gap};`);
   }
   if (backdropFilter) {
-    add('b', css`
+    add('cssd-b', css`
       backdrop-filter: ${backdropFilter};
     `);
   }

@@ -935,7 +935,7 @@ class Rules {
       } else if (selector === ':gf:') {
         this.styles.gf = rule;
       } else {
-        let target = (selector === 'b') ? 'backdrop'
+        let target = (selector === 'cssd-b') ? 'backdrop'
           : isHostSelector(selector) ? 'host' : 'cells';
         let value = join(rule).trim();
         if (value.length) {
