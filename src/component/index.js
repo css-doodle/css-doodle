@@ -4,7 +4,7 @@ import generate_css from '../generator/css.js';
 import generate_png from '../generator/svg-to-png.js';
 
 import { get_rgba_color, get_variable, get_all_variables } from './computed-style.js';
-import { NS, NSXHtml } from '../utils/svg.js';
+import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
 import { is_nil } from '../utils/type.js';
 import { is_safari } from '../utils/browser.js';
 import { css } from '../utils/tagged-template.js';
@@ -31,7 +31,7 @@ function mount_filter_defs(parent, markup, slot) {
   }
   if (!holder) {
     holder = document.createElement('cssd-filters');
-    holder.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none');
+    holder.setAttribute('style', FilterHolderStyle);
     if (slot) {
       holder.setAttribute('slot', slot);
     }

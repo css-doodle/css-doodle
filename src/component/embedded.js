@@ -12,7 +12,7 @@ import generate_pattern from '../generator/pattern.js';
 import generate_png from '../generator/svg-to-png.js';
 
 import create_animation from './animation.js';
-import { NS, NSXHtml } from '../utils/svg.js';
+import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
 import { utime, UTime } from '../core/uniforms.js';
 import { cache_image, is_safari } from '../utils/browser.js';
 import { debounce } from '../utils/fn.js';
@@ -85,7 +85,7 @@ export function doodle_to_image(host, code, options, fn) {
   let grid_container = create_grid(grid, compiled);
   let filter_defs = Object.values(compiled.filters).join('');
   if (filter_defs) {
-    filter_defs = `<div style="position:absolute;width:0;height:0;overflow:hidden">${filter_defs}</div>`;
+    filter_defs = `<div style="${FilterHolderStyle}">${filter_defs}</div>`;
   }
 
   let size = (options.width && options.height)
