@@ -4,7 +4,7 @@ import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
 import createRandom from '../core/random.js';
-import { utime, UTime } from '../core/uniforms.js';
+import { utime, UTime, timePrefix } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
 import { cellId } from '../utils/cell.js';
@@ -16,7 +16,6 @@ import {
 } from '../utils/selector.js';
 import { css } from '../utils/tagged-template.js';
 
-const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
 
 function isImageValue(value) {
   return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
@@ -232,7 +231,7 @@ function isStaticRule(token) {
 
 function ruleFlags(prop) {
   return {
-    animation: /^animation(\-name)?$/.test(prop),
+    animation: /^animation(-[a-z]+)*$/.test(prop),
     size: prop === 'width' || prop === 'height',
     bgImage: /^background(\-image)?$/.test(prop),
     var: prop.startsWith('--'),
@@ -554,7 +553,7 @@ class Rules {
       this.props.hasAnimation = true;
 
       if (isHostSelector(selector)) {
-        let prefix = utime['n'] + ',' + UTime['n'];
+        let prefix = timePrefix[prop];
         if (prefix && value) {
           value = prefix + ',' + value;
         }
@@ -952,7 +951,7 @@ class Rules {
       let Un = UTime.name;
       this.styles.container += css`
         :host,.host {
-          animation:${utime.animation()},${UTime.animation(DELAY + 'ms')};
+          animation:${timePrefix.animation};
         }
       `;
       this.styles.keyframes += css`
@@ -976,7 +975,9 @@ class Rules {
     });
 
     let { keyframes, host, container, cells, backdrop, top, gf } = this.styles;
-    let main = keyframes + host + container;
+    /* container before host, so a host animation with its prefixed
+     * time-uniform entries overrides the standalone time animation */
+    let main = keyframes + container + host;
 
     return {
       props: this.props,

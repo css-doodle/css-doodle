@@ -1,16 +1,27 @@
-function createTimeUniform(name) {
-  let ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
-  let steps = ticks / (1000 / 120);
-  let aname = `${name}-animation`;
+const ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
+const steps = ticks / (1000 / 120);
+
+/* time elapsed since the beginning of the day */
+const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
+
+function createTimeUniform(name, delay) {
   return {
     name, ticks,
-    'animation-name': aname,
-    animation: (delay='0s') => `${ticks}ms steps(${steps}) ${delay} infinite ${aname}`
+    'animation-name': `${name}-animation`,
+    animation: `${ticks}ms steps(${steps}) ${delay} infinite ${name}-animation`
   }
 }
 
-export const utime = createTimeUniform('cssd-utime');
-export const UTime = createTimeUniform('cssd-UTime');
+export const utime = createTimeUniform('cssd-utime', '0s');
+export const UTime = createTimeUniform('cssd-UTime', DELAY + 'ms');
+
+export const timePrefix = {
+  'animation': `${utime.animation},${UTime.animation}`,
+  'animation-name': `${utime['animation-name']},${UTime['animation-name']}`,
+  'animation-duration': `${ticks}ms,${ticks}ms`,
+  'animation-timing-function': `steps(${steps}),steps(${steps})`,
+  'animation-delay': `0s,${DELAY}ms`,
+};
 
 export const umousex = {
   name: 'cssd-umousex',

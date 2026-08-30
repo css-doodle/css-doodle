@@ -2,7 +2,7 @@ import { utime, UTime, umousex, umousey, uwidth, uheight } from '../core/uniform
 
 export function bindUniforms(host, { time, mousex, mousey, mouse, width, height }) {
   if (time) {
-    regUtime(host);
+    regUtime();
   }
   if (mousex || mousey || mouse) {
     regUmouse(host, mousex, mousey, mouse);
@@ -10,14 +10,17 @@ export function bindUniforms(host, { time, mousex, mousey, mouse, width, height 
     offUmouse(host);
   }
   if (width || height) {
-    regUsize(host, width, height);
+    regUsize(host);
   } else {
     offUsize(host);
   }
 }
 
-function regUtime(host) {
-  if (!host.isUtimeSet) {
+/* registered per document, not per host */
+let isUtimeSet = false;
+
+function regUtime() {
+  if (!isUtimeSet) {
     try {
       CSS.registerProperty({
         name: '--' + utime.name,
@@ -32,14 +35,19 @@ function regUtime(host) {
         inherits: true
       });
     } catch (e) {}
-    host.isUtimeSet = true;
+    isUtimeSet = true;
   }
 }
 
 function regUmouse(host, mousex, mousey, mouse) {
-  if (!host.umouseFn) {
+  /* the handler reads the flags from the host so that
+   * an update with different uniforms takes effect */
+  host.umouseFlags = { mousex, mousey, mouse };
+  let init = !host.umouseFn;
+  if (init) {
     host.umouseFn = e => {
       let data = e.detail || e;
+      let { mousex, mousey, mouse } = host.umouseFlags;
       if (mouse) {
         host._umouse = { x: data.offsetX, y: data.offsetY };
       }
@@ -49,10 +57,10 @@ function regUmouse(host, mousex, mousey, mouse) {
       }
     }
     host.addEventListener('pointermove', host.umouseFn);
+  }
+  if (init || (mouse && !host._umouse)) {
     let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0 }});
     host.dispatchEvent(event);
-  } else if (!(mousex || mousey || mouse)) {
-    offUmouse(host);
   }
 }
 
@@ -62,22 +70,19 @@ function offUmouse(host) {
     host.style.removeProperty('--' + umousey.name);
     host.removeEventListener('pointermove', host.umouseFn);
     host.umouseFn = null;
+    host.umouseFlags = null;
     delete host._umouse;
   }
 }
 
-function regUsize(host, width, height) {
+function regUsize(host) {
   if (!host.usizeObserver) {
     host.usizeObserver = new ResizeObserver(() => {
       let box = host.getBoundingClientRect();
-      if (width || height) {
-        host.style.setProperty('--' + uwidth.name, box.width);
-        host.style.setProperty('--' + uheight.name, box.height);
-      }
+      host.style.setProperty('--' + uwidth.name, box.width);
+      host.style.setProperty('--' + uheight.name, box.height);
     });
     host.usizeObserver.observe(host);
-  } else if (!(width || height)) {
-    offUsize(host);
   }
 }
 
