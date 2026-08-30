@@ -4,13 +4,13 @@ import { lerp } from '../utils/math.js';
 /**
  * A seeded random source plus the helpers built on top of it.
  * `rand`/`pick`/`shuffle` always read the current generator, so
- * `update_random` affects them mid-run; `random` exposes the
+ * `updateRandom` affects them mid-run; `random` exposes the
  * generator active at read time.
  */
-export default function create_random(seed) {
+export default function createRandom(seed) {
   let random = (typeof seed === 'function') ? seed : seedrandom(String(seed));
 
-  function update_random(seed) {
+  function updateRandom(seed) {
     random = seedrandom(String(seed));
   }
 
@@ -39,7 +39,7 @@ export default function create_random(seed) {
   }
 
   return {
-    rand, pick, shuffle, update_random,
+    rand, pick, shuffle, updateRandom,
     get random() { return random; },
   };
 }

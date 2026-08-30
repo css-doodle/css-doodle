@@ -3,7 +3,7 @@ import { css } from '../utils/tagged-template.js';
 /**
  * Map the transformed @grid options to static [selector, rule] pairs.
  */
-export default function grid_style_rules({
+export default function gridStyleRules({
   fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp,
   flex, p3d, border, borderLegacy, gap, backdropFilter
 }) {

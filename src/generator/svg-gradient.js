@@ -1,14 +1,14 @@
-import parse_value_group from '../parser/parse-value-group.js';
-import parse_direction from '../parser/parse-direction.js';
-import { get_value } from '../utils/type.js';
+import parseValueGroup from '../parser/parse-value-group.js';
+import parseDirection from '../parser/parse-direction.js';
+import { getValue } from '../utils/type.js';
 
-export default function create_svg_gradient(type, args) {
-  let values = args.map(input => get_value(input()));
+export default function createSvgGradient(type, args) {
+  let values = args.map(input => getValue(input()));
   let transform = '';
   let colorStops = [];
 
   if (values.length == 1 && typeof values[0] === 'string' && values[0].indexOf(',') > -1) {
-    let groups = parse_value_group(values[0], { noSpace: true });
+    let groups = parseValueGroup(values[0], { noSpace: true });
     if (groups.length > 1) {
       values = groups;
     }
@@ -17,7 +17,7 @@ export default function create_svg_gradient(type, args) {
   if (values.length > 0) {
     let first = values[0];
     if (/^-?[\d.]/.test(first)) {
-      let { angle } = parse_direction(first);
+      let { angle } = parseDirection(first);
       transform = `gradientTransform: rotate(${angle});`;
     } else if (/^(rotate|translate|scale|skewX|skewY|matrix)\s*\(/.test(first)) {
       transform = `gradientTransform: ${first};`;
@@ -30,7 +30,7 @@ export default function create_svg_gradient(type, args) {
 
   for (let value of values) {
     if (typeof value === 'string') {
-      let [color, offset, opacity] = parse_value_group(value);
+      let [color, offset, opacity] = parseValueGroup(value);
       if (!color) continue;
       colorStops.push({ color, offset, opacity });
     }

@@ -1,12 +1,12 @@
 import test from 'node:test';
 
-import generate_svg from '../src/generator/svg.js';
-import parse_svg from '../src/parser/parse-svg.js';
+import generateSvg from '../src/generator/svg.js';
+import parseSvg from '../src/parser/parse-svg.js';
 
 import compare from './_compare.js';
 
 compare.use(input => {
-  return generate_svg(parse_svg(input));
+  return generateSvg(parseSvg(input));
 });
 
 function trim(input) {

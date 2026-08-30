@@ -1,5 +1,5 @@
 import { scan, iterator, Token } from './tokenizer.js';
-import { is_empty } from '../utils/type.js';
+import { isEmpty } from '../utils/type.js';
 
 function parse(input) {
   let scanOptions = {
@@ -51,7 +51,7 @@ function parse(input) {
       }
     }
     else {
-      if (!is_empty(line) && line != curr.pos[1]) {
+      if (!isEmpty(line) && line != curr.pos[1]) {
         tokens.push(lineBreak());
         line = null;
       }
@@ -65,7 +65,7 @@ function parse(input) {
     }
   }
 
-  if (is_empty(result.fragment)) {
+  if (isEmpty(result.fragment)) {
     result.fragment = joinToken(tokens);
     result.textures = result.textures || [];
   }

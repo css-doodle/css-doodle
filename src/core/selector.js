@@ -1,7 +1,7 @@
 import calc from './calc.js';
-import parse_linear_expr from '../parser/parse-linear-expr.js';
-import { add_alias } from '../utils/fn.js';
-import { cell_metrics } from '../utils/cell.js';
+import parseLinearExpr from '../parser/parse-linear-expr.js';
+import { addAlias } from '../utils/fn.js';
+import { cellMetrics } from '../utils/cell.js';
 
 function odd(n) {
   return n % 2 !== 0;
@@ -11,16 +11,16 @@ function even(n) {
   return n % 2 === 0;
 }
 
-function match_any(value, exprs) {
+function matchAny(value, exprs) {
   return exprs.some(expr => compare(expr, value).value);
 }
 
 // n >= 1 selects that many distinct cells, drawn once per call site
 // (cached in `context` under `counter`); n < 1 is a per-cell probability
-function random_cell(context, counter, grid, count, random, n) {
+function randomCell(context, counter, grid, count, random, n) {
   if (n >= 1) {
     if (!context[counter]) {
-      context[counter] = random_n(grid.count, n, random);
+      context[counter] = randomN(grid.count, n, random);
     }
     return context[counter].includes(count);
   }
@@ -41,7 +41,7 @@ function compare(rule, value, x, y) {
   if (rule === 'n') {
     return { value: true }
   }
-  let { a, b, error } = parse_linear_expr(rule);
+  let { a, b, error } = parseLinearExpr(rule);
   if (error) {
     return { value: false, error }
   }
@@ -56,18 +56,18 @@ function compare(rule, value, x, y) {
 }
 
 /* the variable scope for arithmetic selector expressions */
-function calc_context({ x, y, count, grid, random }) {
+function calcContext({ x, y, count, grid, random }) {
   return {
     x, X: grid.x,
     y, Y: grid.y,
     i: count, I: grid.count,
-    ...cell_metrics(x, y, grid),
+    ...cellMetrics(x, y, grid),
     random,
   };
 }
 
 // n distinct integers from 1..N, partial Fisher-Yates over a sparse map
-function random_n(N, n, random) {
+function randomN(N, n, random) {
   if (n > N) n = N;
   const map = new Map();
   const result = [];
@@ -96,15 +96,15 @@ Selector.at = ({ x, y }) => {
 // cell index, column, or row; any matching argument wins
 
 Selector.nth = ({ count }) => {
-  return (...exprs) => match_any(count, exprs);
+  return (...exprs) => matchAny(count, exprs);
 };
 
 Selector.y = ({ y }) => {
-  return (...exprs) => match_any(y, exprs);
+  return (...exprs) => matchAny(y, exprs);
 };
 
 Selector.x = ({ x }) => {
-  return (...exprs) => match_any(x, exprs);
+  return (...exprs) => matchAny(x, exprs);
 };
 
 // @even / @odd: checkerboard parity over x+y — coords are 1-based,
@@ -127,7 +127,7 @@ Selector.random = ({ random, count, x, y, grid, context, position }) => {
   return (ratio = .5) => {
     let value = Number(ratio);
     if (Number.isNaN(value)) {
-      value = calc('(0 + ' + ratio + ')', calc_context({ x, y, count, grid, random }));
+      value = calc('(0 + ' + ratio + ')', calcContext({ x, y, count, grid, random }));
     }
     if (value >= grid.count) {
       return true;
@@ -135,7 +135,7 @@ Selector.random = ({ random, count, x, y, grid, context, position }) => {
     if (value <= 0) {
       return false;
     }
-    return random_cell(context, counter, grid, count, random, value);
+    return randomCell(context, counter, grid, count, random, value);
   }
 };
 
@@ -144,7 +144,7 @@ Selector.random = ({ random, count, x, y, grid, context, position }) => {
 
 Selector.match = ({ count, grid, x, y, random }) => {
   return expr => {
-    return !!calc('(' + expr + ')', calc_context({ x, y, count, grid, random }));
+    return !!calc('(' + expr + ')', calcContext({ x, y, count, grid, random }));
   }
 };
 
@@ -170,16 +170,16 @@ Selector.cell = ({ count, grid, x, y, random, context, position }) => {
         }
         num = Number(num);
         if (!Number.isNaN(num)) {
-          return random_cell(context, counter, grid, count, random, num);
+          return randomCell(context, counter, grid, count, random, num);
         }
       }
-      return !!calc('(' + arg + ')', calc_context({ x, y, count, grid, random }));
+      return !!calc('(' + arg + ')', calcContext({ x, y, count, grid, random }));
     });
     return result.some(Boolean);
   }
 };
 
-export default add_alias(Selector, {
+export default addAlias(Selector, {
   col: 'x',
   row: 'y',
 });

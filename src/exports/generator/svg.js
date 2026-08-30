@@ -1,9 +1,9 @@
-import generate_css from '../../generator/css.js';
-import parse_css from './../../parser/parse-css.js';
+import generateCss from '../../generator/css.js';
+import parseCss from './../../parser/parse-css.js';
 
 export default function svg(rules) {
-  let result = generate_css(
-    parse_css(`@content: @svg(${rules});`),
+  let result = generateCss(
+    parseCss(`@content: @svg(${rules});`),
     { x: 1, y: 1, z: 1, count: 1, ratio: 1 }
   );
   if (!result) return '';

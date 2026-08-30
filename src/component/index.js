@@ -1,27 +1,27 @@
-import parse_grid from '../parser/parse-grid.js';
+import parseGrid from '../parser/parse-grid.js';
 
-import generate_css from '../generator/css.js';
-import generate_png from '../generator/svg-to-png.js';
+import generateCss from '../generator/css.js';
+import generatePng from '../generator/svg-to-png.js';
 
-import { get_rgba_color, get_variable, get_all_variables } from './computed-style.js';
+import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
 import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
-import { is_nil } from '../utils/type.js';
-import { is_safari } from '../utils/browser.js';
+import { isNil } from '../utils/type.js';
+import { isSafari } from '../utils/browser.js';
 import { css } from '../utils/tagged-template.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
-import { parse_css_cached } from './parse-cache.js';
-import { bind_uniforms } from './uniforms.js';
-import { create_replacer } from './embedded.js';
-import { get_basic_styles, create_grid } from './markup.js';
+import { parseCssCached } from './parse-cache.js';
+import { bindUniforms } from './uniforms.js';
+import { createReplacer } from './embedded.js';
+import { getBasicStyles, createGrid } from './markup.js';
 
-function un_entity(code) {
+function unEntity(code) {
   let textarea = document.createElement('textarea');
   textarea.innerHTML = code;
   return textarea.value;
 }
 
-function mount_filter_defs(parent, markup, slot) {
+function mountFilterDefs(parent, markup, slot) {
   let holder = parent.querySelector(':scope > cssd-filters');
   if (!markup) {
     if (holder) {
@@ -41,8 +41,8 @@ function mount_filter_defs(parent, markup, slot) {
   return holder;
 }
 
-function get_png_name(name) {
-  let prefix = is_nil(name)
+function getPngName(name) {
+  let prefix = isNil(name)
     ? Date.now()
     : String(name).replace(/\.png$/, '');
   return prefix + '.png';
@@ -70,10 +70,10 @@ if (typeof HTMLElement !== 'undefined') {
       this.doodle = this.attachShadow({ mode: 'open' });
       this.animations = [];
       this.observers = new Map();
-      this.shader_renders = new Map();
+      this.shaderRenders = new Map();
       this.extra = {
-        get_variable: name => get_variable(this, name),
-        get_rgba_color: value => get_rgba_color(this.shadowRoot, value),
+        getVariable: name => getVariable(this, name),
+        getRgbaColor: value => getRgbaColor(this.shadowRoot, value),
       };
     }
 
@@ -129,7 +129,7 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     get grid() {
-      return Object.assign({}, this.grid_size);
+      return Object.assign({}, this.gridSize);
     }
 
     set grid(grid) {
@@ -152,15 +152,15 @@ if (typeof HTMLElement !== 'undefined') {
       this.attr('use', use);
     }
 
-    get_max_grid() {
+    getMaxGrid() {
       return this.hasAttribute('experimental') ? 256 : 64;
     }
 
-    get_grid() {
-      return parse_grid(this.attr('grid'), this.get_max_grid());
+    getGrid() {
+      return parseGrid(this.attr('grid'), this.getMaxGrid());
     }
 
-    get_use() {
+    getUse() {
       let use = String(this.attr('use') || '').trim();
       if (/^var\(/.test(use)) {
         use = `@use:${use};`;
@@ -199,7 +199,7 @@ if (typeof HTMLElement !== 'undefined') {
     _get_auto_update_interval(interval) {
       const MIN = 500;
       const DEFAULT = 2000;
-      if (is_nil(interval)) {
+      if (isNil(interval)) {
         interval = this.dataset.interval || this.attr('auto:update') || DEFAULT;
       }
       interval = String(interval).trim();
@@ -218,7 +218,7 @@ if (typeof HTMLElement !== 'undefined') {
 
     autoUpdate(interval) {
       clearInterval(this._auto_update_timer);
-      if (!is_nil(interval)) {
+      if (!isNil(interval)) {
         this.dataset.interval = interval;
       }
       this._auto_update_timer = setInterval(
@@ -235,13 +235,13 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     generate(parsed) {
-      let grid = this.get_grid();
+      let grid = this.getGrid();
       let seed = this.attr('seed') || this.attr('data-seed');
-      if (is_nil(seed)) {
+      if (isNil(seed)) {
         seed = Date.now();
       }
-      let compiled = this.compiled = generate_css(
-        parsed, grid, seed, this.get_max_grid()
+      let compiled = this.compiled = generateCss(
+        parsed, grid, seed, this.getMaxGrid()
       );
       this._seed_value = compiled.seed;
       this._seed_random = compiled.random;
@@ -254,7 +254,7 @@ if (typeof HTMLElement !== 'undefined') {
       }
       this.cleanup();
       let code = this._code || this.innerHTML;
-      let parsed = parse_css_cached(this.get_use() + un_entity(code), this.extra);
+      let parsed = parseCssCached(this.getUse() + unEntity(code), this.extra);
       let compiled = this.generate(parsed);
 
       if (!again) {
@@ -264,12 +264,12 @@ if (typeof HTMLElement !== 'undefined') {
         this.addEventListener('click', this.dispatchCellClick);
       }
 
-      this.grid_size = compiled.grid || this.get_grid();
+      this.gridSize = compiled.grid || this.getGrid();
       this._code = code;
-      /* the source is cleared before build_grid so the filter defs it
+      /* the source is cleared before buildGrid so the filter defs it
        * mounts as light children don't get wiped along with it */
       this.innerHTML = '';
-      this.build_grid(compiled, this.grid_size);
+      this.buildGrid(compiled, this.gridSize);
 
       setTimeout(() => {
         this._rendering = false;
@@ -304,23 +304,23 @@ if (typeof HTMLElement !== 'undefined') {
       this.cleanup();
       // reuse the old rules when called without new code
       if (!styles) {
-        styles = un_entity(this._code);
+        styles = unEntity(this._code);
       }
       this._code = styles;
-      if (!this.grid_size) {
-        this.grid_size = this.get_grid();
+      if (!this.gridSize) {
+        this.gridSize = this.getGrid();
       }
 
       const old = this.compiled;
       const compiled = this.generate(
-        parse_css_cached(this.get_use() + styles, this.extra));
-      const grid = compiled.grid || this.get_grid();
-      const rebuild = this.should_rebuild(compiled, old, grid);
+        parseCssCached(this.getUse() + styles, this.extra));
+      const grid = compiled.grid || this.getGrid();
+      const rebuild = this.shouldRebuild(compiled, old, grid);
 
-      Object.assign(this.grid_size, grid);
+      Object.assign(this.gridSize, grid);
 
       if (rebuild) {
-        this.build_grid(compiled, grid);
+        this.buildGrid(compiled, grid);
       } else {
         this.patch(compiled, old.styles);
       }
@@ -332,7 +332,7 @@ if (typeof HTMLElement !== 'undefined') {
       });
     }
 
-    should_rebuild(compiled, old, grid) {
+    shouldRebuild(compiled, old, grid) {
       if (!old) {
         return true;
       }
@@ -340,7 +340,7 @@ if (typeof HTMLElement !== 'undefined') {
       if (!this.shadowRoot.innerHTML || this.shadowRoot.querySelector('css-doodle')) {
         return true;
       }
-      let { x, y, z } = this.grid_size;
+      let { x, y, z } = this.gridSize;
       if (grid.x !== x || grid.y !== y || grid.z !== z) {
         return true;
       }
@@ -354,51 +354,51 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     /* refresh styles in place, keeping the cell elements */
-    patch(compiled, old_styles) {
-      bind_uniforms(this, compiled.uniforms);
-      let replace = create_replacer(this, compiled);
-      if (compiled.props.has_animation) {
+    patch(compiled, oldStyles) {
+      bindUniforms(this, compiled.uniforms);
+      let replace = createReplacer(this, compiled);
+      if (compiled.props.hasAnimation) {
         // detach animations first so they restart with the new styles
-        this.set_style(old_styles.all.replace(/animation/g, 'x'));
+        this.setStyle(oldStyles.all.replace(/animation/g, 'x'));
         this.reflow();
       }
       if (compiled.styles.gf) {
         loadGoogleFontLink(compiled.styles.gf);
       }
-      this.set_style(replace(
+      this.setStyle(replace(
         compiled.styles.top +
-        get_basic_styles(this.grid_size) +
+        getBasicStyles(this.gridSize) +
         compiled.styles.all
       ));
-      this.mount_filters(compiled.filters);
+      this.mountFilters(compiled.filters);
     }
 
-    build_grid(compiled, grid) {
-      const { has_transition, has_animation } = compiled.props;
+    buildGrid(compiled, grid) {
+      const { hasTransition, hasAnimation } = compiled.props;
       const { uniforms, content, styles } = compiled;
-      const basic_styles = get_basic_styles(grid);
-      const has_content = Object.keys(content).length;
+      const basicStyles = getBasicStyles(grid);
+      const hasContent = Object.keys(content).length;
 
       this.doodle.innerHTML = css`
-        <style>${basic_styles + styles.main}</style>
-        ${(styles.cells || styles.container || has_content) ? create_grid(grid, compiled) : ''}
+        <style>${basicStyles + styles.main}</style>
+        ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
       `;
-      if (has_transition || has_animation) {
+      if (hasTransition || hasAnimation) {
         this.reflow();
       }
       if (styles.gf) {
         loadGoogleFontLink(styles.gf);
       }
-      let replace = create_replacer(this, compiled);
-      this.set_style(replace(styles.top + basic_styles + styles.all));
-      if (has_content) {
+      let replace = createReplacer(this, compiled);
+      this.setStyle(replace(styles.top + basicStyles + styles.all));
+      if (hasContent) {
         replace(Object.values(content).join(' '));
       }
-      bind_uniforms(this, uniforms);
-      this.mount_filters(compiled.filters);
+      bindUniforms(this, uniforms);
+      this.mountFilters(compiled.filters);
     }
 
-    mount_filters(filters) {
+    mountFilters(filters) {
       let markup = Object.values(filters).join('');
       let slot = this.shadowRoot.querySelector('slot[name="cssd-filters"]');
       if (markup && !slot) {
@@ -410,8 +410,8 @@ if (typeof HTMLElement !== 'undefined') {
         slot.remove();
       }
       let holders = [
-        mount_filter_defs(this.shadowRoot, markup),
-        mount_filter_defs(this, markup, 'cssd-filters'),
+        mountFilterDefs(this.shadowRoot, markup),
+        mountFilterDefs(this, markup, 'cssd-filters'),
       ];
       this._filters_markup = markup;
       if (markup) {
@@ -419,7 +419,7 @@ if (typeof HTMLElement !== 'undefined') {
           if (this._filters_markup !== markup) {
             return;
           }
-          if (is_safari()) {
+          if (isSafari()) {
             /* Safari keeps the def animations running but won't repaint
              * the elements referencing them until their compositing
              * layers get rebuilt, so flip a rendering hint for a frame
@@ -444,9 +444,9 @@ if (typeof HTMLElement !== 'undefined') {
       }
     }
 
-    set_style(input) {
+    setStyle(input) {
       if (input instanceof Promise) {
-        input.then(v => this.set_style(v)).catch(console.error);
+        input.then(v => this.setStyle(v)).catch(console.error);
       } else {
         const el = this.shadowRoot.querySelector('style');
         if (el) {
@@ -483,12 +483,12 @@ if (typeof HTMLElement !== 'undefined') {
         }
       }
       this.observers.clear();
-      this.shader_renders.forEach(({ canvas }) => {
+      this.shaderRenders.forEach(({ canvas }) => {
         if (canvas && canvas.loseContext) {
           canvas.loseContext();
         }
       });
-      this.shader_renders.clear();
+      this.shaderRenders.clear();
       this.style.background = '';
     }
 
@@ -507,7 +507,7 @@ if (typeof HTMLElement !== 'undefined') {
     }
 
     async export({ scale, name, download, detail } = {}) {
-      let variables = get_all_variables(this);
+      let variables = getAllVariables(this);
       let html = this.doodle.innerHTML;
 
       let { width, height } = this.getBoundingClientRect();
@@ -517,7 +517,7 @@ if (typeof HTMLElement !== 'undefined') {
       let h = height * scale;
       let fonts = await loadGoogleFontEmbed();
       let svg = css`
-          <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${is_safari() ? '' : `width="${w}px" height="${h}px"`}>
+          <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${isSafari() ? '' : `width="${w}px" height="${h}px"`}>
             <foreignObject width="100%" height="100%">
               <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
                 <style><![CDATA[
@@ -531,10 +531,10 @@ if (typeof HTMLElement !== 'undefined') {
         `;
 
       if (download || detail) {
-        let { source, url, blob } = await generate_png(svg, w, h, scale);
+        let { source, url, blob } = await generatePng(svg, w, h, scale);
         if (download) {
           let a = document.createElement('a');
-          a.download = get_png_name(name);
+          a.download = getPngName(name);
           a.href = url;
           a.click();
         }

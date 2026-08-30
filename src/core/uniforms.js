@@ -1,4 +1,4 @@
-function create_time_uniform(name) {
+function createTimeUniform(name) {
   let ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
   let steps = ticks / (1000 / 120);
   let aname = `${name}-animation`;
@@ -9,8 +9,8 @@ function create_time_uniform(name) {
   }
 }
 
-export const utime = create_time_uniform('cssd-utime');
-export const UTime = create_time_uniform('cssd-UTime');
+export const utime = createTimeUniform('cssd-utime');
+export const UTime = createTimeUniform('cssd-UTime');
 
 export const umousex = {
   name: 'cssd-umousex',

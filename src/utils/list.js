@@ -1,7 +1,7 @@
-import { is_nil } from './type.js';
+import { isNil } from './type.js';
 
-export function make_array(arr) {
-  if (is_nil(arr)) return [];
+export function makeArray(arr) {
+  if (isNil(arr)) return [];
   return Array.isArray(arr) ? arr : [arr];
 }
 
@@ -10,7 +10,7 @@ export function join(arr, splitter = '\n') {
 }
 
 export function last(arr, n = 1) {
-  if (is_nil(arr)) return '';
+  if (isNil(arr)) return '';
   return arr[arr.length - n];
 }
 
@@ -18,7 +18,7 @@ export function first(arr) {
   return arr[0];
 }
 
-export function remove_empty_values(arr) {
+export function removeEmptyValues(arr) {
   return arr.filter(v => {
     if (v === null || v === undefined) return false;
     if (typeof v === 'number') return true;

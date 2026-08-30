@@ -2,10 +2,10 @@ import test from 'node:test';
 import draw from '../src/generator/pattern.js';
 import compare from './_compare.js';
 
-// Emulates the browser's parse-or-null get_rgba_color: values the CSS
+// Emulates the browser's parse-or-null getRgbaColor: values the CSS
 // engine would accept as colors resolve (to red, for easy assertions),
 // anything else returns null and compiles as a shader expression.
-function is_css_color(v) {
+function isCssColor(v) {
   if (/^#[0-9a-f]{3,8}$/i.test(v)) return true;
   if (/^(red|black|white|tan|transparent)$/i.test(v)) return true;
   if (/^(rgb|rgba|hsla)\(\s*[\d.,%\s/]+\)$/i.test(v)) return true;
@@ -13,7 +13,7 @@ function is_css_color(v) {
   return false;
 }
 const extra = {
-  get_rgba_color: v => is_css_color(v) ? { r: 255, g: 0, b: 0, a: 1 } : null,
+  getRgbaColor: v => isCssColor(v) ? { r: 255, g: 0, b: 0, a: 1 } : null,
 };
 
 function ifLine(code) {
@@ -261,11 +261,11 @@ function mainBlock(code) {
 }
 
 test('u_time is only wired up when the pattern reads t (so static patterns stay static)', () => {
-  // No `t` anywhere -> getColor receives 0.0, leaving u_time unreferenced.
+  // No `t` anywhere -> getColor receives 0.0, leaving uTime unreferenced.
   if (!/v\.y, 0\.0, uv/.test(mainBlock('fill: hsl(dr/10, 0.7, 0.5)'))) {
     throw new Error('static pattern should pass 0.0 for time');
   }
-  // `t` in a fill expression -> real u_time uniform.
+  // `t` in a fill expression -> real uTime uniform.
   if (!/v\.y, u_time, uv/.test(mainBlock('fill: hsl(i/I + t*0.1, 0.7, 0.5)'))) {
     throw new Error('time-driven fill should pass u_time');
   }

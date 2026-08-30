@@ -1,7 +1,7 @@
 /**
  * Hand-written fixtures for the parse-css / generator differential harness.
  * Each case: { name, code, extra? } where extra is a plain map backing
- * extra.get_variable for @use.
+ * extra.getVariable for @use.
  */
 export default [
 

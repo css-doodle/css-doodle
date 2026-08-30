@@ -4,7 +4,7 @@ import { iterator, scan } from './tokenizer.js';
 const memo = new Map();
 cache.onClear(() => memo.clear());
 
-function parse_cached(input) {
+function parseCached(input) {
   let result = memo.get(input);
   if (result === undefined) {
     if (memo.size >= 256) {
@@ -39,4 +39,4 @@ function parse(input) {
   return ret;
 }
 
-export default parse_cached;
+export default parseCached;

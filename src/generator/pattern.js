@@ -1,6 +1,6 @@
-import parse_pattern from '../parser/parse-pattern.js';
-import parse_grid from '../parser/parse-grid.js';
-import parse_value_group from '../parser/parse-value-group.js';
+import parsePattern from '../parser/parse-pattern.js';
+import parseGrid from '../parser/parse-grid.js';
+import parseValueGroup from '../parser/parse-value-group.js';
 import transform from './glsl-math-transformer.js';
 import { glsl } from '../utils/tagged-template.js';
 
@@ -189,45 +189,45 @@ function float(n) {
   return String(n).includes('.') ? n : n + '.0';
 }
 
-function has_own(obj, key) {
+function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
-function mask_for(shape) {
+function maskFor(shape) {
   if (shape === 'circle') return CIRCLE_MASK;
   if (shape === 'square') return SQUARE_MASK;
   return '\nshapeMask = 1.0;\n';
 }
 
-function resolve_alias(value, vars) {
+function resolveAlias(value, vars) {
   for (let i = 0; i < 10; i++) {
-    if (!/^[a-zA-Z_][\w-]*$/.test(value) || !has_own(vars, value)) break;
+    if (!/^[a-zA-Z_][\w-]*$/.test(value) || !hasOwn(vars, value)) break;
     value = String(vars[value]).trim();
   }
   return value;
 }
 
-function compile_fill(expr, vars) {
-  let channels = parse_value_group(expr, { symbol: ',', noSpace: true })
+function compileFill(expr, vars) {
+  let channels = parseValueGroup(expr, { symbol: ',', noSpace: true })
     .map(c => c.trim())
     .filter(Boolean);
   if (channels.length === 3 || channels.length === 4) {
-    let ch = channels.map(c => transform(substitute_variables(c, vars), { expect: 'float' }));
+    let ch = channels.map(c => transform(substituteVariables(c, vars), { expect: 'float' }));
     let alpha = channels.length === 4 ? ch[3] : '1.0';
     return `vec4(${ch[0]}, ${ch[1]}, ${ch[2]}, ${alpha})`;
   }
   if (channels.length !== 1) return null;
-  let single = transform(substitute_variables(channels[0], vars), { expect: 'float' });
+  let single = transform(substituteVariables(channels[0], vars), { expect: 'float' });
   return single ? `vec4(vec3(${single}), 1.0)` : null;
 }
 
 const STATEMENT_HANDLERS = {
   fill(token, extra, insideBlock, vars) {
-    let value = resolve_alias(token.value.trim(), vars || {});
+    let value = resolveAlias(token.value.trim(), vars || {});
     if (!value) {
       return { type: 'statement', value: '' };
     }
-    let rgba = extra.get_rgba_color(value);
+    let rgba = extra.getRgbaColor(value);
     if (rgba) {
       let { r, g, b, a } = rgba;
       return {
@@ -235,7 +235,7 @@ const STATEMENT_HANDLERS = {
         value: `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`,
       };
     }
-    let computed = compile_fill(value, vars || {});
+    let computed = compileFill(value, vars || {});
     return { type: 'statement', value: computed ? `\ncolor = ${computed};\n` : '' };
   },
   grid(token) {
@@ -249,7 +249,7 @@ const STATEMENT_HANDLERS = {
   },
 };
 
-function generate_statement(token, extra, insideBlock = false, vars = {}) {
+function generateStatement(token, extra, insideBlock = false, vars = {}) {
   if (token.type !== 'statement') {
     return { type: 'statement', value: '' };
   }
@@ -264,21 +264,21 @@ function generate_statement(token, extra, insideBlock = false, vars = {}) {
   return { type: 'statement', value: '' };
 }
 
-function substitute_variables(expr, vars, depth = 0, excludeName = null) {
+function substituteVariables(expr, vars, depth = 0, excludeName = null) {
   if (depth > 10) return expr;
   let names = Object.keys(vars).sort((a, b) => b.length - a.length);
   for (let name of names) {
     if (name === excludeName) continue;
     let regex = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
     if (regex.test(expr)) {
-      let resolved = substitute_variables(vars[name], vars, depth + 1, name);
+      let resolved = substituteVariables(vars[name], vars, depth + 1, name);
       expr = expr.replace(regex, `(${resolved})`);
     }
   }
   return expr;
 }
 
-function generate_block(token, extra, vars = {}, outerShape = null) {
+function generateBlock(token, extra, vars = {}, outerShape = null) {
   if (token.name !== 'match') {
     return '';
   }
@@ -287,33 +287,33 @@ function generate_block(token, extra, vars = {}, outerShape = null) {
     return '';
   }
   let cond = args
-    .map(a => transform(substitute_variables(a, vars), { expect: 'bool' }))
+    .map(a => transform(substituteVariables(a, vars), { expect: 'bool' }))
     .join(' && ');
   let scope = Object.assign({}, vars);
   let blockShape = null;
   let blockSize = null;
   for (let t of token.value) {
     if (t.type !== 'statement' || t.name === 'fill') continue;
-    let s = generate_statement(t, extra, true, scope);
+    let s = generateStatement(t, extra, true, scope);
     if (s.type === 'variable') scope[s.name] = s.value;
     else if (s.type === 'shape' && s.value) blockShape = s.value;
     else if (s.type === 'size' && s.value) blockSize = s.value;
   }
   let header = '';
   if (blockSize) {
-    header += `\nsize = ${transform(substitute_variables(blockSize, scope), { expect: 'float' })};\n`;
+    header += `\nsize = ${transform(substituteVariables(blockSize, scope), { expect: 'float' })};\n`;
   }
   if (blockShape) {
-    header += mask_for(blockShape);
+    header += maskFor(blockShape);
   } else if (blockSize) {
-    header += mask_for(outerShape || 'square');
+    header += maskFor(outerShape || 'square');
   }
   let body = token.value
     .map(t => {
       if (t.type === 'block') {
-        return generate_block(t, extra, scope, blockShape || outerShape);
+        return generateBlock(t, extra, scope, blockShape || outerShape);
       }
-      let s = generate_statement(t, extra, true, scope);
+      let s = generateStatement(t, extra, true, scope);
       return s.type === 'statement' ? s.value : '';
     })
     .join('');
@@ -325,14 +325,14 @@ function generate_block(token, extra, vars = {}, outerShape = null) {
   `;
 }
 
-function generate_shader(input, { x, y }, shape, sizeExpr, vars) {
+function generateShader(input, { x, y }, shape, sizeExpr, vars) {
   let hasSize = !!(sizeExpr && sizeExpr.length);
   let sizeInit = hasSize
-    ? transform(substitute_variables(sizeExpr, vars), { expect: 'float' })
+    ? transform(substituteVariables(sizeExpr, vars), { expect: 'float' })
     : '1.0';
   let maskInit = '';
   if (shape) {
-    maskInit = mask_for(shape);
+    maskInit = maskFor(shape);
   } else if (hasSize) {
     maskInit = SQUARE_MASK;
   }
@@ -368,8 +368,8 @@ function generate_shader(input, { x, y }, shape, sizeExpr, vars) {
   `;
 }
 
-export default function draw_pattern(code, extra) {
-  let tokens = parse_pattern(code);
+export default function drawPattern(code, extra) {
+  let tokens = parsePattern(code);
   let result = [];
   let grid = { x: 1, y: 1 };
   let shape = null;
@@ -377,9 +377,9 @@ export default function draw_pattern(code, extra) {
   let vars = {};
   for (let token of tokens) {
     if (token.type !== 'statement' || token.name === 'fill') continue;
-    let stmt = generate_statement(token, extra, false, vars);
+    let stmt = generateStatement(token, extra, false, vars);
     switch (stmt.type) {
-      case 'grid': grid = parse_grid(stmt.value, Infinity); break;
+      case 'grid': grid = parseGrid(stmt.value, Infinity); break;
       case 'shape': shape = stmt.value; break;
       case 'size': sizeExpr = stmt.value; break;
       case 'variable': vars[stmt.name] = stmt.value; break;
@@ -389,11 +389,11 @@ export default function draw_pattern(code, extra) {
   let topShape = shape || (sizeExpr ? 'square' : null);
   for (let token of tokens) {
     if (token.type === 'statement' && token.name === 'fill') {
-      result.push(generate_statement(token, extra, false, vars).value);
+      result.push(generateStatement(token, extra, false, vars).value);
     } else if (token.type === 'block') {
-      result.push(generate_block(token, extra, vars, topShape));
+      result.push(generateBlock(token, extra, vars, topShape));
     }
   }
 
-  return generate_shader(result.join(''), grid, shape, sizeExpr, vars);
+  return generateShader(result.join(''), grid, shape, sizeExpr, vars);
 }

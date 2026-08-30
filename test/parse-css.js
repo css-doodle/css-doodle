@@ -265,7 +265,7 @@ test('function positions are unique', () => {
 test('@use inlines variables in nested blocks', () => {
 
   let extra = {
-    get_variable: name => ({ '--rule': 'color: red;' }[name] || '')
+    getVariable: name => ({ '--rule': 'color: red;' }[name] || '')
   };
   let [pseudo] = parseCSS(`:after { @use: var(--rule); content: "x"; }`, extra);
   assert.equal(pseudo.styles[0].property, 'color');

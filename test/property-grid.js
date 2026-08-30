@@ -4,7 +4,7 @@ import property from '../src/core/property.js';
 import compare from './_compare.js';
 
 compare.use(input => {
-  return property.grid(input, { is_special_selector: true, max_grid: 64*64 });
+  return property.grid(input, { isSpecialSelector: true, maxGrid: 64*64 });
 });
 
 test('basic settings', () => {

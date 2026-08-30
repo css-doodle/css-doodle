@@ -1,23 +1,23 @@
 import { utime, UTime, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
 
-export function bind_uniforms(host, { time, mousex, mousey, mouse, width, height }) {
+export function bindUniforms(host, { time, mousex, mousey, mouse, width, height }) {
   if (time) {
-    reg_utime(host);
+    regUtime(host);
   }
   if (mousex || mousey || mouse) {
-    reg_umouse(host, mousex, mousey, mouse);
+    regUmouse(host, mousex, mousey, mouse);
   } else {
-    off_umouse(host);
+    offUmouse(host);
   }
   if (width || height) {
-    reg_usize(host, width, height);
+    regUsize(host, width, height);
   } else {
-    off_usize(host);
+    offUsize(host);
   }
 }
 
-function reg_utime(host) {
-  if (!host.is_utime_set) {
+function regUtime(host) {
+  if (!host.isUtimeSet) {
     try {
       CSS.registerProperty({
         name: '--' + utime.name,
@@ -32,13 +32,13 @@ function reg_utime(host) {
         inherits: true
       });
     } catch (e) {}
-    host.is_utime_set = true;
+    host.isUtimeSet = true;
   }
 }
 
-function reg_umouse(host, mousex, mousey, mouse) {
-  if (!host.umouse_fn) {
-    host.umouse_fn = e => {
+function regUmouse(host, mousex, mousey, mouse) {
+  if (!host.umouseFn) {
+    host.umouseFn = e => {
       let data = e.detail || e;
       if (mouse) {
         host._umouse = { x: data.offsetX, y: data.offsetY };
@@ -48,44 +48,44 @@ function reg_umouse(host, mousex, mousey, mouse) {
         host.style.setProperty('--' + umousey.name, data.offsetY);
       }
     }
-    host.addEventListener('pointermove', host.umouse_fn);
+    host.addEventListener('pointermove', host.umouseFn);
     let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0 }});
     host.dispatchEvent(event);
   } else if (!(mousex || mousey || mouse)) {
-    off_umouse(host);
+    offUmouse(host);
   }
 }
 
-function off_umouse(host) {
-  if (host.umouse_fn) {
+function offUmouse(host) {
+  if (host.umouseFn) {
     host.style.removeProperty('--' + umousex.name);
     host.style.removeProperty('--' + umousey.name);
-    host.removeEventListener('pointermove', host.umouse_fn);
-    host.umouse_fn = null;
+    host.removeEventListener('pointermove', host.umouseFn);
+    host.umouseFn = null;
     delete host._umouse;
   }
 }
 
-function reg_usize(host, width, height) {
-  if (!host.usize_observer) {
-    host.usize_observer = new ResizeObserver(() => {
+function regUsize(host, width, height) {
+  if (!host.usizeObserver) {
+    host.usizeObserver = new ResizeObserver(() => {
       let box = host.getBoundingClientRect();
       if (width || height) {
         host.style.setProperty('--' + uwidth.name, box.width);
         host.style.setProperty('--' + uheight.name, box.height);
       }
     });
-    host.usize_observer.observe(host);
+    host.usizeObserver.observe(host);
   } else if (!(width || height)) {
-    off_usize(host);
+    offUsize(host);
   }
 }
 
-function off_usize(host) {
-  if (host.usize_observer) {
+function offUsize(host) {
+  if (host.usizeObserver) {
     host.style.removeProperty('--' + uwidth.name);
     host.style.removeProperty('--' + uheight.name);
-    host.usize_observer.unobserve(host);
-    host.usize_observer = null;
+    host.usizeObserver.unobserve(host);
+    host.usizeObserver = null;
   }
 }

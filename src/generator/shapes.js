@@ -1,17 +1,17 @@
-import parse_value_group from '../parser/parse-value-group.js';
-import parse_direction from '../parser/parse-direction.js';
-import parse_compound_value from '../parser/parse-compound-value.js';
-import parse_shape_commands from '../parser/parse-shape-commands.js';
+import parseValueGroup from '../parser/parse-value-group.js';
+import parseDirection from '../parser/parse-direction.js';
+import parseCompoundValue from '../parser/parse-compound-value.js';
+import parseShapeCommands from '../parser/parse-shape-commands.js';
 
 import { clamp } from '../utils/math.js';
-import { is_empty } from '../utils/type.js';
+import { isEmpty } from '../utils/type.js';
 import calc from '../core/calc.js';
 import { cache } from '../utils/cache.js';
 import { css } from '../utils/tagged-template.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
 
-const preset_shapes = {
+const presetShapes = {
   circle: css`
     split: 180;
     scale: .99
@@ -158,20 +158,20 @@ class Point {
   }
 }
 
-function create_polygon_points(option, fn) {
+function createPolygonPoints(option, fn) {
   let split = option.split || 180;
   let turn = option.turn || 1;
   let frame = option.frame;
   let fill = option['fill'] || option['fill-rule'];
-  let direction = parse_direction(option['direction'] || option['dir'] || '');
+  let direction = parseDirection(option['direction'] || option['dir'] || '');
   let unit = option.unit;
 
   let rad = (PI * 2) * turn / split;
   let points = [];
-  let first_point, first_point2;
+  let firstPoint, firstPoint2;
 
   let factor = (option.scale === undefined) ? 1 : option.scale;
-  let [fx, fy] = parse_scale_factor(factor);
+  let [fx, fy] = parseScaleFactor(factor);
   // A bare angle like "dir: 30" is constant; auto/reverse need atan2 per point
   let staticAngle = direction.direction ? null : 90 + (direction.angle || 0);
   let add = ([x1, y1, dx = 0, dy = 0]) => {
@@ -183,7 +183,7 @@ function create_polygon_points(option, fn) {
     let dx1 = dx * fx;
     let dy2 = -dy * fy;
     let angle = (staticAngle === null)
-      ? calc_angle(x, y, dx1, dy2, direction)
+      ? calcAngle(x, y, dx1, dy2, direction)
       : staticAngle;
     if (unit !== undefined && unit !== '%') {
       if (unit !== 'none') {
@@ -204,12 +204,12 @@ function create_polygon_points(option, fn) {
   for (let i = 0; i < split; ++i) {
     let t = rad * i;
     let point = fn(t, i);
-    if (!i) first_point = point;
+    if (!i) firstPoint = point;
     add(point);
   }
 
   if (frame !== undefined) {
-    add(first_point);
+    add(firstPoint);
     let w = frame / 100;
     if (turn > 1) w *= 2;
     if (w == 0) w = .002;
@@ -221,17 +221,17 @@ function create_polygon_points(option, fn) {
         x - w * cos(theta),
         y - w * sin(theta)
       ];
-      if (!i) first_point2 = point;
+      if (!i) firstPoint2 = point;
       add(point);
     }
-    add(first_point2);
-    add(first_point);
+    add(firstPoint2);
+    add(firstPoint);
   }
 
   return points;
 }
 
-function calc_angle(x, y, dx, dy, option) {
+function calcAngle(x, y, dx, dy, option) {
   let base = atan2(y + dy, x - dx) * 180 / PI;
   if (option.direction === 'reverse') {
     base -= 180;
@@ -242,30 +242,30 @@ function calc_angle(x, y, dx, dy, option) {
   return base;
 }
 
-function parse_scale_factor(factor) {
-  let parsed = parse_value_group(factor);
+function parseScaleFactor(factor) {
+  let parsed = parseValueGroup(factor);
   let fx = parseFloat(parsed[0]) || 1;
   let fy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 1 : fx;
   return [fx, fy];
 }
 
-function parse_move_offset(offset) {
-  let parsed = parse_value_group(offset);
+function parseMoveOffset(offset) {
+  let parsed = parseValueGroup(offset);
   let dx = parseFloat(parsed[0]) || 0;
   let dy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 0 : dx;
   return [dx, dy];
 }
 
-function create_shape_points(props, {min, max}) {
+function createShapePoints(props, {min, max}) {
   let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
-  let px = is_empty(props.x) ? 'cos(t)' : props.x;
-  let py = is_empty(props.y) ? 'sin(t)' : props.y;
-  let pr = is_empty(props.r) ? ''       : props.r;
-  let pt = is_empty(props.t) ? ''       : props.t;
+  let px = isEmpty(props.x) ? 'cos(t)' : props.x;
+  let py = isEmpty(props.y) ? 'sin(t)' : props.y;
+  let pr = isEmpty(props.r) ? ''       : props.r;
+  let pt = isEmpty(props.t) ? ''       : props.t;
 
-  let { unit, value } = parse_compound_value(pr);
+  let { unit, value } = parseCompoundValue(pr);
   if (unit && !props[unit] && unit !== 't') {
-    if (is_empty(props.unit)) {
+    if (isEmpty(props.unit)) {
       props.unit = unit;
     }
     pr = props.r = value;
@@ -288,7 +288,7 @@ function create_shape_points(props, {min, max}) {
     cosR = cos(rad);
     sinR = sin(rad);
   }
-  let move = props.move ? parse_move_offset(props.move) : null;
+  let move = props.move ? parseMoveOffset(props.move) : null;
   let currentIndex = 0;
   let context = Object.assign({}, props, {
     't': 0,
@@ -307,7 +307,7 @@ function create_shape_points(props, {min, max}) {
     }
   });
 
-  return create_polygon_points(props, (t, i) => {
+  return createPolygonPoints(props, (t, i) => {
     currentIndex = i;
     context['t'] = context['θ'] = pt || t;
     context['i'] = i + 1;
@@ -341,7 +341,7 @@ function create_shape_points(props, {min, max}) {
   });
 }
 
-export default function generate_shape(input, range = {}, modifier) {
+export default function generateShape(input, range = {}, modifier) {
   let min = range.min || 3;
   let max = range.max || 3600;
   // count/unit distinguish modifiers that close over caller state (@plot/@Plot)
@@ -353,26 +353,26 @@ export default function generate_shape(input, range = {}, modifier) {
     return cache.get(key);
   }
   let commands = '';
-  let [name, ...args] = parse_value_group(input);
+  let [name, ...args] = parseValueGroup(input);
   let preset = false;
-  switch (typeof preset_shapes[name]) {
+  switch (typeof presetShapes[name]) {
     case 'function':
-      commands = preset_shapes[name](...args);
+      commands = presetShapes[name](...args);
       preset = true;
       break;
     case 'string':
-      commands = preset_shapes[name];
+      commands = presetShapes[name];
       preset = true;
       break;
     default: {
       commands = input;
     }
   }
-  let rules = parse_shape_commands(commands);
+  let rules = parseShapeCommands(commands);
   if (typeof modifier === 'function') {
     rules = modifier(rules);
   }
-  let points = create_shape_points(rules, {min, max});
+  let points = createShapePoints(rules, {min, max});
   return cache.set(key, {
     rules, points, preset
   });

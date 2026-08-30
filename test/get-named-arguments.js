@@ -1,9 +1,9 @@
 import test from 'node:test';
 
 import compare from './_compare.js';
-import { get_named_arguments } from '../src/core/arguments.js';
+import { getNamedArguments } from '../src/core/arguments.js';
 
-compare.use(get_named_arguments);
+compare.use(getNamedArguments);
 
 test('named arguments', () => {
 

@@ -1,6 +1,6 @@
-import { cache_image, is_safari } from '../utils/browser.js';
+import { cacheImage, isSafari } from '../utils/browser.js';
 
-export default function svg_to_png(svg, width, height, scale) {
+export default function svgToPng(svg, width, height, scale) {
   return new Promise((resolve, reject) => {
     let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
     function action() {
@@ -38,8 +38,8 @@ export default function svg_to_png(svg, width, height, scale) {
       }
     }
 
-    if (is_safari()) {
-      cache_image(source, action, 200);
+    if (isSafari()) {
+      cacheImage(source, action, 200);
     } else {
       action();
     }

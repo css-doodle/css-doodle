@@ -1,22 +1,22 @@
-export function is_nil(s) {
+export function isNil(s) {
   return s === undefined || s === null;
 }
 
-export function is_invalid_number(v) {
-  return is_nil(v) || Number.isNaN(v);
+export function isInvalidNumber(v) {
+  return isNil(v) || Number.isNaN(v);
 }
 
-export function is_empty(value) {
-  return is_nil(value) || value === '';
+export function isEmpty(value) {
+  return isNil(value) || value === '';
 }
 
-export function is_letter(c) {
+export function isLetter(c) {
   return /^[a-zA-Z]$/.test(c);
 }
 
-export function get_value(input) {
+export function getValue(input) {
   let v = input;
-  while (v && !is_nil(v.value)) v = v.value;
+  while (v && !isNil(v.value)) v = v.value;
   if (typeof v == 'object' && 'value' in v) {
     return v.value ?? '';
   }

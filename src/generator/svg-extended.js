@@ -32,6 +32,6 @@ function generate(token, last) {
   return result;
 }
 
-export default function generate_svg_extended(token) {
+export default function generateSvgExtended(token) {
   return generate(token).trim();
 }

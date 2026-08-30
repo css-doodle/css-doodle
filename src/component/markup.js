@@ -1,8 +1,8 @@
 import { utime, UTime } from '../core/uniforms.js';
-import { cell_id } from '../utils/cell.js';
+import { cellId } from '../utils/cell.js';
 import { css } from '../utils/tagged-template.js';
 
-export function get_basic_styles(grid) {
+export function getBasicStyles(grid) {
   let { x, y } = grid || {};
   return css`
     *,*::after,*::before,:host,.host {
@@ -56,8 +56,8 @@ export function get_basic_styles(grid) {
   `;
 }
 
-function create_cell(x, y, z, content, child = '') {
-  let id = cell_id(x, y, z);
+function createCell(x, y, z, content, child = '') {
+  let id = cellId(x, y, z);
   let tail = child ?? '';
   let head = content['#' + id] ?? '';
   if (head.startsWith('${shader')) {
@@ -66,21 +66,21 @@ function create_cell(x, y, z, content, child = '') {
   return `<cssd-cell id="${id}" part="cell">${head}${tail}</cssd-cell>`;
 }
 
-export function create_grid(grid_obj, compiled) {
-  let { x, y, z } = grid_obj || {};
+export function createGrid(gridObj, compiled) {
+  let { x, y, z } = gridObj || {};
   let { content, styles } = compiled;
   let result = '';
   if (z == 1) {
     for (let j = 1; j <= y; ++j) {
       for (let i = 1; i <= x; ++i) {
-        result += create_cell(i, j, 1, content);
+        result += createCell(i, j, 1, content);
       }
     }
   }
   else {
     let child = '';
     for (let i = z; i >= 1; i--) {
-      child = create_cell(1, 1, i, content, child);
+      child = createCell(1, 1, i, content, child);
     }
     result = child;
   }

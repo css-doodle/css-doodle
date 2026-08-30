@@ -38,16 +38,16 @@ const SCREEN_QUAD_VERTICES = new Float32Array([
   -1, -1, 1, -1, -1, 1, 1, 1
 ]);
 
-function create_shader(gl, type, source) {
+function createShader(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   return shader;
 };
 
-function create_program(gl, vss, fss) {
-  const vs = create_shader(gl, gl.VERTEX_SHADER, vss);
-  const fs = create_shader(gl, gl.FRAGMENT_SHADER, fss);
+function createProgram(gl, vss, fss) {
+  const vs = createShader(gl, gl.VERTEX_SHADER, vss);
+  const fs = createShader(gl, gl.FRAGMENT_SHADER, fss);
   const prog = gl.createProgram();
 
   gl.attachShader(prog, vs);
@@ -70,11 +70,11 @@ function create_program(gl, vss, fss) {
 }
 
 function generateFragment(fragment, textures) {
-  const is_shadertoy = fragment.includes('void mainImage');
-  const precision_match = fragment.match(/precision\s+(highp|mediump|lowp)\s+float\s*;/);
-  const has_output = /^\s*out\s+vec4\s+\w+/m.test(fragment);
+  const isShadertoy = fragment.includes('void mainImage');
+  const precisionMatch = fragment.match(/precision\s+(highp|mediump|lowp)\s+float\s*;/);
+  const hasOutput = /^\s*out\s+vec4\s+\w+/m.test(fragment);
   const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
-  const has_texture2d = /texture2D\s*\(/.test(fragment);
+  const hasTexture2d = /texture2D\s*\(/.test(fragment);
   const snippets = ['#version 300 es'];
 
   const push = (line) => {
@@ -82,12 +82,12 @@ function generateFragment(fragment, textures) {
       snippets.push(line);
     }
   }
-  if (precision_match) {
-    fragment = fragment.replace(precision_match[0], '');
+  if (precisionMatch) {
+    fragment = fragment.replace(precisionMatch[0], '');
   }
-  push(`precision ${precision_match ? precision_match[1] : 'mediump'} float;`);
+  push(`precision ${precisionMatch ? precisionMatch[1] : 'mediump'} float;`);
 
-  if (!has_output) {
+  if (!hasOutput) {
     push('out vec4 FragColor;');
   }
 
@@ -102,7 +102,7 @@ function generateFragment(fragment, textures) {
     push(`uniform sampler2D ${t.name};`);
   });
 
-  if (is_shadertoy) {
+  if (isShadertoy) {
     push('#define iResolution vec3(u_resolution, 0)');
     push('#define iTime u_time');
     push('#define iTimeDelta u_timeDelta');
@@ -117,13 +117,13 @@ function generateFragment(fragment, textures) {
     push('#define gl_FragColor FragColor');
   }
 
-  if (has_texture2d) {
+  if (hasTexture2d) {
     push('#define texture2D texture');
   }
 
   snippets.push(fragment);
 
-  if (is_shadertoy) {
+  if (isShadertoy) {
     snippets.push(`void main() { mainImage(FragColor, gl_FragCoord.xy); }`);
   }
 
@@ -131,7 +131,7 @@ function generateFragment(fragment, textures) {
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
-function load_texture(gl, image, i, maxSize = 4096) {
+function loadTexture(gl, image, i, maxSize = 4096) {
   const texture = gl.createTexture();
   gl.activeTexture(gl['TEXTURE' + i]);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -157,11 +157,11 @@ function load_texture(gl, image, i, maxSize = 4096) {
   return texture;
 }
 
-export default function draw_shader(shaders, seed, type) {
-  return acquireSlot().then(() => render_shader(shaders, seed, type));
+export default function drawShader(shaders, seed, type) {
+  return acquireSlot().then(() => renderShader(shaders, seed, type));
 }
 
-function render_shader(shaders, seed, type) {
+function renderShader(shaders, seed, type) {
   const release = makeRelease();
   const canvas = document.createElement('canvas');
   const dpr = devicePixelRatio || 1;
@@ -172,7 +172,7 @@ function render_shader(shaders, seed, type) {
   canvas.width = width;
   canvas.height = height;
 
-  const texture_list = [];
+  const textureList = [];
 
   const gl = canvas.getContext('webgl2', {
     powerPreference: 'high-performance',
@@ -192,10 +192,10 @@ function render_shader(shaders, seed, type) {
     clearTimeout(watchdog);
     release();
     // Delete textures first
-    texture_list.forEach(texture => {
+    textureList.forEach(texture => {
       gl.deleteTexture(texture);
     });
-    texture_list.length = 0;
+    textureList.length = 0;
     // Delete program and buffers
     gl.deleteProgram(program);
     gl.deleteBuffer(positionBuffer);
@@ -206,7 +206,7 @@ function render_shader(shaders, seed, type) {
     }
   };
 
-  let program = create_program(
+  let program = createProgram(
     gl,
     shaders.vertex || DEFAULT_VERTEX_SHADER,
     generateFragment(shaders.fragment || '', shaders.textures || [])
@@ -226,38 +226,38 @@ function render_shader(shaders, seed, type) {
 
   gl.useProgram(program);
 
-  const u_resolution = gl.getUniformLocation(program, 'u_resolution');
-  gl.uniform2fv(u_resolution, [width, height]);
+  const uResolution = gl.getUniformLocation(program, 'u_resolution');
+  gl.uniform2fv(uResolution, [width, height]);
 
   shaders.textures.forEach((n, i) => {
-    texture_list.push(load_texture(gl, n.value, i, MAX_TEXTURE_SIZE));
+    textureList.push(loadTexture(gl, n.value, i, MAX_TEXTURE_SIZE));
     gl.uniform1i(gl.getUniformLocation(program, n.name), i);
   });
 
-  const u_seed = gl.getUniformLocation(program, 'u_seed');
-  if (u_seed) {
-    gl.uniform2f(u_seed, hash(seed) / 1e16, Math.random());
+  const uSeed = gl.getUniformLocation(program, 'u_seed');
+  if (uSeed) {
+    gl.uniform2f(uSeed, hash(seed) / 1e16, Math.random());
   }
 
-  const u_time = gl.getUniformLocation(program, 'u_time');
-  const u_frame_index = gl.getUniformLocation(program, 'u_frameIndex');
-  const u_time_delta = gl.getUniformLocation(program, 'u_timeDelta');
-  const u_mouse = gl.getUniformLocation(program, 'u_mouse');
-  const is_animated = u_time || u_frame_index || u_time_delta;
+  const uTime = gl.getUniformLocation(program, 'u_time');
+  const uFrameIndex = gl.getUniformLocation(program, 'u_frameIndex');
+  const uTimeDelta = gl.getUniformLocation(program, 'u_timeDelta');
+  const uMouse = gl.getUniformLocation(program, 'u_mouse');
+  const isAnimated = uTime || uFrameIndex || uTimeDelta;
 
-  if (is_animated) {
+  if (isAnimated) {
     clearTimeout(watchdog);
     release();
   }
 
-  let frame_index = 0;
-  let current_time = 0;
+  let frameIndex = 0;
+  let currentTime = 0;
 
   const render = (t, w, h, m, textures) => {
     gl.clear(gl.COLOR_BUFFER_BIT);
     if (shaders.width !== w || shaders.height !== h) {
       textures.forEach((n, i) => {
-        gl.bindTexture(gl.TEXTURE_2D, texture_list[i]);
+        gl.bindTexture(gl.TEXTURE_2D, textureList[i]);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, n.value);
       });
       shaders.width = w;
@@ -265,17 +265,17 @@ function render_shader(shaders, seed, type) {
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2fv(u_resolution, [canvas.width, canvas.height]);
+      gl.uniform2fv(uResolution, [canvas.width, canvas.height]);
     }
 
-    if (u_time) gl.uniform1f(u_time, t * 0.001);
-    if (u_frame_index) gl.uniform1i(u_frame_index, frame_index++);
-    if (u_mouse) gl.uniform2f(u_mouse, m.x * dpr, (h - m.y) * dpr);
-    if (u_time_delta) {
-      gl.uniform1f(u_time_delta, (t - current_time) * 0.001);
-      current_time = t;
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uFrameIndex) gl.uniform1i(uFrameIndex, frameIndex++);
+    if (uMouse) gl.uniform2f(uMouse, m.x * dpr, (h - m.y) * dpr);
+    if (uTimeDelta) {
+      gl.uniform1f(uTimeDelta, (t - currentTime) * 0.001);
+      currentTime = t;
     }
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
-  return [render, is_animated, canvas];
+  return [render, isAnimated, canvas];
 }

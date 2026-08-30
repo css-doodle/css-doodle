@@ -2,10 +2,10 @@ import test from 'node:test';
 import compare from './_compare.js';
 
 import parseSvg from '../src/parser/parse-svg.js';
-import generate_svg_extended from '../src/generator/svg-extended.js';
+import generateSvgExtended from '../src/generator/svg-extended.js';
 
 compare.use(input => {
-  return generate_svg_extended(parseSvg(input));
+  return generateSvgExtended(parseSvg(input));
 });
 
 test('code transformation', () => {

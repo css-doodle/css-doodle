@@ -6,9 +6,9 @@ import fixtures from './fixtures.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// src/utils un_entity needs a DOM; decode the entities that appear in
+// src/utils unEntity needs a DOM; decode the entities that appear in
 // doodle sources by hand
-function un_entity(code) {
+function unEntity(code) {
   return code
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -17,7 +17,7 @@ function un_entity(code) {
     .replace(/&amp;/g, '&');
 }
 
-export function html_cases() {
+export function htmlCases() {
   let cases = [];
   for (let file of fs.readdirSync(root).sort()) {
     if (!file.endsWith('.html')) continue;
@@ -25,7 +25,7 @@ export function html_cases() {
     let re = /<css-doodle[^>]*>([\s\S]*?)<\/css-doodle>/g;
     let match, i = 0;
     while ((match = re.exec(content)) !== null) {
-      let code = un_entity(match[1]).trim();
+      let code = unEntity(match[1]).trim();
       if (code.length) {
         cases.push({ name: `${file}#${i}`, code });
       }
@@ -35,6 +35,6 @@ export function html_cases() {
   return cases;
 }
 
-export function all_cases() {
-  return [...fixtures, ...html_cases()];
+export function allCases() {
+  return [...fixtures, ...htmlCases()];
 }

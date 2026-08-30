@@ -1,8 +1,8 @@
-import { next_id } from '../utils/fn.js';
-import { is_nil } from '../utils/type.js';
+import { nextId } from '../utils/fn.js';
+import { isNil } from '../utils/type.js';
 import { NS, NSXLink } from '../utils/svg.js';
 
-const nextId = next_id();
+const nextInlineId = nextId();
 
 class Tag {
   constructor(name, value = '') {
@@ -154,7 +154,7 @@ function generate(token, element, parent, root) {
         if (found) {
           inlineId = found.value;
         } else if (isSingleDefChild || isInlineAndNotDefs) {
-          inlineId = nextId(token.name);
+          inlineId = nextInlineId(token.name);
           el.attr('id', inlineId);
         }
       }
@@ -196,7 +196,7 @@ function generate(token, element, parent, root) {
       // handle inline block value
       if (value && value.type === 'block') {
         let id = generate(token.value, root, token, root);
-        if (is_nil(id)) {
+        if (isNil(id)) {
           value = '';
         } else {
           value = `url(#${id})`;
@@ -247,6 +247,6 @@ function generate(token, element, parent, root) {
   return inlineId;
 }
 
-export default function generate_svg(token) {
+export default function generateSvg(token) {
   return generate(token);
 }

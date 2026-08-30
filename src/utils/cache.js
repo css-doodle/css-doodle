@@ -1,4 +1,4 @@
-import { is_nil } from './type.js';
+import { isNil } from './type.js';
 
 class CacheValue {
   constructor(limit = 16384) {
@@ -14,7 +14,7 @@ class CacheValue {
     this.clearFns.push(fn);
   }
   set(input, value) {
-    if (is_nil(input)) {
+    if (isNil(input)) {
       return '';
     }
     let key = this.getKey(input);
@@ -42,7 +42,7 @@ class CacheValue {
     return value;
   }
   getKey(input) {
-    if (is_nil(input)) {
+    if (isNil(input)) {
       return '';
     }
     return (typeof input === 'string')

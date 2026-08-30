@@ -1,11 +1,11 @@
 import test, { describe } from 'node:test';
 
-import generate_svg_gradient from '../src/generator/svg-gradient.js';
+import generateSvgGradient from '../src/generator/svg-gradient.js';
 import compare from './_compare.js';
 
-describe('generate_svg_gradient', () => {
+describe('generateSvgGradient', () => {
 
-  const gradient = (type, ...values) => generate_svg_gradient(type, values.map(v => () => v));
+  const gradient = (type, ...values) => generateSvgGradient(type, values.map(v => () => v));
 
   compare.use({
     linear: (...args) => gradient('linearGradient', ...args),

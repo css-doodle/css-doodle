@@ -1,6 +1,6 @@
 /* Read computed values (CSS variables, resolved colors) off live elements. */
 
-export function get_variable(element, name) {
+export function getVariable(element, name) {
   if (typeof getComputedStyle === 'undefined') {
     return '';
   }
@@ -9,7 +9,7 @@ export function get_variable(element, name) {
     .replace(/^\(|\)$/g, '');
 }
 
-export function get_all_variables(element) {
+export function getAllVariables(element) {
   if (typeof getComputedStyle === 'undefined') {
     return '';
   }
@@ -31,7 +31,7 @@ export function get_all_variables(element) {
   return inline(ret);
 }
 
-export function get_rgba_color(root, value) {
+export function getRgbaColor(root, value) {
   if (typeof CSS !== 'undefined' && !CSS.supports('color', value)) {
     return null;
   }
@@ -40,10 +40,10 @@ export function get_rgba_color(root, value) {
     return { r: 0, g: 0, b: 0, a: 1 }
   }
   element.style.color = value;
-  return split_rgba(getComputedStyle(element).color);
+  return splitRgba(getComputedStyle(element).color);
 }
 
-function split_rgba(color) {
+function splitRgba(color) {
   let [r, g, b, a = 1] = color
     .replace(/rgba?\((.+)\)/, (_, v) => v)
     .split(/,\s*/)

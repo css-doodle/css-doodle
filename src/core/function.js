@@ -1,11 +1,11 @@
-import parse_value_group from '../parser/parse-value-group.js';
-import parse_svg from '../parser/parse-svg.js';
-import parse_svg_path from '../parser/parse-svg-path.js';
-import parse_compound_value from '../parser/parse-compound-value.js';
+import parseValueGroup from '../parser/parse-value-group.js';
+import parseSvg from '../parser/parse-svg.js';
+import parseSvgPath from '../parser/parse-svg-path.js';
+import parseCompoundValue from '../parser/parse-compound-value.js';
 
-import generate_svg from '../generator/svg.js';
-import generate_shape from '../generator/shapes.js';
-import generate_svg_gradient from '../generator/svg-gradient.js';
+import generateSvg from '../generator/svg.js';
+import generateShape from '../generator/shapes.js';
+import generateSvgGradient from '../generator/svg-gradient.js';
 
 import Noise from '../lib/noise.js';
 import calc from './calc.js';
@@ -13,11 +13,11 @@ import { memo, cache } from '../utils/cache.js';
 
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
-import { create_svg_url, normalize_svg } from '../utils/svg.js';
-import { sequence, expand, by_unit, by_charcode, get_named_arguments } from './arguments.js';
-import { cell_id, cell_metrics } from '../utils/cell.js';
-import { is_letter, is_nil, is_empty, get_value } from '../utils/type.js';
-import { add_alias, unique_id, lazy } from '../utils/fn.js';
+import { createSvgUrl, normalizeSvg } from '../utils/svg.js';
+import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
+import { cellId, cellMetrics } from '../utils/cell.js';
+import { isLetter, isNil, isEmpty, getValue } from '../utils/type.js';
+import { addAlias, uniqueId, lazy } from '../utils/fn.js';
 import { lerp, clamp } from '../utils/math.js';
 import { last } from '../utils/list.js';
 import { getEasingFunction } from './easing.js';
@@ -52,7 +52,7 @@ function compute(op, a, b) {
   }
 }
 
-function compute_var(input, unit) {
+function computeVar(input, unit) {
   return [`calc(${input})`, unit];
 }
 
@@ -62,7 +62,7 @@ function compute_var(input, unit) {
 const operations = new Map();
 cache.onClear(() => operations.clear());
 
-function parse_operation(v) {
+function parseOperation(v) {
   let parsed = operations.get(v);
   if (parsed === undefined) {
     let prefix = RE_OP_PREFIX.test(v);
@@ -73,7 +73,7 @@ function parse_operation(v) {
       op = prefix ? v[0] : v.slice(-1);
       rest = (prefix ? v.slice(1) : v.slice(0, -1)).trim();
     }
-    let { unit = '', value } = parse_compound_value(rest || 0);
+    let { unit = '', value } = parseCompoundValue(rest || 0);
     parsed = { op, prefix, value, unit };
     if (operations.size >= 512) {
       operations.clear();
@@ -83,32 +83,32 @@ function parse_operation(v) {
   return parsed;
 }
 
-function calc_value(base, v) {
-  if (is_empty(v) || is_empty(base)) {
+function calcValue(base, v) {
+  if (isEmpty(v) || isEmpty(base)) {
     return [];
   }
-  let { op, prefix, value, unit } = parse_operation(v);
+  let { op, prefix, value, unit } = parseOperation(v);
   if (op) {
     // prefix op: base comes first; suffix op: base comes last
     let [a, b] = prefix ? [base, value] : [value, base];
     if (typeof base === 'string' && RE_VAR.test(base)) {
       return op === '%'
-        ? compute_var(`mod(${a}, ${b})`, unit)
-        : compute_var(`${a} ${op} ${b}`, unit);
+        ? computeVar(`mod(${a}, ${b})`, unit)
+        : computeVar(`${a} ${op} ${b}`, unit);
     }
     return [compute(op, Number(a), Number(b)), unit];
   }
   return [(Number(base) + (Number(value) || 0)), unit];
 }
 
-function calc_with(base) {
+function calcWith(base) {
   let unit = '';
   return (...args) => {
     for (let v of args) {
-      let [output, output_unit] = calc_value(base, v);
+      let [output, outputUnit] = calcValue(base, v);
       base = output;
-      if (!unit && output_unit) {
-        unit = output_unit;
+      if (!unit && outputUnit) {
+        unit = outputUnit;
       }
     }
 
@@ -119,14 +119,14 @@ function calc_with(base) {
   }
 }
 
-function calc_with_easing(t) {
+function calcWithEasing(t) {
   return (head = '', ...args) => {
     if (RE_LETTER.test(head)) {
       let easing = getEasingFunction(head);
-      return calc_with(easing(t))(...args);
+      return calcWith(easing(t))(...args);
     }
     let _args = [].concat(head, args).filter(n => n !== '');
-    return calc_with(t)(..._args);
+    return calcWith(t)(..._args);
   }
 }
 
@@ -137,13 +137,13 @@ function map2d(value, min, max, amp = 1) {
   return lerp(normalized, min * amp, max * amp);
 }
 
-function flip_value(num) {
+function flipValue(num) {
   return -1 * num;
 }
 
 const STACK_LIMIT = 1024;
 
-function push_stack(context, name, value) {
+function pushStack(context, name, value) {
   let stack = context[name] || (context[name] = []);
   stack.push(value);
   // trim in batches: a shift() per push costs O(limit) on every @r/@p
@@ -153,19 +153,19 @@ function push_stack(context, name, value) {
   return value;
 }
 
-function last_of(stack, n = 1) {
+function lastOf(stack, n = 1) {
   if (stack === undefined) return '';
   // lookback stops at the window edge, as if older values were shifted out
   let i = Math.max(stack.length - n, stack.length - STACK_LIMIT, 0);
   return stack[i];
 }
 
-let seq_uid = 0;
+let seqUid = 0;
 
-function make_sequence(c) {
+function makeSequence(c) {
   return lazy((_, n, ...actions) => {
     if (!n || !actions.length) return '';
-    let count = get_value(n());
+    let count = getValue(n());
     let evaluated = count;
     // Anything but plain numbers and 2x3/1-5 range forms goes through calc
     if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {
@@ -174,18 +174,18 @@ function make_sequence(c) {
         evaluated = count;
       }
     }
-    let signature = ++seq_uid;
+    let signature = ++seqUid;
     let run = actions.length === 1
-      ? (...args) => get_value(actions[0](...args, signature))
+      ? (...args) => getValue(actions[0](...args, signature))
       : (...args) => actions.map(action => {
-          return get_value(action(...args, signature))
+          return getValue(action(...args, signature))
         }).join(',');
     return sequence(evaluated, run).join(c);
   });
 }
 
 // The @n family: with no sequence tuple in scope the source token is
-// echoed back as-is (a non-function return passes through apply_func).
+// echoed back as-is (a non-function return passes through applyFunc).
 // Argument composition pushes an empty tuple, which is no context either.
 function seq(token, make) {
   return ({ extra }) => {
@@ -196,14 +196,14 @@ function seq(token, make) {
 
 // @plot / @Plot: nth point (or all points) of a generated shape;
 // `unit` keeps units on the output values (the @Plot variant)
-function create_plot(unit) {
+function createPlot(unit) {
   return ({ count, extra, grid }) => {
     let e = last(extra) || [];
     return (...args) => {
       let commands = args.join(',');
       let idx = e[SEQ.n] ?? count;
       let max = e[SEQ.max] ?? grid.count;
-      let { points, rules } = generate_shape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
+      let { points, rules } = generateShape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
         delete rules['fill'];
         delete rules['fill-rule'];
         delete rules['frame'];
@@ -224,7 +224,7 @@ function create_plot(unit) {
 
 // appends the args in reverse; `even` repeats the turning point:
 // @mirror 1 2 3 → 1 2 3 3 2 1, @Mirror 1 2 3 → 1 2 3 2 1
-function create_mirror(even) {
+function createMirror(even) {
   let offset = even ? 1 : 2;
   return () => (...args) => {
     for (let i = args.length - offset; i >= 0; --i) {
@@ -237,7 +237,7 @@ function create_mirror(even) {
 // fn picks from the args by counter position; `random` shuffles the args
 // once per position, `upstream` reads the outer composition's sequence
 // context (the uppercase variants)
-function create_pick(name, fn, random = false, upstream = false) {
+function createPick(name, fn, random = false, upstream = false) {
   return ({ context, extra, upextra, position, shuffle }) => {
     let lastExtra = upstream
       ? last(upextra.length ? upextra : extra)
@@ -263,14 +263,14 @@ function create_pick(name, fn, random = false, upstream = false) {
       idx ??= context[counter];
       let pos = (idx - 1) % max;
       let value = fn(source, pos, max);
-      return push_stack(context, 'last_pick', value);
+      return pushStack(context, 'lastPick', value);
     });
   };
 }
 
-function transform_path(tr) {
+function transformPath(tr) {
   return commands => {
-    let parsed = parse_svg_path(commands);
+    let parsed = parseSvgPath(commands);
     if (!parsed.valid) return commands;
     return parsed.commands.map(({ name, value }) => {
       let [n, v] = tr(name, value);
@@ -281,16 +281,16 @@ function transform_path(tr) {
 
 const INVERT_COMMAND = { v: 'h', V: 'H', h: 'v', H: 'V' };
 
-const invert_path = transform_path((name, value) =>
+const invertPath = transformPath((name, value) =>
   [INVERT_COMMAND[name] || name, value]);
 
-const flipH_path = transform_path((name, value) =>
-  (name === 'h' || name === 'H') ? [name, value.map(flip_value)] : [name, value]);
+const flipH_path = transformPath((name, value) =>
+  (name === 'h' || name === 'H') ? [name, value.map(flipValue)] : [name, value]);
 
-const flipV_path = transform_path((name, value) =>
-  (name === 'v' || name === 'V') ? [name, value.map(flip_value)] : [name, value]);
+const flipV_path = transformPath((name, value) =>
+  (name === 'v' || name === 'V') ? [name, value.map(flipValue)] : [name, value]);
 
-function try_decode(raw, decode) {
+function tryDecode(raw, decode) {
   let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
   try {
     return decode(cut);
@@ -299,15 +299,15 @@ function try_decode(raw, decode) {
   }
 }
 
-const compose_svg_url = memo('svg-function', value => {
+const composeSvgUrl = memo('svg-function', value => {
   if (!value.startsWith('<')) {
-    value = generate_svg(parse_svg(value));
+    value = generateSvg(parseSvg(value));
   }
-  return create_svg_url(normalize_svg(value));
+  return createSvgUrl(normalizeSvg(value));
 });
 
-const compose_svg_polygon_url = memo('svg-polygon-function', commands => {
-  let { rules, points } = generate_shape(commands, {min: 3, max: 65536}, rules => {
+const composeSvgPolygonUrl = memo('svg-polygon-function', commands => {
+  let { rules, points } = generateShape(commands, {min: 3, max: 65536}, rules => {
     delete rules.frame;
     rules['unit'] = 'none';
     rules['stroke-width'] ??= .01;
@@ -323,17 +323,17 @@ const compose_svg_polygon_url = memo('svg-polygon-function', commands => {
       props += `${name}: ${rules[name]};`
     }
   };
-  let parsed = parse_svg(css`
+  let parsed = parseSvg(css`
     viewBox: -1 -1 2 2 p ${p};
     polygon {
       ${props} ${style}
     }
   `);
-  return create_svg_url(generate_svg(parsed));
+  return createSvgUrl(generateSvg(parsed));
 });
 
-const compose_svg_pattern_url = memo('svg-pattern-function', value => {
-  let parsed = parse_svg(css`
+const composeSvgPatternUrl = memo('svg-pattern-function', value => {
+  let parsed = parseSvg(css`
     viewBox: 0 0 1 1;
     preserveAspectRatio: xMidYMid slice;
     rect {
@@ -341,7 +341,7 @@ const compose_svg_pattern_url = memo('svg-pattern-function', value => {
       fill: defs pattern { ${ value } }
     }
   `);
-  return create_svg_url(generate_svg(parsed));
+  return createSvgUrl(generateSvg(parsed));
 });
 
 /*
@@ -361,41 +361,41 @@ const compose_svg_pattern_url = memo('svg-pattern-function', value => {
  *   rand, random  seeded random sources
  *   pick, shuffle seeded selection helpers
  *   rules         current rule set, for embedded doodle lookups
- *   seed_value, max_grid, update_random   doodle-level settings
+ *   seedValue, maxGrid, updateRandom   doodle-level settings
  */
 const Function = {};
 
-Function.m = make_sequence(',');
+Function.m = makeSequence(',');
 
-Function.M = make_sequence(' ');
+Function.M = makeSequence(' ');
 
-Function.rep = make_sequence('');
+Function.rep = makeSequence('');
 
-Function.n = seq('@n', e => calc_with(e[SEQ.n]));
+Function.n = seq('@n', e => calcWith(e[SEQ.n]));
 
-Function.nx = seq('@nx', e => calc_with(e[SEQ.x]));
+Function.nx = seq('@nx', e => calcWith(e[SEQ.x]));
 
-Function.ny = seq('@ny', e => calc_with(e[SEQ.y]));
+Function.ny = seq('@ny', e => calcWith(e[SEQ.y]));
 
-Function.N = seq('@N', e => calc_with(e[SEQ.max]));
+Function.N = seq('@N', e => calcWith(e[SEQ.max]));
 
-Function.nN = seq('@nN', e => calc_with_easing(e[SEQ.n] / e[SEQ.max]));
+Function.nN = seq('@nN', e => calcWithEasing(e[SEQ.n] / e[SEQ.max]));
 
-Function.Nn = seq('@Nn', e => calc_with_easing((e[SEQ.max] - e[SEQ.n] + 1) / e[SEQ.max]));
+Function.Nn = seq('@Nn', e => calcWithEasing((e[SEQ.max] - e[SEQ.n] + 1) / e[SEQ.max]));
 
 Function.nd = seq('@nd', e => d => {
   d = Number(d) || 0;
-  return calc_with(e[SEQ.n] - .5 - d - e[SEQ.max] / 2)();
+  return calcWith(e[SEQ.n] - .5 - d - e[SEQ.max] / 2)();
 });
 
 Function.p = ({ context, pick }) => {
   return expand((...args) => {
     if (!args.length) {
-      args = context.last_pick_args || [];
+      args = context.lastPickArgs || [];
     }
     let picked = pick(args);
-    context.last_pick_args = args;
-    return push_stack(context, 'last_pick', picked);
+    context.lastPickArgs = args;
+    return pushStack(context, 'lastPick', picked);
   });
 };
 
@@ -404,15 +404,15 @@ Function.P = ({ context, pick, position }) => {
   return expand((...args) => {
     let normal = true;
     if (!args.length) {
-      args = context.last_pick_args || [];
+      args = context.lastPickArgs || [];
       normal = false;
     }
-    let last = last_of(context.last_pick);
+    let last = lastOf(context.lastPick);
     if (normal) {
       if (!context[counter]) {
         context[counter] = {};
       }
-      last = context[counter].last_pick;
+      last = context[counter].lastPick;
     }
     if (args.length > 1) {
       let i = args.findIndex(n => n === last);
@@ -421,50 +421,50 @@ Function.P = ({ context, pick, position }) => {
       }
     }
     let picked = pick(args);
-    context.last_pick_args = args;
+    context.lastPickArgs = args;
     if (normal) {
-      context[counter].last_pick = picked;
+      context[counter].lastPick = picked;
     }
-    return push_stack(context, 'last_pick', picked);
+    return pushStack(context, 'lastPick', picked);
   });
 };
 
-Function.pl = create_pick('pl', (args, pos) => args[pos]);
+Function.pl = createPick('pl', (args, pos) => args[pos]);
 
-Function.PL = create_pick('pl', (args, pos) => args[pos], false, true);
+Function.PL = createPick('pl', (args, pos) => args[pos], false, true);
 
-Function.pr = create_pick('pr', (args, pos, max) => args[max - pos - 1]);
+Function.pr = createPick('pr', (args, pos, max) => args[max - pos - 1]);
 
-Function.PR = create_pick('pr', (args, pos, max) => args[max - pos - 1], false, true);
+Function.PR = createPick('pr', (args, pos, max) => args[max - pos - 1], false, true);
 
-Function.pd = create_pick('pd', (args, pos) => args[pos], true);
+Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
-Function.PD = create_pick('pd', (args, pos) => args[pos], true, true);
+Function.PD = createPick('pd', (args, pos) => args[pos], true, true);
 
 Function.lp = ({ context }) => {
   return (n = 1) => {
-    return last_of(context.last_pick, n);
+    return lastOf(context.lastPick, n);
   };
 };
 
 Function.r = ({ context, rand }) => {
   return (...args) => {
-    let transform = (args.length && args.every(is_letter))
-      ? by_charcode
-      : by_unit;
+    let transform = (args.length && args.every(isLetter))
+      ? byCharcode
+      : byUnit;
     let value = transform(rand)(...args);
-    return push_stack(context, 'last_rand', value);
+    return pushStack(context, 'lastRand', value);
   };
 };
 
 Function.ri = ({ context, rand }) => {
   return (...args) => {
-    let transform = args.every(is_letter)
-      ? by_charcode
-      : by_unit;
-    let rand_int = (...args) => Math.round(rand(...args));
-    let value = transform(rand_int)(...args);
-    return push_stack(context, 'last_rand', value);
+    let transform = args.every(isLetter)
+      ? byCharcode
+      : byUnit;
+    let randInt = (...args) => Math.round(rand(...args));
+    let value = transform(randInt)(...args);
+    return pushStack(context, 'lastRand', value);
   }
 };
 
@@ -476,7 +476,7 @@ Function.rn = ({ x, y, context, position, grid, extra, random }) => {
   let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
   let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
   return (...args) => {
-    let {from = 0, to = from, frequency = 1, scale = 1, octave = 1} = get_named_arguments(args, [
+    let {from = 0, to = from, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
       'from', 'to', 'frequency', 'scale', 'octave'
     ]);
 
@@ -489,7 +489,7 @@ Function.rn = ({ x, y, context, position, grid, extra, random }) => {
     if (!context[counterX]) context[counterX] = random();
     if (!context[counterY]) context[counterY] = random();
 
-    let transform = (is_letter(from) && is_letter(to)) ? by_charcode : by_unit;
+    let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
     let noise2d = context[counter];
     let offsetX = context[counterX];
     let offsetY = context[counterY];
@@ -513,13 +513,13 @@ Function.rn = ({ x, y, context, position, grid, extra, random }) => {
       t += noise2d.noise(_x * frequency * i2, _y * frequency * i2, 0) * (scale / i2);
     }
     let fn = transform((from, to) => map2d(t, from, to, scale));
-    return push_stack(context, 'last_rand', fn(from, to));
+    return pushStack(context, 'lastRand', fn(from, to));
   };
 };
 
 Function.lr = ({ context }) => {
   return (n = 1) => {
-    return last_of(context.last_rand, n);
+    return lastOf(context.lastRand, n);
   };
 };
 
@@ -527,12 +527,12 @@ Function.match = ({ extra, x, y, z, count, grid }) => {
   let e = last(extra) || [];
   let variables = {
     x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z,
-    ...cell_metrics(x, y, grid),
+    ...cellMetrics(x, y, grid),
   };
-  if (!is_nil(e[SEQ.n])) variables.n = e[SEQ.n];
-  if (!is_nil(e[SEQ.x])) variables.nx = e[SEQ.x];
-  if (!is_nil(e[SEQ.y])) variables.ny = e[SEQ.y];
-  if (!is_nil(e[SEQ.max])) variables.N = e[SEQ.max];
+  if (!isNil(e[SEQ.n])) variables.n = e[SEQ.n];
+  if (!isNil(e[SEQ.x])) variables.nx = e[SEQ.x];
+  if (!isNil(e[SEQ.y])) variables.ny = e[SEQ.y];
+  if (!isNil(e[SEQ.max])) variables.N = e[SEQ.max];
   return (...args) => {
     if (args.length <= 1) {
       return '';
@@ -545,7 +545,7 @@ Function.match = ({ extra, x, y, z, count, grid }) => {
     for (let i = 0; i < args.length; i += 2) {
       let expr = args[i];
       let pass = args[i + 1];
-      if (is_nil(pass)) {
+      if (isNil(pass)) {
         return expr;
       }
       if (!!calc(expr, variables)) {
@@ -557,44 +557,44 @@ Function.match = ({ extra, x, y, z, count, grid }) => {
 
 Function.calc = () => {
   return (value, context) => {
-    return calc(get_value(value), context);
+    return calc(getValue(value), context);
   }
 };
 
 Function.hex = () => {
   return value => {
-    let n = parseInt(get_value(value));
-    return Number.isNaN(n) ? get_value(value) : n.toString(16);
+    let n = parseInt(getValue(value));
+    return Number.isNaN(n) ? getValue(value) : n.toString(16);
   };
 };
 
 Function.var = () => {
-  return value => `var(${get_value(value)})`;
+  return value => `var(${getValue(value)})`;
 };
 
 Function.stripe = () => {
   return (...input) => {
-    let colors = input.map(get_value).flat();
+    let colors = input.map(getValue).flat();
     let max = colors.length;
     if (!max) {
       return '';
     }
-    let default_count = 0;
-    let custom_sizes = [];
+    let defaultCount = 0;
+    let customSizes = [];
     let pairs = colors.map(step => {
-      let [color, size] = parse_value_group(step);
-      if (size !== undefined) custom_sizes.push(size);
-      else default_count += 1;
+      let [color, size] = parseValueGroup(step);
+      if (size !== undefined) customSizes.push(size);
+      else defaultCount += 1;
       return [color, size];
     });
-    let default_size = custom_sizes.length
-      ? `(100% - ${custom_sizes.join(' - ')}) / ${default_count}`
+    let defaultSize = customSizes.length
+      ? `(100% - ${customSizes.join(' - ')}) / ${defaultCount}`
       : `100% / ${max}`
     let prev;
     return pairs.map(([color, size], i) => {
-      if (custom_sizes.length) {
+      if (customSizes.length) {
         let prefix = prev ? (prev + ' + ') : '';
-        prev = prefix + (size !== undefined ? size : default_size);
+        prev = prefix + (size !== undefined ? size : defaultSize);
         return `${color} 0 calc(${ prev })`
       }
       return `${colors[i]} 0 ${100 / max * (i + 1)}%`
@@ -612,10 +612,10 @@ Function.cycle = () => {
     let separator;
     if (args.length == 1) {
       separator = ' ';
-      list = parse_value_group(args[0], { symbol: separator });
+      list = parseValueGroup(args[0], { symbol: separator });
     } else {
       separator = ',';
-      list = parse_value_group(args.map(get_value).join(separator), { symbol: separator});
+      list = parseValueGroup(args.map(getValue).join(separator), { symbol: separator});
     }
     list = list.map(n => n.replace(/^\<|>$/g,''));
     let size = list.length;
@@ -628,9 +628,9 @@ Function.cycle = () => {
   }
 };
 
-Function.mirror = create_mirror(true);
+Function.mirror = createMirror(true);
 
-Function.Mirror = create_mirror(false);
+Function.Mirror = createMirror(false);
 
 Function.code = () => {
   return (...args) => {
@@ -641,17 +641,17 @@ Function.code = () => {
 Function.shape = () => {
   return memo('shape-function', (...args) => {
     let commands = args.join(',');
-    let { points } = generate_shape(commands);
+    let { points } = generateShape(commands);
     return `polygon(${points.join(',')})`;
   });
 };
 
-Function.plot = create_plot(false);
+Function.plot = createPlot(false);
 
-Function.Plot = create_plot(true);
+Function.Plot = createPlot(true);
 
 Function.invert = () => {
-  return invert_path;
+  return invertPath;
 };
 
 Function.flipH = () => {
@@ -668,8 +668,8 @@ Function.flip = () => {
 
 Function.reverse = () => {
   return (...args) => {
-    let commands = args.map(get_value);
-    let parsed = parse_svg_path(commands.join(','));
+    let commands = args.map(getValue);
+    let parsed = parseSvgPath(commands.join(','));
     if (parsed.valid) {
       let result = [];
       for (let i = parsed.commands.length - 1; i >= 0; --i) {
@@ -683,17 +683,17 @@ Function.reverse = () => {
 };
 
 Function.svg = lazy((_, ...args) => {
-  let value = args.map(input => get_value(input())).join(',');
-  return compose_svg_url(value);
+  let value = args.map(input => getValue(input())).join(',');
+  return composeSvgUrl(value);
 });
 
 Function['svg-filter'] = lazy((upstream, ...args) => {
-  let values = args.map(input => get_value(input()));
+  let values = args.map(input => getValue(input()));
   let value = values.join(',');
-  let id = unique_id('filter-');
+  let id = uniqueId('filter-');
   // shorthand
   if (values.every(n => /^[\-\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-    let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = get_named_arguments(values, [
+    let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = getNamedArguments(values, [
       'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
     ]);
     value = css`
@@ -702,7 +702,7 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
       width: 140%;
       height: 140%;
     `;
-    if (!is_nil(dilate)) {
+    if (!isNil(dilate)) {
       value += css`
         feMorphology {
           operator: dilate;
@@ -710,7 +710,7 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
         }
       `
     }
-    if (!is_nil(erode)) {
+    if (!isNil(erode)) {
       value += css`
         feMorphology {
           operator: erode;
@@ -718,15 +718,15 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
         }
       `
     }
-    if (!is_nil(blur)) {
+    if (!isNil(blur)) {
       value += css`
         feGaussianBlur {
           stdDeviation: ${blur};
         }
       `
     }
-    if (!is_nil(frequency)) {
-      let [bx, by = bx] = parse_value_group(frequency);
+    if (!isNil(frequency)) {
+      let [bx, by = bx] = parseValueGroup(frequency);
       octave = octave ? `numOctaves: ${octave};` : '';
       value += css`
         feTurbulence {
@@ -748,13 +748,13 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
   }
   // new svg syntax
   if (!value.startsWith('<')) {
-    let parsed = parse_svg(value, {
+    let parsed = parseSvg(value, {
       type: 'block',
       name: 'filter'
     });
-    value = generate_svg(parsed);
+    value = generateSvg(parsed);
   }
-  let svg = normalize_svg(value).replace(
+  let svg = normalizeSvg(value).replace(
     /<filter([\s>])/,
     `<filter id="${ id }"$1`
   );
@@ -762,22 +762,22 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
     upstream.rules.filters[id] = svg;
     return `url(#${ id })`;
   }
-  return create_svg_url(svg, id);
+  return createSvgUrl(svg, id);
 });
 
 Function['svg-pattern'] = lazy((_, ...args) => {
-  let value = args.map(input => get_value(input())).join(',');
-  return compose_svg_pattern_url(value);
+  let value = args.map(input => getValue(input())).join(',');
+  return composeSvgPatternUrl(value);
 });
 
 Function['svg-polygon'] = lazy((_, ...args) => {
-  let commands = args.map(input => get_value(input())).join(',');
-  return compose_svg_polygon_url(commands);
+  let commands = args.map(input => getValue(input())).join(',');
+  return composeSvgPolygonUrl(commands);
 });
 
-Function.linearGradient = lazy((_, ...args) => generate_svg_gradient('linearGradient', args));
+Function.linearGradient = lazy((_, ...args) => generateSvgGradient('linearGradient', args));
 
-Function.radialGradient = lazy((_, ...args) => generate_svg_gradient('radialGradient', args));
+Function.radialGradient = lazy((_, ...args) => generateSvgGradient('radialGradient', args));
 
 Function.doodle = () => {
   return (...args) => args.join(',');
@@ -793,7 +793,7 @@ Function.pattern = () => {
 
 Function.once = lazy(({context, extra, position}, ...args) => {
   let counter = 'once-counter' + position;
-  return context[counter] ??= args.map(input => get_value(input())).join(',');
+  return context[counter] ??= args.map(input => getValue(input())).join(',');
 });
 
 Function.raw = ({ rules }) => {
@@ -807,10 +807,10 @@ Function.raw = ({ rules }) => {
       }
     }
     if (raw.startsWith('url("data:image/svg+xml;utf8')) {
-      return try_decode(raw, decodeURIComponent);
+      return tryDecode(raw, decodeURIComponent);
     }
     if (raw.startsWith('url("data:image/svg+xml;base64')) {
-      return try_decode(raw, atob);
+      return tryDecode(raw, atob);
     }
     /* future forms */
     if (raw.startsWith('url("data:image/png;base64')) {
@@ -827,50 +827,50 @@ Function['google-font'] = () => {
 };
 
 Function.id = ({ x, y, z }) => {
-  return _ => cell_id(x, y, z);
+  return _ => cellId(x, y, z);
 };
 
-Function.i = c => calc_with(c.count);
-Function.I = c => calc_with(c.grid.count);
+Function.i = c => calcWith(c.count);
+Function.I = c => calcWith(c.grid.count);
 
-Function.x = c => calc_with(c.x);
-Function.X = c => calc_with(c.grid.x);
+Function.x = c => calcWith(c.x);
+Function.X = c => calcWith(c.grid.x);
 
-Function.y = c => calc_with(c.y);
-Function.Y = c => calc_with(c.grid.y);
+Function.y = c => calcWith(c.y);
+Function.Y = c => calcWith(c.grid.y);
 
-Function.z = c => calc_with(c.z);
-Function.Z = c => calc_with(c.grid.z);
+Function.z = c => calcWith(c.z);
+Function.Z = c => calcWith(c.grid.z);
 
 
-Function.iI = c => calc_with_easing(c.count / c.grid.count);
-Function.Ii = c => calc_with_easing((c.grid.count - c.count + 1) / c.grid.count);
+Function.iI = c => calcWithEasing(c.count / c.grid.count);
+Function.Ii = c => calcWithEasing((c.grid.count - c.count + 1) / c.grid.count);
 
-Function.xX = c => calc_with_easing(c.x / c.grid.x);
-Function.Xx = c => calc_with_easing((c.grid.x - c.x + 1) / c.grid.x);
+Function.xX = c => calcWithEasing(c.x / c.grid.x);
+Function.Xx = c => calcWithEasing((c.grid.x - c.x + 1) / c.grid.x);
 
-Function.yY = c => calc_with_easing(c.y / c.grid.y);
-Function.Yy = c => calc_with_easing((c.grid.y - c.y + 1) / c.grid.y);
+Function.yY = c => calcWithEasing(c.y / c.grid.y);
+Function.Yy = c => calcWithEasing((c.grid.y - c.y + 1) / c.grid.y);
 
-Function.dx = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).dx);
-Function.dy = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).dy);
-Function.dr = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).dr);
-Function.dc = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).dc);
-Function.dm = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).dm);
-Function.da = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).da);
-Function.db = ({ x, y, grid }) => calc_with(cell_metrics(x, y, grid).db);
+Function.dx = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dx);
+Function.dy = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dy);
+Function.dr = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dr);
+Function.dc = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dc);
+Function.dm = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dm);
+Function.da = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).da);
+Function.db = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).db);
 
-Function.ut = () => calc_with(`var(--${utime.name})`);
-Function.ts = () => calc_with(`calc(var(--${utime.name}) / 1000)`);
+Function.ut = () => calcWith(`var(--${utime.name})`);
+Function.ts = () => calcWith(`calc(var(--${utime.name}) / 1000)`);
 
-Function.UT = () => calc_with(`var(--${UTime.name})`);
-Function.TS = () => calc_with(`calc(var(--${UTime.name}) / 1000)`);
+Function.UT = () => calcWith(`var(--${UTime.name})`);
+Function.TS = () => calcWith(`calc(var(--${UTime.name}) / 1000)`);
 
-Function.uw = () => calc_with(`var(--${uwidth.name})`);
-Function.uh = () => calc_with(`var(--${uheight.name})`);
+Function.uw = () => calcWith(`var(--${uwidth.name})`);
+Function.uh = () => calcWith(`var(--${uheight.name})`);
 
-Function.ux = () => calc_with(`var(--${umousex.name})`);
-Function.uy = () => calc_with(`var(--${umousey.name})`);
+Function.ux = () => calcWith(`var(--${umousex.name})`);
+Function.uy = () => calcWith(`var(--${umousey.name})`);
 
 /* expose JS Math functions with css-doodle calc/value semantics */
 export const MathFunc = {};
@@ -879,12 +879,12 @@ for (let name of Object.getOwnPropertyNames(Math)) {
     if (typeof Math[name] === 'number') {
       return Math[name];
     }
-    args = args.map(n => calc(get_value(n)));
+    args = args.map(n => calc(getValue(n)));
     return Math[name](...args);
   }
 }
 
-export default add_alias(Function, {
+export default addAlias(Function, {
 
   'index': 'i',
   'col': 'x',

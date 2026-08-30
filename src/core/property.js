@@ -1,11 +1,11 @@
-import parse_value_group from '../parser/parse-value-group.js';
-import parse_grid from '../parser/parse-grid.js';
-import generate_shape from '../generator/shapes.js';
+import parseValueGroup from '../parser/parse-value-group.js';
+import parseGrid from '../parser/parse-grid.js';
+import generateShape from '../generator/shapes.js';
 
-import { is_preset, get_preset } from './preset-size.js';
+import { isPreset, getPreset } from './preset-size.js';
 
-import { add_alias } from '../utils/fn.js';
-import { is_empty } from '../utils/type.js';
+import { addAlias } from '../utils/fn.js';
+import { isEmpty } from '../utils/type.js';
 import { memo } from '../utils/cache.js';
 import { css } from '../utils/tagged-template.js';
 
@@ -15,10 +15,10 @@ const cw = `var(${iw}, 25%)`;
 const ch = `var(${ih}, 25%)`;
 
 // keywords resolve to edge percentages, remaining values fill x then y
-function resolve_place(value) {
+function resolvePlace(value) {
   let x, y, rest = [];
-  for (let token of parse_value_group(value)) {
-    if (is_empty(token)) continue;
+  for (let token of parseValueGroup(value)) {
+    if (isEmpty(token)) continue;
     switch (token) {
       case 'left':   x = '0%';   break;
       case 'right':  x = '100%'; break;
@@ -35,12 +35,12 @@ function resolve_place(value) {
   return [x ?? '50%', y ?? '50%'];
 }
 
-const border_styles = /solid|dotted|dashed|double|groove|ridge|inset|outset/;
+const borderStyles = /solid|dotted|dashed|double|groove|ridge|inset|outset/;
 
 // fill in the parts a shorthand border value leaves out:
 // bare numbers get px, a lone color gets 1px, no style gets solid
-function format_border(value) {
-  let values = parse_value_group(value, { symbol: ' ' });
+function formatBorder(value) {
+  let values = parseValueGroup(value, { symbol: ' ' });
   for (let i = 0; i < values.length; i++) {
     if (Number(values[i])) {
       values[i] += 'px';
@@ -48,11 +48,11 @@ function format_border(value) {
     }
   }
   let head = values[0];
-  let is_width = /^\.?\d/.test(head) || /^(thin|thick|medium)$/.test(head);
-  if (values.length === 1 && !is_width) {
+  let isWidth = /^\.?\d/.test(head) || /^(thin|thick|medium)$/.test(head);
+  if (values.length === 1 && !isWidth) {
     values.push('1px');
   }
-  if (!border_styles.test(value)) {
+  if (!borderStyles.test(value)) {
     values.push('solid');
   }
   return values.join(' ');
@@ -68,11 +68,11 @@ const Property = {};
 // @size: width height? ratio? — presets like `vmin` expand to both
 // dimensions; with `auto` the ratio (or the grid's) becomes aspect-ratio.
 // Cell size is recorded on custom properties for @place-cell to read.
-Property.size = (value, { is_special_selector, grid }) => {
-  let [w, h = w, ratio] = parse_value_group(value);
-  if (is_empty(w)) return '';
-  if (is_preset(w)) {
-    [w, h] = get_preset(w, h);
+Property.size = (value, { isSpecialSelector, grid }) => {
+  let [w, h = w, ratio] = parseValueGroup(value);
+  if (isEmpty(w)) return '';
+  if (isPreset(w)) {
+    [w, h] = getPreset(w, h);
   }
   let styles = `width:${w};height:${h};`;
   if (w === 'auto' || h === 'auto') {
@@ -83,13 +83,13 @@ Property.size = (value, { is_special_selector, grid }) => {
         ratio = `calc(${ratio})`;
       }
     }
-    if (is_special_selector) {
+    if (isSpecialSelector) {
       styles += `aspect-ratio: ${ratio || grid.ratio};`;
     } else if (ratio) {
       styles += `aspect-ratio: ${ratio};`;
     }
   }
-  if (!is_special_selector) {
+  if (!isSpecialSelector) {
     styles += `${iw}:${w};${ih}:${h};`;
   }
   return styles;
@@ -98,7 +98,7 @@ Property.size = (value, { is_special_selector, grid }) => {
 // @place-cell: x y — take the cell out of the grid flow and center it
 // at the given coords; `extra` carries a rotation in degrees
 Property.place = (value, { extra }) => {
-  let [left, top] = resolve_place(value);
+  let [left, top] = resolvePlace(value);
   return css`
     position: absolute;
     left: ${left};
@@ -133,7 +133,7 @@ Property.grid = (value, options) => {
     clip: true,
     p3d: false,
   };
-  let temp = parse_value_group(value, { symbol: ' ' }).map(item => {
+  let temp = parseValueGroup(value, { symbol: ' ' }).map(item => {
     if (/^row$/i.test(item)) {
       result.flex = 'row';
       return '§';
@@ -155,12 +155,12 @@ Property.grid = (value, options) => {
       return '§';
     }
     if (!result.grid) {
-      result.grid = parse_grid(item, options.max_grid);
+      result.grid = parseGrid(item, options.maxGrid);
     }
     return item;
   });
 
-  let groups = parse_value_group(temp.join(' '), {
+  let groups = parseValueGroup(temp.join(' '), {
     symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', 'β', '|', '§'],
     noSpace: true,
     verbose: true
@@ -171,10 +171,10 @@ Property.grid = (value, options) => {
       case '~': result.translate = value; break;
       case '_': result.gap = value; break;
       case '|': result.backdropFilter = value; break;
-      case '^': result.enlarge = parse_value_group(value, { symbol: ' ' }); break;
-      case '∆': result.persp = parse_value_group(value, { symbol: ' ' }); break;
+      case '^': result.enlarge = parseValueGroup(value, { symbol: ' ' }); break;
+      case '∆': result.persp = parseValueGroup(value, { symbol: ' ' }); break;
       case '*': {
-        let [head, ...rest] = parse_value_group(value, { symbol: ' ' });
+        let [head, ...rest] = parseValueGroup(value, { symbol: ' ' });
         if (head === 'h') result.hueRotate = rest.join(' ');
         else result.rotate = value;
         break;
@@ -184,9 +184,9 @@ Property.grid = (value, options) => {
         else result.fill = value;
         break;
       case 'β':
-      case 'ß': result.border = format_border(value); break;
+      case 'ß': result.border = formatBorder(value); break;
       case '':
-        if (!result.grid) result.grid = parse_grid(value, options.max_grid);
+        if (!result.grid) result.grid = parseGrid(value, options.maxGrid);
         break;
     }
   }
@@ -205,7 +205,7 @@ Property.seed = value => value;
 // shape() function instead
 
 Property.shape = memo('shape-property', value => {
-  let { points, preset} = generate_shape(value);
+  let { points, preset} = generateShape(value);
   if (!preset) return '';
   return `clip-path: polygon(${points.join(',')});`;
 });
@@ -222,7 +222,7 @@ Property.use = rules => {
 
 Property.content = value => value;
 
-export default add_alias(Property, {
+export default addAlias(Property, {
   // legacy names.
   'place-cell': 'place',
   'offset': 'place',

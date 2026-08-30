@@ -1,18 +1,18 @@
-import parse_css from '../parser/parse-css.js';
+import parseCss from '../parser/parse-css.js';
 
-const parse_cache = new Map();
+const parseCache = new Map();
 
-export function parse_css_cached(code, extra) {
+export function parseCssCached(code, extra) {
   if (code.includes('@use')) {
-    return parse_css(code, extra);
+    return parseCss(code, extra);
   }
-  let parsed = parse_cache.get(code);
+  let parsed = parseCache.get(code);
   if (!parsed) {
-    if (parse_cache.size >= 64) {
-      parse_cache.clear();
+    if (parseCache.size >= 64) {
+      parseCache.clear();
     }
-    parsed = parse_css(code, extra);
-    parse_cache.set(code, parsed);
+    parsed = parseCss(code, extra);
+    parseCache.set(code, parsed);
   }
   return parsed;
 }

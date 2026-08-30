@@ -1,4 +1,4 @@
-export function add_alias(obj, names) {
+export function addAlias(obj, names) {
   for (let [alias, name] of Object.entries(names)) {
     obj[alias] = obj[name];
   }
@@ -21,11 +21,11 @@ export function debounce(fn, delay = 100) {
   };
 }
 
-export function next_id() {
+export function nextId() {
   let id = 0;
   return (prefix = '') => `${prefix}-${++id}`;
 }
 
-export function unique_id(prefix = '') {
+export function uniqueId(prefix = '') {
   return prefix + Math.random().toString(32).slice(2);
 }

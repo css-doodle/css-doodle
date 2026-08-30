@@ -95,7 +95,7 @@ describe('expand', () => {
     });
 
     test('malformed brackets starting with [', () => {
-      // Starts with '[' so build_range called, returns []
+      // Starts with '[' so buildRange called, returns []
       compare('[abc', []);
       compare('[', []);
     });

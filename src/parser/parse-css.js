@@ -12,10 +12,10 @@
  *   text       { type: 'text', value }
  */
 import { scan, Token } from './tokenizer.js';
-import parse_var from './parse-var.js';
-import parse_svg from './parse-svg.js';
-import parse_value_group from './parse-value-group.js';
-import generate_svg_extended from '../generator/svg-extended.js';
+import parseVar from './parse-var.js';
+import parseSvg from './parse-svg.js';
+import parseValueGroup from './parse-value-group.js';
+import generateSvgExtended from '../generator/svg-extended.js';
 
 const PI = String(Math.PI);
 const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
@@ -37,47 +37,47 @@ class Cursor {
   end() {
     return this.i >= this.tokens.length;
   }
-  head_index() {
+  headIndex() {
     let t = this.tokens[this.i];
     return t ? t.index : this.source.length;
   }
-  tail_end() {
+  tailEnd() {
     let t = this.tokens[this.i - 1];
-    return t ? token_end(t) : 0;
+    return t ? tokenEnd(t) : 0;
   }
   position() {
     return ++this.ctx.position;
   }
 }
 
-function token_end(token) {
+function tokenEnd(token) {
   return token.index + token.value.length;
 }
 
 function adjacent(a, b) {
-  return token_end(a) === b.index;
+  return tokenEnd(a) === b.index;
 }
 
-function throw_error(msg, pos = []) {
+function throwError(msg, pos = []) {
   console.warn(`(at line ${pos[1] + 1}, column ${pos[0] + 1}) ${msg}`);
 }
 
-function is_number(n) {
+function isNumber(n) {
   return !isNaN(n);
 }
 
-function get_text_value(input) {
+function getTextValue(input) {
   if (input.trim().length) {
-    return is_number(+input) ? +input : input.trim();
+    return isNumber(+input) ? +input : input.trim();
   }
   return input;
 }
 
-function is_pair_of(c, n) {
+function isPairOf(c, n) {
   return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
 }
 
-function is_svg(name) {
+function isSvg(name) {
   return /^@svg$/i.test(name);
 }
 
@@ -85,7 +85,7 @@ function composible(name) {
   return /^@(canvas|shaders|doodle)/.test(name);
 }
 
-function substitute_pi(input, prev) {
+function substitutePi(input, prev) {
   if (!input.includes('π')) return input;
   let result = '';
   for (let i = 0; i < input.length; ++i) {
@@ -100,7 +100,7 @@ function substitute_pi(input, prev) {
   return result;
 }
 
-function seperate_func_name(name) {
+function seperateFuncName(name) {
   let fname = '', extra = '';
   if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
     return { fname: name, extra };
@@ -119,7 +119,7 @@ function seperate_func_name(name) {
   return { fname, extra };
 }
 
-function has_times_syntax(token) {
+function hasTimesSyntax(token) {
   let str = JSON.stringify(token);
   return str.includes('pureName') && str.includes('times');
 }
@@ -152,15 +152,15 @@ function probe(cur, ...terminators) {
   return '';
 }
 
-function probe_selector(cur) {
+function probeSelector(cur) {
   return probe(cur, '{', ';', '}') === '{';
 }
 
-function probe_block(cur) {
+function probeBlock(cur) {
   return probe(cur, ':', ';', '{', '}');
 }
 
-function is_keyframes_at(cur) {
+function isKeyframesAt(cur) {
   let at = cur.peek();
   let word = cur.peek(1);
   if (!at || !word) return false;
@@ -176,7 +176,7 @@ function is_keyframes_at(cur) {
   return true;
 }
 
-function parse_value(cur, extra, break_on) {
+function parseValue(cur, extra, breakOn) {
   let groups = [[]];
   let group = groups[0];
   let buf = '';
@@ -206,12 +206,12 @@ function parse_value(cur, extra, break_on) {
     }
     skip = false;
 
-    if (split_dollar(cur)) {
+    if (splitDollar(cur)) {
       continue;
     }
 
     if (tok.isSymbol()) {
-      if (!quote && (v === ';' || v === '}' || v === '<' || v === break_on)) {
+      if (!quote && (v === ';' || v === '}' || v === '<' || v === breakOn)) {
         break;
       }
       if (v === ',' && paren === 0) {
@@ -222,9 +222,9 @@ function parse_value(cur, extra, break_on) {
         skip = true;
         continue;
       }
-      if ((v === '@' || v === '$') && is_func_start(cur)) {
+      if ((v === '@' || v === '$') && isFuncStart(cur)) {
         flush();
-        group.push(parse_func(cur, extra));
+        group.push(parseFunc(cur, extra));
         continue;
       }
       if (tok.status === 'open') quote = true;
@@ -232,7 +232,7 @@ function parse_value(cur, extra, break_on) {
       if (v === '(') paren++;
       else if (v === ')') paren = Math.max(0, paren - 1);
       cur.next();
-      buf += (v === 'π') ? substitute_pi(v, cur.source[tok.index - 1]) : v;
+      buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
       continue;
     }
 
@@ -248,13 +248,13 @@ function parse_value(cur, extra, break_on) {
   return groups;
 }
 
-function is_func_start(cur) {
+function isFuncStart(cur) {
   let tok = cur.peek();
   let next = cur.peek(1);
   return !!(next && adjacent(tok, next) && RE_FUNC_START.test(next.value[0]));
 }
 
-function split_dollar(cur) {
+function splitDollar(cur) {
   let tok = cur.peek();
   if (!tok || !tok.isWord() || !tok.value.includes('$')) return false;
   let k = tok.value.indexOf('$');
@@ -276,16 +276,16 @@ function split_dollar(cur) {
   return true;
 }
 
-function parse_func(cur, extra, variables = {}) {
+function parseFunc(cur, extra, variables = {}) {
   let tok = cur.next(); // '@' or '$'
-  let is_calc = tok.isSymbol('$');
+  let isCalc = tok.isSymbol('$');
   let name = '@';
   let end = tok.index + 1;
 
   while (!cur.end()) {
     let t = cur.peek();
     if (t.index !== end) break;
-    if (t.isWord() && t.value.includes('$') && split_dollar(cur)) {
+    if (t.isWord() && t.value.includes('$') && splitDollar(cur)) {
       t = cur.peek();
     }
     if (t.isSymbol('(') || !RE_NAME_TOKEN.test(t.value)) {
@@ -295,52 +295,52 @@ function parse_func(cur, extra, variables = {}) {
     end += t.value.length;
     cur.next();
   }
-  return finish_func(cur, name, end, is_calc, extra, variables);
+  return finishFunc(cur, name, end, isCalc, extra, variables);
 }
 
-function finish_func(cur, name, end, is_calc, extra, variables) {
+function finishFunc(cur, name, end, isCalc, extra, variables) {
   let func = Node.func();
-  let has_arguments = false;
+  let hasArguments = false;
 
-  let dot = find_composition_dot(name, cur, end);
+  let dot = findCompositionDot(name, cur, end);
   if (dot > 0) {
     let inner;
     if (dot < name.length - 1) {
-      inner = finish_func(cur, '@' + name.slice(dot + 1), end, false, extra, variables);
+      inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables);
     } else {
-      inner = parse_func(cur, extra);
+      inner = parseFunc(cur, extra);
     }
     name = name.slice(0, dot);
     func.arguments = [Node.argument([inner])];
     func.variables = variables;
-    has_arguments = true;
+    hasArguments = true;
   }
   else {
     let paren = cur.peek();
     if (paren && paren.index === end && paren.isSymbol('(')) {
       cur.next();
       if (composible(name)) {
-        func.arguments = parse_doodle_body(cur, paren.index + 1);
+        func.arguments = parseDoodleBody(cur, paren.index + 1);
       } else {
-        let closed = parse_arguments(cur, paren.index + 1, extra, variables);
+        let closed = parseArguments(cur, paren.index + 1, extra, variables);
         func.arguments = closed.args;
-        if (is_svg(name)) {
-          func.arguments = expand_svg(
+        if (isSvg(name)) {
+          func.arguments = expandSvg(
             cur, cur.source.slice(paren.index + 1, closed.end), closed.args, extra, variables);
         }
       }
       func.variables = variables;
-      has_arguments = true;
+      hasArguments = true;
     }
   }
 
-  let { fname, extra: extra_args } = seperate_func_name(name);
-  func.name = is_calc ? '@$' + name.slice(1) : fname;
-  if (extra_args.length) {
-    func.arguments.unshift(Node.argument([Node.text(extra_args)]));
+  let { fname, extra: extraArgs } = seperateFuncName(name);
+  func.name = isCalc ? '@$' + name.slice(1) : fname;
+  if (extraArgs.length) {
+    func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
   }
 
-  if (is_calc && func.name.length > 2) {
+  if (isCalc && func.name.length > 2) {
     if (!func.arguments.length) {
       let value = func.name.substring(2);
       func.name = func.name.substring(0, 2);
@@ -357,7 +357,7 @@ function finish_func(cur, name, end, is_calc, extra, variables) {
   return func;
 }
 
-function find_composition_dot(name, cur, end) {
+function findCompositionDot(name, cur, end) {
   for (let i = 1; i < name.length; ++i) {
     if (name[i] === '.') {
       let next = name[i + 1];
@@ -376,43 +376,43 @@ function find_composition_dot(name, cur, end) {
   return -1;
 }
 
-function parse_arguments(cur, start, extra, variables) {
+function parseArguments(cur, start, extra, variables) {
   let args = [];
   let values = [];
-  let run_start = start;
-  let last_run = '';
+  let runStart = start;
+  let lastRun = '';
   let paren = 0;
   let quote = false;
   let end = cur.source.length;
 
-  const flush_text = (to, at_func) => {
-    let text = substitute_pi(cur.source.slice(run_start, to), cur.source[run_start - 1]);
-    last_run = text;
+  const flushText = (to, atFunc) => {
+    let text = substitutePi(cur.source.slice(runStart, to), cur.source[runStart - 1]);
+    lastRun = text;
     if (!text.length) return;
     if (values.length === 0) {
-      if (at_func) {
+      if (atFunc) {
         text = text.trimStart();
         if (text.length) values.push(Node.text(text));
       } else {
-        values.push(Node.text(get_text_value(text)));
+        values.push(Node.text(getTextValue(text)));
       }
-    } else if (at_func || /\S/.test(text)) {
+    } else if (atFunc || /\S/.test(text)) {
       values.push(Node.text(text));
     }
   };
 
-  const push_argument = () => {
+  const pushArgument = () => {
     // ±x expands into two arguments: -x and x
-    if (last_run.trim().startsWith('±') && values.length) {
-      let raw = last_run.trim().slice(1);
+    if (lastRun.trim().startsWith('±') && values.length) {
+      let raw = lastRun.trim().slice(1);
       let cloned = structuredClone(values);
       cloned[cloned.length - 1].value = '-' + raw;
-      args.push(normalize_argument(cloned));
+      args.push(normalizeArgument(cloned));
       values[values.length - 1].value = raw;
     }
-    args.push(normalize_argument(values));
+    args.push(normalizeArgument(values));
     values = [];
-    last_run = '';
+    lastRun = '';
   };
 
   while (!cur.end()) {
@@ -429,12 +429,12 @@ function parse_arguments(cur, start, extra, variables) {
     }
     // functions fire inside quotes too, like everywhere else
     if (tok.isSymbol('@', '$')) {
-      flush_text(tok.index, true);
-      values.push(parse_func(cur, extra, variables));
-      run_start = cur.tail_end();
+      flushText(tok.index, true);
+      values.push(parseFunc(cur, extra, variables));
+      runStart = cur.tailEnd();
       continue;
     }
-    if (split_dollar(cur)) {
+    if (splitDollar(cur)) {
       continue;
     }
     if (!quote && tok.isSymbol()) {
@@ -450,27 +450,27 @@ function parse_arguments(cur, start, extra, variables) {
           cur.next();
           continue;
         }
-        flush_text(tok.index, false);
-        push_argument();
+        flushText(tok.index, false);
+        pushArgument();
         end = tok.index;
         cur.next();
-        return { args: skip_last_empty_args(args), end };
+        return { args: skipLastEmptyArgs(args), end };
       }
       if (v === ',' && paren === 0) {
-        flush_text(tok.index, false);
-        push_argument();
+        flushText(tok.index, false);
+        pushArgument();
         cur.next();
-        run_start = tok.index + 1;
+        runStart = tok.index + 1;
         continue;
       }
     }
     cur.next();
   }
   // unterminated argument list: pending values are dropped like before
-  return { args: skip_last_empty_args(args), end };
+  return { args: skipLastEmptyArgs(args), end };
 }
 
-function skip_last_empty_args(args) {
+function skipLastEmptyArgs(args) {
   let first = args[0];
   if (first) {
     let last = first.values[first.values.length - 1];
@@ -481,7 +481,7 @@ function skip_last_empty_args(args) {
   return args;
 }
 
-function normalize_argument(values) {
+function normalizeArgument(values) {
   for (let v of values) {
     if (v.type === 'text' && typeof v.value === 'string' && v.value.includes('`')) {
       v.value = v.value.replace(/`/g, '"');
@@ -495,7 +495,7 @@ function normalize_argument(values) {
     let cf = ft.value[0];
     let ce = ed.value[ed.value.length - 1];
     // Only strip a surrounding pair when it actually wraps the whole argument
-    if (is_pair_of(cf, ce) && (cf !== '(' || parens_wrap_whole(values))) {
+    if (isPairOf(cf, ce) && (cf !== '(' || parensWrapWhole(values))) {
       ft.value = ft.value.slice(1);
       ed.value = ed.value.slice(0, ed.value.length - 1);
       cluster = true;
@@ -504,7 +504,7 @@ function normalize_argument(values) {
   return Node.argument(values, cluster);
 }
 
-function parens_wrap_whole(values) {
+function parensWrapWhole(values) {
   let str = values
     .filter(v => v.type === 'text' && typeof v.value === 'string')
     .map(v => v.value)
@@ -521,7 +521,7 @@ function parens_wrap_whole(values) {
   return depth === 0;
 }
 
-function parse_doodle_body(cur, start) {
+function parseDoodleBody(cur, start) {
   let paren = 0;
   let quote = false;
   while (!cur.end()) {
@@ -534,40 +534,40 @@ function parse_doodle_body(cur, start) {
       paren++;
     } else if (!quote && tok.isSymbol(')')) {
       if (paren === 0) {
-        let body = substitute_pi(cur.source.slice(start, tok.index), cur.source[start - 1]);
+        let body = substitutePi(cur.source.slice(start, tok.index), cur.source[start - 1]);
         cur.next();
-        return [normalize_argument([Node.text(get_text_value(body))])];
+        return [normalizeArgument([Node.text(getTextValue(body))])];
       }
       paren--;
     }
     cur.next();
   }
-  let body = substitute_pi(cur.source.slice(start), cur.source[start - 1]);
-  return [normalize_argument([Node.text(get_text_value(body))])];
+  let body = substitutePi(cur.source.slice(start), cur.source[start - 1]);
+  return [normalizeArgument([Node.text(getTextValue(body))])];
 }
 
-function expand_svg(cur, raw, args, extra, variables) {
-  let parsed_svg = parse_svg(raw);
-  for (let item of parsed_svg.value) {
+function expandSvg(cur, raw, args, extra, variables) {
+  let parsedSvg = parseSvg(raw);
+  for (let item of parsedSvg.value) {
     if (item.variable) {
-      let rules = parse_source(`${item.name}: ${item.value}`, extra, cur.ctx);
+      let rules = parseSource(`${item.name}: ${item.value}`, extra, cur.ctx);
       if (rules[0]) {
         variables[item.name] = rules[0].value;
       }
     }
   }
-  if (/\d\s*{/.test(raw) && has_times_syntax(parsed_svg)) {
-    let svg = generate_svg_extended(parsed_svg) + ')';
+  if (/\d\s*{/.test(raw) && hasTimesSyntax(parsedSvg)) {
+    let svg = generateSvgExtended(parsedSvg) + ')';
     let sub = new Cursor(svg, cur.ctx);
-    return parse_arguments(sub, 0, extra, variables).args;
+    return parseArguments(sub, 0, extra, variables).args;
   }
   return args;
 }
 
-function parse_rule(cur, extra) {
+function parseRule(cur, extra) {
   let rule = { type: 'rule', property: '', value: [] };
   let source = cur.source;
-  let start = cur.head_index();
+  let start = cur.headIndex();
   let colon = -1;
   let end = -1;
   let buf = '';
@@ -601,12 +601,12 @@ function parse_rule(cur, extra) {
         rule.property = buf.trim();
         colon = tok.index;
         if (rule.property === '@use') {
-          rule.value = parse_use(cur, extra);
+          rule.value = parseUse(cur, extra);
         } else {
           cur.next();
-          rule.value = parse_value(cur, extra);
+          rule.value = parseValue(cur, extra);
         }
-        end = cur.head_index();
+        end = cur.headIndex();
         if (!cur.end() && cur.peek().isSymbol(';')) {
           cur.next();
         }
@@ -629,12 +629,12 @@ function parse_rule(cur, extra) {
   return rule;
 }
 
-function parse_use(cur, extra) {
+function parseUse(cur, extra) {
   cur.next(); // ':'
-  let groups = parse_value(cur, extra);
+  let groups = parseValue(cur, extra);
   let result = [];
   for (let group of groups) {
-    evaluate_value(group, extra, cur.ctx);
+    evaluateValue(group, extra, cur.ctx);
     let [token] = group;
     if (token && token.value && token.value.length) {
       result.push(...token.value);
@@ -643,19 +643,19 @@ function parse_use(cur, extra) {
   return result;
 }
 
-function read_variable(extra, name) {
-  return (extra && extra.get_variable) ? extra.get_variable(name) : '';
+function readVariable(extra, name) {
+  return (extra && extra.getVariable) ? extra.getVariable(name) : '';
 }
 
-function evaluate_value(values, extra, ctx) {
+function evaluateValue(values, extra, ctx) {
   for (let v of values) {
     if (v.type === 'text' && v.value) {
-      let vars = parse_var(v.value);
+      let vars = parseVar(v.value);
       v.value = vars.reduce((ret, p) => {
-        let rule = read_variable(extra, p.name);
+        let rule = readVariable(extra, p.name);
         if (!rule && p.fallback) {
           p.fallback.every(n => {
-            let other = read_variable(extra, n.name);
+            let other = readVariable(extra, n.name);
             if (other) {
               rule = other;
               return false;
@@ -665,7 +665,7 @@ function evaluate_value(values, extra, ctx) {
         }
         let parsed;
         try {
-          parsed = parse_source(rule, extra, ctx);
+          parsed = parseSource(rule, extra, ctx);
         } catch (e) {}
         if (parsed) {
           ret.push(...parsed);
@@ -675,7 +675,7 @@ function evaluate_value(values, extra, ctx) {
     }
     if (v.type === 'func' && v.arguments) {
       for (let arg of v.arguments) {
-        evaluate_value(arg.values, extra, ctx);
+        evaluateValue(arg.values, extra, ctx);
       }
     }
   }
@@ -684,7 +684,7 @@ function evaluate_value(values, extra, ctx) {
 // Shared block-body loop. `level` selects the few branches that differ:
 // 'pseudo' spreads @use and takes no nested conds/keyframes,
 // 'top' has no '&', skips tags and stray '}', and keeps at-rules.
-function parse_block_body(cur, extra, level) {
+function parseBlockBody(cur, extra, level) {
   let styles = [];
   while (!cur.end()) {
     let tok = cur.peek();
@@ -698,34 +698,34 @@ function parse_block_body(cur, extra, level) {
       break;
     }
     if (tok.isSymbol(':')) {
-      let pseudo = parse_pseudo(cur, extra);
+      let pseudo = parsePseudo(cur, extra);
       if (pseudo.selector) styles.push(pseudo);
       continue;
     }
     if (tok.isSymbol('&') && level !== 'top') {
-      styles.push(parse_cond(cur, extra));
+      styles.push(parseCond(cur, extra));
       continue;
     }
     if (level !== 'pseudo') {
-      if (is_keyframes_at(cur)) {
-        styles.push(parse_keyframes(cur, extra));
+      if (isKeyframesAt(cur)) {
+        styles.push(parseKeyframes(cur, extra));
         continue;
       }
       if (level === 'top' && tok.isSymbol('<')) {
-        skip_tag(cur);
+        skipTag(cur);
         continue;
       }
-      if (level === 'cond' && tok.isSymbol('@') && probe_block(cur) === '{') {
-        styles.push(parse_cond(cur, extra));
+      if (level === 'cond' && tok.isSymbol('@') && probeBlock(cur) === '{') {
+        styles.push(parseCond(cur, extra));
         continue;
       }
-      if (probe_selector(cur)) {
-        let nested = parse_cond(cur, extra);
+      if (probeSelector(cur)) {
+        let nested = parseCond(cur, extra);
         if (nested.name.length) styles.push(nested);
         continue;
       }
     }
-    let rule = parse_rule(cur, extra);
+    let rule = parseRule(cur, extra);
     if (level === 'pseudo' && rule.property === '@use') {
       styles.push(...rule.value);
     } else if (rule.property || (level === 'top' && rule.type === 'at-rule')) {
@@ -735,15 +735,15 @@ function parse_block_body(cur, extra, level) {
   return styles;
 }
 
-function parse_pseudo(cur, extra) {
+function parsePseudo(cur, extra) {
   let pseudo = { type: 'pseudo', selector: '', selectors: [], styles: [] };
-  let start = cur.head_index();
+  let start = cur.headIndex();
 
   // selector runs to the first '{'
   while (!cur.end() && !cur.peek().isSymbol('{')) {
     cur.next();
   }
-  let selector = cur.source.slice(start, cur.head_index()).trim();
+  let selector = cur.source.slice(start, cur.headIndex()).trim();
   if (cur.end() || !selector) {
     cur.next();
     return pseudo;
@@ -754,21 +754,21 @@ function parse_pseudo(cur, extra) {
     selector = selector.replace(/^\:+doodle/, ':host');
   }
   pseudo.selector = selector;
-  pseudo.selectors = parse_value_group(selector);
-  pseudo.styles = parse_block_body(cur, extra, 'pseudo');
+  pseudo.selectors = parseValueGroup(selector);
+  pseudo.styles = parseBlockBody(cur, extra, 'pseudo');
   return pseudo;
 }
 
-function parse_cond(cur, extra) {
+function parseCond(cur, extra) {
   let cond = { type: 'cond', name: '', styles: [] };
-  Object.assign(cond, parse_cond_selector(cur));
+  Object.assign(cond, parseCondSelector(cur));
   if (cur.end()) return cond;
   cur.next(); // '{'
-  cond.styles = parse_block_body(cur, extra, 'cond');
+  cond.styles = parseBlockBody(cur, extra, 'cond');
   return cond;
 }
 
-function parse_cond_selector(cur) {
+function parseCondSelector(cur) {
   let name = '';
   let keyword = '';
   let segments = [];
@@ -789,7 +789,7 @@ function parse_cond_selector(cur) {
     if (tok.isSymbol('(')) {
       flush();
       cur.next();
-      let args = parse_arguments(cur, tok.index + 1, undefined, {}).args;
+      let args = parseArguments(cur, tok.index + 1, undefined, {}).args;
       segments.push({ arguments: args });
       continue;
     }
@@ -815,7 +815,7 @@ function parse_cond_selector(cur) {
   return { name: n, addition, segments, position: cur.position() };
 }
 
-function parse_keyframes(cur, extra) {
+function parseKeyframes(cur, extra) {
   let keyframes = { type: 'keyframes', name: '', steps: [] };
   cur.next(); // '@'
   cur.next(); // 'keyframes'
@@ -835,7 +835,7 @@ function parse_keyframes(cur, extra) {
     keyframes.name = cur.source.slice(start.index, end);
   }
   if (!keyframes.name.length) {
-    throw_error('missing keyframes name', start && start.pos);
+    throwError('missing keyframes name', start && start.pos);
     return keyframes;
   }
 
@@ -852,14 +852,14 @@ function parse_keyframes(cur, extra) {
       cur.next();
       break;
     }
-    keyframes.steps.push(parse_step(cur, extra));
+    keyframes.steps.push(parseStep(cur, extra));
   }
   return keyframes;
 }
 
-function parse_step(cur, extra) {
+function parseStep(cur, extra) {
   let step = { type: 'step', name: '', styles: [] };
-  step.name = parse_value(cur, extra, '{');
+  step.name = parseValue(cur, extra, '{');
   cur.next(); // '{'
   while (!cur.end()) {
     let tok = cur.peek();
@@ -871,27 +871,27 @@ function parse_step(cur, extra) {
       cur.next();
       break;
     }
-    step.styles.push(parse_rule(cur, extra));
+    step.styles.push(parseRule(cur, extra));
   }
   return step;
 }
 
-function skip_tag(cur) {
+function skipTag(cur) {
   while (!cur.end() && !cur.peek().isSymbol('>')) {
     cur.next();
   }
   cur.next();
 }
 
-function parse_statements(cur, extra) {
-  return parse_block_body(cur, extra, 'top');
+function parseStatements(cur, extra) {
+  return parseBlockBody(cur, extra, 'top');
 }
 
-function parse_source(input, extra, ctx) {
+function parseSource(input, extra, ctx) {
   let source = String(input === undefined || input === null ? '' : input).trim();
-  return parse_statements(new Cursor(source, ctx), extra);
+  return parseStatements(new Cursor(source, ctx), extra);
 }
 
 export default function parse(input, extra) {
-  return parse_source(input, extra, { position: 0 });
+  return parseSource(input, extra, { position: 0 });
 }

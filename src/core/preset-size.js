@@ -23,7 +23,7 @@ const modes = {
 
 const unit = 'mm';
 
-function get_preset(name, mode) {
+function getPreset(name, mode) {
   name = String(name).toLowerCase();
 
   // Default to landscape mode
@@ -36,11 +36,11 @@ function get_preset(name, mode) {
   return [w, h].map(n => n + unit);
 }
 
-function is_preset(name) {
+function isPreset(name) {
   return !!presets[name];
 }
 
 export {
-  get_preset,
-  is_preset
+  getPreset,
+  isPreset
 }

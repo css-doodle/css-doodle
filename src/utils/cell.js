@@ -1,8 +1,8 @@
-export function cell_id(x, y, z) {
+export function cellId(x, y, z) {
   return 'c-' + x + '-' + y + '-' + z;
 }
 
-export function cell_metrics(x, y, grid) {
+export function cellMetrics(x, y, grid) {
   let dx = x - .5 - grid.x / 2;
   let dy = y - .5 - grid.y / 2;
   let ax = Math.abs(dx);

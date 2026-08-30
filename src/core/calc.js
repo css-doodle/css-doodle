@@ -1,4 +1,4 @@
-import { is_invalid_number } from '../utils/type.js';
+import { isInvalidNumber } from '../utils/type.js';
 import { last } from '../utils/list.js';
 import { scan } from '../parser/tokenizer.js';
 import { cache } from '../utils/cache.js';
@@ -313,16 +313,16 @@ function compileVariable(name) {
   return (ctx, history) => {
     let result = ctx[name];
 
-    if (is_invalid_number(result)) {
+    if (isInvalidNumber(result)) {
       result = defaultContext[name];
     }
-    if (is_invalid_number(result)) {
+    if (isInvalidNumber(result)) {
       result = Math[name];
     }
-    if (is_invalid_number(result)) {
+    if (isInvalidNumber(result)) {
       result = expand(name, ctx, history);
     }
-    if (is_invalid_number(result)) {
+    if (isInvalidNumber(result)) {
       if (RE_NEGATIVE_VAR.test(name)) {
         result = expand('-1' + name.slice(1), ctx, history);
       }

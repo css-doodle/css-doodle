@@ -1,4 +1,4 @@
-import { is_empty } from '../utils/type.js';
+import { isEmpty } from '../utils/type.js';
 import { cache } from '../utils/cache.js';
 import { scan, iterator } from './tokenizer.js';
 
@@ -14,7 +14,7 @@ function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
   let symbolCounterMax = {};
   let symbolsToCompare = [];
 
-  if (is_empty(input)) {
+  if (isEmpty(input)) {
     return group;
   }
   if (!Array.isArray(symbolList)) {
@@ -107,7 +107,7 @@ cache.onClear(() => memo.clear());
 
 const RE_PLAIN = /[,()'"`\s]/;
 
-function parse_cached(input, option) {
+function parseCached(input, option) {
   // single plain values ('#60569e', '-45deg') split to themselves;
   // only safe when the separator is the default comma
   let symbol = option && option.symbol;
@@ -117,13 +117,13 @@ function parse_cached(input, option) {
       && !RE_PLAIN.test(input)) {
     return [input];
   }
-  let opt_key = option
+  let optKey = option
     ? (Array.isArray(symbol) ? symbol.join('\x01') : String(symbol))
       + (option.noSpace ? 'n' : '') + (option.verbose ? 'v' : '')
     : '';
-  let inner = memo.get(opt_key);
+  let inner = memo.get(optKey);
   if (!inner) {
-    memo.set(opt_key, inner = new Map());
+    memo.set(optKey, inner = new Map());
   }
   let result = inner.get(input);
   if (result === undefined) {
@@ -136,4 +136,4 @@ function parse_cached(input, option) {
   return result;
 }
 
-export default parse_cached;
+export default parseCached;
