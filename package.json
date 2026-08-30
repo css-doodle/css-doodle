@@ -22,7 +22,8 @@
   },
   "files": [
     "css-doodle*.js",
-    "src"
+    "src",
+    "!src/**/_legacy-*.mjs"
   ],
   "exports": {
     ".": "./css-doodle.min.js",
