@@ -4,20 +4,23 @@ export default function createAnimationFrame(fn, fps = 60) {
   let duration = 1000 / fps;
   let time = 0;
   let last = 0;
+  let due = 0;
 
   function loop(now) {
-    if (!time) {
-      time = now;
-    }
-    let delta = now - last;
     if (last) {
-      time += delta;
+      time += now - last;
     }
-    if (delta >= duration) {
+    last = now;
+    if (time >= due) {
       fn(time);
-      last = now;
+      due += duration;
+      if (due <= time) {
+        due = time + duration;
+      }
     }
-    id = requestAnimationFrame(loop);
+    if (!paused && id) {
+      id = requestAnimationFrame(loop);
+    }
   }
 
   id = requestAnimationFrame(loop);
@@ -38,8 +41,8 @@ export default function createAnimationFrame(fn, fps = 60) {
       }
     },
     cancel() {
+      paused = false;
       if (id) {
-        paused = false;
         cancelAnimationFrame(id);
         id = null;
       }
