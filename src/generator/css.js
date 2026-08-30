@@ -24,21 +24,6 @@ function is_image_value(value) {
 
 const NO_SPACE = { noSpace: true };
 const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
-const static_args = new WeakMap();
-
-function static_argument(argument) {
-  let cached = static_args.get(argument);
-  if (cached === undefined) {
-    cached = false;
-    let { values } = argument;
-    if (values.length === 1 && values[0].type === 'text'
-        && !/^\-\-\w/.test(values[0].value)) {
-      cached = { cluster: argument.cluster, value: values[0].value };
-    }
-    static_args.set(argument, cached);
-  }
-  return cached;
-}
 
 const func_cache = new Map();
 
@@ -49,6 +34,190 @@ function find_func(name) {
     func_cache.set(name, fn);
   }
   return fn;
+}
+
+/*
+ * Value compiler. Each value/function/argument node of the AST is
+ * compiled once into an evaluator closure; running a cell (or a @m
+ * iteration) then only executes closures — no AST re-walking, name
+ * lookups or static-argument parsing in the hot path. Compiled
+ * evaluators are keyed by AST node and shared across generations;
+ * everything stateful comes in through the env:
+ *
+ *   env = { rules, coords, contextVariable, selector }
+ *
+ * so the Rules instance stays the interpreter and function.js stays a
+ * plain callee.
+ */
+
+const EMPTY_EXTRA = [];
+const compiled_values = new WeakMap();
+const compiled_funcs = new WeakMap();
+const compiled_arguments = new WeakMap();
+
+/* value: list of text/func nodes → env => { value, extra } */
+function compile_value(value) {
+  let compiled = compiled_values.get(value);
+  if (compiled === undefined) {
+    let parts = value.map(v => {
+      if (v.type === 'func') return compile_func(v);
+      return (v.type === 'text') ? ('' + v.value) : '';
+    });
+    if (parts.every(part => typeof part === 'string')) {
+      let constant = { value: parts.join(''), extra: '' };
+      compiled = () => constant;
+    } else {
+      compiled = env => {
+        let output = '';
+        let extra = '';
+        for (let part of parts) {
+          if (typeof part === 'string') {
+            output += part;
+          } else {
+            let evaluated = part(env, EMPTY_EXTRA, false);
+            output += evaluated.value;
+            if (evaluated.extra) extra = evaluated.extra;
+          }
+        }
+        return { value: output, extra };
+      };
+    }
+    compiled_values.set(value, compiled);
+  }
+  return compiled;
+}
+
+/* func node → (env, extra, in_argument) => { value, extra? } */
+function compile_func(node) {
+  let compiled = compiled_funcs.get(node);
+  if (compiled === undefined) {
+    let fname = node.name.slice(1);
+    let fn = find_func(fname);
+    if (typeof fn !== 'function') {
+      // unrecognized functions read as literal text
+      let literal = { value: node.name };
+      compiled = () => literal;
+    } else {
+      let composable = COMPOSABLE.has(fname);
+      let args = node.arguments.map(arg => compile_argument(arg, node));
+      // all-literal argument lists are interpreted here, once
+      let constant_input = null;
+      if (!fn.lazy && args.every(arg => arg.constant)) {
+        constant_input = [];
+        for (let arg of args) {
+          if (arg.split) constant_input.push(...arg.split);
+          else if (!is_nil(arg())) constant_input.push(get_value(arg()));
+        }
+        constant_input = remove_empty_values(constant_input);
+      }
+      compiled = (env, extra, in_argument) => {
+        let { rules, coords } = env;
+        rules.check_uniforms(fname);
+        if (composable) {
+          let composed = rules.compose_composable(fname, node, coords, env.selector);
+          if (composed !== undefined) {
+            return { value: composed };
+          }
+          if (!in_argument) {
+            return { value: '' };
+          }
+        }
+        coords.position = node.position;
+        if (!in_argument && node.variables) {
+          rules.compose_variables(node.variables, coords, env.contextVariable);
+        }
+        let input = constant_input;
+        if (input === null) {
+          if (fn.lazy) {
+            input = args.map(arg => (...lazy) => arg(env, lazy));
+          } else {
+            input = [];
+            let e = in_argument ? extra : EMPTY_EXTRA;
+            for (let arg of args) {
+              if (arg.split) {
+                input.push(...arg.split);
+                continue;
+              }
+              let v = arg.constant ? arg() : arg(env, e);
+              // composed arguments are already one value: never re-split
+              if (!arg.cluster && !arg.composed
+                && (typeof v === 'number' || typeof v === 'string')) {
+                input.push(...parse_value_group(v, NO_SPACE));
+              } else if (!is_nil(v)) {
+                input.push(get_value(v));
+              }
+            }
+            input = remove_empty_values(input);
+          }
+        }
+        let output = rules.call_func(fn, coords, input, fname, env.contextVariable);
+        if (output && output.gf) {
+          rules.add_rule(':gf:', output.value);
+        }
+        return { value: get_value(output), extra: output?.extra };
+      };
+    }
+    compiled_funcs.set(node, compiled);
+  }
+  return compiled;
+}
+
+/* argument node → (env, extra) => raw value. Compile-time facts ride on
+ * the evaluator: .cluster, .constant (single literal), .composed
+ * (multi-part, its value never re-splits), .split (pre-parsed inputs) */
+function compile_argument(argument, parent) {
+  let compiled = compiled_arguments.get(argument);
+  if (compiled === undefined) {
+    let { values } = argument;
+    let is_var_read = v => v.type === 'text' && /^\-\-\w/.test(v.value);
+    if (values.length === 1 && values[0].type === 'text' && !is_var_read(values[0])) {
+      let value = values[0].value;
+      let type = typeof value;
+      compiled = () => value;
+      compiled.constant = true;
+      if (!argument.cluster && (type === 'number' || type === 'string')) {
+        compiled.split = parse_value_group(value, NO_SPACE);
+      }
+    } else {
+      let parts = values.map(v => {
+        if (v.type === 'text') {
+          if (is_var_read(v)) {
+            if (parent && parent.name === '@var') {
+              return () => v.value;
+            }
+            return env => env.rules.read_var(v.value, env.coords, env.contextVariable);
+          }
+          let text = v.value;
+          return () => text;
+        }
+        if (v.type === 'func') {
+          let compiled_fn = compile_func(v);
+          return (env, extra) => compiled_fn(env, extra, true).value;
+        }
+        return () => undefined;
+      });
+      if (parts.length === 1) {
+        let single = parts[0];
+        compiled = (env, extra) => {
+          env.coords.extra.push(extra);
+          let value = single(env, extra);
+          env.coords.extra.pop();
+          return value;
+        };
+      } else {
+        compiled = (env, extra) => {
+          env.coords.extra.push(extra);
+          let value = parts.map(part => part(env, extra)).join('');
+          env.coords.extra.pop();
+          return value;
+        };
+        compiled.composed = true;
+      }
+    }
+    compiled.cluster = argument.cluster;
+    compiled_arguments.set(argument, compiled);
+  }
+  return compiled;
 }
 
 function is_static_rule(token) {
@@ -150,7 +319,6 @@ class Rules {
   }
 
   apply_func(fn, coords, args, fname, contextVariable = {}) {
-    let _fn = fn(coords);
     let input = [];
     for (let arg of args) {
       let type = typeof arg.value;
@@ -164,7 +332,12 @@ class Rules {
         input.push(get_value(arg.value));
       }
     }
-    input = make_array(remove_empty_values(input));
+    input = remove_empty_values(input);
+    return this.call_func(fn, coords, input, fname, contextVariable);
+  }
+
+  call_func(fn, coords, input, fname, contextVariable = {}) {
+    let _fn = fn(coords);
     if (typeof _fn === 'function') {
       if (fname.startsWith('$')) {
         let group = this.scoped_vars(coords.count, contextVariable);
@@ -228,67 +401,17 @@ class Rules {
     }
   }
 
-  evaluate_func(node, coords, contextVariable, selector, extra, in_argument) {
-    let fname = node.name.slice(1);
-    let fn = find_func(fname);
-    if (typeof fn !== 'function') {
-      // unrecognized functions read as literal text
-      return { value: node.name };
-    }
-    this.check_uniforms(fname);
-    if (COMPOSABLE.has(fname)) {
-      let composed = this.compose_composable(fname, node, coords, selector);
-      if (composed !== undefined) {
-        return { value: composed };
-      }
-      if (!in_argument) {
-        return { value: '' };
-      }
-    }
-    coords.position = node.position;
-    if (!in_argument && node.variables) {
-      this.compose_variables(node.variables, coords, contextVariable);
-    }
-    let args = node.arguments.map(arg => {
-      return fn.lazy
-        ? (...lazy) => this.compose_argument(arg, coords, lazy, node, contextVariable, selector)
-        : this.compose_argument(arg, coords, in_argument ? extra : [], node, contextVariable, selector);
-    });
-    let output = this.apply_func(fn, coords, args, fname, contextVariable);
-    if (output && output.gf) {
-      this.add_rule(':gf:', output.value);
-    }
-    return { value: get_value(output), extra: output?.extra };
-  }
-
   compose_argument(argument, coords, extra = [], parent, contextVariable, selector) {
-    let static_result = static_argument(argument);
-    if (static_result) {
-      return static_result;
-    }
-    coords.extra.push(extra);
-
-    let result = argument.values.map(arg => {
-      if (arg.type === 'text') {
-        if (/^\-\-\w/.test(arg.value)) {
-          if (parent && parent.name === '@var') {
-            return arg.value;
-          }
-          return this.read_var(arg.value, coords, contextVariable);
-        }
-        return arg.value;
-      }
-      if (arg.type === 'func') {
-        return this.evaluate_func(arg, coords, contextVariable, selector, extra, true).value;
-      }
-    });
-
-    coords.extra.pop();
-
+    let compiled = compile_argument(argument, parent);
+    let value = compiled.constant
+      ? compiled()
+      : compiled({ rules: this, coords, contextVariable, selector }, extra);
+    // the wrapped shape apply_func interprets: composed values stay boxed
+    // so they read as one argument
     return {
-      cluster: argument.cluster,
-      value: (result.length >= 2 ? ({ value: result.join('') }) : result[0])
-    }
+      cluster: compiled.cluster,
+      value: compiled.composed ? { value } : value,
+    };
   }
 
   compose_doodle(doodle, arg, upextra) {
@@ -369,25 +492,7 @@ class Rules {
         extra: '',
       }
     }
-    let extra = '';
-    let output = '';
-    for (let val of value) {
-      if (val.type === 'text') {
-        output += val.value;
-        continue;
-      }
-      if (val.type === 'func') {
-        let evaluated = this.evaluate_func(val, coords, contextVariable, selector, [], false);
-        output += evaluated.value;
-        if (evaluated.extra) {
-          extra = evaluated.extra;
-        }
-      }
-    }
-    return {
-      value: output,
-      extra: extra,
-    }
+    return compile_value(value)({ rules: this, coords, contextVariable, selector });
   }
 
   get_composed_value(value, coords, context, selector) {

@@ -9,7 +9,7 @@ import generate_svg_gradient from '../generator/svg-gradient.js';
 
 import Noise from '../lib/noise.js';
 import calc from './calc.js';
-import { memo } from '../utils/cache.js';
+import { memo, cache } from '../utils/cache.js';
 
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
@@ -56,27 +56,49 @@ function compute_var(input, unit) {
   return [`calc(${input})`, unit];
 }
 
+/* an operator argument ('*10', '%360deg', '-.5') parses once; computing
+ * against a base — which runs per cell and per sequence iteration — is
+ * then plain arithmetic */
+const operations = new Map();
+cache.onClear(() => operations.clear());
+
+function parse_operation(v) {
+  let parsed = operations.get(v);
+  if (parsed === undefined) {
+    let prefix = RE_OP_PREFIX.test(v);
+    let suffix = !prefix && RE_OP_SUFFIX.test(v);
+    let op = '';
+    let rest = v;
+    if (prefix || suffix) {
+      op = prefix ? v[0] : v.slice(-1);
+      rest = (prefix ? v.slice(1) : v.slice(0, -1)).trim();
+    }
+    let { unit = '', value } = parse_compound_value(rest || 0);
+    parsed = { op, prefix, value, unit };
+    if (operations.size >= 512) {
+      operations.clear();
+    }
+    operations.set(v, parsed);
+  }
+  return parsed;
+}
+
 function calc_value(base, v) {
   if (is_empty(v) || is_empty(base)) {
     return [];
   }
-  let prefix = RE_OP_PREFIX.test(v);
-  if (prefix || RE_OP_SUFFIX.test(v)) {
-    let op = prefix ? v[0] : v.slice(-1);
-    let rest = prefix ? v.slice(1) : v.slice(0, -1);
-    let { unit = '', value } = parse_compound_value(rest.trim() || 0);
+  let { op, prefix, value, unit } = parse_operation(v);
+  if (op) {
     // prefix op: base comes first; suffix op: base comes last
     let [a, b] = prefix ? [base, value] : [value, base];
-    if (RE_VAR.test(base)) {
+    if (typeof base === 'string' && RE_VAR.test(base)) {
       return op === '%'
         ? compute_var(`mod(${a}, ${b})`, unit)
         : compute_var(`${a} ${op} ${b}`, unit);
     }
     return [compute(op, Number(a), Number(b)), unit];
-  } else {
-    let { unit = '', value } = parse_compound_value(v || 0);
-    return [(Number(base) + (Number(value) || 0)), unit];
   }
+  return [(Number(base) + (Number(value) || 0)), unit];
 }
 
 function calc_with(base) {
@@ -90,7 +112,7 @@ function calc_with(base) {
       }
     }
 
-    if (RE_CALC.test(base)) {
+    if (typeof base === 'string' && RE_CALC.test(base)) {
       return `calc(${base} * 1${unit})`;
     }
     return base + unit;
@@ -123,17 +145,19 @@ const STACK_LIMIT = 1024;
 
 function push_stack(context, name, value) {
   let stack = context[name] || (context[name] = []);
-  if (stack.length >= STACK_LIMIT) {
-    stack.shift();
-  }
   stack.push(value);
+  // trim in batches: a shift() per push costs O(limit) on every @r/@p
+  if (stack.length >= STACK_LIMIT * 2) {
+    stack.splice(0, STACK_LIMIT);
+  }
   return value;
 }
 
 function last_of(stack, n = 1) {
   if (stack === undefined) return '';
-  let i = stack.length - n;
-  return stack[i > 0 ? i : 0];
+  // lookback stops at the window edge, as if older values were shifted out
+  let i = Math.max(stack.length - n, stack.length - STACK_LIMIT, 0);
+  return stack[i];
 }
 
 let seq_uid = 0;
@@ -151,14 +175,12 @@ function make_sequence(c) {
       }
     }
     let signature = ++seq_uid;
-    return sequence(
-      evaluated,
-      (...args) => {
-        return actions.map(action => {
+    let run = actions.length === 1
+      ? (...args) => get_value(actions[0](...args, signature))
+      : (...args) => actions.map(action => {
           return get_value(action(...args, signature))
         }).join(',');
-      }
-    ).join(c);
+    return sequence(evaluated, run).join(c);
   });
 }
 
