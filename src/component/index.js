@@ -21,6 +21,26 @@ function un_entity(code) {
   return textarea.value;
 }
 
+function mount_filter_defs(parent, markup, slot) {
+  let holder = parent.querySelector(':scope > cssd-filters');
+  if (!markup) {
+    if (holder) {
+      holder.remove();
+    }
+    return null;
+  }
+  if (!holder) {
+    holder = document.createElement('cssd-filters');
+    holder.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none');
+    if (slot) {
+      holder.setAttribute('slot', slot);
+    }
+    parent.appendChild(holder);
+  }
+  holder.innerHTML = markup;
+  return holder;
+}
+
 function get_png_name(name) {
   let prefix = is_nil(name)
     ? Date.now()
@@ -245,9 +265,11 @@ if (typeof HTMLElement !== 'undefined') {
       }
 
       this.grid_size = compiled.grid || this.get_grid();
-      this.build_grid(compiled, this.grid_size);
       this._code = code;
+      /* the source is cleared before build_grid so the filter defs it
+       * mounts as light children don't get wiped along with it */
       this.innerHTML = '';
+      this.build_grid(compiled, this.grid_size);
 
       setTimeout(() => {
         this._rendering = false;
@@ -348,6 +370,7 @@ if (typeof HTMLElement !== 'undefined') {
         get_basic_styles(this.grid_size) +
         compiled.styles.all
       ));
+      this.mount_filters(compiled.filters);
     }
 
     build_grid(compiled, grid) {
@@ -372,6 +395,53 @@ if (typeof HTMLElement !== 'undefined') {
         replace(Object.values(content).join(' '));
       }
       bind_uniforms(this, uniforms);
+      this.mount_filters(compiled.filters);
+    }
+
+    mount_filters(filters) {
+      let markup = Object.values(filters).join('');
+      let slot = this.shadowRoot.querySelector('slot[name="cssd-filters"]');
+      if (markup && !slot) {
+        slot = document.createElement('slot');
+        slot.setAttribute('name', 'cssd-filters');
+        this.shadowRoot.appendChild(slot);
+      }
+      if (!markup && slot) {
+        slot.remove();
+      }
+      let holders = [
+        mount_filter_defs(this.shadowRoot, markup),
+        mount_filter_defs(this, markup, 'cssd-filters'),
+      ];
+      this._filters_markup = markup;
+      if (markup) {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (this._filters_markup !== markup) {
+            return;
+          }
+          if (is_safari()) {
+            /* Safari keeps the def animations running but won't repaint
+             * the elements referencing them until their compositing
+             * layers get rebuilt, so flip a rendering hint for a frame
+             * on everything that may carry a filter */
+            let targets = [
+              this, ...this.shadowRoot.querySelectorAll('cssd-grid, cssd-cell')
+            ];
+            for (let el of targets) {
+              el.style.willChange = 'filter';
+            }
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              for (let el of targets) {
+                el.style.willChange = '';
+              }
+            }));
+          } else {
+            for (let holder of holders) {
+              holder.innerHTML = markup;
+            }
+          }
+        }));
+      }
     }
 
     set_style(input) {

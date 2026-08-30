@@ -736,6 +736,10 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
     /<filter([\s>])/,
     `<filter id="${ id }"$1`
   );
+  if (upstream.rules?.filters) {
+    upstream.rules.filters[id] = svg;
+    return `url(#${ id })`;
+  }
   return create_svg_url(svg, id);
 });
 

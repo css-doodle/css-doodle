@@ -83,6 +83,10 @@ export function doodle_to_image(host, code, options, fn) {
 
   let replace = create_replacer(host, compiled);
   let grid_container = create_grid(grid, compiled);
+  let filter_defs = Object.values(compiled.filters).join('');
+  if (filter_defs) {
+    filter_defs = `<div style="position:absolute;width:0;height:0;overflow:hidden">${filter_defs}</div>`;
+  }
 
   let size = (options.width && options.height)
     ? `width="${options.width}" height="${options.height}"`
@@ -102,6 +106,7 @@ export function doodle_to_image(host, code, options, fn) {
               ${styles.all}
             ]]></style>
             ${grid_container}
+            ${filter_defs}
           </div>
         </foreignObject>
       </svg>

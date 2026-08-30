@@ -104,6 +104,7 @@ class Rules {
     this.doodles = {};
     this.pattern = {};
     this.shaders = {};
+    this.filters = {};
     this.content = {};
     this.vars = {};
     for (let key of this.rules.keys()) {
@@ -881,6 +882,7 @@ class Rules {
       doodles: this.doodles,
       shaders: this.shaders,
       pattern: this.pattern,
+      filters: this.filters,
       uniforms: this.uniforms,
       content: this.content,
     }
