@@ -506,6 +506,63 @@ test('times syntax', () => {
   });
 });
 
+test('times syntax with id and class', () => {
+  compare(`
+    circle#a*4 {}
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'circle',
+      pureName: 'circle#a',
+      times: '4',
+      value: [{
+        type: 'statement',
+        name: 'id',
+        value: 'a'
+      }]
+    }]
+  });
+
+  compare(`
+    circle.big*3 {}
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'circle',
+      pureName: 'circle.big',
+      times: '3',
+      value: [{
+        type: 'statement',
+        name: 'class',
+        value: 'big'
+      }]
+    }]
+  });
+});
+
+test('keep block intact before stray statement', () => {
+  compare(`
+    circle { cx: 5 }
+    junk;
+  `, {
+    type: 'block',
+    name: 'svg',
+    value: [{
+      type: 'block',
+      name: 'circle',
+      value: [{
+        type: 'statement',
+        name: 'cx',
+        value: '5'
+      }]
+    }]
+  });
+});
+
 test('complex values with parens', () => {
   compare(`
     p {

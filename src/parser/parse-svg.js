@@ -41,11 +41,13 @@ function resolveId(block, skip) {
   if (skip || !baseName) {
     return block;
   }
-  let id = name.match(/#([^.#]+)/);
+  // pureName has the `*times` suffix stripped so it can't leak into id/class
+  let selector = block.pureName || name;
+  let id = selector.match(/#([^.#]+)/);
   if (id) {
     block.value.push({ type: 'statement', name: 'id', value: id[1] });
   }
-  let classes = name.match(/\.([^.#]+)/g);
+  let classes = selector.match(/\.([^.#]+)/g);
   if (classes) {
     block.value.push({
       type: 'statement',
@@ -239,7 +241,10 @@ function walk(iter, parentToken) {
     }
     else if (curr.isSymbol(';')) {
       if (rules.length && fragment.length) {
-        rules[rules.length - 1].value += (';' + joinToken(fragment));
+        let last = rules[rules.length - 1];
+        if (typeof last.value === 'string') {
+          last.value += (';' + joinToken(fragment));
+        }
         fragment = [];
       }
     }
