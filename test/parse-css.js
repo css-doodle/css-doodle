@@ -313,3 +313,21 @@ test('quoted paren does not leak into block probing', () => {
   assert.equal(result[1].name, '@even');
 
 });
+
+test('malformed keyframes step stays inside the block', () => {
+
+  // a '}' after the step name closes the keyframes
+  // instead of opening a step body
+  let result = parseCSS(`@keyframes x { 50% } color: red;`);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].type, 'keyframes');
+  assert.equal(result[0].steps.length, 1);
+  assert.equal(result[0].steps[0].styles.length, 0);
+  assert.equal(result[1].property, 'color');
+
+  // a stray ';' yields an empty step and the next step parses normally
+  let [k] = parseCSS(`@keyframes x { 50%; to { opacity: 0; } }`);
+  assert.equal(k.steps.length, 2);
+  assert.equal(k.steps[1].styles[0].property, 'opacity');
+
+});

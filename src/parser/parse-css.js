@@ -860,6 +860,14 @@ function parseKeyframes(cur, extra) {
 function parseStep(cur, extra) {
   let step = { type: 'step', name: '', styles: [] };
   step.name = parseValue(cur, extra, '{');
+  if (cur.end()) return step;
+  // the name may also stop at ';' or '}': only '{' opens a body, and a
+  // '}' stays put so the keyframes loop can close the block instead of
+  // the step swallowing everything after it
+  if (!cur.peek().isSymbol('{')) {
+    if (!cur.peek().isSymbol('}')) cur.next();
+    return step;
+  }
   cur.next(); // '{'
   while (!cur.end()) {
     let tok = cur.peek();
