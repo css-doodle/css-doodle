@@ -14,7 +14,6 @@ export function getBasicStyles(grid) {
       width: fit-content;
       height: fit-content;
       contain: content;
-      view-transition-name: css-doodle;
       --${utime.name}: 0;
       --${UTime.name}: 0
     }

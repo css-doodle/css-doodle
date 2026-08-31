@@ -284,17 +284,7 @@ if (typeof HTMLElement !== 'undefined') {
         styles = '';
       }
 
-      let useAnimation = this.viewTransition;
-      if (useAnimation === undefined) {
-        useAnimation = this.hasAttribute('view-transition');
-      }
-      if (useAnimation && document.startViewTransition) {
-        document.startViewTransition(() => {
-          this._update(styles);
-        });
-      } else {
-        this._update(styles);
-      }
+      this._update(styles);
       if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
         this.autoUpdate();
       }
