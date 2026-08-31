@@ -100,7 +100,7 @@ function substitutePi(input, prev) {
   return result;
 }
 
-function seperateFuncName(name) {
+function separateFuncName(name) {
   let fname = '', extra = '';
   if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
     return { fname: name, extra };
@@ -143,8 +143,8 @@ function probe(cur, ...terminators) {
     let t = cur.tokens[i];
     if (t.status === 'open') quote = true;
     else if (t.status === 'close') quote = false;
-    if (t.isSymbol('(')) paren++;
-    else if (t.isSymbol(')')) paren = Math.max(0, paren - 1);
+    if (!quote && t.isSymbol('(')) paren++;
+    else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
     else if (paren === 0 && !quote && t.isSymbol(...terminators)) {
       return t.value;
     }
@@ -334,7 +334,7 @@ function finishFunc(cur, name, end, isCalc, extra, variables) {
     }
   }
 
-  let { fname, extra: extraArgs } = seperateFuncName(name);
+  let { fname, extra: extraArgs } = separateFuncName(name);
   func.name = isCalc ? '@$' + name.slice(1) : fname;
   if (extraArgs.length) {
     func.arguments.unshift(Node.argument([Node.text(extraArgs)]));

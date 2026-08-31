@@ -272,3 +272,44 @@ test('@use inlines variables in nested blocks', () => {
   assert.equal(pseudo.styles[1].property, 'content');
 
 });
+
+test('quoted paren does not leak into block probing', () => {
+
+  compare(
+    `color: red; content: "("; :after { color: blue; }`,
+    [
+      {
+        "type": "rule",
+        "property": "color",
+        "value": [[text('red')]]
+      },
+      {
+        "type": "rule",
+        "property": "content",
+        "value": [[text('"("')]]
+      },
+      {
+        "type": "pseudo",
+        "selector": ":after",
+        "selectors": [":after"],
+        "styles": [
+          {
+            "type": "rule",
+            "property": "color",
+            "value": [[text('blue')]]
+          }
+        ]
+      }
+    ]
+  );
+
+  // a later quoted ")" must not rebalance the depth and turn
+  // preceding rules into a bogus cond selector
+  let result = parseCSS(`content: "("; @even (")") { color: blue; }`);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].type, 'rule');
+  assert.equal(result[0].property, 'content');
+  assert.equal(result[1].type, 'cond');
+  assert.equal(result[1].name, '@even');
+
+});
