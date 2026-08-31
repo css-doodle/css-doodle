@@ -1,16 +1,16 @@
 import { CSSDoodle, define } from '../../component/index.js';
 
 function create(code = '') {
-  define('css-doodle', CSSDoodle);
-  const el = document.createElement('css-doodle');
-  if (typeof code === 'string') {
-    if (code.length) {
-      el.textContent = code;
+    define('css-doodle', CSSDoodle);
+    const el = document.createElement('css-doodle');
+    if (typeof code === 'string') {
+        if (code.length) {
+            el.textContent = code;
+        }
     }
-  }
-  return el;
+    return el;
 }
 
 export {
-  CSSDoodle, define, create
+    CSSDoodle, define, create
 }

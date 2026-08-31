@@ -6,46 +6,46 @@ import parseSvg from '../src/parser/parse-svg.js';
 import compare from './_compare.js';
 
 compare.use(input => {
-  return generateSvg(parseSvg(input));
+    return generateSvg(parseSvg(input));
 });
 
 function trim(input) {
-  return input.split(/\n+/g).map(n => n.trim()).join('');
+    return input.split(/\n+/g).map(n => n.trim()).join('');
 }
 
 test('empty', () => {
-  compare(
-    '',
-    trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
-  );
+    compare(
+        '',
+        trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
+    );
 });
 
 test('svg namespace', () => {
-  compare(
-    'svg {}',
-    trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
-  );
+    compare(
+        'svg {}',
+        trim(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
+    );
 });
 
 test('wrapped by default', () => {
-  compare(
-    'g {}',
-    trim(`
+    compare(
+        'g {}',
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <g/>
       </svg>
     `)
-  );
+    );
 });
 
 test('inline svg element', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {
         filter: defs linearGradient {}
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="linearGradient-1"/>
@@ -53,17 +53,17 @@ test('inline svg element', () => {
         <circle filter="url(#linearGradient-1)"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('inline href', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       use {
         href: defs circle {}
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <circle id="circle-2"/>
@@ -71,108 +71,108 @@ test('inline href', () => {
         <use href="#circle-2"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('id shorthand', () => {
-  compare(
-    `circle#id {}`,
-    trim(`
+    compare(
+        `circle#id {}`,
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle id="id"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('text node', () => {
-  compare(
-    `text {
+    compare(
+        `text {
       content: hello;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text>hello</text>
       </svg>
     `)
-  );
+    );
 });
 
 test('title and desc', () => {
-  compare(
-    `title {
+    compare(
+        `title {
       content: hello;
     }
     desc {
       content: world;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <title>hello</title>
         <desc>world</desc>
       </svg>
     `)
-  );
+    );
 });
 
 test('multiple content', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       text {
         content: hello;
         content: world;
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text>helloworld</text>
       </svg>
     `)
-  );
+    );
 });
 
 test('remove quotes around text', () => {
-  compare(
-    `text {
+    compare(
+        `text {
       content: "hello";
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text>hello</text>
       </svg>
     `)
-  );
+    );
 
-  compare(
-    `text {
+    compare(
+        `text {
       content: 'hello';
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text>hello</text>
       </svg>
     `)
-  );
+    );
 });
 
 
 test('special character inside quotes', () => {
-  compare(
-    `text {
+    compare(
+        `text {
       content: "}";
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text>}</text>
       </svg>
     `)
-  );
+    );
 });
 
 
 test('style tag', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {}
       style {
         circle {
@@ -182,7 +182,7 @@ test('style tag', () => {
         }
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle/>
         <style>
@@ -191,32 +191,32 @@ test('style tag', () => {
         </style>
       </svg>
     `)
-  );
+    );
 });
 
 test('inline style', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {
         style fill: red;
         style r: 1;
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle style="fill:red;r:1;"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('group id', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       g#id { circle {} }
       g#id { rect {} }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <g id="id">
           <circle/>
@@ -224,16 +224,16 @@ test('group id', () => {
         </g>
       </svg>
     `)
-  );
+    );
 });
 
 test('group ids only when they are at the same level', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       g g#id { circle {} }
       g#id { rect {} }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <g>
           <g id="id">
@@ -245,12 +245,12 @@ test('group ids only when they are at the same level', () => {
         </g>
       </svg>
     `)
-  );
+    );
 });
 
 test('group id and all its attributes', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle#a {
         fill: red
       }
@@ -258,17 +258,17 @@ test('group id and all its attributes', () => {
         cx, cy, r: 5;
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle fill="red" id="a" cx="5" cy="5" r="5"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('grouped text node', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       text#id {
         content: hello;
       }
@@ -276,17 +276,17 @@ test('grouped text node', () => {
         content: world;
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text id="id">helloworld</text>
       </svg>
     `)
-  );
+    );
 });
 
 test('grouped text node with tspan', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       text#id {
         content: hello;
         tspan {
@@ -297,17 +297,17 @@ test('grouped text node with tspan', () => {
         content: world;
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <text id="id">hello<tspan>ok</tspan>world</text>
       </svg>
     `)
-  );
+    );
 });
 
 test('do not group elements for empty id', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {
         fill: red
       }
@@ -315,47 +315,47 @@ test('do not group elements for empty id', () => {
         cx, cy, r: 5;
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle fill="red"/>
         <circle cx="5" cy="5" r="5"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('Normalize quoted attribute values', () => {
-  compare(
-    `circle {
+    compare(
+        `circle {
         name: "hello";
       }
     `,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle name="hello"/>
       </svg>
     `)
-  );
-  compare(
-    `circle {
+    );
+    compare(
+        `circle {
         name: 'hello';
       }
     `,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <circle name="hello"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('draw', () => {
-  compare(
-    `path {
+    compare(
+        `path {
       draw: 2s;
     }`,
 
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <path stroke-dasharray="10" pathLength="10">
           <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s"/>
@@ -363,24 +363,24 @@ test('draw', () => {
       </svg>
 
     `)
-  );
+    );
 });
 
 test('combile defs elements into one', () => {
-  compare(
-    `defs {}
+    compare(
+        `defs {}
      defs {}`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs/>
       </svg>
     `)
-  );
+    );
 
-  compare(
-    `defs g {}
+    compare(
+        `defs g {}
      defs path {}`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <g/>
@@ -388,17 +388,17 @@ test('combile defs elements into one', () => {
         </defs>
       </svg>
     `)
-  );
+    );
 });
 
 test('handle nested defs', () => {
-  compare(
-    `path {
+    compare(
+        `path {
       fill: defs g {
         mask: defs g {}
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <g id="g-3"/>
@@ -407,30 +407,30 @@ test('handle nested defs', () => {
         <path fill="url(#g-4)"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('generate single defs id', () => {
-  compare(
-    `defs g#1 {}
+    compare(
+        `defs g#1 {}
      defs g#1 {}`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <g id="1"/>
         </defs>
       </svg>
     `)
-  );
+    );
 
-  compare(
-    `path {
+    compare(
+        `path {
       href: defs g#1 {}
     }
     path {
       href: defs g#1 {}
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <g id="1"/>
@@ -439,17 +439,17 @@ test('generate single defs id', () => {
         <path href="#1"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('put id at right element', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {
         filter: defs g circle {}
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <g id="g-5">
@@ -459,15 +459,15 @@ test('put id at right element', () => {
         <circle filter="url(#g-5)"/>
       </svg>
     `)
-  );
+    );
 
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {
         filter: defs g g g circle {}
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <g id="g-6">
@@ -481,77 +481,77 @@ test('put id at right element', () => {
         <circle filter="url(#g-6)"/>
       </svg>
     `)
-  );
+    );
 });
 
 test('draw with bare number duration', () => {
-  compare(
-    `path {
+    compare(
+        `path {
       draw: 2;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <path stroke-dasharray="10" pathLength="10">
           <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2"/>
         </path>
       </svg>
     `)
-  );
+    );
 });
 
 test('draw with repeat count', () => {
-  compare(
-    `path {
+    compare(
+        `path {
       draw: 2s infinite;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <path stroke-dasharray="10" pathLength="10">
           <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s" repeatCount="indefinite"/>
         </path>
       </svg>
     `)
-  );
+    );
 
-  compare(
-    `path {
+    compare(
+        `path {
       draw: infinite 2s;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <path stroke-dasharray="10" pathLength="10">
           <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s" repeatCount="indefinite"/>
         </path>
       </svg>
     `)
-  );
+    );
 });
 
 test('viewBox with padding', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       viewBox: 0 0 10 10 p 2;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 14 14"></svg>
     `)
-  );
+    );
 });
 
 test('drop incomplete viewBox', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       viewBox: 0 0 10;
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg"></svg>
     `)
-  );
+    );
 });
 
 test('no id for multiple inline defs child elements', () => {
-  compare(
-    `svg {
+    compare(
+        `svg {
       circle {
         filter: defs {
           a {}
@@ -559,7 +559,7 @@ test('no id for multiple inline defs child elements', () => {
         }
       }
     }`,
-    trim(`
+        trim(`
       <svg xmlns="http://www.w3.org/2000/svg">
         <defs>
           <a/>
@@ -568,5 +568,5 @@ test('no id for multiple inline defs child elements', () => {
         <circle filter=""/>
       </svg>
     `)
-  );
+    );
 });

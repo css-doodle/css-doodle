@@ -186,138 +186,138 @@ const SQUARE_MASK = glsl`
 `;
 
 function float(n) {
-  return String(n).includes('.') ? n : n + '.0';
+    return String(n).includes('.') ? n : n + '.0';
 }
 
 function hasOwn(obj, key) {
-  return Object.prototype.hasOwnProperty.call(obj, key);
+    return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
 function maskFor(shape) {
-  if (shape === 'circle') return CIRCLE_MASK;
-  if (shape === 'square') return SQUARE_MASK;
-  return '\nshapeMask = 1.0;\n';
+    if (shape === 'circle') return CIRCLE_MASK;
+    if (shape === 'square') return SQUARE_MASK;
+    return '\nshapeMask = 1.0;\n';
 }
 
 function resolveAlias(value, vars) {
-  for (let i = 0; i < 10; i++) {
-    if (!/^[a-zA-Z_][\w-]*$/.test(value) || !hasOwn(vars, value)) break;
-    value = String(vars[value]).trim();
-  }
-  return value;
+    for (let i = 0; i < 10; i++) {
+        if (!/^[a-zA-Z_][\w-]*$/.test(value) || !hasOwn(vars, value)) break;
+        value = String(vars[value]).trim();
+    }
+    return value;
 }
 
 function compileFill(expr, vars) {
-  let channels = parseValueGroup(expr, { symbol: ',', noSpace: true })
-    .map(c => c.trim())
-    .filter(Boolean);
-  if (channels.length === 3 || channels.length === 4) {
-    let ch = channels.map(c => transform(substituteVariables(c, vars), { expect: 'float' }));
-    let alpha = channels.length === 4 ? ch[3] : '1.0';
-    return `vec4(${ch[0]}, ${ch[1]}, ${ch[2]}, ${alpha})`;
-  }
-  if (channels.length !== 1) return null;
-  let single = transform(substituteVariables(channels[0], vars), { expect: 'float' });
-  return single ? `vec4(vec3(${single}), 1.0)` : null;
+    let channels = parseValueGroup(expr, { symbol: ',', noSpace: true })
+        .map(c => c.trim())
+        .filter(Boolean);
+    if (channels.length === 3 || channels.length === 4) {
+        let ch = channels.map(c => transform(substituteVariables(c, vars), { expect: 'float' }));
+        let alpha = channels.length === 4 ? ch[3] : '1.0';
+        return `vec4(${ch[0]}, ${ch[1]}, ${ch[2]}, ${alpha})`;
+    }
+    if (channels.length !== 1) return null;
+    let single = transform(substituteVariables(channels[0], vars), { expect: 'float' });
+    return single ? `vec4(vec3(${single}), 1.0)` : null;
 }
 
 const STATEMENT_HANDLERS = {
-  fill(token, extra, insideBlock, vars) {
-    let value = resolveAlias(token.value.trim(), vars || {});
-    if (!value) {
-      return { type: 'statement', value: '' };
-    }
-    let rgba = extra.getRgbaColor(value);
-    if (rgba) {
-      let { r, g, b, a } = rgba;
-      return {
-        type: 'statement',
-        value: `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`,
-      };
-    }
-    let computed = compileFill(value, vars || {});
-    return { type: 'statement', value: computed ? `\ncolor = ${computed};\n` : '' };
-  },
-  grid(token) {
-    return { type: 'grid', value: token.value };
-  },
-  size(token) {
-    return { type: 'size', value: token.value.trim() };
-  },
-  shape(token) {
-    return { type: 'shape', value: token.value.trim() };
-  },
+    fill(token, extra, insideBlock, vars) {
+        let value = resolveAlias(token.value.trim(), vars || {});
+        if (!value) {
+            return { type: 'statement', value: '' };
+        }
+        let rgba = extra.getRgbaColor(value);
+        if (rgba) {
+            let { r, g, b, a } = rgba;
+            return {
+                type: 'statement',
+                value: `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`,
+            };
+        }
+        let computed = compileFill(value, vars || {});
+        return { type: 'statement', value: computed ? `\ncolor = ${computed};\n` : '' };
+    },
+    grid(token) {
+        return { type: 'grid', value: token.value };
+    },
+    size(token) {
+        return { type: 'size', value: token.value.trim() };
+    },
+    shape(token) {
+        return { type: 'shape', value: token.value.trim() };
+    },
 };
 
 function generateStatement(token, extra, insideBlock = false, vars = {}) {
-  if (token.type !== 'statement') {
+    if (token.type !== 'statement') {
+        return { type: 'statement', value: '' };
+    }
+    let handler = STATEMENT_HANDLERS[token.name];
+    if (handler) {
+        return handler(token, extra, insideBlock, vars);
+    }
+    let varName = token.name.startsWith('--') ? token.name.slice(2).trim() : token.name.trim();
+    if (varName) {
+        return { type: 'variable', name: varName, value: token.value.trim() };
+    }
     return { type: 'statement', value: '' };
-  }
-  let handler = STATEMENT_HANDLERS[token.name];
-  if (handler) {
-    return handler(token, extra, insideBlock, vars);
-  }
-  let varName = token.name.startsWith('--') ? token.name.slice(2).trim() : token.name.trim();
-  if (varName) {
-    return { type: 'variable', name: varName, value: token.value.trim() };
-  }
-  return { type: 'statement', value: '' };
 }
 
 function substituteVariables(expr, vars, depth = 0, excludeName = null) {
-  if (depth > 10) return expr;
-  let names = Object.keys(vars).sort((a, b) => b.length - a.length);
-  for (let name of names) {
-    if (name === excludeName) continue;
-    let regex = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-    if (regex.test(expr)) {
-      let resolved = substituteVariables(vars[name], vars, depth + 1, name);
-      expr = expr.replace(regex, `(${resolved})`);
+    if (depth > 10) return expr;
+    let names = Object.keys(vars).sort((a, b) => b.length - a.length);
+    for (let name of names) {
+        if (name === excludeName) continue;
+        let regex = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+        if (regex.test(expr)) {
+            let resolved = substituteVariables(vars[name], vars, depth + 1, name);
+            expr = expr.replace(regex, `(${resolved})`);
+        }
     }
-  }
-  return expr;
+    return expr;
 }
 
 function generateBlock(token, extra, vars = {}, outerShape = null) {
-  if (token.name !== 'match') {
-    return '';
-  }
-  let args = (token.args || []).map(a => (a || '').trim()).filter(Boolean);
-  if (!args.length) {
-    return '';
-  }
-  let cond = args
-    .map(a => transform(substituteVariables(a, vars), { expect: 'bool' }))
-    .join(' && ');
-  let scope = Object.assign({}, vars);
-  let blockShape = null;
-  let blockSize = null;
-  for (let t of token.value) {
-    if (t.type !== 'statement' || t.name === 'fill') continue;
-    let s = generateStatement(t, extra, true, scope);
-    if (s.type === 'variable') scope[s.name] = s.value;
-    else if (s.type === 'shape' && s.value) blockShape = s.value;
-    else if (s.type === 'size' && s.value) blockSize = s.value;
-  }
-  let header = '';
-  if (blockSize) {
-    header += `\nsize = ${transform(substituteVariables(blockSize, scope), { expect: 'float' })};\n`;
-  }
-  if (blockShape) {
-    header += maskFor(blockShape);
-  } else if (blockSize) {
-    header += maskFor(outerShape || 'square');
-  }
-  let body = token.value
-    .map(t => {
-      if (t.type === 'block') {
-        return generateBlock(t, extra, scope, blockShape || outerShape);
-      }
-      let s = generateStatement(t, extra, true, scope);
-      return s.type === 'statement' ? s.value : '';
-    })
-    .join('');
-  return glsl`
+    if (token.name !== 'match') {
+        return '';
+    }
+    let args = (token.args || []).map(a => (a || '').trim()).filter(Boolean);
+    if (!args.length) {
+        return '';
+    }
+    let cond = args
+        .map(a => transform(substituteVariables(a, vars), { expect: 'bool' }))
+        .join(' && ');
+    let scope = Object.assign({}, vars);
+    let blockShape = null;
+    let blockSize = null;
+    for (let t of token.value) {
+        if (t.type !== 'statement' || t.name === 'fill') continue;
+        let s = generateStatement(t, extra, true, scope);
+        if (s.type === 'variable') scope[s.name] = s.value;
+        else if (s.type === 'shape' && s.value) blockShape = s.value;
+        else if (s.type === 'size' && s.value) blockSize = s.value;
+    }
+    let header = '';
+    if (blockSize) {
+        header += `\nsize = ${transform(substituteVariables(blockSize, scope), { expect: 'float' })};\n`;
+    }
+    if (blockShape) {
+        header += maskFor(blockShape);
+    } else if (blockSize) {
+        header += maskFor(outerShape || 'square');
+    }
+    let body = token.value
+        .map(t => {
+            if (t.type === 'block') {
+                return generateBlock(t, extra, scope, blockShape || outerShape);
+            }
+            let s = generateStatement(t, extra, true, scope);
+            return s.type === 'statement' ? s.value : '';
+        })
+        .join('');
+    return glsl`
     if (${cond}) {
       ${header}
       ${body}
@@ -326,19 +326,19 @@ function generateBlock(token, extra, vars = {}, outerShape = null) {
 }
 
 function generateShader(input, { x, y }, shape, sizeExpr, vars) {
-  let hasSize = !!(sizeExpr && sizeExpr.length);
-  let sizeInit = hasSize
-    ? transform(substituteVariables(sizeExpr, vars), { expect: 'float' })
-    : '1.0';
-  let maskInit = '';
-  if (shape) {
-    maskInit = maskFor(shape);
-  } else if (hasSize) {
-    maskInit = SQUARE_MASK;
-  }
-  let usesTime = /\bt\b/.test(input) || /\bt\b/.test(sizeInit);
-  let timeArg = usesTime ? 'u_time' : '0.0';
-  return glsl`
+    let hasSize = !!(sizeExpr && sizeExpr.length);
+    let sizeInit = hasSize
+        ? transform(substituteVariables(sizeExpr, vars), { expect: 'float' })
+        : '1.0';
+    let maskInit = '';
+    if (shape) {
+        maskInit = maskFor(shape);
+    } else if (hasSize) {
+        maskInit = SQUARE_MASK;
+    }
+    let usesTime = /\bt\b/.test(input) || /\bt\b/.test(sizeInit);
+    let timeArg = usesTime ? 'u_time' : '0.0';
+    return glsl`
     precision highp float;
     precision highp int;
     const float PI = 3.1415926535897932;
@@ -369,31 +369,31 @@ function generateShader(input, { x, y }, shape, sizeExpr, vars) {
 }
 
 export default function drawPattern(code, extra) {
-  let tokens = parsePattern(code);
-  let result = [];
-  let grid = { x: 1, y: 1 };
-  let shape = null;
-  let sizeExpr = null;
-  let vars = {};
-  for (let token of tokens) {
-    if (token.type !== 'statement' || token.name === 'fill') continue;
-    let stmt = generateStatement(token, extra, false, vars);
-    switch (stmt.type) {
-      case 'grid': grid = parseGrid(stmt.value, Infinity); break;
-      case 'shape': shape = stmt.value; break;
-      case 'size': sizeExpr = stmt.value; break;
-      case 'variable': vars[stmt.name] = stmt.value; break;
+    let tokens = parsePattern(code);
+    let result = [];
+    let grid = { x: 1, y: 1 };
+    let shape = null;
+    let sizeExpr = null;
+    let vars = {};
+    for (let token of tokens) {
+        if (token.type !== 'statement' || token.name === 'fill') continue;
+        let stmt = generateStatement(token, extra, false, vars);
+        switch (stmt.type) {
+            case 'grid': grid = parseGrid(stmt.value, Infinity); break;
+            case 'shape': shape = stmt.value; break;
+            case 'size': sizeExpr = stmt.value; break;
+            case 'variable': vars[stmt.name] = stmt.value; break;
+        }
     }
-  }
 
-  let topShape = shape || (sizeExpr ? 'square' : null);
-  for (let token of tokens) {
-    if (token.type === 'statement' && token.name === 'fill') {
-      result.push(generateStatement(token, extra, false, vars).value);
-    } else if (token.type === 'block') {
-      result.push(generateBlock(token, extra, vars, topShape));
+    let topShape = shape || (sizeExpr ? 'square' : null);
+    for (let token of tokens) {
+        if (token.type === 'statement' && token.name === 'fill') {
+            result.push(generateStatement(token, extra, false, vars).value);
+        } else if (token.type === 'block') {
+            result.push(generateBlock(token, extra, vars, topShape));
+        }
     }
-  }
 
-  return generateShader(result.join(''), grid, shape, sizeExpr, vars);
+    return generateShader(result.join(''), grid, shape, sizeExpr, vars);
 }

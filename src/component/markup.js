@@ -3,8 +3,8 @@ import { cellId } from '../utils/cell.js';
 import { css } from '../utils/tagged-template.js';
 
 export function getBasicStyles(grid) {
-  let { x, y } = grid || {};
-  return css`
+    let { x, y } = grid || {};
+    return css`
     *,*::after,*::before,:host,.host {
       box-sizing: border-box;
     }
@@ -56,35 +56,35 @@ export function getBasicStyles(grid) {
 }
 
 function createCell(x, y, z, content, child = '') {
-  let id = cellId(x, y, z);
-  let head = content['#' + id] ?? '';
-  if (/^\$\{(shader|pattern)/.test(head)) {
-    head = '';
-  }
-  return `<cssd-cell id="${id}" part="cell">${head}${child}</cssd-cell>`;
+    let id = cellId(x, y, z);
+    let head = content['#' + id] ?? '';
+    if (/^\$\{(shader|pattern)/.test(head)) {
+        head = '';
+    }
+    return `<cssd-cell id="${id}" part="cell">${head}${child}</cssd-cell>`;
 }
 
 export function createGrid(gridObj, compiled) {
-  let { x, y, z } = gridObj || {};
-  let { content, styles } = compiled;
-  let result = '';
-  if (z == 1) {
-    for (let j = 1; j <= y; ++j) {
-      for (let i = 1; i <= x; ++i) {
-        result += createCell(i, j, 1, content);
-      }
+    let { x, y, z } = gridObj || {};
+    let { content, styles } = compiled;
+    let result = '';
+    if (z == 1) {
+        for (let j = 1; j <= y; ++j) {
+            for (let i = 1; i <= x; ++i) {
+                result += createCell(i, j, 1, content);
+            }
+        }
     }
-  }
-  else {
-    let child = '';
-    for (let i = z; i >= 1; i--) {
-      child = createCell(1, 1, i, content, child);
+    else {
+        let child = '';
+        for (let i = z; i >= 1; i--) {
+            child = createCell(1, 1, i, content, child);
+        }
+        result = child;
     }
-    result = child;
-  }
-  let html = `<cssd-grid part="grid">${result}</cssd-grid>`;
-  if (styles.backdrop) {
-    html += '<cssd-b></cssd-b>'
-  }
-  return html;
+    let html = `<cssd-grid part="grid">${result}</cssd-grid>`;
+    if (styles.backdrop) {
+        html += '<cssd-b></cssd-b>'
+    }
+    return html;
 }

@@ -12,13 +12,13 @@ import { isNil, getValue } from '../utils/type.js';
 import { uniqueId } from '../utils/fn.js';
 import { join, makeArray, removeEmptyValues } from '../utils/list.js';
 import {
-  isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector
+    isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector
 } from '../utils/selector.js';
 import { css } from '../utils/tagged-template.js';
 
 
 function isImageValue(value) {
-  return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
+    return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
 }
 
 const NO_SPACE = { noSpace: true };
@@ -27,12 +27,12 @@ const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
 const funcCache = new Map();
 
 function findFunc(name) {
-  let fn = funcCache.get(name);
-  if (fn === undefined) {
-    fn = Func[name.startsWith('$') ? 'calc' : name] || MathFunc[name] || null;
-    funcCache.set(name, fn);
-  }
-  return fn;
+    let fn = funcCache.get(name);
+    if (fn === undefined) {
+        fn = Func[name.startsWith('$') ? 'calc' : name] || MathFunc[name] || null;
+        funcCache.set(name, fn);
+    }
+    return fn;
 }
 
 /*
@@ -56,533 +56,533 @@ const compiledArguments = new WeakMap();
 
 /* value: list of text/func nodes → env => { value, extra } */
 function compileValue(value) {
-  let compiled = compiledValues.get(value);
-  if (compiled === undefined) {
-    let parts = value.map(v => {
-      if (v.type === 'func') return compileFunc(v);
-      return (v.type === 'text') ? ('' + v.value) : '';
-    });
-    if (parts.every(part => typeof part === 'string')) {
-      let constant = { value: parts.join(''), extra: '' };
-      compiled = () => constant;
-    } else {
-      compiled = env => {
-        let output = '';
-        let extra = '';
-        for (let part of parts) {
-          if (typeof part === 'string') {
-            output += part;
-          } else {
-            let evaluated = part(env, EMPTY_EXTRA, false);
-            output += evaluated.value;
-            if (evaluated.extra) extra = evaluated.extra;
-          }
+    let compiled = compiledValues.get(value);
+    if (compiled === undefined) {
+        let parts = value.map(v => {
+            if (v.type === 'func') return compileFunc(v);
+            return (v.type === 'text') ? ('' + v.value) : '';
+        });
+        if (parts.every(part => typeof part === 'string')) {
+            let constant = { value: parts.join(''), extra: '' };
+            compiled = () => constant;
+        } else {
+            compiled = env => {
+                let output = '';
+                let extra = '';
+                for (let part of parts) {
+                    if (typeof part === 'string') {
+                        output += part;
+                    } else {
+                        let evaluated = part(env, EMPTY_EXTRA, false);
+                        output += evaluated.value;
+                        if (evaluated.extra) extra = evaluated.extra;
+                    }
+                }
+                return { value: output, extra };
+            };
         }
-        return { value: output, extra };
-      };
+        compiledValues.set(value, compiled);
     }
-    compiledValues.set(value, compiled);
-  }
-  return compiled;
+    return compiled;
 }
 
 /* func node → (env, extra, inArgument) => { value, extra? } */
 function compileFunc(node) {
-  let compiled = compiledFuncs.get(node);
-  if (compiled === undefined) {
-    let fname = node.name.slice(1);
-    let fn = findFunc(fname);
-    if (typeof fn !== 'function') {
-      // unrecognized functions read as literal text
-      let literal = { value: node.name };
-      compiled = () => literal;
-    } else {
-      let composable = COMPOSABLE.has(fname);
-      let args = node.arguments.map(arg => compileArgument(arg, node));
-      // all-literal argument lists are interpreted here, once
-      let constantInput = null;
-      if (!fn.lazy && args.every(arg => arg.constant)) {
-        constantInput = [];
-        for (let arg of args) {
-          if (arg.split) constantInput.push(...arg.split);
-          else if (!isNil(arg())) constantInput.push(getValue(arg()));
-        }
-        constantInput = removeEmptyValues(constantInput);
-      }
-      compiled = (env, extra, inArgument) => {
-        let { rules, coords } = env;
-        rules.checkUniforms(fname);
-        if (composable) {
-          let composed = rules.composeComposable(fname, node, coords, env.selector);
-          if (composed !== undefined) {
-            return { value: composed };
-          }
-          if (!inArgument) {
-            return { value: '' };
-          }
-        }
-        coords.position = node.position;
-        if (!inArgument && node.variables) {
-          rules.composeVariables(node.variables, coords, env.contextVariable);
-        }
-        let input = constantInput;
-        if (input === null) {
-          if (fn.lazy) {
-            input = args.map(arg => (...lazy) => arg(env, lazy));
-          } else {
-            input = [];
-            let e = inArgument ? extra : EMPTY_EXTRA;
-            for (let arg of args) {
-              if (arg.split) {
-                input.push(...arg.split);
-                continue;
-              }
-              let v = arg.constant ? arg() : arg(env, e);
-              // composed arguments are already one value: never re-split
-              if (!arg.cluster && !arg.composed
-                && (typeof v === 'number' || typeof v === 'string')) {
-                input.push(...parseValueGroup(v, NO_SPACE));
-              } else if (!isNil(v)) {
-                input.push(getValue(v));
-              }
+    let compiled = compiledFuncs.get(node);
+    if (compiled === undefined) {
+        let fname = node.name.slice(1);
+        let fn = findFunc(fname);
+        if (typeof fn !== 'function') {
+            // unrecognized functions read as literal text
+            let literal = { value: node.name };
+            compiled = () => literal;
+        } else {
+            let composable = COMPOSABLE.has(fname);
+            let args = node.arguments.map(arg => compileArgument(arg, node));
+            // all-literal argument lists are interpreted here, once
+            let constantInput = null;
+            if (!fn.lazy && args.every(arg => arg.constant)) {
+                constantInput = [];
+                for (let arg of args) {
+                    if (arg.split) constantInput.push(...arg.split);
+                    else if (!isNil(arg())) constantInput.push(getValue(arg()));
+                }
+                constantInput = removeEmptyValues(constantInput);
             }
-            input = removeEmptyValues(input);
-          }
+            compiled = (env, extra, inArgument) => {
+                let { rules, coords } = env;
+                rules.checkUniforms(fname);
+                if (composable) {
+                    let composed = rules.composeComposable(fname, node, coords, env.selector);
+                    if (composed !== undefined) {
+                        return { value: composed };
+                    }
+                    if (!inArgument) {
+                        return { value: '' };
+                    }
+                }
+                coords.position = node.position;
+                if (!inArgument && node.variables) {
+                    rules.composeVariables(node.variables, coords, env.contextVariable);
+                }
+                let input = constantInput;
+                if (input === null) {
+                    if (fn.lazy) {
+                        input = args.map(arg => (...lazy) => arg(env, lazy));
+                    } else {
+                        input = [];
+                        let e = inArgument ? extra : EMPTY_EXTRA;
+                        for (let arg of args) {
+                            if (arg.split) {
+                                input.push(...arg.split);
+                                continue;
+                            }
+                            let v = arg.constant ? arg() : arg(env, e);
+                            // composed arguments are already one value: never re-split
+                            if (!arg.cluster && !arg.composed
+                                && (typeof v === 'number' || typeof v === 'string')) {
+                                input.push(...parseValueGroup(v, NO_SPACE));
+                            } else if (!isNil(v)) {
+                                input.push(getValue(v));
+                            }
+                        }
+                        input = removeEmptyValues(input);
+                    }
+                }
+                let output = rules.callFunc(fn, coords, input, fname, env.contextVariable);
+                if (output && output.gf) {
+                    rules.addRule(':gf:', output.value);
+                }
+                return { value: getValue(output), extra: output?.extra };
+            };
         }
-        let output = rules.callFunc(fn, coords, input, fname, env.contextVariable);
-        if (output && output.gf) {
-          rules.addRule(':gf:', output.value);
-        }
-        return { value: getValue(output), extra: output?.extra };
-      };
+        compiledFuncs.set(node, compiled);
     }
-    compiledFuncs.set(node, compiled);
-  }
-  return compiled;
+    return compiled;
 }
 
 /* argument node → (env, extra) => raw value. Compile-time facts ride on
  * the evaluator: .cluster, .constant (single literal), .composed
  * (multi-part, its value never re-splits), .split (pre-parsed inputs) */
 function compileArgument(argument, parent) {
-  let compiled = compiledArguments.get(argument);
-  if (compiled === undefined) {
-    let { values } = argument;
-    let isVarRead = v => v.type === 'text' && /^\-\-\w/.test(v.value);
-    if (values.length === 1 && values[0].type === 'text' && !isVarRead(values[0])) {
-      let value = values[0].value;
-      let type = typeof value;
-      compiled = () => value;
-      compiled.constant = true;
-      if (!argument.cluster && (type === 'number' || type === 'string')) {
-        compiled.split = parseValueGroup(value, NO_SPACE);
-      }
-    } else {
-      let parts = values.map(v => {
-        if (v.type === 'text') {
-          if (isVarRead(v)) {
-            if (parent && parent.name === '@var') {
-              return () => v.value;
+    let compiled = compiledArguments.get(argument);
+    if (compiled === undefined) {
+        let { values } = argument;
+        let isVarRead = v => v.type === 'text' && /^\-\-\w/.test(v.value);
+        if (values.length === 1 && values[0].type === 'text' && !isVarRead(values[0])) {
+            let value = values[0].value;
+            let type = typeof value;
+            compiled = () => value;
+            compiled.constant = true;
+            if (!argument.cluster && (type === 'number' || type === 'string')) {
+                compiled.split = parseValueGroup(value, NO_SPACE);
             }
-            return env => env.rules.readVar(v.value, env.coords, env.contextVariable);
-          }
-          let text = v.value;
-          return () => text;
+        } else {
+            let parts = values.map(v => {
+                if (v.type === 'text') {
+                    if (isVarRead(v)) {
+                        if (parent && parent.name === '@var') {
+                            return () => v.value;
+                        }
+                        return env => env.rules.readVar(v.value, env.coords, env.contextVariable);
+                    }
+                    let text = v.value;
+                    return () => text;
+                }
+                if (v.type === 'func') {
+                    let compiledFn = compileFunc(v);
+                    return (env, extra) => compiledFn(env, extra, true).value;
+                }
+                return () => undefined;
+            });
+            if (parts.length === 1) {
+                let single = parts[0];
+                compiled = (env, extra) => {
+                    env.coords.extra.push(extra);
+                    let value = single(env, extra);
+                    env.coords.extra.pop();
+                    return value;
+                };
+            } else {
+                compiled = (env, extra) => {
+                    env.coords.extra.push(extra);
+                    let value = parts.map(part => part(env, extra)).join('');
+                    env.coords.extra.pop();
+                    return value;
+                };
+                compiled.composed = true;
+            }
         }
-        if (v.type === 'func') {
-          let compiledFn = compileFunc(v);
-          return (env, extra) => compiledFn(env, extra, true).value;
-        }
-        return () => undefined;
-      });
-      if (parts.length === 1) {
-        let single = parts[0];
-        compiled = (env, extra) => {
-          env.coords.extra.push(extra);
-          let value = single(env, extra);
-          env.coords.extra.pop();
-          return value;
-        };
-      } else {
-        compiled = (env, extra) => {
-          env.coords.extra.push(extra);
-          let value = parts.map(part => part(env, extra)).join('');
-          env.coords.extra.pop();
-          return value;
-        };
-        compiled.composed = true;
-      }
+        compiled.cluster = argument.cluster;
+        compiledArguments.set(argument, compiled);
     }
-    compiled.cluster = argument.cluster;
-    compiledArguments.set(argument, compiled);
-  }
-  return compiled;
+    return compiled;
 }
 
 function isStaticRule(token) {
-  let prop = token.property;
-  if (prop.startsWith('@') || prop.startsWith('--')) return false;
-  if (prop.startsWith('animation')) return false;
-  if (prop === 'background-size') return false;
-  if (!Array.isArray(token.value)) return false;
-  return token.value.every(group =>
-    group.every(n => n.type === 'text' && typeof n.value !== 'object'));
+    let prop = token.property;
+    if (prop.startsWith('@') || prop.startsWith('--')) return false;
+    if (prop.startsWith('animation')) return false;
+    if (prop === 'background-size') return false;
+    if (!Array.isArray(token.value)) return false;
+    return token.value.every(group =>
+        group.every(n => n.type === 'text' && typeof n.value !== 'object'));
 }
 
 function ruleFlags(prop) {
-  return {
-    animation: /^animation(-[a-z]+)*$/.test(prop),
-    size: prop === 'width' || prop === 'height',
-    bgImage: /^background(\-image)?$/.test(prop),
-    var: prop.startsWith('--'),
-    at: (prop.startsWith('@') && Property[prop.slice(1)]) ? prop.slice(1) : null,
-    gridLike: /^grid/.test(prop),
-  };
+    return {
+        animation: /^animation(-[a-z]+)*$/.test(prop),
+        size: prop === 'width' || prop === 'height',
+        bgImage: /^background(\-image)?$/.test(prop),
+        var: prop.startsWith('--'),
+        at: (prop.startsWith('@') && Property[prop.slice(1)]) ? prop.slice(1) : null,
+        gridLike: /^grid/.test(prop),
+    };
 }
 
 class Rules {
 
-  constructor(tokens) {
-    this.tokens = tokens;
-    this.rules = new Map();
-    this.ruleKeys = {};
-    this.props = {};
-    this.keyframes = {};
-    this.grid = null;
-    this.seed = null;
-    this.isGridSet = false;
-    this.isGapSet = false;
-    this.uniforms = {};
-    this.skips = new WeakSet();
-    this.memo = new WeakMap();
-    this.reset();
-  }
+    constructor(tokens) {
+        this.tokens = tokens;
+        this.rules = new Map();
+        this.ruleKeys = {};
+        this.props = {};
+        this.keyframes = {};
+        this.grid = null;
+        this.seed = null;
+        this.isGridSet = false;
+        this.isGapSet = false;
+        this.uniforms = {};
+        this.skips = new WeakSet();
+        this.memo = new WeakMap();
+        this.reset();
+    }
 
-  reset() {
-    this.styles = {
-      host: '',
-      container: '',
-      cells: '',
-      backdrop: '',
-      keyframes: '',
-      top: '',
-      gf: [],
-    }
-    this.coords = [];
-    this.doodles = {};
-    this.pattern = {};
-    this.shaders = {};
-    this.filters = {};
-    this.content = {};
-    this.vars = {};
-    for (let key of this.rules.keys()) {
-      if (key.startsWith('#c')) {
-        this.rules.delete(key);
-      }
-    }
-  }
-
-  addRule(selector, rule) {
-    let rules = this.rules.get(selector);
-    if (!rules) {
-      this.rules.set(selector, rules = []);
-    }
-    if (!rule) {
-      return;
-    }
-    if (selector === ':top:' || selector === ':gf:') {
-      if (typeof rule === 'string') {
-        let seen = this.ruleKeys[selector] ??= new Set();
-        if (seen.has(rule)) {
-          return;
+    reset() {
+        this.styles = {
+            host: '',
+            container: '',
+            cells: '',
+            backdrop: '',
+            keyframes: '',
+            top: '',
+            gf: [],
         }
-        seen.add(rule);
-      } else if (rules.includes(rule)) {
-        return;
-      }
+        this.coords = [];
+        this.doodles = {};
+        this.pattern = {};
+        this.shaders = {};
+        this.filters = {};
+        this.content = {};
+        this.vars = {};
+        for (let key of this.rules.keys()) {
+            if (key.startsWith('#c')) {
+                this.rules.delete(key);
+            }
+        }
     }
-    if (Array.isArray(rule)) {
-      rules.push(...rule);
-    } else {
-      rules.push(rule);
+
+    addRule(selector, rule) {
+        let rules = this.rules.get(selector);
+        if (!rules) {
+            this.rules.set(selector, rules = []);
+        }
+        if (!rule) {
+            return;
+        }
+        if (selector === ':top:' || selector === ':gf:') {
+            if (typeof rule === 'string') {
+                let seen = this.ruleKeys[selector] ??= new Set();
+                if (seen.has(rule)) {
+                    return;
+                }
+                seen.add(rule);
+            } else if (rules.includes(rule)) {
+                return;
+            }
+        }
+        if (Array.isArray(rule)) {
+            rules.push(...rule);
+        } else {
+            rules.push(rule);
+        }
     }
-  }
 
-  scopedVars(count, extra) {
-    return Object.assign({},
-      this.vars['host'],
-      this.vars['container'],
-      this.vars[count],
-      extra
-    );
-  }
-
-  applyFunc(fn, coords, args, fname, contextVariable = {}) {
-    let input = [];
-    for (let arg of args) {
-      let type = typeof arg.value;
-      if (!arg.cluster && (type === 'number' || type === 'string')) {
-        input.push(...parseValueGroup(arg.value, NO_SPACE));
-      }
-      else if (typeof arg === 'function') {
-        input.push(arg);
-      }
-      else if (!isNil(arg.value)) {
-        input.push(getValue(arg.value));
-      }
+    scopedVars(count, extra) {
+        return Object.assign({},
+            this.vars['host'],
+            this.vars['container'],
+            this.vars[count],
+            extra
+        );
     }
-    input = removeEmptyValues(input);
-    return this.callFunc(fn, coords, input, fname, contextVariable);
-  }
 
-  callFunc(fn, coords, input, fname, contextVariable = {}) {
-    let _fn = fn(coords);
-    if (typeof _fn === 'function') {
-      if (fname.startsWith('$')) {
+    applyFunc(fn, coords, args, fname, contextVariable = {}) {
+        let input = [];
+        for (let arg of args) {
+            let type = typeof arg.value;
+            if (!arg.cluster && (type === 'number' || type === 'string')) {
+                input.push(...parseValueGroup(arg.value, NO_SPACE));
+            }
+            else if (typeof arg === 'function') {
+                input.push(arg);
+            }
+            else if (!isNil(arg.value)) {
+                input.push(getValue(arg.value));
+            }
+        }
+        input = removeEmptyValues(input);
+        return this.callFunc(fn, coords, input, fname, contextVariable);
+    }
+
+    callFunc(fn, coords, input, fname, contextVariable = {}) {
+        let _fn = fn(coords);
+        if (typeof _fn === 'function') {
+            if (fname.startsWith('$')) {
+                let group = this.scopedVars(coords.count, contextVariable);
+                let context = {};
+                let unit = '';
+                for (let [name, key] of Object.entries(group)) {
+                    context[name.slice(2)] = key;
+                }
+                if (fname.length > 1) {
+                    unit = fname.split('$')[1] ?? '';
+                }
+                return _fn(input, context) + unit;
+            }
+            return _fn(...input);
+        }
+        return _fn;
+    }
+
+    composeAname(...args) {
+        return args.join('-');
+    }
+
+    composeSelector(coords, pseudo = '') {
+        let base = coords.__selector;
+        if (!base) {
+            base = coords.__selector = '#' + cellId(coords.x, coords.y, coords.z);
+        }
+        return pseudo ? (base + pseudo) : base;
+    }
+
+    readVar(value, coords, contextVariable) {
         let group = this.scopedVars(coords.count, contextVariable);
-        let context = {};
-        let unit = '';
+        if (group[value] !== undefined) {
+            let result = String(group[value]).trim();
+            if (result.startsWith('(') && result.endsWith(')')) {
+                result = result.slice(1, -1);
+            }
+            return result.replace(/;+$/g, '');
+        }
+        return value;
+    }
+
+    composeComposable(fname, node, coords, selector) {
+        let parts = (node.arguments || []).map(a => getValue((a.values || [])[0]));
+        let temp;
+        if (parts.length && /^\d/.test(parts[0])) {
+            temp = parts[0];
+            parts = parts.slice(1);
+        }
+        let value = parts.join(',');
+        if (!isNil(value) && value !== '') {
+            switch (fname) {
+                case 'doodle':
+                    return this.composeDoodle(
+                        this.injectVariables(value, coords.count), temp,
+                        coords.extra.length ? structuredClone(coords.extra) : undefined);
+                case 'shaders':
+                case 'pattern':
+                    return this.composePaint(fname, value, coords, temp, selector);
+            }
+        }
+    }
+
+    composeArgument(argument, coords, extra = [], parent, contextVariable, selector) {
+        let compiled = compileArgument(argument, parent);
+        let value = compiled.constant
+            ? compiled()
+            : compiled({ rules: this, coords, contextVariable, selector }, extra);
+        // the wrapped shape applyFunc interprets: composed values stay boxed
+        // so they read as one argument
+        return {
+            cluster: compiled.cluster,
+            value: compiled.composed ? { value } : value,
+        };
+    }
+
+    composeDoodle(doodle, arg, upextra) {
+        let id = uniqueId('doodle');
+        this.doodles[id] = { doodle, arg, upextra };
+        return '${' + id + '}';
+    }
+
+    getTarget(selector, cellSelector) {
+        let target = {
+            selector: 'cell',
+            type: 'background'
+        };
+        if (selector && selector.property === '@content') {
+            target.type = 'content';
+        } else if (selector && selector.property === '@grid') {
+            target.selector = ':host';
+        } else if (isSpecialSelector(selector)) {
+            target.selector = selector;
+        }
+        if (target.selector === 'cell') {
+            target.selector = cellSelector;
+        }
+        return target;
+    }
+
+    composePaint(fname, source, { x, y, z }, arg, selector) {
+        // the renderer reads `shader` for shaders and `code` for patterns
+        let isShader = fname === 'shaders';
+        let id = uniqueId(isShader ? 'shader' : 'pattern');
+        let cellSelector = cellId(x, y, z);
+        this[isShader ? 'shaders' : 'pattern'][id] = {
+            [isShader ? 'shader' : 'code']: source,
+            target: this.getTarget(selector, cellSelector),
+            arg,
+            id: '--' + id,
+            cell: cellSelector
+        };
+        return '${' + id + '}';
+    }
+
+    checkUniforms(name) {
+        switch (name) {
+            case 'ut': case 'UT': case 't': case 'T': case 'ts': case 'TS':
+                this.uniforms.time = true; break;
+            case 'ux': this.uniforms.mousex = true; break;
+            case 'uy': this.uniforms.mousey = true; break;
+            case 'uw': this.uniforms.width = true; break;
+            case 'uh': this.uniforms.height = true; break;
+            case 'shaders': this.uniforms.mouse = true; break;
+        }
+    }
+
+    injectVariables(value, count) {
+        let group = this.scopedVars(count);
+        let variables = [];
         for (let [name, key] of Object.entries(group)) {
-          context[name.slice(2)] = key;
+            variables.push(`${name}: ${key};`);
         }
-        if (fname.length > 1) {
-          unit = fname.split('$')[1] ?? '';
+        variables = variables.join('');
+        if (variables.length) {
+            return `:doodle {${variables}}` + value;
         }
-        return _fn(input, context) + unit;
-      }
-      return _fn(...input);
+        return value;
     }
-    return _fn;
-  }
 
-  composeAname(...args) {
-    return args.join('-');
-  }
-
-  composeSelector(coords, pseudo = '') {
-    let base = coords.__selector;
-    if (!base) {
-      base = coords.__selector = '#' + cellId(coords.x, coords.y, coords.z);
-    }
-    return pseudo ? (base + pseudo) : base;
-  }
-
-  readVar(value, coords, contextVariable) {
-    let group = this.scopedVars(coords.count, contextVariable);
-    if (group[value] !== undefined) {
-      let result = String(group[value]).trim();
-      if (result.startsWith('(') && result.endsWith(')')) {
-        result = result.slice(1, -1);
-      }
-      return result.replace(/;+$/g, '');
-    }
-    return value;
-  }
-
-  composeComposable(fname, node, coords, selector) {
-    let parts = (node.arguments || []).map(a => getValue((a.values || [])[0]));
-    let temp;
-    if (parts.length && /^\d/.test(parts[0])) {
-      temp = parts[0];
-      parts = parts.slice(1);
-    }
-    let value = parts.join(',');
-    if (!isNil(value) && value !== '') {
-      switch (fname) {
-        case 'doodle':
-          return this.composeDoodle(
-            this.injectVariables(value, coords.count), temp,
-            coords.extra.length ? structuredClone(coords.extra) : undefined);
-        case 'shaders':
-        case 'pattern':
-          return this.composePaint(fname, value, coords, temp, selector);
-      }
-    }
-  }
-
-  composeArgument(argument, coords, extra = [], parent, contextVariable, selector) {
-    let compiled = compileArgument(argument, parent);
-    let value = compiled.constant
-      ? compiled()
-      : compiled({ rules: this, coords, contextVariable, selector }, extra);
-    // the wrapped shape applyFunc interprets: composed values stay boxed
-    // so they read as one argument
-    return {
-      cluster: compiled.cluster,
-      value: compiled.composed ? { value } : value,
-    };
-  }
-
-  composeDoodle(doodle, arg, upextra) {
-    let id = uniqueId('doodle');
-    this.doodles[id] = { doodle, arg, upextra };
-    return '${' + id + '}';
-  }
-
-  getTarget(selector, cellSelector) {
-    let target = {
-      selector: 'cell',
-      type: 'background'
-    };
-    if (selector && selector.property === '@content') {
-      target.type = 'content';
-    } else if (selector && selector.property === '@grid') {
-      target.selector = ':host';
-    } else if (isSpecialSelector(selector)) {
-      target.selector = selector;
-    }
-    if (target.selector === 'cell') {
-      target.selector = cellSelector;
-    }
-    return target;
-  }
-
-  composePaint(fname, source, { x, y, z }, arg, selector) {
-    // the renderer reads `shader` for shaders and `code` for patterns
-    let isShader = fname === 'shaders';
-    let id = uniqueId(isShader ? 'shader' : 'pattern');
-    let cellSelector = cellId(x, y, z);
-    this[isShader ? 'shaders' : 'pattern'][id] = {
-      [isShader ? 'shader' : 'code']: source,
-      target: this.getTarget(selector, cellSelector),
-      arg,
-      id: '--' + id,
-      cell: cellSelector
-    };
-    return '${' + id + '}';
-  }
-
-  checkUniforms(name) {
-    switch (name) {
-      case 'ut': case 'UT': case 't': case 'T': case 'ts': case 'TS':
-        this.uniforms.time = true; break;
-      case 'ux': this.uniforms.mousex = true; break;
-      case 'uy': this.uniforms.mousey = true; break;
-      case 'uw': this.uniforms.width = true; break;
-      case 'uh': this.uniforms.height = true; break;
-      case 'shaders': this.uniforms.mouse = true; break;
-    }
-  }
-
-  injectVariables(value, count) {
-    let group = this.scopedVars(count);
-    let variables = [];
-    for (let [name, key] of Object.entries(group)) {
-      variables.push(`${name}: ${key};`);
-    }
-    variables = variables.join('');
-    if (variables.length) {
-      return `:doodle {${variables}}` + value;
-    }
-    return value;
-  }
-
-  composeVariables(variables, coords, result = {}) {
-    for (let [name, value] of Object.entries(variables)) {
-      result[name] = this.getComposedValue(value, coords, result).value;
-    }
-    return result;
-  }
-
-  composeValue(value, coords, contextVariable = {}, selector) {
-    if (!Array.isArray(value)) {
-      return {
-        value: '',
-        extra: '',
-      }
-    }
-    return compileValue(value)({ rules: this, coords, contextVariable, selector });
-  }
-
-  getComposedValue(value, coords, context, selector) {
-    let extra;
-    let group = [];
-    if (Array.isArray(value)) {
-      let ctx = context || {};
-      for (let v of value) {
-        let composed = this.composeValue(v, coords, ctx, selector);
-        if (composed.value) group.push(composed.value);
-        if (composed.extra) extra = composed.extra;
-      }
-    }
-    return {
-      extra, group, value: group.join(',')
-    }
-  }
-
-  addGridStyle(transformed) {
-    for (let [selector, rule] of gridStyleRules(transformed)) {
-      this.addRule(selector, rule);
-    }
-  }
-
-  composeRule(token, coords, selector) {
-    let info = this.memo.get(token);
-    if (!info) {
-      info = {
-        static: isStaticRule(token),
-        flags: ruleFlags(token.property),
-        cache: null,
-      };
-      this.memo.set(token, info);
-    }
-    if (!info.static) {
-      return this.composeRuleValue(token, coords, selector, info.flags);
-    }
-    if (!info.cache) {
-      info.cache = new Map();
-    }
-    let cached = info.cache.get(selector);
-    if (cached === undefined) {
-      cached = this.composeRuleValue(token, coords, selector, info.flags);
-      info.cache.set(selector, cached);
-    }
-    return cached;
-  }
-
-  composeRuleValue(token, coords, selector, flags) {
-    let prop = token.property;
-    if (prop === '@seed') {
-      return '';
-    }
-    let composed = this.getComposedValue(token.value, coords, {}, selector);
-    let extra = composed.extra;
-    let value = composed.value;
-
-    if (flags.animation) {
-      this.props.hasAnimation = true;
-
-      if (isHostSelector(selector)) {
-        let prefix = timePrefix[prop];
-        if (prefix && value) {
-          value = prefix + ',' + value;
+    composeVariables(variables, coords, result = {}) {
+        for (let [name, value] of Object.entries(variables)) {
+            result[name] = this.getComposedValue(value, coords, result).value;
         }
-      }
-
-      if (coords.count > 1) {
-        let { count } = coords;
-        switch (prop) {
-          case 'animation-name': {
-            value = composed.group
-              .map(n => this.composeAname(n, count))
-              .join(',');
-            break;
-          }
-          case 'animation': {
-            value = composed.group
-              .map(n => {
-                let group = (n || '').split(/\s+/);
-                group[0] = this.composeAname(group[0], count);
-                return group.join(' ');
-              })
-              .join(',');
-          }
-        }
-      }
+        return result;
     }
 
-    if (prop === 'content') {
-      if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
+    composeValue(value, coords, contextVariable = {}, selector) {
+        if (!Array.isArray(value)) {
+            return {
+                value: '',
+                extra: '',
+            }
+        }
+        return compileValue(value)({ rules: this, coords, contextVariable, selector });
+    }
+
+    getComposedValue(value, coords, context, selector) {
+        let extra;
+        let group = [];
+        if (Array.isArray(value)) {
+            let ctx = context || {};
+            for (let v of value) {
+                let composed = this.composeValue(v, coords, ctx, selector);
+                if (composed.value) group.push(composed.value);
+                if (composed.extra) extra = composed.extra;
+            }
+        }
+        return {
+            extra, group, value: group.join(',')
+        }
+    }
+
+    addGridStyle(transformed) {
+        for (let [selector, rule] of gridStyleRules(transformed)) {
+            this.addRule(selector, rule);
+        }
+    }
+
+    composeRule(token, coords, selector) {
+        let info = this.memo.get(token);
+        if (!info) {
+            info = {
+                static: isStaticRule(token),
+                flags: ruleFlags(token.property),
+                cache: null,
+            };
+            this.memo.set(token, info);
+        }
+        if (!info.static) {
+            return this.composeRuleValue(token, coords, selector, info.flags);
+        }
+        if (!info.cache) {
+            info.cache = new Map();
+        }
+        let cached = info.cache.get(selector);
+        if (cached === undefined) {
+            cached = this.composeRuleValue(token, coords, selector, info.flags);
+            info.cache.set(selector, cached);
+        }
+        return cached;
+    }
+
+    composeRuleValue(token, coords, selector, flags) {
+        let prop = token.property;
+        if (prop === '@seed') {
+            return '';
+        }
+        let composed = this.getComposedValue(token.value, coords, {}, selector);
+        let extra = composed.extra;
+        let value = composed.value;
+
+        if (flags.animation) {
+            this.props.hasAnimation = true;
+
+            if (isHostSelector(selector)) {
+                let prefix = timePrefix[prop];
+                if (prefix && value) {
+                    value = prefix + ',' + value;
+                }
+            }
+
+            if (coords.count > 1) {
+                let { count } = coords;
+                switch (prop) {
+                    case 'animation-name': {
+                        value = composed.group
+                            .map(n => this.composeAname(n, count))
+                            .join(',');
+                        break;
+                    }
+                    case 'animation': {
+                        value = composed.group
+                            .map(n => {
+                                let group = (n || '').split(/\s+/);
+                                group[0] = this.composeAname(group[0], count);
+                                return group.join(' ');
+                            })
+                            .join(',');
+                    }
+                }
+            }
+        }
+
+        if (prop === 'content') {
+            if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
         value = `'${value}'`;
       }
       let reset = new Map();

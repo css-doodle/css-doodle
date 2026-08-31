@@ -4,66 +4,66 @@ let embedFonts = new Map();
 let linkFonts = new Set();
 
 function getGoogleFontLink(names) {
-  if (!Array.isArray(names)) {
-    names = [names];
-  }
-  /* the v1 css endpoint only honors the first `family` param, so join with a pipe */
-  let params = names.map(encodeURIComponent).join('%7C');
-  return `https://fonts.googleapis.com/css?display=swap&family=${params}`;
+    if (!Array.isArray(names)) {
+        names = [names];
+    }
+    /* the v1 css endpoint only honors the first `family` param, so join with a pipe */
+    let params = names.map(encodeURIComponent).join('%7C');
+    return `https://fonts.googleapis.com/css?display=swap&family=${params}`;
 }
 
 export function loadGoogleFontLink(fonts) {
-  let names = [];
-  if (!Array.isArray(fonts)) {
-    return Promise.resolve();
-  }
-  for (let name of fonts) {
-    if (linkFonts.has(name)) {
-      continue;
+    let names = [];
+    if (!Array.isArray(fonts)) {
+        return Promise.resolve();
     }
-    linkFonts.add(name);
-    names.push(name);
-  }
-  if (!names.length) {
-    return Promise.resolve();
-  }
+    for (let name of fonts) {
+        if (linkFonts.has(name)) {
+            continue;
+        }
+        linkFonts.add(name);
+        names.push(name);
+    }
+    if (!names.length) {
+        return Promise.resolve();
+    }
 
-  if (typeof document !== 'undefined') {
-    return new Promise(resolve => {
-      let link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = getGoogleFontLink(names);
-      link.onload = resolve;
-      link.onerror = resolve;
-      document.head.appendChild(link);
-    });
-  }
-  return Promise.resolve();
+    if (typeof document !== 'undefined') {
+        return new Promise(resolve => {
+            let link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = getGoogleFontLink(names);
+            link.onload = resolve;
+            link.onerror = resolve;
+            document.head.appendChild(link);
+        });
+    }
+    return Promise.resolve();
 }
 
 async function fetchCSS(names) {
-  let res = await fetch(getGoogleFontLink(names));
-  if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
-  return res.text();
+    let res = await fetch(getGoogleFontLink(names));
+    if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
+    return res.text();
 }
 
 function extractFonts(css) {
-  let blockRegex = /@font-face\s*{([^}]+)}/gi;
-  let fonts = [];
-  let seen = new Map();
+    let blockRegex = /@font-face\s*{([^}]+)}/gi;
+    let fonts = [];
+    let seen = new Map();
 
-  let match;
-  while ((match = blockRegex.exec(css)) !== null) {
-    let content = match[1];
+    let match;
+    while ((match = blockRegex.exec(css)) !== null) {
+        let content = match[1];
 
-    let getProp = (prop) => {
-      let re = new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i');
-      let res = content.match(re);
-      return res ? res[1].trim() : null;
-    };
+        let getProp = (prop) => {
+            let re = new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i');
+            let res = content.match(re);
+            return res ? res[1].trim() : null;
+        };
 
-    let urlMatch = content.match(/url\(([^)]+)\)/i);
-    let url = urlMatch ? urlMatch[1].replace(/['"]/g, '') : null;
+        let urlMatch = content.match(/url\(([^)]+)\)/i);
+        let url = urlMatch ? urlMatch[1].replace(/['"]/g, '') : null;
     let family = getProp('font-family');
     if (!family || !url) continue;
 

@@ -5,112 +5,112 @@ import compare from './_compare.js';
 
 test('basic value group', () => {
 
-  compare.use(parseValueGroup);
+    compare.use(parseValueGroup);
 
-  compare(undefined, []);
+    compare(undefined, []);
 
-  compare('', []);
+    compare('', []);
 
-  compare('a', ['a']);
+    compare('a', ['a']);
 
-  compare('a, b', ['a', 'b']);
+    compare('a, b', ['a', 'b']);
 
-  compare('a, b, c', ['a', 'b', 'c']);
+    compare('a, b, c', ['a', 'b', 'c']);
 
-  compare('a, b-c', ['a', 'b-c']);
+    compare('a, b-c', ['a', 'b-c']);
 
-  compare('a, var(--a,b)', ['a', 'var(--a,b)']);
+    compare('a, var(--a,b)', ['a', 'var(--a,b)']);
 
-  compare('a b', ['a', 'b']);
+    compare('a b', ['a', 'b']);
 
-  compare('a @p(a, b)', ['a', '@p(a,b)']);
+    compare('a @p(a, b)', ['a', '@p(a,b)']);
 
-  compare('a "hello world"', ['a', '"hello world"']);
+    compare('a "hello world"', ['a', '"hello world"']);
 
-  compare('a, "hello, world"', ['a', '"hello, world"']);
+    compare('a, "hello, world"', ['a', '"hello, world"']);
 
-  compare('a, , @p(a,b)', ['a', '', '@p(a,b)']);
+    compare('a, , @p(a,b)', ['a', '', '@p(a,b)']);
 
-  compare('10px calc(10px / 5)', ['10px', 'calc(10px / 5)']);
+    compare('10px calc(10px / 5)', ['10px', 'calc(10px / 5)']);
 
 });
 
 
 test('no space option', () => {
 
-  compare.use(input => {
-    return parseValueGroup(input, { noSpace: true });
-  });
+    compare.use(input => {
+        return parseValueGroup(input, { noSpace: true });
+    });
 
-  compare('a b', ['a b']);
+    compare('a b', ['a b']);
 
-  compare('a  b', ['a b']);
+    compare('a  b', ['a b']);
 
-  compare('a "hello, world"', ['a "hello, world"']);
+    compare('a "hello, world"', ['a "hello, world"']);
 
 
-  compare('a,b', ['a', 'b']);
+    compare('a,b', ['a', 'b']);
 
-  compare('a, b', ['a', 'b']);
+    compare('a, b', ['a', 'b']);
 
 });
 
 
 test('grid value', () => {
 
-  compare.use(input => {
-    return parseValueGroup(input, { symbol: '/', noSpace: true });
-  });
+    compare.use(input => {
+        return parseValueGroup(input, { symbol: '/', noSpace: true });
+    });
 
-  compare('5 / 100%', ['5', '100%']);
+    compare('5 / 100%', ['5', '100%']);
 
-  compare('5/100%', ['5', '100%']);
+    compare('5/100%', ['5', '100%']);
 
-  compare('5 / calc(100% / 5)', ['5', 'calc(100% / 5)']);
+    compare('5 / calc(100% / 5)', ['5', 'calc(100% / 5)']);
 
-  compare('5x10 / @r(100px)', ['5x10', '@r(100px)']);
+    compare('5x10 / @r(100px)', ['5x10', '@r(100px)']);
 
 });
 
 test('space as separator', () => {
 
-  compare.use(input => {
-    return parseValueGroup(input, { symbol: ' ' });
-  });
+    compare.use(input => {
+        return parseValueGroup(input, { symbol: ' ' });
+    });
 
-  compare('5  100%', ['5', '100%']);
-  compare('5,100%', ['5,100%']);
-  compare('5, 100% 5', ['5,100%', '5']);
-  compare('5, 100% 5 8', ['5,100%', '5', '8']);
+    compare('5  100%', ['5', '100%']);
+    compare('5,100%', ['5,100%']);
+    compare('5, 100% 5', ['5,100%', '5']);
+    compare('5, 100% 5 8', ['5,100%', '5', '8']);
 
 });
 
 test('verbose option', () => {
 
-  compare.use(input => {
-    return parseValueGroup(input, { symbol: ['v', 'h'], noSpace: true, verbose: true });
-  });
+    compare.use(input => {
+        return parseValueGroup(input, { symbol: ['v', 'h'], noSpace: true, verbose: true });
+    });
 
-  compare('v 10 h -10 v 5', [
-    { group: 'v', value: '10' },
-    { group: 'h', value: '-10' },
-    { group: 'v', value: '5' },
-  ]);
+    compare('v 10 h -10 v 5', [
+        { group: 'v', value: '10' },
+        { group: 'h', value: '-10' },
+        { group: 'v', value: '5' },
+    ]);
 
 });
 
 test('dot symbol', () => {
-  compare.use(input => {
-    return parseValueGroup(input, { symbol: '_', noSpace: true });
-  });
+    compare.use(input => {
+        return parseValueGroup(input, { symbol: '_', noSpace: true });
+    });
 
-  compare('1 _.5px', ['1', '.5px']);
+    compare('1 _.5px', ['1', '.5px']);
 });
 
 test('symbol max counter', () => {
-  compare.use(input => {
-    return parseValueGroup(input, { symbol: '/ 2', noSpace: true });
-  });
-  compare('1 / 2 / 3', ['1', '2', '3']);
-  compare('1 / 2 / 3 / 4', ['1', '2', '3 / 4']);
+    compare.use(input => {
+        return parseValueGroup(input, { symbol: '/ 2', noSpace: true });
+    });
+    compare('1 / 2 / 3', ['1', '2', '3']);
+    compare('1 / 2 / 3 / 4', ['1', '2', '3 / 4']);
 });

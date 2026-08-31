@@ -22,469 +22,469 @@ const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
 const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
 
 class Cursor {
-  constructor(source, ctx) {
-    this.source = source;
-    this.tokens = scan(source);
-    this.ctx = ctx;
-    this.i = 0;
-  }
-  peek(n = 0) {
-    return this.tokens[this.i + n];
-  }
-  next() {
-    return this.tokens[this.i++];
-  }
-  end() {
-    return this.i >= this.tokens.length;
-  }
-  headIndex() {
-    let t = this.tokens[this.i];
-    return t ? t.index : this.source.length;
-  }
-  tailEnd() {
-    let t = this.tokens[this.i - 1];
-    return t ? tokenEnd(t) : 0;
-  }
-  position() {
-    return ++this.ctx.position;
-  }
+    constructor(source, ctx) {
+        this.source = source;
+        this.tokens = scan(source);
+        this.ctx = ctx;
+        this.i = 0;
+    }
+    peek(n = 0) {
+        return this.tokens[this.i + n];
+    }
+    next() {
+        return this.tokens[this.i++];
+    }
+    end() {
+        return this.i >= this.tokens.length;
+    }
+    headIndex() {
+        let t = this.tokens[this.i];
+        return t ? t.index : this.source.length;
+    }
+    tailEnd() {
+        let t = this.tokens[this.i - 1];
+        return t ? tokenEnd(t) : 0;
+    }
+    position() {
+        return ++this.ctx.position;
+    }
 }
 
 function tokenEnd(token) {
-  return token.index + token.value.length;
+    return token.index + token.value.length;
 }
 
 function adjacent(a, b) {
-  return tokenEnd(a) === b.index;
+    return tokenEnd(a) === b.index;
 }
 
 function throwError(msg, pos = []) {
-  console.warn(`(at line ${pos[1] + 1}, column ${pos[0] + 1}) ${msg}`);
+    console.warn(`(at line ${pos[1] + 1}, column ${pos[0] + 1}) ${msg}`);
 }
 
 function isNumber(n) {
-  return !isNaN(n);
+    return !isNaN(n);
 }
 
 function getTextValue(input) {
-  if (input.trim().length) {
-    return isNumber(+input) ? +input : input.trim();
-  }
-  return input;
+    if (input.trim().length) {
+        return isNumber(+input) ? +input : input.trim();
+    }
+    return input;
 }
 
 function isPairOf(c, n) {
-  return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
+    return ({ '"': '"', "'": "'", '(': ')' })[c] == n;
 }
 
 function isSvg(name) {
-  return /^@svg$/i.test(name);
+    return /^@svg$/i.test(name);
 }
 
 function composible(name) {
-  return /^@(canvas|shaders|doodle)/.test(name);
+    return /^@(canvas|shaders|doodle)/.test(name);
 }
 
 function substitutePi(input, prev) {
-  if (!input.includes('π')) return input;
-  let result = '';
-  for (let i = 0; i < input.length; ++i) {
-    let c = input[i];
-    if (c === 'π') {
-      let p = i > 0 ? input[i - 1] : prev;
-      result += (p >= '0' && p <= '9') ? c : PI;
-    } else {
-      result += c;
+    if (!input.includes('π')) return input;
+    let result = '';
+    for (let i = 0; i < input.length; ++i) {
+        let c = input[i];
+        if (c === 'π') {
+            let p = i > 0 ? input[i - 1] : prev;
+            result += (p >= '0' && p <= '9') ? c : PI;
+        } else {
+            result += c;
+        }
     }
-  }
-  return result;
+    return result;
 }
 
 function separateFuncName(name) {
-  let fname = '', extra = '';
-  if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
-    return { fname: name, extra };
-  }
-  for (let i = name.length - 1; i >= 0; i--) {
-    let c = name[i];
-    let prev = name[i - 1];
-    let next = name[i + 1];
-    if (/[\d.]/.test(c) || ((c == 'x' || c == '-') && /\d/.test(prev) && /\d/.test(next))) {
-      extra = c + extra;
-    } else {
-      fname = name.substring(0, i + 1);
-      break;
+    let fname = '', extra = '';
+    if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
+        return { fname: name, extra };
     }
-  }
-  return { fname, extra };
+    for (let i = name.length - 1; i >= 0; i--) {
+        let c = name[i];
+        let prev = name[i - 1];
+        let next = name[i + 1];
+        if (/[\d.]/.test(c) || ((c == 'x' || c == '-') && /\d/.test(prev) && /\d/.test(next))) {
+            extra = c + extra;
+        } else {
+            fname = name.substring(0, i + 1);
+            break;
+        }
+    }
+    return { fname, extra };
 }
 
 function hasTimesSyntax(token) {
-  let str = JSON.stringify(token);
-  return str.includes('pureName') && str.includes('times');
+    let str = JSON.stringify(token);
+    return str.includes('pureName') && str.includes('times');
 }
 
 const Node = {
-  text(value) {
-    return { type: 'text', value };
-  },
-  func(name = '') {
-    return { type: 'func', name, arguments: [] };
-  },
-  argument(values, cluster = false) {
-    return { values, cluster };
-  },
+    text(value) {
+        return { type: 'text', value };
+    },
+    func(name = '') {
+        return { type: 'func', name, arguments: [] };
+    },
+    argument(values, cluster = false) {
+        return { values, cluster };
+    },
 };
 
 // first top-level, unquoted terminator symbol ahead of the cursor
 function probe(cur, ...terminators) {
-  let paren = 0, quote = false;
-  for (let i = cur.i; i < cur.tokens.length; ++i) {
-    let t = cur.tokens[i];
-    if (t.status === 'open') quote = true;
-    else if (t.status === 'close') quote = false;
-    if (!quote && t.isSymbol('(')) paren++;
-    else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
-    else if (paren === 0 && !quote && t.isSymbol(...terminators)) {
-      return t.value;
+    let paren = 0, quote = false;
+    for (let i = cur.i; i < cur.tokens.length; ++i) {
+        let t = cur.tokens[i];
+        if (t.status === 'open') quote = true;
+        else if (t.status === 'close') quote = false;
+        if (!quote && t.isSymbol('(')) paren++;
+        else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
+        else if (paren === 0 && !quote && t.isSymbol(...terminators)) {
+            return t.value;
+        }
     }
-  }
-  return '';
+    return '';
 }
 
 function probeSelector(cur) {
-  return probe(cur, '{', ';', '}') === '{';
+    return probe(cur, '{', ';', '}') === '{';
 }
 
 function probeBlock(cur) {
-  return probe(cur, ':', ';', '{', '}');
+    return probe(cur, ':', ';', '{', '}');
 }
 
 function isKeyframesAt(cur) {
-  let at = cur.peek();
-  let word = cur.peek(1);
-  if (!at || !word) return false;
-  if (!at.isSymbol('@') || !word.isWord() || word.value !== 'keyframes') {
-    return false;
-  }
-  if (!adjacent(at, word)) return false;
-  let after = cur.peek(2);
-  // '@keyframes2' reads as a longer word in the legacy grammar
-  if (after && adjacent(word, after) && /^[\w@]/.test(after.value)) {
-    return false;
-  }
-  return true;
+    let at = cur.peek();
+    let word = cur.peek(1);
+    if (!at || !word) return false;
+    if (!at.isSymbol('@') || !word.isWord() || word.value !== 'keyframes') {
+        return false;
+    }
+    if (!adjacent(at, word)) return false;
+    let after = cur.peek(2);
+    // '@keyframes2' reads as a longer word in the legacy grammar
+    if (after && adjacent(word, after) && /^[\w@]/.test(after.value)) {
+        return false;
+    }
+    return true;
 }
 
 function parseValue(cur, extra, breakOn) {
-  let groups = [[]];
-  let group = groups[0];
-  let buf = '';
-  let skip = true;
-  let paren = 0;
-  let quote = false;
+    let groups = [[]];
+    let group = groups[0];
+    let buf = '';
+    let skip = true;
+    let paren = 0;
+    let quote = false;
 
-  const flush = () => {
-    if (buf.length) {
-      group.push(Node.text(buf));
-      buf = '';
-    }
-  };
+    const flush = () => {
+        if (buf.length) {
+            group.push(Node.text(buf));
+            buf = '';
+        }
+    };
 
-  while (!cur.end()) {
-    let tok = cur.peek();
-    let v = tok.value;
+    while (!cur.end()) {
+        let tok = cur.peek();
+        let v = tok.value;
 
-    if (tok.isSpace()) {
-      if (skip) {
+        if (tok.isSpace()) {
+            if (skip) {
+                cur.next();
+                continue;
+            }
+            cur.next();
+            buf += quote ? v : ' ';
+            continue;
+        }
+        skip = false;
+
+        if (splitDollar(cur)) {
+            continue;
+        }
+
+        if (tok.isSymbol()) {
+            if (!quote && (v === ';' || v === '}' || v === '<' || v === breakOn)) {
+                break;
+            }
+            if (v === ',' && paren === 0) {
+                cur.next();
+                flush();
+                group = [];
+                groups.push(group);
+                skip = true;
+                continue;
+            }
+            if ((v === '@' || v === '$') && isFuncStart(cur)) {
+                flush();
+                group.push(parseFunc(cur, extra));
+                continue;
+            }
+            if (tok.status === 'open') quote = true;
+            else if (tok.status === 'close') quote = false;
+            if (v === '(') paren++;
+            else if (v === ')') paren = Math.max(0, paren - 1);
+            cur.next();
+            buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
+            continue;
+        }
+
         cur.next();
-        continue;
-      }
-      cur.next();
-      buf += quote ? v : ' ';
-      continue;
-    }
-    skip = false;
-
-    if (splitDollar(cur)) {
-      continue;
+        if (quote && tok.isWord() && cur.source[tok.index] === '\\') {
+            buf += '\\' + v;
+        } else {
+            buf += v;
+        }
     }
 
-    if (tok.isSymbol()) {
-      if (!quote && (v === ';' || v === '}' || v === '<' || v === breakOn)) {
-        break;
-      }
-      if (v === ',' && paren === 0) {
-        cur.next();
-        flush();
-        group = [];
-        groups.push(group);
-        skip = true;
-        continue;
-      }
-      if ((v === '@' || v === '$') && isFuncStart(cur)) {
-        flush();
-        group.push(parseFunc(cur, extra));
-        continue;
-      }
-      if (tok.status === 'open') quote = true;
-      else if (tok.status === 'close') quote = false;
-      if (v === '(') paren++;
-      else if (v === ')') paren = Math.max(0, paren - 1);
-      cur.next();
-      buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
-      continue;
-    }
-
-    cur.next();
-    if (quote && tok.isWord() && cur.source[tok.index] === '\\') {
-      buf += '\\' + v;
-    } else {
-      buf += v;
-    }
-  }
-
-  flush();
-  return groups;
+    flush();
+    return groups;
 }
 
 function isFuncStart(cur) {
-  let tok = cur.peek();
-  let next = cur.peek(1);
-  return !!(next && adjacent(tok, next) && RE_FUNC_START.test(next.value[0]));
+    let tok = cur.peek();
+    let next = cur.peek(1);
+    return !!(next && adjacent(tok, next) && RE_FUNC_START.test(next.value[0]));
 }
 
 function splitDollar(cur) {
-  let tok = cur.peek();
-  if (!tok || !tok.isWord() || !tok.value.includes('$')) return false;
-  let k = tok.value.indexOf('$');
-  let parts = [];
-  if (k > 0) {
+    let tok = cur.peek();
+    if (!tok || !tok.isWord() || !tok.value.includes('$')) return false;
+    let k = tok.value.indexOf('$');
+    let parts = [];
+    if (k > 0) {
+        parts.push(new Token({
+            type: 'Word', value: tok.value.slice(0, k), pos: tok.pos, index: tok.index
+        }));
+    }
     parts.push(new Token({
-      type: 'Word', value: tok.value.slice(0, k), pos: tok.pos, index: tok.index
+        type: 'Symbol', value: '$', pos: tok.pos, index: tok.index + k
     }));
-  }
-  parts.push(new Token({
-    type: 'Symbol', value: '$', pos: tok.pos, index: tok.index + k
-  }));
-  if (k + 1 < tok.value.length) {
-    parts.push(new Token({
-      type: 'Word', value: tok.value.slice(k + 1), pos: tok.pos, index: tok.index + k + 1
-    }));
-  }
-  cur.tokens.splice(cur.i, 1, ...parts);
-  return true;
+    if (k + 1 < tok.value.length) {
+        parts.push(new Token({
+            type: 'Word', value: tok.value.slice(k + 1), pos: tok.pos, index: tok.index + k + 1
+        }));
+    }
+    cur.tokens.splice(cur.i, 1, ...parts);
+    return true;
 }
 
 function parseFunc(cur, extra, variables = {}) {
-  let tok = cur.next(); // '@' or '$'
-  let isCalc = tok.isSymbol('$');
-  let name = '@';
-  let end = tok.index + 1;
+    let tok = cur.next(); // '@' or '$'
+    let isCalc = tok.isSymbol('$');
+    let name = '@';
+    let end = tok.index + 1;
 
-  while (!cur.end()) {
-    let t = cur.peek();
-    if (t.index !== end) break;
-    if (t.isWord() && t.value.includes('$') && splitDollar(cur)) {
-      t = cur.peek();
+    while (!cur.end()) {
+        let t = cur.peek();
+        if (t.index !== end) break;
+        if (t.isWord() && t.value.includes('$') && splitDollar(cur)) {
+            t = cur.peek();
+        }
+        if (t.isSymbol('(') || !RE_NAME_TOKEN.test(t.value)) {
+            break;
+        }
+        name += t.value;
+        end += t.value.length;
+        cur.next();
     }
-    if (t.isSymbol('(') || !RE_NAME_TOKEN.test(t.value)) {
-      break;
-    }
-    name += t.value;
-    end += t.value.length;
-    cur.next();
-  }
-  return finishFunc(cur, name, end, isCalc, extra, variables);
+    return finishFunc(cur, name, end, isCalc, extra, variables);
 }
 
 function finishFunc(cur, name, end, isCalc, extra, variables) {
-  let func = Node.func();
-  let hasArguments = false;
+    let func = Node.func();
+    let hasArguments = false;
 
-  let dot = findCompositionDot(name, cur, end);
-  if (dot > 0) {
-    let inner;
-    if (dot < name.length - 1) {
-      inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables);
-    } else {
-      inner = parseFunc(cur, extra);
-    }
-    name = name.slice(0, dot);
-    func.arguments = [Node.argument([inner])];
-    func.variables = variables;
-    hasArguments = true;
-  }
-  else {
-    let paren = cur.peek();
-    if (paren && paren.index === end && paren.isSymbol('(')) {
-      cur.next();
-      if (composible(name)) {
-        func.arguments = parseDoodleBody(cur, paren.index + 1);
-      } else {
-        let closed = parseArguments(cur, paren.index + 1, extra, variables);
-        func.arguments = closed.args;
-        if (isSvg(name)) {
-          func.arguments = expandSvg(
-            cur, cur.source.slice(paren.index + 1, closed.end), closed.args, extra, variables);
+    let dot = findCompositionDot(name, cur, end);
+    if (dot > 0) {
+        let inner;
+        if (dot < name.length - 1) {
+            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables);
+        } else {
+            inner = parseFunc(cur, extra);
         }
-      }
-      func.variables = variables;
-      hasArguments = true;
+        name = name.slice(0, dot);
+        func.arguments = [Node.argument([inner])];
+        func.variables = variables;
+        hasArguments = true;
     }
-  }
-
-  let { fname, extra: extraArgs } = separateFuncName(name);
-  func.name = isCalc ? '@$' + name.slice(1) : fname;
-  if (extraArgs.length) {
-    func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
-  }
-
-  if (isCalc && func.name.length > 2) {
-    if (!func.arguments.length) {
-      let value = func.name.substring(2);
-      func.name = func.name.substring(0, 2);
-      func.arguments.push(Node.argument([Node.text(value)]));
+    else {
+        let paren = cur.peek();
+        if (paren && paren.index === end && paren.isSymbol('(')) {
+            cur.next();
+            if (composible(name)) {
+                func.arguments = parseDoodleBody(cur, paren.index + 1);
+            } else {
+                let closed = parseArguments(cur, paren.index + 1, extra, variables);
+                func.arguments = closed.args;
+                if (isSvg(name)) {
+                    func.arguments = expandSvg(
+                        cur, cur.source.slice(paren.index + 1, closed.end), closed.args, extra, variables);
+                }
+            }
+            func.variables = variables;
+            hasArguments = true;
+        }
     }
-    if (/\d$/.test(func.name)) {
-      let value = func.name.substring(2);
-      func.name = func.name.substring(0, 2);
-      func.arguments[0].values[0].value = value;
-    }
-  }
 
-  func.position = cur.position();
-  return func;
+    let { fname, extra: extraArgs } = separateFuncName(name);
+    func.name = isCalc ? '@$' + name.slice(1) : fname;
+    if (extraArgs.length) {
+        func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
+    }
+
+    if (isCalc && func.name.length > 2) {
+        if (!func.arguments.length) {
+            let value = func.name.substring(2);
+            func.name = func.name.substring(0, 2);
+            func.arguments.push(Node.argument([Node.text(value)]));
+        }
+        if (/\d$/.test(func.name)) {
+            let value = func.name.substring(2);
+            func.name = func.name.substring(0, 2);
+            func.arguments[0].values[0].value = value;
+        }
+    }
+
+    func.position = cur.position();
+    return func;
 }
 
 function findCompositionDot(name, cur, end) {
-  for (let i = 1; i < name.length; ++i) {
-    if (name[i] === '.') {
-      let next = name[i + 1];
-      if (next === undefined) {
-        let t = cur.peek();
-        if (t && t.index === end && t.isSymbol('@', '$')) {
-          return i;
+    for (let i = 1; i < name.length; ++i) {
+        if (name[i] === '.') {
+            let next = name[i + 1];
+            if (next === undefined) {
+                let t = cur.peek();
+                if (t && t.index === end && t.isSymbol('@', '$')) {
+                    return i;
+                }
+                return -1;
+            }
+            if (/[a-zA-Z]/.test(next)) {
+                return i;
+            }
         }
-        return -1;
-      }
-      if (/[a-zA-Z]/.test(next)) {
-        return i;
-      }
     }
-  }
-  return -1;
+    return -1;
 }
 
 function parseArguments(cur, start, extra, variables) {
-  let args = [];
-  let values = [];
-  let runStart = start;
-  let lastRun = '';
-  let paren = 0;
-  let quote = false;
-  let end = cur.source.length;
+    let args = [];
+    let values = [];
+    let runStart = start;
+    let lastRun = '';
+    let paren = 0;
+    let quote = false;
+    let end = cur.source.length;
 
-  const flushText = (to, atFunc) => {
-    let text = substitutePi(cur.source.slice(runStart, to), cur.source[runStart - 1]);
-    lastRun = text;
-    if (!text.length) return;
-    if (values.length === 0) {
-      if (atFunc) {
-        text = text.trimStart();
-        if (text.length) values.push(Node.text(text));
-      } else {
-        values.push(Node.text(getTextValue(text)));
-      }
-    } else if (atFunc || /\S/.test(text)) {
-      values.push(Node.text(text));
-    }
-  };
-
-  const pushArgument = () => {
-    // ±x expands into two arguments: -x and x
-    if (lastRun.trim().startsWith('±') && values.length) {
-      let raw = lastRun.trim().slice(1);
-      let cloned = structuredClone(values);
-      cloned[cloned.length - 1].value = '-' + raw;
-      args.push(normalizeArgument(cloned));
-      values[values.length - 1].value = raw;
-    }
-    args.push(normalizeArgument(values));
-    values = [];
-    lastRun = '';
-  };
-
-  while (!cur.end()) {
-    let tok = cur.peek();
-    if (tok.status === 'open') {
-      quote = true;
-      cur.next();
-      continue;
-    }
-    if (tok.status === 'close') {
-      quote = false;
-      cur.next();
-      continue;
-    }
-    // functions fire inside quotes too, like everywhere else
-    if (tok.isSymbol('@', '$')) {
-      flushText(tok.index, true);
-      values.push(parseFunc(cur, extra, variables));
-      runStart = cur.tailEnd();
-      continue;
-    }
-    if (splitDollar(cur)) {
-      continue;
-    }
-    if (!quote && tok.isSymbol()) {
-      let v = tok.value;
-      if (v === '(') {
-        paren++;
-        cur.next();
-        continue;
-      }
-      if (v === ')') {
-        if (paren > 0) {
-          paren--;
-          cur.next();
-          continue;
+    const flushText = (to, atFunc) => {
+        let text = substitutePi(cur.source.slice(runStart, to), cur.source[runStart - 1]);
+        lastRun = text;
+        if (!text.length) return;
+        if (values.length === 0) {
+            if (atFunc) {
+                text = text.trimStart();
+                if (text.length) values.push(Node.text(text));
+            } else {
+                values.push(Node.text(getTextValue(text)));
+            }
+        } else if (atFunc || /\S/.test(text)) {
+            values.push(Node.text(text));
         }
-        flushText(tok.index, false);
-        pushArgument();
-        end = tok.index;
+    };
+
+    const pushArgument = () => {
+        // ±x expands into two arguments: -x and x
+        if (lastRun.trim().startsWith('±') && values.length) {
+            let raw = lastRun.trim().slice(1);
+            let cloned = structuredClone(values);
+            cloned[cloned.length - 1].value = '-' + raw;
+            args.push(normalizeArgument(cloned));
+            values[values.length - 1].value = raw;
+        }
+        args.push(normalizeArgument(values));
+        values = [];
+        lastRun = '';
+    };
+
+    while (!cur.end()) {
+        let tok = cur.peek();
+        if (tok.status === 'open') {
+            quote = true;
+            cur.next();
+            continue;
+        }
+        if (tok.status === 'close') {
+            quote = false;
+            cur.next();
+            continue;
+        }
+        // functions fire inside quotes too, like everywhere else
+        if (tok.isSymbol('@', '$')) {
+            flushText(tok.index, true);
+            values.push(parseFunc(cur, extra, variables));
+            runStart = cur.tailEnd();
+            continue;
+        }
+        if (splitDollar(cur)) {
+            continue;
+        }
+        if (!quote && tok.isSymbol()) {
+            let v = tok.value;
+            if (v === '(') {
+                paren++;
+                cur.next();
+                continue;
+            }
+            if (v === ')') {
+                if (paren > 0) {
+                    paren--;
+                    cur.next();
+                    continue;
+                }
+                flushText(tok.index, false);
+                pushArgument();
+                end = tok.index;
+                cur.next();
+                return { args: skipLastEmptyArgs(args), end };
+            }
+            if (v === ',' && paren === 0) {
+                flushText(tok.index, false);
+                pushArgument();
+                cur.next();
+                runStart = tok.index + 1;
+                continue;
+            }
+        }
         cur.next();
-        return { args: skipLastEmptyArgs(args), end };
-      }
-      if (v === ',' && paren === 0) {
-        flushText(tok.index, false);
-        pushArgument();
-        cur.next();
-        runStart = tok.index + 1;
-        continue;
-      }
     }
-    cur.next();
-  }
-  // unterminated argument list: pending values are dropped like before
-  return { args: skipLastEmptyArgs(args), end };
+    // unterminated argument list: pending values are dropped like before
+    return { args: skipLastEmptyArgs(args), end };
 }
 
 function skipLastEmptyArgs(args) {
-  let first = args[0];
-  if (first) {
-    let last = first.values[first.values.length - 1];
-    if (last && last.type === 'text' && !String(last.value).trim().length) {
-      first.values = first.values.slice(0, -1);
+    let first = args[0];
+    if (first) {
+        let last = first.values[first.values.length - 1];
+        if (last && last.type === 'text' && !String(last.value).trim().length) {
+            first.values = first.values.slice(0, -1);
+        }
     }
-  }
-  return args;
+    return args;
 }
 
 function normalizeArgument(values) {
-  for (let v of values) {
-    if (v.type === 'text' && typeof v.value === 'string' && v.value.includes('`')) {
-      v.value = v.value.replace(/`/g, '"');
+    for (let v of values) {
+        if (v.type === 'text' && typeof v.value === 'string' && v.value.includes('`')) {
+            v.value = v.value.replace(/`/g, '"');
     }
   }
   let cluster = false;

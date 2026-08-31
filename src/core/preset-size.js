@@ -1,46 +1,46 @@
 const presets = {
-  a0: [ 841, 1189 ],
-  a1: [ 594, 841 ],
-  a2: [ 420, 594 ],
-  a3: [ 297, 420 ],
-  a4: [ 210, 297 ],
-  a5: [ 148, 210 ],
-  a6: [ 105, 148 ],
+    a0: [ 841, 1189 ],
+    a1: [ 594, 841 ],
+    a2: [ 420, 594 ],
+    a3: [ 297, 420 ],
+    a4: [ 210, 297 ],
+    a5: [ 148, 210 ],
+    a6: [ 105, 148 ],
 
-  postcard: [ 100, 148 ],
-  poster:   [ 390, 540 ],
+    postcard: [ 100, 148 ],
+    poster:   [ 390, 540 ],
 }
 
 const modes = {
-  portrait: 'p',
-  pt: 'p',
-  p: 'p',
+    portrait: 'p',
+    pt: 'p',
+    p: 'p',
 
-  landscape: 'l',
-  ls: 'l',
-  l: 'l',
+    landscape: 'l',
+    ls: 'l',
+    l: 'l',
 }
 
 const unit = 'mm';
 
 function getPreset(name, mode) {
-  name = String(name).toLowerCase();
+    name = String(name).toLowerCase();
 
-  // Default to landscape mode
-  let [h, w] = presets[name] ?? [];
+    // Default to landscape mode
+    let [h, w] = presets[name] ?? [];
 
-  if (modes[mode] == 'p') {
-    [w, h] = [h, w];
-  }
+    if (modes[mode] == 'p') {
+        [w, h] = [h, w];
+    }
 
-  return [w, h].map(n => n + unit);
+    return [w, h].map(n => n + unit);
 }
 
 function isPreset(name) {
-  return !!presets[name];
+    return !!presets[name];
 }
 
 export {
-  getPreset,
-  isPreset
+    getPreset,
+    isPreset
 }

@@ -9,61 +9,61 @@ const cache = new Map();
 globalCache.onClear(() => cache.clear());
 
 function parse(input) {
-  if (cache.has(input)) {
-    return cache.get(input);
-  }
-  if (cache.size >= 256) {
-    cache.clear();
-  }
-
-  let iter = iterator(scan(input));
-  let temp = {};
-  let result = {
-    commands: [],
-    valid: true
-  };
-  while (iter.next()) {
-    let { curr } = iter.get();
-    if (curr.isSpace() || curr.isSymbol(',')) {
-      continue;
+    if (cache.has(input)) {
+        return cache.get(input);
     }
-    if (curr.isWord()) {
-      if (temp.name) {
-        result.commands.push(temp);
-        temp = {};
-      }
-      temp.name = curr.value;
-      temp.value = [];
-      if (!commands.includes(curr.value)) {
-        temp.type = 'unknown';
-        result.valid = false;
-      } else if (relatives.includes(curr.value)) {
-        temp.type = 'relative';
-      } else {
-        temp.type = 'absolute';
-      }
-    } else if (temp.value) {
-      let value = curr.value;
-      if (curr.isNumber()) {
-        value = Number(curr.value);
-      } else if (curr.isSymbol('-') || curr.isSymbol('+')) {
-        let { next } = iter.get();
-        if (next && next.isNumber()) {
-          iter.next();
-          value = Number(curr.value + next.value);
+    if (cache.size >= 256) {
+        cache.clear();
+    }
+
+    let iter = iterator(scan(input));
+    let temp = {};
+    let result = {
+        commands: [],
+        valid: true
+    };
+    while (iter.next()) {
+        let { curr } = iter.get();
+        if (curr.isSpace() || curr.isSymbol(',')) {
+            continue;
         }
-      }
-      temp.value.push(value);
-    } else if (!temp.name) {
-      result.valid = false;
+        if (curr.isWord()) {
+            if (temp.name) {
+                result.commands.push(temp);
+                temp = {};
+            }
+            temp.name = curr.value;
+            temp.value = [];
+            if (!commands.includes(curr.value)) {
+                temp.type = 'unknown';
+                result.valid = false;
+            } else if (relatives.includes(curr.value)) {
+                temp.type = 'relative';
+            } else {
+                temp.type = 'absolute';
+            }
+        } else if (temp.value) {
+            let value = curr.value;
+            if (curr.isNumber()) {
+                value = Number(curr.value);
+            } else if (curr.isSymbol('-') || curr.isSymbol('+')) {
+                let { next } = iter.get();
+                if (next && next.isNumber()) {
+                    iter.next();
+                    value = Number(curr.value + next.value);
+                }
+            }
+            temp.value.push(value);
+        } else if (!temp.name) {
+            result.valid = false;
+        }
     }
-  }
-  if (temp.name) {
-    result.commands.push(temp);
-  }
+    if (temp.name) {
+        result.commands.push(temp);
+    }
 
-  cache.set(input, result);
-  return result;
+    cache.set(input, result);
+    return result;
 }
 
 export default parse;

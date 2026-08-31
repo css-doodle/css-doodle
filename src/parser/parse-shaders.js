@@ -2,97 +2,97 @@ import { scan, iterator, Token } from './tokenizer.js';
 import { isEmpty } from '../utils/type.js';
 
 function parse(input) {
-  let scanOptions = {
-    preserveLineBreak: true,
-    ignoreInlineComment: true,
-  };
-  let iter = iterator(removeParens(scan(input, scanOptions)));
-  let stack = [];
-  let tokens = [];
-  let identifier;
-  let line;
-  let result = {
-    textures: [],
-  };
-  while (iter.next()) {
-    let { curr, next } = iter.get();
-    if (curr.isSymbol('{')) {
-      if (!stack.length) {
-        let name = joinToken(tokens);
-        if (isIdentifier(name)) {
-          identifier = name;
-          tokens = [];
-        } else {
-          tokens.push(curr);
+    let scanOptions = {
+        preserveLineBreak: true,
+        ignoreInlineComment: true,
+    };
+    let iter = iterator(removeParens(scan(input, scanOptions)));
+    let stack = [];
+    let tokens = [];
+    let identifier;
+    let line;
+    let result = {
+        textures: [],
+    };
+    while (iter.next()) {
+        let { curr, next } = iter.get();
+        if (curr.isSymbol('{')) {
+            if (!stack.length) {
+                let name = joinToken(tokens);
+                if (isIdentifier(name)) {
+                    identifier = name;
+                    tokens = [];
+                } else {
+                    tokens.push(curr);
+                }
+            } else {
+                tokens.push(curr);
+            }
+            stack.push('{');
         }
-      } else {
-        tokens.push(curr);
-      }
-      stack.push('{');
-    }
-    else if (curr.isSymbol('}')) {
-      stack.pop();
-      if (!stack.length && identifier) {
-        let value = joinToken(tokens);
-        if (identifier && value.length) {
-          if (identifier.startsWith('texture')) {
-            result.textures.push({
-              name: identifier,
-              value
-            });
-          } else {
-            result[identifier] = value;
-          }
-          tokens = [];
+        else if (curr.isSymbol('}')) {
+            stack.pop();
+            if (!stack.length && identifier) {
+                let value = joinToken(tokens);
+                if (identifier && value.length) {
+                    if (identifier.startsWith('texture')) {
+                        result.textures.push({
+                            name: identifier,
+                            value
+                        });
+                    } else {
+                        result[identifier] = value;
+                    }
+                    tokens = [];
+                }
+                identifier = null;
+            } else {
+                tokens.push(curr);
+            }
         }
-        identifier = null;
-      } else {
-        tokens.push(curr);
-      }
-    }
-    else {
-      if (!isEmpty(line) && line != curr.pos[1]) {
-        tokens.push(lineBreak());
-        line = null;
-      }
-      if (!identifier || !identifier.startsWith('texture')) {
-        if (curr.isWord() && curr.value.startsWith('#')) {
-          tokens.push(lineBreak());
-          line = next.pos[1];
+        else {
+            if (!isEmpty(line) && line != curr.pos[1]) {
+                tokens.push(lineBreak());
+                line = null;
+            }
+            if (!identifier || !identifier.startsWith('texture')) {
+                if (curr.isWord() && curr.value.startsWith('#')) {
+                    tokens.push(lineBreak());
+                    line = next.pos[1];
+                }
+            }
+            tokens.push(curr);
         }
-      }
-      tokens.push(curr);
     }
-  }
 
-  if (isEmpty(result.fragment)) {
-    result.fragment = joinToken(tokens);
-    result.textures = result.textures || [];
-  }
-  return result;
+    if (isEmpty(result.fragment)) {
+        result.fragment = joinToken(tokens);
+        result.textures = result.textures || [];
+    }
+    return result;
 }
 
 function isIdentifier(name) {
-  return /^texture\w*$|^(fragment|vertex)$/.test(name);
+    return /^texture\w*$|^(fragment|vertex)$/.test(name);
 }
 
 function lineBreak() {
-  return new Token({ type: 'LineBreak', value: '\n' });
+    return new Token({ type: 'LineBreak', value: '\n' });
 }
 
 function removeParens(tokens) {
-  let head = tokens[0];
-  let last = tokens[tokens.length - 1];
-  while (head && head.isSymbol('(') && last && last.isSymbol(')')) {
-    tokens = tokens.slice(1, tokens.length - 1);
-    head = tokens[0];
-    last = tokens[tokens.length - 1];
-  }
-  return tokens;
+    let head = tokens[0];
+    let last = tokens[tokens.length - 1];
+    while (head && head.isSymbol('(') && last && last.isSymbol(')')) {
+        tokens = tokens.slice(1, tokens.length - 1);
+        head = tokens[0];
+        last = tokens[tokens.length - 1];
+    }
+    return tokens;
 }
 
 function joinToken(tokens) {
-  return removeParens(tokens).map(n => n.value).join('');
+    return removeParens(tokens).map(n => n.value).join('');
 }
 
 export default parse;

@@ -1,24 +1,24 @@
 export function isNil(s) {
-  return s === undefined || s === null;
+    return s === undefined || s === null;
 }
 
 export function isInvalidNumber(v) {
-  return isNil(v) || Number.isNaN(v);
+    return isNil(v) || Number.isNaN(v);
 }
 
 export function isEmpty(value) {
-  return isNil(value) || value === '';
+    return isNil(value) || value === '';
 }
 
 export function isLetter(c) {
-  return /^[a-zA-Z]$/.test(c);
+    return /^[a-zA-Z]$/.test(c);
 }
 
 export function getValue(input) {
-  let v = input;
-  while (v && !isNil(v.value)) v = v.value;
-  if (typeof v == 'object' && 'value' in v) {
-    return v.value ?? '';
-  }
-  return v ?? '';
+    let v = input;
+    while (v && !isNil(v.value)) v = v.value;
+    if (typeof v == 'object' && 'value' in v) {
+        return v.value ?? '';
+    }
+    return v ?? '';
 }

@@ -7,86 +7,86 @@ compare.use(parseShapeCommands);
 
 test('single statement', () => {
 
-  compare('split: 10', { split: '10' });
+    compare('split: 10', { split: '10' });
 
-  compare('split: 10;', { split: '10' });
+    compare('split: 10;', { split: '10' });
 
-  compare('split: 10;;;', { split: '10' });
+    compare('split: 10;;;', { split: '10' });
 
 });
 
 test('multiple statements', () => {
 
-  compare(`
+    compare(`
     a: 10;
     b: 10;
   `, {
-    a: '10',
-    b: '10'
-  });
+        a: '10',
+        b: '10'
+    });
 
-  compare(`
+    compare(`
     a: 10;
     b: 10;
   `, {
-    a: '10',
-    b: '10'
-  });
+        a: '10',
+        b: '10'
+    });
 
-  compare(`
+    compare(`
     a: 10;
     b: 10
   `, {
-    a: '10',
-    b: '10'
-  });
+        a: '10',
+        b: '10'
+    });
 
 });
 
 test('ignore comments', () => {
 
-  compare(`
+    compare(`
     /* comments */
     a: 10;
     /* comments */
     b: 10;
   `, {
-    a: '10',
-    b: '10'
-  });
+        a: '10',
+        b: '10'
+    });
 
 });
 
 test('complex forms', () => {
 
-  compare('a: b:c;', { a: 'b:c' });
+    compare('a: b:c;', { a: 'b:c' });
 
-  compare('a: seq(1, 2);', { a: 'seq(1,2)' });
+    compare('a: seq(1, 2);', { a: 'seq(1,2)' });
 
-  compare('a: seq(1, 2); a: hello', { a: 'hello' });
+    compare('a: seq(1, 2); a: hello', { a: 'hello' });
 
-  compare('a: seq(1, 2);; a: hello', { a: 'hello' });
+    compare('a: seq(1, 2);; a: hello', { a: 'hello' });
 
-  compare(':hello', {});
+    compare(':hello', {});
 
-  compare('r: 2^sin.cos(2t);', {r: '2^sin.cos(2t)'});
+    compare('r: 2^sin.cos(2t);', {r: '2^sin.cos(2t)'});
 
-  compare('', {});
+    compare('', {});
 
 });
 
 test('negative variable', () => {
 
-  compare('-: 10', {'-': '10'});
+    compare('-: 10', {'-': '10'});
 
-  compare('-x: 10', { x: '-1 * (10)' });
+    compare('-x: 10', { x: '-1 * (10)' });
 
-  compare('-x: sin(t)', { x: '-1 * (sin(t))' });
+    compare('-x: sin(t)', { x: '-1 * (sin(t))' });
 
-  compare('-x: sin(t)+5', { x: '-1 * (sin(t)+5)' });
+    compare('-x: sin(t)+5', { x: '-1 * (sin(t)+5)' });
 
-  compare('--x: 10', { '--x': '10' });
+    compare('--x: 10', { '--x': '10' });
 
-  compare('-fill-rule: evenodd', { 'fill-rule': 'evenodd' });
+    compare('-fill-rule: evenodd', { 'fill-rule': 'evenodd' });
 
 });
