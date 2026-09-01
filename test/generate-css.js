@@ -211,8 +211,8 @@ test('composed arguments in cond selectors unwrap to their value', () => {
         parseCss('@media (min-width: @calc(10*10)px) { color: red; }'),
         parseGrid('1'), 42, 64
     );
-    assert.ok(compiled.styles.top.includes('@media (min-width: 100px)'));
-    assert.ok(!compiled.styles.top.includes('[object'));
+    assert.ok(compiled.styles.all.includes('@media (min-width: 100px)'));
+    assert.ok(!compiled.styles.all.includes('[object'));
 });
 
 test('float dust snaps to zero at the output boundary', () => {
@@ -339,4 +339,102 @@ test('function results that are not plain strings reach calc functions safely', 
             `${code} -> ${compiled.styles.all}`
         );
     }
+});
+
+test('static keyframes are emitted once and keep their name in every cell', () => {
+    let code = '@keyframes spin { to { rotate: 1turn } } animation: 1s spin;';
+    let compiled = generateCss(parseCss(code), parseGrid('3'), 42, 64 * 64);
+    let { all } = compiled.styles;
+    assert.equal((all.match(/@keyframes/g) || []).length, 1);
+    // the name can sit anywhere in the shorthand
+    assert.equal((all.match(/animation:1s spin;/g) || []).length, 9);
+    assert.ok(!all.includes('1s-'));
+});
+
+test('keyframes with functions are copied per cell as name-count', () => {
+    let code = '@keyframes k { to { --v: @r(10) } } animation: k 1s;';
+    let compiled = generateCss(parseCss(code), parseGrid('2'), 42, 64 * 64);
+    let { all } = compiled.styles;
+    assert.deepEqual(all.match(/@keyframes [\w-]+/g), [
+        '@keyframes k', '@keyframes k-2', '@keyframes k-3', '@keyframes k-4',
+    ]);
+    assert.ok(all.includes('#c-1-1-1 {animation:k 1s;}'));
+    assert.ok(all.includes('#c-2-2-1 {animation:k-4 1s;}'));
+});
+
+test('keyframes inside a cond are not duplicated by the nested compose', () => {
+    let code = '@even { animation: k 1s; @keyframes k { to { --v: @r(1) } } }';
+    let compiled = generateCss(parseCss(code), parseGrid('2'), 42, 64 * 64);
+    let names = compiled.styles.all.match(/@keyframes [\w-]+/g);
+    assert.deepEqual(names, [...new Set(names)]);
+});
+
+test('conditional group rules scope bare rules to the cell and come last', () => {
+    let code = `color: blue; @media (min-width: 1px) {
+        color: red; :doodle { --a: 1 } :container { gap: 1px } :after { content: "m" }
+        @nth(1) { width: 1px } @supports (x: y) { height: 2px }
+    }`;
+    let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64 * 64);
+    let { all, top } = compiled.styles;
+    assert.equal(top, '');
+    let at = all.indexOf('@media');
+    assert.ok(at > all.indexOf('#c-1-1-1 {color:blue;}'));
+    let group = all.slice(at);
+    for (let expected of [
+        '#c-1-1-1 {color:red;}',
+        ':host,.host {--a:1;}',
+        'cssd-grid {gap:1px;}',
+        '#c-1-1-1:after {content:"m";}',
+        '#c-1-1-1 {width:1px;--_cell-width:1px;}',
+        '@supports (x: y) {#c-1-1-1 {height:2px;--_cell-height:2px;}}',
+    ]) {
+        assert.ok(group.includes(expected), expected);
+    }
+});
+
+test('nested pseudo lists and & segments compose per selector', () => {
+    let compiled = generateCss(
+        parseCss(':hover { :after, :before { color: red } & .foo { color: blue } }'),
+        parseGrid('1'), 42, 64 * 64
+    );
+    let { all } = compiled.styles;
+    assert.ok(all.includes('#c-1-1-1:hover:after {color:red;}'));
+    assert.ok(all.includes('#c-1-1-1:hover:before {color:red;}'));
+    assert.ok(all.includes('& .foo {color:blue;}'));
+});
+
+test('quoted commas and strings survive composition', () => {
+    let compiled = generateCss(
+        parseCss('content: "a, b"; --x: @p("a" "b");'), parseGrid('1'), 42, 64 * 64
+    );
+    assert.ok(compiled.styles.all.includes('content:"a, b";'));
+    assert.ok(compiled.styles.all.includes('--x:"a" "b";'));
+});
+
+test('nested blocks inside a pseudo are dropped with balanced output', () => {
+    let warn = console.warn;
+    console.warn = () => {};
+    try {
+        let compiled = generateCss(
+            parseCss(':hover { @nth(1) { color: red } } :after { content: "x" }'),
+            parseGrid('1'), 42, 64 * 64
+        );
+        assert.equal(compiled.styles.all, '#c-1-1-1:after {content:"x";}');
+        assert.ok(compiled.warnings.some(w => w.message === 'unsupported nested block ignored'));
+    } finally {
+        console.warn = warn;
+    }
+});
+
+test('transition longhands flag hasTransition like animation longhands', () => {
+    let compiled = generateCss(parseCss('transition-duration: 1s;'), parseGrid('1'), 42, 64 * 64);
+    assert.ok(compiled.props.hasTransition);
+});
+
+test('@pattern bodies reach the pattern renderer whole', () => {
+    let compiled = generateCss(
+        parseCss('background: @pattern(grid: 2; fill: @p(red, blue););'), parseGrid('1'), 42, 64 * 64
+    );
+    let [pattern] = Object.values(compiled.pattern);
+    assert.equal(pattern.code, 'grid: 2; fill: @p(red, blue);');
 });

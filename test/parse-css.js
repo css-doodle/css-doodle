@@ -357,3 +357,39 @@ test('svg times syntax expands through @svg', () => {
     assert.ok(args[0].values[0].value.includes('times pureName'));
 
 });
+
+test('commas inside quotes do not split the value', () => {
+    let [rule] = parseCSS(`content: "a, b";`);
+    assert.equal(rule.value.length, 1);
+    assert.equal(rule.value[0][0].value, '"a, b"');
+});
+
+test('nested blocks inside a pseudo parse as conds', () => {
+    // used to be read as a rule whose name swallowed the '{'
+    let [pseudo] = parseCSS(`:hover { @nth(1) { color: red } }`);
+    assert.equal(pseudo.type, 'pseudo');
+    assert.equal(pseudo.styles.length, 1);
+    assert.equal(pseudo.styles[0].type, 'cond');
+    assert.equal(pseudo.styles[0].name, '@nth');
+});
+
+test('@pattern bodies are kept verbatim like @doodle', () => {
+    let [rule] = parseCSS(`background: @pattern(grid: 2; fill: @p(red, blue););`);
+    let [arg] = rule.value[0][0].arguments;
+    assert.equal(arg.values.length, 1);
+    assert.equal(arg.values[0].value, 'grid: 2; fill: @p(red, blue);');
+});
+
+test('empty statements are dropped', () => {
+    let rules = parseCSS(`color: red;; width: 1px; @keyframes x { from { ; opacity: 0 } }`);
+    assert.deepEqual(rules.map(r => r.property || r.type), ['color', 'width', 'keyframes']);
+    assert.deepEqual(rules[2].steps[0].styles.map(r => r.property), ['opacity']);
+});
+
+test('quotes only strip when they wrap the whole argument', () => {
+    let [rule] = parseCSS(`content: @p("a" "b", "c", 'it"s');`);
+    let args = rule.value[0][0].arguments;
+    assert.deepEqual(args.map(a => [a.values[0].value, a.cluster]), [
+        ['"a" "b"', false], ['c', true], ['it"s', true],
+    ]);
+});

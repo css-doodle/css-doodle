@@ -16,7 +16,6 @@ import { join, last, makeArray, removeEmptyValues } from '../utils/list.js';
 import {
     isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector
 } from '../utils/selector.js';
-import { css } from '../utils/tagged-template.js';
 
 
 function isImageValue(value) {
@@ -382,12 +381,20 @@ function isStaticRule(token) {
 function ruleFlags(prop) {
     return {
         animation: /^animation(-[a-z]+)*$/.test(prop),
+        transition: /^transition(-[a-z]+)*$/.test(prop),
         size: prop === 'width' || prop === 'height',
         bgImage: /^background(\-image)?$/.test(prop),
         var: prop.startsWith('--'),
         at: (prop.startsWith('@') && Property[prop.slice(1)]) ? prop.slice(1) : null,
         gridLike: /^grid/.test(prop),
     };
+}
+
+function specialName(selector) {
+    if (isParentSelector(selector)) {
+        return selector.replace(/^:container\(?/, 'cssd-grid').replace(/\)?$/, '');
+    }
+    return `${selector},.host`;
 }
 
 class Rules {
@@ -397,7 +404,7 @@ class Rules {
         this.rules = new Map();
         this.ruleKeys = {};
         this.props = {};
-        this.keyframes = {};
+        this.keyframes = new Map();
         this.grid = null;
         this.seed = null;
         this.isGridSet = false;
@@ -407,6 +414,7 @@ class Rules {
         this.memo = new WeakMap();
         this.warnings = [];
         this.warned = new Set();
+        this.scanKeyframes(tokens);
         this.reset();
     }
 
@@ -453,7 +461,7 @@ class Rules {
         if (!rule) {
             return;
         }
-        if (selector === ':top:' || selector === ':gf:') {
+        if (selector === ':top:' || selector === ':gf:' || selector === ':at:') {
             if (typeof rule === 'string') {
                 let seen = this.ruleKeys[selector] ??= new Set();
                 if (seen.has(rule)) {
@@ -486,16 +494,11 @@ class Rules {
             let type = typeof arg.value;
             if (!arg.cluster && (type === 'number' || type === 'string')) {
                 input.push(...parseValueGroup(arg.value, NO_SPACE));
-            }
-            else if (typeof arg === 'function') {
-                input.push(arg);
-            }
-            else if (!isNil(arg.value)) {
+            } else if (!isNil(arg.value)) {
                 input.push(getValue(arg.value));
             }
         }
-        input = removeEmptyValues(input);
-        return this.callFunc(fn, coords, input, fname, contextVariable);
+        return this.callFunc(fn, coords, removeEmptyValues(input), fname, contextVariable);
     }
 
     calcContext(count, contextVariable) {
@@ -544,8 +547,9 @@ class Rules {
         return _fn;
     }
 
-    composeAname(...args) {
-        return args.join('-');
+    composeAname(name, count) {
+        let keyframes = this.keyframes.get(name);
+        return (keyframes && !keyframes.static && count > 1) ? `${name}-${count}` : name;
     }
 
     composeSelector(coords, pseudo = '') {
@@ -732,527 +736,526 @@ class Rules {
 
         if (flags.animation) {
             this.props.hasAnimation = true;
-
+            let { count } = coords;
+            if (prop === 'animation-name') {
+                value = composed.group
+                    .map(n => this.composeAname(n, count))
+                    .join(',');
+            } else if (prop === 'animation') {
+                value = composed.group
+                    .map(n => n.split(/\s+/).map(w => this.composeAname(w, count)).join(' '))
+                    .join(',');
+            }
             if (isHostSelector(selector)) {
                 let prefix = timePrefix[prop];
                 if (prefix && value) {
                     value = prefix + ',' + value;
                 }
             }
-
-            if (coords.count > 1) {
-                let { count } = coords;
-                switch (prop) {
-                    case 'animation-name': {
-                        value = composed.group
-                            .map(n => this.composeAname(n, count))
-                            .join(',');
-                        break;
-                    }
-                    case 'animation': {
-                        value = composed.group
-                            .map(n => {
-                                let group = (n || '').split(/\s+/);
-                                group[0] = this.composeAname(group[0], count);
-                                return group.join(' ');
-                            })
-                            .join(',');
-                    }
-                }
-            }
         }
 
         if (prop === 'content') {
             if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
-        value = `'${value}'`;
-      }
-      let reset = new Map();
-      value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/gi, (n, v) => {
-        reset.set(v, `${v} calc(${n})`);
-        return `counter(${v})`;
-      });
-      return css`
-        ${reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : ''}
-        content:${value};
-      `;
-    }
+                value = `'${value}'`;
+            }
+            let reset = new Map();
+            value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/gi, (n, v) => {
+                reset.set(v, `${v} calc(${n})`);
+                return `counter(${v})`;
+            });
+            let counters = reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : '';
+            return `${counters}content:${value};`;
+        }
 
-    if (prop === 'transition') {
-      this.props.hasTransition = true;
-    }
+        if (flags.transition) {
+            this.props.hasTransition = true;
+        }
 
-    if (prop === 'background-size') {
-      coords.hasBgsize = true;
-    }
+        if (prop === 'background-size') {
+            coords.hasBgsize = true;
+        }
 
-    let rule = `${prop}:${value};`
+        let rule = `${prop}:${value};`
 
-    if (flags.size) {
-      if (!isSpecialSelector(selector)) {
-        rule += `--_cell-${prop}:${value};`;
-      }
-    }
+        if (flags.size) {
+            if (!isSpecialSelector(selector)) {
+                rule += `--_cell-${prop}:${value};`;
+            }
+        }
 
-    if (flags.bgImage && isImageValue(value)) {
-      let sizes = parseValueGroup(value, NO_SPACE)
-        .map(v => isImageValue(v) ? 'cover' : 'auto')
-        .join(',');
-      if (!coords.hasBgsize) {
-        rule = `background-size:${sizes};` + rule;
-      }
-    }
+        if (flags.bgImage && isImageValue(value)) {
+            let sizes = parseValueGroup(value, NO_SPACE)
+                .map(v => isImageValue(v) ? 'cover' : 'auto')
+                .join(',');
+            if (!coords.hasBgsize) {
+                rule = `background-size:${sizes};` + rule;
+            }
+        }
 
-    if (flags.var) {
-      this.composeVars(coords, selector, prop, value);
-    }
+        if (flags.var) {
+            this.composeVars(coords, selector, prop, value);
+        }
 
-    if (flags.at) {
-      let name = flags.at;
-      let transformed = Property[name](value, {
-        isSpecialSelector: isSpecialSelector(selector),
-        grid: coords.grid,
-        maxGrid: coords.maxGrid,
-        extra
-      });
-
-      switch (name) {
-        case 'grid': {
-          if (isHostSelector(selector)) {
-            rule = transformed.size || '';
-            this.addGridStyle(transformed);
-          } else {
-            rule = '';
-            if (!this.isGridSet) {
-              transformed = Property[name](value, {
-                isSpecialSelector: true,
+        if (flags.at) {
+            let name = flags.at;
+            let transformed = Property[name](value, {
+                isSpecialSelector: isSpecialSelector(selector),
                 grid: coords.grid,
-                maxGrid: coords.maxGrid
-              });
-              this.addRule(':host', transformed.size || '');
-              this.addGridStyle(transformed);
-            }
-          }
-          this.grid = coords.grid;
-          this.isGridSet = true;
-          break;
-        }
-        case 'gap': {
-          rule = '';
-          if (!this.isGapSet) {
-            if (transformed.gap) {
-              this.addRule(':container', `gap:${transformed.gap};`);
-            }
-            if (transformed.rowRule) {
-              this.addRule(':container', `row-rule:${transformed.rowRule};column-rule:${transformed.columnRule};`);
-            }
-            this.isGapSet = true;
-          }
-          break;
-        }
-        case 'content': {
-          rule = '';
-          let key = this.composeSelector(coords);
-          if (transformed !== undefined && !isPseudoSelector(selector) && !isParentSelector(selector)) {
-            this.content[key] = removeQuotes(String(transformed));
-          }
-          this.content[key] = Func.raw({
-            rules: {
-              doodles: this.doodles
-            }
-          })(this.content[key] || '');
-          break;
-        }
-        case 'seed': {
-          rule = '';
-          break;
-        }
-        case 'place-cell':
-        case 'place':
-        case 'position':
-        case 'offset': {
-          if (!isHostSelector(selector)) {
-            rule = transformed;
-          }
-          break;
-        }
-        case 'use': {
-          if (token.value.length) {
-            this.compose(coords, token.value);
-          }
-          rule = '';
-          break;
-        }
-        default: {
-          rule = transformed;
-        }
-      }
-    }
-
-    if (flags.gridLike && isHostSelector(selector)) {
-      this.addRule(':container', `${prop}:${value};`);
-      rule = '';
-    }
-
-    return rule;
-  }
-
-  composeVars(coords, selector, prop, value) {
-    let key = coords.count;
-    if (isParentSelector(selector)) {
-      key = 'container';
-    }
-    if (isHostSelector(selector)) {
-      key = 'host';
-    }
-    if (!this.vars[key]) {
-      this.vars[key] = {};
-    }
-    this.vars[key][prop] = value;
-  }
-
-  preComposeRule(token, _coords, selector) {
-    let coords = Object.assign({}, _coords);
-    let prop = token.property;
-    let context = this.scopedVars(coords.count);
-    if (/^\-\-/.test(prop)) {
-      let value = this.getComposedValue(token.value, coords, context, selector).value;
-      this.composeVars(_coords, selector, prop, value);
-    }
-    switch (prop) {
-      case '@grid': {
-        let value = this.getComposedValue(token.value, coords, context, selector).value;
-        let transformed = Property['grid'](value, {
-          maxGrid: _coords.maxGrid
-        });
-        this.grid = transformed.grid;
-        break;
-      }
-      case '@use': {
-        if (token.value.length) {
-          this.preCompose(coords, token.value);
-        }
-        break;
-      }
-    }
-  }
-
-  preCompose(coords, tokens) {
-    if (isNil(this.seed)) {
-      // get seed first
-      ;(tokens || this.tokens).forEach(token => {
-        if (token.type === 'rule' && token.property === '@seed') {
-          this.seed = token.rawValue();
-        }
-        if (token.type === 'pseudo' && isHostSelector(token.selector)) {
-          for (let t of makeArray(token.styles)) {
-            if (t.type === 'rule' && t.property === '@seed') {
-              this.seed = t.rawValue();
-            }
-          }
-        }
-      });
-    }
-    if (!tokens && this.seed) {
-      coords.updateRandom(this.seed);
-    }
-    ;(tokens || this.tokens).forEach(token => {
-      switch (token.type) {
-        case 'rule': {
-          this.preComposeRule(token, coords)
-          break;
-        }
-        case 'pseudo': {
-          if (isHostSelector(token.selector)) {
-            (token.styles || []).forEach(token => {
-              this.preComposeRule(token, coords, token.selector);
+                maxGrid: coords.maxGrid,
+                extra
             });
-          }
-          break;
-        }
-      }
-    });
-  }
 
-  composeCond(token, coords) {
-    let composedSelector = token.name + ' ' + token.segments.map(n => {
-      if (n.keyword) return n.keyword;
-      if (Array.isArray(n.arguments)) {
-        let names = n.arguments.map(arg => {
-          return getValue(this.composeArgument(arg, coords).value);
-        }).join(', ');
-        return '(' + names + ')';
-      }
-      return '';
-    }).join(' ');
-
-    let rules = '';
-
-    token.styles.forEach(t => {
-      if (t.type === 'rule') {
-        rules += this.composeRule(t, coords);
-      }
-      if (t.type === 'pseudo' && t.selector) {
-        for (let selector of t.selectors) {
-          let styles = join(t.styles.map(s => this.composeRule(s, coords, selector)));
-          rules += `${this.composeSelector(coords, selector)} {${styles}}`;
-        }
-      }
-      if (t.type === 'cond') {
-        rules += this.composeCond(t, coords);
-      }
-    });
-    return `${composedSelector} {${rules}}`;
-  }
-
-  compose(coords, tokens) {
-    this.coords.push(coords);
-    for (let token of (tokens || this.tokens)) {
-      if (this.skips.has(token)) continue;
-      if (token.property === '@gap' && this.isGapSet) {
-        continue;
-      }
-      if (token.property === '@grid' && this.isGridSet) {
-        continue;
-      }
-      switch (token.type) {
-        case 'rule': {
-          this.addRule(
-            this.composeSelector(coords),
-            this.composeRule(token, coords, token)
-          );
-          break;
-        }
-
-        case 'pseudo': {
-          let special = isSpecialSelector(token.selector);
-          if (special) {
-            this.skips.add(token);
-          }
-          token.selectors.forEach(selector => {
-            let composed = special
-              ? selector
-              : this.composeSelector(coords, selector);
-
-            token.styles.forEach(s => {
-              if (s.type === 'rule') {
-                this.addRule(composed, this.composeRule(s, coords, selector));
-              }
-              if (s.type === 'pseudo') {
-                let result = s.styles.map(_s =>
-                  this.composeRule(_s, coords, composed)
-                );
-                this.addRule(composed + s.selector, result);
-              }
-              if (s.type === 'cond' && s.name.startsWith('&')) {
-                let result = s.styles.map(_s =>
-                  this.composeRule(_s, coords, composed)
-                ).join('');
-                this.addRule(composed, s.name + '{' + result + '}');
-              }
-            });
-          });
-
-          break;
-        }
-
-        case 'cond': {
-          let name = token.name.slice(1);
-          let fn = Selector[name];
-          if (fn) {
-            let group = token.segments.find(n => n.arguments);
-            let args = group
-              ? group.arguments.map(arg => this.composeArgument(arg, coords))
-              : [];
-            coords.position = token.position;
-            let cond = this.applyFunc(fn, coords, args, name);
-            if (token.segments && token.segments[0] && token.segments[0].keyword === 'not') {
-              cond = !cond;
-            }
-            if (cond) {
-              this.compose(coords, token.styles);
-            }
-          } else {
-            this.addRule(':top:', this.composeCond(token, coords));
-          }
-          break;
-        }
-
-        case 'keyframes': {
-          if (!this.keyframes[token.name]) {
-            const composeSteps = coords => css`
-              ${join(token.steps.map(step => css`
-                ${this.getComposedValue(step.name, coords).value} {
-                  ${join(step.styles.map(s => this.composeRule(s, coords)))}
+            switch (name) {
+                case 'grid': {
+                    if (isHostSelector(selector)) {
+                        rule = transformed.size || '';
+                        this.addGridStyle(transformed);
+                    } else {
+                        rule = '';
+                        if (!this.isGridSet) {
+                            transformed = Property[name](value, {
+                                isSpecialSelector: true,
+                                grid: coords.grid,
+                                maxGrid: coords.maxGrid
+                            });
+                            this.addRule(':host', transformed.size || '');
+                            this.addGridStyle(transformed);
+                        }
+                    }
+                    this.grid = coords.grid;
+                    this.isGridSet = true;
+                    break;
                 }
-              `))}
-            `;
-            // a keyframes body without functions reads the same for
-            // every cell; compose it once
-            let isStatic = token.steps.every(step =>
-              step.name.hasFunc === false
-              && step.styles.every(isStaticRule));
-            if (isStatic) {
-              let body = null;
-              this.keyframes[token.name] = coords => body ??= composeSteps(coords);
-            } else {
-              this.keyframes[token.name] = composeSteps;
+                case 'gap': {
+                    rule = '';
+                    if (!this.isGapSet) {
+                        if (transformed.gap) {
+                            this.addRule(':container', `gap:${transformed.gap};`);
+                        }
+                        if (transformed.rowRule) {
+                            this.addRule(':container', `row-rule:${transformed.rowRule};column-rule:${transformed.columnRule};`);
+                        }
+                        this.isGapSet = true;
+                    }
+                    break;
+                }
+                case 'content': {
+                    rule = '';
+                    let key = this.composeSelector(coords);
+                    if (transformed !== undefined && !isPseudoSelector(selector) && !isParentSelector(selector)) {
+                        this.content[key] = removeQuotes(String(transformed));
+                    }
+                    this.content[key] = Func.raw({
+                        rules: {
+                            doodles: this.doodles
+                        }
+                    })(this.content[key] || '');
+                    break;
+                }
+                case 'seed': {
+                    rule = '';
+                    break;
+                }
+                case 'place-cell':
+                case 'place':
+                case 'position':
+                case 'offset': {
+                    if (!isHostSelector(selector)) {
+                        rule = transformed;
+                    }
+                    break;
+                }
+                case 'use': {
+                    if (token.value.length) {
+                        this.compose(coords, token.value);
+                    }
+                    rule = '';
+                    break;
+                }
+                default: {
+                    rule = transformed;
+                }
             }
-          }
-          break;
         }
 
-        case 'at-rule': {
-          this.addRule(':top:', token.value);
-          break;
+        if (flags.gridLike && isHostSelector(selector)) {
+            this.addRule(':container', `${prop}:${value};`);
+            rule = '';
         }
-      }
-    }
-  }
 
-  output() {
-    for (let [selector, rule] of this.rules) {
-      if (isParentSelector(selector)) {
-        let name = selector.replace(/^:container\(?/, 'cssd-grid').replace(/\)?$/, '');
-        this.styles.container += `${name} {${join(rule)}}`;
-      } else if (selector === ':top:') {
-        this.styles.top += join(rule);
-      } else if (selector === ':gf:') {
-        this.styles.gf = rule;
-      } else {
-        let target = (selector === 'cssd-b') ? 'backdrop'
-          : isHostSelector(selector) ? 'host' : 'cells';
-        let value = join(rule).trim();
-        if (value.length) {
-          let name = (target === 'host') ? `${selector},.host` : selector;
-          this.styles[target] += `${name} {${value}}`;
-        }
-      }
+        return rule;
     }
 
-    if (this.uniforms.time) {
-      let n = 'animation-name';
-      let t = utime.ticks;
-      let un = utime.name;
-      let Un = UTime.name;
-      this.styles.container += css`
-        :host,.host {
-          animation:${timePrefix.animation};
+    composeVars(coords, selector, prop, value) {
+        let key = coords.count;
+        if (isParentSelector(selector)) {
+            key = 'container';
         }
-      `;
-      this.styles.keyframes += css`
-        @keyframes ${utime[n]} {
-          from {--${un}:0} to {--${un}:${t}}
+        if (isHostSelector(selector)) {
+            key = 'host';
         }
-        @keyframes ${UTime[n]} {
-          from {--${Un}:0} to {--${Un}:${t}}
+        if (!this.vars[key]) {
+            this.vars[key] = {};
         }
-      `;
+        this.vars[key][prop] = value;
     }
 
-    this.coords.forEach((coords, i) => {
-      for (let [name, keyframe] of Object.entries(this.keyframes)) {
-        let aname = this.composeAname(name, coords.count);
-        this.styles.keyframes += css`
-          ${i === 0 ? `@keyframes ${name} {${keyframe(coords)}}` : ''}
-          @keyframes ${aname} {${keyframe(coords)}}
-        `;
-      }
-    });
-
-    let { keyframes, host, container, cells, backdrop, top, gf } = this.styles;
-    // container before host, so a host animation with its prefixed
-    // time-uniform entries overrides the standalone time animation
-    let main = keyframes + container + host;
-
-    return {
-      props: this.props,
-      styles: { main, cells, container, backdrop, gf, top, all: main + backdrop + cells },
-      grid: this.grid,
-      seed: this.seed,
-      random: this.random,
-      doodles: this.doodles,
-      shaders: this.shaders,
-      pattern: this.pattern,
-      filters: this.filters,
-      uniforms: this.uniforms,
-      content: this.content,
-      warnings: (this.tokens.warnings || []).concat(this.warnings),
+    preComposeRule(token, _coords, selector) {
+        let coords = Object.assign({}, _coords);
+        let prop = token.property;
+        let context = this.scopedVars(coords.count);
+        if (/^\-\-/.test(prop)) {
+            let value = this.getComposedValue(token.value, coords, context, selector).value;
+            this.composeVars(_coords, selector, prop, value);
+        }
+        switch (prop) {
+            case '@grid': {
+                let value = this.getComposedValue(token.value, coords, context, selector).value;
+                let transformed = Property['grid'](value, {
+                    maxGrid: _coords.maxGrid
+                });
+                this.grid = transformed.grid;
+                break;
+            }
+            case '@use': {
+                if (token.value.length) {
+                    this.preCompose(coords, token.value);
+                }
+                break;
+            }
+        }
     }
-  }
+
+    preCompose(coords, tokens) {
+        if (isNil(this.seed)) {
+            // get seed first
+            ;(tokens || this.tokens).forEach(token => {
+                if (token.type === 'rule' && token.property === '@seed') {
+                    this.seed = token.rawValue();
+                }
+                if (token.type === 'pseudo' && isHostSelector(token.selector)) {
+                    for (let t of makeArray(token.styles)) {
+                        if (t.type === 'rule' && t.property === '@seed') {
+                            this.seed = t.rawValue();
+                        }
+                    }
+                }
+            });
+        }
+        if (!tokens && this.seed) {
+            coords.updateRandom(this.seed);
+        }
+        ;(tokens || this.tokens).forEach(token => {
+            switch (token.type) {
+                case 'rule': {
+                    this.preComposeRule(token, coords)
+                    break;
+                }
+                case 'pseudo': {
+                    if (isHostSelector(token.selector)) {
+                        for (let style of token.styles) {
+                            this.preComposeRule(style, coords, token.selector);
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+    }
+
+    scanKeyframes(tokens) {
+        for (let token of tokens || []) {
+            if (token.type === 'keyframes') {
+                this.registerKeyframes(token);
+            } else if (token.type === 'cond') {
+                this.scanKeyframes(token.styles);
+            } else if (token.type === 'rule' && token.property === '@use') {
+                this.scanKeyframes(token.value);
+            }
+        }
+    }
+
+    registerKeyframes(token) {
+        if (this.keyframes.has(token.name)) return;
+        let isStatic = token.steps.every(step =>
+            step.name.hasFunc === false && step.styles.every(isStaticRule));
+        let compose = coords => join(token.steps.map(step => {
+            let name = this.getComposedValue(step.name, coords).value;
+            let styles = join(step.styles.map(s => this.composeRule(s, coords)));
+            return `${name} {${styles}}`;
+        }));
+        let body = null;
+        this.keyframes.set(token.name, {
+            static: isStatic,
+            compose: isStatic ? coords => body ??= compose(coords) : compose,
+        });
+    }
+
+    // the selector text of a cond as written, arguments composed for the cell
+    condSelector(token, coords) {
+        let parts = [token.name];
+        for (let n of token.segments) {
+            if (n.keyword) {
+                parts.push(n.keyword);
+            } else if (Array.isArray(n.arguments)) {
+                let names = n.arguments.map(arg => getValue(this.composeArgument(arg, coords).value));
+                parts.push('(' + names.join(', ') + ')');
+            }
+        }
+        return parts.join(' ');
+    }
+
+    matchCond(token, coords) {
+        let name = token.name.slice(1);
+        let fn = Selector[name];
+        if (!fn) return;
+        let group = token.segments.find(n => n.arguments);
+        let args = group
+            ? group.arguments.map(arg => this.composeArgument(arg, coords))
+            : [];
+        coords.position = token.position;
+        let matched = this.applyFunc(fn, coords, args, name);
+        if (token.segments[0] && token.segments[0].keyword === 'not') {
+            matched = !matched;
+        }
+        return !!matched;
+    }
+
+    composeGroupRule(token, coords) {
+        let body = this.composeGroupBody(token.styles, coords);
+        return body ? `${this.condSelector(token, coords)} {${body}}` : '';
+    }
+
+    composeGroupBody(styles, coords) {
+        let rules = '';
+        let body = '';
+        for (let t of styles) {
+            if (t.type === 'rule') {
+                rules += this.composeRule(t, coords);
+            } else if (t.type === 'pseudo' && t.selector) {
+                for (let selector of t.selectors) {
+                    let name = isSpecialSelector(selector)
+                        ? specialName(selector)
+                        : this.composeSelector(coords, selector);
+                    let inner = join(t.styles.map(s => this.composeRule(s, coords, selector)));
+                    body += `${name} {${inner}}`;
+                }
+            } else if (t.type === 'cond') {
+                let matched = this.matchCond(t, coords);
+                if (matched === undefined) {
+                    body += this.composeGroupRule(t, coords);
+                } else if (matched) {
+                    body += this.composeGroupBody(t.styles, coords);
+                }
+            }
+        }
+        if (rules) {
+            body = `${this.composeSelector(coords)} {${rules}}` + body;
+        }
+        return body;
+    }
+
+    compose(coords, tokens) {
+        // nested calls (conds, @use) run for the same cell
+        if (!tokens) this.coords.push(coords);
+        for (let token of (tokens || this.tokens)) {
+            if (this.skips.has(token)) continue;
+            if (token.property === '@gap' && this.isGapSet) {
+                continue;
+            }
+            if (token.property === '@grid' && this.isGridSet) {
+                continue;
+            }
+            switch (token.type) {
+                case 'rule': {
+                    this.addRule(
+                        this.composeSelector(coords),
+                        this.composeRule(token, coords, token)
+                    );
+                    break;
+                }
+
+                case 'pseudo': {
+                    let special = isSpecialSelector(token.selector);
+                    if (special) {
+                        this.skips.add(token);
+                    }
+                    for (let selector of token.selectors) {
+                        let composed = special
+                            ? selector
+                            : this.composeSelector(coords, selector);
+                        for (let s of token.styles) {
+                            if (s.type === 'rule') {
+                                this.addRule(composed, this.composeRule(s, coords, selector));
+                            } else if (s.type === 'pseudo') {
+                                for (let inner of s.selectors) {
+                                    let result = s.styles.map(_s => this.composeRule(_s, coords, composed));
+                                    this.addRule(composed + inner, result);
+                                }
+                            } else if (s.type === 'cond' && s.name.startsWith('&')) {
+                                let result = s.styles.map(_s => this.composeRule(_s, coords, composed)).join('');
+                                this.addRule(composed, `${this.condSelector(s, coords)} {${result}}`);
+                            } else {
+                                this.warn('unsupported nested block ignored');
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case 'cond': {
+                    let matched = this.matchCond(token, coords);
+                    if (matched === undefined) {
+                        this.addRule(':at:', this.composeGroupRule(token, coords));
+                    } else if (matched) {
+                        this.compose(coords, token.styles);
+                    }
+                    break;
+                }
+
+                case 'at-rule': {
+                    this.addRule(':top:', token.value);
+                    break;
+                }
+            }
+        }
+    }
+
+    output() {
+        let groups = '';
+        for (let [selector, rule] of this.rules) {
+            if (selector === ':at:') {
+                groups = join(rule);
+            } else if (isParentSelector(selector)) {
+                this.styles.container += `${specialName(selector)} {${join(rule)}}`;
+            } else if (selector === ':top:') {
+                this.styles.top += join(rule);
+            } else if (selector === ':gf:') {
+                this.styles.gf = rule;
+            } else {
+                let target = (selector === 'cssd-b') ? 'backdrop'
+                    : isHostSelector(selector) ? 'host' : 'cells';
+                let value = join(rule).trim();
+                if (value.length) {
+                    let name = (target === 'host') ? specialName(selector) : selector;
+                    this.styles[target] += `${name} {${value}}`;
+                }
+            }
+        }
+
+        this.styles.cells += groups;
+
+        if (this.uniforms.time) {
+            let n = 'animation-name';
+            let t = utime.ticks;
+            let un = utime.name;
+            let Un = UTime.name;
+            this.styles.container += `:host,.host {animation:${timePrefix.animation};}`;
+            this.styles.keyframes +=
+                `@keyframes ${utime[n]} {from {--${un}:0} to {--${un}:${t}}}` +
+                `@keyframes ${UTime[n]} {from {--${Un}:0} to {--${Un}:${t}}}`;
+        }
+
+        for (let [name, keyframes] of this.keyframes) {
+            let cells = keyframes.static ? this.coords.slice(0, 1) : this.coords;
+            for (let coords of cells) {
+                let aname = this.composeAname(name, coords.count);
+                this.styles.keyframes += `@keyframes ${aname} {${keyframes.compose(coords)}}`;
+            }
+        }
+
+        let { keyframes, host, container, cells, backdrop, top, gf } = this.styles;
+        let main = keyframes + container + host;
+
+        return {
+            props: this.props,
+            styles: { main, cells, container, backdrop, gf, top, all: main + backdrop + cells },
+            grid: this.grid,
+            seed: this.seed,
+            random: this.random,
+            doodles: this.doodles,
+            shaders: this.shaders,
+            pattern: this.pattern,
+            filters: this.filters,
+            uniforms: this.uniforms,
+            content: this.content,
+            warnings: (this.tokens.warnings || []).concat(this.warnings),
+        }
+    }
 
 }
 
 function removeQuotes(input) {
-  let remove = (input.startsWith('"') && input.endsWith('"'))
-    || (input.startsWith("'") && input.endsWith("'"));
-  if (remove) {
-    return input.substring(1, input.length - 1);
-  }
-  return input;
+    let remove = (input.startsWith('"') && input.endsWith('"'))
+        || (input.startsWith("'") && input.endsWith("'"));
+    if (remove) {
+        return input.substring(1, input.length - 1);
+    }
+    return input;
 }
 
 export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = []) {
-  let rules = new Rules(tokens);
-  let context = {};
-  let R = createRandom(seedRandom || String(seedValue));
-  let { rand, pick, shuffle, updateRandom } = R;
+    let rules = new Rules(tokens);
+    let context = {};
+    let R = createRandom(seedRandom || String(seedValue));
+    let { rand, pick, shuffle, updateRandom } = R;
 
-  rules.preCompose({
-    x: 1, y: 1, z: 1, count: 1, context: {}, extra: [],
-    grid: { x: 1, y: 1, z: 1, count: 1 },
-    random: R.random, rand, pick, shuffle,
-    maxGrid, updateRandom,
-    seedValue,
-    rules,
-    upextra,
-  });
-
-  let { grid, seed } = rules.output();
-
-  if (grid) {
-    gridSize = grid;
-  }
-
-  if (seed) {
-    updateRandom(seed);
-  } else {
-    seed = seedValue;
-  }
-
-  if (isNil(seed)) {
-    seed = Date.now();
-    updateRandom(seed);
-  }
-
-  seed = String(seed);
-  rules.seed = seed;
-  rules.random = R.random;
-  rules.reset();
-
-  let count = 0;
-  function composeCell(x, y, z) {
-    rules.compose({
-      x, y, z,
-      count: ++count, grid: gridSize, context, extra: [],
-      rand, pick, shuffle,
-      random: R.random, seed,
-      maxGrid,
-      upextra,
-      rules,
+    rules.preCompose({
+        x: 1, y: 1, z: 1, count: 1, context: {}, extra: [],
+        grid: { x: 1, y: 1, z: 1, count: 1 },
+        random: R.random, rand, pick, shuffle,
+        maxGrid, updateRandom,
+        seedValue,
+        rules,
+        upextra,
     });
-  }
 
-  if (gridSize.z == 1) {
-    for (let y = 1; y <= gridSize.y; ++y) {
-      for (let x = 1; x <= gridSize.x; ++x) {
-        composeCell(x, y, 1);
-      }
+    let { grid, seed } = rules;
+
+    if (grid) {
+        gridSize = grid;
     }
-  }
-  else {
-    for (let z = 1; z <= gridSize.z; ++z) {
-      composeCell(1, 1, z);
+
+    if (seed) {
+        updateRandom(seed);
+    } else {
+        seed = seedValue;
     }
-  }
-  return rules.output();
+
+    if (isNil(seed)) {
+        seed = Date.now();
+        updateRandom(seed);
+    }
+
+    seed = String(seed);
+    rules.seed = seed;
+    rules.random = R.random;
+    rules.reset();
+
+    let count = 0;
+    function composeCell(x, y, z) {
+        rules.compose({
+            x, y, z,
+            count: ++count, grid: gridSize, context, extra: [],
+            rand, pick, shuffle,
+            random: R.random, seed,
+            maxGrid,
+            upextra,
+            rules,
+        });
+    }
+
+    if (gridSize.z == 1) {
+        for (let y = 1; y <= gridSize.y; ++y) {
+            for (let x = 1; x <= gridSize.x; ++x) {
+                composeCell(x, y, 1);
+            }
+        }
+    }
+    else {
+        for (let z = 1; z <= gridSize.z; ++z) {
+            composeCell(1, 1, z);
+        }
+    }
+    return rules.output();
 }
