@@ -104,34 +104,60 @@ function joinTokens(tokens) {
 const memo = new Map();
 
 const RE_PLAIN = /[,()'"`\s]/;
+const RE_SIMPLE = /^[\w.%#+\-\s,]*$/;
+
+function parseSimple(input, noSpace) {
+    let group = [];
+    input = input.trim();
+    if (!input) return group;
+    let pieces = input.split(',');
+    if (pieces.length > 1 && pieces[pieces.length - 1].trim() === '') {
+        pieces.pop();
+    }
+    for (let piece of pieces) {
+        let t = piece.trim();
+        if (noSpace) {
+            group.push(t.replace(/\s+/g, ' '));
+        } else if (t === '') {
+            group.push('');
+        } else {
+            group.push(...t.split(/\s+/));
+        }
+    }
+    return group;
+}
 
 function parseCached(input, option) {
-  // single plain values ('#60569e', '-45deg') split to themselves;
-  // only safe when the separator is the default comma
-  let symbol = option && option.symbol;
-  if ((symbol === undefined || symbol === ',')
-      && !(option && option.verbose)
-      && typeof input === 'string' && input.length
-      && !RE_PLAIN.test(input)) {
-    return [input];
-  }
-  let optKey = option
-    ? (Array.isArray(symbol) ? symbol.join('\x01') : String(symbol))
-      + (option.noSpace ? 'n' : '') + (option.verbose ? 'v' : '')
-    : '';
-  let inner = memo.get(optKey);
-  if (!inner) {
-    memo.set(optKey, inner = new Map());
-  }
-  let result = inner.get(input);
-  if (result === undefined) {
-    if (inner.size >= 512) {
-      inner.clear();
+    let symbol = option && option.symbol;
+    if ((symbol === undefined || symbol === ',')
+            && !(option && option.verbose)
+            && typeof input === 'string' && input.length
+            && !RE_PLAIN.test(input)) {
+        return [input];
     }
-    result = parse(input, option);
-    inner.set(input, result);
-  }
-  return result;
+    if ((symbol === undefined || symbol === ',')
+            && !(option && option.verbose)
+            && (typeof input === 'number' || (typeof input === 'string' && input.length))
+            && RE_SIMPLE.test(input)) {
+        return parseSimple(String(input), option && option.noSpace);
+    }
+    let optKey = option
+        ? (Array.isArray(symbol) ? symbol.join('\x01') : String(symbol))
+            + (option.noSpace ? 'n' : '') + (option.verbose ? 'v' : '')
+        : '';
+    let inner = memo.get(optKey);
+    if (!inner) {
+        memo.set(optKey, inner = new Map());
+    }
+    let result = inner.get(input);
+    if (result === undefined) {
+        if (inner.size >= 512) {
+            inner.clear();
+        }
+        result = parse(input, option);
+        inner.set(input, result);
+    }
+    return result;
 }
 
 export default parseCached;

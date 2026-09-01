@@ -347,6 +347,10 @@ function readDimension(value, ctx) {
 }
 
 function evaluateValue(value, ctx, history) {
+    const plain = toPlainNumber(value);
+    if (plain !== null) {
+        return plain;
+    }
     const num = readDimension(value, ctx);
     if (num !== undefined) {
         return num;
@@ -545,6 +549,7 @@ function compileWith(input, spans) {
 const compiledCache = new Map();
 
 function compileInput(input, ctx) {
+    input = String(input);
     let entry = compiledCache.get(input);
     if (entry === undefined) {
         if (compiledCache.size >= 512) {

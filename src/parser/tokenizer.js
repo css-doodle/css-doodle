@@ -9,25 +9,6 @@ const symbols = [
     '≤', '≥', '≠', '∆'
 ];
 
-const is = {
-    escape: c => c == '\\',
-    space: c => /\s/.test(c),
-    digit: c => /^[0-9]$/.test(c),
-    sign: c => /^[+-]$/.test(c),
-    dot: c => c == '.',
-    quote: c => /^["'`]$/.test(c),
-    symbol: c => symbols.includes(c),
-    hexNum: c => /^[0-9a-f]$/i.test(c),
-    hex: (a, b, c) => a == '0' && is.letter(b, 'x') && is.hexNum(c),
-    expWithSign: (a, b, c) => is.letter(a, 'e') && is.sign(b) && is.digit(c),
-    exp: (a, b) => is.letter(a, 'e') && is.digit(b),
-    dots: (a, b) => is.dot(a) && is.dot(b),
-    letter: (a, b) => String(a).toLowerCase() == String(b).toLowerCase(),
-    comment: (a, b) => a == '/' && b == '*',
-    inlineComment: (a, b) => a == '/' && b === '/',
-    closedTag: (a, b) => a == '<' && b == '/',
-}
-
 // Charcode classification table for the scanning hot path
 
 const SYMBOL = 1, DIGIT = 2, SPACE = 4, HEX = 8;
@@ -109,16 +90,12 @@ class Token {
 function iterator(input) {
     let pointer = -1;
     let max = input.length;
-    let col = -1, row = 0;
     return {
         curr(n = 0) {
             return input[pointer + n];
         },
         next(n = 1) {
-            let next = input[pointer += n];
-            if (next === '\n') row++, col = -1;
-            else col += n;
-            return next;
+            return input[pointer += n];
         },
         end() {
             return pointer >= max;
@@ -126,11 +103,8 @@ function iterator(input) {
         get() {
             return {
                 prev: input[pointer - 1],
-                curr: input[pointer + 0],
+                curr: input[pointer],
                 next: input[pointer + 1],
-                next2: input[pointer + 2],
-                next3: input[pointer + 3],
-                pos: [col, row],
             }
         }
     }
@@ -373,8 +347,6 @@ function scan(source, options = {}) {
 }
 
 export {
-    symbols,
-    is,
     iterator,
     scan,
     Token

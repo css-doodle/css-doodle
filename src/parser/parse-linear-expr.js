@@ -3,7 +3,7 @@ import { scan, iterator } from './tokenizer.js';
 /**
  * an +/- b
  */
-export default function parse(input) {
+function parse(input) {
     let iter = iterator(scan(input));
     let a = [], b = [], op, error;
     while (iter.next()) {
@@ -59,4 +59,18 @@ function withOp(num, op) {
 
 function sum(list) {
     return list.reduce((a, b) => a + b, 0);
+}
+
+const memo = new Map();
+
+export default function parseCached(input) {
+    let result = memo.get(input);
+    if (result === undefined) {
+        if (memo.size >= 256) {
+            memo.clear();
+        }
+        result = parse(input);
+        memo.set(input, result);
+    }
+    return result;
 }
