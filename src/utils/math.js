@@ -7,7 +7,7 @@ export function lerp(t, a, b) {
     return a + t * (b - a);
 }
 
-/* cyrb53 */
+// cyrb53
 export function hash(str, seed = 0) {
     str = String(str);
     let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;

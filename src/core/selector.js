@@ -55,7 +55,7 @@ function compare(rule, value, x, y) {
     }
 }
 
-/* the variable scope for arithmetic selector expressions */
+// the variable scope for arithmetic selector expressions
 function calcContext({ x, y, count, grid, random }) {
     return {
         x, X: grid.x,
@@ -81,19 +81,11 @@ function randomN(N, n, random) {
     return result;
 }
 
-/*
- * Cell selectors: the `@name(...) { ... }` blocks in the doodle source.
- */
-const Selector = {};
-
-// @at(x, y): the exact cell
+const Selector = Object.create(null);
 
 Selector.at = ({ x, y }) => {
     return (x1, y1) => (x == x1 && y == y1);
 };
-
-// @nth / @x / @y: nth-style expressions (an+b, even, odd) against the
-// cell index, column, or row; any matching argument wins
 
 Selector.nth = ({ count }) => {
     return (...exprs) => matchAny(count, exprs);
@@ -106,9 +98,6 @@ Selector.y = ({ y }) => {
 Selector.x = ({ x }) => {
     return (...exprs) => matchAny(x, exprs);
 };
-
-// @even / @odd: checkerboard parity over x+y — coords are 1-based,
-// so the top-left cell lands on the odd square
 
 Selector.even = ({ x, y }) => {
     return _ => odd(x + y);
@@ -139,18 +128,11 @@ Selector.random = ({ random, count, x, y, grid, context, position }) => {
     }
 };
 
-// @match(expr): an arbitrary arithmetic expression over the cell
-// variables (x/y/i and friends, dx..db metrics)
-
 Selector.match = ({ count, grid, x, y, random }) => {
     return expr => {
         return !!calc('(' + expr + ')', calcContext({ x, y, count, grid, random }));
     }
 };
-
-// @cell(...): mixed arguments — nth-style expressions against the cell
-// index, `random n`, or arithmetic expressions; any match wins, and no
-// arguments match every cell
 
 Selector.cell = ({ count, grid, x, y, random, context, position }) => {
     let counter = 'random-cells' + position;

@@ -8,7 +8,7 @@ export function parseCssCached(code, extra) {
     }
     let parsed = parseCache.get(code);
     if (!parsed) {
-        if (parseCache.size >= 64) {
+        if (parseCache.size >= 4096) {
             parseCache.clear();
         }
         parsed = parseCss(code, extra);

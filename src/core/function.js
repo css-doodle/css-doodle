@@ -29,7 +29,7 @@ const RE_VAR = /var\(/;
 const RE_CALC = /^calc\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
-/* layout of the sequence tuples pushed onto `extra` (see arguments.js) */
+// layout of the sequence tuples pushed onto `extra` (see arguments.js)
 const SEQ = {
     n: 0,     // current value            → @n
     x: 1,     // column, for 2x3 forms    → @nx
@@ -56,9 +56,9 @@ function computeVar(input, unit) {
     return [`calc(${input})`, unit];
 }
 
-/* an operator argument ('*10', '%360deg', '-.5') parses once; computing
- * against a base — which runs per cell and per sequence iteration — is
- * then plain arithmetic */
+// an operator argument ('*10', '%360deg', '-.5') parses once; computing
+// against a base — which runs per cell and per sequence iteration — is
+// then plain arithmetic
 const operations = new Map();
 
 function parseOperation(v) {
@@ -343,26 +343,7 @@ const composeSvgPatternUrl = memo('svg-pattern-function', value => {
     return createSvgUrl(generateSvg(parsed));
 });
 
-/*
- * Every entry below is a factory: it receives the per-cell composing
- * context from generator/css.js and returns the function that runs as
- * @name(...) in the doodle source. The context carries:
- *
- *   x, y, z       cell coordinates, 1-based
- *   count         cell index (@i); totals live on grid.{x, y, z, count}
- *   grid          parsed @grid dimensions
- *   context       per-doodle state bag: pick/rand history and counters,
- *                 keyed by `position` so each call site is independent
- *   position      parse-tree position of the current function token
- *   extra         stack of sequence tuples pushed by the @m family
- *                 (tuple layout in SEQ above)
- *   upextra       like extra, from the outer composition (@doodle nesting)
- *   rand, random  seeded random sources
- *   pick, shuffle seeded selection helpers
- *   rules         current rule set, for embedded doodle lookups
- *   seedValue, maxGrid, updateRandom   doodle-level settings
- */
-const Function = {};
+const Function = Object.create(null);
 
 Function.m = makeSequence(',');
 
@@ -602,7 +583,7 @@ Function.stripe = () => {
     }
 };
 
-/* list — argument list transforms */
+// list — argument list transforms
 
 Function.cycle = () => {
     return (...args) => {
@@ -811,7 +792,7 @@ Function.raw = ({ rules }) => {
         if (raw.startsWith('url("data:image/svg+xml;base64')) {
             return tryDecode(raw, atob);
         }
-        /* future forms */
+        // future forms
         if (raw.startsWith('url("data:image/png;base64')) {
             return `<img src="${raw}" alt="" />`;
         }
@@ -871,7 +852,9 @@ Function.uh = () => calcWith(`var(--${uheight.name})`);
 Function.ux = () => calcWith(`var(--${umousex.name})`);
 Function.uy = () => calcWith(`var(--${umousey.name})`);
 
-/* expose JS Math functions with css-doodle calc/value semantics */
+/**
+ * expose JS Math functions with css-doodle calc/value semantics
+ */
 export const MathFunc = {};
 for (let name of Object.getOwnPropertyNames(Math)) {
     MathFunc[name] = () => (...args) => {

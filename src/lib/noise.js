@@ -1,7 +1,5 @@
-/**
- * Improved noise by Ken Perlin
- * Translated from: https://mrl.nyu.edu/~perlin/noise/
- */
+// Improved noise by Ken Perlin
+// Translated from: https://mrl.nyu.edu/~perlin/noise/
 
 const map = [
     151,160,137,91,90,15,

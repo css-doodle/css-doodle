@@ -15,7 +15,7 @@ export default function svgToPng(svg, width, height, scale) {
                 let ctx = canvas.getContext('2d');
 
                 let dpr = devicePixelRatio || 1;
-                /* scale with devicePixelRatio only when the scale equals 1 */
+                // scale with devicePixelRatio only when the scale equals 1
                 if (scale !== 1) {
                     dpr = 1;
                 }

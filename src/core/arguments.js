@@ -1,8 +1,3 @@
-/**
- * Argument handling for doodle functions: sequence expansion (2x3, 1-9),
- * character-range expansion ([a-z]), unit/charcode passthrough wrappers,
- * and named arguments.
- */
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import { memo } from '../utils/cache.js';
@@ -115,7 +110,8 @@ const buildRange = memo('buildRange', (input) => {
     return [...buildRangeGen(getTokens(input))];
 });
 
-/* expand range arguments like [a-z] or [0-9] into individual values */
+
+// expand range arguments like [a-z] or [0-9] into individual values
 export function expand(fn) {
     return (...args) => {
         let needsExpand = false;
@@ -135,7 +131,6 @@ export function expand(fn) {
     };
 }
 
-/* strip units before calling fn and add the first one back to the result */
 export function byUnit(fn) {
     return (...args) => {
         let units = [], values = [];
@@ -160,7 +155,6 @@ export function byUnit(fn) {
     }
 }
 
-/* let fn work on charcodes while accepting and returning characters */
 export function byCharcode(fn) {
     return (...args) => {
         let codes = args.map(n => String(n).charCodeAt(0));

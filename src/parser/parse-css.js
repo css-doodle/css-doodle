@@ -1,16 +1,14 @@
-/**
- * AST:
- *   rule       { type: 'rule', property, value: Group[] }
- *              plus raw() and rawValue() reading the source span
- *   at-rule    { type: 'at-rule', property: '', value: string }
- *   pseudo     { type: 'pseudo', selector, selectors: string[], styles }
- *   cond       { type: 'cond', name, addition, segments, position, styles }
- *   keyframes  { type: 'keyframes', name, steps }
- *   step       { type: 'step', name: Group[], styles }
- *   func       { type: 'func', name, arguments: Argument[], position,
- *                variables? (when an argument list was consumed) }
- *   text       { type: 'text', value }
- */
+// AST:
+//   rule       { type: 'rule', property, value: Group[] }
+//              plus raw() and rawValue() reading the source span
+//   at-rule    { type: 'at-rule', property: '', value: string }
+//   pseudo     { type: 'pseudo', selector, selectors: string[], styles }
+//   cond       { type: 'cond', name, addition, segments, position, styles }
+//   keyframes  { type: 'keyframes', name, steps }
+//   step       { type: 'step', name: Group[], styles }
+//   func       { type: 'func', name, arguments: Argument[], position,
+//                variables? (when an argument list was consumed) }
+//   text       { type: 'text', value }
 import { scan, Token } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';

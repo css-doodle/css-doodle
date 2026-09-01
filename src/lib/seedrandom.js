@@ -1,7 +1,5 @@
-/**
- * Minimal seedrandom implementation Based on ARC4 (RC4) stream cipher.
- * Based on the work of David Bau: https://github.com/davidbau/seedrandom
- */
+// Minimal seedrandom implementation Based on ARC4 (RC4) stream cipher.
+// Based on the work of David Bau: https://github.com/davidbau/seedrandom
 
 const WIDTH = 256;
 const MASK = WIDTH - 1;

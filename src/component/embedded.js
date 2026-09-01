@@ -1,8 +1,3 @@
-/**
- * Rendering of embedded doodles, shaders and patterns: each placeholder id
- * left in the compiled styles is resolved to an image (data-uri or CSS
- * variable) against the host element.
- */
 import parseGrid from '../parser/parse-grid.js';
 import parseShaders from '../parser/parse-shaders.js';
 
@@ -44,8 +39,8 @@ export function createReplacer(host, { doodles, shaders, pattern }) {
         }
         return Promise.all(tasks).then(mappings => {
             for (let { id, result } of mappings) {
-                /* doodle resolves to a data-uri, shader and pattern render
-         * into CSS variables */
+                // doodle resolves to a data-uri, shader and pattern render
+                // into CSS variables
                 let target = /^(shader|pattern)/.test(id)
                     ? `var(--${id})`
                     : `url(${result})`;
@@ -94,23 +89,23 @@ export function doodleToImage(host, code, options, fn) {
 
     loadGoogleFontEmbed(styles.gf || [])
         .then(importedFonts => replace(css`
-      <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
-        <foreignObject width="100%" height="100%">
-          <div class="host" width="100%" height="100%" ${NSXHtml}>
-            <style><![CDATA[
-              ${importedFonts}
-              ${styles.top}
-              @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-              @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-              ${getBasicStyles(grid)}
-              ${styles.all}
-            ]]></style>
-            ${gridContainer}
-            ${filterDefs}
-          </div>
-        </foreignObject>
-      </svg>
-    `))
+            <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
+                <foreignObject width="100%" height="100%">
+                    <div class="host" width="100%" height="100%" ${NSXHtml}>
+                        <style><![CDATA[
+                            ${importedFonts}
+                            ${styles.top}
+                            @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                            @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                            ${getBasicStyles(grid)}
+                            ${styles.all}
+                        ]]></style>
+                        ${gridContainer}
+                        ${filterDefs}
+                    </div>
+                </foreignObject>
+            </svg>
+        `))
         .then(result => {
             let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
             if (isSafari() && size) {

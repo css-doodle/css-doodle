@@ -58,16 +58,8 @@ function formatBorder(value) {
     return values.join(' ');
 }
 
-/*
- * The registry of @-properties: a `@name: value` declaration is only
- * recognized when `name` (or an alias below) exists here, so the
- * pass-through entries register the name and little else.
- */
 const Property = Object.create(null);
 
-// @size: width height? ratio? — presets like `vmin` expand to both
-// dimensions; with `auto` the ratio (or the grid's) becomes aspect-ratio.
-// Cell size is recorded on custom properties for @place-cell to read.
 Property.size = (value, { isSpecialSelector, grid }) => {
     let [w, h = w, ratio] = parseValueGroup(value);
     if (isEmpty(w)) return '';
@@ -95,8 +87,6 @@ Property.size = (value, { isSpecialSelector, grid }) => {
     return styles;
 };
 
-// @place-cell: x y — take the cell out of the grid flow and center it
-// at the given coords; `extra` carries a rotation in degrees
 Property.place = (value, { extra }) => {
     let [left, top] = resolvePlace(value);
     return css`
@@ -112,22 +102,6 @@ Property.place = (value, { extra }) => {
   `;
 };
 
-// @grid: the whole option string parsed into a config object.
-// Word flags (row/col, border:, no-clip, p3d) are consumed first and
-// blanked to '§' so they can't be re-read as grid dimensions; the rest
-// splits into symbol-prefixed groups:
-//
-//   /  size (first occurrence) or fill color (second)
-//   +  scale
-//   ~  translate
-//   ^  enlarge
-//   *  rotate, or hue-rotate when the value starts with `h`
-//   ∆  perspective
-//   _  gap
-//   |  backdrop-filter
-//   ß  border (β accepted for the same)
-//
-// and whatever carries no symbol is the grid dimensions themselves.
 Property.grid = (value, options) => {
     let result = {
         clip: true,
@@ -193,16 +167,11 @@ Property.grid = (value, options) => {
     return result;
 };
 
-// @gap: written onto :container by generator/css.js
-
 Property.gap = value => value;
-
-// @seed: read by the component; emits no css
 
 Property.seed = value => value;
 
-// @shape: preset shapes only — custom points go through the
-// shape() function instead
+Property.content = value => value;
 
 Property.shape = memo('shape-property', value => {
     let { points, preset} = generateShape(value);
@@ -210,17 +179,11 @@ Property.shape = memo('shape-property', value => {
     return `clip-path: polygon(${points.join(',')});`;
 });
 
-// @use: the rules compose separately in generator/css.js
-
 Property.use = rules => {
     if (rules.length > 2) {
         return rules;
     }
 };
-
-// @content: collected per cell and applied through the markup
-
-Property.content = value => value;
 
 export default addAlias(Property, {
     // legacy names.

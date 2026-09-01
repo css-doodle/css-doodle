@@ -1,7 +1,7 @@
 const ticks = 1000 * 60 * 60 * 24; /* 24 hours in ms */
 const steps = ticks / (1000 / 120);
 
-/* time elapsed since the beginning of the day */
+// time elapsed since the beginning of the day
 const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
 
 function createTimeUniform(name, delay) {

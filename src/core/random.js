@@ -1,12 +1,6 @@
 import seedrandom from '../lib/seedrandom.js';
 import { lerp } from '../utils/math.js';
 
-/**
- * A seeded random source plus the helpers built on top of it.
- * `rand`/`pick`/`shuffle` always read the current generator, so
- * `updateRandom` affects them mid-run; `random` exposes the
- * generator active at read time.
- */
 export default function createRandom(seed) {
     let random = (typeof seed === 'function') ? seed : seedrandom(String(seed));
 

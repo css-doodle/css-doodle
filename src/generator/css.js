@@ -35,26 +35,24 @@ function findFunc(name) {
     return fn;
 }
 
-/*
- * Value compiler. Each value/function/argument node of the AST is
- * compiled once into an evaluator closure; running a cell (or a @m
- * iteration) then only executes closures — no AST re-walking, name
- * lookups or static-argument parsing in the hot path. Compiled
- * evaluators are keyed by AST node and shared across generations;
- * everything stateful comes in through the env:
- *
- *   env = { rules, coords, contextVariable, selector }
- *
- * so the Rules instance stays the interpreter and function.js stays a
- * plain callee.
- */
+// Value compiler. Each value/function/argument node of the AST is
+// compiled once into an evaluator closure; running a cell (or a @m
+// iteration) then only executes closures — no AST re-walking, name
+// lookups or static-argument parsing in the hot path. Compiled
+// evaluators are keyed by AST node and shared across generations;
+// everything stateful comes in through the env:
+//
+//   env = { rules, coords, contextVariable, selector }
+//
+// so the Rules instance stays the interpreter and function.js stays a
+// plain callee.
 
 const EMPTY_EXTRA = [];
 const compiledValues = new WeakMap();
 const compiledFuncs = new WeakMap();
 const compiledArguments = new WeakMap();
 
-/* value: list of text/func nodes → env => { value, extra } */
+// value: list of text/func nodes → env => { value, extra }
 function compileValue(value) {
     let compiled = compiledValues.get(value);
     if (compiled === undefined) {
@@ -86,7 +84,7 @@ function compileValue(value) {
     return compiled;
 }
 
-/* func node → (env, extra, inArgument) => { value, extra? } */
+// func node → (env, extra, inArgument) => { value, extra? }
 function compileFunc(node) {
     let compiled = compiledFuncs.get(node);
     if (compiled === undefined) {
@@ -161,9 +159,9 @@ function compileFunc(node) {
     return compiled;
 }
 
-/* argument node → (env, extra) => raw value. Compile-time facts ride on
- * the evaluator: .cluster, .constant (single literal), .composed
- * (multi-part, its value never re-splits), .split (pre-parsed inputs) */
+// argument node → (env, extra) => raw value. Compile-time facts ride on
+// the evaluator: .cluster, .constant (single literal), .composed
+// (multi-part, its value never re-splits), .split (pre-parsed inputs)
 function compileArgument(argument, parent) {
     let compiled = compiledArguments.get(argument);
     if (compiled === undefined) {
@@ -975,8 +973,8 @@ class Rules {
     });
 
     let { keyframes, host, container, cells, backdrop, top, gf } = this.styles;
-    /* container before host, so a host animation with its prefixed
-     * time-uniform entries overrides the standalone time animation */
+    // container before host, so a host animation with its prefixed
+    // time-uniform entries overrides the standalone time animation
     let main = keyframes + container + host;
 
     return {

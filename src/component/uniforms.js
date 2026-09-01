@@ -16,7 +16,7 @@ export function bindUniforms(host, { time, mousex, mousey, mouse, width, height 
     }
 }
 
-/* registered per document, not per host */
+// registered per document, not per host
 let isUtimeSet = false;
 
 function regUtime() {
@@ -40,8 +40,8 @@ function regUtime() {
 }
 
 function regUmouse(host, mousex, mousey, mouse) {
-    /* the handler reads the flags from the host so that
-   * an update with different uniforms takes effect */
+    // the handler reads the flags from the host so that
+    // an update with different uniforms takes effect
     host.umouseFlags = { mousex, mousey, mouse };
     let init = !host.umouseFn;
     if (init) {

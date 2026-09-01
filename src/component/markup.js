@@ -6,51 +6,51 @@ export function getBasicStyles(grid) {
     let { x, y } = grid || {};
     return css`
     *,*::after,*::before,:host,.host {
-      box-sizing: border-box;
+        box-sizing: border-box;
     }
     :host,.host {
-      display: block;
-      visibility: visible;
-      width: fit-content;
-      height: fit-content;
-      contain: content;
-      --${utime.name}: 0;
-      --${UTime.name}: 0
+        display: block;
+        visibility: visible;
+        width: fit-content;
+        height: fit-content;
+        contain: content;
+        --${utime.name}: 0;
+        --${UTime.name}: 0
     }
     :host([hidden]),[hidden] {
-      display: none
+        display: none
     }
     :host([cssd-paused]),
     :host([cssd-paused]) * {
-      animation-play-state: paused !important
+        animation-play-state: paused !important
     }
     cssd-grid, cssd-cell {
-      display: grid;
-      position: relative;
+        display: grid;
+        position: relative
     }
     cssd-grid {
-      gap: inherit;
-      grid-template: repeat(${y},1fr)/repeat(${x},1fr)
+        gap: inherit;
+        grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
     cssd-b {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
+        position: absolute;
+        inset: 0;
+        pointer-events: none
     }
     cssd-cell {
-      place-items: center;
-      min-height: 0;
-      min-width: 0;
+        place-items: center;
+        min-height: 0;
+        min-width: 0
     }
     svg, canvas {
-      position: absolute;
+        position: absolute;
     }
     cssd-grid, svg, canvas {
-      width: 100%;
-      height: 100%
+        width: 100%;
+        height: 100%
     }
     canvas {
-      object-fit: cover;
+        object-fit: cover
     }
   `;
 }
@@ -82,9 +82,8 @@ export function createGrid(gridObj, compiled) {
         }
         result = child;
     }
-    let html = `<cssd-grid part="grid">${result}</cssd-grid>`;
-    if (styles.backdrop) {
-        html += '<cssd-b></cssd-b>'
-    }
-    return html;
+    return `
+        <cssd-grid part="grid">${result}</cssd-grid>
+        ${!styles.backdrop ? '<cssd-b></cssd-b>' : ''}
+    `;
 }

@@ -1,6 +1,8 @@
 import { scan, iterator } from './tokenizer.js';
 
-/* an +/- b */
+/**
+ * an +/- b
+ */
 export default function parse(input) {
     let iter = iterator(scan(input));
     let a = [], b = [], op, error;

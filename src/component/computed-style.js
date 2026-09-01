@@ -1,5 +1,3 @@
-/* Read computed values (CSS variables, resolved colors) off live elements. */
-
 export function getVariable(element, name) {
     if (typeof getComputedStyle === 'undefined') {
         return '';

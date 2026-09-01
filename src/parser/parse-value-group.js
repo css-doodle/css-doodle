@@ -99,8 +99,8 @@ function joinTokens(tokens) {
     return tokens.map(n => n.value).join('');
 }
 
-/* Composed values repeat across cells and generations, so each unique
- * (input, options) pair is parsed once. Results are shared: read-only. */
+// Composed values repeat across cells and generations, so each unique
+// (input, options) pair is parsed once. Results are shared: read-only.
 const memo = new Map();
 
 const RE_PLAIN = /[,()'"`\s]/;

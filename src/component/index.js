@@ -266,8 +266,8 @@ if (typeof HTMLElement !== 'undefined') {
 
             this.gridSize = compiled.grid || this.getGrid();
             this._code = code;
-            /* the source is cleared before buildGrid so the filter defs it
-       * mounts as light children don't get wiped along with it */
+            // the source is cleared before buildGrid so the filter defs it
+            // mounts as light children don't get wiped along with it
             this.innerHTML = '';
             this.buildGrid(compiled, this.gridSize);
 
@@ -343,7 +343,7 @@ if (typeof HTMLElement !== 'undefined') {
             return old.styles.backdrop !== compiled.styles.backdrop;
         }
 
-        /* refresh styles in place, keeping the cell elements */
+        // refresh styles in place, keeping the cell elements
         patch(compiled, oldStyles) {
             bindUniforms(this, compiled.uniforms);
             let replace = createReplacer(this, compiled);
@@ -410,10 +410,10 @@ if (typeof HTMLElement !== 'undefined') {
                         return;
                     }
                     if (isSafari()) {
-                        /* Safari keeps the def animations running but won't repaint
-             * the elements referencing them until their compositing
-             * layers get rebuilt, so flip a rendering hint for a frame
-             * on everything that may carry a filter */
+                        // Safari keeps the def animations running but won't repaint
+                        // the elements referencing them until their compositing
+                        // layers get rebuilt, so flip a rendering hint for a frame
+                        // on everything that may carry a filter
                         let targets = [
                             this, ...this.shadowRoot.querySelectorAll('cssd-grid, cssd-cell')
                         ];
@@ -507,18 +507,18 @@ if (typeof HTMLElement !== 'undefined') {
             let h = height * scale;
             let fonts = await loadGoogleFontEmbed();
             let svg = css`
-          <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${isSafari() ? '' : `width="${w}px" height="${h}px"`}>
-            <foreignObject width="100%" height="100%">
-              <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
-                <style><![CDATA[
-                  ${fonts}
-                  .host{${variables}}
-                ]]></style>
-                ${html}
-              </div>
-            </foreignObject>
-          </svg>
-        `;
+                <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${isSafari() ? '' : `width="${w}px" height="${h}px"`}>
+                    <foreignObject width="100%" height="100%">
+                        <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
+                            <style><![CDATA[
+                                ${fonts}
+                                .host{${variables}}
+                            ]]></style>
+                            ${html}
+                        </div>
+                    </foreignObject>
+                </svg>
+            `;
 
             if (download || detail) {
                 let { source, url, blob } = await generatePng(svg, w, h, scale);

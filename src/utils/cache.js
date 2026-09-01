@@ -1,7 +1,3 @@
-/* Memoizes values that repeat across cells and renders. All memoized
- * functions share one map — hence the key prefix — so that wrappers
- * created per cell (e.g. @shape) still hit the same entries. */
-
 const cache = new Map();
 
 export function memo(prefix, fn) {

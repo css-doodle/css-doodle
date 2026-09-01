@@ -1,6 +1,4 @@
-/**
- * Tokenizer for css-doodle rules and expressions.
- */
+// Tokenizer for css-doodle rules and expressions.
 
 const symbols = [
     ':', ';', ',', '(', ')', '[', ']',
@@ -30,7 +28,7 @@ const is = {
   closedTag: (a, b) => a == '<' && b == '/',
 }
 
-/* Charcode classification table for the scanning hot path */
+// Charcode classification table for the scanning hot path
 
 const SYMBOL = 1, DIGIT = 2, SPACE = 4, HEX = 8;
 
@@ -150,11 +148,9 @@ function ignoreSpacingAround(prev, next) {
   return ignoreLeft || ignoreRight;
 }
 
-/*
- * The read* functions return the end index (exclusive) of the token
- * starting at i. charCodeAt returns NaN past the end of input, and NaN
- * fails every comparison, so lookaheads need no bounds checks.
- */
+// The read* functions return the end index (exclusive) of the token
+// starting at i. charCodeAt returns NaN past the end of input, and NaN
+// fails every comparison, so lookaheads need no bounds checks.
 
 function readWord(input, i, len) {
   let j = i;
