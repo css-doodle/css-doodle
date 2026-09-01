@@ -1,5 +1,5 @@
 import Func, { MathFunc } from '../core/function.js';
-import { deref } from '../core/calc.js';
+import calc, { deref, compileTemplate, toPlainNumber, isSignLeading } from '../core/calc.js';
 import Property from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
@@ -9,6 +9,7 @@ import { utime, UTime, timePrefix } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
 import { cellId } from '../utils/cell.js';
+import { tidyNumber } from '../utils/math.js';
 import { isNil, getValue } from '../utils/type.js';
 import { uniqueId } from '../utils/fn.js';
 import { join, makeArray, removeEmptyValues } from '../utils/list.js';
@@ -106,6 +107,12 @@ function compileFunc(node) {
         } else {
             let composable = COMPOSABLE.has(fname);
             let args = node.arguments.map(arg => compileArgument(arg, node));
+            let isDollar = fname.charCodeAt(0) === 36 /* $ */;
+            let isMath = fn === MathFunc[fname];
+            let calcTemplate = null;
+            if ((isDollar || fname === 'calc') && node.arguments.length === 1) {
+                calcTemplate = args[0].calcTemplate || null;
+            }
             // all-literal argument lists are interpreted here, once
             let constantInput = null;
             if (!fn.lazy && args.every(arg => arg.constant)) {
@@ -132,6 +139,20 @@ function compileFunc(node) {
                 if (!inArgument && node.variables) {
                     rules.composeVariables(node.variables, coords, env.contextVariable);
                 }
+                if (calcTemplate !== null) {
+                    let e = inArgument ? extra : EMPTY_EXTRA;
+                    let { context, values } = evalTemplateHoles(calcTemplate, env, e);
+                    let output;
+                    if (context) {
+                        output = isDollar
+                            ? rules.callCalc(fname, coords, calcTemplate.template, context, env.contextVariable)
+                            : rules.callFunc(fn, coords, [calcTemplate.template, context], fname, env.contextVariable);
+                    } else {
+                        let input = spliceTemplateInput(calcTemplate, values);
+                        output = rules.callFunc(fn, coords, input, fname, env.contextVariable);
+                    }
+                    return { value: getValue(output), extra: output?.extra };
+                }
                 let input = constantInput;
                 if (input === null) {
                     if (fn.lazy) {
@@ -142,6 +163,16 @@ function compileFunc(node) {
                         for (let arg of args) {
                             if (arg.split) {
                                 input.push(...arg.split);
+                                continue;
+                            }
+                            if (isMath && arg.calcTemplate) {
+                                let t = arg.calcTemplate;
+                                let { context, values } = evalTemplateHoles(t, env, e);
+                                if (context) {
+                                    input.push(calc(t.template, context));
+                                } else {
+                                    input.push(...spliceTemplateInput(t, values));
+                                }
                                 continue;
                             }
                             let v = arg.constant ? arg() : arg(env, e);
@@ -219,11 +250,82 @@ function compileArgument(argument, parent) {
                 };
                 compiled.composed = true;
             }
+            if (!argument.cluster) {
+                compiled.calcTemplate = buildCalcTemplate(values, parts);
+            }
         }
         compiled.cluster = argument.cluster;
         compiledArguments.set(argument, compiled);
     }
     return compiled;
+}
+
+function buildCalcTemplate(values, parts) {
+    let segments = [''];
+    let holes = [];
+    for (let i = 0; i < values.length; i++) {
+        let v = values[i];
+        if (v.type === 'text' && !/^\-\-\w/.test(v.value)) {
+            segments[segments.length - 1] += v.value;
+        } else if (v.type === 'func') {
+            holes.push(parts[i]);
+            segments.push('');
+        } else {
+            // `--x` reads resolve through readVar, outside the template
+            return null;
+        }
+    }
+    if (!holes.length) return null;
+    let compiled = compileTemplate(segments);
+    if (compiled === null) return null;
+    return {
+        template: compiled.template,
+        names: compiled.names,
+        signSensitive: compiled.signSensitive,
+        segments,
+        holes,
+        singlePart: values.length === 1,
+    };
+}
+
+function evalTemplateHoles({ holes, names, signSensitive }, env, extra) {
+    let n = holes.length;
+    let values = new Array(n);
+    env.coords.extra.push(extra);
+    for (let i = 0; i < n; i++) {
+        values[i] = holes[i](env, extra);
+    }
+    env.coords.extra.pop();
+    let context = {};
+    for (let i = 0; i < n; i++) {
+        let num = toPlainNumber(values[i]);
+        if (num === null || (signSensitive[i] && isSignLeading(values[i]))) {
+            return { values };
+        }
+        context[names[i]] = num;
+    }
+    return { context, values };
+}
+
+function spliceTemplate({ segments }, values) {
+    let joined = segments[0];
+    for (let i = 0; i < values.length; i++) {
+        joined += values[i] + segments[i + 1];
+    }
+    return joined;
+}
+
+function spliceTemplateInput(calcTemplate, values) {
+    let input;
+    if (calcTemplate.singlePart) {
+        let v = values[0];
+        input = (typeof v === 'number' || typeof v === 'string')
+            ? parseValueGroup(v, NO_SPACE)
+            : (isNil(v) ? [] : [getValue(v)]);
+    } else {
+        input = [spliceTemplate(calcTemplate, values)];
+    }
+    return removeEmptyValues(input);
 }
 
 function isStaticRule(token) {
@@ -353,16 +455,30 @@ class Rules {
         return this.callFunc(fn, coords, input, fname, contextVariable);
     }
 
+    calcContext(count, contextVariable) {
+        let group = this.scopedVars(count, contextVariable);
+        let context = {};
+        for (let [name, key] of Object.entries(group)) {
+            context[name.slice(2)] = key;
+        }
+        return context;
+    }
+
+    // the compiled-template variant of the $ branch in callFunc: the
+    // expression is stable, the function results ride in as variables
+    callCalc(fname, coords, template, holes, contextVariable = {}) {
+        let context = Object.assign(
+            this.calcContext(coords.count, contextVariable), holes);
+        let unit = (fname.length > 1) ? (fname.split('$')[1] ?? '') : '';
+        return tidyNumber(calc(template, context)) + unit;
+    }
+
     callFunc(fn, coords, input, fname, contextVariable = {}) {
         let _fn = fn(coords);
         if (typeof _fn === 'function') {
             if (fname.startsWith('$')) {
-                let group = this.scopedVars(coords.count, contextVariable);
-                let context = {};
+                let context = this.calcContext(coords.count, contextVariable);
                 let unit = '';
-                for (let [name, key] of Object.entries(group)) {
-                    context[name.slice(2)] = key;
-                }
                 if (fname.length > 1) {
                     unit = fname.split('$')[1] ?? '';
                 }

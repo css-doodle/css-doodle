@@ -218,3 +218,79 @@ test('float dust snaps to zero at the output boundary', () => {
         );
     }
 });
+
+test('$ with function parts evaluates through the compiled template', () => {
+    // $(…@fn…) compiles once with placeholders instead of re-parsing a
+    // spliced string per cell/iteration; results must read the same
+    let cases = [
+        ['@grid: 2x2; width: $(@x*10+@y)px;', ['width:11px;', 'width:21px;', 'width:12px;', 'width:22px;']],
+        // hole at the very start and very end of the expression
+        ['@grid: 2x2; order: $(@i+1); z-index: $(1-@i);', ['order:2;', 'z-index:0;', 'order:5;', 'z-index:-3;']],
+        // signs around holes match spliced-string semantics
+        ['@grid: 1; margin: $(-@i)px $(2*-@i)px;', ['margin:-1px -2px;']],
+        // context variables still resolve next to placeholders
+        ['@grid: 1; --a: 4; width: $(a+@i*2)px;', ['width:6px;']],
+        // unit-suffixed form
+        ['@grid: 1; rotate: $deg(@i*45);', ['rotate:45deg;']],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        for (let e of expected) {
+            assert.ok(
+                compiled.styles.all.includes(e),
+                `${code} -> ${e} missing in ${compiled.styles.all}`
+            );
+        }
+    }
+});
+
+test('$ falls back to splicing when a function result is not a number', () => {
+    // non-numeric results (names, multi-values) must keep today's
+    // spliced-string behavior, including generation-time deref
+    let cases = [
+        // @p yields a name that derefs through --b
+        ['@grid: 1; --b: 30; width: $(@p(b))px;', 'width:30px;'],
+        // a name spliced into math reads through the context
+        ['@grid: 1; --c: 7; width: $(@p(c)*2+@i)px;', 'width:15px;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});
+
+test('$ inside a sequence tracks the iteration variables', () => {
+    let compiled = generateCss(
+        parseCss('@grid: 1; --l: @M4($(@n*2));'), parseGrid('1'), 42, 64
+    );
+    assert.ok(
+        compiled.styles.all.includes('--l:2 4 6 8;'),
+        compiled.styles.all
+    );
+});
+
+test('@calc and Math functions evaluate templated arguments the same', () => {
+    // the calc-template path extends to every consumer whose arguments
+    // are always calc-ed; results must match the spliced-string reading
+    let cases = [
+        ['@grid: 1; width: @calc(@i*3+1)px;', 'width:4px;'],
+        ['@grid: 1; opacity: @sin(π/2+@i-1);', 'opacity:1;'],
+        ['@grid: 1; width: @max(@i, 5)px;', 'width:5px;'],
+        ['@grid: 1; height: @pow(@i+1, 2)px;', 'height:4px;'],
+        // non-numeric results splice as before; Math functions see no
+        // variables, so `a` reads as 0 either way
+        ['@grid: 1; --a: 3; width: @abs(@p(a)-5)px;', 'width:5px;'],
+        // constants ignore their arguments either way
+        ['@grid: 1; width: @trunc(@PI(@i))px;', 'width:3px;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});

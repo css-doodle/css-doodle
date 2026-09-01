@@ -199,26 +199,32 @@ function seq(token, make) {
 // @plot / @Plot: nth point (or all points) of a generated shape;
 // `unit` keeps units on the output values (the @Plot variant)
 function createPlot(unit) {
+    let lastCommands, lastMax, lastResult;
     return ({ count, extra, grid }) => {
         let e = last(extra) || [];
         return (...args) => {
             let commands = args.join(',');
             let idx = e[SEQ.n] ?? count;
             let max = e[SEQ.max] ?? grid.count;
-            let { points, rules } = generateShape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
-                delete rules['fill'];
-                delete rules['fill-rule'];
-                delete rules['frame'];
-                if (rules.split || rules.points) {
-                    rules.hasPoints = true;
-                } else {
-                    rules.points = max;
-                }
-                if (unit) {
-                    rules.unit = rules.unit || 'none';
-                }
-                return rules;
-            });
+            if (commands !== lastCommands || max !== lastMax) {
+                lastCommands = commands;
+                lastMax = max;
+                lastResult = generateShape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
+                    delete rules['fill'];
+                    delete rules['fill-rule'];
+                    delete rules['frame'];
+                    if (rules.split || rules.points) {
+                        rules.hasPoints = true;
+                    } else {
+                        rules.points = max;
+                    }
+                    if (unit) {
+                        rules.unit = rules.unit || 'none';
+                    }
+                    return rules;
+                });
+            }
+            let { points, rules } = lastResult;
             return rules.hasPoints ? points : points[idx - 1];
         };
     };

@@ -565,8 +565,77 @@ export function deref(input, context) {
     }
 }
 
+const RE_SAFE_AFTER = /^[),+\-*/%^!<>=&|≤≥≠]/;
+const RE_OPERATOR_TAIL = /[(,*/%^!<>=&|≤≥≠]$/;
+const RE_VALUE_TAIL = /[0-9]$/;
+const RE_PLAIN_NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+
+export function toPlainNumber(v) {
+    if (typeof v === 'number') {
+        return Number.isFinite(v) ? v : null;
+    }
+    if (typeof v === 'string') {
+        let t = v.trim();
+        if (t && RE_PLAIN_NUMBER.test(t)) return Number(t);
+    }
+    return null;
+}
+
+export function isSignLeading(v) {
+    if (typeof v === 'number') {
+        return v < 0;
+    }
+    return /^[+-]/.test(String(v).trim());
+}
+
+export function compileTemplate(segments) {
+    let n = segments.length - 1;
+    if (n < 1 || n > 26) return null;
+    for (let s of segments) {
+        if (s.includes('·')) return null;
+    }
+    if (RE_NAME.test(segments.join('0').trim())) return null;
+    let despaced = segments.map(s => s.replace(/\s+/g, ''));
+    let names = [];
+    let signSensitive = [];
+    let template = segments[0];
+    for (let i = 0; i < n; i++) {
+        let before = despaced[i];
+        let after = despaced[i + 1];
+        if (after === '' ? i < n - 1 : !RE_SAFE_AFTER.test(after)) return null;
+        let sensitive = false;
+        if (before === '') {
+            if (i > 0) return null;
+        } else {
+            let run = before.match(/[+-]*$/)[0].length;
+            if (run >= 2) {
+                return null;
+            }
+            if (run === 1) {
+                if (/[0-9.][eE][+-]$/.test(before)) return null;
+                sensitive = true;
+            } else if (before.endsWith(')')) {
+                sensitive = true;
+            } else if (RE_VALUE_TAIL.test(before)) {
+                if (!/\s$/.test(segments[i])) return null;
+                sensitive = true;
+            } else if (!RE_OPERATOR_TAIL.test(before)) {
+                return null;
+            }
+        }
+        signSensitive.push(sensitive);
+        let name = '·' + String.fromCharCode(97 + i);
+        names.push(name);
+        template += name + segments[i + 1];
+    }
+    return { template, names, signSensitive };
+}
+
 export { operators };
 
 export default function(input, context) {
+    if (typeof input === 'number' && Number.isFinite(input)) {
+        return input;
+    }
     return compileInput(input)(context || {}, []);
 }
