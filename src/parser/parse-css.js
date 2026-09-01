@@ -336,22 +336,20 @@ function finishFunc(cur, name, end, isCalc, extra, variables) {
         }
     }
 
-    let { fname, extra: extraArgs } = separateFuncName(name);
-    func.name = isCalc ? '@$' + name.slice(1) : fname;
-    if (extraArgs.length) {
-        func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
-    }
-
-    if (isCalc && func.name.length > 2) {
-        if (!func.arguments.length) {
+    if (isCalc) {
+        // everything after '$' is a unit suffix: $px(1+1) -> 2px, $4(1+1) -> 24;
+        // without an argument list the suffix is the expression itself: $123 -> 123
+        func.name = '@$' + name.slice(1);
+        if (!hasArguments && func.name.length > 2) {
             let value = func.name.substring(2);
-            func.name = func.name.substring(0, 2);
+            func.name = '@$';
             func.arguments.push(Node.argument([Node.text(value)]));
         }
-        if (/\d$/.test(func.name)) {
-            let value = func.name.substring(2);
-            func.name = func.name.substring(0, 2);
-            func.arguments[0].values[0].value = value;
+    } else {
+        let { fname, extra: extraArgs } = separateFuncName(name);
+        func.name = fname;
+        if (extraArgs.length) {
+            func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
         }
     }
 

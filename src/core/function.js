@@ -394,14 +394,16 @@ Function.P = ({ context, pick, position }) => {
             }
             last = context[counter].lastPick;
         }
+        // store the full pool before excluding `last`: splicing the stored
+        // array in place would shrink the shared pool on every @P() call
+        context.lastPickArgs = args;
         if (args.length > 1) {
             let i = args.findIndex(n => n === last);
             if (i !== -1) {
-                args.splice(i, 1);
+                args = args.filter((_, j) => j !== i);
             }
         }
         let picked = pick(args);
-        context.lastPickArgs = args;
         if (normal) {
             context[counter].lastPick = picked;
         }
@@ -855,7 +857,8 @@ Function.uy = () => calcWith(`var(--${umousey.name})`);
 /**
  * expose JS Math functions with css-doodle calc/value semantics
  */
-export const MathFunc = {};
+export const MathFunc = Object.create(null);
+
 for (let name of Object.getOwnPropertyNames(Math)) {
     MathFunc[name] = () => (...args) => {
         if (typeof Math[name] === 'number') {
