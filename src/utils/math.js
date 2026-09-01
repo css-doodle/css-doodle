@@ -7,6 +7,12 @@ export function lerp(t, a, b) {
     return a + t * (b - a);
 }
 
+export function tidyNumber(n) {
+    if (!Number.isFinite(n) || Number.isInteger(n)) return n;
+    if (Math.abs(n) < 1e-9) return 0;
+    return Number(n.toPrecision(12));
+}
+
 // cyrb53
 export function hash(str, seed = 0) {
     str = String(str);

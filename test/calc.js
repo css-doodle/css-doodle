@@ -365,3 +365,36 @@ test('subtraction with implicit multiplication', () => {
     compare(['sin(2x - 3t)', { x: 2, t: 0.5 }], Math.sin(2*2 - 3*0.5));
     compare(['sin(13.6x-9.01t)', { x: 2, t: 0.5 }], Math.sin(13.6*2 - 9.01*0.5));
 });
+
+test('logical not', () => {
+    // `!` used to be a silent no-op that corrupted the expression
+    compare('!0', 1);
+    compare('!1', 0);
+    compare('!!5', 1);
+    compare('!(1 > 2)', 1);
+    compare(['!x', { x: 5 }], 0);
+    compare(['!x', { x: 0 }], 1);
+    compare('1 + !0', 2);
+    compare('!0 + 1', 2);
+    compare('!-1', 0);
+});
+
+test('conventional operator precedence', () => {
+    // & over |, shifts over comparisons, && over ||
+    compare('1|2&2', 3);
+    compare('1==4>>2', 1);
+    compare('2<<1+1', 8);
+    compare('1 || 0 && 0', 1);
+    compare('2^3^2', 512);
+});
+
+test('short-circuit evaluation', () => {
+    const boom = () => { throw new Error('evaluated'); };
+    compare(['x == 1 && boom(1)', { x: 0, boom }], 0);
+    compare(['1 || boom(1)', { boom }], 1);
+    compare(['match(1, 2, boom(1))', { boom }], 2);
+    compare(['match(0, boom(1), 3)', { boom }], 3);
+    // a context value shadowing the built-in still wins
+    compare(['match(1, 2, 3)', { match: () => 99 }], 99);
+    compare('-match(1, 2, 3)', -2);
+});

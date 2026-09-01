@@ -152,6 +152,10 @@ if (typeof HTMLElement !== 'undefined') {
             this.attr('use', use);
         }
 
+        get diagnostics() {
+            return (this.compiled && this.compiled.warnings) || [];
+        }
+
         getMaxGrid() {
             return this.hasAttribute('experimental') ? 256 : 64;
         }

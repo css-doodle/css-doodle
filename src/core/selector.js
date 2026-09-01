@@ -161,7 +161,9 @@ Selector.cell = ({ count, grid, x, y, random, context, position }) => {
     }
 };
 
-export default addAlias(Selector, {
+export const alias = {
     col: 'x',
     row: 'y',
-});
+};
+
+export default addAlias(Selector, alias);

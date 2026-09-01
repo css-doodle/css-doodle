@@ -141,3 +141,80 @@ test('empty svg functions generate without throwing', () => {
         assert.ok(compiled.styles.all.length, code);
     }
 });
+
+test('numbers print without float noise', () => {
+    let cases = [
+        ['width: $px(0.1+0.2);', 'width:0.3px;'],
+        ['rotate: @calc(0.1+0.7)deg;', 'rotate:0.8deg;'],
+        ['width: @sqrt(2)px;', 'width:1.41421356237px;'],
+        ['width: @m3(@n(*.1));', 'width:0.1,0.2,0.3;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});
+
+test('warnings collect on the compiled result', () => {
+    let warn = console.warn;
+    console.warn = () => {};
+    try {
+        let compiled = generateCss(
+            parseCss('width: @pik(1, 2);'), parseGrid('1'), 42, 64
+        );
+        assert.equal(compiled.warnings.length, 1);
+        assert.match(compiled.warnings[0].message, /unknown function @pik/);
+        assert.equal(compiled.warnings[0].index, 7);
+
+        // parse-level warnings ride along too
+        compiled = generateCss(
+            parseCss('width: @p(1, 2;'), parseGrid('1'), 42, 64
+        );
+        assert.match(compiled.warnings[0].message, /unterminated argument list/);
+
+        // a plain @word without an argument list is not a typo signal
+        compiled = generateCss(
+            parseCss('content: "hi @example";'), parseGrid('1'), 42, 64
+        );
+        assert.equal(compiled.warnings.length, 0);
+    } finally {
+        console.warn = warn;
+    }
+});
+
+test('nested blocks in rule-only positions are ignored, not a crash', () => {
+    let warn = console.warn;
+    console.warn = () => {};
+    try {
+        // used to throw: composeRule received cond/pseudo nodes
+        let cases = [
+            ':after { content: "x"; & { c { color: red; } }',
+            '@media (min-width: 100px) { :{ :after { content: "m"; } color: red; }',
+        ];
+        for (let code of cases) {
+            let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+            assert.ok(compiled.styles);
+        }
+    } finally {
+        console.warn = warn;
+    }
+});
+
+test('float dust snaps to zero at the output boundary', () => {
+    // sin(π/200*200) rounds slightly past π and used to print -3.2e-15,
+    // which SVG rejects for attributes like circle r
+    let cases = [
+        ['width: $(sin(π/200*200)*10);', 'width:0;'],
+        ['width: @cos(π/2)px;', 'width:0px;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});

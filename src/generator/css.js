@@ -25,6 +25,8 @@ function isImageValue(value) {
 const NO_SPACE = { noSpace: true };
 const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
 
+const consoleWarned = new Set();
+
 const funcCache = new Map();
 
 function findFunc(name) {
@@ -92,9 +94,15 @@ function compileFunc(node) {
         let fname = node.name.slice(1);
         let fn = findFunc(fname);
         if (typeof fn !== 'function') {
-            // unrecognized functions read as literal text
             let literal = { value: node.name };
-            compiled = () => literal;
+            if (node.arguments.length) {
+                compiled = env => {
+                    env.rules.warn(`unknown function ${node.name}()`, node);
+                    return literal;
+                };
+            } else {
+                compiled = () => literal;
+            }
         } else {
             let composable = COMPOSABLE.has(fname);
             let args = node.arguments.map(arg => compileArgument(arg, node));
@@ -252,7 +260,20 @@ class Rules {
         this.uniforms = {};
         this.skips = new WeakSet();
         this.memo = new WeakMap();
+        this.warnings = [];
+        this.warned = new Set();
         this.reset();
+    }
+
+    warn(message, node) {
+        if (this.warned.has(message)) return;
+        this.warned.add(message);
+        this.warnings.push(
+            node && node.index >= 0 ? { message, index: node.index } : { message });
+        if (!consoleWarned.has(message)) {
+            consoleWarned.add(message);
+            console.warn(message);
+        }
     }
 
     reset() {
@@ -522,6 +543,10 @@ class Rules {
     }
 
     composeRule(token, coords, selector) {
+        if (typeof token.property !== 'string') {
+            this.warn('unsupported nested block ignored');
+            return '';
+        }
         let info = this.memo.get(token);
         if (!info) {
             info = {
@@ -1000,6 +1025,7 @@ class Rules {
       filters: this.filters,
       uniforms: this.uniforms,
       content: this.content,
+      warnings: (this.tokens.warnings || []).concat(this.warnings),
     }
   }
 

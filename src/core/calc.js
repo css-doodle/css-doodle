@@ -19,19 +19,21 @@ const defaultContext = {
 const operators = {
     __proto__: null,
 
-    '^': 7, '**': 7,
-    '*': 6, '/': 6, '÷': 6, '%': 6,
-    '&': 5, '|': 5,
-    '+': 4, '-': 4,
-    '<': 3, '<<': 3,
-    '>': 3, '>>': 3,
+    '!': 10,
+    '^': 9, '**': 9,
+    '*': 8, '/': 8, '÷': 8, '%': 8,
+    '+': 7, '-': 7,
+    '<<': 6, '>>': 6,
+    '&': 5,
+    '|': 4,
+    '<': 3, '>': 3,
     '=': 3, '==': 3,
     '≤': 3, '<=': 3,
     '≥': 3, '>=': 3,
     '≠': 3, '!=': 3,
     '∧': 2, '&&': 2,
-    '∨': 2, '||': 2,
-    '(': 1, ')': 1,
+    '∨': 1, '||': 1,
+    '(': 0, ')': 0,
 };
 
 const binary = {
@@ -57,10 +59,6 @@ const binary = {
     '>=': (a, b) => a >= b,
     '≠': (a, b) => a !== b ? 1 : 0,
     '!=': (a, b) => a !== b ? 1 : 0,
-    '∧': (a, b) => a && b,
-    '&&': (a, b) => a && b,
-    '∨': (a, b) => a || b,
-    '||': (a, b) => a || b,
     '<<': (a, b) => a << b,
     '>>': (a, b) => a >> b,
 };
@@ -84,8 +82,6 @@ function isOperator(value) {
     return value in operators;
 }
 
-// Own properties only, so names like "valueOf" or "constructor"
-// never resolve through Object.prototype
 function own(obj, name) {
     return Object.prototype.hasOwnProperty.call(obj, name) ? obj[name] : undefined;
 }
@@ -254,7 +250,7 @@ function toPostfix(tokens) {
                 opStack.pop();
             } else {
                 const currPrec = operators[value];
-                const isRightAssoc = value === '^' || value === '**';
+                const isRightAssoc = value === '^' || value === '**' || value === '!';
                 while (opStack.length) {
                     const topPrec = operators[last(opStack)];
                     if (isRightAssoc ? topPrec > currPrec : topPrec >= currPrec) {
@@ -384,6 +380,25 @@ function compileFunction(node) {
     const chain = name.split('.');
     const argFns = node.value.map(compile);
 
+    // match(c, a, b) picks a branch: only the taken side evaluates,
+    // unless a context value shadows the built-in
+    if (chain.length === 1 && name === 'match' && argFns.length >= 2) {
+        const [c, a, b] = argFns;
+        return (ctx, history) => {
+            const fn = lookupFunction(name, ctx);
+            let output;
+            if (fn === defaultContext.match) {
+                output = c(ctx, history) ? a(ctx, history) : b && b(ctx, history);
+            } else if (typeof fn === 'function') {
+                output = fn(...argFns.map(f => f(ctx, history)));
+            } else {
+                history.misses = (history.misses || 0) + 1;
+                return 0;
+            }
+            return negative ? -output : output;
+        };
+    }
+
     // Fast paths: plain function call with 1 or 2 arguments
     if (chain.length === 1 && argFns.length === 1) {
         const a = argFns[0];
@@ -442,6 +457,9 @@ function compile(expr) {
             stack.push(compileVariable(value));
         } else if (type === FUNCTION) {
             stack.push(compileFunction(node));
+        } else if (value === '!') {
+            const operand = stack.pop() || (() => NaN);
+            stack.push((ctx, history) => Number(operand(ctx, history)) ? 0 : 1);
         } else {
             const right = stack.pop();
             const left = stack.pop();
@@ -450,10 +468,23 @@ function compile(expr) {
                 // Trailing operator with a single operand acts as identity
                 stack.push(right || (() => 0));
             } else {
-                const op = binary[value] || (() => 0);
                 const l = left || (() => NaN);
                 const r = right || (() => NaN);
-                stack.push((ctx, history) => op(Number(l(ctx, history)), Number(r(ctx, history))));
+                if (value === '&&' || value === '∧') {
+                    // short-circuit: the right side only runs when needed
+                    stack.push((ctx, history) => {
+                        const a = Number(l(ctx, history));
+                        return a ? Number(r(ctx, history)) : a;
+                    });
+                } else if (value === '||' || value === '∨') {
+                    stack.push((ctx, history) => {
+                        const a = Number(l(ctx, history));
+                        return a ? a : Number(r(ctx, history));
+                    });
+                } else {
+                    const op = binary[value] || (() => 0);
+                    stack.push((ctx, history) => op(Number(l(ctx, history)), Number(r(ctx, history))));
+                }
             }
         }
     }
@@ -533,6 +564,8 @@ export function deref(input, context) {
         return value;
     }
 }
+
+export { operators };
 
 export default function(input, context) {
     return compileInput(input)(context || {}, []);

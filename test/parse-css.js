@@ -107,6 +107,7 @@ test('quotes in SVG', () => {
                     [
                         {
                             "type": "func",
+                            "index": 10,
                             "name": "@svg",
                             "arguments": [
                                 argument([

@@ -237,9 +237,11 @@ Property.use = rules => {
     }
 };
 
-export default addAlias(Property, {
+export const alias = {
     // legacy names.
     'place-cell': 'place',
     'offset': 'place',
     'position': 'place',
-});
+};
+
+export default addAlias(Property, alias);

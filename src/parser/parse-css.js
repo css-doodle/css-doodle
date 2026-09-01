@@ -8,8 +8,12 @@
 //   keyframes  { type: 'keyframes', name, steps }
 //   step       { type: 'step', name: Group[], styles }
 //   func       { type: 'func', name, arguments: Argument[], position,
+//                index (source offset of the sigil),
 //                variables? (when an argument list was consumed) }
 //   text       { type: 'text', value }
+//
+// The returned statement list carries `warnings`: [{ message, pos? }]
+// collected from silent-recovery points; pos is a token [col, row]
 import { scan, Token } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
@@ -57,8 +61,12 @@ function adjacent(a, b) {
     return tokenEnd(a) === b.index;
 }
 
-function throwError(msg, pos = []) {
-    console.warn(`(at line ${pos[1] + 1}, column ${pos[0] + 1}) ${msg}`);
+function warn(ctx, msg, pos) {
+    let where = pos ? ` (at line ${pos[1] + 1}, column ${pos[0] + 1})` : '';
+    console.warn(msg + where);
+    if (ctx && ctx.warnings) {
+        ctx.warnings.push(pos ? { message: msg, pos } : { message: msg });
+    }
 }
 
 function isNumber(n) {
@@ -81,7 +89,7 @@ function isSvg(name) {
 }
 
 function composible(name) {
-    return /^@(canvas|shaders|doodle)/.test(name);
+    return /^@(shaders|doodle)/.test(name);
 }
 
 function substitutePi(input, prev) {
@@ -305,18 +313,19 @@ function parseFunc(cur, extra, variables = {}) {
         end += t.value.length;
         cur.next();
     }
-    return finishFunc(cur, name, end, isCalc, extra, variables);
+    return finishFunc(cur, name, end, isCalc, extra, variables, tok.index);
 }
 
-function finishFunc(cur, name, end, isCalc, extra, variables) {
+function finishFunc(cur, name, end, isCalc, extra, variables, index) {
     let func = Node.func();
+    func.index = index;
     let hasArguments = false;
 
     let dot = findCompositionDot(name, cur, end);
     if (dot > 0) {
         let inner;
         if (dot < name.length - 1) {
-            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables);
+            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables, index + dot + 1);
         } else {
             inner = parseFunc(cur, extra);
         }
@@ -392,6 +401,7 @@ function parseArguments(cur, start, extra, variables) {
     let paren = 0;
     let quote = false;
     let end = cur.source.length;
+    let head = cur.peek();
 
     const flushText = (to, atFunc) => {
         let text = substitutePi(cur.source.slice(runStart, to), cur.source[runStart - 1]);
@@ -475,6 +485,7 @@ function parseArguments(cur, start, extra, variables) {
         cur.next();
     }
     // unterminated argument list: pending values are dropped like before
+    warn(cur.ctx, 'unterminated argument list', head && head.pos);
     return { args: skipLastEmptyArgs(args), end };
 }
 
@@ -843,7 +854,7 @@ function parseKeyframes(cur, extra) {
     keyframes.name = cur.source.slice(start.index, end);
   }
   if (!keyframes.name.length) {
-    throwError('missing keyframes name', start && start.pos);
+    warn(cur.ctx, 'missing keyframes name', start ? start.pos : undefined);
     return keyframes;
   }
 
@@ -909,5 +920,8 @@ function parseSource(input, extra, ctx) {
 }
 
 export default function parse(input, extra) {
-  return parseSource(input, extra, { position: 0 });
+  let ctx = { position: 0, warnings: [] };
+  let result = parseSource(input, extra, ctx);
+  result.warnings = ctx.warnings;
+  return result;
 }

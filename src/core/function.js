@@ -18,7 +18,7 @@ import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './argum
 import { cellId, cellMetrics } from '../utils/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../utils/type.js';
 import { addAlias, uniqueId, lazy } from '../utils/fn.js';
-import { lerp, clamp } from '../utils/math.js';
+import { lerp, clamp, tidyNumber } from '../utils/math.js';
 import { last } from '../utils/list.js';
 import { getEasingFunction } from './easing.js';
 import { css } from '../utils/tagged-template.js';
@@ -113,6 +113,9 @@ function calcWith(base) {
 
         if (typeof base === 'string' && RE_CALC.test(base)) {
             return `calc(${base} * 1${unit})`;
+        }
+        if (typeof base === 'number') {
+            base = tidyNumber(base);
         }
         return base + unit;
     }
@@ -539,7 +542,7 @@ Function.match = ({ extra, x, y, z, count, grid }) => {
 
 Function.calc = () => {
     return (value, context) => {
-        return calc(getValue(value), context);
+        return tidyNumber(calc(getValue(value), context));
     }
 };
 
@@ -862,14 +865,14 @@ export const MathFunc = Object.create(null);
 for (let name of Object.getOwnPropertyNames(Math)) {
     MathFunc[name] = () => (...args) => {
         if (typeof Math[name] === 'number') {
-            return Math[name];
+            return tidyNumber(Math[name]);
         }
         args = args.map(n => calc(getValue(n)));
-        return Math[name](...args);
+        return tidyNumber(Math[name](...args));
     }
 }
 
-export default addAlias(Function, {
+export const alias = {
 
     'index': 'i',
     'col': 'x',
@@ -923,4 +926,6 @@ export default addAlias(Function, {
     'point': 'plot',
     'Point': 'Plot',
     'unicode': 'code'
-});
+};
+
+export default addAlias(Function, alias);

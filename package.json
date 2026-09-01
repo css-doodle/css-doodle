@@ -34,6 +34,9 @@
     },
     "./parser": {
       "import": "./src/exports/parser/index.js"
+    },
+    "./meta": {
+      "import": "./src/exports/meta/index.js"
     }
   },
   "keywords": [

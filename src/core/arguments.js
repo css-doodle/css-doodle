@@ -2,7 +2,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import { memo } from '../utils/cache.js';
 import { isInvalidNumber } from '../utils/type.js';
-import { clamp } from '../utils/math.js';
+import { clamp, tidyNumber } from '../utils/math.js';
 
 export function sequence(count, fn) {
     let [x, y = 1] = String(count).split(/[x-]/);
@@ -144,6 +144,11 @@ export function byUnit(fn) {
             }
         }
         let result = fn(...values);
+        if (typeof result === 'number') {
+            result = tidyNumber(result);
+        } else if (Array.isArray(result)) {
+            result = result.map(n => typeof n === 'number' ? tidyNumber(n) : n);
+        }
         let unit = units[0];
         if (unit === undefined) {
             return result;
