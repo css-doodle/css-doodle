@@ -978,7 +978,7 @@ class Rules {
       if (n.keyword) return n.keyword;
       if (Array.isArray(n.arguments)) {
         let names = n.arguments.map(arg => {
-          return this.composeArgument(arg, coords).value;
+          return getValue(this.composeArgument(arg, coords).value);
         }).join(', ');
         return '(' + names + ')';
       }

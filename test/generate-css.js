@@ -203,6 +203,18 @@ test('nested blocks in rule-only positions are ignored, not a crash', () => {
     }
 });
 
+test('composed arguments in cond selectors unwrap to their value', () => {
+    // @calc(10*10)px composes text with a function hole, which stays boxed
+    // as { value } for applyFunc; composeCond used to print the box as
+    // [object Object]
+    let compiled = generateCss(
+        parseCss('@media (min-width: @calc(10*10)px) { color: red; }'),
+        parseGrid('1'), 42, 64
+    );
+    assert.ok(compiled.styles.top.includes('@media (min-width: 100px)'));
+    assert.ok(!compiled.styles.top.includes('[object'));
+});
+
 test('float dust snaps to zero at the output boundary', () => {
     // sin(π/200*200) rounds slightly past π and used to print -3.2e-15,
     // which SVG rejects for attributes like circle r

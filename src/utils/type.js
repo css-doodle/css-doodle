@@ -20,7 +20,7 @@ export function getValue(input) {
     }
     let v = input;
     while (v && !isNil(v.value)) v = v.value;
-    if (typeof v == 'object' && 'value' in v) {
+    if (v && typeof v == 'object' && 'value' in v) {
         return v.value ?? '';
     }
     return v ?? '';
