@@ -363,11 +363,22 @@ function compileVariable(name) {
             history.misses = (history.misses || 0) + 1;
             result = 0;
         }
+        if (typeof result === 'function') {
+            result = callBare(result, history);
+        }
         if (typeof result !== 'number') {
             result = evaluateValue(result, ctx, history);
         }
         return result;
     };
+}
+
+function callBare(fn, history) {
+    if (fn.length) {
+        history.misses = (history.misses || 0) + 1;
+        return 0;
+    }
+    return fn();
 }
 
 function compileFunction(node) {
@@ -521,7 +532,9 @@ function expand(value, context, history) {
     if (v === undefined) {
         return v;
     }
-
+    if (typeof v === 'function') {
+        v = callBare(v, history);
+    }
     if (typeof v === 'number') {
         return Number(num) * v;
     }

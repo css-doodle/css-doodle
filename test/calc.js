@@ -398,3 +398,18 @@ test('short-circuit evaluation', () => {
     compare(['match(1, 2, 3)', { match: () => 99 }], 99);
     compare('-match(1, 2, 3)', -2);
 });
+
+test('a bare reference to a zero-argument function calls it', () => {
+    // the selector context passes `random` as a function; `random > .5`
+    // used to read it as 0 and compile the function source
+    compare(['random', { random: () => 0.25 }], 0.25);
+    compare(['random > .2', { random: () => 0.25 }], 1);
+    compare(['-random', { random: () => 0.25 }], -0.25);
+    compare(['2random', { random: () => 0.25 }], 0.5);
+    compare(['random * 2 + 1', { random: () => 0.25 }], 1.5);
+    compare('random < 1', 1); // Math.random
+    // functions that need arguments stay a miss
+    compare('abs', 0);
+    compare('sin + 1', 1);
+    compare(['-fn', { fn: x => x }], 0);
+});
