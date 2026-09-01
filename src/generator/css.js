@@ -1,4 +1,5 @@
 import Func, { MathFunc } from '../core/function.js';
+import { deref } from '../core/calc.js';
 import Property from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
@@ -343,6 +344,14 @@ class Rules {
                 }
                 if (fname.length > 1) {
                     unit = fname.split('$')[1] ?? '';
+                }
+                // a lone variable name with no unit reads as a
+                // generation-time var(): non-math values pass through
+                if (!unit && input.length === 1) {
+                    let value = deref(input[0], context);
+                    if (value !== undefined) {
+                        return value;
+                    }
                 }
                 return _fn(input, context) + unit;
             }

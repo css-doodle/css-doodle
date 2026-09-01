@@ -1,6 +1,7 @@
 import test from 'node:test';
+import assert from 'node:assert/strict';
 
-import calc from '../src/core/calc.js';
+import calc, { deref } from '../src/core/calc.js';
 import compare from './_compare.js';
 
 compare.use(calc);
@@ -46,7 +47,8 @@ test('cyclic reference', () => {
     compare(['cos(t)', { t: '2*t' }], Math.cos(0));
     compare(['cos(t)', { t: 'x(t)' }], Math.cos(0));
     compare(['cos(t)', { t: 'x' }], Math.cos(0));
-    compare(['cos(t)', { t: '2x' }], Math.cos(0));
+    // x is unresolvable, so the value "2x" reads as a dimensioned 2
+    compare(['cos(t)', { t: '2x' }], Math.cos(2));
     compare(['cos(t)', { t: 'sin(t)' }], Math.cos(0));
     // Self-reference is cut at its first recurrence
     compare(['cos(t)', { t: 'cos(t)' }], Math.cos(Math.cos(0)));
@@ -302,6 +304,52 @@ test('unary minus in arguments', () => {
     compare(['max(-x, 5)', { x: 2 }], 5);
     compare('sin(-(3))', Math.sin(-3));
     compare(['-x1', { x1: 5 }], -5);
+});
+
+test('variables holding dimensioned values', () => {
+    // The numeric part joins the math; units attach back via $ suffixes
+    compare(['w * 2', { w: '10px' }], 20);
+    compare(['w + 4', { w: '10px' }], 14);
+    compare(['-w', { w: '10px' }], -10);
+    compare(['2w', { w: '10px' }], 20);
+    compare(['p / 2', { p: '50%' }], 25);
+    compare(['t * 2', { t: '2.5s' }], 5);
+    compare(['a', { a: '.5turn' }], 0.5);
+    compare(['a', { a: '-45deg' }], -45);
+    compare(['sin(w)', { w: '1rad' }], Math.sin(1));
+    // Through variable references
+    compare(['b * 2', { b: 'a', a: '10px' }], 20);
+    // A resolvable word wins over the unit reading: 2s stays 2*s
+    compare(['d', { d: '2s', s: 5 }], 10);
+    compare(['v', { v: '2t', t: 3 }], 6);
+    // Unresolvable words act as units, no validation
+    compare(['v', { v: '2t' }], 2);
+    compare(['a * 2', { a: '3vmin' }], 6);
+    // π keeps implicit multiplication
+    compare(['v', { v: '2π' }], 2 * Math.PI);
+    compare(['c + 1', { c: 'red' }], 1);
+});
+
+test('deref: a lone variable name acts as a generation-time var()', () => {
+    const ctx = {
+        c: 'tomato', t: 'rotate(30deg)', w: '10px',
+        s: 'calc(100px + 10em)', n: '3', e: 'n + 2',
+        a: 'b', b: 'tomato', 'my-color': 'gold',
+    };
+    // non-math values pass through verbatim
+    assert.equal(deref('c', ctx), 'tomato');
+    assert.equal(deref('t', ctx), 'rotate(30deg)');
+    assert.equal(deref('w', ctx), '10px');
+    assert.equal(deref('s', ctx), 'calc(100px + 10em)');
+    assert.equal(deref('my-color', ctx), 'gold');
+    // single-name chains resolve to the final value
+    assert.equal(deref('a', ctx), 'tomato');
+    // values that read as math stay on the numeric path
+    assert.equal(deref('n', ctx), undefined);
+    assert.equal(deref('e', ctx), undefined);
+    // operations and unknown names aren't references
+    assert.equal(deref('n + 2', ctx), undefined);
+    assert.equal(deref('x', ctx), undefined);
 });
 
 test('subtraction with implicit multiplication', () => {

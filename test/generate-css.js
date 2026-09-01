@@ -47,6 +47,50 @@ test('$ name suffix reads as a unit appended to the calc result', () => {
     }
 });
 
+test('$ reads variables holding dimensioned values as numbers', () => {
+    // `--w: 10px` used to poison the whole expression to 0; the numeric
+    // part now joins the math and units attach back via $ suffixes
+    let cases = [
+        ['--w: 10px; width: $px(w * 2);', 'width:20px;'],
+        ['--w: 10px; width: $(w * 2)px;', 'width:20px;'],
+        ['--gap: 4px; --w: 10px; margin: $px(w + gap);', 'margin:14px;'],
+        ['--angle: 45deg; transform: rotate($deg(angle * 2));', 'rotate(90deg);'],
+        // truly non-numeric values still read as 0
+        ['--c: red; width: $(c + 1);', 'width:1;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64 * 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});
+
+test('$ with a lone variable name acts as a generation-time var()', () => {
+    // values that don't read as math pass through verbatim, replacing
+    // var() ceremony; math-readable values evaluate as before
+    let cases = [
+        ['--c: tomato; color: $c;', 'color:tomato;'],
+        ['--t: rotate(30deg); transform: $t;', 'transform:rotate(30deg);'],
+        ['--w: 10px; width: $w;', 'width:10px;'],
+        ['--s: calc(100px + 10em); width: $s;', 'width:calc(100px + 10em);'],
+        ['--a: b; --b: tomato; color: $a;', 'color:tomato;'],
+        ['--n: 3; width: $n;', 'width:3;'],
+        ['--e: n + 2; --n: 3; width: $e;', 'width:5;'],
+        // an explicit unit or any operation asks for the number
+        ['--w: 10px; width: $px(w);', 'width:10px;'],
+        ['--w: 10px; width: $(w * 2)px;', 'width:20px;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64 * 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});
+
 test('argument-less @P() keeps the last pick pool intact', () => {
     // the no-args branch used to splice the stored pool in place,
     // draining it to a single constant value across cells

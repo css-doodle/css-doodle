@@ -1,6 +1,7 @@
 import { isInvalidNumber } from '../utils/type.js';
 import { last } from '../utils/list.js';
 import { scan } from '../parser/tokenizer.js';
+import parseCompoundValue from '../parser/parse-compound-value.js';
 
 const defaultContext = {
     __proto__: null,
@@ -320,6 +321,30 @@ function lookupFunction(name, ctx) {
     return own(ctx, name) || defaultContext[name] || own(Math, name);
 }
 
+function readDimension(value, ctx) {
+    const { value: num, unit } = parseCompoundValue(String(value));
+    if (!isInvalidNumber(num) && unit !== undefined
+            && own(ctx, unit) === undefined
+            && defaultContext[unit] === undefined
+            && own(Math, unit) === undefined) {
+        return num;
+    }
+}
+
+function evaluateValue(value, ctx, history) {
+    const num = readDimension(value, ctx);
+    if (num !== undefined) {
+        return num;
+    }
+    if (isCycle(value, history)) {
+        return 0;
+    }
+    history.push(value);
+    const result = compileInput(value)(ctx, history);
+    history.pop();
+    return result;
+}
+
 function compileVariable(name) {
     return (ctx, history) => {
         let result = own(ctx, name);
@@ -339,16 +364,11 @@ function compileVariable(name) {
             }
         }
         if (result === undefined) {
+            history.misses = (history.misses || 0) + 1;
             result = 0;
         }
         if (typeof result !== 'number') {
-            if (isCycle(result, history)) {
-                result = 0;
-            } else {
-                history.push(result);
-                result = compileInput(result)(ctx, history);
-                history.pop();
-            }
+            result = evaluateValue(result, ctx, history);
         }
         return result;
     };
@@ -369,7 +389,11 @@ function compileFunction(node) {
         const a = argFns[0];
         return (ctx, history) => {
             const fn = lookupFunction(name, ctx);
-            const output = (typeof fn === 'function') ? fn(a(ctx, history)) : 0;
+            if (typeof fn !== 'function') {
+                history.misses = (history.misses || 0) + 1;
+                return 0;
+            }
+            const output = fn(a(ctx, history));
             return negative ? -output : output;
         };
     }
@@ -378,7 +402,11 @@ function compileFunction(node) {
         const b = argFns[1];
         return (ctx, history) => {
             const fn = lookupFunction(name, ctx);
-            const output = (typeof fn === 'function') ? fn(a(ctx, history), b(ctx, history)) : 0;
+            if (typeof fn !== 'function') {
+                history.misses = (history.misses || 0) + 1;
+                return 0;
+            }
+            const output = fn(a(ctx, history), b(ctx, history));
             return negative ? -output : output;
         };
     }
@@ -389,9 +417,12 @@ function compileFunction(node) {
         for (let i = chain.length - 1; i >= 0; i--) {
             if (!chain[i]) break;
             const fn = lookupFunction(chain[i], ctx);
-            output = (typeof fn === 'function')
-                ? (Array.isArray(output) ? fn(...output) : fn(output))
-                : 0;
+            if (typeof fn !== 'function') {
+                history.misses = (history.misses || 0) + 1;
+                output = 0;
+                continue;
+            }
+            output = Array.isArray(output) ? fn(...output) : fn(output);
         }
         return negative ? -output : output;
     };
@@ -462,21 +493,45 @@ function expand(value, context, history) {
 
     if (typeof v === 'number') {
         return Number(num) * v;
-    } else {
-        if (isCycle(v, history)) {
-            return 0;
-        }
-        history.push(v);
-        const result = Number(num) * compileInput(v)(context, history);
-        history.pop();
-        return result;
     }
+    return Number(num) * evaluateValue(v, context, history);
 }
 
 // The history is a stack of values being expanded; seeing one that is
 // already on the stack means it refers to itself
 function isCycle(value, history) {
     return history.length > 50 || history.includes(value);
+}
+
+const RE_NAME = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+
+// A $ expression that is just the name of a variable acts as a
+// generation-time var(): values that read as math evaluate as usual,
+// anything else — colors, transforms, dimensioned literals — passes
+// through verbatim. Returns undefined when the numeric path applies.
+export function deref(input, context) {
+    let name = String(input).trim();
+    if (!RE_NAME.test(name)) return;
+    let value = own(context, name);
+    // Follow single-name chains: --a: b; --b: tomato
+    for (let i = 0; typeof value === 'string' && i < 50; i++) {
+        let next = value.trim();
+        if (!RE_NAME.test(next) || next === name) break;
+        let found = own(context, next);
+        if (found === undefined) break;
+        name = next;
+        value = found;
+    }
+    if (value === undefined || typeof value === 'number') return;
+    value = String(value).trim();
+    if (readDimension(value, context) !== undefined) {
+        return value;
+    }
+    const history = [];
+    compileInput(value)(context, history);
+    if (history.misses) {
+        return value;
+    }
 }
 
 export default function(input, context) {
