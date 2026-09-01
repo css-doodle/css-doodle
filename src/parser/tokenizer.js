@@ -201,7 +201,7 @@ function last(array) {
 }
 
 function scan(source, options = {}) {
-  let input = String(source).trim();
+  let input = String(source);
   let len = input.length;
   let tokens = [];
   let quote = '';
@@ -214,7 +214,7 @@ function scan(source, options = {}) {
       lineStart = i + 1;
     }
     let pos = [i - lineStart, row];
-    // Char offset of the token's first raw char in the trimmed input.
+    // Char offset of the token's first raw char in the input.
     // Captured here because some branches advance `i` before pushing.
     let index = i;
     let next = input.charCodeAt(i + 1);

@@ -359,11 +359,17 @@ test('token position', () => {
     let tokens = scan('ab\ncd');
     assert.deepEqual(tokens[0].pos, [0, 0]);
     assert.deepEqual(tokens[2].pos, [0, 1]);
+
+    // leading whitespace counts: index and pos reference the input as given
+    let padded = scan('\n  ab\ncd');
+    assert.deepEqual(padded[0].pos, [2, 1]);
+    assert.equal(padded[0].index, 3);
+    assert.deepEqual(padded[2].pos, [0, 2]);
 });
 
 test('token index', () => {
     // For tokens whose value mirrors the raw text, index points at the
-    // token's first char in the trimmed source
+    // token's first char in the source as passed, untrimmed
     let sources = [
         'color: red;',
         '@pick(red, blue)',
@@ -375,11 +381,10 @@ test('token index', () => {
         'grid: 4x4 / 100%;',
     ];
     for (let source of sources) {
-        let input = source.trim();
         for (let t of scan(source)) {
             if (t.isSpace()) continue;
             assert.equal(
-                input.slice(t.index, t.index + t.value.length), t.value,
+                source.slice(t.index, t.index + t.value.length), t.value,
                 `index mismatch for ${t.type} ${JSON.stringify(t.value)} in ${JSON.stringify(source)}`
             );
         }
