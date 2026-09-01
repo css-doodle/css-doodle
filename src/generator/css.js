@@ -764,6 +764,9 @@ class Rules {
         }
       });
     }
+    if (!tokens && this.seed) {
+      coords.updateRandom(this.seed);
+    }
     ;(tokens || this.tokens).forEach(token => {
       switch (token.type) {
         case 'rule': {
@@ -780,10 +783,6 @@ class Rules {
         }
       }
     });
-
-    if (this.seed) {
-      coords.updateRandom(this.seed);
-    }
   }
 
   composeCond(token, coords) {
