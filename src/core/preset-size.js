@@ -1,4 +1,6 @@
 const presets = {
+    __proto__: null,
+
     a0: [ 841, 1189 ],
     a1: [ 594, 841 ],
     a2: [ 420, 594 ],
@@ -12,6 +14,8 @@ const presets = {
 }
 
 const modes = {
+    __proto__: null,
+
     portrait: 'p',
     pt: 'p',
     p: 'p',
@@ -37,7 +41,8 @@ function getPreset(name, mode) {
 }
 
 function isPreset(name) {
-    return !!presets[name];
+    name = String(name).toLowerCase();
+    return name in presets;
 }
 
 export {

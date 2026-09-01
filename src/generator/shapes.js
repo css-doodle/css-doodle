@@ -12,135 +12,36 @@ import { css } from '../utils/tagged-template.js';
 const { cos, sin, abs, atan2, PI } = Math;
 
 const presetShapes = {
-    circle: css`
-    split: 180;
-    scale: .99
-  `,
+    __proto__: null,
 
-    triangle: css`
-    rotate: 30;
-    scale: 1.1;
-    move: 0 .2
-  `,
-
-    pentagon: css`
-    split: 5;
-    rotate: 54
-  `,
-
-    hexagon: css`
-    split: 6;
-    rotate: 30;
-    scale: .98
-  `,
-
-    octagon: css`
-    split: 8;
-    rotate: 22.5;
-    scale: .99
-  `,
-
-    star: css`
-    split: 10;
-    r: cos(5t);
-    rotate: -18;
-    scale: .99
-  `,
-
-    infinity: css`
-    split: 180;
-    scale: .99;
-    x: cos(t)*.99 / (sin(t)^2 + 1);
-    y: x * sin(t)
-  `,
-
-    heart: css`
-    split: 180;
-    rotate: 180;
-    a: cos(t)*13/18 - cos(2t)*5/18;
-    b: cos(3t)/18 + cos(4t)/18;
-    x: (.75 * sin(t)^3) * 1.2;
-    y: (a - b + .2) * -1.1
-  `,
-
-    bean: css`
-    split: 180;
-    r: sin(t)^3 + cos(t)^3;
-    move: -.35 .35;
-  `,
-
-    bicorn: css`
-    split: 180;
-    x: cos(t);
-    y: sin(t)^2 / (2 + sin(t)) - .5
-  `,
-
-    drop: css`
-    split: 180;
-    rotate: 90;
-    scale: .95;
-    x: sin(t);
-    y: (1 + sin(t)) * cos(t) / 1.6
-  `,
-
-    fish: css`
-    split: 240;
-    x: cos(t) - sin(t)^2 / sqrt(2) - .04;
-    y: sin(2t)/2
-  `,
-
-    whale: css`
-    split: 240;
-    rotate: 180;
-    R: 3.4 * (sin(t)^2 - .5) * cos(t);
-    x: cos(t) * R + .75;
-    y: sin(t) * R * 1.2
-  `,
-
-    windmill: css`
-    split: 18;
-    R: seq(.618, 1, 0);
-    T: seq(t-.55, t, t);
-    x: R * cos(T);
-    y: R * sin(T)
-  `,
-
-    vase: css`
-    split: 240;
-    scale: .3;
-    x: sin(4t) + sin(t) * 1.4;
-    y: cos(t) + cos(t) * 4.8 + .3
-  `,
-
+    pentagon: css`split: 5; rotate: 54`,
+    circle:   css`split: 180; scale: .99`,
+    hexagon:  css`split: 6; rotate: 30; scale: .98`,
+    octagon:  css`split: 8; rotate: 22.5; scale: .99`,
+    triangle: css`rotate: 30; scale: 1.1; move: 0 .2`,
+    star:     css`split: 10; r: cos(5t); rotate: -18; scale: .99`,
+    bean:     css`split: 180; r: sin(t)^3 + cos(t)^3; move: -.35 .35`,
+    bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
+    fish:     css`split: 240; x: cos(t) - sin(t)^2 / sqrt(2) - .04; y: sin(2t)/2`,
+    infinity: css`split: 180; scale: .99; x: cos(t)*.99 / (sin(t)^2 + 1); y: x * sin(t)`,
+    drop:     css`split: 180; rotate: 90; scale: .95; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`,
+    vase:     css`split: 240; scale: .3; x: sin(4t) + sin(t) * 1.4; y: cos(t) + cos(t) * 4.8 + .3`,
+    windmill: css`split: 18; R: seq(.618, 1, 0); T: seq(t-.55, t, t); x: R * cos(T); y: R * sin(T)`,
+    whale:    css`split: 240; rotate: 180; R: 3.4 * (sin(t)^2 - .5) * cos(t); x: cos(t) * R + .75; y: sin(t) * R * 1.2`,
+    heart:    css`split: 180; rotate: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: (.75 * sin(t)^3) * 1.2; y: (a - b + .2) * -1.1`,
     clover(k = 3) {
         k = clamp(k, 3, 5);
         if (k == 4) k = 2;
-        return css`
-      split: 240;
-      r: cos(${k}t);
-      scale: .98
-    `;
+        return css`split: 240; r: cos(${k}t); scale: .98`;
     },
-
     hypocycloid(k = 3) {
         k = clamp(k, 3, 5);
         let scale = [.34, .25, .19][k - 3];
-        return css`
-      split: 240;
-      scale: ${scale};
-      k: ${k};
-      x: (k-1)*cos(t) + cos((k-1)*t);
-      y: (k-1)*sin(t) - sin((k-1)*t)
-    `;
+        return css`split: 240; scale: ${scale}; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`;
     },
-
     bud(k = 3) {
         k = clamp(k, 3, 10);
-        return css`
-      split: 240;
-      scale: .8;
-      r: 1 + .2 * cos(${k}t)
-    `;
+        return css`split: 240; scale: .8; r: 1 + .2 * cos(${k}t)`;
     },
 };
 

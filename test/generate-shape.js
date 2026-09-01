@@ -47,3 +47,8 @@ test('scale, rotate and move apply per point', () => {
     assert.equal(plain.points.length, 4);
     assert.equal(moved.points.length, 4);
 });
+
+test('prototype names are not preset shapes', () => {
+    assert.equal(generateShape('constructor').preset, false);
+    assert.equal(generateShape('toString').preset, false);
+});

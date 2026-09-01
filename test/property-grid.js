@@ -164,6 +164,25 @@ test('border ß command', () => {
     compareBorder('1 ß.5px dotted', '.5px dotted');
     compareBorder('1 ß thin', 'thin solid');
     compareBorder('1 ß thin dotted', 'thin dotted');
+    compareBorder('1 ß 1px solid var(--border)', '1px solid var(--border)');
+    compareBorder('1 ß 1px var(--solid-width)', '1px var(--solid-width) solid');
+});
+
+test('border flag matches only standalone border tokens', () => {
+    compare('1 / 100% / var(--border-color)', {
+        clip: true,
+        p3d: false,
+        grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+        size: 'width:100%;height:100%;',
+        fill: 'var(--border-color)'
+    });
+
+    compare('1 border:red', {
+        clip: true,
+        p3d: false,
+        borderLegacy: 'red',
+        grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+    });
 });
 
 test('gap _ command', () => {

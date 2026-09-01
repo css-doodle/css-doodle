@@ -35,7 +35,7 @@ function resolvePlace(value) {
     return [x ?? '50%', y ?? '50%'];
 }
 
-const borderStyles = /solid|dotted|dashed|double|groove|ridge|inset|outset/;
+const borderStyles = /^(solid|dotted|dashed|double|groove|ridge|inset|outset)$/;
 
 // fill in the parts a shorthand border value leaves out:
 // bare numbers get px, a lone color gets 1px, no style gets solid
@@ -52,7 +52,7 @@ function formatBorder(value) {
     if (values.length === 1 && !isWidth) {
         values.push('1px');
     }
-    if (!borderStyles.test(value)) {
+    if (!values.some(v => borderStyles.test(v))) {
         values.push('solid');
     }
     return values.join(' ');
@@ -61,9 +61,9 @@ function formatBorder(value) {
 /*
  * The registry of @-properties: a `@name: value` declaration is only
  * recognized when `name` (or an alias below) exists here, so the
- * pass-through entries register the name and little else
+ * pass-through entries register the name and little else.
  */
-const Property = {};
+const Property = Object.create(null);
 
 // @size: width height? ratio? — presets like `vmin` expand to both
 // dimensions; with `auto` the ratio (or the grid's) becomes aspect-ratio.
@@ -142,7 +142,7 @@ Property.grid = (value, options) => {
             result.flex = 'column';
             return '§';
         }
-        if (/border:?/i.test(item)) {
+        if (/^border(:|$)/i.test(item)) {
             result.borderLegacy = item.split(':')[1] || '';
             return '§';
         }
