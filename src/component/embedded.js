@@ -234,7 +234,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
         parsed.textures = images;
         parsed.width = width;
         parsed.height = height;
-        return generateShaders(parsed, seed, target.type)
+        return generateShaders(parsed, seed)
             .then(tick)
             .then(after)
             .catch(err => {
@@ -256,7 +256,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
 
     if (!host.observers.has(target.selector)) {
         let observer = new ResizeObserver(debounce(() => {
-            if (!ready) return;
+            if (!ready || host.observers.get(target.selector) !== observer) return;
             let rect = element.getBoundingClientRect();
             width = rect.width;
             height = rect.height;
@@ -269,11 +269,8 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
             lastH = height;
             let live = host.shaderRenders.get(target.selector);
             if (live && live.animated) {
-                // live context adapts to the new size on its next frame; just
-                // refresh the textures the loop reads from the closure
                 transform(sources, result => { images = result; });
             } else {
-                // static render was baked to an image and its context freed: redraw
                 run();
             }
         }));
