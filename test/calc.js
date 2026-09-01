@@ -48,10 +48,28 @@ test('cyclic reference', () => {
     compare(['cos(t)', { t: 'x' }], Math.cos(0));
     compare(['cos(t)', { t: '2x' }], Math.cos(0));
     compare(['cos(t)', { t: 'sin(t)' }], Math.cos(0));
-    compare(['cos(t)', { t: 'cos(t)' }], Math.cos(Math.cos(Math.cos(Math.cos(0)))));
+    // Self-reference is cut at its first recurrence
+    compare(['cos(t)', { t: 'cos(t)' }], Math.cos(Math.cos(0)));
     compare(['t', { t: 'sin(t)' }], 0);
     compare(['t', { t: 'sin(t)' }], 0);
     compare(['sin(t)', { t: '2s', s: 't', 'b': 'sin(a)', a: 'b' }], 0);
+});
+
+test('repeated string-valued variables', () => {
+    // The 4th reference to a variable holding a string used to be
+    // mistaken for a cyclic reference and evaluated to 0
+    compare(['x+x+x+x', { x: '5' }], 20);
+    compare(['x*x*x*x', { x: 'y', y: 2 }], 16);
+    compare(['sin(x)+cos(x)+x+x', { x: '1' }], Math.sin(1) + Math.cos(1) + 2);
+});
+
+test('prototype names stay inert', () => {
+    // valueOf(1) used to throw through Object.prototype lookups
+    compare('valueOf(1)', 0);
+    compare('hasOwnProperty(1)', 0);
+    compare('constructor(8)', 0);
+    compare('toString(16)', 0);
+    compare('__proto__', 0);
 });
 
 test('exponentiation', () => {

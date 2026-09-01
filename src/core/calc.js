@@ -4,6 +4,8 @@ import { scan } from '../parser/tokenizer.js';
 import { cache } from '../utils/cache.js';
 
 const defaultContext = {
+    __proto__: null,
+
     'π': Math.PI,
     gcd(a, b) {
         while (b) [a, b] = [b, a % b];
@@ -15,6 +17,8 @@ const defaultContext = {
 };
 
 const operators = {
+    __proto__: null,
+
     '^': 7, '**': 7,
     '*': 6, '/': 6, '÷': 6, '%': 6,
     '&': 5, '|': 5,
@@ -31,6 +35,8 @@ const operators = {
 };
 
 const binary = {
+    __proto__: null,
+
     '+': (a, b) => a + b,
     '-': (a, b) => a - b,
     '*': (a, b) => a * b,
@@ -75,7 +81,13 @@ function tk(type, value) {
 }
 
 function isOperator(value) {
-    return Object.prototype.hasOwnProperty.call(operators, value);
+    return value in operators;
+}
+
+// Own properties only, so names like "valueOf" or "constructor"
+// never resolve through Object.prototype
+function own(obj, name) {
+    return Object.prototype.hasOwnProperty.call(obj, name) ? obj[name] : undefined;
 }
 
 // Push a value token, resolving adjacency with the previous token:
@@ -306,18 +318,18 @@ function parseFunctionArgs(tokens, startIndex) {
 
 // User context first, then built-ins; replaces per-call context merging
 function lookupFunction(name, ctx) {
-    return ctx[name] || defaultContext[name] || Math[name];
+    return own(ctx, name) || defaultContext[name] || own(Math, name);
 }
 
 function compileVariable(name) {
     return (ctx, history) => {
-        let result = ctx[name];
+        let result = own(ctx, name);
 
         if (isInvalidNumber(result)) {
             result = defaultContext[name];
         }
         if (isInvalidNumber(result)) {
-            result = Math[name];
+            result = own(Math, name);
         }
         if (isInvalidNumber(result)) {
             result = expand(name, ctx, history);
@@ -331,12 +343,12 @@ function compileVariable(name) {
             result = 0;
         }
         if (typeof result !== 'number') {
-            history.push(result);
-            if (isCycle(history)) {
+            if (isCycle(result, history)) {
                 result = 0;
-                history.length = 0;
             } else {
+                history.push(result);
                 result = compileInput(result)(ctx, history);
+                history.pop();
             }
         }
         return result;
@@ -441,7 +453,7 @@ function expand(value, context, history) {
     if (!match) return undefined;
 
     const [, num, variable] = match;
-    let v = context[variable];
+    let v = own(context, variable);
     if (v === undefined) {
         v = defaultContext[variable];
     }
@@ -453,23 +465,20 @@ function expand(value, context, history) {
     if (typeof v === 'number') {
         return Number(num) * v;
     } else {
-        history.push(v);
-        if (isCycle(history)) {
-            history.length = 0;
+        if (isCycle(v, history)) {
             return 0;
         }
-        return Number(num) * compileInput(v)(context, history);
+        history.push(v);
+        const result = Number(num) * compileInput(v)(context, history);
+        history.pop();
+        return result;
     }
 }
 
-function isCycle(history) {
-    if (history.length > 50) return true;
-    if (history.length < 4) return false;
-    const tail = history[history.length - 1];
-    for (let i = 2; i <= 4; i++) {
-        if (history[history.length - i] !== tail) return false;
-    }
-    return true;
+// The history is a stack of values being expanded; seeing one that is
+// already on the stack means it refers to itself
+function isCycle(value, history) {
+    return history.length > 50 || history.includes(value);
 }
 
 export default function(input, context) {
