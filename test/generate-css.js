@@ -127,3 +127,17 @@ test('@gap draws a rule in the gap when given border-like values', () => {
         }
     }
 });
+
+test('empty svg functions generate without throwing', () => {
+    // parseSvg with a custom root used to return a block with no
+    // value for empty input, crashing skipHeadSVG
+    let cases = [
+        '@grid: 2 | @svg-filter();',
+        '@grid: 2 | @svg-filter( );',
+        'background: @svg();',
+    ];
+    for (let code of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('2'), 42, 64 * 64);
+        assert.ok(compiled.styles.all.length, code);
+    }
+});

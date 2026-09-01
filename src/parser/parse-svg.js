@@ -362,6 +362,10 @@ function parse(source, root) {
         name: 'svg',
         value: []
     });
+    // walk assigns value only when the input has rules
+    if (!Array.isArray(tokens.value)) {
+        tokens.value = [];
+    }
     return skipHeadSVG(tokens);
 }
 

@@ -13,6 +13,13 @@ test('edge cases', () => {
         value: []
     });
 
+    // custom roots come without a value field
+    compare(['', { type: 'block', name: 'filter' }], {
+        type: 'block',
+        name: 'filter',
+        value: []
+    });
+
     compare('any', {
         type: 'block',
         name: 'svg',
