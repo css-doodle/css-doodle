@@ -49,9 +49,10 @@ class Point {
         this.x = x;
         this.y = y;
         this.extra = angle;
+        this.str = null;
     }
     valueOf() {
-        return this.x + ' ' + this.y;
+        return this.str ??= (this.x + ' ' + this.y);
     }
     toString() {
         return this.valueOf();

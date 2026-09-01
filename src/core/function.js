@@ -165,9 +165,9 @@ function lastOf(stack, n = 1) {
 let seqUid = 0;
 
 function makeSequence(c) {
-    return lazy((_, n, ...actions) => {
-        if (!n || !actions.length) return '';
-        let count = getValue(n());
+    return lazy((_, input, ...actions) => {
+        if (!input || !actions.length) return '';
+        let count = getValue(input());
         let evaluated = count;
         // Anything but plain numbers and 2x3/1-5 range forms goes through calc
         if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {
@@ -178,10 +178,10 @@ function makeSequence(c) {
         }
         let signature = ++seqUid;
         let run = actions.length === 1
-            ? (...args) => getValue(actions[0](...args, signature))
-            : (...args) => actions.map(action => {
-                    return getValue(action(...args, signature))
-                }).join(',');
+            ? (n, x, y, max, X, Y, index) =>
+                getValue(actions[0](n, x, y, max, X, Y, index, signature))
+            : (n, x, y, max, X, Y, index) => actions.map(action =>
+                    getValue(action(n, x, y, max, X, Y, index, signature))).join(',');
         return sequence(evaluated, run).join(c);
     });
 }

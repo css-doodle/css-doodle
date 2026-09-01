@@ -12,7 +12,7 @@ import { cellId } from '../utils/cell.js';
 import { tidyNumber } from '../utils/math.js';
 import { isNil, getValue } from '../utils/type.js';
 import { uniqueId } from '../utils/fn.js';
-import { join, makeArray, removeEmptyValues } from '../utils/list.js';
+import { join, last, makeArray, removeEmptyValues } from '../utils/list.js';
 import {
     isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector
 } from '../utils/selector.js';
@@ -21,6 +21,11 @@ import { css } from '../utils/tagged-template.js';
 
 function isImageValue(value) {
     return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
+}
+
+function hasEntries(obj) {
+    for (let _ in obj) return true;
+    return false;
 }
 
 const NO_SPACE = { noSpace: true };
@@ -52,6 +57,18 @@ function findFunc(name) {
 // plain callee.
 
 const EMPTY_EXTRA = [];
+
+const SEQ_READERS = new Map([
+    [Func.n, 0], [Func.nx, 1], [Func.ny, 2], [Func.N, 3],
+]);
+
+const UNIFORM_KEYS = {
+    __proto__: null,
+    ut: 'time', UT: 'time', t: 'time', T: 'time', ts: 'time', TS: 'time',
+    ux: 'mousex', uy: 'mousey', uw: 'width', uh: 'height',
+    shaders: 'mouse',
+};
+
 const compiledValues = new WeakMap();
 const compiledFuncs = new WeakMap();
 const compiledArguments = new WeakMap();
@@ -88,7 +105,6 @@ function compileValue(value) {
     return compiled;
 }
 
-// func node → (env, extra, inArgument) => { value, extra? }
 function compileFunc(node) {
     let compiled = compiledFuncs.get(node);
     if (compiled === undefined) {
@@ -104,10 +120,20 @@ function compileFunc(node) {
             } else {
                 compiled = () => literal;
             }
+        } else if (SEQ_READERS.has(fn) && !node.arguments.length && !node.variables) {
+            let index = SEQ_READERS.get(fn);
+            let read = env => {
+                let e = last(env.coords.extra);
+                return (e && e.length) ? e[index] : node.name;
+            };
+            compiled = env => ({ value: read(env) });
+            compiled.seqRead = read;
         } else {
             let composable = COMPOSABLE.has(fname);
             let args = node.arguments.map(arg => compileArgument(arg, node));
             let isDollar = fname.charCodeAt(0) === 36 /* $ */;
+            let dollarUnit = (isDollar && fname.length > 1) ? (fname.split('$')[1] ?? '') : '';
+            let uniformKey = UNIFORM_KEYS[fname] ?? null;
             let isMath = fn === MathFunc[fname];
             let calcTemplate = null;
             if ((isDollar || fname === 'calc') && node.arguments.length === 1) {
@@ -125,7 +151,9 @@ function compileFunc(node) {
             }
             compiled = (env, extra, inArgument) => {
                 let { rules, coords } = env;
-                rules.checkUniforms(fname);
+                if (uniformKey) {
+                    rules.uniforms[uniformKey] = true;
+                }
                 if (composable) {
                     let composed = rules.composeComposable(fname, node, coords, env.selector);
                     if (composed !== undefined) {
@@ -145,7 +173,7 @@ function compileFunc(node) {
                     let output;
                     if (context) {
                         output = isDollar
-                            ? rules.callCalc(fname, coords, calcTemplate.template, context, env.contextVariable)
+                            ? rules.callCalc(dollarUnit, coords, calcTemplate.template, context, env.contextVariable)
                             : rules.callFunc(fn, coords, [calcTemplate.template, context], fname, env.contextVariable);
                     } else {
                         let input = spliceTemplateInput(calcTemplate, values);
@@ -199,9 +227,6 @@ function compileFunc(node) {
     return compiled;
 }
 
-// argument node → (env, extra) => raw value. Compile-time facts ride on
-// the evaluator: .cluster, .constant (single literal), .composed
-// (multi-part, its value never re-splits), .split (pre-parsed inputs)
 function compileArgument(argument, parent) {
     let compiled = compiledArguments.get(argument);
     if (compiled === undefined) {
@@ -229,7 +254,8 @@ function compileArgument(argument, parent) {
                 }
                 if (v.type === 'func') {
                     let compiledFn = compileFunc(v);
-                    return (env, extra) => compiledFn(env, extra, true).value;
+                    return compiledFn.seqRead
+                        || ((env, extra) => compiledFn(env, extra, true).value);
                 }
                 return () => undefined;
             });
@@ -242,9 +268,26 @@ function compileArgument(argument, parent) {
                     return value;
                 };
             } else {
+                let segments = [''];
+                let holes = [];
+                for (let i = 0; i < values.length; i++) {
+                    let v = values[i];
+                    if (v.type === 'text' && !isVarRead(v)) {
+                        segments[segments.length - 1] += v.value;
+                    } else {
+                        holes.push(parts[i]);
+                        segments.push('');
+                    }
+                }
                 compiled = (env, extra) => {
                     env.coords.extra.push(extra);
-                    let value = parts.map(part => part(env, extra)).join('');
+                    let value = segments[0];
+                    for (let i = 0; i < holes.length; i++) {
+                        let v = holes[i](env, extra);
+                        // match Array#join: nil renders as nothing
+                        if (v != null) value += v;
+                        value += segments[i + 1];
+                    }
                     env.coords.extra.pop();
                     return value;
                 };
@@ -466,10 +509,14 @@ class Rules {
 
     // the compiled-template variant of the $ branch in callFunc: the
     // expression is stable, the function results ride in as variables
-    callCalc(fname, coords, template, holes, contextVariable = {}) {
-        let context = Object.assign(
-            this.calcContext(coords.count, contextVariable), holes);
-        let unit = (fname.length > 1) ? (fname.split('$')[1] ?? '') : '';
+    callCalc(unit, coords, template, holes, contextVariable = {}) {
+        let hasVars = hasEntries(this.vars['host'])
+            || hasEntries(this.vars['container'])
+            || hasEntries(this.vars[coords.count])
+            || hasEntries(contextVariable);
+        let context = hasVars
+            ? Object.assign(this.calcContext(coords.count, contextVariable), holes)
+            : holes;
         return tidyNumber(calc(template, context)) + unit;
     }
 
@@ -592,18 +639,6 @@ class Rules {
             cell: cellSelector
         };
         return '${' + id + '}';
-    }
-
-    checkUniforms(name) {
-        switch (name) {
-            case 'ut': case 'UT': case 't': case 'T': case 'ts': case 'TS':
-                this.uniforms.time = true; break;
-            case 'ux': this.uniforms.mousex = true; break;
-            case 'uy': this.uniforms.mousey = true; break;
-            case 'uw': this.uniforms.width = true; break;
-            case 'uh': this.uniforms.height = true; break;
-            case 'shaders': this.uniforms.mouse = true; break;
-        }
     }
 
     injectVariables(value, count) {
