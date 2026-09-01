@@ -438,3 +438,19 @@ test('@pattern bodies reach the pattern renderer whole', () => {
     let [pattern] = Object.values(compiled.pattern);
     assert.equal(pattern.code, 'grid: 2; fill: @p(red, blue);');
 });
+
+test('$ math reads dashed variable names', () => {
+    let cases = [
+        ['--font-size: 5; width: $px(font-size * 2);', 'width:10px;'],
+        ['--cell-w: 4; --cell-h: 2; width: $(cell-w * cell-h)px;', 'width:8px;'],
+        ['--cell-w: 4; width: $(cell-w * @calc(2 + 1))px;', 'width:12px;'],
+        ['--a-b: 9; --a: 3; --b: 1; width: $(a-b) $(a - b);', 'width:9 2;'],
+    ];
+    for (let [code, expected] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64 * 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});

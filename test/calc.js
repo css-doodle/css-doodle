@@ -413,3 +413,32 @@ test('a bare reference to a zero-argument function calls it', () => {
     compare('sin + 1', 1);
     compare(['-fn', { fn: x => x }], 0);
 });
+
+test('dashed names the context defines read as one variable', () => {
+    // font-size used to tokenize as font - size; a name the context
+    // has now wins over subtraction, longest defined name first
+    compare(['font-size * 2', { 'font-size': 5 }], 10);
+    compare(['-font-size', { 'font-size': 5 }], -5);
+    compare(['2font-size', { 'font-size': 5 }], 10);
+    compare(['sin(font-size)', { 'font-size': 0 }], 0);
+    compare(['cell-w - cell-h', { 'cell-w': 5, 'cell-h': 2 }], 3);
+    compare(['a-b-c', { 'a-b-c': 7 }], 7);
+    compare(['a-b-c', { 'a-b': 7, c: 1 }], 6);
+    compare(['a-b-c', { a: 7, b: 1, c: 1 }], 5);
+    compare(['w-1', { w: 5 }], 4);
+    compare(['w-1', { w: 5, 'w-1': 7 }], 7);
+    compare(['w - 1', { w: 5, 'w-1': 7 }], 4);
+    compare(['x1-y', { 'x1-y': 3 }], 3);
+    compare(['x1-y', { x1: 3, y: 1 }], 2);
+    compare(['a-b^2', { 'a-b': 3 }], 9);
+    compare(['my-fn(2)', { 'my-fn': x => x * 2 }], 4);
+    compare(['größe-2 * 2', { 'größe-2': 4 }], 8);
+    // through a variable value
+    compare(['a', { a: 'cell-w * 2', 'cell-w': 5 }], 10);
+    // scientific notation stays a number
+    compare(['1e-3', { 'e-3': 9 }], 0.001);
+    // the same input compiles per shape of the context
+    compare(['a-b', { a: 3, b: 1 }], 2);
+    compare(['a-b', { 'a-b': 9, a: 3, b: 1 }], 9);
+    compare(['a-b', { a: 3, b: 1 }], 2);
+});

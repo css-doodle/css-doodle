@@ -101,15 +101,30 @@ function pushValue(tokens, value) {
     tokens.push(tk(NUMBER, value));
 }
 
-// Transform raw tokens into calc-specific tokens
-function transformTokens(rawTokens) {
+// Transform raw tokens into calc-specific tokens. `spans` maps the
+// source index of a dashed name the context defines to its extent, so
+// its tokens collapse into one variable
+function transformTokens(rawTokens, spans) {
     const raw = rawTokens.filter(t => t.type !== 'Space');
     const tokens = [];
     let i = 0;
 
+    const spanAt = j => (spans && raw[j]) ? spans.get(raw[j].index) : undefined;
+    const skipSpan = (j, span) => {
+        while (j < raw.length && raw[j].index < span.end) j++;
+        return j;
+    };
+
     while (i < raw.length) {
         const { type, value } = raw[i];
         const next = raw[i + 1];
+
+        const span = spanAt(i);
+        if (span) {
+            pushValue(tokens, span.name);
+            i = skipSpan(i, span);
+            continue;
+        }
 
         if (type === 'Number') {
             pushValue(tokens, value);
@@ -170,8 +185,12 @@ function transformTokens(rawTokens) {
                         j++;
                     }
                     const operand = raw[j];
+                    const operandSpan = spanAt(j);
 
-                    if (operand && (operand.type === 'Number' || operand.type === 'Word')) {
+                    if (operandSpan) {
+                        pushValue(tokens, (sign === -1 ? '-' : '') + operandSpan.name);
+                        j = skipSpan(j, operandSpan);
+                    } else if (operand && (operand.type === 'Number' || operand.type === 'Word')) {
                         let combined = operand.value;
                         j++;
                         // "-x1" → negated variable x1
@@ -336,7 +355,7 @@ function evaluateValue(value, ctx, history) {
         return 0;
     }
     history.push(value);
-    const result = compileInput(value)(ctx, history);
+    const result = compileInput(value, ctx)(ctx, history);
     history.pop();
     return result;
 }
@@ -504,16 +523,56 @@ function compile(expr) {
     return (ctx, history) => Number(root(ctx, history)) || 0;
 }
 
+const RE_DASHED = /(^|[^\p{L}_])([\p{L}_][\p{L}\p{N}_]*(?:-[\p{L}\p{N}_]+)+)/gu;
+
+function dashedCandidates(input) {
+    let candidates = null;
+    for (let m of input.matchAll(RE_DASHED)) {
+        let name = m[2];
+        let names = [name];
+        for (let k = name.lastIndexOf('-'); k > name.indexOf('-'); k = name.lastIndexOf('-', k - 1)) {
+            names.push(name.slice(0, k));
+        }
+        (candidates ??= []).push({ index: m.index + m[1].length, names });
+    }
+    return candidates;
+}
+
+function compileWith(input, spans) {
+    return compile(toPostfix(transformTokens(scan(String(input)), spans)));
+}
+
 const compiledCache = new Map();
 
-function compileInput(input) {
-    let compiled = compiledCache.get(input);
-    if (compiled === undefined) {
+function compileInput(input, ctx) {
+    let entry = compiledCache.get(input);
+    if (entry === undefined) {
         if (compiledCache.size >= 512) {
             compiledCache.clear();
         }
-        compiled = compile(toPostfix(transformTokens(scan(String(input)))));
-        compiledCache.set(input, compiled);
+        let candidates = dashedCandidates(String(input));
+        entry = candidates ? { candidates, variants: new Map() } : compileWith(input, null);
+        compiledCache.set(input, entry);
+    }
+    if (typeof entry === 'function') {
+        return entry;
+    }
+    let key = '';
+    for (let { names } of entry.candidates) {
+        key += (names.find(name => own(ctx, name) !== undefined) || '') + ',';
+    }
+    let compiled = entry.variants.get(key);
+    if (compiled === undefined) {
+        let chosen = key.split(',');
+        let spans = null;
+        entry.candidates.forEach(({ index }, i) => {
+            let name = chosen[i];
+            if (name) {
+                (spans ??= new Map()).set(index, { name, end: index + name.length });
+            }
+        });
+        compiled = compileWith(input, spans);
+        entry.variants.set(key, compiled);
     }
     return compiled;
 }
@@ -572,7 +631,7 @@ export function deref(input, context) {
         return value;
     }
     const history = [];
-    compileInput(value)(context, history);
+    compileInput(value, context)(context, history);
     if (history.misses) {
         return value;
     }
@@ -650,5 +709,6 @@ export default function(input, context) {
     if (typeof input === 'number' && Number.isFinite(input)) {
         return input;
     }
-    return compileInput(input)(context || {}, []);
+    context = context || {};
+    return compileInput(input, context)(context, []);
 }
