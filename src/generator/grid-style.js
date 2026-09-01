@@ -51,13 +51,13 @@ export default function gridStyleRules({
             height = `calc(${sy} * 100%)`;
         }
         add(':container', css`
-      width: ${width};
-      height: ${height};
-      left: 50%;
-      top: 50%;
-      transform-origin: 0 0;
-      transform: translate(-50%, -50%);
-    `);
+            width: ${width};
+            height: ${height};
+            left: 50%;
+            top: 50%;
+            transform-origin: 0 0;
+            transform: translate(-50%, -50%);
+        `);
     }
     if (flex) {
         add(':container', 'display:flex;');

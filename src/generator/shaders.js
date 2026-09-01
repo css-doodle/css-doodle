@@ -28,10 +28,10 @@ function makeRelease() {
 }
 
 const DEFAULT_VERTEX_SHADER = glsl`#version 300 es
-  in vec4 position;
-  void main() {
-    gl_Position = position;
-  }
+    in vec4 position;
+    void main() {
+        gl_Position = position;
+    }
 `;
 
 const SCREEN_QUAD_VERTICES = new Float32Array([
