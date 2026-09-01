@@ -9,7 +9,7 @@ import generateSvgGradient from '../generator/svg-gradient.js';
 
 import Noise from '../lib/noise.js';
 import calc from './calc.js';
-import { memo, cache } from '../utils/cache.js';
+import { memo } from '../utils/cache.js';
 
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
@@ -60,7 +60,6 @@ function computeVar(input, unit) {
  * against a base — which runs per cell and per sequence iteration — is
  * then plain arithmetic */
 const operations = new Map();
-cache.onClear(() => operations.clear());
 
 function parseOperation(v) {
     let parsed = operations.get(v);

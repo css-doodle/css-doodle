@@ -1,5 +1,4 @@
 import { isEmpty } from '../utils/type.js';
-import { cache } from '../utils/cache.js';
 import { scan, iterator } from './tokenizer.js';
 
 function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
@@ -103,7 +102,6 @@ function joinTokens(tokens) {
 /* Composed values repeat across cells and generations, so each unique
  * (input, options) pair is parsed once. Results are shared: read-only. */
 const memo = new Map();
-cache.onClear(() => memo.clear());
 
 const RE_PLAIN = /[,()'"`\s]/;
 

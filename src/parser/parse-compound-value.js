@@ -1,8 +1,6 @@
-import { cache } from '../utils/cache.js';
 import { iterator, scan } from './tokenizer.js';
 
 const memo = new Map();
-cache.onClear(() => memo.clear());
 
 function parseCached(input) {
     let result = memo.get(input);

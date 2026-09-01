@@ -6,7 +6,6 @@ import parseShapeCommands from '../parser/parse-shape-commands.js';
 import { clamp } from '../utils/math.js';
 import { isEmpty } from '../utils/type.js';
 import calc from '../core/calc.js';
-import { cache } from '../utils/cache.js';
 import { css } from '../utils/tagged-template.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
@@ -242,6 +241,8 @@ function createShapePoints(props, {min, max}) {
     });
 }
 
+const cache = new Map();
+
 export default function generateShape(input, range = {}, modifier) {
     let min = range.min || 3;
     let max = range.max || 3600;
@@ -250,8 +251,9 @@ export default function generateShape(input, range = {}, modifier) {
         + (range.count ? '|' + range.count : '')
         + (range.unit ? '|u' : '')
         + (modifier ? '|m' : '');
-    if (cache.has(key)) {
-        return cache.get(key);
+    let cached = cache.get(key);
+    if (cached !== undefined) {
+        return cached;
     }
     let commands = '';
     let [name, ...args] = parseValueGroup(input);
@@ -274,7 +276,10 @@ export default function generateShape(input, range = {}, modifier) {
         rules = modifier(rules);
     }
     let points = createShapePoints(rules, {min, max});
-    return cache.set(key, {
-        rules, points, preset
-    });
+    if (cache.size >= 4096) {
+        cache.clear();
+    }
+    let result = { rules, points, preset };
+    cache.set(key, result);
+    return result;
 }

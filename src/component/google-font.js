@@ -1,4 +1,3 @@
-import { unique } from '../utils/list.js';
 
 let embedFonts = new Map();
 let linkFonts = new Set();
@@ -115,7 +114,7 @@ async function toBase64(url) {
 export async function loadGoogleFontEmbed(names = Array.from(linkFonts)) {
   if (!Array.isArray(names) || !names.length) return '';
   try {
-    let css = await fetchCSS(unique(names));
+    let css = await fetchCSS([...new Set(names)]);
     let fonts = extractFonts(css);
     let embedded = await Promise.all(
       fonts.map(async ({ family, url, weight, style, range }) => {

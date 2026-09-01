@@ -1,7 +1,6 @@
 import { isInvalidNumber } from '../utils/type.js';
 import { last } from '../utils/list.js';
 import { scan } from '../parser/tokenizer.js';
-import { cache } from '../utils/cache.js';
 
 const defaultContext = {
     __proto__: null,
@@ -433,7 +432,6 @@ function compile(expr) {
 }
 
 const compiledCache = new Map();
-cache.onClear(() => compiledCache.clear());
 
 function compileInput(input) {
     let compiled = compiledCache.get(input);
