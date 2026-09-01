@@ -331,3 +331,28 @@ test('malformed keyframes step stays inside the block', () => {
     assert.equal(k.steps[1].styles[0].property, 'opacity');
 
 });
+
+test('svg times syntax expands through @svg', () => {
+
+    function svgArgs(input) {
+        let [rule] = parseCSS(input);
+        return rule.value[0][0].arguments;
+    }
+
+    function hasM(args) {
+        return args.some(arg =>
+            arg.values.some(v => v.type === 'func' && v.name === '@M'));
+    }
+
+    // times on a block expands into @M
+    assert.ok(hasM(svgArgs(`background: @svg(circle*3 { r: 4 })`)));
+
+    // times inside an inline block riding on a statement value
+    assert.ok(hasM(svgArgs(`background: @svg(path { href: defs g circle*2 {} })`)));
+
+    // the words alone in content are not times syntax
+    let args = svgArgs(`background: @svg(text { content: "3 { times pureName" })`);
+    assert.ok(!hasM(args));
+    assert.ok(args[0].values[0].value.includes('times pureName'));
+
+});

@@ -119,8 +119,16 @@ function separateFuncName(name) {
 }
 
 function hasTimesSyntax(token) {
-    let str = JSON.stringify(token);
-    return str.includes('pureName') && str.includes('times');
+    if (!token) return false;
+    if (token.times) return true;
+    let value = token.value;
+    if (Array.isArray(value)) {
+        return value.some(hasTimesSyntax);
+    }
+    if (typeof value === 'object') {
+        return hasTimesSyntax(value);
+    }
+    return false;
 }
 
 const Node = {
@@ -556,7 +564,7 @@ function expandSvg(cur, raw, args, extra, variables) {
       }
     }
   }
-  if (/\d\s*{/.test(raw) && hasTimesSyntax(parsedSvg)) {
+  if (hasTimesSyntax(parsedSvg)) {
     let svg = generateSvgExtended(parsedSvg) + ')';
     let sub = new Cursor(svg, cur.ctx);
     return parseArguments(sub, 0, extra, variables).args;
