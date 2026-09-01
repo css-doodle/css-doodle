@@ -222,9 +222,7 @@ function isStaticRule(token) {
     if (prop.startsWith('@') || prop.startsWith('--')) return false;
     if (prop.startsWith('animation')) return false;
     if (prop === 'background-size') return false;
-    if (!Array.isArray(token.value)) return false;
-    return token.value.every(group =>
-        group.every(n => n.type === 'text' && typeof n.value !== 'object'));
+    return token.value?.hasFunc === false;
 }
 
 function ruleFlags(prop) {
@@ -901,7 +899,7 @@ class Rules {
             // a keyframes body without functions reads the same for
             // every cell; compose it once
             let isStatic = token.steps.every(step =>
-              step.name.every(group => group.every(n => n.type === 'text'))
+              step.name.hasFunc === false
               && step.styles.every(isStaticRule));
             if (isStatic) {
               let body = null;

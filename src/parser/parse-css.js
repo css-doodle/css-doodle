@@ -1,6 +1,7 @@
 // AST:
 //   rule       { type: 'rule', property, value: Group[] }
-//              plus raw() and rawValue() reading the source span
+//              plus raw() and rawValue() reading the source span;
+//              Group[] carries hasFunc (any func node in any group)
 //   at-rule    { type: 'at-rule', property: '', value: string }
 //   pseudo     { type: 'pseudo', selector, selectors: string[], styles }
 //   cond       { type: 'cond', name, addition, segments, position, styles }
@@ -181,6 +182,7 @@ function parseValue(cur, extra, breakOn) {
     let skip = true;
     let paren = 0;
     let quote = false;
+    let hasFunc = false;
 
     const flush = () => {
         if (buf.length) {
@@ -223,6 +225,7 @@ function parseValue(cur, extra, breakOn) {
             if ((v === '@' || v === '$') && isFuncStart(cur)) {
                 flush();
                 group.push(parseFunc(cur, extra));
+                hasFunc = true;
                 continue;
             }
             if (tok.status === 'open') quote = true;
@@ -243,6 +246,7 @@ function parseValue(cur, extra, breakOn) {
     }
 
     flush();
+    groups.hasFunc = hasFunc;
     return groups;
 }
 
