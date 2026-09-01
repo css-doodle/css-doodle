@@ -69,15 +69,11 @@ function warn(ctx, msg, pos) {
     }
 }
 
-function isNumber(n) {
-    return !isNaN(n);
-}
-
 function getTextValue(input) {
-    if (input.trim().length) {
-        return isNumber(+input) ? +input : input.trim();
-    }
-    return input;
+    let text = input.trim();
+    if (!text.length) return input;
+    let n = +text;
+    return Number.isNaN(n) ? text : n;
 }
 
 function isPairOf(c, n) {
@@ -212,12 +208,8 @@ function parseValue(cur, extra, breakOn) {
         let v = tok.value;
 
         if (tok.isSpace()) {
-            if (skip) {
-                cur.next();
-                continue;
-            }
             cur.next();
-            buf += quote ? v : ' ';
+            if (!skip) buf += quote ? v : ' ';
             continue;
         }
         skip = false;
@@ -303,7 +295,7 @@ function parseFunc(cur, extra, variables = {}) {
     while (!cur.end()) {
         let t = cur.peek();
         if (t.index !== end) break;
-        if (t.isWord() && t.value.includes('$') && splitDollar(cur)) {
+        if (splitDollar(cur)) {
             t = cur.peek();
         }
         if (t.isSymbol('(') || !RE_NAME_TOKEN.test(t.value)) {
@@ -547,6 +539,7 @@ function quotesWrapWhole(values, quote) {
 function parseDoodleBody(cur, start) {
     let paren = 0;
     let quote = false;
+    let end = cur.source.length;
     while (!cur.end()) {
         let tok = cur.peek();
         if (tok.status === 'open') {
@@ -557,15 +550,15 @@ function parseDoodleBody(cur, start) {
             paren++;
         } else if (!quote && tok.isSymbol(')')) {
             if (paren === 0) {
-                let body = substitutePi(cur.source.slice(start, tok.index), cur.source[start - 1]);
+                end = tok.index;
                 cur.next();
-                return [normalizeArgument([Node.text(getTextValue(body))])];
+                break;
             }
             paren--;
         }
         cur.next();
     }
-    let body = substitutePi(cur.source.slice(start), cur.source[start - 1]);
+    let body = substitutePi(cur.source.slice(start, end), cur.source[start - 1]);
     return [normalizeArgument([Node.text(getTextValue(body))])];
 }
 
@@ -673,28 +666,18 @@ function readVariable(extra, name) {
 function evaluateValue(values, extra, ctx) {
     for (let v of values) {
         if (v.type === 'text' && v.value) {
-            let vars = parseVar(v.value);
-            v.value = vars.reduce((ret, p) => {
+            let statements = [];
+            for (let p of parseVar(v.value)) {
                 let rule = readVariable(extra, p.name);
-                if (!rule && p.fallback) {
-                    p.fallback.every(n => {
-                        let other = readVariable(extra, n.name);
-                        if (other) {
-                            rule = other;
-                            return false;
-                        }
-                        return true;
-                    });
+                for (let n of p.fallback || []) {
+                    if (rule) break;
+                    rule = readVariable(extra, n.name);
                 }
-                let parsed;
                 try {
-                    parsed = parseSource(rule, extra, ctx);
+                    statements.push(...parseSource(rule, extra, ctx));
                 } catch (e) {}
-                if (parsed) {
-                    ret.push(...parsed);
-                }
-                return ret;
-            }, []);
+            }
+            v.value = statements;
         }
         if (v.type === 'func' && v.arguments) {
             for (let arg of v.arguments) {
@@ -913,13 +896,9 @@ function skipTag(cur) {
     cur.next();
 }
 
-function parseStatements(cur, extra) {
-    return parseBlockBody(cur, extra, 'top');
-}
-
 function parseSource(input, extra, ctx) {
-    let source = String(input === undefined || input === null ? '' : input).trim();
-    return parseStatements(new Cursor(source, ctx), extra);
+    let source = String(input ?? '').trim();
+    return parseBlockBody(new Cursor(source, ctx), extra, 'top');
 }
 
 export default function parse(input, extra) {

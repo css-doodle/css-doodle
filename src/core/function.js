@@ -52,10 +52,6 @@ function compute(op, a, b) {
     }
 }
 
-function computeVar(input, unit) {
-    return [`calc(${input})`, unit];
-}
-
 // an operator argument ('*10', '%360deg', '-.5') parses once; computing
 // against a base — which runs per cell and per sequence iteration — is
 // then plain arithmetic
@@ -92,9 +88,8 @@ function calcValue(base, v) {
         // prefix op: base comes first; suffix op: base comes last
         let [a, b] = prefix ? [base, value] : [value, base];
         if (typeof base === 'string' && RE_VAR.test(base)) {
-            return op === '%'
-                ? computeVar(`mod(${a}, ${b})`, unit)
-                : computeVar(`${a} ${op} ${b}`, unit);
+            let expr = (op === '%') ? `mod(${a}, ${b})` : `${a} ${op} ${b}`;
+            return [`calc(${expr})`, unit];
         }
         return [compute(op, Number(a), Number(b)), unit];
     }
@@ -138,10 +133,6 @@ function map2d(value, min, max, amp = 1) {
     let normalized = (value + v) / (2 * v);
     normalized = clamp(normalized, 0, 1);
     return lerp(normalized, min * amp, max * amp);
-}
-
-function flipValue(num) {
-    return -1 * num;
 }
 
 const STACK_LIMIT = 1024;
@@ -188,7 +179,7 @@ function makeSequence(c) {
 }
 
 // The @n family: with no sequence tuple in scope the source token is
-// echoed back as-is (a non-function return passes through applyFunc).
+// echoed back as-is (a non-function return passes through callFunc).
 // Argument composition pushes an empty tuple, which is no context either.
 function seq(token, make) {
     return ({ extra }) => {
@@ -294,10 +285,10 @@ const invertPath = transformPath((name, value) =>
     [INVERT_COMMAND[name] || name, value]);
 
 const flipH_path = transformPath((name, value) =>
-    (name === 'h' || name === 'H') ? [name, value.map(flipValue)] : [name, value]);
+    (name === 'h' || name === 'H') ? [name, value.map(n => -n)] : [name, value]);
 
 const flipV_path = transformPath((name, value) =>
-    (name === 'v' || name === 'V') ? [name, value.map(flipValue)] : [name, value]);
+    (name === 'v' || name === 'V') ? [name, value.map(n => -n)] : [name, value]);
 
 function tryDecode(raw, decode) {
     let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
@@ -555,8 +546,9 @@ Function.calc = () => {
 
 Function.hex = () => {
     return value => {
-        let n = parseInt(getValue(value));
-        return Number.isNaN(n) ? getValue(value) : n.toString(16);
+        value = getValue(value);
+        let n = parseInt(value);
+        return Number.isNaN(n) ? value : n.toString(16);
     };
 };
 
@@ -771,19 +763,11 @@ Function.linearGradient = lazy((_, ...args) => generateSvgGradient('linearGradie
 
 Function.radialGradient = lazy((_, ...args) => generateSvgGradient('radialGradient', args));
 
-Function.doodle = () => {
+Function.doodle = Function.shaders = Function.pattern = () => {
     return (...args) => args.join(',');
 };
 
-Function.shaders = () => {
-    return (...args) => args.join(',');
-};
-
-Function.pattern = () => {
-    return (...args) => args.join(',');
-};
-
-Function.once = lazy(({context, extra, position}, ...args) => {
+Function.once = lazy(({ context, position }, ...args) => {
     let counter = 'once-counter' + position;
     return context[counter] ??= args.map(input => getValue(input())).join(',');
 });

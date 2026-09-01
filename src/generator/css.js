@@ -226,11 +226,14 @@ function compileFunc(node) {
     return compiled;
 }
 
+function isVarRead(v) {
+    return v.type === 'text' && /^\-\-\w/.test(v.value);
+}
+
 function compileArgument(argument, parent) {
     let compiled = compiledArguments.get(argument);
     if (compiled === undefined) {
         let { values } = argument;
-        let isVarRead = v => v.type === 'text' && /^\-\-\w/.test(v.value);
         if (values.length === 1 && values[0].type === 'text' && !isVarRead(values[0])) {
             let value = values[0].value;
             let type = typeof value;
@@ -240,26 +243,30 @@ function compileArgument(argument, parent) {
                 compiled.split = parseValueGroup(value, NO_SPACE);
             }
         } else {
-            let parts = values.map(v => {
-                if (v.type === 'text') {
-                    if (isVarRead(v)) {
-                        if (parent && parent.name === '@var') {
-                            return () => v.value;
-                        }
-                        return env => env.rules.readVar(v.value, env.coords, env.contextVariable);
-                    }
-                    let text = v.value;
-                    return () => text;
+            let segments = [''];
+            let holes = [];
+            let hasVarRead = false;
+            for (let v of values) {
+                if (v.type === 'text' && !isVarRead(v)) {
+                    segments[segments.length - 1] += v.value;
+                    continue;
                 }
+                segments.push('');
                 if (v.type === 'func') {
                     let compiledFn = compileFunc(v);
-                    return compiledFn.seqRead
-                        || ((env, extra) => compiledFn(env, extra, true).value);
+                    holes.push(compiledFn.seqRead
+                        || ((env, extra) => compiledFn(env, extra, true).value));
+                } else if (v.type === 'text') {
+                    hasVarRead = true;
+                    holes.push((parent && parent.name === '@var')
+                        ? () => v.value
+                        : env => env.rules.readVar(v.value, env.coords, env.contextVariable));
+                } else {
+                    holes.push(() => undefined);
                 }
-                return () => undefined;
-            });
-            if (parts.length === 1) {
-                let single = parts[0];
+            }
+            if (values.length === 1) {
+                let single = holes[0];
                 compiled = (env, extra) => {
                     env.coords.extra.push(extra);
                     let value = single(env, extra);
@@ -267,17 +274,6 @@ function compileArgument(argument, parent) {
                     return value;
                 };
             } else {
-                let segments = [''];
-                let holes = [];
-                for (let i = 0; i < values.length; i++) {
-                    let v = values[i];
-                    if (v.type === 'text' && !isVarRead(v)) {
-                        segments[segments.length - 1] += v.value;
-                    } else {
-                        holes.push(parts[i]);
-                        segments.push('');
-                    }
-                }
                 compiled = (env, extra) => {
                     env.coords.extra.push(extra);
                     let value = segments[0];
@@ -292,42 +288,25 @@ function compileArgument(argument, parent) {
                 };
                 compiled.composed = true;
             }
-            if (!argument.cluster) {
-                compiled.calcTemplate = buildCalcTemplate(values, parts);
+            // `--x` reads resolve through readVar, outside the template
+            if (!argument.cluster && !hasVarRead) {
+                let template = compileTemplate(segments);
+                if (template !== null) {
+                    compiled.calcTemplate = {
+                        template: template.template,
+                        names: template.names,
+                        signSensitive: template.signSensitive,
+                        segments,
+                        holes,
+                        singlePart: values.length === 1,
+                    };
+                }
             }
         }
         compiled.cluster = argument.cluster;
         compiledArguments.set(argument, compiled);
     }
     return compiled;
-}
-
-function buildCalcTemplate(values, parts) {
-    let segments = [''];
-    let holes = [];
-    for (let i = 0; i < values.length; i++) {
-        let v = values[i];
-        if (v.type === 'text' && !/^\-\-\w/.test(v.value)) {
-            segments[segments.length - 1] += v.value;
-        } else if (v.type === 'func') {
-            holes.push(parts[i]);
-            segments.push('');
-        } else {
-            // `--x` reads resolve through readVar, outside the template
-            return null;
-        }
-    }
-    if (!holes.length) return null;
-    let compiled = compileTemplate(segments);
-    if (compiled === null) return null;
-    return {
-        template: compiled.template,
-        names: compiled.names,
-        signSensitive: compiled.signSensitive,
-        segments,
-        holes,
-        singlePart: values.length === 1,
-    };
 }
 
 function evalTemplateHoles({ holes, names, signSensitive }, env, extra) {
@@ -488,19 +467,6 @@ class Rules {
         );
     }
 
-    applyFunc(fn, coords, args, fname, contextVariable = {}) {
-        let input = [];
-        for (let arg of args) {
-            let type = typeof arg.value;
-            if (!arg.cluster && (type === 'number' || type === 'string')) {
-                input.push(...parseValueGroup(arg.value, NO_SPACE));
-            } else if (!isNil(arg.value)) {
-                input.push(getValue(arg.value));
-            }
-        }
-        return this.callFunc(fn, coords, removeEmptyValues(input), fname, contextVariable);
-    }
-
     calcContext(count, contextVariable) {
         let group = this.scopedVars(count, contextVariable);
         let context = {};
@@ -573,7 +539,7 @@ class Rules {
     }
 
     composeComposable(fname, node, coords, selector) {
-        let parts = (node.arguments || []).map(a => getValue((a.values || [])[0]));
+        let parts = node.arguments.map(a => getValue(a.values[0]));
         let temp;
         if (parts.length && /^\d/.test(parts[0])) {
             temp = parts[0];
@@ -593,17 +559,14 @@ class Rules {
         }
     }
 
-    composeArgument(argument, coords, extra = [], parent, contextVariable, selector) {
-        let compiled = compileArgument(argument, parent);
+    // a cond argument composed for the cell; composed and cluster values
+    // stay boxed so they read as one argument
+    composeArgument(argument, coords) {
+        let compiled = compileArgument(argument);
         let value = compiled.constant
             ? compiled()
-            : compiled({ rules: this, coords, contextVariable, selector }, extra);
-        // the wrapped shape applyFunc interprets: composed values stay boxed
-        // so they read as one argument
-        return {
-            cluster: compiled.cluster,
-            value: compiled.composed ? { value } : value,
-        };
+            : compiled({ rules: this, coords }, EMPTY_EXTRA);
+        return (compiled.composed || compiled.cluster) ? { value } : value;
     }
 
     composeDoodle(doodle, arg, upextra) {
@@ -665,23 +628,14 @@ class Rules {
         return result;
     }
 
-    composeValue(value, coords, contextVariable = {}, selector) {
-        if (!Array.isArray(value)) {
-            return {
-                value: '',
-                extra: '',
-            }
-        }
-        return compileValue(value)({ rules: this, coords, contextVariable, selector });
-    }
-
     getComposedValue(value, coords, context, selector) {
         let extra;
         let group = [];
         if (Array.isArray(value)) {
-            let ctx = context || {};
+            let env = { rules: this, coords, contextVariable: context || {}, selector };
             for (let v of value) {
-                let composed = this.composeValue(v, coords, ctx, selector);
+                if (!Array.isArray(v)) continue;
+                let composed = compileValue(v)(env);
                 if (composed.value) group.push(composed.value);
                 if (composed.extra) extra = composed.extra;
             }
@@ -704,18 +658,15 @@ class Rules {
         }
         let info = this.memo.get(token);
         if (!info) {
+            // static rules compose once per selector
             info = {
-                static: isStaticRule(token),
                 flags: ruleFlags(token.property),
-                cache: null,
+                cache: isStaticRule(token) ? new Map() : null,
             };
             this.memo.set(token, info);
         }
-        if (!info.static) {
-            return this.composeRuleValue(token, coords, selector, info.flags);
-        }
         if (!info.cache) {
-            info.cache = new Map();
+            return this.composeRuleValue(token, coords, selector, info.flags);
         }
         let cached = info.cache.get(selector);
         if (cached === undefined) {
@@ -900,19 +851,18 @@ class Rules {
         this.vars[key][prop] = value;
     }
 
-    preComposeRule(token, _coords, selector) {
-        let coords = Object.assign({}, _coords);
+    preComposeRule(token, coords, selector) {
         let prop = token.property;
         let context = this.scopedVars(coords.count);
         if (/^\-\-/.test(prop)) {
             let value = this.getComposedValue(token.value, coords, context, selector).value;
-            this.composeVars(_coords, selector, prop, value);
+            this.composeVars(coords, selector, prop, value);
         }
         switch (prop) {
             case '@grid': {
                 let value = this.getComposedValue(token.value, coords, context, selector).value;
                 let transformed = Property['grid'](value, {
-                    maxGrid: _coords.maxGrid
+                    maxGrid: coords.maxGrid
                 });
                 this.grid = transformed.grid;
                 break;
@@ -998,7 +948,7 @@ class Rules {
             if (n.keyword) {
                 parts.push(n.keyword);
             } else if (Array.isArray(n.arguments)) {
-                let names = n.arguments.map(arg => getValue(this.composeArgument(arg, coords).value));
+                let names = n.arguments.map(arg => getValue(this.composeArgument(arg, coords)));
                 parts.push('(' + names.join(', ') + ')');
             }
         }
@@ -1009,12 +959,21 @@ class Rules {
         let name = token.name.slice(1);
         let fn = Selector[name];
         if (!fn) return;
+        let input = [];
         let group = token.segments.find(n => n.arguments);
-        let args = group
-            ? group.arguments.map(arg => this.composeArgument(arg, coords))
-            : [];
+        if (group) {
+            for (let arg of group.arguments) {
+                let v = this.composeArgument(arg, coords);
+                if (typeof v === 'number' || typeof v === 'string') {
+                    input.push(...parseValueGroup(v, NO_SPACE));
+                } else if (!isNil(v)) {
+                    input.push(getValue(v));
+                }
+            }
+            input = removeEmptyValues(input);
+        }
         coords.position = token.position;
-        let matched = this.applyFunc(fn, coords, args, name);
+        let matched = this.callFunc(fn, coords, input, name);
         if (token.segments[0] && token.segments[0].keyword === 'not') {
             matched = !matched;
         }
