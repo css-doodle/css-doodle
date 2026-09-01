@@ -61,7 +61,8 @@ function computeVar(input, unit) {
 // then plain arithmetic
 const operations = new Map();
 
-function parseOperation(v) {
+function parseOperation(input) {
+    let v = (typeof input === 'string') ? input : String(input);
     let parsed = operations.get(v);
     if (parsed === undefined) {
         let prefix = RE_OP_PREFIX.test(v);

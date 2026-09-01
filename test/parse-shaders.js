@@ -158,3 +158,15 @@ test('ignore comments', () => {
     }
     compare(input, result);
 });
+
+test('a directive at the very end of the source', () => {
+    // reading the line of the token after `#...` assumed there was one
+    compare('#endif', {
+        fragment: '\n#endif',
+        textures: []
+    });
+    compare('void main(){}\n#endif', {
+        fragment: 'void main(){}\n#endif',
+        textures: []
+    });
+});

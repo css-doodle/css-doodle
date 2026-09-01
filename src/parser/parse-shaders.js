@@ -58,7 +58,7 @@ function parse(input) {
             if (!identifier || !identifier.startsWith('texture')) {
                 if (curr.isWord() && curr.value.startsWith('#')) {
                     tokens.push(lineBreak());
-                    line = next.pos[1];
+                    line = (next || curr).pos[1];
                 }
             }
             tokens.push(curr);

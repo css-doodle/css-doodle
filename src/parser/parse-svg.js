@@ -307,7 +307,7 @@ function getSelectors(tokens) {
             hasSymbol = false;
         }
     }
-    return result;
+    return result.filter(name => name.length);
 }
 
 function parseViewBox(value, tokens) {

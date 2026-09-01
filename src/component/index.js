@@ -450,7 +450,8 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         reflow() {
-            this.shadowRoot.querySelector('cssd-grid').offsetWidth;
+            let el = this.shadowRoot.querySelector('cssd-grid') || this;
+            el.offsetWidth;
         }
 
         cleanup() {

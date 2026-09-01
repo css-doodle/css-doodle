@@ -570,3 +570,25 @@ test('no id for multiple inline defs child elements', () => {
     `)
     );
 });
+
+test('a selector of nothing but spaces opens no block', () => {
+    // getSelectors returned [''] for a whitespace-only fragment, which
+    // reached the generator as a tag with no name and threw
+    compare(
+        'text `content: {hi`;',
+        trim(`<svg xmlns="http://www.w3.org/2000/svg" text \`content=" hi\`"></svg>`)
+    );
+    compare(
+        'a { { } }',
+        trim(`<svg xmlns="http://www.w3.org/2000/svg"><a/></svg>`)
+    );
+    // named selectors are untouched
+    compare(
+        'g circle { fill: red }',
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <g><circle fill="red"/></g>
+      </svg>
+    `)
+    );
+});

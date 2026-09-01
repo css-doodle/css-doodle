@@ -306,3 +306,37 @@ test('@calc and Math functions evaluate templated arguments the same', () => {
         );
     }
 });
+
+test('function results that are not plain strings reach calc functions safely', () => {
+    // @plot returns a Point object and the list functions return arrays;
+    // both used to crash parseOperation, which read them as strings and
+    // then called .slice()/.trim() on them
+    let cases = [
+        'width: @i(@plot(r 5));',
+        'width: @x(@plot(r 5));',
+        'width: @dx(@plot(r 5));',
+        'width: @ut(@plot(r 5));',
+        'width: @x(@mirror(1%,2%));',
+        'width: @i(@cycle(1%,2%));',
+        'width: @x(@cycle(1*,2*));',
+    ];
+    for (let code of cases) {
+        assert.doesNotThrow(
+            () => generateCss(parseCss(code), parseGrid('1'), 42, 64), code
+        );
+    }
+    // the operator argument forms keep reading the same
+    let same = [
+        ['width: @i(*10);', 'width:10;'],
+        ['width: @i(+2);', 'width:3;'],
+        ['width: @i(2*);', 'width:2;'],
+        ['width: @i(%360deg);', 'width:1deg;'],
+    ];
+    for (let [code, expected] of same) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        assert.ok(
+            compiled.styles.all.includes(expected),
+            `${code} -> ${compiled.styles.all}`
+        );
+    }
+});
