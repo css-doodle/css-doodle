@@ -108,3 +108,22 @@ test('argument-less @P() keeps the last pick pool intact', () => {
         }
     }
 });
+
+test('@gap draws a rule in the gap when given border-like values', () => {
+    let cases = [
+        ['@gap: 4px;', ['gap:4px;'], ['row-rule']],
+        ['@gap: 4px red;', ['gap:4px;', 'row-rule:red solid 4px;column-rule:red solid 4px;'], []],
+        ['@gap: red;', ['gap:1px;', 'row-rule:red solid 1px;column-rule:red solid 1px;'], []],
+        ['@gap: 4px 8px red;', ['gap:4px 8px;', 'row-rule:red solid 4px;column-rule:red solid 8px;'], []],
+        ['@grid: 2 / 100px _4px red;', ['gap: 4px;', 'row-rule: red solid 4px;column-rule: red solid 4px;'], []],
+    ];
+    for (let [code, expected, absent] of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('2'), 42, 64 * 64);
+        for (let e of expected) {
+            assert.ok(compiled.styles.all.includes(e), `${code} -> ${compiled.styles.all}`);
+        }
+        for (let a of absent) {
+            assert.ok(!compiled.styles.all.includes(a), `${code} -> ${compiled.styles.all}`);
+        }
+    }
+});

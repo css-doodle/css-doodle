@@ -196,6 +196,35 @@ test('gap _ command', () => {
     }
     compareGap('1 _1px', '1px');
     compareGap('1 _.5px', '.5px');
+    compareGap('1 _2', '2px');
+    compareGap('1 _1em 2em', '1em 2em');
+});
+
+test('gap _ command with rule', () => {
+    function compareGapRule(input, gap, rowRule, columnRule = rowRule) {
+        compare(input, {
+            clip: true,
+            p3d: false,
+            gap,
+            rowRule,
+            columnRule,
+            grid: { count: 1, ratio: 1, x: 1, y: 1, z: 1 },
+        });
+    }
+    // a rule with no width of its own fills the gap
+    compareGapRule('1 _4px red', '4px', 'red solid 4px');
+    compareGapRule('1 _4px dashed red', '4px', 'dashed red 4px');
+    compareGapRule('1 _4px 8px red', '4px 8px', 'red solid 4px', 'red solid 8px');
+    compareGapRule('1 _var(--g) red', 'var(--g)', 'red solid var(--g)');
+    // % is not a valid line width, hairline fallback
+    compareGapRule('1 _2% red', '2%', 'red solid 1px');
+    // explicit width wins
+    compareGapRule('1 _4px solid red 2px', '4px', 'solid red 2px');
+    compareGapRule('1 _4px solid red 2', '4px', 'solid red 2px');
+    compareGapRule('1 _4px red var(--w)', '4px', 'red var(--w) solid');
+    // a missing gap takes the rule width
+    compareGapRule('1 _red', '1px', 'red solid 1px');
+    compareGapRule('1 _thick red', '5px', 'thick red solid');
 });
 
 test('backdrop filter | command', () => {

@@ -40,7 +40,8 @@ const borderStyles = /^(solid|dotted|dashed|double|groove|ridge|inset|outset)$/;
 // fill in the parts a shorthand border value leaves out:
 // bare numbers get px, a lone color gets 1px, no style gets solid
 function formatBorder(value) {
-    let values = parseValueGroup(value, { symbol: ' ' });
+    // copy: parseValueGroup results are cached and shared
+    let values = parseValueGroup(value, { symbol: ' ' }).slice();
     for (let i = 0; i < values.length; i++) {
         if (Number(values[i])) {
             values[i] += 'px';
@@ -56,6 +57,49 @@ function formatBorder(value) {
         values.push('solid');
     }
     return values.join(' ');
+}
+
+const lengthValue = /^([.\d]|calc\(|var\()/;
+const ruleWidths = /^(thin|medium|thick)$/;
+const ruleWidthPx = { thin: '1px', medium: '3px', thick: '5px' };
+
+// leading length values are the gap, everything after draws a rule
+// (gap decoration) inside it, with the same leniency as border
+function formatGap(value) {
+    let values = parseValueGroup(value, { symbol: ' ' }).slice();
+    let gap = [];
+    while (gap.length < 2 && values.length && lengthValue.test(values[0])) {
+        let head = values.shift();
+        gap.push(/^[.\d]+$/.test(head) ? head + 'px' : head);
+    }
+    let rowRule = '', columnRule = '';
+    if (values.length) {
+        for (let i = 0; i < values.length; i++) {
+            if (Number(values[i])) {
+                values[i] += 'px';
+                break;
+            }
+        }
+        if (!values.some(v => borderStyles.test(v))) {
+            values.push('solid');
+        }
+        let width = values.find(v => lengthValue.test(v) || ruleWidths.test(v));
+        if (width === undefined) {
+            // a rule with no width of its own fills its gap
+            // (% can't be a line width and falls back to a hairline)
+            let [row = '1px', column = row] = gap.map(v => /%/.test(v) ? '1px' : v);
+            rowRule = values.concat(row).join(' ');
+            columnRule = values.concat(column).join(' ');
+            width = row;
+        } else {
+            rowRule = columnRule = values.join(' ');
+        }
+        if (!gap.length) {
+            // a missing gap takes the rule width
+            gap.push(ruleWidthPx[width] || width);
+        }
+    }
+    return { gap: gap.join(' '), rowRule, columnRule };
 }
 
 const Property = Object.create(null);
@@ -143,7 +187,15 @@ Property.grid = (value, options) => {
         switch (group) {
             case '+': result.scale = value; break;
             case '~': result.translate = value; break;
-            case '_': result.gap = value; break;
+            case '_': {
+                let { gap, rowRule, columnRule } = formatGap(value);
+                if (gap) result.gap = gap;
+                if (rowRule) {
+                    result.rowRule = rowRule;
+                    result.columnRule = columnRule;
+                }
+                break;
+            }
             case '|': result.backdropFilter = value; break;
             case '^': result.enlarge = parseValueGroup(value, { symbol: ' ' }); break;
             case '∆': result.persp = parseValueGroup(value, { symbol: ' ' }); break;
@@ -167,7 +219,7 @@ Property.grid = (value, options) => {
     return result;
 };
 
-Property.gap = value => value;
+Property.gap = value => formatGap(value);
 
 Property.seed = value => value;
 

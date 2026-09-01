@@ -5,7 +5,7 @@ import { css } from '../utils/tagged-template.js';
  */
 export default function gridStyleRules({
     fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp,
-    flex, p3d, border, borderLegacy, gap, backdropFilter
+    flex, p3d, border, borderLegacy, gap, rowRule, columnRule, backdropFilter
 }) {
     let rules = [];
     let add = (selector, rule) => rules.push([selector, rule]);
@@ -79,6 +79,9 @@ export default function gridStyleRules({
     }
     if (gap) {
         add(':container', `gap: ${gap};`);
+    }
+    if (rowRule) {
+        add(':container', `row-rule: ${rowRule};column-rule: ${columnRule};`);
     }
     if (backdropFilter) {
         add('cssd-b', css`

@@ -663,7 +663,12 @@ class Rules {
         case 'gap': {
           rule = '';
           if (!this.isGapSet) {
-            this.addRule(':container', `gap:${transformed};`);
+            if (transformed.gap) {
+              this.addRule(':container', `gap:${transformed.gap};`);
+            }
+            if (transformed.rowRule) {
+              this.addRule(':container', `row-rule:${transformed.rowRule};column-rule:${transformed.columnRule};`);
+            }
             this.isGapSet = true;
           }
           break;
