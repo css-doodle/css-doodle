@@ -440,6 +440,15 @@ test('host selectors fold pseudo-classes into :host()', () => {
         [':host-context(.d):hover']);
 });
 
+test('host selector folding leaves unrecognised compounds untouched', () => {
+    let selectors = selector => parseCSS(`${selector} { x: y }`)[0].selectors;
+    assert.deepEqual(selectors(`:doodle#hero.foo:hover`), [':host(#hero.foo:hover)']);
+    assert.deepEqual(selectors(`:doodle:hover, .x`), [':host(:hover)', '& .x']);
+    assert.deepEqual(selectors(`:doodle:not(:is(:where(.a, .b))):focus`),
+        [':host:not(:is(:where(.a, .b))):focus']);
+    assert.deepEqual(selectors(`:doodle[title="]"]:hover`), [':host[title="]"]:hover']);
+});
+
 test(':container(...) reads as a compound on the grid', () => {
     let [pseudo] = parseCSS(`:container(.x) .y, :container { :hover { x: y } }`);
     assert.deepEqual(pseudo.selectors, [':container.x .y', ':container']);

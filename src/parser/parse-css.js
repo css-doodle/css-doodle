@@ -34,7 +34,7 @@ import { isSpecialSelector } from '../utils/selector.js';
 const PI = String(Math.PI);
 const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
 const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
-const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?((?:\.[\w-]+|\[[^\]]*\]|:(?!before\b|after\b|first-l)[\w-]+(?:\((?:[^()]|\([^()]*\))*\))?)+)/;
+const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?((?:[.#][\w-]+|\[[^\]]*\]|:(?!before\b|after\b|first-l)[\w-]+(?:\((?:[^()]|\([^()]*\))*\))?)+)(?=$|[\s>+~,]|::|:(?:before|after|first-l))/;
 
 class Cursor {
     constructor(source, ctx) {
