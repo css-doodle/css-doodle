@@ -226,9 +226,8 @@ Property.seed = value => value;
 Property.content = value => value;
 
 Property.shape = memo('shape-property', value => {
-    let { points, preset} = generateShape(value);
-    if (!preset) return '';
-    return `clip-path: polygon(${points.join(',')});`;
+    let { points, preset } = generateShape(value);
+    return preset ? `polygon(${points.join(',')})` : '';
 });
 
 Property.use = rules => {

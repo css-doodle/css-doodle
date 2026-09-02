@@ -30,6 +30,8 @@ function hasEntries(obj) {
 const NO_SPACE = { noSpace: true };
 const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
 
+const SHARED_VALUE_MIN = 100;
+
 const consoleWarned = new Set();
 
 const funcCache = new Map();
@@ -391,6 +393,7 @@ class Rules {
         this.uniforms = {};
         this.skips = new WeakSet();
         this.memo = new WeakMap();
+        this.shared = new Map();
         this.warnings = [];
         this.warned = new Set();
         this.scanKeyframes(tokens);
@@ -511,6 +514,19 @@ class Rules {
             return _fn(...input);
         }
         return _fn;
+    }
+
+    shareValue(value, selector) {
+        if (value.length < SHARED_VALUE_MIN || isSpecialSelector(selector)) {
+            return value;
+        }
+        let name = this.shared.get(value);
+        if (name === undefined) {
+            name = `--_s${this.shared.size + 1}`;
+            this.shared.set(value, name);
+            this.addRule(':container', `${name}:${value};`);
+        }
+        return `var(${name})`;
     }
 
     composeAname(name, count) {
@@ -726,11 +742,16 @@ class Rules {
             coords.hasBgsize = true;
         }
 
-        let rule = `${prop}:${value};`
+        // a value without functions is the same in every cell
+        let uniform = token.value?.hasFunc === false;
+        let shared = (uniform && !flags.at && !flags.animation)
+            ? this.shareValue(value, selector)
+            : value;
+        let rule = `${prop}:${shared};`
 
         if (flags.size) {
             if (!isSpecialSelector(selector)) {
-                rule += `--_cell-${prop}:${value};`;
+                rule += `--_cell-${prop}:${shared};`;
             }
         }
 
@@ -821,6 +842,12 @@ class Rules {
                         this.compose(coords, token.value);
                     }
                     rule = '';
+                    break;
+                }
+                case 'shape': {
+                    rule = transformed
+                        ? `clip-path:${uniform ? this.shareValue(transformed, selector) : transformed};`
+                        : '';
                     break;
                 }
                 default: {
@@ -1081,6 +1108,15 @@ class Rules {
     }
 
     output() {
+        let keyframes = '';
+        for (let [name, frames] of this.keyframes) {
+            let cells = frames.static ? this.coords.slice(0, 1) : this.coords;
+            for (let coords of cells) {
+                let aname = this.composeAname(name, coords.count);
+                keyframes += `@keyframes ${aname} {${frames.compose(coords)}}`;
+            }
+        }
+
         let groups = '';
         for (let [selector, rule] of this.rules) {
             if (selector === ':at:') {
@@ -1115,16 +1151,8 @@ class Rules {
                 `@keyframes ${UTime[n]} {from {--${Un}:0} to {--${Un}:${t}}}`;
         }
 
-        for (let [name, keyframes] of this.keyframes) {
-            let cells = keyframes.static ? this.coords.slice(0, 1) : this.coords;
-            for (let coords of cells) {
-                let aname = this.composeAname(name, coords.count);
-                this.styles.keyframes += `@keyframes ${aname} {${keyframes.compose(coords)}}`;
-            }
-        }
-
-        let { keyframes, host, container, cells, backdrop, top, gf } = this.styles;
-        let main = keyframes + container + host;
+        let { host, container, cells, backdrop, top, gf } = this.styles;
+        let main = this.styles.keyframes + keyframes + container + host;
 
         return {
             props: this.props,
