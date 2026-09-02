@@ -3,8 +3,14 @@
 //              plus raw() and rawValue() reading the source span;
 //              Group[] carries hasFunc (any func node in any group)
 //   at-rule    { type: 'at-rule', property: '', value: string }
+//              a statement like @import ...;
 //   pseudo     { type: 'pseudo', selector, selectors: string[], styles }
+//              any non-@ block; selector as written, selectors resolved
+//              against the enclosing block with '&' standing for the cell
 //   cond       { type: 'cond', name, segments, position, styles }
+//              every other @name block, plus raw() reading its source;
+//              segments are { keyword } | { arguments }, `spaced` when
+//              whitespace preceded the segment
 //   keyframes  { type: 'keyframes', name, steps }
 //   step       { type: 'step', name: Group[], styles }
 //   func       { type: 'func', name, arguments: Argument[], position,
@@ -17,12 +23,13 @@
 import { scan, Token } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
-import parseValueGroup from './parse-value-group.js';
 import generateSvgExtended from '../generator/svg-extended.js';
+import { isSpecialSelector } from '../utils/selector.js';
 
 const PI = String(Math.PI);
 const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
 const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
+const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?((?:\.[\w-]+|\[[^\]]*\]|:(?!before\b|after\b|first-l)[\w-]+(?:\((?:[^()]|\([^()]*\))*\))?)+)/;
 
 class Cursor {
     constructor(source, ctx) {
@@ -147,7 +154,7 @@ const Node = {
     },
 };
 
-// first top-level, unquoted terminator symbol ahead of the cursor
+// index of the first top-level, unquoted terminator symbol ahead of the cursor
 function probe(cur, ...terminators) {
     let paren = 0, quote = false;
     for (let i = cur.i; i < cur.tokens.length; ++i) {
@@ -157,34 +164,26 @@ function probe(cur, ...terminators) {
         if (!quote && t.isSymbol('(')) paren++;
         else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
         else if (paren === 0 && !quote && t.isSymbol(...terminators)) {
-            return t.value;
+            return i;
         }
     }
-    return '';
+    return -1;
 }
 
 function probeSelector(cur) {
-    return probe(cur, '{', ';', '}') === '{';
+    let i = probe(cur, '{', ';', '}');
+    return i >= 0 && cur.tokens[i].isSymbol('{');
 }
 
-function probeBlock(cur) {
-    return probe(cur, ':', ';', '{', '}');
-}
-
-function isKeyframesAt(cur) {
-    let at = cur.peek();
-    let word = cur.peek(1);
-    if (!at || !word) return false;
-    if (!at.isSymbol('@') || !word.isWord() || word.value !== 'keyframes') {
-        return false;
+// the at-rule name glued to the '@' ahead: '@keyframes', '@font-face'
+function atRuleName(cur) {
+    let name = '@';
+    for (let i = 1; ; ++i) {
+        let t = cur.peek(i);
+        if (!t || !adjacent(cur.peek(i - 1), t) || !/^[\w-]+$/.test(t.value)) break;
+        name += t.value;
     }
-    if (!adjacent(at, word)) return false;
-    let after = cur.peek(2);
-    // '@keyframes2' reads as a longer word in the legacy grammar
-    if (after && adjacent(word, after) && /^[\w@]/.test(after.value)) {
-        return false;
-    }
-    return true;
+    return name;
 }
 
 function parseValue(cur, extra, breakOn) {
@@ -700,42 +699,25 @@ function parseBlockBody(cur, extra, level) {
             if (level === 'top') continue;
             break;
         }
-        if (tok.isSymbol(':')) {
+        if (level === 'top' && tok.isSymbol('<')) {
+            skipTag(cur);
+            continue;
+        }
+        let name = tok.isSymbol('@') ? atRuleName(cur) : '';
+        if (name === '@keyframes') {
+            styles.push(parseKeyframes(cur, extra));
+        } else if (!probeSelector(cur)) {
+            let rule = parseRule(cur, extra);
+            if (level === 'pseudo' && rule.property === '@use') {
+                styles.push(...rule.value);
+            } else if (rule.property || (level === 'top' && rule.type === 'at-rule')) {
+                styles.push(rule);
+            }
+        } else if (!name) {
             let pseudo = parsePseudo(cur, extra);
             if (pseudo.selector) styles.push(pseudo);
-            continue;
-        }
-        if (tok.isSymbol('&') && level !== 'top') {
+        } else {
             styles.push(parseCond(cur, extra));
-            continue;
-        }
-        if (level !== 'pseudo') {
-            if (isKeyframesAt(cur)) {
-                styles.push(parseKeyframes(cur, extra));
-                continue;
-            }
-            if (level === 'top' && tok.isSymbol('<')) {
-                skipTag(cur);
-                continue;
-            }
-            if (level === 'cond' && tok.isSymbol('@') && probeBlock(cur) === '{') {
-                styles.push(parseCond(cur, extra));
-                continue;
-            }
-        }
-        // any other block opener is a nested cond; inside a pseudo the
-        // generator drops it with a warning, which beats a rule swallowing
-        // the '{' and leaving the output unbalanced
-        if (probeSelector(cur)) {
-            let nested = parseCond(cur, extra);
-            if (nested.name.length) styles.push(nested);
-            continue;
-        }
-        let rule = parseRule(cur, extra);
-        if (level === 'pseudo' && rule.property === '@use') {
-            styles.push(...rule.value);
-        } else if (rule.property || (level === 'top' && rule.type === 'at-rule')) {
-            styles.push(rule);
         }
     }
     return styles;
@@ -744,48 +726,92 @@ function parseBlockBody(cur, extra, level) {
 function parsePseudo(cur, extra) {
     let pseudo = { type: 'pseudo', selector: '', selectors: [], styles: [] };
     let start = cur.headIndex();
-
-    while (!cur.end() && !cur.peek().isSymbol('{')) {
-        cur.next();
-    }
+    // the caller probed the '{'
+    cur.i = probe(cur, '{');
     let selector = cur.source.slice(start, cur.headIndex()).trim();
-    if (cur.end() || !selector) {
-        cur.next();
-        return pseudo;
-    }
     cur.next(); // '{'
+    if (!selector) return pseudo;
 
-    if (selector.startsWith(':doodle')) {
-        selector = selector.replace(/^\:+doodle/, ':host');
-    }
+    let ctx = cur.ctx;
+    let outer = ctx.selectors;
     pseudo.selector = selector;
-    pseudo.selectors = parseValueGroup(selector);
+    pseudo.selectors = ctx.selectors = nestSelectors(splitSelectors(selector), outer);
     pseudo.styles = parseBlockBody(cur, extra, 'pseudo');
+    ctx.selectors = outer;
     return pseudo;
+}
+
+function nestSelectors(list, parents) {
+    let result = [];
+    for (let s of list) {
+        s = s.replace(/^:+doodle/, ':host')
+            .replace(/^:container\(((?:[^()]|\([^()]*\))*)\)/, ':container$1');
+        let nested = isSpecialSelector(s) ? [s]
+            : parents.map(p => s.includes('&') ? s.replaceAll('&', p)
+                : s.startsWith(':') ? p + s
+                : p + ' ' + s);
+        for (let n of nested) {
+            // the host is featureless: :host:hover never matches, :host(:hover) does
+            result.push(n.replace(RE_HOST_COMPOUND, (_, inner = '', compound) => `:host(${inner}${compound})`));
+        }
+    }
+    return result;
+}
+
+function splitSelectors(input) {
+    let list = [];
+    let buf = '';
+    let paren = 0;
+    let quote = '';
+    for (let c of input) {
+        if (quote) {
+            if (c === quote) quote = '';
+        } else if (c === '"' || c === "'") {
+            quote = c;
+        } else if (c === '(') {
+            paren++;
+        } else if (c === ')') {
+            paren--;
+        } else if (c === ',' && paren === 0) {
+            list.push(buf);
+            buf = '';
+            continue;
+        }
+        buf += c;
+    }
+    list.push(buf);
+    return list.map(s => s.trim().replace(/\s+/g, ' ')).filter(s => s.length);
 }
 
 function parseCond(cur, extra) {
     let cond = { type: 'cond', name: '', styles: [] };
+    let source = cur.source;
+    let start = cur.headIndex();
     Object.assign(cond, parseCondSelector(cur));
-    if (cur.end()) return cond;
-    cur.next(); // '{'
-    cond.styles = parseBlockBody(cur, extra, 'cond');
+    if (!cur.end()) {
+        cur.next(); // '{'
+        cond.styles = parseBlockBody(cur, extra, 'cond');
+    }
+    let end = cur.tailEnd();
+    cond.raw = () => source.slice(start, end);
     return cond;
 }
 
 function parseCondSelector(cur) {
     let name = '';
     let keyword = '';
+    let spaced = false;
     let segments = [];
 
     const flush = () => {
         if (keyword.length) {
             if (name) {
-                segments.push({ keyword });
+                segments.push({ keyword, spaced });
             } else {
                 name = keyword;
             }
             keyword = '';
+            spaced = false;
         }
     };
 
@@ -795,7 +821,8 @@ function parseCondSelector(cur) {
             flush();
             cur.next();
             let args = parseArguments(cur, tok.index + 1, undefined, {}).args;
-            segments.push({ arguments: args });
+            segments.push({ arguments: args, spaced });
+            spaced = false;
             continue;
         }
         if (tok.isSymbol('{')) {
@@ -809,6 +836,7 @@ function parseCondSelector(cur) {
         }
         if (tok.isSpace()) {
             flush();
+            spaced = true;
             cur.next();
             continue;
         }
@@ -902,7 +930,7 @@ function parseSource(input, extra, ctx) {
 }
 
 export default function parse(input, extra) {
-    let ctx = { position: 0, warnings: [] };
+    let ctx = { position: 0, warnings: [], selectors: ['&'] };
     let result = parseSource(input, extra, ctx);
     result.warnings = ctx.warnings;
     return result;

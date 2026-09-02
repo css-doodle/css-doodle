@@ -13,3 +13,7 @@ export function isSpecialSelector(s) {
 export function isPseudoSelector(s) {
     return /\:before|\:after/.test(s);
 }
+
+export function isGroupAtRule(name) {
+    return /^@(media|supports|container|layer|scope|starting-style|(-\w+-)?document)$/.test(name);
+}

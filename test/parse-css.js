@@ -23,7 +23,7 @@ test('pseudo quotes', () => {
             {
                 "type": "pseudo",
                 "selector": ":after",
-                "selectors": [":after"],
+                "selectors": ["&:after"],
                 "styles": [
                     {
                         "type": "rule",
@@ -292,7 +292,7 @@ test('quoted paren does not leak into block probing', () => {
             {
                 "type": "pseudo",
                 "selector": ":after",
-                "selectors": [":after"],
+                "selectors": ["&:after"],
                 "styles": [
                     {
                         "type": "rule",
@@ -392,4 +392,94 @@ test('quotes only strip when they wrap the whole argument', () => {
     assert.deepEqual(args.map(a => [a.values[0].value, a.cluster]), [
         ['"a" "b"', false], ['c', true], ['it"s', true],
     ]);
+});
+
+test('selectors resolve against the enclosing block', () => {
+    let selectors = code => parseCSS(code).map(n => n.selectors);
+    // the raw text stays as written, the resolved list stands on '&'
+    let [pseudo] = parseCSS(`:after { x: y }`);
+    assert.equal(pseudo.selector, ':after');
+    assert.deepEqual(pseudo.selectors, ['&:after']);
+    // a leading pseudo compounds, '&' substitutes, anything else descends
+    assert.deepEqual(selectors(`&:hover {} & :hover {} .foo {} .dark & {} & {}`),
+        [['&:hover'], ['& :hover'], ['& .foo'], ['.dark &'], ['&']]);
+    // nested lists cross with the enclosing list
+    let [outer] = parseCSS(`:a, :b { :c, :d { x: y } }`);
+    assert.deepEqual(outer.selectors, ['&:a', '&:b']);
+    assert.deepEqual(outer.styles[0].selectors, ['&:a:c', '&:b:c', '&:a:d', '&:b:d']);
+    // :doodle and :container start over from the host and the grid
+    let [hover] = parseCSS(`:hover { :doodle { x: y } :container { x: y } }`);
+    assert.deepEqual(hover.styles.map(n => n.selectors), [[':host'], [':container']]);
+});
+
+test('selector lists split on top-level commas only', () => {
+    let [pseudo] = parseCSS(`:is(a, b), [title="a,b"],
+        & :hover { x: y }`);
+    assert.deepEqual(pseudo.selectors, ['&:is(a, b)', '& [title="a,b"]', '& :hover']);
+});
+
+test('host selectors fold pseudo-classes into :host()', () => {
+    let [doodle] = parseCSS(`:doodle(.a) { :hover { :after { x: y } } ::part(p) { x: y } }`);
+    assert.deepEqual(doodle.selectors, [':host(.a)']);
+    let [hover, part] = doodle.styles;
+    assert.deepEqual(hover.selectors, [':host(.a:hover)']);
+    // pseudo-elements stay outside the parens
+    assert.deepEqual(hover.styles[0].selectors, [':host(.a:hover):after']);
+    assert.deepEqual(part.selectors, [':host(.a)::part(p)']);
+    // written directly, with nested parens, and :host-context untouched
+    assert.deepEqual(parseCSS(`:doodle:hover { x: y }`)[0].selectors, [':host(:hover)']);
+    assert.deepEqual(parseCSS(`:doodle { :not(:is(.a, .b)):focus { x: y } }`)[0].styles[0].selectors,
+        [':host(:not(:is(.a, .b)):focus)']);
+    assert.deepEqual(parseCSS(`:host-context(.d) { &:hover { x: y } }`)[0].styles[0].selectors,
+        [':host-context(.d):hover']);
+});
+
+test(':container(...) reads as a compound on the grid', () => {
+    let [pseudo] = parseCSS(`:container(.x) .y, :container { :hover { x: y } }`);
+    assert.deepEqual(pseudo.selectors, [':container.x .y', ':container']);
+    assert.deepEqual(pseudo.styles[0].selectors, [':container.x .y:hover', ':container:hover']);
+});
+
+test('the selector context passes through conds and @use', () => {
+    let [hover] = parseCSS(`:hover { @nth(1) { :after { x: y } } }`);
+    assert.deepEqual(hover.styles[0].styles[0].selectors, ['&:hover:after']);
+    let extra = {
+        getVariable: name => ({ '--rule': ':after { x: y }' }[name] || '')
+    };
+    let [used] = parseCSS(`:hover { @use: var(--rule); }`, extra);
+    assert.deepEqual(used.styles[0].selectors, ['&:hover:after']);
+    // and is restored once the block closes
+    let [, after] = parseCSS(`:hover { :focus { x: y } } :after { x: y }`);
+    assert.deepEqual(after.selectors, ['&:after']);
+});
+
+test('blocks dispatch on their opener', () => {
+    let types = code => parseCSS(code).map(n => n.type + ':' + (n.name || n.selector || n.property));
+    // any non-@ block is a selector, quotes and parens do not fool the probe
+    assert.deepEqual(types(`[title="{"] { x: y } .foo { x: y } @cell.random { x: y } @keyframes2 { x: y }`),
+        ['pseudo:[title="{"]', 'pseudo:.foo', 'cond:@cell.random', 'cond:@keyframes2']);
+    // a selector without a block is dropped, not swallowed to the next '{'
+    assert.deepEqual(types(`:hover; color: red; :after { x: y }`), ['rule:color', 'pseudo::after']);
+});
+
+test('@ blocks keep their source text', () => {
+    let [face, rule] = parseCSS(`@font-face { src: url("}"); } color: red;`);
+    assert.equal(face.type, 'cond');
+    assert.equal(face.raw(), '@font-face { src: url("}"); }');
+    assert.equal(rule.property, 'color');
+    // nested blocks and positions inside a pseudo included
+    let [doodle] = parseCSS(`:doodle { @function --f(--x) { result: 1; @media (a) { result: 2 } } x: y }`);
+    assert.equal(doodle.styles[0].raw(), '@function --f(--x) { result: 1; @media (a) { result: 2 } }');
+    assert.equal(doodle.styles[1].property, 'x');
+    let [nth] = parseCSS(`@nth(1) { x: y }`);
+    assert.equal(nth.raw(), '@nth(1) { x: y }');
+});
+
+test('cond segments record the spacing before them', () => {
+    let segments = code => parseCSS(code)[0].segments.map(n => [n.keyword || '()', n.spaced]);
+    assert.deepEqual(segments(`@media screen and (min-width: 1px) { x: y }`),
+        [['screen', true], ['and', true], ['()', true]]);
+    assert.deepEqual(segments(`@container style(--x: 1) { x: y }`), [['style', true], ['()', false]]);
+    assert.deepEqual(segments(`@nth(1) { x: y }`), [['()', false]]);
+    assert.deepEqual(segments(`@nth not (1) { x: y }`), [['not', true], ['()', true]]);
 });

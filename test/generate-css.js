@@ -5,6 +5,8 @@ import parseCss from '../src/parser/parse-css.js';
 import generateCss from '../src/generator/css.js';
 import parseGrid from '../src/parser/parse-grid.js';
 
+const gen = code => generateCss(parseCss(code), parseGrid('1'), 42, 64 * 64).styles.all;
+
 test('prototype names as @-properties pass through as plain declarations', () => {
     // `@__proto__: red` used to throw and `@toString: red` emitted [object Object]
     for (let name of ['__proto__', 'toString', 'constructor', 'hasOwnProperty', 'valueOf']) {
@@ -381,18 +383,17 @@ test('conditional group rules scope bare rules to the cell and come last', () =>
     assert.ok(at > all.indexOf('#c-1-1-1 {color:blue;}'));
     let group = all.slice(at);
     for (let expected of [
-        '#c-1-1-1 {color:red;}',
+        '#c-1-1-1 {color:red;\nwidth:1px;--_cell-width:1px;}',
         ':host,.host {--a:1;}',
         'cssd-grid {gap:1px;}',
         '#c-1-1-1:after {content:"m";}',
-        '#c-1-1-1 {width:1px;--_cell-width:1px;}',
         '@supports (x: y) {#c-1-1-1 {height:2px;--_cell-height:2px;}}',
     ]) {
         assert.ok(group.includes(expected), expected);
     }
 });
 
-test('nested pseudo lists and & segments compose per selector', () => {
+test('nested pseudo lists and & selectors compose per selector', () => {
     let compiled = generateCss(
         parseCss(':hover { :after, :before { color: red } & .foo { color: blue } }'),
         parseGrid('1'), 42, 64 * 64
@@ -400,7 +401,115 @@ test('nested pseudo lists and & segments compose per selector', () => {
     let { all } = compiled.styles;
     assert.ok(all.includes('#c-1-1-1:hover:after {color:red;}'));
     assert.ok(all.includes('#c-1-1-1:hover:before {color:red;}'));
-    assert.ok(all.includes('& .foo {color:blue;}'));
+    assert.ok(all.includes('#c-1-1-1:hover .foo {color:blue;}'));
+});
+
+test('selectors nest against the enclosing one', () => {
+    // a leading pseudo compounds with the cell, & stands for it, and
+    // anything else is a descendant
+    assert.equal(gen('&:hover { color: red }'), '#c-1-1-1:hover {color:red;}');
+    assert.equal(gen('& :hover { color: red }'), '#c-1-1-1 :hover {color:red;}');
+    assert.equal(gen('&.on, .dark & { color: red }'),
+        '#c-1-1-1.on {color:red;}.dark #c-1-1-1 {color:red;}');
+    assert.equal(gen('.foo { color: red }'), '#c-1-1-1 .foo {color:red;}');
+    assert.equal(gen('[title="{"] { color: red }'), '#c-1-1-1 [title="{"] {color:red;}');
+    assert.equal(gen('@nth(1) { &:hover { :after { content: "x" } } }'),
+        '#c-1-1-1:hover:after {content:"x";}');
+    // the host is featureless, so pseudo-classes fold into :host(); only
+    // a plain host form gets the export twin
+    assert.equal(gen(':doodle { &:hover { color: red } .a { color: blue } }'),
+        ':host(:hover) {color:red;}:host .a,.host .a {color:blue;}');
+    assert.equal(gen(':doodle(.dark) { :hover { :after { color: red } } }'),
+        ':host(.dark:hover):after {color:red;}');
+    assert.equal(gen(':doodle:hover::part(x) { color: red }'),
+        ':host(:hover)::part(x) {color:red;}');
+    assert.equal(gen(':doodle { :not(:is(.a, .b)):focus { color: red } :before { color: blue } }'),
+        ':host(:not(:is(.a, .b)):focus) {color:red;}:host:before,.host:before {color:blue;}');
+    assert.equal(gen(':host-context(.dark) { color: red }'), ':host-context(.dark) {color:red;}');
+    assert.equal(gen(':container { :hover { color: red } }'), 'cssd-grid:hover {color:red;}');
+    assert.equal(gen(':container(.x) .y { color: red }'), 'cssd-grid.x .y {color:red;}');
+    // selector lists cross with the enclosing list
+    assert.equal(gen(':a, :b { :c, :d { color: red } }'),
+        '#c-1-1-1:a:c {color:red;}#c-1-1-1:b:c {color:red;}#c-1-1-1:a:d {color:red;}#c-1-1-1:b:d {color:red;}');
+});
+
+test('group rules and selector functions nest anywhere', () => {
+    assert.equal(gen(':doodle { @media (min-width: 1px) { color: red } }'),
+        '@media (min-width: 1px) {:host,.host {color:red;}}');
+    assert.equal(gen(':after { @container (width > 1px) { color: red } }'),
+        '@container (width > 1px) {#c-1-1-1:after {color:red;}}');
+    assert.equal(gen(':hover { @nth(1) { color: red } @nth(2) { color: blue } }'),
+        '#c-1-1-1:hover {color:red;}');
+    assert.equal(gen('@media (a) { @nth(1) { @supports (b) { &:hover { color: red } } } }'),
+        '@media (a) {@supports (b) {#c-1-1-1:hover {color:red;}}}');
+    // prelude text keeps its spacing: style( and selector( are function tokens
+    assert.equal(gen('@container style(--x: 1) { color: red }'),
+        '@container style(--x: 1) {#c-1-1-1 {color:red;}}');
+    assert.equal(gen('@supports selector(:has(a)) and (not (x: y)) { color: red }'),
+        '@supports selector(:has(a)) and (not (x: y)) {#c-1-1-1 {color:red;}}');
+    // but and( / not( are function tokens to CSS, so the space is put back
+    assert.equal(gen('@media screen and(min-width: 800px) { color: red }'),
+        '@media screen and (min-width: 800px) {#c-1-1-1 {color:red;}}');
+    assert.equal(gen('@supports not(display: grid) { color: red }'),
+        '@supports not (display: grid) {#c-1-1-1 {color:red;}}');
+    // @use inside a group stays in the group
+    let extra = { getVariable: () => 'color: red;' };
+    let compiled = generateCss(
+        parseCss('@media (a) { @use: var(--r); }', extra), parseGrid('1'), 42, 64 * 64);
+    assert.equal(compiled.styles.all, '@media (a) {#c-1-1-1 {color:red;}}');
+});
+
+test('host rules inside a group compose once', () => {
+    let compiled = generateCss(
+        parseCss('@media (a) { :doodle { color: red } color: blue }'),
+        parseGrid('2'), 42, 64 * 64
+    );
+    let { all } = compiled.styles;
+    assert.equal(all.match(/:host,\.host \{color:red;\}/g).length, 1);
+    assert.equal(all.match(/#c-\d-\d-1 \{color:blue;\}/g).length, 4);
+});
+
+test('declaration-body at-rules are emitted once verbatim at the top', () => {
+    let code = `
+        @property --a { syntax: "<length>"; inherits: false; initial-value: 0px; }
+        @function --double(--x) { result: calc(var(--x) * 2); @media (a) { result: 0; } }
+        :doodle { @font-face { font-family: "X"; src: url(x.woff); } }
+        width: --double(1px);
+    `;
+    let compiled = generateCss(parseCss(code), parseGrid('2'), 42, 64 * 64);
+    let { top, all } = compiled.styles;
+    assert.equal(top,
+        '@property --a { syntax: "<length>"; inherits: false; initial-value: 0px; }\n' +
+        '@function --double(--x) { result: calc(var(--x) * 2); @media (a) { result: 0; } }\n' +
+        '@font-face { font-family: "X"; src: url(x.woff); }');
+    assert.ok(!all.includes('@property') && !all.includes('@font-face'));
+    assert.ok(all.includes('#c-2-2-1 {width:--double(1px);'));
+});
+
+test('keyframes declared inside a pseudo are registered', () => {
+    let compiled = generateCss(
+        parseCss(':doodle { animation: k 1s; @keyframes k { to { opacity: 0 } } }'),
+        parseGrid('1'), 42, 64 * 64
+    );
+    assert.ok(compiled.styles.all.includes('@keyframes k {to {opacity:0;}}'));
+});
+
+test('@ blocks that are neither selectors nor groups pass through as written', () => {
+    let warn = console.warn;
+    console.warn = () => {};
+    try {
+        // a selector function with a modifier it does not have warns
+        let compiled = generateCss(parseCss('@cell.random { color: red }'), parseGrid('2'), 42, 64 * 64);
+        assert.ok(compiled.warnings.some(w => w.message === 'unknown selector @cell.random'));
+        assert.equal(compiled.styles.top, '@cell.random { color: red }');
+        assert.equal(compiled.styles.all, '');
+        // anything else is CSS for the browser to judge, once
+        compiled = generateCss(parseCss('@foo bar { color: red } @media (a) { color: red }'), parseGrid('2'), 42, 64 * 64);
+        assert.equal(compiled.warnings.length, 0);
+        assert.equal(compiled.styles.top, '@foo bar { color: red }');
+    } finally {
+        console.warn = warn;
+    }
 });
 
 test('quoted commas and strings survive composition', () => {
@@ -411,19 +520,12 @@ test('quoted commas and strings survive composition', () => {
     assert.ok(compiled.styles.all.includes('--x:"a" "b";'));
 });
 
-test('nested blocks inside a pseudo are dropped with balanced output', () => {
-    let warn = console.warn;
-    console.warn = () => {};
-    try {
-        let compiled = generateCss(
-            parseCss(':hover { @nth(1) { color: red } } :after { content: "x" }'),
-            parseGrid('1'), 42, 64 * 64
-        );
-        assert.equal(compiled.styles.all, '#c-1-1-1:after {content:"x";}');
-        assert.ok(compiled.warnings.some(w => w.message === 'unsupported nested block ignored'));
-    } finally {
-        console.warn = warn;
-    }
+test('blocks inside a pseudo keep the output balanced', () => {
+    let compiled = generateCss(
+        parseCss(':hover { @nth(1) { color: red } } :after { content: "x" }'),
+        parseGrid('1'), 42, 64 * 64
+    );
+    assert.equal(compiled.styles.all, '#c-1-1-1:hover {color:red;}#c-1-1-1:after {content:"x";}');
 });
 
 test('transition longhands flag hasTransition like animation longhands', () => {
