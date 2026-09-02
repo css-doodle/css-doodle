@@ -1,5 +1,3 @@
-// Tokenizer for css-doodle rules and expressions.
-
 const symbols = [
     ':', ';', ',', '(', ')', '[', ']',
     '{', '}', 'π', '±', '+', '-', '*',
@@ -9,12 +7,16 @@ const symbols = [
     '≤', '≥', '≠', '∆'
 ];
 
-// Charcode classification table for the scanning hot path
+const spacingIgnoredSymbols = new Set([
+    ':', ';', ',', '{', '}', '(', ')', '[', ']'
+]);
 
-const SYMBOL = 1, DIGIT = 2, SPACE = 4, HEX = 8;
+const SYMBOL = 1;
+const SPACE = 2;
+const HEX = 4;
 
 const ctype = new Uint8Array(128);
-for (let i = 48; i <= 57; ++i) ctype[i] = DIGIT | HEX;
+for (let i = 48; i <= 57; ++i) ctype[i] = HEX;
 for (let i = 97; i <= 102; ++i) ctype[i] |= HEX;
 for (let i = 65; i <= 70; ++i) ctype[i] |= HEX;
 for (let c of [9, 10, 11, 12, 13, 32]) ctype[c] |= SPACE;
@@ -61,20 +63,13 @@ class Token {
         if (n == 0) {
             return this.type == 'Symbol';
         }
-        let value = this.value;
         if (n > 1) {
             for (let i = 0; i < n; ++i) {
-                if (arguments[i] === value) return true;
+                if (arguments[i] === this.value) return true;
             }
             return false;
         }
-        if (Array.isArray(values)) {
-            for (let i = 0; i < values.length; ++i) {
-                if (values[i] === value) return true;
-            }
-            return false;
-        }
-        return values === value;
+        return Array.isArray(values) ? values.includes(this.value) : values === this.value;
     }
     isSpace() {
         return this.type == 'Space';
@@ -89,16 +84,12 @@ class Token {
 
 function iterator(input) {
     let pointer = -1;
-    let max = input.length;
     return {
         curr(n = 0) {
             return input[pointer + n];
         },
-        next(n = 1) {
-            return input[pointer += n];
-        },
-        end() {
-            return pointer >= max;
+        next() {
+            return input[++pointer];
         },
         get() {
             return {
@@ -110,64 +101,59 @@ function iterator(input) {
     }
 }
 
-const spacingIgnoredSymbols = new Set([':', ';', ',', '{', '}', '(', ')', '[', ']']);
-
-function ignoreSpacingSymbol(value) {
-    return spacingIgnoredSymbols.has(value);
-}
-
 function ignoreSpacingAround(prev, next) {
-    let ignoreLeft = ignoreSpacingSymbol(prev) && prev !== ')';
-    let ignoreRight = ignoreSpacingSymbol(next) && next !== '(';
+    let ignoreLeft = spacingIgnoredSymbols.has(prev) && prev !== ')';
+    let ignoreRight = spacingIgnoredSymbols.has(next) && next !== '(';
     return ignoreLeft || ignoreRight;
 }
 
-// The read* functions return the end index (exclusive) of the token
-// starting at i. charCodeAt returns NaN past the end of input, and NaN
-// fails every comparison, so lookaheads need no bounds checks.
+// The read* functions return the exclusive end of the token starting at i
 
 function readWord(input, i, len) {
-    let j = i;
-    while (j < len - 1) {
-        let next = input.charCodeAt(j + 1);
-        if (isSymbolCode(next) || isSpaceCode(next) || isDigitCode(next) || next === 92 /* \ */) {
+    let j = i + 1;
+    while (j < len) {
+        let c = input.charCodeAt(j);
+        if (isSymbolCode(c) || isSpaceCode(c) || isDigitCode(c) || c === 92 /* \ */) {
             // "</" inside a word stays together for closing tags
-            if (!(next === 47 && input.charCodeAt(j) === 60)) break;
+            if (!(c === 47 && input.charCodeAt(j - 1) === 60)) break;
         }
         j++;
     }
-    return j + 1;
+    return j;
 }
 
 function readNumber(input, i) {
-    let j = i;
-    let hasDot = false;
+    let j = i + 1;
+    let hasDot = input.charCodeAt(i) === 46 /* . */;
     while (true) {
-        let next = input.charCodeAt(j + 1);
-        if (hasDot && next === 46 /* . */) break;
-        if (input.charCodeAt(j) === 46) hasDot = true;
-        if (next === 46 && input.charCodeAt(j + 2) === 46) break;
-        if (next === 101 || next === 69 /* e E */) {
-            let next2 = input.charCodeAt(j + 2);
-            if ((next2 === 43 || next2 === 45 /* + - */) && isDigitCode(input.charCodeAt(j + 3))) {
+        let c = input.charCodeAt(j);
+        if (c === 46) {
+            // A second dot or a ".." range ends the number
+            if (hasDot || input.charCodeAt(j + 1) === 46) break;
+            hasDot = true;
+        }
+        else if (c === 101 || c === 69 /* e E */) {
+            let sign = input.charCodeAt(j + 1);
+            if ((sign === 43 || sign === 45 /* + - */) && isDigitCode(input.charCodeAt(j + 2))) {
                 j += 3;
                 continue;
             }
-            if (isDigitCode(next2)) {
+            if (isDigitCode(sign)) {
                 j += 2;
                 continue;
             }
+            break;
         }
-        if (!isDigitCode(next) && next !== 46) break;
+        else if (!isDigitCode(c)) break;
         j++;
     }
-    return j + 1;
+    return j;
 }
 
-function readHexNumber(input, i, len) {
-    let j = i + 2;
-    while (j < len - 1 && isHexCode(input.charCodeAt(j + 1))) j++;
-    return j + 1;
+function readHexNumber(input, i) {
+    let j = i + 3;
+    while (isHexCode(input.charCodeAt(j))) j++;
+    return j;
 }
 
 function last(array) {
@@ -188,8 +174,7 @@ function scan(source, options = {}) {
             lineStart = i + 1;
         }
         let pos = [i - lineStart, row];
-        // Char offset of the token's first raw char in the input.
-        // Captured here because some branches advance `i` before pushing.
+        // Offset of the token's first raw char in the input
         let index = i;
         let next = input.charCodeAt(i + 1);
 
@@ -217,7 +202,7 @@ function scan(source, options = {}) {
             i = found === -1 ? len : found;
         }
         else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
-            let end = readHexNumber(input, i, len);
+            let end = readHexNumber(input, i);
             tokens.push(new Token({
                 type: 'Number', value: '0x' + input.slice(i + 2, end), pos, index
             }));
@@ -233,29 +218,25 @@ function scan(source, options = {}) {
         }
         else if (quote && curr === 92 /* \ */) {
             let start = i + 1;
-            if (start < len) {
-                let end = readWord(input, start, len);
-                // The escaped char may be a line break
-                for (let n = start; n < end; n++) {
-                    if (input.charCodeAt(n) === 10) {
-                        row++;
-                        lineStart = n + 1;
-                    }
+            let end = readWord(input, start, len);
+            // The escaped char may be a line break
+            for (let n = start; n < end; n++) {
+                if (input.charCodeAt(n) === 10) {
+                    row++;
+                    lineStart = n + 1;
                 }
-                let word = input.slice(start, end).trim();
-                if (word.length) {
-                    tokens.push(new Token({
-                        type: 'Word', value: word, pos, index
-                    }));
-                }
-                i = end;
-            } else {
-                i = start;
             }
+            let word = input.slice(start, end).trim();
+            if (word.length) {
+                tokens.push(new Token({
+                    type: 'Word', value: word, pos, index
+                }));
+            }
+            i = end;
         }
         else if (isSymbolCode(curr)) {
             let ch = input[i];
-            // negative
+            // A minus before a digit is a sign unless it follows a value
             let isNextDigit = isDigitCode(next) || (next === 46 && isDigitCode(input.charCodeAt(i + 2)));
             if (curr === 45 /* - */ && isNextDigit) {
                 let lastToken = last(tokens);
@@ -299,41 +280,31 @@ function scan(source, options = {}) {
                 end++;
             }
             let lastToken = last(tokens);
-            let nextChar = input[end];
-            let start = i;
-            i = end;
-            // Reduce unnecessary spaces
-            if (!quote && lastToken) {
-                if (ignoreSpacingAround(lastToken.value, nextChar)) {
-                    continue;
-                }
-                let spaces = (options.preserveLineBreak && hasLineBreak) ? '\n' : ' ';
-                if (lastToken.isSpace()) {
-                    if (spaces === '\n') {
-                        lastToken.value = '\n';
-                    }
-                    continue;
-                }
-                if (nextChar && nextChar.trim()) {
+            // Leading and trailing spaces are dropped
+            if (lastToken && end < len) {
+                if (quote) {
                     tokens.push(new Token({
-                        type: 'Space', value: spaces, pos, index
+                        type: 'Space', value: input.slice(i, end), pos, index
                     }));
                 }
+                else if (!ignoreSpacingAround(lastToken.value, input[end])) {
+                    let value = (options.preserveLineBreak && hasLineBreak) ? '\n' : ' ';
+                    if (lastToken.isSpace()) {
+                        if (value === '\n') lastToken.value = '\n';
+                    } else {
+                        tokens.push(new Token({
+                            type: 'Space', value, pos, index
+                        }));
+                    }
+                }
             }
-            else if (tokens.length && nextChar && nextChar.trim()) {
-                tokens.push(new Token({
-                    type: 'Space', value: input.slice(start, end), pos, index
-                }));
-            }
+            i = end;
         }
         else {
             let end = readWord(input, i, len);
-            let word = input.slice(i, end).trim();
-            if (word.length) {
-                tokens.push(new Token({
-                    type: 'Word', value: word, pos, index
-                }));
-            }
+            tokens.push(new Token({
+                type: 'Word', value: input.slice(i, end), pos, index
+            }));
             i = end;
         }
     }
