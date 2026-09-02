@@ -3,7 +3,7 @@
 ### Features
 
 * Add `click:cell` event dispatched on the host with `{ x, y, z, element, originalEvent }` detail.
-* Rename internal shadow-DOM tags to `cssd-grid` and `cssd-cell` (`part="grid"` and `part="cell"` preserved).
+* Rename internal shadow-DOM tags to `cssd-g` and `cssd-c` (`part="grid"` and `part="cell"` preserved).
 
 ### Fixes
 

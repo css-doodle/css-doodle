@@ -25,7 +25,7 @@ test('reflow reads the host when no grid is rendered', () => {
 
 test('host-only rules ask for a reflow without rendering a grid', () => {
     // buildGrid and patch reflow on hasTransition/hasAnimation, but only
-    // render <cssd-grid> when there are cell styles, container styles or
+    // render <cssd-g> when there are cell styles, container styles or
     // content — these doodles have neither
     for (let code of [
         ':doodle { animation: foo 1s; }',

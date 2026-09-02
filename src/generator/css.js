@@ -370,7 +370,7 @@ function ruleFlags(prop) {
 
 function specialName(selector) {
     if (isParentSelector(selector)) {
-        return selector.replace(':container', 'cssd-grid');
+        return selector.replace(':container', 'cssd-g');
     }
     if (/^:host(?![(-])/.test(selector)) {
         return `${selector},${selector.replace(':host', '.host')}`;

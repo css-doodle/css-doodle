@@ -385,7 +385,7 @@ test('conditional group rules scope bare rules to the cell and come last', () =>
     for (let expected of [
         '#c-1-1-1 {color:red;\nwidth:1px;--_cell-width:1px;}',
         ':host,.host {--a:1;}',
-        'cssd-grid {gap:1px;}',
+        'cssd-g {gap:1px;}',
         '#c-1-1-1:after {content:"m";}',
         '@supports (x: y) {#c-1-1-1 {height:2px;--_cell-height:2px;}}',
     ]) {
@@ -426,8 +426,8 @@ test('selectors nest against the enclosing one', () => {
     assert.equal(gen(':doodle { :not(:is(.a, .b)):focus { color: red } :before { color: blue } }'),
         ':host(:not(:is(.a, .b)):focus) {color:red;}:host:before,.host:before {color:blue;}');
     assert.equal(gen(':host-context(.dark) { color: red }'), ':host-context(.dark) {color:red;}');
-    assert.equal(gen(':container { :hover { color: red } }'), 'cssd-grid:hover {color:red;}');
-    assert.equal(gen(':container(.x) .y { color: red }'), 'cssd-grid.x .y {color:red;}');
+    assert.equal(gen(':container { :hover { color: red } }'), 'cssd-g:hover {color:red;}');
+    assert.equal(gen(':container(.x) .y { color: red }'), 'cssd-g.x .y {color:red;}');
     // selector lists cross with the enclosing list
     assert.equal(gen(':a, :b { :c, :d { color: red } }'),
         '#c-1-1-1:a:c {color:red;}#c-1-1-1:b:c {color:red;}#c-1-1-1:a:d {color:red;}#c-1-1-1:b:d {color:red;}');
@@ -564,7 +564,7 @@ test('long values that repeat in every cell are declared once on the grid', () =
         parseCss(`background: ${gradient}; --g: ${gradient};`), parseGrid('2x1'), 42, 64 * 64
     );
     let { all, container } = compiled.styles;
-    assert.equal(container, `cssd-grid {--_s1:${gradient};}`);
+    assert.equal(container, `cssd-g {--_s1:${gradient};}`);
     assert.ok(all.includes('#c-1-1-1 {background:var(--_s1);\n--g:var(--_s1);}'));
     assert.ok(all.includes('#c-2-1-1 {background:var(--_s1);\n--g:var(--_s1);}'));
     assert.equal(all.split(gradient).length - 1, 1);
@@ -576,7 +576,7 @@ test('a static @shape polygon is shared across cells', () => {
         parseGrid('2x1'), 42, 64 * 64
     );
     let { all, container } = compiled.styles;
-    assert.match(container, /^cssd-grid \{--_s1:polygon\([^;]+\);\n--_s2:polygon\([^;]+\);\}$/);
+    assert.match(container, /^cssd-g \{--_s1:polygon\([^;]+\);\n--_s2:polygon\([^;]+\);\}$/);
     assert.equal(all.split('polygon(').length - 1, 2);
     for (let expected of [
         '#c-1-1-1 {clip-path:var(--_s1);}',
@@ -612,10 +612,10 @@ test('values shared from inside @keyframes are declared on the grid too', () => 
         parseGrid('2x1'), 42, 64 * 64
     );
     let { all, container } = compiled.styles;
-    assert.match(container, /^cssd-grid \{--_s1:polygon\([^;]+\);\n--_s2:polygon\([^;]+\);\}$/);
+    assert.match(container, /^cssd-g \{--_s1:polygon\([^;]+\);\n--_s2:polygon\([^;]+\);\}$/);
     assert.ok(all.includes('@keyframes a {from {clip-path:var(--_s1);}\nto {clip-path:var(--_s2);}}'));
     assert.equal(all.split('polygon(').length - 1, 2);
-    assert.ok(all.indexOf('cssd-grid {') > all.indexOf('@keyframes a {'));
+    assert.ok(all.indexOf('cssd-g {') > all.indexOf('@keyframes a {'));
 });
 
 test('a leading --name in an argument reads the variable', () => {

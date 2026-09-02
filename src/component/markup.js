@@ -24,11 +24,11 @@ export function getBasicStyles(grid) {
     :host([cssd-paused]) * {
         animation-play-state: paused !important
     }
-    cssd-grid, cssd-cell {
+    cssd-g, cssd-c {
         display: grid;
         position: relative
     }
-    cssd-grid {
+    cssd-g {
         gap: inherit;
         grid-template: repeat(${y},1fr)/repeat(${x},1fr)
     }
@@ -37,7 +37,7 @@ export function getBasicStyles(grid) {
         inset: 0;
         pointer-events: none
     }
-    cssd-cell {
+    cssd-c {
         place-items: center;
         min-height: 0;
         min-width: 0
@@ -45,7 +45,7 @@ export function getBasicStyles(grid) {
     svg, canvas {
         position: absolute;
     }
-    cssd-grid, svg, canvas {
+    cssd-g, svg, canvas {
         width: 100%;
         height: 100%
     }
@@ -61,7 +61,7 @@ function createCell(x, y, z, content, child = '') {
     if (/^\$\{(shader|pattern)/.test(head)) {
         head = '';
     }
-    return `<cssd-cell id="${id}" part="cell">${head}${child}</cssd-cell>`;
+    return `<cssd-c id="${id}" part="cell">${head}${child}</cssd-c>`;
 }
 
 export function createGrid(gridObj, compiled) {
@@ -82,5 +82,5 @@ export function createGrid(gridObj, compiled) {
         }
         result = child;
     }
-    return `<cssd-grid part="grid">${result}</cssd-grid>${styles.backdrop ? '<cssd-b></cssd-b>' : ''}`;
+    return `<cssd-g part="grid">${result}</cssd-g>${styles.backdrop ? '<cssd-b></cssd-b>' : ''}`;
 }

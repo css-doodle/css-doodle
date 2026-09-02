@@ -61,7 +61,7 @@ export default function gridStyleRules({
     }
     if (flex) {
         add(':container', 'display:flex;');
-        add('cssd-cell', 'flex: 1;');
+        add('cssd-c', 'flex: 1;');
         if (flex === 'column') {
             add(':container', 'flex-direction:column;');
         }
