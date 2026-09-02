@@ -3,7 +3,7 @@ function identity(strings, ...values) {
     for (let i = 0; i < values.length; i++) {
         out += values[i] + strings[i + 1];
     }
-    return out;
+    return out.trim();
 }
 
 export {

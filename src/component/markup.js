@@ -82,8 +82,5 @@ export function createGrid(gridObj, compiled) {
         }
         result = child;
     }
-    return `
-        <cssd-grid part="grid">${result}</cssd-grid>
-        ${styles.backdrop ? '<cssd-b></cssd-b>' : ''}
-    `;
+    return `<cssd-grid part="grid">${result}</cssd-grid>${styles.backdrop ? '<cssd-b></cssd-b>' : ''}`;
 }

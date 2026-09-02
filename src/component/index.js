@@ -374,9 +374,9 @@ if (typeof HTMLElement !== 'undefined') {
             const hasContent = Object.keys(content).length;
 
             this.doodle.innerHTML = css`
-        <style>${basicStyles + styles.main}</style>
-        ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
-      `;
+                <style>${basicStyles + styles.main}</style>
+                ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
+            `;
             if (hasTransition || hasAnimation) {
                 this.reflow();
             }
@@ -419,7 +419,7 @@ if (typeof HTMLElement !== 'undefined') {
                         // layers get rebuilt, so flip a rendering hint for a frame
                         // on everything that may carry a filter
                         let targets = [
-                            this, ...this.shadowRoot.querySelectorAll('cssd-grid, cssd-cell')
+                            this, ...this.shadowRoot.querySelectorAll('cssd-grid,cssd-cell')
                         ];
                         for (let el of targets) {
                             el.style.willChange = 'filter';
