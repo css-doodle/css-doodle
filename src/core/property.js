@@ -230,12 +230,6 @@ Property.shape = memo('shape-property', value => {
     return preset ? `polygon(${points.join(',')})` : '';
 });
 
-Property.use = rules => {
-    if (rules.length > 2) {
-        return rules;
-    }
-};
-
 export const alias = {
     // legacy names.
     'place-cell': 'place',

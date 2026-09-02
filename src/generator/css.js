@@ -12,7 +12,7 @@ import { cellId } from '../utils/cell.js';
 import { tidyNumber } from '../utils/math.js';
 import { isNil, getValue } from '../utils/type.js';
 import { uniqueId } from '../utils/fn.js';
-import { join, last, makeArray, removeEmptyValues } from '../utils/list.js';
+import { join, last, removeEmptyValues } from '../utils/list.js';
 import {
     isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector, isGroupAtRule
 } from '../utils/selector.js';
@@ -40,7 +40,7 @@ const funcCache = new Map();
 function findFunc(name) {
     let fn = funcCache.get(name);
     if (fn === undefined) {
-        fn = Func[name.startsWith('$') ? 'calc' : name] || MathFunc[name] || null;
+        fn = Func[name === '$' ? 'calc' : name] || MathFunc[name] || null;
         funcCache.set(name, fn);
     }
     return fn;
@@ -133,8 +133,8 @@ function compileFunc(node) {
         } else {
             let composable = COMPOSABLE.has(fname);
             let args = node.arguments.map(arg => compileArgument(arg, node));
-            let isDollar = fname.charCodeAt(0) === 36 /* $ */;
-            let dollarUnit = (isDollar && fname.length > 1) ? (fname.split('$')[1] ?? '') : '';
+            let isDollar = fname === '$';
+            let unit = node.unit || '';
             let uniformKey = UNIFORM_KEYS[fname] ?? null;
             let isMath = fn === MathFunc[fname];
             let calcTemplate = null;
@@ -175,11 +175,11 @@ function compileFunc(node) {
                     let output;
                     if (context) {
                         output = isDollar
-                            ? rules.callCalc(dollarUnit, coords, calcTemplate.template, context, env.contextVariable)
+                            ? rules.callCalc(unit, coords, calcTemplate.template, context, env.contextVariable)
                             : rules.callFunc(fn, coords, [calcTemplate.template, context], fname, env.contextVariable);
                     } else {
                         let input = spliceTemplateInput(calcTemplate, values);
-                        output = rules.callFunc(fn, coords, input, fname, env.contextVariable);
+                        output = rules.callFunc(fn, coords, input, fname, env.contextVariable, unit);
                     }
                     return { value: getValue(output), extra: output?.extra };
                 }
@@ -217,7 +217,7 @@ function compileFunc(node) {
                         input = removeEmptyValues(input);
                     }
                 }
-                let output = rules.callFunc(fn, coords, input, fname, env.contextVariable);
+                let output = rules.callFunc(fn, coords, input, fname, env.contextVariable, unit);
                 if (output && output.gf) {
                     rules.addRule(':gf:', output.value, rules.rules);
                 }
@@ -229,15 +229,11 @@ function compileFunc(node) {
     return compiled;
 }
 
-function isVarRead(v) {
-    return v.type === 'text' && /^\-\-\w/.test(v.value);
-}
-
 function compileArgument(argument, parent) {
     let compiled = compiledArguments.get(argument);
     if (compiled === undefined) {
         let { values } = argument;
-        if (values.length === 1 && values[0].type === 'text' && !isVarRead(values[0])) {
+        if (values.length === 1 && values[0].type === 'text') {
             let value = values[0].value;
             let type = typeof value;
             compiled = () => value;
@@ -250,7 +246,7 @@ function compileArgument(argument, parent) {
             let holes = [];
             let hasVarRead = false;
             for (let v of values) {
-                if (v.type === 'text' && !isVarRead(v)) {
+                if (v.type === 'text') {
                     segments[segments.length - 1] += v.value;
                     continue;
                 }
@@ -259,11 +255,11 @@ function compileArgument(argument, parent) {
                     let compiledFn = compileFunc(v);
                     holes.push(compiledFn.seqRead
                         || ((env, extra) => compiledFn(env, extra, true).value));
-                } else if (v.type === 'text') {
+                } else if (v.type === 'var') {
                     hasVarRead = true;
                     holes.push((parent && parent.name === '@var')
-                        ? () => v.value
-                        : env => env.rules.readVar(v.value, env.coords, env.contextVariable));
+                        ? () => v.name
+                        : env => env.rules.readVar(v.name, env.coords, env.contextVariable));
                 } else {
                     holes.push(() => undefined);
                 }
@@ -497,15 +493,11 @@ class Rules {
         return tidyNumber(calc(template, context)) + unit;
     }
 
-    callFunc(fn, coords, input, fname, contextVariable = {}) {
+    callFunc(fn, coords, input, fname, contextVariable = {}, unit = '') {
         let _fn = fn(coords);
         if (typeof _fn === 'function') {
-            if (fname.startsWith('$')) {
+            if (fname === '$') {
                 let context = this.calcContext(coords.count, contextVariable);
-                let unit = '';
-                if (fname.length > 1) {
-                    unit = fname.split('$')[1] ?? '';
-                }
                 // a lone variable name with no unit reads as a
                 // generation-time var(): non-math values pass through
                 if (!unit && input.length === 1) {
@@ -562,22 +554,16 @@ class Rules {
     }
 
     composeComposable(fname, node, coords, selector, property) {
-        let parts = node.arguments.map(a => getValue(a.values[0]));
-        let temp;
-        if (parts.length && /^\d/.test(parts[0])) {
-            temp = parts[0];
-            parts = parts.slice(1);
-        }
-        let value = parts.join(',');
+        let value = node.arguments.map(a => getValue(a.values[0])).join(',');
         if (!isNil(value) && value !== '') {
             switch (fname) {
                 case 'doodle':
                     return this.composeDoodle(
-                        this.injectVariables(value, coords.count), temp,
+                        this.injectVariables(value, coords.count), node.size,
                         coords.extra.length ? structuredClone(coords.extra) : undefined);
                 case 'shaders':
                 case 'pattern':
-                    return this.composePaint(fname, value, coords, temp, selector, property);
+                    return this.composePaint(fname, value, coords, node.size, selector, property);
             }
         }
     }
@@ -884,35 +870,29 @@ class Rules {
                 this.grid = transformed.grid;
                 break;
             }
-            case '@use': {
-                if (token.value.length) {
-                    this.preCompose(coords, token.value);
-                }
-                break;
-            }
         }
     }
 
-    preCompose(coords, tokens) {
+    preCompose(coords) {
         if (isNil(this.seed)) {
             // get seed first
-            ;(tokens || this.tokens).forEach(token => {
+            for (let token of this.tokens) {
                 if (token.type === 'rule' && token.property === '@seed') {
                     this.seed = token.rawValue();
                 }
                 if (token.type === 'pseudo' && isHostSelector(token.selectors[0])) {
-                    for (let t of makeArray(token.styles)) {
+                    for (let t of token.styles) {
                         if (t.type === 'rule' && t.property === '@seed') {
                             this.seed = t.rawValue();
                         }
                     }
                 }
-            });
+            }
         }
-        if (!tokens && this.seed) {
+        if (this.seed) {
             coords.updateRandom(this.seed);
         }
-        ;(tokens || this.tokens).forEach(token => {
+        for (let token of this.tokens) {
             switch (token.type) {
                 case 'rule': {
                     this.preComposeRule(token, coords)
@@ -928,7 +908,7 @@ class Rules {
                     break;
                 }
             }
-        });
+        }
     }
 
     scanKeyframes(tokens) {
@@ -937,8 +917,6 @@ class Rules {
                 this.registerKeyframes(token);
             } else if (token.type === 'cond' || token.type === 'pseudo') {
                 this.scanKeyframes(token.styles);
-            } else if (token.type === 'rule' && token.property === '@use') {
-                this.scanKeyframes(token.value);
             }
         }
     }
@@ -1047,16 +1025,12 @@ class Rules {
     // selectors are the enclosing ones, '&' standing for the cell; rules
     // land under each of them, nested blocks carry their own resolved list
     compose(coords, tokens, selectors = CELL) {
-        // nested calls (conds, @use) run for the same cell
+        // nested calls (conds) run for the same cell
         if (!tokens) this.coords.push(coords);
         let keys = null;
         for (let token of (tokens || this.tokens)) {
             switch (token.type) {
                 case 'rule': {
-                    if (token.property === '@use') {
-                        this.compose(coords, token.value, selectors);
-                        break;
-                    }
                     if (token.property === '@gap' && this.isGapSet) break;
                     if (token.property === '@grid' && this.isGridSet) break;
                     keys ??= selectors.map(s => this.composeSelector(coords, s));

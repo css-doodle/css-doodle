@@ -15,8 +15,12 @@
 //   step       { type: 'step', name: Group[], styles }
 //   func       { type: 'func', name, arguments: Argument[], position,
 //                index (source offset of the sigil),
-//                variables? (when an argument list was consumed) }
+//                variables? (when an argument list was consumed),
+//                unit? ($px(...): the suffix, appended verbatim),
+//                size? (@doodle100x50(...): the glued size of a composable) }
 //   text       { type: 'text', value }
+//   var        { type: 'var', name }
+//              a `--name` leading the text of an argument
 //
 // The returned statement list carries `warnings`: [{ message, pos? }]
 // collected from silent-recovery points; pos is a token [col, row]
@@ -145,6 +149,9 @@ function hasTimesSyntax(token) {
 const Node = {
     text(value) {
         return { type: 'text', value };
+    },
+    var(name) {
+        return { type: 'var', name };
     },
     func(name = '') {
         return { type: 'func', name, arguments: [] };
@@ -332,7 +339,7 @@ function finishFunc(cur, name, end, isCalc, extra, variables, index) {
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1);
             } else {
-                let closed = parseArguments(cur, paren.index + 1, extra, variables);
+                let closed = parseArguments(cur, extra, variables);
                 func.arguments = closed.args;
                 if (isSvg(name)) {
                     func.arguments = expandSvg(
@@ -347,17 +354,21 @@ function finishFunc(cur, name, end, isCalc, extra, variables, index) {
     if (isCalc) {
         // everything after '$' is a unit suffix: $px(1+1) -> 2px, $4(1+1) -> 24;
         // without an argument list the suffix is the expression itself: $123 -> 123
-        func.name = '@$' + name.slice(1);
-        if (!hasArguments && func.name.length > 2) {
-            let value = func.name.substring(2);
-            func.name = '@$';
-            func.arguments.push(Node.argument([Node.text(value)]));
+        let suffix = name.slice(1);
+        func.name = '@$';
+        if (suffix.length) {
+            if (hasArguments) func.unit = suffix;
+            else func.arguments.push(Node.argument([Node.text(suffix)]));
         }
     } else {
         let { fname, extra: extraArgs } = separateFuncName(name);
         func.name = fname;
         if (extraArgs.length) {
-            func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
+            if (composable(fname)) {
+                func.size = extraArgs;
+            } else {
+                func.arguments.unshift(Node.argument([Node.text(extraArgs)]));
+            }
         }
     }
 
@@ -384,18 +395,44 @@ function findCompositionDot(name, cur, end) {
     return -1;
 }
 
-function parseArguments(cur, start, extra, variables) {
+// `--name` at the cursor: the tokens of a dashed ident glued together
+function readVarName(cur) {
+    let dash = cur.peek(1);
+    let head = cur.peek(2);
+    if (!dash || !head || !dash.isSymbol('-') || !adjacent(cur.peek(), dash)
+            || !adjacent(dash, head) || !(head.isWord() || head.isSymbol('_'))) {
+        return '';
+    }
+    let name = '--';
+    let i = 2;
+    while (true) {
+        let t = cur.peek(i);
+        if (!t || !adjacent(cur.peek(i - 1), t)
+                || !(t.isWord() || t.isNumber() || t.isSymbol('-', '_'))) {
+            break;
+        }
+        name += t.value;
+        i++;
+    }
+    cur.i += i;
+    return name;
+}
+
+function parseArguments(cur, extra, variables) {
     let args = [];
     let values = [];
-    let runStart = start;
+    let buf = '';
+    let last = null; // the token buf ends with
     let lastRun = '';
     let paren = 0;
     let quote = false;
     let end = cur.source.length;
     let head = cur.peek();
 
-    const flushText = (to, atFunc) => {
-        let text = substitutePi(cur.source.slice(runStart, to), cur.source[runStart - 1]);
+    const flush = atFunc => {
+        let text = buf;
+        buf = '';
+        last = null;
         lastRun = text;
         if (!text.length) return;
         if (values.length === 0) {
@@ -426,54 +463,58 @@ function parseArguments(cur, start, extra, variables) {
 
     while (!cur.end()) {
         let tok = cur.peek();
-        if (tok.status === 'open') {
-            quote = true;
-            cur.next();
-            continue;
-        }
-        if (tok.status === 'close') {
-            quote = false;
-            cur.next();
-            continue;
+        let v = tok.value;
+        // whitespace the tokenizer swallowed, after ':' or ',' say, reads as a space
+        if (!quote && last && !last.isSpace() && !tok.isSpace() && tok.index > tokenEnd(last)
+                && /\s/.test(cur.source.slice(tokenEnd(last), tok.index))) {
+            buf += ' ';
+            last = null;
         }
         // functions fire inside quotes too, like everywhere else
         if (tok.isSymbol('@', '$')) {
-            flushText(tok.index, true);
+            flush(true);
             values.push(parseFunc(cur, extra, variables));
-            runStart = cur.tailEnd();
             continue;
         }
         if (splitDollar(cur)) {
             continue;
         }
         if (!quote && tok.isSymbol()) {
-            let v = tok.value;
-            if (v === '(') {
-                paren++;
-                cur.next();
-                continue;
-            }
-            if (v === ')') {
-                if (paren > 0) {
-                    paren--;
-                    cur.next();
+            // a `--name` leading a text run reads a variable
+            if (v === '-' && buf === '') {
+                let name = readVarName(cur);
+                if (name) {
+                    values.push(Node.var(name));
                     continue;
                 }
-                flushText(tok.index, false);
-                pushArgument();
-                end = tok.index;
-                cur.next();
-                return { args, end };
             }
-            if (v === ',' && paren === 0) {
-                flushText(tok.index, false);
+            if (v === '(') {
+                paren++;
+            } else if (v === ')') {
+                if (paren === 0) {
+                    flush(false);
+                    pushArgument();
+                    end = tok.index;
+                    cur.next();
+                    return { args, end };
+                }
+                paren--;
+            } else if (v === ',' && paren === 0) {
+                flush(false);
                 pushArgument();
                 cur.next();
-                runStart = tok.index + 1;
                 continue;
             }
         }
+        if (tok.status === 'open') quote = true;
+        else if (tok.status === 'close') quote = false;
         cur.next();
+        if (quote && tok.isWord() && cur.source[tok.index] === '\\') {
+            buf += '\\' + v;
+        } else {
+            buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
+        }
+        last = tok;
     }
     // unterminated argument list: pending values are dropped like before
     warn(cur.ctx, 'unterminated argument list', head && head.pos);
@@ -574,7 +615,7 @@ function expandSvg(cur, raw, args, extra, variables) {
     if (hasTimesSyntax(parsedSvg)) {
         let svg = generateSvgExtended(parsedSvg) + ')';
         let sub = new Cursor(svg, cur.ctx);
-        return parseArguments(sub, 0, extra, variables).args;
+        return parseArguments(sub, extra, variables).args;
     }
     return args;
 }
@@ -708,7 +749,7 @@ function parseBlockBody(cur, extra, level) {
             styles.push(parseKeyframes(cur, extra));
         } else if (!probeSelector(cur)) {
             let rule = parseRule(cur, extra);
-            if (level === 'pseudo' && rule.property === '@use') {
+            if (rule.property === '@use') {
                 styles.push(...rule.value);
             } else if (rule.property || (level === 'top' && rule.type === 'at-rule')) {
                 styles.push(rule);
@@ -820,7 +861,7 @@ function parseCondSelector(cur) {
         if (tok.isSymbol('(')) {
             flush();
             cur.next();
-            let args = parseArguments(cur, tok.index + 1, undefined, {}).args;
+            let args = parseArguments(cur, undefined, {}).args;
             segments.push({ arguments: args, spaced });
             spaced = false;
             continue;

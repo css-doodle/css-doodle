@@ -617,3 +617,30 @@ test('values shared from inside @keyframes are declared on the grid too', () => 
     assert.equal(all.split('polygon(').length - 1, 2);
     assert.ok(all.indexOf('cssd-grid {') > all.indexOf('@keyframes a {'));
 });
+
+test('a leading --name in an argument reads the variable', () => {
+    let cases = [
+        ['--x: 3; width: @calc(--x * 2);', 'width:6;'],
+        ['--x: 3; width: $(--x * 2);', 'width:6;'],
+        ['--x: 3; width: $px(--x + 1);', 'width:4px;'],
+        ['--x: 3; width: @p(--x);', 'width:3;'],
+        ['--x: 3; width: @p(--x px);', 'width:3 px;'],
+        ['--x: 3; width: @var(--x);', 'width:var(--x);'],
+        ['--x: 3; width: @p(var(--x));', 'width:var(--x);'],
+    ];
+    for (let [input, expected] of cases) {
+        assert.ok(gen(input).includes(expected), input);
+    }
+});
+
+test('@use at the top level is inlined by the parser', () => {
+    let extra = {
+        getVariable: () => '@seed: 7; color: red; @keyframes k { to { color: blue } }'
+    };
+    let compiled = generateCss(
+        parseCss('@use: var(--r); animation: k 1s;', extra), parseGrid('1'), 42, 64
+    );
+    assert.equal(compiled.seed, '7');
+    assert.ok(compiled.styles.all.includes('color:red;'));
+    assert.ok(compiled.styles.all.includes('@keyframes k {to {color:blue;}}'));
+});

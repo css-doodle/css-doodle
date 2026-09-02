@@ -272,6 +272,12 @@ test('@use inlines variables in nested blocks', () => {
     assert.equal(pseudo.styles[0].property, 'color');
     assert.equal(pseudo.styles[1].property, 'content');
 
+    // at the top level and inside conds too
+    let [rule, cond] = parseCSS(`@use: var(--rule); @nth(1) { @use: var(--rule); }`, extra);
+    assert.equal(rule.property, 'color');
+    assert.equal(cond.type, 'cond');
+    assert.equal(cond.styles[0].property, 'color');
+
 });
 
 test('quoted paren does not leak into block probing', () => {
@@ -482,4 +488,69 @@ test('cond segments record the spacing before them', () => {
     assert.deepEqual(segments(`@container style(--x: 1) { x: y }`), [['style', true], ['()', false]]);
     assert.deepEqual(segments(`@nth(1) { x: y }`), [['()', false]]);
     assert.deepEqual(segments(`@nth not (1) { x: y }`), [['not', true], ['()', true]]);
+});
+
+test('argument text is built from tokens', () => {
+
+    let argsOf = input => parseCSS(input)[0].value[0][0].arguments.map(a => a.values);
+    // comments go and whitespace collapses, quoted text stays as written
+    assert.deepEqual(
+        argsOf(`a: @p(a /* x */ b,\n  c   d, rgb(1, 2), "a  b");`),
+        [[text('a b')], [text('c d')], [text('rgb(1, 2)')], [text('a  b')]]
+    );
+    // whitespace next to a function is kept: `a @r(1)` is not `a@r(1)`
+    let [glued, spaced] = argsOf(`a: @p(a@r(1)b, a @r(1) b);`);
+    assert.deepEqual([glued[0], glued[2]], [text('a'), text('b')]);
+    assert.deepEqual([spaced[0], spaced[2]], [text('a '), text(' b')]);
+    // so does the spacing of an at-rule prelude
+    let [media] = parseCSS(`@media (min-width: @calc(1)px) { x: y }`);
+    let [prelude] = media.segments[0].arguments;
+    assert.deepEqual([prelude.values[0], prelude.values[2]], [text('min-width: '), text('px')]);
+
+});
+
+test('a leading --name in an argument reads a variable', () => {
+
+    let argsOf = input => parseCSS(input)[0].value[0][0].arguments.map(a => a.values);
+    assert.deepEqual(
+        argsOf(`a: @p(--x, --x * 2, a --x, var(--x), --my_var-1);`),
+        [
+            [{ type: 'var', name: '--x' }],
+            [{ type: 'var', name: '--x' }, text(' * 2')],
+            [text('a --x')],
+            [text('var(--x)')],
+            [{ type: 'var', name: '--my_var-1' }],
+        ]
+    );
+
+});
+
+test('$ keeps its suffix as the unit', () => {
+
+    let funcOf = input => parseCSS(input)[0].value[0][0];
+    let px = funcOf(`a: $px(1+1);`);
+    assert.equal(px.name, '@$');
+    assert.equal(px.unit, 'px');
+    let bare = funcOf(`a: $(x);`);
+    assert.equal(bare.name, '@$');
+    assert.equal(bare.unit, undefined);
+    // without an argument list the suffix is the expression itself
+    let lone = funcOf(`a: $123;`);
+    assert.equal(lone.name, '@$');
+    assert.equal(lone.unit, undefined);
+    assert.deepEqual(lone.arguments, [argument([text('123')])]);
+
+});
+
+test('a glued value is the size of a composable and an argument otherwise', () => {
+
+    let funcOf = input => parseCSS(input)[0].value[0][0];
+    let doodle = funcOf(`a: @doodle100x50(x: y);`);
+    assert.equal(doodle.name, '@doodle');
+    assert.equal(doodle.size, '100x50');
+    assert.deepEqual(doodle.arguments, [argument([text('x: y')])]);
+    let m = funcOf(`a: @m2x3(1);`);
+    assert.equal(m.size, undefined);
+    assert.deepEqual(m.arguments[0], argument([text('2x3')]));
+
 });
