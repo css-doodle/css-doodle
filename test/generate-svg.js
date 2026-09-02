@@ -592,3 +592,67 @@ test('a selector of nothing but spaces opens no block', () => {
     `)
     );
 });
+
+test('escape text and attribute values', () => {
+    compare(
+        `text { content: Tom & Jerry }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text>Tom &amp; Jerry</text>
+      </svg>
+    `)
+    );
+    compare(
+        `text { content: 1 < 2 }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text>1 &lt; 2</text>
+      </svg>
+    `)
+    );
+    compare(
+        `a { href: https://x.com/?a=1&b=2 }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <a href="https://x.com/?a=1&amp;b=2"/>
+      </svg>
+    `)
+    );
+    // entities and raw markup pass through untouched
+    compare(
+        `text { content: <tspan>a</tspan> b &amp; }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text><tspan>a</tspan> b &amp;</text>
+      </svg>
+    `)
+    );
+    compare(
+        `style { a > b { fill: red } }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <style>a > b{fill:red}</style>
+      </svg>
+    `)
+    );
+});
+
+test('comma selectors and child combinator', () => {
+    compare(
+        `circle, rect { fill: red }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <circle fill="red"/>
+        <rect fill="red"/>
+      </svg>
+    `)
+    );
+    compare(
+        `g > circle { fill: red }`,
+        trim(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <g><circle fill="red"/></g>
+      </svg>
+    `)
+    );
+});

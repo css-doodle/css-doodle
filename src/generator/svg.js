@@ -58,27 +58,41 @@ class Tag {
     }
     toString() {
         if (this.isTextNode()) {
-            return removeQuotes(this.body);
+            return escapeText(removeQuotes(this.body));
         }
-        let attrs = [''];
-        let body = [];
-        for (let [name, value] of Object.entries(this.attrs)) {
-            value = removeQuotes(value);
-            attrs.push(`${name}="${value}"`);
+        let open = '<' + this.name;
+        for (let name in this.attrs) {
+            open += ' ' + name + '="' + escapeAttr(removeQuotes(this.attrs[name])) + '"';
         }
+        let content = '';
         for (let tag of this.body) {
-            body.push(tag.toString());
+            content += typeof tag === 'string' ? escapeText(tag) : tag.toString();
         }
-        let content = body.join('');
         if (content.length || /svg/i.test(this.name)) {
-            return `<${this.name}${attrs.join(' ')}>${content}</${this.name}>`;
+            return open + '>' + content + '</' + this.name + '>';
         }
-        return `<${this.name}${attrs.join(' ')}/>`;
+        return open + '/>';
     }
 }
 
 function composeStyleRule(name, value) {
     return `${name}:${value};`
+}
+
+// leaves XML's own references and raw markup inside `content:` alone
+const RE_AMP = /&(?!(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos);)/g;
+const RE_LT_TEXT = /<(?![a-zA-Z\/!?])/g;
+
+function escapeText(text) {
+    text = String(text);
+    if (text.indexOf('&') < 0 && text.indexOf('<') < 0) return text;
+    return text.replace(RE_AMP, '&amp;').replace(RE_LT_TEXT, '&lt;');
+}
+
+function escapeAttr(text) {
+    text = String(text);
+    if (text.indexOf('&') < 0 && text.indexOf('<') < 0 && text.indexOf('"') < 0) return text;
+    return text.replace(RE_AMP, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
 
 function removeQuotes(text) {

@@ -643,3 +643,99 @@ test('svg variable order', () => {
         }]
     });
 });
+
+test('semicolon list keeps its tail before the closing brace', () => {
+    compare('animate { values: 1; 2; 3 }', {
+        name: 'svg',
+        type: 'block',
+        value: [{
+            type: 'block',
+            name: 'animate',
+            value: [
+                { type: 'statement', name: 'values', value: '1;2;3' }
+            ]
+        }]
+    });
+
+    compare('circle { animate { values: 1; 2; 3 } }', {
+        name: 'svg',
+        type: 'block',
+        value: [{
+            type: 'block',
+            name: 'circle',
+            value: [{
+                type: 'block',
+                name: 'animate',
+                value: [
+                    { type: 'statement', name: 'values', value: '1;2;3' }
+                ]
+            }]
+        }]
+    });
+
+    // a stray word after a block is still dropped
+    compare('circle { cx: 5 } junk', {
+        name: 'svg',
+        type: 'block',
+        value: [{
+            type: 'block',
+            name: 'circle',
+            value: [
+                { type: 'statement', name: 'cx', value: '5' }
+            ]
+        }]
+    });
+});
+
+test('comma selectors share one body', () => {
+    compare('circle, rect { fill: red }', {
+        name: 'svg',
+        type: 'block',
+        value: [
+            {
+                type: 'block',
+                name: 'circle',
+                value: [{ type: 'statement', name: 'fill', value: 'red' }]
+            },
+            {
+                type: 'block',
+                name: 'rect',
+                value: [{ type: 'statement', name: 'fill', value: 'red' }]
+            }
+        ]
+    });
+
+    // each group resolves its own id and class
+    compare('circle#a, rect.b {}', {
+        name: 'svg',
+        type: 'block',
+        value: [
+            {
+                type: 'block',
+                name: 'circle',
+                value: [{ type: 'statement', name: 'id', value: 'a' }]
+            },
+            {
+                type: 'block',
+                name: 'rect',
+                value: [{ type: 'statement', name: 'class', value: 'b' }]
+            }
+        ]
+    });
+});
+
+test('child combinator nests like a space', () => {
+    compare('g > circle { fill: red }', {
+        name: 'svg',
+        type: 'block',
+        value: [{
+            type: 'block',
+            name: 'g',
+            value: [{
+                type: 'block',
+                name: 'circle',
+                value: [{ type: 'statement', name: 'fill', value: 'red' }]
+            }]
+        }]
+    });
+});

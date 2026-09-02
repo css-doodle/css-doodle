@@ -554,3 +554,23 @@ test('a glued value is the size of a composable and an argument otherwise', () =
     assert.deepEqual(m.arguments[0], argument([text('2x3')]));
 
 });
+
+test('svg variable declarations stay text inside @svg', () => {
+
+    function funcOf(input) {
+        let [rule] = parseCSS(input);
+        return rule.value[0][0];
+    }
+
+    // `--size:` at the head of the argument declares, it is not a var read
+    let func = funcOf(`@content: @svg(--size: 10; viewBox: 0 0 $size $size;);`);
+    assert.equal(func.variables['--size'].length, 1);
+    let head = func.arguments[0].values[0];
+    assert.equal(head.type, 'text');
+    assert.ok(head.value.startsWith('--size'));
+
+    // a plain `--name` argument still reads
+    let read = funcOf(`width: @rand(--a);`);
+    assert.deepEqual(read.arguments[0].values[0], { type: 'var', name: '--a' });
+
+});

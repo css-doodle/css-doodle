@@ -418,6 +418,12 @@ function readVarName(cur) {
     return name;
 }
 
+function declaresVar(cur) {
+    let t = cur.peek();
+    if (t && t.isSpace()) t = cur.peek(1);
+    return !!t && t.isSymbol(':');
+}
+
 function parseArguments(cur, extra, variables) {
     let args = [];
     let values = [];
@@ -480,13 +486,15 @@ function parseArguments(cur, extra, variables) {
             continue;
         }
         if (!quote && tok.isSymbol()) {
-            // a `--name` leading a text run reads a variable
+            // `--name:` declares (inside @svg), anything else reads
             if (v === '-' && buf === '') {
+                let at = cur.i;
                 let name = readVarName(cur);
-                if (name) {
+                if (name && !declaresVar(cur)) {
                     values.push(Node.var(name));
                     continue;
                 }
+                cur.i = at;
             }
             if (v === '(') {
                 paren++;
