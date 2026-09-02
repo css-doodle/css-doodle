@@ -20,7 +20,8 @@
 //                size? (@doodle100x50(...): the glued size of a composable) }
 //   text       { type: 'text', value }
 //   var        { type: 'var', name }
-//              a `--name` leading the text of an argument
+//              a `--name` leading the text of an argument, also once a
+//              wrapping pair is stripped: (--a) "--a"; `--name:` declares
 //
 // The returned statement list carries `warnings`: [{ message, pos? }]
 // collected from silent-recovery points; pos is a token [col, row]
@@ -548,6 +549,13 @@ function normalizeArgument(values) {
             ft.value = ft.value.slice(1);
             ed.value = ed.value.slice(0, ed.value.length - 1);
             cluster = true;
+            // `(--name)` reads the variable like a bare `--name` does
+            let name = /^--[\w-]+/.exec(ft.value);
+            if (name) {
+                let rest = ft.value.slice(name[0].length);
+                values[0] = Node.var(name[0]);
+                if (rest.length) values.splice(1, 0, Node.text(rest));
+            }
         }
     }
     return Node.argument(values, cluster);

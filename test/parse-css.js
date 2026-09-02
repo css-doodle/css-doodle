@@ -574,3 +574,24 @@ test('svg variable declarations stay text inside @svg', () => {
     assert.deepEqual(read.arguments[0].values[0], { type: 'var', name: '--a' });
 
 });
+
+test('a wrapped --name still reads the variable', () => {
+
+    function argOf(input) {
+        let [rule] = parseCSS(input);
+        return rule.value[0][0].arguments[0];
+    }
+
+    // `(--a)` keeps the whole value as one argument and reads it
+    let arg = argOf(`width: @p((--a));`);
+    assert.equal(arg.cluster, true);
+    assert.deepEqual(arg.values, [{ type: 'var', name: '--a' }]);
+
+    arg = argOf(`width: @p("--a");`);
+    assert.deepEqual(arg.values, [{ type: 'var', name: '--a' }]);
+
+    // text after the name stays text
+    arg = argOf(`width: @p((--a px));`);
+    assert.deepEqual(arg.values, [{ type: 'var', name: '--a' }, text(' px')]);
+
+});
