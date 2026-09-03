@@ -74,6 +74,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.shaderRenders = new Map();
             this._instance = uniqueId();
             this._generation = 0;
+            this._warned = new Set();
             this.extra = {
                 getVariable: name => getVariable(this, name),
                 getRgbaColor: value => getRgbaColor(this.shadowRoot, value),
@@ -252,7 +253,17 @@ if (typeof HTMLElement !== 'undefined') {
             );
             this._seed_value = compiled.seed;
             this._seed_random = compiled.random;
+            this.report(compiled.warnings);
             return compiled;
+        }
+
+        report(warnings) {
+            for (let { message, pos } of warnings) {
+                if (this._warned.has(message)) continue;
+                this._warned.add(message);
+                let where = pos ? ` (at line ${pos[1] + 1}, column ${pos[0] + 1})` : '';
+                console.warn(message + where, this);
+            }
         }
 
         load(again) {

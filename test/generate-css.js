@@ -161,47 +161,35 @@ test('numbers print without float noise', () => {
 });
 
 test('warnings collect on the compiled result', () => {
-    let warn = console.warn;
-    console.warn = () => {};
-    try {
-        let compiled = generateCss(
-            parseCss('width: @pik(1, 2);'), parseGrid('1'), 42, 64
-        );
-        assert.equal(compiled.warnings.length, 1);
-        assert.match(compiled.warnings[0].message, /unknown function @pik/);
-        assert.equal(compiled.warnings[0].index, 7);
+    let compiled = generateCss(
+        parseCss('width: @pik(1, 2);'), parseGrid('1'), 42, 64
+    );
+    assert.equal(compiled.warnings.length, 1);
+    assert.match(compiled.warnings[0].message, /unknown function @pik/);
+    assert.equal(compiled.warnings[0].index, 7);
 
-        // parse-level warnings ride along too
-        compiled = generateCss(
-            parseCss('width: @p(1, 2;'), parseGrid('1'), 42, 64
-        );
-        assert.match(compiled.warnings[0].message, /unterminated argument list/);
+    // parse-level warnings ride along too
+    compiled = generateCss(
+        parseCss('width: @p(1, 2;'), parseGrid('1'), 42, 64
+    );
+    assert.match(compiled.warnings[0].message, /unterminated argument list/);
 
-        // a plain @word without an argument list is not a typo signal
-        compiled = generateCss(
-            parseCss('content: "hi @example";'), parseGrid('1'), 42, 64
-        );
-        assert.equal(compiled.warnings.length, 0);
-    } finally {
-        console.warn = warn;
-    }
+    // a plain @word without an argument list is not a typo signal
+    compiled = generateCss(
+        parseCss('content: "hi @example";'), parseGrid('1'), 42, 64
+    );
+    assert.equal(compiled.warnings.length, 0);
 });
 
 test('nested blocks in rule-only positions are ignored, not a crash', () => {
-    let warn = console.warn;
-    console.warn = () => {};
-    try {
-        // used to throw: composeRule received cond/pseudo nodes
-        let cases = [
-            ':after { content: "x"; & { c { color: red; } }',
-            '@media (min-width: 100px) { :{ :after { content: "m"; } color: red; }',
-        ];
-        for (let code of cases) {
-            let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
-            assert.ok(compiled.styles);
-        }
-    } finally {
-        console.warn = warn;
+    // used to throw: composeRule received cond/pseudo nodes
+    let cases = [
+        ':after { content: "x"; & { c { color: red; } }',
+        '@media (min-width: 100px) { :{ :after { content: "m"; } color: red; }',
+    ];
+    for (let code of cases) {
+        let compiled = generateCss(parseCss(code), parseGrid('1'), 42, 64);
+        assert.ok(compiled.styles);
     }
 });
 
@@ -495,21 +483,15 @@ test('keyframes declared inside a pseudo are registered', () => {
 });
 
 test('@ blocks that are neither selectors nor groups pass through as written', () => {
-    let warn = console.warn;
-    console.warn = () => {};
-    try {
-        // a selector function with a modifier it does not have warns
-        let compiled = generateCss(parseCss('@cell.random { color: red }'), parseGrid('2'), 42, 64 * 64);
-        assert.ok(compiled.warnings.some(w => w.message === 'unknown selector @cell.random'));
-        assert.equal(compiled.styles.top, '@cell.random { color: red }');
-        assert.equal(compiled.styles.all, '');
-        // anything else is CSS for the browser to judge, once
-        compiled = generateCss(parseCss('@foo bar { color: red } @media (a) { color: red }'), parseGrid('2'), 42, 64 * 64);
-        assert.equal(compiled.warnings.length, 0);
-        assert.equal(compiled.styles.top, '@foo bar { color: red }');
-    } finally {
-        console.warn = warn;
-    }
+    // a selector function with a modifier it does not have warns
+    let compiled = generateCss(parseCss('@cell.random { color: red }'), parseGrid('2'), 42, 64 * 64);
+    assert.ok(compiled.warnings.some(w => w.message === 'unknown selector @cell.random'));
+    assert.equal(compiled.styles.top, '@cell.random { color: red }');
+    assert.equal(compiled.styles.all, '');
+    // anything else is CSS for the browser to judge, once
+    compiled = generateCss(parseCss('@foo bar { color: red } @media (a) { color: red }'), parseGrid('2'), 42, 64 * 64);
+    assert.equal(compiled.warnings.length, 0);
+    assert.equal(compiled.styles.top, '@foo bar { color: red }');
 });
 
 test('quoted commas and strings survive composition', () => {

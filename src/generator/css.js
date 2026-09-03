@@ -33,8 +33,6 @@ const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
 const SHARED_VALUE_MIN = 100;
 const CELL = ['&'];
 
-const consoleWarned = new Set();
-
 const funcCache = new Map();
 
 function findFunc(name) {
@@ -405,12 +403,7 @@ class Rules {
     warn(message, node) {
         if (this.warned.has(message)) return;
         this.warned.add(message);
-        this.warnings.push(
-            node && node.index >= 0 ? { message, index: node.index } : { message });
-        if (!consoleWarned.has(message)) {
-            consoleWarned.add(message);
-            console.warn(message);
-        }
+        this.warnings.push(node && node.index >= 0 ? { message, index: node.index } : { message });
     }
 
     reset() {

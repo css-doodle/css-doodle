@@ -74,8 +74,6 @@ function adjacent(a, b) {
 }
 
 function warn(ctx, msg, pos) {
-    let where = pos ? ` (at line ${pos[1] + 1}, column ${pos[0] + 1})` : '';
-    console.warn(msg + where);
     if (ctx && ctx.warnings) {
         ctx.warnings.push(pos ? { message: msg, pos } : { message: msg });
     }

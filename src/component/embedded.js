@@ -64,6 +64,7 @@ export function doodleToImage(host, code, options, fn) {
     let parsed = parseCssCached(code, host.extra);
     let _grid = parseGrid('');
     let compiled = generateCss(parsed, _grid, host._seed_value, host.getMaxGrid(), host._seed_random, options.upextra, options.instance);
+    host.report(compiled.warnings);
     let styles = compiled.styles || {};
     let grid = compiled.grid ? compiled.grid : _grid;
     let viewBox = '';

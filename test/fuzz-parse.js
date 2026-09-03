@@ -48,27 +48,21 @@ function mutate(code, random) {
 
 test('mutated corpus inputs never throw', () => {
     const random = makeRandom(SEED);
-    const warn = console.warn;
-    console.warn = () => {};
-    try {
-        for (let { name, code, extra } of fixtures) {
-            let extraArg = extra
-                ? { getVariable: n => extra[n] || '' }
-                : undefined;
-            for (let i = 0; i < ROUNDS; i++) {
-                let mutated = mutate(code, random);
-                try {
-                    let tokens = parseCss(mutated, extraArg);
-                    // maxGrid 64 mirrors the component's getMaxGrid()
-                    generateCss(tokens, parseGrid('2'), 42, 64);
-                } catch (e) {
-                    assert.fail(
-                        `${name}#${i} threw: ${e && e.stack || e}\n`
-                        + `--- mutated source ---\n${mutated}`);
-                }
+    for (let { name, code, extra } of fixtures) {
+        let extraArg = extra
+            ? { getVariable: n => extra[n] || '' }
+            : undefined;
+        for (let i = 0; i < ROUNDS; i++) {
+            let mutated = mutate(code, random);
+            try {
+                let tokens = parseCss(mutated, extraArg);
+                // maxGrid 64 mirrors the component's getMaxGrid()
+                generateCss(tokens, parseGrid('2'), 42, 64);
+            } catch (e) {
+                assert.fail(
+                    `${name}#${i} threw: ${e && e.stack || e}\n`
+                    + `--- mutated source ---\n${mutated}`);
             }
         }
-    } finally {
-        console.warn = warn;
     }
 });
