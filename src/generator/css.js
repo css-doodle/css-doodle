@@ -22,6 +22,16 @@ function isImageValue(value) {
     return String(value).includes('${') && /\$\{(shader|pattern|doodle)/.test(value);
 }
 
+function hasShorthandSize(value) {
+    let depth = 0;
+    for (let c of String(value)) {
+        if (c === '(') depth++;
+        else if (c === ')') depth--;
+        else if (c === '/' && !depth) return true;
+    }
+    return false;
+}
+
 function hasEntries(obj) {
     for (let _ in obj) return true;
     return false;
@@ -733,13 +743,11 @@ class Rules {
             }
         }
 
-        if (flags.bgImage && isImageValue(value)) {
+        if (flags.bgImage && isImageValue(value) && !coords.hasBgsize && !hasShorthandSize(value)) {
             let sizes = parseValueGroup(value, NO_SPACE)
                 .map(v => isImageValue(v) ? 'cover' : 'auto')
                 .join(',');
-            if (!coords.hasBgsize) {
-                rule = `background-size:${sizes};` + rule;
-            }
+            rule += `background-size:${sizes};`;
         }
 
         if (flags.var) {

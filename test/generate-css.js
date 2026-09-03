@@ -646,3 +646,25 @@ test('generated ids are positional and carry the instance token', () => {
     assert.ok(c.styles.all.includes('url(#filter-k3j-2)'));
     assert.ok(c.filters['filter-k3j-2'].includes('id="filter-k3j-2"'));
 });
+
+test('composed image backgrounds default to cover after the shorthand', () => {
+    let shader = '@shaders(void main() {})';
+    let gen = code => generateCss(parseCss(code), parseGrid('1'), 42, 64 * 64)
+        .styles.all.replace(/\$\{shader-\d+\}/g, 'S');
+    let cases = [
+        // the shorthand resets background-size, so the default must follow it
+        [`background: ${shader};`, 'background:S;background-size:cover;'],
+        [`background: ${shader}, linear-gradient(red, blue);`, 'background:S,linear-gradient(red,blue);background-size:cover,auto;'],
+        [`background-image: ${shader};`, 'background-image:S;background-size:cover;'],
+        // an explicit size wins, whether in the shorthand or declared before
+        [`background: ${shader} center / 50% no-repeat;`, 'background:S center / 50% no-repeat;}'],
+        [`background: ${shader}, url(a/b.png);`, 'background:S,url(a/b.png);background-size:cover,auto;'],
+        // a size anywhere in the shorthand means the author owns every layer's size
+        [`background: ${shader}, url(a/b.png) 0 0 / 20px 20px;`, 'background:S,url(a/b.png) 0 0 / 20px 20px;}'],
+        [`background-size: 30%; background: ${shader};`, 'background-size:30%;\nbackground:S;}'],
+        [`background: ${shader}; background-size: 30%;`, 'background:S;background-size:cover;\nbackground-size:30%;}'],
+    ];
+    for (let [code, expected] of cases) {
+        assert.ok(gen(code).includes(expected), `${code} => ${gen(code)}`);
+    }
+});
