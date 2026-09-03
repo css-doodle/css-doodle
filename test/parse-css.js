@@ -604,3 +604,22 @@ test('a wrapped --name still reads the variable', () => {
     assert.deepEqual(arg.values, [{ type: 'var', name: '--a' }, text(' px')]);
 
 });
+
+test('a ; inside an open paren stays in the value, as the browser reads it', () => {
+    // `doodle(` without the @ used to end at the first `;`, leaving an
+    // unbalanced value that swallowed every later rule in the browser
+    let [rule, next] = parseCSS(`background: doodle(a: 1; b: 2);\ncolor: red;`);
+    assert.equal(rule.property, 'background');
+    assert.equal(rule.value[0].map(v => v.value).join(''), 'doodle(a:1;b:2)');
+    assert.equal(next.property, 'color');
+
+    // parens inside quotes do not count
+    let [content, color] = parseCSS(`content: "("; color: blue;`);
+    assert.equal(content.value[0][0].value, '"("');
+    assert.equal(color.property, 'color');
+
+    // a value that never closes its paren runs to the block end and warns
+    let parsed = parseCSS(`width: calc(1px; height: 2px;`);
+    assert.equal(parsed.length, 1);
+    assert.equal(parsed.warnings[0].message, 'unclosed ( in value');
+});

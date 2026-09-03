@@ -195,6 +195,7 @@ function atRuleName(cur) {
 }
 
 function parseValue(cur, extra, breakOn) {
+    let head = cur.peek();
     let groups = [[]];
     let group = groups[0];
     let buf = '';
@@ -226,7 +227,7 @@ function parseValue(cur, extra, breakOn) {
         }
 
         if (tok.isSymbol()) {
-            if (!quote && (v === ';' || v === '}' || v === '<' || v === breakOn)) {
+            if (!quote && (v === '}' || v === '<' || v === breakOn || (v === ';' && paren === 0))) {
                 break;
             }
             if (v === ',' && paren === 0 && !quote) {
@@ -245,8 +246,10 @@ function parseValue(cur, extra, breakOn) {
             }
             if (tok.status === 'open') quote = true;
             else if (tok.status === 'close') quote = false;
-            if (v === '(') paren++;
-            else if (v === ')') paren = Math.max(0, paren - 1);
+            else if (!quote) {
+                if (v === '(') paren++;
+                else if (v === ')') paren = Math.max(0, paren - 1);
+            }
             cur.next();
             buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
             continue;
@@ -261,6 +264,9 @@ function parseValue(cur, extra, breakOn) {
     }
 
     flush();
+    if (paren > 0) {
+        warn(cur.ctx, 'unclosed ( in value', head && head.pos);
+    }
     groups.hasFunc = hasFunc;
     return groups;
 }
