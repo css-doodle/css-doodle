@@ -138,7 +138,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
     if (target.selector === ':host') {
         element = host;
     } else if (target.selector === ':container') {
-        element = host.shadowRoot.querySelector('cssd-g');
+        element = host.shadowRoot.querySelector('grid');
     } else {
         element = host.doodle.getElementById(cell);
     }

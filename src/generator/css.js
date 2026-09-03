@@ -370,7 +370,7 @@ function ruleFlags(prop) {
 
 function specialName(selector) {
     if (isParentSelector(selector)) {
-        return selector.replace(':container', 'cssd-g');
+        return selector.replace(':container', 'grid');
     }
     if (/^:host(?![(-])/.test(selector)) {
         return `${selector},${selector.replace(':host', '.host')}`;
@@ -1095,7 +1095,7 @@ class Rules {
             } else if (selector === ':gf:') {
                 this.styles.gf = rule;
             } else {
-                let target = (selector === 'cssd-b') ? 'backdrop'
+                let target = (selector === 'bd') ? 'backdrop'
                     : isHostSelector(selector) ? 'host' : 'cells';
                 let value = join(rule).trim();
                 if (value.length) {

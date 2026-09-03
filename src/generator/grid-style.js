@@ -61,7 +61,7 @@ export default function gridStyleRules({
     }
     if (flex) {
         add(':container', 'display:flex;');
-        add('cssd-c', 'flex: 1;');
+        add('cell', 'flex: 1;');
         if (flex === 'column') {
             add(':container', 'flex-direction:column;');
         }
@@ -84,7 +84,7 @@ export default function gridStyleRules({
         add(':container', `row-rule: ${rowRule};column-rule: ${columnRule};`);
     }
     if (backdropFilter) {
-        add('cssd-b', css`
+        add('bd', css`
       backdrop-filter: ${backdropFilter};
     `);
     }

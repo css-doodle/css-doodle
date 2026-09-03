@@ -23,7 +23,7 @@ function unEntity(code) {
 }
 
 function mountFilterDefs(parent, markup, slot) {
-    let holder = parent.querySelector(':scope > cssd-f');
+    let holder = parent.querySelector(':scope > ft');
     if (!markup) {
         if (holder) {
             holder.remove();
@@ -31,7 +31,7 @@ function mountFilterDefs(parent, markup, slot) {
         return null;
     }
     if (!holder) {
-        holder = document.createElement('cssd-f');
+        holder = document.createElement('ft');
         holder.setAttribute('style', FilterHolderStyle);
         if (slot) {
             holder.setAttribute('slot', slot);
@@ -186,7 +186,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         dispatchCellClick(event) {
-            let cell = event.composedPath().find(el => el.tagName === 'CSSD-C');
+            let cell = event.composedPath().find(el => el.tagName === 'CELL');
             if (!cell) return;
             let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
             if (!match) return;
@@ -397,10 +397,10 @@ if (typeof HTMLElement !== 'undefined') {
 
         mountFilters(filters) {
             let markup = Object.values(filters).join('');
-            let slot = this.shadowRoot.querySelector('slot[name="cssd-f"]');
+            let slot = this.shadowRoot.querySelector('slot[name="ft"]');
             if (markup && !slot) {
                 slot = document.createElement('slot');
-                slot.setAttribute('name', 'cssd-f');
+                slot.setAttribute('name', 'ft');
                 this.shadowRoot.appendChild(slot);
             }
             if (!markup && slot) {
@@ -408,7 +408,7 @@ if (typeof HTMLElement !== 'undefined') {
             }
             let holders = [
                 mountFilterDefs(this.shadowRoot, markup),
-                mountFilterDefs(this, markup, 'cssd-f'),
+                mountFilterDefs(this, markup, 'ft'),
             ];
             this._filters_markup = markup;
             if (markup) {
@@ -422,7 +422,7 @@ if (typeof HTMLElement !== 'undefined') {
                         // layers get rebuilt, so flip a rendering hint for a frame
                         // on everything that may carry a filter
                         let targets = [
-                            this, ...this.shadowRoot.querySelectorAll('cssd-g,cssd-c')
+                            this, ...this.shadowRoot.querySelectorAll('grid,cell')
                         ];
                         for (let el of targets) {
                             el.style.willChange = 'filter';
@@ -459,7 +459,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         reflow() {
-            let el = this.shadowRoot.querySelector('cssd-g') || this;
+            let el = this.shadowRoot.querySelector('grid') || this;
             el.offsetWidth;
         }
 
@@ -472,7 +472,7 @@ if (typeof HTMLElement !== 'undefined') {
                 this.animations = [];
                 let { pattern, shaders } = this.compiled;
                 if (Object.keys(pattern).length || Object.keys(shaders).length) {
-                    for (let el of this.shadowRoot.querySelectorAll('cssd-c')) {
+                    for (let el of this.shadowRoot.querySelectorAll('cell')) {
                         el.style.cssText = '';
                     }
                     this.observers.forEach(observer => {
