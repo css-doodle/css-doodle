@@ -1,5 +1,5 @@
 import { isEmpty } from '../utils/type.js';
-import { scan, iterator } from './tokenizer.js';
+import { scan, iterator, textOf } from './tokenizer.js';
 
 function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
     let group = [];
@@ -42,7 +42,7 @@ function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
     }
 
     function addGroup(tokens) {
-        let value = joinTokens(tokens);
+        let value = textOf(tokens);
         if (option.verbose) {
             if (lastGroupName.length || value.length) {
                 group.push({ group: lastGroupName, value });
@@ -93,10 +93,6 @@ function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
     }
 
     return group;
-}
-
-function joinTokens(tokens) {
-    return tokens.map(n => n.value).join('');
 }
 
 // Composed values repeat across cells and generations, so each unique

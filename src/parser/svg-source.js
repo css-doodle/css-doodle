@@ -1,3 +1,5 @@
+// An svg tree back to source with every `*n` block as `@Mn(…)`, so
+// that parsed again as doodle arguments @M repeats the element.
 function generate(token, last) {
     let result = '';
     if (token.type === 'block') {
@@ -32,6 +34,6 @@ function generate(token, last) {
     return result;
 }
 
-export default function generateSvgExtended(token) {
+export default function sourceOf(token) {
     return generate(token).trim();
 }

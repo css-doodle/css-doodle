@@ -28,7 +28,7 @@
 import { scan, Token } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
-import generateSvgExtended from '../generator/svg-extended.js';
+import svgSourceOf from './svg-source.js';
 import { isSpecialSelector } from '../utils/selector.js';
 
 const PI = String(Math.PI);
@@ -633,7 +633,7 @@ function expandSvg(cur, raw, args, extra, variables) {
         }
     }
     if (hasTimesSyntax(parsedSvg)) {
-        let svg = generateSvgExtended(parsedSvg) + ')';
+        let svg = svgSourceOf(parsedSvg) + ')';
         let sub = new Cursor(svg, cur.ctx);
         return parseArguments(sub, extra, variables).args;
     }

@@ -1,5 +1,6 @@
-import { scan, iterator } from './tokenizer.js';
+import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
+import { parseBody, readRaw } from './parse-body.js';
 
 const SPECIAL_NAMESPACE_PREFIXES = [
     'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
@@ -11,14 +12,11 @@ function isSkip(...names) {
     return names.includes('style');
 }
 
-function isBlock(type) {
-    return type === 'block';
-}
-
 // the ';' of `&amp;` or `&#x27;` belongs to the value, not the statement
 const RE_ENTITY_TAIL = /&(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos)$/;
 
-function endsEntity(tokens, n = tokens.length) {
+function endsEntity(tokens) {
+    let n = tokens.length;
     let last = tokens[n - 1];
     if (!last || !(last.isWord() || last.isNumber())) return false;
     for (let i = n - 2; i >= 0 && i >= n - 8; --i) {
@@ -31,16 +29,6 @@ function endsEntity(tokens, n = tokens.length) {
         if (!(t.isWord() || t.isNumber())) return false;
     }
     return false;
-}
-
-function joinToken(tokens) {
-    let len = tokens.length;
-    if (len && tokens[len - 1].isSymbol(';', '}') && !endsEntity(tokens, len - 1)) {
-        len--;
-    }
-    let text = '';
-    for (let i = 0; i < len; ++i) text += tokens[i].value;
-    return text;
 }
 
 function splitTimes(name, object) {
@@ -94,13 +82,13 @@ function wrapChain(block, selectors, skip) {
 // Build the (possibly nested) block for a selector chain like `g circle`.
 function readBlock(iter, selectors, skip) {
     let name = selectors.pop();
-    let block = resolveId(walk(iter, makeBlock(name)), skip);
+    let block = resolveId(parseBody(iter, makeBlock(name), svg), skip);
     return wrapChain(block, selectors, skip);
 }
 
-function readBlocks(iter, groups, skip) {
+function readGroupBlocks(iter, groups, skip) {
     let first = groups[0];
-    let inner = walk(iter, makeBlock(first.pop()));
+    let inner = parseBody(iter, makeBlock(first.pop()), svg);
     // snapshot before resolveId adds the first group's id/class
     let body = groups.length > 1 ? inner.value.slice() : null;
     let blocks = [wrapChain(resolveId(inner, skip), first, skip)];
@@ -117,12 +105,14 @@ function readStatement(iter, token) {
     let inlineBlock;
     let quote = 0;
     let paren = 0;
-    while (iter.next()) {
+    // `name: }`: nothing to read, the '}' is the block's
+    let empty = iter.curr(1) && iter.curr(1).isSymbol('}');
+    while (!empty && iter.next()) {
         let curr = iter.curr();
         let next = iter.curr(1);
         if (curr.isSymbol('(') && !quote) {
             paren++;
-        } else if (curr.isSymbol(')') && !quote) {
+        } else if (curr.isSymbol(')') && !quote && paren) {
             paren--;
         }
         if (curr.isSymbol("'", '"')) {
@@ -132,8 +122,11 @@ function readStatement(iter, token) {
                 quote--;
             }
         }
-        let isStatementBreak = !quote && !paren
-            && (!next || (curr.isSymbol(';') && !endsEntity(fragment)) || next.isSymbol('}'));
+        // the ';' of `&amp;` is content, any other one ends the statement
+        if (!quote && !paren && curr.isSymbol(';') && !endsEntity(fragment)) {
+            break;
+        }
+        let isStatementBreak = !quote && !paren && (!next || next.isSymbol('}'));
 
         if (curr.isSymbol("'", '"') && next && next.isSymbol('}') && !quote) {
             isStatementBreak = true;
@@ -155,7 +148,7 @@ function readStatement(iter, token) {
         token.value = inlineBlock;
         token.value.inline = true;
     } else if (fragment.length) {
-        token.value = joinToken(fragment);
+        token.value = textOf(fragment);
     }
     if (token.origin) {
         token.origin.value = token.value;
@@ -163,27 +156,9 @@ function readStatement(iter, token) {
     return fragment;
 }
 
-function readStyle(iter) {
-    let depth = 0;
-    let style = '';
-    while (iter.next()) {
-        let curr = iter.curr();
-        if (curr.isSymbol('{')) {
-            depth++;
-        } else if (curr.isSymbol('}')) {
-            if (!depth) {
-                break;
-            }
-            depth--;
-        }
-        style += curr.value;
-    }
-    return style;
-}
-
 function readStyleBlock(iter, selectors) {
     let cssSelectors = selectors.slice(selectors.indexOf('style') + 1);
-    let styleContent = readStyle(iter);
+    let styleContent = textOf(readRaw(iter));
     if (cssSelectors.length) {
         styleContent = cssSelectors.join(' ') + '{' + styleContent + '}';
     }
@@ -194,112 +169,66 @@ function readStyleBlock(iter, selectors) {
     };
 }
 
-function walk(iter, parentToken) {
-    let rules = [];
-    let fragment = [];
-    let tokenType = parentToken && parentToken.type || '';
-    let stack = [];
-
-    while (iter.next()) {
-        let curr = iter.curr();
-        let next = iter.curr(1);
-        if (curr.isSymbol('(')) {
-            stack.push(curr.value);
-        }
-        if (curr.isSymbol(')') && stack.length) {
-            stack.pop();
-        }
-        let isBlockBreak = !next || curr.isSymbol('}');
-        if (isBlock(tokenType) && isBlockBreak) {
-            // animate { values: 1; 2; 3 }: the tail belongs to the last statement
-            if (!curr.isSymbol('}')) {
-                fragment.push(curr);
-            }
-            if (rules.length && fragment.length) {
-                let last = rules[rules.length - 1];
-                if (typeof last.value === 'string') {
-                    last.value += (';' + joinToken(fragment));
-                }
-            }
-            parentToken.value = rules;
-            break;
-        }
-        else if (curr.isSymbol('{')) {
-            let groups = getSelectorGroups(fragment);
-            if (!groups.length) {
-                continue;
-            }
-            let selectors = groups[0];
-            if (isSkip(parentToken.name)) {
-                selectors = [joinToken(fragment)];
-                groups = [selectors];
-            }
-            if (selectors.includes('style')) {
-                rules.push(readStyleBlock(iter, selectors));
-            } else {
-                let skip = isSkip(...selectors, parentToken.name);
-                rules.push(...readBlocks(iter, groups, skip));
-            }
-            fragment = [];
-        }
-        else if (
-            curr.isSymbol(':')
-            && !stack.length
-            && !isSpecialProperty(iter.curr(-1), next)
-            && fragment.length
-        ) {
-            let props = getGroups(fragment);
-            let statement = {
-                type: 'statement',
-                name: 'unknown',
-                value: ''
-            };
-            if (props.length > 1) {
-                statement.origin = { name: props };
-            }
-            let valueTokens = readStatement(iter, statement);
-            let groupedValue = props.length > 1 ? parseValueGroup(statement.value) : null;
-            let expand = !!groupedValue && groupedValue.length === props.length;
-
-            for (let i = 0; i < props.length; ++i) {
-                let prop = props[i];
-                let item = props.length === 1 ? statement : Object.assign({}, statement);
-                item.name = prop;
-                if (prop.startsWith('--')) {
-                    item.variable = true;
-                }
-                if (expand) {
-                    item.value = groupedValue[i];
-                }
-                if (/viewBox/i.test(prop)) {
-                    item.detail = parseViewBox(item.value, valueTokens);
-                }
-                rules.push(item);
-            }
-            if (isBlock(tokenType)) {
-                parentToken.value = rules;
-            }
-            fragment = [];
-        }
-        else if (curr.isSymbol(';')) {
-            if (rules.length && fragment.length) {
-                let last = rules[rules.length - 1];
-                if (typeof last.value === 'string') {
-                    last.value += (';' + joinToken(fragment));
-                }
-                fragment = [];
-            }
-        }
-        else {
-            fragment.push(curr);
-        }
+// the head as svg selectors: `g circle, rect*3 {`, `style {`
+function readSvgBlocks(iter, head, parentToken) {
+    let groups = getSelectorGroups(head);
+    if (!groups.length) {
+        return null;
     }
-
-    if (rules.length && isBlock(tokenType)) {
-        parentToken.value = rules;
+    let selectors = groups[0];
+    if (isSkip(parentToken.name)) {
+        selectors = [textOf(head)];
+        groups = [selectors];
     }
-    return tokenType ? parentToken : rules;
+    if (selectors.includes('style')) {
+        return [readStyleBlock(iter, selectors)];
+    }
+    let skip = isSkip(...selectors, parentToken.name);
+    return readGroupBlocks(iter, groups, skip);
 }
+
+// `cx: 1`; `x, y: 1, 2` expanded; viewBox with its numbers; `--name`
+// flagged as a variable; null for the ':' of `xlink:href`
+function readSvgStatement(iter, head) {
+    if (isSpecialProperty(iter.curr(-1), iter.curr(1))) {
+        return null;
+    }
+    let props = getGroups(head);
+    let statement = {
+        type: 'statement',
+        name: 'unknown',
+        value: ''
+    };
+    if (props.length > 1) {
+        statement.origin = { name: props };
+    }
+    let valueTokens = readStatement(iter, statement);
+    let groupedValue = props.length > 1 ? parseValueGroup(statement.value) : null;
+    let expand = !!groupedValue && groupedValue.length === props.length;
+
+    let rules = [];
+    for (let i = 0; i < props.length; ++i) {
+        let prop = props[i];
+        let item = props.length === 1 ? statement : Object.assign({}, statement);
+        item.name = prop;
+        if (prop.startsWith('--')) {
+            item.variable = true;
+        }
+        if (expand) {
+            item.value = groupedValue[i];
+        }
+        if (/viewBox/i.test(prop)) {
+            item.detail = parseViewBox(item.value, valueTokens);
+        }
+        rules.push(item);
+    }
+    return rules;
+}
+
+const svg = {
+    readBlocks: readSvgBlocks,
+    readStatement: readSvgStatement,
+};
 
 function isSpecialProperty(prev, next) {
     if (!prev || !next || (prev.value !== 'xlink' && prev.value !== 'xml')) {
@@ -309,36 +238,12 @@ function isSpecialProperty(prev, next) {
 }
 
 function getGroups(tokens) {
-    let group = [];
-    let temp = [];
-    for (let token of tokens) {
-        if (token.isSymbol(',')) {
-            group.push(joinToken(temp));
-            temp = [];
-        } else {
-            temp.push(token);
-        }
-    }
-    if (temp.length) {
-        group.push(joinToken(temp));
-    }
-    return group;
+    return itemsOf(tokens).map(textOf);
 }
 
+// one selector chain per comma group: `g.a > circle*3, rect`
 function getSelectorGroups(tokens) {
-    let groups = [[]];
-    for (let token of tokens) {
-        if (token.isSymbol(',')) {
-            groups.push([]);
-        } else {
-            groups[groups.length - 1].push(token);
-        }
-    }
-    if (groups.length === 1) {
-        let selectors = getSelectors(tokens);
-        return selectors.length ? [selectors] : [];
-    }
-    return groups.map(getSelectors).filter(group => group.length);
+    return itemsOf(tokens).map(getSelectors).filter(group => group.length);
 }
 
 function getSelectors(tokens) {
@@ -422,15 +327,11 @@ function skipHeadSVG(block) {
 
 function parse(source, root) {
     let iter = iterator(scan(source));
-    let tokens = walk(iter, root || {
+    let tokens = parseBody(iter, root || {
         type: 'block',
         name: 'svg',
         value: []
-    });
-    // walk assigns value only when the input has rules
-    if (!Array.isArray(tokens.value)) {
-        tokens.value = [];
-    }
+    }, svg);
     return skipHeadSVG(tokens);
 }
 

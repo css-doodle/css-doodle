@@ -145,6 +145,12 @@ export default [
         name: 'pattern-lines',
         code: `background: @pattern(\n  // grid lines\n  grid: 10;\n  match(gx % 2 == 0) {\n    fill: #000;\n  }\n);`
     },
+    { name: 'pattern-match-gt', code: `background: @pattern(grid: 8; shape: circle; size: .9; match(x > y) { fill: #333; } match(x <= y) { fill: #eee; });` },
+    { name: 'pattern-match-commas', code: `background: @pattern(grid: 6; match(mod(x, 2) == 0, y > 3) { fill: red; });` },
+    { name: 'pattern-match-list', code: `background: @pattern(grid: 6; match(x < 3), match(x > 4) { fill: #09f; } match(x >= 3, x <= 4) { fill: #fc0; });` },
+    { name: 'pattern-variables', code: `background: @pattern(grid: 4; --k: 3; shape: circle; size: .5; match(x * k > 6) { fill: hsl(x * 60, .5, .5); });` },
+    { name: 'pattern-nested-match', code: `background: @pattern(grid: 4; match(x > 2) { size: .4; match(y > 2) { fill: red; } });` },
+    { name: 'pattern-no-trailing-semicolon', code: `background: @pattern(grid: 3; match(x > 1) { fill: red } fill: blue);` },
     { name: 'canvas-body', code: `background: @canvas(\n  ctx.fillStyle = 'red';\n  ctx.fillRect(0, 0, 16, 16);\n);` },
 
     // --- svg ---

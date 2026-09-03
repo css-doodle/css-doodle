@@ -1,4 +1,4 @@
-import { scan, iterator } from './tokenizer.js';
+import { scan, iterator, textOf } from './tokenizer.js';
 
 function parse(input) {
     let iter = iterator(scan(input));
@@ -30,12 +30,12 @@ function parseVar(iter) {
     while (iter.next()) {
         let { curr, next } = iter.get();
         if (curr.isSymbol(')', ';') && !ret.name) {
-            ret.name = joinTokens(tokens);
+            ret.name = textOf(tokens);
             break;
         }
         else if (curr.isSymbol(',')) {
             if (ret.name === undefined) {
-                ret.name = joinTokens(tokens);
+                ret.name = textOf(tokens);
                 tokens = [];
             }
             if (ret.name) {
@@ -46,10 +46,6 @@ function parseVar(iter) {
         }
     }
     return ret;
-}
-
-function joinTokens(tokens) {
-    return tokens.map(n => n.value).join('');
 }
 
 function isValid(name) {

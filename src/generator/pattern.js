@@ -250,7 +250,8 @@ const STATEMENT_HANDLERS = {
 };
 
 function generateStatement(token, extra, insideBlock = false, vars = {}) {
-    if (token.type !== 'statement') {
+    // a value that read as a block (`fill: x { … }`) is garbage here
+    if (token.type !== 'statement' || typeof token.value !== 'string') {
         return { type: 'statement', value: '' };
     }
     let handler = STATEMENT_HANDLERS[token.name];

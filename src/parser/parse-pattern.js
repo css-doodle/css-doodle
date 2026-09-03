@@ -1,151 +1,70 @@
-import { scan, iterator } from './tokenizer.js';
+import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
+import { parseBody } from './parse-body.js';
 
-function joinToken(tokens) {
-    let len = tokens.length;
-    if (len && tokens[len - 1].isSymbol(';')) {
-        tokens = tokens.slice(0, len - 1);
-    }
-    return tokens.map(n => n.value).join('');
-}
-
-function readStatement(iter, token) {
-    let fragment = [];
-    while (iter.next()) {
-        let { curr, next } = iter.get();
-        fragment.push(curr);
-        if (!next || curr.isSymbol(';') || next.isSymbol('}')) {
-            break;
-        }
-    }
-    if (fragment.length) {
-        token.value = joinToken(fragment);
-    }
-    return token;
-}
-
+// `match(x > y), match(mod(x, 2) == 0, y > 3)` → { name, args } per
+// selector, duplicates dropped
 function parseSelector(tokens) {
-    let groups = [];
-    let name = '';
-    let args = [];
-    let fragments = [];
-    let depth = 0;
-
-    const flushArg = () => {
-        if (fragments.length) {
-            args.push(fragments.join(''));
-            fragments = [];
+    let selectors = [];
+    let seen = new Set();
+    for (let group of itemsOf(tokens)) {
+        let open = group.findIndex(t => t.isSymbol('('));
+        let head = open < 0 ? group : group.slice(0, open);
+        let word = head.find(t => t.isWord());
+        if (!word) {
+            continue;
         }
-    };
-    const flushGroup = () => {
-        if (name) {
-            groups.push({ name, args });
-            name = '';
-            args = [];
-            fragments = [];
-        }
-    };
-
-    for (let curr of tokens) {
-        if (!name.length && curr.isWord()) {
-            name = curr.value;
-        }
-        else if (curr.isSymbol('(')) {
-            if (depth++) {
-                fragments.push(curr.value);
+        let args = [];
+        if (open >= 0) {
+            let close = open + 1;
+            for (let depth = 1; close < group.length && depth; ++close) {
+                if (group[close].isSymbol('(')) depth++;
+                else if (group[close].isSymbol(')')) depth--;
             }
+            let inner = group.slice(open + 1, group[close - 1].isSymbol(')') ? close - 1 : close);
+            args = itemsOf(inner).map(textOf);
         }
-        else if (curr.isSymbol(')')) {
-            if (depth > 1) {
-                depth--;
-                fragments.push(curr.value);
-            } else {
-                depth = 0;
-                flushArg();
-            }
-        }
-        else if (curr.isSymbol(',')) {
-            if (depth > 1) {
-                fragments.push(curr.value);
-            } else if (depth === 1) {
-                args.push(fragments.join(''));
-                fragments = [];
-            } else {
-                flushArg();
-                flushGroup();
-            }
-        }
-        else {
-            fragments.push(curr.value);
+        let key = word.value + '(' + args.join('') + ')';
+        if (!seen.has(key)) {
+            seen.add(key);
+            selectors.push({ name: word.value, args });
         }
     }
-    flushGroup();
-
-    let seen = new Set();
-    return groups.filter(n => {
-        let key = n.name + '(' + n.args.join('') + ')';
-        return seen.has(key) ? false : !!seen.add(key);
-    });
+    return selectors;
 }
 
-function walk(iter, parentToken) {
-    let rules = [];
-    let fragment = [];
-    let tokenType = parentToken && parentToken.type || '';
-    let stack = [];
+// one block per selector, all over the same body
+function readMatchBlocks(iter, head) {
+    let selectors = parseSelector(head);
+    if (!selectors.length) {
+        return null;
+    }
+    let block = parseBody(iter, { type: 'block', name: '', value: [] }, pattern);
+    return selectors.map(({ name, args }) => Object.assign({}, block, { name, args }));
+}
 
+// a value runs to the ';' or the end of the block
+function readPatternStatement(iter, head) {
+    let value = [];
     while (iter.next()) {
         let { curr, next } = iter.get();
-        if (tokenType === 'block' && (!next || curr.isSymbol('}'))) {
-            if (!next && rules.length && !curr.isSymbol('}')) {
-                rules[rules.length - 1].value += (';' + curr.value);
-            }
+        if (curr.isSymbol(';')) {
             break;
         }
-        else if (curr.isSymbol('{') && fragment.length && !stack.length) {
-            let selectors = parseSelector(fragment);
-            if (!selectors.length) {
-                continue;
-            }
-            let block = walk(iter, { type: 'block', name: 'unkown', value: [] });
-            selectors.forEach(({ name, args }) => {
-                rules.push(Object.assign({}, block, { name, args }));
-            });
-            fragment = [];
-        }
-        else if (curr.isSymbol(':') && fragment.length && !stack.length) {
-            rules.push(readStatement(iter, {
-                type: 'statement',
-                name: joinToken(fragment),
-                value: ''
-            }));
-            fragment = [];
-        }
-        else if (curr.isSymbol(';')) {
-            if (rules.length && fragment.length) {
-                rules[rules.length - 1].value += (';' + joinToken(fragment));
-                fragment = [];
-            }
-        }
-        else {
-            if (curr.isSymbol('(')) {
-                stack.push(curr);
-            }
-            if (curr.isSymbol(')')) {
-                stack.pop();
-            }
-            fragment.push(curr);
+        value.push(curr);
+        if (!next || next.isSymbol('}')) {
+            break;
         }
     }
-
-    if (tokenType === 'block') {
-        parentToken.value = rules;
-        return parentToken;
-    }
-    return rules;
+    return [{ type: 'statement', name: textOf(head), value: textOf(value) }];
 }
+
+const pattern = {
+    readBlocks: readMatchBlocks,
+    readStatement: readPatternStatement,
+};
 
 function parse(source) {
-    return walk(iterator(scan(source)));
+    return parseBody(iterator(scan(source)), null, pattern);
 }
 
 export default parse;

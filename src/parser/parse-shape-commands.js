@@ -1,13 +1,9 @@
-import { scan, iterator } from './tokenizer.js';
+import { scan, iterator, textOf } from './tokenizer.js';
 
 const KEEP_NEGATIVE = ['fill-rule', 'fill'];
 
-function joinTokens(tokens) {
-    return tokens.map(n => n.value).join('');
-}
-
 function addCommand(commands, name, tokens, negative) {
-    let value = joinTokens(tokens);
+    let value = textOf(tokens);
     commands[name] = (negative && !KEEP_NEGATIVE.includes(name))
         ? `-1 * (${value})`
         : value;
@@ -22,7 +18,7 @@ function parse(input) {
     while (iter.next()) {
         let { prev, curr, next } = iter.get();
         if (curr.isSymbol(':') && !name) {
-            name = joinTokens(tokens);
+            name = textOf(tokens);
             tokens = [];
         } else if (curr.isSymbol(';')) {
             if (name) {

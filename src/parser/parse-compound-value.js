@@ -1,18 +1,5 @@
 import { iterator, scan } from './tokenizer.js';
-
-const memo = new Map();
-
-function parseCached(input) {
-    let result = memo.get(input);
-    if (result === undefined) {
-        if (memo.size >= 256) {
-            memo.clear();
-        }
-        result = parse(input);
-        memo.set(input, result);
-    }
-    return result;
-}
+import { memo } from '../utils/cache.js';
 
 function parse(input) {
     let iter = iterator(scan(input));
@@ -37,4 +24,4 @@ function parse(input) {
     return ret;
 }
 
-export default parseCached;
+export default memo('compound-value', parse);

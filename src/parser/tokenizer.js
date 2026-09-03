@@ -82,6 +82,30 @@ class Token {
     }
 }
 
+// the text the tokens came from
+function textOf(tokens) {
+    return tokens.map(t => t.value).join('');
+}
+
+// the items of a comma list, split at the top level: `a, (b, c)` is two
+function itemsOf(tokens) {
+    let items = [];
+    let item = [];
+    let depth = 0;
+    for (let token of tokens) {
+        if (token.isSymbol('(')) depth++;
+        else if (token.isSymbol(')') && depth) depth--;
+        if (!depth && token.isSymbol(',')) {
+            if (item.length) items.push(item);
+            item = [];
+        } else {
+            item.push(token);
+        }
+    }
+    if (item.length) items.push(item);
+    return items;
+}
+
 function iterator(input) {
     let pointer = -1;
     return {
@@ -320,5 +344,7 @@ function scan(source, options = {}) {
 export {
     iterator,
     scan,
+    textOf,
+    itemsOf,
     Token
 }
