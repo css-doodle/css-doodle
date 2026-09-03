@@ -16,6 +16,11 @@ export function bindUniforms(host, { time, mousex, mousey, mouse, width, height 
     }
 }
 
+export function unbindUniforms(host) {
+    offUmouse(host);
+    offUsize(host);
+}
+
 // registered per document, not per host
 let isUtimeSet = false;
 

@@ -12,7 +12,7 @@ import { css } from '../utils/tagged-template.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';
-import { bindUniforms } from './uniforms.js';
+import { bindUniforms, unbindUniforms } from './uniforms.js';
 import { createReplacer } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
@@ -111,6 +111,8 @@ if (typeof HTMLElement !== 'undefined') {
 
         disconnectedCallback() {
             this.cleanup();
+            unbindUniforms(this);
+            clearInterval(this._auto_update_timer);
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
@@ -300,6 +302,9 @@ if (typeof HTMLElement !== 'undefined') {
             this.innerHTML = '';
             this.buildGrid(compiled, this.gridSize);
 
+            if (this.hasAttribute('auto:update') || this._auto_update_timer) {
+                this.autoUpdate();
+            }
             setTimeout(() => {
                 this.triggerEvent('render');
             });
