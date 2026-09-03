@@ -179,7 +179,7 @@ Property.grid = (value, options) => {
     });
 
     let groups = parseValueGroup(temp.join(' '), {
-        symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', 'β', '|', '§'],
+        symbol: ['/ 2', '+', '^', '*', '~', '∆', '_', 'ß', '|', '§'],
         noSpace: true,
         verbose: true
     });
@@ -209,7 +209,6 @@ Property.grid = (value, options) => {
                 if (result.size === undefined) result.size = Property.size(value, options);
                 else result.fill = value;
                 break;
-            case 'β':
             case 'ß': result.border = formatBorder(value); break;
             case '':
                 if (!result.grid) result.grid = parseGrid(value, options.maxGrid);
