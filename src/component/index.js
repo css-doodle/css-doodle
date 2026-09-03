@@ -81,16 +81,31 @@ if (typeof HTMLElement !== 'undefined') {
             };
         }
 
-        connectedCallback(again) {
-            if (this.innerHTML) {
-                this.load(again);
-                this._rendering = true;
+        connectedCallback() {
+            if (this.compiled || this.innerHTML) {
+                this.load();
             } else {
-                // the source may not be parsed yet
-                setTimeout(() => {
-                    this.load(again);
-                    this._rendering = true;
-                });
+                this.waitForSource();
+            }
+        }
+
+        waitForSource() {
+            let doc = this.ownerDocument;
+            let timer;
+            let done = () => {
+                observer.disconnect();
+                clearTimeout(timer);
+                doc.removeEventListener('DOMContentLoaded', done);
+                if (this.isConnected && !this.compiled) {
+                    this.load();
+                }
+            };
+            let observer = new MutationObserver(done);
+            observer.observe(this, { childList: true });
+            if (doc.readyState === 'loading') {
+                doc.addEventListener('DOMContentLoaded', done);
+            } else {
+                timer = setTimeout(done);
             }
         }
 
@@ -116,8 +131,9 @@ if (typeof HTMLElement !== 'undefined') {
                 } else {
                     this.cancelAutoUpdate();
                 }
-            } else {
-                this.connectedCallback(true);
+            } else if (this.compiled) {
+                // before the first load the attribute is read by that load
+                this.update();
             }
         }
 
@@ -266,21 +282,16 @@ if (typeof HTMLElement !== 'undefined') {
             }
         }
 
-        load(again) {
-            if (this._rendering) {
-                return false;
-            }
+        load() {
             this.cleanup();
             let code = this._code || this.innerHTML;
             let parsed = parseCssCached(this.getUse() + unEntity(code), this.extra);
             let compiled = this.generate(parsed);
 
-            if (!again) {
-                if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
-                    this.addEventListener('click', this.bindClickToUpdate);
-                }
-                this.addEventListener('click', this.dispatchCellClick);
+            if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
+                this.addEventListener('click', this.bindClickToUpdate);
             }
+            this.addEventListener('click', this.dispatchCellClick);
 
             this.gridSize = compiled.grid || this.getGrid();
             this._code = code;
@@ -290,7 +301,6 @@ if (typeof HTMLElement !== 'undefined') {
             this.buildGrid(compiled, this.gridSize);
 
             setTimeout(() => {
-                this._rendering = false;
                 this.triggerEvent('render');
             });
         }
