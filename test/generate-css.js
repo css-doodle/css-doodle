@@ -644,3 +644,23 @@ test('@use at the top level is inlined by the parser', () => {
     assert.ok(compiled.styles.all.includes('color:red;'));
     assert.ok(compiled.styles.all.includes('@keyframes k {to {color:blue;}}'));
 });
+
+test('generated ids are positional and carry the instance token', () => {
+    let code = `
+        background: @doodle(color: red);
+        filter: @svg-filter(frequency=.2, scale=5);
+        @nth(1) { background: @shaders(void main() {}) }
+    `;
+    let run = instance => generateCss(parseCss(code), parseGrid('2x1'), 7, 64, undefined, [], instance);
+    let a = run(), b = run();
+    assert.equal(a.styles.all, b.styles.all);
+    // one counter for every kind, numbered in compose order
+    assert.deepEqual(Object.keys(a.doodles), ['doodle-1', 'doodle-4']);
+    assert.deepEqual(Object.keys(a.filters), ['filter-2', 'filter-5']);
+    assert.deepEqual(Object.keys(a.shaders), ['shader-3']);
+    let c = run('k3j');
+    assert.deepEqual(Object.keys(c.shaders), ['shader-k3j-3']);
+    assert.ok(c.styles.all.includes('${doodle-k3j-1}'));
+    assert.ok(c.styles.all.includes('url(#filter-k3j-2)'));
+    assert.ok(c.filters['filter-k3j-2'].includes('id="filter-k3j-2"'));
+});

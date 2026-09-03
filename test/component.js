@@ -39,3 +39,23 @@ test('host-only rules ask for a reflow without rendering a grid', () => {
         assert.equal(Object.keys(content).length, 0, code);
     }
 });
+
+test('setStyle drops a promised style from a superseded render', async () => {
+    let el = { textContent: 'old' };
+    let host = {
+        _generation: 1,
+        shadowRoot: { querySelector: () => el },
+        setStyle: CSSDoodle.prototype.setStyle,
+    };
+    let resolve;
+    let pending = new Promise(r => { resolve = r; });
+    host.setStyle(pending);
+    host._generation++;
+    resolve('stale');
+    await pending;
+    await new Promise(r => setTimeout(r));
+    assert.equal(el.textContent, 'old');
+    host.setStyle(Promise.resolve('fresh'));
+    await new Promise(r => setTimeout(r));
+    assert.equal(el.textContent, 'fresh');
+});

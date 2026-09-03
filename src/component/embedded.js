@@ -19,17 +19,17 @@ import { getBasicStyles, createGrid } from './markup.js';
 
 export function createReplacer(host, { doodles, shaders, pattern }) {
     const groups = [
-        [doodles, (v, fn) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra }, fn)],
-        [shaders, (v, fn) => shaderToImage(host, v, fn)],
-        [pattern, (v, fn) => patternToImage(host, v, fn)],
+        [doodles, (id, v, fn) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id }, fn)],
+        [shaders, (id, v, fn) => shaderToImage(host, v, fn)],
+        [pattern, (id, v, fn) => patternToImage(host, v, fn)],
     ];
     return input => {
         let tasks = [];
         for (let [map, toImage] of groups) {
             for (let [id, value] of Object.entries(map)) {
-                if (input.includes(id)) {
+                if (input.includes('${' + id + '}')) {
                     tasks.push(new Promise(resolve => {
-                        toImage(value, result => resolve({ id, result }));
+                        toImage(id, value, result => resolve({ id, result }));
                     }));
                 }
             }
@@ -63,7 +63,7 @@ export function doodleToImage(host, code, options, fn) {
     code = ':doodle {width:100%;height:100%}' + code;
     let parsed = parseCssCached(code, host.extra);
     let _grid = parseGrid('');
-    let compiled = generateCss(parsed, _grid, host._seed_value, host.getMaxGrid(), host._seed_random, options.upextra);
+    let compiled = generateCss(parsed, _grid, host._seed_value, host.getMaxGrid(), host._seed_random, options.upextra, options.instance);
     let styles = compiled.styles || {};
     let grid = compiled.grid ? compiled.grid : _grid;
     let viewBox = '';
@@ -155,6 +155,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
     }
 
     let seed = host.seed;
+    let generation = host._generation;
     let parsed = typeof shader === 'string' ? parseShaders(shader) : shader;
     parsed.width = width;
     parsed.height = height;
@@ -169,7 +170,9 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
     }
 
     const tick = ([render, animated, canvas]) => {
-        // release any context still held for this target before drawing again
+        if (host._generation !== generation) {
+            return;
+        }
         let existing = host.shaderRenders.get(target.selector);
         if (existing && existing.canvas && existing.canvas.loseContext) {
             existing.canvas.loseContext();
@@ -214,7 +217,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
         let dpr = devicePixelRatio || 1;
         Promise.all(sources.map(({ name, value }) => {
             return new Promise(resolve => {
-                doodleToImage(host, value, { width, height }, src => {
+                doodleToImage(host, value, { width, height, instance: `${id.slice(2)}-${name}` }, src => {
                     if (!src) {
                         resolve({ name, value: null });
                         return;
@@ -234,7 +237,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
         parsed.textures = images;
         parsed.width = width;
         parsed.height = height;
-        return generateShaders(parsed, seed)
+        return generateShaders(parsed, seed, cell)
             .then(tick)
             .then(after)
             .catch(err => {

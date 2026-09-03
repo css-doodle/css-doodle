@@ -174,11 +174,11 @@ function uploadTexture(gl, image) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 }
 
-export default function drawShader(shaders, seed) {
-    return acquireSlot().then(() => renderShader(shaders, seed));
+export default function drawShader(shaders, seed, cell) {
+    return acquireSlot().then(() => renderShader(shaders, seed, cell));
 }
 
-function renderShader(shaders, seed) {
+function renderShader(shaders, seed, cell) {
     const release = makeRelease();
     const canvas = document.createElement('canvas');
     const dpr = devicePixelRatio || 1;
@@ -259,7 +259,7 @@ function renderShader(shaders, seed) {
 
     const uSeed = gl.getUniformLocation(program, 'u_seed');
     if (uSeed) {
-        gl.uniform2f(uSeed, hash(seed) / 1e16, Math.random());
+        gl.uniform2f(uSeed, hash(seed) / 1e16, hash(seed + cell, 1) / 1e16);
     }
 
     const uTime = gl.getUniformLocation(program, 'u_time');

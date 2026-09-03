@@ -17,7 +17,7 @@ import { createSvgUrl, normalizeSvg } from '../utils/svg.js';
 import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
 import { cellId, cellMetrics } from '../utils/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../utils/type.js';
-import { addAlias, uniqueId, lazy } from '../utils/fn.js';
+import { addAlias, lazy } from '../utils/fn.js';
 import { lerp, clamp, tidyNumber } from '../utils/math.js';
 import { last } from '../utils/list.js';
 import { getEasingFunction } from './easing.js';
@@ -674,59 +674,28 @@ Function.svg = lazy((_, ...args) => {
 Function['svg-filter'] = lazy((upstream, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
-    let id = uniqueId('filter-');
+    let id = upstream.rules.nextId('filter');
     // shorthand
     if (values.every(n => /^[\-\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
         let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = getNamedArguments(values, [
             'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
         ]);
-        value = css`
-      x: -20%;
-      y: -20%;
-      width: 140%;
-      height: 140%;
-    `;
+        value = css`x: -20%; y: -20%; width: 140%; height: 140%;`;
         if (!isNil(dilate)) {
-            value += css`
-        feMorphology {
-          operator: dilate;
-          radius: ${dilate};
-        }
-      `
+            value += css`feMorphology { operator: dilate; radius: ${dilate}}`
         }
         if (!isNil(erode)) {
-            value += css`
-        feMorphology {
-          operator: erode;
-          radius: ${erode};
-        }
-      `
+            value += css`feMorphology { operator: erode; radius: ${erode}}`
         }
         if (!isNil(blur)) {
-            value += css`
-        feGaussianBlur {
-          stdDeviation: ${blur};
-        }
-      `
+            value += css`feGaussianBlur { stdDeviation: ${blur}}`
         }
         if (!isNil(frequency)) {
             let [bx, by = bx] = parseValueGroup(frequency);
             octave = octave ? `numOctaves: ${octave};` : '';
-            value += css`
-        feTurbulence {
-          type: fractalNoise;
-          baseFrequency: ${bx} ${by};
-          seed: ${seed};
-          ${octave}
-        }
-      `;
+            value += css`feTurbulence { type: fractalNoise; baseFrequency: ${bx} ${by}; seed: ${seed}; ${octave}}`;
             if (scale) {
-                value += css`
-          feDisplacementMap {
-            in: SourceGraphic;
-            scale: ${scale};
-          }
-        `;
+                value += css`feDisplacementMap { in: SourceGraphic; scale: ${scale}}`;
             }
         }
     }

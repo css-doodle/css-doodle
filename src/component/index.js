@@ -6,6 +6,7 @@ import generatePng from '../generator/svg-to-png.js';
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
 import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
 import { isNil } from '../utils/type.js';
+import { uniqueId } from '../utils/fn.js';
 import { isSafari } from '../utils/browser.js';
 import { css } from '../utils/tagged-template.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
@@ -71,6 +72,8 @@ if (typeof HTMLElement !== 'undefined') {
             this.animations = [];
             this.observers = new Map();
             this.shaderRenders = new Map();
+            this._instance = uniqueId();
+            this._generation = 0;
             this.extra = {
                 getVariable: name => getVariable(this, name),
                 getRgbaColor: value => getRgbaColor(this.shadowRoot, value),
@@ -245,7 +248,7 @@ if (typeof HTMLElement !== 'undefined') {
                 seed = Date.now();
             }
             let compiled = this.compiled = generateCss(
-                parsed, grid, seed, this.getMaxGrid()
+                parsed, grid, seed, this.getMaxGrid(), null, [], this._instance
             );
             this._seed_value = compiled.seed;
             this._seed_random = compiled.random;
@@ -440,7 +443,13 @@ if (typeof HTMLElement !== 'undefined') {
 
         setStyle(input) {
             if (input instanceof Promise) {
-                input.then(v => this.setStyle(v)).catch(console.error);
+                // a render that was replaced while waiting must not write its styles
+                let generation = this._generation;
+                input.then(v => {
+                    if (this._generation === generation) {
+                        this.setStyle(v);
+                    }
+                }).catch(console.error);
             } else {
                 const el = this.shadowRoot.querySelector('style');
                 if (el) {
@@ -455,6 +464,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         cleanup() {
+            this._generation++;
             if (this.compiled) {
                 for (let am of this.animations) {
                     am.cancel();

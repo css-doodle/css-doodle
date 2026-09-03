@@ -21,9 +21,9 @@ export function debounce(fn, delay = 100) {
     };
 }
 
-export function nextId() {
+export function nextId(scope = '') {
     let id = 0;
-    return (prefix = '') => `${prefix}-${++id}`;
+    return (prefix = '') => `${prefix}${scope}-${++id}`;
 }
 
 export function uniqueId(prefix = '') {

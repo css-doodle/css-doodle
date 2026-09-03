@@ -11,8 +11,8 @@ import gridStyleRules from './grid-style.js';
 import { cellId } from '../utils/cell.js';
 import { tidyNumber } from '../utils/math.js';
 import { isNil, getValue } from '../utils/type.js';
-import { uniqueId } from '../utils/fn.js';
 import { join, last, removeEmptyValues } from '../utils/list.js';
+import { nextId } from '../utils/fn.js';
 import {
     isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector, isGroupAtRule
 } from '../utils/selector.js';
@@ -380,7 +380,8 @@ function specialName(selector) {
 
 class Rules {
 
-    constructor(tokens) {
+    constructor(tokens, instance) {
+        this.instance = instance ? '-' + instance : '';
         this.tokens = tokens;
         this.rules = new Map();
         this.scope = this.rules;
@@ -423,6 +424,7 @@ class Rules {
             gf: [],
         }
         this.coords = [];
+        this.nextId = nextId(this.instance);
         this.doodles = {};
         this.pattern = {};
         this.shaders = {};
@@ -579,7 +581,7 @@ class Rules {
     }
 
     composeDoodle(doodle, arg, upextra) {
-        let id = uniqueId('doodle');
+        let id = this.nextId('doodle');
         this.doodles[id] = { doodle, arg, upextra };
         return '${' + id + '}';
     }
@@ -599,7 +601,7 @@ class Rules {
     composePaint(fname, source, { x, y, z }, arg, selector, property) {
         // the renderer reads `shader` for shaders and `code` for patterns
         let isShader = fname === 'shaders';
-        let id = uniqueId(isShader ? 'shader' : 'pattern');
+        let id = this.nextId(isShader ? 'shader' : 'pattern');
         let cellSelector = cellId(x, y, z);
         this[isShader ? 'shaders' : 'pattern'][id] = {
             [isShader ? 'shader' : 'code']: source,
@@ -1145,8 +1147,8 @@ function removeQuotes(input) {
     return input;
 }
 
-export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = []) {
-    let rules = new Rules(tokens);
+export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '') {
+    let rules = new Rules(tokens, instance);
     let context = {};
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
