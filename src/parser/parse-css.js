@@ -707,10 +707,11 @@ function parseRule(cur, extra) {
 
 function parseUse(cur, extra) {
     cur.next(); // ':'
+    let head = cur.peek();
     let groups = parseValue(cur, extra);
     let result = [];
     for (let group of groups) {
-        evaluateValue(group, extra, cur.ctx);
+        evaluateValue(group, extra, cur.ctx, head && head.pos);
         let [token] = group;
         if (token && token.value && token.value.length) {
             result.push(...token.value);
@@ -723,25 +724,35 @@ function readVariable(extra, name) {
     return (extra && extra.getVariable) ? extra.getVariable(name) : '';
 }
 
-function evaluateValue(values, extra, ctx) {
+function evaluateValue(values, extra, ctx, pos) {
     for (let v of values) {
         if (v.type === 'text' && v.value) {
             let statements = [];
             for (let p of parseVar(v.value)) {
-                let rule = readVariable(extra, p.name);
+                let name = p.name;
+                let rule = readVariable(extra, name);
                 for (let n of p.fallback || []) {
                     if (rule) break;
-                    rule = readVariable(extra, n.name);
+                    name = n.name;
+                    rule = readVariable(extra, name);
                 }
+                // a variable that is already being inserted refers to itself,
+                // directly or through another one: skip it instead of expanding forever
+                if (ctx.using.includes(name)) {
+                    warn(ctx, 'circular @use: ' + name, pos);
+                    continue;
+                }
+                ctx.using.push(name);
                 try {
                     statements.push(...parseSource(rule, extra, ctx));
                 } catch (e) {}
+                ctx.using.pop();
             }
             v.value = statements;
         }
         if (v.type === 'func' && v.arguments) {
             for (let arg of v.arguments) {
-                evaluateValue(arg.values, extra, ctx);
+                evaluateValue(arg.values, extra, ctx, pos);
             }
         }
     }
@@ -991,7 +1002,7 @@ function parseSource(input, extra, ctx) {
 }
 
 export default function parse(input, extra) {
-    let ctx = { position: 0, warnings: [], selectors: ['&'] };
+    let ctx = { position: 0, warnings: [], selectors: ['&'], using: [] };
     let result = parseSource(input, extra, ctx);
     result.warnings = ctx.warnings;
     return result;

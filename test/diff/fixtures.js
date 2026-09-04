@@ -181,6 +181,11 @@ export default [
         code: `@use: var(--missing, var(--other)); color: green;`,
         extra: { '--other': 'padding: 2px;' }
     },
+    {
+        name: 'use-cycle',
+        code: `@use: var(--a); margin: 0;`,
+        extra: { '--a': '@use: var(--b); width: 1px;', '--b': '@use: var(--a); height: 2px;' }
+    },
 
     // --- misc structure ---
     { name: 'tag-skip', code: `<div>color: red;` },

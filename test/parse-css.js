@@ -280,6 +280,41 @@ test('@use inlines variables in nested blocks', () => {
 
 });
 
+test('@use skips a variable that refers to itself', () => {
+
+    let vars = {
+        '--self': '@use: var(--self); color: red;',
+        '--a': '@use: var(--b); width: 1px;',
+        '--b': '@use: var(--a); height: 2px;',
+        '--twice': '@use: var(--twice), var(--twice); color: blue;',
+    };
+    let extra = { getVariable: name => vars[name] || '' };
+
+    // direct
+    let parsed = parseCSS(`@use: var(--self); margin: 0;`, extra);
+    assert.deepEqual(parsed.map(r => r.property), ['color', 'margin']);
+    assert.equal(parsed.warnings.length, 1);
+    assert.equal(parsed.warnings[0].message, 'circular @use: --self');
+
+    // through another variable
+    parsed = parseCSS(`@use: var(--a);`, extra);
+    assert.deepEqual(parsed.map(r => r.property), ['height', 'width']);
+    assert.equal(parsed.warnings[0].message, 'circular @use: --a');
+
+    // two references in one value used to expand exponentially
+    parsed = parseCSS(`@use: var(--twice);`, extra);
+    assert.deepEqual(parsed.map(r => r.property), ['color']);
+    assert.equal(parsed.warnings.length, 2);
+
+    // the guard is per expansion: the same variable twice in a row is fine
+    parsed = parseCSS(`@use: var(--rule), var(--rule);`, {
+        getVariable: name => ({ '--rule': 'color: red;' }[name] || '')
+    });
+    assert.deepEqual(parsed.map(r => r.property), ['color', 'color']);
+    assert.equal(parsed.warnings.length, 0);
+
+});
+
 test('quoted paren does not leak into block probing', () => {
 
     compare(
