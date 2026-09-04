@@ -40,8 +40,32 @@ function hasEntries(obj) {
 const NO_SPACE = { noSpace: true };
 const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
 
-const SHARED_VALUE_MIN = 100;
 const CELL = ['&'];
+
+const SHARED_CELL = ':is(cell,#_)';
+
+const FAMILY = {
+    __proto__: null,
+    top: 'inset', right: 'inset', bottom: 'inset', left: 'inset',
+    'line-height': 'font',
+    'row-gap': 'gap', 'column-gap': 'gap',
+    align: 'place', justify: 'place',
+};
+
+function familiesOf(text) {
+    let families = new Set();
+    for (let [, name] of text.matchAll(/(?:^|;)\s*([\w-]+)\s*:/g)) {
+        if (name.startsWith('--')) {
+            families.add(name);
+            continue;
+        }
+        name = name.replace(/^-\w+-/, '');
+        let head = name.split('-')[0];
+        // `all` resets every property, so it belongs to every family
+        families.add(head === 'all' ? '*' : (FAMILY[name] ?? FAMILY[head] ?? head));
+    }
+    return families;
+}
 
 const funcCache = new Map();
 
@@ -53,18 +77,6 @@ function findFunc(name) {
     }
     return fn;
 }
-
-// Value compiler. Each value/function/argument node of the AST is
-// compiled once into an evaluator closure; running a cell (or a @m
-// iteration) then only executes closures — no AST re-walking, name
-// lookups or static-argument parsing in the hot path. Compiled
-// evaluators are keyed by AST node and shared across generations;
-// everything stateful comes in through the env:
-//
-//   env = { rules, coords, contextVariable, selector, property }
-//
-// so the Rules instance stays the interpreter and function.js stays a
-// plain callee.
 
 const EMPTY_EXTRA = [];
 
@@ -358,7 +370,10 @@ function spliceTemplateInput(calcTemplate, values) {
 
 function isStaticRule(token) {
     let prop = token.property;
-    if (prop.startsWith('@') || prop.startsWith('--')) return false;
+    // @shape is a pure function of its value, the other @-properties
+    // read the grid or the cell
+    if (prop.startsWith('@') && prop !== '@shape') return false;
+    if (prop.startsWith('--')) return false;
     if (prop.startsWith('animation')) return false;
     if (prop === 'background-size') return false;
     return token.value?.hasFunc === false;
@@ -403,10 +418,10 @@ class Rules {
         this.uniforms = {};
         this.skips = new WeakSet();
         this.memo = new WeakMap();
-        this.shared = new Map();
         this.warnings = [];
         this.warned = new Set();
-        this.scanKeyframes(tokens);
+        this.ruleOrder = [];
+        this.scanTokens(tokens);
         this.reset();
     }
 
@@ -434,11 +449,7 @@ class Rules {
         this.filters = {};
         this.content = {};
         this.vars = {};
-        for (let key of this.rules.keys()) {
-            if (key.startsWith('#c')) {
-                this.rules.delete(key);
-            }
-        }
+        this.entries = new Map();
     }
 
     addRule(selector, rule, scope = this.scope) {
@@ -516,19 +527,6 @@ class Rules {
             return _fn(...input);
         }
         return _fn;
-    }
-
-    shareValue(value, selector) {
-        if (value.length < SHARED_VALUE_MIN || isSpecialSelector(selector)) {
-            return value;
-        }
-        let name = this.shared.get(value);
-        if (name === undefined) {
-            name = `--_s${this.shared.size + 1}`;
-            this.shared.set(value, name);
-            this.addRule(':container', `${name}:${value};`, this.rules);
-        }
-        return `var(${name})`;
     }
 
     composeAname(name, count) {
@@ -730,16 +728,11 @@ class Rules {
             coords.hasBgsize = true;
         }
 
-        // a value without functions is the same in every cell
-        let uniform = token.value?.hasFunc === false;
-        let shared = (uniform && !flags.at && !flags.animation)
-            ? this.shareValue(value, selector)
-            : value;
-        let rule = `${prop}:${shared};`
+        let rule = `${prop}:${value};`
 
         if (flags.size) {
             if (!isSpecialSelector(selector)) {
-                rule += `--_cell-${prop}:${shared};`;
+                rule += `--_cell-${prop}:${value};`;
             }
         }
 
@@ -824,9 +817,7 @@ class Rules {
                     break;
                 }
                 case 'shape': {
-                    rule = transformed
-                        ? `clip-path:${uniform ? this.shareValue(transformed, selector) : transformed};`
-                        : '';
+                    rule = transformed ? `clip-path:${transformed};` : '';
                     break;
                 }
                 default: {
@@ -914,12 +905,14 @@ class Rules {
         }
     }
 
-    scanKeyframes(tokens) {
+    scanTokens(tokens) {
         for (let token of tokens || []) {
             if (token.type === 'keyframes') {
                 this.registerKeyframes(token);
+            } else if (token.type === 'rule') {
+                this.ruleOrder.push(token);
             } else if (token.type === 'cond' || token.type === 'pseudo') {
-                this.scanKeyframes(token.styles);
+                this.scanTokens(token.styles);
             }
         }
     }
@@ -940,9 +933,6 @@ class Rules {
         });
     }
 
-    // what a cond is, read once per token: a selector function with its
-    // argument list, a group at-rule, or raw CSS handed over as written;
-    // text caches a constant prelude
     condInfo(token) {
         let info = this.memo.get(token);
         if (!info) {
@@ -1008,6 +998,111 @@ class Rules {
         return not ? !matched : !!matched;
     }
 
+    addCellRule(token, selector, coords, rule) {
+        if (!rule) return;
+        let entries = this.entries.get(token);
+        if (!entries) {
+            this.entries.set(token, entries = new Map());
+        }
+        let entry = entries.get(selector);
+        if (!entry) {
+            entries.set(selector, entry = { selector, coords: [], texts: [] });
+        }
+        entry.coords.push(coords);
+        entry.texts.push(rule);
+    }
+
+    layoutCells() {
+        let entries = [];
+        for (let token of this.ruleOrder) {
+            let m = this.entries.get(token);
+            if (m) entries.push(...m.values());
+        }
+        let count = this.coords.length;
+
+        for (let e of entries) {
+            let { texts } = e;
+            let distinct = new Set();
+            for (let text of texts) {
+                if (distinct.add(text).size * 2 > texts.length) {
+                    distinct = null;
+                    break;
+                }
+            }
+            e.kind = !distinct ? 'cells'
+                : (count > 1 && distinct.size === 1 && texts.length === count) ? 'shared'
+                : 'group';
+            e.families = familiesOf(texts[0]);
+        }
+
+        let runs = new Map();
+        for (let i = 0; i < entries.length; i++) {
+            let e = entries[i];
+            if (e.kind !== 'cells') continue;
+            for (let f of e.families) {
+                let r = runs.get(f);
+                if (r) r.last = i;
+                else runs.set(f, { first: i, last: i });
+            }
+        }
+        for (let i = 0; i < entries.length; i++) {
+            let e = entries[i];
+            if (e.kind === 'cells') {
+                e.where = 'run';
+                continue;
+            }
+            let before = true, after = true;
+            for (let [f, r] of runs) {
+                if (f !== '*' && !e.families.has('*') && !e.families.has(f)) continue;
+                if (r.first < i) before = false;
+                if (r.last > i) after = false;
+            }
+            e.where = before ? 'before' : after ? 'after' : 'run';
+        }
+
+        let sections = { before: '', after: '' };
+        let runText = new Map(); // selector → texts per cell index
+        let pending = '';
+        for (let i = 0; i < entries.length; i++) {
+            let e = entries[i];
+            let { selector, texts, where } = e;
+            if (where === 'run') {
+                let lists = runText.get(selector);
+                if (!lists) runText.set(selector, lists = []);
+                for (let j = 0; j < texts.length; j++) {
+                    let n = e.coords[j].count - 1;
+                    if (lists[n]) lists[n].push(texts[j]);
+                    else lists[n] = [texts[j]];
+                }
+            } else if (e.kind === 'shared') {
+                // consecutive shared rules under one selector print as one
+                pending += (pending && '\n') + texts[0];
+                let next = entries[i + 1];
+                if (next && next.kind === 'shared' && next.selector === selector && next.where === where) continue;
+                sections[where] += `${selector.replaceAll('&', SHARED_CELL)} {${pending}}`;
+                pending = '';
+            } else {
+                let byText = new Map();
+                for (let j = 0; j < texts.length; j++) {
+                    let list = byText.get(texts[j]);
+                    if (list) list.push(e.coords[j]);
+                    else byText.set(texts[j], [e.coords[j]]);
+                }
+                for (let [text, cells] of byText) {
+                    let list = cells.map(c => this.composeSelector(c, selector)).join(',');
+                    sections[where] += `${list} {${text}}`;
+                }
+            }
+        }
+        let cells = '';
+        for (let i = 0; i < count; i++) {
+            for (let [selector, lists] of runText) {
+                if (lists[i]) cells += `${this.composeSelector(this.coords[i], selector)} {${join(lists[i])}}`;
+            }
+        }
+        return sections.before + cells + sections.after;
+    }
+
     // a group at-rule composed for the cell: its rules collect in a scope
     // of their own, then print inside the prelude with nested groups last
     composeGroup(token, coords, selectors) {
@@ -1030,15 +1125,20 @@ class Rules {
     compose(coords, tokens, selectors = CELL) {
         // nested calls (conds) run for the same cell
         if (!tokens) this.coords.push(coords);
-        let keys = null;
         for (let token of (tokens || this.tokens)) {
             switch (token.type) {
                 case 'rule': {
                     if (token.property === '@gap' && this.isGapSet) break;
                     if (token.property === '@grid' && this.isGridSet) break;
-                    keys ??= selectors.map(s => this.composeSelector(coords, s));
-                    for (let i = 0; i < selectors.length; i++) {
-                        this.addRule(keys[i], this.composeRule(token, coords, selectors[i]));
+                    for (let selector of selectors) {
+                        let rule = this.composeRule(token, coords, selector);
+                        // cell rules wait for the sheet layout, unless they sit
+                        // inside a group at-rule, which is a scope of its own
+                        if (this.scope === this.rules && selector.includes('&') && !isSpecialSelector(selector)) {
+                            this.addCellRule(token, selector, coords, rule);
+                        } else {
+                            this.addRule(this.composeSelector(coords, selector), rule);
+                        }
                     }
                     break;
                 }
@@ -1105,7 +1205,9 @@ class Rules {
             }
         }
 
-        this.styles.cells += groups;
+        // after the grid styles above (`cell {flex:1}`), the cell rules,
+        // then the group at-rules
+        this.styles.cells += this.layoutCells() + groups;
 
         if (this.uniforms.time) {
             let n = 'animation-name';

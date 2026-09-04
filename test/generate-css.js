@@ -103,7 +103,13 @@ test('argument-less @P() keeps the last pick pool intact', () => {
     `;
     for (let seed of [1, 7, 42]) {
         let compiled = generateCss(parseCss(code), parseGrid('12x1'), seed, 64 * 64);
-        let colors = [...compiled.styles.cells.matchAll(/color:([a-z]+);/g)].map(m => m[1]);
+        // the six colors print once each with their cells listed
+        let rules = [...compiled.styles.cells.matchAll(/([^{}]+) \{color:([a-z]+);\}/g)];
+        let colors = [];
+        for (let i = 1; i <= 12; i++) {
+            let rule = rules.find(m => m[1].split(',').includes(`#c-${i}-1-1`));
+            colors.push(rule && rule[2]);
+        }
         assert.equal(colors.length, 12);
         for (let i = 1; i < colors.length; ++i) {
             assert.notEqual(colors[i], colors[i - 1], `adjacent repeat at cell ${i + 1} (seed ${seed})`);
@@ -336,8 +342,10 @@ test('static keyframes are emitted once and keep their name in every cell', () =
     let compiled = generateCss(parseCss(code), parseGrid('3'), 42, 64 * 64);
     let { all } = compiled.styles;
     assert.equal((all.match(/@keyframes/g) || []).length, 1);
-    // the name can sit anywhere in the shorthand
-    assert.equal((all.match(/animation:1s spin;/g) || []).length, 9);
+    // the name can sit anywhere in the shorthand; the same text in every
+    // cell prints once for all of them
+    assert.equal((all.match(/animation:1s spin;/g) || []).length, 1);
+    assert.ok(all.includes(':is(cell,#_) {animation:1s spin;}'));
     assert.ok(!all.includes('1s-'));
 });
 
@@ -471,7 +479,7 @@ test('declaration-body at-rules are emitted once verbatim at the top', () => {
         '@function --double(--x) { result: calc(var(--x) * 2); @media (a) { result: 0; } }\n' +
         '@font-face { font-family: "X"; src: url(x.woff); }');
     assert.ok(!all.includes('@property') && !all.includes('@font-face'));
-    assert.ok(all.includes('#c-2-2-1 {width:--double(1px);'));
+    assert.ok(all.includes(':is(cell,#_) {width:--double(1px);'));
 });
 
 test('keyframes declared inside a pseudo are registered', () => {
@@ -539,65 +547,117 @@ test('$ math reads dashed variable names', () => {
     }
 });
 
-test('long values that repeat in every cell are declared once on the grid', () => {
-    let gradient = 'linear-gradient(45deg,#ff0000 0%,#00ff00 10%,#0000ff 20%,#ffff00 30%,'
-        + '#ff00ff 40%,#00ffff 50%,#000000 60%,#ffffff 70%,#808080 80%,#123456 90%,#654321 100%)';
-    let compiled = generateCss(
-        parseCss(`background: ${gradient}; --g: ${gradient};`), parseGrid('2x1'), 42, 64 * 64
-    );
-    let { all, container } = compiled.styles;
-    assert.equal(container, `grid {--_s1:${gradient};}`);
-    assert.ok(all.includes('#c-1-1-1 {background:var(--_s1);\n--g:var(--_s1);}'));
-    assert.ok(all.includes('#c-2-1-1 {background:var(--_s1);\n--g:var(--_s1);}'));
-    assert.equal(all.split(gradient).length - 1, 1);
+// The cell sheet layout: a declaration with the same text in every cell
+// prints once for all cells as `:is(cell,#_)`, one with a few distinct
+// texts prints once per text with its cells listed, the rest keep their
+// per-cell blocks; the shared rules move before or after the per-cell
+// blocks as far as the cascade allows.
+
+const cells = (code, grid, seed = 42) =>
+    generateCss(parseCss(code), parseGrid(grid), seed, 64 * 64).styles.cells;
+
+test('a single cell keeps its plain block', () => {
+    assert.equal(cells('background: red; color: blue;', '1'),
+        '#c-1-1-1 {background:red;\ncolor:blue;}');
 });
 
-test('a static @shape polygon is shared across cells', () => {
-    let compiled = generateCss(
-        parseCss('@shape: circle; :after { content: ""; @shape: heart; }'),
-        parseGrid('2x1'), 42, 64 * 64
-    );
-    let { all, container } = compiled.styles;
-    assert.match(container, /^grid \{--_s1:polygon\([^;]+\);\n--_s2:polygon\([^;]+\);\}$/);
+test('the same text in every cell prints once for all cells', () => {
+    let gradient = 'linear-gradient(45deg,#ff0000 0%,#00ff00 10%,#0000ff 20%,#ffff00 30%)';
+    let all = cells(`background: ${gradient}; --g: ${gradient}; border-radius: 50%;`, '3x3');
+    assert.equal(all, `:is(cell,#_) {background:${gradient};\n--g:${gradient};\nborder-radius:50%;}`);
+    assert.equal(cells('&:hover { color: red }', '2x2'), ':is(cell,#_):hover {color:red;}');
+    assert.equal(cells('width: 1px', '2x1'), ':is(cell,#_) {width:1px;--_cell-width:1px;}');
+});
+
+test('a static @shape polygon prints once per selector', () => {
+    let all = cells('@shape: circle; :after { content: ""; @shape: heart; }', '2x1');
     assert.equal(all.split('polygon(').length - 1, 2);
-    for (let expected of [
-        '#c-1-1-1 {clip-path:var(--_s1);}',
-        '#c-2-1-1 {clip-path:var(--_s1);}',
-        '#c-1-1-1:after {content:"";\nclip-path:var(--_s2);}',
-        '#c-2-1-1:after {content:"";\nclip-path:var(--_s2);}',
-    ]) {
-        assert.ok(all.includes(expected), expected);
-    }
+    assert.match(all, /^:is\(cell,#_\) \{clip-path:polygon\([^;]+\);\}:is\(cell,#_\):after \{content:"";\nclip-path:polygon\([^;]+\);\}$/);
 });
 
-test('short, per-cell and host values stay inline', () => {
+test('a few distinct texts print once each with their cells listed', () => {
+    assert.equal(cells('@even { background: blue; }', '2x2'),
+        '#c-2-1-1,#c-1-2-1 {background:blue;}');
+    assert.equal(cells('color: @match(x > 1, red, blue);', '4x1'),
+        '#c-1-1-1 {color:blue;}#c-2-1-1,#c-3-1-1,#c-4-1-1 {color:red;}');
+});
+
+test('per-cell texts keep their blocks in cell order', () => {
+    assert.equal(cells('--i: @i; color: red;', '2x2'),
+        ':is(cell,#_) {color:red;}'
+        + '#c-1-1-1 {--i:1;}#c-2-1-1 {--i:2;}#c-1-2-1 {--i:3;}#c-2-2-1 {--i:4;}');
+    // two texts over three cells are per cell: the listing saves nothing
+    assert.equal(cells('color: @match(x > 1, red, blue);', '3x1'),
+        '#c-1-1-1 {color:blue;}#c-2-1-1 {color:red;}#c-3-1-1 {color:red;}');
+});
+
+test('shared rules keep the cascade order of their property family', () => {
+    // the shared value comes later in the source, so it prints after
+    assert.equal(cells('background: rgb(@i,0,0); background: red;', '2x1'),
+        '#c-1-1-1 {background:rgb(1,0,0);}#c-2-1-1 {background:rgb(2,0,0);}'
+        + ':is(cell,#_) {background:red;}');
+    // a longhand of the same family counts, and so does a listed rule
+    assert.equal(cells('background: rgb(@i,0,0); background-color: red;', '2x1'),
+        '#c-1-1-1 {background:rgb(1,0,0);}#c-2-1-1 {background:rgb(2,0,0);}'
+        + ':is(cell,#_) {background-color:red;}');
+    assert.equal(cells('background: rgb(@i,0,0); @even { background: red; }', '4x1'),
+        '#c-1-1-1 {background:rgb(1,0,0);}#c-2-1-1 {background:rgb(2,0,0);}'
+        + '#c-3-1-1 {background:rgb(3,0,0);}#c-4-1-1 {background:rgb(4,0,0);}'
+        + '#c-2-1-1,#c-4-1-1 {background:red;}');
+    // per-cell rules on both sides: the shared value joins the blocks
+    assert.equal(cells('background: rgb(@i,0,0); background: red; background: rgb(0,@i,0);', '2x1'),
+        '#c-1-1-1 {background:rgb(1,0,0);\nbackground:red;\nbackground:rgb(0,1,0);}'
+        + '#c-2-1-1 {background:rgb(2,0,0);\nbackground:red;\nbackground:rgb(0,2,0);}');
+    // another family passes by
+    assert.equal(cells('--i: @i; background: red; --j: @i;', '2x1'),
+        ':is(cell,#_) {background:red;}#c-1-1-1 {--i:1;\n--j:1;}#c-2-1-1 {--i:2;\n--j:2;}');
+    // shorthands that do not share a name: `inset` covers `top`
+    assert.equal(cells('top: @i px; inset: 0;', '2x1'),
+        '#c-1-1-1 {top:1 px;}#c-2-1-1 {top:2 px;}:is(cell,#_) {inset:0;}');
+    assert.equal(cells('top: @i px; all: unset;', '2x1'),
+        '#c-1-1-1 {top:1 px;}#c-2-1-1 {top:2 px;}:is(cell,#_) {all:unset;}');
+});
+
+test('a declaration inside a cond keeps its source order', () => {
+    // the cond is first seen in the second cell: still before the color
+    assert.equal(cells('@even { color: blue; } color: rgb(@i,0,0);', '4x1'),
+        '#c-2-1-1,#c-4-1-1 {color:blue;}'
+        + '#c-1-1-1 {color:rgb(1,0,0);}#c-2-1-1 {color:rgb(2,0,0);}'
+        + '#c-3-1-1 {color:rgb(3,0,0);}#c-4-1-1 {color:rgb(4,0,0);}');
+});
+
+test('rules inside group at-rules stay per cell', () => {
+    assert.equal(cells('@media (x) { color: red; }', '2x1'),
+        '@media (x) {#c-1-1-1 {color:red;}}\n@media (x) {#c-2-1-1 {color:red;}}');
+});
+
+test('per-cell and host values stay inline', () => {
     let compiled = generateCss(
         parseCss(`
-            background: red;
             --long: linear-gradient(@r(360)deg,#ff0000 0%,#00ff00 10%,#0000ff 20%,#ffff00 30%,#ff00ff 40%,#00ffff 50%,#000000 60%,#ffffff 70%,#808080 80%);
-            @shape: @p(circle, heart);
+            @shape: @pick-by-turn(circle, heart);
             :doodle { @shape: circle; }
         `),
         parseGrid('2x1'), 42, 64 * 64
     );
     let { all, container } = compiled.styles;
     assert.equal(container, '');
-    assert.ok(!all.includes('--_s'));
-    assert.ok(all.includes('#c-1-1-1 {background:red;\n--long:linear-gradient('));
+    assert.ok(all.includes('#c-1-1-1 {--long:linear-gradient('));
     assert.ok(all.includes(':host,.host {clip-path:polygon('));
     assert.equal(all.split('clip-path:polygon(').length - 1, 3);
 });
 
-test('values shared from inside @keyframes are declared on the grid too', () => {
+test('keyframes of static @shape values are emitted once', () => {
     let compiled = generateCss(
         parseCss('animation: a 1s; @keyframes a { from { @shape: circle; } to { @shape: heart; } }'),
         parseGrid('2x1'), 42, 64 * 64
     );
-    let { all, container } = compiled.styles;
-    assert.match(container, /^grid \{--_s1:polygon\([^;]+\);\n--_s2:polygon\([^;]+\);\}$/);
-    assert.ok(all.includes('@keyframes a {from {clip-path:var(--_s1);}\nto {clip-path:var(--_s2);}}'));
+    let { all, container, cells } = compiled.styles;
+    assert.equal(container, '');
+    assert.equal((all.match(/@keyframes/g) || []).length, 1);
+    assert.match(all, /@keyframes a \{from \{clip-path:polygon\([^;]+\);\}\nto \{clip-path:polygon\([^;]+\);\}\}/);
     assert.equal(all.split('polygon(').length - 1, 2);
-    assert.ok(all.indexOf('grid {') > all.indexOf('@keyframes a {'));
+    assert.equal(cells, ':is(cell,#_) {animation:a 1s;}');
 });
 
 test('a leading --name in an argument reads the variable', () => {
