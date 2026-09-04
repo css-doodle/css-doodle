@@ -17,6 +17,8 @@ import { loadGoogleFontEmbed } from './google-font.js';
 import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
+const RE_PLACEHOLDER = /\$\{([^}]*)\}/g;
+
 export function createReplacer(host, { doodles, shaders, pattern }) {
     const groups = [
         [doodles, (id, v, fn) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id }, fn)],
@@ -24,10 +26,14 @@ export function createReplacer(host, { doodles, shaders, pattern }) {
         [pattern, (id, v, fn) => patternToImage(host, v, fn)],
     ];
     return input => {
+        let present = new Set();
+        for (let [, id] of input.matchAll(RE_PLACEHOLDER)) {
+            present.add(id);
+        }
         let tasks = [];
         for (let [map, toImage] of groups) {
             for (let [id, value] of Object.entries(map)) {
-                if (input.includes('${' + id + '}')) {
+                if (present.has(id)) {
                     tasks.push(new Promise(resolve => {
                         toImage(id, value, result => resolve({ id, result }));
                     }));
@@ -38,15 +44,11 @@ export function createReplacer(host, { doodles, shaders, pattern }) {
             return Promise.resolve(input);
         }
         return Promise.all(tasks).then(mappings => {
+            let targets = new Map();
             for (let { id, result } of mappings) {
-                // doodle resolves to a data-uri, shader and pattern render
-                // into CSS variables
-                let target = /^(shader|pattern)/.test(id)
-                    ? `var(--${id})`
-                    : `url(${result})`;
-                input = input.replaceAll('${' + id + '}', target);
+                targets.set(id, /^(shader|pattern)/.test(id) ? `var(--${id})` : `url(${result})`);
             }
-            return input;
+            return input.replace(RE_PLACEHOLDER, (m, id) => targets.get(id) ?? m);
         }).catch(err => {
             console.error(err);
             return input;
