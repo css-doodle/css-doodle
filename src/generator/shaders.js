@@ -1,32 +1,6 @@
 import { hash } from '../utils/math.js';
 import { glsl } from '../utils/tagged-template.js';
 
-// Rendering queue
-const MAX_CONCURRENT = 12;
-const pending = [];
-let active = 0;
-
-function pump() {
-    while (active < MAX_CONCURRENT && pending.length) {
-        active++;
-        pending.shift()();
-    }
-}
-
-function acquireSlot() {
-    return new Promise(resolve => { pending.push(resolve); pump(); });
-}
-
-function makeRelease() {
-    let done = false;
-    return () => {
-        if (done) return;
-        done = true;
-        active = Math.max(0, active - 1);
-        pump();
-    };
-}
-
 const DEFAULT_VERTEX_SHADER = glsl`#version 300 es
     in vec4 position;
     void main() {
@@ -144,7 +118,6 @@ function generateFragment(fragment, textures) {
 function loadTexture(gl, image, i) {
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + i);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
@@ -174,18 +147,15 @@ function uploadTexture(gl, image) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 }
 
-export default function drawShader(shaders, seed, cell) {
-    return acquireSlot().then(() => renderShader(shaders, seed, cell));
-}
+// Browsers cap the number of live WebGL contexts (Chrome evicts the oldest
+// past 16), so shaders share one context per raster size instead of holding
+// one each. A surface nobody draws on is dropped a moment later.
+const MAX_SURFACES = 8;
+const surfaces = new Map();
+let sweeper = null;
 
-function renderShader(shaders, seed, cell) {
-    const release = makeRelease();
+function createSurface(width, height) {
     const canvas = document.createElement('canvas');
-    const dpr = devicePixelRatio || 1;
-    const textures = shaders.textures || [];
-
-    let width = Math.min(shaders.width * dpr, MAX_TEXTURE_SIZE);
-    let height = Math.min(shaders.height * dpr, MAX_TEXTURE_SIZE);
     canvas.width = width;
     canvas.height = height;
 
@@ -197,114 +167,166 @@ function renderShader(shaders, seed, cell) {
     });
 
     if (!gl) {
-        release();
         throw new Error('WebGL2 is not available');
     }
 
-    const textureList = [];
-    const uploaded = [];
-    const positionBuffer = gl.createBuffer();
-    let program = null;
-    let watchdog = setTimeout(release, 10000);
-
-    canvas.loseContext = () => {
-        clearTimeout(watchdog);
-        release();
-        // Delete textures first
-        textureList.forEach(texture => {
-            gl.deleteTexture(texture);
-        });
-        textureList.length = 0;
-        // Delete program and buffers
-        gl.deleteProgram(program);
-        gl.deleteBuffer(positionBuffer);
-        // Lose context
-        const ext = gl.getExtension('WEBGL_lose_context');
-        if (ext) {
-            ext.loseContext();
-        }
-    };
-
-    try {
-        program = createProgram(
-            gl,
-            shaders.vertex || DEFAULT_VERTEX_SHADER,
-            generateFragment(shaders.fragment || '', textures)
-        );
-    } catch (e) {
-        canvas.loseContext();
-        throw e;
-    }
-
-    const positionAttributeLocation = gl.getAttribLocation(program, 'position');
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    const surface = { canvas, gl, width, height, users: new Set(), disposed: false };
+    surface.buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(positionAttributeLocation);
-    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0, 0, 0, 0);
 
-    gl.useProgram(program);
-
-    const uResolution = gl.getUniformLocation(program, 'u_resolution');
-    gl.uniform2f(uResolution, width, height);
-
-    textures.forEach((n, i) => {
-        textureList.push(loadTexture(gl, n.value, i));
-        uploaded.push(n.value);
-        gl.uniform1i(gl.getUniformLocation(program, n.name), i);
+    canvas.addEventListener('webglcontextlost', () => {
+        // losing it on purpose is not news
+        if (surface.disposed) return;
+        surface.disposed = true;
+        surfaces.delete(width + 'x' + height);
+        surface.users.forEach(drawing => drawing.onLost && drawing.onLost());
     });
 
-    const uSeed = gl.getUniformLocation(program, 'u_seed');
-    if (uSeed) {
-        gl.uniform2f(uSeed, hash(seed) / 1e16, hash(seed + cell, 1) / 1e16);
+    return surface;
+}
+
+function disposeSurface(surface) {
+    surface.disposed = true;
+    surface.gl.deleteBuffer(surface.buffer);
+    const ext = surface.gl.getExtension('WEBGL_lose_context');
+    if (ext) {
+        ext.loseContext();
     }
+}
 
-    const uTime = gl.getUniformLocation(program, 'u_time');
-    const uFrameIndex = gl.getUniformLocation(program, 'u_frameIndex');
-    const uTimeDelta = gl.getUniformLocation(program, 'u_timeDelta');
-    const uMouse = gl.getUniformLocation(program, 'u_mouse');
-    const isAnimated = uTime || uFrameIndex || uTimeDelta;
-
-    if (isAnimated) {
-        clearTimeout(watchdog);
-        release();
+function sweep() {
+    clearTimeout(sweeper);
+    sweeper = null;
+    for (const [key, surface] of surfaces) {
+        if (!surface.users.size) {
+            surfaces.delete(key);
+            disposeSurface(surface);
+        }
     }
+}
 
+function acquireSurface(width, height, drawing) {
+    const key = width + 'x' + height;
+    let surface = surfaces.get(key);
+    if (!surface) {
+        if (surfaces.size >= MAX_SURFACES) {
+            sweep();
+        }
+        surface = createSurface(width, height);
+        surfaces.set(key, surface);
+    }
+    surface.users.add(drawing);
+    return surface;
+}
+
+function releaseSurface(surface, drawing) {
+    surface.users.delete(drawing);
+    if (!sweeper) {
+        sweeper = setTimeout(sweep, 1000);
+    }
+}
+
+export default function drawShader(shaders, seed, cell, onLost) {
+    const dpr = devicePixelRatio || 1;
+    const textures = shaders.textures || [];
+    const vertex = shaders.vertex || DEFAULT_VERTEX_SHADER;
+    const fragment = generateFragment(shaders.fragment || '', textures);
+    const uploaded = textures.map(t => t.value);
+    const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
+
+    let surface, gl, program, position, textureList, uniforms;
     let frameIndex = 0;
     let currentTime = 0;
 
-    const render = (t, w, h, m, images) => {
-        if (shaders.width !== w || shaders.height !== h) {
-            shaders.width = w;
-            shaders.height = h;
-            canvas.width = Math.min(w * dpr, MAX_TEXTURE_SIZE);
-            canvas.height = Math.min(h * dpr, MAX_TEXTURE_SIZE);
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            gl.uniform2f(uResolution, canvas.width, canvas.height);
+    const drawing = { canvas: null, animated: false, onLost, draw, dispose };
+
+    function setup(width, height) {
+        surface = acquireSurface(width, height, drawing);
+        gl = surface.gl;
+        try {
+            program = createProgram(gl, vertex, fragment);
+        } catch (e) {
+            releaseSurface(surface, drawing);
+            surface = null;
+            throw e;
         }
+        drawing.canvas = surface.canvas;
+        position = gl.getAttribLocation(program, 'position');
+        textureList = uploaded.map((image, i) => loadTexture(gl, image, i));
+
+        // uniforms live in the program, so these are set once
+        gl.useProgram(program);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), width, height);
+        textures.forEach((n, i) => {
+            gl.uniform1i(gl.getUniformLocation(program, n.name), i);
+        });
+        const uSeed = gl.getUniformLocation(program, 'u_seed');
+        if (uSeed) {
+            gl.uniform2f(uSeed, hash(seed) / 1e16, hash(seed + cell, 1) / 1e16);
+        }
+        uniforms = {
+            time: gl.getUniformLocation(program, 'u_time'),
+            frame: gl.getUniformLocation(program, 'u_frameIndex'),
+            delta: gl.getUniformLocation(program, 'u_timeDelta'),
+            mouse: gl.getUniformLocation(program, 'u_mouse'),
+        };
+        drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta);
+    }
+
+    function teardown() {
+        textureList.forEach(texture => gl.deleteTexture(texture));
+        gl.deleteProgram(program);
+        releaseSurface(surface, drawing);
+        surface = null;
+    }
+
+    function draw(t, w, h, mouse, images) {
+        if (!surface) return;
+        const width = raster(w);
+        const height = raster(h);
+        // a program belongs to its context, so a new size means a rebuild
+        if (width !== surface.width || height !== surface.height) {
+            teardown();
+            setup(width, height);
+        }
+
+        // the context is shared: bind everything this program needs
+        gl.useProgram(program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
         // the caller swaps in freshly rendered images after a resize
         images.forEach((n, i) => {
+            gl.activeTexture(gl.TEXTURE0 + i);
+            gl.bindTexture(gl.TEXTURE_2D, textureList[i]);
             if (n.value !== uploaded[i]) {
-                gl.activeTexture(gl.TEXTURE0 + i);
-                gl.bindTexture(gl.TEXTURE_2D, textureList[i]);
                 uploadTexture(gl, n.value);
                 uploaded[i] = n.value;
             }
         });
 
         gl.clear(gl.COLOR_BUFFER_BIT);
-        if (uTime) gl.uniform1f(uTime, t * 0.001);
-        if (uFrameIndex) gl.uniform1i(uFrameIndex, frameIndex++);
-        if (uMouse && m) gl.uniform2f(uMouse, m.x * dpr, (h - m.y) * dpr);
-        if (uTimeDelta) {
-            gl.uniform1f(uTimeDelta, (t - currentTime) * 0.001);
+        if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
+        if (uniforms.frame) gl.uniform1i(uniforms.frame, frameIndex++);
+        if (uniforms.mouse && mouse) gl.uniform2f(uniforms.mouse, mouse.x * dpr, (h - mouse.y) * dpr);
+        if (uniforms.delta) {
+            gl.uniform1f(uniforms.delta, (t - currentTime) * 0.001);
             currentTime = t;
         }
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
-    return [render, isAnimated, canvas];
+
+    function dispose() {
+        if (surface) {
+            teardown();
+        }
+    }
+
+    setup(raster(shaders.width), raster(shaders.height));
+    return drawing;
 }

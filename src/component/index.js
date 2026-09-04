@@ -514,11 +514,7 @@ if (typeof HTMLElement !== 'undefined') {
                 }
             }
             this.observers.clear();
-            this.shaderRenders.forEach(({ canvas }) => {
-                if (canvas && canvas.loseContext) {
-                    canvas.loseContext();
-                }
-            });
+            this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
             this.style.background = '';
         }

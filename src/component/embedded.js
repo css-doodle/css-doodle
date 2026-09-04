@@ -186,36 +186,56 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
         host.style.setProperty(id, 'url("' + v + '")');
     }
 
-    const tick = ([render, animated, canvas]) => {
+    const onLost = () => {
+        host.report([{ message: 'WebGL context lost' }]);
+    }
+
+    const tick = drawing => {
         if (host._generation !== generation) {
+            drawing.dispose();
             return;
         }
         let existing = host.shaderRenders.get(target.selector);
-        if (existing && existing.canvas && existing.canvas.loseContext) {
-            existing.canvas.loseContext();
+        if (existing) {
+            existing.dispose();
+            host.shaderRenders.delete(target.selector);
         }
-        host.shaderRenders.delete(target.selector);
 
-        render(0, width, height, host._umouse, images);
+        drawing.draw(0, width, height, host._umouse, images);
         lastW = width;
         lastH = height;
         ready = true;
 
-        if (animated) {
+        if (drawing.animated) {
             if (target.type === 'content') {
-                element.replaceChildren(canvas);
+                // the WebGL canvas is shared, so the cell shows a copy of each frame
+                let view = document.createElement('canvas');
+                let ctx = view.getContext('2d');
+                ctx.globalCompositeOperation = 'copy';
+                const blit = () => {
+                    let { canvas } = drawing;
+                    if (view.width !== canvas.width || view.height !== canvas.height) {
+                        view.width = canvas.width;
+                        view.height = canvas.height;
+                        ctx.globalCompositeOperation = 'copy';
+                    }
+                    ctx.drawImage(canvas, 0, 0);
+                }
+                blit();
+                element.replaceChildren(view);
                 host.animations.push(createAnimation(t => {
-                    render(t, width, height, host._umouse, images);
+                    drawing.draw(t, width, height, host._umouse, images);
+                    blit();
                 }));
             } else {
                 host.animations.push(createAnimation(t => {
-                    render(t, width, height, host._umouse, images);
-                    setShaderProp(canvas.toDataURL());
+                    drawing.draw(t, width, height, host._umouse, images);
+                    setShaderProp(drawing.canvas.toDataURL());
                 }));
             }
-            host.shaderRenders.set(target.selector, { render, canvas, animated: true });
+            host.shaderRenders.set(target.selector, drawing);
         } else {
-            let dataUrl = canvas.toDataURL();
+            let dataUrl = drawing.canvas.toDataURL();
             if (target.type === 'content') {
                 let img = new Image();
                 img.style.cssText = 'position:absolute;width:100%;height:100%;object-fit:cover';
@@ -224,9 +244,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
             } else {
                 setShaderProp(dataUrl);
             }
-            if (canvas.loseContext) {
-                canvas.loseContext();
-            }
+            drawing.dispose();
         }
     }
 
@@ -254,13 +272,13 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
         parsed.textures = images;
         parsed.width = width;
         parsed.height = height;
-        return generateShaders(parsed, seed, cell)
-            .then(tick)
-            .then(after)
-            .catch(err => {
-                console.error(err);
-                if (after) after('');
-            });
+        try {
+            tick(generateShaders(parsed, seed, cell, onLost));
+            if (after) after();
+        } catch (err) {
+            console.error(err);
+            if (after) after('');
+        }
     }
 
     const run = after => {
