@@ -240,6 +240,24 @@ test('plus-minus argument expansion', () => {
         ['-45deg', '45deg']
     );
 
+    // a call after the sign is part of x: -@r(10) and @r(10)
+    let shape = values => values.map(v => v.type === 'func' ? v.name : v.value);
+    [rule] = parseCSS(`width: @p(±@r(10));`);
+    assert.deepEqual(rule.value[0][0].arguments.map(a => shape(a.values)), [['-', '@r'], ['@r']]);
+    [rule] = parseCSS(`width: @p(±@r);`);
+    assert.deepEqual(rule.value[0][0].arguments.map(a => shape(a.values)), [['-', '@r'], ['@r']]);
+    [rule] = parseCSS(`width: @p(±2@r(10), 1);`);
+    assert.deepEqual(rule.value[0][0].arguments.map(a => shape(a.values)), [['-2', '@r'], ['2', '@r'], [1]]);
+
+    // a wrapping pair is stripped from the positive copy only
+    [rule] = parseCSS(`width: @p(±(a + 1));`);
+    assert.deepEqual(rule.value[0][0].arguments.map(a => [a.cluster, shape(a.values)]),
+        [[false, ['-(a + 1)']], [true, ['a + 1']]]);
+
+    // ± anywhere else is text
+    [rule] = parseCSS(`width: @p(a±1, "±1", @r(1)±3);`);
+    assert.deepEqual(rule.value[0][0].arguments.map(a => shape(a.values)), [['a±1'], ['±1'], ['@r', '±3']]);
+
 });
 
 test('function positions are unique', () => {

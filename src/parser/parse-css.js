@@ -434,7 +434,6 @@ function parseArguments(cur, extra, variables) {
     let values = [];
     let buf = '';
     let last = null; // the token buf ends with
-    let lastRun = '';
     let paren = 0;
     let quote = false;
     let end = cur.source.length;
@@ -444,7 +443,6 @@ function parseArguments(cur, extra, variables) {
         let text = buf;
         buf = '';
         last = null;
-        lastRun = text;
         if (!text.length) return;
         if (values.length === 0) {
             if (atFunc) {
@@ -459,17 +457,19 @@ function parseArguments(cur, extra, variables) {
     };
 
     const pushArgument = () => {
-        // ±x expands into two arguments: -x and x
-        if (lastRun.trim().startsWith('±') && values.length) {
-            let raw = lastRun.trim().slice(1);
+        // an argument that starts with ± expands into two: -x and x,
+        // where x may be text, a call or both: ±1, ±(a + 1), ±@r(10)
+        let head = values[0];
+        if (head && head.type === 'text' && typeof head.value === 'string' && head.value.startsWith('±')) {
+            let rest = head.value.slice(1).trimStart();
             let cloned = structuredClone(values);
-            cloned[cloned.length - 1].value = '-' + raw;
+            cloned[0].value = '-' + rest;
             args.push(normalizeArgument(cloned));
-            values[values.length - 1].value = raw;
+            if (rest.length) head.value = rest;
+            else values.shift();
         }
         args.push(normalizeArgument(values));
         values = [];
-        lastRun = '';
     };
 
     while (!cur.end()) {
