@@ -19,6 +19,20 @@ import { getBasicStyles, createGrid } from './markup.js';
 
 const RE_PLACEHOLDER = /\$\{([^}]*)\}/g;
 
+const images = new WeakMap();
+
+function sharedImage(host, svg, toUrl) {
+    let entry = images.get(host);
+    if (!entry || entry.generation !== host._generation) {
+        images.set(host, entry = { generation: host._generation, urls: new Map() });
+    }
+    let url = entry.urls.get(svg);
+    if (url === undefined) {
+        entry.urls.set(svg, url = toUrl());
+    }
+    return url;
+}
+
 export function createReplacer(host, { doodles, shaders, pattern }) {
     const groups = [
         [doodles, (id, v, fn) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id }, fn)],
@@ -109,7 +123,7 @@ export function doodleToImage(host, code, options, fn) {
                 </foreignObject>
             </svg>
         `))
-        .then(result => {
+        .then(result => sharedImage(host, result, () => {
             let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
             if (isSafari() && size) {
                 return generatePng(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2)
@@ -123,7 +137,7 @@ export function doodleToImage(host, code, options, fn) {
                 cacheImage(source);
             }
             return source;
-        })
+        }))
         .then(fn)
         .catch(err => {
             console.error(err);
