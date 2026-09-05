@@ -172,7 +172,8 @@ function readStyleBlock(iter, selectors) {
 
 // the head as svg selectors: `g circle, rect*3 {`, `style {`
 function readSvgBlocks(iter, head, parentToken) {
-    let groups = getSelectorGroups(head);
+    // `Style {}` is the style block too
+    let groups = getSelectorGroups(head).map(group => group.map(s => /^style$/i.test(s) ? 'style' : s));
     if (!groups.length) {
         return null;
     }
@@ -235,10 +236,7 @@ const svg = {
 };
 
 function isSpecialProperty(prev, next) {
-    if (!prev || !next || (prev.value !== 'xlink' && prev.value !== 'xml')) {
-        return false;
-    }
-    return isSpecialNamespaceAttr(prev.value + ':' + next.value);
+    return !!prev && !!next && isSpecialNamespaceAttr(prev.value + ':' + next.value);
 }
 
 function getGroups(tokens) {

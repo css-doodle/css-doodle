@@ -50,3 +50,12 @@ test('scale, rotate and move apply per point', () => {
     assert.equal(plain.points.length, 4);
     assert.equal(moved.points.length, 4);
 });
+
+test('point coordinates are tidied', () => {
+    assert.equal(String(generateShape('split: 4; r: 1').points), '100% 50%,50% 0%,0% 50%,50% 100%');
+    let plot = generateShape('split: 4; r: 1', { unit: true }, rules => {
+        rules.unit = 'none';
+        return rules;
+    });
+    assert.equal(String(plot.points), '1 0,0 -1,-1 0,0 1');
+});

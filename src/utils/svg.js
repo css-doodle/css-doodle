@@ -58,5 +58,5 @@ const SPECIAL_NAMESPACE_PREFIXES = [
 ];
 
 export function isSpecialNamespaceAttr(name) {
-    return SPECIAL_NAMESPACE_PREFIXES.includes(name);
+    return SPECIAL_NAMESPACE_PREFIXES.includes(name.toLowerCase());
 }

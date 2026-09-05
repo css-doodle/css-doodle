@@ -198,6 +198,11 @@ test('names are read without regard to case and emitted in their own', () => {
             statement('viewBox', '0 0 1 1', { detail: { value: [0, 0, 1, 1] } }),
         ])
     ));
+    // the style block and namespaced names too
+    assert.deepEqual(parseSvg('Style { a { fill: red } } use { XLINK:HREF: #a }'), svg(
+        block('style', 'a{fill:red}'),
+        block('use', [statement('xlink:href', '#a')]),
+    ));
     // names that are also Object.prototype keys pass through as strings
     assert.deepEqual(parseSvg('constructor { __proto__: 1; toString: 2 }'), svg(
         block('constructor', [statement('__proto__', '1'), statement('tostring', '2')])

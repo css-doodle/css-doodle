@@ -4,6 +4,12 @@ import { NS, NSXLink, adjustName } from '../utils/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
 const nextInlineId = nextId();
+const noop = () => {};
+
+// elements that only define something: used as a value they go into <defs>
+const DEFINITIONS = new Set([
+    'linearGradient', 'radialGradient', 'pattern', 'filter', 'clipPath', 'mask', 'marker', 'symbol'
+]);
 
 
 class Tag {
@@ -127,15 +133,24 @@ function transformViewBox(token, warn) {
     return `${x} ${y} ${w} ${h}`;
 }
 
-// `2s`, `2s infinite`, `infinite 2s`, `3 2s`: duration and repeat count
+// `2s`, `2s infinite`, `3 2s`, `2s 1s infinite`: duration, delay and repeat
+// count, in the order of the css animation shorthand
 function timing(value) {
-    let [dur, repeatCount] = String(value).trim().split(/\s+/);
-    // a single bare number is a duration in seconds, not a repeat count
-    let isCount = dur === 'indefinite' || dur === 'infinite';
-    if (isCount || (repeatCount !== undefined && /\d$/.test(dur))) {
-        [dur, repeatCount] = [repeatCount, dur];
+    let times = [], repeatCount;
+    for (let word of String(value).trim().split(/\s+/)) {
+        if (word === 'infinite' || word === 'indefinite') {
+            repeatCount = word;
+        } else if (/^\d*\.?\d+(m?s|min|h)?$/.test(word)) {
+            times.push(word);
+        }
     }
-    return [dur, repeatCount];
+    // a bare number beside a duration is the repeat count, alone it is seconds
+    let count = times.findIndex(t => /^\d+$/.test(t));
+    if (count >= 0 && times.some(t => /[a-z]$/.test(t))) {
+        repeatCount = times.splice(count, 1)[0];
+    }
+    let [dur, begin] = times;
+    return [dur, begin, repeatCount];
 }
 
 function isGraphicElement(name) {
@@ -190,6 +205,12 @@ function generate(token, element, parent, root, warn) {
                 } else if (isSingleDefChild || isInlineAndNotDefs) {
                     inlineId = nextInlineId(token.name);
                     el.attr('id', inlineId);
+                }
+            }
+            if (token.inline && DEFINITIONS.has(token.name)) {
+                element = root.findSpareDefs();
+                if (!element) {
+                    root.append(element = new Tag('defs'));
                 }
             }
             let existedTag = element.find(el);
@@ -252,14 +273,21 @@ function generate(token, element, parent, root, warn) {
                 if (!isGraphicElement(parent.name)) {
                     warn(`${keyword}: <${parent.name}> has no path length to draw`);
                 } else {
-                    let [dur, repeatCount] = timing(value);
+                    let [dur, begin, repeatCount] = timing(value);
                     element.attr('stroke-dasharray', 10);
                     element.attr('pathLength', 10);
                     let animate = new Tag('animate');
                     animate.attr('attributeName', 'stroke-dashoffset');
                     animate.attr('from', 10);
                     animate.attr('to', 0);
-                    animate.attr('dur', dur);
+                    if (dur) {
+                        animate.attr('dur', dur);
+                    } else {
+                        warn(`${keyword}: needs a duration, as in \`2s\``);
+                    }
+                    if (begin) {
+                        animate.attr('begin', begin);
+                    }
                     if (repeatCount) {
                         animate.attr('repeatCount', repeatCount);
                     }
@@ -285,11 +313,14 @@ function generate(token, element, parent, root, warn) {
                 } else {
                     animate.attr('values', values.join(';'));
                 }
-                let [dur, repeatCount] = timing(slash < 0 ? '' : text.slice(slash + 1));
+                let [dur, begin, repeatCount] = timing(slash < 0 ? '' : text.slice(slash + 1));
                 if (dur) {
                     animate.attr('dur', dur);
                 } else {
                     warn(`animate ${name}: needs a duration after /, as in \`/ 2s\``);
+                }
+                if (begin) {
+                    animate.attr('begin', begin);
                 }
                 if (repeatCount) {
                     animate.attr('repeatCount', repeatCount);
@@ -310,6 +341,6 @@ function generate(token, element, parent, root, warn) {
     return inlineId;
 }
 
-export default function generateSvg(token, warn = () => {}) {
+export default function generateSvg(token, warn = noop) {
     return generate(token, null, null, null, warn);
 }

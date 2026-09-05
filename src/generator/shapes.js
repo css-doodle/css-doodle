@@ -3,7 +3,7 @@ import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands from '../parser/parse-shape-commands.js';
 
-import { clamp } from '../utils/math.js';
+import { clamp, tidyNumber } from '../utils/math.js';
 import { isEmpty } from '../utils/type.js';
 import calc from '../core/calc.js';
 import { css } from '../utils/tagged-template.js';
@@ -86,14 +86,17 @@ function createPolygonPoints(option, fn) {
         let angle = (staticAngle === null)
             ? calcAngle(x, y, dx1, dy2, direction)
             : staticAngle;
+        // no 6.12e-17 or 49.99999999999999% from the trigonometry
         if (unit !== undefined && unit !== '%') {
+            x = tidyNumber(x);
+            y = tidyNumber(y);
             if (unit !== 'none') {
                 x += unit;
                 y += unit;
             }
         } else {
-            x = (x + 1) * 50 + '%';
-            y = (y + 1) * 50 + '%';
+            x = tidyNumber((x + 1) * 50) + '%';
+            y = tidyNumber((y + 1) * 50) + '%';
         }
         points.push(new Point(x, y, angle));
     }

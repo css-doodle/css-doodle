@@ -357,7 +357,37 @@ test('problems are reported through the warn callback', () => {
         output: '<svg><circle><animate attributeName="r" values="1;5"/></circle></svg>',
         warnings: ['animate r: needs a duration after /, as in `/ 2s`'],
     });
-    assert.deepEqual(warned('circle { filter: defs { a {} b {} } }').warnings,
+    assert.deepEqual(warned('circle { filter: defs { circle {} rect {} } }').warnings,
         ['filter: an inline defs must hold exactly one element']);
     assert.deepEqual(warned('path { draw: 2s; animate r: 1 / 1s }').warnings, []);
+});
+
+test('timing takes a delay after the duration, like the css animation shorthand', () => {
+    assert.equal(svg('circle { animate r: 1; 5 / 2s 1s infinite }'),
+        `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" begin="1s" repeatCount="indefinite"/></circle></svg>`);
+    assert.equal(svg('circle { animate r: 1; 5 / 2s 3 }'),
+        `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" repeatCount="3"/></circle></svg>`);
+    assert.equal(svg('path { draw: 2s .5s }').includes('dur="2s" begin=".5s"'), true);
+    assert.equal(svg('path { draw: 3 2s }').includes('dur="2s" repeatCount="3"'), true);
+});
+
+test('a definition used as a value goes into defs without the keyword', () => {
+    assert.equal(svg('rect { fill: linearGradient#lg { stop { offset: 0 } } }'), markup(`
+        <svg ${NS}>
+            <defs>
+                <linearGradient id="lg">
+                    <stop offset="0"/>
+                </linearGradient>
+            </defs>
+            <rect fill="url(#lg)"/>
+        </svg>
+    `));
+    // joins an existing defs, and the same id is shared
+    assert.equal(svg(`
+        defs { linearGradient#a {} }
+        rect { fill: linearGradient#a {} }
+        circle { mask: mask#m {} }
+    `), `<svg ${NS}><defs><linearGradient id="a"/><mask id="m"/></defs><rect fill="url(#a)"/><circle mask="url(#m)"/></svg>`);
+    // a plain element used as a value stays at the root
+    assert.equal(svg('use { href: g#x {} }'), `<svg ${NS}><g id="x"/><use href="#x"/></svg>`);
 });

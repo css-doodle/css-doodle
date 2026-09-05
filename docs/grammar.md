@@ -471,7 +471,7 @@ attribute           = name | namespace-attribute
 namespace-attribute = one of the supported `xlink:` and `xml:` names below
 sequence-count      = number | number 'x' number | number '-' number
 values              = value { ';' value }
-timing              = duration [ repeat-count ] | repeat-count duration
+timing              = duration [ delay ] [ repeat-count ]
 ```
 
 - An element block becomes an SVG element, and its declarations
@@ -499,7 +499,11 @@ timing              = duration [ repeat-count ] | repeat-count duration
   receives the whole value.
 - A value may itself be an element block, whose selector is the text
   before its first top-level `{`. The element receives a generated
-  id, and the attribute becomes `url(#id)`, or `#id` for `href`.
+  id, and the attribute becomes `url(#id)`, or `#id` for `href`. An
+  element that only defines something, a gradient, `pattern`,
+  `filter`, `clipPath`, `mask`, `marker` or `symbol`, is placed into
+  `<defs>`, so `fill: linearGradient { … }` and
+  `fill: defs linearGradient { … }` are the same.
 - `viewBox` takes the four numbers of the attribute, or one number
   `n` for `0 0 n n`, or two for `0 0 w h`. `p n`, `padding n` or
   `expand n` after them grows the box by `n` on every side. Any
@@ -510,8 +514,10 @@ timing              = duration [ repeat-count ] | repeat-count duration
   and that form add to the element's `style` attribute.
 - `animate r: 1; 5; 1 / 2s infinite` adds an `<animate>` child for
   the attribute: the values before the `/`, separated by `;`, then
-  the duration and an optional repeat count in either order. A single
-  value is a `to` animation. `animate transform: rotate 0; 360 / 4s`
+  the timing: a duration, an optional delay and an optional repeat
+  count, as in the CSS `animation` shorthand. A bare number beside a
+  duration is the repeat count; alone it is a duration in seconds. A
+  single value is a `to` animation. `animate transform: rotate 0; 360 / 4s`
   emits `<animateTransform>` with the first word as its `type`.
   `draw: 2s` strokes a shape (`path`, `line`, `rect`, `circle`,
   `ellipse`, `polygon`, `polyline`) along its length; `animate:` is
@@ -721,7 +727,7 @@ component:
 | an `@svg` `viewBox` with three numbers, or none               | the attribute is dropped                                    |
 | an inline `defs { … }` value holding more or fewer than one element | the attribute is set to the empty string                |
 | `draw:` on an element that has no path length                 | the declaration is dropped                                  |
-| `animate name:` without a duration after `/`                  | the `<animate>` is emitted without `dur`                    |
+| `animate name:` without a duration after `/`, or `draw:` without one | the `<animate>` is emitted without `dur`               |
 
 The first four are detected while parsing, which continues. The
 others are detected while the CSS is generated. A raw body (`@doodle`,
