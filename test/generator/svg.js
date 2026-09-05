@@ -256,7 +256,7 @@ test('no id for multiple inline defs child elements', () => {
 test('a selector of nothing but spaces opens no block', () => {
     // getSelectors returned [''] for a whitespace-only fragment, which
     // reached the generator as a tag with no name and threw
-    assert.equal(svg('text `content: {hi`;'), `<svg ${NS} text \`content=" hi\`"></svg>`);
+    assert.equal(svg('text `content: {hi`;'), `<svg ${NS} text \`content=" "></svg>`);
     assert.equal(svg('a { { } }'), `<svg ${NS}><a/></svg>`);
     // named selectors are untouched
     assert.equal(svg('g circle { fill: red }'), `<svg ${NS}><g><circle fill="red"/></g></svg>`);
@@ -274,4 +274,90 @@ test('text and attribute values are escaped, markup and entities pass through', 
 test('comma selectors and the child combinator', () => {
     assert.equal(svg('circle, rect { fill: red }'), `<svg ${NS}><circle fill="red"/><rect fill="red"/></svg>`);
     assert.equal(svg('g > circle { fill: red }'), `<svg ${NS}><g><circle fill="red"/></g></svg>`);
+});
+
+test('names are matched against the svg camelCase names', () => {
+    assert.equal(svg('defs { lineargradient#g { gradientunits: userSpaceOnUse } } fegaussianblur { stddeviation: 2 }'),
+        `<svg ${NS}><defs><linearGradient gradientUnits="userSpaceOnUse" id="g"/></defs><feGaussianBlur stdDeviation="2"/></svg>`);
+    assert.equal(svg('viewbox: 0 0 1 1'), `<svg ${NS} viewBox="0 0 1 1"></svg>`);
+    // unknown names are lowercased like in html
+    assert.equal(svg('Cirlce { stopColor: red }'), `<svg ${NS}><cirlce stopcolor="red"/></svg>`);
+    // names that are also Object.prototype keys are ordinary names
+    assert.equal(svg('constructor { __proto__: 1; toString: 2 }'), `<svg ${NS}><constructor __proto__="1" tostring="2"/></svg>`);
+    // the generator's own decisions see the canonical name
+    assert.equal(svg('Circle { draw: 1s }').includes('<animate'), true);
+    assert.equal(svg('feGaussianBlur { animate stddeviation: 1; 5 / 1s }'),
+        `<svg ${NS}><feGaussianBlur><animate attributeName="stdDeviation" values="1;5" dur="1s"/></feGaussianBlur></svg>`);
+});
+
+test('repeatCount accepts infinite', () => {
+    assert.equal(svg('circle { animate { attributeName: r; values: 1;5; dur: 2s; repeatCount: infinite } }'),
+        `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" repeatCount="indefinite"/></circle></svg>`);
+});
+
+test('animate name: adds an animate child', () => {
+    assert.equal(svg('circle { animate r: 1; 5; 1 / 2s infinite; fill: red }'), markup(`
+        <svg ${NS}>
+            <circle fill="red">
+                <animate attributeName="r" values="1;5;1" dur="2s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    `));
+    // a single value animates to it
+    assert.equal(svg('circle { animate cx: 5 / 1s }'),
+        `<svg ${NS}><circle><animate attributeName="cx" to="5" dur="1s"/></circle></svg>`);
+    // the repeat count may come first
+    assert.equal(svg('circle { animate r: 1; 2 / infinite 2s }'),
+        `<svg ${NS}><circle><animate attributeName="r" values="1;2" dur="2s" repeatCount="indefinite"/></circle></svg>`);
+    // transform takes its type first
+    assert.equal(svg('g { animate transform: rotate 0 5 5; 360 5 5 / 4s infinite }'), markup(`
+        <svg ${NS}>
+            <g>
+                <animateTransform attributeName="transform" type="rotate" values="0 5 5;360 5 5" dur="4s" repeatCount="indefinite"/>
+            </g>
+        </svg>
+    `));
+});
+
+test('style: with a block and style prefixes add up', () => {
+    assert.equal(svg('circle { style: { fill: red; stroke: blue }; style opacity: .5 }'),
+        `<svg ${NS}><circle style="fill:red;stroke:blue;opacity:.5;"/></svg>`);
+    assert.equal(svg('circle { style opacity: .5; style: { fill: red } }'),
+        `<svg ${NS}><circle style="opacity:.5;fill:red;"/></svg>`);
+});
+
+test('viewBox shorthands', () => {
+    assert.equal(svg('viewBox: 10'), `<svg ${NS} viewBox="0 0 10 10"></svg>`);
+    assert.equal(svg('viewBox: 10 5'), `<svg ${NS} viewBox="0 0 10 5"></svg>`);
+    assert.equal(svg('viewBox: 10 p 1'), `<svg ${NS} viewBox="-1 -1 12 12"></svg>`);
+    assert.equal(svg('viewBox: -5 -5 10 10'), `<svg ${NS} viewBox="-5 -5 10 10"></svg>`);
+});
+
+test('elements beside svg {} join it', () => {
+    assert.equal(svg('svg { circle {} } rect {}'), `<svg ${NS}><circle/><rect/></svg>`);
+    assert.equal(svg('viewBox: 10; svg { viewBox: 20; circle {} } svg { rect {} }'),
+        `<svg ${NS} viewBox="0 0 20 20"><circle/><rect/></svg>`);
+});
+
+test('problems are reported through the warn callback', () => {
+    const warned = input => {
+        let warnings = [];
+        let output = generateSvg(parseSvg(input), m => warnings.push(m));
+        return { output: output.replace(` ${NS}`, ''), warnings };
+    };
+    assert.deepEqual(warned('viewBox: 0 0 10; circle {}'), {
+        output: '<svg><circle/></svg>',
+        warnings: ['viewBox needs 1, 2 or 4 numbers, got "0 0 10"'],
+    });
+    assert.deepEqual(warned('g { draw: 2s }'), {
+        output: '<svg><g/></svg>',
+        warnings: ['draw: <g> has no path length to draw'],
+    });
+    assert.deepEqual(warned('circle { animate r: 1; 5 }'), {
+        output: '<svg><circle><animate attributeName="r" values="1;5"/></circle></svg>',
+        warnings: ['animate r: needs a duration after /, as in `/ 2s`'],
+    });
+    assert.deepEqual(warned('circle { filter: defs { a {} b {} } }').warnings,
+        ['filter: an inline defs must hold exactly one element']);
+    assert.deepEqual(warned('path { draw: 2s; animate r: 1 / 1s }').warnings, []);
 });

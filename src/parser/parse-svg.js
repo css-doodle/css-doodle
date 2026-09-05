@@ -1,12 +1,7 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
 import { parseBody, readRaw } from './parse-body.js';
-
-const SPECIAL_NAMESPACE_PREFIXES = [
-    'xlink:actuate', 'xlink:arcrole', 'xlink:href', 'xlink:role',
-    'xlink:show',    'xlink:title',   'xlink:type',
-    'xml:base',      'xml:lang',      'xml:space',
-];
+import { adjustName, isSpecialNamespaceAttr } from '../utils/svg.js';
 
 function isSkip(...names) {
     return names.includes('style');
@@ -44,26 +39,29 @@ function splitTimes(name, object) {
 }
 
 function resolveId(block, skip) {
-    let name = block.name || '';
-    let baseName = name.split(/[#.]/)[0];
+    // pureName has the `*times` suffix stripped so it can't leak into id/class
+    let selector = block.pureName || block.name || '';
+    let baseName = selector.split(/[#.]/)[0];
     if (skip || !baseName) {
         return block;
     }
-    // pureName has the `*times` suffix stripped so it can't leak into id/class
-    let selector = block.pureName || name;
     let id = selector.match(/#([^.#]+)/);
-    if (id) {
+    // an `id:` declaration in the body wins over the selector
+    if (id && !block.value.find(n => n.type === 'statement' && n.name === 'id')) {
         block.value.push({ type: 'statement', name: 'id', value: id[1] });
     }
     let classes = selector.match(/\.([^.#]+)/g);
     if (classes) {
-        block.value.push({
-            type: 'statement',
-            name: 'class',
-            value: classes.map(c => c.slice(1)).join(' ')
-        });
+        let names = classes.map(c => c.slice(1)).join(' ');
+        let at = block.value.findIndex(n => n.type === 'statement' && n.name === 'class');
+        // `.a { class: b }` has both; the statement may be shared with a comma group
+        if (at >= 0) {
+            block.value[at] = { ...block.value[at], value: names + ' ' + block.value[at].value };
+        } else {
+            block.value.push({ type: 'statement', name: 'class', value: names });
+        }
     }
-    block.name = baseName;
+    block.name = adjustName(baseName);
     return block;
 }
 
@@ -133,8 +131,11 @@ function readStatement(iter, token) {
         }
         if (!paren && !quote && curr.isSymbol('{')) {
             let selectors = getSelectors(fragment);
+            // no selector: `style: { fill: red }` keeps the text as the value
             if (!selectors.length) {
-                continue;
+                token.value = textOf(readRaw(iter));
+                token.raw = true;
+                break;
             }
             inlineBlock = readBlock(iter, selectors, isSkip(...selectors));
             break;
@@ -213,11 +214,14 @@ function readSvgStatement(iter, head) {
         item.name = prop;
         if (prop.startsWith('--')) {
             item.variable = true;
+        } else if (!prop.includes('--')) {
+            // custom properties keep their case
+            item.name = adjustName(prop);
         }
         if (expand) {
             item.value = groupedValue[i];
         }
-        if (/viewBox/i.test(prop)) {
+        if (item.name === 'viewBox') {
             item.detail = parseViewBox(item.value, valueTokens);
         }
         rules.push(item);
@@ -234,7 +238,7 @@ function isSpecialProperty(prev, next) {
     if (!prev || !next || (prev.value !== 'xlink' && prev.value !== 'xml')) {
         return false;
     }
-    return SPECIAL_NAMESPACE_PREFIXES.includes(prev.value + ':' + next.value);
+    return isSpecialNamespaceAttr(prev.value + ':' + next.value);
 }
 
 function getGroups(tokens) {
@@ -291,11 +295,11 @@ function parseViewBox(value, tokens) {
             continue;
         }
         if (token.isNumber()) {
-            if (viewBox.value.length < 4) {
-                viewBox.value.push(Number(token.value));
-            } else if (field) {
+            if (field) {
                 viewBox[field] = Number(token.value);
                 field = null;
+            } else if (viewBox.value.length < 4) {
+                viewBox.value.push(Number(token.value));
             }
         } else if (token.isWord()) {
             field = token.value;
@@ -304,25 +308,15 @@ function parseViewBox(value, tokens) {
     return viewBox;
 }
 
+// Everything beside an `svg {}` block belongs to it, in source order
 function skipHeadSVG(block) {
-    let headSVG, headVariables = [];
-    for (let item of block.value) {
-        if (item.name === 'svg') {
-            headSVG = item;
-        }
-        if (item.variable) {
-            headVariables.push(item);
-        }
+    const isRoot = item => item.name === 'svg' && Array.isArray(item.value);
+    let headSVG = block.value.find(isRoot);
+    if (!headSVG) {
+        return block;
     }
-    if (headSVG && Array.isArray(headSVG.value)) {
-        for (let variable of headVariables) {
-            if (!headSVG.value.find(n => n.name == variable.name)) {
-                headSVG.value.unshift(variable);
-            }
-        }
-        return headSVG;
-    }
-    return block;
+    headSVG.value = block.value.flatMap(item => isRoot(item) ? item.value : item);
+    return headSVG;
 }
 
 function parse(source, root) {
@@ -332,7 +326,7 @@ function parse(source, root) {
         name: 'svg',
         value: []
     }, svg);
-    return skipHeadSVG(tokens);
+    return root ? tokens : skipHeadSVG(tokens);
 }
 
 export default parse;

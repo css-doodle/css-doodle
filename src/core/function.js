@@ -299,11 +299,13 @@ function tryDecode(raw, decode) {
     }
 }
 
+// the url is memoized, so the warnings travel with it to be reported per call
 const composeSvgUrl = memo('svg-function', value => {
+    let warnings = [];
     if (!value.startsWith('<')) {
-        value = generateSvg(parseSvg(value));
+        value = generateSvg(parseSvg(value), message => warnings.push(message));
     }
-    return createSvgUrl(normalizeSvg(value));
+    return { url: createSvgUrl(normalizeSvg(value)), warnings };
 });
 
 const composeSvgPolygonUrl = memo('svg-polygon-function', commands => {
@@ -666,9 +668,13 @@ Function.reverse = () => {
     }
 };
 
-Function.svg = lazy((_, ...args) => {
+Function.svg = lazy((upstream, ...args) => {
     let value = args.map(input => getValue(input())).join(',');
-    return composeSvgUrl(value);
+    let { url, warnings } = composeSvgUrl(value);
+    for (let message of warnings) {
+        upstream.rules.warn(message);
+    }
+    return url;
 });
 
 Function['svg-filter'] = lazy((upstream, ...args) => {
@@ -705,7 +711,7 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
             type: 'block',
             name: 'filter'
         });
-        value = generateSvg(parsed);
+        value = generateSvg(parsed, message => upstream.rules.warn(message));
     }
     let svg = normalizeSvg(value).replace(
         /<filter([\s>])/,

@@ -624,14 +624,23 @@ function parseDoodleBody(cur, start) {
 
 function expandSvg(cur, raw, args, extra, variables) {
     let parsedSvg = parseSvg(raw);
-    for (let item of parsedSvg.value) {
-        if (item.variable) {
-            let rules = parseSource(`${item.name}: ${item.value}`, extra, cur.ctx);
-            if (rules[0]) {
-                variables[item.name] = rules[0].value;
+    // `--name:` anywhere in the body declares for the whole call, the last wins
+    function collect(block) {
+        for (let item of block.value) {
+            if (item.variable) {
+                let rules = parseSource(`${item.name}: ${item.value}`, extra, cur.ctx);
+                if (rules[0]) {
+                    variables[item.name] = rules[0].value;
+                }
+            } else {
+                let child = item.type === 'block' ? item : item.value;
+                if (child && Array.isArray(child.value)) {
+                    collect(child);
+                }
             }
         }
     }
+    collect(parsedSvg);
     if (hasTimesSyntax(parsedSvg)) {
         let svg = svgSourceOf(parsedSvg) + ')';
         let sub = new Cursor(svg, cur.ctx);

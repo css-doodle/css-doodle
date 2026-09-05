@@ -128,10 +128,10 @@ test('a style block keeps its css as text', () => {
 
 test('times syntax records the count and the pure name', () => {
     assert.deepEqual(parseSvg('circle*10 {}'), svg(
-        block('circle*10', [], { pureName: 'circle', times: '10' })
+        block('circle', [], { pureName: 'circle', times: '10' })
     ));
     assert.deepEqual(parseSvg('circle * 5 {}'), svg(
-        block('circle*5', [], { pureName: 'circle', times: '5' })
+        block('circle', [], { pureName: 'circle', times: '5' })
     ));
     assert.deepEqual(parseSvg('circle#a*4 {}'), svg(
         block('circle', [statement('id', 'a')], { pureName: 'circle#a', times: '4' })
@@ -150,9 +150,10 @@ test('values keep nested parens and their contents', () => {
 test('--name declares a variable, hoisted before the elements', () => {
     assert.deepEqual(parseSvg('--a: 1'), svg(statement('--a', '1', { variable: true })));
     assert.deepEqual(parseSvg('--a: 1; svg {}'), svg(statement('--a', '1', { variable: true })));
-    // an inner declaration overrides an outer one
+    // both are kept in source order, the later one wins when read
     assert.deepEqual(parseSvg('--a: 1; svg { --a: 2 }'), svg(
-        statement('--a', '2', { variable: true })
+        statement('--a', '1', { variable: true }),
+        statement('--a', '2', { variable: true }),
     ));
     assert.deepEqual(parseSvg('--b: 1; svg { --a: 2 }'), svg(
         statement('--b', '1', { variable: true }),
@@ -169,4 +170,65 @@ test('comma selectors share one body, each with its own id and class', () => {
         block('circle', [statement('id', 'a')]),
         block('rect', [statement('class', 'b')]),
     ));
+});
+
+test('selector classes combine with class:, an explicit id wins', () => {
+    assert.deepEqual(parseSvg('circle.a { class: b }'), svg(block('circle', [statement('class', 'a b')])));
+    assert.deepEqual(parseSvg('circle#a { id: b }'), svg(block('circle', [statement('id', 'b')])));
+    // each comma group gets its own copy
+    assert.deepEqual(parseSvg('circle.a, rect.b { class: x }'), svg(
+        block('circle', [statement('class', 'a x')]),
+        block('rect', [statement('class', 'b x')]),
+    ));
+});
+
+test('a braced value without a selector is kept as text', () => {
+    assert.deepEqual(parseSvg('circle { style: { fill: red; stroke: blue }; cx: 1 }'), svg(
+        block('circle', [statement('style', 'fill:red;stroke:blue', { raw: true }), statement('cx', '1')])
+    ));
+    assert.deepEqual(parseSvg('path { d: { M 0 0; L 1 1 } }'), svg(
+        block('path', [statement('d', 'M 0 0;L 1 1', { raw: true })])
+    ));
+});
+
+test('names are read without regard to case and emitted in their own', () => {
+    assert.deepEqual(parseSvg('LinearGradient { gradientunits: x; ViewBox: 0 0 1 1 }'), svg(
+        block('linearGradient', [
+            statement('gradientUnits', 'x'),
+            statement('viewBox', '0 0 1 1', { detail: { value: [0, 0, 1, 1] } }),
+        ])
+    ));
+    // names that are also Object.prototype keys pass through as strings
+    assert.deepEqual(parseSvg('constructor { __proto__: 1; toString: 2 }'), svg(
+        block('constructor', [statement('__proto__', '1'), statement('tostring', '2')])
+    ));
+    // custom properties and ids keep theirs
+    assert.deepEqual(parseSvg('Circle#myId { --myVar: 1; style --myProp: 2 }'), svg(
+        block('circle', [
+            statement('--myVar', '1', { variable: true }),
+            statement('style --myProp', '2'),
+            statement('id', 'myId'),
+        ])
+    ));
+});
+
+test('viewBox detail keeps fewer numbers and the padding after them', () => {
+    assert.deepEqual(parseSvg('viewBox: 10 p 2'), svg(
+        statement('viewBox', '10 p 2', { detail: { value: [10], p: 2 } })
+    ));
+    assert.deepEqual(parseSvg('viewBox: 10 5'), svg(
+        statement('viewBox', '10 5', { detail: { value: [10, 5] } })
+    ));
+});
+
+test('everything beside svg {} belongs to it, in source order', () => {
+    assert.deepEqual(parseSvg('svg { circle {} } rect {}'), svg(block('circle'), block('rect')));
+    assert.deepEqual(parseSvg('width: 1; svg { height: 2; circle {} }'), svg(
+        statement('width', '1'), statement('height', '2'), block('circle')
+    ));
+    assert.deepEqual(parseSvg('circle {} svg { rect {} } line {}'), svg(block('circle'), block('rect'), block('line')));
+    // a second svg {} merges into the first
+    assert.deepEqual(parseSvg('svg { circle {} } svg { rect {} }'), svg(block('circle'), block('rect')));
+    // not for a custom root
+    assert.deepEqual(parseSvg('svg { a {} }', { type: 'block', name: 'filter' }), block('filter', [block('svg', [block('a')])]));
 });

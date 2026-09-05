@@ -255,6 +255,19 @@ test('@use at the top level is inlined by the parser', () => {
     assert.ok(compiled.styles.all.includes('@keyframes k {to {color:blue;}}'));
 });
 
+test('@svg problems are reported once for the whole grid', () => {
+    let compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '2');
+    assert.deepEqual(compiled.warnings.map(w => w.message), [
+        'viewBox needs 1, 2 or 4 numbers, got "0 0 100"',
+        'animate r: needs a duration after /, as in `/ 2s`',
+    ]);
+    // the same source is memoized: a second compile still reports
+    compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '1');
+    assert.equal(compiled.warnings.length, 2);
+    compiled = compile('filter: @svg-filter(g { draw: 1s });');
+    assert.deepEqual(compiled.warnings.map(w => w.message), ['draw: <g> has no path length to draw']);
+});
+
 test('generated ids are positional and carry the instance token', () => {
     let code = `
         background: @doodle(color: red);

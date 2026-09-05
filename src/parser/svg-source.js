@@ -4,7 +4,8 @@ function generate(token, last) {
     let result = '';
     if (token.type === 'block') {
         if (token.times) {
-            result += ('@M' + token.times + '(' + token.pureName + '{');
+            // id and class already sit in the body as statements
+            result += ('@M' + token.times + '(' + token.name + '{');
         } else {
             result += token.name + '{';
         }
@@ -26,9 +27,14 @@ function generate(token, last) {
         let name = token.origin ? token.origin.name.join(',') : token.name;
         let value = token.origin ? token.origin.value : token.value;
         if (!skip) {
-            result += (value && value.type)
-                ? (name + ':' + generate(value))
-                : (name + ':' + value + ';');
+            if (value && value.type) {
+                result += name + ':' + generate(value);
+            } else if (token.raw) {
+                // read from braces, so written back in them
+                result += name + ':{' + value + '};';
+            } else {
+                result += name + ':' + value + ';';
+            }
         }
     }
     return result;

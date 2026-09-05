@@ -426,6 +426,17 @@ test('svg variable declarations stay text inside @svg', () => {
     assert.deepEqual(read.arguments[0].values[0], { type: 'var', name: '--a' });
 });
 
+test('svg variables declared inside elements count for the call', () => {
+    const funcOf = input => parseCss(input)[0].value[0][0];
+    const text = value => [{ type: 'text', value }];
+    let func = funcOf(`@content: @svg(g { --r: 5; circle { r: $r } });`);
+    assert.deepEqual(func.variables['--r'][0], text('5'));
+    // the last declaration wins, inline block values count too
+    func = funcOf(`@content: @svg(--r: 1; g { --r: 5; } rect { fill: defs linearGradient { --c: red } });`);
+    assert.deepEqual(func.variables['--r'][0], text('5'));
+    assert.deepEqual(func.variables['--c'][0], text('red'));
+});
+
 test('$ keeps its suffix as the unit', () => {
     const funcOf = input => parseCss(input)[0].value[0][0];
     let px = funcOf(`a: $px(1+1);`);

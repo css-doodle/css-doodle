@@ -18,3 +18,9 @@ test('times syntax becomes an @M call', () => {
         'svg{path{href:defs{g{@M2(circle{})}}}}'
     );
 });
+
+test('resolved selectors and style blocks survive the round trip', () => {
+    assert.equal(source('circle.dot*3 { style: { fill: red; stroke: blue } }'),
+        'svg{@M3(circle{style:{fill:red;stroke:blue};class:dot;})}');
+    assert.equal(source('circle*2 { style: fill:red }'), 'svg{@M2(circle{style:fill:red;})}');
+});

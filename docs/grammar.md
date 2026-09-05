@@ -318,9 +318,9 @@ as raw text up to the matching `)`, respecting quotes. Nothing inside
 is interpreted at this level.
 
 `@svg` takes its body in the SVG language (§9.1) and evaluates it in
-place. `--name: value` declarations inside it define variables for the
-call, and `element*count` is expanded before the body is read as
-arguments.
+place. `--name: value` declarations anywhere in the body define
+variables for the call, the last declaration of a name winning, and
+`element*count` is expanded before the body is read as arguments.
 
 ## 8. Expressions
 
@@ -464,14 +464,28 @@ selector            = element { combinator element }
 element             = name [ '#' id ] { '.' class } [ '*' sequence-count ]
 combinator          = whitespace | '>'
 svg-declaration     = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
+                    | 'style' [ property ] ':' ( value | '{' css '}' ) [ ';' ]
+                    | 'animate' attribute ':' values [ '/' timing ] [ ';' ]
+                    | 'draw' ':' timing [ ';' ]
 attribute           = name | namespace-attribute
 namespace-attribute = one of the supported `xlink:` and `xml:` names below
 sequence-count      = number | number 'x' number | number '-' number
+values              = value { ';' value }
+timing              = duration [ repeat-count ] | repeat-count duration
 ```
 
 - An element block becomes an SVG element, and its declarations
   become attributes. `#id` and `.class` in the selector set the `id`
-  and `class` attributes.
+  and `class` attributes; a `class:` declaration in the body is
+  combined with the selector's classes, and an `id:` declaration
+  wins over `#id`.
+- Element and attribute names are read without regard to case and
+  emitted in SVG's own: `lineargradient` and `stddeviation` become
+  `linearGradient` and `stdDeviation`, `Circle` becomes `circle`.
+  Custom property names keep their case.
+- Declarations and elements written beside an `svg { … }` block
+  belong to it, in source order, and several `svg` blocks merge into
+  one.
 - `g circle { … }` and `g > circle { … }` both nest `circle` inside
   `g`; the two combinators are equivalent.
 - `*sequence-count` repeats the element as `@M(sequence-count, …)`
@@ -486,8 +500,23 @@ sequence-count      = number | number 'x' number | number '-' number
 - A value may itself be an element block, whose selector is the text
   before its first top-level `{`. The element receives a generated
   id, and the attribute becomes `url(#id)`, or `#id` for `href`.
+- `viewBox` takes the four numbers of the attribute, or one number
+  `n` for `0 0 n n`, or two for `0 0 w h`. `p n`, `padding n` or
+  `expand n` after them grows the box by `n` on every side. Any
+  other count of numbers drops the attribute with a diagnostic.
 - A `style { … }` block, with or without a selector, keeps its content
-  as CSS text.
+  as CSS text. A braced value with no selector before it, as in
+  `style: { fill: red; … }`, is kept as text too; `style fill: red`
+  and that form add to the element's `style` attribute.
+- `animate r: 1; 5; 1 / 2s infinite` adds an `<animate>` child for
+  the attribute: the values before the `/`, separated by `;`, then
+  the duration and an optional repeat count in either order. A single
+  value is a `to` animation. `animate transform: rotate 0; 360 / 4s`
+  emits `<animateTransform>` with the first word as its `type`.
+  `draw: 2s` strokes a shape (`path`, `line`, `rect`, `circle`,
+  `ellipse`, `polygon`, `polyline`) along its length; `animate:` is
+  its older spelling. `infinite` is accepted for `indefinite` in
+  these and in a `repeatCount` attribute.
 - The `;` that ends a character reference such as `&amp;` is part of
   the value, not a terminator.
 - Namespaced attributes are supported for `xlink:actuate`,
@@ -677,7 +706,7 @@ top-level commas or whitespace.
 ## 11. Error recovery
 
 There are no fatal syntax errors: every input produces a doodle.
-Unknown properties and at-rules are emitted as written. Six
+Unknown properties and at-rules are emitted as written. Ten
 situations are reported as diagnostics, each at most once per
 component:
 
@@ -689,8 +718,12 @@ component:
 | a `@use` variable that refers to itself                 | the variable is skipped (§2)                                |
 | an unknown function called with an argument list        | the call is emitted as its name, `@name`                    |
 | a cell selector with a modifier it does not have, such as `@cell.random(2)` | matches nothing                         |
+| an `@svg` `viewBox` with three numbers, or none               | the attribute is dropped                                    |
+| an inline `defs { … }` value holding more or fewer than one element | the attribute is set to the empty string                |
+| `draw:` on an element that has no path length                 | the declaration is dropped                                  |
+| `animate name:` without a duration after `/`                  | the `<animate>` is emitted without `dur`                    |
 
-The first four are detected while parsing, which continues. The last
-two are detected while the CSS is generated. A raw body (`@doodle`,
+The first four are detected while parsing, which continues. The
+others are detected while the CSS is generated. A raw body (`@doodle`,
 `@shaders`, `@pattern`) that is never closed runs to the end of the
 source without a report.

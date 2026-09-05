@@ -1,8 +1,10 @@
 import { nextId } from '../utils/fn.js';
 import { isNil } from '../utils/type.js';
-import { NS, NSXLink } from '../utils/svg.js';
+import { NS, NSXLink, adjustName } from '../utils/svg.js';
+import parseValueGroup from '../parser/parse-value-group.js';
 
 const nextInlineId = nextId();
+
 
 class Tag {
     constructor(name, value = '') {
@@ -12,7 +14,7 @@ class Tag {
         this.id = Symbol();
         this.name = name;
         this.body = [];
-        this.attrs = {};
+        this.attrs = Object.create(null);
         if (this.isTextNode()) {
             this.body = value;
         }
@@ -53,6 +55,10 @@ class Tag {
             if (value === undefined) {
                 return this.attrs[name];
             }
+            // SMIL spells it indefinite
+            if (name === 'repeatCount' && value === 'infinite') {
+                value = 'indefinite';
+            }
             return this.attrs[name] = value;
         }
     }
@@ -73,10 +79,6 @@ class Tag {
         }
         return open + '/>';
     }
-}
-
-function composeStyleRule(name, value) {
-    return `${name}:${value};`
 }
 
 // leaves XML's own references and raw markup inside `content:` alone
@@ -105,10 +107,17 @@ function removeQuotes(text) {
     return text;
 }
 
-function transformViewBox(token) {
+function transformViewBox(token, warn) {
     let viewBox = token.detail.value;
     let p = token.detail.padding || token.detail.p || token.detail.expand;
-    if (viewBox.length < 4) {
+    // `viewBox: 10` is `0 0 10 10`, `viewBox: 10 5` is `0 0 10 5`
+    if (viewBox.length === 1) {
+        viewBox = [0, 0, viewBox[0], viewBox[0]];
+    } else if (viewBox.length === 2) {
+        viewBox = [0, 0, viewBox[0], viewBox[1]];
+    }
+    if (viewBox.length !== 4) {
+        warn(`viewBox needs 1, 2 or 4 numbers, got "${token.value}"`);
         return '';
     }
     let [x, y, w, h] = viewBox;
@@ -116,6 +125,17 @@ function transformViewBox(token) {
         [x, y, w, h] = [x-p, y-p, w+p*2, h+p*2];
     }
     return `${x} ${y} ${w} ${h}`;
+}
+
+// `2s`, `2s infinite`, `infinite 2s`, `3 2s`: duration and repeat count
+function timing(value) {
+    let [dur, repeatCount] = String(value).trim().split(/\s+/);
+    // a single bare number is a duration in seconds, not a repeat count
+    let isCount = dur === 'indefinite' || dur === 'infinite';
+    if (isCount || (repeatCount !== undefined && /\d$/.test(dur))) {
+        [dur, repeatCount] = [repeatCount, dur];
+    }
+    return [dur, repeatCount];
 }
 
 function isGraphicElement(name) {
@@ -128,7 +148,7 @@ function isGraphicElement(name) {
         || name === 'polyline';
 }
 
-function generate(token, element, parent, root) {
+function generate(token, element, parent, root, warn) {
     let inlineId;
     if (!element) {
         element = new Tag('root');
@@ -155,7 +175,7 @@ function generate(token, element, parent, root) {
                 }
             }
             for (let block of token.value) {
-                let id = generate(block, el, token, root);
+                let id = generate(block, el, token, root, warn);
                 if (id) { inlineId = id }
             }
             let isInlineAndNotDefs = token && token.inline && token.name !== 'defs';
@@ -193,24 +213,26 @@ function generate(token, element, parent, root) {
         }
     }
     if (token.type === 'statement' && !token.variable) {
-        if (token.name === 'content') {
-            let text = new Tag('text-node', token.value);
+        let value = token.value;
+        // `style fill: red`, `animate r: …`: a keyword and the attribute it applies to
+        let space = token.name.indexOf(' ');
+        let keyword = space < 0 ? token.name : token.name.slice(0, space);
+        let name = space < 0 ? '' : token.name.slice(space + 1).trim();
+        if (keyword === 'content') {
+            let text = new Tag('text-node', value);
             element.append(text);
         }
-        // inline style
-        else if (token.name.startsWith('style ')) {
-            let name = (token.name.split('style ')[1] || '').trim();
-            if (name.length) {
-                let style = element.attr('style') || '';
-                element.attr('style', style + composeStyleRule(name, token.value));
-            }
+        // inline style, `style fill: red` or `style: { fill: red }`
+        else if (keyword === 'style') {
+            let rule = name ? `${name}:${value};` : String(value).trim().replace(/;?$/, ';');
+            element.attr('style', (element.attr('style') || '') + rule);
         }
         else {
-            let value = token.value;
             // handle inline block value
             if (value && value.type === 'block') {
-                let id = generate(token.value, root, token, root);
+                let id = generate(token.value, root, token, root, warn);
                 if (isNil(id)) {
+                    warn(`${token.name}: an inline defs must hold exactly one element`);
                     value = '';
                 } else {
                     value = `url(#${id})`;
@@ -219,29 +241,56 @@ function generate(token, element, parent, root) {
                     }
                 }
             }
-            if (/viewBox/i.test(token.name)) {
-                value = transformViewBox(token);
+            if (keyword === 'viewBox') {
+                value = transformViewBox(token, warn);
                 if (value) {
                     element.attr(token.name, value);
                 }
             }
-            else if ((token.name === 'draw' || token.name === 'animate') && isGraphicElement(parent && parent.name)) {
-                let [dur, repeatCount] = String(value).split(/\s+/);
-                // a single bare number is a duration in seconds, not a repeat count
-                let isCount = dur === 'indefinite' || dur === 'infinite';
-                if (isCount || (repeatCount !== undefined && /\d$/.test(dur))) {
-                    [dur, repeatCount] = [repeatCount, dur];
+            // `draw: 2s infinite` strokes a shape along its length
+            else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
+                if (!isGraphicElement(parent.name)) {
+                    warn(`${keyword}: <${parent.name}> has no path length to draw`);
+                } else {
+                    let [dur, repeatCount] = timing(value);
+                    element.attr('stroke-dasharray', 10);
+                    element.attr('pathLength', 10);
+                    let animate = new Tag('animate');
+                    animate.attr('attributeName', 'stroke-dashoffset');
+                    animate.attr('from', 10);
+                    animate.attr('to', 0);
+                    animate.attr('dur', dur);
+                    if (repeatCount) {
+                        animate.attr('repeatCount', repeatCount);
+                    }
+                    element.append(animate);
                 }
-                if (repeatCount === 'infinite') {
-                    repeatCount = 'indefinite';
+            }
+            // `animate r: 1; 5; 1 / 2s infinite`, `animate transform: rotate 0; 360 / 4s`
+            else if (keyword === 'animate') {
+                name = adjustName(name);
+                let text = String(value);
+                let slash = text.lastIndexOf('/');
+                let values = parseValueGroup(slash < 0 ? text : text.slice(0, slash), { symbol: ';', noSpace: true })
+                    .filter(v => v.length);
+                let animate = new Tag(name === 'transform' ? 'animateTransform' : 'animate');
+                animate.attr('attributeName', name);
+                if (name === 'transform' && values.length) {
+                    let [type, ...rest] = values[0].split(/\s+/);
+                    animate.attr('type', type);
+                    values[0] = rest.join(' ');
                 }
-                element.attr('stroke-dasharray', 10);
-                element.attr('pathLength', 10);
-                let animate = new Tag('animate');
-                animate.attr('attributeName', 'stroke-dashoffset');
-                animate.attr('from', 10);
-                animate.attr('to', 0);
-                animate.attr('dur', dur);
+                if (values.length === 1) {
+                    animate.attr('to', values[0]);
+                } else {
+                    animate.attr('values', values.join(';'));
+                }
+                let [dur, repeatCount] = timing(slash < 0 ? '' : text.slice(slash + 1));
+                if (dur) {
+                    animate.attr('dur', dur);
+                } else {
+                    warn(`animate ${name}: needs a duration after /, as in \`/ 2s\``);
+                }
                 if (repeatCount) {
                     animate.attr('repeatCount', repeatCount);
                 }
@@ -261,6 +310,6 @@ function generate(token, element, parent, root) {
     return inlineId;
 }
 
-export default function generateSvg(token) {
-    return generate(token);
+export default function generateSvg(token, warn = () => {}) {
+    return generate(token, null, null, null, warn);
 }
