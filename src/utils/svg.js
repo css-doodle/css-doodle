@@ -19,28 +19,33 @@ export function normalizeSvg(input) {
     return input;
 }
 
-// the camelCase svg names, keyed by their lowercase form
-const NAMES = 'altGlyph altGlyphDef altGlyphItem animateColor animateMotion '
-    + 'animateTransform clipPath feBlend feColorMatrix feComponentTransfer '
-    + 'feComposite feConvolveMatrix feDiffuseLighting feDisplacementMap '
-    + 'feDistantLight feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR '
-    + 'feGaussianBlur feImage feMerge feMergeNode feMorphology feOffset '
-    + 'fePointLight feSpecularLighting feSpotLight feTile feTurbulence '
-    + 'foreignObject glyphRef linearGradient radialGradient textPath attributeName '
-    + 'attributeType baseFrequency baseProfile calcMode clipPathUnits '
-    + 'contentScriptType contentStyleType diffuseConstant edgeMode '
-    + 'externalResourcesRequired filterRes filterUnits gradientTransform '
-    + 'gradientUnits kernelMatrix kernelUnitLength keyPoints keySplines keyTimes '
-    + 'lengthAdjust limitingConeAngle markerHeight markerUnits markerWidth '
-    + 'maskContentUnits maskUnits numOctaves pathLength patternContentUnits '
-    + 'patternTransform patternUnits pointsAtX pointsAtY pointsAtZ preserveAlpha '
-    + 'preserveAspectRatio primitiveUnits refX refY repeatCount repeatDur '
-    + 'requiredExtensions requiredFeatures specularConstant specularExponent '
-    + 'spreadMethod startOffset stdDeviation stitchTiles surfaceScale '
-    + 'systemLanguage tableValues targetX targetY textLength viewBox viewTarget '
-    + 'xChannelSelector yChannelSelector zoomAndPan';
+const tagsMapping = (() => {
+    const NAMES = [
+        'altGlyph', 'altGlyphDef', 'altGlyphItem', 'animateColor', 'animateMotion',
+        'animateTransform', 'clipPath', 'feBlend', 'feColorMatrix', 'feComponentTransfer',
+        'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap',
+        'feDistantLight', 'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG',
+        'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology',
+        'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile',
+        'feTurbulence', 'foreignObject', 'glyphRef', 'linearGradient', 'radialGradient',
+        'textPath', 'attributeName', 'attributeType', 'baseFrequency', 'baseProfile',
+        'calcMode', 'clipPathUnits', 'contentScriptType', 'contentStyleType',
+        'diffuseConstant', 'edgeMode', 'externalResourcesRequired', 'filterRes',
+        'filterUnits', 'gradientTransform', 'gradientUnits', 'kernelMatrix',
+        'kernelUnitLength', 'keyPoints', 'keySplines', 'keyTimes', 'lengthAdjust',
+        'limitingConeAngle', 'markerHeight', 'markerUnits', 'markerWidth', 'maskContentUnits',
+        'maskUnits', 'numOctaves', 'pathLength', 'patternContentUnits', 'patternTransform',
+        'patternUnits', 'pointsAtX', 'pointsAtY', 'pointsAtZ', 'preserveAlpha',
+        'preserveAspectRatio', 'primitiveUnits', 'refX', 'refY', 'repeatCount', 'repeatDur',
+        'requiredExtensions', 'requiredFeatures', 'specularConstant', 'specularExponent',
+        'spreadMethod', 'startOffset', 'stdDeviation', 'stitchTiles', 'surfaceScale',
+        'systemLanguage', 'tableValues', 'targetX', 'targetY', 'textLength', 'viewBox',
+        'viewTarget', 'xChannelSelector', 'yChannelSelector', 'zoomAndPan',
+    ];
 
-const tagsMapping = new Map(NAMES.split(' ').map(name => [name.toLowerCase(), name]));
+    return new Map(NAMES.map(name => [name.toLowerCase(), name]));
+})();
+
 
 export function adjustName(name) {
     name = name.toLowerCase();
@@ -55,4 +60,13 @@ const SPECIAL_NAMESPACE_PREFIXES = [
 
 export function isSpecialNamespaceAttr(name) {
     return SPECIAL_NAMESPACE_PREFIXES.includes(name.toLowerCase());
+}
+
+const DEFINITIONS = [
+    'linearGradient', 'radialGradient', 'pattern',
+    'filter', 'clipPath', 'mask', 'marker', 'symbol'
+]
+
+export function isDefinitionTag(tagName) {
+    return DEFINITIONS.includes(tagName);
 }

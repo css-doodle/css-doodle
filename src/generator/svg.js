@@ -1,16 +1,10 @@
 import { nextId } from '../utils/fn.js';
 import { isNil, removeQuotes } from '../utils/type.js';
-import { NS, NSXLink, adjustName } from '../utils/svg.js';
+import { NS, NSXLink, adjustName, isDefinitionTag } from '../utils/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
 const nextInlineId = nextId();
 const noop = () => {};
-
-// elements that only define something: used as a value they go into <defs>
-const DEFINITIONS = new Set([
-    'linearGradient', 'radialGradient', 'pattern', 'filter', 'clipPath', 'mask', 'marker', 'symbol'
-]);
-
 
 class Tag {
     constructor(name, value = '') {
@@ -197,7 +191,7 @@ function generate(token, element, parent, root, warn) {
                     el.attr('id', inlineId);
                 }
             }
-            if (token.inline && DEFINITIONS.has(token.name)) {
+            if (token.inline && isDefinitionTag(token.name)) {
                 element = root.findSpareDefs();
                 if (!element) {
                     root.append(element = new Tag('defs'));

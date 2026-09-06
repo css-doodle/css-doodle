@@ -406,7 +406,6 @@ class Rules {
         this.keyframes = new Map();
         this.grid = null;
         this.seed = null;
-        this.isGridSet = false;
         this.isGapSet = false;
         this.uniforms = {};
         this.skips = new WeakSet();
@@ -436,9 +435,7 @@ class Rules {
 
     addRule(selector, rule) {
         let rules = this.scope.rules.get(selector);
-        if (!rules) {
-            this.scope.rules.set(selector, rules = []);
-        }
+        if (!rules) this.scope.rules.set(selector, rules = []);
         if (rule) rules.push(rule);
     }
 
@@ -718,10 +715,8 @@ class Rules {
 
         let rule = `${prop}:${value};`
 
-        if (flags.size) {
-            if (!isSpecialSelector(selector)) {
-                rule += `--_cell-${prop}:${value};`;
-            }
+        if (flags.size && !isSpecialSelector(selector)) {
+            rule += `--_cell-${prop}:${value};`;
         }
 
         if (flags.bgImage && isImageValue(value) && !this.bgSized.has(cell) && !hasShorthandSize(value)) {
@@ -751,12 +746,11 @@ class Rules {
                     if (isHostSelector(selector)) {
                         rule = transformed.size || '';
                         this.addGridStyle(transformed);
-                    } else if (!this.isGridSet) {
+                    } else if (!this.grid) {
                         this.addRule(':host', transformed.size || '');
                         this.addGridStyle(transformed);
                     }
                     this.grid = cell.grid;
-                    this.isGridSet = true;
                     break;
                 }
                 case 'gap': {
@@ -781,17 +775,8 @@ class Rules {
                     this.content[key] = Func.raw(cell, env)(this.content[key] || '');
                     break;
                 }
-                case 'place-cell':
-                case 'place':
-                case 'position':
-                case 'offset': {
-                    if (!isHostSelector(selector)) {
-                        rule = transformed;
-                    }
-                    break;
-                }
-                case 'shape': {
-                    rule = transformed ? `clip-path:${transformed};` : '';
+                case 'place-cell': case 'place': case 'offset': {
+                    if (!isHostSelector(selector)) rule = transformed;
                     break;
                 }
                 default: {
@@ -809,31 +794,19 @@ class Rules {
     }
 
     composeVars(count, selector, prop, value) {
-        let key = count;
-        if (isParentSelector(selector)) {
-            key = 'container';
-        }
-        if (isHostSelector(selector)) {
-            key = 'host';
-        }
+        let key = isHostSelector(selector) ? 'host'
+            : isParentSelector(selector) ? 'container' : count;
         (this.vars[key] ??= {})[prop] = value;
     }
 
     preComposeRule(token, cell, env, selector) {
         let prop = token.property;
-        if (/^\-\-/.test(prop)) {
+        if (prop.startsWith('--')) {
             let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
             this.composeVars(cell.count, selector, prop, value);
-        }
-        switch (prop) {
-            case '@grid': {
-                let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
-                let transformed = Property['grid'](value, {
-                    maxGrid: env.maxGrid
-                });
-                this.grid = transformed.grid;
-                break;
-            }
+        } else if (prop === '@grid') {
+            let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
+            this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
         }
     }
 
@@ -951,13 +924,9 @@ class Rules {
     addCellRule(token, selector, cell, rule) {
         if (!rule) return;
         let entries = this.entries.get(token);
-        if (!entries) {
-            this.entries.set(token, entries = new Map());
-        }
+        if (!entries) this.entries.set(token, entries = new Map());
         let entry = entries.get(selector);
-        if (!entry) {
-            entries.set(selector, entry = { selector, cells: [], texts: [] });
-        }
+        if (!entry) entries.set(selector, entry = { selector, cells: [], texts: [] });
         entry.cells.push(cell);
         entry.texts.push(rule);
     }
@@ -1079,7 +1048,7 @@ class Rules {
             switch (token.type) {
                 case 'rule': {
                     if (token.property === '@gap' && this.isGapSet) break;
-                    if (token.property === '@grid' && this.isGridSet) break;
+                    if (token.property === '@grid' && this.grid) break;
                     for (let selector of selectors) {
                         let rule = this.composeRule(token, cell, env, selector);
                         // cell rules wait for the sheet layout, unless they sit
@@ -1126,7 +1095,7 @@ class Rules {
     }
 
     output(env) {
-        let styles = { host: '', container: '', cells: '', backdrop: '', keyframes: '' };
+        let styles = { host: '', container: '', cells: '', backdrop: '' };
         let keyframes = '';
         for (let [name, frames] of this.keyframes) {
             let cells = frames.static ? this.cells.slice(0, 1) : this.cells;
@@ -1159,13 +1128,14 @@ class Rules {
             let un = utime.name;
             let Un = UTime.name;
             styles.container += `:host,.host {animation:${timePrefix.animation};}`;
-            styles.keyframes +=
+            keyframes =
                 `@keyframes ${utime[n]} {from {--${un}:0} to {--${un}:${t}}}` +
-                `@keyframes ${UTime[n]} {from {--${Un}:0} to {--${Un}:${t}}}`;
+                `@keyframes ${UTime[n]} {from {--${Un}:0} to {--${Un}:${t}}}` +
+                keyframes;
         }
 
         let { host, container, cells, backdrop } = styles;
-        let main = styles.keyframes + keyframes + container + host;
+        let main = keyframes + container + host;
         let top = join([...this.rawRules]);
         let gf = [...this.fonts];
 

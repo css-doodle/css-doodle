@@ -226,14 +226,13 @@ Property.content = value => value;
 
 Property.shape = memo('shape-property', value => {
     let { points, preset } = generateShape(value);
-    return preset ? `polygon(${points.join(',')})` : '';
+    return preset ? `clip-path:polygon(${points.join(',')});` : '';
 });
 
 export const alias = {
     // legacy names.
     'place-cell': 'place',
     'offset': 'place',
-    'position': 'place',
 };
 
 export default addAlias(Property, alias);
