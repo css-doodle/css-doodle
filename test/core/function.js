@@ -82,3 +82,13 @@ test('a function takes the cell, the env and the call-site position', () => {
     Function.P({}, env, ':7')('a', 'b');
     assert.ok('P-counter:7' in env.context);
 });
+
+test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy names', () => {
+    for (let [legacy, name] of [['pl', 'pn'], ['pr', 'pnr'], ['PL', 'PN'], ['PR', 'PNR'], ['pick-n', 'pn']]) {
+        assert.equal(Function[legacy], Function[name], `@${legacy} -> @${name}`);
+    }
+    let env = { context: {}, extra: [], upextra: [], shuffle: a => a };
+    let pn = Function.pn({}, env, ':1'), pnr = Function.pnr({}, env, ':2');
+    assert.deepEqual([pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c')], ['a', 'b', 'c', 'a']);
+    assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
+});

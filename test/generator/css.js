@@ -568,7 +568,7 @@ test('rules inside group at-rules stay per cell', () => {
 test('per-cell and host values stay inline', () => {
     let { all, container } = compile(`
         --long: linear-gradient(@r(360)deg,#ff0000 0%,#00ff00 10%,#0000ff 20%,#ffff00 30%,#ff00ff 40%,#00ffff 50%,#000000 60%,#ffffff 70%,#808080 80%);
-        @shape: @pick-by-turn(circle, heart);
+        @shape: @pn(circle, heart);
         :doodle { @shape: circle; }
     `, '2x1').styles;
     assert.equal(container, '');

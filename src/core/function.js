@@ -449,13 +449,13 @@ Function.P = (_, { context, pick }, position) => {
     });
 };
 
-Function.pl = createPick('pl', (args, pos) => args[pos]);
+Function.pn = createPick('pn', (args, pos) => args[pos]);
 
-Function.PL = createPick('pl', (args, pos) => args[pos], false, true);
+Function.PN = createPick('pn', (args, pos) => args[pos], false, true);
 
-Function.pr = createPick('pr', (args, pos, max) => args[max - pos - 1]);
+Function.pnr = createPick('pnr', (args, pos, max) => args[max - pos - 1]);
 
-Function.PR = createPick('pr', (args, pos, max) => args[max - pos - 1], false, true);
+Function.PNR = createPick('pnr', (args, pos, max) => args[max - pos - 1], false, true);
 
 Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
@@ -898,10 +898,6 @@ export const alias = {
     'depth': 'z',
     'rand': 'r',
     'pick': 'p',
-    'pn': 'pl',
-    'pnr': 'pr',
-    'PN': 'PL',
-    'PNR': 'PR',
     'R': 'rn',
     'T': 'UT',
     't': 'ut',
@@ -920,7 +916,11 @@ export const alias = {
     'ms': 'M',
     'size': 'I',
     'Svg': 'svg',
-    'pick-n': 'pl',
+    'pl': 'pn',
+    'pr': 'pnr',
+    'PL': 'PN',
+    'PR': 'PNR',
+    'pick-n': 'pn',
     'pick-d': 'pd',
     'offset': 'plot',
     'point': 'plot',
