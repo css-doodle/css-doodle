@@ -111,7 +111,7 @@ Selector.odd = ({ x, y }) => {
 // ratio >= 1 a count of distinct cells; expressions are calc-ed with
 // the cell variables in scope
 
-Selector.random = ({ random, count, x, y, grid, context, position }) => {
+Selector.random = ({ count, x, y, grid }, { random, context }, position) => {
     let counter = 'random-cells' + position;
     return (ratio = .5) => {
         let value = Number(ratio);
@@ -128,13 +128,13 @@ Selector.random = ({ random, count, x, y, grid, context, position }) => {
     }
 };
 
-Selector.match = ({ count, grid, x, y, random }) => {
+Selector.match = ({ count, grid, x, y }, { random }) => {
     return expr => {
         return !!calc('(' + expr + ')', calcContext({ x, y, count, grid, random }));
     }
 };
 
-Selector.cell = ({ count, grid, x, y, random, context, position }) => {
+Selector.cell = ({ count, grid, x, y }, { random, context }, position) => {
     let counter = 'random-cells' + position;
     return (...args) => {
         if (!args.length) {

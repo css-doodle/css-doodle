@@ -27,10 +27,8 @@ export function getValue(input) {
     if (typeof input === 'string' || typeof input === 'number') {
         return input;
     }
-    let v = input;
-    while (v && !isNil(v.value)) v = v.value;
-    if (v && typeof v == 'object' && 'value' in v) {
-        return v.value ?? '';
+    if (input && typeof input === 'object' && 'value' in input) {
+        return input.value ?? '';
     }
-    return v ?? '';
+    return input ?? '';
 }

@@ -11,13 +11,13 @@ import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
 import { utime, UTime } from '../core/uniforms.js';
 import { cacheImage, isSafari } from '../utils/browser.js';
 import { debounce } from '../utils/fn.js';
+import { RE_PLACEHOLDER } from '../utils/placeholder.js';
 import { css } from '../utils/tagged-template.js';
 import { loadGoogleFontEmbed } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
-const RE_PLACEHOLDER = /\$\{([^}]*)\}/g;
 
 const images = new WeakMap();
 
@@ -33,11 +33,11 @@ function sharedImage(host, svg, toUrl) {
     return url;
 }
 
-export function createReplacer(host, { doodles, shaders, pattern }) {
+export function createReplacer(host, { doodles, shaders, patterns }) {
     const groups = [
         [doodles, (id, v, fn) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id }, fn)],
         [shaders, (id, v, fn) => shaderToImage(host, v, fn)],
-        [pattern, (id, v, fn) => patternToImage(host, v, fn)],
+        [patterns, (id, v, fn) => patternToImage(host, v, fn)],
     ];
     return input => {
         let present = new Set();
@@ -145,12 +145,12 @@ export function doodleToImage(host, code, options, fn) {
         });
 }
 
-export function patternToImage(host, { code, cell, id, arg, target }, fn) {
-    let shader = generatePattern(code, host.extra);
-    shaderToImage(host, { shader, cell, id, arg, target }, fn);
+export function patternToImage(host, { source, cell, id, arg, target }, fn) {
+    let shader = generatePattern(source, host.extra);
+    shaderToImage(host, { source: shader, cell, id, arg, target }, fn);
 }
 
-export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
+export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
     let element;
     if (target.selector === ':host') {
         element = host;
@@ -173,7 +173,7 @@ export function shaderToImage(host, { shader, cell, id, arg, target }, fn) {
 
     let seed = host.seed;
     let generation = host._generation;
-    let parsed = typeof shader === 'string' ? parseShaders(shader) : shader;
+    let parsed = typeof source === 'string' ? parseShaders(source) : source;
     parsed.width = width;
     parsed.height = height;
 

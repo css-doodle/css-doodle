@@ -496,8 +496,8 @@ if (typeof HTMLElement !== 'undefined') {
                     am.cancel();
                 }
                 this.animations = [];
-                let { pattern, shaders } = this.compiled;
-                if (Object.keys(pattern).length || Object.keys(shaders).length) {
+                let { patterns, shaders } = this.compiled;
+                if (Object.keys(patterns).length || Object.keys(shaders).length) {
                     for (let el of this.shadowRoot.querySelectorAll('cell')) {
                         el.style.cssText = '';
                     }
@@ -509,7 +509,7 @@ if (typeof HTMLElement !== 'undefined') {
                 for (let id of Object.keys(shaders)) {
                     this.style.removeProperty('--' + id);
                 }
-                for (let id of Object.keys(pattern)) {
+                for (let id of Object.keys(patterns)) {
                     this.style.removeProperty('--' + id);
                 }
             }

@@ -72,3 +72,13 @@ test('@reverse: arguments back to front, path data command by command', () => {
     assert.equal(reverse('M 0 0'), 'M0 0');
     assert.equal(reverse(''), '');
 });
+
+test('a function takes the cell, the env and the call-site position', () => {
+    let env = { context: {}, pick: list => list[0] };
+    assert.equal(Function.id({ id: 'c-1-2-1' })(), 'c-1-2-1');
+    assert.equal(Function.x({ x: 3 })(), '3');
+    assert.equal(Function.p({}, env)('a', 'b'), 'a');
+    // the call site keys the per-call memory in env.context
+    Function.P({}, env, ':7')('a', 'b');
+    assert.ok('P-counter:7' in env.context);
+});

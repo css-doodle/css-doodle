@@ -17,9 +17,10 @@ import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { createSvgUrl, normalizeSvg } from '../utils/svg.js';
 import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
-import { cellId, cellMetrics } from '../utils/cell.js';
+import { cellMetrics } from '../utils/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../utils/type.js';
 import { addAlias, lazy } from '../utils/fn.js';
+import { placeholderId } from '../utils/placeholder.js';
 import { lerp, clamp, tidyNumber } from '../utils/math.js';
 import { last } from '../utils/list.js';
 import { getEasingFunction } from './easing.js';
@@ -159,7 +160,7 @@ function lastOf(stack, n = 1) {
 let seqUid = 0;
 
 function makeSequence(c) {
-    return lazy((_, input, ...actions) => {
+    return lazy((cell, env, position, input, ...actions) => {
         if (!input || !actions.length) return '';
         let count = getValue(input());
         let evaluated = count;
@@ -184,7 +185,7 @@ function makeSequence(c) {
 // echoed back as-is (a non-function return passes through callFunc).
 // Argument composition pushes an empty tuple, which is no context either.
 function seq(token, make) {
-    return ({ extra }) => {
+    return (cell, { extra }) => {
         let e = last(extra);
         return (e && e.length) ? make(e) : token;
     };
@@ -194,7 +195,7 @@ function seq(token, make) {
 // `unit` keeps units on the output values (the @Plot variant)
 function createPlot(unit) {
     let lastCommands, lastMax, lastResult;
-    return ({ count, extra, grid }) => {
+    return ({ count, grid }, { extra }) => {
         let e = last(extra) || [];
         return (...args) => {
             let commands = args.join(',');
@@ -240,7 +241,7 @@ function createMirror(even) {
 // once per position, `upstream` reads the outer composition's sequence
 // context (the uppercase variants)
 function createPick(name, fn, random = false, upstream = false) {
-    return ({ context, extra, upextra, position, shuffle }) => {
+    return (cell, { context, extra, upextra, shuffle }, position) => {
         let lastExtra = upstream
             ? last(upextra.length ? upextra : extra)
             : last(extra);
@@ -407,7 +408,7 @@ Function.nd = seq('@nd', e => d => {
     return calcWith(e[SEQ.n] - .5 - d - e[SEQ.max] / 2)();
 });
 
-Function.p = ({ context, pick }) => {
+Function.p = (_, { context, pick }) => {
     return expand((...args) => {
         if (!args.length) {
             args = context.lastPickArgs || [];
@@ -418,7 +419,7 @@ Function.p = ({ context, pick }) => {
     });
 };
 
-Function.P = ({ context, pick, position }) => {
+Function.P = (_, { context, pick }, position) => {
     let counter = 'P-counter' + position;
     return expand((...args) => {
         let normal = true;
@@ -433,8 +434,6 @@ Function.P = ({ context, pick, position }) => {
             }
             last = context[counter].lastPick;
         }
-        // store the full pool before excluding `last`: splicing the stored
-        // array in place would shrink the shared pool on every @P() call
         context.lastPickArgs = args;
         if (args.length > 1) {
             let i = args.findIndex(n => n === last);
@@ -462,13 +461,13 @@ Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
 Function.PD = createPick('pd', (args, pos) => args[pos], true, true);
 
-Function.lp = ({ context }) => {
+Function.lp = (_, { context }) => {
     return (n = 1) => {
         return lastOf(context.lastPick, n);
     };
 };
 
-Function.r = ({ context, rand }) => {
+Function.r = (_, { context, rand }) => {
     return (...args) => {
         let transform = (args.length && args.every(isLetter))
             ? byCharcode
@@ -478,7 +477,7 @@ Function.r = ({ context, rand }) => {
     };
 };
 
-Function.ri = ({ context, rand }) => {
+Function.ri = (_, { context, rand }) => {
     return (...args) => {
         let transform = args.every(isLetter)
             ? byCharcode
@@ -489,7 +488,7 @@ Function.ri = ({ context, rand }) => {
     }
 };
 
-Function.rn = ({ x, y, context, position, grid, extra, random }) => {
+Function.rn = ({ x, y, grid }, { context, extra, random }, position) => {
     let counter = 'noise-2d' + position;
     let counterX = counter + 'offset-x';
     let counterY = counter + 'offset-y';
@@ -538,13 +537,13 @@ Function.rn = ({ x, y, context, position, grid, extra, random }) => {
     };
 };
 
-Function.lr = ({ context }) => {
+Function.lr = (_, { context }) => {
     return (n = 1) => {
         return lastOf(context.lastRand, n);
     };
 };
 
-Function.match = ({ extra, x, y, z, count, grid }) => {
+Function.match = ({ x, y, z, count, grid }, { extra }) => {
     let e = last(extra) || [];
     let variables = {
         x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z,
@@ -577,26 +576,25 @@ Function.match = ({ extra, x, y, z, count, grid }) => {
 };
 
 Function.calc = () => {
-    return (value, context) => {
-        return tidyNumber(calc(getValue(value), context));
+    return (value = '', context) => {
+        return tidyNumber(calc(value, context));
     }
 };
 
 Function.hex = () => {
-    return value => {
-        value = getValue(value);
+    return (value = '') => {
         let n = parseInt(value);
         return Number.isNaN(n) ? value : n.toString(16);
     };
 };
 
 Function.var = () => {
-    return value => `var(${getValue(value)})`;
+    return (value = '') => `var(${value})`;
 };
 
 Function.stripe = () => {
     return (...input) => {
-        let colors = input.map(getValue).flat();
+        let colors = input.flat();
         let max = colors.length;
         if (!max) {
             return '';
@@ -637,7 +635,7 @@ Function.cycle = () => {
             list = parseValueGroup(args[0], { symbol: separator });
         } else {
             separator = ',';
-            list = parseValueGroup(args.map(getValue).join(separator), { symbol: separator});
+            list = parseValueGroup(args.join(separator), { symbol: separator});
         }
         list = list.map(n => n.replace(/^\<|>$/g,''));
         let size = list.length;
@@ -723,22 +721,22 @@ Function.reverse = () => {
     }
 };
 
-Function.svg = lazy((upstream, ...args) => {
+Function.svg = lazy((_, env, position, ...args) => {
     let value = args.map(input => getValue(input())).join(',');
     let { url, warnings } = composeSvgUrl(value);
     for (let message of warnings) {
-        upstream.rules.warn(message);
+        env.rules.warn(message);
     }
     return url;
 });
 
-Function['svg-filter'] = lazy((upstream, ...args) => {
+Function['svg-filter'] = lazy((_, env, position, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
-    let id = upstream.rules.nextId('filter');
+    let id = env.rules.nextId('filter');
     // shorthand
     if (values.every(n => /^[\-\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-        let { frequency, scale, octave, seed = upstream.seed, blur, erode, dilate } = getNamedArguments(values, [
+        let { frequency, scale, octave, seed = env.seed, blur, erode, dilate } = getNamedArguments(values, [
             'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
         ]);
         value = css`x: -20%; y: -20%; width: 140%; height: 140%;`;
@@ -766,51 +764,48 @@ Function['svg-filter'] = lazy((upstream, ...args) => {
             type: 'block',
             name: 'filter'
         });
-        value = generateSvg(parsed, message => upstream.rules.warn(message));
+        value = generateSvg(parsed, message => env.rules.warn(message));
     }
     let svg = normalizeSvg(value).replace(
         /<filter([\s>])/,
         `<filter id="${ id }"$1`
     );
-    if (upstream.rules?.filters) {
-        upstream.rules.filters[id] = svg;
+    if (env.rules?.filters) {
+        env.rules.filters[id] = svg;
         return `url(#${ id })`;
     }
     return createSvgUrl(svg, id);
 });
 
-Function['svg-pattern'] = lazy((_, ...args) => {
+Function['svg-pattern'] = lazy((_, env, position, ...args) => {
     let value = args.map(input => getValue(input())).join(',');
     return composeSvgPatternUrl(value);
 });
 
-Function['svg-polygon'] = lazy((_, ...args) => {
+Function['svg-polygon'] = lazy((cell, env, position, ...args) => {
     let commands = args.map(input => getValue(input())).join(',');
     return composeSvgPolygonUrl(commands);
 });
 
-Function.linearGradient = lazy((_, ...args) => generateSvgGradient('linearGradient', args));
+Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGradient('linearGradient', args));
 
-Function.radialGradient = lazy((_, ...args) => generateSvgGradient('radialGradient', args));
+Function.radialGradient = lazy((cell, env, position, ...args) => generateSvgGradient('radialGradient', args));
 
 Function.doodle = Function.shaders = Function.pattern = () => {
     return (...args) => args.join(',');
 };
 
-Function.once = lazy(({ context, position }, ...args) => {
+Function.once = lazy((cell, { context }, position, ...args) => {
     let counter = 'once-counter' + position;
     return context[counter] ??= args.map(input => getValue(input())).join(',');
 });
 
-Function.raw = ({ rules }) => {
+Function.raw = (cell, { rules }) => {
     return (...args) => {
         let raw = args.join(',');
-        if (raw.startsWith('${doodle') && raw.endsWith('}')) {
-            let key = raw.substring(2, raw.length - 1);
-            let doodles = rules.doodles;
-            if (doodles && doodles[key]) {
-                return `<css-doodle>${doodles[key].doodle}</css-doodle>`
-            }
+        let id = placeholderId(raw);
+        if (id && rules.doodles && rules.doodles[id]) {
+            return `<css-doodle>${rules.doodles[id].doodle}</css-doodle>`
         }
         if (raw.startsWith('url("data:image/svg+xml;utf8')) {
             return tryDecode(raw, decodeURIComponent);
@@ -826,14 +821,16 @@ Function.raw = ({ rules }) => {
     }
 };
 
-Function['google-font'] = () => {
-    return (name) => {
-        return { value: name, gf: true };
-    }
+Function['google-font'] = (cell, { rules }) => {
+    return name => {
+        // the component loads the collected names
+        rules.addFont(name);
+        return name;
+    };
 };
 
-Function.id = ({ x, y, z }) => {
-    return _ => cellId(x, y, z);
+Function.id = ({ id }) => {
+    return _ => id;
 };
 
 Function.i = c => calcWith(c.count);
@@ -888,7 +885,7 @@ for (let name of Object.getOwnPropertyNames(Math)) {
         if (typeof Math[name] === 'number') {
             return tidyNumber(Math[name]);
         }
-        args = args.map(n => calc(getValue(n)));
+        args = args.map(n => calc(n));
         return tidyNumber(Math[name](...args));
     }
 }

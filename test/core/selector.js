@@ -5,6 +5,8 @@ import selector from '../../src/core/selector.js';
 
 // a cell at (x, y) with 1-based index `count` in a 4x4 grid
 const cell = (x, y, count) => ({ x, y, count, grid: { count: 16, x: 4, y: 4 } });
+// the environment of the pass: a random stream and the per-call-site memo
+const env = { random: Math.random, context: {} };
 
 test('at matches the exact coordinates', () => {
     let at = selector.at(cell(2, 3, 10));
@@ -50,7 +52,7 @@ test('even and odd follow the checkerboard, not the index', () => {
 });
 
 test('match evaluates an expression over the cell variables', () => {
-    let match = selector.match(cell(2, 3, 10));
+    let match = selector.match(cell(2, 3, 10), env);
     assert.equal(match('x = 2'), true);
     assert.equal(match('y = 3'), true);
     assert.equal(match('x = 2 && y = 3'), true);
@@ -59,7 +61,7 @@ test('match evaluates an expression over the cell variables', () => {
 });
 
 test('cell accepts comma lists, keywords and index checks', () => {
-    let match = selector.cell(cell(2, 3, 10));
+    let match = selector.cell(cell(2, 3, 10), env, 0);
     assert.equal(match('x = 2, y = 3'), true);
     assert.equal(match('x = 2 && y = 3'), true);
     assert.equal(match('even'), true);

@@ -241,8 +241,8 @@ test('transition longhands flag hasTransition like animation longhands', () => {
 
 test('@pattern bodies reach the pattern renderer whole', () => {
     let compiled = compile('background: @pattern(grid: 2; fill: @p(red, blue););');
-    let [pattern] = Object.values(compiled.pattern);
-    assert.equal(pattern.code, 'grid: 2; fill: @p(red, blue);');
+    let [pattern] = Object.values(compiled.patterns);
+    assert.equal(pattern.source, 'grid: 2; fill: @p(red, blue);');
 });
 
 test('@use at the top level is inlined by the parser', () => {
@@ -575,4 +575,31 @@ test('per-cell and host values stay inline', () => {
     assert.ok(all.includes('#c-1-1-1 {--long:linear-gradient('));
     assert.ok(all.includes(':host,.host {clip-path:polygon('));
     assert.equal(all.split('clip-path:polygon(').length - 1, 3);
+});
+
+// --- output channels ---
+
+test('a group at-rule prints once per scope, so an identical nested one stays', () => {
+    let out = cells('@media (a) { color: red; } @media (b) { @media (a) { color: red; } }');
+    assert.ok(out.includes('@media (a) {#c-1-1-1 {color:red;}}'));
+    assert.ok(out.includes('@media (b) {@media (a) {#c-1-1-1 {color:red;}}}'));
+    assert.equal(out.split('@media (a)').length - 1, 2);
+});
+
+test('google font names collect once each', () => {
+    let { gf } = compile('font-family: @google-font(Lato); :after { font-family: @google-font(Lato) }', '2').styles;
+    assert.deepEqual(gf, ['Lato']);
+    assert.deepEqual(compile('color: red').styles.gf, []);
+});
+
+test('shaders and patterns are records of the same shape', () => {
+    let { shaders, patterns } = compile('background: @shaders(void main() {}); :after { background: @pattern(grid: 2; fill: red;) }');
+    assert.deepEqual(Object.values(shaders), [{
+        source: 'void main() {}',
+        target: { selector: 'c-1-1-1', type: 'background' },
+        arg: undefined, id: '--shader-1', cell: 'c-1-1-1',
+    }]);
+    let [pattern] = Object.values(patterns);
+    assert.equal(pattern.source, 'grid: 2; fill: red;');
+    assert.deepEqual(pattern.target, { selector: 'c-1-1-1', type: 'background' });
 });

@@ -105,6 +105,7 @@ export default [
     { name: 'cond-pseudo-inside', code: `@even { :after { content: "e"; } }` },
     { name: 'cond-media', code: `@media (min-width: 100px) { color: red; }` },
     { name: 'cond-media-pseudo', code: `@media (min-width: 100px) { :after { content: "m"; } color: red; }` },
+    { name: 'cond-media-nested-same', code: `@media (a) { color: red; } @media (b) { @media (a) { color: red; } }` },
     { name: 'cond-supports', code: `@supports (display: grid) { color: red; }` },
     { name: 'cond-amp', code: `:after { content: "x"; & { color: red; } }` },
     { name: 'cond-rule-inside', code: `@even { @size: 10px; --v: 1; }` },
