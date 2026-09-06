@@ -205,7 +205,9 @@ function generate(token, element, parent, root, warn) {
             }
             let existedTag = element.find(el);
             if (existedTag) {
-                existedTag.merge(el);
+                if (existedTag !== el) {
+                    existedTag.merge(el);
+                }
             } else {
                 if (token.name === 'defs') {
                     // append only when there's no defs and spare defs

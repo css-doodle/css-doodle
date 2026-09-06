@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import Function from '../../src/core/function.js';
+import createRandom from '../../src/core/random.js';
 
 test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     const arc = Function.arc();
@@ -91,4 +92,12 @@ test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy n
     let pn = Function.pn({}, env, ':1'), pnr = Function.pnr({}, env, ':2');
     assert.deepEqual([pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c')], ['a', 'b', 'c', 'a']);
     assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
+});
+
+test('@ri: an integer with no arguments too, not a character code', () => {
+    let { rand } = createRandom('1');
+    let ri = Function.ri({}, { context: {}, rand });
+    assert.match(String(ri()), /^[01]$/);
+    assert.match(String(ri(10)), /^\d+$/);
+    assert.match(String(ri('a', 'c')), /^[a-c]$/);
 });

@@ -479,7 +479,7 @@ Function.r = (_, { context, rand }) => {
 
 Function.ri = (_, { context, rand }) => {
     return (...args) => {
-        let transform = args.every(isLetter)
+        let transform = args.length && args.every(isLetter)
             ? byCharcode
             : byUnit;
         let randInt = (...args) => Math.round(rand(...args));

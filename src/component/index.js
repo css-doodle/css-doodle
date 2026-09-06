@@ -286,8 +286,8 @@ if (typeof HTMLElement !== 'undefined') {
 
         load() {
             this.cleanup();
-            let code = this._code || this.innerHTML;
-            let parsed = parseCssCached(this.getUse() + unEntity(code), this.extra);
+            let code = this._code || unEntity(this.innerHTML);
+            let parsed = parseCssCached(this.getUse() + code, this.extra);
             let compiled = this.generate(parsed);
 
             if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
@@ -327,7 +327,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.cleanup();
             // reuse the old rules when called without new code
             if (!styles) {
-                styles = unEntity(this._code);
+                styles = this._code;
             }
             this._code = styles;
             if (!this.gridSize) {

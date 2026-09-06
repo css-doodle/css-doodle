@@ -391,3 +391,17 @@ test('a definition used as a value goes into defs without the keyword', () => {
     // a plain element used as a value stays at the root
     assert.equal(svg('use { href: g#x {} }'), `<svg ${NS}><g id="x"/><use href="#x"/></svg>`);
 });
+
+test('a defs that takes an id from its statements joins the shared defs once', () => {
+    assert.equal(svg(`svg {
+        defs { circle {} }
+        defs#x { rect {} }
+    }`), markup(`
+        <svg ${NS}>
+            <defs id="x">
+                <circle/>
+                <rect/>
+            </defs>
+        </svg>
+    `));
+});
