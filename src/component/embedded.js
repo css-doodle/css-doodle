@@ -70,6 +70,120 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
     }
 }
 
+const TIME_UNITS = { ms: .001, s: 1, min: 60, h: 3600 };
+const PAUSED_RULE = '*{animation-play-state:paused!important}';
+// SMIL or css animations inside an encoded svg image
+const RE_IMAGE_CLOCK = /%3Canimate|animation(-delay)?%3A/;
+const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/;
+
+export function hasImageClock(sheet) {
+    return RE_IMAGE_CLOCK.test(sheet);
+}
+
+// a SMIL clock value in seconds, null for event or indefinite begins
+function seconds(value) {
+    let m = /^\s*(\d*\.?\d+)(ms|s|min|h)?\s*$/.exec(value);
+    return m ? parseFloat(m[1]) * (TIME_UNITS[m[2]] || 1) : null;
+}
+
+function setAttr(tag, name, value) {
+    let re = new RegExp(`\\s${name}=("[^"]*"|'[^']*')`);
+    return re.test(tag)
+        ? tag.replace(re, ` ${name}="${value}"`)
+        : tag.replace(/\s*\/?>$/, m => ` ${name}="${value}"${m.trim()}`);
+}
+
+// shift one <animate*> tag so that a freshly loaded image continues from
+// host time `t` seconds; while paused the browser holds the value at `t`
+function shiftSmil(tag, t, paused) {
+    let attrs = {};
+    for (let [, name, value] of tag.matchAll(/([\w:-]+)=(?:"([^"]*)"|'([^']*)')/g)) {
+        attrs[name] = value ?? '';
+    }
+    let begin = seconds(attrs.begin ?? '0');
+    if (begin === null) return tag;
+    let elapsed = Math.round((t - begin) * 1000) / 1000;
+    if (elapsed < 0) {
+        return setAttr(tag, 'begin', paused ? 'indefinite' : -elapsed + 's');
+    }
+    tag = setAttr(tag, 'begin', -elapsed + 's');
+    let dur = seconds(attrs.dur);
+    let repeat = attrs.repeatCount === 'indefinite' ? Infinity : (parseFloat(attrs.repeatCount) || 1);
+    let active = dur === null || elapsed < dur * repeat;
+    if (paused && active) {
+        // SMIL drops an interval that does not end after document time 0,
+        // so the cut-off sits one ms in and the value there is held
+        tag = setAttr(setAttr(tag, 'end', '0.001s'), 'fill', 'freeze');
+    }
+    return tag;
+}
+
+function splitList(value) {
+    let items = [], depth = 0, start = 0;
+    for (let i = 0; i < value.length; i++) {
+        let c = value[i];
+        if (c === '(') depth++;
+        else if (c === ')') depth--;
+        else if (c === ',' && !depth) {
+            items.push(value.slice(start, i));
+            start = i + 1;
+        }
+    }
+    items.push(value.slice(start));
+    return items;
+}
+
+// shift the delays of the css animations in `css` by -t ms, so a sheet
+// loaded fresh continues from the host's time
+export function shiftCssAnimations(css, t) {
+    if (!t) return css;
+    return css.replace(/\banimation(-delay)?\s*:\s*([^;}]+)/g, (m, longhand, value) => {
+        if (/\b(var|calc)\(/.test(value)) return m;
+        let items = splitList(value).map(item => {
+            // in the shorthand the second time is the delay, the first the duration
+            let count = 0;
+            let out = item.replace(new RegExp(RE_TIME, 'g'), (m, num, unit) => {
+                let ms = parseFloat(num) * (unit === 's' ? 1000 : 1);
+                return (longhand || ++count === 2) ? Math.round(ms - t) + 'ms' : m;
+            });
+            if (!longhand && count === 1) {
+                out = out.replace(RE_TIME, m => `${m} ${Math.round(-t)}ms`);
+            }
+            return out;
+        });
+        return m.slice(0, m.length - value.length) + items.join(',');
+    });
+}
+
+// svg images run on their own clocks, so after a pause every animated
+// svg url in a sheet is rewritten to start from the host's time
+export function stampSvgImages(host, sheet) {
+    let paused = host.hasAttribute('cssd-paused');
+    if ((!paused && !host._clock.base) || !hasImageClock(sheet)) {
+        return sheet;
+    }
+    let t = host.clockNow();
+    return sheet.replace(/url\("data:image\/svg\+xml;utf8,([^"#]*)(#[^"]*)?"\)/g, (m, data, hash = '') => {
+        if (!hasImageClock(data)) return m;
+        let svg = decodeURIComponent(data)
+            .replace(/<animate\w*\b[^>]*>/g, tag => shiftSmil(tag, t / 1000, paused))
+            .replace(/<style[^>]*>[\s\S]*?<\/style>|\sstyle=(?:"[^"]*"|'[^']*')/g, s => shiftCssAnimations(s, t));
+        if (paused && /animation(-delay)?\s*:/.test(svg)) {
+            svg = svg.replace(/<\/svg>\s*$/, `<style>${PAUSED_RULE}</style></svg>`);
+        }
+        return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}${hash}")`;
+    });
+}
+
+// the sheet of a nested doodle image: its time uniforms, css animations
+// and svg images continue from the host's time and freeze with it
+function stampSheet(host, sheet) {
+    let paused = host.hasAttribute('cssd-paused');
+    if (!paused && !host._clock.base) return sheet;
+    sheet = shiftCssAnimations(stampSvgImages(host, sheet), host.clockNow());
+    return paused ? sheet + PAUSED_RULE : sheet;
+}
+
 export function doodleToImage(host, code, options, fn) {
     code = ':doodle {width:100%;height:100%}' + code;
     let parsed = parseCssCached(code, host.extra);
@@ -100,24 +214,23 @@ export function doodleToImage(host, code, options, fn) {
         : '';
 
     loadGoogleFontEmbed(styles.gf)
-        .then(importedFonts => replace(css`
-            <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
-                <foreignObject width="100%" height="100%">
-                    <div class="host" width="100%" height="100%" ${NSXHtml}>
-                        <style><![CDATA[
-                            ${importedFonts}
-                            ${styles.top}
-                            @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-                            @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-                            ${getBasicStyles(grid)}
-                            ${styles.all}
-                        ]]></style>
-                        ${gridContainer}
-                        ${filterDefs}
-                    </div>
-                </foreignObject>
-            </svg>
-        `))
+        .then(importedFonts => {
+            let sheet = stampSheet(host, importedFonts + styles.top + `
+                @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+            ` + getBasicStyles(grid) + styles.all);
+            return replace(css`
+                <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
+                    <foreignObject width="100%" height="100%">
+                        <div class="host" width="100%" height="100%" ${NSXHtml}>
+                            <style><![CDATA[${sheet}]]></style>
+                            ${gridContainer}
+                            ${filterDefs}
+                        </div>
+                    </foreignObject>
+                </svg>
+            `);
+        })
         .then(result => sharedImage(host, result, () => {
             let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
             if (isSafari() && size) {

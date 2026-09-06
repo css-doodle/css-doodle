@@ -59,3 +59,39 @@ test('setStyle drops a promised style from a superseded render', async () => {
     await new Promise(r => setTimeout(r));
     assert.equal(el.textContent, 'fresh');
 });
+
+test('the host clock freezes while paused', async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    let attrs = new Set();
+    let restamped = 0;
+    let host = {
+        _clock: { base: 0, since: 0 },
+        animations: [],
+        shadowRoot: { querySelectorAll: () => [] },
+        hasAttribute: name => attrs.has(name),
+        setAttribute: name => attrs.add(name),
+        removeAttribute: name => attrs.delete(name),
+        restamp: () => restamped++,
+        syncSvgAnimations: () => {},
+        clockNow: CSSDoodle.prototype.clockNow,
+        pause: CSSDoodle.prototype.pause,
+        resume: CSSDoodle.prototype.resume,
+    };
+    assert.equal(host.clockNow(), 0, 'not started until a sheet lands');
+    host._clock.since = performance.now();
+    await sleep(30);
+    assert.ok(host.clockNow() >= 20);
+
+    host.pause();
+    let frozen = host.clockNow();
+    await sleep(30);
+    assert.equal(host.clockNow(), frozen);
+    host.pause();
+    assert.equal(restamped, 1, 'a second pause is a no-op');
+
+    host.resume();
+    await sleep(30);
+    assert.ok(host.clockNow() >= frozen + 20);
+    host.resume();
+    assert.equal(restamped, 2, 'a second resume is a no-op');
+});

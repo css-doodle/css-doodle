@@ -13,7 +13,7 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
-import { createReplacer } from './embedded.js';
+import { createReplacer, stampSvgImages, hasImageClock } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 function unEntity(code) {
@@ -74,6 +74,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.shaderRenders = new Map();
             this._instance = uniqueId();
             this._generation = 0;
+            this._clock = { base: 0, since: 0 };
             this._warned = new Set();
             this.extra = {
                 getVariable: name => getVariable(this, name),
@@ -369,19 +370,15 @@ if (typeof HTMLElement !== 'undefined') {
         // refresh styles in place, keeping the cell elements
         patch(compiled, oldStyles) {
             bindUniforms(this, compiled.uniforms);
-            let replace = createReplacer(this, compiled);
             if (compiled.props.hasAnimation) {
                 // detach animations first so they restart with the new styles
                 this.setStyle(oldStyles.all.replace(/animation/g, 'x'));
                 this.reflow();
             }
             loadGoogleFontLink(compiled.styles.gf);
-            this.setStyle(replace(
-                compiled.styles.top +
-                getBasicStyles(this.gridSize) +
-                compiled.styles.all
-            ));
+            this.applyStyles(compiled);
             this.mountFilters(compiled.filters);
+            this.syncSvgAnimations();
         }
 
         buildGrid(compiled, grid) {
@@ -398,13 +395,48 @@ if (typeof HTMLElement !== 'undefined') {
                 this.reflow();
             }
             loadGoogleFontLink(styles.gf);
-            let replace = createReplacer(this, compiled);
-            this.setStyle(replace(styles.top + basicStyles + styles.all));
+            let replace = this.applyStyles(compiled);
             if (hasContent) {
                 replace(Object.values(content).join(' '));
             }
             bindUniforms(this, uniforms);
             this.mountFilters(compiled.filters);
+            this.syncSvgAnimations();
+        }
+
+        // the main sheet with its nested doodle and paint images resolved
+        applyStyles(compiled) {
+            let replace = createReplacer(this, compiled);
+            this.setStyle(replace(
+                compiled.styles.top +
+                getBasicStyles(this.gridSize) +
+                compiled.styles.all
+            ).then(sheet => {
+                // the clock runs from the moment the sheet and its images land
+                if (!this._clock.since && !this.hasAttribute('cssd-paused')) {
+                    this._clock.since = performance.now();
+                }
+                return stampSvgImages(this, sheet);
+            }));
+            return replace;
+        }
+
+        // running time of the host in ms, frozen while paused; the images
+        // that carry their own clock are stamped with it
+        clockNow() {
+            let { base, since } = this._clock;
+            return base + (since ? performance.now() - since : 0);
+        }
+
+        // nested doodle images and animated svg images carry their own
+        // clocks, so the sheet is rebuilt with the host's time on pause/resume
+        restamp() {
+            let compiled = this.compiled;
+            if (!compiled) return;
+            let { styles, doodles } = compiled;
+            if (Object.keys(doodles).length || hasImageClock(styles.top + styles.all)) {
+                this.applyStyles(compiled);
+            }
         }
 
         mountFilters(filters) {
@@ -448,6 +480,7 @@ if (typeof HTMLElement !== 'undefined') {
                         for (let holder of holders) {
                             holder.innerHTML = markup;
                         }
+                        this.syncSvgAnimations();
                     }
                 }));
             }
@@ -485,6 +518,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.observers.clear();
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
+            this._clock = { base: 0, since: 0 };
             // the shader and pattern images live in host variables
             if (this.compiled) {
                 let { patterns, shaders } = this.compiled;
@@ -498,16 +532,43 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         pause() {
+            if (this.hasAttribute('cssd-paused')) return;
+            this._clock = { base: this.clockNow(), since: 0 };
             this.setAttribute('cssd-paused', true);
             for (let am of this.animations) {
                 am.pause();
             }
+            for (let nested of this.shadowRoot.querySelectorAll('css-doodle')) {
+                nested.pause();
+            }
+            this.syncSvgAnimations();
+            this.restamp();
         }
 
         resume() {
+            if (!this.hasAttribute('cssd-paused')) return;
             this.removeAttribute('cssd-paused');
+            this._clock.since = performance.now();
             for (let am of this.animations) {
                 am.resume();
+            }
+            for (let nested of this.shadowRoot.querySelectorAll('css-doodle')) {
+                nested.resume();
+            }
+            this.syncSvgAnimations();
+            this.restamp();
+        }
+
+        // SMIL animations in inline svg (content, filter defs) ignore
+        // animation-play-state, so they follow the paused attribute here
+        syncSvgAnimations() {
+            let paused = this.hasAttribute('cssd-paused');
+            let svgs = [
+                ...this.shadowRoot.querySelectorAll('svg'),
+                ...this.querySelectorAll(':scope > ft svg'),
+            ];
+            for (let svg of svgs) {
+                paused ? svg.pauseAnimations() : svg.unpauseAnimations();
             }
         }
 
