@@ -173,7 +173,7 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
 
     let seed = host.seed;
     let generation = host._generation;
-    let parsed = typeof source === 'string' ? parseShaders(source) : source;
+    let parsed = typeof source === 'string' ? parseShaders(source) : { ...source };
     parsed.width = width;
     parsed.height = height;
 

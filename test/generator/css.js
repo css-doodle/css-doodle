@@ -603,3 +603,40 @@ test('shaders and patterns are records of the same shape', () => {
     assert.equal(pattern.source, 'grid: 2; fill: red;');
     assert.deepEqual(pattern.target, { selector: 'c-1-1-1', type: 'background' });
 });
+
+test('$name in a shaders body reads the variable at generation time', () => {
+    let { shaders, warnings } = compile(`
+        --texture: @doodle(@grid: 8; background: @p(red, blue););
+        --fragment: @raw(void main() { FragColor = vec4(1.); });
+        --speed: 2;
+        @content: @shaders(
+            fragment { $fragment }
+            vertex { void main() { gl_Position = vec4($speed); } }
+            texture0 { $texture }
+            texture1 { @grid: 2; background: red; }
+        );
+    `);
+    let [shader] = Object.values(shaders);
+    assert.equal(shader.source.fragment.replace(/\s/g, ''), 'voidmain(){FragColor=vec4(1.);}');
+    assert.equal(shader.source.vertex, 'void main(){gl_Position = vec4(2);}');
+    assert.deepEqual(shader.source.textures, [
+        { name: 'texture0', value: '@grid: 8; background: @p(red, blue);' },
+        { name: 'texture1', value: '@grid:2;background:red;' },
+    ]);
+    assert.deepEqual(warnings, []);
+});
+
+test('an unknown $name skips the shader with a warning instead of reaching GLSL', () => {
+    for (let body of ['fragment { $missing }', 'fragment { void main() {} } texture0 { $missing }']) {
+        let { shaders, warnings, styles } = compile(`background: @shaders(${body})`);
+        assert.deepEqual(Object.keys(shaders), []);
+        assert.equal(styles.all.includes('$missing'), false);
+        assert.deepEqual(warnings.map(w => w.message), ['unknown variable $missing in @shaders()']);
+    }
+    // a texture body keeps its own $ reads: they belong to the nested doodle
+    let [own] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { --a: 1; width: $a })').shaders);
+    assert.deepEqual(own.source.textures, [{ name: 'texture0', value: '--a:1;width:$a' }]);
+    // the source stays a string when nothing reads a variable
+    let [plain] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { @grid: 2 })').shaders);
+    assert.equal(typeof plain.source, 'string');
+});

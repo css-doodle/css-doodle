@@ -624,7 +624,8 @@ of `&&`, `||` and `!`. Values are bare expressions, without units or
 
 ```
 shaders-body = { section } | fragment-source
-section      = ( 'fragment' | 'vertex' | texture-name ) '{' glsl '}'
+section      = ( 'fragment' | 'vertex' ) '{' glsl '}'
+             | texture-name '{' ( doodle | '$' name ) '}'
 texture-name = 'texture' { ASCII-letter | digit | '_' }
 ```
 
@@ -632,6 +633,15 @@ A `@shaders` body is either plain GLSL fragment source or a list of
 named sections. A `texture…` section holds a doodle that is rendered
 to an image and bound as the sampler of that name. `//` comments are
 removed, and `#define` lines are kept on their own line.
+
+`$name` reads the custom property `--name` when the shader is
+generated. In `fragment` and `vertex` it inserts the text of the
+variable, so `--fragment: @raw(...)` can hold GLSL, and a number such
+as `--speed: @r(1, 3)` can feed an expression. A `texture…` section
+whose whole body is `$name` binds the doodle stored in
+`--name: @doodle(...)`. A name that is not defined skips the shader and
+is reported (§11). Text stored in a variable is one line: keep `//`
+comments and `#` directives in the section itself.
 
 ## 10. Directive values
 

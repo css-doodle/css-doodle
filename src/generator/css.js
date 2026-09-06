@@ -3,13 +3,14 @@ import calc, { deref, compileTemplate, toPlainNumber, isSignLeading } from '../c
 import Property from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
+import parseShaders from '../parser/parse-shaders.js';
 
 import createRandom from '../core/random.js';
 import { utime, UTime, timePrefix } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
 import { cellId } from '../utils/cell.js';
-import { placeholder, hasPlaceholder } from '../utils/placeholder.js';
+import { placeholder, hasPlaceholder, placeholderId } from '../utils/placeholder.js';
 import { tidyNumber } from '../utils/math.js';
 import { isNil, getValue, removeQuotes } from '../utils/type.js';
 import { join, last, removeEmptyValues } from '../utils/list.js';
@@ -557,7 +558,7 @@ class Rules {
                         env.extra.length ? structuredClone(env.extra) : undefined);
                 case 'shaders':
                 case 'pattern':
-                    return this.composePaint(fname, value, cell, node.size, selector, property);
+                    return this.composePaint(fname, value, cell, node.size, selector, property, node);
             }
         }
     }
@@ -573,8 +574,40 @@ class Rules {
         return placeholder(id);
     }
 
-    composePaint(fname, source, cell, arg, selector, property) {
+    resolveShaderVars(source, count, node) {
+        if (!/\$[\w-]/.test(source)) return source;
+        let parsed = parseShaders(source);
+        let group = this.scopedVars(count);
+        let missing = null;
+        const read = (_, name) => {
+            let key = '--' + name;
+            if (group[key] === undefined) {
+                missing ??= name;
+                return '';
+            }
+            let value = this.readVar(key, count);
+            let id = placeholderId(value);
+            return (id && this.doodles[id]) ? this.doodles[id].doodle : value;
+        };
+        for (let key of ['fragment', 'vertex']) {
+            if (parsed[key]) parsed[key] = parsed[key].replace(/\$([\w-]+)/g, read);
+        }
+        for (let texture of parsed.textures) {
+            texture.value = texture.value.replace(/^\$([\w-]+)$/, read);
+        }
+        if (missing !== null) {
+            this.warn(`unknown variable $${missing} in @shaders()`, node);
+            return null;
+        }
+        return parsed;
+    }
+
+    composePaint(fname, source, cell, arg, selector, property, node) {
         let kind = fname === 'shaders' ? 'shader' : 'pattern';
+        if (kind === 'shader') {
+            source = this.resolveShaderVars(source, cell.count, node);
+            if (source === null) return '';
+        }
         let id = this.nextId(kind);
         let special = isSpecialSelector(selector);
         this[kind + 's'][id] = {
