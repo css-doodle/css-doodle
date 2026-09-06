@@ -176,11 +176,6 @@ function probe(cur, ...terminators) {
     return -1;
 }
 
-function probeSelector(cur) {
-    let i = probe(cur, '{', ';', '}');
-    return i >= 0 && cur.tokens[i].isSymbol('{');
-}
-
 // the at-rule name glued to the '@' ahead: '@keyframes', '@font-face'
 function atRuleName(cur) {
     let name = '@';
@@ -785,9 +780,12 @@ function parseBlockBody(cur, extra, level) {
             continue;
         }
         let name = tok.isSymbol('@') ? atRuleName(cur) : '';
+        // a '{' before any ';' or '}' opens a block
+        let brace = probe(cur, '{', ';', '}');
+        let opensBlock = brace >= 0 && cur.tokens[brace].isSymbol('{');
         if (name === '@keyframes') {
             styles.push(parseKeyframes(cur, extra));
-        } else if (!probeSelector(cur)) {
+        } else if (!opensBlock) {
             let rule = parseRule(cur, extra);
             if (rule.property === '@use') {
                 styles.push(...rule.value);
@@ -795,7 +793,7 @@ function parseBlockBody(cur, extra, level) {
                 styles.push(rule);
             }
         } else if (!name) {
-            let pseudo = parsePseudo(cur, extra);
+            let pseudo = parsePseudo(cur, extra, brace);
             if (pseudo.selector) styles.push(pseudo);
         } else {
             styles.push(parseCond(cur, extra));
@@ -804,11 +802,10 @@ function parseBlockBody(cur, extra, level) {
     return styles;
 }
 
-function parsePseudo(cur, extra) {
+function parsePseudo(cur, extra, brace) {
     let pseudo = { type: 'pseudo', selector: '', selectors: [], styles: [] };
     let start = cur.headIndex();
-    // the caller probed the '{'
-    cur.i = probe(cur, '{');
+    cur.i = brace;
     let selector = cur.source.slice(start, cur.headIndex()).trim();
     cur.next(); // '{'
     if (!selector) return pseudo;

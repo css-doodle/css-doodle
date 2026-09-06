@@ -415,15 +415,6 @@ class Rules {
         this.warnings = [];
         this.warned = new Set();
         this.ruleOrder = [];
-        this.styles = {
-            host: '',
-            container: '',
-            cells: '',
-            backdrop: '',
-            keyframes: '',
-            top: '',
-            gf: [],
-        }
         this.cells = [];
         this.bgSized = new Set();
         this.nextId = nextId(this.instance);
@@ -448,14 +439,7 @@ class Rules {
         if (!rules) {
             this.scope.rules.set(selector, rules = []);
         }
-        if (!rule) {
-            return;
-        }
-        if (Array.isArray(rule)) {
-            rules.push(...rule);
-        } else {
-            rules.push(rule);
-        }
+        if (rule) rules.push(rule);
     }
 
     addRaw(text) {
@@ -791,7 +775,7 @@ class Rules {
                 case 'content': {
                     rule = '';
                     let key = this.composeSelector(cell);
-                    if (transformed !== undefined && !isPseudoSelector(selector) && !isParentSelector(selector)) {
+                    if (!isPseudoSelector(selector) && !isParentSelector(selector)) {
                         this.content[key] = removeQuotes(String(transformed));
                     }
                     this.content[key] = Func.raw(cell, env)(this.content[key] || '');
@@ -837,14 +821,13 @@ class Rules {
 
     preComposeRule(token, cell, env, selector) {
         let prop = token.property;
-        let context = this.scopedVars(cell.count);
         if (/^\-\-/.test(prop)) {
-            let value = this.getComposedValue(token.value, cell, env, context, selector).value;
+            let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
             this.composeVars(cell.count, selector, prop, value);
         }
         switch (prop) {
             case '@grid': {
-                let value = this.getComposedValue(token.value, cell, env, context, selector).value;
+                let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
                 let transformed = Property['grid'](value, {
                     maxGrid: env.maxGrid
                 });
@@ -955,13 +938,11 @@ class Rules {
         let { fn, args, not } = this.condInfo(token);
         if (!fn) return;
         let input = [];
-        if (args.length) {
-            for (let arg of args) {
-                let { composed, cluster } = compileArgument(arg);
-                pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
-            }
-            input = removeEmptyValues(input);
+        for (let arg of args) {
+            let { composed, cluster } = compileArgument(arg);
+            pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
         }
+        input = removeEmptyValues(input);
         let _fn = fn(cell, env, token.position);
         let matched = (typeof _fn === 'function') ? _fn(...input) : _fn;
         return not ? !matched : !!matched;
@@ -1145,6 +1126,7 @@ class Rules {
     }
 
     output(env) {
+        let styles = { host: '', container: '', cells: '', backdrop: '', keyframes: '' };
         let keyframes = '';
         for (let [name, frames] of this.keyframes) {
             let cells = frames.static ? this.cells.slice(0, 1) : this.cells;
@@ -1156,36 +1138,36 @@ class Rules {
 
         for (let [selector, rule] of this.root.rules) {
             if (isParentSelector(selector)) {
-                this.styles.container += `${specialName(selector)} {${join(rule)}}`;
+                styles.container += `${specialName(selector)} {${join(rule)}}`;
             } else {
                 let target = (selector === 'bd') ? 'backdrop'
                     : isHostSelector(selector) ? 'host' : 'cells';
                 let value = join(rule).trim();
                 if (value.length) {
-                    this.styles[target] += `${specialName(selector)} {${value}}`;
+                    styles[target] += `${specialName(selector)} {${value}}`;
                 }
             }
         }
-        this.styles.top = join([...this.rawRules]);
-        this.styles.gf = [...this.fonts];
 
         // after the grid styles above (`cell {flex:1}`), the cell rules,
         // then the group at-rules
-        this.styles.cells += this.layoutCells() + join([...this.root.groups]);
+        styles.cells += this.layoutCells() + join([...this.root.groups]);
 
         if (this.uniforms.time) {
             let n = 'animation-name';
             let t = utime.ticks;
             let un = utime.name;
             let Un = UTime.name;
-            this.styles.container += `:host,.host {animation:${timePrefix.animation};}`;
-            this.styles.keyframes +=
+            styles.container += `:host,.host {animation:${timePrefix.animation};}`;
+            styles.keyframes +=
                 `@keyframes ${utime[n]} {from {--${un}:0} to {--${un}:${t}}}` +
                 `@keyframes ${UTime[n]} {from {--${Un}:0} to {--${Un}:${t}}}`;
         }
 
-        let { host, container, cells, backdrop, top, gf } = this.styles;
-        let main = this.styles.keyframes + keyframes + container + host;
+        let { host, container, cells, backdrop } = styles;
+        let main = styles.keyframes + keyframes + container + host;
+        let top = join([...this.rawRules]);
+        let gf = [...this.fonts];
 
         return {
             props: this.props,

@@ -10,7 +10,7 @@ function parse(input) {
     let expr = '';
     let ret = {
         direction: '',
-        angle: '',
+        angle: 0,
     };
     while (iter.next()) {
         let { prev, curr } = iter.get();
@@ -26,27 +26,13 @@ function parse(input) {
     }
     if (/\d/.test(expr)) {
         ret.angle = calc(expr);
+        if (unit === 'rad') ret.angle /= (Math.PI / 180);
+        if (unit === 'grad') ret.angle *= .9;
+        if (unit === 'turn') ret.angle *= 360;
     } else if (!ret.direction) {
         ret.direction = 'auto';
     }
-    return normalizeAngle(ret, unit);
-}
-
-function normalizeAngle(input, unit) {
-    let { angle } = input;
-    if (angle === '') {
-        angle = 0;
-    }
-    if (unit === 'rad') {
-        angle /= (Math.PI / 180);
-    }
-    if (unit === 'grad') {
-        angle *= .9;
-    }
-    if (unit === 'turn') {
-        angle *= 360;
-    }
-    return Object.assign({}, input, { angle });
+    return ret;
 }
 
 export default parse;

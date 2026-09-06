@@ -71,7 +71,6 @@ const FUNCTION = 'function';
 const compoundOps = new Set(['**', '==', '!=', '<=', '>=', '&&', '||', '<<', '>>']);
 const RE_NUMBER = /^-?(\d+\.?\d*|\d*\.?\d+)(e[+-]?\d+)?$/i;
 const RE_STARTS_WITH_MINUS = /^-/;
-const RE_OPERATOR_CHARS = /^[<>&|]+$/;
 const RE_NEGATIVE_VAR = /^-\D/;
 
 function tk(type, value) {
@@ -133,16 +132,10 @@ function transformTokens(rawTokens, spans) {
         }
 
         if (type === 'Word') {
-            // Handle operators not recognized by tokenizer (>, <, &, |)
-            if (isOperator(value) || value === '!' || RE_OPERATOR_CHARS.test(value)) {
-                if (next && (next.type === 'Word' || next.type === 'Symbol')
-                        && compoundOps.has(value + next.value)) {
-                    tokens.push(tk(OPERATOR, value + next.value));
-                    i += 2;
-                } else {
-                    tokens.push(tk(OPERATOR, value));
-                    i++;
-                }
+            // ÷ ∧ ∨ are not tokenizer symbols, so they arrive as words
+            if (isOperator(value)) {
+                tokens.push(tk(OPERATOR, value));
+                i++;
                 continue;
             }
 
@@ -222,7 +215,7 @@ function transformTokens(rawTokens, spans) {
                 continue;
             }
 
-            if (value === '!' || isOperator(value)) {
+            if (isOperator(value)) {
                 tokens.push(tk(OPERATOR, value));
                 i++;
                 continue;
@@ -294,14 +287,9 @@ function toPostfix(tokens) {
 function parseFunctionArgs(tokens, startIndex) {
     const args = [];
     let current = [];
-    let depth = 0;
-    let i = startIndex;
+    let depth = 1;
 
-    if (tokens[i] && tokens[i].value === '(') {
-        depth = 1;
-        i++;
-    }
-
+    let i = startIndex + 1;
     for (; i < tokens.length; i++) {
         const token = tokens[i];
         const { value } = token;

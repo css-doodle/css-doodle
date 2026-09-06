@@ -49,17 +49,16 @@ function getPngName(name) {
     return prefix + '.png';
 }
 
-const Expose = {
-    CSSDoodle: class {},
-    define(name, element) {
-        if (typeof customElements !== 'undefined' && !customElements.get(name)) {
-            customElements.define(name, element);
-        }
+let CSSDoodle = class {};
+
+export function define(name, element) {
+    if (typeof customElements !== 'undefined' && !customElements.get(name)) {
+        customElements.define(name, element);
     }
 }
 
 if (typeof HTMLElement !== 'undefined') {
-    Expose.CSSDoodle = class extends HTMLElement {
+    CSSDoodle = class extends HTMLElement {
         static observedAttributes = [
             'grid', 'seed', 'use', 'experimental',
             'click-to-update', 'click:update',
@@ -69,6 +68,7 @@ if (typeof HTMLElement !== 'undefined') {
         constructor() {
             super();
             this.doodle = this.attachShadow({ mode: 'open' });
+            this.addEventListener('click', this.dispatchCellClick);
             this.animations = [];
             this.observers = new Map();
             this.shaderRenders = new Map();
@@ -159,7 +159,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         get seed() {
-            return this._seed_value;
+            return this.compiled?.seed;
         }
 
         set seed(seed) {
@@ -269,8 +269,6 @@ if (typeof HTMLElement !== 'undefined') {
             let compiled = this.compiled = generateCss(
                 parsed, grid, seed, this.getMaxGrid(), null, [], this._instance
             );
-            this._seed_value = compiled.seed;
-            this._seed_random = compiled.random;
             this.report(compiled.warnings);
             return compiled;
         }
@@ -289,11 +287,6 @@ if (typeof HTMLElement !== 'undefined') {
             let code = this._code || unEntity(this.innerHTML);
             let parsed = parseCssCached(this.getUse() + code, this.extra);
             let compiled = this.generate(parsed);
-
-            if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) {
-                this.addEventListener('click', this.bindClickToUpdate);
-            }
-            this.addEventListener('click', this.dispatchCellClick);
 
             this.gridSize = compiled.grid || this.getGrid();
             this._code = code;
@@ -330,9 +323,6 @@ if (typeof HTMLElement !== 'undefined') {
                 styles = this._code;
             }
             this._code = styles;
-            if (!this.gridSize) {
-                this.gridSize = this.getGrid();
-            }
 
             const old = this.compiled;
             const compiled = this.generate(
@@ -340,7 +330,7 @@ if (typeof HTMLElement !== 'undefined') {
             const grid = compiled.grid || this.getGrid();
             const rebuild = this.shouldRebuild(compiled, old, grid);
 
-            Object.assign(this.gridSize, grid);
+            this.gridSize = grid;
 
             if (rebuild) {
                 this.buildGrid(compiled, grid);
@@ -385,9 +375,7 @@ if (typeof HTMLElement !== 'undefined') {
                 this.setStyle(oldStyles.all.replace(/animation/g, 'x'));
                 this.reflow();
             }
-            if (compiled.styles.gf) {
-                loadGoogleFontLink(compiled.styles.gf);
-            }
+            loadGoogleFontLink(compiled.styles.gf);
             this.setStyle(replace(
                 compiled.styles.top +
                 getBasicStyles(this.gridSize) +
@@ -409,9 +397,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (hasTransition || hasAnimation) {
                 this.reflow();
             }
-            if (styles.gf) {
-                loadGoogleFontLink(styles.gf);
-            }
+            loadGoogleFontLink(styles.gf);
             let replace = createReplacer(this, compiled);
             this.setStyle(replace(styles.top + basicStyles + styles.all));
             if (hasContent) {
@@ -491,21 +477,17 @@ if (typeof HTMLElement !== 'undefined') {
 
         cleanup() {
             this._generation++;
+            for (let am of this.animations) {
+                am.cancel();
+            }
+            this.animations = [];
+            this.observers.forEach(observer => observer.disconnect());
+            this.observers.clear();
+            this.shaderRenders.forEach(drawing => drawing.dispose());
+            this.shaderRenders.clear();
+            // the shader and pattern images live in host variables
             if (this.compiled) {
-                for (let am of this.animations) {
-                    am.cancel();
-                }
-                this.animations = [];
                 let { patterns, shaders } = this.compiled;
-                if (Object.keys(patterns).length || Object.keys(shaders).length) {
-                    for (let el of this.shadowRoot.querySelectorAll('cell')) {
-                        el.style.cssText = '';
-                    }
-                    this.observers.forEach(observer => {
-                        observer.disconnect();
-                    });
-                }
-                // clear shader CSS variables
                 for (let id of Object.keys(shaders)) {
                     this.style.removeProperty('--' + id);
                 }
@@ -513,10 +495,6 @@ if (typeof HTMLElement !== 'undefined') {
                     this.style.removeProperty('--' + id);
                 }
             }
-            this.observers.clear();
-            this.shaderRenders.forEach(drawing => drawing.dispose());
-            this.shaderRenders.clear();
-            this.style.background = '';
         }
 
         pause() {
@@ -572,5 +550,4 @@ if (typeof HTMLElement !== 'undefined') {
     }
 }
 
-export const CSSDoodle = Expose.CSSDoodle;
-export const define = Expose.define;
+export { CSSDoodle };

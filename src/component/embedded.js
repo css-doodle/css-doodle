@@ -71,17 +71,12 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
 }
 
 export function doodleToImage(host, code, options, fn) {
-    if (typeof options === 'function') {
-        fn = options;
-        options = null;
-    }
-    options = options || {};
     code = ':doodle {width:100%;height:100%}' + code;
     let parsed = parseCssCached(code, host.extra);
     let _grid = parseGrid('');
-    let compiled = generateCss(parsed, _grid, host._seed_value, host.getMaxGrid(), host._seed_random, options.upextra, options.instance);
+    let compiled = generateCss(parsed, _grid, host.compiled.seed, host.getMaxGrid(), host.compiled.random, options.upextra, options.instance);
     host.report(compiled.warnings);
-    let styles = compiled.styles || {};
+    let styles = compiled.styles;
     let grid = compiled.grid ? compiled.grid : _grid;
     let viewBox = '';
     if (options.arg) {
@@ -104,7 +99,7 @@ export function doodleToImage(host, code, options, fn) {
         ? `width="${options.width}" height="${options.height}"`
         : '';
 
-    loadGoogleFontEmbed(styles.gf || [])
+    loadGoogleFontEmbed(styles.gf)
         .then(importedFonts => replace(css`
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
                 <foreignObject width="100%" height="100%">
@@ -174,8 +169,6 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
     let seed = host.seed;
     let generation = host._generation;
     let parsed = typeof source === 'string' ? parseShaders(source) : { ...source };
-    parsed.width = width;
-    parsed.height = height;
 
     let sources = parsed.textures;
     let images = [];
@@ -274,11 +267,10 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
         parsed.height = height;
         try {
             tick(generateShaders(parsed, seed, cell, onLost));
-            if (after) after();
         } catch (err) {
             console.error(err);
-            if (after) after('');
         }
+        if (after) after();
     }
 
     const run = after => {

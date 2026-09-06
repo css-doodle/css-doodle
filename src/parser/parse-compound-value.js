@@ -1,25 +1,17 @@
-import { iterator, scan } from './tokenizer.js';
+import { scan } from './tokenizer.js';
 import { memo } from '../utils/cache.js';
 
+// a number, then optionally one word or symbol as its unit
 function parse(input) {
-    let iter = iterator(scan(input));
+    let tokens = scan(input);
     let ret = {};
-    let matched = false;
-    while (iter.next()) {
-        let { prev, curr, next} = iter.get();
-        let isUnit = matched
-            && (curr.isWord() || curr.isSymbol())
-            && prev && prev.isNumber()
-            && !next;
-        if (curr.isNumber()) {
-            ret.value = Number(curr.value);
-            matched = true;
-        }
-        else if (isUnit) {
-            ret.unit = curr.value;
-        } else {
-            break;
-        }
+    let i = 0;
+    while (tokens[i] && tokens[i].isNumber()) {
+        ret.value = Number(tokens[i++].value);
+    }
+    let unit = tokens[i];
+    if (i && unit && (unit.isWord() || unit.isSymbol()) && !tokens[i + 1]) {
+        ret.unit = unit.value;
     }
     return ret;
 }

@@ -3,41 +3,27 @@ let embedFonts = new Map();
 let linkFonts = new Set();
 
 function getGoogleFontLink(names) {
-    if (!Array.isArray(names)) {
-        names = [names];
-    }
     // the v1 css endpoint only honors the first `family` param, so join with a pipe
     let params = names.map(encodeURIComponent).join('%7C');
     return `https://fonts.googleapis.com/css?display=swap&family=${params}`;
 }
 
+// one <link> per batch of fonts not linked yet; a no-op off the browser
 export function loadGoogleFontLink(fonts) {
-    let names = [];
-    if (!Array.isArray(fonts)) {
-        return Promise.resolve();
+    if (!Array.isArray(fonts) || typeof document === 'undefined') {
+        return;
     }
-    for (let name of fonts) {
-        if (linkFonts.has(name)) {
-            continue;
-        }
-        linkFonts.add(name);
-        names.push(name);
-    }
+    let names = fonts.filter(name => !linkFonts.has(name));
     if (!names.length) {
-        return Promise.resolve();
+        return;
     }
-
-    if (typeof document !== 'undefined') {
-        return new Promise(resolve => {
-            let link = document.createElement("link");
-            link.rel = "stylesheet";
-            link.href = getGoogleFontLink(names);
-            link.onload = resolve;
-            link.onerror = resolve;
-            document.head.appendChild(link);
-        });
+    for (let name of names) {
+        linkFonts.add(name);
     }
-    return Promise.resolve();
+    let link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = getGoogleFontLink(names);
+    document.head.appendChild(link);
 }
 
 async function fetchCSS(names) {
@@ -112,9 +98,9 @@ async function toBase64(url) {
 }
 
 export async function loadGoogleFontEmbed(names = Array.from(linkFonts)) {
-  if (!Array.isArray(names) || !names.length) return '';
+  if (!names.length) return '';
   try {
-    let css = await fetchCSS([...new Set(names)]);
+    let css = await fetchCSS(names);
     let fonts = extractFonts(css);
     let embedded = await Promise.all(
       fonts.map(async ({ family, url, weight, style, range }) => {

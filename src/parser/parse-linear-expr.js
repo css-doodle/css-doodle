@@ -6,40 +6,41 @@ import { memo } from '../utils/cache.js';
  */
 function parse(input) {
     let iter = iterator(scan(input));
-    let a = [], b = [], op, error;
+    let a = 0, b = 0, op, seen = false, error;
     while (iter.next()) {
-        let { prev, curr, next } = iter.get();
+        let { curr, next } = iter.get();
         let v = curr.value;
         if (curr.isSymbol()) {
             if (v === '+' || v === '-') {
                 op = v;
             } else {
-                error = 'Unexpected ' + curr.value;
+                error = 'Unexpected ' + v;
                 break;
             }
         }
         else if (curr.isNumber()) {
-            if ((a.length || b.length) && !op) {
+            if (seen && !op) {
                 error = 'Syntax error';
                 break;
             }
-            v = withOp(Number(v), op);
+            let num = op === '-' ? -1 * Number(v) : Number(v);
             op = null;
+            seen = true;
             if (next && next.value === 'n') {
-                a.push(v);
+                a += num;
                 iter.next();
-                continue;
             } else {
-                b.push(v);
+                b += num;
             }
         }
         else if (v === 'n') {
-            if ((a.length || b.length) && !op) {
+            if (seen && !op) {
                 error = 'Syntax error';
                 break;
             }
-            a.push(withOp(1, op));
+            a += op === '-' ? -1 : 1;
             op = null;
+            seen = true;
         }
         else if (!curr.isSpace()) {
             error = 'Unexpected ' + v;
@@ -49,17 +50,7 @@ function parse(input) {
     if (error) {
         return { a: 0, b: 0, error }
     }
-    return { a: sum(a), b: sum(b) };
-}
-
-function withOp(num, op) {
-    if (op === '+') return num;
-    if (op === '-') return -1 * num;
-    return num;
-}
-
-function sum(list) {
-    return list.reduce((a, b) => a + b, 0);
+    return { a, b };
 }
 
 export default memo('linear-expr', parse);

@@ -45,16 +45,6 @@ export function sequence(count, fn) {
     return ret;
 }
 
-function* charRange(start, end) {
-    let from = start.charCodeAt(0);
-    let to = end.charCodeAt(0);
-    let step = from <= to ? 1 : -1;
-    let length = Math.abs(to - from) + 1;
-    for (let i = 0; i < length; i++) {
-        yield String.fromCharCode(from + i * step);
-    }
-}
-
 function getTokens(input) {
     let expr = String(input);
     if (expr.charCodeAt(0) !== 91 || expr.charCodeAt(expr.length - 1) !== 93) {
@@ -95,19 +85,21 @@ function getTokens(input) {
     return tokens;
 }
 
-function* buildRangeGen(tokens) {
-    for (let i = 0, len = tokens.length; i < len; i++) {
-        let token = tokens[i];
+// `[a-c]` expands each pair, either way round, and keeps single chars
+const buildRange = memo('buildRange', input => {
+    let list = [];
+    for (let token of getTokens(input)) {
         if (typeof token === 'string') {
-            yield token;
-        } else {
-            yield* charRange(token[0], token[1]);
+            list.push(token);
+            continue;
+        }
+        let from = token[0].charCodeAt(0), to = token[1].charCodeAt(0);
+        let step = from <= to ? 1 : -1;
+        for (let c = from; c !== to + step; c += step) {
+            list.push(String.fromCharCode(c));
         }
     }
-}
-
-const buildRange = memo('buildRange', (input) => {
-    return [...buildRangeGen(getTokens(input))];
+    return list;
 });
 
 
@@ -133,15 +125,11 @@ export function expand(fn) {
 
 export function byUnit(fn) {
     return (...args) => {
-        let units = [], values = [];
+        let unit, values = [];
         for (let arg of args) {
-            let { unit, value } = parseCompoundValue(arg);
-            if (unit !== undefined) {
-                units.push(unit);
-            }
-            if (value !== undefined) {
-                values.push(value);
-            }
+            let parsed = parseCompoundValue(arg);
+            if (unit === undefined) unit = parsed.unit;
+            if (parsed.value !== undefined) values.push(parsed.value);
         }
         let result = fn(...values);
         if (typeof result === 'number') {
@@ -149,7 +137,6 @@ export function byUnit(fn) {
         } else if (Array.isArray(result)) {
             result = result.map(n => typeof n === 'number' ? tidyNumber(n) : n);
         }
-        let unit = units[0];
         if (unit === undefined) {
             return result;
         }

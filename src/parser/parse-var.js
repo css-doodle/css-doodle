@@ -48,12 +48,9 @@ function parseVar(iter) {
     return ret;
 }
 
+// `--` and a name that does not start with another dash
 function isValid(name) {
-    if (name === undefined) return false;
-    if (name.length <= 2) return false;
-    if (name.substr(2).startsWith('-')) return false;
-    if (!name.startsWith('--')) return false;
-    return true;
+    return typeof name === 'string' && /^--[^-]/.test(name);
 }
 
 export default parse;

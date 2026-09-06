@@ -194,6 +194,8 @@ function seq(token, make) {
 // @plot / @Plot: nth point (or all points) of a generated shape;
 // `unit` keeps units on the output values (the @Plot variant)
 function createPlot(unit) {
+    // the last shape stays around: a sequence calls this once per item
+    // with the same commands, and generateShape's key is a long string
     let lastCommands, lastMax, lastResult;
     return ({ count, grid }, { extra }) => {
         let e = last(extra) || [];
@@ -557,11 +559,6 @@ Function.match = ({ x, y, z, count, grid }, { extra }) => {
         if (args.length <= 1) {
             return '';
         }
-        if (args.length <= 3) {
-            let [expr, pass, fail = ''] = args;
-            let result = !!calc(expr, variables);
-            return result ? pass : fail;
-        }
         for (let i = 0; i < args.length; i += 2) {
             let expr = args[i];
             let pass = args[i + 1];
@@ -627,22 +624,12 @@ Function.stripe = () => {
 
 Function.cycle = () => {
     return (...args) => {
-        args = args.map(n => '<' + n + '>');
-        let list = [];
-        let separator;
-        if (args.length == 1) {
-            separator = ' ';
-            list = parseValueGroup(args[0], { symbol: separator });
-        } else {
-            separator = ',';
-            list = parseValueGroup(args.join(separator), { symbol: separator});
-        }
-        list = list.map(n => n.replace(/^\<|>$/g,''));
-        let size = list.length;
+        // one argument rotates its words, several rotate the arguments
+        let separator = args.length == 1 ? ' ' : ',';
+        let list = parseValueGroup(args.join(separator), { symbol: separator });
         let result = [];
-        for (let i = 0; i < size; ++i) {
-            let rotated = list.slice(i).concat(list.slice(0, i));
-            result.push(rotated.join(separator));
+        for (let i = 0; i < list.length; ++i) {
+            result.push(list.slice(i).concat(list.slice(0, i)).join(separator));
         }
         return result;
     }

@@ -76,9 +76,6 @@ function createPolygonPoints(option, fn) {
     // A bare angle like "dir: 30" is constant; auto/reverse need atan2 per point
     let staticAngle = direction.direction ? null : 90 + (direction.angle || 0);
     let add = ([x1, y1, dx = 0, dy = 0]) => {
-        if (x1 == 'evenodd' || x1 == 'nonzero') {
-            return points.push(new Point(x1, '', ''));
-        }
         let x = x1 * fx;
         let y = -y1 * fy;
         let dx1 = dx * fx;
@@ -102,7 +99,7 @@ function createPolygonPoints(option, fn) {
     }
 
     if (fill == 'nonzero' || fill == 'evenodd') {
-        add([fill, '', '']);
+        points.push(new Point(fill, '', ''));
     }
 
     for (let i = 0; i < split; ++i) {
@@ -259,23 +256,12 @@ export default function generateShape(input, range = {}, modifier) {
     if (cached !== undefined) {
         return cached;
     }
-    let commands = '';
     let [name, ...args] = parseValueGroup(input);
-    let preset = false;
-    switch (typeof presetShapes[name]) {
-        case 'function':
-            commands = presetShapes[name](...args);
-            preset = true;
-            break;
-        case 'string':
-            commands = presetShapes[name];
-            preset = true;
-            break;
-        default: {
-            commands = input;
-        }
+    let preset = presetShapes[name];
+    if (typeof preset === 'function') {
+        preset = preset(...args);
     }
-    let rules = parseShapeCommands(commands);
+    let rules = parseShapeCommands(preset ?? input);
     if (typeof modifier === 'function') {
         rules = modifier(rules);
     }
@@ -283,7 +269,7 @@ export default function generateShape(input, range = {}, modifier) {
     if (cache.size >= 4096) {
         cache.clear();
     }
-    let result = { rules, points, preset };
+    let result = { rules, points, preset: preset !== undefined };
     cache.set(key, result);
     return result;
 }
