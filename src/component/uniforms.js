@@ -45,8 +45,6 @@ function regUtime() {
 }
 
 function regUmouse(host, mousex, mousey, mouse) {
-    // the handler reads the flags from the host so that
-    // an update with different uniforms takes effect
     host.umouseFlags = { mousex, mousey, mouse };
     let init = !host.umouseFn;
     if (init) {

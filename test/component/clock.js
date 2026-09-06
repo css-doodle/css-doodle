@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-globalThis.HTMLElement ??= class {};
-const { stampSvgImages, shiftCssAnimations } = await import('../../src/component/embedded.js');
+import { stampSvgImages, shiftCssAnimations, hasImageClock } from '../../src/component/clock.js';
 
 const url = svg => `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
 const decode = sheet => decodeURIComponent(/utf8,([^"#]*)/.exec(sheet)[1]);
+const PAUSED = '<style>*,*::before,*::after{animation-play-state:paused!important}</style>';
 
 function host(seconds, paused) {
     return {
@@ -21,25 +21,38 @@ test('svg urls are left alone until the host has been paused', () => {
     assert.equal(stampSvgImages(host(2, false), url('<svg><circle/></svg>')), url('<svg><circle/></svg>'));
 });
 
+test('an image clock is a SMIL element or a named css animation', () => {
+    assert.ok(hasImageClock(url('<svg><animateTransform type="rotate"/></svg>')));
+    assert.ok(hasImageClock(url('<svg><style>r{animation:x 1s}</style></svg>')));
+    assert.ok(hasImageClock(url('<svg><style>r{animation-name:x;animation-duration:1s}</style></svg>')));
+    assert.ok(!hasImageClock(url('<svg><style>r{animation-duration:1s;transition:all 1s}</style></svg>')));
+});
+
 test('running animations restart from the host time', () => {
     let out = decode(stampSvgImages(host(2.5, false), url('<svg><animate attributeName="r" dur="1s" repeatCount="indefinite"/></svg>')));
-    assert.equal(out, '<svg><animate attributeName="r" dur="1s" repeatCount="indefinite" begin="-2.5s"/></svg>');
+    assert.equal(out, '<svg><animate attributeName="r" dur="1s" repeatCount="indefinite" begin="-2500ms"/></svg>');
     out = decode(stampSvgImages(host(1, false), url('<svg><animate attributeName="r" begin="3s" dur="1s"/></svg>')));
-    assert.equal(out, '<svg><animate attributeName="r" begin="2s" dur="1s"/></svg>');
+    assert.equal(out, '<svg><animate attributeName="r" begin="2000ms" dur="1s"/></svg>');
+    // a negative begin is an offset to keep
+    out = decode(stampSvgImages(host(2.5, false), url('<svg><animate begin="-1s" dur="4s" repeatCount="indefinite"/></svg>')));
+    assert.equal(out, '<svg><animate begin="-3500ms" dur="4s" repeatCount="indefinite"/></svg>');
+    // single quotes are read too
+    out = decode(stampSvgImages(host(2.5, false), url("<svg><animate begin='1s' dur='4s'/></svg>")));
+    assert.equal(out, `<svg><animate begin="-1500ms" dur='4s'/></svg>`);
 });
 
 test('paused animations hold the value at the host time', () => {
     let out = decode(stampSvgImages(host(2.5, true), url('<svg><animateTransform type="rotate" dur="4s" repeatCount="2"/></svg>')));
-    assert.equal(out, '<svg><animateTransform type="rotate" dur="4s" repeatCount="2" begin="-2.5s" end="0.001s" fill="freeze"/></svg>');
+    assert.equal(out, '<svg><animateTransform type="rotate" dur="4s" repeatCount="2" begin="-2500ms" end="1ms" fill="freeze"/></svg>');
     // finished: only the begin is shifted, so its own fill applies
     out = decode(stampSvgImages(host(2.5, true), url('<svg><animate dur="1s"/></svg>')));
-    assert.equal(out, '<svg><animate dur="1s" begin="-2.5s"/></svg>');
+    assert.equal(out, '<svg><animate dur="1s" begin="-2500ms"/></svg>');
     // not started yet: must not start while paused
     out = decode(stampSvgImages(host(2.5, true), url('<svg><animate begin="3s" dur="1s"/></svg>')));
     assert.equal(out, '<svg><animate begin="indefinite" dur="1s"/></svg>');
     // paused right at its start
     out = decode(stampSvgImages(host(0, true), url('<svg><animate dur="1s"/></svg>')));
-    assert.equal(out, '<svg><animate dur="1s" begin="0s" end="0.001s" fill="freeze"/></svg>');
+    assert.equal(out, '<svg><animate dur="1s" begin="0ms" end="1ms" fill="freeze"/></svg>');
     // event begins are not clock values
     out = decode(stampSvgImages(host(2.5, true), url('<svg><animate begin="click" dur="1s"/></svg>')));
     assert.equal(out, '<svg><animate begin="click" dur="1s"/></svg>');
@@ -71,12 +84,16 @@ test('css animations inside an svg image are shifted and frozen', () => {
     let out = decode(stampSvgImages(host(1.6, false), url(svg)));
     assert.equal(out, '<svg><style>@keyframes r{to{fill:red}}rect{animation:r 10s -1600ms linear}</style><rect style="animation:r 10s -600ms"/></svg>');
     out = decode(stampSvgImages(host(1.6, true), url(svg)));
-    assert.equal(out, '<svg><style>@keyframes r{to{fill:red}}rect{animation:r 10s -1600ms linear}</style><rect style="animation:r 10s -600ms"/><style>*,*::before,*::after{animation-play-state:paused!important}</style></svg>');
+    assert.equal(out, `<svg><style>@keyframes r{to{fill:red}}rect{animation:r 10s -1600ms linear}</style><rect style="animation:r 10s -600ms"/>${PAUSED}</svg>`);
+    // longhands are frozen, though not shifted
+    svg = '<svg><style>rect{animation-name:r;animation-duration:2s}</style></svg>';
+    assert.equal(decode(stampSvgImages(host(1.6, false), url(svg))), svg);
+    assert.equal(decode(stampSvgImages(host(1.6, true), url(svg))), svg.replace('</svg>', PAUSED + '</svg>'));
 });
 
 test('the fragment of a filter url survives', () => {
     let sheet = url('<svg><animate dur="1s"/></svg>').replace('")', '#f1")');
     let out = stampSvgImages(host(0.5, false), sheet);
     assert.ok(out.endsWith('#f1")'));
-    assert.equal(decode(out), '<svg><animate dur="1s" begin="-0.5s"/></svg>');
+    assert.equal(decode(out), '<svg><animate dur="1s" begin="-500ms"/></svg>');
 });

@@ -15,16 +15,17 @@ import { RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { css } from '../lib/tagged-template.js';
 import { loadGoogleFontEmbed } from './google-font.js';
 
+import { stampSheet } from './clock.js';
 import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 
-const images = new WeakMap();
+const sharedUrls = new WeakMap();
 
 function sharedImage(host, svg, toUrl) {
-    let entry = images.get(host);
+    let entry = sharedUrls.get(host);
     if (!entry || entry.generation !== host._generation) {
-        images.set(host, entry = { generation: host._generation, urls: new Map() });
+        sharedUrls.set(host, entry = { generation: host._generation, urls: new Map() });
     }
     let url = entry.urls.get(svg);
     if (url === undefined) {
@@ -34,10 +35,12 @@ function sharedImage(host, svg, toUrl) {
 }
 
 export function createReplacer(host, { doodles, shaders, patterns }) {
+    // each group resolves with the text that takes the place of its placeholder
     const groups = [
-        [doodles, (id, v, fn) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id }, fn)],
-        [shaders, (id, v, fn) => shaderToImage(host, v, fn)],
-        [patterns, (id, v, fn) => patternToImage(host, v, fn)],
+        [doodles, (id, v, done) => doodleToImage(host, v.doodle,
+            { arg: v.arg, upextra: v.upextra, instance: id }, url => done(`url(${url})`))],
+        [shaders, (id, v, done) => shaderToImage(host, v, () => done(`var(--${id})`))],
+        [patterns, (id, v, done) => patternToImage(host, v, () => done(`var(--${id})`))],
     ];
     return input => {
         let present = new Set();
@@ -49,7 +52,7 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
             for (let [id, value] of Object.entries(map)) {
                 if (present.has(id)) {
                     tasks.push(new Promise(resolve => {
-                        toImage(id, value, result => resolve({ id, result }));
+                        toImage(id, value, text => resolve([id, text]));
                     }));
                 }
             }
@@ -58,130 +61,13 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
             return Promise.resolve(input);
         }
         return Promise.all(tasks).then(mappings => {
-            let targets = new Map();
-            for (let { id, result } of mappings) {
-                targets.set(id, /^(shader|pattern)/.test(id) ? `var(--${id})` : `url(${result})`);
-            }
+            let targets = new Map(mappings);
             return input.replace(RE_PLACEHOLDER, (m, id) => targets.get(id) ?? m);
         }).catch(err => {
             console.error(err);
             return input;
         });
     }
-}
-
-const TIME_UNITS = { ms: .001, s: 1, min: 60, h: 3600 };
-const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
-// SMIL or css animations inside an encoded svg image
-const RE_IMAGE_CLOCK = /%3Canimate|animation(-delay)?%3A/;
-const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/;
-
-export function hasImageClock(sheet) {
-    return RE_IMAGE_CLOCK.test(sheet);
-}
-
-// a SMIL clock value in seconds, null for event or indefinite begins
-function seconds(value) {
-    let m = /^\s*(\d*\.?\d+)(ms|s|min|h)?\s*$/.exec(value);
-    return m ? parseFloat(m[1]) * (TIME_UNITS[m[2]] || 1) : null;
-}
-
-function setAttr(tag, name, value) {
-    let re = new RegExp(`\\s${name}=("[^"]*"|'[^']*')`);
-    return re.test(tag)
-        ? tag.replace(re, ` ${name}="${value}"`)
-        : tag.replace(/\s*\/?>$/, m => ` ${name}="${value}"${m.trim()}`);
-}
-
-// shift one <animate*> tag so that a freshly loaded image continues from
-// host time `t` seconds; while paused the browser holds the value at `t`
-function shiftSmil(tag, t, paused) {
-    let attrs = {};
-    for (let [, name, value] of tag.matchAll(/([\w:-]+)=(?:"([^"]*)"|'([^']*)')/g)) {
-        attrs[name] = value ?? '';
-    }
-    let begin = seconds(attrs.begin ?? '0');
-    if (begin === null) return tag;
-    let elapsed = Math.round((t - begin) * 1000) / 1000;
-    if (elapsed < 0) {
-        return setAttr(tag, 'begin', paused ? 'indefinite' : -elapsed + 's');
-    }
-    tag = setAttr(tag, 'begin', -elapsed + 's');
-    let dur = seconds(attrs.dur);
-    let repeat = attrs.repeatCount === 'indefinite' ? Infinity : (parseFloat(attrs.repeatCount) || 1);
-    let active = dur === null || elapsed < dur * repeat;
-    if (paused && active) {
-        // SMIL drops an interval that does not end after document time 0,
-        // so the cut-off sits one ms in and the value there is held
-        tag = setAttr(setAttr(tag, 'end', '0.001s'), 'fill', 'freeze');
-    }
-    return tag;
-}
-
-function splitList(value) {
-    let items = [], depth = 0, start = 0;
-    for (let i = 0; i < value.length; i++) {
-        let c = value[i];
-        if (c === '(') depth++;
-        else if (c === ')') depth--;
-        else if (c === ',' && !depth) {
-            items.push(value.slice(start, i));
-            start = i + 1;
-        }
-    }
-    items.push(value.slice(start));
-    return items;
-}
-
-// shift the delays of the css animations in `css` by -t ms, so a sheet
-// loaded fresh continues from the host's time
-export function shiftCssAnimations(css, t) {
-    if (!t) return css;
-    return css.replace(/\banimation(-delay)?\s*:\s*([^;}]+)/g, (m, longhand, value) => {
-        if (/\b(var|calc)\(/.test(value)) return m;
-        let items = splitList(value).map(item => {
-            // in the shorthand the second time is the delay, the first the duration
-            let count = 0;
-            let out = item.replace(new RegExp(RE_TIME, 'g'), (m, num, unit) => {
-                let ms = parseFloat(num) * (unit === 's' ? 1000 : 1);
-                return (longhand || ++count === 2) ? Math.round(ms - t) + 'ms' : m;
-            });
-            if (!longhand && count === 1) {
-                out = out.replace(RE_TIME, m => `${m} ${Math.round(-t)}ms`);
-            }
-            return out;
-        });
-        return m.slice(0, m.length - value.length) + items.join(',');
-    });
-}
-
-// svg images run on their own clocks, so after a pause every animated
-// svg url in a sheet is rewritten to start from the host's time
-export function stampSvgImages(host, sheet) {
-    let paused = host.hasAttribute('cssd-paused');
-    if ((!paused && !host._clock.base) || !hasImageClock(sheet)) {
-        return sheet;
-    }
-    let t = host.clockNow();
-    return sheet.replace(/url\("data:image\/svg\+xml;utf8,([^"#]*)(#[^"]*)?"\)/g, (m, data, hash = '') => {
-        if (!hasImageClock(data)) return m;
-        let svg = decodeURIComponent(data)
-            .replace(/<animate\w*\b[^>]*>/g, tag => shiftSmil(tag, t / 1000, paused))
-            .replace(/<style[^>]*>[\s\S]*?<\/style>|\sstyle=(?:"[^"]*"|'[^']*')/g, s => shiftCssAnimations(s, t));
-        if (paused && /animation(-delay)?\s*:/.test(svg)) {
-            svg = svg.replace(/<\/svg>\s*$/, `<style>${PAUSED_RULE}</style></svg>`);
-        }
-        return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}${hash}")`;
-    });
-}
-
-// the sheet of a nested doodle image: its time uniforms, css animations
-// and svg images continue from the host's time and freeze with it
-function stampSheet(host, sheet) {
-    let paused = host.hasAttribute('cssd-paused');
-    if (!paused && !host._clock.base) return sheet;
-    sheet = shiftCssAnimations(stampSvgImages(host, sheet), host.clockNow());
-    return paused ? sheet + PAUSED_RULE : sheet;
 }
 
 export function doodleToImage(host, code, options, fn) {
@@ -191,13 +77,15 @@ export function doodleToImage(host, code, options, fn) {
     let compiled = generateCss(parsed, _grid, host.compiled.seed, host.getMaxGrid(), host.compiled.random, options.upextra, options.instance);
     host.report(compiled.warnings);
     let styles = compiled.styles;
-    let grid = compiled.grid ? compiled.grid : _grid;
+    let grid = compiled.grid || _grid;
+
     let viewBox = '';
+    let { width, height } = options;
     if (options.arg) {
         let v = parseGrid(options.arg, Infinity);
         if (v.x && v.y) {
-            options.width = v.x + 'px';
-            options.height = v.y + 'px';
+            width = v.x + 'px';
+            height = v.y + 'px';
             viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
         }
     }
@@ -209,8 +97,8 @@ export function doodleToImage(host, code, options, fn) {
         filterDefs = `<div style="${FilterHolderStyle}">${filterDefs}</div>`;
     }
 
-    let size = (options.width && options.height)
-        ? `width="${options.width}" height="${options.height}"`
+    let size = (width && height)
+        ? `width="${width}" height="${height}"`
         : '';
 
     loadGoogleFontEmbed(styles.gf)
@@ -234,7 +122,7 @@ export function doodleToImage(host, code, options, fn) {
         .then(result => sharedImage(host, result, () => {
             let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
             if (isSafari() && size) {
-                return generatePng(result, parseInt(options.width), parseInt(options.height), devicePixelRatio || 2)
+                return generatePng(result, parseInt(width), parseInt(height), devicePixelRatio || 2)
                     .then(({ blob }) => {
                         let url = URL.createObjectURL(blob);
                         cacheImage(url);
@@ -268,23 +156,26 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
         element = host.doodle.getElementById(cell);
     }
 
-    let { width, height } = element.getBoundingClientRect();
-    let cs;
+    let cs = arg ? parseGrid(arg, Infinity) : null;
 
-    if (arg) {
-        cs = parseGrid(arg, Infinity);
-        if (cs.x && cs.y) {
+    // the drawing size, capped by the size argument when it has one
+    const measure = () => {
+        let { width, height } = element.getBoundingClientRect();
+        if (cs && cs.x && cs.y) {
             width = Math.min(cs.x, width);
             height = Math.min(cs.y, height);
         }
+        return { width, height };
     }
+
+    let { width, height } = measure();
 
     let seed = host.seed;
     let generation = host._generation;
     let parsed = typeof source === 'string' ? parseShaders(source) : { ...source };
 
     let sources = parsed.textures;
-    let images = [];
+    let textures = [];
     let ready = false;
     let lastW = 0, lastH = 0;
 
@@ -307,7 +198,7 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
             host.shaderRenders.delete(target.selector);
         }
 
-        drawing.draw(0, width, height, host._umouse, images);
+        drawing.draw(0, width, height, host._umouse, textures);
         lastW = width;
         lastH = height;
         ready = true;
@@ -330,12 +221,12 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
                 blit();
                 element.replaceChildren(view);
                 host.animations.push(createAnimation(t => {
-                    drawing.draw(t, width, height, host._umouse, images);
+                    drawing.draw(t, width, height, host._umouse, textures);
                     blit();
                 }));
             } else {
                 host.animations.push(createAnimation(t => {
-                    drawing.draw(t, width, height, host._umouse, images);
+                    drawing.draw(t, width, height, host._umouse, textures);
                     setShaderProp(drawing.canvas.toDataURL());
                 }));
             }
@@ -375,7 +266,7 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
     }
 
     const draw = after => {
-        parsed.textures = images;
+        parsed.textures = textures;
         parsed.width = width;
         parsed.height = height;
         try {
@@ -389,7 +280,7 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
     const run = after => {
         if (sources.length) {
             transform(sources, result => {
-                images = result;
+                textures = result;
                 draw(after);
             });
         } else {
@@ -400,19 +291,15 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
     if (!host.observers.has(target.selector)) {
         let observer = new ResizeObserver(debounce(() => {
             if (!ready || host.observers.get(target.selector) !== observer) return;
-            let rect = element.getBoundingClientRect();
-            width = rect.width;
-            height = rect.height;
-            if (cs && cs.x && cs.y) {
-                width = Math.min(cs.x, width);
-                height = Math.min(cs.y, height);
-            }
+            let size = measure();
+            width = size.width;
+            height = size.height;
             if (width === lastW && height === lastH) return;
             lastW = width;
             lastH = height;
             let live = host.shaderRenders.get(target.selector);
             if (live && live.animated) {
-                transform(sources, result => { images = result; });
+                transform(sources, result => { textures = result; });
             } else {
                 run();
             }

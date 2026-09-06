@@ -13,7 +13,8 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
-import { createReplacer, stampSvgImages, hasImageClock } from './embedded.js';
+import { stampSvgImages, hasImageClock } from './clock.js';
+import { createReplacer } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 function unEntity(code) {
