@@ -1,97 +1,48 @@
 import { isEmpty } from '../utils/type.js';
-import { scan, iterator, textOf } from './tokenizer.js';
+import { scan } from './tokenizer.js';
 
-function parse(input, option = {symbol: ',', noSpace: false, verbose: false }) {
+function parse(input, option = {}) {
     let group = [];
-    let skip = false;
-    let tokens = [];
-    let parenStack = [];
-    let quoteStack = [];
-    let lastGroupName = '';
-    let symbolList = option.symbol || ',';
-    let symbolCounter = {};
-    let symbolCounterMax = {};
-    let symbolsToCompare = [];
+    if (isEmpty(input)) return group;
 
-    if (isEmpty(input)) {
-        return group;
-    }
-    if (!Array.isArray(symbolList)) {
-        symbolList = [symbolList];
-    }
-    symbolList.forEach(item => {
+    let remaining = new Map();
+    for (let item of [].concat(option.symbol || ',')) {
         let [symbol, max = Infinity] = String(item).split(/\s+/);
-        symbolCounter[symbol] = 0;
-        symbolCounterMax[symbol] = max;
-    });
-
-    const allSymbols = Object.keys(symbolCounterMax);
-    const iter = iterator(scan(input));
-    updateSymbols();
-
-    function updateSymbols() {
-        symbolsToCompare = allSymbols.filter(s => {
-            return symbolCounter[s] < symbolCounterMax[s];
-        });
+        remaining.set(symbol, max);
     }
+    const isSeparator = token => !!token
+        && (remaining.get(token.value) > 0 || (!option.noSpace && token.isSpace()));
+    const addGroup = (name, value) => {
+        if (!option.verbose) group.push(value);
+        else if (name.length || value.length) group.push({ group: name, value });
+    };
 
-    function isSeperator(token) {
-        return option.noSpace
-              ? token.isSymbol(symbolsToCompare)
-              : (token.isSymbol(symbolsToCompare) || token.isSpace());
-    }
-
-    function addGroup(tokens) {
-        let value = textOf(tokens);
-        if (option.verbose) {
-            if (lastGroupName.length || value.length) {
-                group.push({ group: lastGroupName, value });
-            }
+    let tokens = scan(input);
+    let buf = '';
+    let name = '';
+    let paren = 0;
+    let quote = 0;
+    for (let i = 0; i < tokens.length; i++) {
+        let curr = tokens[i];
+        if (curr.isSymbol('(')) paren++;
+        if (curr.isSymbol(')')) paren = Math.max(0, paren - 1);
+        if (curr.status === 'open') quote++;
+        if (curr.status === 'close') quote = Math.max(0, quote - 1);
+        let top = !paren && !quote;
+        if (top && curr.isSpace()) {
+            if (!buf.length) continue;
+            if (option.noSpace && (isSeparator(tokens[i + 1]) || isSeparator(tokens[i - 1]))) continue;
+        }
+        if (top && isSeparator(curr)) {
+            if (remaining.has(curr.value)) remaining.set(curr.value, remaining.get(curr.value) - 1);
+            addGroup(name, buf);
+            name = curr.value;
+            buf = '';
         } else {
-            group.push(value);
+            buf += curr.value;
         }
     }
-
-    while (iter.next()) {
-        let { prev, curr, next }  = iter.get();
-        if (curr.isSymbol('(')) {
-            parenStack.push(curr.value);
-        }
-        if (curr.isSymbol(')')) {
-            parenStack.pop();
-        }
-        if (curr.status === 'open') {
-            quoteStack.push(curr.value);
-        }
-        if (curr.status === 'close') {
-            quoteStack.pop();
-        }
-        let emptyStack = (!parenStack.length && !quoteStack.length);
-        if (emptyStack) {
-            let isNextSpace = option.noSpace && curr.isSpace() && isSeperator(next);
-            let isPrevSpace = option.noSpace && curr.isSpace() && isSeperator(prev);
-            if (curr.isSpace() && !tokens.length) {
-                continue;
-            }
-            if (isNextSpace || isPrevSpace) {
-                continue;
-            }
-        }
-        if (emptyStack && isSeperator(curr)) {
-            symbolCounter[curr.value] += 1;
-            let groupName = lastGroupName;
-            addGroup(tokens);
-            lastGroupName = curr.value;
-            tokens = [];
-            updateSymbols();
-        } else {
-            tokens.push(curr);
-        }
-    }
-    if (tokens.length) {
-        addGroup(tokens);
-    }
-
+    if (buf.length) addGroup(name, buf);
     return group;
 }
 

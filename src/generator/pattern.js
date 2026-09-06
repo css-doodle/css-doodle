@@ -189,10 +189,6 @@ function float(n) {
     return String(n).includes('.') ? n : n + '.0';
 }
 
-function hasOwn(obj, key) {
-    return Object.prototype.hasOwnProperty.call(obj, key);
-}
-
 function maskFor(shape) {
     if (shape === 'circle') return CIRCLE_MASK;
     if (shape === 'square') return SQUARE_MASK;
@@ -201,7 +197,7 @@ function maskFor(shape) {
 
 function resolveAlias(value, vars) {
     for (let i = 0; i < 10; i++) {
-        if (!/^[a-zA-Z_][\w-]*$/.test(value) || !hasOwn(vars, value)) break;
+        if (!/^[a-zA-Z_][\w-]*$/.test(value) || !Object.hasOwn(vars, value)) break;
         value = String(vars[value]).trim();
     }
     return value;
@@ -221,48 +217,33 @@ function compileFill(expr, vars) {
     return single ? `vec4(vec3(${single}), 1.0)` : null;
 }
 
-const STATEMENT_HANDLERS = {
-    fill(token, extra, insideBlock, vars) {
-        let value = resolveAlias(token.value.trim(), vars || {});
-        if (!value) {
-            return { type: 'statement', value: '' };
-        }
-        let rgba = extra.getRgbaColor(value);
-        if (rgba) {
-            let { r, g, b, a } = rgba;
-            return {
-                type: 'statement',
-                value: `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`,
-            };
-        }
-        let computed = compileFill(value, vars || {});
-        return { type: 'statement', value: computed ? `\ncolor = ${computed};\n` : '' };
-    },
-    grid(token) {
-        return { type: 'grid', value: token.value };
-    },
-    size(token) {
-        return { type: 'size', value: token.value.trim() };
-    },
-    shape(token) {
-        return { type: 'shape', value: token.value.trim() };
-    },
-};
-
-function generateStatement(token, extra, insideBlock = false, vars = {}) {
+// `fill: red` is a static color, anything else compiles as an expression
+function generateFill(token, extra, vars) {
     // a value that read as a block (`fill: x { … }`) is garbage here
-    if (token.type !== 'statement' || typeof token.value !== 'string') {
-        return { type: 'statement', value: '' };
+    if (typeof token.value !== 'string') return '';
+    let value = resolveAlias(token.value.trim(), vars);
+    if (!value) return '';
+    let rgba = extra.getRgbaColor(value);
+    if (rgba) {
+        let { r, g, b, a } = rgba;
+        return `\ncolor = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`;
     }
-    let handler = STATEMENT_HANDLERS[token.name];
-    if (handler) {
-        return handler(token, extra, insideBlock, vars);
+    let computed = compileFill(value, vars);
+    return computed ? `\ncolor = ${computed};\n` : '';
+}
+
+// grid, shape, size and the variables of a body, fill left out
+function readSettings(tokens, settings, vars) {
+    for (let t of tokens) {
+        if (t.type !== 'statement' || t.name === 'fill' || typeof t.value !== 'string') continue;
+        let value = t.value.trim();
+        if (t.name === 'grid' || t.name === 'shape' || t.name === 'size') {
+            settings[t.name] = value;
+        } else {
+            let name = (t.name.startsWith('--') ? t.name.slice(2) : t.name).trim();
+            if (name) vars[name] = value;
+        }
     }
-    let varName = token.name.startsWith('--') ? token.name.slice(2).trim() : token.name.trim();
-    if (varName) {
-        return { type: 'variable', name: varName, value: token.value.trim() };
-    }
-    return { type: 'statement', value: '' };
 }
 
 function substituteVariables(expr, vars, depth = 0, excludeName = null) {
@@ -291,15 +272,9 @@ function generateBlock(token, extra, vars = {}, outerShape = null) {
         .map(a => transform(substituteVariables(a, vars), { expect: 'bool' }))
         .join(' && ');
     let scope = Object.assign({}, vars);
-    let blockShape = null;
-    let blockSize = null;
-    for (let t of token.value) {
-        if (t.type !== 'statement' || t.name === 'fill') continue;
-        let s = generateStatement(t, extra, true, scope);
-        if (s.type === 'variable') scope[s.name] = s.value;
-        else if (s.type === 'shape' && s.value) blockShape = s.value;
-        else if (s.type === 'size' && s.value) blockSize = s.value;
-    }
+    let settings = {};
+    readSettings(token.value, settings, scope);
+    let { shape: blockShape, size: blockSize } = settings;
     let header = '';
     if (blockSize) {
         header += `\nsize = ${transform(substituteVariables(blockSize, scope), { expect: 'float' })};\n`;
@@ -314,8 +289,7 @@ function generateBlock(token, extra, vars = {}, outerShape = null) {
             if (t.type === 'block') {
                 return generateBlock(t, extra, scope, blockShape || outerShape);
             }
-            let s = generateStatement(t, extra, true, scope);
-            return s.type === 'statement' ? s.value : '';
+            return t.type === 'statement' && t.name === 'fill' ? generateFill(t, extra, scope) : '';
         })
         .join('');
     return glsl`
@@ -331,12 +305,7 @@ function generateShader(input, { x, y }, shape, sizeExpr, vars) {
     let sizeInit = hasSize
         ? transform(substituteVariables(sizeExpr, vars), { expect: 'float' })
         : '1.0';
-    let maskInit = '';
-    if (shape) {
-        maskInit = maskFor(shape);
-    } else if (hasSize) {
-        maskInit = SQUARE_MASK;
-    }
+    let maskInit = shape ? maskFor(shape) : '';
     let usesTime = /\bt\b/.test(input) || /\bt\b/.test(sizeInit);
     let timeArg = usesTime ? 'u_time' : '0.0';
     return glsl`
@@ -371,30 +340,18 @@ function generateShader(input, { x, y }, shape, sizeExpr, vars) {
 
 export default function drawPattern(code, extra) {
     let tokens = parsePattern(code);
-    let result = [];
-    let grid = { x: 1, y: 1 };
-    let shape = null;
-    let sizeExpr = null;
+    let settings = {};
     let vars = {};
-    for (let token of tokens) {
-        if (token.type !== 'statement' || token.name === 'fill') continue;
-        let stmt = generateStatement(token, extra, false, vars);
-        switch (stmt.type) {
-            case 'grid': grid = parseGrid(stmt.value, Infinity); break;
-            case 'shape': shape = stmt.value; break;
-            case 'size': sizeExpr = stmt.value; break;
-            case 'variable': vars[stmt.name] = stmt.value; break;
-        }
-    }
-
-    let topShape = shape || (sizeExpr ? 'square' : null);
+    readSettings(tokens, settings, vars);
+    let grid = settings.grid !== undefined ? parseGrid(settings.grid, Infinity) : { x: 1, y: 1 };
+    let shape = settings.shape || (settings.size ? 'square' : null);
+    let result = [];
     for (let token of tokens) {
         if (token.type === 'statement' && token.name === 'fill') {
-            result.push(generateStatement(token, extra, false, vars).value);
+            result.push(generateFill(token, extra, vars));
         } else if (token.type === 'block') {
-            result.push(generateBlock(token, extra, vars, topShape));
+            result.push(generateBlock(token, extra, vars, shape));
         }
     }
-
-    return generateShader(result.join(''), grid, shape, sizeExpr, vars);
+    return generateShader(result.join(''), grid, shape, settings.size, vars);
 }

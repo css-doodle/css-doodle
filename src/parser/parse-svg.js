@@ -3,10 +3,6 @@ import parseValueGroup from './parse-value-group.js';
 import { parseBody, readRaw } from './parse-body.js';
 import { adjustName, isSpecialNamespaceAttr } from '../utils/svg.js';
 
-function isSkip(...names) {
-    return names.includes('style');
-}
-
 // the ';' of `&amp;` or `&#x27;` belongs to the value, not the statement
 const RE_ENTITY_TAIL = /&(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos)$/;
 
@@ -26,23 +22,11 @@ function endsEntity(tokens) {
     return false;
 }
 
-function splitTimes(name, object) {
-    let target = Object.assign({}, object);
-    if (/\*\s*[0-9]/.test(name)) {
-        let [pureName, times] = name.split('*');
-        if (times) {
-            target.times = times.trim();
-            target.pureName = pureName.trim();
-        }
-    }
-    return target;
-}
-
-function resolveId(block, skip) {
+function resolveId(block) {
     // pureName has the `*times` suffix stripped so it can't leak into id/class
     let selector = block.pureName || block.name || '';
     let baseName = selector.split(/[#.]/)[0];
-    if (skip || !baseName) {
+    if (!baseName) {
         return block;
     }
     let id = selector.match(/#([^.#]+)/);
@@ -65,35 +49,37 @@ function resolveId(block, skip) {
     return block;
 }
 
+// `circle*3` keeps the count and the name without it
 function makeBlock(name, value = []) {
-    return splitTimes(name, { type: 'block', name, value });
-}
-
-function wrapChain(block, selectors, skip) {
-    let name;
-    while (name = selectors.pop()) {
-        block = resolveId(makeBlock(name, [block]), skip);
+    let block = { type: 'block', name, value };
+    if (/\*\s*[0-9]/.test(name)) {
+        let [pureName, times] = name.split('*');
+        block.times = times.trim();
+        block.pureName = pureName.trim();
     }
     return block;
 }
 
-// Build the (possibly nested) block for a selector chain like `g circle`.
-function readBlock(iter, selectors, skip) {
-    let name = selectors.pop();
-    let block = resolveId(parseBody(iter, makeBlock(name), svg), skip);
-    return wrapChain(block, selectors, skip);
+// the outer blocks of a selector chain like `g circle`, innermost first
+function wrapChain(block, selectors) {
+    let name;
+    while (name = selectors.pop()) {
+        block = resolveId(makeBlock(name, [block]));
+    }
+    return block;
 }
 
-function readGroupBlocks(iter, groups, skip) {
+// one block per comma group, all over the same body
+function readGroupBlocks(iter, groups) {
     let first = groups[0];
     let inner = parseBody(iter, makeBlock(first.pop()), svg);
     // snapshot before resolveId adds the first group's id/class
     let body = groups.length > 1 ? inner.value.slice() : null;
-    let blocks = [wrapChain(resolveId(inner, skip), first, skip)];
+    let blocks = [wrapChain(resolveId(inner), first)];
     for (let i = 1; i < groups.length; ++i) {
         let selectors = groups[i];
         let block = makeBlock(selectors.pop(), structuredClone(body));
-        blocks.push(wrapChain(resolveId(block, skip), selectors, skip));
+        blocks.push(wrapChain(resolveId(block), selectors));
     }
     return blocks;
 }
@@ -137,7 +123,7 @@ function readStatement(iter, token) {
                 token.raw = true;
                 break;
             }
-            inlineBlock = readBlock(iter, selectors, isSkip(...selectors));
+            inlineBlock = readGroupBlocks(iter, [selectors])[0];
             break;
         }
         fragment.push(curr);
@@ -171,22 +157,16 @@ function readStyleBlock(iter, selectors) {
 }
 
 // the head as svg selectors: `g circle, rect*3 {`, `style {`
-function readSvgBlocks(iter, head, parentToken) {
+function readSvgBlocks(iter, head) {
     // `Style {}` is the style block too
     let groups = getSelectorGroups(head).map(group => group.map(s => /^style$/i.test(s) ? 'style' : s));
     if (!groups.length) {
         return null;
     }
-    let selectors = groups[0];
-    if (isSkip(parentToken.name)) {
-        selectors = [textOf(head)];
-        groups = [selectors];
+    if (groups[0].includes('style')) {
+        return [readStyleBlock(iter, groups[0])];
     }
-    if (selectors.includes('style')) {
-        return [readStyleBlock(iter, selectors)];
-    }
-    let skip = isSkip(...selectors, parentToken.name);
-    return readGroupBlocks(iter, groups, skip);
+    return readGroupBlocks(iter, groups);
 }
 
 // `cx: 1`; `x, y: 1, 2` expanded; viewBox with its numbers; `--name`

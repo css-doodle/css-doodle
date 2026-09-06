@@ -1,8 +1,7 @@
 import { scan } from '../parser/tokenizer.js';
 
 const PREC = {
-    '(': 20, ')': 20,
-    '.': 19, '[': 19,
+    '(': 20, '[': 19,
     '!': 16, '~': 16,
     '*': 14, '/': 14, '%': 14,
     '+': 13, '-': 13,
@@ -25,6 +24,8 @@ const OP_ALIAS = {
 
 const TWO_CHAR_OPS = new Set(['<<', '>>', '==', '!=', '<=', '>=', '&&', '||' ]);
 const RELATIONAL_OPS = new Set(['<', '>', '<=', '>=', '≤', '≥']);
+const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=', '=', '≠']);
+const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 const WORD_OPS = new Map([['and', '&&'], ['or', '||']]);
 const WORD_NOT = 'not';
 
@@ -84,12 +85,8 @@ export default function transform(code, { expect = null } = {}) {
         } else if (t.value === '(') {
             n = parse();
             consume();
-        } else if (t.value === '!') {
-            n = { type: 'Pre', val: '!', right: parse(16) };
-        } else if (t.value === '~') {
-            n = { type: 'Pre', val: '~', right: parse(16) };
-        } else if (t.value === '-') {
-            n = { type: 'Pre', val: '-', right: parse(16) };
+        } else if (t.value === '!' || t.value === '~' || t.value === '-') {
+            n = { type: 'Pre', val: t.value, right: parse(16) };
         } else {
             n = { type: 'Lit', val: '0' };
         }
@@ -116,12 +113,13 @@ export default function transform(code, { expect = null } = {}) {
         consume();
         let args = [];
 
-        let next = peek();
-        if (next && next.value !== ')') {
-            do {
+        if (peek() && peek().value !== ')') {
+            args.push(parse());
+            while (peek() && peek().value === ',') {
+                consume();
+                if (!peek()) break;
                 args.push(parse());
-                next = peek();
-            } while (next && next.value === ',' && consume() && (next = peek()));
+            }
         }
         consume();
         return { type: 'Call', val, args };
@@ -135,9 +133,7 @@ export default function transform(code, { expect = null } = {}) {
             return n.val.includes('.') ? n.val : n.val + '.0';
         }
         if (n.type === 'Var') {
-            if (exp === 'bool') return `bool(${n.val})`;
-            if (exp === 'int') return `int(${n.val})`;
-            return n.val;
+            return (exp && exp !== 'float') ? `${exp}(${n.val})` : n.val;
         }
         if (n.type === 'Pre') {
             if (!n.right) return gen({ type: 'Lit', val: '0' }, exp);
@@ -165,9 +161,7 @@ export default function transform(code, { expect = null } = {}) {
                 return args;
             }
             const out = `${n.val}(${args})`;
-            if (exp === 'bool') return `bool(${out})`;
-            if (exp === 'int') return `int(${out})`;
-            return out;
+            return (exp && exp !== 'float') ? `${exp}(${out})` : out;
         }
 
         const op = n.val;
@@ -184,51 +178,19 @@ export default function transform(code, { expect = null } = {}) {
             return out;
         }
 
+        // the type an operator yields and the type it wants its operands in
         let res = 'float', argExp = 'float';
-        switch (op) {
-            case '%':
-                res = 'float';
-                break;
-            case '&':
-            case '^':
-            case '|':
-            case '<<':
-            case '>>':
-                res = argExp = 'int';
-                break;
-            case '&&':
-            case '||':
-                res = argExp = 'bool';
-                break;
-            case '==':
-            case '!=':
-            case '=':
-            case '≠':
-                res = 'bool';
-                argExp = 'float';
-                break;
-            case '<':
-            case '>':
-            case '<=':
-            case '>=':
-            case '≤':
-            case '≥':
-                res = 'bool';
-                argExp = 'float';
-                break;
-        }
+        if (INT_OPS.has(op)) res = argExp = 'int';
+        else if (op === '&&' || op === '||') res = argExp = 'bool';
+        else if (COMPARISON_OPS.has(op)) res = 'bool';
 
         const l = gen(n.left, argExp);
         const r = gen(n.right, argExp);
         const glslOp = OP_ALIAS[op] || op;
         const out = (op === '%') ? `mod(${l}, ${r})` : `(${l} ${glslOp} ${r})`;
 
-        if (res === 'bool' && exp) return `${exp}(${out})`;
-        if (res !== exp && exp) {
-            if (exp === 'bool') return `bool(${out})`;
-            if (exp === 'int') return `int(${out})`;
-            if (exp === 'float') return `float(${out})`;
-        }
+        // a comparison is always cast to what the caller expects
+        if (exp && (res === 'bool' || res !== exp)) return `${exp}(${out})`;
         return out;
     }
 
