@@ -2,6 +2,8 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseSvg from '../parser/parse-svg.js';
 import parseSvgPath from '../parser/parse-svg-path.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
+import parseShapeCommands from '../parser/parse-shape-commands.js';
+import parseDirection from '../parser/parse-direction.js';
 
 import generateSvg from '../generator/svg.js';
 import generateShape from '../generator/shapes.js';
@@ -635,6 +637,30 @@ Function.shape = () => {
 Function.plot = createPlot(false);
 
 Function.Plot = createPlot(true);
+
+Function.arc = () => {
+    return memo('arc-function', (...args) => {
+        let c = parseShapeCommands(args.join(','));
+        let [rx, ry = rx] = parseValueGroup(c.r ?? '0').map(calc);
+        let [cx, cy = cx] = parseValueGroup(c.move ?? '0').map(calc);
+        let from = parseDirection(c.from ?? '0').angle;
+        let sweep = parseDirection(c.to ?? '360').angle - from;
+        let full = Math.abs(sweep) >= 360;
+        if (full) {
+            sweep = sweep < 0 ? -360 : 360;
+        }
+        let point = a => {
+            let t = a * Math.PI / 180;
+            return tidyNumber(cx + rx * Math.cos(t)) + ' ' + tidyNumber(cy + ry * Math.sin(t));
+        };
+        let arc = `A ${tidyNumber(rx)} ${tidyNumber(ry)} 0`;
+        let dir = sweep > 0 ? 1 : 0;
+        if (full) {
+            return `M ${point(from)} ${arc} 1 ${dir} ${point(from + sweep / 2)} ${arc} 1 ${dir} ${point(from)}`;
+        }
+        return `M ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + sweep)}`;
+    });
+};
 
 Function.invert = () => {
     return invertPath;

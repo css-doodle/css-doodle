@@ -523,6 +523,13 @@ timing              = duration [ delay ] [ repeat-count ]
   `ellipse`, `polygon`, `polyline`) along its length; `animate:` is
   its older spelling. `infinite` is accepted for `indefinite` in
   these and in a `repeatCount` attribute.
+- `@arc(r: 40; from: 0; to: 120; move: 50 50)` is the path data of an
+  arc for `d:`, `M x y A …`. Angles are degrees, clockwise from three
+  o'clock like SVG's `rotate()`, and take `deg`, `rad`, `grad` or
+  `turn`. `from` defaults to `0` and `to` to `360`; a sweep of a full
+  turn or more is the whole circle in two arcs. `r` takes one or two
+  radii and `move` the center. Since the data ends at the arc's end,
+  `@arc(…) L 0 0 Z` is a pie slice.
 - The `;` that ends a character reference such as `&amp;` is part of
   the value, not a terminator.
 - Namespaced attributes are supported for `xlink:actuate`,
@@ -700,13 +707,14 @@ then y. Both default to `50%`.
 
 ```
 an-plus-b = [ number ] 'n' [ ( '+' | '-' ) number ] | number | 'even' | 'odd'
-direction = 'auto' | 'reverse' | number [ 'deg' | 'rad' | 'grad' | 'turn' ]
+direction = [ 'auto' | 'reverse' ] [ expression [ 'deg' | 'rad' | 'grad' | 'turn' ] ]
 dimension = number [ unit ]
 ```
 
 `@nth`, `@x` and `@y` take one or more `an-plus-b` expressions and
 match a cell that satisfies any of them. `direction` is used by
-`@shape` and by gradients. A value list consists of items separated by
+`@shape`, by gradients and by `@arc`; its angle is an arithmetic
+expression, so `30 + 15` reads as `45` degrees. A value list consists of items separated by
 top-level commas or whitespace.
 
 ## 11. Error recovery

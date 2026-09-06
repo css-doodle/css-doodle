@@ -1,34 +1,32 @@
 import { iterator, scan } from './tokenizer.js';
+import calc from '../core/calc.js';
 
 const keywords = ['auto', 'reverse'];
 const units = ['deg', 'rad', 'grad', 'turn'];
 
 function parse(input) {
     let iter = iterator(scan(input));
-    let matched = false;
     let unit = '';
+    let expr = '';
     let ret = {
         direction: '',
         angle: '',
     };
     while (iter.next()) {
-        let { prev, curr, next } = iter.get();
-        if (curr.isWord() && keywords.includes(curr.value)) {
-            ret.direction = curr.value;
-            matched = true;
-        }
-        else if (curr.isNumber()) {
-            ret.angle = Number(curr.value);
-            matched = true;
-        }
-        else if (curr.isWord() && prev && prev.isNumber() && units.includes(curr.value)) {
-            unit = curr.value;
-        }
-        else if (curr.isSpace() && ret.direction !== '' && ret.angle !== '') {
-            break;
+        let { prev, curr } = iter.get();
+        if (curr.isWord()) {
+            if (keywords.includes(curr.value)) {
+                ret.direction = curr.value;
+            } else if (units.includes(curr.value) && prev && prev.isNumber()) {
+                unit = curr.value;
+            }
+        } else {
+            expr += curr.value;
         }
     }
-    if (!matched) {
+    if (/\d/.test(expr)) {
+        ret.angle = calc(expr);
+    } else if (!ret.direction) {
         ret.direction = 'auto';
     }
     return normalizeAngle(ret, unit);
