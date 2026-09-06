@@ -10,7 +10,7 @@ import gridStyleRules from './grid-style.js';
 
 import { cellId } from '../utils/cell.js';
 import { tidyNumber } from '../utils/math.js';
-import { isNil, getValue } from '../utils/type.js';
+import { isNil, getValue, removeQuotes } from '../utils/type.js';
 import { join, last, removeEmptyValues } from '../utils/list.js';
 import { nextId } from '../utils/fn.js';
 import {
@@ -80,6 +80,14 @@ function findFunc(name) {
 
 const EMPTY_EXTRA = [];
 
+function pushInput(input, value, boxed) {
+    if (!boxed && (typeof value === 'number' || typeof value === 'string')) {
+        input.push(...parseValueGroup(value, NO_SPACE));
+    } else if (!isNil(value)) {
+        input.push(getValue(value));
+    }
+}
+
 const SEQ_READERS = new Map([
     [Func.n, 0], [Func.nx, 1], [Func.ny, 2], [Func.N, 3],
 ]);
@@ -134,14 +142,12 @@ function compileFunc(node) {
         let fn = findFunc(fname);
         if (typeof fn !== 'function') {
             let literal = { value: node.name };
-            if (node.arguments.length) {
-                compiled = env => {
+            compiled = env => {
+                if (node.arguments.length) {
                     env.rules.warn(`unknown function ${node.name}()`, node);
-                    return literal;
-                };
-            } else {
-                compiled = () => literal;
-            }
+                }
+                return literal;
+            };
         } else if (SEQ_READERS.has(fn) && !node.arguments.length && !node.variables) {
             let index = SEQ_READERS.get(fn);
             let read = env => {
@@ -167,7 +173,7 @@ function compileFunc(node) {
                 constantInput = [];
                 for (let arg of args) {
                     if (arg.split) constantInput.push(...arg.split);
-                    else if (!isNil(arg())) constantInput.push(getValue(arg()));
+                    else pushInput(constantInput, arg(), true);
                 }
                 constantInput = removeEmptyValues(constantInput);
             }
@@ -226,13 +232,7 @@ function compileFunc(node) {
                                 continue;
                             }
                             let v = arg.constant ? arg() : arg(env, e);
-                            // composed arguments are already one value: never re-split
-                            if (!arg.cluster && !arg.composed
-                                && (typeof v === 'number' || typeof v === 'string')) {
-                                input.push(...parseValueGroup(v, NO_SPACE));
-                            } else if (!isNil(v)) {
-                                input.push(getValue(v));
-                            }
+                            pushInput(input, v, arg.cluster || arg.composed);
                         }
                         input = removeEmptyValues(input);
                     }
@@ -347,23 +347,16 @@ function evalTemplateHoles({ holes, names, signSensitive }, env, extra) {
     return { context, values };
 }
 
-function spliceTemplate({ segments }, values) {
-    let joined = segments[0];
-    for (let i = 0; i < values.length; i++) {
-        joined += values[i] + segments[i + 1];
-    }
-    return joined;
-}
-
-function spliceTemplateInput(calcTemplate, values) {
-    let input;
-    if (calcTemplate.singlePart) {
-        let v = values[0];
-        input = (typeof v === 'number' || typeof v === 'string')
-            ? parseValueGroup(v, NO_SPACE)
-            : (isNil(v) ? [] : [getValue(v)]);
+function spliceTemplateInput({ segments, singlePart }, values) {
+    let input = [];
+    if (singlePart) {
+        pushInput(input, values[0], false);
     } else {
-        input = [spliceTemplate(calcTemplate, values)];
+        let joined = segments[0];
+        for (let i = 0; i < values.length; i++) {
+            joined += values[i] + segments[i + 1];
+        }
+        input.push(joined);
     }
     return removeEmptyValues(input);
 }
@@ -558,7 +551,7 @@ class Rules {
 
     composeComposable(fname, node, coords, selector, property) {
         let value = node.arguments.map(a => getValue(a.values[0])).join(',');
-        if (!isNil(value) && value !== '') {
+        if (value) {
             switch (fname) {
                 case 'doodle':
                     return this.composeDoodle(
@@ -587,44 +580,31 @@ class Rules {
         return '${' + id + '}';
     }
 
-    getTarget(selector, property, cellSelector) {
-        let target = { selector: cellSelector, type: 'background' };
-        if (isSpecialSelector(selector)) {
-            target.selector = selector;
-        } else if (property === '@content') {
-            target.type = 'content';
-        } else if (property === '@grid') {
-            target.selector = ':host';
-        }
-        return target;
-    }
-
     composePaint(fname, source, { x, y, z }, arg, selector, property) {
         // the renderer reads `shader` for shaders and `code` for patterns
         let isShader = fname === 'shaders';
         let id = this.nextId(isShader ? 'shader' : 'pattern');
-        let cellSelector = cellId(x, y, z);
+        let cell = cellId(x, y, z);
+        let special = isSpecialSelector(selector);
         this[isShader ? 'shaders' : 'pattern'][id] = {
             [isShader ? 'shader' : 'code']: source,
-            target: this.getTarget(selector, property, cellSelector),
+            target: {
+                selector: special ? selector : (property === '@grid') ? ':host' : cell,
+                type: (!special && property === '@content') ? 'content' : 'background',
+            },
             arg,
             id: '--' + id,
-            cell: cellSelector
+            cell,
         };
         return '${' + id + '}';
     }
 
     injectVariables(value, count) {
-        let group = this.scopedVars(count);
-        let variables = [];
-        for (let [name, key] of Object.entries(group)) {
-            variables.push(`${name}: ${key};`);
+        let variables = '';
+        for (let [name, key] of Object.entries(this.scopedVars(count))) {
+            variables += `${name}: ${key};`;
         }
-        variables = variables.join('');
-        if (variables.length) {
-            return `:doodle {${variables}}` + value;
-        }
-        return value;
+        return variables ? `:doodle {${variables}}` + value : value;
     }
 
     composeVariables(variables, coords, result = {}) {
@@ -750,7 +730,8 @@ class Rules {
         if (flags.at) {
             let name = flags.at;
             let transformed = Property[name](value, {
-                isSpecialSelector: isSpecialSelector(selector),
+                // the grid always styles the host
+                isSpecialSelector: name === 'grid' || isSpecialSelector(selector),
                 grid: coords.grid,
                 maxGrid: coords.maxGrid,
                 extra
@@ -758,20 +739,13 @@ class Rules {
 
             switch (name) {
                 case 'grid': {
+                    rule = '';
                     if (isHostSelector(selector)) {
                         rule = transformed.size || '';
                         this.addGridStyle(transformed);
-                    } else {
-                        rule = '';
-                        if (!this.isGridSet) {
-                            transformed = Property[name](value, {
-                                isSpecialSelector: true,
-                                grid: coords.grid,
-                                maxGrid: coords.maxGrid
-                            });
-                            this.addRule(':host', transformed.size || '');
-                            this.addGridStyle(transformed);
-                        }
+                    } else if (!this.isGridSet) {
+                        this.addRule(':host', transformed.size || '');
+                        this.addGridStyle(transformed);
                     }
                     this.grid = coords.grid;
                     this.isGridSet = true;
@@ -801,10 +775,6 @@ class Rules {
                             doodles: this.doodles
                         }
                     })(this.content[key] || '');
-                    break;
-                }
-                case 'seed': {
-                    rule = '';
                     break;
                 }
                 case 'place-cell':
@@ -842,10 +812,7 @@ class Rules {
         if (isHostSelector(selector)) {
             key = 'host';
         }
-        if (!this.vars[key]) {
-            this.vars[key] = {};
-        }
-        this.vars[key][prop] = value;
+        (this.vars[key] ??= {})[prop] = value;
     }
 
     preComposeRule(token, coords, selector) {
@@ -867,41 +834,27 @@ class Rules {
         }
     }
 
+    // the top-level rules and the host block: the seed first, so the
+    // rest composes from the seeded stream
     preCompose(coords) {
-        if (isNil(this.seed)) {
-            // get seed first
-            for (let token of this.tokens) {
-                if (token.type === 'rule' && token.property === '@seed') {
-                    this.seed = token.rawValue();
-                }
-                if (token.type === 'pseudo' && isHostSelector(token.selectors[0])) {
-                    for (let t of token.styles) {
-                        if (t.type === 'rule' && t.property === '@seed') {
-                            this.seed = t.rawValue();
-                        }
-                    }
+        let rules = [];
+        for (let token of this.tokens) {
+            if (token.type === 'rule') {
+                rules.push([token]);
+            } else if (token.type === 'pseudo' && isHostSelector(token.selectors[0])) {
+                for (let t of token.styles) {
+                    if (t.type === 'rule') rules.push([t, token.selectors[0]]);
                 }
             }
+        }
+        for (let [token] of rules) {
+            if (token.property === '@seed') this.seed = token.rawValue();
         }
         if (this.seed) {
             coords.updateRandom(this.seed);
         }
-        for (let token of this.tokens) {
-            switch (token.type) {
-                case 'rule': {
-                    this.preComposeRule(token, coords)
-                    break;
-                }
-                case 'pseudo': {
-                    let [selector] = token.selectors;
-                    if (isHostSelector(selector)) {
-                        for (let style of token.styles) {
-                            this.preComposeRule(style, coords, selector);
-                        }
-                    }
-                    break;
-                }
-            }
+        for (let [token, selector] of rules) {
+            this.preComposeRule(token, coords, selector);
         }
     }
 
@@ -984,12 +937,7 @@ class Rules {
         let input = [];
         if (args.length) {
             for (let arg of args) {
-                let v = this.composeArgument(arg, coords);
-                if (typeof v === 'number' || typeof v === 'string') {
-                    input.push(...parseValueGroup(v, NO_SPACE));
-                } else if (!isNil(v)) {
-                    input.push(getValue(v));
-                }
+                pushInput(input, this.composeArgument(arg, coords), false);
             }
             input = removeEmptyValues(input);
         }
@@ -1241,36 +1189,22 @@ class Rules {
 
 }
 
-function removeQuotes(input) {
-    let remove = (input.startsWith('"') && input.endsWith('"'))
-        || (input.startsWith("'") && input.endsWith("'"));
-    if (remove) {
-        return input.substring(1, input.length - 1);
-    }
-    return input;
-}
-
 export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '') {
     let rules = new Rules(tokens, instance);
-    let context = {};
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
+    let seed;
 
-    rules.preCompose({
-        x: 1, y: 1, z: 1, count: 1, context: {}, extra: [],
-        grid: { x: 1, y: 1, z: 1, count: 1 },
-        random: R.random, rand, pick, shuffle,
-        maxGrid, updateRandom,
-        seedValue,
-        rules,
-        upextra,
+    let coordsAt = (x, y, z, count, grid, context) => ({
+        x, y, z, count, grid, context, extra: [],
+        rand, pick, shuffle, random: R.random, seed,
+        maxGrid, updateRandom, upextra, rules,
     });
 
-    let { grid, seed } = rules;
+    rules.preCompose(coordsAt(1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }, {}));
 
-    if (grid) {
-        gridSize = grid;
-    }
+    gridSize = rules.grid || gridSize;
+    seed = rules.seed;
 
     if (seed) {
         updateRandom(seed);
@@ -1289,16 +1223,9 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     rules.reset();
 
     let count = 0;
+    let context = {};
     function composeCell(x, y, z) {
-        rules.compose({
-            x, y, z,
-            count: ++count, grid: gridSize, context, extra: [],
-            rand, pick, shuffle,
-            random: R.random, seed,
-            maxGrid,
-            upextra,
-            rules,
-        });
+        rules.compose(coordsAt(x, y, z, ++count, gridSize, context));
     }
 
     if (gridSize.z == 1) {

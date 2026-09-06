@@ -1,5 +1,5 @@
 import { nextId } from '../utils/fn.js';
-import { isNil } from '../utils/type.js';
+import { isNil, removeQuotes } from '../utils/type.js';
 import { NS, NSXLink, adjustName } from '../utils/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
@@ -101,16 +101,6 @@ function escapeAttr(text) {
     text = String(text);
     if (text.indexOf('&') < 0 && text.indexOf('<') < 0 && text.indexOf('"') < 0) return text;
     return text.replace(RE_AMP, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-}
-
-function removeQuotes(text) {
-    text = String(text);
-    let double = text.startsWith('"') && text.endsWith('"');
-    let single = text.startsWith("'") && text.endsWith("'");
-    if (double || single) {
-        return text.substring(1, text.length - 1);
-    }
-    return text;
 }
 
 function transformViewBox(token, warn) {
