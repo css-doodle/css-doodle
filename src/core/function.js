@@ -270,27 +270,61 @@ function createPick(name, fn, random = false, upstream = false) {
     };
 }
 
-function transformPath(tr) {
-    return commands => {
-        let parsed = parseSvgPath(commands);
-        if (!parsed.valid) return commands;
-        return parsed.commands.map(({ name, value }) => {
-            let [n, v] = tr(name, value);
-            return n + v.join(' ');
+const INVERT_COMMAND = { v: 'h', V: 'H', h: 'v', H: 'V' };
+
+function transformPath(xx, xy, yx, yy) {
+    let swap = xx === 0;
+    // a reflection reverses the turning direction of the arcs
+    let reflect = xx * yy - xy * yx < 0;
+    return (...args) => {
+        let input = args.join(',');
+        let { valid, commands } = parseSvgPath(input);
+        if (!valid || !commands.length) return input;
+        // a leading relative moveto is absolute as well
+        let first = commands[0];
+        let [ox = 0, oy = 0] = /^m$/i.test(first.name) ? first.value : [];
+        let point = (x, y, abs) => {
+            let dx = abs ? x - ox : x;
+            let dy = abs ? y - oy : y;
+            let px = xx * dx + xy * dy;
+            let py = yx * dx + yy * dy;
+            if (abs) { px += ox; py += oy; }
+            return [tidyNumber(px), tidyNumber(py)];
+        };
+        return commands.map(({ name, value, type }, i) => {
+            let abs = type === 'absolute';
+            let lower = name.toLowerCase();
+            let out = [];
+            if (lower === 'h' || lower === 'v') {
+                // one coordinate, which lands on the other axis under a swap
+                let isH = lower === 'h';
+                for (let n of value) {
+                    let [px, py] = isH ? point(n, abs ? oy : 0, abs) : point(abs ? ox : 0, n, abs);
+                    out.push(isH === swap ? py : px);
+                }
+                if (swap) name = INVERT_COMMAND[name];
+            } else if (lower === 'a') {
+                for (let j = 0; j < value.length; j += 7) {
+                    let [rx, ry, rot, large, sweep, x, y] = value.slice(j, j + 7);
+                    out.push(
+                        swap ? ry : rx, swap ? rx : ry, reflect ? -rot : rot,
+                        large, reflect ? 1 - sweep : sweep, ...point(x, y, abs)
+                    );
+                }
+            } else {
+                for (let j = 0; j < value.length; j += 2) {
+                    out.push(...point(value[j], value[j + 1], abs || (i === 0 && j === 0)));
+                }
+            }
+            return name + out.join(' ');
         }).join(' ');
     };
 }
 
-const INVERT_COMMAND = { v: 'h', V: 'H', h: 'v', H: 'V' };
-
-const invertPath = transformPath((name, value) =>
-    [INVERT_COMMAND[name] || name, value]);
-
-const flipH_path = transformPath((name, value) =>
-    (name === 'h' || name === 'H') ? [name, value.map(n => -n)] : [name, value]);
-
-const flipV_path = transformPath((name, value) =>
-    (name === 'v' || name === 'V') ? [name, value.map(n => -n)] : [name, value]);
+const flipH_path = transformPath(-1, 0, 0, 1);
+const flipV_path = transformPath(1, 0, 0, -1);
+const flip_path = transformPath(-1, 0, 0, -1);
+const invertPath = transformPath(0, 1, 1, 0);
 
 function tryDecode(raw, decode) {
     let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
@@ -675,22 +709,17 @@ Function.flipV = () => {
 };
 
 Function.flip = () => {
-    return commands => flipV_path(flipH_path(commands));
+    return flip_path;
 };
 
 Function.reverse = () => {
     return (...args) => {
-        let commands = args.map(getValue);
-        let parsed = parseSvgPath(commands.join(','));
-        if (parsed.valid) {
-            let result = [];
-            for (let i = parsed.commands.length - 1; i >= 0; --i) {
-                let { name, value } = parsed.commands[i];
-                result.push(name + value.join(' '));
-            }
-            return result.join(' ');
-        }
-        return commands.reverse();
+        let { valid, commands } = parseSvgPath(args.join(','));
+        if (!valid) return args.reverse();
+        let list = commands.map(({ name, value }) => name + value.join(' '));
+        let head = /^m/i.test(list[0]) ? list.shift() : '';
+        let tail = /^z$/i.test(list[list.length - 1]) ? list.pop() : '';
+        return [head, ...list.reverse(), tail].filter(Boolean).join(' ');
     }
 };
 

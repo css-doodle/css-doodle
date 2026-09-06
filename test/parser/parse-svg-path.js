@@ -5,10 +5,6 @@ import parseSvgPath from '../../src/parser/parse-svg-path.js';
 
 test('commands with their numbers, case gives the type', () => {
     assert.deepEqual(parseSvgPath(''), { valid: true, commands: [] });
-    assert.deepEqual(parseSvgPath('M'), {
-        valid: true,
-        commands: [{ name: 'M', type: 'absolute', value: [] }],
-    });
     assert.deepEqual(parseSvgPath('M 0 0 m 0 0'), {
         valid: true,
         commands: [
@@ -53,4 +49,22 @@ test('unknown commands and leading numbers make the path invalid', () => {
         valid: false,
         commands: [{ name: 'l', type: 'relative', value: [-100, 0] }],
     });
+    // a command letter is a single character
+    assert.equal(parseSvgPath('Mm 0 0 h 5').valid, false);
+});
+
+test('each command takes whole groups of numbers', () => {
+    const valid = input => parseSvgPath(input).valid;
+    assert.equal(valid('M 0 0 c 1 2 3 4 5 6 s 7 8 9 10 q 1 2 3 4 t 5 6 z'), true);
+    assert.equal(valid('M 0 0 a 5 5 0 0 1 10 0 A 5 5 0 1 0 0 0'), true);
+    assert.equal(valid('M 0 0 L 1 1 2 2 3 3'), true);
+    // a bare command, a half pair, a unit, something after z
+    assert.equal(valid('M'), false);
+    assert.equal(valid('M 0 0 l 5'), false);
+    assert.equal(valid('M 5% 3'), false);
+    assert.equal(valid('M 0 0 z 1'), false);
+    // arc flags glued together read as one number
+    assert.equal(valid('M 0 0 a5 5 0 0110 0'), false);
+    // command letters on their own are not a path
+    assert.equal(valid('a, c, s'), false);
 });

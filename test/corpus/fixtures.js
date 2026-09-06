@@ -67,6 +67,7 @@ export default [
     { name: 'func-once', code: `--o: @once(@i);` },
     { name: 'func-path-invert', code: `--p: @invert(M 0 0 L 5 5 v 2 h 3);` },
     { name: 'func-path-flip', code: `--a: @flipH(M 0 0 h 5 v 5); --b: @flipV(M 0 0 h 5 v 5); --c: @flip(M 0 0 h 5 v 5); --d: @reverse(M 0 0 h 5 v 5);` },
+    { name: 'func-path-curve', code: `--a: @flipH(M 0,0 c 5,-5 10,5 15,0 a 5 3 30 0 1 10 0 z); --b: @invert(@m2(h @n v @n)); --c: @reverse(M 1 1 @m2(h @n v @n) z);` },
     { name: 'func-last-pick', code: `background: @p(red, blue); border-color: @lp;` },
     { name: 'func-last-rand', code: `--r: @r(10); --l: @lr;` },
     { name: 'func-pick-by-turn', code: `--a: @m5(@pl(x, y, z)); --b: @m5(@pr(x, y, z)); --c: @m5(@pd(x, y, z));` },
