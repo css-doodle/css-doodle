@@ -71,7 +71,7 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
 }
 
 const TIME_UNITS = { ms: .001, s: 1, min: 60, h: 3600 };
-const PAUSED_RULE = '*{animation-play-state:paused!important}';
+const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
 // SMIL or css animations inside an encoded svg image
 const RE_IMAGE_CLOCK = /%3Canimate|animation(-delay)?%3A/;
 const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/;

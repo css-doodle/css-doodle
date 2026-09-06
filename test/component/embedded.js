@@ -71,7 +71,7 @@ test('css animations inside an svg image are shifted and frozen', () => {
     let out = decode(stampSvgImages(host(1.6, false), url(svg)));
     assert.equal(out, '<svg><style>@keyframes r{to{fill:red}}rect{animation:r 10s -1600ms linear}</style><rect style="animation:r 10s -600ms"/></svg>');
     out = decode(stampSvgImages(host(1.6, true), url(svg)));
-    assert.equal(out, '<svg><style>@keyframes r{to{fill:red}}rect{animation:r 10s -1600ms linear}</style><rect style="animation:r 10s -600ms"/><style>*{animation-play-state:paused!important}</style></svg>');
+    assert.equal(out, '<svg><style>@keyframes r{to{fill:red}}rect{animation:r 10s -1600ms linear}</style><rect style="animation:r 10s -600ms"/><style>*,*::before,*::after{animation-play-state:paused!important}</style></svg>');
 });
 
 test('the fragment of a filter url survives', () => {

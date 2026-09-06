@@ -21,7 +21,11 @@ export function getBasicStyles(grid) {
         display: none
     }
     :host([cssd-paused]),
-    :host([cssd-paused]) * {
+    :host([cssd-paused])::before,
+    :host([cssd-paused])::after,
+    :host([cssd-paused]) *,
+    :host([cssd-paused]) *::before,
+    :host([cssd-paused]) *::after {
         animation-play-state: paused !important
     }
     grid, cell {
