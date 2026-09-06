@@ -7,12 +7,12 @@ import generatePattern from '../generator/pattern.js';
 import generatePng from '../generator/svg-to-png.js';
 
 import createAnimation from './animation.js';
-import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
+import { NS, NSXHtml, FilterHolderStyle } from '../lib/svg.js';
 import { utime, UTime } from '../core/uniforms.js';
-import { cacheImage, isSafari } from '../utils/browser.js';
-import { debounce } from '../utils/fn.js';
-import { RE_PLACEHOLDER } from '../utils/placeholder.js';
-import { css } from '../utils/tagged-template.js';
+import { cacheImage, isSafari } from '../lib/browser.js';
+import { debounce } from '../lib/fn.js';
+import { RE_PLACEHOLDER } from '../lib/placeholder.js';
+import { css } from '../lib/tagged-template.js';
 import { loadGoogleFontEmbed } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';

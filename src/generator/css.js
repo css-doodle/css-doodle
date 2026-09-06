@@ -9,15 +9,15 @@ import createRandom from '../core/random.js';
 import { utime, UTime, timePrefix } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
-import { cellId } from '../utils/cell.js';
-import { placeholder, hasPlaceholder, placeholderId } from '../utils/placeholder.js';
-import { tidyNumber } from '../utils/math.js';
-import { isNil, getValue, removeQuotes } from '../utils/type.js';
-import { join, last, removeEmptyValues } from '../utils/list.js';
-import { nextId } from '../utils/fn.js';
+import { cellId } from '../lib/cell.js';
+import { placeholder, hasPlaceholder, placeholderId } from '../lib/placeholder.js';
+import { tidyNumber } from '../lib/math.js';
+import { isNil, getValue, removeQuotes } from '../lib/type.js';
+import { join, last, removeEmptyValues } from '../lib/list.js';
+import { nextId } from '../lib/fn.js';
 import {
     isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector, isGroupAtRule
-} from '../utils/selector.js';
+} from '../lib/selector.js';
 
 
 function isImageValue(value) {

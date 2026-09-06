@@ -4,10 +4,10 @@ import generateShape from '../generator/shapes.js';
 
 import { isPreset, getPreset } from './preset-size.js';
 
-import { addAlias } from '../utils/fn.js';
-import { isEmpty } from '../utils/type.js';
-import { memo } from '../utils/cache.js';
-import { css } from '../utils/tagged-template.js';
+import { addAlias } from '../lib/fn.js';
+import { isEmpty } from '../lib/type.js';
+import { memo } from '../lib/cache.js';
+import { css } from '../lib/tagged-template.js';
 
 const iw = '--_cell-width';
 const ih = '--_cell-height';

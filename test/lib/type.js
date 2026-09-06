@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getValue } from '../../src/utils/type.js';
+import { getValue } from '../../src/lib/type.js';
 
 test('getValue handles nil and reads one level of `value`', () => {
     // typeof null is 'object': the `'value' in v` check used to throw

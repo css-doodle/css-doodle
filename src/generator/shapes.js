@@ -3,10 +3,10 @@ import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands from '../parser/parse-shape-commands.js';
 
-import { clamp, tidyNumber } from '../utils/math.js';
-import { isEmpty } from '../utils/type.js';
+import { clamp, tidyNumber } from '../lib/math.js';
+import { isEmpty } from '../lib/type.js';
 import calc from '../core/calc.js';
-import { css } from '../utils/tagged-template.js';
+import { css } from '../lib/tagged-template.js';
 
 const { cos, sin, abs, atan2, PI } = Math;
 

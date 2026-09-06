@@ -1,5 +1,5 @@
-import { hash } from '../utils/math.js';
-import { glsl } from '../utils/tagged-template.js';
+import { hash } from '../lib/math.js';
+import { glsl } from '../lib/tagged-template.js';
 
 const DEFAULT_VERTEX_SHADER = glsl`#version 300 es
     in vec4 position;

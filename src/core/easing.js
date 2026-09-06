@@ -1,5 +1,5 @@
 import calc from './calc.js';
-import { memo } from '../utils/cache.js';
+import { memo } from '../lib/cache.js';
 
 const EPSILON = 1e-6;
 const MAX_NEWTON = 8;

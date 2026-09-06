@@ -1,4 +1,4 @@
-import { css } from '../utils/tagged-template.js';
+import { css } from '../lib/tagged-template.js';
 
 /**
  * Map the transformed @grid options to static [selector, rule] pairs.

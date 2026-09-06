@@ -1,6 +1,6 @@
-import { nextId } from '../utils/fn.js';
-import { isNil, removeQuotes } from '../utils/type.js';
-import { NS, NSXLink, adjustName, isDefinitionTag } from '../utils/svg.js';
+import { nextId } from '../lib/fn.js';
+import { isNil, removeQuotes } from '../lib/type.js';
+import { NS, NSXLink, adjustName, isDefinitionTag } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
 const nextInlineId = nextId();

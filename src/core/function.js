@@ -11,20 +11,20 @@ import generateSvgGradient from '../generator/svg-gradient.js';
 
 import Noise from '../lib/noise.js';
 import calc from './calc.js';
-import { memo } from '../utils/cache.js';
+import { memo } from '../lib/cache.js';
 
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
-import { createSvgUrl, normalizeSvg } from '../utils/svg.js';
+import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
 import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
-import { cellMetrics } from '../utils/cell.js';
-import { isLetter, isNil, isEmpty, getValue } from '../utils/type.js';
-import { addAlias, lazy } from '../utils/fn.js';
-import { placeholderId } from '../utils/placeholder.js';
-import { lerp, clamp, tidyNumber } from '../utils/math.js';
-import { last } from '../utils/list.js';
+import { cellMetrics } from '../lib/cell.js';
+import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
+import { addAlias, lazy } from '../lib/fn.js';
+import { placeholderId } from '../lib/placeholder.js';
+import { lerp, clamp, tidyNumber } from '../lib/math.js';
+import { last } from '../lib/list.js';
 import { getEasingFunction } from './easing.js';
-import { css } from '../utils/tagged-template.js';
+import { css } from '../lib/tagged-template.js';
 
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
 const RE_OP_SUFFIX = /[\+\*\-\/%]$/;

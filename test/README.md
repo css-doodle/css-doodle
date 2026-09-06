@@ -1,7 +1,7 @@
 # Tests
 
 `npm test` runs every file under `core/`, `parser/`, `generator/`,
-`component/`, `utils/` and `fuzz/` with `node:test`; `npm run test:dev`
+`component/`, `lib/` and `fuzz/` with `node:test`; `npm run test:dev`
 prints the full spec output. A single file runs with
 `node --test test/parser/parse-css.js`.
 

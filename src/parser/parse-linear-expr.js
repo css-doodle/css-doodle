@@ -1,5 +1,5 @@
 import { scan, iterator } from './tokenizer.js';
-import { memo } from '../utils/cache.js';
+import { memo } from '../lib/cache.js';
 
 /**
  * an +/- b

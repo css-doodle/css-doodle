@@ -1,4 +1,4 @@
-import { isEmpty } from '../utils/type.js';
+import { isEmpty } from '../lib/type.js';
 import { scan } from './tokenizer.js';
 
 function parse(input, option = {}) {

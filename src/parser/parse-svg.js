@@ -1,7 +1,7 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
 import { parseBody, readRaw } from './parse-body.js';
-import { adjustName, isSpecialNamespaceAttr } from '../utils/svg.js';
+import { adjustName, isSpecialNamespaceAttr } from '../lib/svg.js';
 
 // the ';' of `&amp;` or `&#x27;` belongs to the value, not the statement
 const RE_ENTITY_TAIL = /&(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos)$/;

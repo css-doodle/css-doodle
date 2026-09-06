@@ -1,6 +1,6 @@
 import { utime, UTime } from '../core/uniforms.js';
-import { cellId } from '../utils/cell.js';
-import { css } from '../utils/tagged-template.js';
+import { cellId } from '../lib/cell.js';
+import { css } from '../lib/tagged-template.js';
 
 export function getBasicStyles(grid) {
     let { x, y } = grid || {};

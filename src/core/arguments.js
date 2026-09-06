@@ -1,8 +1,8 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
-import { memo } from '../utils/cache.js';
-import { isInvalidNumber } from '../utils/type.js';
-import { clamp, tidyNumber } from '../utils/math.js';
+import { memo } from '../lib/cache.js';
+import { isInvalidNumber } from '../lib/type.js';
+import { clamp, tidyNumber } from '../lib/math.js';
 
 export function sequence(count, fn) {
     let [x, y = 1] = String(count).split(/[x-]/);

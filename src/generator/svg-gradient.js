@@ -1,6 +1,6 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
-import { getValue } from '../utils/type.js';
+import { getValue } from '../lib/type.js';
 
 export default function createSvgGradient(type, args) {
     let values = args.map(input => getValue(input()));

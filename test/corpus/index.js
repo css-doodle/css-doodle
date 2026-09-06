@@ -11,7 +11,7 @@ export { fixtures };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// src/utils unEntity needs a DOM; decode the entities that appear in
+// src/lib unEntity needs a DOM; decode the entities that appear in
 // doodle sources by hand
 function unEntity(code) {
     return code

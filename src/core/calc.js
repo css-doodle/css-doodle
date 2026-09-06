@@ -1,5 +1,5 @@
-import { isInvalidNumber } from '../utils/type.js';
-import { last } from '../utils/list.js';
+import { isInvalidNumber } from '../lib/type.js';
+import { last } from '../lib/list.js';
 import { scan } from '../parser/tokenizer.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 

@@ -4,11 +4,11 @@ import generateCss from '../generator/css.js';
 import generatePng from '../generator/svg-to-png.js';
 
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
-import { NS, NSXHtml, FilterHolderStyle } from '../utils/svg.js';
-import { isNil } from '../utils/type.js';
-import { uniqueId } from '../utils/fn.js';
-import { isSafari } from '../utils/browser.js';
-import { css } from '../utils/tagged-template.js';
+import { NS, NSXHtml, FilterHolderStyle } from '../lib/svg.js';
+import { isNil } from '../lib/type.js';
+import { uniqueId } from '../lib/fn.js';
+import { isSafari } from '../lib/browser.js';
+import { css } from '../lib/tagged-template.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';

@@ -1,6 +1,6 @@
 import { scan, iterator, textOf, Token } from './tokenizer.js';
 import { readRaw } from './parse-body.js';
-import { isEmpty } from '../utils/type.js';
+import { isEmpty } from '../lib/type.js';
 
 // shaders-body = { section } | fragment-source
 // section      = ( 'fragment' | 'vertex' | 'texture' /\w*/ ) '{' raw '}'

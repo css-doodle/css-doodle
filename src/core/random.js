@@ -1,5 +1,5 @@
 import seedrandom from '../lib/seedrandom.js';
-import { lerp } from '../utils/math.js';
+import { lerp } from '../lib/math.js';
 
 export default function createRandom(seed) {
     let random = (typeof seed === 'function') ? seed : seedrandom(String(seed));

@@ -29,7 +29,7 @@ import { scan, Token } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
 import svgSourceOf from './svg-source.js';
-import { isSpecialSelector } from '../utils/selector.js';
+import { isSpecialSelector } from '../lib/selector.js';
 
 const PI = String(Math.PI);
 const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;

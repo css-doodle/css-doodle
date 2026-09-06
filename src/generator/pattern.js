@@ -2,7 +2,7 @@ import parsePattern from '../parser/parse-pattern.js';
 import parseGrid from '../parser/parse-grid.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import transform from './glsl-math-transformer.js';
-import { glsl } from '../utils/tagged-template.js';
+import { glsl } from '../lib/tagged-template.js';
 
 const CELL_INDEX = glsl`
     float dx = x - (v.x + 1.0) * 0.5;
