@@ -70,6 +70,23 @@ test('prototype names stay inert', () => {
     assert.equal(calc('__proto__'), 0);
 });
 
+test('names resolve through context, built-ins, then Math', () => {
+    assert.equal(calc('PI'), Math.PI);
+    assert.equal(calc('PI', { PI: 7 }), 7);
+    assert.equal(calc('gcd(12, 8)', { x: 1 }), 4);
+    assert.equal(calc('gcd(12, 8)', { gcd: (a, b) => a + b }), 20);
+    // a user value shadows a built-in function whatever its truthiness
+    assert.equal(calc('abs(-1)', { abs: 0 }), 0);
+    assert.equal(calc('abs(-1)', { abs: 5 }), 0);
+    // prototype names stay inert with a user context too
+    assert.equal(calc('constructor(8)', { x: 1 }), 0);
+    assert.equal(calc('toString', { x: 1 }), 0);
+    // "-name" reads as -1 * name for Math constants as well
+    assert.equal(calc('-PI'), -Math.PI);
+    assert.equal(calc('2PI'), 2 * Math.PI);
+    assert.equal(calc('-x', { x: 3 }), -3);
+});
+
 test('exponentiation is right-associative', () => {
     assert.equal(calc('2 ^ 3'), 8);
     assert.equal(calc('2 ^ 0'), 1);

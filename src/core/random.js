@@ -8,9 +8,10 @@ export default function createRandom(seed) {
         random = seedrandom(String(seed));
     }
 
-    function rand(start = 0, end = 1) {
-        if (arguments.length == 1) {
-            [start, end] = [0, start];
+    // rand() → [0, 1), rand(n) → [0, n), rand(a, b) → [a, b)
+    function rand(start, end) {
+        if (end === undefined) {
+            [start, end] = [0, start ?? 1];
         }
         return lerp(random(), start, end);
     }

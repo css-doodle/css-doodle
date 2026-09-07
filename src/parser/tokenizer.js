@@ -58,18 +58,15 @@ class Token {
             this.status = status;
         }
     }
-    isSymbol(values) {
-        let n = arguments.length;
-        if (n == 0) {
+    isSymbol(...values) {
+        if (!values.length) {
             return this.type == 'Symbol';
         }
-        if (n > 1) {
-            for (let i = 0; i < n; ++i) {
-                if (arguments[i] === this.value) return true;
-            }
-            return false;
+        if (values.length === 1) {
+            let v = values[0];
+            return Array.isArray(v) ? v.includes(this.value) : v === this.value;
         }
-        return Array.isArray(values) ? values.includes(this.value) : values === this.value;
+        return values.includes(this.value);
     }
     isSpace() {
         return this.type == 'Space';

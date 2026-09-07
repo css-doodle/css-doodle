@@ -1,5 +1,5 @@
 import Func, { MathFunc } from '../core/function.js';
-import calc, { deref, compileTemplate, toPlainNumber, isSignLeading } from '../core/calc.js';
+import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading } from '../core/calc.js';
 import Property from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
@@ -335,7 +335,7 @@ function evalTemplateHoles({ holes, names, signSensitive }, frame, extra) {
         values[i] = holes[i](frame, extra);
     }
     frame.env.extra.pop();
-    let context = {};
+    let context = Object.create(defaultContext);
     for (let i = 0; i < n; i++) {
         let num = toPlainNumber(values[i]);
         if (num === null || (signSensitive[i] && isSignLeading(values[i]))) {
@@ -462,7 +462,7 @@ class Rules {
 
     calcContext(count, contextVariable) {
         let group = this.scopedVars(count, contextVariable);
-        let context = {};
+        let context = Object.create(defaultContext);
         for (let [name, key] of Object.entries(group)) {
             context[name.slice(2)] = key;
         }

@@ -1,4 +1,4 @@
-import calc from './calc.js';
+import calc, { defaultContext } from './calc.js';
 import parseLinearExpr from '../parser/parse-linear-expr.js';
 import { addAlias } from '../lib/fn.js';
 import { cellMetrics } from '../lib/cell.js';
@@ -58,6 +58,7 @@ function compare(rule, value, x, y) {
 // the variable scope for arithmetic selector expressions
 function calcContext({ x, y, count, grid, random }) {
     return {
+        __proto__: defaultContext,
         x, X: grid.x,
         y, Y: grid.y,
         i: count, I: grid.count,

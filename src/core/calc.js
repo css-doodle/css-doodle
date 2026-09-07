@@ -3,8 +3,13 @@ import { last } from '../lib/list.js';
 import { scan } from '../parser/tokenizer.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 
-const defaultContext = {
-    __proto__: null,
+const MATH = Object.create(null);
+for (let name of Object.getOwnPropertyNames(Math)) {
+    MATH[name] = Math[name];
+}
+
+export const defaultContext = {
+    __proto__: MATH,
 
     'π': Math.PI,
     gcd(a, b) {
@@ -79,10 +84,6 @@ function tk(type, value) {
 
 function isOperator(value) {
     return value in operators;
-}
-
-function own(obj, name) {
-    return Object.prototype.hasOwnProperty.call(obj, name) ? obj[name] : undefined;
 }
 
 // Push a value token, resolving adjacency with the previous token:
@@ -319,17 +320,9 @@ function parseFunctionArgs(tokens, startIndex) {
     return { args, endIndex: i };
 }
 
-// User context first, then built-ins; replaces per-call context merging
-function lookupFunction(name, ctx) {
-    return own(ctx, name) || defaultContext[name] || own(Math, name);
-}
-
 function readDimension(value, ctx) {
     const { value: num, unit } = parseCompoundValue(String(value));
-    if (!isInvalidNumber(num) && unit !== undefined
-            && own(ctx, unit) === undefined
-            && defaultContext[unit] === undefined
-            && own(Math, unit) === undefined) {
+    if (!isInvalidNumber(num) && unit !== undefined && ctx[unit] === undefined) {
         return num;
     }
 }
@@ -354,21 +347,12 @@ function evaluateValue(value, ctx, history) {
 
 function compileVariable(name) {
     return (ctx, history) => {
-        let result = own(ctx, name);
-
-        if (isInvalidNumber(result)) {
-            result = defaultContext[name];
-        }
-        if (isInvalidNumber(result)) {
-            result = own(Math, name);
-        }
+        let result = ctx[name];
         if (isInvalidNumber(result)) {
             result = expand(name, ctx, history);
         }
-        if (isInvalidNumber(result)) {
-            if (RE_NEGATIVE_VAR.test(name)) {
-                result = expand('-1' + name.slice(1), ctx, history);
-            }
+        if (isInvalidNumber(result) && RE_NEGATIVE_VAR.test(name)) {
+            result = expand('-1' + name.slice(1), ctx, history);
         }
         if (result === undefined) {
             history.misses = (history.misses || 0) + 1;
@@ -407,7 +391,7 @@ function compileFunction(node) {
     if (chain.length === 1 && name === 'match' && argFns.length >= 2) {
         const [c, a, b] = argFns;
         return (ctx, history) => {
-            const fn = lookupFunction(name, ctx);
+            const fn = ctx[name];
             let output;
             if (fn === defaultContext.match) {
                 output = c(ctx, history) ? a(ctx, history) : b && b(ctx, history);
@@ -425,7 +409,7 @@ function compileFunction(node) {
     if (chain.length === 1 && argFns.length === 1) {
         const a = argFns[0];
         return (ctx, history) => {
-            const fn = lookupFunction(name, ctx);
+            const fn = ctx[name];
             if (typeof fn !== 'function') {
                 history.misses = (history.misses || 0) + 1;
                 return 0;
@@ -438,7 +422,7 @@ function compileFunction(node) {
         const a = argFns[0];
         const b = argFns[1];
         return (ctx, history) => {
-            const fn = lookupFunction(name, ctx);
+            const fn = ctx[name];
             if (typeof fn !== 'function') {
                 history.misses = (history.misses || 0) + 1;
                 return 0;
@@ -453,7 +437,7 @@ function compileFunction(node) {
         let output = argFns.map(f => f(ctx, history));
         for (let i = chain.length - 1; i >= 0; i--) {
             if (!chain[i]) break;
-            const fn = lookupFunction(chain[i], ctx);
+            const fn = ctx[chain[i]];
             if (typeof fn !== 'function') {
                 history.misses = (history.misses || 0) + 1;
                 output = 0;
@@ -552,7 +536,7 @@ function compileInput(input, ctx) {
     }
     let key = '';
     for (let { names } of entry.candidates) {
-        key += (names.find(name => own(ctx, name) !== undefined) || '') + ',';
+        key += (names.find(name => ctx[name] !== undefined) || '') + ',';
     }
     let compiled = entry.variants.get(key);
     if (compiled === undefined) {
@@ -576,11 +560,7 @@ function expand(value, context, history) {
     if (!match) return undefined;
 
     const [, num, variable] = match;
-    let v = own(context, variable);
-    if (v === undefined) {
-        v = defaultContext[variable];
-    }
-
+    let v = context[variable];
     if (v === undefined) {
         return v;
     }
@@ -608,12 +588,14 @@ const RE_NAME = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
 export function deref(input, context) {
     let name = String(input).trim();
     if (!RE_NAME.test(name)) return;
-    let value = own(context, name);
+    // only user variables count, not the built-ins behind them
+    const own = key => Object.hasOwn(context, key) ? context[key] : undefined;
+    let value = own(name);
     // Follow single-name chains: --a: b; --b: tomato
     for (let i = 0; typeof value === 'string' && i < 50; i++) {
         let next = value.trim();
         if (!RE_NAME.test(next) || next === name) break;
-        let found = own(context, next);
+        let found = own(next);
         if (found === undefined) break;
         name = next;
         value = found;
@@ -702,6 +684,8 @@ export default function(input, context) {
     if (typeof input === 'number' && Number.isFinite(input)) {
         return input;
     }
-    context = context || {};
+    if (!context || Object.getPrototypeOf(context) !== defaultContext) {
+        context = Object.assign(Object.create(defaultContext), context);
+    }
     return compileInput(input, context)(context, []);
 }

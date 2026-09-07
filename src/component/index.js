@@ -142,14 +142,11 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         attr(name, value) {
-            let len = arguments.length;
-            if (len === 1) {
+            if (value === undefined) {
                 return this.getAttribute(name);
             }
-            if (len === 2) {
-                this.setAttribute(name, value);
-                return value;
-            }
+            this.setAttribute(name, value);
+            return value;
         }
 
         get grid() {
