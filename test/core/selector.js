@@ -51,13 +51,17 @@ test('even and odd follow the checkerboard, not the index', () => {
     assert.equal(selector.odd(cell(3, 1, 3))(), true);
 });
 
-test('match evaluates an expression over the cell variables', () => {
-    let match = selector.match(cell(2, 3, 10), env);
-    assert.equal(match('x = 2'), true);
-    assert.equal(match('y = 3'), true);
-    assert.equal(match('x = 2 && y = 3'), true);
-    assert.equal(match('x == 2 && y == 3'), true);
-    assert.equal(match('x < 3'), true);
+test('cond evaluates an expression over the cell variables', () => {
+    let cond = selector.cond(cell(2, 3, 10), env);
+    assert.equal(cond('x = 2'), true);
+    assert.equal(cond('y = 3'), true);
+    assert.equal(cond('x = 2 && y = 3'), true);
+    assert.equal(cond('x == 2 && y == 3'), true);
+    assert.equal(cond('x < 3'), true);
+});
+
+test('match is an alias of cond', () => {
+    assert.equal(selector.match, selector.cond);
 });
 
 test('cell accepts comma lists, keywords and index checks', () => {

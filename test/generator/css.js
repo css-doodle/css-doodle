@@ -512,8 +512,12 @@ test('a static @shape polygon prints once per selector', () => {
 
 test('a few distinct texts print once each with their cells listed', () => {
     assert.equal(cells('@even { background: blue; }', '2x2'), '#c-2-1-1,#c-1-2-1 {background:blue;}');
-    assert.equal(cells('color: @match(x > 1, red, blue);', '4x1'),
+    assert.equal(cells('color: @cond(x > 1, red, blue);', '4x1'),
         '#c-1-1-1 {color:blue;}#c-2-1-1,#c-3-1-1,#c-4-1-1 {color:red;}');
+    assert.equal(cells('@cond(x > 2) { color: red; }', '4x1'),
+        '#c-3-1-1,#c-4-1-1 {color:red;}');
+    assert.equal(cells('@match(x > 2) { color: red; } color: @match(x > 1, red, blue);', '3x1'),
+        cells('@cond(x > 2) { color: red; } color: @cond(x > 1, red, blue);', '3x1'));
 });
 
 test('per-cell texts keep their blocks in cell order', () => {

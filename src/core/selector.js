@@ -129,7 +129,7 @@ Selector.random = ({ count, x, y, grid }, { random, context }, position) => {
     }
 };
 
-Selector.match = ({ count, grid, x, y }, { random }) => {
+Selector.cond = ({ count, grid, x, y }, { random }) => {
     return expr => {
         return !!calc('(' + expr + ')', calcContext({ x, y, count, grid, random }));
     }
@@ -165,6 +165,7 @@ Selector.cell = ({ count, grid, x, y }, { random, context }, position) => {
 export const alias = {
     col: 'x',
     row: 'y',
+    match: 'cond',
 };
 
 export default addAlias(Selector, alias);

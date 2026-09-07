@@ -168,7 +168,7 @@ only `:doodle` or `:container` is generated once, not once per cell.
 ```css
 @nth(2n + 1)   { background: #000; }
 @random(.3)    { opacity: .5; }
-@match(x > y)  { border-radius: 50%; }
+@cond(x > y)   { border-radius: 50%; }
 @media (hover) { :hover { color: red; } }
 ```
 
@@ -183,7 +183,8 @@ decides how it is treated:
 
 - **Cell selectors** apply their statements to the cells they match:
   `@at(x, y)`, `@nth(an+b)`, `@row(an+b)`, `@col(an+b)`, `@even`,
-  `@odd`, `@random(ratio)`, `@match(expression)` and `@cell(…)`.
+  `@odd`, `@random(ratio)`, `@cond(expression)` and `@cell(…)`.
+  `@match(expression)` is an alias of `@cond(expression)`.
 - **CSS group rules** wrap their statements as CSS does: `@media`,
   `@supports`, `@container`, `@layer`, `@scope`, `@starting-style`
   and `@document`, including vendor-prefixed forms.
@@ -282,9 +283,10 @@ expanded before the body is read as arguments.
 
 ## 8. Expressions
 
-One expression language is shared by `$(…)`, `@match(…)` (function and
+One expression language is shared by `$(…)`, `@cond(…)` (function and
 cell selector), `@cell(…)`, `@random(ratio)` and the commands of
 `@shape`. `@pattern` has its own GLSL-oriented language (§9.3).
+`@match(…)` remains available as an alias of `@cond(…)`.
 
 ```
 expression = operand { operator operand }
@@ -347,7 +349,7 @@ suffix is appended. A lone name such as `$w` acts as a generation-time
 `var()`: arithmetic is evaluated, and any other value passes through
 as written, so with `--c: tomato`, `$c` is `tomato`.
 
-**`@match`, `@cell` and `@random`** see the cell:
+**`@cond`, `@cell` and `@random`** see the cell:
 
 | Name             | Value                                                       |
 | ---------------- | ----------------------------------------------------------- |
@@ -359,7 +361,7 @@ as written, so with `--c: tomato`, `$c` is `tomato`.
 | `da`             | angle from the center                                       |
 | `db`             | distance to the edge                                        |
 
-The three selectors also see `random`. The `@match` function also sees
+The three selectors also see `random`. The `@cond` function also sees
 `z` and `Z`, and, inside `@m` or `@M`, `n`, `nx`, `ny` and `N`. The
 result is read as true or false.
 
