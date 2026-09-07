@@ -8,7 +8,7 @@ import { isEmpty } from '../lib/type.js';
 import calc from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 
-const { cos, sin, abs, atan2, PI } = Math;
+const { cos, sin, atan2, PI } = Math;
 
 const presetShapes = {
     __proto__: null,
@@ -45,201 +45,151 @@ const presetShapes = {
 };
 
 class Point {
-    constructor(x, y, angle) {
-        this.x = x;
-        this.y = y;
+    constructor(value, angle) {
+        this.value = value;
         this.extra = angle;
-        this.str = null;
-    }
-    valueOf() {
-        return this.str ??= (this.x + ' ' + this.y);
     }
     toString() {
-        return this.valueOf();
+        return this.value;
     }
 }
 
-function createPolygonPoints(option, fn) {
-    let split = option.split || 180;
-    let turn = option.turn || 1;
-    let frame = option.frame;
-    let fill = option['fill'] || option['fill-rule'];
-    let direction = parseDirection(option['direction'] || option['dir'] || '');
-    let unit = option.unit;
-
-    let rad = (PI * 2) * turn / split;
-    let points = [];
-    let firstPoint, firstPoint2;
-
-    let factor = (option.scale === undefined) ? 1 : option.scale;
-    let [fx, fy] = parseScaleFactor(factor);
-    // A bare angle like "dir: 30" is constant; auto/reverse need atan2 per point
-    let staticAngle = direction.direction ? null : 90 + (direction.angle || 0);
-    let add = ([x1, y1, dx = 0, dy = 0]) => {
-        let x = x1 * fx;
-        let y = -y1 * fy;
-        let dx1 = dx * fx;
-        let dy2 = -dy * fy;
-        let angle = (staticAngle === null)
-            ? calcAngle(x, y, dx1, dy2, direction)
-            : staticAngle;
-        // no 6.12e-17 or 49.99999999999999% from the trigonometry
-        if (unit !== undefined && unit !== '%') {
-            x = tidyNumber(x);
-            y = tidyNumber(y);
-            if (unit !== 'none') {
-                x += unit;
-                y += unit;
-            }
-        } else {
-            x = tidyNumber((x + 1) * 50) + '%';
-            y = tidyNumber((y + 1) * 50) + '%';
-        }
-        points.push(new Point(x, y, angle));
-    }
-
-    if (fill == 'nonzero' || fill == 'evenodd') {
-        points.push(new Point(fill, '', ''));
-    }
-
-    for (let i = 0; i < split; ++i) {
-        let t = rad * i;
-        let point = fn(t, i);
-        if (!i) firstPoint = point;
-        add(point);
-    }
-
-    if (frame !== undefined) {
-        add(firstPoint);
-        let w = frame / 100;
-        if (turn > 1) w *= 2;
-        if (w == 0) w = .002;
-        for (let i = 0; i < split; ++i) {
-            let t = -rad * i;
-            let [x, y, dx = 0, dy = 0] = fn(t, i);
-            let theta = atan2(y + dy, x - dx);
-            let point = [
-                x - w * cos(theta),
-                y - w * sin(theta)
-            ];
-            if (!i) firstPoint2 = point;
-            add(point);
-        }
-        add(firstPoint2);
-        add(firstPoint);
-    }
-
-    return points;
+function parsePair(input, fallback) {
+    let [a, b = a] = parseValueGroup(input);
+    a = parseFloat(a) || fallback;
+    b = parseFloat(b) || fallback;
+    return [a, b];
 }
 
-function calcAngle(x, y, dx, dy, option) {
-    let base = atan2(y + dy, x - dx) * 180 / PI;
-    if (option.direction === 'reverse') {
-        base -= 180;
-    }
-    if (option.angle) {
-        base += option.angle;
-    }
-    return base;
-}
-
-function parseScaleFactor(factor) {
-    let parsed = parseValueGroup(factor);
-    let fx = parseFloat(parsed[0]) || 1;
-    let fy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 1 : fx;
-    return [fx, fy];
-}
-
-function parseMoveOffset(offset) {
-    let parsed = parseValueGroup(offset);
-    let dx = parseFloat(parsed[0]) || 0;
-    let dy = parsed[1] !== undefined ? parseFloat(parsed[1]) || 0 : dx;
-    return [dx, dy];
-}
-
-function createShapePoints(props, {min, max}) {
-    let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
+function createPointFunction(props, split) {
     let px = isEmpty(props.x) ? 'cos(t)' : props.x;
     let py = isEmpty(props.y) ? 'sin(t)' : props.y;
-    let pr = isEmpty(props.r) ? ''       : props.r;
-    let pt = isEmpty(props.t) ? ''       : props.t;
+    let pr = isEmpty(props.r) ? '' : props.r;
+    let pt = isEmpty(props.t) ? '' : props.t;
 
-    let { unit, value } = parseCompoundValue(pr);
-    if (unit && !props[unit] && unit !== 't') {
-        if (isEmpty(props.unit)) {
-            props.unit = unit;
-        }
-        pr = props.r = value;
-    }
+    let rotate = Number(props.rotate) || 0;
+    let rad = -PI / 180 * rotate;
+    let cosR = cos(rad), sinR = sin(rad);
 
-    if (props.degree) {
-        props.rotate = props.degree;
-    }
-
-    if (props.origin) {
-        props.move = props.origin;
-    }
-
-    props.split = split;
-
-    let rotateAngle = props.rotate ? Number(props.rotate) || 0 : 0;
-    let cosR = 1, sinR = 0;
-    if (rotateAngle) {
-        let rad = -PI / 180 * rotateAngle;
-        cosR = cos(rad);
-        sinR = sin(rad);
-    }
-    let move = props.move ? parseMoveOffset(props.move) : null;
-    let currentIndex = 0;
+    let index = 0;
     let context = Object.assign({}, props, {
         't': 0,
         'θ': 0,
         'i': 0,
         seq(...list) {
-            if (!list.length) return '';
-            return list[currentIndex % list.length];
+            return list.length ? list[index % list.length] : '';
         },
         range(a, b = 0) {
             a = Number(a) || 0;
             b = Number(b) || 0;
             if (a > b) [a, b] = [b, a];
-            let step = abs(b - a) / (split - 1);
-            return a + step * currentIndex;
+            let step = (b - a) / (split - 1);
+            return a + step * index;
         }
     });
 
-    return createPolygonPoints(props, (t, i) => {
-        currentIndex = i;
+    return (t, i) => {
+        index = i;
         context['t'] = context['θ'] = pt || t;
         context['i'] = i + 1;
-
-        let x = calc(px, context);
-        let y = calc(py, context);
-        let dx = 0;
-        let dy = 0;
+        let x, y;
         if (pr) {
             let r = calc(pr, context);
-            if (r == 0) {
-                r = .00001;
-            }
-            if (pt) {
-                t = calc(pt, context);
-            }
+            if (r == 0) r = .00001;
+            if (pt) t = calc(pt, context);
             x = r * cos(t);
             y = r * sin(t);
+        } else {
+            x = calc(px, context);
+            y = calc(py, context);
         }
-        if (rotateAngle) {
+        if (rotate) {
             let rx = x * cosR - y * sinR;
             y = y * cosR + x * sinR;
             x = rx;
         }
-        if (move) {
-            [dx, dy] = move;
-            x += dx;
-            y -= dy;
+        return [x, y];
+    };
+}
+
+function createShapePoints(props, {min, max}) {
+    // legacy command names
+    let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
+    if (props.degree) props.rotate = props.degree;
+    if (props.origin) props.move = props.origin;
+
+    let { unit, value } = parseCompoundValue(isEmpty(props.r) ? '' : props.r);
+    if (unit && !props[unit] && unit !== 't') {
+        if (isEmpty(props.unit)) props.unit = unit;
+        props.r = value;
+    }
+    props.split = split;
+
+    let point = createPointFunction(props, split);
+
+    let turn = Number(props.turn) || 1;
+    let frame = props.frame;
+    let fill = props['fill'] || props['fill-rule'];
+    let direction = parseDirection(props['direction'] || props['dir'] || '');
+    let [fx, fy] = parsePair(props.scale, 1);
+    let [dx, dy] = parsePair(props.move, 0);
+    // percentages of the element by default, else the unit or none
+    let percent = props.unit === undefined || props.unit === '%';
+    let suffix = percent ? '%' : (props.unit === 'none' ? '' : props.unit);
+    // a bare angle like "direction: 30" is constant; auto/reverse need atan2 per point
+    let staticAngle = direction.direction ? null : 90 + direction.angle;
+
+    let rad = (PI * 2) * turn / split;
+    let points = [];
+
+    let add = ([x, y]) => {
+        // the direction of the unmoved point, clockwise from the x axis
+        let angle = staticAngle;
+        if (angle === null) {
+            angle = atan2(-y * fy, x * fx) * 180 / PI;
+            if (direction.direction === 'reverse') angle -= 180;
+            angle = tidyNumber(angle + direction.angle);
         }
-        return [x, y, dx, dy];
-    });
+        // to screen coordinates, y grows downwards
+        x = (x + dx) * fx;
+        y = -(y - dy) * fy;
+        if (percent) {
+            x = (x + 1) * 50;
+            y = (y + 1) * 50;
+        }
+        points.push(new Point(tidyNumber(x) + suffix + ' ' + tidyNumber(y) + suffix, angle));
+    };
+
+    if (fill == 'nonzero' || fill == 'evenodd') {
+        points.push(new Point(fill, ''));
+    }
+
+    let first;
+    for (let i = 0; i < split; ++i) {
+        let p = point(rad * i, i);
+        if (!i) first = p;
+        add(p);
+    }
+
+    // an outline: back to the first point, then the inner ring in reverse
+    if (frame !== undefined) {
+        add(first);
+        let w = frame / 100;
+        if (turn > 1) w *= 2;
+        if (w == 0) w = .002;
+        let firstInner;
+        for (let i = 0; i < split; ++i) {
+            let [x, y] = point(-rad * i, i);
+            let theta = atan2(y, x);
+            let p = [x - w * cos(theta), y - w * sin(theta)];
+            if (!i) firstInner = p;
+            add(p);
+        }
+        add(firstInner);
+        add(first);
+    }
+
+    return points;
 }
 
 const cache = new Map();

@@ -59,3 +59,15 @@ test('point coordinates are tidied', () => {
     });
     assert.equal(String(plot.points), '1 0,0 -1,-1 0,0 1');
 });
+
+test('the fill rule leads the points', () => {
+    let { points } = generateShape('split: 3; fill: evenodd');
+    assert.equal(String(points).split(',')[0], 'evenodd');
+});
+
+test('direction angles are tidy and ignore move', () => {
+    let angles = code => generateShape(code).points.map(p => p.extra);
+    assert.deepEqual(angles('split: 4; r: 1; move: .1 .2'), [0, -90, -180, 90]);
+    assert.deepEqual(angles('split: 4; r: 1; direction: reverse 30'), [-150, -240, -330, -60]);
+    assert.deepEqual(angles('split: 4; r: 1; direction: 30'), [120, 120, 120, 120]);
+});
