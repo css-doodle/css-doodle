@@ -17,11 +17,9 @@ const modes = {
     __proto__: null,
 
     portrait: 'p',
-    pt: 'p',
     p: 'p',
 
     landscape: 'l',
-    ls: 'l',
     l: 'l',
 }
 

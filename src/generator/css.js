@@ -6,7 +6,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseShaders from '../parser/parse-shaders.js';
 
 import createRandom from '../core/random.js';
-import { utime, UTime, timePrefix } from '../core/uniforms.js';
+import { timePrefix, timeKeyframes } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
 import { cellId } from '../lib/cell.js';
@@ -1123,15 +1123,8 @@ class Rules {
         styles.cells += this.layoutCells() + join([...this.root.groups]);
 
         if (this.uniforms.time) {
-            let n = 'animation-name';
-            let t = utime.ticks;
-            let un = utime.name;
-            let Un = UTime.name;
             styles.container += `:host,.host {animation:${timePrefix.animation};}`;
-            keyframes =
-                `@keyframes ${utime[n]} {from {--${un}:0} to {--${un}:${t}}}` +
-                `@keyframes ${UTime[n]} {from {--${Un}:0} to {--${Un}:${t}}}` +
-                keyframes;
+            keyframes = timeKeyframes + keyframes;
         }
 
         let { host, container, cells, backdrop } = styles;

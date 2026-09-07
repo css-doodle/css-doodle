@@ -852,17 +852,17 @@ Function.dm = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dm);
 Function.da = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).da);
 Function.db = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).db);
 
-Function.ut = () => calcWith(`var(--${utime.name})`);
-Function.ts = () => calcWith(`calc(var(--${utime.name}) / 1000)`);
+Function.ut = () => calcWith(`var(${utime})`);
+Function.ts = () => calcWith(`calc(var(${utime}) / 1000)`);
 
-Function.UT = () => calcWith(`var(--${UTime.name})`);
-Function.TS = () => calcWith(`calc(var(--${UTime.name}) / 1000)`);
+Function.UT = () => calcWith(`var(${UTime})`);
+Function.TS = () => calcWith(`calc(var(${UTime}) / 1000)`);
 
-Function.uw = () => calcWith(`var(--${uwidth.name})`);
-Function.uh = () => calcWith(`var(--${uheight.name})`);
+Function.uw = () => calcWith(`var(${uwidth})`);
+Function.uh = () => calcWith(`var(${uheight})`);
 
-Function.ux = () => calcWith(`var(--${umousex.name})`);
-Function.uy = () => calcWith(`var(--${umousey.name})`);
+Function.ux = () => calcWith(`var(${umousex})`);
+Function.uy = () => calcWith(`var(${umousey})`);
 
 /**
  * expose JS Math functions with css-doodle calc/value semantics

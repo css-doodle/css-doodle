@@ -14,8 +14,8 @@ export function getBasicStyles(grid) {
         width: fit-content;
         height: fit-content;
         contain: content;
-        --${utime.name}: 0;
-        --${UTime.name}: 0
+        ${utime}: 0;
+        ${UTime}: 0
     }
     :host([hidden]),[hidden] {
         display: none

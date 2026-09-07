@@ -104,8 +104,8 @@ export function doodleToImage(host, code, options, fn) {
     loadGoogleFontEmbed(styles.gf)
         .then(importedFonts => {
             let sheet = stampSheet(host, importedFonts + styles.top + `
-                @property --${utime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-                @property --${UTime.name} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+                @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
             ` + getBasicStyles(grid) + styles.all);
             return replace(css`
                 <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>

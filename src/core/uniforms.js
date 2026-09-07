@@ -1,40 +1,22 @@
+export const utime = '--cssd-utime';
+export const UTime = '--cssd-UTime';
+export const umousex = '--cssd-umousex';
+export const umousey = '--cssd-umousey';
+export const uwidth = '--cssd-uwidth';
+export const uheight = '--cssd-uheight';
+
 const ticks = 1000 * 60 * 60 * 24;
 const steps = ticks / (1000 / 120);
+const delay = new Date().setHours(0, 0, 0, 0) - Date.now();
 
-// time elapsed since the beginning of the day
-const DELAY = new Date().setHours(0, 0, 0, 0) - Date.now();
-
-function createTimeUniform(name, delay) {
-    return {
-        name, ticks, delay,
-        'animation-name': `${name}-animation`,
-        animation: `${ticks}ms steps(${steps}) ${delay}ms infinite ${name}-animation`
-    }
-}
-
-export const utime = createTimeUniform('cssd-utime', 0);
-export const UTime = createTimeUniform('cssd-UTime', DELAY);
+export const timeKeyframes =
+    `@keyframes cssd-u-ani {from {${utime}:0} to {${utime}:${ticks}}}` +
+    `@keyframes cssd-U-ani {from {${UTime}:0} to {${UTime}:${ticks}}}`;
 
 export const timePrefix = {
-    'animation': `${utime.animation},${UTime.animation}`,
-    'animation-name': `${utime['animation-name']},${UTime['animation-name']}`,
+    'animation': `${ticks}ms steps(${steps}) 0ms infinite cssd-u-ani,${ticks}ms steps(${steps}) ${delay}ms infinite cssd-UTime-ani`,
+    'animation-name': 'cssd-u-ani,cssd-U-ani',
     'animation-duration': `${ticks}ms,${ticks}ms`,
     'animation-timing-function': `steps(${steps}),steps(${steps})`,
-    'animation-delay': `${utime.delay}ms,${UTime.delay}ms`,
-};
-
-export const umousex = {
-    name: 'cssd-umousex',
-};
-
-export const umousey = {
-    name: 'cssd-umousey',
-};
-
-export const uwidth = {
-    name: 'cssd-uwidth',
-};
-
-export const uheight = {
-    name: 'cssd-uheight',
+    'animation-delay': `0ms,${delay}ms`,
 };
