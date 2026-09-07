@@ -8,7 +8,7 @@ not understand passes through as CSS.
 
 ```css
 @grid: 8 / 200px;
-background: @pick(#f00, #00f);
+background: @p(#f00, #00f);
 @cell(2n) {
   rotate: @r(360deg);
 }
@@ -86,7 +86,7 @@ are skipped.
 ### Declarations
 
 ```css
-background: @pick(red, blue);
+background: @p(red, blue);
 --size: 10px;
 @grid: 8 / 200px;
 ```
@@ -100,8 +100,7 @@ runs to the next top-level `;`, or to a `}` or `<`.
 
 A property that starts with `@` is a directive handled by css-doodle:
 `@grid`, `@size`, `@place`, `@gap`, `@shape`, `@content`, `@seed` and
-`@use`. `@place-cell`, `@offset` and `@position` are aliases of
-`@place`. Every other property, custom properties included, is emitted
+`@use`. Every other property, custom properties included, is emitted
 as CSS.
 
 `@use` inserts statements stored in custom properties of the
@@ -183,9 +182,8 @@ A block whose head starts with `@` is a conditional block. The name
 decides how it is treated:
 
 - **Cell selectors** apply their statements to the cells they match:
-  `@at(x, y)`, `@nth(an+b)`, `@x(an+b)`, `@y(an+b)`, `@even`, `@odd`,
-  `@random(ratio)`, `@match(expression)` and `@cell(…)`. `@col` and
-  `@row` are aliases of `@x` and `@y`.
+  `@at(x, y)`, `@nth(an+b)`, `@row(an+b)`, `@col(an+b)`, `@even`,
+  `@odd`, `@random(ratio)`, `@match(expression)` and `@cell(…)`.
 - **CSS group rules** wrap their statements as CSS does: `@media`,
   `@supports`, `@container`, `@layer`, `@scope`, `@starting-style`
   and `@document`, including vendor-prefixed forms.
@@ -211,7 +209,7 @@ stays as written; only expressions (§8) evaluate it.
 ## 6. Functions
 
 ```css
-background: @pick(red, blue);
+background: @p(red, blue);
 rotate: @r(360deg);
 width: $px(@i * 10);
 ```
@@ -372,7 +370,7 @@ count.
 
 **`@even` and `@odd`** use checkerboard parity: `@even` matches cells
 where `x + y` is odd, and `@odd` cells where it is even. This differs
-from the `even` and `odd` arguments of `@nth`, `@x` and `@y`.
+from the `even` and `odd` arguments of `@nth`, `@row` and `@col`.
 
 **`@shape`** sees the commands of the shape (§9.2), without the
 rounding of `$(…)`.
@@ -444,9 +442,9 @@ timing          = duration { delay | repeat-count | easing | fill }
   placed into `<defs>`, so `fill: linearGradient { … }` and
   `fill: defs linearGradient { … }` are the same.
 - `viewBox` takes four numbers, or one number `n` for `0 0 n n`, or
-  two for `0 0 w h`. `p n`, `padding n` or `expand n` after them grows
-  the box by `n` on every side. Any other count of numbers drops the
-  attribute with a diagnostic.
+  two for `0 0 w h`. `padding n` after them grows the box by `n` on
+  every side. Any other count of numbers drops the attribute with a
+  diagnostic.
 - `style { … }`, with or without a selector, keeps its content as CSS
   text. `style: { … }` and `style fill: red` add to the element's
   `style` attribute.
@@ -460,8 +458,7 @@ adds an `<animate>` child for the attribute: the values before the
 is a `to` animation. `animate transform: rotate 0; 360 / 4s` emits
 `<animateTransform>` with the first word as its `type`. `draw: 2s`
 strokes a shape (`path`, `line`, `rect`, `circle`, `ellipse`,
-`polygon`, `polyline`) along its length with the same timing words;
-`animate:` is its older spelling.
+`polygon`, `polyline`) along its length with the same timing words.
 
 | Timing word                                                       | Emitted as                                                    |
 | ----------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -471,7 +468,7 @@ strokes a shape (`path`, `line`, `rect`, `circle`, `ellipse`,
 | `ease`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier(…)`   | `calcMode="spline"` with the same `keySplines` for every segment; `linear` is the default |
 | `step-end`                                                        | `calcMode="discrete"`                                         |
 | `discrete`, `paced`                                               | `calcMode` as written                                         |
-| `forwards`, `freeze`                                              | `fill="freeze"`                                               |
+| `forwards`                                                        | `fill="freeze"`                                               |
 
 Any other word is dropped with a diagnostic.
 
@@ -489,7 +486,7 @@ is a pie slice.
 @shape: star;
 
 clip-path: @shape(
-  split: 200;
+  points: 200;
   r: cos(5t);
   fill: evenodd;
 );
@@ -499,10 +496,8 @@ clip-path: @shape(
 shape-property = preset
 shape-function = preset | { command ';' }
 command        = [ '-' ] command-name ':' expression
-command-name   = 'split' | 'vertices' | 'points'
-               | 'turn' | 'scale' | 'rotate' | 'degree'
-               | 'move' | 'origin' | 'frame' | 'unit'
-               | 'direction' | 'dir' | 'fill' | 'fill-rule'
+command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
+               | 'frame' | 'unit' | 'direction' | 'fill'
                | 'r' | 't' | 'x' | 'y'
                | variable-name
 ```
@@ -511,14 +506,11 @@ command-name   = 'split' | 'vertices' | 'points'
   `heart`, …) and emits `clip-path: polygon(…)`. The `@shape(…)`
   function takes a preset or a command body, and is the form for
   custom polygons.
-- `r`, `x` and `y` are expressions in the angle `t`, also written `θ`,
-  evaluated `split` times around the circle. The other named commands
-  transform the resulting points. Any other name defines a variable
-  for the expressions that follow it.
-- `vertices` and `points` are aliases of `split`, `degree` of
-  `rotate`, and `origin` of `move`.
-- A `-` before a command name negates its value, except on `fill` and
-  `fill-rule`.
+- `r`, `x` and `y` are expressions in the angle `t`, evaluated `points`
+  times around the circle. The other named commands transform the
+  resulting points. Any other name defines a variable for the
+  expressions that follow it.
+- A `-` before a command name negates its value, except on `fill`.
 - The expressions also see the point index `i`, from 1, and two
   helpers: `seq(a, b, …)` cycles through its arguments from point to
   point, and `range(a, b)` interpolates from `a` to `b` across the
@@ -550,7 +542,7 @@ Expressions are written in a GLSL-oriented language, not the language
 of §8. They see the coordinates `x`, `y`, `i`, `X`, `Y`, `I` and `t`,
 and the distances `dx`, `dy`, `dr`, `dc`, `dm` and `da`. Compared with
 §8, `^` is bitwise xor, `÷`, `∧` and `∨` are not available, and `and`,
-`or` and `not` are aliases of `&&`, `||` and `!`. Values are bare
+`or` and `not` may be used for `&&`, `||` and `!`. Values are bare
 expressions, without units or `var()`.
 
 ### 9.4 Shaders
@@ -600,8 +592,7 @@ Some directives read their value with a grammar of their own.
 grid-value = { flag } grid { flag | modifier }
 grid       = number [ sep number [ sep number ] ]
 sep        = 'x' | 'X' | ',' | '，'
-flag       = 'row' | 'col' | 'p3d' | 'noclip' | 'no-clip'
-           | 'border' [ ':' value ]
+flag       = 'row' | 'col' | 'p3d' | 'noclip'
 modifier   = '/' size [ '/' fill ] | '+' value | '~' value
            | '*' [ 'h' ] value | '^' value | '∆' value | '_' value
            | '|' value | 'ß' value
@@ -635,7 +626,7 @@ A modifier written before the dimensions swallows them.
 size-value  = width [ height [ aspect-ratio ] ]
             | preset [ orientation ]
 preset      = 'a0' | … | 'a6' | 'postcard' | 'poster'
-orientation = 'portrait' | 'pt' | 'p' | 'landscape' | 'ls' | 'l'
+orientation = 'portrait' | 'landscape'
 ```
 
 Height defaults to width. The aspect ratio is used only when the width
@@ -663,7 +654,7 @@ direction = [ 'auto' | 'reverse' ] [ expression [ 'deg' | 'rad' | 'grad' | 'turn
 dimension = number [ unit ]
 ```
 
-`@nth`, `@x` and `@y` take one or more `an-plus-b` expressions and
+`@nth`, `@row` and `@col` take one or more `an-plus-b` expressions and
 match a cell that satisfies any of them. `direction` is used by
 `@shape`, by gradients and by `@arc`; its angle is an arithmetic
 expression, so `30 + 15` reads as `45` degrees.

@@ -492,7 +492,7 @@ Function.ri = (_, { context, rand }) => {
     }
 };
 
-Function.rn = ({ x, y, grid }, { context, extra, random }, position) => {
+Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
     let counter = 'noise-2d' + position;
     let counterX = counter + 'offset-x';
     let counterY = counter + 'offset-y';
@@ -852,10 +852,10 @@ Function.dm = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dm);
 Function.da = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).da);
 Function.db = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).db);
 
-Function.ut = () => calcWith(`var(${utime})`);
+Function.t =  () => calcWith(`var(${utime})`);
 Function.ts = () => calcWith(`calc(var(${utime}) / 1000)`);
 
-Function.UT = () => calcWith(`var(${UTime})`);
+Function.T =  () => calcWith(`var(${UTime})`);
 Function.TS = () => calcWith(`calc(var(${UTime}) / 1000)`);
 
 Function.uw = () => calcWith(`var(${uwidth})`);
@@ -880,16 +880,15 @@ for (let name of Object.getOwnPropertyNames(Math)) {
 }
 
 export const alias = {
-
     'index': 'i',
     'col': 'x',
     'row': 'y',
     'depth': 'z',
     'rand': 'r',
     'pick': 'p',
-    'R': 'rn',
-    'T': 'UT',
-    't': 'ut',
+    'rn': 'R',
+    'UT': 'T',
+    'ut': 't',
 
     // error prone
     'stripes': 'stripe',
