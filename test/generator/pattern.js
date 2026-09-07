@@ -24,7 +24,7 @@ const lines = code => shader(code).split('\n').map(l => l.trim());
 // prelude's own ifs (escape bailouts, etc.) never contain bool(
 const condition = code => lines(code).find(l => l.startsWith('if (') && l.includes('bool(')) || '';
 
-// the `color = ...;` assignment inside getColor
+// the `color = ...;` assignment inside main
 const color = code => lines(code).find(l => l.startsWith('color = ')) || '';
 
 const main = code => shader(code).slice(shader(code).indexOf('void main()'));
@@ -240,10 +240,10 @@ test('in-block size without a shape re-applies the effective mask', () => {
 // --- prelude and uniforms ---
 
 test('u_time is only wired up when the pattern reads t', () => {
-    // no `t` anywhere: getColor receives 0.0, leaving uTime unreferenced
-    assert.match(main('fill: hsl(dr/10, 0.7, 0.5)'), /v\.y, 0\.0, uv/);
-    assert.match(main('fill: hsl(i/I + t*0.1, 0.7, 0.5)'), /v\.y, u_time, uv/);
-    assert.match(main('shape: circle; size: 0.5 + 0.4*sin(t); fill: #000'), /v\.y, u_time, uv/);
+    // no `t` anywhere: t is a constant, leaving u_time unreferenced
+    assert.match(main('fill: hsl(dr/10, 0.7, 0.5)'), /float t = 0\.0;/);
+    assert.match(main('fill: hsl(i/I + t*0.1, 0.7, 0.5)'), /float t = u_time;/);
+    assert.match(main('shape: circle; size: 0.5 + 0.4*sin(t); fill: #000'), /float t = u_time;/);
 });
 
 test('rand/noise/hsl built-ins are declared in the prelude', () => {

@@ -219,8 +219,6 @@ function compileFill(expr, vars) {
 
 // `fill: red` is a static color, anything else compiles as an expression
 function generateFill(token, extra, vars) {
-    // a value that read as a block (`fill: x { … }`) is garbage here
-    if (typeof token.value !== 'string') return '';
     let value = resolveAlias(token.value.trim(), vars);
     if (!value) return '';
     let rgba = extra.getRgbaColor(value);
@@ -235,7 +233,7 @@ function generateFill(token, extra, vars) {
 // grid, shape, size and the variables of a body, fill left out
 function readSettings(tokens, settings, vars) {
     for (let t of tokens) {
-        if (t.type !== 'statement' || t.name === 'fill' || typeof t.value !== 'string') continue;
+        if (t.type !== 'statement' || t.name === 'fill') continue;
         let value = t.value.trim();
         if (t.name === 'grid' || t.name === 'shape' || t.name === 'size') {
             settings[t.name] = value;
@@ -264,7 +262,7 @@ function generateBlock(token, extra, vars = {}, outerShape = null) {
     if (token.name !== 'match') {
         return '';
     }
-    let args = (token.args || []).map(a => (a || '').trim()).filter(Boolean);
+    let args = token.args.map(a => a.trim()).filter(Boolean);
     if (!args.length) {
         return '';
     }
@@ -301,25 +299,24 @@ function generateBlock(token, extra, vars = {}, outerShape = null) {
 }
 
 function generateShader(input, { x, y }, shape, sizeExpr, vars) {
-    let hasSize = !!(sizeExpr && sizeExpr.length);
-    let sizeInit = hasSize
+    let sizeInit = sizeExpr
         ? transform(substituteVariables(sizeExpr, vars), { expect: 'float' })
         : '1.0';
     let maskInit = shape ? maskFor(shape) : '';
     let usesTime = /\bt\b/.test(input) || /\bt\b/.test(sizeInit);
-    let timeArg = usesTime ? 'u_time' : '0.0';
     return glsl`
     precision highp float;
     precision highp int;
     const float PI = 3.1415926535897932;
     ${HELPERS}
-    vec3 mapping(vec2 uv, vec2 grid) {
-        float x = floor(uv.x * grid.x) + 1.0;
-        float y = floor((1.0 - uv.y) * grid.y) + 1.0;
-        float i = x + (y - 1.0) * grid.x;
-        return vec3(x, y, i);
-    }
-    vec4 getColor(float x, float y, float i, float I, float X, float Y, float t, vec2 uv, vec2 v) {
+    void main() {
+        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        vec2 v = vec2(${x}, ${y});
+        float X = v.x, Y = v.y, I = X * Y;
+        float x = floor(uv.x * X) + 1.0;
+        float y = floor((1.0 - uv.y) * Y) + 1.0;
+        float i = x + (y - 1.0) * X;
+        float t = ${usesTime ? 'u_time' : '0.0'};
         vec4 color = vec4(0, 0, 0, 0);
         float shapeMask = 1.0;
         ${CELL_INDEX}
@@ -327,13 +324,7 @@ function generateShader(input, { x, y }, shape, sizeExpr, vars) {
         ${maskInit}
         ${input}
         color.a *= shapeMask;
-        return color;
-    }
-    void main() {
-        vec2 uv = gl_FragCoord.xy/u_resolution.xy;
-        vec2 v = vec2(${x}, ${y});
-        vec3 p = mapping(uv, v);
-        FragColor = getColor(p.x, p.y, p.z, v.x * v.y, v.x, v.y, ${timeArg}, uv, v);
+        FragColor = color;
     }
   `;
 }
