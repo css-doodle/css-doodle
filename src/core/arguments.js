@@ -4,6 +4,8 @@ import { memo } from '../lib/cache.js';
 import { isInvalidNumber } from '../lib/type.js';
 import { clamp, tidyNumber } from '../lib/math.js';
 
+const MAX_SEQUENCE = 65536;
+
 export function sequence(count, fn) {
     let [x, y = 1] = String(count).split(/[x-]/);
     // a leading dash is a negative count, not a range
@@ -11,10 +13,10 @@ export function sequence(count, fn) {
     let [cx, cy] = [Math.ceil(x), Math.ceil(y)];
     if (isInvalidNumber(cx)) cx = 1;
     if (isInvalidNumber(cy)) cy = 1;
-    x = clamp(cx, 0, 65536);
-    y = clamp(cy, 0, 65536);
-    if (x * y > 65536) {
-        y = Math.max(1, Math.floor(65536 / x));
+    x = clamp(cx, 0, MAX_SEQUENCE);
+    y = clamp(cy, 0, MAX_SEQUENCE);
+    if (x * y > MAX_SEQUENCE) {
+        y = Math.max(1, Math.floor(MAX_SEQUENCE / x));
     }
     let max = x * y;
     let ret = [];

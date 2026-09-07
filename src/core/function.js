@@ -32,6 +32,8 @@ const RE_VAR = /var\(/;
 const RE_CALC = /^calc\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
+const MAX_SEQUENCE = 65536;
+
 // layout of the sequence tuples pushed onto `extra` (see arguments.js)
 const SEQ = {
     n: 0,     // current value            → @n
@@ -206,7 +208,7 @@ function createPlot(unit) {
             if (commands !== lastCommands || max !== lastMax) {
                 lastCommands = commands;
                 lastMax = max;
-                lastResult = generateShape(commands, {min: 1, max: 65536, count: max, unit}, rules => {
+                lastResult = generateShape(commands, {min: 1, max: MAX_SEQUENCE, count: max, unit}, rules => {
                     delete rules['fill'];
                     delete rules['fill-rule'];
                     delete rules['frame'];
@@ -348,7 +350,7 @@ const composeSvgUrl = memo('svg-function', value => {
 });
 
 const composeSvgPolygonUrl = memo('svg-polygon-function', commands => {
-    let { rules, points } = generateShape(commands, {min: 3, max: 65536}, rules => {
+    let { rules, points } = generateShape(commands, {min: 3, max: MAX_SEQUENCE}, rules => {
         delete rules.frame;
         rules['unit'] = 'none';
         rules['stroke-width'] ??= .01;
