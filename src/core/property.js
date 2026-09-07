@@ -136,11 +136,12 @@ Property.place = (value, { extra }) => {
     return css`
     position: absolute;
     left: ${left};
+    right: calc(100% - ${left});
     top: ${top};
+    bottom: calc(100% - ${top});
     width: ${cw};
     height: ${ch};
-    margin-left: calc(${cw} / -2);
-    margin-top: calc(${ch} / -2);
+    place-self: unsafe center;
     grid-area: unset;
     ${extra ? `rotate: ${extra}deg;` : ''}
   `;

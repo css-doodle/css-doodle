@@ -151,3 +151,17 @@ test('size: prototype names are not presets', () => {
 test('size: auto takes the grid aspect ratio on special selectors', () => {
     assert.equal(size('auto'), 'width:auto;height:auto;aspect-ratio: 1;');
 });
+
+// --- @place ---
+
+test('place: centers without using translate', () => {
+    assert.equal(property.place('center', {}), `position: absolute;
+    left: 50%;
+    right: calc(100% - 50%);
+    top: 50%;
+    bottom: calc(100% - 50%);
+    width: var(--_cell-width, 25%);
+    height: var(--_cell-height, 25%);
+    place-self: unsafe center;
+    grid-area: unset;`);
+});
