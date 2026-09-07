@@ -360,6 +360,11 @@ test('problems are reported through the warn callback', () => {
     assert.deepEqual(warned('circle { filter: defs { circle {} rect {} } }').warnings,
         ['filter: an inline defs must hold exactly one element']);
     assert.deepEqual(warned('path { draw: 2s; animate r: 1 / 1s }').warnings, []);
+    assert.deepEqual(warned('circle { animate r: 1; 5 / 2s bounce }'), {
+        output: '<svg><circle><animate attributeName="r" values="1;5" dur="2s"/></circle></svg>',
+        warnings: ['animate r: unknown timing word "bounce"'],
+    });
+    assert.deepEqual(warned('path { draw: 2s steps(4) }').warnings, ['draw: unknown timing word "steps(4)"']);
 });
 
 test('timing takes a delay after the duration, like the css animation shorthand', () => {
@@ -369,6 +374,29 @@ test('timing takes a delay after the duration, like the css animation shorthand'
         `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" repeatCount="3"/></circle></svg>`);
     assert.equal(svg('path { draw: 2s .5s }').includes('dur="2s" begin=".5s"'), true);
     assert.equal(svg('path { draw: 3 2s }').includes('dur="2s" repeatCount="3"'), true);
+});
+
+test('timing takes the css easing and fill words', () => {
+    const tail = input => /<animate [^>]*?\/>/.exec(svg(input))[0].replace(/^<animate attributeName="r" (values|to)="[^"]*" /, '');
+    // one spline per segment, calcMode spline
+    assert.equal(tail('circle { animate r: 1; 5; 1 / 2s ease-in-out infinite }'),
+        'dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"/>');
+    // a `to` animation eases only with explicit key times
+    assert.equal(tail('circle { animate r: 5 / 1s ease }'), 'dur="1s" calcMode="spline" keyTimes="0;1" keySplines="0.25 0.1 0.25 1"/>');
+    assert.equal(tail('circle { animate r: 1; 5 / 1s cubic-bezier(.2, 0, 0, 1) }'),
+        'dur="1s" calcMode="spline" keySplines="0.2 0 0 1"/>');
+    // the keywords are the ones of @nN and friends, dashes optional
+    assert.equal(tail('circle { animate r: 1; 5 / 1s easeIn }'), 'dur="1s" calcMode="spline" keySplines="0.42 0 1 1"/>');
+    // linear is the default, fill takes the css or the svg word
+    assert.equal(tail('circle { animate r: 1; 5 / 1s linear forwards }'), 'dur="1s" fill="freeze"/>');
+    assert.equal(tail('circle { animate r: 1; 5 / 1s freeze }'), 'dur="1s" fill="freeze"/>');
+    // step-end is discrete, paced and discrete are SMIL's own
+    assert.equal(tail('circle { animate r: 1; 5 / 1s step-end }'), 'dur="1s" calcMode="discrete"/>');
+    assert.equal(tail('circle { animate r: 1; 5 / 1s paced }'), 'dur="1s" calcMode="paced"/>');
+    // the words go in any order, the first time staying the duration; draw takes them too
+    assert.equal(tail('circle { animate r: 1; 5 / forwards infinite ease-in 2s 1s }'),
+        'dur="2s" begin="1s" repeatCount="indefinite" fill="freeze" calcMode="spline" keySplines="0.42 0 1 1"/>');
+    assert.equal(svg('path { draw: 2s ease-out forwards }').includes('dur="2s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0 0 0.58 1"'), true);
 });
 
 test('a definition used as a value goes into defs without the keyword', () => {

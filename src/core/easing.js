@@ -5,6 +5,13 @@ const EPSILON = 1e-6;
 const MAX_NEWTON = 8;
 const MAX_BISECT = 20;
 
+const PRESETS = {
+    ease: [.25, .1, .25, 1],
+    easein: [.42, 0, 1, 1],
+    easeout: [0, 0, .58, 1],
+    easeinout: [.42, 0, .58, 1],
+};
+
 function cubicBezier(p1x, p1y, p2x, p2y) {
     const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
     const cy = 3 * p1y, by = 3 * (p2y - p1y) - cy, ay = 1 - cy - by;
@@ -34,36 +41,24 @@ function cubicBezier(p1x, p1y, p2x, p2y) {
     return x => x <= 0 ? 0 : x >= 1 ? 1 : bezier(ay, by, cy, solve(x));
 }
 
-export const linear = t => t;
-export const ease = cubicBezier(0.25, 0.1, 0.25, 1);
-export const easeIn = cubicBezier(0.42, 0, 1, 1);
-export const easeOut = cubicBezier(0, 0, 0.58, 1);
-export const easeInOut = cubicBezier(0.42, 0, 0.58, 1);
-
-const presets = {
-    linear, ease,
-    easein: easeIn,
-    easeout: easeOut,
-    easeinout: easeInOut,
-};
-
-function parseCubicBezier(str) {
-    if (!/^cubic-bezier\s*\(/i.test(str)) {
-        return null;
+export function getEasingPoints(str) {
+    let key = str.toLowerCase().replace(/[-\s]/g, '');
+    if (Object.hasOwn(PRESETS, key)) {
+        return PRESETS[key];
     }
-    const values = str.match(/-?[\d.]+/g)?.map(Number);
-    if (values?.length === 4 && values.every(n => !isNaN(n))) {
-        return values;
+    if (/^cubic-bezier\s*\(/i.test(str)) {
+        let values = str.match(/-?[\d.]+/g)?.map(Number);
+        if (values?.length === 4 && values.every(n => !isNaN(n))) {
+            return values;
+        }
     }
     return null;
 }
 
 const resolve = memo('easing', str => {
-    const preset = presets[str.toLowerCase().replace(/[-\s]/g, '')];
-    if (preset) return preset;
-    const bezierValues = parseCubicBezier(str);
-    if (bezierValues) return cubicBezier(...bezierValues);
-    return t => calc(str, { t });
+    if (str.toLowerCase() === 'linear') return t => t;
+    let points = getEasingPoints(str);
+    return points ? cubicBezier(...points) : t => calc(str, { t });
 });
 
 export function getEasingFunction(easing) {

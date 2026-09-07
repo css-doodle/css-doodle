@@ -2,6 +2,7 @@ import { nextId } from '../lib/fn.js';
 import { isNil, removeQuotes } from '../lib/type.js';
 import { NS, NSXLink, adjustName, isDefinitionTag } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
+import { getEasingPoints } from '../core/easing.js';
 
 const nextInlineId = nextId();
 const noop = () => {};
@@ -117,15 +118,24 @@ function transformViewBox(token, warn) {
     return `${x} ${y} ${w} ${h}`;
 }
 
-// `2s`, `2s infinite`, `3 2s`, `2s 1s infinite`: duration, delay and repeat
-// count, in the order of the css animation shorthand
-function timing(value) {
-    let times = [], repeatCount;
-    for (let word of String(value).trim().split(/\s+/)) {
+function timing(animate, value, label, warn) {
+    let times = [], repeatCount, fill, calcMode, spline;
+    for (let word of parseValueGroup(value)) {
         if (word === 'infinite' || word === 'indefinite') {
-            repeatCount = word;
+            repeatCount = 'indefinite';
         } else if (/^\d*\.?\d+(m?s|min|h)?$/.test(word)) {
             times.push(word);
+        } else if (word === 'forwards' || word === 'freeze') {
+            fill = 'freeze';
+        } else if (word === 'discrete' || word === 'paced' || word === 'step-end') {
+            calcMode = word === 'step-end' ? 'discrete' : word;
+        } else if (word !== 'linear') {
+            let points = getEasingPoints(word);
+            if (points) {
+                spline = points.join(' ');
+            } else {
+                warn(`${label}: unknown timing word "${word}"`);
+            }
         }
     }
     // a bare number beside a duration is the repeat count, alone it is seconds
@@ -134,7 +144,22 @@ function timing(value) {
         repeatCount = times.splice(count, 1)[0];
     }
     let [dur, begin] = times;
-    return [dur, begin, repeatCount];
+    if (dur) animate.attr('dur', dur);
+    if (begin) animate.attr('begin', begin);
+    if (repeatCount) animate.attr('repeatCount', repeatCount);
+    if (fill) animate.attr('fill', fill);
+    if (spline) {
+        let values = animate.attr('values');
+        let segments = values ? values.split(';').length - 1 : 1;
+        animate.attr('calcMode', 'spline');
+        if (!values) {
+            animate.attr('keyTimes', '0;1');
+        }
+        animate.attr('keySplines', Array(segments).fill(spline).join(';'));
+    } else if (calcMode) {
+        animate.attr('calcMode', calcMode);
+    }
+    return dur;
 }
 
 function isGraphicElement(name) {
@@ -259,28 +284,19 @@ function generate(token, element, parent, root, warn) {
                 if (!isGraphicElement(parent.name)) {
                     warn(`${keyword}: <${parent.name}> has no path length to draw`);
                 } else {
-                    let [dur, begin, repeatCount] = timing(value);
                     element.attr('stroke-dasharray', 10);
                     element.attr('pathLength', 10);
                     let animate = new Tag('animate');
                     animate.attr('attributeName', 'stroke-dashoffset');
                     animate.attr('from', 10);
                     animate.attr('to', 0);
-                    if (dur) {
-                        animate.attr('dur', dur);
-                    } else {
+                    if (!timing(animate, value, keyword, warn)) {
                         warn(`${keyword}: needs a duration, as in \`2s\``);
-                    }
-                    if (begin) {
-                        animate.attr('begin', begin);
-                    }
-                    if (repeatCount) {
-                        animate.attr('repeatCount', repeatCount);
                     }
                     element.append(animate);
                 }
             }
-            // `animate r: 1; 5; 1 / 2s infinite`, `animate transform: rotate 0; 360 / 4s`
+            // `animate r: 1; 5; 1 / 2s ease infinite`, `animate transform: rotate 0; 360 / 4s`
             else if (keyword === 'animate') {
                 name = adjustName(name);
                 let text = String(value);
@@ -299,17 +315,8 @@ function generate(token, element, parent, root, warn) {
                 } else {
                     animate.attr('values', values.join(';'));
                 }
-                let [dur, begin, repeatCount] = timing(slash < 0 ? '' : text.slice(slash + 1));
-                if (dur) {
-                    animate.attr('dur', dur);
-                } else {
+                if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), `animate ${name}`, warn)) {
                     warn(`animate ${name}: needs a duration after /, as in \`/ 2s\``);
-                }
-                if (begin) {
-                    animate.attr('begin', begin);
-                }
-                if (repeatCount) {
-                    animate.attr('repeatCount', repeatCount);
                 }
                 element.append(animate);
             }
