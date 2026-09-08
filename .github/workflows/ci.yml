@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # no lockfile is tracked, so npm ci is not an option
+      - run: npm install --no-audit --no-fund
+
+      - run: npm test
+
+      - run: npm run build
+
+      - name: Check bundle size
+        env:
+          LIMIT_KB: 128
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import { gzipSync } from "node:zlib";
+            const buf = fs.readFileSync("css-doodle.min.js");
+            const kb = n => (n / 1024).toFixed(1) + " KB";
+            const line = `css-doodle.min.js: ${kb(buf.length)} (${kb(gzipSync(buf).length)} gzipped), limit ${process.env.LIMIT_KB} KB`;
+            console.log(line);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY ?? "/dev/null", line + "\n");
+            if (buf.length > process.env.LIMIT_KB * 1024) {
+              console.error("bundle over the size limit");
+              process.exit(1);
+            }
+          '
