@@ -25,13 +25,7 @@ export default function svgToPng(svg, width, height, scale) {
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                 try {
-                    canvas.toBlob(blob => {
-                        resolve({
-                            blob,
-                            source,
-                            url: URL.createObjectURL(blob)
-                        });
-                    });
+                    canvas.toBlob(blob => resolve({ blob, source }));
                 } catch (e) {
                     reject(e);
                 }

@@ -22,9 +22,27 @@ import { getBasicStyles, createGrid } from './markup.js';
 
 const sharedUrls = new WeakMap();
 
+function revokeUrls(entry) {
+    for (let url of entry.urls.values()) {
+        Promise.resolve(url).then(url => {
+            if (/^blob:/.test(url)) URL.revokeObjectURL(url);
+        });
+    }
+}
+
+// the blob urls of the nested images belong to one generation
+export function releaseSharedImages(host) {
+    let entry = sharedUrls.get(host);
+    if (entry) {
+        revokeUrls(entry);
+        sharedUrls.delete(host);
+    }
+}
+
 function sharedImage(host, svg, toUrl) {
     let entry = sharedUrls.get(host);
     if (!entry || entry.generation !== host._generation) {
+        releaseSharedImages(host);
         sharedUrls.set(host, entry = { generation: host._generation, urls: new Map() });
     }
     let url = entry.urls.get(svg);
@@ -204,6 +222,14 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
         ready = true;
 
         if (drawing.animated) {
+            // a new loop starts in the host's current state
+            const animate = fn => {
+                let animation = createAnimation(fn);
+                if (host._offscreen || host.hasAttribute('cssd-paused')) {
+                    animation.pause();
+                }
+                host.animations.push(animation);
+            }
             if (target.type === 'content') {
                 // the WebGL canvas is shared, so the cell shows a copy of each frame
                 let view = document.createElement('canvas');
@@ -220,15 +246,15 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
                 }
                 blit();
                 element.replaceChildren(view);
-                host.animations.push(createAnimation(t => {
+                animate(t => {
                     drawing.draw(t, width, height, host._umouse, textures);
                     blit();
-                }));
+                });
             } else {
-                host.animations.push(createAnimation(t => {
+                animate(t => {
                     drawing.draw(t, width, height, host._umouse, textures);
                     setShaderProp(drawing.canvas.toDataURL());
-                }));
+                });
             }
             host.shaderRenders.set(target.selector, drawing);
         } else {

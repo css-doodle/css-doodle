@@ -14,7 +14,7 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
 import { stampSvgImages, hasImageClock } from './clock.js';
-import { createReplacer } from './embedded.js';
+import { createReplacer, releaseSharedImages } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 function unEntity(code) {
@@ -76,6 +76,7 @@ if (typeof HTMLElement !== 'undefined') {
             this._instance = uniqueId();
             this._generation = 0;
             this._clock = { base: 0, since: 0 };
+            this._offscreen = false;
             this._warned = new Set();
             this.extra = {
                 getVariable: name => getVariable(this, name),
@@ -84,6 +85,10 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         connectedCallback() {
+            if (!this.hasAttribute('role')) {
+                this.setAttribute('role', 'img');
+            }
+            this.watchViewport();
             if (this.compiled || this.innerHTML) {
                 this.load();
             } else {
@@ -115,6 +120,23 @@ if (typeof HTMLElement !== 'undefined') {
             this.cleanup();
             unbindUniforms(this);
             clearInterval(this._auto_update_timer);
+            if (this._viewport) {
+                this._viewport.disconnect();
+                this._viewport = null;
+            }
+        }
+
+        // the shader loops only draw while the host is in view
+        watchViewport() {
+            if (typeof IntersectionObserver === 'undefined') return;
+            this._viewport = new IntersectionObserver(entries => {
+                this._offscreen = !entries[entries.length - 1].isIntersecting;
+                if (this.hasAttribute('cssd-paused')) return;
+                for (let am of this.animations) {
+                    this._offscreen ? am.pause() : am.resume();
+                }
+            });
+            this._viewport.observe(this);
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
@@ -199,6 +221,7 @@ if (typeof HTMLElement !== 'undefined') {
                     detail,
                     bubbles: true,
                     composed: true,
+                    cancelable: true,
                 })
             );
         }
@@ -272,10 +295,14 @@ if (typeof HTMLElement !== 'undefined') {
             return compiled;
         }
 
+        // each new warning is dispatched as a `warn` event before it is
+        // printed; preventDefault() keeps it out of the console
         report(warnings) {
-            for (let { message, pos } of warnings) {
+            for (let warning of warnings) {
+                let { message, pos } = warning;
                 if (this._warned.has(message)) continue;
                 this._warned.add(message);
+                if (!this.triggerEvent('warn', warning)) continue;
                 let where = pos ? ` (at line ${pos[1] + 1}, column ${pos[0] + 1})` : '';
                 console.warn(message + where, this);
             }
@@ -516,6 +543,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.observers.clear();
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
+            releaseSharedImages(this);
             this._clock = { base: 0, since: 0 };
             // the shader and pattern images live in host variables
             if (this.compiled) {
@@ -547,8 +575,10 @@ if (typeof HTMLElement !== 'undefined') {
             if (!this.hasAttribute('cssd-paused')) return;
             this.removeAttribute('cssd-paused');
             this._clock.since = performance.now();
-            for (let am of this.animations) {
-                am.resume();
+            if (!this._offscreen) {
+                for (let am of this.animations) {
+                    am.resume();
+                }
             }
             for (let nested of this.shadowRoot.querySelectorAll('css-doodle')) {
                 nested.resume();
@@ -595,12 +625,13 @@ if (typeof HTMLElement !== 'undefined') {
             `;
 
             if (download || detail) {
-                let { source, url, blob } = await generatePng(svg, w, h, scale);
+                let { source, blob } = await generatePng(svg, w, h, scale);
                 if (download) {
                     let a = document.createElement('a');
                     a.download = getPngName(name);
-                    a.href = url;
+                    a.href = URL.createObjectURL(blob);
                     a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
                 }
                 return { width: w, height: h, svg, blob, source };
             }
