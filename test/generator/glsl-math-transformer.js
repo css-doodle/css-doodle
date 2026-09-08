@@ -167,3 +167,31 @@ test('a swizzle after a call or a parenthesized value is kept', () => {
     assert.equal(transform('(z).x * 2', { expect: 'float' }), '(z.x * 2.0)');
     assert.equal(transform('abs(z).y', { expect: 'bool' }), 'bool(abs(z).y)');
 });
+
+test('cond() is a ternary chain: first test that holds, trailing default, else 0', () => {
+    assert.equal(transform('cond(dr < 2, 1, 0)', { expect: 'float' }), '(bool((dr < 2.0)) ? 1.0 : 0.0)');
+    assert.equal(transform('cond(x > 4, .8, dr < 3, .5, .3)', { expect: 'float' }),
+        '(bool((x > 4.0)) ? .8 : (bool((dr < 3.0)) ? .5 : .3))');
+    // an even count has no default and falls back to 0
+    assert.equal(transform('cond(x > 1, 5)', { expect: 'float' }), '(bool((x > 1.0)) ? 5.0 : 0.0)');
+    assert.equal(transform('cond(7)', { expect: 'float' }), '7.0');
+    assert.equal(transform('cond()', { expect: 'float' }), '0.0');
+    // the values take the type the caller expects, the tests are always bool
+    assert.equal(transform('cond(x, 1, 0)', { expect: 'bool' }), '(bool(x) ? bool(1.0) : bool(0.0))');
+    assert.equal(transform('cond(x > 1, 2, 3) + 1', { expect: 'float' }), '((bool((x > 1.0)) ? 2.0 : 3.0) + 1.0)');
+    // vector branches pass through, and a swizzle applies to the result
+    assert.equal(transform('cond(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
+});
+
+test('#rgb and #rrggbb are vec3 literals', () => {
+    assert.equal(transform('#fff'), 'vec3(1.0, 1.0, 1.0)');
+    // the tokenizer splits a color at letter/digit boundaries; every split is glued back
+    assert.equal(transform('#00f + 1'), '(vec3(0.0, 0.0, 1.0) + 1.0)');
+    assert.equal(transform('#0f0'), 'vec3(0.0, 1.0, 0.0)');
+    assert.equal(transform('#a1b2c3'), 'vec3(0.6313725490196078, 0.6980392156862745, 0.7647058823529411)');
+    assert.equal(transform('#FF8000 * .5'), '(vec3(1.0, 0.5019607843137255, 0.0) * .5)');
+    assert.equal(transform('cond(dr < 2, #fff, #000)', { expect: 'float' }),
+        '(bool((dr < 2.0)) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))');
+    // other lengths are not colors and stay as written
+    assert.equal(transform('#fffe'), '#fffe');
+});

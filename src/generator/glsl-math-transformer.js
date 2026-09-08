@@ -34,6 +34,13 @@ function preprocessTokens(rawTokens) {
     for (let i = 0; i < rawTokens.length; i++) {
         const t = rawTokens[i];
         if (t.type === 'Space') continue;
+        if (t.isWord() && t.value[0] === '#') {
+            while (rawTokens[i + 1] && /^[0-9a-f]+$/i.test(rawTokens[i + 1].value)) {
+                t.value += rawTokens[++i].value;
+            }
+            tokens.push(t);
+            continue;
+        }
 
         const next = rawTokens[i + 1];
 
@@ -61,6 +68,14 @@ function preprocessTokens(rawTokens) {
     return tokens;
 }
 
+function hexColor(word) {
+    let hex = word.slice(1);
+    if (hex.length === 3) hex = hex.replace(/./g, '$&$&');
+    if (hex.length !== 6 || /[^0-9a-f]/i.test(hex)) return { type: 'Var', val: word };
+    const args = [0, 2, 4].map(i => ({ type: 'Lit', val: String(parseInt(hex.slice(i, i + 2), 16) / 255) }));
+    return { type: 'Call', val: 'vec3', args };
+}
+
 export default function transform(code, { expect = null } = {}) {
     const tokens = preprocessTokens(scan(code));
 
@@ -76,7 +91,9 @@ export default function transform(code, { expect = null } = {}) {
         if (t.isNumber()) {
             n = { type: 'Lit', val: t.value };
         } else if (t.isWord()) {
-            if (t.value.toLowerCase() === WORD_NOT) {
+            if (t.value[0] === '#') {
+                n = hexColor(t.value);
+            } else if (t.value.toLowerCase() === WORD_NOT) {
                 n = { type: 'Pre', val: '!', right: parse(PREC['&&'] + 1) };
             } else {
                 const next = peek();
@@ -157,6 +174,14 @@ export default function transform(code, { expect = null } = {}) {
             }
             if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
             return `-${gen(n.right, exp)}`;
+        }
+        if (n.type === 'Call' && n.val === 'cond') {
+            const a = n.args;
+            let out = gen(a.length % 2 ? a[a.length - 1] : { type: 'Lit', val: '0' }, exp);
+            for (let i = a.length - 2 - a.length % 2; i >= 0; i -= 2) {
+                out = `(${gen(a[i], 'bool')} ? ${gen(a[i + 1], exp)} : ${out})`;
+            }
+            return out;
         }
         if (n.type === 'Call') {
             let args = n.args.map(a => gen(a, 'float')).join(', ');

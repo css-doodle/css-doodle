@@ -541,7 +541,12 @@ A `@pattern` body declares the parameters `grid`, `shape`, `size` and
 declarations that apply where its condition holds, and may nest. It
 opens a child scope: its declarations shadow outer variables, and a
 block-local `shape` or `size` changes the mask for that block.
-`match(…)` remains available as an alias of `cond(…)`.
+`match(…)` remains available as an alias of the `cond(…)` block.
+
+In a value, `cond` is a function: `cond(t1, v1, t2, v2, …)` gives
+the value after the first test that holds, a last argument without a
+test when none does, and `0` without one, so
+`fill: cond(dr < 2, #fff, dr < 4, #888, #000)` picks a color per cell.
 
 Expressions are written in a GLSL-oriented language, not the language
 of §8. Compared with §8, `^` is bitwise xor, `÷`, `∧` and `∨` are not
@@ -550,7 +555,8 @@ available, and `and`, `or` and `not` may be used for `&&`, `||` and
 functions, such as `sin`, `mod`, `mix` and `step`, and the constant
 `PI` are available, and so are its vectors: a variable may hold a
 `vec2`, `vec3`, `vec4` or `mat2`, and is read with a swizzle, as in
-`c.x` or `p.yx`. A `fill` that is one `vec3` expression is a color.
+`c.x` or `p.yx`. A color written as `#rgb` or `#rrggbb` is a `vec3`,
+and a `fill` that is one `vec3` expression is a color.
 
 The coordinates count cells from the top-left corner, like the grid:
 
@@ -573,6 +579,7 @@ These functions are available besides the GLSL ones:
 
 | Function                          | Returns                                                     |
 | --------------------------------- | ----------------------------------------------------------- |
+| `cond(t, v, …, else)`             | the value after the first test that holds, else the last argument, or 0 |
 | `rand(a, b)`, `rand(n)`           | a seeded random number, 0 to 1                              |
 | `noise(a, b)`, `noise(n)`         | value noise, 0 to 1                                         |
 | `fbm(a, b)`                       | six octaves of noise, about 0 to 1                          |

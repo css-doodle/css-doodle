@@ -429,3 +429,18 @@ test('iterate state that starts from a call returning a float is a float', () =>
     assert.match(main('s: -fbm(uv); k: noise(uv)*2; p: uv*noise(uv); iterate(2) { s: s*.5; k: k+1; p: p*2 }'),
         /float s = -fbm\(uv\);\s*float k = \(noise\(uv\) \* 2\.0\);\s*vec2 p = \(uv \* noise\(uv\)\);/);
 });
+
+// --- cond() as a function ---
+
+test('cond() in a value chooses between expressions, colors included', () => {
+    assert.equal(color('fill: cond(dr < 2, #fff, #000)'),
+        'cssd_color = vec4(vec3((bool((dr < 2.0)) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))), 1.0);');
+    assert.equal(color('c: cond(db = 0, 1, dr < 3, .5, 0); fill: hsl(c, .8, .5)'),
+        'cssd_color = vec4(vec3(hsl((bool((db == 0.0)) ? 1.0 : (bool((dr < 3.0)) ? .5 : 0.0)), .8, .5)), 1.0);');
+    assert.match(shader('size: cond(x > 4, .8, .3); fill: #000'), /float size = \(bool\(\(x > 4\.0\)\) \? \.8 : \.3\);/);
+    // as a block test its branches are already bool, so no outer cast
+    assert.equal(condition('cond(cond(x > 2, y > 2, 0)) { fill: red }'),
+        'if ((bool((x > 2.0)) ? bool((y > 2.0)) : bool(0.0))) {');
+    // the block form is unchanged
+    assert.equal(condition('cond(dr < 2) { fill: red }'), 'if (bool((dr < 2.0))) {');
+});
