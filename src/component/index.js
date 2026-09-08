@@ -23,6 +23,24 @@ function unEntity(code) {
     return textarea.value;
 }
 
+function serializeDoodle(root) {
+    let sources = root.querySelectorAll('canvas');
+    let nodes = root.childNodes;
+    if (sources.length) {
+        let template = document.createElement('template');
+        template.innerHTML = root.innerHTML;
+        template.content.querySelectorAll('canvas').forEach((canvas, i) => {
+            let image = document.createElement('img');
+            image.setAttribute('style', 'position:absolute;width:100%;height:100%;object-fit:cover');
+            image.setAttribute('src', sources[i].toDataURL());
+            canvas.replaceWith(image);
+        });
+        nodes = template.content.childNodes;
+    }
+    let serializer = new XMLSerializer();
+    return Array.from(nodes, node => serializer.serializeToString(node)).join('');
+}
+
 function mountFilterDefs(parent, markup, slot) {
     let holder = parent.querySelector(':scope > ft');
     if (!markup) {
@@ -401,7 +419,10 @@ if (typeof HTMLElement !== 'undefined') {
                 this.reflow();
             }
             loadGoogleFontLink(compiled.styles.gf);
-            this.applyStyles(compiled);
+            let replace = this.applyStyles(compiled);
+            if (Object.keys(compiled.content).length) {
+                replace(Object.values(compiled.content).join(' '));
+            }
             this.mountFilters(compiled.filters);
             this.syncSvgAnimations();
         }
@@ -602,7 +623,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         async export({ scale, name, download, detail } = {}) {
             let variables = getAllVariables(this);
-            let html = this.doodle.innerHTML;
+            let html = serializeDoodle(this.doodle);
 
             let { width, height } = this.getBoundingClientRect();
             scale = parseInt(scale) || 1;

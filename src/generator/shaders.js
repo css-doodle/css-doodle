@@ -69,7 +69,7 @@ function generateFragment(fragment, textures) {
     if (precisionMatch) {
         fragment = fragment.replace(precisionMatch[0], '');
     }
-    push(`precision ${precisionMatch ? precisionMatch[1] : 'mediump'} float;`);
+    push(`precision ${precisionMatch ? precisionMatch[1] : 'highp'} float;`);
 
     if (!outputMatch) {
         push('out vec4 FragColor;');
@@ -162,6 +162,7 @@ function createSurface(width, height) {
     const gl = canvas.getContext('webgl2', {
         powerPreference: 'high-performance',
         antialias: false,
+        premultipliedAlpha: false,
         failIfMajorPerformanceCaveat: true,
         preserveDrawingBuffer: true
     });

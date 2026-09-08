@@ -90,6 +90,12 @@ export default function transform(code, { expect = null } = {}) {
         } else {
             n = { type: 'Lit', val: '0' };
         }
+        // a swizzle after a call or a parenthesized value: vec2(a, b).x, (z).xy
+        if (n.type !== 'Pre') {
+            while (peek() && peek().isWord() && peek().value[0] === '.') {
+                n = { type: 'Member', val: consume().value, left: n };
+            }
+        }
         while (pos < tokens.length) {
             const op = peek();
             let val = null;
@@ -134,6 +140,10 @@ export default function transform(code, { expect = null } = {}) {
         }
         if (n.type === 'Var') {
             return (exp && exp !== 'float') ? `${exp}(${n.val})` : n.val;
+        }
+        if (n.type === 'Member') {
+            const out = gen(n.left) + n.val;
+            return (exp && exp !== 'float') ? `${exp}(${out})` : out;
         }
         if (n.type === 'Pre') {
             if (!n.right) return gen({ type: 'Lit', val: '0' }, exp);

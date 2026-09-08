@@ -524,28 +524,98 @@ command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
 @pattern(
   grid: 20;
   fill: #000;
-  match(dr < .5) { fill: #fff; }
+  cond(dr < .5) { fill: #fff; }
 )
 ```
 
 ```
-pattern-body = { name ':' expression ';' | match-block }
-match-block  = match { ',' match } '{' pattern-body '}'
-match        = 'match' '(' expression ')'
+pattern-body  = { name ':' expression ';' | cond-block | iterate-block }
+cond-block    = cond { ',' cond } '{' pattern-body '}'
+cond          = 'cond' '(' expression ')'
+iterate-block = 'iterate' '(' integer [ ',' expression ] ')'
+                '{' { name ':' expression ';' } '}'
 ```
 
 A `@pattern` body declares the parameters `grid`, `shape`, `size` and
-`fill`; any other name declares a variable. A `match` block holds the
+`fill`; any other name declares a variable. A `cond` block holds the
 declarations that apply where its condition holds, and may nest. It
 opens a child scope: its declarations shadow outer variables, and a
 block-local `shape` or `size` changes the mask for that block.
+`match(…)` remains available as an alias of `cond(…)`.
 
 Expressions are written in a GLSL-oriented language, not the language
-of §8. They see the coordinates `x`, `y`, `i`, `X`, `Y`, `I` and `t`,
-and the distances `dx`, `dy`, `dr`, `dc`, `dm` and `da`. Compared with
-§8, `^` is bitwise xor, `÷`, `∧` and `∨` are not available, and `and`,
-`or` and `not` may be used for `&&`, `||` and `!`. Values are bare
-expressions, without units or `var()`.
+of §8. Compared with §8, `^` is bitwise xor, `÷`, `∧` and `∨` are not
+available, and `and`, `or` and `not` may be used for `&&`, `||` and
+`!`. Values are bare expressions, without units or `var()`. The GLSL
+functions, such as `sin`, `mod`, `mix` and `step`, and the constant
+`PI` are available, and so are its vectors: a variable may hold a
+`vec2`, `vec3`, `vec4` or `mat2`, and is read with a swizzle, as in
+`c.x` or `p.yx`. A `fill` that is one `vec3` expression is a color.
+
+The coordinates count cells from the top-left corner, like the grid:
+
+| Name          | Value                                                    |
+| ------------- | -------------------------------------------------------- |
+| `x`, `y`, `i` | column, row and index of the cell, from 1                |
+| `X`, `Y`, `I` | the number of columns, rows and cells                    |
+| `dx`, `dy`    | `x` and `y` measured from the center of the grid         |
+| `dr`, `da`    | distance and angle of the cell from the center           |
+| `dc`, `dm`    | Chebyshev and Manhattan distance of the cell from the center |
+| `db`          | distance to the nearest edge of the grid, in cells       |
+| `du`, `dv`    | position inside the cell, −0.5 to 0.5, `dv` downward     |
+| `uv`          | position over the whole pattern, 0 to 1, `uv.y` upward   |
+| `t`           | time in seconds; reading it animates the pattern         |
+
+Without a `grid` the pattern is a single cell, so `du`, `dv` and
+`uv` address every pixel.
+
+These functions are available besides the GLSL ones:
+
+| Function                          | Returns                                                     |
+| --------------------------------- | ----------------------------------------------------------- |
+| `rand(a, b)`, `rand(n)`           | a seeded random number, 0 to 1                              |
+| `noise(a, b)`, `noise(n)`         | value noise, 0 to 1                                         |
+| `fbm(a, b)`                       | six octaves of noise, about 0 to 1                          |
+| `voronoi(a, b)`                   | distance to the nearest of a seeded set of points           |
+| `hsl(h, s, l)`, `hsv(h, s, v)`    | a color from components 0 to 1                              |
+| `rot(x, y, a)`                    | the point `x`, `y` rotated by `a` radians, as a `vec2`      |
+| `smin(a, b, k)`                   | the smaller of `a` and `b`, blended over `k`                 |
+| `ngon(x, y, n)`                   | distance from the origin with a regular `n`-gon as the unit shape |
+| `escape(zx, zy, cx, cy)`          | 0 where z → z² + c never leaves, else how soon it does, 0 to 1 (96 steps, bailout 16) |
+| `spiral(dx, dy)`                  | the index of the cell along a square spiral from the center |
+| `dither(x, y)`                    | the 4×4 Bayer threshold of the cell, 0 to 1                 |
+
+A point that the table writes as two floats may also be one `vec2`,
+so `fbm(p)`, `ngon(p, 6)`, `rot(p, a)` and `escape(z, c)` are the
+same functions taking vectors.
+
+```css
+@pattern(
+  cx: uv.x*3 - 2.2; cy: uv.y*2.6 - 1.3;
+  zx: 0; zy: 0;
+  iterate(96, zx*zx + zy*zy > 4) {
+    zx: zx*zx - zy*zy + cx;
+    zy: 2*zx*zy + cy;
+  }
+  fill: hsl(n/48, 0.8, 0.5);
+  cond(n = 96) { fill: #000 }
+)
+```
+
+An `iterate` block runs its declarations a fixed number of times. A
+name that is also declared outside the block is loop state: it starts
+from its outer value, and every step assigns all state at once from
+the previous values, so the two lines above are the formula z² + c.
+Other names are temporaries of one step, and the parameters are not
+read. A state is a vector when its initial value mentions a vector
+constructor or `uv`, otherwise a float, so `z: vec2(0)` and
+`z: uv*3 - 1.5` are both `vec2`. A value that starts with a call
+returning a float, such as `fbm(uv)` or `length(uv)`, is a float.
+`n` counts the steps, inside the block and after it. The second
+argument stops the loop once it holds, checked after each step, so
+`n` equal to the count means it never did. After the block, the state
+names and `n` hold the results. A block without a step count is
+skipped and reported (§11).
 
 ### 9.4 Shaders
 
@@ -569,7 +639,9 @@ texture-name = 'texture' { ASCII-letter | digit | '_' }
 A `@shaders` body is either plain GLSL fragment source or a list of
 named sections. A `texture…` section holds a doodle that is rendered
 to an image and bound as the sampler of that name. `//` comments are
-removed, and `#define` lines are kept on their own line.
+removed, and `#define` lines are kept on their own line. The
+fragment is compiled with `precision highp float` unless it declares
+its own precision.
 
 `$name` reads the custom property `--name` when the shader is
 generated. In `fragment` and `vertex` it inserts the text of the
@@ -681,8 +753,10 @@ component:
 | `draw:` on an element that has no path length                    | the declaration is dropped                                  |
 | `animate name:` without a duration after `/`, or `draw:` without one | the `<animate>` is emitted without `dur`                |
 | a timing word that is not a time, a count, an easing or a fill   | the word is dropped                                         |
+| an `iterate` block without a step count                          | the block is skipped                                        |
 
 The first four are found while parsing, which continues. The others
-are found while the CSS is generated. A raw body (`@doodle`,
+are found while the CSS is generated, and the last one when its
+pattern is drawn. A raw body (`@doodle`,
 `@shaders`, `@pattern`) that is never closed runs to the end of the
 source without a report.

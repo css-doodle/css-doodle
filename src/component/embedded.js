@@ -160,7 +160,7 @@ export function doodleToImage(host, code, options, fn) {
 }
 
 export function patternToImage(host, { source, cell, id, arg, target }, fn) {
-    let shader = generatePattern(source, host.extra);
+    let shader = generatePattern(source, host.extra, message => host.report([{ message }]));
     shaderToImage(host, { source: shader, cell, id, arg, target }, fn);
 }
 
@@ -221,52 +221,40 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
         lastH = height;
         ready = true;
 
+        let present;
+        if (target.type === 'content') {
+            // the WebGL canvas is shared, so the cell keeps a copy of each frame
+            let view = document.createElement('canvas');
+            let ctx = view.getContext('2d');
+            element.replaceChildren(view);
+            present = () => {
+                let { canvas } = drawing;
+                if (view.width !== canvas.width || view.height !== canvas.height) {
+                    view.width = canvas.width;
+                    view.height = canvas.height;
+                }
+                // resizing resets the context, so this is set per frame
+                ctx.globalCompositeOperation = 'copy';
+                ctx.drawImage(canvas, 0, 0);
+            }
+        } else {
+            present = () => setShaderProp(drawing.canvas.toDataURL());
+        }
+
+        present();
+
         if (drawing.animated) {
             // a new loop starts in the host's current state
-            const animate = fn => {
-                let animation = createAnimation(fn);
-                if (host._offscreen || host.hasAttribute('cssd-paused')) {
-                    animation.pause();
-                }
-                host.animations.push(animation);
+            let animation = createAnimation(t => {
+                drawing.draw(t, width, height, host._umouse, textures);
+                present();
+            });
+            if (host._offscreen || host.hasAttribute('cssd-paused')) {
+                animation.pause();
             }
-            if (target.type === 'content') {
-                // the WebGL canvas is shared, so the cell shows a copy of each frame
-                let view = document.createElement('canvas');
-                let ctx = view.getContext('2d');
-                ctx.globalCompositeOperation = 'copy';
-                const blit = () => {
-                    let { canvas } = drawing;
-                    if (view.width !== canvas.width || view.height !== canvas.height) {
-                        view.width = canvas.width;
-                        view.height = canvas.height;
-                        ctx.globalCompositeOperation = 'copy';
-                    }
-                    ctx.drawImage(canvas, 0, 0);
-                }
-                blit();
-                element.replaceChildren(view);
-                animate(t => {
-                    drawing.draw(t, width, height, host._umouse, textures);
-                    blit();
-                });
-            } else {
-                animate(t => {
-                    drawing.draw(t, width, height, host._umouse, textures);
-                    setShaderProp(drawing.canvas.toDataURL());
-                });
-            }
+            host.animations.push(animation);
             host.shaderRenders.set(target.selector, drawing);
         } else {
-            let dataUrl = drawing.canvas.toDataURL();
-            if (target.type === 'content') {
-                let img = new Image();
-                img.style.cssText = 'position:absolute;width:100%;height:100%;object-fit:cover';
-                img.src = dataUrl;
-                element.replaceChildren(img);
-            } else {
-                setShaderProp(dataUrl);
-            }
             drawing.dispose();
         }
     }

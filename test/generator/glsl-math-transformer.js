@@ -159,3 +159,11 @@ test('deeply nested real-world expressions', () => {
         'bool((y > (4.0 * mod((2.0 * float((int(x) & 1))), 4.0))))'
     );
 });
+
+// --- swizzles and types ---
+
+test('a swizzle after a call or a parenthesized value is kept', () => {
+    assert.equal(transform('vec2(1, 2).yx', { expect: 'float' }), 'vec2(1.0, 2.0).yx');
+    assert.equal(transform('(z).x * 2', { expect: 'float' }), '(z.x * 2.0)');
+    assert.equal(transform('abs(z).y', { expect: 'bool' }), 'bool(abs(z).y)');
+});
