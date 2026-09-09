@@ -161,7 +161,7 @@ export async function shaderToImage(host, { source, cell, id, arg, target }) {
     } else if (target.selector === ':container') {
         element = host.shadowRoot.querySelector('grid');
     } else {
-        element = host.doodle.getElementById(cell);
+        element = host.shadowRoot.getElementById(cell);
     }
 
     // the drawing size, capped by the size argument when it has one

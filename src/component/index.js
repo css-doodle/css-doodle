@@ -42,7 +42,8 @@ function serializeDoodle(root) {
 }
 
 function mountFilterDefs(parent, markup, slot) {
-    let holder = parent.querySelector(':scope > ft');
+    // `:scope >` matches nothing when the parent is a shadow root
+    let holder = [...parent.children].find(el => el.localName === 'ft');
     if (!markup) {
         if (holder) {
             holder.remove();
@@ -59,6 +60,14 @@ function mountFilterDefs(parent, markup, slot) {
     }
     holder.innerHTML = markup;
     return holder;
+}
+
+// `2s`, `1.5m` or a number of milliseconds, at least 500; 2000 when unreadable
+function parseInterval(value) {
+    let text = String(value ?? '').trim();
+    let m = /^([\d.]+)(m|s)$/.exec(text);
+    let ms = m ? parseFloat(m[1]) * (m[2] === 'm' ? 60000 : 1000) : parseFloat(text);
+    return isNaN(ms) ? 2000 : Math.max(ms, 500);
 }
 
 function getPngName(name) {
@@ -86,7 +95,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         constructor() {
             super();
-            this.doodle = this.attachShadow({ mode: 'open' });
+            this.attachShadow({ mode: 'open' });
             this.addEventListener('click', this.dispatchCellClick);
             this.animations = [];
             this.observers = new Map();
@@ -138,10 +147,8 @@ if (typeof HTMLElement !== 'undefined') {
             this.cleanup();
             unbindUniforms(this);
             clearInterval(this._auto_update_timer);
-            if (this._viewport) {
-                this._viewport.disconnect();
-                this._viewport = null;
-            }
+            this._viewport?.disconnect();
+            this._viewport = null;
         }
 
         // the shader loops only draw while the host is in view
@@ -181,20 +188,12 @@ if (typeof HTMLElement !== 'undefined') {
             }
         }
 
-        attr(name, value) {
-            if (value === undefined) {
-                return this.getAttribute(name);
-            }
-            this.setAttribute(name, value);
-            return value;
-        }
-
         get grid() {
-            return Object.assign({}, this.gridSize);
+            return { ...this.gridSize };
         }
 
         set grid(grid) {
-            this.attr('grid', grid);
+            this.setAttribute('grid', grid);
         }
 
         get seed() {
@@ -202,19 +201,19 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         set seed(seed) {
-            this.attr('seed', seed);
+            this.setAttribute('seed', seed);
         }
 
         get use() {
-            return this.attr('use');
+            return this.getAttribute('use');
         }
 
         set use(use) {
-            this.attr('use', use);
+            this.setAttribute('use', use);
         }
 
         get diagnostics() {
-            return (this.compiled && this.compiled.warnings) || [];
+            return this.compiled?.warnings ?? [];
         }
 
         getMaxGrid() {
@@ -222,11 +221,11 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         getGrid() {
-            return parseGrid(this.attr('grid'), this.getMaxGrid());
+            return parseGrid(this.getAttribute('grid'), this.getMaxGrid());
         }
 
         getUse() {
-            let use = String(this.attr('use') || '').trim();
+            let use = String(this.getAttribute('use') || '').trim();
             if (/^var\(/.test(use)) {
                 use = `@use:${use};`;
             }
@@ -262,34 +261,14 @@ if (typeof HTMLElement !== 'undefined') {
             this.update();
         }
 
-        _get_auto_update_interval(interval) {
-            const MIN = 500;
-            const DEFAULT = 2000;
-            if (isNil(interval)) {
-                interval = this.dataset.interval || this.attr('auto:update') || DEFAULT;
-            }
-            interval = String(interval).trim();
-            if (/^([\d.]+)m$/.test(interval)) {
-                interval = parseFloat(interval) * 60 * 1000;
-            } else if (/^([\d.]+)s$/.test(interval)) {
-                interval = parseFloat(interval) * 1000;
-            } else {
-                interval = parseFloat(interval);
-            }
-            if (isNaN(interval)) {
-                return DEFAULT;
-            }
-            return Math.max(interval, MIN);
-        }
-
         autoUpdate(interval) {
-            clearInterval(this._auto_update_timer);
             if (!isNil(interval)) {
                 this.dataset.interval = interval;
             }
+            clearInterval(this._auto_update_timer);
             this._auto_update_timer = setInterval(
                 () => this.update({ auto: true }),
-                this._get_auto_update_interval(interval)
+                parseInterval(this.dataset.interval || this.getAttribute('auto:update'))
             );
         }
 
@@ -300,14 +279,14 @@ if (typeof HTMLElement !== 'undefined') {
             this.removeAttribute('data-interval');
         }
 
-        generate(parsed) {
-            let grid = this.getGrid();
-            let seed = this.attr('seed') || this.attr('data-seed');
+        generate(code) {
+            let seed = this.getAttribute('seed') || this.getAttribute('data-seed');
             if (isNil(seed)) {
                 seed = Date.now();
             }
+            let parsed = parseCssCached(this.getUse() + code, this.extra);
             let compiled = this.compiled = generateCss(
-                parsed, grid, seed, this.getMaxGrid(), null, [], this._instance
+                parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance
             );
             this.report(compiled.warnings);
             return compiled;
@@ -327,18 +306,9 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         load() {
-            this.cleanup();
             let code = this._code || unEntity(this.innerHTML);
-            let parsed = parseCssCached(this.getUse() + code, this.extra);
-            let compiled = this.generate(parsed);
-
-            this.gridSize = compiled.grid || this.getGrid();
-            this._code = code;
-            // the source is cleared before buildGrid so the filter defs it
-            // mounts as light children don't get wiped along with it
             this.innerHTML = '';
-            this.buildGrid(compiled, this.gridSize);
-
+            this.render(code);
             if (this.hasAttribute('auto:update') || this._auto_update_timer) {
                 this.autoUpdate();
             }
@@ -353,35 +323,10 @@ if (typeof HTMLElement !== 'undefined') {
                 options = styles;
                 styles = '';
             }
-
-            this._update(styles);
+            this.render(styles || this._code);
             if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
                 this.autoUpdate();
             }
-        }
-
-        _update(styles) {
-            this.cleanup();
-            // reuse the old rules when called without new code
-            if (!styles) {
-                styles = this._code;
-            }
-            this._code = styles;
-
-            const old = this.compiled;
-            const compiled = this.generate(
-                parseCssCached(this.getUse() + styles, this.extra));
-            const grid = compiled.grid || this.getGrid();
-            const rebuild = this.shouldRebuild(compiled, old, grid);
-
-            this.gridSize = grid;
-
-            if (rebuild) {
-                this.buildGrid(compiled, grid);
-            } else {
-                this.patch(compiled, old.styles);
-            }
-
             setTimeout(() => {
                 this.triggerEvent('render');
                 this.triggerEvent('afterUpdate');
@@ -389,11 +334,25 @@ if (typeof HTMLElement !== 'undefined') {
             });
         }
 
+        render(code) {
+            this.cleanup();
+            this._code = code;
+            let old = this.compiled;
+            let compiled = this.generate(code);
+            let grid = compiled.grid || this.getGrid();
+            let rebuild = this.shouldRebuild(compiled, old, grid);
+            this.gridSize = grid;
+            if (rebuild) {
+                this.buildGrid(compiled, grid);
+            } else {
+                this.patch(compiled, old.styles);
+            }
+        }
+
         shouldRebuild(compiled, old, grid) {
             if (!old) {
                 return true;
             }
-            // no cells yet, or nested doodles pending as content
             if (!this.shadowRoot.innerHTML || this.shadowRoot.querySelector('css-doodle')) {
                 return true;
             }
@@ -410,43 +369,35 @@ if (typeof HTMLElement !== 'undefined') {
             return old.styles.backdrop !== compiled.styles.backdrop;
         }
 
-        // refresh styles in place, keeping the cell elements
-        patch(compiled, oldStyles) {
-            bindUniforms(this, compiled.uniforms);
-            if (compiled.props.hasAnimation) {
-                // detach animations first so they restart with the new styles
-                this.setStyle(oldStyles.all.replace(/animation/g, 'x'));
-                this.reflow();
-            }
-            loadGoogleFontLink(compiled.styles.gf);
-            let replace = this.applyStyles(compiled);
-            if (Object.keys(compiled.content).length) {
-                replace(Object.values(compiled.content).join(' '));
-            }
-            this.mountFilters(compiled.filters);
-            this.syncSvgAnimations();
-        }
-
         buildGrid(compiled, grid) {
-            const { hasTransition, hasAnimation } = compiled.props;
-            const { uniforms, content, styles } = compiled;
-            const basicStyles = getBasicStyles(grid);
-            const hasContent = Object.keys(content).length;
-
-            this.doodle.innerHTML = css`
-                <style>${basicStyles + styles.main}</style>
+            let { hasTransition, hasAnimation } = compiled.props;
+            let { content, styles } = compiled;
+            let hasContent = Object.keys(content).length;
+            this.shadowRoot.innerHTML = css`
+                <style>${getBasicStyles(grid) + styles.main}</style>
                 ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
             `;
             if (hasTransition || hasAnimation) {
                 this.reflow();
             }
+            this.mount(compiled);
+        }
+
+        patch(compiled, oldStyles) {
+            if (compiled.props.hasAnimation) {
+                this.setStyle(oldStyles.all.replace(/animation/g, 'x'));
+                this.reflow();
+            }
+            this.mount(compiled);
+        }
+
+        mount(compiled) {
+            let { styles, content, uniforms, filters } = compiled;
             loadGoogleFontLink(styles.gf);
             let replace = this.applyStyles(compiled);
-            if (hasContent) {
-                replace(Object.values(content).join(' '));
-            }
+            replace(Object.values(content).join(' '));
             bindUniforms(this, uniforms);
-            this.mountFilters(compiled.filters);
+            this.mountFilters(filters);
             this.syncSvgAnimations();
         }
 
@@ -467,15 +418,11 @@ if (typeof HTMLElement !== 'undefined') {
             return replace;
         }
 
-        // running time of the host in ms, frozen while paused; the images
-        // that carry their own clock are stamped with it
         clockNow() {
             let { base, since } = this._clock;
             return base + (since ? performance.now() - since : 0);
         }
 
-        // nested doodle images and animated svg images carry their own
-        // clocks, so the sheet is rebuilt with the host's time on pause/resume
         restamp() {
             let compiled = this.compiled;
             if (!compiled) return;
@@ -568,11 +515,8 @@ if (typeof HTMLElement !== 'undefined') {
             this._clock = { base: 0, since: 0 };
             // the shader and pattern images live in host variables
             if (this.compiled) {
-                let { patterns, shaders } = this.compiled;
-                for (let id of Object.keys(shaders)) {
-                    this.style.removeProperty('--' + id);
-                }
-                for (let id of Object.keys(patterns)) {
+                let { shaders, patterns } = this.compiled;
+                for (let id of [...Object.keys(shaders), ...Object.keys(patterns)]) {
                     this.style.removeProperty('--' + id);
                 }
             }
@@ -623,7 +567,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         async export({ scale, name, download, detail } = {}) {
             let variables = getAllVariables(this);
-            let html = serializeDoodle(this.doodle);
+            let html = serializeDoodle(this.shadowRoot);
 
             let { width, height } = this.getBoundingClientRect();
             scale = parseInt(scale) || 1;
