@@ -118,8 +118,9 @@ test('named arguments fill by position, then by name', () => {
     assert.deepEqual(getNamedArguments(['a', 'b'], ['a', 'b']), { a: 'a', b: 'b' });
     assert.deepEqual(getNamedArguments(['a=8', 'b=9'], ['a', 'b']), { a: '8', b: '9' });
     assert.deepEqual(getNamedArguments(['8', '7', 'b=9'], ['a', 'b']), { a: '8', b: '9' });
-    // a positional value after a named one is dropped
+    // a positional value after a named one is dropped, even one with an = inside
     assert.deepEqual(getNamedArguments(['a=8', '9'], ['a', 'b']), { a: '8' });
+    assert.deepEqual(getNamedArguments(['a=8', '@r(1 = 2)'], ['a', 'b']), { a: '8' });
     // unknown names are ignored
     assert.deepEqual(getNamedArguments(['a=8', 'c=9'], ['a', 'b']), { a: '8' });
     assert.deepEqual(getNamedArguments(['a=8', 'c=9'], ['a', 'b', 'x']), { a: '8' });
