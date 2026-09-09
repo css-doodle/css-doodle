@@ -73,7 +73,7 @@ test('css animation delays shift by the host time', () => {
         shift('.host {animation:86400000ms steps(10368000) 0ms infinite cssd-utime-animation,86400000ms steps(10368000) -71847571ms infinite cssd-UTime-animation;}'),
         '.host {animation:86400000ms steps(10368000) -1600ms infinite cssd-utime-animation,86400000ms steps(10368000) -71849171ms infinite cssd-UTime-animation;}');
     // nothing to shift
-    for (let css of ['a{animation:none}', 'a{animation-delay:var(--d)}', 'a{animation-duration:2s}', 'a{transition:all 2s 1s}', '@keyframes spin{to{rotate:1turn}}']) {
+    for (let css of ['a{animation:none}', 'a{animation-delay:var(--d)}', 'a{animation:x min(1s, max(2s, 3s))}', 'a{animation-duration:2s}', 'a{transition:all 2s 1s}', '@keyframes spin{to{rotate:1turn}}']) {
         assert.equal(shift(css), css);
     }
     assert.equal(shiftCssAnimations('a{animation:spin 2s}', 0), 'a{animation:spin 2s}');

@@ -2,8 +2,7 @@ const TIME_UNITS = { ms: 1, s: 1000, min: 60000, h: 3600000 };
 const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
 const RE_CSS_CLOCK = /\banimation(?:-name)?\s*:/;
 const RE_IMAGE_CLOCK = /%3Canimate|animation(?:-name)?%3A/;
-const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/;
-const RE_TIME_G = new RegExp(RE_TIME, 'g');
+const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/g;
 const RE_ATTR = /([\w:-]+)=("[^"]*"|'[^']*')/g;
 
 export function hasImageClock(sheet) {
@@ -45,29 +44,15 @@ function shiftSmil(tag, t, paused) {
     return tag;
 }
 
-function splitList(value) {
-    let items = [], depth = 0, start = 0;
-    for (let i = 0; i < value.length; i++) {
-        let c = value[i];
-        if (c === '(') depth++;
-        else if (c === ')') depth--;
-        else if (c === ',' && !depth) {
-            items.push(value.slice(start, i));
-            start = i + 1;
-        }
-    }
-    items.push(value.slice(start));
-    return items;
-}
-
 export function shiftCssAnimations(css, t) {
     if (!t) return css;
     return css.replace(/(\banimation(-delay)?\s*:\s*)([^;}]+)/g, (m, head, longhand, value) => {
-        if (/\b(var|calc)\(/.test(value)) return m;
-        let items = splitList(value).map(item => {
+        if (/\b(var|calc)\(|\([^)]*\(/.test(value)) return m;
+        // commas inside timing functions do not split the list
+        let items = value.split(/,(?![^(]*\))/).map(item => {
             // in the shorthand the second time is the delay, the first the duration
             let count = 0;
-            let out = item.replace(RE_TIME_G, (m, num, unit) => {
+            let out = item.replace(RE_TIME, (m, num, unit) => {
                 let ms = parseFloat(num) * TIME_UNITS[unit];
                 return (longhand || ++count === 2) ? Math.round(ms - t) + 'ms' : m;
             });

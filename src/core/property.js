@@ -28,43 +28,30 @@ function resolvePlace(value) {
             default:       rest.push(token);
         }
     }
-    for (let token of rest) {
-        if (x === undefined) x = token;
-        else if (y === undefined) y = token;
-    }
-    return [x ?? '50%', y ?? '50%'];
+    return [x ?? rest.shift() ?? '50%', y ?? rest.shift() ?? '50%'];
 }
 
 const borderStyles = /^(solid|dotted|dashed|double|groove|ridge|inset|outset)$/;
-
-// fill in the parts a shorthand border value leaves out:
-// bare numbers get px, a lone color gets 1px, no style gets solid
-function formatBorder(value) {
-    // copy: parseValueGroup results are cached and shared
-    let values = parseValueGroup(value, { symbol: ' ' }).slice();
-    for (let i = 0; i < values.length; i++) {
-        if (Number(values[i])) {
-            values[i] += 'px';
-            break;
-        }
-    }
-    let head = values[0];
-    let isWidth = /^\.?\d/.test(head) || /^(thin|thick|medium)$/.test(head);
-    if (values.length === 1 && !isWidth) {
-        values.push('1px');
-    }
-    if (!values.some(v => borderStyles.test(v))) {
-        values.push('solid');
-    }
-    return values.join(' ');
-}
-
 const lengthValue = /^([.\d]|calc\(|var\()/;
 const ruleWidths = /^(thin|medium|thick)$/;
 const ruleWidthPx = { thin: '1px', medium: '3px', thick: '5px' };
 
-// leading length values are the gap, everything after draws a rule
-// (gap decoration) inside it, with the same leniency as border
+function completeRule(values) {
+    let i = values.findIndex(v => Number(v));
+    if (i >= 0) values[i] += 'px';
+    if (!values.some(v => borderStyles.test(v))) values.push('solid');
+    return values;
+}
+
+function formatBorder(value) {
+    let values = parseValueGroup(value, { symbol: ' ' }).slice();
+    let [head] = values;
+    if (values.length === 1 && !/^\.?\d/.test(head) && !ruleWidths.test(head)) {
+        values.push('1px');
+    }
+    return completeRule(values).join(' ');
+}
+
 function formatGap(value) {
     let values = parseValueGroup(value, { symbol: ' ' }).slice();
     let gap = [];
@@ -74,15 +61,7 @@ function formatGap(value) {
     }
     let rowRule = '', columnRule = '';
     if (values.length) {
-        for (let i = 0; i < values.length; i++) {
-            if (Number(values[i])) {
-                values[i] += 'px';
-                break;
-            }
-        }
-        if (!values.some(v => borderStyles.test(v))) {
-            values.push('solid');
-        }
+        completeRule(values);
         let width = values.find(v => lengthValue.test(v) || ruleWidths.test(v));
         if (width === undefined) {
             // a rule with no width of its own fills its gap
@@ -113,17 +92,12 @@ Property.size = (value, { isSpecialSelector, grid }) => {
     let styles = `width:${w};height:${h};`;
     if (w === 'auto' || h === 'auto') {
         if (ratio) {
-            if (/^\(.+\)$/.test(ratio)) {
-                ratio = ratio.slice(1, -1);
-            } else if (!/^calc/.test(ratio)) {
-                ratio = `calc(${ratio})`;
-            }
+            if (/^\(.+\)$/.test(ratio)) ratio = ratio.slice(1, -1);
+            else if (!/^calc/.test(ratio)) ratio = `calc(${ratio})`;
+        } else if (isSpecialSelector) {
+            ratio = grid.ratio;
         }
-        if (isSpecialSelector) {
-            styles += `aspect-ratio: ${ratio || grid.ratio};`;
-        } else if (ratio) {
-            styles += `aspect-ratio: ${ratio};`;
-        }
+        if (ratio) styles += `aspect-ratio: ${ratio};`;
     }
     if (!isSpecialSelector) {
         styles += `${iw}:${w};${ih}:${h};`;
@@ -153,30 +127,16 @@ Property.grid = (value, options) => {
         p3d: false,
     };
     let temp = parseValueGroup(value, { symbol: ' ' }).map(item => {
-        if (/^row$/i.test(item)) {
-            result.flex = 'row';
-            return '§';
+        if (/^row$/i.test(item)) result.flex = 'row';
+        else if (/^col$/i.test(item)) result.flex = 'column';
+        else if (/^border(:|$)/i.test(item)) result.borderLegacy = item.split(':')[1] || '';
+        else if (/^no\-*clip$/i.test(item)) result.clip = false;
+        else if (/^p3d$/i.test(item)) result.p3d = true;
+        else {
+            result.grid ??= parseGrid(item, options.maxGrid);
+            return item;
         }
-        if (/^col$/i.test(item)) {
-            result.flex = 'column';
-            return '§';
-        }
-        if (/^border(:|$)/i.test(item)) {
-            result.borderLegacy = item.split(':')[1] || '';
-            return '§';
-        }
-        if (/^no\-*clip$/i.test(item)) {
-            result.clip = false;
-            return '§';
-        }
-        if (/^p3d$/i.test(item)) {
-            result.p3d = true;
-            return '§';
-        }
-        if (!result.grid) {
-            result.grid = parseGrid(item, options.maxGrid);
-        }
-        return item;
+        return '§';
     });
 
     let groups = parseValueGroup(temp.join(' '), {
@@ -211,19 +171,14 @@ Property.grid = (value, options) => {
                 else result.fill = value;
                 break;
             case 'ß': result.border = formatBorder(value); break;
-            case '':
-                if (!result.grid) result.grid = parseGrid(value, options.maxGrid);
-                break;
         }
     }
     return result;
 };
 
-Property.gap = value => formatGap(value);
+Property.gap = formatGap;
 
-Property.seed = value => value;
-
-Property.content = value => value;
+Property.seed = Property.content = value => value;
 
 Property.shape = memo('shape-property', value => {
     let { points, preset } = generateShape(value);
