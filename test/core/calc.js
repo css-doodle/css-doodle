@@ -244,10 +244,13 @@ test('expressions held in context variables', () => {
 });
 
 test('implicit multiplication', () => {
-    // a variable followed by a digit is one name (x1, y2), not a product
+    // a variable followed by a digit is one name (x1, y2), not a product;
+    // with a space between them it is a product
     assert.equal(calc('x1', { x1: 99 }), 99);
     assert.equal(calc('y2', { y2: 88 }), 88);
     assert.equal(calc('x1', { x: 5 }), 0);
+    assert.equal(calc('x 1', { x: 5 }), 5);
+    assert.equal(calc('x 2', { x: 5, x2: 99 }), 10);
 
     assert.equal(calc('xπ', { x: 2 }), 2 * Math.PI);
     assert.equal(calc('πx', { x: 2 }), Math.PI * 2);
@@ -290,6 +293,7 @@ test('implicit multiplication with functions', () => {
 test('space-separated adjacency multiplies', () => {
     assert.equal(calc('2 sin(1)'), 2 * Math.sin(1));
     assert.equal(calc('2 x', { x: 3 }), 6);
+    assert.equal(calc('x 2', { x: 3 }), 6);
     assert.equal(calc('2 (3)'), 6);
     // '-1' after a space is still a subtraction
     assert.equal(calc('k -1', { k: 3 }), 2);

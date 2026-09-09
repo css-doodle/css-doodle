@@ -151,7 +151,7 @@ test('known re-association hazards stay on the splicing path', () => {
         [[' 5 ', ''], ['+5']],        // `5 +5` binary vs `5 ·a` multiply
         [['4', ''], ['1e-3']],        // `41e-3` scans as one number
         [['5E-', ''], ['0.3']],       // `5E-0` exponent absorption
-        [['k ', ''], ['5']],          // `k 5` scans as the variable k5
+        [['k ', ''], ['5']],          // a name before a hole glues when unspaced: k5
         [['', ' 7'], ['5']],          // `·a 7` glues into a variable
         [['', ' (2)'], ['5']],        // `·a (2)` reads as a call
     ];

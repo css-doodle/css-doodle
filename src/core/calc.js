@@ -21,7 +21,7 @@ export const defaultContext = {
     }
 };
 
-const operators = {
+export const operators = {
     __proto__: null,
 
     '!': 10,
@@ -68,14 +68,16 @@ const binary = {
     '>>': (a, b) => a >> b,
 };
 
-const NUMBER = 'number';
+// infix token types
+const VALUE = 'value';
 const OPERATOR = 'operator';
+const COMMA = 'comma';
+// postfix node types, values split into these
+const NUMBER = 'number';
 const VARIABLE = 'variable';
 const FUNCTION = 'function';
 
-const compoundOps = new Set(['**', '==', '!=', '<=', '>=', '&&', '||', '<<', '>>']);
-const RE_NUMBER = /^-?(\d+\.?\d*|\d*\.?\d+)(e[+-]?\d+)?$/i;
-const RE_STARTS_WITH_MINUS = /^-/;
+const RE_NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
 const RE_NEGATIVE_VAR = /^-\D/;
 
 function tk(type, value) {
@@ -86,149 +88,116 @@ function isOperator(value) {
     return value in operators;
 }
 
-// Push a value token, resolving adjacency with the previous token:
+// Push a value, resolving adjacency with the previous token:
 // "2x" → 2*x, "2sin(1)" → 2*sin(1), "k -1" → k-1
 function pushValue(tokens, value) {
     const prev = last(tokens);
-    if (prev && (prev.type === NUMBER || prev.value === ')')) {
-        if (RE_STARTS_WITH_MINUS.test(value)) {
+    if (prev && (prev.type === VALUE || prev.value === ')')) {
+        if (value[0] === '-') {
             tokens.push(tk(OPERATOR, '-'));
             value = value.slice(1);
         } else {
             tokens.push(tk(OPERATOR, '*'));
         }
     }
-    tokens.push(tk(NUMBER, value));
+    tokens.push(tk(VALUE, value));
 }
 
-// Transform raw tokens into calc-specific tokens. `spans` maps the
-// source index of a dashed name the context defines to its extent, so
-// its tokens collapse into one variable
+// Rewrite scanner tokens into calc tokens: values (numbers and names),
+// operators and commas. `spans` maps the source index of a dashed name
+// the context defines to that name, so its tokens collapse into one word
 function transformTokens(rawTokens, spans) {
-    const raw = rawTokens.filter(t => t.type !== 'Space');
+    const raw = [];
+    let end = 0;
+    for (const token of rawTokens) {
+        if (token.type === 'Space' || token.index < end) continue;
+        const name = spans && spans.get(token.index);
+        if (name) {
+            end = token.index + name.length;
+            raw.push({ type: 'Word', value: name, index: token.index });
+        } else {
+            raw.push(token);
+        }
+    }
+
     const tokens = [];
-    let i = 0;
+    // a unary sign waiting for the number or name it applies to
+    let sign = '';
 
-    const spanAt = j => (spans && raw[j]) ? spans.get(raw[j].index) : undefined;
-    const skipSpan = (j, span) => {
-        while (j < raw.length && raw[j].index < span.end) j++;
-        return j;
-    };
-
-    while (i < raw.length) {
-        const { type, value } = raw[i];
+    for (let i = 0; i < raw.length; i++) {
+        const { type, value, index } = raw[i];
         const next = raw[i + 1];
 
-        const span = spanAt(i);
-        if (span) {
-            pushValue(tokens, span.name);
-            i = skipSpan(i, span);
-            continue;
-        }
-
         if (type === 'Number') {
-            pushValue(tokens, value);
-            i++;
+            pushValue(tokens, sign + value);
+            sign = '';
             continue;
         }
 
         if (type === 'Word') {
-            // ÷ ∧ ∨ are not tokenizer symbols, so they arrive as words
+            // ÷ ∧ ∨ are not scanner symbols, so they arrive as words
             if (isOperator(value)) {
                 tokens.push(tk(OPERATOR, value));
+                continue;
+            }
+            // "x1" is one name, not x*1
+            if (next && next.type === 'Number' && next.index === index + value.length) {
+                pushValue(tokens, sign + value + next.value);
                 i++;
-                continue;
+            } else {
+                pushValue(tokens, sign + value);
             }
+            sign = '';
+            continue;
+        }
 
-            // "x1", "y2" → variable names, not implicit multiplication
-            if (next && next.type === 'Number' && !RE_STARTS_WITH_MINUS.test(next.value)) {
-                pushValue(tokens, value + next.value);
-                i += 2;
-                continue;
-            }
+        if (value === ',') {
+            tokens.push(tk(COMMA, value));
+            continue;
+        }
 
-            pushValue(tokens, value);
+        // compound operators the scanner splits: ** == != <= >= && || << >>
+        if (next && next.type === 'Symbol' && isOperator(value + next.value)) {
+            tokens.push(tk(OPERATOR, value + next.value));
             i++;
             continue;
         }
 
-        if (type === 'Symbol') {
-            if (value === ',') {
-                tokens.push(tk('comma', value));
-                i++;
-                continue;
-            }
-
-            // Compound operators split by the tokenizer: ** == != <= >= && || << >>
-            if (next && next.type === 'Symbol' && compoundOps.has(value + next.value)) {
-                tokens.push(tk(OPERATOR, value + next.value));
-                i += 2;
-                continue;
-            }
-
-            if (value === '+' || value === '-') {
-                const prev = last(tokens);
-                const isSign = !prev || prev.type === 'comma' ||
-                    (prev.type === OPERATOR && prev.value !== ')');
-
-                if (isSign) {
-                    let sign = (value === '-') ? -1 : 1;
-                    let j = i + 1;
-                    while (j < raw.length && (raw[j].value === '+' || raw[j].value === '-')) {
-                        if (raw[j].value === '-') sign *= -1;
-                        j++;
-                    }
-                    const operand = raw[j];
-                    const operandSpan = spanAt(j);
-
-                    if (operandSpan) {
-                        pushValue(tokens, (sign === -1 ? '-' : '') + operandSpan.name);
-                        j = skipSpan(j, operandSpan);
-                    } else if (operand && (operand.type === 'Number' || operand.type === 'Word')) {
-                        let combined = operand.value;
-                        j++;
-                        // "-x1" → negated variable x1
-                        if (operand.type === 'Word' && raw[j] && raw[j].type === 'Number'
-                                && !RE_STARTS_WITH_MINUS.test(raw[j].value)) {
-                            combined += raw[j].value;
-                            j++;
-                        }
-                        pushValue(tokens, (sign === -1 ? '-' : '') + combined);
-                    } else {
-                        // Handle unary sign before "(": "-(…)" → "-1*(…)"
-                        pushValue(tokens, sign === -1 ? '-1' : '1');
-                        tokens.push(tk(OPERATOR, '*'));
-                    }
-                    i = j;
-                    continue;
+        if (value === '+' || value === '-') {
+            const prev = last(tokens);
+            if (!prev || prev.type === COMMA || (prev.type === OPERATOR && prev.value !== ')')) {
+                // a run of unary signs folds into the following number or
+                // name; before anything else it multiplies by ±1
+                let negative = value === '-';
+                while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
+                    if (raw[++i].value === '-') negative = !negative;
                 }
-            }
-
-            if (value === '(') {
-                // "2(3+4)" → "2*(3+4)", "(1+2)(3+4)" → "(1+2)*(3+4)", but not "fn("
-                const prev = last(tokens);
-                if (prev && (prev.value === ')' ||
-                        (prev.type === NUMBER && RE_NUMBER.test(prev.value)))) {
+                const operand = raw[i + 1];
+                if (operand && (operand.type === 'Number'
+                        || (operand.type === 'Word' && !isOperator(operand.value)))) {
+                    sign = negative ? '-' : '';
+                } else {
+                    pushValue(tokens, negative ? '-1' : '1');
                     tokens.push(tk(OPERATOR, '*'));
                 }
-                tokens.push(tk(OPERATOR, value));
-                i++;
                 continue;
             }
-
-            if (isOperator(value)) {
-                tokens.push(tk(OPERATOR, value));
-                i++;
-                continue;
-            }
-
-            // Constants like π behave as values
-            pushValue(tokens, value);
-            i++;
-            continue;
         }
 
-        i++;
+        if (value === '(') {
+            // "2(3+4)" → "2*(3+4)", "(1+2)(3+4)" → "(1+2)*(3+4)", but not "fn("
+            const prev = last(tokens);
+            if (prev && (prev.value === ')' || (prev.type === VALUE && RE_NUMBER.test(prev.value)))) {
+                tokens.push(tk(OPERATOR, '*'));
+            }
+        }
+
+        if (isOperator(value)) {
+            tokens.push(tk(OPERATOR, value));
+        } else {
+            // π, and stray symbols that read as misses
+            pushValue(tokens, value);
+        }
     }
 
     return tokens;
@@ -242,11 +211,11 @@ function toPostfix(tokens) {
     for (let i = 0; i < tokens.length; i++) {
         const { type, value } = tokens[i];
 
-        if (type === NUMBER) {
+        if (type === VALUE) {
             const next = tokens[i + 1];
             if (RE_NUMBER.test(value)) {
                 expr.push(tk(NUMBER, Number(value)));
-            } else if (next && next.type === OPERATOR && next.value === '(') {
+            } else if (next && next.value === '(') {
                 const { args, endIndex } = parseFunctionArgs(tokens, i + 1);
                 expr.push({ type: FUNCTION, name: value, value: args });
                 i = endIndex;
@@ -262,11 +231,11 @@ function toPostfix(tokens) {
                 }
                 opStack.pop();
             } else {
-                const currPrec = operators[value];
-                const isRightAssoc = value === '^' || value === '**' || value === '!';
+                const prec = operators[value];
+                const rightAssoc = value === '^' || value === '**' || value === '!';
                 while (opStack.length) {
-                    const topPrec = operators[last(opStack)];
-                    if (isRightAssoc ? topPrec > currPrec : topPrec >= currPrec) {
+                    const top = operators[last(opStack)];
+                    if (rightAssoc ? top > prec : top >= prec) {
                         expr.push(tk(OPERATOR, opStack.pop()));
                     } else {
                         break;
@@ -284,7 +253,7 @@ function toPostfix(tokens) {
     return expr;
 }
 
-// Split the token stream of "(a, b, …)" into per-argument token lists
+// Split the token stream of "(a, b, …)" into per-argument postfix lists
 function parseFunctionArgs(tokens, startIndex) {
     const args = [];
     let current = [];
@@ -320,6 +289,11 @@ function parseFunctionArgs(tokens, startIndex) {
     return { args, endIndex: i };
 }
 
+function miss(history) {
+    history.misses = (history.misses || 0) + 1;
+    return 0;
+}
+
 function readDimension(value, ctx) {
     const { value: num, unit } = parseCompoundValue(String(value));
     if (!isInvalidNumber(num) && unit !== undefined && ctx[unit] === undefined) {
@@ -336,7 +310,8 @@ function evaluateValue(value, ctx, history) {
     if (num !== undefined) {
         return num;
     }
-    if (isCycle(value, history)) {
+    // history holds the values being expanded; one already there refers to itself
+    if (history.length > 50 || history.includes(value)) {
         return 0;
     }
     history.push(value);
@@ -345,50 +320,43 @@ function evaluateValue(value, ctx, history) {
     return result;
 }
 
+// A name reads from the context; "-x" reads as -1 * x
 function compileVariable(name) {
+    const negative = RE_NEGATIVE_VAR.test(name);
+    const key = negative ? name.slice(1) : name;
     return (ctx, history) => {
         let result = ctx[name];
+        if (typeof result === 'number' && !Number.isNaN(result)) {
+            return result;
+        }
+        let sign = 1;
+        if (negative && isInvalidNumber(result)) {
+            result = ctx[key];
+            sign = -1;
+        }
         if (isInvalidNumber(result)) {
-            result = expand(name, ctx, history);
-        }
-        if (isInvalidNumber(result) && RE_NEGATIVE_VAR.test(name)) {
-            result = expand('-1' + name.slice(1), ctx, history);
-        }
-        if (result === undefined) {
-            history.misses = (history.misses || 0) + 1;
-            result = 0;
+            return miss(history);
         }
         if (typeof result === 'function') {
-            result = callBare(result, history);
+            // only a function that takes no arguments reads bare
+            result = result.length ? miss(history) : result();
         }
         if (typeof result !== 'number') {
             result = evaluateValue(result, ctx, history);
         }
-        return result;
+        return sign * result;
     };
 }
 
-function callBare(fn, history) {
-    if (fn.length) {
-        history.misses = (history.misses || 0) + 1;
-        return 0;
-    }
-    return fn();
-}
-
 function compileFunction(node) {
-    let name = node.name;
-    let negative = false;
-    if (RE_STARTS_WITH_MINUS.test(name)) {
-        negative = true;
-        name = name.slice(1);
-    }
+    const negative = node.name[0] === '-';
+    const name = negative ? node.name.slice(1) : node.name;
     const chain = name.split('.');
     const argFns = node.value.map(compile);
 
-    // match(c, a, b) picks a branch: only the taken side evaluates,
-    // unless a context value shadows the built-in
-    if (chain.length === 1 && name === 'match' && argFns.length >= 2) {
+    // match(c, a, b) evaluates only the taken branch, unless a context
+    // value shadows the built-in
+    if (name === 'match' && argFns.length >= 2) {
         const [c, a, b] = argFns;
         return (ctx, history) => {
             const fn = ctx[name];
@@ -398,49 +366,48 @@ function compileFunction(node) {
             } else if (typeof fn === 'function') {
                 output = fn(...argFns.map(f => f(ctx, history)));
             } else {
-                history.misses = (history.misses || 0) + 1;
-                return 0;
+                return miss(history);
             }
             return negative ? -output : output;
         };
     }
 
-    // Fast paths: plain function call with 1 or 2 arguments
-    if (chain.length === 1 && argFns.length === 1) {
-        const a = argFns[0];
+    // Plain calls; one and two arguments are passed directly because
+    // spreading them costs 40% on the hottest calls
+    if (chain.length === 1) {
+        const [a, b] = argFns;
+        if (argFns.length === 1) {
+            return (ctx, history) => {
+                const fn = ctx[name];
+                if (typeof fn !== 'function') return miss(history);
+                const output = fn(a(ctx, history));
+                return negative ? -output : output;
+            };
+        }
+        if (argFns.length === 2) {
+            return (ctx, history) => {
+                const fn = ctx[name];
+                if (typeof fn !== 'function') return miss(history);
+                const output = fn(a(ctx, history), b(ctx, history));
+                return negative ? -output : output;
+            };
+        }
         return (ctx, history) => {
             const fn = ctx[name];
-            if (typeof fn !== 'function') {
-                history.misses = (history.misses || 0) + 1;
-                return 0;
-            }
-            const output = fn(a(ctx, history));
-            return negative ? -output : output;
-        };
-    }
-    if (chain.length === 1 && argFns.length === 2) {
-        const a = argFns[0];
-        const b = argFns[1];
-        return (ctx, history) => {
-            const fn = ctx[name];
-            if (typeof fn !== 'function') {
-                history.misses = (history.misses || 0) + 1;
-                return 0;
-            }
-            const output = fn(a(ctx, history), b(ctx, history));
+            if (typeof fn !== 'function') return miss(history);
+            const output = fn(...argFns.map(f => f(ctx, history)));
             return negative ? -output : output;
         };
     }
 
-    // Chained calls like "sqrt.abs(…)" apply right to left
+    // "sqrt.abs(x)" applies right to left
     return (ctx, history) => {
         let output = argFns.map(f => f(ctx, history));
         for (let i = chain.length - 1; i >= 0; i--) {
             if (!chain[i]) break;
             const fn = ctx[chain[i]];
             if (typeof fn !== 'function') {
-                history.misses = (history.misses || 0) + 1;
-                output = 0;
+                output = miss(history);
                 continue;
             }
             output = Array.isArray(output) ? fn(...output) : fn(output);
@@ -471,26 +438,26 @@ function compile(expr) {
             const left = stack.pop();
 
             if (i === expr.length - 1 && left === undefined) {
-                // Trailing operator with a single operand acts as identity
+                // a trailing operator with a single operand acts as identity
                 stack.push(right || (() => 0));
+                continue;
+            }
+            const l = left || (() => NaN);
+            const r = right || (() => NaN);
+            if (value === '&&' || value === '∧') {
+                // short-circuit: the right side only runs when needed
+                stack.push((ctx, history) => {
+                    const a = Number(l(ctx, history));
+                    return a ? Number(r(ctx, history)) : a;
+                });
+            } else if (value === '||' || value === '∨') {
+                stack.push((ctx, history) => {
+                    const a = Number(l(ctx, history));
+                    return a ? a : Number(r(ctx, history));
+                });
             } else {
-                const l = left || (() => NaN);
-                const r = right || (() => NaN);
-                if (value === '&&' || value === '∧') {
-                    // short-circuit: the right side only runs when needed
-                    stack.push((ctx, history) => {
-                        const a = Number(l(ctx, history));
-                        return a ? Number(r(ctx, history)) : a;
-                    });
-                } else if (value === '||' || value === '∨') {
-                    stack.push((ctx, history) => {
-                        const a = Number(l(ctx, history));
-                        return a ? a : Number(r(ctx, history));
-                    });
-                } else {
-                    const op = binary[value] || (() => 0);
-                    stack.push((ctx, history) => op(Number(l(ctx, history)), Number(r(ctx, history))));
-                }
+                const op = binary[value] || (() => 0);
+                stack.push((ctx, history) => op(Number(l(ctx, history)), Number(r(ctx, history))));
             }
         }
     }
@@ -501,6 +468,8 @@ function compile(expr) {
 
 const RE_DASHED = /(^|[^\p{L}_])([\p{L}_][\p{L}\p{N}_]*(?:-[\p{L}\p{N}_]+)+)/gu;
 
+// Every dashed name in the input with the names it could be read as,
+// longest first: "a-b-c" → a-b-c, a-b
 function dashedCandidates(input) {
     let candidates = null;
     for (let m of input.matchAll(RE_DASHED)) {
@@ -515,7 +484,7 @@ function dashedCandidates(input) {
 }
 
 function compileWith(input, spans) {
-    return compile(toPostfix(transformTokens(scan(String(input)), spans)));
+    return compile(toPostfix(transformTokens(scan(input), spans)));
 }
 
 const compiledCache = new Map();
@@ -527,13 +496,14 @@ function compileInput(input, ctx) {
         if (compiledCache.size >= 512) {
             compiledCache.clear();
         }
-        let candidates = dashedCandidates(String(input));
+        let candidates = dashedCandidates(input);
         entry = candidates ? { candidates, variants: new Map() } : compileWith(input, null);
         compiledCache.set(input, entry);
     }
     if (typeof entry === 'function') {
         return entry;
     }
+    // the dashed names this context defines select the variant
     let key = '';
     for (let { names } of entry.candidates) {
         key += (names.find(name => ctx[name] !== undefined) || '') + ',';
@@ -543,40 +513,14 @@ function compileInput(input, ctx) {
         let chosen = key.split(',');
         let spans = null;
         entry.candidates.forEach(({ index }, i) => {
-            let name = chosen[i];
-            if (name) {
-                (spans ??= new Map()).set(index, { name, end: index + name.length });
+            if (chosen[i]) {
+                (spans ??= new Map()).set(index, chosen[i]);
             }
         });
         compiled = compileWith(input, spans);
         entry.variants.set(key, compiled);
     }
     return compiled;
-}
-
-// "-1x" → -1 * context.x
-function expand(value, context, history) {
-    const match = value.match(/^(-?[\d.]+)(.*)$/);
-    if (!match) return undefined;
-
-    const [, num, variable] = match;
-    let v = context[variable];
-    if (v === undefined) {
-        return v;
-    }
-    if (typeof v === 'function') {
-        v = callBare(v, history);
-    }
-    if (typeof v === 'number') {
-        return Number(num) * v;
-    }
-    return Number(num) * evaluateValue(v, context, history);
-}
-
-// The history is a stack of values being expanded; seeing one that is
-// already on the stack means it refers to itself
-function isCycle(value, history) {
-    return history.length > 50 || history.includes(value);
 }
 
 const RE_NAME = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
@@ -615,7 +559,6 @@ export function deref(input, context) {
 const RE_SAFE_AFTER = /^[),+\-*/%^!<>=&|≤≥≠]/;
 const RE_OPERATOR_TAIL = /[(,*/%^!<>=&|≤≥≠]$/;
 const RE_VALUE_TAIL = /[0-9]$/;
-const RE_PLAIN_NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
 
 export function toPlainNumber(v) {
     if (typeof v === 'number') {
@@ -623,7 +566,7 @@ export function toPlainNumber(v) {
     }
     if (typeof v === 'string') {
         let t = v.trim();
-        if (t && RE_PLAIN_NUMBER.test(t)) return Number(t);
+        if (t && RE_NUMBER.test(t)) return Number(t);
     }
     return null;
 }
@@ -677,8 +620,6 @@ export function compileTemplate(segments) {
     }
     return { template, names, signSensitive };
 }
-
-export { operators };
 
 export default function(input, context) {
     if (typeof input === 'number' && Number.isFinite(input)) {
