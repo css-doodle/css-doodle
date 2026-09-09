@@ -20,10 +20,6 @@ import {
 } from '../lib/selector.js';
 
 
-function isImageValue(value) {
-    return hasPlaceholder(String(value));
-}
-
 function hasShorthandSize(value) {
     let depth = 0;
     for (let c of String(value)) {
@@ -67,17 +63,6 @@ function familiesOf(text) {
         families.add(head === 'all' ? '*' : (FAMILY[name] ?? FAMILY[head] ?? head));
     }
     return families;
-}
-
-const funcCache = new Map();
-
-function findFunc(name) {
-    let fn = funcCache.get(name);
-    if (fn === undefined) {
-        fn = Func[name === '$' ? 'calc' : name] || MathFunc[name] || null;
-        funcCache.set(name, fn);
-    }
-    return fn;
 }
 
 const EMPTY_EXTRA = [];
@@ -141,7 +126,7 @@ function compileFunc(node) {
     let compiled = compiledFuncs.get(node);
     if (compiled === undefined) {
         let fname = node.name.slice(1);
-        let fn = findFunc(fname);
+        let fn = Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
         if (typeof fn !== 'function') {
             let literal = { value: node.name };
             compiled = frame => {
@@ -187,12 +172,7 @@ function compileFunc(node) {
                 }
                 if (composable) {
                     let composed = rules.composeComposable(fname, node, cell, env, frame.selector, frame.property);
-                    if (composed !== undefined) {
-                        return { value: composed };
-                    }
-                    if (!inArgument) {
-                        return { value: '' };
-                    }
+                    return { value: composed ?? '' };
                 }
                 if (!inArgument && node.variables) {
                     rules.composeVariables(node.variables, cell, env, frame.contextVariable);
@@ -310,14 +290,7 @@ function compileArgument(argument, parent) {
             if (!argument.cluster && !hasVarRead) {
                 let template = compileTemplate(segments);
                 if (template !== null) {
-                    compiled.calcTemplate = {
-                        template: template.template,
-                        names: template.names,
-                        signSensitive: template.signSensitive,
-                        segments,
-                        holes,
-                        singlePart: values.length === 1,
-                    };
+                    compiled.calcTemplate = { ...template, segments, holes, singlePart: values.length === 1 };
                 }
             }
         }
@@ -434,9 +407,10 @@ class Rules {
     }
 
     addRule(selector, rule) {
+        if (!rule) return;
         let rules = this.scope.rules.get(selector);
         if (!rules) this.scope.rules.set(selector, rules = []);
-        if (rule) rules.push(rule);
+        rules.push(rule);
     }
 
     addRaw(text) {
@@ -675,11 +649,7 @@ class Rules {
         if (flags.animation) {
             this.props.hasAnimation = true;
             let { count } = cell;
-            if (prop === 'animation-name') {
-                value = composed.group
-                    .map(n => this.composeAname(n, count))
-                    .join(',');
-            } else if (prop === 'animation') {
+            if (prop === 'animation' || prop === 'animation-name') {
                 value = composed.group
                     .map(n => n.split(/\s+/).map(w => this.composeAname(w, count)).join(' '))
                     .join(',');
@@ -719,9 +689,9 @@ class Rules {
             rule += `--_cell-${prop}:${value};`;
         }
 
-        if (flags.bgImage && isImageValue(value) && !this.bgSized.has(cell) && !hasShorthandSize(value)) {
+        if (flags.bgImage && hasPlaceholder(value) && !this.bgSized.has(cell) && !hasShorthandSize(value)) {
             let sizes = parseValueGroup(value, NO_SPACE)
-                .map(v => isImageValue(v) ? 'cover' : 'auto')
+                .map(v => hasPlaceholder(v) ? 'cover' : 'auto')
                 .join(',');
             rule += `background-size:${sizes};`;
         }
@@ -871,7 +841,7 @@ class Rules {
             info = {
                 name, fn,
                 args: args ? args.arguments : [],
-                not: !!token.segments[0] && token.segments[0].keyword === 'not',
+                not: token.segments[0]?.keyword === 'not',
                 raw: !fn && !isGroupAtRule(token.name),
                 text: null,
             };
@@ -915,9 +885,7 @@ class Rules {
             let { composed, cluster } = compileArgument(arg);
             pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
         }
-        input = removeEmptyValues(input);
-        let _fn = fn(cell, env, token.position);
-        let matched = (typeof _fn === 'function') ? _fn(...input) : _fn;
+        let matched = this.callFunc(fn, { cell, env }, token.position, removeEmptyValues(input));
         return not ? !matched : !!matched;
     }
 
@@ -1106,16 +1074,10 @@ class Rules {
         }
 
         for (let [selector, rule] of this.root.rules) {
-            if (isParentSelector(selector)) {
-                styles.container += `${specialName(selector)} {${join(rule)}}`;
-            } else {
-                let target = (selector === 'bd') ? 'backdrop'
-                    : isHostSelector(selector) ? 'host' : 'cells';
-                let value = join(rule).trim();
-                if (value.length) {
-                    styles[target] += `${specialName(selector)} {${value}}`;
-                }
-            }
+            let target = (selector === 'bd') ? 'backdrop'
+                : isHostSelector(selector) ? 'host'
+                : isParentSelector(selector) ? 'container' : 'cells';
+            styles[target] += `${specialName(selector)} {${join(rule)}}`;
         }
 
         // after the grid styles above (`cell {flex:1}`), the cell rules,
