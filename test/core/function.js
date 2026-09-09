@@ -109,3 +109,26 @@ test('@ri: an integer with no arguments too, not a character code', () => {
     assert.match(String(ri(10)), /^\d+$/);
     assert.match(String(ri('a', 'c')), /^[a-c]$/);
 });
+
+test('@pn inside an argument keeps a counter per call site', () => {
+    // argument composition pushes an empty tuple, which used to turn the key into NaN
+    let env = { context: {}, extra: [[]], upextra: [], shuffle: a => a };
+    let a = Function.pn({}, env, 1), b = Function.pn({}, env, 2);
+    assert.deepEqual([a('x', 'y'), b('p', 'q', 'r'), a('x', 'y'), b('p', 'q', 'r')], ['x', 'p', 'y', 'q']);
+    // the same site keyed inside a sequence by its invocation
+    env.extra = [[1, 1, 1, 3, 3, 1, 1, 42]];
+    Function.pd({}, env, 3)('a', 'b');
+    assert.ok('pd-values3:42' in env.context);
+});
+
+test('@R: a single bound is the maximum, also next to named arguments', () => {
+    let grid = { x: 4, y: 1, z: 1, count: 4 };
+    let values = args => {
+        let env = { context: {}, extra: [], random: createRandom('1').random };
+        return [1, 2, 3, 4].map(x => Number(Function.R({ x, y: 1, grid }, env, 1)(...args)));
+    };
+    let noise = values(['10']);
+    assert.ok(noise.every(n => n >= 0 && n <= 10) && new Set(noise).size > 1);
+    assert.deepEqual(values(['10', 'frequency=1']), noise);
+    assert.deepEqual(values(['to=10']), noise);
+});

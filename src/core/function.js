@@ -60,45 +60,35 @@ function compute(op, a, b) {
 // an operator argument ('*10', '%360deg', '-.5') parses once; computing
 // against a base — which runs per cell and per sequence iteration — is
 // then plain arithmetic
-const operations = new Map();
-
-function parseOperation(input) {
-    let v = (typeof input === 'string') ? input : String(input);
-    let parsed = operations.get(v);
-    if (parsed === undefined) {
-        let prefix = RE_OP_PREFIX.test(v);
-        let suffix = !prefix && RE_OP_SUFFIX.test(v);
-        let op = '';
-        let rest = v;
-        if (prefix || suffix) {
-            op = prefix ? v[0] : v.slice(-1);
-            rest = (prefix ? v.slice(1) : v.slice(0, -1)).trim();
-        }
-        let { unit = '', value } = parseCompoundValue(rest || 0);
-        parsed = { op, prefix, value, unit };
-        if (operations.size >= 512) {
-            operations.clear();
-        }
-        operations.set(v, parsed);
+const parseOperation = memo('operation', input => {
+    let v = String(input);
+    let prefix = RE_OP_PREFIX.test(v);
+    let suffix = !prefix && RE_OP_SUFFIX.test(v);
+    let op = '';
+    let rest = v;
+    if (prefix || suffix) {
+        op = prefix ? v[0] : v.slice(-1);
+        rest = (prefix ? v.slice(1) : v.slice(0, -1)).trim();
     }
-    return parsed;
-}
+    let { unit = '', value } = parseCompoundValue(rest || 0);
+    return { op, prefix, value, unit };
+});
 
 function calcValue(base, v) {
     if (isEmpty(v) || isEmpty(base)) {
         return [];
     }
     let { op, prefix, value, unit } = parseOperation(v);
-    if (op) {
-        // prefix op: base comes first; suffix op: base comes last
-        let [a, b] = prefix ? [base, value] : [value, base];
-        if (typeof base === 'string' && RE_VAR.test(base)) {
-            let expr = (op === '%') ? `mod(${a}, ${b})` : `${a} ${op} ${b}`;
-            return [`calc(${expr})`, unit];
-        }
-        return [compute(op, Number(a), Number(b)), unit];
+    if (!op) {
+        return [Number(base) + (Number(value) || 0), unit];
     }
-    return [(Number(base) + (Number(value) || 0)), unit];
+    // prefix op: base comes first; suffix op: base comes last
+    let [a, b] = prefix ? [base, value] : [value, base];
+    if (typeof base === 'string' && RE_VAR.test(base)) {
+        let expr = (op === '%') ? `mod(${a}, ${b})` : `${a} ${op} ${b}`;
+        return [`calc(${expr})`, unit];
+    }
+    return [compute(op, Number(a), Number(b)), unit];
 }
 
 function calcWith(base) {
@@ -111,7 +101,6 @@ function calcWith(base) {
                 unit = outputUnit;
             }
         }
-
         if (typeof base === 'string' && RE_CALC.test(base)) {
             return `calc(${base} * 1${unit})`;
         }
@@ -125,11 +114,9 @@ function calcWith(base) {
 function calcWithEasing(t) {
     return (head = '', ...args) => {
         if (RE_LETTER.test(head)) {
-            let easing = getEasingFunction(head);
-            return calcWith(easing(t))(...args);
+            return calcWith(getEasingFunction(head)(t))(...args);
         }
-        let _args = [].concat(head, args).filter(n => n !== '');
-        return calcWith(t)(..._args);
+        return calcWith(t)(...[].concat(head, args).filter(n => n !== ''));
     }
 }
 
@@ -241,19 +228,16 @@ function createMirror(even) {
     };
 }
 
-// fn picks from the args by counter position; `random` shuffles the args
-// once per position, `upstream` reads the outer composition's sequence
-// context (the uppercase variants)
 function createPick(name, fn, random = false, upstream = false) {
     return (cell, { context, extra, upextra, shuffle }, position) => {
         let lastExtra = upstream
             ? last(upextra.length ? upextra : extra)
             : last(extra);
-        let sig = lastExtra ? last(lastExtra) : '';
+        // keyed by call site and, inside a sequence, by its invocation
+        let sig = lastExtra?.[SEQ.sig] ?? '';
         let prefix = upstream ? name.toUpperCase() : name;
-        let suffix = position + sig;
-        let counter = `${prefix}-counter${suffix}`;
-        let valuesKey = `${prefix}-values${suffix}`;
+        let counter = `${prefix}-counter${position}:${sig}`;
+        let valuesKey = `${prefix}-values${position}:${sig}`;
 
         return expand((...args) => {
             if (!context[counter]) context[counter] = 0;
@@ -266,10 +250,8 @@ function createPick(name, fn, random = false, upstream = false) {
                 source = context[valuesKey];
             }
             let max = args.length;
-            let idx = lastExtra && lastExtra[SEQ.index];
-            idx ??= context[counter];
-            let pos = (idx - 1) % max;
-            let value = fn(source, pos, max);
+            let idx = (lastExtra && lastExtra[SEQ.index]) ?? context[counter];
+            let value = fn(source, (idx - 1) % max, max);
             return pushStack(context, 'lastPick', value);
         });
     };
@@ -326,9 +308,9 @@ function transformPath(xx, xy, yx, yy) {
     };
 }
 
-const flipH_path = transformPath(-1, 0, 0, 1);
-const flipV_path = transformPath(1, 0, 0, -1);
-const flip_path = transformPath(-1, 0, 0, -1);
+const flipHPath = transformPath(-1, 0, 0, 1);
+const flipVPath = transformPath(1, 0, 0, -1);
+const flipPath = transformPath(-1, 0, 0, -1);
 const invertPath = transformPath(0, 1, 1, 0);
 
 function tryDecode(raw, decode) {
@@ -358,18 +340,17 @@ const composeSvgPolygonUrl = memo('svg-polygon-function', commands => {
         rules['fill'] ??= 'none';
         return rules;
     });
-    let style = `points: ${points};`;
     let props = '';
     let p = rules.padding ?? Number(rules['stroke-width']) / 2;
     for (let name of Object.keys(rules)) {
         if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
             props += `${name}: ${rules[name]};`
         }
-    };
+    }
     let parsed = parseSvg(css`
     viewBox: -1 -1 2 2 p ${p};
     polygon {
-      ${props} ${style}
+      ${props} points: ${points};
     }
   `);
     return createSvgUrl(generateSvg(parsed));
@@ -412,42 +393,34 @@ Function.nd = seq('@nd', e => d => {
     return calcWith(e[SEQ.n] - .5 - d - e[SEQ.max] / 2)();
 });
 
+// @p and @P with no arguments reuse the arguments of the last pick
 Function.p = (_, { context, pick }) => {
     return expand((...args) => {
         if (!args.length) {
             args = context.lastPickArgs || [];
         }
-        let picked = pick(args);
         context.lastPickArgs = args;
-        return pushStack(context, 'lastPick', picked);
+        return pushStack(context, 'lastPick', pick(args));
     });
 };
 
 Function.P = (_, { context, pick }, position) => {
     let counter = 'P-counter' + position;
     return expand((...args) => {
-        let normal = true;
-        if (!args.length) {
+        let own = args.length > 0;
+        if (!own) {
             args = context.lastPickArgs || [];
-            normal = false;
         }
-        let last = lastOf(context.lastPick);
-        if (normal) {
-            if (!context[counter]) {
-                context[counter] = {};
-            }
-            last = context[counter].lastPick;
-        }
+        let memory = own ? (context[counter] ??= {}) : null;
+        let last = own ? memory.lastPick : lastOf(context.lastPick);
         context.lastPickArgs = args;
-        if (args.length > 1) {
-            let i = args.findIndex(n => n === last);
-            if (i !== -1) {
-                args = args.filter((_, j) => j !== i);
-            }
+        let i = args.length > 1 ? args.indexOf(last) : -1;
+        if (i !== -1) {
+            args = args.filter((_, j) => j !== i);
         }
         let picked = pick(args);
-        if (normal) {
-            context[counter].lastPick = picked;
+        if (own) {
+            memory.lastPick = picked;
         }
         return pushStack(context, 'lastPick', picked);
     });
@@ -465,42 +438,26 @@ Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
 Function.PD = createPick('pd', (args, pos) => args[pos], true, true);
 
-Function.lp = (_, { context }) => {
-    return (n = 1) => {
-        return lastOf(context.lastPick, n);
-    };
+Function.lp = (_, { context }) => (n = 1) => lastOf(context.lastPick, n);
+
+Function.r = (_, { context, rand }) => (...args) => {
+    let transform = (args.length && args.every(isLetter)) ? byCharcode : byUnit;
+    return pushStack(context, 'lastRand', transform(rand)(...args));
 };
 
-Function.r = (_, { context, rand }) => {
-    return (...args) => {
-        let transform = (args.length && args.every(isLetter))
-            ? byCharcode
-            : byUnit;
-        let value = transform(rand)(...args);
-        return pushStack(context, 'lastRand', value);
-    };
-};
-
-Function.ri = (_, { context, rand }) => {
-    return (...args) => {
-        let transform = args.length && args.every(isLetter)
-            ? byCharcode
-            : byUnit;
-        let randInt = (...args) => Math.round(rand(...args));
-        let value = transform(randInt)(...args);
-        return pushStack(context, 'lastRand', value);
-    }
+Function.ri = (_, { context, rand }) => (...args) => {
+    let transform = (args.length && args.every(isLetter)) ? byCharcode : byUnit;
+    let randInt = (...range) => Math.round(rand(...range));
+    return pushStack(context, 'lastRand', transform(randInt)(...args));
 };
 
 Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
     let counter = 'noise-2d' + position;
-    let counterX = counter + 'offset-x';
-    let counterY = counter + 'offset-y';
     let e = last(extra) || [];
     let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
     let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
     return (...args) => {
-        let {from = 0, to = from, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
+        let {from = 0, to, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
             'from', 'to', 'frequency', 'scale', 'octave'
         ]);
 
@@ -508,15 +465,12 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
         scale = clamp(scale, 0, Infinity);
         octave = clamp(octave, 1, 100);
 
-        if (args.length == 1) [from, to] = [0, from];
-        if (!context[counter]) context[counter] = new Noise(random);
-        if (!context[counterX]) context[counterX] = random();
-        if (!context[counterY]) context[counterY] = random();
+        if (to === undefined) [from, to] = [0, from];
 
+        let { noise2d, offsetX, offsetY } = context[counter] ??= {
+            noise2d: new Noise(random), offsetX: random(), offsetY: random()
+        };
         let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
-        let noise2d = context[counter];
-        let offsetX = context[counterX];
-        let offsetY = context[counterY];
         let _x = (isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x)) + offsetX;
         let _y = (isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y)) + offsetY;
 
@@ -541,11 +495,7 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
     };
 };
 
-Function.lr = (_, { context }) => {
-    return (n = 1) => {
-        return lastOf(context.lastRand, n);
-    };
-};
+Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
 Function.cond = ({ x, y, z, count, grid }, { extra }) => {
     let e = last(extra) || [];
@@ -567,59 +517,45 @@ Function.cond = ({ x, y, z, count, grid }, { extra }) => {
             if (isNil(pass)) {
                 return expr;
             }
-            if (!!calc(expr, variables)) {
+            if (calc(expr, variables)) {
                 return pass;
             }
         }
     }
 };
 
-Function.calc = () => {
-    return (value = '', context) => {
-        return tidyNumber(calc(value, context));
+Function.calc = () => (value = '', context) => tidyNumber(calc(value, context));
+
+Function.hex = () => (value = '') => {
+    let n = parseInt(value);
+    return Number.isNaN(n) ? value : n.toString(16);
+};
+
+Function.var = () => (value = '') => `var(${value})`;
+
+Function.stripe = () => (...input) => {
+    let colors = input.flat();
+    let max = colors.length;
+    if (!max) {
+        return '';
     }
-};
-
-Function.hex = () => {
-    return (value = '') => {
-        let n = parseInt(value);
-        return Number.isNaN(n) ? value : n.toString(16);
-    };
-};
-
-Function.var = () => {
-    return (value = '') => `var(${value})`;
-};
-
-Function.stripe = () => {
-    return (...input) => {
-        let colors = input.flat();
-        let max = colors.length;
-        if (!max) {
-            return '';
-        }
-        let defaultCount = 0;
-        let customSizes = [];
-        let pairs = colors.map(step => {
-            let [color, size] = parseValueGroup(step);
-            if (size !== undefined) customSizes.push(size);
-            else defaultCount += 1;
-            return [color, size];
-        });
-        let defaultSize = customSizes.length
-            ? `(100% - ${customSizes.join(' - ')}) / ${defaultCount}`
-            : `100% / ${max}`
-        let prev;
-        return pairs.map(([color, size], i) => {
-            if (customSizes.length) {
-                let prefix = prev ? (prev + ' + ') : '';
-                prev = prefix + (size !== undefined ? size : defaultSize);
-                return `${color} 0 calc(${ prev })`
-            }
-            return `${colors[i]} 0 ${100 / max * (i + 1)}%`
-        })
-        .join(',');
+    let defaultCount = 0;
+    let customSizes = [];
+    let pairs = colors.map(step => {
+        let [color, size] = parseValueGroup(step);
+        if (size !== undefined) customSizes.push(size);
+        else defaultCount += 1;
+        return [color, size];
+    });
+    if (!customSizes.length) {
+        return colors.map((color, i) => `${color} 0 ${100 / max * (i + 1)}%`).join(',');
     }
+    let defaultSize = `(100% - ${customSizes.join(' - ')}) / ${defaultCount}`;
+    let end = '';
+    return pairs.map(([color, size]) => {
+        end += (end ? ' + ' : '') + (size ?? defaultSize);
+        return `${color} 0 calc(${end})`;
+    }).join(',');
 };
 
 // list — argument list transforms
@@ -683,21 +619,13 @@ Function.arc = () => {
     });
 };
 
-Function.invert = () => {
-    return invertPath;
-};
+Function.invert = () => invertPath;
 
-Function.flipH = () => {
-    return flipH_path;
-};
+Function.flipH = () => flipHPath;
 
-Function.flipV = () => {
-    return flipV_path;
-};
+Function.flipV = () => flipVPath;
 
-Function.flip = () => {
-    return flip_path;
-};
+Function.flip = () => flipPath;
 
 Function.reverse = () => {
     return (...args) => {
@@ -870,13 +798,10 @@ Function.uy = () => calcWith(`var(${umousey})`);
 export const MathFunc = Object.create(null);
 
 for (let name of Object.getOwnPropertyNames(Math)) {
-    MathFunc[name] = () => (...args) => {
-        if (typeof Math[name] === 'number') {
-            return tidyNumber(Math[name]);
-        }
-        args = args.map(n => calc(n));
-        return tidyNumber(Math[name](...args));
-    }
+    let member = Math[name];
+    MathFunc[name] = (typeof member === 'number')
+        ? () => () => tidyNumber(member)
+        : () => (...args) => tidyNumber(member(...args.map(n => calc(n))));
 }
 
 export const alias = {
