@@ -20,34 +20,28 @@ import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 
+// cells that produce the same nested doodle svg share one image url
 const sharedUrls = new WeakMap();
 
-function revokeUrls(entry) {
-    for (let url of entry.urls.values()) {
-        Promise.resolve(url).then(url => {
-            if (/^blob:/.test(url)) URL.revokeObjectURL(url);
-        });
-    }
-}
-
-// the blob urls of the nested images belong to one generation
 export function releaseSharedImages(host) {
-    let entry = sharedUrls.get(host);
-    if (entry) {
-        revokeUrls(entry);
-        sharedUrls.delete(host);
+    let urls = sharedUrls.get(host);
+    if (!urls) return;
+    sharedUrls.delete(host);
+    for (let url of urls.values()) {
+        Promise.resolve(url).then(url => {
+            if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+        }, () => {});
     }
 }
 
 function sharedImage(host, svg, toUrl) {
-    let entry = sharedUrls.get(host);
-    if (!entry || entry.generation !== host._generation) {
-        releaseSharedImages(host);
-        sharedUrls.set(host, entry = { generation: host._generation, urls: new Map() });
+    let urls = sharedUrls.get(host);
+    if (!urls) {
+        sharedUrls.set(host, urls = new Map());
     }
-    let url = entry.urls.get(svg);
+    let url = urls.get(svg);
     if (url === undefined) {
-        entry.urls.set(svg, url = toUrl());
+        urls.set(svg, url = toUrl());
     }
     return url;
 }
@@ -55,10 +49,10 @@ function sharedImage(host, svg, toUrl) {
 export function createReplacer(host, { doodles, shaders, patterns }) {
     // each group resolves with the text that takes the place of its placeholder
     const groups = [
-        [doodles, (id, v, done) => doodleToImage(host, v.doodle,
-            { arg: v.arg, upextra: v.upextra, instance: id }, url => done(`url(${url})`))],
-        [shaders, (id, v, done) => shaderToImage(host, v, () => done(`var(--${id})`))],
-        [patterns, (id, v, done) => patternToImage(host, v, () => done(`var(--${id})`))],
+        [doodles, (id, v) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id })
+            .then(url => `url(${url})`)],
+        [shaders, (id, v) => shaderToImage(host, v).then(() => `var(--${id})`)],
+        [patterns, (id, v) => patternToImage(host, v).then(() => `var(--${id})`)],
     ];
     return input => {
         let present = new Set();
@@ -69,9 +63,7 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
         for (let [map, toImage] of groups) {
             for (let [id, value] of Object.entries(map)) {
                 if (present.has(id)) {
-                    tasks.push(new Promise(resolve => {
-                        toImage(id, value, text => resolve([id, text]));
-                    }));
+                    tasks.push(toImage(id, value).then(text => [id, text]));
                 }
             }
         }
@@ -88,14 +80,14 @@ export function createReplacer(host, { doodles, shaders, patterns }) {
     }
 }
 
-export function doodleToImage(host, code, options, fn) {
+export async function doodleToImage(host, code, options) {
     code = ':doodle {width:100%;height:100%}' + code;
     let parsed = parseCssCached(code, host.extra);
-    let _grid = parseGrid('');
-    let compiled = generateCss(parsed, _grid, host.compiled.seed, host.getMaxGrid(), host.compiled.random, options.upextra, options.instance);
+    let baseGrid = parseGrid('');
+    let compiled = generateCss(parsed, baseGrid, host.compiled.seed, host.getMaxGrid(), host.compiled.random, options.upextra, options.instance);
     host.report(compiled.warnings);
     let styles = compiled.styles;
-    let grid = compiled.grid || _grid;
+    let grid = compiled.grid || baseGrid;
 
     let viewBox = '';
     let { width, height } = options;
@@ -107,64 +99,62 @@ export function doodleToImage(host, code, options, fn) {
             viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
         }
     }
+    let size = (width && height)
+        ? `width="${width}" height="${height}"`
+        : '';
 
-    let replace = createReplacer(host, compiled);
-    let gridContainer = createGrid(grid, compiled);
     let filterDefs = Object.values(compiled.filters).join('');
     if (filterDefs) {
         filterDefs = `<div style="${FilterHolderStyle}">${filterDefs}</div>`;
     }
 
-    let size = (width && height)
-        ? `width="${width}" height="${height}"`
-        : '';
-
-    loadGoogleFontEmbed(styles.gf)
-        .then(importedFonts => {
-            let sheet = stampSheet(host, importedFonts + styles.top + `
-                @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-                @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-            ` + getBasicStyles(grid) + styles.all);
-            return replace(css`
-                <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
-                    <foreignObject width="100%" height="100%">
-                        <div class="host" width="100%" height="100%" ${NSXHtml}>
-                            <style><![CDATA[${sheet}]]></style>
-                            ${gridContainer}
-                            ${filterDefs}
-                        </div>
-                    </foreignObject>
-                </svg>
-            `);
-        })
-        .then(result => sharedImage(host, result, () => {
-            let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(result)))}`;
-            if (isSafari() && size) {
-                return generatePng(result, parseInt(width), parseInt(height), devicePixelRatio || 2)
-                    .then(({ blob }) => {
-                        let url = URL.createObjectURL(blob);
-                        cacheImage(url);
-                        return url;
-                    });
+    try {
+        let fonts = await loadGoogleFontEmbed(styles.gf);
+        let sheet = stampSheet(host, fonts + styles.top + `
+            @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+            @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
+        ` + getBasicStyles(grid) + styles.all);
+        let svg = await createReplacer(host, compiled)(css`
+            <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
+                <foreignObject width="100%" height="100%">
+                    <div class="host" width="100%" height="100%" ${NSXHtml}>
+                        <style><![CDATA[${sheet}]]></style>
+                        ${createGrid(grid, compiled)}
+                        ${filterDefs}
+                    </div>
+                </foreignObject>
+            </svg>
+        `);
+        return await sharedImage(host, svg, () => {
+            let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+            if (!isSafari()) {
+                return source;
             }
-            if (isSafari()) {
+            if (!size) {
                 cacheImage(source);
+                return source;
             }
-            return source;
-        }))
-        .then(fn)
-        .catch(err => {
-            console.error(err);
-            fn('');
+            return generatePng(svg, parseInt(width), parseInt(height), devicePixelRatio || 2)
+                .then(({ blob }) => {
+                    let url = URL.createObjectURL(blob);
+                    cacheImage(url);
+                    return url;
+                });
         });
+    } catch (err) {
+        console.error(err);
+        return '';
+    }
 }
 
-export function patternToImage(host, { source, cell, id, arg, target }, fn) {
-    let shader = generatePattern(source, host.extra, message => host.report([{ message }]));
-    shaderToImage(host, { source: shader, cell, id, arg, target }, fn);
+export function patternToImage(host, pattern) {
+    let source = generatePattern(pattern.source, host.extra, message => host.report([{ message }]));
+    return shaderToImage(host, { ...pattern, source });
 }
 
-export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
+export async function shaderToImage(host, { source, cell, id, arg, target }) {
+    // restamping the sheet resolves its placeholders again; a rendered shader stays
+    if (host.shaderRenders.has(id)) return;
     let element;
     if (target.selector === ':host') {
         element = host;
@@ -174,52 +164,28 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
         element = host.doodle.getElementById(cell);
     }
 
-    let cs = arg ? parseGrid(arg, Infinity) : null;
-
     // the drawing size, capped by the size argument when it has one
+    let cap = arg ? parseGrid(arg, Infinity) : null;
     const measure = () => {
         let { width, height } = element.getBoundingClientRect();
-        if (cs && cs.x && cs.y) {
-            width = Math.min(cs.x, width);
-            height = Math.min(cs.y, height);
+        if (cap && cap.x && cap.y) {
+            width = Math.min(cap.x, width);
+            height = Math.min(cap.y, height);
         }
         return { width, height };
     }
 
     let { width, height } = measure();
-
-    let seed = host.seed;
     let generation = host._generation;
-    let parsed = typeof source === 'string' ? parseShaders(source) : { ...source };
-
-    let sources = parsed.textures;
+    let parsed = typeof source === 'string' ? parseShaders(source) : source;
     let textures = [];
-    let ready = false;
-    let lastW = 0, lastH = 0;
-
-    const setShaderProp = v => {
-        host.style.setProperty(id, 'url("' + v + '")');
-    }
-
-    const onLost = () => {
-        host.report([{ message: 'WebGL context lost' }]);
-    }
 
     const tick = drawing => {
         if (host._generation !== generation) {
             drawing.dispose();
             return;
         }
-        let existing = host.shaderRenders.get(target.selector);
-        if (existing) {
-            existing.dispose();
-            host.shaderRenders.delete(target.selector);
-        }
-
         drawing.draw(0, width, height, host._umouse, textures);
-        lastW = width;
-        lastH = height;
-        ready = true;
 
         let present;
         if (target.type === 'content') {
@@ -238,7 +204,7 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
                 ctx.drawImage(canvas, 0, 0);
             }
         } else {
-            present = () => setShaderProp(drawing.canvas.toDataURL());
+            present = () => host.style.setProperty(id, `url("${drawing.canvas.toDataURL()}")`);
         }
 
         present();
@@ -253,74 +219,65 @@ export function shaderToImage(host, { source, cell, id, arg, target }, fn) {
                 animation.pause();
             }
             host.animations.push(animation);
-            host.shaderRenders.set(target.selector, drawing);
         } else {
             drawing.dispose();
         }
+        host.shaderRenders.set(id, drawing);
+
+        if (!host.observers.has(id)) {
+            watch();
+        }
     }
 
-    const transform = (sources, cb) => {
+    // the texture doodles, rendered at the drawing size
+    const loadTextures = () => {
         let dpr = devicePixelRatio || 1;
-        Promise.all(sources.map(({ name, value }) => {
-            return new Promise(resolve => {
-                doodleToImage(host, value, { width, height, instance: `${id.slice(2)}-${name}` }, src => {
-                    if (!src) {
-                        resolve({ name, value: null });
-                        return;
-                    }
-                    let img = new Image();
-                    img.width = width * dpr;
-                    img.height = height * dpr;
-                    img.onload = () => resolve({ name, value: img });
-                    img.onerror = () => resolve({ name, value: null });
-                    img.src = src;
-                });
-            });
-        })).then(cb);
+        return Promise.all(parsed.textures.map(({ name, value }) => {
+            let options = { width, height, instance: `${id.slice(2)}-${name}` };
+            return doodleToImage(host, value, options).then(src => new Promise(resolve => {
+                if (!src) {
+                    return resolve({ name, value: null });
+                }
+                let img = new Image();
+                img.width = width * dpr;
+                img.height = height * dpr;
+                img.onload = () => resolve({ name, value: img });
+                img.onerror = () => resolve({ name, value: null });
+                img.src = src;
+            }));
+        }));
     }
 
-    const draw = after => {
-        parsed.textures = textures;
-        parsed.width = width;
-        parsed.height = height;
+    const render = async () => {
+        if (parsed.textures.length) {
+            textures = await loadTextures();
+        }
         try {
-            tick(generateShaders(parsed, seed, cell, onLost));
+            tick(generateShaders({ ...parsed, textures, width, height }, host.seed, cell, () => {
+                host.report([{ message: 'WebGL context lost' }]);
+            }));
         } catch (err) {
             console.error(err);
         }
-        if (after) after();
     }
 
-    const run = after => {
-        if (sources.length) {
-            transform(sources, result => {
-                textures = result;
-                draw(after);
-            });
-        } else {
-            draw(after);
-        }
-    }
-
-    if (!host.observers.has(target.selector)) {
+    // a size change redraws; a running loop only needs its textures refreshed
+    const watch = () => {
         let observer = new ResizeObserver(debounce(() => {
-            if (!ready || host.observers.get(target.selector) !== observer) return;
+            if (host.observers.get(id) !== observer) return;
             let size = measure();
+            if (size.width === width && size.height === height) return;
             width = size.width;
             height = size.height;
-            if (width === lastW && height === lastH) return;
-            lastW = width;
-            lastH = height;
-            let live = host.shaderRenders.get(target.selector);
-            if (live && live.animated) {
-                transform(sources, result => { textures = result; });
+            if (host.shaderRenders.get(id).animated) {
+                loadTextures().then(result => { textures = result; });
             } else {
-                run();
+                render();
             }
         }));
         observer.observe(element);
-        host.observers.set(target.selector, observer);
+        host.observers.set(id, observer);
     }
 
-    run(fn);
+    await render();
 }
