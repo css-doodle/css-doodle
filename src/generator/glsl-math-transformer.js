@@ -1,13 +1,12 @@
 import { scan } from '../parser/tokenizer.js';
 
 const PREC = {
-    '(': 20, '[': 19,
-    '!': 16, '~': 16,
+    __proto__: null,
     '*': 14, '/': 14, '%': 14,
     '+': 13, '-': 13,
     '<<': 12, '>>': 12,
-    '<': 11, '<=': 11, '>': 11, '>=': 11, '≤': 11, '≥': 11,
-    '==': 10, '!=': 10, '=': 10, '≠': 10,
+    '<': 11, '<=': 11, '>': 11, '>=': 11,
+    '==': 10, '!=': 10,
     '&': 9,
     '^': 8,
     '|': 7,
@@ -15,69 +14,54 @@ const PREC = {
     '||': 5
 };
 
-const OP_ALIAS = {
-    '=': '==',
-    '≤': '<=',
-    '≥': '>=',
-    '≠': '!='
-};
+// the spellings the DSL takes on top of GLSL's own; `not` only folds its case
+const ALIAS = new Map([
+    ['=', '=='], ['≤', '<='], ['≥', '>='], ['≠', '!='],
+    ['and', '&&'], ['or', '||'], ['not', 'not']
+]);
 
-const TWO_CHAR_OPS = new Set(['<<', '>>', '==', '!=', '<=', '>=', '&&', '||' ]);
-const RELATIONAL_OPS = new Set(['<', '>', '<=', '>=', '≤', '≥']);
-const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=', '=', '≠']);
+const TWO_CHAR_OPS = new Set(['<<', '>>', '==', '!=', '<=', '>=', '&&', '||']);
+const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
+const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=']);
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
-const WORD_OPS = new Map([['and', '&&'], ['or', '||']]);
-const WORD_NOT = 'not';
 
-function preprocessTokens(rawTokens) {
+const ZERO = { type: 'Lit', val: '0' };
+
+function cast(out, res, exp) {
+    return (exp && exp !== res) ? `${exp}(${out})` : out;
+}
+
+// #rgb and #rrggbb are vec3 literals
+function hexColors(code) {
+    return code.replace(/#([0-9a-f]{3}|[0-9a-f]{6})\b/gi, (_, hex) => {
+        if (hex.length === 3) hex = hex.replace(/./g, '$&$&');
+        return `vec3(${[0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).join(', ')})`;
+    });
+}
+
+function lex(code) {
     const tokens = [];
-    for (let i = 0; i < rawTokens.length; i++) {
-        const t = rawTokens[i];
-        if (t.type === 'Space') continue;
-        if (t.isWord() && t.value[0] === '#') {
-            while (rawTokens[i + 1] && /^[0-9a-f]+$/i.test(rawTokens[i + 1].value)) {
-                t.value += rawTokens[++i].value;
-            }
+    let touching = false;
+    for (const t of scan(hexColors(code))) {
+        const last = tokens[tokens.length - 1];
+        if (t.isSpace()) {
+            touching = false;
+        } else if (touching && (TWO_CHAR_OPS.has(last.value + t.value)
+                || last.isWord() && t.isNumber() && !ALIAS.has(last.value.toLowerCase()))) {
+            last.value += t.value;
+        } else {
             tokens.push(t);
-            continue;
+            touching = true;
         }
-
-        const next = rawTokens[i + 1];
-
-        if (next && t.isWord() && next.isNumber()) {
-            const w = t.value.toLowerCase();
-            if (!WORD_OPS.has(w) && w !== WORD_NOT) {
-                t.value += next.value;
-                i++;
-                tokens.push(t);
-                continue;
-            }
-        }
-
-        if (next) {
-            const combined = t.value + next.value;
-            if (TWO_CHAR_OPS.has(combined)) {
-                t.value = combined;
-                i++;
-                tokens.push(t);
-                continue;
-            }
-        }
-        tokens.push(t);
+    }
+    for (const t of tokens) {
+        t.value = ALIAS.get(t.value.toLowerCase()) || t.value;
     }
     return tokens;
 }
 
-function hexColor(word) {
-    let hex = word.slice(1);
-    if (hex.length === 3) hex = hex.replace(/./g, '$&$&');
-    if (hex.length !== 6 || /[^0-9a-f]/i.test(hex)) return { type: 'Var', val: word };
-    const args = [0, 2, 4].map(i => ({ type: 'Lit', val: String(parseInt(hex.slice(i, i + 2), 16) / 255) }));
-    return { type: 'Call', val: 'vec3', args };
-}
-
 export default function transform(code, { expect = null } = {}) {
-    const tokens = preprocessTokens(scan(code));
+    const tokens = lex(code);
 
     let pos = 0;
     const peek = () => tokens[pos];
@@ -90,143 +74,98 @@ export default function transform(code, { expect = null } = {}) {
         let n;
         if (t.isNumber()) {
             n = { type: 'Lit', val: t.value };
-        } else if (t.isWord()) {
-            if (t.value[0] === '#') {
-                n = hexColor(t.value);
-            } else if (t.value.toLowerCase() === WORD_NOT) {
-                n = { type: 'Pre', val: '!', right: parse(PREC['&&'] + 1) };
-            } else {
-                const next = peek();
-                n = (next && next.isSymbol('(')) ? call(t.value) : { type: 'Var', val: t.value };
-            }
         } else if (t.value === '(') {
             n = parse();
             consume();
         } else if (t.value === '!' || t.value === '~' || t.value === '-') {
-            n = { type: 'Pre', val: t.value, right: parse(16) };
+            n = { type: 'Pre', val: t.value, right: parse(Infinity) };
+        } else if (t.value === 'not') {
+            // `not` covers a whole comparison, as in media queries
+            n = { type: 'Pre', val: '!', right: parse(PREC['&&'] + 1) };
+        } else if (t.isWord()) {
+            n = peek()?.value === '(' ? call(t.value) : { type: 'Var', val: t.value };
         } else {
-            n = { type: 'Lit', val: '0' };
+            n = ZERO;
         }
         // a swizzle after a call or a parenthesized value: vec2(a, b).x, (z).xy
-        if (n.type !== 'Pre') {
-            while (peek() && peek().isWord() && peek().value[0] === '.') {
-                n = { type: 'Member', val: consume().value, left: n };
-            }
+        while (peek()?.isWord() && peek().value[0] === '.') {
+            n = { type: 'Member', val: consume().value, left: n };
         }
-        while (pos < tokens.length) {
-            const op = peek();
-            let val = null;
-            if (op.isSymbol() && op.value !== ')' && op.value !== ',') {
-                val = op.value;
-            } else if (op.isWord()) {
-                val = WORD_OPS.get(op.value.toLowerCase()) || null;
-            }
-            if (!val) break;
-            const p = PREC[val];
+        while (peek()) {
+            const op = peek().value;
+            const p = PREC[op];
             if (!p || p < min) break;
             consume();
             const right = parse(p + 1);
             if (!right) break;
-            n = { type: 'Bin', val, left: n, right };
+            n = { type: 'Bin', val: op, left: n, right };
         }
         return n;
     }
 
-    function call(val) {
+    function call(name) {
         consume();
-        let args = [];
-
-        if (peek() && peek().value !== ')') {
+        const args = [];
+        while (peek() && peek().value !== ')') {
             args.push(parse());
-            while (peek() && peek().value === ',') {
-                consume();
-                if (!peek()) break;
-                args.push(parse());
-            }
+            if (peek()?.value === ',') consume();
         }
         consume();
-        return { type: 'Call', val, args };
+        return { type: 'Call', val: name, args };
     }
 
     function gen(n, exp) {
         if (!n) return '';
         if (n.type === 'Lit') {
-            if (exp === 'bool') return `bool(${n.val.includes('.') ? n.val : n.val + '.0'})`;
             if (exp === 'int') return String(Math.floor(n.val));
-            return n.val.includes('.') ? n.val : n.val + '.0';
+            return cast(n.val.includes('.') ? n.val : n.val + '.0', 'float', exp);
         }
         if (n.type === 'Var') {
-            return (exp && exp !== 'float') ? `${exp}(${n.val})` : n.val;
+            return cast(n.val, 'float', exp);
         }
         if (n.type === 'Member') {
-            const out = gen(n.left) + n.val;
-            return (exp && exp !== 'float') ? `${exp}(${out})` : out;
+            return cast(gen(n.left) + n.val, 'float', exp);
         }
         if (n.type === 'Pre') {
-            if (!n.right) return gen({ type: 'Lit', val: '0' }, exp);
-            if (n.val === '!') {
-                const out = `!${gen(n.right, 'bool')}`;
-                return (exp === 'int' || exp === 'float') ? `${exp}(${out})` : out;
-            }
-            if (n.val === '~') {
-                const out = `~${gen(n.right, 'int')}`;
-                return exp === 'bool' ? `bool(${out})` : out;
-            }
+            if (!n.right) return gen(ZERO, exp);
+            if (n.val === '!') return cast(`!${gen(n.right, 'bool')}`, 'bool', exp);
+            if (n.val === '~') return cast(`~${gen(n.right, 'int')}`, 'int', exp);
+            // minus keeps the type of its operand, and a bool has no minus
             if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
             return `-${gen(n.right, exp)}`;
         }
         if (n.type === 'Call' && n.val === 'cond') {
+            // cond(t1, v1, t2, v2, …, else): the value after the first test that holds
             const a = n.args;
-            let out = gen(a.length % 2 ? a[a.length - 1] : { type: 'Lit', val: '0' }, exp);
+            let out = gen(a.length % 2 ? a[a.length - 1] : ZERO, exp);
             for (let i = a.length - 2 - a.length % 2; i >= 0; i -= 2) {
                 out = `(${gen(a[i], 'bool')} ? ${gen(a[i + 1], exp)} : ${out})`;
             }
             return out;
         }
         if (n.type === 'Call') {
-            let args = n.args.map(a => gen(a, 'float')).join(', ');
-            if (n.val === 'int') {
-                if (exp === 'float') return `float(int(${args}))`;
-                if (exp === 'bool') return `bool(int(${args}))`;
-                return `int(${args})`;
-            }
-            if (n.val === 'float') {
-                if (exp === 'bool') return `bool(${args})`;
-                if (exp === 'int') return `int(${args})`;
-                return args;
-            }
-            const out = `${n.val}(${args})`;
-            return (exp && exp !== 'float') ? `${exp}(${out})` : out;
+            const args = n.args.map(a => gen(a, 'float')).join(', ');
+            if (n.val === 'float') return cast(args, 'float', exp);
+            return cast(`${n.val}(${args})`, n.val === 'int' ? 'int' : 'float', exp);
         }
 
         const op = n.val;
 
-        if (RELATIONAL_OPS.has(op)
-                && n.left.type === 'Bin'
-                && RELATIONAL_OPS.has(n.left.val)) {
-            const leftChain = gen(n.left, 'bool');
-            const mid = gen(n.left.right, 'float');
-            const right = gen(n.right, 'float');
-            const glslOp = OP_ALIAS[op] || op;
-            const out = `(${leftChain} && (${mid} ${glslOp} ${right}))`;
-            if (exp && exp !== 'bool') return `${exp}(${out})`;
-            return out;
+        // a < b < c reads as a < b && b < c
+        if (RELATIONAL_OPS.has(op) && n.left.type === 'Bin' && RELATIONAL_OPS.has(n.left.val)) {
+            const out = `(${gen(n.left, 'bool')} && (${gen(n.left.right, 'float')} ${op} ${gen(n.right, 'float')}))`;
+            return cast(out, 'bool', exp);
         }
 
         // the type an operator yields and the type it wants its operands in
-        let res = 'float', argExp = 'float';
-        if (INT_OPS.has(op)) res = argExp = 'int';
-        else if (op === '&&' || op === '||') res = argExp = 'bool';
+        let res = 'float', arg = 'float';
+        if (INT_OPS.has(op)) res = arg = 'int';
+        else if (op === '&&' || op === '||') res = arg = 'bool';
         else if (COMPARISON_OPS.has(op)) res = 'bool';
 
-        const l = gen(n.left, argExp);
-        const r = gen(n.right, argExp);
-        const glslOp = OP_ALIAS[op] || op;
-        const out = (op === '%') ? `mod(${l}, ${r})` : `(${l} ${glslOp} ${r})`;
-
-        // a comparison is always cast to what the caller expects
-        if (exp && (res === 'bool' || res !== exp)) return `${exp}(${out})`;
-        return out;
+        const l = gen(n.left, arg);
+        const r = gen(n.right, arg);
+        return cast(op === '%' ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`, res, exp);
     }
 
     try { return gen(parse(), expect); }

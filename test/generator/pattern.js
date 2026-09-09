@@ -20,25 +20,25 @@ const extra = {
 const shader = code => draw(code, extra);
 const lines = code => shader(code).split('\n').map(l => l.trim());
 
-// the `if (bool(...))` line a cond() condition compiles to; the
-// prelude's own ifs (escape bailouts, etc.) never contain bool(
-const condition = code => lines(code).find(l => l.startsWith('if (') && l.includes('bool(')) || '';
-
 // the `cssd_color = ...;` assignment inside main
 const color = code => lines(code).find(l => l.startsWith('cssd_color = ')) || '';
 
 const main = code => shader(code).slice(shader(code).indexOf('void main()'));
 
+// the `if (...)` line a cond() condition compiles to: the first if inside
+// main, the prelude's own ifs (escape bailouts, etc.) all come before it
+const condition = code => main(code).split('\n').map(l => l.trim()).find(l => l.startsWith('if (')) || '';
+
 // --- cond() conditions ---
 
 test('cond with nested commas in a function call', () => {
-    assert.equal(condition('cond(atan(y, x) > 3) { fill: red }'), 'if (bool((atan(y, x) > 3.0))) {');
+    assert.equal(condition('cond(atan(y, x) > 3) { fill: red }'), 'if ((atan(y, x) > 3.0)) {');
 });
 
 test('cond AND-joins multiple arguments', () => {
     assert.equal(
         condition('cond(x>y, 2*x-y == 0) { fill: red }'),
-        'if (bool((x > y)) && bool((((2.0 * x) - y) == 0.0))) {'
+        'if ((x > y) && (((2.0 * x) - y) == 0.0)) {'
     );
 });
 
@@ -56,16 +56,16 @@ test('cond with no arguments emits no if block', () => {
 test('nested cond blocks are emitted recursively', () => {
     assert.match(
         shader('cond(x>3) { cond(y>3) { fill: red } }'),
-        /if \(bool\(\(x > 3\.0\)\)\) \{[\s\S]*if \(bool\(\(y > 3\.0\)\)\) \{[\s\S]*cssd_color = vec4/
+        /if \(\(x > 3\.0\)\) \{[\s\S]*if \(\(y > 3\.0\)\) \{[\s\S]*cssd_color = vec4/
     );
 });
 
 test('and/or/not keywords read like media queries', () => {
     assert.equal(condition('cond(x > 1 and y > 1) { fill: red }'),
-        'if (bool((bool((x > 1.0)) && bool((y > 1.0))))) {');
+        'if (((x > 1.0) && (y > 1.0))) {');
     assert.equal(condition('cond(x > 3 or y > 3) { fill: red }'),
-        'if (bool((bool((x > 3.0)) || bool((y > 3.0))))) {');
-    assert.equal(condition('cond(not (x > 3)) { fill: red }'), 'if (!bool((x > 3.0))) {');
+        'if (((x > 3.0) || (y > 3.0))) {');
+    assert.equal(condition('cond(not (x > 3)) { fill: red }'), 'if (!(x > 3.0)) {');
 });
 
 test('a non-comparison root is bool-coerced', () => {
@@ -77,7 +77,7 @@ test('a non-comparison root is bool-coerced', () => {
 test('variables inside cond blocks are scoped', () => {
     assert.ok(shader('cond(x > 1) { c: x/X; fill: hsl(c, 0.5, 0.5) }').includes('hsl((x / X), 0.5, 0.5)'));
     // and they do not leak into the outer scope
-    assert.match(shader('cond(x > 1) { c: 9.0; } cond(c > 1) { fill: red }'), /if \(bool\(\(c > 1\.0\)\)\)/);
+    assert.match(shader('cond(x > 1) { c: 9.0; } cond(c > 1) { fill: red }'), /if \(\(c > 1\.0\)\)/);
 });
 
 // --- built-in variables ---
@@ -87,11 +87,11 @@ test('dr and da: distance and angle from the grid center', () => {
     assert.match(s, /float dr = length\(vec2\(dx, dy\)\);/);
     assert.match(s, /float da = atan\(dy, dx\);/);
     assert.match(s, /const float PI = 3\.14159/);
-    assert.equal(condition('cond(dr < 3) { fill: red }'), 'if (bool((dr < 3.0))) {');
-    assert.equal(condition('cond(da > 0) { fill: red }'), 'if (bool((da > 0.0))) {');
+    assert.equal(condition('cond(dr < 3) { fill: red }'), 'if ((dr < 3.0)) {');
+    assert.equal(condition('cond(da > 0) { fill: red }'), 'if ((da > 0.0)) {');
     assert.equal(
         condition('cond(da > -PI/4 && da < PI/4) { fill: red }'),
-        'if (bool((bool((da > (-PI / 4.0))) && bool((da < (PI / 4.0)))))) {'
+        'if (((da > (-PI / 4.0)) && (da < (PI / 4.0)))) {'
     );
 });
 
@@ -99,18 +99,18 @@ test('dc and dm: chebyshev and manhattan distance', () => {
     let s = shader('cond(dc < 2) { fill: red }');
     assert.match(s, /float dc = max\(abs\(dx\), abs\(dy\)\);/);
     assert.match(s, /float dm = abs\(dx\) \+ abs\(dy\);/);
-    assert.equal(condition('cond(dc < 2) { fill: red }'), 'if (bool((dc < 2.0))) {');
-    assert.equal(condition('cond(dm < 3) { fill: red }'), 'if (bool((dm < 3.0))) {');
+    assert.equal(condition('cond(dc < 2) { fill: red }'), 'if ((dc < 2.0)) {');
+    assert.equal(condition('cond(dm < 3) { fill: red }'), 'if ((dm < 3.0)) {');
 });
 
 test('db: distance to the grid boundary', () => {
     let s = shader('cond(db == 0) { fill: red }');
     assert.match(s, /float db = min\(min\(x - 1\.0, X - x\), min\(y - 1\.0, Y - y\)\);/);
-    assert.equal(condition('cond(db == 0) { fill: red }'), 'if (bool((db == 0.0))) {');
-    assert.equal(condition('cond(db < 2) { fill: red }'), 'if (bool((db < 2.0))) {');
+    assert.equal(condition('cond(db == 0) { fill: red }'), 'if ((db == 0.0)) {');
+    assert.equal(condition('cond(db < 2) { fill: red }'), 'if ((db < 2.0)) {');
     assert.equal(
         condition('cond(int(db) % 2 == 0) { fill: red }'),
-        'if (bool((mod(float(int(db)), 2.0) == 0.0))) {'
+        'if ((mod(float(int(db)), 2.0) == 0.0)) {'
     );
 });
 
@@ -119,7 +119,7 @@ test('du and dv: coordinates inside the cell', () => {
     assert.match(s, /float du = fract\(uv\.x \* X\) - 0\.5;/);
     assert.match(s, /float dv = fract\(\(1\.0 - uv\.y\) \* Y\) - 0\.5;/);
     // composes with ngon() for per-cell polygon masks
-    assert.equal(condition('cond(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if (bool((ngon(du, dv, 6.0) < 0.4))) {');
+    assert.equal(condition('cond(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(du, dv, 6.0) < 0.4)) {');
     // a bare `du` is not a CSS color, so it compiles as an expression
     assert.equal(color('fill: du'), 'cssd_color = vec4(vec3(du), 1.0);');
 });
@@ -130,11 +130,11 @@ test('dx and dy: cell index centered on the grid', () => {
     assert.match(s, /float dy = y - \(Y \+ 1\.0\) \* 0\.5;/);
     assert.equal(
         condition('cond(dx*dx + dy*dy < 4) { fill: red }'),
-        'if (bool((((dx * dx) + (dy * dy)) < 4.0))) {'
+        'if ((((dx * dx) + (dy * dy)) < 4.0)) {'
     );
     assert.equal(
         condition('cond(max(abs(dx), abs(dy)) < 2) { fill: red }'),
-        'if (bool((max(abs(dx), abs(dy)) < 2.0))) {'
+        'if ((max(abs(dx), abs(dy)) < 2.0)) {'
     );
 });
 
@@ -230,7 +230,7 @@ test('in-block shape and size are order-free and apply once', () => {
         'cond(x > 1) { shape: circle; size: 0.5; fill: red }',
     ]) {
         let s = shader(code);
-        let ifIdx = s.indexOf('if (bool((x > 1.0)))');
+        let ifIdx = s.indexOf('if ((x > 1.0))');
         let sizeIdx = s.indexOf('size = 0.5;');
         let maskIdx = s.indexOf('cssd_mask = cssd_shape(length(vec2(du, dv)), size);');
         assert.ok(ifIdx > -1 && ifIdx < sizeIdx && sizeIdx < maskIdx, `${code}\n${s}`);
@@ -274,7 +274,7 @@ test('fbm() and voronoi() built-ins are available', () => {
     let s = shader('grid:40; fill: fbm(x/8, y/8)');
     assert.ok(s.includes('float fbm(float px, float py)'));
     assert.ok(s.includes('float voronoi(float px, float py)'));
-    assert.equal(condition('cond(voronoi(x, y) > 0.3) { fill: red }'), 'if (bool((voronoi(x, y) > 0.3))) {');
+    assert.equal(condition('cond(voronoi(x, y) > 0.3) { fill: red }'), 'if ((voronoi(x, y) > 0.3)) {');
 });
 
 test('noise() and voronoi() lattices are offset by the seed like rand', () => {
@@ -343,7 +343,7 @@ test('iterate declares its state from the outer values and updates it all at onc
     assert.match(s, /float zx = 0\.0;\s*float zy = 1\.0;\s*float n = 0\.0;\s*for \(int cssd_k = 0; cssd_k < 8; cssd_k\+\+\)/);
     // every new value reads the previous state, then all are assigned
     assert.match(s, /float zx_ = \(\(\(zx \* zx\) - \(zy \* zy\)\) \+ \(x \/ X\)\);\s*float zy_ = \(\(2\.0 \* zx\) \* zy\);\s*zx = zx_;\s*zy = zy_;\s*n \+= 1\.0;/);
-    assert.match(s, /if \(bool\(\(\(\(zx \* zx\) \+ \(zy \* zy\)\) > 4\.0\)\)\) break;/);
+    assert.match(s, /if \(\(\(\(zx \* zx\) \+ \(zy \* zy\)\) > 4\.0\)\) break;/);
     // after the loop, state and n are the GLSL variables, not the outer macros
     assert.match(s, /cssd_color = vec4\(vec3\(hsl\(\(n \/ 8\.0\), 1\.0, zx\)\), 1\.0\);/);
 });
@@ -396,7 +396,7 @@ test('a second iterate continues the same state without redeclaring it', () => {
 
 test('iterate inside cond is scoped to that block', () => {
     let s = main('zx: 0; cond(x > 1) { iterate(2) { zx: zx + 1 } fill: hsl(n, 1, zx) } fill: hsl(zx, 1, 1)');
-    assert.match(s, /if \(bool\(\(x > 1\.0\)\)\) \{[\s\S]*float zx = 0\.0;[\s\S]*hsl\(n, 1\.0, zx\)[\s\S]*\}/);
+    assert.match(s, /if \(\(x > 1\.0\)\) \{[\s\S]*float zx = 0\.0;[\s\S]*hsl\(n, 1\.0, zx\)[\s\S]*\}/);
     // the outer fill still sees the macro value
     assert.match(s, /hsl\(0\.0, 1\.0, 1\.0\)/);
 });
@@ -434,13 +434,13 @@ test('iterate state that starts from a call returning a float is a float', () =>
 
 test('cond() in a value chooses between expressions, colors included', () => {
     assert.equal(color('fill: cond(dr < 2, #fff, #000)'),
-        'cssd_color = vec4(vec3((bool((dr < 2.0)) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))), 1.0);');
+        'cssd_color = vec4(vec3(((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))), 1.0);');
     assert.equal(color('c: cond(db = 0, 1, dr < 3, .5, 0); fill: hsl(c, .8, .5)'),
-        'cssd_color = vec4(vec3(hsl((bool((db == 0.0)) ? 1.0 : (bool((dr < 3.0)) ? .5 : 0.0)), .8, .5)), 1.0);');
-    assert.match(shader('size: cond(x > 4, .8, .3); fill: #000'), /float size = \(bool\(\(x > 4\.0\)\) \? \.8 : \.3\);/);
+        'cssd_color = vec4(vec3(hsl(((db == 0.0) ? 1.0 : ((dr < 3.0) ? .5 : 0.0)), .8, .5)), 1.0);');
+    assert.match(shader('size: cond(x > 4, .8, .3); fill: #000'), /float size = \(\(x > 4\.0\) \? \.8 : \.3\);/);
     // as a block test its branches are already bool, so no outer cast
     assert.equal(condition('cond(cond(x > 2, y > 2, 0)) { fill: red }'),
-        'if ((bool((x > 2.0)) ? bool((y > 2.0)) : bool(0.0))) {');
+        'if (((x > 2.0) ? (y > 2.0) : bool(0.0))) {');
     // the block form is unchanged
-    assert.equal(condition('cond(dr < 2) { fill: red }'), 'if (bool((dr < 2.0))) {');
+    assert.equal(condition('cond(dr < 2) { fill: red }'), 'if ((dr < 2.0)) {');
 });
