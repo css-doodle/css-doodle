@@ -267,15 +267,15 @@ function generateIterate(token, vars, warn, types) {
     for (let name of state) vars[name] = name;
     vars.n = 'n';
     return glsl`
-    ${init.join('\n')}
-    ${counter}
-    for (int cssd_k = 0; cssd_k < ${times}; cssd_k++) {
-      ${next.join('\n')}
-      ${assign.join('\n')}
-      n += 1.0;
-      ${leave}
-    }
-  `;
+        ${init.join('\n')}
+        ${counter}
+        for (int cssd_k = 0; cssd_k < ${times}; cssd_k++) {
+          ${next.join('\n')}
+          ${assign.join('\n')}
+          n += 1.0;
+          ${leave}
+        }
+    `;
 }
 
 function generateBlock(token, extra, vars, outerShape, warn, types) {

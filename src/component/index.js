@@ -558,7 +558,7 @@ if (typeof HTMLElement !== 'undefined') {
             let paused = this.hasAttribute('cssd-paused');
             let svgs = [
                 ...this.shadowRoot.querySelectorAll('svg'),
-                ...this.querySelectorAll(':scope > ft svg'),
+                ...this.querySelectorAll(':scope>ft svg'),
             ];
             for (let svg of svgs) {
                 paused ? svg.pauseAnimations() : svg.unpauseAnimations();

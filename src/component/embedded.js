@@ -110,7 +110,7 @@ export async function doodleToImage(host, code, options) {
 
     try {
         let fonts = await loadGoogleFontEmbed(styles.gf);
-        let sheet = stampSheet(host, fonts + styles.top + `
+        let sheet = stampSheet(host, fonts + styles.top + css`
             @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
             @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
         ` + getBasicStyles(grid) + styles.all);
