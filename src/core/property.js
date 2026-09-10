@@ -16,10 +16,12 @@ const ch = `var(${ih}, 25%)`;
 
 // keywords resolve to edge percentages, remaining values fill x then y
 function resolvePlace(value) {
-    let x, y, rest = [];
+    let x, y, rest = [], safe = false;
     for (let token of parseValueGroup(value)) {
         if (isEmpty(token)) continue;
         switch (token) {
+            case 'safe':   safe = true; break;
+            case 'unsafe': safe = false; break;
             case 'left':   x = '0%';   break;
             case 'right':  x = '100%'; break;
             case 'top':    y = '0%';   break;
@@ -28,7 +30,7 @@ function resolvePlace(value) {
             default:       rest.push(token);
         }
     }
-    return [x ?? rest.shift() ?? '50%', y ?? rest.shift() ?? '50%'];
+    return [x ?? rest.shift() ?? '50%', y ?? rest.shift() ?? '50%', safe];
 }
 
 const borderStyles = /^(solid|dotted|dashed|double|groove|ridge|inset|outset)$/;
@@ -106,7 +108,7 @@ Property.size = (value, { isSpecialSelector, grid }) => {
 };
 
 Property.place = (value, { extra }) => {
-    let [left, top] = resolvePlace(value);
+    let [left, top, safe] = resolvePlace(value);
     return css`
     position: absolute;
     left: ${left};
@@ -115,7 +117,7 @@ Property.place = (value, { extra }) => {
     bottom: calc(100% - ${top});
     width: ${cw};
     height: ${ch};
-    place-self: unsafe center;
+    place-self: ${safe ? 'center' : 'unsafe center'};
     grid-area: unset;
     ${extra ? `rotate: ${extra}deg;` : ''}
   `;

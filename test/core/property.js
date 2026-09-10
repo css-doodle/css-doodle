@@ -154,14 +154,22 @@ test('size: auto takes the grid aspect ratio on special selectors', () => {
 
 // --- @place ---
 
-test('place: centers without using translate', () => {
-    assert.equal(property.place('center', {}), `position: absolute;
-    left: 50%;
-    right: calc(100% - 50%);
-    top: 50%;
-    bottom: calc(100% - 50%);
+const placed = (left, top, self = 'unsafe center') => `position: absolute;
+    left: ${left};
+    right: calc(100% - ${left});
+    top: ${top};
+    bottom: calc(100% - ${top});
     width: var(--_cell-width, 25%);
     height: var(--_cell-height, 25%);
-    place-self: unsafe center;
-    grid-area: unset;`);
+    place-self: ${self};
+    grid-area: unset;`;
+
+test('place: centers without using translate', () => {
+    assert.equal(property.place('center', {}), placed('50%', '50%'));
+});
+
+test('place: safe drops the unsafe overflow keyword', () => {
+    assert.equal(property.place('safe center', {}), placed('50%', '50%', 'center'));
+    assert.equal(property.place('safe 50% 30%', {}), placed('50%', '30%', 'center'));
+    assert.equal(property.place('safe left', {}), placed('0%', '50%', 'center'));
 });

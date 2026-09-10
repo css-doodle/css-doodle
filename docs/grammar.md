@@ -724,8 +724,9 @@ The `ß` modifier of `@grid` completes a border shorthand the same way,
 and also gives a lone color a `1px` width.
 
 `@place` reads `left`, `right`, `top` and `bottom` as `0%` or `100%`
-on their axis, and `center` as `50%`. Any remaining values fill x,
-then y. Both default to `50%`.
+on their axis, and `center` as `50%`. Overflow is `unsafe` by default;
+a `safe` keyword sets `place-self` to `center`. Any remaining values
+fill x, then y. Both default to `50%`.
 
 ### Others
 
