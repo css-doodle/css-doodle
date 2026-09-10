@@ -556,7 +556,10 @@ functions, such as `sin`, `mod`, `mix` and `step`, and the constant
 `PI` are available, and so are its vectors: a variable may hold a
 `vec2`, `vec3`, `vec4` or `mat2`, and is read with a swizzle, as in
 `c.x` or `p.yx`. A color written as `#rgb` or `#rrggbb` is a `vec3`,
-and a `fill` that is one `vec3` expression is a color.
+and a `fill` that is one `vec3` expression is a color. A number or
+`π` followed by a name, a call, a group or `π` multiplies, so `2t`,
+`2πt`, `2sin(t)` and `2(t + 1)` are products; two names side by side
+are not.
 
 The coordinates count cells from the top-left corner, like the grid:
 

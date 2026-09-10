@@ -214,8 +214,9 @@ function substituteVariables(expr, vars, depth = 0, excludeName = null) {
     let names = Object.keys(vars).sort((a, b) => b.length - a.length);
     for (let name of names) {
         if (name === excludeName) continue;
-        // not after a dot: the b in c.b is a swizzle, not the variable b
-        let regex = new RegExp(`(?<![\\w.])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+        // not after a letter or a dot, and not inside a #hex literal: 2p is 2 × p,
+        // the b in c.b is a swizzle, the a in #f0a is a color
+        let regex = new RegExp(`(?<![a-zA-Z_.])(?<!#[0-9a-fA-F]*)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
         if (regex.test(expr)) {
             let resolved = substituteVariables(vars[name], vars, depth + 1, name);
             expr = expr.replace(regex, `(${resolved})`);

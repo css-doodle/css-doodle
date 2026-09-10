@@ -11,6 +11,30 @@ test('arithmetic: integers become floats, every operation is parenthesized', () 
     assert.equal(transform('(x + y) * z'), '((x + y) * z)');
 });
 
+test('numeric coefficients imply multiplication', () => {
+    assert.equal(transform('2t'), '(2.0 * t)');
+    assert.equal(transform('2sin(t)'), '(2.0 * sin(t))');
+    assert.equal(transform('2(t + 1)'), '(2.0 * (t + 1.0))');
+    assert.equal(transform('2π'), '(2.0 * PI)');
+    assert.equal(transform('πt'), '(PI * t)');
+    assert.equal(transform('2πt'), '((2.0 * PI) * t)');
+    assert.equal(transform('sin(2πt)'), 'sin(((2.0 * PI) * t))');
+    assert.equal(
+        transform('.5 + .5 * sin(dr - 2t)', { expect: 'float' }),
+        '(.5 + (.5 * sin((dr - (2.0 * t)))))'
+    );
+    assert.equal(transform('2t * 3'), '((2.0 * t) * 3.0)');
+    assert.equal(transform('x - 2t.y'), '(x - (2.0 * t.y))');
+});
+
+test('a unary minus covers the whole implicit product', () => {
+    assert.equal(transform('-2t'), '(-2.0 * t)');
+    assert.equal(transform('-πt'), '-(PI * t)');
+    assert.equal(transform('- 2t'), '-(2.0 * t)');
+    assert.equal(transform('-(2)t'), '-(2.0 * t)');
+    assert.equal(transform('cos(- 2πt)'), 'cos(-((2.0 * PI) * t))');
+});
+
 test('modulo becomes mod()', () => {
     assert.equal(transform('x % 10'), 'mod(x, 10.0)');
     assert.equal(transform('(x + 1) % y'), 'mod((x + 1.0), y)');

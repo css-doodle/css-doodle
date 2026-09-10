@@ -120,5 +120,5 @@ function stripTaggedTemplates(src) {
     for (const { start, end, text } of edits) {
         src = src.slice(0, start) + text + src.slice(end);
     }
-    return src.trim()
+    return src.trim();
 }

@@ -27,6 +27,8 @@ const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 
 const ZERO = { type: 'Lit', val: '0' };
 
+const isFactor = t => t && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
+
 function cast(out, res, exp) {
     return (exp && exp !== res) ? `${exp}(${out})` : out;
 }
@@ -67,7 +69,7 @@ export default function transform(code, { expect = null } = {}) {
     const peek = () => tokens[pos];
     const consume = () => tokens[pos++];
 
-    function parse(min = 0) {
+    function primary() {
         const t = consume();
         if (!t) return null;
 
@@ -84,12 +86,28 @@ export default function transform(code, { expect = null } = {}) {
             n = { type: 'Pre', val: '!', right: parse(PREC['&&'] + 1) };
         } else if (t.isWord()) {
             n = peek()?.value === '(' ? call(t.value) : { type: 'Var', val: t.value };
+        } else if (t.value === 'π') {
+            n = { type: 'Var', val: 'PI' };
         } else {
             n = ZERO;
         }
         // a swizzle after a call or a parenthesized value: vec2(a, b).x, (z).xy
         while (peek()?.isWord() && peek().value[0] === '.') {
             n = { type: 'Member', val: consume().value, left: n };
+        }
+        return n;
+    }
+
+    function parse(min = 0) {
+        let n = primary();
+        if (!n) return null;
+        // a number or π followed by a name, a call or a group multiplies: 2t, 2πt, 2sin(t), 2(t + 1)
+        if (n.type === 'Lit' || n.type === 'Var' && n.val === 'PI') {
+            while (isFactor(peek())) {
+                const right = primary();
+                if (!right) break;
+                n = { type: 'Bin', val: '*', left: n, right };
+            }
         }
         while (peek()) {
             const op = peek().value;

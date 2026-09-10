@@ -166,6 +166,12 @@ test('invalid channel counts and empty fills are dropped', () => {
 test('fill substitutes pattern variables, in any declaration order', () => {
     assert.equal(color('c: hsv(i/I, 1, 1); fill: c'), 'cssd_color = vec4(vec3(hsv((i / I), 1.0, 1.0)), 1.0);');
     assert.equal(color('fill: c; c: hsv(i/I, 1, 1)'), 'cssd_color = vec4(vec3(hsv((i / I), 1.0, 1.0)), 1.0);');
+    assert.equal(color('p: 2; fill: hsl(.16p, .75, .65)'), 'cssd_color = vec4(vec3(hsl((.16 * 2.0), .75, .65)), 1.0);');
+});
+
+test('variable names inside hex literals are not substituted', () => {
+    assert.equal(color('a: .5; fill: #f0a * a'), 'cssd_color = vec4(vec3((vec3(1.0, 0.0, 0.6666666666666666) * .5)), 1.0);');
+    assert.equal(color('fab: .5; fill: #FAB * fab'), 'cssd_color = vec4(vec3((vec3(1.0, 0.6666666666666666, 0.7333333333333333) * .5)), 1.0);');
 });
 
 test('fill through a variable keeps CSS colors static', () => {
@@ -200,6 +206,17 @@ test('size without an explicit shape uses a square mask', () => {
 
 test('size expressions coerce to float', () => {
     assert.match(shader('shape: circle; size: x > 2; fill: #000'), /float size = float\(\(x > 2\.0\)\);/);
+});
+
+test('size expressions support numeric coefficients', () => {
+    assert.match(
+        shader('shape: circle; size: .5 + .5 * sin(dr - 2t); fill: #000'),
+        /float size = \(\.5 \+ \(\.5 \* sin\(\(dr - \(2\.0 \* t\)\)\)\)\);/
+    );
+    assert.match(
+        shader('shape: circle; size: .5 + .5 * sin(dr - 2πt); fill: #000'),
+        /float size = \(\.5 \+ \(\.5 \* sin\(\(dr - \(\(2\.0 \* PI\) \* t\)\)\)\)\);/
+    );
 });
 
 test('no shape and no size leaves the mask untouched', () => {
