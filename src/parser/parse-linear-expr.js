@@ -8,7 +8,8 @@ function parse(input) {
     let iter = iterator(scan(input));
     let a = 0, b = 0, op, seen = false, error;
     while (iter.next()) {
-        let { curr, next } = iter.get();
+        let curr = iter.curr();
+        let next = iter.curr(1);
         let v = curr.value;
         if (curr.isSymbol()) {
             if (v === '+' || v === '-') {

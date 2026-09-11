@@ -1,6 +1,5 @@
 import { scan, iterator, textOf, Token } from './tokenizer.js';
 import { readRaw } from './parse-body.js';
-import { isEmpty } from '../lib/type.js';
 
 // shaders-body = { section } | fragment-source
 // section      = ( 'fragment' | 'vertex' | 'texture' /\w*/ ) '{' raw '}'
@@ -38,7 +37,7 @@ function parse(input) {
         }
     }
 
-    if (isEmpty(result.fragment)) {
+    if (!result.fragment) {
         result.fragment = textOf(removeParens(withLineBreaks(tokens)));
     }
     return result;
@@ -49,7 +48,7 @@ function isIdentifier(name) {
 }
 
 function lineBreak() {
-    return new Token({ type: 'LineBreak', value: '\n' });
+    return new Token('LineBreak', '\n');
 }
 
 // The tokenizer drops line breaks next to ';' and braces; a `#define`

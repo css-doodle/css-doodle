@@ -1,22 +1,26 @@
 import { scan, iterator, textOf } from './tokenizer.js';
 
 function parse(input) {
-    let iter = iterator(scan(input));
-    return walk(iter);
+    return readList(iterator(scan(input)), false);
 }
 
-function walk(iter) {
+function readList(iter, nested) {
     let rules = [];
+    let depth = 0;
     while (iter.next()) {
-        let { curr, next } = iter.get();
-        if (curr.value === 'var') {
-            if (next && next.isSymbol('(')) {
-                iter.next();
-                let rule = parseVar(iter);
-                if (isValid(rule.name)) {
-                    rules.push(rule);
-                }
+        let curr = iter.curr();
+        let next = iter.curr(1);
+        if (curr.value === 'var' && next && next.isSymbol('(')) {
+            iter.next();
+            let rule = readVar(iter);
+            // `--` and a name that does not start with another dash
+            if (/^--[^-]/.test(rule.name)) {
+                rules.push(rule);
             }
+        } else if (nested) {
+            if (curr.isSymbol('(')) depth++;
+            else if (curr.isSymbol(')') && !depth) break;
+            else if (curr.isSymbol(')')) depth--;
         } else if (rules.length && !curr.isSymbol(',')) {
             break;
         }
@@ -24,33 +28,22 @@ function walk(iter) {
     return rules;
 }
 
-function parseVar(iter) {
-    let ret = {};
+function readVar(iter) {
+    let rule = {};
     let tokens = [];
     while (iter.next()) {
-        let { curr, next } = iter.get();
-        if (curr.isSymbol(')', ';') && !ret.name) {
-            ret.name = textOf(tokens);
+        let curr = iter.curr();
+        // a `;` closes a var( that was never closed
+        if (curr.isSymbol(')', ';', ',')) {
+            rule.name = textOf(tokens);
+            if (curr.isSymbol(',')) {
+                rule.fallback = readList(iter, true);
+            }
             break;
         }
-        else if (curr.isSymbol(',')) {
-            if (ret.name === undefined) {
-                ret.name = textOf(tokens);
-                tokens = [];
-            }
-            if (ret.name) {
-                ret.fallback = walk(iter);
-            }
-        } else {
-            tokens.push(curr);
-        }
+        tokens.push(curr);
     }
-    return ret;
-}
-
-// `--` and a name that does not start with another dash
-function isValid(name) {
-    return typeof name === 'string' && /^--[^-]/.test(name);
+    return rule;
 }
 
 export default parse;

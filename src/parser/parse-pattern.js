@@ -46,7 +46,8 @@ function readMatchBlocks(iter, head) {
 function readPatternStatement(iter, head) {
     let value = [];
     while (iter.next()) {
-        let { curr, next } = iter.get();
+        let curr = iter.curr();
+        let next = iter.curr(1);
         if (curr.isSymbol(';')) {
             break;
         }

@@ -7,19 +7,8 @@ import { adjustName, isSpecialNamespaceAttr } from '../lib/svg.js';
 const RE_ENTITY_TAIL = /&(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos)$/;
 
 function endsEntity(tokens) {
-    let n = tokens.length;
-    let last = tokens[n - 1];
-    if (!last || !(last.isWord() || last.isNumber())) return false;
-    for (let i = n - 2; i >= 0 && i >= n - 8; --i) {
-        let t = tokens[i];
-        if (t.isSymbol('&')) {
-            let tail = '';
-            for (let j = i; j < n; ++j) tail += tokens[j].value;
-            return RE_ENTITY_TAIL.test(tail);
-        }
-        if (!(t.isWord() || t.isNumber())) return false;
-    }
-    return false;
+    // `&#x1a2b3c` is 8 tokens: the lexer splits digits from letters
+    return RE_ENTITY_TAIL.test(textOf(tokens.slice(-8)));
 }
 
 function resolveId(block) {
@@ -110,11 +99,8 @@ function readStatement(iter, token) {
         if (!quote && !paren && curr.isSymbol(';') && !endsEntity(fragment)) {
             break;
         }
-        let isStatementBreak = !quote && !paren && (!next || next.isSymbol('}'));
-
-        if (curr.isSymbol("'", '"') && next && next.isSymbol('}') && !quote) {
-            isStatementBreak = true;
-        }
+        // a closing quote right before the `}` ends the statement even inside an open paren
+        let isStatementBreak = !quote && (!paren || curr.isSymbol("'", '"')) && (!next || next.isSymbol('}'));
         if (!paren && !quote && curr.isSymbol('{')) {
             let selectors = getSelectors(fragment);
             // no selector: `style: { fill: red }` keeps the text as the value
@@ -203,7 +189,7 @@ function readSvgStatement(iter, head) {
             item.value = groupedValue[i];
         }
         if (item.name === 'viewBox') {
-            item.detail = parseViewBox(item.value, valueTokens);
+            item.detail = parseViewBox(valueTokens);
         }
         rules.push(item);
     }
@@ -262,11 +248,8 @@ function getSelectors(tokens) {
     return result.filter(name => name.length);
 }
 
-function parseViewBox(value, tokens) {
+function parseViewBox(tokens) {
     const viewBox = { value: [] };
-    if (!Array.isArray(tokens)) {
-        return viewBox;
-    }
     let field;
     for (let token of tokens) {
         if (token.isSpace() || token.isSymbol(',', ';')) {

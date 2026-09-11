@@ -76,16 +76,11 @@ function parseSimple(input, noSpace) {
 
 function parseCached(input, option) {
     let symbol = option && option.symbol;
-    if ((symbol === undefined || symbol === ',')
-            && !(option && option.verbose)
-            && typeof input === 'string' && input.length
-            && !RE_PLAIN.test(input)) {
+    let plain = (symbol === undefined || symbol === ',') && !(option && option.verbose);
+    if (plain && typeof input === 'string' && input.length && !RE_PLAIN.test(input)) {
         return [input];
     }
-    if ((symbol === undefined || symbol === ',')
-            && !(option && option.verbose)
-            && (typeof input === 'number' || (typeof input === 'string' && input.length))
-            && RE_SIMPLE.test(input)) {
+    if (plain && (typeof input === 'number' || (typeof input === 'string' && input.length)) && RE_SIMPLE.test(input)) {
         return parseSimple(String(input), option && option.noSpace);
     }
     let optKey = option

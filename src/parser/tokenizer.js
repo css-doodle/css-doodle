@@ -49,24 +49,17 @@ function isHexCode(c) {
 }
 
 class Token {
-    constructor({ type, value, pos, index, status }) {
+    constructor(type, value, pos, index) {
         this.type = type;
         this.value = value;
         this.pos = pos;
         this.index = index;
-        if (status) {
-            this.status = status;
-        }
     }
-    isSymbol(...values) {
-        if (!values.length) {
-            return this.type == 'Symbol';
-        }
-        if (values.length === 1) {
-            let v = values[0];
-            return Array.isArray(v) ? v.includes(this.value) : v === this.value;
-        }
-        return values.includes(this.value);
+    // no argument: any symbol; an array or up to three values: one of them
+    isSymbol(a, b, c) {
+        if (a === undefined) return this.type == 'Symbol';
+        if (Array.isArray(a)) return a.includes(this.value);
+        return this.value === a || this.value === b || this.value === c;
     }
     isSpace() {
         return this.type == 'Space';
@@ -81,7 +74,9 @@ class Token {
 
 // the text the tokens came from
 function textOf(tokens) {
-    return tokens.map(t => t.value).join('');
+    let text = '';
+    for (let t of tokens) text += t.value;
+    return text;
 }
 
 // the items of a comma list, split at the top level: `a, (b, c)` is two
@@ -111,13 +106,6 @@ function iterator(input) {
         },
         next() {
             return input[++pointer];
-        },
-        get() {
-            return {
-                prev: input[pointer - 1],
-                curr: input[pointer],
-                next: input[pointer + 1],
-            }
         }
     }
 }
@@ -211,9 +199,7 @@ function scan(source, options = {}) {
             let after = input[end];
             if (lastToken && !lastToken.isSpace() && after && !isSpaceCode(input.charCodeAt(end))
                     && !ignoreSpacingAround(lastToken.value, after)) {
-                tokens.push(new Token({
-                    type: 'Space', value: ' ', pos, index
-                }));
+                tokens.push(new Token('Space', ' ', pos, index));
             }
             i = end;
         }
@@ -224,17 +210,13 @@ function scan(source, options = {}) {
         }
         else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
             let end = readHexNumber(input, i);
-            tokens.push(new Token({
-                type: 'Number', value: '0x' + input.slice(i + 2, end), pos, index
-            }));
+            tokens.push(new Token('Number', '0x' + input.slice(i + 2, end), pos, index));
             i = end;
         }
         else if (isDigitCode(curr) || (
             curr === 46 && isDigitCode(next) && input.charCodeAt(i - 1) !== 46)) {
             let end = readNumber(input, i);
-            tokens.push(new Token({
-                type: 'Number', value: input.slice(i, end), pos, index
-            }));
+            tokens.push(new Token('Number', input.slice(i, end), pos, index));
             i = end;
         }
         else if (quote && curr === 92 /* \ */) {
@@ -249,9 +231,7 @@ function scan(source, options = {}) {
             }
             let word = input.slice(start, end).trim();
             if (word.length) {
-                tokens.push(new Token({
-                    type: 'Word', value: word, pos, index
-                }));
+                tokens.push(new Token('Word', word, pos, index));
             }
             i = end;
         }
@@ -264,17 +244,13 @@ function scan(source, options = {}) {
                 let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'));
                 if (!isAfterValue) {
                     let end = readNumber(input, i);
-                    tokens.push(new Token({
-                        type: 'Number', value: input.slice(i, end), pos, index
-                    }));
+                    tokens.push(new Token('Number', input.slice(i, end), pos, index));
                     i = end;
                     continue;
                 }
             }
 
-            let token = {
-                type: 'Symbol', value: ch, pos, index
-            }
+            let token = new Token('Symbol', ch, pos, index);
             if (curr === 34 || curr === 39 || curr === 96 /* " ' ` */) {
                 if (quote === ch) {
                     quote = '';
@@ -284,7 +260,7 @@ function scan(source, options = {}) {
                     token.status = 'open';
                 }
             }
-            tokens.push(new Token(token));
+            tokens.push(token);
             i++;
         }
         else if (isSpaceCode(curr)) {
@@ -304,18 +280,14 @@ function scan(source, options = {}) {
             // Leading and trailing spaces are dropped
             if (lastToken && end < len) {
                 if (quote) {
-                    tokens.push(new Token({
-                        type: 'Space', value: input.slice(i, end), pos, index
-                    }));
+                    tokens.push(new Token('Space', input.slice(i, end), pos, index));
                 }
                 else if (!ignoreSpacingAround(lastToken.value, input[end])) {
                     let value = (options.preserveLineBreak && hasLineBreak) ? '\n' : ' ';
                     if (lastToken.isSpace()) {
                         if (value === '\n') lastToken.value = '\n';
                     } else {
-                        tokens.push(new Token({
-                            type: 'Space', value, pos, index
-                        }));
+                        tokens.push(new Token('Space', value, pos, index));
                     }
                 }
             }
@@ -323,9 +295,7 @@ function scan(source, options = {}) {
         }
         else {
             let end = readWord(input, i, len);
-            tokens.push(new Token({
-                type: 'Word', value: input.slice(i, end), pos, index
-            }));
+            tokens.push(new Token('Word', input.slice(i, end), pos, index));
             i = end;
         }
     }

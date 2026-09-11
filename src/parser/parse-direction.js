@@ -13,7 +13,8 @@ function parse(input) {
         angle: 0,
     };
     while (iter.next()) {
-        let { prev, curr } = iter.get();
+        let curr = iter.curr();
+        let prev = iter.curr(-1);
         if (curr.isWord()) {
             if (keywords.includes(curr.value)) {
                 ret.direction = curr.value;

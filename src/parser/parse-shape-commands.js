@@ -16,7 +16,8 @@ function parse(input) {
     let name;
     let negative = false;
     while (iter.next()) {
-        let { prev, curr, next } = iter.get();
+        let curr = iter.curr();
+        let next = iter.curr(1);
         if (curr.isSymbol(':') && !name) {
             name = textOf(tokens);
             tokens = [];
@@ -27,16 +28,10 @@ function parse(input) {
                 name = null;
                 negative = false;
             }
+        } else if (!name && !tokens.length && curr.isSymbol('-') && !(next && next.isSymbol('-', ':'))) {
+            negative = true;
         } else {
-            let isLeadingMinus = !name && !tokens.length
-                && curr.isSymbol('-')
-                && !(prev && prev.isSymbol('-'))
-                && !(next && next.isSymbol('-'));
-            if (isLeadingMinus && !(next && next.isSymbol(':'))) {
-                negative = true;
-            } else {
-                tokens.push(curr);
-            }
+            tokens.push(curr);
         }
     }
     if (tokens.length && name) {

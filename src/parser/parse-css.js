@@ -260,14 +260,14 @@ function splitDollars(tokens) {
         }
         for (let k; (k = value.indexOf('$')) >= 0; ) {
             if (k > 0) {
-                result.push(new Token({ type: 'Word', value: value.slice(0, k), pos, index }));
+                result.push(new Token('Word', value.slice(0, k), pos, index));
             }
-            result.push(new Token({ type: 'Symbol', value: '$', pos, index: index + k }));
+            result.push(new Token('Symbol', '$', pos, index + k));
             value = value.slice(k + 1);
             index += k + 1;
         }
         if (value.length) {
-            result.push(new Token({ type: 'Word', value, pos, index }));
+            result.push(new Token('Word', value, pos, index));
         }
     }
     return result;

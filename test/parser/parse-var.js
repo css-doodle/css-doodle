@@ -38,3 +38,19 @@ test('comma-separated vars, stray commas and invalid entries', () => {
         { name: '--b', fallback: [{ name: '--c' }] },
     ]);
 });
+
+test('a fallback ends at its var(), the next item is a sibling', () => {
+    assert.deepEqual(parseVar('var(--a, red), var(--b)'), [
+        { name: '--a', fallback: [] },
+        { name: '--b' },
+    ]);
+    assert.deepEqual(parseVar('var(--a, var(--b)), var(--c)'), [
+        { name: '--a', fallback: [{ name: '--b' }] },
+        { name: '--c' },
+    ]);
+    assert.deepEqual(parseVar('var(--a, calc(1), var(--b))'), [
+        { name: '--a', fallback: [{ name: '--b' }] },
+    ]);
+    // a `;` closes a var( that was never closed
+    assert.deepEqual(parseVar('var(--a; x'), [{ name: '--a' }]);
+});

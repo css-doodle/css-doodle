@@ -1,4 +1,5 @@
 import { scan, iterator } from './tokenizer.js';
+import { memo } from '../lib/cache.js';
 
 const commands = 'MmLlHhVvCcSsQqTtAaZz';
 const relatives = 'mlhvcsqtaz';
@@ -12,17 +13,7 @@ function wellFormed({ name, value }) {
         && value.every(v => typeof v === 'number');
 }
 
-// generated path strings vary per cell, so keep the cache bounded
-const cache = new Map();
-
 function parse(input) {
-    if (cache.has(input)) {
-        return cache.get(input);
-    }
-    if (cache.size >= 4096) {
-        cache.clear();
-    }
-
     let iter = iterator(scan(input));
     let temp = {};
     let result = {
@@ -30,7 +21,7 @@ function parse(input) {
         valid: true
     };
     while (iter.next()) {
-        let { curr } = iter.get();
+        let curr = iter.curr();
         if (curr.isSpace() || curr.isSymbol(',')) {
             continue;
         }
@@ -53,15 +44,16 @@ function parse(input) {
             let value = curr.value;
             if (curr.isNumber()) {
                 value = Number(curr.value);
-            } else if (curr.isSymbol('-') || curr.isSymbol('+')) {
-                let { next } = iter.get();
+            } else if (curr.isSymbol('-', '+')) {
+                let next = iter.curr(1);
                 if (next && next.isNumber()) {
                     iter.next();
                     value = Number(curr.value + next.value);
                 }
             }
             temp.value.push(value);
-        } else if (!temp.name) {
+        } else {
+            // a value before the first command
             result.valid = false;
         }
     }
@@ -71,9 +63,8 @@ function parse(input) {
     if (result.valid) {
         result.valid = result.commands.every(wellFormed);
     }
-
-    cache.set(input, result);
     return result;
 }
 
-export default parse;
+// generated path strings vary per cell, so the memo stays bounded
+export default memo('svg-path', parse);
