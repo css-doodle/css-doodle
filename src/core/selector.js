@@ -11,52 +11,24 @@ function even(n) {
     return n % 2 === 0;
 }
 
-function matchAny(value, exprs) {
-    return exprs.some(expr => compare(expr, value).value);
-}
-
-// n >= 1 selects that many distinct cells, drawn once per call site
-// (cached in `context` under `counter`); n < 1 is a per-cell probability
-function randomCell(context, counter, grid, count, random, n) {
-    if (n >= 1) {
-        if (!context[counter]) {
-            context[counter] = randomN(grid.count, n, random);
-        }
-        return context[counter].includes(count);
-    }
-    return random() < n;
-}
-
-// one nth-style expression against a value: even/odd, bare `n` matches
-// all, anything else reads as an+b; with x and y given the parity rules
-// switch to checkerboard mode over x+y instead
-function compare(rule, value, x, y) {
-    let local = x == undefined || y == undefined;
-    if (rule === 'even') {
-        return { value: local ? even(value) : odd(x + y) }
-    }
-    if (rule === 'odd') {
-        return { value: local ? odd(value) : even(x + y) }
-    }
-    if (rule === 'n') {
-        return { value: true }
-    }
+// one nth-style expression against a value: even/odd parity or an+b
+// with n from 0; undefined when the expression does not parse
+function compare(rule, value) {
+    if (rule === 'even') return even(value);
+    if (rule === 'odd') return odd(value);
     let { a, b, error } = parseLinearExpr(rule);
-    if (error) {
-        return { value: false, error }
-    }
-    if (a === 0) {
-        return { value: value === b }
-    } else {
-        let result = (value - b) / a;
-        return {
-            value: result >= 0 && Number.isInteger(result),
-        }
-    }
+    if (error) return;
+    if (a === 0) return value === b;
+    let n = (value - b) / a;
+    return n >= 0 && Number.isInteger(n);
+}
+
+function matchAny(value, exprs) {
+    return exprs.some(expr => compare(expr, value));
 }
 
 // the variable scope for arithmetic selector expressions
-function calcContext({ x, y, count, grid, random }) {
+function calcContext({ x, y, count, grid }, random) {
     return {
         __proto__: defaultContext,
         x, X: grid.x,
@@ -65,6 +37,15 @@ function calcContext({ x, y, count, grid, random }) {
         ...cellMetrics(x, y, grid),
         random,
     };
+}
+
+function randomCell({ count, grid }, { context, random }, position, n) {
+    if (n >= 1) {
+        let key = 'random-cells' + position;
+        let cells = context[key] ??= randomN(grid.count, n, random);
+        return cells.includes(count);
+    }
+    return random() < n;
 }
 
 // n distinct integers from 1..N, partial Fisher-Yates over a sparse map
@@ -111,55 +92,45 @@ Selector.odd = ({ x, y }) => {
 // @random(ratio): ratio < 1 is a per-cell probability (default .5),
 // ratio >= 1 a count of distinct cells; expressions are calc-ed with
 // the cell variables in scope
-
-Selector.random = ({ count, x, y, grid }, { random, context }, position) => {
-    let counter = 'random-cells' + position;
+Selector.random = (cell, env, position) => {
     return (ratio = .5) => {
-        let value = Number(ratio);
-        if (Number.isNaN(value)) {
-            value = calc('(0 + ' + ratio + ')', calcContext({ x, y, count, grid, random }));
+        let n = Number(ratio);
+        if (Number.isNaN(n)) {
+            n = calc(ratio, calcContext(cell, env.random));
         }
-        if (value >= grid.count) {
-            return true;
-        }
-        if (value <= 0) {
-            return false;
-        }
-        return randomCell(context, counter, grid, count, random, value);
-    }
+        if (n >= cell.grid.count) return true;
+        if (n <= 0) return false;
+        return randomCell(cell, env, position, n);
+    };
 };
 
-Selector.cond = ({ count, grid, x, y }, { random }) => {
-    return expr => {
-        return !!calc('(' + expr + ')', calcContext({ x, y, count, grid, random }));
-    }
+Selector.cond = (cell, { random }) => {
+    return expr => !!calc(expr, calcContext(cell, random));
 };
 
-Selector.cell = ({ count, grid, x, y }, { random, context }, position) => {
-    let counter = 'random-cells' + position;
+// @cell(…): an argument is an an+b rule on the index, even/odd on the
+// checkerboard, `random [n]`, or an expression; any one matching
+// selects the cell.
+Selector.cell = (cell, env, position) => {
     return (...args) => {
-        if (!args.length) {
-            return true;
-        }
-        let result = args.map(arg => {
-            let { value, error } = compare(arg, count, x, y);
-            if (!error) {
-                return value;
+        if (!args.length) return true;
+        return args.map(arg => {
+            if (arg === 'even' || arg === 'odd') {
+                return Selector[arg](cell)();
+            }
+            let matched = compare(arg, cell.count);
+            if (matched !== undefined) {
+                return matched;
             }
             if (arg.startsWith('random')) {
-                let num = arg.slice(6).trim();
-                if (!num) {
-                    return random() < 0.5;
-                }
-                num = Number(num);
-                if (!Number.isNaN(num)) {
-                    return randomCell(context, counter, grid, count, random, num);
+                let n = Number(arg.slice(6).trim() || .5);
+                if (!Number.isNaN(n)) {
+                    return randomCell(cell, env, position, n);
                 }
             }
-            return !!calc('(' + arg + ')', calcContext({ x, y, count, grid, random }));
-        });
-        return result.some(Boolean);
-    }
+            return !!calc(arg, calcContext(cell, env.random));
+        }).some(Boolean);
+    };
 };
 
 export const alias = {
