@@ -83,20 +83,22 @@ function createPointFunction(props, split) {
             a = Number(a) || 0;
             b = Number(b) || 0;
             if (a > b) [a, b] = [b, a];
-            let step = (b - a) / (split - 1);
+            let step = split > 1 ? (b - a) / (split - 1) : 0;
             return a + step * index;
         }
     });
 
     return (t, i) => {
         index = i;
-        context['t'] = context['θ'] = pt || t;
         context['i'] = i + 1;
+        context['t'] = context['θ'] = t;
+        // a `t:` command rewrites the angle, in terms of the angle and index
+        if (pt) {
+            context['t'] = context['θ'] = t = calc(pt, context);
+        }
         let x, y;
         if (pr) {
-            let r = calc(pr, context);
-            if (r == 0) r = .00001;
-            if (pt) t = calc(pt, context);
+            let r = calc(pr, context) || .00001;
             x = r * cos(t);
             y = r * sin(t);
         } else {
@@ -114,12 +116,13 @@ function createPointFunction(props, split) {
 
 function createShapePoints(props, {min, max}) {
     // legacy command names
-    let split = clamp(parseInt(props.vertices || props.points || props.split) || 0, min, max);
+    let split = clamp(parseInt(props.vertices || props.points || props.split), min, max);
     if (props.degree) props.rotate = props.degree;
     if (props.origin) props.move = props.origin;
 
+    // `r: 10px` carries the unit, but `2t` and `2i` are products
     let { unit, value } = parseCompoundValue(isEmpty(props.r) ? '' : props.r);
-    if (unit && !props[unit] && unit !== 't') {
+    if (unit && !props[unit] && !/^[tθi]$/.test(unit)) {
         if (isEmpty(props.unit)) props.unit = unit;
         props.r = value;
     }
@@ -176,7 +179,7 @@ function createShapePoints(props, {min, max}) {
         add(first);
         let w = frame / 100;
         if (turn > 1) w *= 2;
-        if (w == 0) w = .002;
+        if (!w) w = .002;
         let firstInner;
         for (let i = 0; i < split; ++i) {
             let [x, y] = point(-rad * i, i);
@@ -192,20 +195,10 @@ function createShapePoints(props, {min, max}) {
     return points;
 }
 
-const cache = new Map();
-
+// The callers memoize: the results are shared and read-only.
 export default function generateShape(input, range = {}, modifier) {
     let min = range.min || 3;
     let max = range.max || 3600;
-    // count/unit distinguish modifiers that close over caller state (@plot/@Plot)
-    let key = input + '|' + min + '|' + max
-        + (range.count ? '|' + range.count : '')
-        + (range.unit ? '|u' : '')
-        + (modifier ? '|m' : '');
-    let cached = cache.get(key);
-    if (cached !== undefined) {
-        return cached;
-    }
     let [name, ...args] = parseValueGroup(input);
     let preset = presetShapes[name];
     if (typeof preset === 'function') {
@@ -216,10 +209,5 @@ export default function generateShape(input, range = {}, modifier) {
         rules = modifier(rules);
     }
     let points = createShapePoints(rules, {min, max});
-    if (cache.size >= 4096) {
-        cache.clear();
-    }
-    let result = { rules, points, preset: preset !== undefined };
-    cache.set(key, result);
-    return result;
+    return { rules, points, preset: preset !== undefined };
 }

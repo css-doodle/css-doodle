@@ -15,29 +15,17 @@ test('prototype names are not preset shapes', () => {
     assert.equal(generateShape('toString').preset, false);
 });
 
-test('the cache key includes the count from the modifier', () => {
-    // @plot() modifiers close over the grid count, but the cache key
-    // ignored it, so a second call with a different count got stale points
-    let a = generateShape('r: cos(4t)', { min: 1, max: 65536, count: 25 }, rules => {
+test('a modifier reshapes the commands before the points are generated', () => {
+    let a = generateShape('r: cos(4t)', { min: 1, max: 65536 }, rules => {
         rules.points = 25;
         return rules;
     });
-    let b = generateShape('r: cos(4t)', { min: 1, max: 65536, count: 100 }, rules => {
-        rules.points = 100;
-        return rules;
-    });
-    assert.equal(a.points.length, 25);
-    assert.equal(b.points.length, 100);
-});
-
-test('the cache key includes the unit flag', () => {
-    // @plot vs @Plot differ only by unit handling in their modifiers
-    let a = generateShape('split: 10; r: cos(2t)', { min: 1, max: 65536, count: 10 }, rules => rules);
-    let b = generateShape('split: 10; r: cos(2t)', { min: 1, max: 65536, count: 10, unit: true }, rules => {
+    let b = generateShape('split: 10; r: cos(2t)', { min: 1, max: 65536 }, rules => {
         rules.unit = rules.unit || 'none';
         return rules;
     });
-    assert.match(String(a.points[0]), /%/);
+    assert.equal(a.points.length, 25);
+    assert.equal(b.points.length, 10);
     assert.doesNotMatch(String(b.points[0]), /%/);
 });
 
@@ -70,4 +58,27 @@ test('direction angles are tidy and ignore move', () => {
     assert.deepEqual(angles('split: 4; r: 1; move: .1 .2'), [0, -90, -180, 90]);
     assert.deepEqual(angles('split: 4; r: 1; direction: reverse 30'), [-150, -240, -330, -60]);
     assert.deepEqual(angles('split: 4; r: 1; direction: 30'), [120, 120, 120, 120]);
+});
+
+test('a t: command rewrites the angle in terms of the angle', () => {
+    // t: 2t used to collapse every point: `t` was a calc cycle, so 0
+    let doubled = generateShape('split: 4; r: 1; t: 2t');
+    assert.equal(String(doubled.points), '100% 50%,0% 50%,100% 50%,0% 50%');
+    let shifted = generateShape('split: 4; r: 1; t: t + 90 * PI / 180');
+    assert.equal(String(shifted.points), '50% 0%,0% 50%,50% 100%,100% 50%');
+});
+
+test('the unit of r is not a variable', () => {
+    assert.equal(String(generateShape('split: 4; r: 10px').points), '10px 0px,0px -10px,-10px 0px,0px 10px');
+    // 2i and 2θ are products, like 2t
+    assert.equal(String(generateShape('split: 4; r: .1i').points), '55% 50%,50% 40%,35% 50%,50% 70%');
+});
+
+test('degenerate commands still give numbers', () => {
+    let one = generateShape('x: range(-1, 1); y: 0', { min: 1 }, rules => {
+        rules.points = 1;
+        return rules;
+    });
+    assert.equal(String(one.points), '0% 50%');
+    assert.doesNotMatch(String(generateShape('split: 3; frame: abc').points), /NaN/);
 });

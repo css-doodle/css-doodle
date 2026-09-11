@@ -183,34 +183,29 @@ function seq(token, make) {
 // @plot / @Plot: nth point (or all points) of a generated shape;
 // `unit` keeps units on the output values (the @Plot variant)
 function createPlot(unit) {
-    // the last shape stays around: a sequence calls this once per item
-    // with the same commands, and generateShape's key is a long string
-    let lastCommands, lastMax, lastResult;
+    // a sequence calls this once per item with the same commands
+    let plot = memo(unit ? 'Plot-function' : 'plot-function', (commands, max) => {
+        return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, rules => {
+            delete rules['fill'];
+            delete rules['fill-rule'];
+            delete rules['frame'];
+            if (rules.split || rules.points) {
+                rules.hasPoints = true;
+            } else {
+                rules.points = max;
+            }
+            if (unit) {
+                rules.unit = rules.unit || 'none';
+            }
+            return rules;
+        });
+    });
     return ({ count, grid }, { extra }) => {
         let e = last(extra) || [];
         return (...args) => {
-            let commands = args.join(',');
             let idx = e[SEQ.n] ?? count;
             let max = e[SEQ.max] ?? grid.count;
-            if (commands !== lastCommands || max !== lastMax) {
-                lastCommands = commands;
-                lastMax = max;
-                lastResult = generateShape(commands, {min: 1, max: MAX_SEQUENCE, count: max, unit}, rules => {
-                    delete rules['fill'];
-                    delete rules['fill-rule'];
-                    delete rules['frame'];
-                    if (rules.split || rules.points) {
-                        rules.hasPoints = true;
-                    } else {
-                        rules.points = max;
-                    }
-                    if (unit) {
-                        rules.unit = rules.unit || 'none';
-                    }
-                    return rules;
-                });
-            }
-            let { points, rules } = lastResult;
+            let { points, rules } = plot(args.join(','), max);
             return rules.hasPoints ? points : points[idx - 1];
         };
     };

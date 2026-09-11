@@ -132,3 +132,18 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.deepEqual(values(['10', 'frequency=1']), noise);
     assert.deepEqual(values(['to=10']), noise);
 });
+
+test('@plot: the shape follows the grid count', () => {
+    let env = { context: {}, extra: [] };
+    let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
+    // the memo used to ignore the count, so a second grid got stale points
+    let a = Function.plot(cell(25, 2), env)('r: 1');
+    let b = Function.plot(cell(100, 2), env)('r: 1');
+    assert.notEqual(String(a), String(b));
+    assert.equal(String(Function.plot(cell(25, 2), env)('r: 1')), String(a));
+    // with a point count every point is returned
+    assert.equal(Function.plot(cell(25), env)('r: 1; points: 25').length, 25);
+    // @Plot keeps the units, @plot outputs percentages
+    assert.match(String(Function.plot(cell(4), env)('r: 1')), /%/);
+    assert.doesNotMatch(String(Function.Plot(cell(4), env)('r: 1')), /%/);
+});
