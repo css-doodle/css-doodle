@@ -235,7 +235,7 @@ otherwise it is plain text. The name and the `(` must be adjacent too.
 | `@n1.5(a)`         | `@n(1.5, a)`                                             |
 | `@p1-2(a)`         | `@p(1-2, a)`                                             |
 | `@log2(8)`         | `@log2(8)`; a `Math` name keeps its digits               |
-| `@doodle100x50(…)` | `@doodle(…)` rendered at 100 by 50; for `@shaders` the suffix caps the raster size |
+| `@doodle100x50(…)` | `@doodle(…)` rendered at 100 by 50; `@shaders` and `@pattern` take the same suffix, a single number is square |
 
 **A `.` followed by a letter** ends the name and composes calls,
 rightmost first:

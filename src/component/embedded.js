@@ -164,14 +164,15 @@ export async function shaderToImage(host, { source, cell, id, arg, target }) {
         element = host.shadowRoot.getElementById(cell);
     }
 
-    // the drawing size, capped by the size argument when it has one
-    let cap = arg ? parseGrid(arg, Infinity) : null;
+    let fixed = arg ? parseGrid(arg, Infinity) : null;
+    if (fixed && !(fixed.x && fixed.y)) {
+        fixed = null;
+    }
     const measure = () => {
-        let { width, height } = element.getBoundingClientRect();
-        if (cap && cap.x && cap.y) {
-            width = Math.min(cap.x, width);
-            height = Math.min(cap.y, height);
+        if (fixed) {
+            return { width: fixed.x, height: fixed.y };
         }
+        let { width, height } = element.getBoundingClientRect();
         return { width, height };
     }
 
@@ -224,7 +225,7 @@ export async function shaderToImage(host, { source, cell, id, arg, target }) {
         }
         host.shaderRenders.set(id, drawing);
 
-        if (!host.observers.has(id)) {
+        if (!fixed && !host.observers.has(id)) {
             watch();
         }
     }
