@@ -155,14 +155,16 @@ export function patternToImage(host, pattern) {
 export async function shaderToImage(host, { source, cell, id, arg, target }) {
     // restamping the sheet resolves its placeholders again; a rendered shader stays
     if (host.shaderRenders.has(id)) return;
-    let element;
+    let elements;
     if (target.selector === ':host') {
-        element = host;
+        elements = [host];
     } else if (target.selector === ':container') {
-        element = host.shadowRoot.querySelector('grid');
+        elements = [host.shadowRoot.querySelector('grid')];
     } else {
-        element = host.shadowRoot.getElementById(cell);
+        let byId = host.shadowRoot.getElementById(cell);
+        elements = byId ? [byId] : [...host.shadowRoot.querySelectorAll('.' + cell)];
     }
+    let element = elements[0];
 
     let fixed = arg ? parseGrid(arg, Infinity) : null;
     if (fixed && !(fixed.x && fixed.y)) {
@@ -190,19 +192,23 @@ export async function shaderToImage(host, { source, cell, id, arg, target }) {
 
         let present;
         if (target.type === 'content') {
-            // the WebGL canvas is shared, so the cell keeps a copy of each frame
-            let view = document.createElement('canvas');
-            let ctx = view.getContext('2d');
-            element.replaceChildren(view);
+            // the WebGL canvas is shared, so each cell keeps a copy of each frame
+            let views = elements.map(el => {
+                let view = document.createElement('canvas');
+                el.replaceChildren(view);
+                return [view, view.getContext('2d')];
+            });
             present = () => {
                 let { canvas } = drawing;
-                if (view.width !== canvas.width || view.height !== canvas.height) {
-                    view.width = canvas.width;
-                    view.height = canvas.height;
+                for (let [view, ctx] of views) {
+                    if (view.width !== canvas.width || view.height !== canvas.height) {
+                        view.width = canvas.width;
+                        view.height = canvas.height;
+                    }
+                    // resizing resets the context, so this is set per frame
+                    ctx.globalCompositeOperation = 'copy';
+                    ctx.drawImage(canvas, 0, 0);
                 }
-                // resizing resets the context, so this is set per frame
-                ctx.globalCompositeOperation = 'copy';
-                ctx.drawImage(canvas, 0, 0);
             }
         } else {
             present = () => host.style.setProperty(id, `url("${drawing.canvas.toDataURL()}")`);

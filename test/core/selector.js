@@ -51,6 +51,18 @@ test('even and odd follow the checkerboard, not the index', () => {
     assert.equal(selector.odd(cell(3, 1, 3))(), true);
 });
 
+test('z matches the depth and depth is its alias', () => {
+    let a = { x: 1, y: 2, z: 3, count: 7, grid: { count: 16, x: 2, y: 2, z: 4 } };
+    assert.equal(selector.z(a)(3), true);
+    assert.equal(selector.z(a)(1), false);
+    assert.equal(selector.z(a)('odd'), true);
+    assert.equal(selector.z(a)('2n'), false);
+    assert.equal(selector.depth, selector.z);
+    // z and Z are in scope for expression selectors
+    assert.equal(selector.cond(a, env)('z == 3'), true);
+    assert.equal(selector.cond(a, env)('z == Z - 1'), true);
+});
+
 test('cond evaluates an expression over the cell variables', () => {
     let cond = selector.cond(cell(2, 3, 10), env);
     assert.equal(cond('x = 2'), true);

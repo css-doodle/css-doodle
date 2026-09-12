@@ -28,11 +28,12 @@ function matchAny(value, exprs) {
 }
 
 // the variable scope for arithmetic selector expressions
-function calcContext({ x, y, count, grid }, random) {
+function calcContext({ x, y, z, count, grid }, random) {
     return {
         __proto__: defaultContext,
         x, X: grid.x,
         y, Y: grid.y,
+        z, Z: grid.z,
         i: count, I: grid.count,
         ...cellMetrics(x, y, grid),
         random,
@@ -79,6 +80,10 @@ Selector.y = ({ y }) => {
 
 Selector.x = ({ x }) => {
     return (...exprs) => matchAny(x, exprs);
+};
+
+Selector.z = ({ z }) => {
+    return (...exprs) => matchAny(z, exprs);
 };
 
 Selector.even = ({ x, y }) => {
@@ -136,6 +141,7 @@ Selector.cell = (cell, env, position) => {
 export const alias = {
     col: 'x',
     row: 'y',
+    depth: 'z',
     match: 'cond',
 };
 

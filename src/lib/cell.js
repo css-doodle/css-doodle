@@ -2,6 +2,10 @@ export function cellId(x, y, z) {
     return 'c-' + x + '-' + y + '-' + z;
 }
 
+export function isTreeGrid(grid) {
+    return !!grid && grid.z > 1 && grid.x * grid.y > 1;
+}
+
 export function cellMetrics(x, y, grid) {
     let dx = x - .5 - grid.x / 2;
     let dy = y - .5 - grid.y / 2;

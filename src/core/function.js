@@ -224,14 +224,13 @@ function createMirror(even) {
 }
 
 function createPick(name, fn, random = false, upstream = false) {
-    return (cell, { context, extra, upextra, shuffle }, position) => {
+    return (cell, { context, extra, upextra, shuffle, level }, position) => {
         let lastExtra = upstream
             ? last(upextra.length ? upextra : extra)
             : last(extra);
-        // keyed by call site and, inside a sequence, by its invocation
         let sig = lastExtra?.[SEQ.sig] ?? '';
         let prefix = upstream ? name.toUpperCase() : name;
-        let counter = `${prefix}-counter${position}:${sig}`;
+        let counter = `${prefix}-counter${position}:${sig}:${level}`;
         let valuesKey = `${prefix}-values${position}:${sig}`;
 
         return expand((...args) => {

@@ -19,6 +19,46 @@ function assertContains(code, ...fragments) {
     }
 }
 
+// --- depth on multi-cell grids ---
+
+test('a tree grid composes one rule set per (x, y, z) slot, as classes', () => {
+    // every physical cell in a slot shares its styles; @i counts within
+    // one level and pairs with @z, mirroring how rules repeat down the tree
+    let sheet = cells('order: @i; --d: @z;', '2x1x2');
+    assert.ok(sheet.includes('.c-1-1-1,.c-1-1-2 {order:1;}'), sheet);
+    assert.ok(sheet.includes('.c-2-1-1,.c-2-1-2 {order:2;}'), sheet);
+    assert.ok(sheet.includes('.c-1-1-1,.c-2-1-1 {--d:1;}'), sheet);
+    assert.ok(sheet.includes('.c-1-1-2,.c-2-1-2 {--d:2;}'), sheet);
+    // a pure chain has unique slots and keeps its ids and numbering
+    let chain = cells('order: @i;', '1x1x3');
+    for (let i of [1, 2, 3]) {
+        assert.ok(chain.includes(`#c-1-1-${i} {order:${i};}`), chain);
+    }
+});
+
+test('pick sequences replay per level, so every level styles alike', () => {
+    // the Sierpinski pattern: @pn distinguishes siblings, identically at
+    // every depth of the tree
+    let sheet = cells('left: @pn(50%, 0);', '1x3x3');
+    assert.ok(sheet.includes('.c-1-1-1,.c-1-3-1,.c-1-1-2,.c-1-3-2,.c-1-1-3,.c-1-3-3 {left:50%;}'), sheet);
+    assert.ok(sheet.includes('.c-1-2-1,.c-1-2-2,.c-1-2-3 {left:0;}'), sheet);
+});
+
+test('@z selects a depth level across the whole tree', () => {
+    assert.equal(cells('@z(2) { color: red; }', '2x1x3'),
+        '.c-1-1-2,.c-2-1-2 {color:red;}');
+    assert.equal(cells('@depth(odd) { color: red; }', '1x2x2'),
+        '.c-1-1-1,.c-1-2-1 {color:red;}');
+    assert.equal(cells('@match(z == Z) { color: red; }', '2x1x2'),
+        '.c-1-1-2,.c-2-1-2 {color:red;}');
+});
+
+test('@I is the level size inside a tree, but the reported grid keeps its count', () => {
+    let compiled = compile(':doodle { @grid: 2x2x2; } --n: @I;', '1');
+    assert.ok(compiled.styles.all.includes('--n:4;'), compiled.styles.all);
+    assert.equal(compiled.grid.count, 8);
+});
+
 // --- prototype names ---
 
 test('prototype names as @-properties pass through as plain declarations', () => {

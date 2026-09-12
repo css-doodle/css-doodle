@@ -9,7 +9,7 @@ import createRandom from '../core/random.js';
 import { timePrefix, timeKeyframes } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
-import { cellId } from '../lib/cell.js';
+import { cellId, isTreeGrid } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
 import { isNil, getValue, removeQuotes } from '../lib/type.js';
@@ -37,10 +37,8 @@ function hasEntries(obj) {
 
 const NO_SPACE = { noSpace: true };
 const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern']);
-
 const CELL = ['&'];
-
-const SHARED_CELL = ':is(cell,#_)';
+const SHARED_CELL = prefix => `:is(cell,${prefix}_)`;
 
 const FAMILY = {
     __proto__: null,
@@ -183,7 +181,7 @@ function compileFunc(node) {
                     let output;
                     if (context) {
                         output = isDollar
-                            ? rules.callCalc(unit, cell.count, calcTemplate.template, context, frame.contextVariable)
+                            ? rules.callCalc(unit, cell.uid, calcTemplate.template, context, frame.contextVariable)
                             : rules.callFunc(fn, frame, node.position, [calcTemplate.template, context], fname);
                     } else {
                         let input = spliceTemplateInput(calcTemplate, values);
@@ -258,7 +256,7 @@ function compileArgument(argument, parent) {
                     hasVarRead = true;
                     holes.push((parent && parent.name === '@var')
                         ? () => v.name
-                        : frame => frame.env.rules.readVar(v.name, frame.cell.count, frame.contextVariable));
+                        : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable));
                 } else {
                     holes.push(() => undefined);
                 }
@@ -379,6 +377,7 @@ class Rules {
         this.keyframes = new Map();
         this.grid = null;
         this.seed = null;
+        this.cellPrefix = '#';
         this.isGapSet = false;
         this.uniforms = {};
         this.skips = new WeakSet();
@@ -460,7 +459,7 @@ class Rules {
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
             if (fname === '$') {
-                let context = this.calcContext(cell.count, contextVariable);
+                let context = this.calcContext(cell.uid, contextVariable);
                 // a lone variable name with no unit reads as a
                 // generation-time var(): non-math values pass through
                 if (!unit && input.length === 1) {
@@ -483,7 +482,7 @@ class Rules {
 
     // '&' in a selector stands for the cell
     composeSelector(cell, selector = '&') {
-        let base = '#' + cell.id;
+        let base = this.cellPrefix + cell.id;
         let i = selector.indexOf('&');
         if (i < 0) return selector;
         let tail = selector.slice(i + 1);
@@ -509,7 +508,7 @@ class Rules {
             switch (fname) {
                 case 'doodle':
                     return this.composeDoodle(
-                        this.injectVariables(value, cell.count), node.size,
+                        this.injectVariables(value, cell.uid), node.size,
                         env.extra.length ? structuredClone(env.extra) : undefined);
                 case 'shaders':
                 case 'pattern':
@@ -560,7 +559,7 @@ class Rules {
     composePaint(fname, source, cell, arg, selector, property, node) {
         let kind = fname === 'shaders' ? 'shader' : 'pattern';
         if (kind === 'shader') {
-            source = this.resolveShaderVars(source, cell.count, node);
+            source = this.resolveShaderVars(source, cell.uid, node);
             if (source === null) return '';
         }
         let id = this.nextId(kind);
@@ -648,10 +647,10 @@ class Rules {
 
         if (flags.animation) {
             this.props.hasAnimation = true;
-            let { count } = cell;
+            let { uid } = cell;
             if (prop === 'animation' || prop === 'animation-name') {
                 value = composed.group
-                    .map(n => n.split(/\s+/).map(w => this.composeAname(w, count)).join(' '))
+                    .map(n => n.split(/\s+/).map(w => this.composeAname(w, uid)).join(' '))
                     .join(',');
             }
             if (isHostSelector(selector)) {
@@ -697,7 +696,7 @@ class Rules {
         }
 
         if (flags.var) {
-            this.composeVars(cell.count, selector, prop, value);
+            this.composeVars(cell.uid, selector, prop, value);
         }
 
         if (flags.at) {
@@ -773,7 +772,7 @@ class Rules {
         let prop = token.property;
         if (prop.startsWith('--')) {
             let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
-            this.composeVars(cell.count, selector, prop, value);
+            this.composeVars(cell.uid, selector, prop, value);
         } else if (prop === '@grid') {
             let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
             this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
@@ -949,6 +948,7 @@ class Rules {
 
         let sections = { before: '', after: '' };
         let runText = new Map(); // selector → texts per cell index
+        let shared = SHARED_CELL(this.cellPrefix);
         let pending = '';
         for (let i = 0; i < entries.length; i++) {
             let e = entries[i];
@@ -957,7 +957,7 @@ class Rules {
                 let lists = runText.get(selector);
                 if (!lists) runText.set(selector, lists = []);
                 for (let j = 0; j < texts.length; j++) {
-                    let n = e.cells[j].count - 1;
+                    let n = e.cells[j].uid - 1;
                     if (lists[n]) lists[n].push(texts[j]);
                     else lists[n] = [texts[j]];
                 }
@@ -966,7 +966,7 @@ class Rules {
                 pending += (pending && '\n') + texts[0];
                 let next = entries[i + 1];
                 if (next && next.kind === 'shared' && next.selector === selector && next.where === where) continue;
-                sections[where] += `${selector.replaceAll('&', SHARED_CELL)} {${pending}}`;
+                sections[where] += `${selector.replaceAll('&', shared)} {${pending}}`;
                 pending = '';
             } else {
                 let byText = new Map();
@@ -1068,7 +1068,7 @@ class Rules {
         for (let [name, frames] of this.keyframes) {
             let cells = frames.static ? this.cells.slice(0, 1) : this.cells;
             for (let cell of cells) {
-                let aname = this.composeAname(name, cell.count);
+                let aname = this.composeAname(name, cell.uid);
                 keyframes += `@keyframes ${aname} {${frames.compose(cell, env)}}`;
             }
         }
@@ -1117,14 +1117,14 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     let { rand, pick, shuffle, updateRandom } = R;
 
     let envAt = (rules, seed) => ({
-        rules, context: {}, extra: [], upextra,
+        rules, context: {}, extra: [], upextra, level: 0,
         rand, pick, shuffle, random: R.random, updateRandom,
         seed, maxGrid,
     });
-    let cellAt = (x, y, z, count, grid) => ({ x, y, z, count, grid, id: cellId(x, y, z) });
+    let cellAt = (x, y, z, count, uid, grid) => ({ x, y, z, count, uid, grid, id: cellId(x, y, z) });
 
     let pre = new Rules(tokens, instance);
-    pre.preCompose(cellAt(1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
+    pre.preCompose(cellAt(1, 1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
 
     gridSize = pre.grid || gridSize;
     let seed = pre.seed;
@@ -1141,27 +1141,28 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     }
 
     seed = String(seed);
+    let tree = isTreeGrid(gridSize);
     let rules = new Rules(tokens, instance);
     rules.seed = seed;
     rules.random = R.random;
+    rules.cellPrefix = tree ? '.' : '#';
 
     let env = envAt(rules, seed);
+    let cellGrid = tree ? { ...gridSize, count: gridSize.x * gridSize.y } : gridSize;
+    let uid = 0;
     let count = 0;
-    function composeCell(x, y, z) {
-        rules.compose(cellAt(x, y, z, ++count, gridSize), env);
-    }
-
-    if (gridSize.z == 1) {
+    for (let z = 1; z <= gridSize.z; ++z) {
+        if (tree) {
+            count = 0;
+            env.level = z;
+        }
         for (let y = 1; y <= gridSize.y; ++y) {
             for (let x = 1; x <= gridSize.x; ++x) {
-                composeCell(x, y, 1);
+                rules.compose(cellAt(x, y, z, ++count, ++uid, cellGrid), env);
             }
         }
     }
-    else {
-        for (let z = 1; z <= gridSize.z; ++z) {
-            composeCell(1, 1, z);
-        }
-    }
-    return rules.output(env);
+    let output = rules.output(env);
+    if (tree && output.grid) output.grid = gridSize;
+    return output;
 }

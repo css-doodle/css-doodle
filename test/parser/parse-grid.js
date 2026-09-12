@@ -20,6 +20,18 @@ test('separators: x, X, comma, fullwidth comma, spaces', () => {
     assert.deepEqual(parseGrid('1 x 1'), one);
 });
 
+test('depth applies to any grid, clamped so the leaf level stays within GRID²', () => {
+    assert.deepEqual(parseGrid('1x1x8'), { x: 1, y: 1, z: 8, count: 8, ratio: 1 });
+    assert.deepEqual(parseGrid('1x2x8'), { x: 1, y: 2, z: 8, count: 16, ratio: 1 / 2 });
+    assert.deepEqual(parseGrid('1x3x6'), { x: 1, y: 3, z: 6, count: 18, ratio: 1 / 3 });
+    assert.deepEqual(parseGrid('2x3x4'), { x: 2, y: 3, z: 4, count: 24, ratio: 2 / 3 });
+    // (x·y)^z leaves may not pass GRID², the largest flat grid
+    assert.deepEqual(parseGrid('1x1x70000'), { x: 1, y: 1, z: 4096, count: 4096, ratio: 1 });
+    assert.deepEqual(parseGrid('2x2x70000'), { x: 2, y: 2, z: 6, count: 24, ratio: 1 });
+    assert.deepEqual(parseGrid('8x8x3'), { x: 8, y: 8, z: 2, count: 128, ratio: 1 });
+    assert.deepEqual(parseGrid('64x64x2'), { x: 64, y: 64, z: 1, count: 4096, ratio: 1 });
+});
+
 test('values clamp to the allowed range and truncate', () => {
     assert.deepEqual(parseGrid('0'), one);
     assert.deepEqual(parseGrid('0x1'), one);
