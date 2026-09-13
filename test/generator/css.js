@@ -267,7 +267,7 @@ test('warnings collect on the compiled result', () => {
     assert.equal(compiled.warnings.length, 0);
 });
 
-test('composed arguments in cond selectors unwrap to their value', () => {
+test('composed arguments in conditional block heads unwrap to their value', () => {
     // @calc(10*10)px composes text with a function hole, which stays boxed
     // as { value } for applyFunc; composeCond used to print the box
     let all = css('@media (min-width: @calc(10*10)px) { color: red; }');
@@ -369,7 +369,7 @@ test('keyframes with functions are copied per cell as name-count', () => {
     assert.ok(all.includes('#c-2-2-1 {animation:k-4 1s;}'));
 });
 
-test('keyframes inside a cond are not duplicated by the nested compose', () => {
+test('keyframes inside a conditional block are not duplicated by the nested compose', () => {
     let all = css('@even { animation: k 1s; @keyframes k { to { --v: @r(1) } } }', '2');
     let names = all.match(/@keyframes [\w-]+/g);
     assert.deepEqual(names, [...new Set(names)]);
@@ -552,12 +552,10 @@ test('a static @shape polygon prints once per selector', () => {
 
 test('a few distinct texts print once each with their cells listed', () => {
     assert.equal(cells('@even { background: blue; }', '2x2'), '#c-2-1-1,#c-1-2-1 {background:blue;}');
-    assert.equal(cells('color: @cond(x > 1, red, blue);', '4x1'),
+    assert.equal(cells('color: @match(x > 1, red, blue);', '4x1'),
         '#c-1-1-1 {color:blue;}#c-2-1-1,#c-3-1-1,#c-4-1-1 {color:red;}');
-    assert.equal(cells('@cond(x > 2) { color: red; }', '4x1'),
+    assert.equal(cells('@match(x > 2) { color: red; }', '4x1'),
         '#c-3-1-1,#c-4-1-1 {color:red;}');
-    assert.equal(cells('@match(x > 2) { color: red; } color: @match(x > 1, red, blue);', '3x1'),
-        cells('@cond(x > 2) { color: red; } color: @cond(x > 1, red, blue);', '3x1'));
 });
 
 test('per-cell texts keep their blocks in cell order', () => {
@@ -596,8 +594,8 @@ test('shared rules keep the cascade order of their property family', () => {
         '#c-1-1-1 {top:1 px;}#c-2-1-1 {top:2 px;}:is(cell,#_) {all:unset;}');
 });
 
-test('a declaration inside a cond keeps its source order', () => {
-    // the cond is first seen in the second cell: still before the color
+test('a declaration inside a conditional block keeps its source order', () => {
+    // the block is first seen in the second cell: still before the color
     assert.equal(cells('@even { color: blue; } color: rgb(@i,0,0);', '4x1'),
         '#c-2-1-1,#c-4-1-1 {color:blue;}'
         + '#c-1-1-1 {color:rgb(1,0,0);}#c-2-1-1 {color:rgb(2,0,0);}'

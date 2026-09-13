@@ -109,7 +109,7 @@ Selector.random = (cell, env, position) => {
     };
 };
 
-Selector.cond = (cell, { random }) => {
+Selector.match = (cell, { random }) => {
     return expr => !!calc(expr, calcContext(cell, random));
 };
 
@@ -142,7 +142,6 @@ export const alias = {
     col: 'x',
     row: 'y',
     depth: 'z',
-    match: 'cond',
 };
 
 export default addAlias(Selector, alias);

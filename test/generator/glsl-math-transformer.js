@@ -239,19 +239,19 @@ test('bools and ints become floats where a number is wanted, vectors pass as the
     assert.equal(transform('not lessThan(uv, vec2(.5))', { expect: 'bvec2' }), 'not(lessThan(uv, vec2(.5)))');
 });
 
-test('cond() is a ternary chain: first test that holds, trailing default, else 0', () => {
-    assert.equal(transform('cond(dr < 2, 1, 0)', { expect: 'float' }), '((dr < 2.0) ? 1.0 : 0.0)');
-    assert.equal(transform('cond(x > 4, .8, dr < 3, .5, .3)', { expect: 'float' }),
+test('match() is a ternary chain: first test that holds, trailing default, else 0', () => {
+    assert.equal(transform('match(dr < 2, 1, 0)', { expect: 'float' }), '((dr < 2.0) ? 1.0 : 0.0)');
+    assert.equal(transform('match(x > 4, .8, dr < 3, .5, .3)', { expect: 'float' }),
         '((x > 4.0) ? .8 : ((dr < 3.0) ? .5 : .3))');
     // an even count has no default and falls back to 0
-    assert.equal(transform('cond(x > 1, 5)', { expect: 'float' }), '((x > 1.0) ? 5.0 : 0.0)');
-    assert.equal(transform('cond(7)', { expect: 'float' }), '7.0');
-    assert.equal(transform('cond()', { expect: 'float' }), '0.0');
+    assert.equal(transform('match(x > 1, 5)', { expect: 'float' }), '((x > 1.0) ? 5.0 : 0.0)');
+    assert.equal(transform('match(7)', { expect: 'float' }), '7.0');
+    assert.equal(transform('match()', { expect: 'float' }), '0.0');
     // the values take the type the caller expects, the tests are always bool
-    assert.equal(transform('cond(x, 1, 0)', { expect: 'bool' }), '(bool(x) ? bool(1.0) : bool(0.0))');
-    assert.equal(transform('cond(x > 1, 2, 3) + 1', { expect: 'float' }), '(((x > 1.0) ? 2.0 : 3.0) + 1.0)');
+    assert.equal(transform('match(x, 1, 0)', { expect: 'bool' }), '(bool(x) ? bool(1.0) : bool(0.0))');
+    assert.equal(transform('match(x > 1, 2, 3) + 1', { expect: 'float' }), '(((x > 1.0) ? 2.0 : 3.0) + 1.0)');
     // vector branches pass through, and a swizzle applies to the result
-    assert.equal(transform('cond(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
+    assert.equal(transform('match(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
 });
 
 test('#rgb and #rrggbb are vec3 literals', () => {
@@ -261,7 +261,7 @@ test('#rgb and #rrggbb are vec3 literals', () => {
     assert.equal(transform('#0f0'), 'vec3(0.0, 1.0, 0.0)');
     assert.equal(transform('#a1b2c3'), 'vec3(0.6313725490196078, 0.6980392156862745, 0.7647058823529411)');
     assert.equal(transform('#FF8000 * .5'), '(vec3(1.0, 0.5019607843137255, 0.0) * .5)');
-    assert.equal(transform('cond(dr < 2, #fff, #000)', { expect: 'float' }),
+    assert.equal(transform('match(dr < 2, #fff, #000)', { expect: 'float' }),
         '((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))');
     // other lengths are not colors and stay as written
     assert.equal(transform('#fffe'), '#fffe');

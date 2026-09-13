@@ -293,17 +293,18 @@ function generateBlock(token, vars, outerShape, c) {
     if (token.name === 'repeat') {
         return generateRepeat(token, vars, c, 1);
     }
-    // cond() blocks; match() is the legacy name
-    if (token.name !== 'cond' && token.name !== 'match') {
+    if (token.name !== 'match') {
         return '';
     }
     let args = token.args.map(a => a.trim()).filter(Boolean);
     if (!args.length) {
         return '';
     }
-    let cond = args
-        .map(a => glslOf(a, vars, c, 'bool'))
-        .join(' && ');
+    if (args.length > 1) {
+        c.warn('match() needs one expression');
+        return '';
+    }
+    let cond = glslOf(args[0], vars, c, 'bool');
     let scope = Object.assign({}, vars);
     let settings = {};
     readSettings(token.value, settings, scope);

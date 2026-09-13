@@ -1,7 +1,7 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import { parseBody } from './parse-body.js';
 
-// `cond(x > y), cond(mod(x, 2) == 0, y > 3)` → { name, args } per
+// `match(x > y), match(mod(x, 2) == 0)` → { name, args } per
 // selector, duplicates dropped
 function parseSelector(tokens) {
     let selectors = [];

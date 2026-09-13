@@ -168,7 +168,7 @@ only `:doodle` or `:container` is generated once, not once per cell.
 ```css
 @nth(2n + 1)   { background: #000; }
 @random(.3)    { opacity: .5; }
-@cond(x > y)   { border-radius: 50%; }
+@match(x > y)  { border-radius: 50%; }
 @media (hover) { :hover { color: red; } }
 ```
 
@@ -183,8 +183,7 @@ decides how it is treated:
 
 - **Cell selectors** apply their statements to the cells they match:
   `@at(x, y)`, `@nth(an+b)`, `@row(an+b)`, `@col(an+b)`, `@even`,
-  `@odd`, `@random(ratio)`, `@cond(expression)` and `@cell(…)`.
-  `@match(expression)` is an alias of `@cond(expression)`.
+  `@odd`, `@random(ratio)`, `@match(expression)` and `@cell(…)`.
 - **CSS group rules** wrap their statements as CSS does: `@media`,
   `@supports`, `@container`, `@layer`, `@scope`, `@starting-style`
   and `@document`, including vendor-prefixed forms.
@@ -283,10 +282,9 @@ expanded before the body is read as arguments.
 
 ## 8. Expressions
 
-One expression language is shared by `$(…)`, `@cond(…)` (function and
+One expression language is shared by `$(…)`, `@match(…)` (function and
 cell selector), `@cell(…)`, `@random(ratio)` and the commands of
 `@shape`. `@pattern` has its own GLSL-oriented language (§9.3).
-`@match(…)` remains available as an alias of `@cond(…)`.
 
 ```
 expression = operand { operator operand }
@@ -349,21 +347,22 @@ suffix is appended. A lone name such as `$w` acts as a generation-time
 `var()`: arithmetic is evaluated, and any other value passes through
 as written, so with `--c: tomato`, `$c` is `tomato`.
 
-**`@cond`, `@cell` and `@random`** see the cell:
+**`@match`, `@cell` and `@random`** see the cell:
 
 | Name             | Value                                                       |
 | ---------------- | ----------------------------------------------------------- |
 | `x`, `y`         | column and row, from 1                                      |
 | `X`, `Y`         | number of columns and rows                                  |
+| `z`, `Z`         | depth from 1, number of depth levels                        |
 | `i`, `I`         | cell index from 1, cell count                               |
 | `dx`, `dy`       | offset from the grid center                                 |
 | `dr`, `dc`, `dm` | Euclidean, Chebyshev and Manhattan distance from the center |
 | `da`             | angle from the center                                       |
 | `db`             | distance to the edge                                        |
 
-The three selectors also see `random`. The `@cond` function also sees
-`z` and `Z`, and, inside `@m` or `@M`, `n`, `nx`, `ny` and `N`. The
-result is read as true or false.
+The three selectors also see `random`. Inside `@m` or `@M`, the
+`@match` function also sees `n`, `nx`, `ny` and `N`. The result is read
+as true or false.
 
 **`@random(ratio)`** defaults to `.5`. A ratio below `1` is an
 independent per-cell probability. `1` or more selects that many
@@ -524,30 +523,30 @@ command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
 @pattern(
   grid: 20;
   fill: #000;
-  cond(dr < .5) { fill: #fff; }
+  match(dr < .5) { fill: #fff; }
 )
 ```
 
 ```
-pattern-body  = { name ':' expression ';' | cond-block | repeat-block }
-cond-block    = cond { ',' cond } '{' pattern-body '}'
-cond          = 'cond' '(' expression ')'
+pattern-body  = { name ':' expression ';' | match-block | repeat-block }
+match-block   = match { ',' match } '{' pattern-body '}'
+match         = 'match' '(' expression ')'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
 repeat-body   = { name ':' expression ';' | repeat-block }
 ```
 
 A `@pattern` body declares the parameters `grid`, `shape`, `size` and
-`fill`; any other name declares a variable. A `cond` block holds the
+`fill`; any other name declares a variable. A `match` block holds the
 declarations that apply where its condition holds, and may nest. It
 opens a child scope: its declarations shadow outer variables, and a
 block-local `shape` or `size` changes the mask for that block.
-`match(…)` remains available as an alias of the `cond(…)` block.
+It takes one expression; combine tests with `and` or `or`.
 
-In a value, `cond` is a function: `cond(t1, v1, t2, v2, …)` gives
+In a value, `match(t1, v1, t2, v2, …)` gives
 the value after the first test that holds, a last argument without a
 test when none does, and `0` without one, so
-`fill: cond(dr < 2, #fff, dr < 4, #888, #000)` picks a color per cell.
+`fill: match(dr < 2, #fff, dr < 4, #888, #000)` picks a color per cell.
 
 Expressions are written in a GLSL-oriented language, not the language
 of §8. Compared with §8, `^` is bitwise xor, `÷`, `∧` and `∨` are not
@@ -583,7 +582,7 @@ These functions are available besides the GLSL ones:
 
 | Function                          | Returns                                                     |
 | --------------------------------- | ----------------------------------------------------------- |
-| `cond(t, v, …, else)`             | the value after the first test that holds, else the last argument, or 0 |
+| `match(t, v, …, else)`            | the value after the first test that holds, else the last argument, or 0 |
 | `rand(a, b)`, `rand(n)`           | a seeded random number, 0 to 1                              |
 | `noise(a, b)`, `noise(n)`         | value noise, 0 to 1                                         |
 | `fbm(a, b)`                       | six octaves of noise, about 0 to 1                          |
@@ -610,7 +609,7 @@ same functions taking vectors.
     steps: n + 1;
   }
   fill: hsl(steps/48, 0.8, 0.5);
-  cond(steps = 96) { fill: #000 }
+  match(steps = 96) { fill: #000 }
 )
 ```
 
@@ -635,7 +634,7 @@ A state's type follows its initial expression. Pattern numbers,
 including values produced with integer operations, are stored as
 floats; boolean, boolean-vector, vector and `mat2` values keep those
 types. The type remains fixed while the state is updated. `repeat` may
-nest, including inside `cond`; declarations made inside either block do
+nest, including inside `match`; declarations made inside either block do
 not leak out. Pattern outputs such as `fill`, `shape`, `size` and
 `grid` are not allowed inside `repeat`, nor are conditional blocks.
 Names starting with `cssd` are reserved for the generated code.

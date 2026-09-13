@@ -491,7 +491,7 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
 
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
-Function.cond = ({ x, y, z, count, grid }, { extra }) => {
+Function.match = ({ x, y, z, count, grid }, { extra }) => {
     let e = last(extra) || [];
     let variables = {
         x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z,
@@ -803,7 +803,6 @@ export const alias = {
     'col': 'x',
     'row': 'y',
     'depth': 'z',
-    'match': 'cond',
     'rand': 'r',
     'pick': 'p',
     'rn': 'R',

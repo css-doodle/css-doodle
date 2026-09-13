@@ -94,12 +94,11 @@ test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy n
     assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
 });
 
-test('@cond selects the first matching value and @match is its alias', () => {
-    assert.equal(Function.match, Function.cond);
+test('@match selects the first matching value', () => {
     let cell = { x: 2, y: 1, z: 1, count: 2, grid: { x: 3, y: 1, z: 1, count: 3 } };
-    let cond = Function.cond(cell, { extra: [] });
-    assert.equal(cond('x < 2', 'a', 'x == 2', 'b', 'c'), 'b');
-    assert.equal(cond('x > 2', 'a', 'fallback'), 'fallback');
+    let match = Function.match(cell, { extra: [] });
+    assert.equal(match('x < 2', 'a', 'x == 2', 'b', 'c'), 'b');
+    assert.equal(match('x > 2', 'a', 'fallback'), 'fallback');
 });
 
 test('@ri: an integer with no arguments too, not a character code', () => {

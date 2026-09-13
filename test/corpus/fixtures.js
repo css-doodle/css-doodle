@@ -96,7 +96,7 @@ export default [
     { name: 'calc-wrap-whole', code: `width: $((5 % 3))px;` },
     { name: 'calc-in-func', code: `background: @pick(@calc(1 + 2), 3);` },
 
-    // --- cond selectors ---
+    // --- match selectors ---
     { name: 'cond-even-odd', code: `@even { color: red; } @odd { color: blue; }` },
     { name: 'cond-nth', code: `@nth(2n - 1) { color: red; }` },
     { name: 'cond-nth-tight', code: `@nth(2n-1) { color: red; }` },
@@ -145,15 +145,15 @@ export default [
     },
     {
         name: 'pattern-lines',
-        code: `background: @pattern(\n  // grid lines\n  grid: 10;\n  cond(gx % 2 == 0) {\n    fill: #000;\n  }\n);`
+        code: `background: @pattern(\n  // grid lines\n  grid: 10;\n  match(gx % 2 == 0) {\n    fill: #000;\n  }\n);`
     },
-    { name: 'pattern-cond-gt', code: `background: @pattern(grid: 8; shape: circle; size: .9; cond(x > y) { fill: #333; } cond(x <= y) { fill: #eee; });` },
-    { name: 'pattern-cond-commas', code: `background: @pattern(grid: 6; cond(mod(x, 2) == 0, y > 3) { fill: red; });` },
-    { name: 'pattern-cond-list', code: `background: @pattern(grid: 6; cond(x < 3), cond(x > 4) { fill: #09f; } cond(x >= 3, x <= 4) { fill: #fc0; });` },
-    { name: 'pattern-variables', code: `background: @pattern(grid: 4; k: 3; shape: circle; size: .5; cond(x * k > 6) { fill: hsl(x * 60, .5, .5); });` },
-    { name: 'pattern-nested-cond', code: `background: @pattern(grid: 4; cond(x > 2) { size: .4; cond(y > 2) { fill: red; } });` },
-    { name: 'pattern-no-trailing-semicolon', code: `background: @pattern(grid: 3; cond(x > 1) { fill: red } fill: blue);` },
-    { name: 'pattern-match-legacy', code: `background: @pattern(grid: 3; match(x > 1) { fill: red });` },
+    { name: 'pattern-match-gt', code: `background: @pattern(grid: 8; shape: circle; size: .9; match(x > y) { fill: #333; } match(x <= y) { fill: #eee; });` },
+    { name: 'pattern-match-and', code: `background: @pattern(grid: 6; match(mod(x, 2) == 0 and y > 3) { fill: red; });` },
+    { name: 'pattern-match-list', code: `background: @pattern(grid: 6; match(x < 3), match(x > 4) { fill: #09f; } match(x >= 3 and x <= 4) { fill: #fc0; });` },
+    { name: 'pattern-variables', code: `background: @pattern(grid: 4; k: 3; shape: circle; size: .5; match(x * k > 6) { fill: hsl(x * 60, .5, .5); });` },
+    { name: 'pattern-nested-match', code: `background: @pattern(grid: 4; match(x > 2) { size: .4; match(y > 2) { fill: red; } });` },
+    { name: 'pattern-no-trailing-semicolon', code: `background: @pattern(grid: 3; match(x > 1) { fill: red } fill: blue);` },
+    { name: 'pattern-match-value', code: `background: @pattern(grid: 3; fill: match(x > 1, red, blue));` },
     { name: 'canvas-body', code: `background: @canvas(\n  ctx.fillStyle = 'red';\n  ctx.fillRect(0, 0, 16, 16);\n);` },
 
     // --- svg ---

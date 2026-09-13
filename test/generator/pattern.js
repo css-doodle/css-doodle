@@ -25,115 +25,109 @@ const color = code => lines(code).find(l => l.startsWith('cssd_color = ')) || ''
 
 const main = code => shader(code).slice(shader(code).indexOf('void main()'));
 
-// the `if (...)` line a cond() condition compiles to: the first if inside
+// the `if (...)` line a match() condition compiles to: the first if inside
 // main, the prelude's own ifs (escape bailouts, etc.) all come before it
 const condition = code => main(code).split('\n').map(l => l.trim()).find(l => l.startsWith('if (')) || '';
 
-// --- cond() conditions ---
+// --- match() conditions ---
 
-test('cond with nested commas in a function call', () => {
-    assert.equal(condition('cond(atan(y, x) > 3) { fill: red }'), 'if ((atan(y, x) > 3.0)) {');
+test('match with nested commas in a function call', () => {
+    assert.equal(condition('match(atan(y, x) > 3) { fill: red }'), 'if ((atan(y, x) > 3.0)) {');
 });
 
-test('cond AND-joins multiple arguments', () => {
-    assert.equal(
-        condition('cond(x>y, 2*x-y == 0) { fill: red }'),
-        'if ((x > y) && (((2.0 * x) - y) == 0.0)) {'
-    );
+test('match takes one expression', () => {
+    let messages = [];
+    assert.equal(condition('match(x>y, 2*x-y == 0) { fill: red }'), '');
+    draw('match(x>y, 2*x-y == 0) { fill: red }', extra, message => messages.push(message));
+    assert.deepEqual(messages, ['match() needs one expression']);
 });
 
-test('cond() is the legacy name of cond()', () => {
-    assert.equal(shader('cond(x > 1) { fill: red }'), shader('cond(x > 1) { fill: red }'));
-    assert.equal(shader('cond(x > 1), cond(y > 1) { size: .5; cond(x > 2) { fill: red } }'),
-        shader('cond(x > 1), cond(y > 1) { size: .5; cond(x > 2) { fill: red } }'));
+test('match with no arguments emits no if block', () => {
+    assert.equal(condition('match() { fill: red }'), '');
+    assert.equal(condition('match(   ) { fill: red }'), '');
 });
 
-test('cond with no arguments emits no if block', () => {
-    assert.equal(condition('cond() { fill: red }'), '');
-    assert.equal(condition('cond(   ) { fill: red }'), '');
-});
-
-test('nested cond blocks are emitted recursively', () => {
+test('nested match blocks are emitted recursively', () => {
     assert.match(
-        shader('cond(x>3) { cond(y>3) { fill: red } }'),
+        shader('match(x>3) { match(y>3) { fill: red } }'),
         /if \(\(x > 3\.0\)\) \{[\s\S]*if \(\(y > 3\.0\)\) \{[\s\S]*cssd_color = vec4/
     );
 });
 
 test('and/or/not keywords read like media queries', () => {
-    assert.equal(condition('cond(x > 1 and y > 1) { fill: red }'),
+    assert.equal(condition('match(x > 1 and y > 1) { fill: red }'),
         'if (((x > 1.0) && (y > 1.0))) {');
-    assert.equal(condition('cond(x > 3 or y > 3) { fill: red }'),
+    assert.equal(condition('match(x > 3 or y > 3) { fill: red }'),
         'if (((x > 3.0) || (y > 3.0))) {');
-    assert.equal(condition('cond(not (x > 3)) { fill: red }'), 'if (!(x > 3.0)) {');
+    assert.equal(condition('match(not (x > 3)) { fill: red }'), 'if (!(x > 3.0)) {');
 });
 
 test('a non-comparison root is bool-coerced', () => {
-    assert.equal(condition('cond(x) { fill: red }'), 'if (bool(x)) {');
-    assert.equal(condition('cond(sin(x)) { fill: red }'), 'if (bool(sin(x))) {');
-    assert.equal(condition('cond(int(x)) { fill: red }'), 'if (bool(int(x))) {');
+    assert.equal(condition('match(x) { fill: red }'), 'if (bool(x)) {');
+    assert.equal(condition('match(sin(x)) { fill: red }'), 'if (bool(sin(x))) {');
+    assert.equal(condition('match(int(x)) { fill: red }'), 'if (bool(int(x))) {');
 });
 
-test('variables inside cond blocks are scoped', () => {
-    assert.ok(shader('cond(x > 1) { c: x/X; fill: hsl(c, 0.5, 0.5) }').includes('hsl((x / X), 0.5, 0.5)'));
+test('variables inside match blocks are scoped', () => {
+    assert.ok(shader('match(x > 1) { c: x/X; fill: hsl(c, 0.5, 0.5) }').includes('hsl((x / X), 0.5, 0.5)'));
     // and they do not leak into the outer scope
-    assert.match(shader('cond(x > 1) { c: 9.0; } cond(c > 1) { fill: red }'), /if \(\(c > 1\.0\)\)/);
+    assert.match(shader('match(x > 1) { c: 9.0; } match(c > 1) { fill: red }'), /if \(\(c > 1\.0\)\)/);
 });
 
 // --- built-in variables ---
 
 test('dr and da: distance and angle from the grid center', () => {
-    let s = shader('cond(dr < 3) { fill: red }');
+    let s = shader('match(dr < 3) { fill: red }');
     assert.match(s, /float dr = length\(vec2\(dx, dy\)\);/);
     assert.match(s, /float da = atan\(dy, dx\);/);
     assert.match(s, /const float PI = 3\.14159/);
-    assert.equal(condition('cond(dr < 3) { fill: red }'), 'if ((dr < 3.0)) {');
-    assert.equal(condition('cond(da > 0) { fill: red }'), 'if ((da > 0.0)) {');
+    assert.equal(condition('match(dr < 3) { fill: red }'), 'if ((dr < 3.0)) {');
+    assert.equal(condition('match(da > 0) { fill: red }'), 'if ((da > 0.0)) {');
     assert.equal(
-        condition('cond(da > -PI/4 && da < PI/4) { fill: red }'),
+        condition('match(da > -PI/4 && da < PI/4) { fill: red }'),
         'if (((da > (-PI / 4.0)) && (da < (PI / 4.0)))) {'
     );
 });
 
 test('dc and dm: chebyshev and manhattan distance', () => {
-    let s = shader('cond(dc < 2) { fill: red }');
+    let s = shader('match(dc < 2) { fill: red }');
     assert.match(s, /float dc = max\(abs\(dx\), abs\(dy\)\);/);
     assert.match(s, /float dm = abs\(dx\) \+ abs\(dy\);/);
-    assert.equal(condition('cond(dc < 2) { fill: red }'), 'if ((dc < 2.0)) {');
-    assert.equal(condition('cond(dm < 3) { fill: red }'), 'if ((dm < 3.0)) {');
+    assert.equal(condition('match(dc < 2) { fill: red }'), 'if ((dc < 2.0)) {');
+    assert.equal(condition('match(dm < 3) { fill: red }'), 'if ((dm < 3.0)) {');
 });
 
 test('db: distance to the grid boundary', () => {
-    let s = shader('cond(db == 0) { fill: red }');
+    let s = shader('match(db == 0) { fill: red }');
     assert.match(s, /float db = min\(min\(x - 1\.0, X - x\), min\(y - 1\.0, Y - y\)\);/);
-    assert.equal(condition('cond(db == 0) { fill: red }'), 'if ((db == 0.0)) {');
-    assert.equal(condition('cond(db < 2) { fill: red }'), 'if ((db < 2.0)) {');
+    assert.equal(condition('match(db == 0) { fill: red }'), 'if ((db == 0.0)) {');
+    assert.equal(condition('match(db < 2) { fill: red }'), 'if ((db < 2.0)) {');
     assert.equal(
-        condition('cond(int(db) % 2 == 0) { fill: red }'),
+        condition('match(int(db) % 2 == 0) { fill: red }'),
         'if ((mod(float(int(db)), 2.0) == 0.0)) {'
     );
 });
 
 test('du and dv: coordinates inside the cell', () => {
-    let s = shader('cond(du > 0) { fill: red }');
+    let s = shader('match(du > 0) { fill: red }');
     assert.match(s, /float du = fract\(uv\.x \* X\) - 0\.5;/);
     assert.match(s, /float dv = fract\(\(1\.0 - uv\.y\) \* Y\) - 0\.5;/);
     // composes with ngon() for per-cell polygon masks
-    assert.equal(condition('cond(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(du, dv, 6.0) < 0.4)) {');
+    assert.equal(condition('match(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(du, dv, 6.0) < 0.4)) {');
     // a bare `du` is not a CSS color, so it compiles as an expression
     assert.equal(color('fill: du'), 'cssd_color = vec4(vec3(du), 1.0);');
 });
 
 test('dx and dy: cell index centered on the grid', () => {
-    let s = shader('cond(dx > 0) { fill: red }');
+    let s = shader('match(dx > 0) { fill: red }');
     assert.match(s, /float dx = x - \(X \+ 1\.0\) \* 0\.5;/);
     assert.match(s, /float dy = y - \(Y \+ 1\.0\) \* 0\.5;/);
     assert.equal(
-        condition('cond(dx*dx + dy*dy < 4) { fill: red }'),
+        condition('match(dx*dx + dy*dy < 4) { fill: red }'),
         'if ((((dx * dx) + (dy * dy)) < 4.0)) {'
     );
     assert.equal(
-        condition('cond(max(abs(dx), abs(dy)) < 2) { fill: red }'),
+        condition('match(max(abs(dx), abs(dy)) < 2) { fill: red }'),
         'if ((max(abs(dx), abs(dy)) < 2.0)) {'
     );
 });
@@ -232,13 +226,13 @@ test('an explicit non-mask shape never gets a square mask', () => {
     assert.doesNotMatch(shader('shape: none; size: 0.5; fill: red'), /cssd_mask = cssd_shape/);
 });
 
-test('shape inside a cond block applies the matching mask', () => {
+test('shape inside a match block applies the matching mask', () => {
     // no top-level shape/size, so any mask must come from the block
-    assert.ok(shader('cond(x > 2) { shape: square; fill: red }').includes('cssd_mask = cssd_shape(max(abs(du), abs(dv)), size);'));
-    assert.ok(shader('cond(x > 2) { shape: circle; fill: red }').includes('cssd_mask = cssd_shape(length(vec2(du, dv)), size);'));
+    assert.ok(shader('match(x > 2) { shape: square; fill: red }').includes('cssd_mask = cssd_shape(max(abs(du), abs(dv)), size);'));
+    assert.ok(shader('match(x > 2) { shape: circle; fill: red }').includes('cssd_mask = cssd_shape(length(vec2(du, dv)), size);'));
     // any other value resets the mask to the full cell (the second
     // occurrence, after the `float cssd_mask = 1.0;` declaration)
-    let none = shader('cond(x > 2) { shape: none; fill: red }');
+    let none = shader('match(x > 2) { shape: none; fill: red }');
     assert.doesNotMatch(none, /cssd_mask = cssd_shape/);
     assert.ok((none.match(/cssd_mask = 1\.0;/g) || []).length >= 2, none);
 });
@@ -246,8 +240,8 @@ test('shape inside a cond block applies the matching mask', () => {
 test('in-block shape and size are order-free and apply once', () => {
     // size lands inside the if and before the mask that reads it
     for (let code of [
-        'cond(x > 1) { size: 0.5; shape: circle; fill: red }',
-        'cond(x > 1) { shape: circle; size: 0.5; fill: red }',
+        'match(x > 1) { size: 0.5; shape: circle; fill: red }',
+        'match(x > 1) { shape: circle; size: 0.5; fill: red }',
     ]) {
         let s = shader(code);
         let ifIdx = s.indexOf('if ((x > 1.0))');
@@ -256,13 +250,13 @@ test('in-block shape and size are order-free and apply once', () => {
         assert.ok(ifIdx > -1 && ifIdx < sizeIdx && sizeIdx < maskIdx, `${code}\n${s}`);
     }
     // duplicate shapes collapse to the last one
-    let dup = shader('cond(x > 1) { shape: circle; shape: square; fill: red }');
+    let dup = shader('match(x > 1) { shape: circle; shape: square; fill: red }');
     assert.equal((dup.match(/cssd_mask = cssd_shape/g) || []).length, 1);
     assert.ok(dup.includes('cssd_mask = cssd_shape(max(abs(du), abs(dv)), size);'));
 });
 
 test('in-block size without a shape re-applies the effective mask', () => {
-    let s = shader('shape: circle; cond(x > 1) { size: 0.5; fill: red }');
+    let s = shader('shape: circle; match(x > 1) { size: 0.5; fill: red }');
     assert.equal(s.split('cssd_mask = cssd_shape(length(vec2(du, dv)), size);').length - 1, 2);
 });
 
@@ -294,7 +288,7 @@ test('fbm() and voronoi() built-ins are available', () => {
     let s = shader('grid:40; fill: fbm(x/8, y/8)');
     assert.ok(s.includes('float fbm(float px, float py)'));
     assert.ok(s.includes('float voronoi(float px, float py)'));
-    assert.equal(condition('cond(voronoi(x, y) > 0.3) { fill: red }'), 'if ((voronoi(x, y) > 0.3)) {');
+    assert.equal(condition('match(voronoi(x, y) > 0.3) { fill: red }'), 'if ((voronoi(x, y) > 0.3)) {');
 });
 
 test('noise() and voronoi() lattices are offset by the seed like rand', () => {
@@ -377,7 +371,7 @@ test('repeat names new to the body are loop locals, declared once where they app
 test('repeat uses a zero-based named index and checks the stop conditions after the body', () => {
     let s = main('steps: 0; repeat(8 as k, steps > 3) { steps: k + 1 } fill: steps');
     assert.match(s, /for \(float cssd2 = 0\.0; cssd2 < 8\.0; cssd2\+\+\) \{\s*cssd1 = \(cssd2 \+ 1\.0\);\s*if \(\(cssd1 > 3\.0\)\) break;/);
-    // several conditions all have to hold, as in cond()
+    // several stop conditions all have to hold
     assert.match(main('a: 0; b: 0; repeat(3, a > 1, b > 1) { a: a + 1; b: b + 1 }'), /if \(\(cssd1 > 1\.0\) && \(cssd2 > 1\.0\)\) break;/);
 });
 
@@ -411,8 +405,8 @@ test('a second repeat continues the same state without redeclaring it', () => {
     assert.match(s, /cssd_color = vec4\(vec3\(cssd1\), 1\.0\);/);
 });
 
-test('repeat inside cond is scoped to that block', () => {
-    let s = main('zx: 0; cond(x > 1) { repeat(2) { zx: zx + 1 } fill: hsl(zx, 1, 1) } fill: hsl(zx, 1, 1)');
+test('repeat inside match is scoped to that block', () => {
+    let s = main('zx: 0; match(x > 1) { repeat(2) { zx: zx + 1 } fill: hsl(zx, 1, 1) } fill: hsl(zx, 1, 1)');
     assert.match(s, /if \(\(x > 1\.0\)\) \{\s*float cssd1 = 0\.0;\s*for \(float cssd2[\s\S]*hsl\(cssd1, 1\.0, 1\.0\)[\s\S]*\}/);
     // the outer fill still sees the macro value
     assert.match(s, /hsl\(0\.0, 1\.0, 1\.0\)/);
@@ -439,13 +433,13 @@ test('loop state may use the names of the shader internals', () => {
     assert.match(s, /float t = 0\.0;/);
 });
 
-test('repeat reports pattern outputs and cond blocks in its body', () => {
+test('repeat reports pattern outputs and match blocks in its body', () => {
     let messages = [];
-    let s = draw('x: 0; repeat(2) { fill: #000; size: .5; cond(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m));
+    let s = draw('x: 0; repeat(2) { fill: #000; size: .5; match(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m));
     assert.deepEqual(messages, [
         'repeat() does not allow fill',
         'repeat() does not allow size',
-        'repeat() does not allow cond blocks',
+        'repeat() does not allow match blocks',
     ]);
     assert.doesNotMatch(s.slice(s.indexOf('void main()')), /if \(/);
 });
@@ -521,7 +515,7 @@ test('repeat initializes and updates bool state without float casts', () => {
 test('fill and size read repeat state by its type', () => {
     let s = main('flag: x > 1; repeat(1) { flag: not flag } fill: flag*.5, 0, 0');
     assert.match(s, /cssd_color = vec4\(\(float\(cssd1\) \* \.5\), 0\.0, 0\.0, 1\.0\);/);
-    s = main('p: uv; repeat(1) { p: p*2 } cond(x > 1) { size: length(p); fill: p.x, p.y, 0 }');
+    s = main('p: uv; repeat(1) { p: p*2 } match(x > 1) { size: length(p); fill: p.x, p.y, 0 }');
     assert.match(s, /size = length\(cssd1\);/);
     assert.match(s, /cssd_color = vec4\(cssd1\.x, cssd1\.y, 0\.0, 1\.0\);/);
 });
@@ -529,8 +523,8 @@ test('fill and size read repeat state by its type', () => {
 test('the size is set after the repeat state it may read', () => {
     let s = main('s: 1; repeat(4) { s: s*1.1 } size: s; fill: #000');
     assert.match(s, /float cssd1 = 1\.0;\s*for \(float cssd2[^}]*\}\s*float size = cssd1;\s*cssd_mask = cssd_shape/);
-    // fills and cond blocks that follow the size may set it
-    s = main('s: 1; fill: s; repeat(4) { s: s*1.1 } cond(x > 1) { size: s }');
+    // fills and match blocks that follow the size may set it
+    s = main('s: 1; fill: s; repeat(4) { s: s*1.1 } match(x > 1) { size: s }');
     assert.match(s, /float size = 1\.0;\s*cssd_color = vec4\(vec3\(1\.0\), 1\.0\);\s*if \(\(x > 1\.0\)\) \{\s*size = cssd1;/);
 });
 
@@ -554,17 +548,17 @@ test('repeat keeps int expressions in the float pattern number model', () => {
     assert.match(s, /cssd\d+ = \(cssd\d+ \+ 1\.0\);/);
 });
 
-// --- cond() as a function ---
+// --- match() as a function ---
 
-test('cond() in a value chooses between expressions, colors included', () => {
-    assert.equal(color('fill: cond(dr < 2, #fff, #000)'),
+test('match() in a value chooses between expressions, colors included', () => {
+    assert.equal(color('fill: match(dr < 2, #fff, #000)'),
         'cssd_color = vec4(vec3(((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))), 1.0);');
-    assert.equal(color('c: cond(db = 0, 1, dr < 3, .5, 0); fill: hsl(c, .8, .5)'),
+    assert.equal(color('c: match(db = 0, 1, dr < 3, .5, 0); fill: hsl(c, .8, .5)'),
         'cssd_color = vec4(vec3(hsl(((db == 0.0) ? 1.0 : ((dr < 3.0) ? .5 : 0.0)), .8, .5)), 1.0);');
-    assert.match(shader('size: cond(x > 4, .8, .3); fill: #000'), /float size = \(\(x > 4\.0\) \? \.8 : \.3\);/);
+    assert.match(shader('size: match(x > 4, .8, .3); fill: #000'), /float size = \(\(x > 4\.0\) \? \.8 : \.3\);/);
     // as a block test its branches are already bool, so no outer cast
-    assert.equal(condition('cond(cond(x > 2, y > 2, 0)) { fill: red }'),
+    assert.equal(condition('match(match(x > 2, y > 2, 0)) { fill: red }'),
         'if (((x > 2.0) ? (y > 2.0) : bool(0.0))) {');
     // the block form is unchanged
-    assert.equal(condition('cond(dr < 2) { fill: red }'), 'if ((dr < 2.0)) {');
+    assert.equal(condition('match(dr < 2) { fill: red }'), 'if ((dr < 2.0)) {');
 });

@@ -171,8 +171,8 @@ export default function transform(code, { expect = null, type = false, types = {
             if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
             return `-${gen(n.right, exp)}`;
         }
-        if (n.type === 'Call' && n.val === 'cond') {
-            // cond(t1, v1, t2, v2, …, else): the value after the first test that holds
+        if (n.type === 'Call' && n.val === 'match') {
+            // match(t1, v1, t2, v2, …, else): the value after the first test that holds
             const a = n.args;
             let out = gen(a.length % 2 ? a[a.length - 1] : ZERO, exp);
             for (let i = a.length - 2 - a.length % 2; i >= 0; i -= 2) {
@@ -228,8 +228,8 @@ export default function transform(code, { expect = null, type = false, types = {
             if (known === 'bvec') return infer(n.args[0]).replace(/^vec/, 'bvec').replace('float', 'bool');
             if (known) return known;
             if (/^(b?vec[234]|mat2|float|int|bool)$/.test(n.val)) return n.val;
-            // cond(t1, v1, …, else) yields one of its values
-            if (n.val === 'cond') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
+            // match(t1, v1, …, else) yields one of its values
+            if (n.val === 'match') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
             // any other function returns the type of its widest argument, a number at least
             return widest(n.args.map(infer), true);
         }

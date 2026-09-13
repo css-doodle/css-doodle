@@ -12,41 +12,34 @@ test('statements', () => {
 });
 
 test('blocks with argument lists', () => {
-    assert.deepEqual(parsePattern('cond {}'), [block('cond')]);
-    assert.deepEqual(parsePattern('cond(x>y) {}'), [block('cond', ['x>y'])]);
-    // the legacy name is passed through as written; the generator accepts both
+    assert.deepEqual(parsePattern('match {}'), [block('match')]);
     assert.deepEqual(parsePattern('match(x>y) {}'), [block('match', ['x>y'])]);
-    assert.deepEqual(parsePattern('cond(x>y, 2*x-y == 0) {}'), [block('cond', ['x>y', '2*x-y == 0'])]);
     // commas inside calls belong to the argument
-    assert.deepEqual(parsePattern('cond(atan(y, x) > 3) {}'), [block('cond', ['atan(y,x) > 3'])]);
-    assert.deepEqual(
-        parsePattern('cond(max(x, y) > 3, min(a, b) < 1) {}'),
-        [block('cond', ['max(x,y) > 3', 'min(a,b) < 1'])]
-    );
+    assert.deepEqual(parsePattern('match(atan(y, x) > 3) {}'), [block('match', ['atan(y,x) > 3'])]);
 });
 
 test('a comma list of selectors shares one body', () => {
     assert.deepEqual(parsePattern('a, b {}'), [block('a'), block('b')]);
-    assert.deepEqual(parsePattern('cond(2), cond {}'), [block('cond', ['2']), block('cond')]);
+    assert.deepEqual(parsePattern('match(2), match {}'), [block('match', ['2']), block('match')]);
     // duplicates and empty entries collapse
     assert.deepEqual(parsePattern('a,,,{}'), [block('a')]);
     assert.deepEqual(parsePattern('a, a {}'), [block('a')]);
 });
 
 test('an extra closing paren does not break the block', () => {
-    assert.deepEqual(parsePattern('cond()) {}'), [block('cond')]);
-    assert.deepEqual(parsePattern('cond(1)) {}'), [block('cond', ['1'])]);
+    assert.deepEqual(parsePattern('match()) {}'), [block('match')]);
+    assert.deepEqual(parsePattern('match(1)) {}'), [block('match', ['1'])]);
 });
 
 test('statements and blocks nest', () => {
     assert.deepEqual(parsePattern(`
         color: red;
-        cond(x>y) {
+        match(x>y) {
           color: blue;
         }
     `), [
         statement('color', 'red'),
-        block('cond', ['x>y'], [statement('color', 'blue')]),
+        block('match', ['x>y'], [statement('color', 'blue')]),
     ]);
 });
 
@@ -69,8 +62,8 @@ test('repeat headers and nested repeats use the existing block grammar', () => {
 });
 
 test('selector deduplication tells the arguments apart', () => {
-    assert.deepEqual(parsePattern('cond(a, b), cond(ab), cond(a, b) {}'), [
-        block('cond', ['a', 'b']),
-        block('cond', ['ab']),
+    assert.deepEqual(parsePattern('match(a, b), match(ab), match(a, b) {}'), [
+        block('match', ['a', 'b']),
+        block('match', ['ab']),
     ]);
 });
