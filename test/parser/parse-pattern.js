@@ -49,3 +49,28 @@ test('statements and blocks nest', () => {
         block('cond', ['x>y'], [statement('color', 'blue')]),
     ]);
 });
+
+test('repeat headers and nested repeats use the existing block grammar', () => {
+    assert.deepEqual(parsePattern(`
+        repeat(4 as outer) {
+          value: outer*2;
+          repeat(3 as inner, value > 8) {
+            value: value + inner;
+          }
+        }
+    `), [
+        block('repeat', ['4 as outer'], [
+            statement('value', 'outer*2'),
+            block('repeat', ['3 as inner', 'value > 8'], [
+                statement('value', 'value + inner'),
+            ]),
+        ]),
+    ]);
+});
+
+test('selector deduplication tells the arguments apart', () => {
+    assert.deepEqual(parsePattern('cond(a, b), cond(ab), cond(a, b) {}'), [
+        block('cond', ['a', 'b']),
+        block('cond', ['ab']),
+    ]);
+});

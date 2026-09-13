@@ -204,6 +204,41 @@ test('a swizzle after a call or a parenthesized value is kept', () => {
     assert.equal(transform('(-p).x * 2'), '(-p.x * 2.0)');
 });
 
+test('expression types follow vectors, calls, operators and swizzles', () => {
+    assert.equal(transform('1 - uv', { type: true }), 'vec2');
+    assert.equal(transform('2*vec3(1)', { type: true }), 'vec3');
+    assert.equal(transform('max(length(hsl(0, 1, 1)), 1)', { type: true }), 'float');
+    assert.equal(transform('v.xy', { type: true, types: { v: 'vec3' } }), 'vec2');
+    assert.equal(transform('normalize(vec3(1))', { type: true }), 'vec3');
+    assert.equal(transform('true', { type: true }), 'bool');
+    assert.equal(transform('any(lessThan(uv, vec2(.5)))', { type: true }), 'bool');
+    assert.equal(transform('isnan(uv)', { type: true }), 'bvec2');
+    assert.equal(transform('isinf(vec3(1))', { type: true }), 'bvec3');
+    assert.equal(transform('bvec2(true)', { type: true }), 'bvec2');
+    assert.equal(transform('not flags', { types: { flags: 'bvec2' } }), 'not(flags)');
+    assert.equal(transform('int(x)', { expect: 'float' }), 'float(int(x))');
+    assert.equal(transform('p*2', { types: { p: 'vec2' } }), '(p * 2.0)');
+    assert.equal(transform('m*2', { types: { m: 'mat2' } }), '(m * 2.0)');
+    assert.equal(transform('m*p', { types: { m: 'mat2', p: 'vec2' } }), '(m * p)');
+    // a name that is not a variable has no type from the prototype
+    assert.equal(transform('constructor', { type: true }), 'float');
+});
+
+test('bools and ints become floats where a number is wanted, vectors pass as they are', () => {
+    assert.equal(transform('hsl(mod(i, 2) == 0, 1, .5)'), 'hsl(float((mod(i, 2.0) == 0.0)), 1.0, .5)');
+    assert.equal(transform('max(x & 1, 2)'), 'max(float((int(x) & 1)), 2.0)');
+    assert.equal(transform('sin(x > 1)'), 'sin(float((x > 1.0)))');
+    assert.equal(transform('vec2(x > 1, 2)'), 'vec2(float((x > 1.0)), 2.0)');
+    assert.equal(transform('float(x > 1)'), 'float((x > 1.0))');
+    assert.equal(transform('uv * (x > 1)'), '(uv * float((x > 1.0)))');
+    assert.equal(transform('length(uv - .5)'), 'length((uv - .5))');
+    assert.equal(transform('any(lessThan(uv, vec2(.5)))', { expect: 'bool' }), 'any(lessThan(uv, vec2(.5)))');
+    assert.equal(transform('bvec2(true)'), 'bvec2(true)');
+    // `not` of a bvec is a bvec
+    assert.equal(transform('not flags', { type: true, types: { flags: 'bvec2' } }), 'bvec2');
+    assert.equal(transform('not lessThan(uv, vec2(.5))', { expect: 'bvec2' }), 'not(lessThan(uv, vec2(.5)))');
+});
+
 test('cond() is a ternary chain: first test that holds, trailing default, else 0', () => {
     assert.equal(transform('cond(dr < 2, 1, 0)', { expect: 'float' }), '((dr < 2.0) ? 1.0 : 0.0)');
     assert.equal(transform('cond(x > 4, .8, dr < 3, .5, .3)', { expect: 'float' }),

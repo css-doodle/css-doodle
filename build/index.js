@@ -44,6 +44,7 @@ const { code } = await swc.minify(outputFiles[0].text, {
         ecma: 2020,
         pure_getters: true,
         unsafe_proto: true,
+        unsafe_arrows: true
     },
     mangle: {
         props: { regex: '^_' },

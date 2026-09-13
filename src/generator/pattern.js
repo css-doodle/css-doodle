@@ -156,9 +156,8 @@ function float(n) {
 }
 
 function maskFor(shape) {
-    if (shape === 'circle') return '\ncssd_mask = cssd_shape(length(vec2(du, dv)), size);\n';
-    if (shape === 'square') return '\ncssd_mask = cssd_shape(max(abs(du), abs(dv)), size);\n';
-    return '\ncssd_mask = 1.0;\n';
+    let d = shape === 'circle' ? 'length(vec2(du, dv))' : shape === 'square' ? 'max(abs(du), abs(dv))' : '';
+    return `\ncssd_mask = ${d ? `cssd_shape(${d}, size)` : '1.0'};\n`;
 }
 
 function resolveAlias(value, vars) {
@@ -169,43 +168,31 @@ function resolveAlias(value, vars) {
     return value;
 }
 
-function compileFill(expr, vars) {
-    let channels = parseValueGroup(expr, { symbol: ',', noSpace: true })
-        .map(c => c.trim())
-        .filter(Boolean);
-    if (channels.length === 3 || channels.length === 4) {
-        let ch = channels.map(c => transform(substituteVariables(c, vars), { expect: 'float' }));
-        let alpha = channels.length === 4 ? ch[3] : '1.0';
-        return `vec4(${ch[0]}, ${ch[1]}, ${ch[2]}, ${alpha})`;
-    }
-    if (channels.length !== 1) return null;
-    let single = transform(substituteVariables(channels[0], vars), { expect: 'float' });
-    return single ? `vec4(vec3(${single}), 1.0)` : null;
+function glslOf(value, vars, c, expect) {
+    return transform(substituteVariables(value, vars), { expect, types: c.types });
 }
 
-// `fill: red` is a static color, anything else compiles as an expression
-function generateFill(token, extra, vars) {
+function generateFill(token, vars, c) {
     let value = resolveAlias(token.value.trim(), vars);
     if (!value) return '';
-    let rgba = extra.getRgbaColor(value);
-    if (rgba) {
-        let { r, g, b, a } = rgba;
-        return `\ncssd_color = vec4(${float(r/255)}, ${float(g/255)}, ${float(b/255)}, ${float(a)});\n`;
-    }
-    let computed = compileFill(value, vars);
-    return computed ? `\ncssd_color = ${computed};\n` : '';
+    let rgba = c.extra.getRgbaColor(value);
+    let ch = rgba
+        ? [rgba.r / 255, rgba.g / 255, rgba.b / 255, rgba.a].map(float)
+        : parseValueGroup(value, { symbol: ',', noSpace: true })
+            .map(v => v.trim())
+            .filter(Boolean)
+            .map(v => glslOf(v, vars, c, 'float'));
+    let n = ch.length;
+    if (!(n === 1 || n === 3 || n === 4) || !ch.every(Boolean)) return '';
+    if (n === 1) ch = [`vec3(${ch[0]})`];
+    if (n !== 4) ch.push('1.0');
+    return `\ncssd_color = vec4(${ch.join(', ')});\n`;
 }
 
-// grid, shape, size and the variables of a body, fill left out
 function readSettings(tokens, settings, vars) {
     for (let t of tokens) {
         if (t.type !== 'statement' || t.name === 'fill') continue;
-        let value = t.value.trim();
-        if (t.name === 'grid' || t.name === 'shape' || t.name === 'size') {
-            settings[t.name] = value;
-        } else {
-            vars[t.name.trim()] = value;
-        }
+        (OUTPUTS.has(t.name) ? settings : vars)[t.name.trim()] = t.value.trim();
     }
 }
 
@@ -225,63 +212,86 @@ function substituteVariables(expr, vars, depth = 0, excludeName = null) {
     return expr;
 }
 
-// helpers and GLSL functions that return a float from a vector argument
-const FLOAT_CALL = /^[(-]*(rand|noise|fbm|voronoi|ngon|escape|spiral|dither|length|distance|dot)\(/;
+const MAX_REPEAT = 1024;
+const MAX_REPEAT_WORK = 65536;
+const OUTPUTS = new Set(['grid', 'shape', 'size', 'fill']);
 
-// the type of a loop state: what its first call returns, else a vector
-// constructor or a bare `uv` makes it a vector
-function typeOf(value) {
-    if (FLOAT_CALL.test(value)) return 'float';
-    let m = value.match(/\b(vec[234]|mat2)\(/);
-    return m ? m[1] : (/\buv\b(?!\.)/.test(value) ? 'vec2' : 'float');
+function typeOf(value, c) {
+    let type = transform(value, { type: true, types: c.types });
+    return type === 'int' ? 'float' : type;
 }
 
-function generateIterate(token, vars, warn, types) {
-    let [count, stop] = token.args.map(a => a.trim());
-    let times = parseInt(count);
-    if (isNaN(times)) {
-        warn('iterate() needs a step count');
+function declare(name, value, vars, c, out) {
+    let type = typeOf(value, c);
+    let id = `cssd${++c.id}`;
+    vars[name] = id;
+    c.types[id] = type;
+    out.push(`${type} ${id} = ${transform(value, { expect: type, types: c.types })};`);
+}
+
+function assigned(tokens, vars, out = new Set()) {
+    for (let t of tokens) {
+        let name = t.name.trim();
+        if (t.type === 'statement' && Object.hasOwn(vars, name) && !OUTPUTS.has(name)) out.add(name);
+        else if (t.type === 'block' && name === 'repeat') assigned(t.value, vars, out);
+    }
+    return out;
+}
+
+function generateRepeat(token, vars, c, work) {
+    let [head, ...stops] = token.args.map(a => a.trim());
+    let m = (head || '').match(/^(\d+)(?:\s+as\s+([a-zA-Z_][\w-]*))?$/);
+    let times = m && Number(m[1]);
+    let error = !m ? 'repeat() needs a step count'
+        : times > MAX_REPEAT ? `repeat() step count cannot exceed ${MAX_REPEAT}`
+        : work * times > MAX_REPEAT_WORK ? `nested repeat() work cannot exceed ${MAX_REPEAT_WORK}`
+        : '';
+    if (error) {
+        c.warn(error);
         return '';
     }
-    let body = {};
-    for (let t of token.value) {
-        if (t.type !== 'statement' || t.name === 'fill') continue;
-        body[t.name.trim()] = t.value.trim();
+    let init = [];
+    for (let name of assigned(token.value, vars)) {
+        if (!c.types[vars[name]]) declare(name, substituteVariables(vars[name], vars, 0, name), vars, c, init);
     }
-    let state = Object.keys(body).filter(name => Object.hasOwn(vars, name));
-    let scope = Object.assign({}, vars, body);
-    for (let name of state) scope[name] = name;
-    scope.n = 'n';
-    let expr = (value, expect, from = scope) => transform(substituteVariables(value, from), { expect });
-    // a name an earlier loop already made a GLSL variable keeps its value
-    let init = state
-        .filter(name => vars[name] !== name)
-        .map(name => {
-            let value = expr(vars[name], 'float', vars);
-            types[name] = typeOf(value);
-            return `${types[name]} ${name} = ${value};`;
-        });
-    let next = state.map(name => `${types[name]} ${name}_ = ${expr(body[name], 'float')};`);
-    let assign = state.map(name => `${name} = ${name}_;`);
-    let counter = vars.n === 'n' ? 'n = 0.0;' : 'float n = 0.0;';
-    let leave = stop ? `if (${expr(stop, 'bool')}) break;` : '';
-    for (let name of state) vars[name] = name;
-    vars.n = 'n';
+    let scope = Object.assign({}, vars);
+    let counter = `cssd${++c.id}`;
+    c.types[counter] = 'float';
+    c.readonly.add(counter);
+    if (m[2]) scope[m[2]] = counter;
+
+    let body = [];
+    for (let t of token.value) {
+        let name = t.name.trim();
+        if (t.type === 'block') {
+            if (name === 'repeat') body.push(generateRepeat(t, scope, c, work * times));
+            else c.warn(`repeat() does not allow ${name} blocks`);
+        } else if (OUTPUTS.has(name)) {
+            c.warn(`repeat() does not allow ${name}`);
+        } else if (c.readonly.has(scope[name])) {
+            c.warn(`repeat() index ${name} is read-only`);
+        } else {
+            let value = substituteVariables(t.value.trim(), scope);
+            if (Object.hasOwn(scope, name)) {
+                body.push(`${scope[name]} = ${transform(value, { expect: c.types[scope[name]], types: c.types })};`);
+            } else {
+                declare(name, value, scope, c, body);
+            }
+        }
+    }
+    let stop = stops.map(s => glslOf(s, scope, c, 'bool')).join(' && ');
     return glsl`
         ${init.join('\n')}
-        ${counter}
-        for (int cssd_k = 0; cssd_k < ${times}; cssd_k++) {
-          ${next.join('\n')}
-          ${assign.join('\n')}
-          n += 1.0;
-          ${leave}
+        for (float ${counter} = 0.0; ${counter} < ${float(times)}; ${counter}++) {
+          ${body.join('\n')}
+          ${stop && `if (${stop}) break;`}
         }
     `;
 }
 
-function generateBlock(token, extra, vars, outerShape, warn, types) {
-    if (token.name === 'iterate') {
-        return generateIterate(token, vars, warn, types);
+function generateBlock(token, vars, outerShape, c) {
+    if (token.name === 'repeat') {
+        return generateRepeat(token, vars, c, 1);
     }
     // cond() blocks; match() is the legacy name
     if (token.name !== 'cond' && token.name !== 'match') {
@@ -292,28 +302,19 @@ function generateBlock(token, extra, vars, outerShape, warn, types) {
         return '';
     }
     let cond = args
-        .map(a => transform(substituteVariables(a, vars), { expect: 'bool' }))
+        .map(a => glslOf(a, vars, c, 'bool'))
         .join(' && ');
     let scope = Object.assign({}, vars);
     let settings = {};
     readSettings(token.value, settings, scope);
-    let { shape: blockShape, size: blockSize } = settings;
-    let header = '';
-    if (blockSize) {
-        header += `\nsize = ${transform(substituteVariables(blockSize, scope), { expect: 'float' })};\n`;
-    }
-    if (blockShape) {
-        header += maskFor(blockShape);
-    } else if (blockSize) {
-        header += maskFor(outerShape || 'square');
-    }
+    let { shape, size } = settings;
+    // a size without a shape masks with the enclosing shape, a square by default
+    let header = size ? `\nsize = ${glslOf(size, scope, c, 'float')};\n` : '';
+    if (shape || size) header += maskFor(shape || outerShape || 'square');
     let body = token.value
-        .map(t => {
-            if (t.type === 'block') {
-                return generateBlock(t, extra, scope, blockShape || outerShape, warn, types);
-            }
-            return t.type === 'statement' && t.name === 'fill' ? generateFill(t, extra, scope) : '';
-        })
+        .map(t => t.type === 'block'
+            ? generateBlock(t, scope, shape || outerShape, c)
+            : t.name === 'fill' ? generateFill(t, scope, c) : '')
         .join('');
     return glsl`
     if (${cond}) {
@@ -323,12 +324,12 @@ function generateBlock(token, extra, vars, outerShape, warn, types) {
   `;
 }
 
-function generateShader(input, { x, y }, shape, sizeExpr, vars) {
+function generateShader(state, input, { x, y }, shape, sizeExpr, vars, c) {
     let sizeInit = sizeExpr
-        ? transform(substituteVariables(sizeExpr, vars), { expect: 'float' })
+        ? glslOf(sizeExpr, vars, c, 'float')
         : '1.0';
     let maskInit = shape ? maskFor(shape) : '';
-    let usesTime = /\bt\b/.test(input) || /\bt\b/.test(sizeInit);
+    let usesTime = /\bt\b/.test(state + input) || /\bt\b/.test(sizeInit);
     return glsl`
     precision highp float;
     precision highp int;
@@ -344,6 +345,7 @@ function generateShader(input, { x, y }, shape, sizeExpr, vars) {
         vec4 cssd_color = vec4(0.0);
         float cssd_mask = 1.0;
         ${CELL_INDEX}
+        ${state}
         float size = ${sizeInit};
         ${maskInit}
         ${input}
@@ -357,17 +359,18 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let settings = {};
     let vars = {};
-    let types = {};
+    let c = { extra, warn, id: 0, types: { __proto__: null }, readonly: new Set() };
     readSettings(tokens, settings, vars);
     let grid = settings.grid !== undefined ? parseGrid(settings.grid, Infinity) : { x: 1, y: 1 };
     let shape = settings.shape || (settings.size ? 'square' : null);
+    let state = [];
     let result = [];
     for (let token of tokens) {
         if (token.type === 'statement' && token.name === 'fill') {
-            result.push(generateFill(token, extra, vars));
+            result.push(generateFill(token, vars, c));
         } else if (token.type === 'block') {
-            result.push(generateBlock(token, extra, vars, shape, warn, types));
+            (token.name === 'repeat' ? state : result).push(generateBlock(token, vars, shape, c));
         }
     }
-    return generateShader(result.join(''), grid, shape, settings.size, vars);
+    return generateShader(state.join(''), result.join(''), grid, shape, settings.size, vars, c);
 }

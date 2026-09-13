@@ -161,6 +161,9 @@ test('invalid channel counts and empty fills are dropped', () => {
     assert.equal(color('fill: x/X, y/Y'), '');
     assert.equal(color('fill: x/X, y/Y, 0.5, 1, 0.2'), '');
     assert.equal(color('fill: ;'), '');
+    // a channel that does not parse to anything drops the fill rather than emit `vec3()`
+    assert.equal(color('fill: (;'), '');
+    assert.equal(color('fill: 1, (, 1;'), '');
 });
 
 test('fill substitutes pattern variables, in any declaration order', () => {
@@ -353,45 +356,41 @@ test('variable names with regex metacharacters do not crash generation', () => {
     assert.equal(typeof shader('a[: 1; fill: x'), 'string');
 });
 
-// --- iterate() blocks ---
+// --- repeat() blocks ---
+// a state becomes the GLSL variable cssdN, numbered in order of declaration;
+// the loop counter takes the next number, then the locals of the body
 
-test('iterate declares its state from the outer values and updates it all at once', () => {
-    let s = main('cx: x/X; zx: 0; zy: 1; iterate(8, zx*zx + zy*zy > 4) { zx: zx*zx - zy*zy + cx; zy: 2*zx*zy } fill: hsl(n/8, 1, zx)');
-    assert.match(s, /float zx = 0\.0;\s*float zy = 1\.0;\s*float n = 0\.0;\s*for \(int cssd_k = 0; cssd_k < 8; cssd_k\+\+\)/);
-    // every new value reads the previous state, then all are assigned
-    assert.match(s, /float zx_ = \(\(\(zx \* zx\) - \(zy \* zy\)\) \+ \(x \/ X\)\);\s*float zy_ = \(\(2\.0 \* zx\) \* zy\);\s*zx = zx_;\s*zy = zy_;\s*n \+= 1\.0;/);
-    assert.match(s, /if \(\(\(\(zx \* zx\) \+ \(zy \* zy\)\) > 4\.0\)\) break;/);
-    // after the loop, state and n are the GLSL variables, not the outer macros
-    assert.match(s, /cssd_color = vec4\(vec3\(hsl\(\(n \/ 8\.0\), 1\.0, zx\)\), 1\.0\);/);
+test('repeat updates existing variables sequentially', () => {
+    let s = main('a: 1; b: 2; repeat(1) { a: b; b: a } fill: a, b, 0');
+    assert.match(s, /float cssd1 = 1\.0;\s*float cssd2 = 2\.0;\s*for \(float cssd3 = 0\.0; cssd3 < 1\.0; cssd3\+\+\) \{\s*cssd1 = cssd2;\s*cssd2 = cssd1;/);
+    assert.match(s, /cssd_color = vec4\(cssd1, cssd2, 0\.0, 1\.0\);/);
 });
 
-test('loop state may use the names of the shader internals', () => {
-    // v, k and color were once main()'s own variables; only loop state
-    // becomes a GLSL variable, so only it could collide
-    let s = main('grid: 4; v: 1; k: 2; color: 3; iterate(4) { v: v + k; k: k * 2; color: color + v } fill: hsl(v/9, 1, color/9)');
-    assert.match(s, /float X = 4\.0, Y = 4\.0, I = X \* Y;/);
-    for (let name of ['v', 'k', 'color']) {
-        assert.equal((s.match(new RegExp(`float ${name} = `, 'g')) || []).length, 1, name);
-    }
-    assert.doesNotMatch(s, /vec2 v\b|int k\b|vec4 color\b/);
+test('repeat names new to the body are loop locals, declared once where they appear', () => {
+    let s = main('sum: 0; repeat(4 as k) { value: k*k; sum: sum + value } fill: sum');
+    assert.match(s, /float cssd3 = \(cssd2 \* cssd2\);\s*cssd1 = \(cssd1 \+ cssd3\);/);
+    assert.equal((s.match(/float cssd3 =/g) || []).length, 1);
+    // the local does not leak out
+    assert.match(main('repeat(1) { v: 1 } fill: v'), /cssd_color = vec4\(vec3\(v\), 1\.0\);/);
 });
 
-test('iterate temporaries are inlined, not declared', () => {
-    let s = main('zx: 0; iterate(4) { r2: zx*zx + 1; zx: zx/r2 }');
-    assert.match(s, /float zx_ = \(zx \/ \(\(zx \* zx\) \+ 1\.0\)\);/);
-    assert.doesNotMatch(s, /float r2/);
+test('repeat uses a zero-based named index and checks the stop conditions after the body', () => {
+    let s = main('steps: 0; repeat(8 as k, steps > 3) { steps: k + 1 } fill: steps');
+    assert.match(s, /for \(float cssd2 = 0\.0; cssd2 < 8\.0; cssd2\+\+\) \{\s*cssd1 = \(cssd2 \+ 1\.0\);\s*if \(\(cssd1 > 3\.0\)\) break;/);
+    // several conditions all have to hold, as in cond()
+    assert.match(main('a: 0; b: 0; repeat(3, a > 1, b > 1) { a: a + 1; b: b + 1 }'), /if \(\(cssd1 > 1\.0\) && \(cssd2 > 1\.0\)\) break;/);
 });
 
-test('iterate without a stop condition never breaks early', () => {
-    assert.doesNotMatch(main('zx: 0; iterate(5) { zx: zx + 1 }'), /break/);
+test('repeat without a stop condition never breaks early', () => {
+    assert.doesNotMatch(main('zx: 0; repeat(5) { zx: zx + 1 }'), /break/);
 });
 
-test('iterate without a step count is skipped and reported', () => {
+test('repeat without a valid step count is skipped and reported', () => {
     let messages = [];
-    let s = draw('zx: 0; iterate(zx > 2) { zx: zx + 1 } fill: hsl(zx, 1, 1)', extra, m => messages.push(m));
+    let s = draw('zx: 0; repeat(zx > 2) { zx: zx + 1 } fill: hsl(zx, 1, 1)', extra, m => messages.push(m));
     s = s.slice(s.indexOf('void main()'));
-    assert.deepEqual(messages, ['iterate() needs a step count']);
-    assert.doesNotMatch(s, /for \(int k/);
+    assert.deepEqual(messages, ['repeat() needs a step count']);
+    assert.doesNotMatch(s, /for \(float/);
     // the outer value is still a macro
     assert.match(s, /hsl\(0\.0, 1\.0, 1\.0\)/);
 });
@@ -404,18 +403,61 @@ test('escape() bails out at |z| = 16 with the base-2 smooth count', () => {
     assert.match(shader('fill: escape(0, 0, x, y)'), /if \(r2 > 256\.0\) \{\s*return \(float\(k\) \+ 1\.0 - log2\(log2\(r2\) \/ 8\.0\)\) \/ 96\.0;/);
 });
 
-test('a second iterate continues the same state without redeclaring it', () => {
-    let s = main('zx: 0; iterate(3) { zx: zx + 1 } iterate(2) { zx: zx * 2 }');
-    assert.equal((s.match(/float zx =/g) || []).length, 1);
-    assert.equal((s.match(/float n =/g) || []).length, 1);
-    assert.match(s, /n = 0\.0;\s*for \(int cssd_k = 0; cssd_k < 2; cssd_k\+\+\)/);
+test('a second repeat continues the same state without redeclaring it', () => {
+    let s = main('zx: 0; repeat(3) { zx: zx + 1 } repeat(2) { zx: zx * 2 } fill: zx');
+    assert.equal((s.match(/float cssd1 =/g) || []).length, 1);
+    assert.equal((s.match(/for \(float/g) || []).length, 2);
+    assert.match(s, /cssd1 = \(cssd1 \* 2\.0\);/);
+    assert.match(s, /cssd_color = vec4\(vec3\(cssd1\), 1\.0\);/);
 });
 
-test('iterate inside cond is scoped to that block', () => {
-    let s = main('zx: 0; cond(x > 1) { iterate(2) { zx: zx + 1 } fill: hsl(n, 1, zx) } fill: hsl(zx, 1, 1)');
-    assert.match(s, /if \(\(x > 1\.0\)\) \{[\s\S]*float zx = 0\.0;[\s\S]*hsl\(n, 1\.0, zx\)[\s\S]*\}/);
+test('repeat inside cond is scoped to that block', () => {
+    let s = main('zx: 0; cond(x > 1) { repeat(2) { zx: zx + 1 } fill: hsl(zx, 1, 1) } fill: hsl(zx, 1, 1)');
+    assert.match(s, /if \(\(x > 1\.0\)\) \{\s*float cssd1 = 0\.0;\s*for \(float cssd2[\s\S]*hsl\(cssd1, 1\.0, 1\.0\)[\s\S]*\}/);
     // the outer fill still sees the macro value
     assert.match(s, /hsl\(0\.0, 1\.0, 1\.0\)/);
+});
+
+test('repeat blocks may nest and read both named indices', () => {
+    let s = main('sum: 0; repeat(4 as a) { repeat(3 as b) { sum: sum + a + b } } fill: sum');
+    assert.match(s, /float cssd1 = 0\.0;\s*for \(float cssd2 = 0\.0; cssd2 < 4\.0;[^{]*\{\s*for \(float cssd3 = 0\.0; cssd3 < 3\.0;[^{]*\{\s*cssd1 = \(\(cssd1 \+ cssd2\) \+ cssd3\);/);
+});
+
+test('a repeat index shadows an outer variable without mutating it, and is read-only', () => {
+    let s = main('k: 9; sum: 0; repeat(2 as k) { repeat(1) { sum: sum + k } sum: sum + k } fill: k, sum, 0');
+    assert.equal((s.match(/cssd1 = \(cssd1 \+ cssd2\);/g) || []).length, 2);
+    assert.match(s, /cssd_color = vec4\(9\.0, cssd1, 0\.0, 1\.0\);/);
+    let messages = [];
+    draw('repeat(2 as k) { k: 1 }', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['repeat() index k is read-only']);
+});
+
+test('loop state may use the names of the shader internals', () => {
+    let s = main('x: 0; t: 1; size-2: 3; repeat(1) { x: x + 1; t: t*2; size-2: size-2 + 1 } fill: x, t, size-2');
+    assert.match(s, /float cssd1 = 0\.0;\s*float cssd2 = 1\.0;\s*float cssd3 = 3\.0;/);
+    assert.match(s, /cssd_color = vec4\(cssd1, cssd2, cssd3, 1\.0\);/);
+    assert.match(s, /float t = 0\.0;/);
+});
+
+test('repeat reports pattern outputs and cond blocks in its body', () => {
+    let messages = [];
+    let s = draw('x: 0; repeat(2) { fill: #000; size: .5; cond(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m));
+    assert.deepEqual(messages, [
+        'repeat() does not allow fill',
+        'repeat() does not allow size',
+        'repeat() does not allow cond blocks',
+    ]);
+    assert.doesNotMatch(s.slice(s.indexOf('void main()')), /if \(/);
+});
+
+test('repeat enforces count and nested work limits', () => {
+    let messages = [];
+    let s = draw('repeat(1025) { a: 1 } repeat(512) { repeat(512) { b: 1 } }', extra, m => messages.push(m));
+    assert.deepEqual(messages, [
+        'repeat() step count cannot exceed 1024',
+        'nested repeat() work cannot exceed 65536',
+    ]);
+    assert.equal((s.match(/for \(float/g) || []).length, 1);
 });
 
 // --- vectors ---
@@ -429,22 +471,87 @@ test('a swizzle component is never mistaken for a variable of that name', () => 
     assert.equal(color('b: 3; v: vec3(1, 2, 3); fill: v.b + b'), 'cssd_color = vec4(vec3((vec3(1.0, 2.0, 3.0).b + 3.0)), 1.0);');
 });
 
-test('iterate declares state as a vector when its initial value mentions a constructor or uv', () => {
-    let s = main('z: uv*3.2 - 1.6; c: vec2(-0.8, 0.156); iterate(8, dot(z, z) > 4) { z: vec2(z.x*z.x - z.y*z.y, 2*z.x*z.y) + c }');
-    assert.match(s, /vec2 z = \(\(uv \* 3\.2\) - 1\.6\);/);
-    assert.match(s, /vec2 z_ = \(vec2\(\(\(z\.x \* z\.x\) - \(z\.y \* z\.y\)\), \(\(2\.0 \* z\.x\) \* z\.y\)\) \+ vec2\(-0\.8, 0\.156\)\);/);
-    // a float state stays a float, and a matrix is a matrix
-    assert.match(main('m: 9; r: mat2(1, 0, 0, 1); iterate(2) { m: m + 1; r: r * 2 }'), /float m = 9\.0;\s*mat2 r = mat2\(1\.0, 0\.0, 0\.0, 1\.0\);/);
-    // through a macro, and with arithmetic around the constructor
-    assert.match(main('c: vec2(1, 2); z: c; p: vec2(dv, du)*3; iterate(2) { z: z + c; p: p*2 }'), /vec2 z = vec2\(1\.0, 2\.0\);\s*vec2 p = \(vec2\(dv, du\) \* 3\.0\);/);
+test('repeat state keeps vector and matrix types', () => {
+    let s = main('z: uv*3.2 - 1.6; c: vec2(-0.8, 0.156); repeat(8, dot(z, z) > 4) { z: z + c }');
+    assert.match(s, /vec2 cssd\d+ = \(\(uv \* 3\.2\) - 1\.6\);/);
+    let matrix = main('m: 9; r: mat2(1, 0, 0, 1); repeat(2) { m: m + 1; r: r * 2 }');
+    assert.match(matrix, /float cssd\d+ = 9\.0;\s*mat2 cssd\d+ = mat2\(1\.0, 0\.0, 0\.0, 1\.0\);/);
+    assert.doesNotMatch(matrix, /float\(cssd\d+\)/);
+    assert.match(main('c: vec2(1, 2); z: c; p: vec2(dv, du)*3; repeat(2) { z: z + c; p: p*2 }'), /vec2 cssd\d+ = vec2\(1\.0, 2\.0\);\s*vec2 cssd\d+ = \(vec2\(dv, du\) \* 3\.0\);/);
 });
 
-test('iterate state that starts from a call returning a float is a float', () => {
-    let s = main('s: fbm(uv); d: length(uv - .5); z: fbm(vec2(dx, dy)); iterate(2) { s: s*.5; d: d*2; z: -z }');
-    assert.match(s, /float s = fbm\(uv\);\s*float d = length\(\(uv - \.5\)\);\s*float z = fbm\(vec2\(dx, dy\)\);/);
-    // negated or scaled, still a float; a vector scaled by one stays a vector
-    assert.match(main('s: -fbm(uv); k: noise(uv)*2; p: uv*noise(uv); iterate(2) { s: s*.5; k: k+1; p: p*2 }'),
-        /float s = -fbm\(uv\);\s*float k = \(noise\(uv\) \* 2\.0\);\s*vec2 p = \(uv \* noise\(uv\)\);/);
+test('repeat state recognizes float- and vector-returning calls', () => {
+    let s = main('s: fbm(uv); d: length(uv - .5); p: rot(uv, 1); c: hsl(0, 1, 1); repeat(2) { s: s*.5; d: d*2; p: p*2; c: c*.5 }');
+    assert.match(s, /float cssd\d+ = fbm\(uv\);\s*float cssd\d+ = length\(\(uv - \.5\)\);\s*vec2 cssd\d+ = rot\(uv, 1\.0\);\s*vec3 cssd\d+ = hsl\(0\.0, 1\.0, 1\.0\);/);
+    assert.doesNotMatch(s, /float\(cssd\d+\)/);
+});
+
+test('repeat type inference uses the expression result, not any nested constructor', () => {
+    let s = main('a: max(length(vec2(1)), 1); b: .5*hsl(0, 1, 1); repeat(2) { a: a + 1; b: b*.5 }');
+    assert.match(s, /float cssd\d+ = max\(length\(vec2\(1\.0\)\), 1\.0\);/);
+    assert.match(s, /vec3 cssd\d+ = \(\.5 \* hsl\(0\.0, 1\.0, 1\.0\)\);/);
+});
+
+test('repeat recognizes scaled vector expressions', () => {
+    let s = main('p: .5*uv; q: 2*rot(uv, 1); r: 3*vec2(1); repeat(1) { p: p + uv; q: q + uv; r: r + uv }');
+    assert.match(s, /vec2 cssd\d+ = \(\.5 \* uv\);/);
+    assert.match(s, /vec2 cssd\d+ = \(2\.0 \* rot\(uv, 1\.0\)\);/);
+    assert.match(s, /vec2 cssd\d+ = \(3\.0 \* vec2\(1\.0\)\);/);
+});
+
+test('repeat does not infer a nested vector helper as the result type', () => {
+    let s = main('v: max(length(hsl(0, 1, 1)), 1); repeat(1) { v: v + 1 }');
+    assert.match(s, /float cssd\d+ = max\(length\(hsl\(0\.0, 1\.0, 1\.0\)\), 1\.0\);/);
+});
+
+test('repeat recognizes vectors on either side of arithmetic and narrowed swizzles', () => {
+    let s = main('p: 1 - uv; v: vec3(1); q: v.xy; repeat(2) { p: p*.5; q: q + uv }');
+    assert.match(s, /vec2 cssd\d+ = \(1\.0 - uv\);/);
+    assert.match(s, /vec2 cssd\d+ = vec3\(1\.0\)\.xy;/);
+});
+
+test('repeat initializes and updates bool state without float casts', () => {
+    let s = main('flag: x > 1; repeat(1) { flag: not flag; local: y > 1 }');
+    assert.match(s, /bool cssd\d+ = \(x > 1\.0\);/);
+    assert.match(s, /cssd\d+ = !cssd\d+;/);
+    assert.match(s, /bool cssd\d+ = \(y > 1\.0\);/);
+    assert.doesNotMatch(s, /bool cssd\d+ = float\(/);
+});
+
+test('fill and size read repeat state by its type', () => {
+    let s = main('flag: x > 1; repeat(1) { flag: not flag } fill: flag*.5, 0, 0');
+    assert.match(s, /cssd_color = vec4\(\(float\(cssd1\) \* \.5\), 0\.0, 0\.0, 1\.0\);/);
+    s = main('p: uv; repeat(1) { p: p*2 } cond(x > 1) { size: length(p); fill: p.x, p.y, 0 }');
+    assert.match(s, /size = length\(cssd1\);/);
+    assert.match(s, /cssd_color = vec4\(cssd1\.x, cssd1\.y, 0\.0, 1\.0\);/);
+});
+
+test('the size is set after the repeat state it may read', () => {
+    let s = main('s: 1; repeat(4) { s: s*1.1 } size: s; fill: #000');
+    assert.match(s, /float cssd1 = 1\.0;\s*for \(float cssd2[^}]*\}\s*float size = cssd1;\s*cssd_mask = cssd_shape/);
+    // fills and cond blocks that follow the size may set it
+    s = main('s: 1; fill: s; repeat(4) { s: s*1.1 } cond(x > 1) { size: s }');
+    assert.match(s, /float size = 1\.0;\s*cssd_color = vec4\(vec3\(1\.0\), 1\.0\);\s*if \(\(x > 1\.0\)\) \{\s*size = cssd1;/);
+});
+
+test('repeat recognizes bool literals and GLSL vector comparisons', () => {
+    let s = main('a: true; b: any(lessThan(uv, vec2(.5))); repeat(1) { a: not a; b: not b }');
+    assert.match(s, /bool cssd\d+ = true;/);
+    assert.match(s, /bool cssd\d+ = any\(lessThan\(uv, vec2\(\.5\)\)\);/);
+});
+
+test('repeat recognizes vector bool results', () => {
+    let s = main('a: isnan(uv); b: isinf(vec3(1)); c: bvec2(true); repeat(1) { a: not a; b: b; c: c }');
+    assert.match(s, /bvec2 cssd\d+ = isnan\(uv\);/);
+    assert.match(s, /bvec3 cssd\d+ = isinf\(vec3\(1\.0\)\);/);
+    assert.match(s, /bvec2 cssd\d+ = bvec2\(true\);/);
+    assert.match(s, /cssd\d+ = not\(cssd\d+\);/);
+});
+
+test('repeat keeps int expressions in the float pattern number model', () => {
+    let s = main('a: int(x); repeat(2) { a: a + 1 }');
+    assert.match(s, /float cssd\d+ = float\(int\(x\)\);/);
+    assert.match(s, /cssd\d+ = \(cssd\d+ \+ 1\.0\);/);
 });
 
 // --- cond() as a function ---

@@ -20,17 +20,33 @@ const ALIAS = new Map([
     ['and', '&&'], ['or', '||'], ['not', 'not']
 ]);
 
-const TWO_CHAR_OPS = new Set(['<<', '>>', '==', '!=', '<=', '>=', '&&', '||']);
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=']);
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 
 const ZERO = { type: 'Lit', val: '0' };
 
+const CALL_TYPES = new Map();
+const typeList = {
+    float: 'rand noise fbm voronoi ngon escape spiral dither length distance dot determinant',
+    vec2: 'rot',
+    vec3: 'hsl hsv',
+    bool: 'any all',
+    bvec: 'isnan isinf lessThan lessThanEqual greaterThan greaterThanEqual equal notEqual',
+};
+for (const [type, names] of Object.entries(typeList)) {
+    for (const name of names.split(' ')) CALL_TYPES.set(name, type);
+}
+
+const RANK = [
+    'bool', 'int', 'float', 'mat2', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'
+];
+
+const isVector = type => /^(vec|mat)/.test(type);
 const isFactor = t => t && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
 
 function cast(out, res, exp) {
-    return (exp && exp !== res) ? `${exp}(${out})` : out;
+    return !exp || exp === res || exp === 'float' && /^b?vec|^mat/.test(res) ? out : `${exp}(${out})`;
 }
 
 // #rgb and #rrggbb are vec3 literals
@@ -48,8 +64,7 @@ function lex(code) {
         const last = tokens[tokens.length - 1];
         if (t.isSpace()) {
             touching = false;
-        } else if (touching && (TWO_CHAR_OPS.has(last.value + t.value)
-                || last.isWord() && t.isNumber() && !ALIAS.has(last.value.toLowerCase()))) {
+        } else if (touching && (PREC[last.value + t.value] || last.isWord() && t.isNumber() && !ALIAS.has(last.value.toLowerCase()))) {
             last.value += t.value;
         } else {
             tokens.push(t);
@@ -62,7 +77,7 @@ function lex(code) {
     return tokens;
 }
 
-export default function transform(code, { expect = null } = {}) {
+export default function transform(code, { expect = null, type = false, types = { __proto__: null } } = {}) {
     const tokens = lex(code);
 
     let pos = 0;
@@ -139,14 +154,18 @@ export default function transform(code, { expect = null } = {}) {
             return cast(n.val.includes('.') ? n.val : n.val + '.0', 'float', exp);
         }
         if (n.type === 'Var') {
-            return cast(n.val, 'float', exp);
+            return cast(n.val, infer(n), exp);
         }
         if (n.type === 'Member') {
-            return cast(gen(n.left) + n.val, 'float', exp);
+            return cast(gen(n.left) + n.val, infer(n), exp);
         }
         if (n.type === 'Pre') {
             if (!n.right) return gen(ZERO, exp);
-            if (n.val === '!') return cast(`!${gen(n.right, 'bool')}`, 'bool', exp);
+            if (n.val === '!') {
+                const type = infer(n);
+                if (type.startsWith('bvec')) return cast(`not(${gen(n.right, type)})`, type, exp);
+                return cast(`!${gen(n.right, 'bool')}`, 'bool', exp);
+            }
             if (n.val === '~') return cast(`~${gen(n.right, 'int')}`, 'int', exp);
             // minus keeps the type of its operand, and a bool has no minus
             if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
@@ -162,9 +181,10 @@ export default function transform(code, { expect = null } = {}) {
             return out;
         }
         if (n.type === 'Call') {
-            const args = n.args.map(a => gen(a, 'float')).join(', ');
+            const arg = /^b/.test(infer(n)) ? null : 'float';
+            const args = n.args.map(a => gen(a, arg)).join(', ');
             if (n.val === 'float') return cast(args, 'float', exp);
-            return cast(`${n.val}(${args})`, n.val === 'int' ? 'int' : 'float', exp);
+            return cast(`${n.val}(${args})`, infer(n), exp);
         }
 
         const op = n.val;
@@ -175,17 +195,59 @@ export default function transform(code, { expect = null } = {}) {
             return cast(out, 'bool', exp);
         }
 
-        // the type an operator yields and the type it wants its operands in
-        let res = 'float', arg = 'float';
-        if (INT_OPS.has(op)) res = arg = 'int';
-        else if (op === '&&' || op === '||') res = arg = 'bool';
-        else if (COMPARISON_OPS.has(op)) res = 'bool';
-
+        const res = infer(n);
+        const arg = COMPARISON_OPS.has(op) || isVector(res) ? 'float' : res;
         const l = gen(n.left, arg);
         const r = gen(n.right, arg);
         return cast(op === '%' ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`, res, exp);
     }
 
-    try { return gen(parse(), expect); }
+    // the GLSL type of a node; `.xy` is a vec2, `.x` a float
+    const swizzle = s => s.length > 2 ? `vec${s.length - 1}` : 'float';
+    function infer(n) {
+        return n ? n.t || (n.t = inferType(n)) : 'float';
+    }
+    function inferType(n) {
+        if (n.type === 'Lit') return 'float';
+        if (n.type === 'Var') {
+            if (n.val === 'true' || n.val === 'false') return 'bool';
+            const dot = n.val.indexOf('.');
+            if (dot > 0) return swizzle(n.val.slice(dot));
+            return types[n.val] || (n.val === 'uv' ? 'vec2' : 'float');
+        }
+        if (n.type === 'Member') return swizzle(n.val);
+        if (n.type === 'Pre') {
+            if (n.val === '~') return 'int';
+            const right = infer(n.right);
+            // `not` of a bvec is a bvec, of anything else a bool
+            if (n.val === '!') return right.startsWith('bvec') ? right : 'bool';
+            return right;
+        }
+        if (n.type === 'Call') {
+            const known = CALL_TYPES.get(n.val);
+            if (known === 'bvec') return infer(n.args[0]).replace(/^vec/, 'bvec').replace('float', 'bool');
+            if (known) return known;
+            if (/^(b?vec[234]|mat2|float|int|bool)$/.test(n.val)) return n.val;
+            // cond(t1, v1, …, else) yields one of its values
+            if (n.val === 'cond') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
+            // any other function returns the type of its widest argument, a number at least
+            return widest(n.args.map(infer), true);
+        }
+        if (COMPARISON_OPS.has(n.val) || n.val === '&&' || n.val === '||') return 'bool';
+        if (INT_OPS.has(n.val)) return 'int';
+        // arithmetic is done in floats unless a vector is involved
+        return widest([infer(n.left), infer(n.right)], true);
+    }
+
+    // the widest of the types; `number` settles for a float unless a vector is among them
+    function widest(values, number) {
+        const res = values.reduce((a, b) => RANK.indexOf(b) > RANK.indexOf(a) ? b : a, values[0] || 'float');
+        return number && !isVector(res) ? 'float' : res;
+    }
+
+    try {
+        const tree = parse();
+        return type ? infer(tree) : gen(tree, expect);
+    }
     catch (e) { console.error(e); return code; }
 }

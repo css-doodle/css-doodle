@@ -23,7 +23,7 @@ function parseSelector(tokens) {
             let inner = group.slice(open + 1, group[close - 1].isSymbol(')') ? close - 1 : close);
             args = itemsOf(inner).map(textOf);
         }
-        let key = word.value + '(' + args.join('') + ')';
+        let key = word.value + '(' + args.join(',') + ')';
         if (!seen.has(key)) {
             seen.add(key);
             selectors.push({ name: word.value, args });

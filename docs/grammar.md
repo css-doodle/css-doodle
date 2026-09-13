@@ -529,11 +529,12 @@ command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
 ```
 
 ```
-pattern-body  = { name ':' expression ';' | cond-block | iterate-block }
+pattern-body  = { name ':' expression ';' | cond-block | repeat-block }
 cond-block    = cond { ',' cond } '{' pattern-body '}'
 cond          = 'cond' '(' expression ')'
-iterate-block = 'iterate' '(' integer [ ',' expression ] ')'
-                '{' { name ':' expression ';' } '}'
+repeat-block  = 'repeat' '(' integer [ 'as' name ]
+                { ',' expression } ')' '{' repeat-body '}'
+repeat-body   = { name ':' expression ';' | repeat-block }
 ```
 
 A `@pattern` body declares the parameters `grid`, `shape`, `size` and
@@ -601,31 +602,43 @@ same functions taking vectors.
 
 ```css
 @pattern(
-  cx: uv.x*3 - 2.2; cy: uv.y*2.6 - 1.3;
-  zx: 0; zy: 0;
-  iterate(96, zx*zx + zy*zy > 4) {
-    zx: zx*zx - zy*zy + cx;
-    zy: 2*zx*zy + cy;
+  c: vec2(uv.x*3 - 2.2, uv.y*2.6 - 1.3);
+  z: vec2(0);
+  steps: 0;
+  repeat(96 as n, dot(z, z) > 4) {
+    z: vec2(z.x*z.x - z.y*z.y, 2*z.x*z.y) + c;
+    steps: n + 1;
   }
-  fill: hsl(n/48, 0.8, 0.5);
-  cond(n = 96) { fill: #000 }
+  fill: hsl(steps/48, 0.8, 0.5);
+  cond(steps = 96) { fill: #000 }
 )
 ```
 
-An `iterate` block runs its declarations a fixed number of times. A
-name that is also declared outside the block is loop state: it starts
-from its outer value, and every step assigns all state at once from
-the previous values, so the two lines above are the formula z² + c.
-Other names are temporaries of one step, and the parameters are not
-read. A state is a vector when its initial value mentions a vector
-constructor or `uv`, otherwise a float, so `z: vec2(0)` and
-`z: uv*3 - 1.5` are both `vec2`. A value that starts with a call
-returning a float, such as `fbm(uv)` or `length(uv)`, is a float.
-`n` counts the steps, inside the block and after it. The second
-argument stops the loop once it holds, checked after each step, so
-`n` equal to the count means it never did. After the block, the state
-names and `n` hold the results. A block without a step count is
-skipped and reported (§11).
+A `repeat` block runs its declarations a fixed number of times, in
+source order. Assigning a name declared outside the block updates that
+state immediately, so later declarations in the same iteration read
+the new value. A new name is local to the block and is visible from its
+first declaration onward. Use such locals to preserve old values when
+several states must update together.
+
+The optional name after `as` is a read-only, zero-based index local to
+the loop. Nested `repeat` blocks may name separate indices and read the
+outer one. There is no implicit index. Store `index + 1` in an outer
+variable, as `steps` does above, when the completed step count is needed
+after the loop. The arguments after the count stop the loop once they
+all hold, checked after each iteration. Counts greater than 1024 and a
+statically nested product greater than 65536 are skipped and reported.
+A block without a valid integer count is also skipped and reported
+(§11).
+
+A state's type follows its initial expression. Pattern numbers,
+including values produced with integer operations, are stored as
+floats; boolean, boolean-vector, vector and `mat2` values keep those
+types. The type remains fixed while the state is updated. `repeat` may
+nest, including inside `cond`; declarations made inside either block do
+not leak out. Pattern outputs such as `fill`, `shape`, `size` and
+`grid` are not allowed inside `repeat`, nor are conditional blocks.
+Names starting with `cssd` are reserved for the generated code.
 
 ### 9.4 Shaders
 
@@ -764,7 +777,7 @@ component:
 | `draw:` on an element that has no path length                    | the declaration is dropped                                  |
 | `animate name:` without a duration after `/`, or `draw:` without one | the `<animate>` is emitted without `dur`                |
 | a timing word that is not a time, a count, an easing or a fill   | the word is dropped                                         |
-| an `iterate` block without a step count                          | the block is skipped                                        |
+| a `repeat` block without a valid step count, or over its work limit | the block is skipped                                     |
 
 The first four are found while parsing, which continues. The others
 are found while the CSS is generated, and the last one when its
