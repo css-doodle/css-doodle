@@ -4,6 +4,19 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import transform from './glsl-math-transformer.js';
 import { glsl } from '../lib/tagged-template.js';
 
+const MAX_REPEAT = 1024;
+const MAX_REPEAT_WORK = 65536;
+
+// the statements that drive the shader; every other statement names a variable
+const OUTPUTS = new Set(['grid', 'shape', 'size', 'fill']);
+
+// the distance from the cell center a shape masks by
+const MASKS = {
+    __proto__: null,
+    circle: 'length(vec2(du, dv))',
+    square: 'max(abs(du), abs(dv))',
+};
+
 const CELL_INDEX = glsl`
     float dx = x - (X + 1.0) * 0.5;
     float dy = y - (Y + 1.0) * 0.5;
@@ -156,130 +169,126 @@ function float(n) {
 }
 
 function maskFor(shape) {
-    let d = shape === 'circle' ? 'length(vec2(du, dv))' : shape === 'square' ? 'max(abs(du), abs(dv))' : '';
+    let d = MASKS[shape];
     return `\ncssd_mask = ${d ? `cssd_shape(${d}, size)` : '1.0'};\n`;
 }
 
-function resolveAlias(value, vars) {
-    for (let i = 0; i < 10; i++) {
-        if (!/^[a-zA-Z_][\w-]*$/.test(value) || !Object.hasOwn(vars, value)) break;
-        value = String(vars[value]).trim();
-    }
-    return value;
-}
-
-function glslOf(value, vars, c, expect) {
-    return transform(substituteVariables(value, vars), { expect, types: c.types });
-}
-
-function generateFill(token, vars, c) {
-    let value = resolveAlias(token.value.trim(), vars);
-    if (!value) return '';
-    let rgba = c.extra.getRgbaColor(value);
-    let ch = rgba
-        ? [rgba.r / 255, rgba.g / 255, rgba.b / 255, rgba.a].map(float)
-        : parseValueGroup(value, { symbol: ',', noSpace: true })
-            .map(v => v.trim())
-            .filter(Boolean)
-            .map(v => glslOf(v, vars, c, 'float'));
-    let n = ch.length;
-    if (!(n === 1 || n === 3 || n === 4) || !ch.every(Boolean)) return '';
-    if (n === 1) ch = [`vec3(${ch[0]})`];
-    if (n !== 4) ch.push('1.0');
-    return `\ncssd_color = vec4(${ch.join(', ')});\n`;
-}
-
-function readSettings(tokens, settings, vars) {
-    for (let t of tokens) {
-        if (t.type !== 'statement' || t.name === 'fill') continue;
-        (OUTPUTS.has(t.name) ? settings : vars)[t.name.trim()] = t.value.trim();
-    }
-}
-
-function substituteVariables(expr, vars, depth = 0, excludeName = null) {
+// Variables are macros: every name in the expression is replaced by its
+// (expanded) value. Longest names first so `size-2` is not read as `size - 2`.
+function expand(expr, vars, depth = 0, self = null) {
     if (depth > 10) return expr;
     let names = Object.keys(vars).sort((a, b) => b.length - a.length);
     for (let name of names) {
-        if (name === excludeName) continue;
+        if (name === self) continue;
         // not after a letter or a dot, and not inside a #hex literal: 2p is 2 × p,
         // the b in c.b is a swizzle, the a in #f0a is a color
-        let regex = new RegExp(`(?<![a-zA-Z_.])(?<!#[0-9a-fA-F]*)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-        if (regex.test(expr)) {
-            let resolved = substituteVariables(vars[name], vars, depth + 1, name);
-            expr = expr.replace(regex, `(${resolved})`);
-        }
+        let escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let regex = new RegExp(`(?<![a-zA-Z_.])(?<!#[0-9a-fA-F]*)${escaped}\\b`, 'g');
+        let value;
+        expr = expr.replace(regex, () => value ??= `(${expand(vars[name], vars, depth + 1, name)})`);
     }
     return expr;
 }
 
-const MAX_REPEAT = 1024;
-const MAX_REPEAT_WORK = 65536;
-const OUTPUTS = new Set(['grid', 'shape', 'size', 'fill']);
-
-function typeOf(value, c) {
-    let type = transform(value, { type: true, types: c.types });
-    return type === 'int' ? 'float' : type;
+function glslOf(value, vars, ctx, expect) {
+    return transform(expand(value, vars), { expect, types: ctx.types });
 }
 
-function declare(name, value, vars, c, out) {
-    let type = typeOf(value, c);
-    let id = `cssd${++c.id}`;
-    vars[name] = id;
-    c.types[id] = type;
-    out.push(`${type} ${id} = ${transform(value, { expect: type, types: c.types })};`);
-}
-
-function assigned(tokens, vars, out = new Set()) {
+// splits a body into its shader outputs and its variables
+function readStatements(tokens, vars) {
+    let settings = {};
     for (let t of tokens) {
-        let name = t.name.trim();
-        if (t.type === 'statement' && Object.hasOwn(vars, name) && !OUTPUTS.has(name)) out.add(name);
-        else if (t.type === 'block' && name === 'repeat') assigned(t.value, vars, out);
+        if (t.type !== 'statement' || t.name === 'fill') continue;
+        (OUTPUTS.has(t.name) ? settings : vars)[t.name] = t.value;
     }
-    return out;
+    return settings;
 }
 
-function generateRepeat(token, vars, c, work) {
-    let [head, ...stops] = token.args.map(a => a.trim());
-    let m = (head || '').match(/^(\d+)(?:\s+as\s+([a-zA-Z_][\w-]*))?$/);
+// `c: red; fill: c` — a fill naming a variable takes its value, so that
+// CSS colors stay static
+function resolveAlias(value, vars) {
+    for (let i = 0; i < 10 && Object.hasOwn(vars, value); i++) {
+        value = vars[value];
+    }
+    return value;
+}
+
+function generateFill(token, vars, ctx) {
+    let value = resolveAlias(token.value, vars);
+    if (!value) return '';
+    let rgba = ctx.extra.getRgbaColor(value);
+    let channels = rgba
+        ? [rgba.r / 255, rgba.g / 255, rgba.b / 255, rgba.a].map(float)
+        : parseValueGroup(value, { symbol: ',', noSpace: true })
+            .map(v => v.trim())
+            .filter(Boolean)
+            .map(v => glslOf(v, vars, ctx, 'float'));
+    let n = channels.length;
+    if (!(n === 1 || n === 3 || n === 4) || !channels.every(Boolean)) return '';
+    if (n === 1) channels = [`vec3(${channels[0]})`];
+    if (n !== 4) channels.push('1.0');
+    return `\ncssd_color = vec4(${channels.join(', ')});\n`;
+}
+
+// Turns a variable into GLSL state: a typed `cssdN` the name points to from
+// now on. Ints join the float number model of the pattern language.
+function declare(name, value, vars, ctx) {
+    let type = transform(value, { type: true, types: ctx.types });
+    if (type === 'int') type = 'float';
+    let id = vars[name] = `cssd${++ctx.id}`;
+    ctx.types[id] = type;
+    return `${type} ${id} = ${transform(value, { expect: type, types: ctx.types })};`;
+}
+
+// the outer variables a repeat body, including its nested repeats, writes
+function assigned(tokens, vars, names = new Set()) {
+    for (let t of tokens) {
+        if (t.type === 'block' && t.name === 'repeat') assigned(t.value, vars, names);
+        else if (t.type === 'statement' && Object.hasOwn(vars, t.name) && !OUTPUTS.has(t.name)) names.add(t.name);
+    }
+    return names;
+}
+
+function generateRepeat(token, vars, ctx, work) {
+    let [head = '', ...stops] = token.args;
+    let m = head.match(/^(\d+)(?:\s+as\s+([a-zA-Z_][\w-]*))?$/);
     let times = m && Number(m[1]);
     let error = !m ? 'repeat() needs a step count'
         : times > MAX_REPEAT ? `repeat() step count cannot exceed ${MAX_REPEAT}`
         : work * times > MAX_REPEAT_WORK ? `nested repeat() work cannot exceed ${MAX_REPEAT_WORK}`
         : '';
     if (error) {
-        c.warn(error);
+        ctx.warn(error);
         return '';
     }
+    // the variables the loop writes are declared once, before it, in the enclosing scope
     let init = [];
     for (let name of assigned(token.value, vars)) {
-        if (!c.types[vars[name]]) declare(name, substituteVariables(vars[name], vars, 0, name), vars, c, init);
+        if (!ctx.types[vars[name]]) init.push(declare(name, expand(vars[name], vars, 0, name), vars, ctx));
     }
-    let scope = Object.assign({}, vars);
-    let counter = `cssd${++c.id}`;
-    c.types[counter] = 'float';
-    c.readonly.add(counter);
+    let scope = { ...vars };
+    let counter = `cssd${++ctx.id}`;
+    ctx.types[counter] = 'float';
+    ctx.readonly.add(counter);
     if (m[2]) scope[m[2]] = counter;
 
     let body = [];
     for (let t of token.value) {
-        let name = t.name.trim();
+        let { name } = t;
         if (t.type === 'block') {
-            if (name === 'repeat') body.push(generateRepeat(t, scope, c, work * times));
-            else c.warn(`repeat() does not allow ${name} blocks`);
+            if (name === 'repeat') body.push(generateRepeat(t, scope, ctx, work * times));
+            else ctx.warn(`repeat() does not allow ${name} blocks`);
         } else if (OUTPUTS.has(name)) {
-            c.warn(`repeat() does not allow ${name}`);
-        } else if (c.readonly.has(scope[name])) {
-            c.warn(`repeat() index ${name} is read-only`);
+            ctx.warn(`repeat() does not allow ${name}`);
+        } else if (ctx.readonly.has(scope[name])) {
+            ctx.warn(`repeat() index ${name} is read-only`);
+        } else if (Object.hasOwn(scope, name)) {
+            body.push(`${scope[name]} = ${glslOf(t.value, scope, ctx, ctx.types[scope[name]])};`);
         } else {
-            let value = substituteVariables(t.value.trim(), scope);
-            if (Object.hasOwn(scope, name)) {
-                body.push(`${scope[name]} = ${transform(value, { expect: c.types[scope[name]], types: c.types })};`);
-            } else {
-                declare(name, value, scope, c, body);
-            }
+            body.push(declare(name, expand(t.value, scope), scope, ctx));
         }
     }
-    let stop = stops.map(s => glslOf(s, scope, c, 'bool')).join(' && ');
+    let stop = stops.map(s => glslOf(s, scope, ctx, 'bool')).join(' && ');
     return glsl`
         ${init.join('\n')}
         for (float ${counter} = 0.0; ${counter} < ${float(times)}; ${counter}++) {
@@ -289,34 +298,20 @@ function generateRepeat(token, vars, c, work) {
     `;
 }
 
-function generateBlock(token, vars, outerShape, c) {
-    if (token.name === 'repeat') {
-        return generateRepeat(token, vars, c, 1);
-    }
-    if (token.name !== 'match') {
-        return '';
-    }
-    let args = token.args.map(a => a.trim()).filter(Boolean);
-    if (!args.length) {
-        return '';
-    }
+function generateMatch(token, vars, outerShape, ctx) {
+    let args = token.args.filter(Boolean);
+    if (!args.length) return '';
     if (args.length > 1) {
-        c.warn('match() needs one expression');
+        ctx.warn('match() needs one expression');
         return '';
     }
-    let cond = glslOf(args[0], vars, c, 'bool');
-    let scope = Object.assign({}, vars);
-    let settings = {};
-    readSettings(token.value, settings, scope);
-    let { shape, size } = settings;
+    let cond = glslOf(args[0], vars, ctx, 'bool');
+    let scope = { ...vars };
+    let { shape, size } = readStatements(token.value, scope);
     // a size without a shape masks with the enclosing shape, a square by default
-    let header = size ? `\nsize = ${glslOf(size, scope, c, 'float')};\n` : '';
+    let header = size ? `\nsize = ${glslOf(size, scope, ctx, 'float')};\n` : '';
     if (shape || size) header += maskFor(shape || outerShape || 'square');
-    let body = token.value
-        .map(t => t.type === 'block'
-            ? generateBlock(t, scope, shape || outerShape, c)
-            : t.name === 'fill' ? generateFill(t, scope, c) : '')
-        .join('');
+    let body = token.value.map(t => generate(t, scope, shape || outerShape, ctx)).join('');
     return glsl`
     if (${cond}) {
       ${header}
@@ -325,12 +320,16 @@ function generateBlock(token, vars, outerShape, c) {
   `;
 }
 
-function generateShader(state, input, { x, y }, shape, sizeExpr, vars, c) {
-    let sizeInit = sizeExpr
-        ? glslOf(sizeExpr, vars, c, 'float')
-        : '1.0';
-    let maskInit = shape ? maskFor(shape) : '';
-    let usesTime = /\bt\b/.test(state + input) || /\bt\b/.test(sizeInit);
+// the code a body item emits; variables and settings are read by readStatements
+function generate(token, vars, shape, ctx) {
+    if (token.type === 'statement') return token.name === 'fill' ? generateFill(token, vars, ctx) : '';
+    if (token.name === 'repeat') return generateRepeat(token, vars, ctx, 1);
+    if (token.name === 'match') return generateMatch(token, vars, shape, ctx);
+    return '';
+}
+
+function generateShader({ grid, state, size, mask, body }) {
+    let usesTime = /\bt\b/.test([state, size, body].join('\n'));
     return glsl`
     precision highp float;
     precision highp int;
@@ -338,7 +337,7 @@ function generateShader(state, input, { x, y }, shape, sizeExpr, vars, c) {
     ${HELPERS}
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-        float X = ${float(x)}, Y = ${float(y)}, I = X * Y;
+        float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
         float i = x + (y - 1.0) * X;
@@ -347,9 +346,9 @@ function generateShader(state, input, { x, y }, shape, sizeExpr, vars, c) {
         float cssd_mask = 1.0;
         ${CELL_INDEX}
         ${state}
-        float size = ${sizeInit};
-        ${maskInit}
-        ${input}
+        float size = ${size};
+        ${mask}
+        ${body}
         cssd_color.a *= cssd_mask;
         FragColor = cssd_color;
     }
@@ -358,20 +357,23 @@ function generateShader(state, input, { x, y }, shape, sizeExpr, vars, c) {
 
 export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
-    let settings = {};
     let vars = {};
-    let c = { extra, warn, id: 0, types: { __proto__: null }, readonly: new Set() };
-    readSettings(tokens, settings, vars);
-    let grid = settings.grid !== undefined ? parseGrid(settings.grid, Infinity) : { x: 1, y: 1 };
+    let ctx = { extra, warn, id: 0, types: { __proto__: null }, readonly: new Set() };
+    let settings = readStatements(tokens, vars);
     let shape = settings.shape || (settings.size ? 'square' : null);
+    // top-level repeats run before the size and the fills, which read the state
+    // they leave behind; a fill written before a repeat still sees the initial value
     let state = [];
-    let result = [];
-    for (let token of tokens) {
-        if (token.type === 'statement' && token.name === 'fill') {
-            result.push(generateFill(token, vars, c));
-        } else if (token.type === 'block') {
-            (token.name === 'repeat' ? state : result).push(generateBlock(token, vars, shape, c));
-        }
+    let body = [];
+    for (let t of tokens) {
+        let out = t.type === 'block' && t.name === 'repeat' ? state : body;
+        out.push(generate(t, vars, shape, ctx));
     }
-    return generateShader(state.join(''), result.join(''), grid, shape, settings.size, vars, c);
+    return generateShader({
+        grid: settings.grid === undefined ? { x: 1, y: 1 } : parseGrid(settings.grid, Infinity),
+        state: state.join(''),
+        size: settings.size ? glslOf(settings.size, vars, ctx, 'float') : '1.0',
+        mask: shape ? maskFor(shape) : '',
+        body: body.join(''),
+    });
 }
