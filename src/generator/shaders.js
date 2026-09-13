@@ -60,6 +60,7 @@ export function generateFragment(fragment, textures) {
     const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
     const hasTexture2d = /texture2D\s*\(/.test(fragment);
     const hasPos = /\bpos\b/.test(fragment);
+    const declaresPos = /\b(?:[biu]?vec[234]|float|int|bool|mat[234])\s+pos\b/.test(fragment);
     const snippets = ['#version 300 es'];
 
     const push = (line) => {
@@ -106,7 +107,7 @@ export function generateFragment(fragment, textures) {
         push('#define texture2D texture');
     }
 
-    if (hasPos) {
+    if (hasPos && !declaresPos) {
         push('#define pos ((gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y))');
     }
 

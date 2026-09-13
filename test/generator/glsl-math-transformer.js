@@ -18,6 +18,8 @@ test('numeric coefficients imply multiplication', () => {
     assert.equal(transform('2π'), '(2.0 * PI)');
     assert.equal(transform('πt'), '(PI * t)');
     assert.equal(transform('2πt'), '((2.0 * PI) * t)');
+    assert.equal(transform('tπ'), '(t * PI)');
+    assert.equal(transform('sin(t)π'), '(sin(t) * PI)');
     assert.equal(transform('sin(2πt)'), 'sin(((2.0 * PI) * t))');
     assert.equal(
         transform('.5 + .5 * sin(dr - 2t)', { expect: 'float' }),
@@ -253,6 +255,25 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
     assert.equal(transform('match(x > 1, 2, 3) + 1', { expect: 'float' }), '(((x > 1.0) ? 2.0 : 3.0) + 1.0)');
     // vector branches pass through, and a swizzle applies to the result
     assert.equal(transform('match(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
+});
+
+test('a bool from a vector or bvec uses any()', () => {
+    assert.equal(transform('uv', { expect: 'bool' }), 'any(bvec2(uv))');
+    assert.equal(transform('lessThan(uv, vec2(.5))', { expect: 'bool' }), 'any(lessThan(uv, vec2(.5)))');
+    assert.equal(transform('isnan(uv) and isinf(uv)', { expect: 'bool' }), '(any(isnan(uv)) && any(isinf(uv)))');
+});
+
+test('vector comparisons rewrite to equal/lessThan', () => {
+    assert.equal(transform('uv == vec2(0)', { expect: 'bool' }), 'all(equal(uv, vec2(0.0)))');
+    assert.equal(transform('uv != vec2(0)', { expect: 'bool' }), 'any(notEqual(uv, vec2(0.0)))');
+    assert.equal(transform('uv < vec2(1)', { expect: 'bool' }), 'all(lessThan(uv, vec2(1.0)))');
+    assert.equal(transform('uv <= .5', { expect: 'bool' }), 'all(lessThanEqual(uv, vec2(.5)))');
+    assert.equal(transform('0 < uv < 1', { expect: 'bool' }), '(all(lessThan(vec2(0.0), uv)) && all(lessThan(uv, vec2(1.0))))');
+});
+
+test('float() of a vector is not stripped', () => {
+    assert.equal(transform('float(uv)'), 'float(uv)');
+    assert.equal(transform('float(x > 1)'), 'float((x > 1.0))');
 });
 
 test('names map to GLSL identifiers, swizzles and calls left alone', () => {

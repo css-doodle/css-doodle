@@ -66,6 +66,10 @@ test('a non-comparison root is bool-coerced', () => {
     assert.equal(condition('match(x) { fill: red }'), 'if (bool(x)) {');
     assert.equal(condition('match(sin(x)) { fill: red }'), 'if (bool(sin(x))) {');
     assert.equal(condition('match(int(x)) { fill: red }'), 'if (bool(int(x))) {');
+    assert.equal(condition('match(uv) { fill: red }'), 'if (any(bvec2(uv))) {');
+    assert.equal(condition('match(lessThan(uv, vec2(.5))) { fill: red }'), 'if (any(lessThan(uv, vec2(.5)))) {');
+    assert.equal(condition('match(uv == vec2(0)) { fill: red }'), 'if (all(equal(uv, vec2(0.0)))) {');
+    assert.equal(condition('match(uv < vec2(1)) { fill: red }'), 'if (all(lessThan(uv, vec2(1.0)))) {');
 });
 
 test('variables inside match blocks are scoped', () => {
@@ -151,6 +155,7 @@ test('db: distance to the grid boundary', () => {
 test('pos: centered, aspect-correct canvas position', () => {
     assert.equal(color('fill: length(pos)'), 'cssd_color = vec4(vec3(length(pos)), 1.0);');
     assert.equal(color('fill: pos.x + .5'), 'cssd_color = vec4(vec3((pos.x + .5)), 1.0);');
+    assert.match(main('fill: length(pos)'), /vec2 pos = \(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
     // a user pos shadows the built-in; the wrapper then sees no `pos` to define
     assert.match(main('pos: uv; fill: pos.x'), /vec2 cssd1 = uv;\s*cssd_color = vec4\(vec3\(cssd1\.x\), 1\.0\);/);
     assert.doesNotMatch(main('pos: uv; fill: pos.x'), /\bpos\b/);
@@ -191,6 +196,22 @@ test('static colors stay byte-identical', () => {
 test('a vec3 expression is a color, a scalar a gray', () => {
     assert.equal(color('fill: hsl(da, 0.8, 0.5)'), 'cssd_color = vec4(hsl(da, 0.8, 0.5), 1.0);');
     assert.equal(color('fill: dr/10'), 'cssd_color = vec4(vec3((dr / 10.0)), 1.0);');
+});
+
+test('fill accepts vec2 and bool; other vector types are rejected', () => {
+    assert.equal(color('fill: uv'), 'cssd_color = vec4(uv, 0.0, 1.0);');
+    assert.equal(color('fill: rot(du, dv, 0)'), 'cssd_color = vec4(rot(du, dv, 0.0), 0.0, 1.0);');
+    assert.equal(color('fill: x > 1'), 'cssd_color = vec4(vec3(float((x > 1.0))), 1.0);');
+    let messages = [];
+    draw('fill: mat2(1)', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['fill cannot take a mat2']);
+});
+
+test('size and shape reject vectors', () => {
+    let messages = [];
+    assert.doesNotMatch(main('size: uv; fill: red'), /size = uv;/);
+    draw('size: uv; shape: pos; fill: red', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['size needs a number', 'shape needs a number']);
 });
 
 test('three or four top-level commas become channels, nested commas do not', () => {
@@ -299,6 +320,7 @@ test('size expressions support numeric coefficients', () => {
         main('shape: circle; size: .5 + .5 * sin(dr - 2πt); fill: #000'),
         /size = \(\.5 \+ \(\.5 \* sin\(\(dr - \(\(2\.0 \* PI\) \* t\)\)\)\)\);/
     );
+    assert.match(main('shape: circle; size: tπ; fill: #000'), /size = \(t \* PI\);/);
 });
 
 test('no shape and no size leaves the mask out', () => {
@@ -364,6 +386,8 @@ test('u_time is only wired up when the pattern reads t', () => {
     assert.match(main('fill: hsl(dr/10, 0.7, 0.5)'), /float t = 0\.0;/);
     assert.match(main('fill: hsl(i/I + t*0.1, 0.7, 0.5)'), /float t = u_time;/);
     assert.match(main('shape: circle; size: 0.5 + 0.4*sin(t); fill: #000'), /float t = u_time;/);
+    // a `.t` swizzle is not the time variable
+    assert.match(main('p: vec4(1); fill: p.t'), /float t = 0\.0;/);
 });
 
 test('rand/noise/hsl built-ins are declared in the prelude', () => {

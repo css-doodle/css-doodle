@@ -29,6 +29,11 @@ const ALIAS = {
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=']);
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
+const VEC_COMPARE = {
+    __proto__: null,
+    '<': 'lessThan', '<=': 'lessThanEqual', '>': 'greaterThan', '>=': 'greaterThanEqual',
+    '==': 'equal', '!=': 'notEqual'
+};
 
 const CALL_TYPES = { __proto__: null };
 const typeList = Object.entries({
@@ -59,7 +64,9 @@ const swizzle = s => s.length > 2 ? `vec${s.length - 1}` : 'float';
 // wrap `out` of type `res` in a constructor when `exp` wants another type;
 // vectors pass where a float is wanted
 function cast(out, res, exp) {
-    return !exp || exp === res || exp === 'float' && /vec|mat/.test(res) ? out : `${exp}(${out})`;
+    if (!exp || exp === res || exp === 'float' && /vec|mat/.test(res)) return out;
+    if (exp === 'bool' && /^b?vec/.test(res)) return `any(${res[0] === 'b' ? out : `b${res}(${out})`})`;
+    return `${exp}(${out})`;
 }
 
 // #rgb and #rrggbb are vec3 literals
@@ -147,6 +154,9 @@ export default function transform(code, { expect = null, type = false, types = {
                 n = { type: 'Bin', val: '*', left: n, right: primary() };
             }
         }
+        while (peek()?.value === 'π') {
+            n = { type: 'Bin', val: '*', left: n, right: primary() };
+        }
         while (peek()) {
             const op = peek().value;
             const p = PREC[op];
@@ -207,21 +217,27 @@ export default function transform(code, { expect = null, type = false, types = {
             // arguments are numbers unless the function yields a bool or bvec
             const res = infer(n);
             const args = n.args.map(a => gen(a, /^b/.test(res) ? null : 'float')).join(', ');
-            return cast(n.val === 'float' ? args : `${n.val}(${args})`, res, exp);
+            if (n.val === 'float' && n.args.length === 1 && !isVector(infer(n.args[0]))) {
+                return cast(args, 'float', exp);
+            }
+            return cast(`${n.val}(${args})`, res, exp);
         }
 
         const op = n.val;
 
         // a < b < c reads as a < b && b < c
         if (RELATIONAL_OPS.has(op) && n.left.type === 'Bin' && RELATIONAL_OPS.has(n.left.val)) {
-            const out = `(${gen(n.left, 'bool')} && (${gen(n.left.right, 'float')} ${op} ${gen(n.right, 'float')}))`;
-            return cast(out, 'bool', exp);
+            const second = { type: 'Bin', val: op, left: n.left.right, right: n.right };
+            return cast(`(${gen(n.left, 'bool')} && ${gen(second, 'bool')})`, 'bool', exp);
         }
 
         const res = infer(n);
-        const arg = COMPARISON_OPS.has(op) || isVector(res) ? 'float' : res;
+        const lt = infer(n.left), rt = infer(n.right);
+        const vec = COMPARISON_OPS.has(op) && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
+        const arg = vec || (COMPARISON_OPS.has(op) || isVector(res) ? 'float' : res);
         const l = gen(n.left, arg);
         const r = gen(n.right, arg);
+        if (vec) return cast(`${op === '!=' ? 'any' : 'all'}(${VEC_COMPARE[op]}(${l}, ${r}))`, 'bool', exp);
         return cast(op === '%' ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`, res, exp);
     }
 

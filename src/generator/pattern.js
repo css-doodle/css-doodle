@@ -233,21 +233,37 @@ function generateStatement(name, value, scope, ctx) {
 function generateFill(value, scope, ctx) {
     let v = compile(value, scope, ctx);
     if (!v) return '';
-    // a vec4 is a color with alpha, a vec3 a color, anything else a gray
-    let code = v.type === 'vec4' ? v.code : `vec4(${v.type === 'vec3' ? v.code : `vec3(${v.code})`}, 1.0)`;
-    return `cssd_color = ${code};\n`;
+    let { type, code } = v;
+    if (type === 'vec4') return `cssd_color = ${code};\n`;
+    if (type === 'vec3') return `cssd_color = vec4(${code}, 1.0);\n`;
+    if (type === 'vec2') return `cssd_color = vec4(${code}, 0.0, 1.0);\n`;
+    if (type === 'bool') code = `float(${code})`;
+    else if (type !== 'float' && type !== 'int') {
+        ctx.warn(`fill cannot take a ${type}`);
+        return '';
+    }
+    return `cssd_color = vec4(vec3(${code}), 1.0);\n`;
+}
+
+function asFloat(value, scope, ctx, what) {
+    let type = expr(value, scope, ctx, null, true);
+    if (type && type !== 'float' && type !== 'int' && type !== 'bool') {
+        ctx.warn(`${what} needs a number`);
+        return '';
+    }
+    return expr(value, scope, ctx, 'float');
 }
 
 function generateShape(value, scope, ctx) {
     ctx.masked = true;
     if (value === 'none') return 'cssd_masked = false;\n';
-    let d = MASKS[value] || expr(value, scope, ctx, 'float');
+    let d = MASKS[value] || asFloat(value, scope, ctx, 'shape');
     return d ? `cssd_dist = ${d};\ncssd_masked = true;\n` : '';
 }
 
 function generateSize(value, scope, ctx) {
     ctx.masked = true;
-    let size = expr(value, scope, ctx, 'float');
+    let size = asFloat(value, scope, ctx, 'size');
     return size ? `size = ${size};\n` : '';
 }
 
@@ -354,7 +370,8 @@ function generateBody(tokens, scope, ctx, opts = {}) {
 }
 
 function generateShader({ grid, body, masked }) {
-    let usesTime = /\bt\b/.test(body);
+    let usesTime = /(?<![\w.])t\b/.test(body);
+    let usesPos = /(?<![\w.])pos\b/.test(body);
     return glsl`
     precision highp float;
     precision highp int;
@@ -362,6 +379,7 @@ function generateShader({ grid, body, masked }) {
     ${HELPERS}
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        ${usesPos ? 'vec2 pos = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);' : ''}
         float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
