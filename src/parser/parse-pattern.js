@@ -32,7 +32,6 @@ function parseSelector(tokens) {
     return selectors;
 }
 
-// one block per selector, all over the same body
 function readMatchBlocks(iter, head) {
     let selectors = parseSelector(head);
     if (!selectors.length) {

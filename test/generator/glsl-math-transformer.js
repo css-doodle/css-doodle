@@ -206,6 +206,7 @@ test('a swizzle after a call or a parenthesized value is kept', () => {
 
 test('expression types follow vectors, calls, operators and swizzles', () => {
     assert.equal(transform('1 - uv', { type: true }), 'vec2');
+    assert.equal(transform('1 - pos', { type: true }), 'vec2');
     assert.equal(transform('2*vec3(1)', { type: true }), 'vec3');
     assert.equal(transform('max(length(hsl(0, 1, 1)), 1)', { type: true }), 'float');
     assert.equal(transform('v.xy', { type: true, types: { v: 'vec3' } }), 'vec2');
@@ -252,6 +253,27 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
     assert.equal(transform('match(x > 1, 2, 3) + 1', { expect: 'float' }), '(((x > 1.0) ? 2.0 : 3.0) + 1.0)');
     // vector branches pass through, and a swizzle applies to the result
     assert.equal(transform('match(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
+});
+
+test('names map to GLSL identifiers, swizzles and calls left alone', () => {
+    const names = { __proto__: null, p: 'cssd1', rand: 'cssd2' };
+    assert.equal(transform('p.x + p', { names, types: { cssd1: 'vec2' } }), '(cssd1.x + cssd1)');
+    assert.equal(transform('rand(p)', { names }), 'rand(cssd1)');
+    assert.equal(transform('p', { names, type: true, types: { cssd1: 'vec2' } }), 'vec2');
+    // a #hex color is never a name
+    assert.equal(transform('#abc', { names: { __proto__: null, abc: 'cssd1' } }), 'vec3(0.6666666666666666, 0.7333333333333333, 0.8)');
+});
+
+test('unknown is told of the names that are neither mapped nor typed', () => {
+    const seen = [];
+    transform('a + b.x + c(d) + e', { names: { __proto__: null, a: 'cssd1' }, types: { e: 'float' }, unknown: n => seen.push(n) });
+    assert.deepEqual(seen, ['b', 'd']);
+});
+
+test('an underscore is part of a name', () => {
+    assert.equal(transform('u_time * 2'), '(u_time * 2.0)');
+    assert.equal(transform('my_var_2 + _x'), '(my_var_2 + _x)');
+    assert.equal(transform('a_b.x', { types: { a_b: 'vec2' } }), 'a_b.x');
 });
 
 test('#rgb and #rrggbb are vec3 literals', () => {

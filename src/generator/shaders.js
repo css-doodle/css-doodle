@@ -49,7 +49,7 @@ function createProgram(gl, vss, fss) {
     return prog;
 }
 
-function generateFragment(fragment, textures) {
+export function generateFragment(fragment, textures) {
     // the generated source supplies its own version directive
     fragment = fragment.replace(/^\s*#version[^\n]*/, '');
 
@@ -59,6 +59,7 @@ function generateFragment(fragment, textures) {
     const output = outputMatch ? outputMatch[1] : 'FragColor';
     const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
     const hasTexture2d = /texture2D\s*\(/.test(fragment);
+    const hasPos = /\bpos\b/.test(fragment);
     const snippets = ['#version 300 es'];
 
     const push = (line) => {
@@ -103,6 +104,10 @@ function generateFragment(fragment, textures) {
 
     if (hasTexture2d) {
         push('#define texture2D texture');
+    }
+
+    if (hasPos) {
+        push('#define pos ((gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y))');
     }
 
     snippets.push(fragment);

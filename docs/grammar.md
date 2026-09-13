@@ -48,13 +48,11 @@ symbol  = one of   : ; , ( ) [ ] { } + - * / % ^ = < > & | ! ? ~ _ @ " ' `
 word    = run of characters that are not whitespace, digits or symbols
 ```
 
-| Source | Tokens      | Rule                                                              |
-| ------ | ----------- | ----------------------------------------------------------------- |
-| `a -1` | `a` `-1`    | A `-` before a digit is a sign, unless a number, word, `)` or `]` directly precedes it. |
-| `a-1`  | `a` `-` `1` | A word precedes the `-`, so it is a symbol.                       |
-| `h1`   | `h` `1`     | A digit ends a word.                                              |
-| `10px` | `10` `px`   | A number ends at a character that cannot continue it.             |
-| `#fff` | `#fff`      | `#` is not a symbol, so it starts a word.                         |
+A `-` before a digit is a sign unless a number, word, `)` or `]`
+precedes it, so `a -1` is two tokens and `a-1` is three. A digit ends
+a word (`h1` → `h` `1`); a number ends at a character that cannot
+continue it (`10px` → `10` `px`). `#` is not a symbol, so `#fff` is
+one word.
 
 **Quotes.** `"`, `'` and `` ` `` open and close quoted text. Inside
 quotes whitespace is kept as written, and function calls are still
@@ -98,15 +96,14 @@ declaration = property ':' value [ ';' ]
 The property is everything before the first top-level `:`. The value
 runs to the next top-level `;`, or to a `}` or `<`.
 
-A property that starts with `@` is a directive handled by css-doodle:
-`@grid`, `@size`, `@place`, `@gap`, `@shape`, `@content`, `@seed` and
-`@use`. Every other property, custom properties included, is emitted
-as CSS.
+A property that starts with `@` is a directive: `@grid`, `@size`,
+`@place`, `@gap`, `@shape`, `@content`, `@seed` and `@use`. Every
+other property, custom properties included, is emitted as CSS.
 
-`@use` inserts statements stored in custom properties of the
-component. Each `var()` may carry a fallback, and inserted statements
-may contain `@use` themselves. A variable that is already being
-inserted is skipped and reported (§11).
+`@use` inserts statements stored in custom properties. Each `var()`
+may carry a fallback, and inserted statements may contain `@use`
+themselves. A variable that is already being inserted is skipped and
+reported (§11).
 
 ```css
 @use: var(--rule), var(--other, var(--fallback));
@@ -147,21 +144,17 @@ span    { color: blue; }
 
 A block whose head does not start with `@` is a selector block. The
 head is a comma-separated list of CSS selectors. The subject is the
-current cell, written `&`, and each selector is resolved against every
-selector of the enclosing block:
+current cell, written `&`. Each selector is resolved against every
+selector of the enclosing block: a selector that starts with `:` is
+appended (`:hover` → `&:hover`); any other becomes a descendant
+(`span` → `& span`); each `&` is replaced by the outer selector.
 
-| Written   | Resolves to | Rule                                                       |
-| --------- | ----------- | ---------------------------------------------------------- |
-| `:hover`  | `&:hover`   | A selector that starts with `:` is appended to the subject. |
-| `span`    | `& span`    | Any other selector becomes a descendant.                   |
-| `.dark &` | `.dark &`   | Each `&` is replaced by the outer selector.                |
-
-Two selectors target elements outside the cell and are not nested
-under it: `:doodle` is the component and `:container` is the grid
-container. `:doodle(<compound>)` and `:container(<compound>)` match
-only when the element matches the compound, and `:doodle.dark:hover`
-is shorthand for `:doodle(.dark:hover)`. A rule whose selectors are
-only `:doodle` or `:container` is generated once, not once per cell.
+`:doodle` is the component and `:container` is the grid container.
+They are not nested under the cell. `:doodle(<compound>)` and
+`:container(<compound>)` match only when the element matches the
+compound; `:doodle.dark:hover` is shorthand for `:doodle(.dark:hover)`.
+A rule whose selectors are only `:doodle` or `:container` is generated
+once, not once per cell.
 
 ## 4. Conditional blocks
 
@@ -225,26 +218,16 @@ name-character = letter | digit | '_' | '.' | '%' | '-'
 otherwise it is plain text. The name and the `(` must be adjacent too.
 `@(` or `$(` is a call with an empty name.
 
-**Digits in a name** are split off and become the first argument. A
-`.`, `x` or `-` between digits stays with them.
-
-| Written            | Means                                                    |
-| ------------------ | -------------------------------------------------------- |
-| `@m3(a)`           | `@m(3, a)`                                               |
-| `@n1.5(a)`         | `@n(1.5, a)`                                             |
-| `@p1-2(a)`         | `@p(1-2, a)`                                             |
-| `@log2(8)`         | `@log2(8)`; a `Math` name keeps its digits               |
-| `@doodle100x50(…)` | `@doodle(…)` rendered at 100 by 50; `@shaders` and `@pattern` take the same suffix, a single number is square |
+**Digits in a name** split off as the first argument: `@m3(a)` is
+`@m(3, a)`, `@n1.5(a)` is `@n(1.5, a)`, `@p1-2(a)` is `@p(1-2, a)`.
+A `Math` name keeps its digits: `@log2(8)`. `@doodle`, `@shaders` and
+`@pattern` take a size suffix instead: `@doodle100x50(…)` renders at
+100 by 50; a single number is square.
 
 **A `.` followed by a letter** ends the name and composes calls,
-rightmost first:
-
-| Written     | Means                                               |
-| ----------- | --------------------------------------------------- |
-| `@a.b(x)`   | `@a(@b(x))`                                         |
-| `@a.@b(x)`  | the same, with the inner sigil written out          |
-| `@a.b.c(x)` | `@a(@b(@c(x)))`                                     |
-| `@a.5(x)`   | `@a(.5, x)`; a `.` before a digit stays in the name |
+rightmost first: `@a.b(x)` and `@a.@b(x)` are `@a(@b(x))`;
+`@a.b.c(x)` is `@a(@b(@c(x)))`. A `.` before a digit stays in the
+name: `@a.5(x)` is `@a(.5, x)`.
 
 **`$` is the calc function.** `$(expr)` evaluates an expression (§8).
 `$unit(expr)` appends `unit` verbatim: `$px(1+1)` is `2px`, and
@@ -418,60 +401,60 @@ svg-declaration = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
 timing          = duration { delay | repeat-count | easing | fill }
 ```
 
-- An element block becomes an SVG element, and its declarations
-  become attributes. `#id` and `.class` in the selector set `id` and
-  `class`; a `class:` declaration adds to the selector's classes, and
-  an `id:` declaration wins over `#id`.
-- Names are read without regard to case and emitted in SVG's own:
-  `lineargradient` becomes `linearGradient`, `Circle` becomes
-  `circle`. Custom property names keep their case.
-- `g circle { … }` and `g > circle { … }` both nest `circle` inside
-  `g`.
-- Declarations and elements written beside an `svg { … }` block belong
-  to it, in source order, and several `svg` blocks merge into one.
-- `*count` repeats the element as `@M(count, …)` would: a count, a
-  grid such as `2x3`, or an inclusive range such as `1-3`. Inside the
-  element `@n` is the sequence value: `1`, `2`, `3` for `1-3`, and for
-  `2x3` the column index, cycling through `1`, `2`.
-- `x, y: 1, 2` sets `x` to `1` and `y` to `2`. The value is split only
-  when it has exactly as many parts as there are names; otherwise
-  every name receives the whole value.
-- A value may itself be an element block, whose selector is the text
-  before its first top-level `{`. The element gets a generated id, and
-  the attribute becomes `url(#id)`, or `#id` for `href`. Gradients,
-  `pattern`, `filter`, `clipPath`, `mask`, `marker` and `symbol` are
-  placed into `<defs>`, so `fill: linearGradient { … }` and
-  `fill: defs linearGradient { … }` are the same.
-- `viewBox` takes four numbers, or one number `n` for `0 0 n n`, or
-  two for `0 0 w h`. `padding n` after them grows the box by `n` on
-  every side. Any other count of numbers drops the attribute with a
-  diagnostic.
-- `style { … }`, with or without a selector, keeps its content as CSS
-  text. `style: { … }` and `style fill: red` add to the element's
-  `style` attribute.
-- The `;` of a character reference such as `&amp;` is part of the
-  value. The `xlink:` and `xml:` attributes of SVG 1.1 are supported.
+An element block becomes an SVG element; its declarations become
+attributes. `#id` and `.class` set `id` and `class`; a `class:`
+declaration adds to the selector's classes, and `id:` wins over `#id`.
+Names are case-insensitive and emitted in SVG's own spelling:
+`lineargradient` becomes `linearGradient`. Custom property names keep
+their case.
+
+`g circle { … }` and `g > circle { … }` both nest `circle` inside `g`.
+Declarations and elements written beside an `svg { … }` block belong
+to it, in source order, and several `svg` blocks merge into one.
+
+`*count` repeats the element as `@M(count, …)` would: a count, a grid
+such as `2x3`, or an inclusive range such as `1-3`. Inside the element
+`@n` is the sequence value: `1`, `2`, `3` for `1-3`; for `2x3` the
+column index, cycling through `1`, `2`.
+
+`x, y: 1, 2` sets `x` to `1` and `y` to `2`. The value is split only
+when it has exactly as many parts as there are names; otherwise every
+name receives the whole value.
+
+A value may itself be an element block. The element gets a generated
+id, and the attribute becomes `url(#id)`, or `#id` for `href`.
+Gradients, `pattern`, `filter`, `clipPath`, `mask`, `marker` and
+`symbol` are placed into `<defs>`, so `fill: linearGradient { … }` and
+`fill: defs linearGradient { … }` are the same.
+
+`viewBox` takes four numbers, or one number `n` for `0 0 n n`, or two
+for `0 0 w h`. `padding n` after them grows the box by `n` on every
+side. Any other count of numbers drops the attribute with a
+diagnostic.
+
+`style { … }`, with or without a selector, keeps its content as CSS
+text. `style: { … }` and `style fill: red` add to the element's
+`style` attribute. The `;` of a character reference such as `&amp;`
+is part of the value. The `xlink:` and `xml:` attributes of SVG 1.1
+are supported.
 
 **Animation.** `animate r: 1; 5; 1 / 2s ease-in-out infinite forwards`
-adds an `<animate>` child for the attribute: the values before the
-`/`, separated by `;`, then the timing in the words of the CSS
-`animation` shorthand, in any order after the duration. A single value
-is a `to` animation. `animate transform: rotate 0; 360 / 4s` emits
-`<animateTransform>` with the first word as its `type`. `draw: 2s`
-strokes a shape (`path`, `line`, `rect`, `circle`, `ellipse`,
-`polygon`, `polyline`) along its length with the same timing words.
+adds an `<animate>` child: values before the `/`, then timing words
+after the duration, in any order, as in the CSS `animation` shorthand.
+A single value is a `to` animation. `animate transform: rotate 0; 360 / 4s`
+emits `<animateTransform>` with the first word as its `type`.
+`draw: 2s` strokes a shape (`path`, `line`, `rect`, `circle`,
+`ellipse`, `polygon`, `polyline`) along its length with the same
+timing words.
 
-| Timing word                                                       | Emitted as                                                    |
-| ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| `2s`, `500ms`                                                     | `dur`; a second time is the delay, `begin`                    |
-| a bare number                                                     | the repeat count beside a duration; alone, seconds of `dur`   |
-| `infinite`                                                        | `repeatCount="indefinite"`, also in a `repeatCount` attribute |
-| `ease`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier(…)`   | `calcMode="spline"` with the same `keySplines` for every segment; `linear` is the default |
-| `step-end`                                                        | `calcMode="discrete"`                                         |
-| `discrete`, `paced`                                               | `calcMode` as written                                         |
-| `forwards`                                                        | `fill="freeze"`                                               |
-
-Any other word is dropped with a diagnostic.
+Times become `dur`; a second time is the delay, `begin`. A bare
+number beside a duration is the repeat count; alone, it is seconds of
+`dur`. `infinite` is `repeatCount="indefinite"`. `ease`, `ease-in`,
+`ease-out`, `ease-in-out` and `cubic-bezier(…)` set
+`calcMode="spline"` with the same `keySplines` for every segment;
+`linear` is the default. `step-end` is `calcMode="discrete"`;
+`discrete` and `paced` are written through as `calcMode`. `forwards`
+is `fill="freeze"`. Any other word is dropped with a diagnostic.
 
 **`@arc(r: 40; from: 0; to: 120; move: 50 50)`** is the path data of
 an arc, `M x y A …`, for `d:`. Angles are degrees, clockwise from
@@ -503,19 +486,19 @@ command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
                | variable-name
 ```
 
-- The `@shape:` directive takes a preset name (`circle`, `star`,
-  `heart`, …) and emits `clip-path: polygon(…)`. The `@shape(…)`
-  function takes a preset or a command body, and is the form for
-  custom polygons.
-- `r`, `x` and `y` are expressions in the angle `t`, evaluated `points`
-  times around the circle. The other named commands transform the
-  resulting points. Any other name defines a variable for the
-  expressions that follow it.
-- A `-` before a command name negates its value, except on `fill`.
-- The expressions also see the point index `i`, from 1, and two
-  helpers: `seq(a, b, …)` cycles through its arguments from point to
-  point, and `range(a, b)` interpolates from `a` to `b` across the
-  shape.
+The `@shape:` directive takes a preset name (`circle`, `star`,
+`heart`, …) and emits `clip-path: polygon(…)`. The `@shape(…)`
+function takes a preset or a command body, and is the form for
+custom polygons.
+
+`r`, `x` and `y` are expressions in the angle `t`, evaluated `points`
+times around the circle. The other named commands transform the
+resulting points. Any other name defines a variable for the
+expressions that follow it. A `-` before a command name negates its
+value, except on `fill`. The expressions also see the point index `i`,
+from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
+from point to point, and `range(a, b)` interpolates from `a` to `b`
+across the shape.
 
 ### 9.3 Patterns
 
@@ -528,40 +511,53 @@ command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
 ```
 
 ```
-pattern-body  = { name ':' expression ';' | match-block | repeat-block }
+pattern-body  = { name ':' value ';' | match-block | repeat-block }
 match-block   = match { ',' match } '{' pattern-body '}'
+                { 'else' match { ',' match } '{' pattern-body '}' }
+                [ 'else' '{' pattern-body '}' ]
 match         = 'match' '(' expression ')'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
-repeat-body   = { name ':' expression ';' | repeat-block }
+repeat-body   = { name ':' value ';' | match-block | repeat-block }
+value         = expression | expression ',' expression ',' expression [ ',' expression ]
+              | css-color
 ```
 
-A `@pattern` body declares the parameters `grid`, `shape`, `size` and
-`fill`; any other name declares a variable. A `match` block holds the
-declarations that apply where its condition holds, and may nest. It
-opens a child scope: its declarations shadow outer variables, and a
-block-local `shape` or `size` changes the mask for that block.
-It takes one expression; combine tests with `and` or `or`.
+A `@pattern` body sets `grid`, `shape`, `size` and `fill`; any other
+name is a variable. Statements run in source order. The first
+`name: value` declares the variable; later ones assign to it. A name
+that is not declared, a built-in, or a GLSL name is reported (§11).
+Names are GLSL identifiers; those starting with `cssd` are reserved.
 
-In a value, `match(t1, v1, t2, v2, …)` gives
-the value after the first test that holds, a last argument without a
-test when none does, and `0` without one, so
-`fill: match(dr < 2, #fff, dr < 4, #888, #000)` picks a color per cell.
+A `match` block runs its body where its test holds. Several selectors
+on one head are one test (any of them). It may be followed by
+`else match(…)` and `else`. A block opens a child scope: a new name
+is local, an assignment to an outer name updates that variable.
+Blocks nest. Combine tests with `and` or `or`.
 
-Expressions are written in a GLSL-oriented language, not the language
-of §8. Compared with §8, `^` is bitwise xor, `÷`, `∧` and `∨` are not
-available, and `and`, `or` and `not` may be used for `&&`, `||` and
-`!`. Values are bare expressions, without units or `var()`. The GLSL
-functions, such as `sin`, `mod`, `mix` and `step`, and the constant
-`PI` are available, and so are its vectors: a variable may hold a
-`vec2`, `vec3`, `vec4` or `mat2`, and is read with a swizzle, as in
-`c.x` or `p.yx`. A color written as `#rgb` or `#rrggbb` is a `vec3`,
-and a `fill` that is one `vec3` expression is a color. A number or
-`π` followed by a name, a call, a group or `π` multiplies, so `2t`,
-`2πt`, `2sin(t)` and `2(t + 1)` are products; two names side by side
-are not.
+`match(t1, v1, t2, v2, …)` in a value picks the value after the first
+test that holds, or a last argument without a test, or `0`.
 
-The coordinates count cells from the top-left corner, like the grid:
+After the body runs, the cell is masked to where the shape's distance
+from the cell center stays under half the `size`, with its edge
+antialiased. `shape` takes `circle`, `square`, `diamond`, `none`, a
+variable, or a distance expression in `du` and `dv`. A `size` with no
+`shape` in scope masks with a square. `fill` takes a CSS color, three
+or four channels 0 to 1, or one expression: a number is a gray, a
+`vec3` a color, a `vec4` a color with alpha. The last `fill` that
+runs wins. A variable declared with a color or channel list holds the
+`vec3` or `vec4`.
+
+Expressions use a GLSL-oriented language, not §8: `^` is bitwise xor;
+`÷`, `∧` and `∨` are gone; `and`, `or` and `not` may stand for `&&`,
+`||` and `!`. Values are bare expressions, without units or `var()`.
+GLSL functions and `PI` are available. A variable may hold a `vec2`,
+`vec3`, `vec4` or `mat2`, read with a swizzle (`c.x`, `p.yx`). `#rgb`
+and `#rrggbb` are `vec3`. A number or `π` followed by a name, a call,
+a group or `π` multiplies (`2t`, `2πt`, `2sin(t)`); two names side by
+side do not.
+
+Coordinates count cells from the top-left, like the grid:
 
 | Name          | Value                                                    |
 | ------------- | -------------------------------------------------------- |
@@ -573,12 +569,14 @@ The coordinates count cells from the top-left corner, like the grid:
 | `db`          | distance to the nearest edge of the grid, in cells       |
 | `du`, `dv`    | position inside the cell, −0.5 to 0.5, `dv` downward     |
 | `uv`          | position over the whole pattern, 0 to 1, `uv.y` upward   |
+| `pos`         | centered, aspect-correct position; short axis −0.5 to 0.5, `pos.y` upward |
 | `t`           | time in seconds; reading it animates the pattern         |
+| `size`        | the current `size`, 1 until set                          |
 
-Without a `grid` the pattern is a single cell, so `du`, `dv` and
-`uv` address every pixel.
+Without a `grid` the pattern is a single cell, so `du`, `dv`, `uv`
+and `pos` address every pixel.
 
-These functions are available besides the GLSL ones:
+Besides GLSL:
 
 | Function                          | Returns                                                     |
 | --------------------------------- | ----------------------------------------------------------- |
@@ -595,49 +593,22 @@ These functions are available besides the GLSL ones:
 | `spiral(dx, dy)`                  | the index of the cell along a square spiral from the center |
 | `dither(x, y)`                    | the 4×4 Bayer threshold of the cell, 0 to 1                 |
 
-A point that the table writes as two floats may also be one `vec2`,
-so `fbm(p)`, `ngon(p, 6)`, `rot(p, a)` and `escape(z, c)` are the
-same functions taking vectors.
+A point written as two floats may also be one `vec2`: `fbm(p)`,
+`ngon(p, 6)`, `rot(p, a)`, `escape(z, c)`.
 
-```css
-@pattern(
-  c: vec2(uv.x*3 - 2.2, uv.y*2.6 - 1.3);
-  z: vec2(0);
-  steps: 0;
-  repeat(96 as n, dot(z, z) > 4) {
-    z: vec2(z.x*z.x - z.y*z.y, 2*z.x*z.y) + c;
-    steps: n + 1;
-  }
-  fill: hsl(steps/48, 0.8, 0.5);
-  match(steps = 96) { fill: #000 }
-)
-```
+A `repeat` block runs its body a fixed number of times, with the same
+scope as any block. A `match` inside it makes an update conditional.
+The optional name after `as` is a read-only, zero-based index local
+to the loop. There is no implicit index. Arguments after the count
+stop the loop once they all hold, checked after each iteration.
+Counts greater than 1024, a nested product greater than 65536, and a
+block without a valid integer count are skipped and reported (§11).
 
-A `repeat` block runs its declarations a fixed number of times, in
-source order. Assigning a name declared outside the block updates that
-state immediately, so later declarations in the same iteration read
-the new value. A new name is local to the block and is visible from its
-first declaration onward. Use such locals to preserve old values when
-several states must update together.
-
-The optional name after `as` is a read-only, zero-based index local to
-the loop. Nested `repeat` blocks may name separate indices and read the
-outer one. There is no implicit index. Store `index + 1` in an outer
-variable, as `steps` does above, when the completed step count is needed
-after the loop. The arguments after the count stop the loop once they
-all hold, checked after each iteration. Counts greater than 1024 and a
-statically nested product greater than 65536 are skipped and reported.
-A block without a valid integer count is also skipped and reported
-(§11).
-
-A state's type follows its initial expression. Pattern numbers,
-including values produced with integer operations, are stored as
-floats; boolean, boolean-vector, vector and `mat2` values keep those
-types. The type remains fixed while the state is updated. `repeat` may
-nest, including inside `match`; declarations made inside either block do
-not leak out. Pattern outputs such as `fill`, `shape`, `size` and
-`grid` are not allowed inside `repeat`, nor are conditional blocks.
-Names starting with `cssd` are reserved for the generated code.
+A variable's type follows its first value and stays fixed. Pattern
+numbers, including values produced with integer operations, are
+stored as floats; boolean, boolean-vector, vector and `mat2` values
+keep those types. `fill`, `shape`, `size` and `grid` are not allowed
+inside `repeat`.
 
 ### 9.4 Shaders
 
@@ -663,7 +634,8 @@ named sections. A `texture…` section holds a doodle that is rendered
 to an image and bound as the sampler of that name. `//` comments are
 removed, and `#define` lines are kept on their own line. The
 fragment is compiled with `precision highp float` unless it declares
-its own precision.
+its own precision. `pos` is a centered, aspect-correct coordinate:
+the short axis of the canvas is −0.5 to 0.5 and `pos.y` is upward.
 
 `$name` reads the custom property `--name` when the shader is
 generated. In `fragment` and `vertex` it inserts the text of the
@@ -777,9 +749,10 @@ component:
 | `animate name:` without a duration after `/`, or `draw:` without one | the `<animate>` is emitted without `dur`                |
 | a timing word that is not a time, a count, an easing or a fill   | the word is dropped                                         |
 | a `repeat` block without a valid step count, or over its work limit | the block is skipped                                     |
+| a pattern name that is not declared, not a valid name, or reserved | the name is reported; an invalid declaration is skipped  |
+| an `else` block without a `match` before it                      | the block is skipped                                        |
 
 The first four are found while parsing, which continues. The others
-are found while the CSS is generated, and the last one when its
-pattern is drawn. A raw body (`@doodle`,
-`@shaders`, `@pattern`) that is never closed runs to the end of the
-source without a report.
+are found while the CSS is generated, and the last three when their
+pattern is drawn. A raw body (`@doodle`, `@shaders`, `@pattern`) that
+is never closed runs to the end of the source without a report.

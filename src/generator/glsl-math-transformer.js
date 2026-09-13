@@ -70,6 +70,13 @@ function hexColors(code) {
     });
 }
 
+function joinsName(last, t) {
+    if (last.isWord()) {
+        return t.value === '_' || t.isNumber() && !ALIAS[last.value.toLowerCase()] || t.isWord() && last.value.endsWith('_');
+    }
+    return last.value === '_' && (t.isWord() || t.isNumber());
+}
+
 function lex(code) {
     const tokens = [];
     let touching = false;
@@ -77,8 +84,9 @@ function lex(code) {
         const last = tokens[tokens.length - 1];
         if (t.isSpace()) {
             touching = false;
-        } else if (touching && (PREC[last.value + t.value] || last.isWord() && t.isNumber() && !ALIAS[last.value.toLowerCase()])) {
+        } else if (touching && (PREC[last.value + t.value] || joinsName(last, t))) {
             last.value += t.value;
+            if (!PREC[last.value]) last.type = 'Word';
         } else {
             tokens.push(t);
             touching = true;
@@ -88,12 +96,21 @@ function lex(code) {
     return tokens;
 }
 
-export default function transform(code, { expect = null, type = false, types = { __proto__: null } } = {}) {
+export default function transform(code, { expect = null, type = false, types = { __proto__: null }, names = null, unknown = null } = {}) {
     const tokens = lex(code);
 
     let pos = 0;
     const peek = () => tokens[pos];
     const consume = () => tokens[pos++];
+
+    function variable(val) {
+        const dot = val.indexOf('.');
+        const head = dot > 0 ? val.slice(0, dot) : val;
+        const id = names?.[head];
+        if (id) return { type: 'Var', val: id + val.slice(head.length) };
+        if (unknown && !types[head]) unknown(head);
+        return { type: 'Var', val };
+    }
 
     function primary() {
         const t = consume();
@@ -110,7 +127,7 @@ export default function transform(code, { expect = null, type = false, types = {
         } else if (t.value === 'π') {
             n = { type: 'Var', val: 'PI' };
         } else if (t.isWord()) {
-            n = peek()?.value === '(' ? call(t.value) : { type: 'Var', val: t.value };
+            n = peek()?.value === '(' ? call(t.value) : variable(t.value);
         } else {
             n = ZERO;
         }
@@ -218,7 +235,7 @@ export default function transform(code, { expect = null, type = false, types = {
             if (n.val === 'true' || n.val === 'false') return 'bool';
             const dot = n.val.indexOf('.');
             if (dot > 0) return swizzle(n.val.slice(dot));
-            return types[n.val] || (n.val === 'uv' ? 'vec2' : 'float');
+            return types[n.val] || (n.val === 'uv' || n.val === 'pos' ? 'vec2' : 'float');
         }
         if (n.type === 'Member') return swizzle(n.val);
         if (n.type === 'Pre') {
