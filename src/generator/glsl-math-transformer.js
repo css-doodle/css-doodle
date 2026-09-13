@@ -14,39 +14,52 @@ const PREC = {
     '||': 5
 };
 
-// the spellings the DSL takes on top of GLSL's own; `not` only folds its case
-const ALIAS = new Map([
-    ['=', '=='], ['≤', '<='], ['≥', '>='], ['≠', '!='],
-    ['and', '&&'], ['or', '||'], ['not', 'not']
-]);
+const PREFIX = {
+    __proto__: null,
+    '-': Infinity, '!': Infinity, '~': Infinity,
+    'not': PREC['&&'] + 1
+};
+
+const ALIAS = {
+    __proto__: null,
+    '=': '==', '≤': '<=', '≥': '>=', '≠': '!=',
+    'and': '&&', 'or': '||', 'not': 'not'
+};
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=']);
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 
-const ZERO = { type: 'Lit', val: '0' };
-
-const CALL_TYPES = new Map();
-const typeList = {
+const CALL_TYPES = { __proto__: null };
+const typeList = Object.entries({
     float: 'rand noise fbm voronoi ngon escape spiral dither length distance dot determinant',
     vec2: 'rot',
     vec3: 'hsl hsv',
     bool: 'any all',
     bvec: 'isnan isinf lessThan lessThanEqual greaterThan greaterThanEqual equal notEqual',
-};
-for (const [type, names] of Object.entries(typeList)) {
-    for (const name of names.split(' ')) CALL_TYPES.set(name, type);
+
+});
+for (const [type, names] of typeList) {
+    for (const name of names.split(' ')) {
+        CALL_TYPES[name] = type;
+    }
 }
 
 const RANK = [
     'bool', 'int', 'float', 'mat2', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'
 ];
 
+const ZERO = { type: 'Lit', val: '0' };
+
 const isVector = type => /^(vec|mat)/.test(type);
 const isFactor = t => t && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
+// the type of a swizzle: `.xy` is a vec2, `.x` a float
+const swizzle = s => s.length > 2 ? `vec${s.length - 1}` : 'float';
 
+// wrap `out` of type `res` in a constructor when `exp` wants another type;
+// vectors pass where a float is wanted
 function cast(out, res, exp) {
-    return !exp || exp === res || exp === 'float' && /^b?vec|^mat/.test(res) ? out : `${exp}(${out})`;
+    return !exp || exp === res || exp === 'float' && /vec|mat/.test(res) ? out : `${exp}(${out})`;
 }
 
 // #rgb and #rrggbb are vec3 literals
@@ -64,16 +77,14 @@ function lex(code) {
         const last = tokens[tokens.length - 1];
         if (t.isSpace()) {
             touching = false;
-        } else if (touching && (PREC[last.value + t.value] || last.isWord() && t.isNumber() && !ALIAS.has(last.value.toLowerCase()))) {
+        } else if (touching && (PREC[last.value + t.value] || last.isWord() && t.isNumber() && !ALIAS[last.value.toLowerCase()])) {
             last.value += t.value;
         } else {
             tokens.push(t);
             touching = true;
         }
     }
-    for (const t of tokens) {
-        t.value = ALIAS.get(t.value.toLowerCase()) || t.value;
-    }
+    for (const t of tokens) t.value = ALIAS[t.value.toLowerCase()] || t.value;
     return tokens;
 }
 
@@ -94,15 +105,12 @@ export default function transform(code, { expect = null, type = false, types = {
         } else if (t.value === '(') {
             n = parse();
             consume();
-        } else if (t.value === '!' || t.value === '~' || t.value === '-') {
-            n = { type: 'Pre', val: t.value, right: parse(Infinity) };
-        } else if (t.value === 'not') {
-            // `not` covers a whole comparison, as in media queries
-            n = { type: 'Pre', val: '!', right: parse(PREC['&&'] + 1) };
-        } else if (t.isWord()) {
-            n = peek()?.value === '(' ? call(t.value) : { type: 'Var', val: t.value };
+        } else if (PREFIX[t.value]) {
+            n = { type: 'Pre', val: t.value === 'not' ? '!' : t.value, right: parse(PREFIX[t.value]) };
         } else if (t.value === 'π') {
             n = { type: 'Var', val: 'PI' };
+        } else if (t.isWord()) {
+            n = peek()?.value === '(' ? call(t.value) : { type: 'Var', val: t.value };
         } else {
             n = ZERO;
         }
@@ -119,9 +127,7 @@ export default function transform(code, { expect = null, type = false, types = {
         // a number or π followed by a name, a call or a group multiplies: 2t, 2πt, 2sin(t), 2(t + 1)
         if (n.type === 'Lit' || n.type === 'Var' && n.val === 'PI') {
             while (isFactor(peek())) {
-                const right = primary();
-                if (!right) break;
-                n = { type: 'Bin', val: '*', left: n, right };
+                n = { type: 'Bin', val: '*', left: n, right: primary() };
             }
         }
         while (peek()) {
@@ -161,15 +167,15 @@ export default function transform(code, { expect = null, type = false, types = {
         }
         if (n.type === 'Pre') {
             if (!n.right) return gen(ZERO, exp);
-            if (n.val === '!') {
-                const type = infer(n);
-                if (type.startsWith('bvec')) return cast(`not(${gen(n.right, type)})`, type, exp);
-                return cast(`!${gen(n.right, 'bool')}`, 'bool', exp);
+            if (n.val === '-') {
+                // minus keeps the type of its operand, and a bool has no minus
+                if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
+                return `-${gen(n.right, exp)}`;
             }
-            if (n.val === '~') return cast(`~${gen(n.right, 'int')}`, 'int', exp);
-            // minus keeps the type of its operand, and a bool has no minus
-            if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
-            return `-${gen(n.right, exp)}`;
+            // ! and ~ take a bool and an int; a bvec is negated with not()
+            const type = infer(n);
+            const right = gen(n.right, type);
+            return cast(type.startsWith('bvec') ? `not(${right})` : n.val + right, type, exp);
         }
         if (n.type === 'Call' && n.val === 'match') {
             // match(t1, v1, t2, v2, …, else): the value after the first test that holds
@@ -181,10 +187,10 @@ export default function transform(code, { expect = null, type = false, types = {
             return out;
         }
         if (n.type === 'Call') {
-            const arg = /^b/.test(infer(n)) ? null : 'float';
-            const args = n.args.map(a => gen(a, arg)).join(', ');
-            if (n.val === 'float') return cast(args, 'float', exp);
-            return cast(`${n.val}(${args})`, infer(n), exp);
+            // arguments are numbers unless the function yields a bool or bvec
+            const res = infer(n);
+            const args = n.args.map(a => gen(a, /^b/.test(res) ? null : 'float')).join(', ');
+            return cast(n.val === 'float' ? args : `${n.val}(${args})`, res, exp);
         }
 
         const op = n.val;
@@ -202,8 +208,7 @@ export default function transform(code, { expect = null, type = false, types = {
         return cast(op === '%' ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`, res, exp);
     }
 
-    // the GLSL type of a node; `.xy` is a vec2, `.x` a float
-    const swizzle = s => s.length > 2 ? `vec${s.length - 1}` : 'float';
+    // the GLSL type of a node, computed once
     function infer(n) {
         return n ? n.t || (n.t = inferType(n)) : 'float';
     }
@@ -224,7 +229,7 @@ export default function transform(code, { expect = null, type = false, types = {
             return right;
         }
         if (n.type === 'Call') {
-            const known = CALL_TYPES.get(n.val);
+            const known = CALL_TYPES[n.val];
             if (known === 'bvec') return infer(n.args[0]).replace(/^vec/, 'bvec').replace('float', 'bool');
             if (known) return known;
             if (/^(b?vec[234]|mat2|float|int|bool)$/.test(n.val)) return n.val;
