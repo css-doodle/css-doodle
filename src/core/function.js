@@ -8,6 +8,7 @@ import parseDirection from '../parser/parse-direction.js';
 import generateSvg from '../generator/svg.js';
 import generateShape from '../generator/shapes.js';
 import generateSvgGradient from '../generator/svg-gradient.js';
+import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
 import calc from './calc.js';
@@ -645,37 +646,26 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
     let id = env.rules.nextId('filter');
-    // shorthand
-    if (values.every(n => /^[\-\d.]/.test(n) || (/^(\w+)/.test(n) && !/[{}<>]/.test(n)))) {
-        let { frequency, scale, octave, seed = env.seed, blur, erode, dilate } = getNamedArguments(values, [
-            'frequency', 'scale', 'octave', 'seed', 'blur', 'erode', 'dilate'
-        ]);
-        value = css`x: -20%; y: -20%; width: 140%; height: 140%;`;
-        if (!isNil(dilate)) {
-            value += css`feMorphology { operator: dilate; radius: ${dilate}}`
-        }
-        if (!isNil(erode)) {
-            value += css`feMorphology { operator: erode; radius: ${erode}}`
-        }
-        if (!isNil(blur)) {
-            value += css`feGaussianBlur { stdDeviation: ${blur}}`
-        }
-        if (!isNil(frequency)) {
-            let [bx, by = bx] = parseValueGroup(frequency);
-            octave = octave ? `numOctaves: ${octave};` : '';
-            value += css`feTurbulence { type: fractalNoise; baseFrequency: ${bx} ${by}; seed: ${seed}; ${octave}}`;
-            if (scale) {
-                value += css`feDisplacementMap { in: SourceGraphic; scale: ${scale}}`;
-            }
-        }
+    // legacy positional / name=value shorthand
+    let shorthand = values.every(n =>
+        !/[{}<>]/.test(n) && (/^[\-\d.]/.test(n) || /^\w+=/.test(n))
+    );
+    if (shorthand) {
+        let named = getNamedArguments(values, FILTER_COMMANDS);
+        value = FILTER_COMMANDS
+            .filter(name => !isNil(named[name]))
+            .map(name => `${name}: ${named[name]};`)
+            .join('');
     }
-    // new svg syntax
     if (!value.startsWith('<')) {
+        let warn = message => env.rules.warn(message);
         let parsed = parseSvg(value, {
             type: 'block',
             name: 'filter'
         });
-        value = generateSvg(parsed, message => env.rules.warn(message));
+        value = generateSvg(expandFilter(parsed, env.seed, warn, {
+            chainInput: !shorthand
+        }), warn);
     }
     let svg = normalizeSvg(value).replace(
         /<filter([\s>])/,

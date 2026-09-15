@@ -254,6 +254,142 @@ test('empty svg functions generate without throwing', () => {
     }
 });
 
+test('@svg-filter expands compact channels blocks', () => {
+    let compiled = compile(`filter: @svg-filter(
+        channels {
+            in: SourceGraphic;
+            result: tinted;
+            g: g - .5r;
+            b: 2b + .2;
+        }
+    );`);
+    let [filter] = Object.values(compiled.filters);
+    assert.ok(filter.includes(
+        '<feColorMatrix in="SourceGraphic" result="tinted" type="matrix" ' +
+        'values="1 0 0 0 0 -0.5 1 0 0 0 0 0 2 0 0.2 0 0 0 1 0"/>'
+    ), filter);
+    assert.deepEqual(compiled.warnings, []);
+});
+
+test('@svg-filter mixes root commands with compact channels blocks', () => {
+    let compiled = compile(`filter: @svg-filter(
+        region: -25% / 150%;
+        frequency: .003 .008;
+        scale: 80;
+        octave: 10;
+        seed: @r(1000);
+
+        channels {
+            g: g - .5r;
+            b: 2b + .2;
+        }
+    );`);
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<filter id="filter-1" xmlns="[^"]+" x="-25%" y="-25%" width="150%" height="150%">/);
+    assert.match(filter, /<feTurbulence type="fractalNoise" baseFrequency="\.003 \.008" seed="[\d.]+" numOctaves="10" result="cssd-noise-1"\/>/);
+    assert.ok(!filter.includes('@r'), filter);
+    assert.match(filter, /<feDisplacementMap in="SourceGraphic" in2="cssd-noise-1" scale="80"\/>/);
+    assert.match(filter, /<feColorMatrix type="matrix" values="1 0 0 0 0 -0\.5 1 0 0 0 0 0 2 0 0\.2 0 0 0 1 0"\/>/);
+    assert.deepEqual(compiled.warnings, []);
+});
+
+test('@svg-filter supports symmetric region expansion', () => {
+    let compiled = compile('filter: @svg-filter(region: 20%; channels { b: 2b; });');
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<filter id="filter-1" xmlns="[^"]+" x="-20%" y="-20%" width="140%" height="140%">/);
+    assert.deepEqual(compiled.warnings, []);
+});
+
+test('@svg-filter mixed command groups preserve pipeline order', () => {
+    let compiled = compile(`filter: @svg-filter(
+        feGaussianBlur { stdDeviation: 2; }
+        frequency: .03;
+        scale: 20;
+        channels { b: 2b; }
+    );`);
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<feGaussianBlur stdDeviation="2" result="cssd-input-1"\/><feTurbulence/);
+    assert.match(filter, /<feDisplacementMap in="cssd-input-1" in2="cssd-noise-2" scale="20"\/><feColorMatrix/);
+});
+
+test('@svg-filter root commands work without an explicit primitive', () => {
+    let compiled = compile('filter: @svg-filter(frequency: .1; scale: 20;);');
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<feTurbulence type="fractalNoise" baseFrequency="\.1 \.1" seed="42" result="cssd-noise-1"\/>/);
+    assert.match(filter, /<feDisplacementMap in="SourceGraphic" in2="cssd-noise-1" scale="20"\/>/);
+});
+
+test('@svg-filter positional shorthand preserves its legacy input graph', () => {
+    let compiled = compile('filter: @svg-filter(.1, 20, 2, 7, 3, 4, 5);');
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<feMorphology operator="dilate" radius="5"\/><feMorphology operator="erode" radius="4"\/><feGaussianBlur stdDeviation="3"\/>/);
+    assert.match(filter, /<feTurbulence type="fractalNoise" baseFrequency="0\.1 0\.1" seed="7" numOctaves="2"\/><feDisplacementMap in="SourceGraphic" scale="20"\/>/);
+    assert.ok(!filter.includes('cssd-input'), filter);
+    assert.ok(!filter.includes('cssd-noise'), filter);
+});
+
+test('@svg-filter accepts name=value commands', () => {
+    let compiled = compile('filter: @svg-filter(frequency=.1, scale=20);');
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<feTurbulence type="fractalNoise" baseFrequency="\.1 \.1" seed="42"\/>/);
+    assert.match(filter, /<feDisplacementMap in="SourceGraphic" scale="20"\/>/);
+    assert.ok(!filter.includes('cssd-input'), filter);
+    assert.ok(!filter.includes('cssd-noise'), filter);
+});
+
+test('@svg-filter accepts a lone named blur', () => {
+    let compiled = compile('filter: @svg-filter(blur=5px);');
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /<filter id="filter-1" xmlns="[^"]+" x="-20%" y="-20%" width="140%" height="140%">/);
+    assert.match(filter, /<feGaussianBlur stdDeviation="5px"\/>/);
+});
+
+test('@svg-filter channels expressions compose functions before expansion', () => {
+    let compiled = compile('filter: @svg-filter(channels { b: @calc(1 + 1)b + @pick(.1, .2); });');
+    let [filter] = Object.values(compiled.filters);
+    assert.ok(filter.includes(
+        'values="1 0 0 0 0 0 1 0 0 0 0 0 2 0 0.1 0 0 0 1 0"'
+    ), filter);
+});
+
+test('@svg-filter channels warnings keep invalid rows at identity', () => {
+    let compiled = compile(`filter: @svg-filter(channels {
+        r: r * g;
+        b: sin(b);
+        opacity: .5;
+    });`);
+    let [filter] = Object.values(compiled.filters);
+    assert.ok(filter.includes(
+        'values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0"'
+    ), filter);
+    assert.ok(filter.includes('opacity=".5"'), filter);
+    assert.deepEqual(compiled.warnings.map(w => w.message), [
+        'channels r: invalid expression "r * g"; keeping identity',
+        'channels b: invalid expression "sin(b)"; keeping identity',
+    ]);
+});
+
+test('@svg-filter keeps full feColorMatrix and raw SVG forms unchanged', () => {
+    const values = '1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0';
+    let [full] = Object.values(compile(
+        `filter: @svg-filter(feColorMatrix { type: matrix; values: ${values}; });`
+    ).filters);
+    assert.ok(full.includes(`<feColorMatrix type="matrix" values="${values}"/>`), full);
+
+    let [raw] = Object.values(compile(
+        'filter: @svg-filter(<filter><matrix g="g-.5r"/></filter>);'
+    ).filters);
+    assert.ok(raw.includes('<matrix g="g-.5r"/>'), raw);
+});
+
+test('@svg-filter no longer expands matrix blocks as color matrices', () => {
+    let [filter] = Object.values(compile(
+        'filter: @svg-filter(matrix { g: g - .5r; });'
+    ).filters);
+    assert.ok(filter.includes('<matrix g="g - .5r"/>'), filter);
+    assert.ok(!filter.includes('<feColorMatrix'), filter);
+});
+
 test('warnings collect on the compiled result', () => {
     let compiled = compile('width: @pik(1, 2);');
     assert.equal(compiled.warnings.length, 1);
@@ -311,7 +447,7 @@ test('@svg problems are reported once for the whole grid', () => {
 test('generated ids are positional and carry the instance token', () => {
     let code = `
         background: @doodle(color: red);
-        filter: @svg-filter(frequency=.2, scale=5);
+        filter: @svg-filter(.2, 5);
         @nth(1) { background: @shaders(void main() {}) }
     `;
     let run = instance => generateCss(parseCss(code), parseGrid('2x1'), 7, 64, undefined, [], instance);

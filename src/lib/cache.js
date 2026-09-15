@@ -8,7 +8,7 @@ export function memo(prefix, fn) {
     return (...args) => {
         let key = (args.length === 1 && typeof args[0] === 'string')
             ? args[0]
-            : args.join(',');
+            : args.join('\0');
         let value = cache.get(key);
         if (value === undefined) {
             if (cache.size >= 4096) {
