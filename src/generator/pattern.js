@@ -7,8 +7,6 @@ import { glsl } from '../lib/tagged-template.js';
 const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
-const OUTPUTS = new Set(['grid', 'shape', 'size', 'fill']);
-
 const BUILTINS = [
     'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size',
     'PI', 'true', 'false', 'u_time', 'u_resolution', 'u_seed', 'u_mouse', 'u_timeDelta', 'u_frameIndex', 'gl_FragCoord',
@@ -267,6 +265,13 @@ function generateSize(value, scope, ctx) {
     return size ? `size = ${size};\n` : '';
 }
 
+const OUTPUT_GENERATORS = {
+    __proto__: null,
+    fill: generateFill,
+    shape: generateShape,
+    size: generateSize,
+};
+
 function generateRepeat(token, scope, ctx, opts) {
     let [head = '', ...stops] = token.args;
     let m = head.match(/^(\d+)(?:\s+as\s+(\S+))?$/);
@@ -335,24 +340,25 @@ function generateMatch(chain, scope, ctx, opts) {
 function generateBody(tokens, scope, ctx, opts = {}) {
     let out = '';
     let { loop, top } = opts;
-    let has = name => tokens.some(t => t.type === 'statement' && t.name === name);
-    if (!loop && has('size') && !has('shape') && !opts.shaped) out += generateShape('square', scope, ctx);
-    opts = { ...opts, shaped: opts.shaped || has('shape') };
+    let hasShape = false, hasSize = false;
+    for (let t of tokens) {
+        if (t.type !== 'statement') continue;
+        if (t.name === 'shape') hasShape = true;
+        else if (t.name === 'size') hasSize = true;
+    }
+    if (!loop && hasSize && !hasShape && !opts.shaped) out += generateShape('square', scope, ctx);
+    opts = { ...opts, shaped: opts.shaped || hasShape };
     for (let k = 0; k < tokens.length; k++) {
         let t = tokens[k];
         if (t.type === 'statement') {
             if (t.name === 'grid') {
                 if (!top) ctx.warn('grid must be at the top level');
-            } else if (!OUTPUTS.has(t.name)) {
+            } else if (!OUTPUT_GENERATORS[t.name]) {
                 out += generateStatement(t.name, t.value, scope, ctx);
             } else if (loop) {
                 ctx.warn(`repeat() does not allow ${t.name}`);
-            } else if (t.name === 'fill') {
-                out += generateFill(t.value, scope, ctx);
-            } else if (t.name === 'shape') {
-                out += generateShape(t.value, scope, ctx);
             } else {
-                out += generateSize(t.value, scope, ctx);
+                out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx);
             }
         } else if (t.name === 'repeat') {
             out += generateRepeat(t, scope, ctx, opts);
