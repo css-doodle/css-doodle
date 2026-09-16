@@ -10,7 +10,8 @@ const indices = count => sequence(count, i => i);
 test('sequence: plain counts', () => {
     assert.deepEqual(indices(3), [1, 2, 3]);
     assert.deepEqual(indices('3'), [1, 2, 3]);
-    assert.deepEqual(indices(3.2), [1, 2, 3, 4]);
+    assert.deepEqual(indices(3.2), [1, 2, 3]);
+    assert.deepEqual(indices(3.8), [1, 2, 3]);
     assert.deepEqual(indices(0), []);
 });
 

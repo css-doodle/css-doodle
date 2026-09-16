@@ -442,7 +442,7 @@ Function.r = (_, { context, rand }) => (...args) => {
 
 Function.ri = (_, { context, rand }) => (...args) => {
     let transform = (args.length && args.every(isLetter)) ? byCharcode : byUnit;
-    let randInt = (...range) => Math.round(rand(...range));
+    let randInt = (...range) => Math.trunc(rand(...range));
     return pushStack(context, 'lastRand', transform(randInt)(...args));
 };
 

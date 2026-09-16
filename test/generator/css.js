@@ -168,6 +168,7 @@ test('$ falls back to splicing when a function result is not a number', () => {
 
 test('$ inside a sequence tracks the iteration variables', () => {
     assertContains('@grid: 1; --l: @M4($(@n*2));', '--l:2 4 6 8;');
+    assertContains('@grid: 1; --l: @m(3.8, @n);', '--l:1,2,3;');
 });
 
 test('@calc and Math functions evaluate templated arguments the same', () => {
@@ -342,6 +343,13 @@ test('@svg-filter accepts a lone named blur', () => {
     let [filter] = Object.values(compiled.filters);
     assert.match(filter, /<filter id="filter-1" xmlns="[^"]+" x="-20%" y="-20%" width="140%" height="140%">/);
     assert.match(filter, /<feGaussianBlur stdDeviation="5px"\/>/);
+});
+
+test('@svg-filter keeps the integer part of octave', () => {
+    let compiled = compile('filter: @svg-filter(frequency: .1; octave: @r(1, 8););');
+    let [filter] = Object.values(compiled.filters);
+    assert.match(filter, /numOctaves="\d+"/);
+    assert.deepEqual(compiled.warnings, []);
 });
 
 test('@svg-filter channels expressions compose functions before expansion', () => {

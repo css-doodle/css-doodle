@@ -128,6 +128,19 @@ export function expandFilterShorthands(root, seed, warn = () => {}, { chainInput
             .map(([name, value]) => statement(name, value)));
     }
     root.value = output;
+    // numOctaves is an integer; @r() often yields floats
+    for (let token of output) {
+        if (token.type !== 'block' || token.name.toLowerCase() !== 'feturbulence') continue;
+        token.value = token.value.filter(t => {
+            if (t.type !== 'statement' || t.name !== 'numOctaves') return true;
+            let n = Math.trunc(t.value);
+            if (Number.isFinite(n)) {
+                t.value = String(Math.max(1, n));
+                return true;
+            }
+            warn('svg-filter numOctaves: expected integer');
+        });
+    }
     return root;
 }
 

@@ -32,11 +32,12 @@ test('depth applies to any grid, clamped so the leaf level stays within GRID²',
     assert.deepEqual(parseGrid('64x64x2'), { x: 64, y: 64, z: 1, count: 4096, ratio: 1 });
 });
 
-test('values clamp to the allowed range and truncate', () => {
+test('values clamp to the allowed range and keep the integer part', () => {
     assert.deepEqual(parseGrid('0'), one);
     assert.deepEqual(parseGrid('0x1'), one);
     assert.deepEqual(parseGrid('70000,1'), { x: 4096, y: 1, z: 1, count: 4096, ratio: 4096 });
     assert.deepEqual(parseGrid('70000'), { x: 64, y: 64, z: 1, count: 4096, ratio: 1 });
     assert.deepEqual(parseGrid('0.5'), one);
     assert.deepEqual(parseGrid('1x5.2'), { x: 1, y: 5, z: 1, count: 5, ratio: 1 / 5 });
+    assert.deepEqual(parseGrid('1x5.8'), { x: 1, y: 5, z: 1, count: 5, ratio: 1 / 5 });
 });

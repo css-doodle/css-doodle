@@ -9,7 +9,7 @@ export function sequence(count, fn) {
     let [x, y = 1] = String(count).split(/[x-]/);
     // a leading dash is a negative count, not a range
     if (x === '') return [];
-    let [cx, cy] = [Math.ceil(x), Math.ceil(y)];
+    let [cx, cy] = [Math.trunc(x), Math.trunc(y)];
     if (Number.isNaN(cx)) cx = 1;
     if (Number.isNaN(cy)) cy = 1;
     x = clamp(cx, 0, MAX_SEQUENCE);

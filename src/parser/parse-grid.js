@@ -11,7 +11,7 @@ export default function parseGrid(size, GRID = 64) {
     let [x, y, z] = String(size)
         .replace(/\s+/g, '')
         .split(/[,，xX]+/)
-        .map(n => parseInt(n));
+        .map(n => Math.trunc(n));
 
     const total = GRID * GRID;
     const maxXy = (x == 1 || y == 1) ? total : GRID;

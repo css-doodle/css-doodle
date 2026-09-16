@@ -184,3 +184,19 @@ test('separate command groups expand separately', () => {
         'feGaussianBlur', 'channels', 'feGaussianBlur',
     ]);
 });
+
+test('numOctaves is a positive integer', () => {
+    let { root, warnings } = expand('frequency: .1; octave: 3.7;');
+    assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, '3');
+    assert.deepEqual(warnings, []);
+
+    ({ root, warnings } = expand('frequency: .1; octave: 0.4;'));
+    assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, '1');
+
+    ({ root, warnings } = expand('frequency: .1; octave: high;'));
+    assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, undefined);
+    assert.deepEqual(warnings, ['svg-filter numOctaves: expected integer']);
+
+    ({ root, warnings } = expand('feTurbulence { numOctaves: 2.2; seed: 1 }'));
+    assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, '2');
+});
