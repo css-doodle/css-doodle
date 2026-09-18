@@ -81,6 +81,7 @@ const UNIFORM_KEYS = {
     __proto__: null,
     ut: 'time', UT: 'time', t: 'time', T: 'time', ts: 'time', TS: 'time',
     ux: 'mousex', uy: 'mousey', uw: 'width', uh: 'height',
+    udx: ['mousex', 'width'], udy: ['mousey', 'height'],
     shaders: 'mouse',
 };
 
@@ -166,7 +167,9 @@ function compileFunc(node) {
                 let { cell, env } = frame;
                 let { rules } = env;
                 if (uniformKey) {
-                    rules.uniforms[uniformKey] = true;
+                    for (let key of [].concat(uniformKey)) {
+                        rules.uniforms[key] = true;
+                    }
                 }
                 if (composable) {
                     let composed = rules.composeComposable(fname, node, cell, env, frame.selector, frame.property);

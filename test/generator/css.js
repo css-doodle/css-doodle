@@ -790,6 +790,18 @@ test('shaders and patterns are records of the same shape', () => {
     assert.deepEqual(pattern.target, { selector: 'c-1-1-1', type: 'background' });
 });
 
+test('@udx/@udy bind pointer and size uniforms together', () => {
+    let { uniforms, styles } = compile('--d: hypot(@udx, @udy);', '8');
+    assert.equal(uniforms.mousex, true);
+    assert.equal(uniforms.mousey, true);
+    assert.equal(uniforms.width, true);
+    assert.equal(uniforms.height, true);
+    assert.ok(styles.cells.includes('var(--cssd-uwidth)'), styles.cells);
+    assert.ok(styles.cells.includes('var(--cssd-umousex)'), styles.cells);
+    assert.ok(styles.cells.includes('var(--cssd-uheight)'), styles.cells);
+    assert.ok(styles.cells.includes('var(--cssd-umousey)'), styles.cells);
+});
+
 test('$name in a shaders body reads the variable at generation time', () => {
     let { shaders, warnings } = compile(`
         --texture: @doodle(@grid: 8; background: @p(red, blue););

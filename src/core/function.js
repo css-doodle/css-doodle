@@ -776,6 +776,9 @@ Function.uh = () => calcWith(`var(${uheight})`);
 Function.ux = () => calcWith(`var(${umousex})`);
 Function.uy = () => calcWith(`var(${umousey})`);
 
+Function.udx = ({ x, grid }) => calcWith(`calc(${tidyNumber((x - .5) / grid.x)} * var(${uwidth}) - var(${umousex}))`);
+Function.udy = ({ y, grid }) => calcWith(`calc(${tidyNumber((y - .5) / grid.y)} * var(${uheight}) - var(${umousey}))`);
+
 /**
  * expose JS Math functions with css-doodle calc/value semantics
  */

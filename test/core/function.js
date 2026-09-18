@@ -132,6 +132,13 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.deepEqual(values(['to=10']), noise);
 });
 
+test('@udx/@udy: cell center minus pointer, in doodle pixels', () => {
+    let cell = { x: 1, y: 2, grid: { x: 8, y: 4 } };
+    assert.match(Function.udx(cell)(), /0\.0625 \* var\(--cssd-uwidth\) - var\(--cssd-umousex\)/);
+    assert.match(Function.udy(cell)(), /0\.375 \* var\(--cssd-uheight\) - var\(--cssd-umousey\)/);
+    assert.match(Function.udx(cell)('*1px'), /px/);
+});
+
 test('@plot: the shape follows the grid count', () => {
     let env = { context: {}, extra: [] };
     let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
