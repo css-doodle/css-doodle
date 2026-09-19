@@ -79,7 +79,7 @@ const SEQ_READERS = new Map([
 
 const UNIFORM_KEYS = {
     __proto__: null,
-    ut: 'time', UT: 'time', t: 'time', T: 'time', ts: 'time', TS: 'time',
+    t: 'time', T: 'time', ts: 'time', TS: 'time',
     ux: 'mousex', uy: 'mousey', uw: 'width', uh: 'height',
     udx: ['mousex', 'width'], udy: ['mousey', 'height'],
     shaders: 'mouse',

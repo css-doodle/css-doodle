@@ -87,7 +87,7 @@ export default [
     { name: 'func-svg-polygon', code: `background: @svg-polygon(circle);` },
     { name: 'func-gradient', code: `background: @linearGradient(red, blue); border-image-source: @radialGradient(red, blue);` },
     { name: 'func-var', code: `--c: 10px; width: @var(--c);` },
-    { name: 'func-uniform-time', code: `--t: @ut;` },
+    { name: 'func-uniform-time', code: `--t: @t;` },
 
     // --- calc / $ ---
     { name: 'calc-dollar', code: `width: $(2 * 5)px;` },

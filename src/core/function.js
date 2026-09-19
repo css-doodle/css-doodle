@@ -799,8 +799,6 @@ export const alias = {
     'rand': 'r',
     'pick': 'p',
     'rn': 'R',
-    'UT': 'T',
-    'ut': 't',
 
     // error prone
     'stripes': 'stripe',
