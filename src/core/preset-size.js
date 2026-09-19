@@ -34,8 +34,11 @@ function getPreset(name, mode) {
     if (modes[mode] == 'p') {
         [w, h] = [h, w];
     }
-
-    return [w, h].map(n => n + unit);
+    return [
+        w + unit,
+        h + unit,
+        w + '/' + h
+    ];
 }
 
 function isPreset(name) {

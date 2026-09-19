@@ -89,7 +89,8 @@ Property.size = (value, { isSpecialSelector, grid }) => {
     let [w, h = w, ratio] = parseValueGroup(value);
     if (isEmpty(w)) return '';
     if (isPreset(w)) {
-        [w, h] = getPreset(w, h);
+        [w, h, ratio] = getPreset(w, h);
+        h = 'auto';
     }
     let styles = `width:${w};height:${h};`;
     if (w === 'auto' || h === 'auto') {

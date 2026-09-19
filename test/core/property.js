@@ -138,9 +138,9 @@ test('size: one or two lengths', () => {
 });
 
 test('size: paper presets ignore case, p means portrait', () => {
-    assert.equal(size('a4'), 'width:297mm;height:210mm;');
-    assert.equal(size('A4'), 'width:297mm;height:210mm;');
-    assert.equal(size('a4 p'), 'width:210mm;height:297mm;');
+    assert.equal(size('a4'), 'width:297mm;height:auto;aspect-ratio: calc(297/210);');
+    assert.equal(size('A4'), 'width:297mm;height:auto;aspect-ratio: calc(297/210);');
+    assert.equal(size('a4 p'), 'width:210mm;height:auto;aspect-ratio: calc(210/297);');
 });
 
 test('size: prototype names are not presets', () => {
