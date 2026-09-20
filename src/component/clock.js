@@ -1,4 +1,5 @@
 const TIME_UNITS = { ms: 1, s: 1000, min: 60000, h: 3600000 };
+export const TRANSITION_NONE = '*,*::before,*::after{transition:none!important}';
 const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
 const RE_CSS_CLOCK = /\banimation(?:-name)?\s*:/;
 const RE_IMAGE_CLOCK = /%3Canimate|animation(?:-name)?%3A/;

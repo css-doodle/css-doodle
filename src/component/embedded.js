@@ -15,7 +15,7 @@ import { RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { css } from '../lib/tagged-template.js';
 import { loadGoogleFontEmbed } from './google-font.js';
 
-import { stampSheet } from './clock.js';
+import { stampSheet, TRANSITION_NONE } from './clock.js';
 import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
@@ -113,7 +113,7 @@ export async function doodleToImage(host, code, options) {
         let sheet = stampSheet(host, fonts + styles.top + css`
             @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
             @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-        ` + getBasicStyles(grid) + styles.all);
+        ` + getBasicStyles(grid) + styles.all) + TRANSITION_NONE;
         let svg = await createReplacer(host, compiled)(css`
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
                 <foreignObject width="100%" height="100%">

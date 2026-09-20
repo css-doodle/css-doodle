@@ -13,7 +13,7 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
-import { stampSvgImages, hasImageClock } from './clock.js';
+import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
 import { createReplacer, releaseSharedImages } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
@@ -483,7 +483,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (input instanceof Promise) {
                 // a render that was replaced while waiting must not write its styles
                 let generation = this._generation;
-                input.then(v => {
+                this._styleReady = input.then(v => {
                     if (this._generation === generation) {
                         this.setStyle(v);
                     }
@@ -493,6 +493,7 @@ if (typeof HTMLElement !== 'undefined') {
                 if (el) {
                     el.textContent = input.replace(/\n\s+/g, ' ');
                 }
+                this._styleReady = Promise.resolve();
             }
         }
 
@@ -566,6 +567,8 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         async export({ scale, name, download, detail } = {}) {
+            // Wait for pending styles and their embedded images before serializing.
+            await this._styleReady;
             let variables = getAllVariables(this);
             let html = serializeDoodle(this.shadowRoot);
 
@@ -582,6 +585,7 @@ if (typeof HTMLElement !== 'undefined') {
                             <style><![CDATA[
                                 ${fonts}
                                 .host{${variables}}
+                                ${TRANSITION_NONE}
                             ]]></style>
                             ${html}
                         </div>

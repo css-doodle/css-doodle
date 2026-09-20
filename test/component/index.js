@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
 import generateCss from '../../src/generator/css.js';
+import { doodleToImage } from '../../src/component/embedded.js';
 
 // the component only defines its class when HTMLElement exists
 globalThis.HTMLElement ??= class {};
@@ -49,6 +50,7 @@ test('setStyle drops a promised style from a superseded render', async () => {
     let resolve;
     let pending = new Promise(r => { resolve = r; });
     host.setStyle(pending);
+    assert.ok(host._styleReady instanceof Promise);
     host._generation++;
     resolve('stale');
     await pending;
@@ -56,8 +58,58 @@ test('setStyle drops a promised style from a superseded render', async () => {
     assert.equal(el.textContent, 'old');
 
     host.setStyle(Promise.resolve('fresh'));
-    await new Promise(r => setTimeout(r));
+    await host._styleReady;
     assert.equal(el.textContent, 'fresh');
+});
+
+test('export waits for styles and disables transitions without restamping animations', async t => {
+    let serializer = globalThis.XMLSerializer;
+    globalThis.XMLSerializer = class {
+        serializeToString(node) { return `<style>${node.textContent}</style>`; }
+    };
+    t.after(() => {
+        if (serializer === undefined) delete globalThis.XMLSerializer;
+        else globalThis.XMLSerializer = serializer;
+    });
+    let el = { textContent: 'old' };
+    let host = {
+        _generation: 1,
+        shadowRoot: {
+            querySelector: () => el,
+            querySelectorAll: () => [],
+            childNodes: [el],
+        },
+        setStyle: CSSDoodle.prototype.setStyle,
+        getBoundingClientRect: () => ({ width: 100, height: 100 }),
+    };
+    let resolve;
+    host.setStyle(new Promise(r => { resolve = r; }));
+    let exported = CSSDoodle.prototype.export.call(host);
+    await Promise.resolve();
+    assert.equal(el.textContent, 'old');
+    let sheet = 'cell{transition:all 1s;animation:spin 4s -2500ms}';
+    resolve(sheet);
+    let { svg } = await exported;
+    assert.ok(svg.includes(`<style>${sheet}</style>`));
+    assert.equal(svg.split('transition:none!important').length - 1, 1);
+    assert.ok(!svg.includes('animation-play-state:paused'));
+});
+
+test('nested doodle images disable transitions without freezing animations', async () => {
+    let host = {
+        extra: {},
+        compiled: { seed: 42 },
+        getMaxGrid: () => 64,
+        report: () => {},
+        hasAttribute: () => false,
+        _clock: { base: 0 },
+    };
+    let source = await doodleToImage(host, 'transition:all 1s;animation:spin 4s;', {});
+    assert.ok(source.startsWith('data:image/svg+xml;base64,'));
+    let svg = atob(source.split(',')[1]);
+    assert.equal(svg.split('transition:none!important').length - 1, 1);
+    assert.match(svg, /animation:\s*spin 4s/);
+    assert.ok(!svg.includes('animation-play-state:paused'));
 });
 
 test('the host clock freezes while paused', async () => {
