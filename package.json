@@ -1,6 +1,6 @@
 {
   "name": "css-doodle",
-  "version": "0.51.0",
+  "version": "0.52.0",
   "description": "A web component for visual art & creative coding",
   "scripts": {
     "test": "node --test --test-reporter dot 'test/{core,parser,generator,component,lib,fuzz}/*.js'",
