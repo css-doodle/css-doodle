@@ -439,6 +439,24 @@ test('@use at the top level is inlined by the parser', () => {
     assert.ok(compiled.styles.all.includes('@keyframes k {to {color:blue;}}'));
 });
 
+test('naming a seed either way draws the same image', () => {
+    // the pre-pass spends draws from the same stream to resolve @grid, so
+    // without a reset the cells started past them while an equivalent @seed
+    // restarted the stream: the property and the attribute disagreed
+    for (let code of [
+        '@grid: 4 _1px; background: @r(100);',
+        '@grid: @p(4, 5) _1px; background: @r(100);',
+        ':doodle { @grid: @p(3, 6) _1px; } background: @p(red, green, blue);',
+        '@grid: 2 / 60px; background: @doodle(@grid: 2; background: @p(#f00, #00f););',
+    ]) {
+        let viaAttribute = compile(code, '1', 12345);
+        let viaProperty = compile(`@seed: 12345; ${code}`, '1', 999);
+        assert.equal(viaProperty.seed, '12345');
+        assert.equal(viaProperty.styles.all, viaAttribute.styles.all, code);
+        assert.deepEqual(viaProperty.grid, viaAttribute.grid, code);
+    }
+});
+
 test('@svg problems are reported once for the whole grid', () => {
     let compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '2');
     assert.deepEqual(compiled.warnings.map(w => w.message), [

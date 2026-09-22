@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
 import generateCss from '../../src/generator/css.js';
+import createRandom from '../../src/core/random.js';
 import { doodleToImage } from '../../src/component/embedded.js';
 
 // the component only defines its class when HTMLElement exists
@@ -110,6 +111,31 @@ test('nested doodle images disable transitions without freezing animations', asy
     assert.equal(svg.split('transition:none!important').length - 1, 1);
     assert.match(svg, /animation:\s*spin 4s/);
     assert.ok(!svg.includes('animation-play-state:paused'));
+});
+
+test('a nested doodle is drawn from the render that asked for it', async () => {
+    // a render still resolving when the next one lands used to read
+    // host.compiled at that later moment: it drew from a stream that was not
+    // its own, so the same source and seed could paint a different picture
+    const owner = (seed) => ({ seed, random: createRandom(String(seed)).random });
+    const host = (compiled) => ({
+        extra: {},
+        compiled,
+        getMaxGrid: () => 64,
+        report: () => {},
+        hasAttribute: () => false,
+        _clock: { base: 0 },
+    });
+    const code = 'background: @p(red, blue, green); transform: scale(@r(.5, 1));';
+
+    // the asking render is the one named in the options, whatever the host
+    // has compiled since; both sides get a fresh stream of the same seed
+    const asked = await doodleToImage(host(owner('99999')), code, { compiled: owner('12345') });
+    const settled = await doodleToImage(host(owner('12345')), code, {});
+    const other = await doodleToImage(host(owner('99999')), code, {});
+
+    assert.equal(asked, settled, 'the asking render decides, not the host');
+    assert.notEqual(other, settled, 'a different seed is a different picture');
 });
 
 test('the host clock freezes while paused', async () => {

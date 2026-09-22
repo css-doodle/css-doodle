@@ -46,13 +46,14 @@ function sharedImage(host, svg, toUrl) {
     return url;
 }
 
-export function createReplacer(host, { doodles, shaders, patterns }) {
+export function createReplacer(host, compiled) {
+    const { doodles, shaders, patterns } = compiled;
     // each group resolves with the text that takes the place of its placeholder
     const groups = [
-        [doodles, (id, v) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id })
+        [doodles, (id, v) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id, compiled })
             .then(url => `url(${url})`)],
-        [shaders, (id, v) => shaderToImage(host, v).then(() => `var(--${id})`)],
-        [patterns, (id, v) => patternToImage(host, v).then(() => `var(--${id})`)],
+        [shaders, (id, v) => shaderToImage(host, { ...v, compiled }).then(() => `var(--${id})`)],
+        [patterns, (id, v) => patternToImage(host, { ...v, compiled }).then(() => `var(--${id})`)],
     ];
     return input => {
         let present = new Set();
@@ -84,7 +85,8 @@ export async function doodleToImage(host, code, options) {
     code = ':doodle {width:100%;height:100%}' + code;
     let parsed = parseCssCached(code, host.extra);
     let baseGrid = parseGrid('');
-    let compiled = generateCss(parsed, baseGrid, host.compiled.seed, host.getMaxGrid(), host.compiled.random, options.upextra, options.instance);
+    let source = options.compiled ?? host.compiled;
+    let compiled = generateCss(parsed, baseGrid, source.seed, host.getMaxGrid(), source.random, options.upextra, options.instance);
     host.report(compiled.warnings);
     let styles = compiled.styles;
     let grid = compiled.grid || baseGrid;
@@ -152,7 +154,7 @@ export function patternToImage(host, pattern) {
     return shaderToImage(host, { ...pattern, source });
 }
 
-export async function shaderToImage(host, { source, cell, id, arg, target }) {
+export async function shaderToImage(host, { source, cell, id, arg, target, compiled }) {
     // restamping the sheet resolves its placeholders again; a rendered shader stays
     if (host.shaderRenders.has(id)) return;
     let elements;
@@ -240,7 +242,7 @@ export async function shaderToImage(host, { source, cell, id, arg, target }) {
     const loadTextures = () => {
         let dpr = devicePixelRatio || 1;
         return Promise.all(parsed.textures.map(({ name, value }) => {
-            let options = { width, height, instance: `${id.slice(2)}-${name}` };
+            let options = { width, height, instance: `${id.slice(2)}-${name}`, compiled };
             return doodleToImage(host, value, options).then(src => new Promise(resolve => {
                 if (!src) {
                     return resolve({ name, value: null });

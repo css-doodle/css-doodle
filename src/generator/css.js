@@ -1136,6 +1136,9 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
         updateRandom(seed);
     } else {
         seed = seedValue;
+        if (!seedRandom && !isNil(seed)) {
+            updateRandom(seed);
+        }
     }
 
     if (isNil(seed)) {
