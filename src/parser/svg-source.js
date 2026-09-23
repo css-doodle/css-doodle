@@ -4,7 +4,7 @@ function generate(token, last, repeat) {
         let times = repeat ? token.times : null;
         if (times) {
             // id and class already sit in the body as statements
-            result += ('@M' + times + '(' + token.name + '{');
+            result += '@M(' + times + ',' + token.name + '{';
         } else {
             result += token.name + '{';
         }

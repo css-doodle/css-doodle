@@ -14,3 +14,14 @@ test('the same seed draws the same picture', () => {
 test('without a seed the call still draws', () => {
     assert.match(svg(doc), /<circle r="[\d.]+"\/>/);
 });
+
+test('a computed count reads the enclosing sequence', () => {
+    let out = svg('g*3 { circle*$(2^@n) {} }');
+    assert.deepEqual(out.match(/<g>.*?<\/g>/g).map(g => g.split('<circle').length - 1), [2, 4, 8]);
+});
+
+test('a count can be picked: the comma stays inside the call, the seed decides', () => {
+    let counts = [1, 2, 3, 4].map(seed => svg('circle*@p(10, 20) {}', { seed }).split('<circle').length - 1);
+    assert.deepEqual([...new Set(counts)].sort(), [10, 20]);
+    assert.deepEqual(counts, [1, 2, 3, 4].map(seed => svg('circle*@p(10, 20) {}', { seed }).split('<circle').length - 1));
+});

@@ -153,7 +153,7 @@ let seqUid = 0;
 function makeSequence(c) {
     return lazy((cell, env, position, input, ...actions) => {
         if (!input || !actions.length) return '';
-        let count = getValue(input());
+        let count = getValue(input(...(last(env.extra) || [])));
         let evaluated = count;
         // Anything but plain numbers and 2x3/1-5 range forms goes through calc
         if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {

@@ -41,10 +41,10 @@ function resolveId(block) {
 // `circle*3` keeps the count and the name without it
 function makeBlock(name, value = []) {
     let block = { type: 'block', name, value };
-    if (/\*\s*[0-9]/.test(name)) {
-        let [pureName, times] = name.split('*');
-        block.times = times.trim();
-        block.pureName = pureName.trim();
+    if (/\*\s*[0-9@$(]/.test(name)) {
+        let at = name.indexOf('*');
+        block.times = name.slice(at + 1).trim();
+        block.pureName = name.slice(0, at).trim();
     }
     return block;
 }
