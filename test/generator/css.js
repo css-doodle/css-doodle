@@ -345,6 +345,51 @@ test('@svg-filter accepts a lone named blur', () => {
     assert.match(filter, /<feGaussianBlur stdDeviation="5px"\/>/);
 });
 
+test('@svg-filter expands into the svg document itself', () => {
+    let compiled = compile(`@content: @svg(
+        viewBox: 0 0 10 10;
+        rect { width: 10; height: 10; filter: @svg-filter(.03, 20, seed=@r1000); }
+    );`);
+    let content = compiled.content['#c-1-1-1'];
+    // inside @svg the filter is inlined, and the reference reaches it
+    assert.match(content, /<defs><filter x="-20%" y="-20%" width="140%" height="140%" id="filter-\d+">/);
+    assert.match(content, /<feTurbulence type="fractalNoise" baseFrequency="0\.03 0\.03" seed="[\d.]+"\/>/);
+    assert.match(content, /<feDisplacementMap in="SourceGraphic" scale="20"\/><\/filter><\/defs>/);
+    assert.match(content, /filter="url\(#filter-\d+\)"/);
+    // nothing is left for the shared holder
+    assert.deepEqual(Object.keys(compiled.filters), []);
+    assert.deepEqual(compiled.warnings, []);
+
+    // a written-out filter block is inlined the same way
+    compiled = compile(`@content: @svg(rect {
+        width: 10; height: 10;
+        filter: @svg-filter(
+            feTurbulence { type: fractalNoise; baseFrequency: .05; seed: 3; }
+            feDisplacementMap { in: SourceGraphic; scale: 30; }
+        );
+    });`);
+    assert.match(compiled.content['#c-1-1-1'],
+        /<defs><filter id="filter-\d+"><feTurbulence type="fractalNoise" baseFrequency="\.05" seed="3"\/><feDisplacementMap in="SourceGraphic" scale="30"\/><\/filter><\/defs>/);
+    assert.deepEqual(Object.keys(compiled.filters), []);
+});
+
+test('@svg-filter travels inside the data url form of @svg', () => {
+    // a filter in the shared holder is out of reach of a data url image
+    let all = css('background: @svg(viewBox: 0 0 10 10; rect { width: 10; height: 10; filter: @svg-filter(.03, 20); });');
+    let image = decodeURIComponent(all.match(/utf8,([^"]+)"/)[1]);
+    assert.match(image, /<defs><filter [^>]*id="filter-\d+">/);
+    assert.match(image, /filter="url\(#filter-\d+\)"/);
+});
+
+test('@svg-filter does not repeat a `*n` block inside @svg()', () => {
+    // a function argument carries no `*n`, the same as outside @svg: the
+    // count is dropped and the source never carries an `@M` back into it
+    let compiled = compile('@content: @svg(rect { width: 10; height: 10; filter: @svg-filter(feTurbulence*2 { baseFrequency: .1; }); });');
+    assert.match(compiled.content['#c-1-1-1'],
+        /<defs><filter id="filter-\d+"><feTurbulence baseFrequency="\.1"\/><\/filter><\/defs>/);
+    assert.deepEqual(compiled.warnings, []);
+});
+
 test('@svg-filter keeps the integer part of octave', () => {
     let compiled = compile('filter: @svg-filter(frequency: .1; octave: @r(1, 8););');
     let [filter] = Object.values(compiled.filters);

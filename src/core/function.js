@@ -4,6 +4,7 @@ import parseSvgPath from '../parser/parse-svg-path.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands from '../parser/parse-shape-commands.js';
 import parseDirection from '../parser/parse-direction.js';
+import svgSourceOf from '../parser/svg-source.js';
 
 import generateSvg from '../generator/svg.js';
 import generateShape from '../generator/shapes.js';
@@ -634,7 +635,14 @@ Function.reverse = () => {
 };
 
 Function.svg = lazy((_, env, position, ...args) => {
-    let value = args.map(input => getValue(input())).join(',');
+    let outer = env.svg;
+    env.svg = true;
+    let value;
+    try {
+        value = args.map(input => getValue(input())).join(',');
+    } finally {
+        env.svg = outer;
+    }
     let { url, warnings } = composeSvgUrl(value);
     for (let message of warnings) {
         env.rules.warn(message);
@@ -645,7 +653,6 @@ Function.svg = lazy((_, env, position, ...args) => {
 Function['svg-filter'] = lazy((_, env, position, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
-    let id = env.rules.nextId('filter');
     // legacy positional / name=value shorthand
     let shorthand = values.every(n =>
         !/[{}<>]/.test(n) && (/^[\-\d.]/.test(n) || /^\w+=/.test(n))
@@ -663,10 +670,15 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
             type: 'block',
             name: 'filter'
         });
-        value = generateSvg(expandFilter(parsed, env.seed, warn, {
+        let expanded = expandFilter(parsed, env.seed, warn, {
             chainInput: !shorthand
-        }), warn);
+        });
+        if (env.svg) {
+            return `${ svgSourceOf(expanded, { repeat: false }) }`;
+        }
+        value = generateSvg(expanded, warn);
     }
+    let id = env.rules.nextId('filter');
     let svg = normalizeSvg(value).replace(
         /<filter([\s>])/,
         `<filter id="${ id }"$1`

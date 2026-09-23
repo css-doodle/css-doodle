@@ -1,11 +1,10 @@
-// An svg tree back to source with every `*n` block as `@Mn(…)`, so
-// that parsed again as doodle arguments @M repeats the element.
-function generate(token, last) {
+function generate(token, last, repeat) {
     let result = '';
     if (token.type === 'block') {
-        if (token.times) {
+        let times = repeat ? token.times : null;
+        if (times) {
             // id and class already sit in the body as statements
-            result += ('@M' + token.times + '(' + token.name + '{');
+            result += ('@M' + times + '(' + token.name + '{');
         } else {
             result += token.name + '{';
         }
@@ -15,11 +14,11 @@ function generate(token, last) {
         else if (Array.isArray(token.value) && token.value.length) {
             let lastGroup = null;
             for (let t of token.value) {
-                result += generate(t, lastGroup);
+                result += generate(t, lastGroup, repeat);
                 lastGroup = t.origin || null;
             }
         }
-        result += token.times ? '})' : '}';
+        result += times ? '})' : '}';
     } else if (token.type === 'statement') {
         // statements expanded from one group share the same origin object;
         // compare identity so a later group with the same names isn't dropped
@@ -28,7 +27,7 @@ function generate(token, last) {
         let value = token.origin ? token.origin.value : token.value;
         if (!skip) {
             if (value && value.type) {
-                result += name + ':' + generate(value);
+                result += name + ':' + generate(value, null, repeat);
             } else if (token.raw) {
                 // read from braces, so written back in them
                 result += name + ':{' + value + '};';
@@ -40,6 +39,6 @@ function generate(token, last) {
     return result;
 }
 
-export default function sourceOf(token) {
-    return generate(token).trim();
+export default function sourceOf(token, { repeat = true } = {}) {
+    return generate(token, null, repeat).trim();
 }
