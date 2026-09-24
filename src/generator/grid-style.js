@@ -4,7 +4,7 @@ import { css } from '../lib/tagged-template.js';
  * Map the transformed @grid options to static [selector, rule] pairs.
  */
 export default function gridStyleRules({
-    fill, clip, rotate, hueRotate, scale, translate, enlarge, skew, persp,
+    fill, clip, rotate, hueRotate, scale, translate, enlarge, persp,
     flex, p3d, border, borderLegacy, gap, rowRule, columnRule, backdropFilter
 }) {
     let rules = [];

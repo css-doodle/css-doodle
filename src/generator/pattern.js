@@ -340,13 +340,9 @@ function generateMatch(chain, scope, ctx, opts) {
 function generateBody(tokens, scope, ctx, opts = {}) {
     let out = '';
     let { loop, top } = opts;
-    let hasShape = false, hasSize = false;
-    for (let t of tokens) {
-        if (t.type !== 'statement') continue;
-        if (t.name === 'shape') hasShape = true;
-        else if (t.name === 'size') hasSize = true;
-    }
-    if (!loop && hasSize && !hasShape && !opts.shaped) out += generateShape('square', scope, ctx);
+    let has = name => tokens.some(t => t.type === 'statement' && t.name === name);
+    let hasShape = has('shape');
+    if (!loop && !hasShape && !opts.shaped && has('size')) out += generateShape('square', scope, ctx);
     opts = { ...opts, shaped: opts.shaped || hasShape };
     for (let k = 0; k < tokens.length; k++) {
         let t = tokens[k];

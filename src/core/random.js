@@ -16,9 +16,8 @@ export default function createRandom(seed) {
         return lerp(random(), start, end);
     }
 
-    function pick(...items) {
-        let args = items.reduce((acc, n) => acc.concat(n), []);
-        return args[~~(random() * args.length)];
+    function pick(items) {
+        return items[~~(random() * items.length)];
     }
 
     function shuffle(arr) {

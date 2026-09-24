@@ -2,16 +2,12 @@ function generate(token, last, repeat) {
     let result = '';
     if (token.type === 'block') {
         let times = repeat ? token.times : null;
-        if (times) {
-            // id and class already sit in the body as statements
-            result += '@M(' + times + ',' + token.name + '{';
-        } else {
-            result += token.name + '{';
-        }
+        if (times) result += '@M(' + times + ',';
+        result += token.name + '{';
         if (token.name === 'style') {
             result += token.value;
         }
-        else if (Array.isArray(token.value) && token.value.length) {
+        else if (Array.isArray(token.value)) {
             let lastGroup = null;
             for (let t of token.value) {
                 result += generate(t, lastGroup, repeat);
@@ -20,8 +16,6 @@ function generate(token, last, repeat) {
         }
         result += times ? '})' : '}';
     } else if (token.type === 'statement') {
-        // statements expanded from one group share the same origin object;
-        // compare identity so a later group with the same names isn't dropped
         let skip = (token.origin && last === token.origin);
         let name = token.origin ? token.origin.name.join(',') : token.name;
         let value = token.origin ? token.origin.value : token.value;
@@ -29,7 +23,6 @@ function generate(token, last, repeat) {
             if (value && value.type) {
                 result += name + ':' + generate(value, null, repeat);
             } else if (token.raw) {
-                // read from braces, so written back in them
                 result += name + ':{' + value + '};';
             } else {
                 result += name + ':' + value + ';';

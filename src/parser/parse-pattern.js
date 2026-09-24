@@ -1,5 +1,5 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
-import { parseBody } from './parse-body.js';
+import { parseBody, readValue } from './parse-body.js';
 
 // `match(x > y), match(mod(x, 2) == 0)` → { name, args } per
 // selector, duplicates dropped
@@ -41,21 +41,8 @@ function readMatchBlocks(iter, head) {
     return selectors.map(({ name, args }) => Object.assign({}, block, { name, args }));
 }
 
-// a value runs to the ';' or the end of the block
 function readPatternStatement(iter, head) {
-    let value = [];
-    while (iter.next()) {
-        let curr = iter.curr();
-        let next = iter.curr(1);
-        if (curr.isSymbol(';')) {
-            break;
-        }
-        value.push(curr);
-        if (!next || next.isSymbol('}')) {
-            break;
-        }
-    }
-    return [{ type: 'statement', name: textOf(head), value: textOf(value) }];
+    return [{ type: 'statement', name: textOf(head), value: textOf(readValue(iter)) }];
 }
 
 const pattern = {

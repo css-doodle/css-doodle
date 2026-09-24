@@ -158,10 +158,12 @@ function readSvgBlocks(iter, head) {
 // `cx: 1`; `x, y: 1, 2` expanded; viewBox with its numbers; `--name`
 // flagged as a variable; null for the ':' of `xlink:href`
 function readSvgStatement(iter, head) {
-    if (isSpecialProperty(iter.curr(-1), iter.curr(1))) {
+    let prev = iter.curr(-1);
+    let next = iter.curr(1);
+    if (prev && next && isSpecialNamespaceAttr(prev.value + ':' + next.value)) {
         return null;
     }
-    let props = getGroups(head);
+    let props = itemsOf(head).map(textOf);
     let statement = {
         type: 'statement',
         name: 'unknown',
@@ -200,14 +202,6 @@ const svg = {
     readBlocks: readSvgBlocks,
     readStatement: readSvgStatement,
 };
-
-function isSpecialProperty(prev, next) {
-    return !!prev && !!next && isSpecialNamespaceAttr(prev.value + ':' + next.value);
-}
-
-function getGroups(tokens) {
-    return itemsOf(tokens).map(textOf);
-}
 
 // one selector chain per comma group: `g.a > circle*3, rect`
 function getSelectorGroups(tokens) {

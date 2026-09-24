@@ -90,4 +90,21 @@ function readRaw(iter) {
     return tokens;
 }
 
-export { parseBody, readRaw };
+// A declaration value: to the ';' or the end of the block.
+function readValue(iter) {
+    let tokens = [];
+    while (iter.next()) {
+        let curr = iter.curr();
+        let next = iter.curr(1);
+        if (curr.isSymbol(';')) {
+            break;
+        }
+        tokens.push(curr);
+        if (!next || next.isSymbol('}')) {
+            break;
+        }
+    }
+    return tokens;
+}
+
+export { parseBody, readRaw, readValue };

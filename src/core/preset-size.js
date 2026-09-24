@@ -13,16 +13,6 @@ const presets = {
     poster:   [ 390, 540 ],
 }
 
-const modes = {
-    __proto__: null,
-
-    portrait: 'p',
-    p: 'p',
-
-    landscape: 'l',
-    l: 'l',
-}
-
 const unit = 'mm';
 
 function getPreset(name, mode) {
@@ -31,7 +21,7 @@ function getPreset(name, mode) {
     // Default to landscape mode
     let [h, w] = presets[name] ?? [];
 
-    if (modes[mode] == 'p') {
+    if (mode === 'p' || mode === 'portrait') {
         [w, h] = [h, w];
     }
     return [
