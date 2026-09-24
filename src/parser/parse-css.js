@@ -299,6 +299,7 @@ function finishFunc(cur, name, end, isCalc, extra, variables, index) {
         let inner;
         if (dot < name.length - 1) {
             inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables, index + dot + 1);
+            inner.dotted = true;
         } else {
             inner = parseFunc(cur, extra);
         }

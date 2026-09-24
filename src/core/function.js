@@ -35,6 +35,8 @@ const RE_CALC = /^calc\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
 const MAX_SEQUENCE = 65536;
+const MAX_SCATTER = 8192;
+const SCATTER_OUTLINE = 360;
 
 // layout of the sequence tuples pushed onto `extra` (see arguments.js)
 const SEQ = {
@@ -182,16 +184,18 @@ function seq(token, make) {
     };
 }
 
-// @plot / @Plot: nth point (or all points) of a generated shape;
-// `unit` keeps units on the output values (the @Plot variant)
-function createPlot(unit) {
-    // a sequence calls this once per item with the same commands
-    let plot = memo(unit ? 'Plot-function' : 'plot-function', (commands, max) => {
+function createPlot(unit, scatter) {
+    let plot = memo(unit ? 'Plot-function' : 'plot-function', (commands, max, scatter) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, rules => {
             delete rules['fill'];
             delete rules['fill-rule'];
             delete rules['frame'];
-            if (rules.split || rules.points) {
+            if (scatter) {
+                let count = parseInt(rules.points);
+                rules.hasPoints = count > 0;
+                rules.scatter = clamp(rules.hasPoints ? count : max, 1, MAX_SCATTER);
+                rules.points = rules.split || rules.vertices || SCATTER_OUTLINE;
+            } else if (rules.split || rules.points) {
                 rules.hasPoints = true;
             } else {
                 rules.points = max;
@@ -207,7 +211,7 @@ function createPlot(unit) {
         return (...args) => {
             let idx = e[SEQ.n] ?? count;
             let max = e[SEQ.max] ?? grid.count;
-            let { points, rules } = plot(args.join(','), max);
+            let { points, rules } = plot(args.join(','), max, scatter);
             return rules.hasPoints ? points : points[idx - 1];
         };
     };
@@ -588,8 +592,10 @@ Function.shape = () => {
 };
 
 Function.plot = createPlot(false);
+Function.plot.scatter = createPlot(false, true);
 
 Function.Plot = createPlot(true);
+Function.Plot.scatter = createPlot(true, true);
 
 Function.arc = () => {
     return memo('arc-function', (...args) => {

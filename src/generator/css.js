@@ -122,10 +122,17 @@ function compileValue(value) {
 }
 
 function compileFunc(node) {
-    let compiled = compiledFuncs.get(node);
+    let key = node;
+    let compiled = compiledFuncs.get(key);
     if (compiled === undefined) {
         let fname = node.name.slice(1);
         let fn = Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
+        let inner = node.arguments[0]?.values[0];
+        let name = inner?.dotted && inner.name.slice(1);
+        if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
+            fn = fn[name];
+            node = { ...inner, name: node.name };
+        }
         if (typeof fn !== 'function') {
             let literal = { value: node.name };
             compiled = frame => {
@@ -224,7 +231,7 @@ function compileFunc(node) {
                 return { value: getValue(output), extra: output?.extra };
             };
         }
-        compiledFuncs.set(node, compiled);
+        compiledFuncs.set(key, compiled);
     }
     return compiled;
 }

@@ -153,3 +153,33 @@ test('@plot: the shape follows the grid count', () => {
     assert.match(String(Function.plot(cell(4), env)('r: 1')), /%/);
     assert.doesNotMatch(String(Function.Plot(cell(4), env)('r: 1')), /%/);
 });
+
+test('@plot: scatter spreads one point per cell inside the shape', () => {
+    let env = { context: {}, extra: [] };
+    let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
+    let xy = p => String(p).split(' ').map(parseFloat);
+    let points = Array.from({ length: 70 }, (_, i) => String(Function.plot.scatter(cell(70, i + 1), env)('star')));
+    assert.equal(new Set(points).size, 70);
+    // the same points every time, no randomness
+    assert.equal(String(Function.plot.scatter(cell(70, 5), env)('star')), points[4]);
+    // top row first
+    assert.ok(xy(points[0])[1] < xy(points[69])[1]);
+    // inside a circle of radius .5 → within 25%..75%, clear of the edge
+    for (let i = 1; i <= 20; i++) {
+        let [x, y] = xy(Function.plot.scatter(cell(20, i), env)('r: .5'));
+        assert.ok(Math.hypot(x - 50, y - 50) < 25, `${x} ${y}`);
+    }
+    // `points` returns them all, `split` stays the outline
+    let list = Function.plot.scatter(cell(4), env)('points: 30; split: 5');
+    assert.equal(list.length, 30);
+    // no rotation unless `dir` is given
+    assert.ok(!Function.plot.scatter(cell(20, 3), env)('r: .8').extra);
+    assert.ok(Function.plot.scatter(cell(20, 3), env)('r: .8; dir: auto').extra);
+    // a plain @plot still returns the outline of a preset
+    assert.equal(Function.plot(cell(70), env)('star').length, 10);
+    // a single point sits at the middle of the shape
+    let [cx, cy] = xy(Function.plot.scatter(cell(1), env)('r: 1'));
+    assert.ok(Math.abs(cx - 50) < .5 && Math.abs(cy - 50) < .5, `${cx} ${cy}`);
+    // a shape without an inside has no points, and does not hang
+    assert.equal(Function.plot.scatter(cell(4), env)('points: 12; x: 0; y: 0').length, 0);
+});

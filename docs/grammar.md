@@ -232,6 +232,10 @@ rightmost first: `@a.b(x)` and `@a.@b(x)` are `@a(@b(x))`;
 `@a.b.c(x)` is `@a(@b(@c(x)))`. A `.` before a digit stays in the
 name: `@a.5(x)` is `@a(.5, x)`.
 
+**A variant comes first.** When `a` has a variant named `b`, `@a.b(x)`
+calls that variant instead: `@plot.scatter(star)` spreads the points
+inside the star. `.@b` and an explicit `@a(@b(x))` always compose.
+
 **`$` is the calc function.** `$(expr)` evaluates an expression (§8).
 `$unit(expr)` appends `unit` verbatim: `$px(1+1)` is `2px`, and
 `$4(1+1)` is `24`. `$name` without an argument list reads the variable

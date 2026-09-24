@@ -8,7 +8,11 @@ import { isEmpty } from '../lib/type.js';
 import calc from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 
-const { cos, sin, atan2, PI } = Math;
+const { cos, sin, atan2, sqrt, ceil, min, max, PI } = Math;
+
+const SCATTER_SAMPLES = 16;
+const SCATTER_ROUNDS = 10;
+const SCATTER_BANDS = 256;
 
 const presetShapes = {
     __proto__: null,
@@ -114,8 +118,75 @@ function createPointFunction(props, split) {
     };
 }
 
+function insideTest(outline, y0, h) {
+    let bands = Array.from({ length: SCATTER_BANDS }, () => []);
+    let band = y => min(SCATTER_BANDS - 1, (y - y0) / h * SCATTER_BANDS | 0);
+    for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+        let [ax, ay] = outline[j], [bx, by] = outline[i];
+        for (let r = band(min(ay, by)); r <= band(max(ay, by)); ++r) {
+            bands[r].push([ax, ay, bx, by]);
+        }
+    }
+    return (x, y) => {
+        let n = 0;
+        for (let [ax, ay, bx, by] of bands[band(y)]) {
+            if ((ay <= y) != (by <= y) && x < ax + (y - ay) * (bx - ax) / (by - ay)) {
+                n += by > ay ? 1 : -1;
+            }
+        }
+        return n;
+    };
+}
+
+function scatter(outline, count) {
+    let xs = outline.map(p => p[0]), ys = outline.map(p => p[1]);
+    let x0 = min(...xs), y0 = min(...ys);
+    let w = max(...xs) - x0, h = max(...ys) - y0;
+    let inside = insideTest(outline, y0, h);
+    let total = max(1024, SCATTER_SAMPLES * count), samples = [], tried = 0;
+    for (; samples.length < total && tried < total * 100; ++tried) {
+        let x = x0 + (.5 + tried * .7548776662) % 1 * w;
+        let y = y0 + (.5 + tried * .5698402909) % 1 * h;
+        if (inside(x, y)) samples.push([x, y]);
+    }
+    let points = samples.slice(0, count);
+    let size = sqrt(w * h * samples.length / tried / count) || 1;
+    let cols = ceil(w / size) || 1, rows = ceil(h / size) || 1;
+    let col = x => min(cols - 1, (x - x0) / size | 0);
+    let row = y => min(rows - 1, (y - y0) / size | 0);
+    let head = new Int32Array(cols * rows), next = new Int32Array(count);
+    for (let r = 0; r < SCATTER_ROUNDS; ++r) {
+        head.fill(-1);
+        let sums = points.map(([x, y], k) => {
+            let c = col(x) + cols * row(y);
+            next[k] = head[c];
+            head[c] = k;
+            return [0, 0, 0];
+        });
+        for (let [x, y] of samples) {
+            let cx = col(x), cy = row(y), near = -1, best = Infinity;
+            for (let ring = 1; near < 0; ++ring) {
+                for (let j = max(0, cy - ring); j <= min(rows - 1, cy + ring); ++j) {
+                    for (let i = max(0, cx - ring); i <= min(cols - 1, cx + ring); ++i) {
+                        for (let k = head[i + cols * j]; k >= 0; k = next[k]) {
+                            let d = (x - points[k][0]) ** 2 + (y - points[k][1]) ** 2;
+                            if (d < best) best = d, near = k;
+                        }
+                    }
+                }
+            }
+            let s = sums[near];
+            s[0] += x; s[1] += y; s[2]++;
+        }
+        points = points.map((p, k) => {
+            let [x, y, n] = sums[k];
+            return n && inside(x /= n, y /= n) ? [x, y] : p;
+        });
+    }
+    return points.sort((a, b) => b[1] - a[1]);
+}
+
 function createShapePoints(props, {min, max}) {
-    // legacy command names
     let split = clamp(parseInt(props.vertices || props.points || props.split), min, max);
     if (props.degree) props.rotate = props.degree;
     if (props.origin) props.move = props.origin;
@@ -133,14 +204,15 @@ function createShapePoints(props, {min, max}) {
     let turn = Number(props.turn) || 1;
     let frame = props.frame;
     let fill = props['fill'] || props['fill-rule'];
-    let direction = parseDirection(props['direction'] || props['dir'] || '');
+    let dir = props['direction'] || props['dir'] || '';
+    let direction = parseDirection(dir);
     let [fx, fy] = parsePair(props.scale, 1);
     let [dx, dy] = parsePair(props.move, 0);
     // percentages of the element by default, else the unit or none
     let percent = props.unit === undefined || props.unit === '%';
     let suffix = percent ? '%' : (props.unit === 'none' ? '' : props.unit);
-    // a bare angle like "direction: 30" is constant; auto/reverse need atan2 per point
-    let staticAngle = direction.direction ? null : 90 + direction.angle;
+    let staticAngle = props.scatter && !dir ? 0
+        : direction.direction ? null : 90 + direction.angle;
 
     let rad = (PI * 2) * turn / split;
     let points = [];
@@ -162,6 +234,15 @@ function createShapePoints(props, {min, max}) {
         }
         points.push(new Point(tidyNumber(x) + suffix + ' ' + tidyNumber(y) + suffix, angle));
     };
+
+    if (props.scatter) {
+        let outline = [];
+        for (let i = 0; i < split; ++i) {
+            outline.push(point(rad * i, i));
+        }
+        scatter(outline, props.scatter).forEach(add);
+        return points;
+    }
 
     if (fill == 'nonzero' || fill == 'evenodd') {
         points.push(new Point(fill, ''));

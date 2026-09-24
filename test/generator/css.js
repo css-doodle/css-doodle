@@ -77,6 +77,19 @@ test('prototype names as functions read as literal text like other unknown funct
     }
 });
 
+test('a dotted name calls the variant of the function on its left', () => {
+    let values = code => cells(code, '5').match(/--v:[^;]+;/g);
+    let scatter = values('--v: @plot.scatter(star);');
+    assert.equal(new Set(scatter).size, 25);
+    assert.deepEqual(values('--v: @p.plot.scatter(star);'), scatter);
+    // `.@name` and explicit nesting always compose
+    for (let code of ['@plot.@scatter(star)', '@plot(@scatter(star))', '@scatter(star)', '@shape.scatter(star)']) {
+        assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown function @scatter/, code);
+    }
+    // Function.prototype methods are not variants
+    assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown function @call/);
+});
+
 // --- $ and calc ---
 
 test('$ name suffix reads as a unit appended to the calc result', () => {
