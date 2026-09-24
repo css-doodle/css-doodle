@@ -8,11 +8,8 @@ function getGoogleFontLink(names) {
     return `https://fonts.googleapis.com/css?display=swap&family=${params}`;
 }
 
-// one <link> per batch of fonts not linked yet; a no-op off the browser
+// one <link> per batch of fonts not linked yet
 export function loadGoogleFontLink(fonts) {
-    if (!Array.isArray(fonts) || typeof document === 'undefined') {
-        return;
-    }
     let names = fonts.filter(name => !linkFonts.has(name));
     if (!names.length) {
         return;
@@ -26,15 +23,8 @@ export function loadGoogleFontLink(fonts) {
     document.head.appendChild(link);
 }
 
-async function fetchCSS(names) {
-    let res = await fetch(getGoogleFontLink(names));
-    if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
-    return res.text();
-}
-
 function extractFonts(css) {
     let blockRegex = /@font-face\s*{([^}]+)}/gi;
-    let fonts = [];
     let seen = new Map();
 
     let match;
@@ -70,12 +60,11 @@ function extractFonts(css) {
       prev.weight = (min === max) ? String(min) : `${min} ${max}`;
     } else {
       seen.set(key, font);
-      fonts.push(font);
     }
   }
 
-  if (!fonts.length) throw new Error('No fonts found in CSS');
-  return fonts;
+  if (!seen.size) throw new Error('No fonts found in CSS');
+  return [...seen.values()];
 }
 
 async function toBase64(url) {
@@ -86,10 +75,7 @@ async function toBase64(url) {
   let blob = await res.blob();
   let base64 = await new Promise((resolve, reject) => {
     let reader = new FileReader();
-    reader.onloadend = () => {
-      let data = reader.result.split(',')[1];
-      resolve(data);
-    };
+    reader.onload = () => resolve(reader.result.split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
@@ -100,8 +86,9 @@ async function toBase64(url) {
 export async function loadGoogleFontEmbed(names = Array.from(linkFonts)) {
   if (!names.length) return '';
   try {
-    let css = await fetchCSS(names);
-    let fonts = extractFonts(css);
+    let res = await fetch(getGoogleFontLink(names));
+    if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
+    let fonts = extractFonts(await res.text());
     let embedded = await Promise.all(
       fonts.map(async ({ family, url, weight, style, range }) => {
         let base64 = await toBase64(url);
