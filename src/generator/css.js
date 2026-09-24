@@ -154,7 +154,7 @@ function compileFunc(node) {
             let args = node.arguments.map(arg => compileArgument(arg, node));
             let isDollar = fname === '$';
             let unit = node.unit || '';
-            let uniformKey = UNIFORM_KEYS[fname] ?? null;
+            let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
             let isMath = fn === MathFunc[fname];
             let calcTemplate = null;
             if ((isDollar || fname === 'calc') && node.arguments.length === 1) {
@@ -173,10 +173,8 @@ function compileFunc(node) {
             compiled = (frame, extra, inArgument) => {
                 let { cell, env } = frame;
                 let { rules } = env;
-                if (uniformKey) {
-                    for (let key of [].concat(uniformKey)) {
-                        rules.uniforms[key] = true;
-                    }
+                for (let key of uniformKeys) {
+                    rules.uniforms[key] = true;
                 }
                 if (composable) {
                     let composed = rules.composeComposable(fname, node, cell, env, frame.selector, frame.property);
