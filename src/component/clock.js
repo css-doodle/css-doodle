@@ -6,6 +6,13 @@ const RE_IMAGE_CLOCK = /%3Canimate|animation(?:-name)?%3A/;
 const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/g;
 const RE_ATTR = /([\w:-]+)=("[^"]*"|'[^']*')/g;
 
+// Chrome runs the animation timer of an svg image with no delay when its css
+// animations sit on ::before/::after, a main-thread busy loop; one SMIL element
+// makes it tick at the normal frame rate
+export function smilTick(sheet) {
+    return RE_CSS_CLOCK.test(sheet) ? '<rect width="0" height="0"><set attributeName="x" to="0"/></rect>' : '';
+}
+
 export function hasImageClock(sheet) {
     return RE_IMAGE_CLOCK.test(sheet);
 }
@@ -82,6 +89,13 @@ export function stampSvgImages(host, sheet) {
         }
         return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}${hash}")`;
     });
+}
+
+export function stampSmil(host, markup) {
+    let paused = host.hasAttribute('cssd-paused');
+    if (!paused && !host._clock.base) return markup;
+    let t = host.clockNow();
+    return markup.replace(/<animate\w*\b[^>]*>/g, tag => shiftSmil(tag, t, paused));
 }
 
 export function stampSheet(host, sheet) {

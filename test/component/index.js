@@ -96,7 +96,42 @@ test('export waits for styles and disables transitions without restamping animat
     assert.ok(!svg.includes('animation-play-state:paused'));
 });
 
-test('nested doodle images disable transitions without freezing animations', async () => {
+test('nested doodle images keep animating and hold when the host pauses', async () => {
+    const host = (ms, paused = false) => ({
+        extra: {},
+        compiled: { seed: 42 },
+        getMaxGrid: () => 64,
+        report: () => {},
+        hasAttribute: () => paused,
+        _clock: { base: ms, since: 0 },
+        clockNow: () => ms,
+    });
+    const decode = source => {
+        assert.ok(source.startsWith('data:image/svg+xml;base64,'));
+        return atob(source.split(',')[1]);
+    };
+    let code = 'transition:all 1s;animation:spin 4s;';
+    // a running host: animations run, transitions do not
+    let svg = decode(await doodleToImage(host(0), code, {}));
+    assert.equal(svg.split('transition:none!important').length - 1, 1);
+    assert.match(svg, /animation:\s*spin 4s;/);
+    assert.ok(!svg.includes('animation-play-state:paused'));
+    // resumed at 2.5s: in phase with the host, still running
+    svg = decode(await doodleToImage(host(2500), code, {}));
+    assert.match(svg, /animation:\s*spin 4s -2500ms;/);
+    assert.ok(!svg.includes('animation-play-state:paused'));
+    // paused at 2.5s: that frame, held
+    svg = decode(await doodleToImage(host(2500, true), code, {}));
+    assert.match(svg, /animation:\s*spin 4s -2500ms;/);
+    assert.equal(svg.split('animation-play-state:paused!important').length - 1, 1);
+    // inline svg content: SMIL runs, and holds its frame when paused
+    let smil = '@grid:1;@content:@svg(circle{r:1;animate r: 1;3 / 2s infinite})';
+    assert.doesNotMatch(decode(await doodleToImage(host(0), smil, {})), /<animate[^>]*begin=/);
+    assert.match(decode(await doodleToImage(host(1500), smil, {})), /<animate[^>]*begin="-1500ms"(?! end)/);
+    assert.match(decode(await doodleToImage(host(1500, true), smil, {})), /<animate[^>]*begin="-1500ms" end="1ms" fill="freeze"/);
+});
+
+test('an animated nested doodle image carries one SMIL element for chrome', async () => {
     let host = {
         extra: {},
         compiled: { seed: 42 },
@@ -104,13 +139,36 @@ test('nested doodle images disable transitions without freezing animations', asy
         report: () => {},
         hasAttribute: () => false,
         _clock: { base: 0 },
+        clockNow: () => 0,
     };
-    let source = await doodleToImage(host, 'transition:all 1s;animation:spin 4s;', {});
-    assert.ok(source.startsWith('data:image/svg+xml;base64,'));
-    let svg = atob(source.split(',')[1]);
-    assert.equal(svg.split('transition:none!important').length - 1, 1);
-    assert.match(svg, /animation:\s*spin 4s/);
-    assert.ok(!svg.includes('animation-play-state:paused'));
+    const svg = async code => atob((await doodleToImage(host, code, {})).split(',')[1]);
+    let animated = await svg("::before { content: ''; animation: k 1s infinite; }");
+    assert.equal(animated.split('<set ').length - 1, 1);
+    assert.ok(!(await svg('background: red;')).includes('<set '));
+});
+
+test('restamp redraws nested doodles and svg image clocks on pause and resume', () => {
+    let applied = 0;
+    let attrs = new Set();
+    const host = compiled => ({
+        compiled,
+        hasAttribute: name => attrs.has(name),
+        applyStyles: () => applied++,
+        restamp: CSSDoodle.prototype.restamp,
+    });
+    let nested = host({ doodles: { d1: {} }, styles: { top: '', all: '' } });
+    let clocks = host({ doodles: {}, styles: { top: '', all: 'a{background:url("data:image/svg+xml;utf8,%3Csvg%3E%3Canimate%2F%3E%3C%2Fsvg%3E")}' } });
+    let plain = host({ doodles: {}, styles: { top: '', all: 'a{animation:x 1s}' } });
+    host(undefined).restamp();
+    assert.equal(applied, 0, 'nothing compiled yet');
+    for (let paused of [false, true]) {
+        if (paused) attrs.add('cssd-paused');
+        applied = 0;
+        nested.restamp();
+        clocks.restamp();
+        plain.restamp();
+        assert.equal(applied, 2, paused ? 'paused' : 'resumed');
+    }
 });
 
 test('a nested doodle is drawn from the render that asked for it', async () => {
@@ -125,6 +183,7 @@ test('a nested doodle is drawn from the render that asked for it', async () => {
         report: () => {},
         hasAttribute: () => false,
         _clock: { base: 0 },
+        clockNow: () => 0,
     });
     const code = 'background: @p(red, blue, green); transform: scale(@r(.5, 1));';
 

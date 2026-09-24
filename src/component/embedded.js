@@ -15,7 +15,7 @@ import { RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { css } from '../lib/tagged-template.js';
 import { loadGoogleFontEmbed } from './google-font.js';
 
-import { stampSheet, TRANSITION_NONE } from './clock.js';
+import { stampSheet, stampSmil, smilTick, TRANSITION_NONE } from './clock.js';
 import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
@@ -116,13 +116,14 @@ export async function doodleToImage(host, code, options) {
             @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
             @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
         ` + getBasicStyles(grid) + styles.all) + TRANSITION_NONE;
+        let markup = stampSmil(host, createGrid(grid, compiled) + filterDefs);
         let svg = await createReplacer(host, compiled)(css`
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
+                ${smilTick(sheet)}
                 <foreignObject width="100%" height="100%">
                     <div class="host" width="100%" height="100%" ${NSXHtml}>
                         <style><![CDATA[${sheet}]]></style>
-                        ${createGrid(grid, compiled)}
-                        ${filterDefs}
+                        ${markup}
                     </div>
                 </foreignObject>
             </svg>

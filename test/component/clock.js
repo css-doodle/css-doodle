@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { stampSvgImages, shiftCssAnimations, hasImageClock } from '../../src/component/clock.js';
+import { stampSvgImages, stampSheet, stampSmil, shiftCssAnimations, hasImageClock } from '../../src/component/clock.js';
 
 const url = svg => `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
 const decode = sheet => decodeURIComponent(/utf8,([^"#]*)/.exec(sheet)[1]);
@@ -96,4 +96,29 @@ test('the fragment of a filter url survives', () => {
     let out = stampSvgImages(host(0.5, false), sheet);
     assert.ok(out.endsWith('#f1")'));
     assert.equal(decode(out), '<svg><animate dur="1s" begin="-500ms"/></svg>');
+});
+
+test('a nested sheet runs with the host clock and holds when paused', () => {
+    const PAUSED_RULE = PAUSED.slice(7, -8);
+    let sheet = 'cell{animation:spin 4s}';
+    // a running host that was never paused is left alone
+    assert.equal(stampSheet({ _clock: { base: 0 }, hasAttribute: () => false }, sheet), sheet);
+    // a resumed host keeps the phase, still running
+    assert.equal(stampSheet(host(2.5, false), sheet), 'cell{animation:spin 4s -2500ms}');
+    // a paused host holds that frame
+    assert.equal(stampSheet(host(2.5, true), sheet), 'cell{animation:spin 4s -2500ms}' + PAUSED_RULE);
+});
+
+test('inline SMIL markup follows the host clock', () => {
+    let markup = '<cell><svg><circle r="1"><animate attributeName="r" dur="2s" repeatCount="indefinite"/></circle><animateTransform type="rotate" begin="3s" dur="1s"/></svg></cell>';
+    assert.equal(stampSmil({ _clock: { base: 0 }, hasAttribute: () => false }, markup), markup);
+    // paused: active ones freeze, pending ones wait
+    assert.equal(stampSmil(host(1.5, true), markup),
+        '<cell><svg><circle r="1"><animate attributeName="r" dur="2s" repeatCount="indefinite" begin="-1500ms" end="1ms" fill="freeze"/></circle><animateTransform type="rotate" begin="indefinite" dur="1s"/></svg></cell>');
+    // resumed: shifted, still running
+    assert.equal(stampSmil(host(1.5, false), markup),
+        '<cell><svg><circle r="1"><animate attributeName="r" dur="2s" repeatCount="indefinite" begin="-1500ms"/></circle><animateTransform type="rotate" begin="1500ms" dur="1s"/></svg></cell>');
+    // a finished animation only shifts, so its own fill applies
+    assert.equal(stampSmil(host(2.5, true), '<animate dur="1s"/>'), '<animate dur="1s" begin="-2500ms"/>');
+    assert.equal(stampSmil(host(2.5, true), '<cell>text</cell>'), '<cell>text</cell>');
 });
