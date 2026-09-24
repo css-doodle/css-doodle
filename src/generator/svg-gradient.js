@@ -14,16 +14,13 @@ export default function createSvgGradient(type, args) {
         }
     }
 
-    if (values.length > 0) {
-        let first = values[0];
-        if (/^-?[\d.]/.test(first)) {
-            let { angle } = parseDirection(first);
-            transform = `gradientTransform: rotate(${angle});`;
-        } else if (/^(rotate|translate|scale|skewX|skewY|matrix)\s*\(/.test(first)) {
-            transform = `gradientTransform: ${first};`;
-        }
+    let first = values[0];
+    if (/^-?[\d.]/.test(first)) {
+        let { angle } = parseDirection(first);
+        transform = `gradientTransform: rotate(${angle});`;
+    } else if (/^(rotate|translate|scale|skewX|skewY|matrix)\s*\(/.test(first)) {
+        transform = `gradientTransform: ${first};`;
     }
-
     if (transform) {
         values = values.slice(1);
     }
@@ -38,7 +35,7 @@ export default function createSvgGradient(type, args) {
 
     let total = colorStops.length;
     let stops = colorStops.map(({ color, offset, opacity}, i) => {
-        if (!offset && total >= 1) {
+        if (!offset) {
             offset = `${total > 1 ? (i / (total - 1)) * 100 : 0}%`;
         }
         let props = `stop-color: ${color}`;

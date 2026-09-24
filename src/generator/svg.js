@@ -12,7 +12,6 @@ class Tag {
         if (!name) {
             throw new Error("Tag name is required");
         }
-        this.id = Symbol();
         this.name = name;
         this.body = [];
         this.attrs = Object.create(null);
@@ -33,14 +32,9 @@ class Tag {
     findSpareDefs() {
         return this.body.find(n => n.name === 'defs' && !n.attrs.id);
     }
-    append(tags) {
-        if (!Array.isArray(tags)) {
-            tags = [tags];
-        }
-        for (let tag of tags) {
-            if (!this.isTextNode()) {
-                this.body.push(tag);
-            }
+    append(tag) {
+        if (!this.isTextNode()) {
+            this.body.push(tag);
         }
     }
     merge(tag) {
@@ -163,13 +157,7 @@ function timing(animate, value, label, warn) {
 }
 
 function isGraphicElement(name) {
-    return name === 'path'
-        || name === 'line'
-        || name === 'circle'
-        || name === 'ellipse'
-        || name === 'rect'
-        || name === 'polygon'
-        || name === 'polyline';
+    return /^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(name);
 }
 
 function generate(token, element, parent, root, warn) {
@@ -202,7 +190,7 @@ function generate(token, element, parent, root, warn) {
                 let id = generate(block, el, token, root, warn);
                 if (id) { inlineId = id }
             }
-            let isInlineAndNotDefs = token && token.inline && token.name !== 'defs';
+            let isInlineAndNotDefs = token.inline && token.name !== 'defs';
             let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
             let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
 
@@ -232,8 +220,8 @@ function generate(token, element, parent, root, warn) {
                     // append only when there's no defs and spare defs
                     let defsElement = root.findSpareDefs();
                     if (defsElement && !el.attrs.id) {
-                        if (el.id !== defsElement.id) {
-                            defsElement.append(el.body);
+                        if (el !== defsElement) {
+                            defsElement.body.push(...el.body);
                         }
                     } else {
                         root.append(el);
@@ -261,7 +249,7 @@ function generate(token, element, parent, root, warn) {
         }
         else {
             // handle inline block value
-            if (value && value.type === 'block') {
+            if (value?.type === 'block') {
                 let id = generate(token.value, root, token, root, warn);
                 if (isNil(id)) {
                     warn(`${token.name}: an inline defs must hold exactly one element`);

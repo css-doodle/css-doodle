@@ -680,7 +680,7 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
             chainInput: !shorthand
         });
         if (env.svg) {
-            return `${ svgSourceOf(expanded, { repeat: false }) }`;
+            return svgSourceOf(expanded, { repeat: false });
         }
         value = generateSvg(expanded, warn);
     }

@@ -23,25 +23,6 @@ function isPrimitive(token) {
         && /^(fe[A-Z]|channels$)/i.test(token.name);
 }
 
-function lastPrimitive(output) {
-    return output.findLast(isPrimitive);
-}
-
-function resultNames(tokens) {
-    let used = new Set(tokens.filter(isPrimitive).flatMap(token => {
-        let result = findStatement(token.value, 'result');
-        return result ? [removeQuotes(result.value)] : [];
-    }));
-    let id = 0;
-    return kind => {
-        let name;
-        do name = `cssd-${kind}-${++id}`;
-        while (used.has(name));
-        used.add(name);
-        return name;
-    };
-}
-
 function expandGroup(g, output, seed, warn, nextResult, chainInput) {
     let el = (name, attrs) => output.push({
         type: 'block', name,
@@ -63,35 +44,42 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
         ['seed', g.seed ?? seed],
     ];
     if (g.octave) turbulence.push(['numOctaves', g.octave]);
-    if (!g.scale) {
-        el('feTurbulence', turbulence);
-        return;
-    }
-    if (!chainInput) {
-        el('feTurbulence', turbulence);
-        el('feDisplacementMap', [['in', 'SourceGraphic'], ['scale', g.scale]]);
-        return;
-    }
-    // displacement reads from the last primitive in the pipeline
-    let input = lastPrimitive(output);
-    let inputName = 'SourceGraphic';
-    if (input) {
-        let result = findStatement(input.value, 'result');
-        if (!result) {
-            input.value.push(result = statement('result', nextResult('input')));
+    let input = 'SourceGraphic', noise;
+    if (g.scale && chainInput) {
+        let last = output.findLast(isPrimitive);
+        if (last) {
+            let result = findStatement(last.value, 'result');
+            if (!result) {
+                last.value.push(result = statement('result', nextResult('input')));
+            }
+            input = removeQuotes(result.value);
         }
-        inputName = removeQuotes(result.value);
+        noise = nextResult('noise');
+        turbulence.push(['result', noise]);
     }
-    let noise = nextResult('noise');
-    turbulence.push(['result', noise]);
     el('feTurbulence', turbulence);
-    el('feDisplacementMap', [['in', inputName], ['in2', noise], ['scale', g.scale]]);
+    if (g.scale) {
+        el('feDisplacementMap', noise
+            ? [['in', input], ['in2', noise], ['scale', g.scale]]
+            : [['in', input], ['scale', g.scale]]);
+    }
 }
 
 export function expandFilterShorthands(root, seed, warn = () => {}, { chainInput = true } = {}) {
     if (root?.name !== 'filter' || !Array.isArray(root.value)) return root;
 
-    let nextResult = resultNames(root.value);
+    let used = new Set(root.value.filter(isPrimitive).flatMap(token => {
+        let result = findStatement(token.value, 'result');
+        return result ? [removeQuotes(result.value)] : [];
+    }));
+    let id = 0;
+    let nextResult = kind => {
+        let name;
+        do name = `cssd-${kind}-${++id}`;
+        while (used.has(name));
+        used.add(name);
+        return name;
+    };
     let output = [];
     let group = null;
     let found = false;

@@ -18,11 +18,7 @@ export function expandColorMatrices(root, warn = () => {}) {
     if (root?.name !== 'filter' || !Array.isArray(root.value)) return root;
     for (let token of root.value) {
         if (token.type !== 'block' || token.name.toLowerCase() !== 'channels') continue;
-        let rows = CHANNELS.map((_, i) => {
-            let row = [0, 0, 0, 0, 0];
-            row[i] = 1;
-            return row;
-        });
+        let rows = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0]];
         let attributes = [];
         for (let t of token.value) {
             if (t.type !== 'statement') continue;
