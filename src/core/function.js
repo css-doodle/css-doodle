@@ -186,7 +186,7 @@ function seq(token, make) {
 
 function createPlot(unit, scatter) {
     let plot = memo(unit ? 'Plot-function' : 'plot-function', (commands, max, scatter) => {
-        return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, rules => {
+        return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
             delete rules['fill'];
             delete rules['fill-rule'];
             delete rules['frame'];
@@ -195,7 +195,7 @@ function createPlot(unit, scatter) {
                 rules.hasPoints = count > 0;
                 rules.scatter = clamp(rules.hasPoints ? count : max, 1, MAX_SCATTER);
                 rules.points = rules.split || rules.vertices || SCATTER_OUTLINE;
-            } else if (rules.split || rules.points) {
+            } else if (!preset && (rules.split || rules.points)) {
                 rules.hasPoints = true;
             } else {
                 rules.points = max;

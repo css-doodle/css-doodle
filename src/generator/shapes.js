@@ -14,14 +14,18 @@ const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
 const SCATTER_BANDS = 256;
 
+function ngon(n) {
+    return `r: cos(π/${n}) / cos(t % (2π/${n}) - π/${n})`;
+}
+
 const presetShapes = {
     __proto__: null,
 
-    pentagon: css`split: 5; rotate: 54`,
+    pentagon: css`split: 5; ${ngon(5)}; rotate: 54`,
     circle:   css`split: 180; scale: .99`,
-    hexagon:  css`split: 6; rotate: 30; scale: .98`,
-    octagon:  css`split: 8; rotate: 22.5; scale: .99`,
-    triangle: css`rotate: 30; scale: 1.1; move: 0 .2`,
+    hexagon:  css`split: 6; ${ngon(6)}; rotate: 30; scale: .98`,
+    octagon:  css`split: 8; ${ngon(8)}; rotate: 22.5; scale: .99`,
+    triangle: css`split: 3; ${ngon(3)}; rotate: 30; scale: 1.1; move: 0 .2`,
     star:     css`split: 10; r: cos(5t); rotate: -18; scale: .99`,
     bean:     css`split: 180; r: sin(t)^3 + cos(t)^3; move: -.35 .35`,
     bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
@@ -287,7 +291,7 @@ export default function generateShape(input, range = {}, modifier) {
     }
     let rules = parseShapeCommands(preset ?? input);
     if (typeof modifier === 'function') {
-        rules = modifier(rules);
+        rules = modifier(rules, preset !== undefined);
     }
     let points = createShapePoints(rules, {min, max});
     return { rules, points, preset: preset !== undefined };

@@ -149,6 +149,15 @@ test('@plot: the shape follows the grid count', () => {
     assert.equal(String(Function.plot(cell(25, 2), env)('r: 1')), String(a));
     // with a point count every point is returned
     assert.equal(Function.plot(cell(25), env)('r: 1; points: 25').length, 25);
+    // a preset's own split is its outline, not a point count
+    let xy = n => String(Function.plot(cell(9, n), env)('triangle')).split(' ').map(parseFloat);
+    let points = [1, 2, 3, 4].map(xy);
+    assert.equal(new Set(points.map(String)).size, 4);
+    // the cells between two corners sit on the edge of the triangle
+    let [[ax, ay], [bx, by], [cx, cy], [dx, dy]] = points;
+    assert.ok(Math.abs((bx - ax) * (dy - ay) - (by - ay) * (dx - ax)) < 1e-6);
+    assert.ok(Math.abs((cx - ax) * (dy - ay) - (cy - ay) * (dx - ax)) < 1e-6);
+    assert.notEqual(String(Function.plot(cell(9, 1), env)('circle')), String(Function.plot(cell(9, 2), env)('circle')));
     // @Plot keeps the units, @plot outputs percentages
     assert.match(String(Function.plot(cell(4), env)('r: 1')), /%/);
     assert.doesNotMatch(String(Function.Plot(cell(4), env)('r: 1')), /%/);
@@ -175,8 +184,6 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     // no rotation unless `dir` is given
     assert.ok(!Function.plot.scatter(cell(20, 3), env)('r: .8').extra);
     assert.ok(Function.plot.scatter(cell(20, 3), env)('r: .8; dir: auto').extra);
-    // a plain @plot still returns the outline of a preset
-    assert.equal(Function.plot(cell(70), env)('star').length, 10);
     // a single point sits at the middle of the shape
     let [cx, cy] = xy(Function.plot.scatter(cell(1), env)('r: 1'));
     assert.ok(Math.abs(cx - 50) < .5 && Math.abs(cy - 50) < .5, `${cx} ${cy}`);
