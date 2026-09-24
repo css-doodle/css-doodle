@@ -3,7 +3,7 @@
 <h1>css-doodle</h1>
 
 <p> 
-    css-doodle is an open-source web component
+    A web component
     designed to explore the creative potential of <strong>CSS</strong>
     in a simple and expressive manner.
     It facilitates the creation of
