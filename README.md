@@ -15,7 +15,6 @@
 
 <p>
   <a href="https://www.npmjs.com/package/css-doodle"><img alt="npm" src="https://img.shields.io/npm/v/css-doodle?color=72bbf9&label=npm"></a>
-  <a href="https://www.jsdelivr.com/package/npm/css-doodle"><img alt="jsDelivr" src="https://img.shields.io/jsdelivr/npm/hm/css-doodle?color=ff9f1c"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/css-doodle/css-doodle?color=7657ff"></a>
   <a href="https://opencollective.com/css-doodle"><img alt="Open Collective backers" src="https://img.shields.io/opencollective/backers/css-doodle?color=f2a6fa"></a>
 </p>
