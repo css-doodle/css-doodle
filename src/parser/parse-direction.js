@@ -14,11 +14,10 @@ function parse(input) {
     };
     while (iter.next()) {
         let curr = iter.curr();
-        let prev = iter.curr(-1);
         if (curr.isWord()) {
             if (keywords.includes(curr.value)) {
                 ret.direction = curr.value;
-            } else if (units.includes(curr.value) && prev && prev.isNumber()) {
+            } else if (units.includes(curr.value)) {
                 unit = curr.value;
             }
         } else {

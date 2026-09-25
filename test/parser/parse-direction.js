@@ -23,6 +23,15 @@ test('angle units convert to degrees', () => {
     assert.equal(angle('1.5708rad'), 1.5708 / (Math.PI / 180));
 });
 
+test('a unit after a space or a group applies to the whole angle', () => {
+    const angle = input => parseDirection(input).angle;
+    assert.equal(angle('1 turn'), 360);
+    assert.equal(angle('100 grad'), 90);
+    assert.equal(angle('(1/4)turn'), 90);
+    assert.equal(angle('1 + 1 turn'), 720);
+    assert.deepEqual(parseDirection('reverse .5 turn'), { direction: 'reverse', angle: 180 });
+});
+
 test('the angle is an expression', () => {
     const angle = input => parseDirection(input).angle;
     assert.equal(angle('135 + 270 * .7'), 324);
