@@ -284,22 +284,27 @@ if (typeof HTMLElement !== 'undefined') {
             if (isNil(seed)) {
                 seed = Date.now();
             }
-            let parsed = parseCssCached(this.getUse() + code, this.extra);
+            let source = this.getUse() + code;
+            let parsed = parseCssCached(source, this.extra);
             let compiled = this.compiled = generateCss(
                 parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance
             );
-            this.report(compiled.warnings);
+            this.report(compiled.warnings, source);
             return compiled;
         }
 
         // each new warning is dispatched as a `warn` event before it is
         // printed; preventDefault() keeps it out of the console
-        report(warnings) {
+        report(warnings, source) {
             for (let warning of warnings) {
-                let { message, pos } = warning;
+                let { message, pos, index } = warning;
                 if (this._warned.has(message)) continue;
                 this._warned.add(message);
                 if (!this.triggerEvent('warn', warning)) continue;
+                if (!pos && source && index >= 0) {
+                    let lines = source.slice(0, index).split('\n');
+                    pos = [lines.at(-1).length, lines.length - 1];
+                }
                 let where = pos ? ` (at line ${pos[1] + 1}, column ${pos[0] + 1})` : '';
                 console.warn(message + where, this);
             }

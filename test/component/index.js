@@ -232,3 +232,23 @@ test('the host clock freezes while paused', async () => {
     host.resume();
     assert.equal(restamped, 2, 'a second resume is a no-op');
 });
+
+test('a generator warning reports the line and column of its offset', () => {
+    let printed = [];
+    let warn = console.warn;
+    console.warn = message => printed.push(message);
+    try {
+        let host = { _warned: new Set(), triggerEvent: () => true };
+        let source = 'background: red;\n  width: @nope(1);';
+        let { warnings } = generateCss(parseCss(source), parseGrid('1'), 42, 64);
+        CSSDoodle.prototype.report.call(host, warnings, source);
+        CSSDoodle.prototype.report.call(host, [{ message: 'parser', pos: [4, 2] }, { message: 'plain' }], source);
+    } finally {
+        console.warn = warn;
+    }
+    assert.deepEqual(printed, [
+        'unknown function @nope() (at line 2, column 10)',
+        'parser (at line 3, column 5)',
+        'plain',
+    ]);
+});
