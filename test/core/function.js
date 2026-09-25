@@ -132,6 +132,16 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.deepEqual(values(['to=10']), noise);
 });
 
+test('@R: inside a sequence the sequence is the grid, even in a 1x1 doodle', () => {
+    let grid = { x: 1, y: 1, z: 1, count: 1 };
+    let env = { context: {}, extra: [], random: createRandom('1').random };
+    let noise = [1, 2, 3, 4, 5].map(n => {
+        env.extra = [[n, n, 1, 5, 5, 1, n, 1]];
+        return Number(Function.R({ x: 1, y: 1, grid }, env, 1)('100'));
+    });
+    assert.equal(new Set(noise).size, 5);
+});
+
 test('@udx/@udy: cell center minus pointer, in doodle pixels', () => {
     let cell = { x: 1, y: 2, grid: { x: 8, y: 4 } };
     assert.match(Function.udx(cell)(), /0\.0625 \* var\(--cssd-uwidth\) - var\(--cssd-umousex\)/);

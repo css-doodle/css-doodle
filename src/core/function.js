@@ -470,18 +470,11 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
             noise2d: new Noise(random), offsetX: random(), offsetY: random()
         };
         let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
-        let _x = (isSeqContext ? ((nx - 1) / NX) : ((x - 1) / grid.x)) + offsetX;
-        let _y = (isSeqContext ? ((ny - 1) / NY) : ((y - 1) / grid.y)) + offsetY;
-
-        // 1-dimensional - use offset to avoid x=0 degenerate case
-        if (NX <= 1 || grid.x <= 1) _x = offsetX + 0.5;
-        if (NY <= 1 || grid.y <= 1) _y = offsetY + 0.5;
-
-        // 1x1
-        if (_x == 0 && _y == 0) {
-            _x = offsetX;
-            _y = offsetY;
-        }
+        // inside @m the sequence is the grid; a one-cell axis sits
+        // mid-way to avoid the x=0 degenerate case
+        let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : [x, y, grid.x, grid.y];
+        let _x = offsetX + (X <= 1 ? .5 : (cx - 1) / X);
+        let _y = offsetY + (Y <= 1 ? .5 : (cy - 1) / Y);
 
         let t = noise2d.noise(_x * frequency, _y * frequency, 0) * scale;
 
