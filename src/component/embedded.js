@@ -137,7 +137,7 @@ export async function doodleToImage(host, code, options) {
                 cacheImage(source);
                 return source;
             }
-            return generatePng(svg, parseInt(width), parseInt(height), devicePixelRatio || 2)
+            return generatePng(svg, parseInt(width), parseInt(height), 1)
                 .then(({ blob }) => {
                     let url = URL.createObjectURL(blob);
                     cacheImage(url);
