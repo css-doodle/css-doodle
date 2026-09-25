@@ -24,16 +24,9 @@ export function getRgbaColor(root, value) {
     }
     let element = root.querySelector('style');
     if (!element) {
-        return { r: 0, g: 0, b: 0, a: 1 }
+        return [0, 0, 0, 1];
     }
-    element.style.color = value;
-    return splitRgba(getComputedStyle(element).color);
+    element.style.color = `color-mix(in srgb, ${value} 100%, transparent)`;
+    let [r, g, b, a = 1] = getComputedStyle(element).color.match(/-?[\d.]+/g).map(Number);
+    return [r, g, b, a];
 }
-
-function splitRgba(color) {
-    let [r, g, b, a = 1] = color
-        .replace(/rgba?\((.+)\)/, '$1')
-        .split(/,\s*/)
-    return {r, g, b, a};
-}
-

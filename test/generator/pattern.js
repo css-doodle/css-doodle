@@ -14,7 +14,7 @@ function isCssColor(v) {
     return false;
 }
 const extra = {
-    getRgbaColor: v => isCssColor(v) ? { r: 255, g: 0, b: 0, a: 1 } : null,
+    getRgbaColor: v => isCssColor(v) ? [1, 0, 0, 1] : null,
 };
 
 const shader = code => draw(code, extra);

@@ -179,7 +179,7 @@ function newScope(parent = null) {
 function compile(value, scope, ctx, expect = null) {
     let rgba = ctx.extra.getRgbaColor(value);
     let items = rgba
-        ? [rgba.r / 255, rgba.g / 255, rgba.b / 255, rgba.a].map(float)
+        ? rgba.map(float)
         : parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim()).filter(Boolean);
     if (!items.length) return null;
     if (items.length === 1) {
