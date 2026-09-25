@@ -12,7 +12,7 @@ import generateSvgGradient from '../generator/svg-gradient.js';
 import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
-import calc from './calc.js';
+import calc, { defaultContext } from './calc.js';
 import { memo } from '../lib/cache.js';
 
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
@@ -790,7 +790,7 @@ Function.udy = ({ y, grid }) => calcWith(`calc(${tidyNumber((y - .5) / grid.y)} 
 export const MathFunc = Object.create(null);
 
 for (let name of Object.getOwnPropertyNames(Math)) {
-    let member = Math[name];
+    let member = defaultContext[name];
     MathFunc[name] = (typeof member === 'number')
         ? () => () => tidyNumber(member)
         : () => (...args) => tidyNumber(member(...args.map(n => calc(n))));

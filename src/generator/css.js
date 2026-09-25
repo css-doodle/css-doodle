@@ -1,11 +1,12 @@
 import Func, { MathFunc } from '../core/function.js';
-import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading } from '../core/calc.js';
+import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, useRandom } from '../core/calc.js';
 import Property from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseShaders from '../parser/parse-shaders.js';
 
 import createRandom from '../core/random.js';
+import seedrandom from '../lib/seedrandom.js';
 import { timePrefix, timeKeyframes } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
@@ -1115,9 +1116,22 @@ class Rules {
 
 }
 
+const mathStreams = new WeakMap();
+
+function useMathStream(random, seed) {
+    return useRandom(() => {
+        let stream = mathStreams.get(random);
+        if (!stream) {
+            mathStreams.set(random, stream = seedrandom('random:' + seed));
+        }
+        return stream();
+    });
+}
+
 export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '') {
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
+    let restore = useMathStream(R.random, seedValue);
 
     let envAt = (rules, seed) => ({
         rules, context: {}, extra: [], upextra, level: 0,
@@ -1144,6 +1158,7 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     }
 
     seed = String(seed);
+    useMathStream(R.random, seed);
     let tree = isTreeGrid(gridSize);
     let rules = new Rules(tokens, instance);
     rules.seed = seed;
@@ -1167,5 +1182,6 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     }
     let output = rules.output(env);
     if (tree && output.grid) output.grid = gridSize;
+    useRandom(restore);
     return output;
 }

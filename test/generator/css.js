@@ -917,3 +917,12 @@ test('an unknown $name skips the shader with a warning instead of reaching GLSL'
     let [plain] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { @grid: 2 })').shaders);
     assert.equal(typeof plain.source, 'string');
 });
+
+test('random() in expressions follows the seed on a stream of its own', () => {
+    let code = '--a: $(random()); --b: @calc(random() * 10); --c: @random();';
+    assert.equal(cells(code, '3', 7), cells(code, '3', 7));
+    assert.notEqual(cells(code, '3', 7), cells(code, '3', 8));
+    // @r draws the same values with or without random() next to it
+    let r = sheet => sheet.match(/--r:[\d.]+/g).join();
+    assert.equal(r(cells('--r: @r(10);', '3')), r(cells('--a: $(random()); --r: @r(10);', '3')));
+});

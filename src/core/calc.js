@@ -8,10 +8,19 @@ for (let name of Object.getOwnPropertyNames(Math)) {
     MATH[name] = Math[name];
 }
 
+let draw = Math.random;
+
+export function useRandom(fn) {
+    let prev = draw;
+    draw = fn;
+    return prev;
+}
+
 export const defaultContext = {
     __proto__: MATH,
 
     'π': Math.PI,
+    random: () => draw(),
     gcd(a, b) {
         while (b) [a, b] = [b, a % b];
         return a;
