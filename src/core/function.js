@@ -64,7 +64,7 @@ function compute(op, a, b) {
 // an operator argument ('*10', '%360deg', '-.5') parses once; computing
 // against a base — which runs per cell and per sequence iteration — is
 // then plain arithmetic
-const parseOperation = memo('operation', input => {
+const parseOperation = memo(input => {
     let v = String(input);
     let prefix = RE_OP_PREFIX.test(v);
     let suffix = !prefix && RE_OP_SUFFIX.test(v);
@@ -75,7 +75,9 @@ const parseOperation = memo('operation', input => {
         rest = (prefix ? v.slice(1) : v.slice(0, -1)).trim();
     }
     let { unit = '', value } = parseCompoundValue(rest || 0);
-    return { op, prefix, value, unit };
+    return op
+        ? { op, prefix, value, unit }
+        : { op: '+', prefix: true, value: Number(value) || 0, unit };
 });
 
 function calcValue(base, v) {
@@ -83,9 +85,6 @@ function calcValue(base, v) {
         return [];
     }
     let { op, prefix, value, unit } = parseOperation(v);
-    if (!op) {
-        return [Number(base) + (Number(value) || 0), unit];
-    }
     // prefix op: base comes first; suffix op: base comes last
     let [a, b] = prefix ? [base, value] : [value, base];
     if (typeof base === 'string' && RE_VAR.test(base)) {
@@ -185,7 +184,7 @@ function seq(token, make) {
 }
 
 function createPlot(unit, scatter) {
-    let plot = memo(unit ? 'Plot-function' : 'plot-function', (commands, max, scatter) => {
+    let plot = memo((commands, max, scatter) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
             delete rules['fill'];
             delete rules['fill-rule'];
@@ -323,7 +322,7 @@ function tryDecode(raw, decode) {
 }
 
 // the url is memoized, so the warnings travel with it to be reported per call
-const composeSvgUrl = memo('svg-function', value => {
+const composeSvgUrl = memo(value => {
     let warnings = [];
     if (!value.startsWith('<')) {
         value = generateSvg(parseSvg(value), message => warnings.push(message));
@@ -331,7 +330,7 @@ const composeSvgUrl = memo('svg-function', value => {
     return { url: createSvgUrl(normalizeSvg(value)), warnings };
 });
 
-const composeSvgPolygonUrl = memo('svg-polygon-function', commands => {
+const composeSvgPolygonUrl = memo(commands => {
     let { rules, points } = generateShape(commands, {min: 3, max: MAX_SEQUENCE}, rules => {
         delete rules.frame;
         rules['unit'] = 'none';
@@ -356,7 +355,7 @@ const composeSvgPolygonUrl = memo('svg-polygon-function', commands => {
     return createSvgUrl(generateSvg(parsed));
 });
 
-const composeSvgPatternUrl = memo('svg-pattern-function', value => {
+const composeSvgPatternUrl = memo(value => {
     let parsed = parseSvg(css`
     viewBox: 0 0 1 1;
     preserveAspectRatio: xMidYMid slice;
@@ -583,13 +582,12 @@ Function.code = () => {
     }
 };
 
-Function.shape = () => {
-    return memo('shape-function', (...args) => {
-        let commands = args.join(',');
-        let { points } = generateShape(commands);
-        return `polygon(${points.join(',')})`;
-    });
-};
+const shapePolygon = memo((...args) => {
+    let { points } = generateShape(args.join(','));
+    return `polygon(${points.join(',')})`;
+});
+
+Function.shape = () => shapePolygon;
 
 Function.plot = createPlot(false);
 Function.plot.scatter = createPlot(false, true);
@@ -597,29 +595,29 @@ Function.plot.scatter = createPlot(false, true);
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);
 
-Function.arc = () => {
-    return memo('arc-function', (...args) => {
-        let c = parseShapeCommands(args.join(','));
-        let [rx, ry = rx] = parseValueGroup(c.r ?? '0').map(calc);
-        let [cx, cy = cx] = parseValueGroup(c.move ?? '0').map(calc);
-        let from = parseDirection(c.from ?? '0').angle;
-        let sweep = parseDirection(c.to ?? '360').angle - from;
-        let full = Math.abs(sweep) >= 360;
-        if (full) {
-            sweep = sweep < 0 ? -360 : 360;
-        }
-        let point = a => {
-            let t = a * Math.PI / 180;
-            return tidyNumber(cx + rx * Math.cos(t)) + ' ' + tidyNumber(cy + ry * Math.sin(t));
-        };
-        let arc = `A ${tidyNumber(rx)} ${tidyNumber(ry)} 0`;
-        let dir = sweep > 0 ? 1 : 0;
-        if (full) {
-            return `M ${point(from)} ${arc} 1 ${dir} ${point(from + sweep / 2)} ${arc} 1 ${dir} ${point(from)}`;
-        }
-        return `M ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + sweep)}`;
-    });
-};
+const arcPath = memo((...args) => {
+    let c = parseShapeCommands(args.join(','));
+    let [rx, ry = rx] = parseValueGroup(c.r ?? '0').map(calc);
+    let [cx, cy = cx] = parseValueGroup(c.move ?? '0').map(calc);
+    let from = parseDirection(c.from ?? '0').angle;
+    let sweep = parseDirection(c.to ?? '360').angle - from;
+    let full = Math.abs(sweep) >= 360;
+    if (full) {
+        sweep = sweep < 0 ? -360 : 360;
+    }
+    let point = a => {
+        let t = a * Math.PI / 180;
+        return tidyNumber(cx + rx * Math.cos(t)) + ' ' + tidyNumber(cy + ry * Math.sin(t));
+    };
+    let arc = `A ${tidyNumber(rx)} ${tidyNumber(ry)} 0`;
+    let dir = sweep > 0 ? 1 : 0;
+    if (full) {
+        return `M ${point(from)} ${arc} 1 ${dir} ${point(from + sweep / 2)} ${arc} 1 ${dir} ${point(from)}`;
+    }
+    return `M ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + sweep)}`;
+});
+
+Function.arc = () => arcPath;
 
 Function.invert = () => invertPath;
 
@@ -774,13 +772,9 @@ Function.Xx = c => calcWithEasing((c.grid.x - c.x + 1) / c.grid.x);
 Function.yY = c => calcWithEasing(c.y / c.grid.y);
 Function.Yy = c => calcWithEasing((c.grid.y - c.y + 1) / c.grid.y);
 
-Function.dx = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dx);
-Function.dy = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dy);
-Function.dr = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dr);
-Function.dc = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dc);
-Function.dm = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).dm);
-Function.da = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).da);
-Function.db = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid).db);
+for (let name of ['dx', 'dy', 'dr', 'dc', 'dm', 'da', 'db']) {
+    Function[name] = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid)[name]);
+}
 
 Function.t =  () => calcWith(`var(${utime})`);
 Function.ts = () => calcWith(`calc(var(${utime}) / 1000)`);

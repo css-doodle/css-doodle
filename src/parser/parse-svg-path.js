@@ -3,6 +3,7 @@ import { memo } from '../lib/cache.js';
 
 const commands = 'MmLlHhVvCcSsQqTtAaZz';
 const relatives = 'mlhvcsqtaz';
+const RE_COMMANDS = /^[MmLlHhVvCcSsQqTtAaZz]+$/;
 
 const ARITY = { m: 2, l: 2, t: 2, h: 1, v: 1, c: 6, s: 4, q: 4, a: 7, z: 0 };
 
@@ -26,19 +27,21 @@ function parse(input) {
             continue;
         }
         if (curr.isWord()) {
-            if (temp.name) {
-                result.commands.push(temp);
-                temp = {};
-            }
-            temp.name = curr.value;
-            temp.value = [];
-            if (curr.value.length !== 1 || !commands.includes(curr.value)) {
-                temp.type = 'unknown';
-                result.valid = false;
-            } else if (relatives.includes(curr.value)) {
-                temp.type = 'relative';
-            } else {
-                temp.type = 'absolute';
+            for (let name of RE_COMMANDS.test(curr.value) ? curr.value : [curr.value]) {
+                if (temp.name) {
+                    result.commands.push(temp);
+                    temp = {};
+                }
+                temp.name = name;
+                temp.value = [];
+                if (name.length !== 1 || !commands.includes(name)) {
+                    temp.type = 'unknown';
+                    result.valid = false;
+                } else if (relatives.includes(name)) {
+                    temp.type = 'relative';
+                } else {
+                    temp.type = 'absolute';
+                }
             }
         } else if (temp.value) {
             let value = curr.value;
@@ -67,4 +70,4 @@ function parse(input) {
 }
 
 // generated path strings vary per cell, so the memo stays bounded
-export default memo('svg-path', parse);
+export default memo(parse);

@@ -148,7 +148,7 @@ function scatter(outline, count) {
     let w = max(...xs) - x0, h = max(...ys) - y0;
     let inside = insideTest(outline, y0, h);
     let total = max(1024, SCATTER_SAMPLES * count), samples = [], tried = 0;
-    for (; samples.length < total && tried < total * 100; ++tried) {
+    for (; samples.length < total && tried < (samples.length ? total * 100 : 1e3); ++tried) {
         let x = x0 + (.5 + tried * .7548776662) % 1 * w;
         let y = y0 + (.5 + tried * .5698402909) % 1 * h;
         if (inside(x, y)) samples.push([x, y]);

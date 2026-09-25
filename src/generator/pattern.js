@@ -218,7 +218,12 @@ function generateStatement(name, value, scope, ctx) {
             ctx.warn(`repeat() index ${name} is read-only`);
             return '';
         }
-        let v = compile(value, scope, ctx, ctx.types[id]);
+        let type = ctx.types[id];
+        let v = compile(value, scope, ctx, type);
+        if (v && /vec|mat/.test(v.type) && !/vec|mat/.test(type)) {
+            ctx.warn(`${name} is a ${type}, not a ${v.type}`);
+            return '';
+        }
         return v ? `${id} = ${v.code};\n` : '';
     }
     let v = compile(value, scope, ctx);

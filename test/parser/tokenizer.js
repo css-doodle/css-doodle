@@ -129,6 +129,20 @@ test('backslash escapes the next character', () => {
         ['Word', '\\'],
         ['Symbol', '"', 'close'],
     ]);
+    // an escaped space is kept: "a\ b" used to print "a\b"
+    assert.deepEqual(tokens('"a\\ b"'), [
+        ['Symbol', '"', 'open'],
+        ['Word', 'a'],
+        ['Word', ' b'],
+        ['Symbol', '"', 'close'],
+    ]);
+    // an escaped line break continues the line
+    assert.deepEqual(tokens('"a\\\nb"'), [
+        ['Symbol', '"', 'open'],
+        ['Word', 'a'],
+        ['Word', 'b'],
+        ['Symbol', '"', 'close'],
+    ]);
 });
 
 test('numbers: decimals, exponents, hex', () => {

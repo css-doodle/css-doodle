@@ -86,6 +86,12 @@ test('a parenthesized argument is a cluster', () => {
     assert.equal(func.arguments[1].values[0].value, 'red');
 });
 
+test('argument text is kept as written', () => {
+    // numeric-looking text used to become a number: @p(01) printed 1
+    const values = input => parseCss(input)[0].value[0][0].arguments.map(a => a.values[0].value);
+    assert.deepEqual(values(`content: @p(01, 1.50, 0x10, 1e3);`), ['01', '1.50', '0x10', '1e3']);
+});
+
 test('a leading ± expands an argument into its negative and positive', () => {
     const shape = values => values.map(v => v.type === 'func' ? v.name : v.value);
     const args = input => parseCss(input)[0].value[0][0].arguments;
@@ -98,7 +104,7 @@ test('a leading ± expands an argument into its negative and positive', () => {
     // a call after the sign is part of it: -@r(10) and @r(10)
     assert.deepEqual(args(`width: @p(±@r(10));`).map(a => shape(a.values)), [['-', '@r'], ['@r']]);
     assert.deepEqual(args(`width: @p(±@r);`).map(a => shape(a.values)), [['-', '@r'], ['@r']]);
-    assert.deepEqual(args(`width: @p(±2@r(10), 1);`).map(a => shape(a.values)), [['-2', '@r'], ['2', '@r'], [1]]);
+    assert.deepEqual(args(`width: @p(±2@r(10), 1);`).map(a => shape(a.values)), [['-2', '@r'], ['2', '@r'], ['1']]);
 
     // a wrapping pair is stripped from the positive copy only
     assert.deepEqual(
@@ -480,4 +486,14 @@ test('a ; inside an open paren stays in the value, as the browser reads it', () 
     let parsed = parseCss(`width: calc(1px; height: 2px;`);
     assert.equal(parsed.length, 1);
     assert.equal(parsed.warnings[0].message, 'unclosed ( in value');
+});
+
+test('a < inside an open paren stays in the value', () => {
+    // a range query in CSS if() used to end the value at the `<`
+    let [rule, next] = parseCss(`color: if(media(width < 600px): red; else: blue); background: tan;`);
+    assert.equal(rule.value[0].map(v => v.value).join(''), 'if(media(width < 600px):red;else:blue)');
+    assert.equal(next.property, 'background');
+    // a tag after a value still ends it
+    let [color] = parseCss(`color: red</style>`);
+    assert.equal(color.value[0][0].value, 'red');
 });

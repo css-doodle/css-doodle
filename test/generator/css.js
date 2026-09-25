@@ -215,6 +215,9 @@ test('function results that are not plain strings reach calc functions safely', 
     assertContains('width: @i(+2);', 'width:3;');
     assertContains('width: @i(2*);', 'width:2;');
     assertContains('width: @i(%360deg);', 'width:1deg;');
+    // a bare value adds on a live base too
+    assertContains('width: @t(+2);', 'width:calc(calc(var(--cssd-utime) + 2) * 1);');
+    assertContains('width: @ux(5);', 'width:calc(calc(var(--cssd-umousex) + 5) * 1);');
 });
 
 // --- functions, properties and diagnostics ---
@@ -337,7 +340,7 @@ test('@svg-filter positional shorthand preserves its legacy input graph', () => 
     let compiled = compile('filter: @svg-filter(.1, 20, 2, 7, 3, 4, 5);');
     let [filter] = Object.values(compiled.filters);
     assert.match(filter, /<feMorphology operator="dilate" radius="5"\/><feMorphology operator="erode" radius="4"\/><feGaussianBlur stdDeviation="3"\/>/);
-    assert.match(filter, /<feTurbulence type="fractalNoise" baseFrequency="0\.1 0\.1" seed="7" numOctaves="2"\/><feDisplacementMap in="SourceGraphic" scale="20"\/>/);
+    assert.match(filter, /<feTurbulence type="fractalNoise" baseFrequency="\.1 \.1" seed="7" numOctaves="2"\/><feDisplacementMap in="SourceGraphic" scale="20"\/>/);
     assert.ok(!filter.includes('cssd-input'), filter);
     assert.ok(!filter.includes('cssd-noise'), filter);
 });
@@ -366,7 +369,7 @@ test('@svg-filter expands into the svg document itself', () => {
     let content = compiled.content['#c-1-1-1'];
     // inside @svg the filter is inlined, and the reference reaches it
     assert.match(content, /<defs><filter x="-20%" y="-20%" width="140%" height="140%" id="filter-\d+">/);
-    assert.match(content, /<feTurbulence type="fractalNoise" baseFrequency="0\.03 0\.03" seed="[\d.]+"\/>/);
+    assert.match(content, /<feTurbulence type="fractalNoise" baseFrequency="\.03 \.03" seed="[\d.]+"\/>/);
     assert.match(content, /<feDisplacementMap in="SourceGraphic" scale="20"\/><\/filter><\/defs>/);
     assert.match(content, /filter="url\(#filter-\d+\)"/);
     // nothing is left for the shared holder

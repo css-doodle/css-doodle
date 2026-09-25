@@ -59,7 +59,7 @@ const ZERO = { type: 'Lit', val: '0' };
 const isVector = type => /^(vec|mat)/.test(type);
 const isFactor = t => t && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
 // the type of a swizzle: `.xy` is a vec2, `.x` a float
-const swizzle = s => s.length > 2 ? `vec${s.length - 1}` : 'float';
+const swizzle = s => (s = s.slice(s.lastIndexOf('.'))).length > 2 ? `vec${s.length - 1}` : 'float';
 
 // wrap `out` of type `res` in a constructor when `exp` wants another type;
 // vectors pass where a float is wanted
@@ -79,7 +79,7 @@ function hexColors(code) {
 
 function joinsName(last, t) {
     if (last.isWord()) {
-        return t.value === '_' || t.isNumber() && !ALIAS[last.value.toLowerCase()] || t.isWord() && last.value.endsWith('_');
+        return t.value === '_' || t.isNumber() && !ALIAS[last.value.toLowerCase()] || t.isWord() && /[_.]$/.test(last.value);
     }
     return last.value === '_' && (t.isWord() || t.isNumber());
 }
@@ -184,7 +184,7 @@ export default function transform(code, { expect = null, type = false, types = {
         if (!n) return '';
         if (n.type === 'Lit') {
             if (exp === 'int') return String(Math.floor(n.val));
-            return cast(n.val.includes('.') ? n.val : n.val + '.0', 'float', exp);
+            return cast(/[.e]/i.test(n.val) ? n.val : n.val + '.0', 'float', exp);
         }
         if (n.type === 'Var') {
             return cast(n.val, infer(n), exp);

@@ -124,6 +124,12 @@ test('a style block keeps its css as text', () => {
     assert.deepEqual(parseSvg('style { a { fill: red } }'), svg(block('style', 'a{fill:red}')));
     assert.deepEqual(parseSvg('style a { fill: red }'), svg(block('style', 'a{fill:red}')));
     assert.deepEqual(parseSvg('style .cls { stroke: blue }'), svg(block('style', '.cls{stroke:blue}')));
+    // a quoted brace is text, it used to end the block and drop what followed
+    assert.deepEqual(parseSvg('style { a::after { content: "}" } } circle {}'),
+        svg(block('style', 'a::after{content:"}"}'), block('circle')));
+    assert.deepEqual(parseSvg('circle { style: { content: "}" }; r: 1 }'), svg(
+        block('circle', [statement('style', 'content:"}"', { raw: true }), statement('r', '1')])
+    ));
 });
 
 test('times syntax records the count and the pure name', () => {

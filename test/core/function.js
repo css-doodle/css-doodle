@@ -189,4 +189,7 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     assert.ok(Math.abs(cx - 50) < .5 && Math.abs(cy - 50) < .5, `${cx} ${cy}`);
     // a shape without an inside has no points, and does not hang
     assert.equal(Function.plot.scatter(cell(4), env)('points: 12; x: 0; y: 0').length, 0);
+    let start = performance.now();
+    assert.equal(Function.plot.scatter(cell(4), env)('points: 8192; x: cos(t); y: 0').length, 0);
+    assert.ok(performance.now() - start < 500);
 });

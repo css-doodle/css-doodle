@@ -77,7 +77,7 @@ const NUMBER = 'number';
 const VARIABLE = 'variable';
 const FUNCTION = 'function';
 
-const RE_NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+const RE_NUMBER = /^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?|0x[\da-f]+)$/i;
 const RE_NEGATIVE_VAR = /^-\D/;
 
 function tk(type, value) {
@@ -129,7 +129,7 @@ function transformTokens(rawTokens, spans) {
         const next = raw[i + 1];
 
         if (type === 'Number') {
-            pushValue(tokens, sign + value);
+            pushValue(tokens, sign && value[0] === '-' ? value.slice(1) : sign + value);
             sign = '';
             continue;
         }

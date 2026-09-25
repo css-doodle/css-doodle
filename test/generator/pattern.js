@@ -91,6 +91,11 @@ test('a match block assigns to a variable of an enclosing scope', () => {
     );
     // the assignment keeps the declared type
     assert.match(main('p: uv; match(x > 1) { p: 1 } fill: p.x'), /cssd1 = vec2\(1\.0\);/);
+    // a vector does not convert to another type
+    let messages = [];
+    let s = draw('z: 0; repeat(4) { z: z * uv } fill: z', extra, m => messages.push(m));
+    assert.doesNotMatch(s, /cssd1 = \(cssd1 \* uv\)/);
+    assert.deepEqual(messages, ['z is a float, not a vec2']);
 });
 
 test('else blocks follow a match, and may carry a test of their own', () => {

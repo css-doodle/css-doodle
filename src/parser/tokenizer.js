@@ -229,7 +229,7 @@ function scan(source, options = {}) {
                     lineStart = n + 1;
                 }
             }
-            let word = input.slice(start, end).trim();
+            let word = input.slice(start, end).replace(/^[\r\n\f]+/, '');
             if (word.length) {
                 tokens.push(new Token('Word', word, pos, index));
             }

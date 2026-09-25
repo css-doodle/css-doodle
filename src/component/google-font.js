@@ -24,81 +24,73 @@ export function loadGoogleFontLink(fonts) {
 }
 
 function extractFonts(css) {
-    let blockRegex = /@font-face\s*{([^}]+)}/gi;
     let seen = new Map();
-
-    let match;
-    while ((match = blockRegex.exec(css)) !== null) {
-        let content = match[1];
-
-        let getProp = (prop) => {
-            let re = new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i');
-            let res = content.match(re);
+    for (let [, content] of css.matchAll(/@font-face\s*{([^}]+)}/gi)) {
+        let getProp = prop => {
+            let res = content.match(new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i'));
             return res ? res[1].trim() : null;
         };
+        let url = content.match(/url\(([^)]+)\)/i)?.[1].replace(/['"]/g, '');
+        let family = getProp('font-family');
+        if (!family || !url) continue;
 
-        let urlMatch = content.match(/url\(([^)]+)\)/i);
-        let url = urlMatch ? urlMatch[1].replace(/['"]/g, '') : null;
-    let family = getProp('font-family');
-    if (!family || !url) continue;
+        let font = {
+            family,
+            url,
+            weight: getProp('font-weight') || '400',
+            style: getProp('font-style') || 'normal',
+            range: getProp('unicode-range')
+        };
 
-    let font = {
-      family,
-      url,
-      weight: getProp('font-weight') || '400',
-      style: getProp('font-style') || 'normal',
-      range: getProp('unicode-range')
-    };
-
-    // variable fonts reuse one file for multiple weights; merge them into a weight range
-    let key = [family, font.style, font.range, url].join('|');
-    let prev = seen.get(key);
-    if (prev) {
-      let weights = prev.weight.split(' ').concat(font.weight.split(' ')).map(Number);
-      let min = Math.min(...weights);
-      let max = Math.max(...weights);
-      prev.weight = (min === max) ? String(min) : `${min} ${max}`;
-    } else {
-      seen.set(key, font);
+        // variable fonts reuse one file for multiple weights; merge them into a weight range
+        let key = [family, font.style, font.range, url].join('|');
+        let prev = seen.get(key);
+        if (prev) {
+            let weights = (prev.weight + ' ' + font.weight).split(' ').map(Number);
+            let min = Math.min(...weights);
+            let max = Math.max(...weights);
+            prev.weight = (min === max) ? String(min) : `${min} ${max}`;
+        } else {
+            seen.set(key, font);
+        }
     }
-  }
 
-  if (!seen.size) throw new Error('No fonts found in CSS');
-  return [...seen.values()];
+    if (!seen.size) throw new Error('No fonts found in CSS');
+    return [...seen.values()];
 }
 
 async function toBase64(url) {
-  let cached = embedFonts.get(url);
-  if (cached) return cached;
-  let res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch font (${res.status}): ${url}`);
-  let blob = await res.blob();
-  let base64 = await new Promise((resolve, reject) => {
-    let reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-  embedFonts.set(url, base64);
-  return base64;
+    let cached = embedFonts.get(url);
+    if (cached) return cached;
+    let res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch font (${res.status}): ${url}`);
+    let blob = await res.blob();
+    let base64 = await new Promise((resolve, reject) => {
+        let reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+    embedFonts.set(url, base64);
+    return base64;
 }
 
 export async function loadGoogleFontEmbed(names = Array.from(linkFonts)) {
-  if (!names.length) return '';
-  try {
-    let res = await fetch(getGoogleFontLink(names));
-    if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
-    let fonts = extractFonts(await res.text());
-    let embedded = await Promise.all(
-      fonts.map(async ({ family, url, weight, style, range }) => {
-        let base64 = await toBase64(url);
-        let rangeRule = range ? `unicode-range:${range};` : '';
-        return `@font-face{font-family:"${family}";font-weight:${weight};font-style:${style};${rangeRule}src:url("data:font/woff2;base64,${base64}") format("woff2");}`;
-      })
-    );
-    return embedded.join('\n');
-  } catch (error) {
-    console.warn('Error loading fonts:', error);
-    return '';
-  }
+    if (!names.length) return '';
+    try {
+        let res = await fetch(getGoogleFontLink(names));
+        if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
+        let fonts = extractFonts(await res.text());
+        let embedded = await Promise.all(
+            fonts.map(async ({ family, url, weight, style, range }) => {
+                let base64 = await toBase64(url);
+                let rangeRule = range ? `unicode-range:${range};` : '';
+                return `@font-face{font-family:"${family}";font-weight:${weight};font-style:${style};${rangeRule}src:url("data:font/woff2;base64,${base64}") format("woff2");}`;
+            })
+        );
+        return embedded.join('\n');
+    } catch (error) {
+        console.warn('Error loading fonts:', error);
+        return '';
+    }
 }

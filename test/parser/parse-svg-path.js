@@ -68,3 +68,18 @@ test('each command takes whole groups of numbers', () => {
     // command letters on their own are not a path
     assert.equal(valid('a, c, s'), false);
 });
+
+test('a close command glued to the next one splits', () => {
+    // `zm` read as one unknown word, so every path function passed the path through
+    assert.deepEqual(parseSvgPath('M0 0h1zm2 2Z'), {
+        valid: true,
+        commands: [
+            { name: 'M', type: 'absolute', value: [0, 0] },
+            { name: 'h', type: 'relative', value: [1] },
+            { name: 'z', type: 'relative', value: [] },
+            { name: 'm', type: 'relative', value: [2, 2] },
+            { name: 'Z', type: 'absolute', value: [] },
+        ],
+    });
+    assert.equal(parseSvgPath('M0 0 mz').valid, false);
+});

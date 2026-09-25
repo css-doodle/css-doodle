@@ -52,7 +52,7 @@ function parse(input, names) {
     return { coefficients, constant };
 }
 
-export const parseLinear = memo('linear-expr', parse);
+export const parseLinear = memo(parse);
 
 export default function parseLinearExpr(input) {
     let { coefficients: [a], constant: b, error } = parseLinear(input, ['n']);

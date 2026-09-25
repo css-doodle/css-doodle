@@ -1,7 +1,7 @@
+import { removeParens } from '../lib/type.js';
+
 export function getVariable(element, name) {
-    return getComputedStyle(element).getPropertyValue(name)
-        .trim()
-        .replace(/^\(|\)$/g, '');
+    return removeParens(getComputedStyle(element).getPropertyValue(name).trim());
 }
 
 export function getAllVariables(element) {

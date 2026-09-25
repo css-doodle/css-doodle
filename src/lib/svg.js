@@ -20,23 +20,20 @@ export function normalizeSvg(input) {
 }
 
 // the camelCase names of SVG, keyed by their lowercase spelling
-const NAMES = 'altGlyph altGlyphDef altGlyphItem animateColor animateMotion animateTransform '
-    + 'clipPath feBlend feColorMatrix feComponentTransfer feComposite feConvolveMatrix '
-    + 'feDiffuseLighting feDisplacementMap feDistantLight feDropShadow feFlood feFuncA '
-    + 'feFuncB feFuncG feFuncR feGaussianBlur feImage feMerge feMergeNode feMorphology '
-    + 'feOffset fePointLight feSpecularLighting feSpotLight feTile feTurbulence '
-    + 'foreignObject glyphRef linearGradient radialGradient textPath attributeName '
-    + 'attributeType baseFrequency baseProfile calcMode clipPathUnits contentScriptType '
-    + 'contentStyleType diffuseConstant edgeMode externalResourcesRequired filterRes '
-    + 'filterUnits gradientTransform gradientUnits kernelMatrix kernelUnitLength '
+const NAMES = 'animateMotion animateTransform clipPath feBlend feColorMatrix feComponentTransfer '
+    + 'feComposite feConvolveMatrix feDiffuseLighting feDisplacementMap feDistantLight '
+    + 'feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR feGaussianBlur feImage feMerge '
+    + 'feMergeNode feMorphology feOffset fePointLight feSpecularLighting feSpotLight '
+    + 'feTile feTurbulence foreignObject linearGradient radialGradient textPath '
+    + 'attributeName attributeType baseFrequency calcMode clipPathUnits diffuseConstant '
+    + 'edgeMode filterUnits gradientTransform gradientUnits kernelMatrix kernelUnitLength '
     + 'keyPoints keySplines keyTimes lengthAdjust limitingConeAngle markerHeight '
     + 'markerUnits markerWidth maskContentUnits maskUnits numOctaves pathLength '
     + 'patternContentUnits patternTransform patternUnits pointsAtX pointsAtY pointsAtZ '
     + 'preserveAlpha preserveAspectRatio primitiveUnits refX refY repeatCount repeatDur '
-    + 'requiredExtensions requiredFeatures specularConstant specularExponent '
-    + 'spreadMethod startOffset stdDeviation stitchTiles surfaceScale systemLanguage '
-    + 'tableValues targetX targetY textLength viewBox viewTarget xChannelSelector '
-    + 'yChannelSelector zoomAndPan';
+    + 'requiredExtensions specularConstant specularExponent spreadMethod startOffset '
+    + 'stdDeviation stitchTiles surfaceScale systemLanguage tableValues targetX targetY '
+    + 'textLength viewBox xChannelSelector yChannelSelector';
 
 const tagsMapping = new Map(NAMES.split(' ').map(name => [name.toLowerCase(), name]));
 

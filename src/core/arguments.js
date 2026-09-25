@@ -14,20 +14,20 @@ export function sequence(count, fn) {
     if (Number.isNaN(cy)) cy = 1;
     x = clamp(cx, 0, MAX_SEQUENCE);
     y = clamp(cy, 0, MAX_SEQUENCE);
-    if (x * y > MAX_SEQUENCE) {
-        y = Math.max(1, Math.floor(MAX_SEQUENCE / x));
-    }
-    let max = x * y;
     let ret = [];
     let index = 1;
     if (/x/.test(count) || !/-/.test(count)) {
+        if (x * y > MAX_SEQUENCE) {
+            y = Math.max(1, Math.floor(MAX_SEQUENCE / x));
+        }
+        let max = x * y;
         for (let i = 1; i <= y; ++i) {
             for (let j = 1; j <= x; ++j) {
                 ret.push(fn(index, j, i, max, x, y, index++));
             }
         }
     } else {
-        max = Math.abs(x - y) + 1;
+        let max = Math.abs(x - y) + 1;
         let step = x <= y ? 1 : -1;
         for (let i = x; i !== y + step; i += step) {
             ret.push(fn(i, i, 1, max, max, 1, index++));
@@ -38,21 +38,21 @@ export function sequence(count, fn) {
 
 // `[a-c]` expands each pair, either way round, and keeps single chars;
 // a dash with nothing after it is literal, one with nothing before it is dropped
-const buildRange = memo('buildRange', input => {
+const buildRange = memo(input => {
     let expr = String(input);
     if (expr[0] !== '[' || expr[expr.length - 1] !== ']') {
         return [];
     }
     let list = [];
-    for (let [, from, to, single] of expr.slice(1, -1).matchAll(/(.)-+(.)|-*(.)/gs)) {
+    for (let [, from, to, single] of expr.slice(1, -1).matchAll(/(.)-+(.)|-*(.)/gsu)) {
         if (single !== undefined) {
             list.push(single);
             continue;
         }
-        let a = from.charCodeAt(0), b = to.charCodeAt(0);
+        let a = from.codePointAt(0), b = to.codePointAt(0);
         let step = a <= b ? 1 : -1;
         for (let c = a; c !== b + step; c += step) {
-            list.push(String.fromCharCode(c));
+            list.push(String.fromCodePoint(c));
         }
     }
     return list;

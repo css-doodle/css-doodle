@@ -175,6 +175,9 @@ test('empty input and lone numbers', () => {
     assert.equal(transform('1'), '1.0');
     assert.equal(transform('1', { expect: 'int' }), '1');
     assert.equal(transform('1', { expect: 'bool' }), 'bool(1.0)');
+    // an exponent is a float literal already
+    assert.equal(transform('1e3'), '1e3');
+    assert.equal(transform('2E-2 * x'), '(2E-2 * x)');
 });
 
 test('deeply nested real-world expressions', () => {
@@ -212,6 +215,9 @@ test('expression types follow vectors, calls, operators and swizzles', () => {
     assert.equal(transform('2*vec3(1)', { type: true }), 'vec3');
     assert.equal(transform('max(length(hsl(0, 1, 1)), 1)', { type: true }), 'float');
     assert.equal(transform('v.xy', { type: true, types: { v: 'vec3' } }), 'vec2');
+    // the last swizzle of a chain decides
+    assert.equal(transform('v.xy.x', { type: true, types: { v: 'vec3' } }), 'float');
+    assert.equal(transform('vec2(1).yx.x', { type: true }), 'float');
     assert.equal(transform('normalize(vec3(1))', { type: true }), 'vec3');
     assert.equal(transform('true', { type: true }), 'bool');
     assert.equal(transform('any(lessThan(uv, vec2(.5)))', { type: true }), 'bool');
@@ -295,6 +301,12 @@ test('an underscore is part of a name', () => {
     assert.equal(transform('u_time * 2'), '(u_time * 2.0)');
     assert.equal(transform('my_var_2 + _x'), '(my_var_2 + _x)');
     assert.equal(transform('a_b.x', { types: { a_b: 'vec2' } }), 'a_b.x');
+});
+
+test('a name ending in a digit keeps its swizzle', () => {
+    const names = { __proto__: null, uv2: 'cssd1' };
+    assert.equal(transform('uv2.x', { names, types: { cssd1: 'vec2' } }), 'cssd1.x');
+    assert.equal(transform('p2.yx * 2', { types: { p2: 'vec2' } }), '(p2.yx * 2.0)');
 });
 
 test('#rgb and #rrggbb are vec3 literals', () => {

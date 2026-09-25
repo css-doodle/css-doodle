@@ -73,13 +73,17 @@ function parseBody(iter, parent, { readBlocks, readStatement }) {
 }
 
 // A block body kept as text (`style { … }`, a shader section): from the
-// '{' the iterator stands on to the matching '}'.
+// '{' the iterator stands on to the matching '}', skipping quoted ones.
 function readRaw(iter) {
     let tokens = [];
     let depth = 0;
+    let quote = false;
     while (iter.next()) {
         let curr = iter.curr();
-        if (curr.isSymbol('{')) {
+        if (curr.status) {
+            quote = curr.status === 'open';
+        } else if (quote) {
+        } else if (curr.isSymbol('{')) {
             depth++;
         } else if (curr.isSymbol('}')) {
             if (!depth) break;

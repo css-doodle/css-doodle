@@ -258,9 +258,10 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
         }));
     }
 
-    const render = async () => {
+    const render = async initial => {
         if (parsed.textures.length) {
             textures = await loadTextures();
+            if (initial && host.shaderRenders.has(id)) return;
         }
         try {
             tick(generateShaders({ ...parsed, textures, width, height }, host.seed, cell, () => {
@@ -289,5 +290,5 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
         host.observers.set(id, observer);
     }
 
-    await render();
+    await render(true);
 }

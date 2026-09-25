@@ -183,7 +183,7 @@ Property.gap = formatGap;
 
 Property.seed = Property.content = value => value;
 
-Property.shape = memo('shape-property', value => {
+Property.shape = memo(value => {
     let { points, preset } = generateShape(value);
     return preset ? `clip-path:polygon(${points.join(',')});` : '';
 });

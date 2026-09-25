@@ -16,4 +16,4 @@ function parse(input) {
     return ret;
 }
 
-export default memo('compound-value', parse);
+export default memo(parse);

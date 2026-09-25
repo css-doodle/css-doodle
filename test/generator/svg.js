@@ -374,6 +374,8 @@ test('timing takes a delay after the duration, like the css animation shorthand'
         `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" repeatCount="3"/></circle></svg>`);
     assert.equal(svg('path { draw: 2s .5s }').includes('dur="2s" begin=".5s"'), true);
     assert.equal(svg('path { draw: 3 2s }').includes('dur="2s" repeatCount="3"'), true);
+    // a negative delay starts part way through
+    assert.equal(svg('path { draw: 2s -1s }').includes('dur="2s" begin="-1s"'), true);
 });
 
 test('timing takes the css easing and fill words', () => {

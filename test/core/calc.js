@@ -11,6 +11,14 @@ test('basic operations', () => {
     assert.equal(calc('2 % 7'), 2);
 });
 
+test('hex numbers', () => {
+    // the tokenizer reads 0x10 as a number; calc used to take it for a name
+    assert.equal(calc('0x10'), 16);
+    assert.equal(calc('0x10 + 1'), 17);
+    assert.equal(calc('2 * 0X1f'), 62);
+    assert.equal(calc('0xff & 0x0f'), 15);
+});
+
 test('precedence', () => {
     assert.equal(calc('(1 + 2) * 10'), 30);
     assert.equal(calc('1 + 2 * 10'), 21);
@@ -149,6 +157,13 @@ test('negative numbers', () => {
     assert.equal(calc('3 * -2'), -6);
     assert.equal(calc('-3 * -2'), 6);
     assert.equal(calc('(-5)'), -5);
+});
+
+test('a unary minus before a negative number negates it', () => {
+    assert.equal(calc('- -1'), 1);
+    assert.equal(calc('2 * - -1'), 2);
+    assert.equal(calc('1+-+-1'), 2);
+    assert.equal(calc('max(- -1, 0)'), 1);
 });
 
 test('decimal numbers', () => {

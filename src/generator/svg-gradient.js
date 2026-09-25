@@ -42,7 +42,7 @@ export default function createSvgGradient(type, args) {
         if (opacity) {
             props += `; stop-opacity: ${opacity}`;
         }
-        return `stop { ${ offset ? `offset: ${offset};` : '' } ${props} }`;
+        return `stop { offset: ${offset}; ${props} }`;
     });
 
     return `${type} { ${transform} ${stops.join(' ')} }`;

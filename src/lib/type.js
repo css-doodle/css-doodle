@@ -23,6 +23,16 @@ export function removeQuotes(text) {
     return text;
 }
 
+export function removeParens(text) {
+    if (text[0] !== '(' || !text.endsWith(')')) return text;
+    let depth = 0;
+    for (let i = 0; i < text.length - 1; i++) {
+        if (text[i] === '(') depth++;
+        else if (text[i] === ')' && !--depth) return text;
+    }
+    return text.slice(1, -1);
+}
+
 export function getValue(input) {
     if (typeof input === 'string' || typeof input === 'number') {
         return input;

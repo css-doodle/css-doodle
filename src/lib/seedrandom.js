@@ -50,21 +50,11 @@ function mixkey(seed) {
     return key;
 }
 
-function autoseed() {
-    try {
-        const arr = new Uint8Array(WIDTH);
-        crypto.getRandomValues(arr);
-        return String.fromCharCode(...arr);
-    } catch {
-        return Date.now() + '' + Math.random();
-    }
-}
-
+// seed is a string
 export default function seedrandom(seed) {
-    const key = mixkey(seed == null ? autoseed() : '' + seed);
-    const arc4 = new ARC4(key);
+    const arc4 = new ARC4(mixkey(seed));
 
-    const prng = () => {
+    return () => {
         let n = arc4.g(CHUNKS);
         let d = START_DENOM;
         let x = 0;
@@ -80,9 +70,4 @@ export default function seedrandom(seed) {
         }
         return (n + x) / d;
     };
-
-    prng.int32 = () => arc4.g(4) | 0;
-    prng.quick = () => arc4.g(4) / 0x100000000;
-
-    return prng;
 }

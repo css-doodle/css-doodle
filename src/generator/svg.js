@@ -38,9 +38,7 @@ class Tag {
         }
     }
     merge(tag) {
-        for (let [name, value] of Object.entries(tag.attrs)) {
-            this.attrs[name] = value;
-        }
+        Object.assign(this.attrs, tag.attrs);
         if (Array.isArray(tag.body)) {
             this.body.push(...tag.body);
         }
@@ -117,7 +115,7 @@ function timing(animate, value, label, warn) {
     for (let word of parseValueGroup(value)) {
         if (word === 'infinite' || word === 'indefinite') {
             repeatCount = 'indefinite';
-        } else if (/^\d*\.?\d+(m?s|min|h)?$/.test(word)) {
+        } else if (/^(-?\d*\.?\d+(m?s|min|h)|\d*\.?\d+)$/.test(word)) {
             times.push(word);
         } else if (word === 'forwards' || word === 'freeze') {
             fill = 'freeze';

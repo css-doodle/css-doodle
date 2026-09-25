@@ -77,12 +77,9 @@ export function generateFragment(fragment, textures) {
         push('out vec4 FragColor;');
     }
 
-    push('uniform vec2 u_resolution;');
-    push('uniform float u_time;');
-    push('uniform float u_timeDelta;');
-    push('uniform int u_frameIndex;');
-    push('uniform vec2 u_seed;');
-    push('uniform vec2 u_mouse;');
+    for (const u of ['vec2 u_resolution', 'float u_time', 'float u_timeDelta', 'int u_frameIndex', 'vec2 u_seed', 'vec2 u_mouse']) {
+        push(`uniform ${u};`);
+    }
 
     textures.forEach(t => {
         push(`uniform sampler2D ${t.name};`);
@@ -295,8 +292,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
         if (!surface) return;
         const width = raster(w);
         const height = raster(h);
-        // a program belongs to its context, so a new size means a rebuild
-        if (width !== surface.width || height !== surface.height) {
+        if (surface.disposed || width !== surface.width || height !== surface.height) {
             teardown();
             setup(width, height);
         }

@@ -27,6 +27,10 @@ test('sequence: ranges run in either direction', () => {
     assert.deepEqual(indices('1-4'), [1, 2, 3, 4]);
     assert.deepEqual(indices('4-1'), [4, 3, 2, 1]);
     assert.deepEqual(indices('5-5'), [5]);
+    // the grid cap does not cut a range short
+    let range = indices('100-1000');
+    assert.equal(range.length, 901);
+    assert.deepEqual([range[0], range.at(-1)], [100, 1000]);
 });
 
 test('sequence: negative counts produce nothing', () => {
@@ -45,6 +49,11 @@ test('sequence: grid product is capped', () => {
 // --- expand ---
 
 const args = expand((...values) => values);
+
+test('expand: characters outside the BMP are one item each', () => {
+    assert.deepEqual(args('[😀-😃]'), ['😀', '😁', '😂', '😃']);
+    assert.deepEqual(args('[😀🎉✨]'), ['😀', '🎉', '✨']);
+});
 
 test('expand: character ranges', () => {
     assert.deepEqual(args('[a-c]'), ['a', 'b', 'c']);

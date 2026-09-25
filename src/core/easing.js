@@ -55,7 +55,7 @@ export function getEasingPoints(str) {
     return null;
 }
 
-const resolve = memo('easing', str => {
+const resolve = memo(str => {
     if (str.toLowerCase() === 'linear') return t => t;
     let points = getEasingPoints(str);
     return points ? cubicBezier(...points) : t => calc(str, { t });

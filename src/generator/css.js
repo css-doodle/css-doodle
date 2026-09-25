@@ -12,7 +12,7 @@ import gridStyleRules from './grid-style.js';
 import { cellId, isTreeGrid } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
-import { isNil, getValue, removeQuotes } from '../lib/type.js';
+import { isNil, getValue, removeQuotes, removeParens } from '../lib/type.js';
 import { join, last, removeEmptyValues } from '../lib/list.js';
 import { nextId } from '../lib/fn.js';
 import {
@@ -44,8 +44,8 @@ const FAMILY = {
     __proto__: null,
     top: 'inset', right: 'inset', bottom: 'inset', left: 'inset',
     'line-height': 'font',
-    'row-gap': 'gap', 'column-gap': 'gap',
     align: 'place', justify: 'place',
+    columns: 'column', white: 'text',
 };
 
 function familiesOf(text) {
@@ -57,8 +57,7 @@ function familiesOf(text) {
         }
         name = name.replace(/^-\w+-/, '');
         let head = name.split('-')[0];
-        // `all` resets every property, so it belongs to every family
-        families.add(head === 'all' ? '*' : (FAMILY[name] ?? FAMILY[head] ?? head));
+        families.add(head === 'all' ? '*' : name.endsWith('gap') ? 'gap' : (FAMILY[name] ?? FAMILY[head] ?? head));
     }
     return families;
 }
@@ -501,11 +500,7 @@ class Rules {
     readVar(value, count, contextVariable) {
         let group = this.scopedVars(count, contextVariable);
         if (group[value] !== undefined) {
-            let result = String(group[value]).trim();
-            if (result.startsWith('(') && result.endsWith(')')) {
-                result = result.slice(1, -1);
-            }
-            return result.replace(/;+$/g, '');
+            return removeParens(String(group[value]).trim()).replace(/;+$/g, '');
         }
         return value;
     }
@@ -670,7 +665,7 @@ class Rules {
         }
 
         if (prop === 'content') {
-            if (!/["']|^none\s?$|^(var|counter|counters|attr|url)\(/.test(value)) {
+            if (!/["']|^(none|normal|inherit|initial|unset|revert(-layer)?|(no-)?(open|close)-quote)\s?$|^([\w-]+\(|\$\{)/.test(value)) {
                 value = `'${value}'`;
             }
             let reset = new Map();

@@ -63,9 +63,7 @@ function warn(ctx, msg, pos) {
 
 function getTextValue(input) {
     let text = input.trim();
-    if (!text.length) return input;
-    let n = +text;
-    return Number.isNaN(n) ? text : n;
+    return text.length ? text : input;
 }
 
 const PAIRS = { '"': '"', "'": "'", '(': ')' };
@@ -199,7 +197,7 @@ function parseValue(cur, extra, breakOn) {
         skip = false;
 
         if (tok.isSymbol()) {
-            if (!quote && (v === '}' || v === '<' || v === breakOn || (v === ';' && paren === 0))) {
+            if (!quote && (v === '}' || v === breakOn || ((v === ';' || v === '<') && paren === 0))) {
                 break;
             }
             if (v === ',' && paren === 0 && !quote) {

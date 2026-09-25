@@ -246,7 +246,7 @@ if (typeof HTMLElement !== 'undefined') {
         dispatchCellClick(event) {
             let cell = event.composedPath().find(el => el.tagName === 'CELL');
             if (!cell) return;
-            let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id);
+            let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id || cell.className);
             if (!match) return;
             this.triggerEvent('click:cell', {
                 x: Number(match[1]),
