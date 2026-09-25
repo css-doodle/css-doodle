@@ -279,8 +279,8 @@ if (typeof HTMLElement !== 'undefined') {
             this.removeAttribute('data-interval');
         }
 
-        generate(code) {
-            let seed = this.getAttribute('seed') || this.getAttribute('data-seed');
+        generate(code, seed) {
+            seed = this.getAttribute('seed') || this.getAttribute('data-seed') || seed;
             if (isNil(seed)) {
                 seed = Date.now();
             }
@@ -308,7 +308,7 @@ if (typeof HTMLElement !== 'undefined') {
         load() {
             let code = this._code || unEntity(this.innerHTML);
             this.innerHTML = '';
-            this.render(code);
+            this.render(code, this.compiled?.seed);
             if (this.hasAttribute('auto:update') || this._auto_update_timer) {
                 this.autoUpdate();
             }
@@ -334,11 +334,11 @@ if (typeof HTMLElement !== 'undefined') {
             });
         }
 
-        render(code) {
+        render(code, seed) {
             this.cleanup();
             this._code = code;
             let old = this.compiled;
-            let compiled = this.generate(code);
+            let compiled = this.generate(code, seed);
             let grid = compiled.grid || this.getGrid();
             let rebuild = this.shouldRebuild(compiled, old, grid);
             this.gridSize = grid;
