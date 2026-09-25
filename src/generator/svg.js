@@ -175,6 +175,7 @@ function generate(token, element, parent, root, warn) {
         // normal svg elements
         else {
             let el = new Tag(token.name);
+            let fresh = false;
             if (!root) {
                 root = el;
                 root.attr('xmlns', NS.split('=')[1]);
@@ -202,6 +203,7 @@ function generate(token, element, parent, root, warn) {
                 } else if (isSingleDefChild || isInlineAndNotDefs) {
                     inlineId = nextInlineId(token.name);
                     el.attr('id', inlineId);
+                    fresh = true;
                 }
             }
             if (token.inline && isDefinitionTag(token.name)) {
@@ -210,7 +212,7 @@ function generate(token, element, parent, root, warn) {
                     root.append(element = new Tag('defs'));
                 }
             }
-            let existedTag = element.find(el);
+            let existedTag = !fresh && element.find(el);
             if (existedTag) {
                 if (existedTag !== el) {
                     existedTag.merge(el);
