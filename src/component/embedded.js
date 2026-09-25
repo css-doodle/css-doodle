@@ -269,6 +269,7 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
             }));
         } catch (err) {
             console.error(err);
+            host.shaderRenders.set(id, { dispose() {} });
         }
     }
 
