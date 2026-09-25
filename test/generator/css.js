@@ -184,6 +184,16 @@ test('$ inside a sequence tracks the iteration variables', () => {
     assertContains('@grid: 1; --l: @m(3.8, @n);', '--l:1,2,3;');
 });
 
+test('a sequence count that evaluates to 0 repeats nothing', () => {
+    assertContains('@grid: 1; --l: @m(@i - 1, x);', '--l:;');
+    assertContains('@grid: 1; --l: @m(2 - 2, x);', '--l:;');
+    // a spaced grid form still reads as a grid
+    assertContains('@grid: 1; --l: @m(2 x 2, @n);', '--l:1,2,3,4;');
+    // the random draws stay, so later values do not shift
+    const z = code => cells(code).match(/--z:([\d.]+)/)[1];
+    assert.equal(z('--l: @m(@i - 1, @r(9)); --z: @r(9);'), z('--l: @m(1, @r(9)); --z: @r(9);'));
+});
+
 test('@calc and Math functions evaluate templated arguments the same', () => {
     assertContains('@grid: 1; width: @calc(@i*3+1)px;', 'width:4px;');
     assertContains('@grid: 1; opacity: @sin(π/2+@i-1);', 'opacity:1;');

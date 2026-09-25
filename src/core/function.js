@@ -156,19 +156,21 @@ function makeSequence(c) {
         if (!input || !actions.length) return '';
         let count = getValue(input(...(last(env.extra) || [])));
         let evaluated = count;
-        // Anything but plain numbers and 2x3/1-5 range forms goes through calc
-        if (/\D/.test(count) && !/\d+[x-]\d+/.test(count)) {
-            evaluated = calc(count);
-            if (evaluated === 0) {
-                evaluated = count;
-            }
-        }
         let signature = ++seqUid;
         let run = actions.length === 1
             ? (n, x, y, max, X, Y, index) =>
                 getValue(actions[0](n, x, y, max, X, Y, index, signature))
             : (n, x, y, max, X, Y, index) => actions.map(action =>
                     getValue(action(n, x, y, max, X, Y, index, signature))).join(',');
+        if (/\D/.test(count) && !/\d+[x-]\d+|^\s*\d+\s*x\s*\d+\s*$/.test(count)) {
+            evaluated = calc(count);
+            // a zero count repeats nothing; the text form still runs for its
+            // random draws, so every later random value stays the same
+            if (evaluated === 0) {
+                sequence(count, run);
+                return '';
+            }
+        }
         return sequence(evaluated, run).join(c);
     });
 }
@@ -470,8 +472,6 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
             noise2d: new Noise(random), offsetX: random(), offsetY: random()
         };
         let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
-        // inside @m the sequence is the grid; a one-cell axis sits
-        // mid-way to avoid the x=0 degenerate case
         let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : [x, y, grid.x, grid.y];
         let _x = offsetX + (X <= 1 ? .5 : (cx - 1) / X);
         let _y = offsetY + (Y <= 1 ? .5 : (cy - 1) / Y);
