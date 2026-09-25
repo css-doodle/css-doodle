@@ -151,8 +151,8 @@ export async function doodleToImage(host, code, options) {
 }
 
 export function patternToImage(host, pattern) {
-    let source = generatePattern(pattern.source, host.extra, message => host.report([{ message }]));
-    return shaderToImage(host, { ...pattern, source });
+    let fragment = generatePattern(pattern.source, host.extra, message => host.report([{ message }]));
+    return shaderToImage(host, { ...pattern, source: { fragment, textures: [] } });
 }
 
 export async function shaderToImage(host, { source, cell, id, arg, target, compiled }) {
