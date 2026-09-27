@@ -283,3 +283,22 @@ test('a nested doodle url is escaped text, not base64, and hidden from the clock
     assert.ok(stamped.startsWith('cell{animation:spin 4s -2500ms;'), stamped);
     assert.ok(stamped.includes(url));
 });
+
+test(']]> in a nested doodle sheet does not end its CDATA section', async () => {
+    let host = {
+        extra: {},
+        compiled: { seed: 42 },
+        getMaxGrid: () => 64,
+        report: () => {},
+        hasAttribute: () => false,
+        _clock: { base: 0 },
+        clockNow: () => 0,
+    };
+    let url = await doodleToImage(host, ':after { content: "]]>"; } color: red;', {});
+    let svg = decodeURIComponent(url.slice(url.indexOf(',') + 1));
+    let style = svg.slice(svg.indexOf('<style>') + 7, svg.indexOf('</style>'));
+    // the sections, read back as XML would, give the sheet with its ]]>
+    let text = style.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+    assert.ok(text.includes('content:"]]>"'), style);
+    assert.ok(text.includes('color:red'), style);
+});

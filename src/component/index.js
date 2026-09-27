@@ -4,7 +4,7 @@ import generateCss from '../generator/css.js';
 import generatePng from '../generator/svg-to-png.js';
 
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
-import { NS, NSXHtml, FilterHolderStyle } from '../lib/svg.js';
+import { NS, NSXHtml, FilterHolderStyle, cdata } from '../lib/svg.js';
 import { isNil } from '../lib/type.js';
 import { uniqueId } from '../lib/fn.js';
 import { isSafari } from '../lib/browser.js';
@@ -587,11 +587,7 @@ if (typeof HTMLElement !== 'undefined') {
                 <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${isSafari() ? '' : `width="${w}px" height="${h}px"`}>
                     <foreignObject width="100%" height="100%">
                         <div class="host" ${NSXHtml} style="width:${width}px;height:${height}px">
-                            <style><![CDATA[
-                                ${fonts}
-                                .host{${variables}}
-                                ${TRANSITION_NONE}
-                            ]]></style>
+                            <style>${cdata(fonts + `.host{${variables}}` + TRANSITION_NONE)}</style>
                             ${html}
                         </div>
                     </foreignObject>

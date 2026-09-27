@@ -7,7 +7,7 @@ import generatePattern from '../generator/pattern.js';
 import generatePng from '../generator/svg-to-png.js';
 
 import createAnimation from './animation.js';
-import { NS, NSXHtml, FilterHolderStyle } from '../lib/svg.js';
+import { NS, NSXHtml, FilterHolderStyle, cdata } from '../lib/svg.js';
 import { utime, UTime } from '../core/uniforms.js';
 import { cacheImage, isSafari } from '../lib/browser.js';
 import { debounce } from '../lib/fn.js';
@@ -123,7 +123,7 @@ export async function doodleToImage(host, code, options) {
                 ${smilTick(sheet)}
                 <foreignObject width="100%" height="100%">
                     <div class="host" width="100%" height="100%" ${NSXHtml}>
-                        <style><![CDATA[${sheet}]]></style>
+                        <style>${cdata(sheet)}</style>
                         ${markup}
                     </div>
                 </foreignObject>
