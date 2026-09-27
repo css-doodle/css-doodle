@@ -27,7 +27,7 @@ function resolvePlace(value) {
             case 'top':    y = '0%';   break;
             case 'bottom': y = '100%'; break;
             case 'center': rest.push('50%'); break;
-            default:       rest.push(token);
+            default:       rest.push(Number(token) === 0 ? '0%' : token);
         }
     }
     return [x ?? rest.shift() ?? '50%', y ?? rest.shift() ?? '50%', safe];

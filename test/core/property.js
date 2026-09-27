@@ -173,3 +173,9 @@ test('place: safe drops the unsafe overflow keyword', () => {
     assert.equal(property.place('safe 50% 30%', {}), placed('50%', '30%', 'center'));
     assert.equal(property.place('safe left', {}), placed('0%', '50%', 'center'));
 });
+
+test('place: a unitless zero gets a unit so calc() stays valid', () => {
+    assert.equal(property.place('0 0', {}), placed('0%', '0%'));
+    assert.equal(property.place('.0 -0', {}), placed('0%', '0%'));
+    assert.equal(property.place('0 30%', {}), placed('0%', '30%'));
+});
