@@ -6,6 +6,7 @@ import parseGrid from '../../src/parser/parse-grid.js';
 import generateCss from '../../src/generator/css.js';
 import createRandom from '../../src/core/random.js';
 import { doodleToImage } from '../../src/component/embedded.js';
+import { stampSheet } from '../../src/component/clock.js';
 
 // the component only defines its class when HTMLElement exists
 globalThis.HTMLElement ??= class {};
@@ -107,8 +108,8 @@ test('nested doodle images keep animating and hold when the host pauses', async 
         clockNow: () => ms,
     });
     const decode = source => {
-        assert.ok(source.startsWith('data:image/svg+xml;base64,'));
-        return atob(source.split(',')[1]);
+        assert.ok(source.startsWith('data:image/svg+xml,'));
+        return decodeURIComponent(source.slice(source.indexOf(',') + 1));
     };
     let code = 'transition:all 1s;animation:spin 4s;';
     // a running host: animations run, transitions do not
@@ -141,7 +142,10 @@ test('an animated nested doodle image carries one SMIL element for chrome', asyn
         _clock: { base: 0 },
         clockNow: () => 0,
     };
-    const svg = async code => atob((await doodleToImage(host, code, {})).split(',')[1]);
+    const svg = async code => {
+        let url = await doodleToImage(host, code, {});
+        return decodeURIComponent(url.slice(url.indexOf(',') + 1));
+    };
     let animated = await svg("::before { content: ''; animation: k 1s infinite; }");
     assert.equal(animated.split('<set ').length - 1, 1);
     assert.ok(!(await svg('background: red;')).includes('<set '));
@@ -251,4 +255,31 @@ test('a generator warning reports the line and column of its offset', () => {
         'parser (at line 3, column 5)',
         'plain',
     ]);
+});
+
+test('a nested doodle url is escaped text, not base64, and hidden from the clock', async () => {
+    const host = (ms = 0) => ({
+        extra: {},
+        compiled: { seed: 42 },
+        getMaxGrid: () => 64,
+        report: () => {},
+        hasAttribute: () => false,
+        _clock: { base: ms, since: 0 },
+        clockNow: () => ms,
+    });
+    // a doodle in a doodle: the inner url sits in the CDATA of the outer sheet
+    let code = 'animation: spin 4s; :after { content: "中 #1 50%"; } background: @doodle(color: red;);';
+    let url = await doodleToImage(host(), code, {});
+    assert.ok(url.startsWith('data:image/svg+xml,'));
+    let text = url.slice(url.indexOf(',') + 1);
+    // no character that ends the css string, the url, or the CDATA around it
+    assert.doesNotMatch(text, /["#\n\r\\]|]]>/);
+    let svg = decodeURIComponent(text);
+    assert.ok(svg.includes('content:"中 #1 50%"'), svg);
+    assert.ok(svg.includes('url("data:image/svg+xml,'), svg);
+    // the host clock shifts its own animations, not the ones inside the image
+    let sheet = `cell{animation:spin 4s;background:url("${url}")}`;
+    let stamped = stampSheet(host(2500), sheet);
+    assert.ok(stamped.startsWith('cell{animation:spin 4s -2500ms;'), stamped);
+    assert.ok(stamped.includes(url));
 });

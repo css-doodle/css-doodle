@@ -19,6 +19,7 @@ import { stampSheet, stampSmil, smilTick, TRANSITION_NONE } from './clock.js';
 import { parseCssCached } from './parse-cache.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
+const RE_URL_ESCAPE = /[\n\r"#%:<>\\]/g;
 
 // cells that produce the same nested doodle svg share one image url
 const sharedUrls = new WeakMap();
@@ -51,7 +52,7 @@ export function createReplacer(host, compiled) {
     // each group resolves with the text that takes the place of its placeholder
     const groups = [
         [doodles, (id, v) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id, compiled })
-            .then(url => `url(${url})`)],
+            .then(url => `url("${url}")`)],
         [shaders, (id, v) => shaderToImage(host, { ...v, compiled }).then(() => `var(--${id})`)],
         [patterns, (id, v) => patternToImage(host, { ...v, compiled }).then(() => `var(--${id})`)],
     ];
@@ -129,7 +130,7 @@ export async function doodleToImage(host, code, options) {
             </svg>
         `);
         return await sharedImage(host, svg, () => {
-            let source = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+            let source = 'data:image/svg+xml,' + svg.replace(RE_URL_ESCAPE, encodeURIComponent);
             if (!isSafari()) {
                 return source;
             }
