@@ -302,3 +302,30 @@ test(']]> in a nested doodle sheet does not end its CDATA section', async () => 
     assert.ok(text.includes('content:"]]>"'), style);
     assert.ok(text.includes('color:red'), style);
 });
+
+test('a restamp redraws a nested doodle without drawing from the random stream again', async () => {
+    let draws = 0;
+    let compiled = { seed: 42, random: () => (draws++ % 7) / 7 };
+    let host = ms => ({
+        extra: {},
+        compiled,
+        getMaxGrid: () => 64,
+        report: () => {},
+        hasAttribute: () => false,
+        _clock: { base: ms, since: 0 },
+        clockNow: () => ms,
+    });
+    let code = 'background: @p(red, blue, green, gold); animation: spin 4s;';
+    let options = { instance: 'doodle-1', compiled };
+    let first = decodeURIComponent(await doodleToImage(host(0), code, options));
+    let used = draws;
+    assert.ok(used > 0);
+    // the clock moved on: the image is stamped again, the colours stay
+    let again = decodeURIComponent(await doodleToImage(host(1000), code, options));
+    assert.equal(draws, used);
+    assert.match(again, /animation:\s*spin 4s -1000ms/);
+    assert.equal(again.replace(/ -1000ms/g, ''), first);
+    // another render composes afresh
+    await doodleToImage(host(0), code, { ...options, compiled: { ...compiled } });
+    assert.ok(draws > used);
+});

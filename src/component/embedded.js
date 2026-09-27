@@ -82,13 +82,26 @@ export function createReplacer(host, compiled) {
     }
 }
 
+// a nested doodle composes once for the render that asked for it: a restamp
+// for the clock rebuilds the image but must not draw from the stream again
+const composedDoodles = new WeakMap();
+
 export async function doodleToImage(host, code, options) {
     code = ':doodle {width:100%;height:100%}' + code;
-    let parsed = parseCssCached(code, host.extra);
     let baseGrid = parseGrid('');
     let source = options.compiled ?? host.compiled;
-    let compiled = generateCss(parsed, baseGrid, source.seed, host.getMaxGrid(), source.random, options.upextra, options.instance);
-    host.report(compiled.warnings);
+    let composed = composedDoodles.get(source);
+    if (!composed) {
+        composedDoodles.set(source, composed = new Map());
+    }
+    let key = options.instance + code;
+    let compiled = composed.get(key);
+    if (!compiled) {
+        let parsed = parseCssCached(code, host.extra);
+        compiled = generateCss(parsed, baseGrid, source.seed, host.getMaxGrid(), source.random, options.upextra, options.instance);
+        composed.set(key, compiled);
+        host.report(compiled.warnings);
+    }
     let styles = compiled.styles;
     let grid = compiled.grid || baseGrid;
 
