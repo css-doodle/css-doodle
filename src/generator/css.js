@@ -649,6 +649,10 @@ class Rules {
         let extra = composed.extra;
         let value = composed.value;
 
+        if (value.includes('path(')) {
+            value = value.replace(/(path\(\s*['"]?\s*)[lL](?![a-zA-Z])/g, '$1M');
+        }
+
         if (flags.animation) {
             this.props.hasAnimation = true;
             let { uid } = cell;

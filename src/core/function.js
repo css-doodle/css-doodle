@@ -268,9 +268,8 @@ function transformPath(xx, xy, yx, yy) {
         let input = args.join(',');
         let { valid, commands } = parseSvgPath(input);
         if (!valid || !commands.length) return input;
-        // a leading relative moveto is absolute as well
         let first = commands[0];
-        let [ox = 0, oy = 0] = /^m$/i.test(first.name) ? first.value : [];
+        let [ox = 0, oy = 0] = /^[ml]$/i.test(first.name) ? first.value : [];
         let point = (x, y, abs) => {
             let dx = abs ? x - ox : x;
             let dy = abs ? y - oy : y;
@@ -605,9 +604,9 @@ const arcPath = memo((...args) => {
     let arc = `A ${tidyNumber(rx)} ${tidyNumber(ry)} 0`;
     let dir = sweep > 0 ? 1 : 0;
     if (full) {
-        return `M ${point(from)} ${arc} 1 ${dir} ${point(from + sweep / 2)} ${arc} 1 ${dir} ${point(from)}`;
+        return `L ${point(from)} ${arc} 1 ${dir} ${point(from + sweep / 2)} ${arc} 1 ${dir} ${point(from)}`;
     }
-    return `M ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + sweep)}`;
+    return `L ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + sweep)}`;
 });
 
 Function.arc = () => arcPath;
@@ -625,7 +624,7 @@ Function.reverse = () => {
         let { valid, commands } = parseSvgPath(args.join(','));
         if (!valid) return args.reverse();
         let list = commands.map(({ name, value }) => name + value.join(' '));
-        let head = /^m/i.test(list[0]) ? list.shift() : '';
+        let head = /^[ml]/i.test(list[0]) ? list.shift() : '';
         let tail = /^z$/i.test(list[list.length - 1]) ? list.pop() : '';
         return [head, ...list.reverse(), tail].filter(Boolean).join(' ');
     }

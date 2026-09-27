@@ -460,12 +460,15 @@ filter: @svg-filter(
 ```
 
 **`@arc(r: 40; from: 0; to: 120; move: 50 50)`** is the path data of
-an arc, `M x y A …`, for `d:`. Angles are degrees, clockwise from
+an arc, `L x y A …`, for `d:`. Angles are degrees, clockwise from
 three o'clock like SVG's `rotate()`, and take `deg`, `rad`, `grad` or
 `turn`. `from` defaults to `0` and `to` to `360`; a sweep of a full
 turn or more is the whole circle. `r` takes one or two radii and
-`move` the center. The data ends at the arc's end, so `@arc(…) L 0 0 Z`
-is a pie slice.
+`move` the center. The data continues the current path and ends at
+the arc's end: at the start of `d:` or of `path()` the lineto becomes
+the moveto, so `@arc(…) L 0 0 Z` is a pie slice, and
+`@arc(r: 50; to: 120) L -15 26 @arc(r: 30; from: 120; to: 0) Z` is a
+ring segment.
 
 ### 9.2 Polygons
 

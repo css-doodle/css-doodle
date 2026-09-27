@@ -290,6 +290,14 @@ test('names are matched against the svg camelCase names', () => {
         `<svg ${NS}><feGaussianBlur><animate attributeName="stdDeviation" values="1;5" dur="1s"/></feGaussianBlur></svg>`);
 });
 
+test('a leading lineto in d becomes the moveto, so @arc data chains', () => {
+    assert.equal(svg('path { d: L 10 0 A 10 10 0 0 1 0 10 L 0 5 L 0 5 A 5 5 0 0 0 5 0 Z }'),
+        `<svg ${NS}><path d="M 10 0 A 10 10 0 0 1 0 10 L 0 5 L 0 5 A 5 5 0 0 0 5 0 Z"/></svg>`);
+    assert.equal(svg('path { d: M 0 0 L 5 5 }'), `<svg ${NS}><path d="M 0 0 L 5 5"/></svg>`);
+    assert.equal(svg('path { animate d: L 1 0 A 1 1 0 0 1 0 1; L 2 0 A 2 2 0 0 1 0 2 / 1s }'),
+        `<svg ${NS}><path><animate attributeName="d" values="M 1 0 A 1 1 0 0 1 0 1;M 2 0 A 2 2 0 0 1 0 2" dur="1s"/></path></svg>`);
+});
+
 test('repeatCount accepts infinite', () => {
     assert.equal(svg('circle { animate { attributeName: r; values: 1;5; dur: 2s; repeatCount: infinite } }'),
         `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" repeatCount="indefinite"/></circle></svg>`);

@@ -7,6 +7,8 @@ import { getEasingPoints } from '../core/easing.js';
 const nextInlineId = nextId();
 const noop = () => {};
 
+const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
+
 class Tag {
     constructor(name, value = '') {
         if (!name) {
@@ -51,6 +53,9 @@ class Tag {
             // SMIL spells it indefinite
             if (name === 'repeatCount' && value === 'infinite') {
                 value = 'indefinite';
+            }
+            if (name === 'd') {
+                value = startPath(value);
             }
             return this.attrs[name] = value;
         }
@@ -291,6 +296,9 @@ function generate(token, element, parent, root, warn) {
                 let slash = text.lastIndexOf('/');
                 let values = parseValueGroup(slash < 0 ? text : text.slice(0, slash), { symbol: ';', noSpace: true })
                     .filter(v => v.length);
+                if (name === 'd') {
+                    values = values.map(startPath);
+                }
                 let animate = new Tag(name === 'transform' ? 'animateTransform' : 'animate');
                 animate.attr('attributeName', name);
                 if (name === 'transform' && values.length) {

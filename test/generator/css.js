@@ -407,6 +407,19 @@ test('@svg-filter travels inside the data url form of @svg', () => {
     assert.match(image, /filter="url\(#filter-\d+\)"/);
 });
 
+test('@arc continues a path: a ring segment in @svg, a moveto at the start of d and path()', () => {
+    let all = css(`background: @svg(
+        path { d: @arc(r: 50; from: 0; to: 120) L -15 26 @arc(r: 30; from: 120; to: 0) Z }
+        path { d: @arc(r: 40) }
+    );`);
+    let image = decodeURIComponent(all.match(/utf8,([^"]+)"/)[1]);
+    assert.ok(image.includes('d="M 50 0 A 50 50 0 0 1 -25 43.3012701892 L -15 26 L -15 25.9807621135 A 30 30 0 0 0 30 0 Z"'), image);
+    assert.ok(image.includes('d="M 40 0 A 40 40 0 1 1 -40 0 A 40 40 0 1 1 40 0"'), image);
+    assertContains(`clip-path: path('@arc(r: 40; move: 50 50) L 50 50 Z'); offset-path: path("@arc(r: 20)");`,
+        `clip-path:path('M 90 50 A 40 40 0 1 1 10 50 A 40 40 0 1 1 90 50 L 50 50 Z');`,
+        `offset-path:path("M 20 0 A 20 20 0 1 1 -20 0 A 20 20 0 1 1 20 0");`);
+});
+
 test('@svg-filter does not repeat a `*n` block inside @svg()', () => {
     // a function argument carries no `*n`, the same as outside @svg: the
     // count is dropped and the source never carries an `@M` back into it
