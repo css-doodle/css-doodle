@@ -77,6 +77,8 @@ function getPngName(name) {
     return prefix + '.png';
 }
 
+const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+
 let CSSDoodle = class {};
 
 export function define(name, element) {
@@ -90,7 +92,7 @@ if (typeof HTMLElement !== 'undefined') {
         static observedAttributes = [
             'grid', 'seed', 'use', 'experimental',
             'click-to-update', 'click:update',
-            'auto:update',
+            'auto:update', 'ignore-reduced-motion',
         ];
 
         constructor() {
@@ -104,6 +106,8 @@ if (typeof HTMLElement !== 'undefined') {
             this._generation = 0;
             this._clock = { base: 0, since: 0 };
             this._offscreen = false;
+            this._manual_motion = false;
+            this._on_motion = () => this.syncMotion();
             this._warned = new Set();
             this.extra = {
                 getVariable: name => getVariable(this, name),
@@ -116,6 +120,8 @@ if (typeof HTMLElement !== 'undefined') {
                 this.setAttribute('role', 'img');
             }
             this.watchViewport();
+            reducedMotion?.addEventListener('change', this._on_motion);
+            this.syncMotion();
             if (this.compiled || this.innerHTML) {
                 this.load();
             } else {
@@ -149,6 +155,18 @@ if (typeof HTMLElement !== 'undefined') {
             clearInterval(this._auto_update_timer);
             this._viewport?.disconnect();
             this._viewport = null;
+            reducedMotion?.removeEventListener('change', this._on_motion);
+        }
+
+        reducesMotion() {
+            return !!reducedMotion?.matches
+                && !this._manual_motion
+                && !this.hasAttribute('ignore-reduced-motion');
+        }
+
+        syncMotion() {
+            if (this._manual_motion) return;
+            this.reducesMotion() ? this.pause(true) : this.resume(true);
         }
 
         // the shader loops only draw while the host is in view
@@ -182,6 +200,8 @@ if (typeof HTMLElement !== 'undefined') {
                 } else {
                     this.cancelAutoUpdate();
                 }
+            } else if (name === 'ignore-reduced-motion') {
+                this.syncMotion();
             } else if (this.compiled) {
                 // before the first load the attribute is read by that load
                 this.update();
@@ -267,7 +287,7 @@ if (typeof HTMLElement !== 'undefined') {
             }
             clearInterval(this._auto_update_timer);
             this._auto_update_timer = setInterval(
-                () => this.update({ auto: true }),
+                () => this.reducesMotion() || this.update({ auto: true }),
                 parseInterval(this.dataset.interval || this.getAttribute('auto:update'))
             );
         }
@@ -528,7 +548,8 @@ if (typeof HTMLElement !== 'undefined') {
             }
         }
 
-        pause() {
+        pause(auto) {
+            this._manual_motion ||= !auto;
             if (this.hasAttribute('cssd-paused')) return;
             this._clock = { base: this.clockNow(), since: 0 };
             this.setAttribute('cssd-paused', true);
@@ -536,13 +557,14 @@ if (typeof HTMLElement !== 'undefined') {
                 am.pause();
             }
             for (let nested of this.shadowRoot.querySelectorAll('css-doodle')) {
-                nested.pause();
+                nested.pause(auto);
             }
             this.syncSvgAnimations();
             this.restamp();
         }
 
-        resume() {
+        resume(auto) {
+            this._manual_motion ||= !auto;
             if (!this.hasAttribute('cssd-paused')) return;
             this.removeAttribute('cssd-paused');
             this._clock.since = performance.now();
@@ -552,7 +574,7 @@ if (typeof HTMLElement !== 'undefined') {
                 }
             }
             for (let nested of this.shadowRoot.querySelectorAll('css-doodle')) {
-                nested.resume();
+                nested.resume(auto);
             }
             this.syncSvgAnimations();
             this.restamp();
