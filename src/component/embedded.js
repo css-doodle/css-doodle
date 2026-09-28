@@ -24,7 +24,7 @@ function safariImage(svg, width, height) {
     return url;
 }
 
-export function patternToImage(host, pattern) {
+function patternToImage(host, pattern) {
     let fragment = generatePattern(pattern.source, host.extra, message => host.report([{ message }]));
     return shaderToImage(host, { ...pattern, source: { fragment, textures: [] } });
 }
