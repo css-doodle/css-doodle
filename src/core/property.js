@@ -7,7 +7,6 @@ import { isPreset, getPreset } from './preset-size.js';
 import { addAlias } from '../lib/fn.js';
 import { isEmpty } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
-import { css } from '../lib/tagged-template.js';
 
 const iw = '--_cell-width';
 const ih = '--_cell-height';
@@ -108,20 +107,13 @@ Property.size = (value, { isSpecialSelector, grid }) => {
     return styles;
 };
 
+export const placeShared = `width:${cw};height:${ch};`;
+
 Property.place = (value, { extra }) => {
     let [left, top, safe] = resolvePlace(value);
-    return css`
-    position: absolute;
-    left: ${left};
-    right: calc(100% - ${left});
-    top: ${top};
-    bottom: calc(100% - ${top});
-    width: ${cw};
-    height: ${ch};
-    place-self: ${safe ? 'center' : 'unsafe center'};
-    grid-area: unset;
-    ${extra ? `rotate: ${extra}deg;` : ''}
-  `;
+    return `position:absolute;left:${left};right:calc(100% - ${left});top:${top};bottom:calc(100% - ${top});`
+        + `place-self:${safe ? 'center' : 'unsafe center'};grid-area:unset;`
+        + (extra ? `rotate:${extra}deg;` : '');
 };
 
 Property.grid = (value, options) => {

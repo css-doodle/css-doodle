@@ -1,6 +1,6 @@
 import Func, { MathFunc } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, useRandom } from '../core/calc.js';
-import Property from '../core/property.js';
+import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseShaders from '../parser/parse-shaders.js';
@@ -748,7 +748,13 @@ class Rules {
                     break;
                 }
                 case 'place-cell': case 'place': case 'offset': {
-                    if (!isHostSelector(selector)) rule = transformed;
+                    if (isHostSelector(selector)) break;
+                    rule = transformed;
+                    let shared = selector.replaceAll('&', SHARED_CELL(this.cellPrefix));
+                    let rules = this.scope.rules.get(shared);
+                    if (!rules || !rules.includes(placeShared)) {
+                        this.addRule(shared, placeShared);
+                    }
                     break;
                 }
                 default: {

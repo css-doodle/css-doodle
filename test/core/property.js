@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import property from '../../src/core/property.js';
+import property, { placeShared } from '../../src/core/property.js';
 
 // --- @grid ---
 
@@ -154,24 +154,23 @@ test('size: auto takes the grid aspect ratio on special selectors', () => {
 
 // --- @place ---
 
-const placed = (left, top, self = 'unsafe center') => `position: absolute;
-    left: ${left};
-    right: calc(100% - ${left});
-    top: ${top};
-    bottom: calc(100% - ${top});
-    width: var(--_cell-width, 25%);
-    height: var(--_cell-height, 25%);
-    place-self: ${self};
-    grid-area: unset;`;
+// the per-cell part; the size every placed element shares is placeShared
+const placed = (left, top, self = 'unsafe center', rest = '') =>
+    `position:absolute;left:${left};right:calc(100% - ${left});top:${top};bottom:calc(100% - ${top});place-self:${self};grid-area:unset;${rest}`;
 
 test('place: centers without using translate', () => {
     assert.equal(property.place('center', {}), placed('50%', '50%'));
+    assert.equal(placeShared, 'width:var(--_cell-width, 25%);height:var(--_cell-height, 25%);');
 });
 
 test('place: safe drops the unsafe overflow keyword', () => {
     assert.equal(property.place('safe center', {}), placed('50%', '50%', 'center'));
     assert.equal(property.place('safe 50% 30%', {}), placed('50%', '30%', 'center'));
     assert.equal(property.place('safe left', {}), placed('0%', '50%', 'center'));
+});
+
+test('place: a point with an angle rotates the cell', () => {
+    assert.equal(property.place('10% 20%', { extra: 45 }), placed('10%', '20%', 'unsafe center', 'rotate:45deg;'));
 });
 
 test('place: a unitless zero gets a unit so calc() stays valid', () => {
