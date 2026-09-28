@@ -377,7 +377,7 @@ class Rules {
     constructor(tokens, instance) {
         this.instance = instance ? '-' + instance : '';
         this.tokens = tokens;
-        this.root = { rules: new Map(), groups: new Set() };
+        this.root = { rules: new Map(), entries: new Map(), groups: new Map() };
         this.scope = this.root;
         this.rawRules = new Set();
         this.fonts = new Set();
@@ -403,7 +403,6 @@ class Rules {
         this.filters = {};
         this.content = {};
         this.vars = {};
-        this.entries = new Map();
         this.scanTokens(tokens);
     }
 
@@ -422,10 +421,6 @@ class Rules {
 
     addRaw(text) {
         if (text) this.rawRules.add(text);
-    }
-
-    addGroup(text) {
-        if (text) this.scope.groups.add(text);
     }
 
     addFont(name) {
@@ -898,18 +893,18 @@ class Rules {
 
     addCellRule(token, selector, cell, rule) {
         if (!rule) return;
-        let entries = this.entries.get(token);
-        if (!entries) this.entries.set(token, entries = new Map());
+        let entries = this.scope.entries.get(token);
+        if (!entries) this.scope.entries.set(token, entries = new Map());
         let entry = entries.get(selector);
         if (!entry) entries.set(selector, entry = { selector, cells: [], texts: [] });
         entry.cells.push(cell);
         entry.texts.push(rule);
     }
 
-    layoutCells() {
+    layoutCells(scope) {
         let entries = [];
         for (let token of this.ruleOrder) {
-            let m = this.entries.get(token);
+            let m = scope.entries.get(token);
             if (m) entries.push(...m.values());
         }
         let count = this.cells.length;
@@ -998,27 +993,34 @@ class Rules {
         return sections.before + run + sections.after;
     }
 
-    // a group at-rule composed for the cell: its rules collect in a scope
-    // of their own, then print inside the prelude with nested groups last
     composeGroup(token, cell, env, selectors) {
         let outer = this.scope;
-        let scope = this.scope = { rules: new Map(), groups: new Set() };
-        this.compose(cell, env, token.styles, selectors);
-        let body = '';
-        for (let [name, rule] of scope.rules) {
-            if (rule.length) {
-                body += `${specialName(name)} {${join(rule)}}`;
-            }
+        let prelude = this.condSelector(token, cell, env);
+        let scope = outer.groups.get(prelude);
+        if (!scope) {
+            outer.groups.set(prelude, scope = { rules: new Map(), entries: new Map(), groups: new Map() });
         }
-        body += join([...scope.groups]);
+        this.scope = scope;
+        this.compose(cell, env, token.styles, selectors);
         this.scope = outer;
-        return body ? `${this.condSelector(token, cell, env)} {${body}}` : '';
     }
 
-    // selectors are the enclosing ones, '&' standing for the cell; rules
-    // land under each of them, nested blocks carry their own resolved list
+    printGroups(scope) {
+        let groups = [];
+        for (let [prelude, group] of scope.groups) {
+            let body = '';
+            for (let [name, rule] of group.rules) {
+                if (rule.length) {
+                    body += `${specialName(name)} {${join(rule)}}`;
+                }
+            }
+            body += this.layoutCells(group) + this.printGroups(group);
+            if (body) groups.push(`${prelude} {${body}}`);
+        }
+        return join(groups);
+    }
+
     compose(cell, env, tokens, selectors = CELL) {
-        // nested calls (conds) run for the same cell
         if (!tokens) this.cells.push(cell);
         for (let token of (tokens || this.tokens)) {
             switch (token.type) {
@@ -1027,9 +1029,8 @@ class Rules {
                     if (token.property === '@grid' && this.grid) break;
                     for (let selector of selectors) {
                         let rule = this.composeRule(token, cell, env, selector);
-                        // cell rules wait for the sheet layout, unless they sit
-                        // inside a group at-rule, which is a scope of its own
-                        if (this.scope === this.root && selector.includes('&') && !isSpecialSelector(selector)) {
+                        // cell rules wait for the sheet layout of their scope
+                        if (selector.includes('&') && !isSpecialSelector(selector)) {
                             this.addCellRule(token, selector, cell, rule);
                         } else {
                             this.addRule(this.composeSelector(cell, selector), rule);
@@ -1055,7 +1056,7 @@ class Rules {
                     }
                     let matched = this.matchCond(token, cell, env);
                     if (matched === undefined) {
-                        this.addGroup(this.composeGroup(token, cell, env, selectors));
+                        this.composeGroup(token, cell, env, selectors);
                     } else if (matched) {
                         this.compose(cell, env, token.styles, selectors);
                     }
@@ -1088,9 +1089,7 @@ class Rules {
             styles[target] += `${specialName(selector)} {${join(rule)}}`;
         }
 
-        // after the grid styles above (`cell {flex:1}`), the cell rules,
-        // then the group at-rules
-        styles.cells += this.layoutCells() + join([...this.root.groups]);
+        styles.cells += this.layoutCells(this.root) + this.printGroups(this.root);
 
         if (this.uniforms.time) {
             styles.container += `:host,.host {animation:${timePrefix.animation};}`;

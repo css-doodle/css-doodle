@@ -728,7 +728,7 @@ test('conditional group rules scope bare rules to the cell and come last', () =>
 test('host rules inside a group compose once', () => {
     let all = css('@media (a) { :doodle { color: red } color: blue }', '2');
     assert.equal(all.match(/:host,\.host \{color:red;\}/g).length, 1);
-    assert.equal(all.match(/#c-\d-\d-1 \{color:blue;\}/g).length, 4);
+    assert.ok(all.endsWith('@media (a) {:host,.host {color:red;}:is(cell,#_) {color:blue;}}'), all);
 });
 
 test('declaration-body at-rules are emitted once verbatim at the top', () => {
@@ -838,9 +838,20 @@ test('a declaration inside a conditional block keeps its source order', () => {
         + '#c-3-1-1 {color:rgb(3,0,0);}#c-4-1-1 {color:rgb(4,0,0);}');
 });
 
-test('rules inside group at-rules stay per cell', () => {
+test('rules inside a group at-rule print once under its prelude, laid out like the top level', () => {
     assert.equal(cells('@media (x) { color: red; }', '2x1'),
-        '@media (x) {#c-1-1-1 {color:red;}}\n@media (x) {#c-2-1-1 {color:red;}}');
+        '@media (x) {:is(cell,#_) {color:red;}}');
+    assert.equal(cells('@media (x) { color: @pn(red, blue); }', '2x1'),
+        '@media (x) {#c-1-1-1 {color:red;}#c-2-1-1 {color:blue;}}');
+    // the same prelude written twice is one block, rules in source order
+    assert.equal(cells('@media (x) { color: red; } @media (x) { @nth(1) { width: 1px; } }', '2x1'),
+        '@media (x) {:is(cell,#_) {color:red;}#c-1-1-1 {width:1px;--_cell-width:1px;}}');
+    // a prelude composed per cell keeps a block of its own
+    assert.equal(cells('@media (min-width: @calc(@i * 10)px) { color: red; }', '2x1'),
+        '@media (min-width: 10px) {#c-1-1-1 {color:red;}}\n@media (min-width: 20px) {#c-2-1-1 {color:red;}}');
+    // nested groups follow the cell rules of their scope
+    assert.equal(cells('@media (x) { color: red; @supports (y) { color: blue; } }', '2x1'),
+        '@media (x) {:is(cell,#_) {color:red;}@supports (y) {:is(cell,#_) {color:blue;}}}');
 });
 
 test('per-cell and host values stay inline', () => {
