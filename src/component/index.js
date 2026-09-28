@@ -407,7 +407,7 @@ if (typeof HTMLElement !== 'undefined') {
             let { content, styles } = compiled;
             let hasContent = Object.keys(content).length;
             this.shadowRoot.innerHTML = css`
-                <style>${getBasicStyles(grid) + styles.main}</style>
+                <style>${(getBasicStyles(grid) + styles.main).replace(/<\/(style)/gi, '<\\/$1')}</style>
                 ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
             `;
             if (hasTransition || hasAnimation) {

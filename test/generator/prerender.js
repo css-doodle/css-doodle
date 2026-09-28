@@ -71,6 +71,11 @@ test('the source is escaped as text', async () => {
     assert.ok(html.includes('>@content: "&lt;b>&amp;amp;&lt;/b>";<template'));
 });
 
+test('a closing style tag in the sheet does not end the style element', async () => {
+    let { html } = await prerender('@grid: 1; :after { content: "</style><b>x</b></STYLE >"; }', { seed: 1 });
+    assert.match(shadowStyle(html), /content:"<\\\/style><b>x<\/b><\\\/STYLE >"/);
+});
+
 test('nested doodles are resolved to svg images', async () => {
     let { html } = await prerender('@grid: 2; background: @doodle(@grid: 2; background: @p(red, blue));', { seed: 1 });
     let style = shadowStyle(html);

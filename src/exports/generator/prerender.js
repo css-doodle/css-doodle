@@ -105,7 +105,7 @@ export default async function prerender(code = '', options = {}) {
         sheet += '@starting-style{cell,bd{all:revert!important}}';
     }
 
-    let shadow = `<style>${sheet.replace(/\n\s+/g, ' ')}</style>`;
+    let shadow = `<style>${sheet.replace(/\n\s+/g, ' ').replace(/<\/(style)/gi, '<\\/$1')}</style>`;
     if (styles.cells || styles.container || Object.keys(content).length) {
         shadow += createGrid(grid, compiled);
     }
