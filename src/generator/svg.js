@@ -9,61 +9,44 @@ const noop = () => {};
 
 const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
 
+// the body holds child tags and text, text as plain strings
 class Tag {
-    constructor(name, value = '') {
-        if (!name) {
-            throw new Error("Tag name is required");
-        }
+    constructor(name) {
         this.name = name;
         this.body = [];
         this.attrs = Object.create(null);
-        if (this.isTextNode()) {
-            this.body = value;
-        }
-    }
-    isTextNode() {
-        return this.name === 'text-node';
     }
     find(target) {
         let id = target.attrs.id;
         let name = target.name;
-        if (Array.isArray(this.body) && id !== undefined) {
-            return this.body.find(tag => tag.attrs.id === id && tag.name === name);
+        if (id !== undefined) {
+            return this.body.find(tag => tag.name === name && tag.attrs.id === id);
         }
     }
     findSpareDefs() {
         return this.body.find(n => n.name === 'defs' && !n.attrs.id);
     }
     append(tag) {
-        if (!this.isTextNode()) {
-            this.body.push(tag);
-        }
+        this.body.push(tag);
     }
     merge(tag) {
         Object.assign(this.attrs, tag.attrs);
-        if (Array.isArray(tag.body)) {
-            this.body.push(...tag.body);
-        }
+        this.body.push(...tag.body);
     }
     attr(name, value) {
-        if (!this.isTextNode()) {
-            if (value === undefined) {
-                return this.attrs[name];
-            }
-            // SMIL spells it indefinite
-            if (name === 'repeatCount' && value === 'infinite') {
-                value = 'indefinite';
-            }
-            if (name === 'd') {
-                value = startPath(value);
-            }
-            return this.attrs[name] = value;
+        if (value === undefined) {
+            return this.attrs[name];
         }
+        // SMIL spells it indefinite
+        if (name === 'repeatCount' && value === 'infinite') {
+            value = 'indefinite';
+        }
+        if (name === 'd') {
+            value = startPath(value);
+        }
+        return this.attrs[name] = value;
     }
     toString() {
-        if (this.isTextNode()) {
-            return escapeText(removeQuotes(this.body));
-        }
         let open = '<' + this.name;
         for (let name in this.attrs) {
             open += ' ' + name + '="' + escapeAttr(removeQuotes(this.attrs[name])) + '"';
@@ -244,8 +227,7 @@ function generate(token, element, parent, root, warn) {
         let keyword = space < 0 ? token.name : token.name.slice(0, space);
         let name = space < 0 ? '' : token.name.slice(space + 1).trim();
         if (keyword === 'content') {
-            let text = new Tag('text-node', value);
-            element.append(text);
+            element.append(removeQuotes(value));
         }
         // inline style, `style fill: red` or `style: { fill: red }`
         else if (keyword === 'style') {

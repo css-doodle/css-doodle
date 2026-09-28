@@ -42,7 +42,7 @@ function parseBody(iter, parent, { readBlocks, readStatement }) {
             break;
         }
         else if (curr.isSymbol('{')) {
-            let blocks = readBlocks(iter, head, parent);
+            let blocks = readBlocks(iter, head);
             if (blocks) {
                 rules.push(...blocks);
                 head = [];

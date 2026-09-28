@@ -1,4 +1,4 @@
-// Improved noise by Ken Perlin
+// Improved noise by Ken Perlin, the 2D slice of the reference cube
 // Translated from: https://mrl.nyu.edu/~perlin/noise/
 
 import { lerp } from './math.js';
@@ -26,11 +26,11 @@ function shuffle(arr, random) {
     return ret;
 }
 
-// Convert LO 4 bits of hash code into 12 gradient directions.
-function grad(hash, x, y, z) {
+// Convert LO 4 bits of hash code into 12 gradient directions, at z = 0.
+function grad(hash, x, y) {
     let h = hash & 15;
     let u = h < 8 ? x : y;
-    let v = h < 4 ? y : (h == 12 || h == 14) ? x : z;
+    let v = h < 4 ? y : (h == 12 || h == 14) ? x : 0;
     return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 }
 
@@ -40,29 +40,22 @@ export default class Perlin {
         this.p = [].concat(shuffled, shuffled);
     }
 
-    noise(x, y, z = 0) {
+    noise(x, y) {
         let { p } = this;
-        let fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
-        // Find unit cube that contains point.
-        let X = fx & 255, Y = fy & 255, Z = fz & 255;
-        // Find relative x, y, z of point in cube.
-        x -= fx; y -= fy; z -= fz;
-        // Compute fade curves for each of x, y, z.
-        let u = fade(x), v = fade(y), w = fade(z);
-        // Hash coordinates of the 8 cube corners.
-        let A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
-        let B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
-        // And add blended results from 8 corners of cube.
-        return lerp(w,
-            lerp(v,
-                lerp(u, grad(p[AA],     x,     y,     z),
-                        grad(p[BA],     x - 1, y,     z)),
-                lerp(u, grad(p[AB],     x,     y - 1, z),
-                        grad(p[BB],     x - 1, y - 1, z))),
-            lerp(v,
-                lerp(u, grad(p[AA + 1], x,     y,     z - 1),
-                        grad(p[BA + 1], x - 1, y,     z - 1)),
-                lerp(u, grad(p[AB + 1], x,     y - 1, z - 1),
-                        grad(p[BB + 1], x - 1, y - 1, z - 1))));
+        let fx = Math.floor(x), fy = Math.floor(y);
+        // Find unit square that contains point.
+        let X = fx & 255, Y = fy & 255;
+        // Find relative x, y of point in square.
+        x -= fx; y -= fy;
+        // Compute fade curves for each of x, y.
+        let u = fade(x), v = fade(y);
+        // Hash coordinates of the 4 square corners.
+        let A = p[X] + Y, B = p[X + 1] + Y;
+        // And add blended results from 4 corners of square.
+        return lerp(v,
+            lerp(u, grad(p[p[A]],     x,     y),
+                    grad(p[p[B]],     x - 1, y)),
+            lerp(u, grad(p[p[A + 1]], x,     y - 1),
+                    grad(p[p[B + 1]], x - 1, y - 1)));
     }
 }

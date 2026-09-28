@@ -47,13 +47,9 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
     if (fixed && !(fixed.x && fixed.y)) {
         fixed = null;
     }
-    const measure = () => {
-        if (fixed) {
-            return { width: fixed.x, height: fixed.y };
-        }
-        let { width, height } = element.getBoundingClientRect();
-        return { width, height };
-    }
+    const measure = () => fixed
+        ? { width: fixed.x, height: fixed.y }
+        : element.getBoundingClientRect();
 
     let { width, height } = measure();
     let generation = host._generation;

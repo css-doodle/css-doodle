@@ -475,11 +475,11 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
         let _x = offsetX + (X <= 1 ? .5 : (cx - 1) / X);
         let _y = offsetY + (Y <= 1 ? .5 : (cy - 1) / Y);
 
-        let t = noise2d.noise(_x * frequency, _y * frequency, 0) * scale;
+        let t = noise2d.noise(_x * frequency, _y * frequency) * scale;
 
         for (let i = 1; i < octave; ++i) {
             let i2 = i * 2;
-            t += noise2d.noise(_x * frequency * i2, _y * frequency * i2, 0) * (scale / i2);
+            t += noise2d.noise(_x * frequency * i2, _y * frequency * i2) * (scale / i2);
         }
         let fn = transform((from, to) => map2d(t, from, to, scale));
         return pushStack(context, 'lastRand', fn(from, to));
