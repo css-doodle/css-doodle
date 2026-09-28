@@ -19,6 +19,14 @@ function escapeAttr(text) {
     return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
+function dropStrayTemplateEnds(html) {
+    let depth = 0;
+    return html.replace(/<(\/?)template(?=[\s/>])[^>]*>/gi, (tag, end) => {
+        if (!end) return depth++, tag;
+        return depth ? (depth--, tag) : '';
+    });
+}
+
 function hash(text) {
     let h = 2166136261;
     for (let i = 0; i < text.length; i++) {
@@ -107,7 +115,7 @@ export default async function prerender(code = '', options = {}) {
 
     let shadow = `<style>${sheet.replace(/\n\s+/g, ' ').replace(/<\/(style)/gi, '<\\/$1')}</style>`;
     if (styles.cells || styles.container || Object.keys(content).length) {
-        shadow += createGrid(grid, compiled);
+        shadow += dropStrayTemplateEnds(createGrid(grid, compiled));
     }
     let defs = Object.values(filters).join('');
     let light = '';

@@ -76,6 +76,13 @@ test('a closing style tag in the sheet does not end the style element', async ()
     assert.match(shadowStyle(html), /content:"<\\\/style><b>x<\/b><\\\/STYLE >"/);
 });
 
+test('an unmatched closing template tag in content does not end the shadow root', async () => {
+    let stray = await prerender('@grid: 2; @content: "</template >hi";', { seed: 1 });
+    assert.equal(stray.html.match(/<cell [^>]+>hi<\/cell>/g).length, 4);
+    let kept = await prerender('@grid: 1; @content: "<template><i>t</i></template>ok";', { seed: 1 });
+    assert.match(kept.html, /<cell [^>]+><template><i>t<\/i><\/template>ok<\/cell>/);
+});
+
 test('nested doodles are resolved to svg images', async () => {
     let { html } = await prerender('@grid: 2; background: @doodle(@grid: 2; background: @p(red, blue));', { seed: 1 });
     let style = shadowStyle(html);
