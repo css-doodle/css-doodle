@@ -14,7 +14,7 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
-import { createReplacer, releaseSharedImages } from './doodle-image.js';
+import { createReplacer } from './doodle-image.js';
 import { draw } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
@@ -545,7 +545,6 @@ if (typeof HTMLElement !== 'undefined') {
             this.observers.clear();
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
-            releaseSharedImages(this);
             this._clock = { base: 0, since: 0 };
             // the shader and pattern images live in host variables
             if (this.compiled) {

@@ -6,7 +6,8 @@ import { removeParens } from '../../lib/type.js';
 import { utime, UTime } from '../../core/uniforms.js';
 
 import { parseCssCached } from '../../component/parse-cache.js';
-import { createReplacer } from '../../component/doodle-image.js';
+import { createReplacer, svgUrl, frameSvg } from '../../component/doodle-image.js';
+import { isAnimatedSvg } from '../../component/clock.js';
 import { getBasicStyles, createGrid } from '../../component/markup.js';
 import { getGoogleFontLink } from '../../component/google-font.js';
 
@@ -36,6 +37,7 @@ function hash(text) {
  *   mouse, size the pointer and size uniforms stay at 0
  *   clock       @T/@TS count from the build time, not the visit
  *   update      click:update / auto:update
+ *   safari      an animated sized @doodle is drawn unscaled in Safari
  *   variables   a var() in `use` has no value in `options.variables`
  *
  * Without a seed the source picks one, so a build renders the same picture
@@ -52,6 +54,14 @@ export default async function prerender(code = '', options = {}) {
     let warnings = [];
     let maxGrid = 'experimental' in attributes ? 256 : 64;
     let skip = () => (needs.add('shader'), Promise.resolve());
+    let url = (svg, width, height) => {
+        if (!(width && height)) return svgUrl(svg);
+        if (isAnimatedSvg(svg)) {
+            needs.add('safari');
+            return svgUrl(svg);
+        }
+        return svgUrl(frameSvg(svg, width, height));
+    };
     let host = {
         extra: {
             getVariable: name => {
@@ -64,7 +74,7 @@ export default async function prerender(code = '', options = {}) {
         report: list => warnings.push(...list),
         hasAttribute: name => name in attributes,
         _clock: { base: 0, since: 0 },
-        draw: { shader: skip, pattern: skip },
+        draw: { shader: skip, pattern: skip, url },
     };
 
     let use = String(attributes.use ?? '').trim();

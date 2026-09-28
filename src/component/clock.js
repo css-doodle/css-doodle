@@ -17,6 +17,10 @@ export function hasImageClock(sheet) {
     return RE_IMAGE_CLOCK.test(sheet);
 }
 
+export function isAnimatedSvg(svg) {
+    return /<(animate\w*|set)\b/.test(svg) || RE_CSS_CLOCK.test(svg) || RE_IMAGE_CLOCK.test(svg);
+}
+
 function clockValue(value = '') {
     let m = /^\s*(-?\d*\.?\d+)(ms|s|min|h)?\s*$/.exec(value);
     return m ? parseFloat(m[1]) * TIME_UNITS[m[2] ?? 's'] : null;

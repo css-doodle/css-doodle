@@ -3,12 +3,11 @@ import parseShaders from '../parser/parse-shaders.js';
 
 import generateShaders from '../generator/shaders.js';
 import generatePattern from '../generator/pattern.js';
-import generatePng from '../generator/svg-to-png.js';
 
 import createAnimation from './animation.js';
 import { cacheImage, isSafari } from '../lib/browser.js';
 import { debounce } from '../lib/fn.js';
-import { doodleToImage, svgUrl } from './doodle-image.js';
+import { doodleToImage, svgUrl, frameSvg } from './doodle-image.js';
 
 export const draw = {
     shader: (host, value) => shaderToImage(host, value),
@@ -16,22 +15,13 @@ export const draw = {
     url: safariImage,
 };
 
-// Safari draws a sized svg image with foreignObject wrong, so it gets a png
 function safariImage(svg, width, height) {
-    let url = svgUrl(svg);
     if (!isSafari()) {
-        return url;
+        return svgUrl(svg);
     }
-    if (!(width && height)) {
-        cacheImage(url);
-        return url;
-    }
-    return generatePng(svg, parseInt(width), parseInt(height), 1)
-        .then(({ blob }) => {
-            let url = URL.createObjectURL(blob);
-            cacheImage(url);
-            return url;
-        });
+    let url = svgUrl((width && height) ? frameSvg(svg, width, height) : svg);
+    cacheImage(url);
+    return url;
 }
 
 export function patternToImage(host, pattern) {

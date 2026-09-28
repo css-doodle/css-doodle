@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { stampSvgImages, stampSheet, stampSmil, shiftCssAnimations, hasImageClock } from '../../src/component/clock.js';
+import { stampSvgImages, stampSheet, stampSmil, shiftCssAnimations, hasImageClock, isAnimatedSvg } from '../../src/component/clock.js';
 
 const url = svg => `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
 const decode = sheet => decodeURIComponent(/utf8,([^"#]*)/.exec(sheet)[1]);
@@ -121,4 +121,15 @@ test('inline SMIL markup follows the host clock', () => {
     // a finished animation only shifts, so its own fill applies
     assert.equal(stampSmil(host(2.5, true), '<animate dur="1s"/>'), '<animate dur="1s" begin="-2500ms"/>');
     assert.equal(stampSmil(host(2.5, true), '<cell>text</cell>'), '<cell>text</cell>');
+});
+
+test('isAnimatedSvg finds css and SMIL animation, nested images included', () => {
+    assert.equal(isAnimatedSvg('<svg><style>.a{color:red}</style></svg>'), false);
+    assert.equal(isAnimatedSvg('<svg><style>.a{animation-play-state:paused}</style></svg>'), false);
+    assert.equal(isAnimatedSvg('<svg><style>.a{animation: s 1s}</style></svg>'), true);
+    assert.equal(isAnimatedSvg('<svg><style>.a{animation-name:s}</style></svg>'), true);
+    assert.equal(isAnimatedSvg('<svg><circle><animate attributeName="r"/></circle></svg>'), true);
+    assert.equal(isAnimatedSvg('<svg><g><animateTransform/></g></svg>'), true);
+    assert.equal(isAnimatedSvg('<svg><rect><set attributeName="x" to="0"/></rect></svg>'), true);
+    assert.equal(isAnimatedSvg('<svg style="background:url(%22data:image/svg+xml,%3Csvg%3E%3Canimate/%3E%22)"></svg>'), true);
 });

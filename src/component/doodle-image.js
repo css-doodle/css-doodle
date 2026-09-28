@@ -17,30 +17,12 @@ export function svgUrl(svg) {
     return 'data:image/svg+xml,' + svg.replace(RE_URL_ESCAPE, encodeURIComponent);
 }
 
-// cells that produce the same nested doodle svg share one image url
-const sharedUrls = new WeakMap();
-
-export function releaseSharedImages(host) {
-    let urls = sharedUrls.get(host);
-    if (!urls) return;
-    sharedUrls.delete(host);
-    for (let url of urls.values()) {
-        Promise.resolve(url).then(url => {
-            if (url.startsWith('blob:')) URL.revokeObjectURL(url);
-        }, () => {});
-    }
-}
-
-function sharedImage(host, svg, toUrl) {
-    let urls = sharedUrls.get(host);
-    if (!urls) {
-        sharedUrls.set(host, urls = new Map());
-    }
-    let url = urls.get(svg);
-    if (url === undefined) {
-        urls.set(svg, url = toUrl());
-    }
-    return url;
+export function frameSvg(svg, width, height) {
+    let w = parseFloat(width);
+    let h = parseFloat(height);
+    let inner = svgUrl(svg.replace(/^(<svg[^>]*?) viewBox="[^"]*"/, '$1'));
+    return `<svg width="${width}" height="${height}" ${NS} preserveAspectRatio="none" viewBox="0 0 ${w} ${h}">`
+        + `<image width="${w}" height="${h}" preserveAspectRatio="none" href="${inner}"/></svg>`;
 }
 
 export function createReplacer(host, compiled) {
@@ -79,24 +61,22 @@ export function createReplacer(host, compiled) {
     }
 }
 
-// a nested doodle composes once for the render that asked for it: a restamp
-// for the clock rebuilds the image but must not draw from the stream again
-const composedDoodles = new WeakMap();
+const renders = new WeakMap();
 
 export async function doodleToImage(host, code, options) {
     code = ':doodle {width:100%;height:100%}' + code;
     let baseGrid = parseGrid('');
     let source = options.compiled ?? host.compiled;
-    let composed = composedDoodles.get(source);
-    if (!composed) {
-        composedDoodles.set(source, composed = new Map());
+    let cache = renders.get(source);
+    if (!cache) {
+        renders.set(source, cache = { composed: new Map(), urls: new Map() });
     }
     let key = options.instance + code;
-    let compiled = composed.get(key);
+    let compiled = cache.composed.get(key);
     if (!compiled) {
         let parsed = parseCssCached(code, host.extra);
         compiled = generateCss(parsed, baseGrid, source.seed, host.getMaxGrid(), source.random, options.upextra, options.instance);
-        composed.set(key, compiled);
+        cache.composed.set(key, compiled);
         host.report(compiled.warnings);
     }
     let styles = compiled.styles;
@@ -139,7 +119,11 @@ export async function doodleToImage(host, code, options) {
                 </foreignObject>
             </svg>
         `);
-        return await sharedImage(host, svg, () => (host.draw?.url ?? svgUrl)(svg, width, height));
+        let url = cache.urls.get(svg);
+        if (url === undefined) {
+            cache.urls.set(svg, url = (host.draw?.url ?? svgUrl)(svg, width, height));
+        }
+        return url;
     } catch (err) {
         console.error(err);
         return '';

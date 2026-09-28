@@ -153,3 +153,16 @@ test('cell transitions start from no cell rules, as the element paints them', as
     let plain = await prerender('@grid: 2; background: red;', { seed: 1 });
     assert.ok(!plain.html.includes('@starting-style'));
 });
+
+test('a still sized nested doodle is framed, an animated one is left for the runtime', async () => {
+    let still = await prerender('@grid: 1; background: @doodle200(@grid: 2; background: @p(red, blue));', { seed: 1 });
+    assert.deepEqual(still.needs, []);
+    assert.match(shadowStyle(still.html), /url\("data:image\/svg\+xml,%3Csvg width=%22200px%22 [^"]*%3Cimage /);
+
+    let moving = await prerender('@grid: 1; background: @doodle200(background: red; animation: s 1s infinite; @keyframes s { to { opacity: 0; } });', { seed: 1 });
+    assert.deepEqual(moving.needs, ['safari']);
+    assert.doesNotMatch(shadowStyle(moving.html), /%3Cimage /);
+
+    let unsized = await prerender('@grid: 1; background: @doodle(background: red);', { seed: 1 });
+    assert.doesNotMatch(shadowStyle(unsized.html), /%3Cimage /);
+});
