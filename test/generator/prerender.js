@@ -5,7 +5,7 @@ import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
 import generateCss from '../../src/generator/css.js';
 import { getBasicStyles } from '../../src/component/markup.js';
-import { prerender } from '../../src/component/prerender.js';
+import prerender from '../../src/exports/generator/prerender.js';
 
 function shadowStyle(html) {
     return /<template shadowrootmode="open"><style>([\s\S]*?)<\/style>/.exec(html)[1];
@@ -128,4 +128,17 @@ test('google fonts are linked before the element', async () => {
 test('warnings are returned', async () => {
     let { warnings } = await prerender('color: @nope(1);', { seed: 1 });
     assert.match(warnings[0].message, /unknown function @nope/);
+});
+
+test('shader and pattern images are left as unset variables', async () => {
+    for (let code of [
+        '@grid: 2; background: @shaders(void main() {});',
+        '@grid: 2; background: @pattern(grid: 2; fill: 1;);',
+        '@grid: 2; background: @doodle(background: @shaders(void main() {}));',
+    ]) {
+        let style = shadowStyle((await prerender(code, { seed: 1 })).html);
+        assert.doesNotMatch(style, /\$\{/, code);
+    }
+    let style = shadowStyle((await prerender('@grid: 1; background: @shaders(void main() {});', { seed: 1 })).html);
+    assert.match(style, /background:var\(--[\w-]+\)/);
 });

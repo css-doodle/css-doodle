@@ -14,7 +14,8 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
-import { createReplacer, releaseSharedImages } from './embedded.js';
+import { createReplacer, releaseSharedImages } from './doodle-image.js';
+import { draw } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 function unEntity(code) {
@@ -114,6 +115,7 @@ if (typeof HTMLElement !== 'undefined') {
                 getVariable: name => getVariable(this, name),
                 getRgbaColor: value => getRgbaColor(this.shadowRoot, value),
             };
+            this.draw = draw;
         }
 
         connectedCallback() {

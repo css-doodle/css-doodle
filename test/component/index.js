@@ -5,7 +5,7 @@ import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
 import generateCss from '../../src/generator/css.js';
 import createRandom from '../../src/core/random.js';
-import { doodleToImage } from '../../src/component/embedded.js';
+import { doodleToImage } from '../../src/component/doodle-image.js';
 import { stampSheet } from '../../src/component/clock.js';
 
 // the component only defines its class when HTMLElement exists

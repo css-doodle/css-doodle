@@ -1,14 +1,14 @@
-import parseGrid from '../parser/parse-grid.js';
-import generateCss from '../generator/css.js';
+import parseGrid from '../../parser/parse-grid.js';
+import generateCss from '../../generator/css.js';
 
-import { FilterHolderStyle } from '../lib/svg.js';
-import { removeParens } from '../lib/type.js';
-import { utime, UTime } from '../core/uniforms.js';
+import { FilterHolderStyle } from '../../lib/svg.js';
+import { removeParens } from '../../lib/type.js';
+import { utime, UTime } from '../../core/uniforms.js';
 
-import { parseCssCached } from './parse-cache.js';
-import { createReplacer } from './embedded.js';
-import { getBasicStyles, createGrid } from './markup.js';
-import { getGoogleFontLink } from './google-font.js';
+import { parseCssCached } from '../../component/parse-cache.js';
+import { createReplacer } from '../../component/doodle-image.js';
+import { getBasicStyles, createGrid } from '../../component/markup.js';
+import { getGoogleFontLink } from '../../component/google-font.js';
 
 function escapeText(text) {
     return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -18,13 +18,12 @@ function escapeAttr(text) {
     return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
-// same input, same token: identical doodles on one page share identical filter defs
-function hashId(text) {
+function hash(text) {
     let h = 2166136261;
     for (let i = 0; i < text.length; i++) {
         h = Math.imul(h ^ text.charCodeAt(i), 16777619);
     }
-    return 's' + (h >>> 0).toString(36);
+    return h >>> 0;
 }
 
 /*
@@ -40,7 +39,7 @@ function hashId(text) {
  *   transition  the output starts in the final state, no transition on load
  *   variables   a var() in `use` has no value in `options.variables`
  */
-export async function prerender(code = '', options = {}) {
+export default async function prerender(code = '', options = {}) {
     let attributes = { ...options.attributes };
     let variables = options.variables ?? {};
     let seed = options.seed ?? (attributes.seed || attributes['data-seed'] || Date.now());
@@ -50,6 +49,7 @@ export async function prerender(code = '', options = {}) {
     let needs = new Set();
     let warnings = [];
     let maxGrid = 'experimental' in attributes ? 256 : 64;
+    let skip = () => (needs.add('shader'), Promise.resolve());
     let host = {
         extra: {
             getVariable: name => {
@@ -57,15 +57,12 @@ export async function prerender(code = '', options = {}) {
                 if (value === undefined) needs.add('variables');
                 return removeParens(String(value ?? '').trim());
             },
-            // colors only matter to @pattern, which is left out
-            getRgbaColor: () => null,
         },
         getMaxGrid: () => maxGrid,
         report: list => warnings.push(...list),
         hasAttribute: name => name in attributes,
         _clock: { base: 0, since: 0 },
-        // nested shader images are skipped as if already drawn
-        shaderRenders: { has: () => (needs.add('shader'), true) },
+        draw: { shader: skip, pattern: skip },
     };
 
     let use = String(attributes.use ?? '').trim();
@@ -73,17 +70,15 @@ export async function prerender(code = '', options = {}) {
         use = `@use:${use};`;
     }
     let source = use + code;
+    let grid = parseGrid(attributes.grid, maxGrid);
     let compiled = generateCss(
-        parseCssCached(source, host.extra),
-        parseGrid(attributes.grid, maxGrid),
-        seed, maxGrid, null, [],
-        hashId(JSON.stringify(attributes) + code)
+        parseCssCached(source, host.extra), grid, seed, maxGrid, null, [],
+        's' + hash(JSON.stringify(attributes) + code).toString(36)
     );
     warnings.unshift(...compiled.warnings);
 
     let { styles, content, filters, uniforms, shaders, patterns, props } = compiled;
     if (Object.keys(shaders).length || Object.keys(patterns).length) needs.add('shader');
-    // uniforms.mouse feeds the shaders, covered by 'shader'
     if (uniforms.mousex || uniforms.mousey) needs.add('mouse');
     if (uniforms.width || uniforms.height) needs.add('size');
     if (props.hasTransition) needs.add('transition');
@@ -91,10 +86,9 @@ export async function prerender(code = '', options = {}) {
         needs.add('update');
     }
 
-    let grid = compiled.grid || parseGrid(attributes.grid, maxGrid);
-    let replace = createReplacer(host, { ...compiled, shaders: {}, patterns: {} });
+    grid = compiled.grid || grid;
+    let replace = createReplacer(host, compiled);
     let sheet = await replace(styles.top + getBasicStyles(grid) + styles.all);
-    // nested images keep var() as plain text in their urls
     if (sheet.includes(`var(${UTime})`)) needs.add('clock');
 
     let shadow = `<style>${sheet.replace(/\n\s+/g, ' ')}</style>`;
@@ -108,7 +102,6 @@ export async function prerender(code = '', options = {}) {
         light = `<ft slot="ft" style="${FilterHolderStyle}">${defs}</ft>`;
     }
 
-    // registered once per document by the runtime; inside a shadow root it is ignored
     let before = '';
     if (uniforms.time) {
         before += `<style>@property ${utime}{syntax:"<integer>";initial-value:0;inherits:true}`
@@ -123,7 +116,6 @@ export async function prerender(code = '', options = {}) {
         .map(([name, value]) => value === '' || value === true ? ` ${name}` : ` ${name}="${escapeAttr(value)}"`)
         .join('');
 
-    // the source goes first: a runtime already defined reads it before the template arrives
     let html = before + `<css-doodle${attrText}>${escapeText(code)}`
         + `<template shadowrootmode="open">${shadow}</template>${light}</css-doodle>`;
 
