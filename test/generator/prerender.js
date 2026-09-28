@@ -101,7 +101,7 @@ test('needs lists what only the runtime can do', async () => {
     assert.deepEqual(await needs('rotate: @t(*1deg);'), []);
     assert.deepEqual(await needs('color: red;', { attributes: { 'click:update': '' } }), ['update']);
     assert.deepEqual(await needs('color: red;', { attributes: { 'auto:update': '2s' } }), ['update']);
-    assert.deepEqual(await needs('color: red; transition: color 1s;'), ['transition']);
+    assert.deepEqual(await needs('color: red; transition: color 1s;'), []);
     assert.deepEqual(await needs('', { attributes: { use: 'var(--rule)' } }), ['variables']);
 });
 
@@ -144,4 +144,12 @@ test('shader and pattern images are left as unset variables', async () => {
     }
     let style = shadowStyle((await prerender('@grid: 1; background: @shaders(void main() {});', { seed: 1 })).html);
     assert.match(style, /background:var\(--[\w-]+\)/);
+});
+
+test('cell transitions start from no cell rules, as the element paints them', async () => {
+    let starting = '@starting-style{cell,bd{all:revert!important}}';
+    let { html } = await prerender('@grid: 2; background: red; transition: background 1s;', { seed: 1 });
+    assert.ok(shadowStyle(html).endsWith(starting));
+    let plain = await prerender('@grid: 2; background: red;', { seed: 1 });
+    assert.ok(!plain.html.includes('@starting-style'));
 });

@@ -36,7 +36,6 @@ function hash(text) {
  *   mouse, size the pointer and size uniforms stay at 0
  *   clock       @T/@TS count from the build time, not the visit
  *   update      click:update / auto:update
- *   transition  the output starts in the final state, no transition on load
  *   variables   a var() in `use` has no value in `options.variables`
  *
  * Without a seed the source picks one, so a build renders the same picture
@@ -84,7 +83,6 @@ export default async function prerender(code = '', options = {}) {
     if (Object.keys(shaders).length || Object.keys(patterns).length) needs.add('shader');
     if (uniforms.mousex || uniforms.mousey) needs.add('mouse');
     if (uniforms.width || uniforms.height) needs.add('size');
-    if (props.hasTransition) needs.add('transition');
     if ('click:update' in attributes || 'click-to-update' in attributes || 'auto:update' in attributes) {
         needs.add('update');
     }
@@ -93,6 +91,9 @@ export default async function prerender(code = '', options = {}) {
     let replace = createReplacer(host, compiled);
     let sheet = await replace(styles.top + getBasicStyles(grid) + styles.all);
     if (sheet.includes(`var(${UTime})`)) needs.add('clock');
+    if (props.hasTransition) {
+        sheet += '@starting-style{cell,bd{all:revert!important}}';
+    }
 
     let shadow = `<style>${sheet.replace(/\n\s+/g, ' ')}</style>`;
     if (styles.cells || styles.container || Object.keys(content).length) {
