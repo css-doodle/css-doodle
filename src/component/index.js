@@ -335,7 +335,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         load() {
             if (!this._code) {
-                for (let el of this.querySelectorAll(':scope>template,:scope>ft')) {
+                for (let el of this.querySelectorAll(':scope>template[shadowrootmode],:scope>ft')) {
                     el.remove();
                 }
             }

@@ -351,8 +351,32 @@ test('load leaves a prerendered template and filter holder out of the source', (
     let host = Object.assign(Object.create(CSSDoodle.prototype), {
         innerHTML: source + '<template shadowrootmode="open"></template><ft slot="ft"></ft>',
         querySelectorAll(selector) {
-            assert.equal(selector, ':scope>template,:scope>ft');
+            assert.equal(selector, ':scope>template[shadowrootmode],:scope>ft');
             return [{ remove: () => { this.innerHTML = source; } }];
+        },
+        render: code => { rendered = code; },
+        hasAttribute: () => false,
+        triggerEvent: () => {},
+    });
+    globalThis.document = { createElement: () => ({ set innerHTML(v) { this.value = v; } }) };
+    try {
+        host.load();
+    } finally {
+        delete globalThis.document;
+    }
+    assert.equal(rendered, source);
+});
+
+test('load keeps a plain template wrapper around the source', () => {
+    // <css-doodle><template>code</template></css-doodle> is how the CLI and
+    // other embedders pass source, only prerendered templates are dropped
+    let source = '<template>color: red;</template>';
+    let rendered;
+    let host = Object.assign(Object.create(CSSDoodle.prototype), {
+        innerHTML: source,
+        querySelectorAll(selector) {
+            assert.equal(selector, ':scope>template[shadowrootmode],:scope>ft');
+            return [];
         },
         render: code => { rendered = code; },
         hasAttribute: () => false,
