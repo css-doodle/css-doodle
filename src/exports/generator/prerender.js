@@ -38,11 +38,14 @@ function hash(text) {
  *   update      click:update / auto:update
  *   transition  the output starts in the final state, no transition on load
  *   variables   a var() in `use` has no value in `options.variables`
+ *
+ * Without a seed the source picks one, so a build renders the same picture
+ * each time; the element itself picks a new one on every load.
  */
 export default async function prerender(code = '', options = {}) {
     let attributes = { ...options.attributes };
     let variables = options.variables ?? {};
-    let seed = options.seed ?? (attributes.seed || attributes['data-seed'] || Date.now());
+    let seed = options.seed ?? (attributes.seed || attributes['data-seed'] || hash(JSON.stringify(attributes) + code));
     attributes.seed = seed;
     delete attributes['data-seed'];
 

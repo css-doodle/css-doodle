@@ -47,10 +47,13 @@ test('the seed comes from options, the seed attribute or data-seed', async () =>
     let fromData = await prerender(code, { attributes: { 'data-seed': 7 } });
     assert.match(fromData.html, / seed="7"/);
     assert.doesNotMatch(fromData.html, /data-seed/);
-    // without one a seed is picked and written out, so the runtime can redraw it
+    // without one the source picks it, and it is written out so the runtime can redraw it
     let picked = await prerender(code);
     assert.equal(typeof picked.seed, 'number');
     assert.match(picked.html, new RegExp(` seed="${picked.seed}"`));
+    assert.equal((await prerender(code)).html, picked.html);
+    assert.notEqual((await prerender(code + ' ')).seed, picked.seed);
+    assert.notEqual((await prerender(code, { attributes: { grid: '2' } })).seed, picked.seed);
 });
 
 test('attributes are kept and escaped', async () => {
