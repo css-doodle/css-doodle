@@ -97,6 +97,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         constructor() {
             super();
+            this._declared = !!this.shadowRoot;
             this.attachShadow({ mode: 'open' });
             this.addEventListener('click', this.dispatchCellClick);
             this.animations = [];
@@ -122,7 +123,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.watchViewport();
             reducedMotion?.addEventListener('change', this._on_motion);
             this.syncMotion();
-            if (this.compiled || this.innerHTML) {
+            if (this.compiled || this.innerHTML || this._declared) {
                 this.load();
             } else {
                 this.waitForSource();
@@ -331,6 +332,11 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         load() {
+            if (!this._code) {
+                for (let el of this.querySelectorAll(':scope>template,:scope>ft')) {
+                    el.remove();
+                }
+            }
             let code = this._code || unEntity(this.innerHTML);
             this.innerHTML = '';
             this.render(code, this.compiled?.seed);

@@ -329,3 +329,40 @@ test('a restamp redraws a nested doodle without drawing from the random stream a
     await doodleToImage(host(0), code, { ...options, compiled: { ...compiled } });
     assert.ok(draws > used);
 });
+
+test('a host parsed with a declarative shadow root renders at once, even with no source', () => {
+    for (let [declared, expected] of [[true, 'load'], [false, 'wait']]) {
+        let calls = [];
+        let host = Object.assign(Object.create(CSSDoodle.prototype), {
+            _declared: declared,
+            innerHTML: '',
+            hasAttribute: name => name === 'role',
+            load: () => calls.push('load'),
+            waitForSource: () => calls.push('wait'),
+        });
+        host.connectedCallback();
+        assert.deepEqual(calls, [expected]);
+    }
+});
+
+test('load leaves a prerendered template and filter holder out of the source', () => {
+    let source = 'color: red;';
+    let rendered;
+    let host = Object.assign(Object.create(CSSDoodle.prototype), {
+        innerHTML: source + '<template shadowrootmode="open"></template><ft slot="ft"></ft>',
+        querySelectorAll(selector) {
+            assert.equal(selector, ':scope>template,:scope>ft');
+            return [{ remove: () => { this.innerHTML = source; } }];
+        },
+        render: code => { rendered = code; },
+        hasAttribute: () => false,
+        triggerEvent: () => {},
+    });
+    globalThis.document = { createElement: () => ({ set innerHTML(v) { this.value = v; } }) };
+    try {
+        host.load();
+    } finally {
+        delete globalThis.document;
+    }
+    assert.equal(rendered, source);
+});

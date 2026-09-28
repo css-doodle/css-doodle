@@ -2,7 +2,7 @@
 let embedFonts = new Map();
 let linkFonts = new Set();
 
-function getGoogleFontLink(names) {
+export function getGoogleFontLink(names) {
     // the v1 css endpoint only honors the first `family` param, so join with a pipe
     let params = names.map(encodeURIComponent).join('%7C');
     return `https://fonts.googleapis.com/css?display=swap&family=${params}`;

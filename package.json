@@ -37,6 +37,9 @@
     },
     "./meta": {
       "import": "./src/exports/meta/index.js"
+    },
+    "./prerender": {
+      "import": "./src/exports/prerender/index.js"
     }
   },
   "keywords": [

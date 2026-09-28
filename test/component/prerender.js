@@ -1,0 +1,131 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import parseCss from '../../src/parser/parse-css.js';
+import parseGrid from '../../src/parser/parse-grid.js';
+import generateCss from '../../src/generator/css.js';
+import { getBasicStyles } from '../../src/component/markup.js';
+import { prerender } from '../../src/component/prerender.js';
+
+function shadowStyle(html) {
+    return /<template shadowrootmode="open"><style>([\s\S]*?)<\/style>/.exec(html)[1];
+}
+
+test('renders a declarative shadow root after the source', async () => {
+    let code = '@grid: 2 / 100px; background: @p(red, blue);';
+    let { html, seed, needs, warnings } = await prerender(code, { seed: 3 });
+    assert.equal(seed, 3);
+    assert.deepEqual(needs, []);
+    assert.deepEqual(warnings, []);
+    assert.ok(html.startsWith(`<css-doodle role="img" seed="3">${code}<template shadowrootmode="open"><style>`));
+    assert.ok(html.endsWith('</grid></template></css-doodle>'));
+    assert.equal(html.match(/<cell id="c-\d-\d-1" part="cell"><\/cell>/g).length, 4);
+});
+
+test('the shadow sheet is the one the runtime writes', async () => {
+    let code = '@grid: 3 / 90px; transform: rotate(@r(360deg)); :after { content: @i; }';
+    let { html } = await prerender(code, { seed: 'abc' });
+    let compiled = generateCss(parseCss(code), parseGrid(null), 'abc', 64, null, [], 'x');
+    let sheet = compiled.styles.top + getBasicStyles(compiled.grid) + compiled.styles.all;
+    assert.equal(shadowStyle(html), sheet.replace(/\n\s+/g, ' '));
+});
+
+test('the same input renders the same output', async () => {
+    let code = '@grid: 4; background: hsl(@r(360) 50% 50%); filter: @svg-filter(<svg><filter><feTurbulence baseFrequency=".1"/></filter></svg>);';
+    let a = await prerender(code, { seed: 9 });
+    let b = await prerender(code, { seed: 9 });
+    let c = await prerender(code, { seed: 10 });
+    assert.equal(a.html, b.html);
+    assert.notEqual(a.html, c.html);
+});
+
+test('the seed comes from options, the seed attribute or data-seed', async () => {
+    let code = '@grid: 1; background: red;';
+    assert.match((await prerender(code, { seed: 5, attributes: { seed: 6 } })).html, / seed="5"/);
+    assert.match((await prerender(code, { attributes: { seed: 6 } })).html, / seed="6"/);
+    assert.match((await prerender(code, { attributes: { seed: '', 'data-seed': 8 } })).html, / seed="8"/);
+    let fromData = await prerender(code, { attributes: { 'data-seed': 7 } });
+    assert.match(fromData.html, / seed="7"/);
+    assert.doesNotMatch(fromData.html, /data-seed/);
+    // without one a seed is picked and written out, so the runtime can redraw it
+    let picked = await prerender(code);
+    assert.equal(typeof picked.seed, 'number');
+    assert.match(picked.html, new RegExp(` seed="${picked.seed}"`));
+});
+
+test('attributes are kept and escaped', async () => {
+    let { html } = await prerender('background: red;', {
+        seed: 1,
+        attributes: { grid: '5', 'click:update': '', title: 'a "b" & c' },
+    });
+    assert.match(html, /^<css-doodle role="img" grid="5" click:update title="a &quot;b&quot; &amp; c" seed="1">/);
+    assert.equal(html.match(/<cell /g).length, 25);
+});
+
+test('the source is escaped as text', async () => {
+    let code = '@content: "<b>&amp;</b>";';
+    let { html } = await prerender(code, { seed: 1 });
+    assert.ok(html.includes('>@content: "&lt;b>&amp;amp;&lt;/b>";<template'));
+});
+
+test('nested doodles are resolved to svg images', async () => {
+    let { html } = await prerender('@grid: 2; background: @doodle(@grid: 2; background: @p(red, blue));', { seed: 1 });
+    let style = shadowStyle(html);
+    assert.doesNotMatch(style, /\$\{/);
+    assert.equal(style.match(/url\("data:image\/svg\+xml,/g).length, 4);
+});
+
+test('filter defs go in the shadow root and a slotted light child', async () => {
+    let code = '@grid: 1; filter: @svg-filter(<svg><filter><feTurbulence baseFrequency=".1"/></filter></svg>);';
+    let { html } = await prerender(code, { seed: 1 });
+    let id = /filter:url\(#([\w-]+)\)/.exec(html)[1];
+    assert.match(html, new RegExp(`<slot name="ft"></slot><ft style="[^"]+"><svg[^>]*> ?<filter id="${id}"`));
+    assert.match(html, new RegExp(`</template><ft slot="ft" style="[^"]+"><svg[^>]*> ?<filter id="${id}"`));
+    // another doodle on the same page gets other ids
+    let other = await prerender(code, { seed: 2 });
+    assert.notEqual(/filter:url\(#([\w-]+)\)/.exec(other.html)[1], id);
+});
+
+test('needs lists what only the runtime can do', async () => {
+    let needs = async (code, options = {}) => (await prerender(code, { seed: 1, ...options })).needs;
+    assert.deepEqual(await needs('background: @shaders(void main() {});'), ['shader']);
+    assert.deepEqual(await needs('background: @pattern(grid: 2; fill: 1;);'), ['shader']);
+    assert.deepEqual(await needs('background: @doodle(background: @shaders(void main() {}));'), ['shader']);
+    assert.deepEqual(await needs('left: @ux;'), ['mouse']);
+    assert.deepEqual(await needs('width: @uw;'), ['size']);
+    assert.deepEqual(await needs('rotate: @TS(*6deg);'), ['clock']);
+    assert.deepEqual(await needs('background: @doodle(rotate: @TS(*6deg));'), ['clock']);
+    assert.deepEqual(await needs('rotate: @t(*1deg);'), []);
+    assert.deepEqual(await needs('color: red;', { attributes: { 'click:update': '' } }), ['update']);
+    assert.deepEqual(await needs('color: red;', { attributes: { 'auto:update': '2s' } }), ['update']);
+    assert.deepEqual(await needs('color: red; transition: color 1s;'), ['transition']);
+    assert.deepEqual(await needs('', { attributes: { use: 'var(--rule)' } }), ['variables']);
+});
+
+test('use reads variables from options', async () => {
+    let { html, needs } = await prerender('', {
+        seed: 1,
+        attributes: { use: 'var(--rule)' },
+        variables: { '--rule': ' (@grid: 3; background: teal;) ' },
+    });
+    assert.deepEqual(needs, []);
+    assert.equal(html.match(/<cell /g).length, 9);
+    assert.match(shadowStyle(html), /background:teal/);
+});
+
+test('the time uniform is registered in the document', async () => {
+    let { html } = await prerender('rotate: @t(*1deg);', { seed: 1 });
+    assert.match(html, /^<style>@property --cssd-utime\{[^}]+\}@property --cssd-UTime\{[^}]+\}<\/style><css-doodle /);
+    let plain = await prerender('color: red;', { seed: 1 });
+    assert.ok(plain.html.startsWith('<css-doodle '));
+});
+
+test('google fonts are linked before the element', async () => {
+    let { html } = await prerender('font-family: @google-font(Lato);', { seed: 1 });
+    assert.match(html, /^<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css\?display=swap&amp;family=Lato"><css-doodle /);
+});
+
+test('warnings are returned', async () => {
+    let { warnings } = await prerender('color: @nope(1);', { seed: 1 });
+    assert.match(warnings[0].message, /unknown function @nope/);
+});
