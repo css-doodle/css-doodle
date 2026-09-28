@@ -87,6 +87,13 @@ test('filter defs go in the shadow root and a slotted light child', async () => 
     // another doodle on the same page gets other ids
     let other = await prerender(code, { seed: 2 });
     assert.notEqual(/filter:url\(#([\w-]+)\)/.exec(other.html)[1], id);
+    // so does the same source with other variables
+    let withRule = async color => /filter:url\(#([\w-]+)\)/.exec((await prerender(code, {
+        seed: 1,
+        attributes: { use: 'var(--rule)' },
+        variables: { '--rule': `(color: ${color};)` },
+    })).html)[1];
+    assert.notEqual(await withRule('red'), await withRule('blue'));
 });
 
 test('needs lists what only the runtime can do', async () => {

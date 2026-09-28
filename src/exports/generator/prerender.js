@@ -85,7 +85,7 @@ export default async function prerender(code = '', options = {}) {
     let grid = parseGrid(attributes.grid, maxGrid);
     let compiled = generateCss(
         parseCssCached(source, host.extra), grid, seed, maxGrid, null, [],
-        's' + hash(JSON.stringify(attributes) + code).toString(36)
+        's' + hash(JSON.stringify([attributes, variables]) + code).toString(36)
     );
     warnings.unshift(...compiled.warnings);
 
