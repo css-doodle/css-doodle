@@ -98,28 +98,41 @@ test('a match block assigns to a variable of an enclosing scope', () => {
     assert.deepEqual(messages, ['z is a float, not a vec2']);
 });
 
-test('else blocks follow a match, and may carry a test of their own', () => {
+test('match {} runs the first arm whose test holds', () => {
     assert.match(
-        main('match(x > 1) { fill: red } else { fill: 0, 0, 0 }'),
-        /if \(\(x > 1\.0\)\) \{\s*cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);\s*\} else \{\s*cssd_color = vec4\(vec3\(0\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/
+        main('match { x > 1 { fill: red } y > 1 { fill: red } else { fill: 0, 0, 0 } }'),
+        /if \(\(x > 1\.0\)\) \{\s*cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);\s*\} else if \(\(y > 1\.0\)\) \{[^}]*\} else \{\s*cssd_color = vec4\(vec3\(0\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/
     );
-    assert.match(
-        main('match(x > 1) { fill: red } else match(y > 1) { fill: red } else { fill: 0, 0, 0 }'),
-        /if \(\(x > 1\.0\)\) \{[^}]*\} else if \(\(y > 1\.0\)\) \{[^}]*\} else \{[^}]*\}/
-    );
-    // an else head may list selectors too
-    let s = main('match(x > 1) { fill: red } else match(y > 1), match(y < 0) { fill: red } fill: red');
-    assert.match(s, /\} else if \(\(y > 1\.0\) \|\| \(y < 0\.0\)\) \{/);
-    assert.equal((s.match(/if \(/g) || []).length, 2);
-    let messages = [];
-    s = draw('else { fill: red }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['else needs a match block before it']);
-    assert.doesNotMatch(s.slice(s.indexOf('void main()')), /else/);
+    let s = main('match { x > 1 { c: 1; fill: c, c, c } else { c: 2; fill: c, c, c } }');
+    assert.match(s, /\{\s*float cssd1 = 1\.0;[^}]*\} else \{\s*float cssd2 = 2\.0;/);
+    s = main('match { x > 1 { match { y > 1 { fill: red } else { fill: 0, 0, 0 } } } }');
+    assert.match(s, /if \(\(x > 1\.0\)\) \{\s*if \(\(y > 1\.0\)\) \{[^}]*\} else \{[^}]*\}\s*\}/);
+    assert.match(main('match { else { fill: red } }'), /\{\s*cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);\s*\}/);
+});
+
+test('match {} reports misplaced arms and else', () => {
+    const run = code => {
+        let messages = [];
+        let s = draw(code, extra, m => messages.push(m));
+        return [s.slice(s.indexOf('void main()')), messages];
+    };
+    let [s, messages] = run('match { x > 1 { fill: red } else { fill: 0, 0, 0 } y > 1 { fill: red } }');
+    assert.deepEqual(messages, ['else must be the last arm']);
+    assert.doesNotMatch(s, /vec3/);
+    [s, messages] = run('match { x > 1 { fill: red } size: .5; else { fill: red } }');
+    assert.deepEqual(messages, ['match {} takes only arms with a test']);
+    assert.doesNotMatch(s, /size = \.5/);
+    [s, messages] = run('match { { fill: red } else { fill: 0, 0, 0 } }');
+    assert.deepEqual(messages, ['match {} takes only arms with a test']);
+    assert.doesNotMatch(s, /if \(/);
+    [s, messages] = run('match(x > 1) { fill: red } else { fill: 0, 0, 0 }');
+    assert.deepEqual(messages, ['unknown block else']);
+    assert.doesNotMatch(s, /else/);
 });
 
 test('the selectors of one head make one test over one body', () => {
     let s = main('match(x < 3), match(x > 4) { c: 1; fill: red } match(y > 2) { fill: red }');
-    assert.match(s, /if \(\(x < 3\.0\) \|\| \(x > 4\.0\)\) \{\s*float cssd1 = 1\.0;/);
+    assert.match(s, /if \(\(\(x < 3\.0\) \|\| \(x > 4\.0\)\)\) \{\s*float cssd1 = 1\.0;/);
     assert.equal((s.match(/if \(/g) || []).length, 2);
 });
 
@@ -249,6 +262,12 @@ test('declarations are read in source order', () => {
     assert.deepEqual(messages, ['unknown name c']);
     // a second declaration of a name assigns to it
     assert.match(main('a: 1; fill: a; a: 2; fill: a'), /float cssd1 = 1\.0;\s*cssd_color = vec4\(vec3\(cssd1\), 1\.0\);\s*cssd1 = 2\.0;/);
+});
+
+test('values side by side are reported once', () => {
+    let messages = [];
+    draw('r: length(pos); fill: fract(r 9)', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['"fract(r 9)": values side by side do not multiply; write * between them']);
 });
 
 test('unknown names are reported once each', () => {

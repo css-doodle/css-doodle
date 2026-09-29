@@ -12,10 +12,30 @@ test('statements', () => {
 });
 
 test('blocks with argument lists', () => {
-    assert.deepEqual(parsePattern('match {}'), [block('match')]);
     assert.deepEqual(parsePattern('match(x>y) {}'), [block('match', ['x>y'])]);
     // commas inside calls belong to the argument
     assert.deepEqual(parsePattern('match(atan(y, x) > 3) {}'), [block('match', ['atan(y,x) > 3'])]);
+});
+
+test('match {} holds arms, each head is its test', () => {
+    const arm = (test, value = []) => ({ type: 'arm', test, value });
+    assert.deepEqual(parsePattern('match {}'), [{ type: 'block', name: 'match', arms: [] }]);
+    assert.deepEqual(parsePattern(`
+        match {
+          x > y { color: red }
+          mod(x, 2) == 0 { match(y>1) {} }
+          else { color: blue }
+        }
+        color: red
+    `), [
+        { type: 'block', name: 'match', arms: [
+            arm('x > y', [statement('color', 'red')]),
+            arm('mod(x,2) == 0', [block('match', ['y>1'])]),
+            arm('else', [statement('color', 'blue')]),
+        ] },
+        statement('color', 'red'),
+    ]);
+    assert.deepEqual(parsePattern('match { a: 1; x {} }').at(0).arms, [statement('a', '1'), arm('x')]);
 });
 
 test('a comma list of selectors shares one body', () => {

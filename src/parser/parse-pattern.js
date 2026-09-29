@@ -32,7 +32,15 @@ function parseSelector(tokens) {
     return selectors;
 }
 
+function readArm(iter, head) {
+    return [parseBody(iter, { type: 'arm', test: textOf(head), value: [] }, pattern)];
+}
+
 function readMatchBlocks(iter, head) {
+    if (head.length === 1 && head[0].value === 'match') {
+        let { value } = parseBody(iter, {}, { readBlocks: readArm, readStatement: readPatternStatement });
+        return [{ type: 'block', name: 'match', arms: value }];
+    }
     let selectors = parseSelector(head);
     if (!selectors.length) {
         return null;

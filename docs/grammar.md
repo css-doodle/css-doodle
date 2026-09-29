@@ -527,8 +527,8 @@ across the shape.
 ```
 pattern-body  = { name ':' value ';' | match-block | repeat-block }
 match-block   = match { ',' match } '{' pattern-body '}'
-                { 'else' match { ',' match } '{' pattern-body '}' }
-                [ 'else' '{' pattern-body '}' ]
+              | 'match' '{' { expression '{' pattern-body '}' }
+                            [ 'else' '{' pattern-body '}' ] '}'
 match         = 'match' '(' expression ')'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
@@ -543,8 +543,10 @@ type, and numbers become floats. Undeclared, invalid and `cssd…` names
 are reported (§11).
 
 **Blocks.** A `match` block runs where its test holds, and
-`match(a), match(b) { … }` runs where either holds. Follow it with
-`else match(…)` or `else`. Blocks nest, and each opens its own scope.
+`match(a), match(b) { … }` runs where either holds. `match { … }`
+holds arms, each a test and a body, and runs the first arm whose test
+holds; a last `else { … }` arm runs when none does. Blocks nest, and
+each opens its own scope.
 In a value, `match(t1, v1, t2, v2, …, else)` gives the value after the
 first test that holds.
 
@@ -554,11 +556,14 @@ by `shape`, a distance from the center, antialiased at half of `size`.
 `shape` is `circle`, `square`, `diamond`, `none`, or an expression in
 `du` and `dv`. Setting only `size` masks with a square.
 
-**Expressions** use GLSL syntax, not §8: `^` is xor, and the logic
-words are `and`, `or` and `not`. There are no units and no `var()`.
+**Expressions** use GLSL syntax, not §8: `^` is bitwise xor, and the
+logic words are `and`, `or` and `not`. For xor, compare two
+conditions: `a < .5 != b < .5`. There are no units and no `var()`.
 Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`, and `#rgb` is a
-`vec3`. A number followed by a name, a call or `(` multiplies, with
-or without a space: `2t`, `2 sin(t)`. Two names side by side do not.
+`vec3`. A number directly followed by a name, a call or `(`
+multiplies: `2t`, `2sin(t)`, `2(t + 1)`. Other values side by side,
+including a number and a value with a space between, do not multiply
+and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`.
 
 **Variables.** The cell names of §8 except `z` and `Z`, plus:
 
@@ -721,8 +726,9 @@ animation duration drops the declaration or `dur`. Invalid timing words
 are dropped.
 
 **While drawing patterns.** Invalid or over-limit `repeat` blocks are
-skipped. Undeclared or reserved pattern names are reported. `else`
-without `match` is skipped.
+skipped. Undeclared or reserved pattern names are reported, and so
+are values side by side that do not multiply. Arms without a test,
+declarations between arms and arms after `else` are skipped.
 
 An unclosed raw body (`@doodle`, `@shaders`, `@pattern`) runs to end
 of source without a report.

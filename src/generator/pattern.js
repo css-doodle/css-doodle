@@ -200,7 +200,7 @@ function compile(value, scope, ctx, expect = null) {
 }
 
 function expr(code, scope, ctx, expect, type = false) {
-    return transform(code, { expect, type, types: ctx.types, names: scope.ids, unknown: ctx.unknown });
+    return transform(code, { expect, type, types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: type ? null : ctx.warn });
 }
 
 function generateStatement(name, value, scope, ctx) {
@@ -306,39 +306,18 @@ function generateRepeat(token, scope, ctx, opts) {
     ` + '\n';
 }
 
-const argsOf = block => block.args.filter(Boolean);
-const isElse = block => block.name === 'else' && !argsOf(block).length;
-
-function readChain(tokens, k) {
-    let chain = [];
-    do {
-        let group = [tokens[k++]];
-        while (tokens[k]?.value === group[0].value) group.push(tokens[k++]);
-        chain.push(group);
-    } while (tokens[k]?.name === 'else' && !isElse(chain.at(-1)[0]));
-    return chain;
-}
-
-function generateMatch(chain, scope, ctx, opts) {
+function generateMatch(arms, scope, ctx, opts) {
     let out = '';
-    for (let [k, blocks] of chain.entries()) {
-        let tests = [];
-        if (!isElse(blocks[0])) {
-            for (let block of blocks) {
-                let args = argsOf(block);
-                if (args.length !== 1) ctx.warn('match() needs one expression');
-                else tests.push(expr(args[0], scope, ctx, 'bool'));
-            }
-            tests = tests.filter(Boolean);
-            if (!tests.length) {
-                if (k === 0) return '';
-                continue;
-            }
+    for (let [k, { type, test, value }] of arms.entries()) {
+        let isElse = test === 'else';
+        if (type !== 'arm' || !test) ctx.warn('match {} takes only arms with a test');
+        else if (isElse && k < arms.length - 1) ctx.warn('else must be the last arm');
+        else if (isElse || (test = expr(test, scope, ctx, 'bool'))) {
+            let body = generateBody(value, newScope(scope), ctx, opts);
+            out += (out ? ' else ' : '') + (isElse ? '' : `if (${test}) `) + `{\n${body}}`;
         }
-        let body = generateBody(blocks[0].value, newScope(scope), ctx, opts);
-        out += (k ? ' else ' : '') + (tests.length ? `if (${tests.join(' || ')}) ` : '') + `{\n${body}}`;
     }
-    return out + '\n';
+    return out && out + '\n';
 }
 
 // the statements and blocks of a body, in source order
@@ -363,12 +342,15 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             }
         } else if (t.name === 'repeat') {
             out += generateRepeat(t, scope, ctx, opts);
+        } else if (t.arms) {
+            out += generateMatch(t.arms, scope, ctx, opts);
         } else if (t.name === 'match') {
-            let chain = readChain(tokens, k);
-            k += chain.flat().length - 1;
-            out += generateMatch(chain, scope, ctx, opts);
-        } else if (t.name === 'else') {
-            ctx.warn('else needs a match block before it');
+            let blocks = [t];
+            while (tokens[k + 1]?.value === t.value) blocks.push(tokens[++k]);
+            let test = blocks.map(b => b.args.filter(Boolean))
+                .filter(args => args.length === 1 || ctx.warn('match() needs one expression'))
+                .map(([arg]) => `(${arg})`).join(' || ');
+            if (test) out += generateMatch([{ type: 'arm', test, value: t.value }], scope, ctx, opts);
         } else {
             ctx.warn(`unknown block ${t.name}`);
         }

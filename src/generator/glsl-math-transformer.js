@@ -57,7 +57,8 @@ const RANK = [
 const ZERO = { type: 'Lit', val: '0' };
 
 const isVector = type => /^(vec|mat)/.test(type);
-const isFactor = t => t && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
+const isFactor = t => t && !t.spaced && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
+const isValue = t => t && !PREC[t.value] && !PREFIX[t.value] && (t.isWord() || t.isNumber() || t.value === '(' || t.value === 'π');
 // the type of a swizzle: `.xy` is a vec2, `.x` a float
 const swizzle = s => (s = s.slice(s.lastIndexOf('.'))).length > 2 ? `vec${s.length - 1}` : 'float';
 
@@ -95,6 +96,7 @@ function lex(code) {
             last.value += t.value;
             if (!PREC[last.value]) last.type = 'Word';
         } else {
+            t.spaced = !touching;
             tokens.push(t);
             touching = true;
         }
@@ -103,7 +105,7 @@ function lex(code) {
     return tokens;
 }
 
-export default function transform(code, { expect = null, type = false, types = { __proto__: null }, names = null, unknown = null } = {}) {
+export default function transform(code, { expect = null, type = false, types = { __proto__: null }, names = null, unknown = null, warn = null } = {}) {
     const tokens = lex(code);
 
     let pos = 0;
@@ -148,13 +150,13 @@ export default function transform(code, { expect = null, type = false, types = {
     function parse(min = 0) {
         let n = primary();
         if (!n) return null;
-        // a number or π followed by a name, a call or a group multiplies: 2t, 2πt, 2sin(t), 2(t + 1)
+        // a number or π touching a name, a call or a group multiplies: 2t, 2πt, 2sin(t), 2(t + 1)
         if (n.type === 'Lit' || n.type === 'Var' && n.val === 'PI') {
             while (isFactor(peek())) {
                 n = { type: 'Bin', val: '*', left: n, right: primary() };
             }
         }
-        while (peek()?.value === 'π') {
+        while (peek()?.value === 'π' && !peek().spaced) {
             n = { type: 'Bin', val: '*', left: n, right: primary() };
         }
         while (peek()) {
@@ -165,6 +167,13 @@ export default function transform(code, { expect = null, type = false, types = {
             const right = parse(p + 1);
             if (!right) break;
             n = { type: 'Bin', val: op, left: n, right };
+        }
+        // values side by side, reported once: 2 t, t r, r -2, (a)(b)
+        if (warn && isValue(peek())) {
+            warn(peek().value.toLowerCase() === 'xor'
+                ? `"${code.trim()}": there is no xor; write != between the two conditions`
+                : `"${code.trim()}": values side by side do not multiply; write * between them`);
+            warn = null;
         }
         return n;
     }

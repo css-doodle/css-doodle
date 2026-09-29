@@ -29,6 +29,31 @@ test('numeric coefficients imply multiplication', () => {
     assert.equal(transform('x - 2t.y'), '(x - (2.0 * t.y))');
 });
 
+test('only a number or π touching a value starts a product; other values side by side are reported', () => {
+    const report = code => {
+        const messages = [];
+        return [transform(code, { warn: m => messages.push(m) }), messages.length];
+    };
+    assert.deepEqual(report('t r'), ['t', 1]);
+    assert.deepEqual(report('r 9'), ['r', 1]);
+    assert.deepEqual(report('(r + 1)(t + 1)'), ['(r + 1.0)', 1]);
+    assert.deepEqual(report('sin(t) cos(t)'), ['sin(t)', 1]);
+    assert.deepEqual(report('x + b c'), ['(x + b)', 1]);
+    assert.deepEqual(report('2sin(t) + 2πt'), ['((2.0 * sin(t)) + ((2.0 * PI) * t))', 0]);
+    assert.deepEqual(report('2 sin(t)'), ['2.0', 1]);
+    assert.deepEqual(report('2 t'), ['2.0', 1]);
+    assert.deepEqual(report('2 (t + 1)'), ['2.0', 1]);
+    assert.deepEqual(report('2π t'), ['(2.0 * PI)', 1]);
+    assert.deepEqual(report('r -2'), ['r', 1]);
+});
+
+test('xor is not an operator; != between two conditions is', () => {
+    const messages = [];
+    assert.equal(transform('x < .5 xor y < .5', { warn: m => messages.push(m) }), '(x < .5)');
+    assert.deepEqual(messages, ['"x < .5 xor y < .5": there is no xor; write != between the two conditions']);
+    assert.equal(transform('x < .5 != y < .5'), '(float((x < .5)) != float((y < .5)))');
+});
+
 test('a unary minus covers the whole implicit product', () => {
     assert.equal(transform('-2t'), '(-2.0 * t)');
     assert.equal(transform('-πt'), '-(PI * t)');
