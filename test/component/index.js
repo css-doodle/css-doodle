@@ -237,6 +237,22 @@ test('the host clock freezes while paused', async () => {
     assert.equal(restamped, 2, 'a second resume is a no-op');
 });
 
+test('a warning is dispatched each time, and printed once', () => {
+    let printed = [];
+    let events = [];
+    let warn = console.warn;
+    console.warn = message => printed.push(message);
+    try {
+        let host = { _warned: new Set(), triggerEvent: (name, detail) => (events.push(detail.message), true) };
+        CSSDoodle.prototype.report.call(host, [{ message: '@shaders: syntax error' }]);
+        CSSDoodle.prototype.report.call(host, [{ message: '@shaders: syntax error' }]);
+    } finally {
+        console.warn = warn;
+    }
+    assert.deepEqual(events, ['@shaders: syntax error', '@shaders: syntax error']);
+    assert.deepEqual(printed, ['@shaders: syntax error']);
+});
+
 test('a generator warning reports the line and column of its offset', () => {
     let printed = [];
     let warn = console.warn;

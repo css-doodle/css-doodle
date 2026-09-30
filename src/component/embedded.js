@@ -25,11 +25,15 @@ function safariImage(svg, width, height) {
 }
 
 function patternToImage(host, pattern) {
-    let fragment = generatePattern(pattern.source, host.extra, message => host.report([{ message }]));
-    return shaderToImage(host, { ...pattern, source: { fragment, textures: [] } });
+    let name = '@pattern';
+    let fragment = generatePattern(pattern.source, host.extra, message => {
+        name = '';
+        host.report([{ message }]);
+    });
+    return shaderToImage(host, { ...pattern, name, source: { fragment, textures: [] } });
 }
 
-export async function shaderToImage(host, { source, cell, id, arg, target, compiled }) {
+export async function shaderToImage(host, { source, cell, id, arg, target, compiled, name = '@shaders' }) {
     // restamping the sheet resolves its placeholders again; a rendered shader stays
     if (host.shaderRenders.has(id)) return;
     let elements;
@@ -138,7 +142,10 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
                 host.report([{ message: 'WebGL context lost' }]);
             }));
         } catch (err) {
-            console.error(err);
+            if (name) {
+                let line = name == '@shaders' && err.line;
+                host.report([{ message: `${name}: ${err.message}` + (line ? ` in "${line}"` : '') }]);
+            }
             host.shaderRenders.set(id, { dispose() {} });
         }
     }

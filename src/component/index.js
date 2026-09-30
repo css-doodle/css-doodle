@@ -316,14 +316,12 @@ if (typeof HTMLElement !== 'undefined') {
             return compiled;
         }
 
-        // each new warning is dispatched as a `warn` event before it is
-        // printed; preventDefault() keeps it out of the console
         report(warnings, source) {
             for (let warning of warnings) {
                 let { message, pos, index } = warning;
+                if (!this.triggerEvent('warn', warning)) continue;
                 if (this._warned.has(message)) continue;
                 this._warned.add(message);
-                if (!this.triggerEvent('warn', warning)) continue;
                 if (!pos && source && index >= 0) {
                     let lines = source.slice(0, index).split('\n');
                     pos = [lines.at(-1).length, lines.length - 1];

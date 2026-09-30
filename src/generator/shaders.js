@@ -31,11 +31,8 @@ function createProgram(gl, vss, fss) {
     gl.linkProgram(prog);
 
     const linked = gl.getProgramParameter(prog, gl.LINK_STATUS);
-    const log = linked ? '' : [
-        gl.getProgramInfoLog(prog),
-        gl.getShaderInfoLog(vs),
-        gl.getShaderInfoLog(fs)
-    ].join('\n');
+    const [log, source] = linked ? [] : [[gl.getShaderInfoLog(fs), fss], [gl.getShaderInfoLog(vs), vss]]
+        .find(([log]) => /ERROR/.test(log)) || [gl.getProgramInfoLog(prog) || '', ''];
 
     gl.detachShader(prog, vs);
     gl.detachShader(prog, fs);
@@ -44,9 +41,17 @@ function createProgram(gl, vss, fss) {
 
     if (!linked) {
         gl.deleteProgram(prog);
-        throw new Error('Shader link failed:\n' + log);
+        throw shaderError(log, source);
     }
     return prog;
+}
+
+export function shaderError(log, source) {
+    let [, n, reason = log.trim().split('\n')[0] || 'link failed'] = log.match(/ERROR:\s*\d+:(\d+):\s*(.+)/) || [];
+    let [, token, rest] = reason.match(/^'(.+?)'\s*:\s*(.+)/) || [];
+    let err = new Error(token ? `${rest} at '${token}'` : reason);
+    err.line = token && source.split('\n')[n - 1]?.split(/[;{}]/).find(part => part.includes(token))?.trim();
+    return err;
 }
 
 export function generateFragment(fragment, textures) {
