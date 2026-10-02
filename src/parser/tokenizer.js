@@ -112,10 +112,7 @@ function readWord(input, i, len) {
     let j = i + 1;
     while (j < len) {
         let c = input.charCodeAt(j);
-        if (isSymbolCode(c) || isSpaceCode(c) || isDigitCode(c) || c === 92 /* \ */) {
-            // "</" inside a word stays together for closing tags
-            if (!(c === 47 && input.charCodeAt(j - 1) === 60)) break;
-        }
+        if (isSymbolCode(c) || isSpaceCode(c) || isDigitCode(c) || c === 92 /* \ */) break;
         j++;
     }
     return j;

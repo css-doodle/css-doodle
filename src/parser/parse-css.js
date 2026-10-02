@@ -61,16 +61,7 @@ function warn(ctx, msg, pos) {
     ctx.warnings.push(pos ? { message: msg, pos } : { message: msg });
 }
 
-function getTextValue(input) {
-    let text = input.trim();
-    return text.length ? text : input;
-}
-
 const PAIRS = { '"': '"', "'": "'", '(': ')' };
-
-function isPairOf(c, n) {
-    return PAIRS[c] === n;
-}
 
 function isSvg(name) {
     return /^@svg$/i.test(name);
@@ -96,21 +87,10 @@ function substitutePi(input, prev) {
 }
 
 function separateFuncName(name) {
-    let fname = '', extra = '';
     if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
-        return { fname: name, extra };
+        return { fname: name, extra: '' };
     }
-    for (let i = name.length - 1; i >= 0; i--) {
-        let c = name[i];
-        let prev = name[i - 1];
-        let next = name[i + 1];
-        if (/[\d.]/.test(c) || ((c == 'x' || c == '-') && /\d/.test(prev) && /\d/.test(next))) {
-            extra = c + extra;
-        } else {
-            fname = name.substring(0, i + 1);
-            break;
-        }
-    }
+    let [, fname, extra] = /^(.*?)((?:[\d.]|(?<=\d)[x-](?=\d))*)$/.exec(name);
     return { fname, extra };
 }
 
@@ -416,7 +396,7 @@ function parseArguments(cur, extra, variables) {
                 text = text.trimStart();
                 if (text.length) values.push(Node.text(text));
             } else if (/\S/.test(text)) {
-                values.push(Node.text(getTextValue(text)));
+                values.push(Node.text(text.trim()));
             }
         } else if (atFunc || /\S/.test(text)) {
             values.push(Node.text(text));
@@ -426,7 +406,7 @@ function parseArguments(cur, extra, variables) {
     const pushArgument = () => {
         // ±x expands into -x and x: ±1, ±(a + 1), ±@r(10)
         let head = values[0];
-        if (head && head.type === 'text' && typeof head.value === 'string' && head.value.startsWith('±')) {
+        if (head && head.type === 'text' && head.value.startsWith('±')) {
             let rest = head.value.slice(1).trimStart();
             let cloned = structuredClone(values);
             cloned[0].value = '-' + rest;
@@ -498,19 +478,18 @@ function parseArguments(cur, extra, variables) {
 
 function normalizeArgument(values) {
     for (let v of values) {
-        if (v.type === 'text' && typeof v.value === 'string' && v.value.includes('`')) {
+        if (v.type === 'text' && v.value.includes('`')) {
             v.value = v.value.replace(/`/g, '"');
         }
     }
     let cluster = false;
     let ft = values[0];
     let ed = values[values.length - 1];
-    if (ft && ed && ft.type === 'text' && ed.type === 'text'
-            && typeof ft.value === 'string' && typeof ed.value === 'string') {
+    if (ft && ed && ft.type === 'text' && ed.type === 'text') {
         let cf = ft.value[0];
         let ce = ed.value[ed.value.length - 1];
         let wraps = (cf === '(') ? parensWrapWhole(values) : quotesWrapWhole(values, cf);
-        if (isPairOf(cf, ce) && wraps) {
+        if (PAIRS[cf] === ce && wraps) {
             ft.value = ft.value.slice(1);
             ed.value = ed.value.slice(0, ed.value.length - 1);
             cluster = true;
@@ -529,7 +508,7 @@ function normalizeArgument(values) {
 function textOfNodes(values) {
     let str = '';
     for (let v of values) {
-        if (v.type === 'text' && typeof v.value === 'string') str += v.value;
+        if (v.type === 'text') str += v.value;
     }
     return str;
 }
@@ -580,7 +559,7 @@ function parseDoodleBody(cur, start) {
         cur.next();
     }
     let body = substitutePi(cur.source.slice(start, end), cur.source[start - 1]);
-    return [normalizeArgument([Node.text(getTextValue(body))])];
+    return [normalizeArgument([Node.text(body.trim() || body)])];
 }
 
 function expandSvg(cur, raw, args, extra, variables) {

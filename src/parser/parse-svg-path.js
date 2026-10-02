@@ -1,8 +1,6 @@
 import { scan, iterator } from './tokenizer.js';
 import { memo } from '../lib/cache.js';
 
-const commands = 'MmLlHhVvCcSsQqTtAaZz';
-const relatives = 'mlhvcsqtaz';
 const RE_COMMANDS = /^[MmLlHhVvCcSsQqTtAaZz]+$/;
 
 const ARITY = { m: 2, l: 2, t: 2, h: 1, v: 1, c: 6, s: 4, q: 4, a: 7, z: 0 };
@@ -34,13 +32,11 @@ function parse(input) {
                 }
                 temp.name = name;
                 temp.value = [];
-                if (name.length !== 1 || !commands.includes(name)) {
+                if (!RE_COMMANDS.test(name) || name.length !== 1) {
                     temp.type = 'unknown';
                     result.valid = false;
-                } else if (relatives.includes(name)) {
-                    temp.type = 'relative';
                 } else {
-                    temp.type = 'absolute';
+                    temp.type = name === name.toLowerCase() ? 'relative' : 'absolute';
                 }
             }
         } else if (temp.value) {
