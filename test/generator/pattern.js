@@ -320,8 +320,13 @@ test('line comments are whitespace', () => {
 
 test('values side by side are reported once', () => {
     let messages = [];
-    draw('r: length(pos); fill: fract(r 9)', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"fract(r 9)": values side by side do not multiply; write * between them']);
+    draw('r: length(pos); fill: fract(r) 9', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['"fract(r) 9": values side by side do not multiply; write * between them']);
+    // inside call parentheses a space separates arguments
+    messages = [];
+    draw('fill: hsl(x/X .75 .65)', extra, m => messages.push(m));
+    assert.deepEqual(messages, []);
+    assert.equal(color('fill: hsl(x/X .75 .65)'), 'cssd_color = vec4(hsl((x / X), .75, .65), 1.0);');
 });
 
 test('unknown names are reported once each', () => {

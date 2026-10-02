@@ -568,7 +568,8 @@ Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`. A color name or
 A number directly followed by a name, a call or `(`
 multiplies: `2t`, `2sin(t)`, `2(t + 1)`. Other values side by side,
 including a number and a value with a space between, do not multiply
-and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`.
+and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. Inside call
+parentheses a space separates arguments like a comma: `hsl(h .75 .65)`.
 
 **Variables.** The cell names of §8 except `z` and `Z`, plus:
 

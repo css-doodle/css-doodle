@@ -113,6 +113,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     const tokens = lex(code);
 
     let pos = 0;
+    let inArgs = false;
     const peek = () => tokens[pos];
     const consume = () => tokens[pos++];
 
@@ -135,7 +136,10 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         if (t.isNumber()) {
             n = { type: 'Lit', val: t.value };
         } else if (t.value === '(') {
+            const outer = inArgs;
+            inArgs = false;
             n = parse();
+            inArgs = outer;
             consume();
         } else if (PREFIX[t.value]) {
             n = { type: 'Pre', val: t.value === 'not' ? '!' : t.value, right: parse(PREFIX[t.value]) };
@@ -180,7 +184,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         }
         // a token the grammar cannot place: 2 t, r 9, (a)(b), a ? b : c
         const t = peek();
-        if (t && !PREC[t.value] && t.value !== ')' && t.value !== ',') {
+        if (t && !PREC[t.value] && t.value !== ')' && t.value !== ',' && !(inArgs && isValue(t))) {
             const word = t.value.toLowerCase();
             report(word === 'xor' ? 'there is no xor; write != between the two conditions'
                 : word === '?' ? 'there is no ?:; write match(test, a, b)'
@@ -198,10 +202,13 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     function call(name) {
         consume();
         const args = [];
+        const outer = inArgs;
+        inArgs = true;
         while (peek() && peek().value !== ')') {
             args.push(parse());
             if (peek()?.value === ',') consume();
         }
+        inArgs = outer;
         consume();
         return { type: 'Call', val: name, args };
     }

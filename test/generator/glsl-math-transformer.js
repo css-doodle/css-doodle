@@ -45,6 +45,10 @@ test('only a number or π touching a value starts a product; other values side b
     assert.deepEqual(report('2 (t + 1)'), ['2.0', 1]);
     assert.deepEqual(report('2π t'), ['(2.0 * PI)', 1]);
     assert.deepEqual(report('r -2'), ['r', 1]);
+    // a space separates call arguments, but not inside a group
+    assert.deepEqual(report('hsl(h .75 .65)'), ['hsl(h, .75, .65)', 0]);
+    assert.deepEqual(report('max(a b) + 1'), ['(max(a, b) + 1.0)', 0]);
+    assert.deepEqual(report('hsl((a b), 1, 2)')[1], 1);
 });
 
 test('** is power, right-associative, on floats and vectors', () => {
