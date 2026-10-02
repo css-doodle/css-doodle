@@ -609,7 +609,7 @@ if (typeof HTMLElement !== 'undefined') {
 
             let w = width * scale;
             let h = height * scale;
-            let fonts = await loadGoogleFontEmbed();
+            let fonts = await loadGoogleFontEmbed(this.compiled?.styles.gf ?? []);
             let svg = css`
                 <svg ${NS} preserveAspectRatio="none" viewBox="0 0 ${width} ${height}" ${isSafari() ? '' : `width="${w}px" height="${h}px"`}>
                     <foreignObject width="100%" height="100%">

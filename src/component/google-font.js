@@ -75,7 +75,7 @@ async function toBase64(url) {
     return base64;
 }
 
-export async function loadGoogleFontEmbed(names = Array.from(linkFonts)) {
+export async function loadGoogleFontEmbed(names) {
     if (!names.length) return '';
     try {
         let res = await fetch(getGoogleFontLink(names));
