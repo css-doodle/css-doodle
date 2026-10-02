@@ -119,11 +119,11 @@ export async function doodleToImage(host, code, options) {
                 </foreignObject>
             </svg>
         `);
-        let url = cache.urls.get(svg);
-        if (url === undefined) {
-            cache.urls.set(svg, url = (host.draw?.url ?? svgUrl)(svg, width, height));
+        let last = cache.urls.get(key);
+        if (last?.svg !== svg) {
+            cache.urls.set(key, last = { svg, url: (host.draw?.url ?? svgUrl)(svg, width, height) });
         }
-        return url;
+        return last.url;
     } catch (err) {
         console.error(err);
         return '';
