@@ -42,7 +42,7 @@ function readMatchBlocks(iter, head) {
         return [{ type: 'texture', name, value: textOf(readRaw(iter)) }];
     }
     if (head.length === 1 && head[0].value === 'match') {
-        let { value } = parseBody(iter, {}, { readBlocks: readArm, readStatement: readPatternStatement });
+        let { value } = parseBody(iter, {}, { readBlocks: readArm, readStatement: readPatternStatement, readTail });
         return [{ type: 'block', name: 'match', arms: value }];
     }
     let selectors = parseSelector(head);
@@ -57,13 +57,18 @@ function readPatternStatement(iter, head) {
     return [{ type: 'statement', name: textOf(head), value: textOf(readValue(iter)) }];
 }
 
+function readTail(head) {
+    return [{ type: 'text', value: textOf(head).trim() }];
+}
+
 const pattern = {
     readBlocks: readMatchBlocks,
     readStatement: readPatternStatement,
+    readTail,
 };
 
 function parse(source) {
-    return parseBody(iterator(scan(source)), null, pattern);
+    return parseBody(iterator(scan(source, { ignoreInlineComment: true })), null, pattern);
 }
 
 export default parse;

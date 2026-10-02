@@ -126,7 +126,7 @@ test('match {} reports misplaced arms and else', () => {
     assert.deepEqual(messages, ['match {} takes only arms with a test']);
     assert.doesNotMatch(s, /if \(/);
     [s, messages] = run('match(x > 1) { fill: red } else { fill: 0, 0, 0 }');
-    assert.deepEqual(messages, ['unknown block else']);
+    assert.deepEqual(messages, ['else is an arm: match { test { … } else { … } }']);
     assert.doesNotMatch(s, /else/);
 });
 
@@ -262,6 +262,27 @@ test('declarations are read in source order', () => {
     assert.deepEqual(messages, ['unknown name c']);
     // a second declaration of a name assigns to it
     assert.match(main('a: 1; fill: a; a: 2; fill: a'), /float cssd1 = 1\.0;\s*cssd_color = vec4\(vec3\(cssd1\), 1\.0\);\s*cssd1 = 2\.0;/);
+});
+
+test('a head without a colon is reported, not glued to the statement before it', () => {
+    let messages = [];
+    let s = main('fill: red; k = 1; size: k');
+    assert.match(s, /cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);/);
+    draw('fill: red; k = 1; size: k', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['"k = 1" is not a statement; write name: value', 'unknown name k']);
+    messages = [];
+    draw('fill #fff', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['"fill #fff" is not a statement; write name: value']);
+    messages = [];
+    draw('match { x > 1 { fill: red } junk; }', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['match {} takes only arms with a test']);
+});
+
+test('line comments are whitespace', () => {
+    let messages = [];
+    let s = draw('fill: red; // a note\n size: .5; /* block */ shape: circle', extra, m => messages.push(m)).fragment;
+    assert.match(s, /size = \.5;\s*cssd_dist = length\(vec2\(du, dv\)\);/);
+    assert.deepEqual(messages, []);
 });
 
 test('values side by side are reported once', () => {

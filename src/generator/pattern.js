@@ -340,6 +340,8 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             } else {
                 out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx);
             }
+        } else if (t.type === 'text') {
+            ctx.warn(`"${t.value}" is not a statement; write name: value`);
         } else if (t.type === 'texture') {
             if (!top) ctx.warn('texture must be at the top level');
         } else if (t.name === 'repeat') {
@@ -354,7 +356,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
                 .map(([arg]) => `(${arg})`).join(' || ');
             if (test) out += generateMatch([{ type: 'arm', test, value: t.value }], scope, ctx, opts);
         } else {
-            ctx.warn(`unknown block ${t.name}`);
+            ctx.warn(t.name === 'else' ? 'else is an arm: match { test { … } else { … } }' : `unknown block ${t.name}`);
         }
     }
     return out;

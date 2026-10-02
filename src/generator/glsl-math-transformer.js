@@ -2,6 +2,7 @@ import { scan } from '../parser/tokenizer.js';
 
 const PREC = {
     __proto__: null,
+    '**': 15,
     '*': 14, '/': 14, '%': 14,
     '+': 13, '-': 13,
     '<<': 12, '>>': 12,
@@ -139,6 +140,7 @@ export default function transform(code, { expect = null, type = false, types = {
         } else if (t.isWord()) {
             n = peek()?.value === '(' ? call(t.value) : variable(t.value);
         } else {
+            report(`unexpected ${t.value}`);
             n = ZERO;
         }
         // a swizzle after a call or a parenthesized value: vec2(a, b).x, (z).xy
@@ -165,18 +167,28 @@ export default function transform(code, { expect = null, type = false, types = {
             const p = PREC[op];
             if (!p || p < min) break;
             consume();
-            const right = parse(p + 1);
-            if (!right) break;
+            const right = parse(op === '**' ? p : p + 1);
+            if (!right) {
+                report(`${op} needs a value after it`);
+                break;
+            }
             n = { type: 'Bin', val: op, left: n, right };
         }
-        // values side by side, reported once: 2 t, t r, r -2, (a)(b)
-        if (warn && isValue(peek())) {
-            warn(peek().value.toLowerCase() === 'xor'
-                ? `"${code.trim()}": there is no xor; write != between the two conditions`
-                : `"${code.trim()}": values side by side do not multiply; write * between them`);
-            warn = null;
+        // a token the grammar cannot place: 2 t, r 9, (a)(b), a ? b : c
+        const t = peek();
+        if (t && !PREC[t.value] && t.value !== ')' && t.value !== ',') {
+            const word = t.value.toLowerCase();
+            report(word === 'xor' ? 'there is no xor; write != between the two conditions'
+                : word === '?' ? 'there is no ?:; write match(test, a, b)'
+                : isValue(t) ? 'values side by side do not multiply; write * between them'
+                : `unexpected ${t.value}`);
         }
         return n;
+    }
+
+    function report(message) {
+        if (warn) warn(`"${code.trim()}": ${message}`);
+        warn = null;
     }
 
     function call(name) {
@@ -242,6 +254,13 @@ export default function transform(code, { expect = null, type = false, types = {
         }
 
         const res = infer(n);
+        if (op === '**') {
+            const arg = isVector(res) ? res : 'float';
+            const l = gen(n.left, arg);
+            const k = n.right.type === 'Lit' ? Number(n.right.val) : 0;
+            if (Number.isInteger(k) && k > 1 && k < 5) return cast(`(${Array(k).fill(l).join(' * ')})`, res, exp);
+            return cast(`pow(${l}, ${gen(n.right, arg)})`, res, exp);
+        }
         const lt = infer(n.left), rt = infer(n.right);
         const vec = COMPARISON_OPS.has(op) && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
         const arg = vec || (COMPARISON_OPS.has(op) || isVector(res) ? 'float' : res);

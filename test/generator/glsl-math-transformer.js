@@ -47,6 +47,39 @@ test('only a number or π touching a value starts a product; other values side b
     assert.deepEqual(report('r -2'), ['r', 1]);
 });
 
+test('** is power, right-associative, on floats and vectors', () => {
+    assert.equal(transform('x ** y'), 'pow(x, y)');
+    assert.equal(transform('x ** 5'), 'pow(x, 5.0)');
+    assert.equal(transform('1 + x ** .5'), '(1.0 + pow(x, .5))');
+    assert.equal(transform('2 ** 3 ** 2'), 'pow(2.0, (3.0 * 3.0))');
+    assert.equal(transform('uv ** y'), 'pow(uv, vec2(y))');
+    // pow() is undefined for a negative base, so a whole exponent from 2 to 4 multiplies
+    assert.equal(transform('x ** 2'), '(x * x)');
+    assert.equal(transform('du ** 2 + dv ** 2'), '((du * du) + (dv * dv))');
+    assert.equal(transform('x ** 4 * 3'), '((x * x * x * x) * 3.0)');
+    assert.equal(transform('uv ** 2'), '(uv * uv)');
+    // a sign and an implicit product bind before the power, as in §8
+    assert.equal(transform('-2 ** 2'), '(-2.0 * -2.0)');
+    assert.equal(transform('2x ** 2'), '((2.0 * x) * (2.0 * x))');
+    assert.equal(transform('x ** 2', { type: true }), 'float');
+    assert.equal(transform('x ^ 2'), '(int(x) ^ 2)');
+});
+
+test('what the grammar cannot place is reported once, with a hint', () => {
+    const report = code => {
+        const messages = [];
+        return [transform(code, { warn: m => messages.push(m) }), messages];
+    };
+    assert.deepEqual(report('x > 1 ? 1 : 0'), ['(x > 1.0)', ['"x > 1 ? 1 : 0": there is no ?:; write match(test, a, b)']]);
+    assert.deepEqual(report('50%'), ['50.0', ['"50%": % needs a value after it']]);
+    assert.deepEqual(report('x and'), ['x', ['"x and": && needs a value after it']]);
+    assert.deepEqual(report('x * * 2'), ['(x * 0.0)', ['"x * * 2": unexpected *']]);
+    assert.deepEqual(report('a : b'), ['a', ['"a : b": unexpected :']]);
+    assert.deepEqual(report('x ! y'), ['x', ['"x ! y": unexpected !']]);
+    // nothing to report
+    assert.deepEqual(report('max(x, 1) * (y + 2)'), ['(max(x, 1.0) * (y + 2.0))', []]);
+});
+
 test('xor is not an operator; != between two conditions is', () => {
     const messages = [];
     assert.equal(transform('x < .5 xor y < .5', { warn: m => messages.push(m) }), '(x < .5)');

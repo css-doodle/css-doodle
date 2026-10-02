@@ -46,6 +46,13 @@ test('a comma list of selectors shares one body', () => {
     assert.deepEqual(parsePattern('a, a {}'), [block('a')]);
 });
 
+test('line comments are whitespace, a head without a colon is text', () => {
+    assert.deepEqual(parsePattern('fill: red; // a note\n size: .5'), [statement('fill', 'red'), statement('size', '.5')]);
+    assert.deepEqual(parsePattern('fill #fff; k = 1'), [{ type: 'text', value: 'fill #fff' }, { type: 'text', value: 'k = 1' }]);
+    assert.deepEqual(parsePattern('fill: red; k = 1; size: .5'), [statement('fill', 'red'), { type: 'text', value: 'k = 1' }, statement('size', '.5')]);
+    assert.deepEqual(parsePattern('match(x) { fill: red; junk }'), [block('match', ['x'], [statement('fill', 'red'), { type: 'text', value: 'junk' }])]);
+});
+
 test('an extra closing paren does not break the block', () => {
     assert.deepEqual(parsePattern('match()) {}'), [block('match')]);
     assert.deepEqual(parsePattern('match(1)) {}'), [block('match', ['1'])]);

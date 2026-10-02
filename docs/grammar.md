@@ -64,7 +64,7 @@ other run collapses to one space. A space next to `:` `;` `,` `{` `}`
 before `(` or after `)` is kept, so `a (b)` and `a(b)` differ.
 
 **Comments.** `/* … */` is whitespace. `//` comments exist only in
-shader bodies (§9.4).
+pattern and shader bodies (§9.3, §9.4).
 
 ## 2. Statements
 
@@ -557,9 +557,11 @@ by `shape`, a distance from the center, antialiased at half of `size`.
 `shape` is `circle`, `square`, `diamond`, `none`, or an expression in
 `du` and `dv`. Setting only `size` masks with a square.
 
-**Expressions** use GLSL syntax, not §8: `^` is bitwise xor, and the
-logic words are `and`, `or` and `not`. For xor, compare two
-conditions: `a < .5 != b < .5`. There are no units and no `var()`.
+**Expressions** use GLSL syntax, not §8: `^` is bitwise xor, `**` is
+power, and the logic words are `and`, `or` and `not`. For xor,
+compare two conditions: `a < .5 != b < .5`. GLSL's `pow` is undefined
+for a negative base, so a whole exponent from 2 to 4 multiplies
+instead. There are no units, no `var()` and no `?:`.
 Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`, and `#rgb` is a
 `vec3`. A number directly followed by a name, a call or `(`
 multiplies: `2t`, `2sin(t)`, `2(t + 1)`. Other values side by side,
@@ -743,7 +745,8 @@ are dropped.
 
 **While drawing patterns.** Invalid or over-limit `repeat` blocks are
 skipped. Undeclared or reserved pattern names are reported, and so
-are values side by side that do not multiply. Arms without a test,
+are statements without a colon and what an expression cannot place:
+values side by side, `?:`, a trailing operator. Arms without a test,
 declarations between arms and arms after `else` are skipped.
 
 An unclosed raw body (`@doodle`, `@shaders`, `@pattern`) runs to end
