@@ -31,22 +31,24 @@ and draw generative patterns, backgrounds, icons and decorations.
 * [SVG playground](https://css-doodle.com/svg/): generate SVG code with the same syntax
 * [cssd](https://github.com/css-doodle/cli): command-line preview and image/video export
 
-## Who uses css-doodle
-
-* [Tabbied](https://tabbied.com): generated patterns for prints and wallpapers
-
 ## Articles and talks
 
 * **[An Introduction to css-doodle](https://yuanchuan.dev/an-introduction-to-css-doodle)**<br>
   Article by Yuan Chuan, 2024. How the project started, from recreating a Dribbble
   pattern with a grid of elements to a tool for generative art. Written up from a
   Groove meetup talk; the [slides](https://github.com/yuanchuan/intro-to-css-doodle) are on GitHub.
+* **[Experimenting A New Syntax To Write SVG](https://yuanchuan.dev/experimenting-a-new-syntax-to-write-svg)**<br>
+  Article by Yuan Chuan, 2022. The idea behind `@svg`: writing SVG with CSS syntax.
 * **[Arte generativo con CSS](https://www.youtube.com/watch?v=KKg6Uo1pVLU)**<br>
   Talk by Sonia Ruiz, 2020, in Spanish (31 min). An introduction to generative
   art, where algorithms produce the work, made with CSS.
 * **[How to Draw Patterns with CSS Using CSS Doodle](https://webdesign.tutsplus.com/how-to-draw-patterns-with-css-using-css-doodle--cms-33110t)**<br>
   Tutorial by Adi Purdila on Envato Tuts+, 2019. Installs css-doodle, then builds
   four demos step by step with `@grid`, `@size` and random values from `@r()`.
+
+## Who uses css-doodle
+
+* [Tabbied](https://tabbied.com): generated patterns for prints and wallpapers
 
 ## Development
 
