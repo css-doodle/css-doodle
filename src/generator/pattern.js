@@ -9,7 +9,7 @@ const MAX_REPEAT_WORK = 65536;
 
 const BUILTINS = [
     'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size',
-    'PI', 'true', 'false', 'u_time', 'u_resolution', 'u_seed', 'u_mouse', 'u_timeDelta', 'u_frameIndex', 'gl_FragCoord',
+    'PI', 'true', 'false',
 ];
 
 const NAME = /^[a-zA-Z_]\w*$/;

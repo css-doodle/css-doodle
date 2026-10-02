@@ -328,10 +328,14 @@ test('unknown names are reported once each', () => {
     let messages = [];
     draw('fill: hsl(foo, bar, foo); size: baz', extra, m => messages.push(m));
     assert.deepEqual(messages, ['unknown name foo', 'unknown name bar', 'unknown name baz']);
-    // built-ins, swizzles, GLSL constants and uniforms are known
+    // built-ins, swizzles and GLSL constants are known
     messages = [];
-    draw('p: uv.yx; fill: p.x + PI + u_time + size + pos.x, dr, float(true)', extra, m => messages.push(m));
+    draw('p: uv.yx; fill: p.x + PI + t + size + pos.x, dr, float(true)', extra, m => messages.push(m));
     assert.deepEqual(messages, []);
+    // shader uniforms are not part of the language: t, pos and uv cover them
+    messages = [];
+    draw('fill: u_mouse.x, u_time, gl_FragCoord.x', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['unknown name u_mouse', 'unknown name u_time', 'unknown name gl_FragCoord']);
 });
 
 test('invalid and reserved names are reported', () => {
