@@ -376,7 +376,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (rebuild) {
                 this.buildGrid(compiled, grid);
             } else {
-                this.patch(compiled, old.styles);
+                this.patch(compiled);
             }
         }
 
@@ -414,9 +414,10 @@ if (typeof HTMLElement !== 'undefined') {
             this.mount(compiled);
         }
 
-        patch(compiled, oldStyles) {
-            if (compiled.props.hasAnimation) {
-                this.setStyle(oldStyles.all.replace(/animation/g, 'x'));
+        patch(compiled) {
+            let style = this.shadowRoot.querySelector('style');
+            if (compiled.props.hasAnimation && style) {
+                style.textContent = style.textContent.replace(/animation/g, 'x');
                 this.reflow();
             }
             this.mount(compiled);
