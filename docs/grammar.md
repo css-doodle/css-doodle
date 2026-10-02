@@ -525,7 +525,8 @@ across the shape.
 ```
 
 ```
-pattern-body  = { name ':' value ';' | match-block | repeat-block }
+pattern-body  = { name ':' value ';' | match-block | repeat-block | texture-block }
+texture-block = texture-name '{' doodle '}'
 match-block   = match { ',' match } '{' pattern-body '}'
               | 'match' '{' { expression '{' pattern-body '}' }
                             [ 'else' '{' pattern-body '}' ] '}'
@@ -582,6 +583,21 @@ address every pixel.
 `hsv`, `rot`, `smin`, `ngon`, `escape`, `spiral` and `dither`. A point
 is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`. `escape` runs 96
 steps with a bailout radius of 16.
+
+**Textures.** A top-level `texture…` block, named as in §9.4, holds a
+doodle rendered at the pattern's size. `texture(name, p)` samples it
+at `p` from 0 to 1 and gives a `vec4`; it wraps past the edges, and
+`texture(texture_0, uv)` draws it unchanged. The last block of a name
+wins.
+
+```css
+@pattern(
+  texture_0 { background: linear-gradient(@r(360deg), @stripe(red, gold)); }
+  r: length(pos);
+  s: 3atan(pos.y, pos.x) + 8log(r) - 2t;
+  fill: texture(texture_0, .5 + r * vec2(cos(s), sin(s)));
+)
+```
 
 **`repeat(n [as i] [, stop …])`** runs its body `n` times, with `i`
 counting from zero. The loop ends early once every stop expression

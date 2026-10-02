@@ -1,5 +1,5 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
-import { parseBody, readValue } from './parse-body.js';
+import { parseBody, readRaw, readValue } from './parse-body.js';
 
 // `match(x > y), match(mod(x, 2) == 0)` → { name, args } per
 // selector, duplicates dropped
@@ -37,6 +37,10 @@ function readArm(iter, head) {
 }
 
 function readMatchBlocks(iter, head) {
+    let name = textOf(head);
+    if (/^texture\w*$/.test(name)) {
+        return [{ type: 'texture', name, value: textOf(readRaw(iter)) }];
+    }
     if (head.length === 1 && head[0].value === 'match') {
         let { value } = parseBody(iter, {}, { readBlocks: readArm, readStatement: readPatternStatement });
         return [{ type: 'block', name: 'match', arms: value }];

@@ -40,6 +40,7 @@ const typeList = Object.entries({
     float: 'rand noise fbm voronoi ngon escape spiral dither length distance dot determinant',
     vec2: 'rot',
     vec3: 'hsl hsv',
+    vec4: 'texture',
     bool: 'any all',
     bvec: 'isnan isinf lessThan lessThanEqual greaterThan greaterThanEqual equal notEqual',
 
@@ -63,9 +64,9 @@ const isValue = t => t && !PREC[t.value] && !PREFIX[t.value] && (t.isWord() || t
 const swizzle = s => (s = s.slice(s.lastIndexOf('.'))).length > 2 ? `vec${s.length - 1}` : 'float';
 
 // wrap `out` of type `res` in a constructor when `exp` wants another type;
-// vectors pass where a float is wanted
+// vectors and samplers pass where a float is wanted
 function cast(out, res, exp) {
-    if (!exp || exp === res || exp === 'float' && /vec|mat/.test(res)) return out;
+    if (!exp || exp === res || exp === 'float' && /vec|mat|sampler/.test(res)) return out;
     if (exp === 'bool' && /^b?vec/.test(res)) return `any(${res[0] === 'b' ? out : `b${res}(${out})`})`;
     return `${exp}(${out})`;
 }

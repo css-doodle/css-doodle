@@ -26,11 +26,11 @@ function safariImage(svg, width, height) {
 
 function patternToImage(host, pattern) {
     let name = '@pattern';
-    let fragment = generatePattern(pattern.source, host.extra, message => {
+    let source = generatePattern(pattern.source, host.extra, message => {
         name = '';
         host.report([{ message }]);
     });
-    return shaderToImage(host, { ...pattern, name, source: { fragment, textures: [] } });
+    return shaderToImage(host, { ...pattern, name, source });
 }
 
 export async function shaderToImage(host, { source, cell, id, arg, target, compiled, name = '@shaders' }) {

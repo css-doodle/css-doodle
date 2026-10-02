@@ -327,7 +327,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     let has = name => tokens.some(t => t.type === 'statement' && t.name === name);
     let hasShape = has('shape');
     if (!loop && !hasShape && !opts.shaped && has('size')) out += generateShape('square', scope, ctx);
-    opts = { ...opts, shaped: opts.shaped || hasShape };
+    opts = { ...opts, top: false, shaped: opts.shaped || hasShape };
     for (let k = 0; k < tokens.length; k++) {
         let t = tokens[k];
         if (t.type === 'statement') {
@@ -340,6 +340,8 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             } else {
                 out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx);
             }
+        } else if (t.type === 'texture') {
+            if (!top) ctx.warn('texture must be at the top level');
         } else if (t.name === 'repeat') {
             out += generateRepeat(t, scope, ctx, opts);
         } else if (t.arms) {
@@ -396,10 +398,13 @@ export default function drawPattern(code, extra, warn = () => {}) {
         },
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
+    let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
+    for (let name of textures.keys()) ctx.types[name] = 'sampler2D';
     let body = generateBody(tokens, newScope(), ctx, { top: true });
-    return generateShader({
+    let fragment = generateShader({
         grid: grid === undefined ? { x: 1, y: 1 } : parseGrid(grid, Infinity),
         body,
         masked: ctx.masked,
     });
+    return { fragment, textures: [...textures].map(([name, value]) => ({ name, value })) };
 }

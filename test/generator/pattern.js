@@ -17,7 +17,7 @@ const extra = {
     getRgbaColor: v => isCssColor(v) ? [1, 0, 0, 1] : null,
 };
 
-const shader = code => draw(code, extra);
+const shader = code => draw(code, extra).fragment;
 const lines = code => shader(code).split('\n').map(l => l.trim());
 
 // the `cssd_color = ...;` assignment inside main
@@ -79,7 +79,7 @@ test('variables inside match blocks are scoped', () => {
     );
     // and they do not leak into the outer scope
     let messages = [];
-    let s = draw('match(x > 1) { c: 9.0; } match(c > 1) { fill: red }', extra, m => messages.push(m));
+    let s = draw('match(x > 1) { c: 9.0; } match(c > 1) { fill: red }', extra, m => messages.push(m)).fragment;
     assert.match(s, /if \(\(c > 1\.0\)\)/);
     assert.deepEqual(messages, ['unknown name c']);
 });
@@ -93,7 +93,7 @@ test('a match block assigns to a variable of an enclosing scope', () => {
     assert.match(main('p: uv; match(x > 1) { p: 1 } fill: p.x'), /cssd1 = vec2\(1\.0\);/);
     // a vector does not convert to another type
     let messages = [];
-    let s = draw('z: 0; repeat(4) { z: z * uv } fill: z', extra, m => messages.push(m));
+    let s = draw('z: 0; repeat(4) { z: z * uv } fill: z', extra, m => messages.push(m)).fragment;
     assert.doesNotMatch(s, /cssd1 = \(cssd1 \* uv\)/);
     assert.deepEqual(messages, ['z is a float, not a vec2']);
 });
@@ -113,7 +113,7 @@ test('match {} runs the first arm whose test holds', () => {
 test('match {} reports misplaced arms and else', () => {
     const run = code => {
         let messages = [];
-        let s = draw(code, extra, m => messages.push(m));
+        let s = draw(code, extra, m => messages.push(m)).fragment;
         return [s.slice(s.indexOf('void main()')), messages];
     };
     let [s, messages] = run('match { x > 1 { fill: red } else { fill: 0, 0, 0 } y > 1 { fill: red } }');
@@ -526,7 +526,7 @@ test('repeat without a stop condition never breaks early', () => {
 
 test('repeat without a valid step count is skipped and reported', () => {
     let messages = [];
-    let s = draw('zx: 0; repeat(zx > 2) { zx: zx + 1 } fill: hsl(zx, 1, 1)', extra, m => messages.push(m));
+    let s = draw('zx: 0; repeat(zx > 2) { zx: zx + 1 } fill: hsl(zx, 1, 1)', extra, m => messages.push(m)).fragment;
     s = s.slice(s.indexOf('void main()'));
     assert.deepEqual(messages, ['repeat() needs a step count']);
     assert.doesNotMatch(s, /for \(float/);
@@ -583,7 +583,7 @@ test('variables may take the names of the shader internals', () => {
 
 test('repeat reports pattern outputs and allows match blocks in its body', () => {
     let messages = [];
-    let s = draw('x: 0; repeat(2) { fill: #000; size: .5; match(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m));
+    let s = draw('x: 0; repeat(2) { fill: #000; size: .5; match(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, [
         'repeat() does not allow fill',
         'repeat() does not allow size',
@@ -596,7 +596,7 @@ test('repeat reports pattern outputs and allows match blocks in its body', () =>
 
 test('repeat enforces count and nested work limits', () => {
     let messages = [];
-    let s = draw('repeat(1025) { a: 1 } repeat(512) { repeat(512) { b: 1 } }', extra, m => messages.push(m));
+    let s = draw('repeat(1025) { a: 1 } repeat(512) { repeat(512) { b: 1 } }', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, [
         'repeat() step count cannot exceed 1024',
         'nested repeat() work cannot exceed 65536',
@@ -713,4 +713,30 @@ test('match() in a value chooses between expressions, colors included', () => {
         'if (((x > 2.0) ? (y > 2.0) : bool(0.0))) {');
     // the block form is unchanged
     assert.equal(condition('match(dr < 2) { fill: red }'), 'if ((dr < 2.0)) {');
+});
+
+// --- texture blocks ---
+
+test('a texture block is a doodle sampled with texture()', () => {
+    let messages = [];
+    let { fragment, textures } = draw(
+        'texture_0 { background: linear-gradient(red, blue) } c: texture(texture_0, uv); fill: c',
+        extra, m => messages.push(m));
+    assert.deepEqual(messages, []);
+    assert.equal(textures.length, 1);
+    assert.equal(textures[0].name, 'texture_0');
+    assert.match(textures[0].value, /^background:\s*linear-gradient\(red,\s*blue\)$/);
+    // the sampler passes as is, the result is a vec4
+    assert.match(fragment, /vec4 cssd1 = texture\(texture_0, uv\);/);
+    assert.match(fragment, /cssd_color = cssd1;/);
+    assert.equal(color('texture0 { background: red } fill: texture(texture0, pos * .5 + .5)'),
+        'cssd_color = texture(texture0, ((pos * .5) + .5));');
+});
+
+test('texture blocks: the last of a name wins, only at the top level', () => {
+    let messages = [];
+    let { textures } = draw('texture_0 { background: red } texture_0 { background: blue } fill: texture(texture_0, uv)', extra);
+    assert.deepEqual(textures.map(t => t.value), ['background:blue']);
+    draw('match(x > 1) { texture_1 { background: red } } fill: 1', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['texture must be at the top level']);
 });
