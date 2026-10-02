@@ -132,10 +132,15 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
         }));
     }
 
+    let latest = 0;
+    const isStale = token => token !== latest || host._generation !== generation;
+
     const render = async initial => {
+        let token = ++latest;
         if (parsed.textures.length) {
-            textures = await loadTextures();
-            if (initial && host.shaderRenders.has(id)) return;
+            let result = await loadTextures();
+            if (isStale(token) || (initial && host.shaderRenders.has(id))) return;
+            textures = result;
         }
         try {
             tick(generateShaders({ ...parsed, textures, width, height }, host.seed, cell, () => {
@@ -159,7 +164,10 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
             width = size.width;
             height = size.height;
             if (host.shaderRenders.get(id).animated) {
-                loadTextures().then(result => { textures = result; });
+                let token = ++latest;
+                loadTextures().then(result => {
+                    if (!isStale(token)) textures = result;
+                });
             } else {
                 render();
             }
