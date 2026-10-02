@@ -80,6 +80,7 @@ test('what the grammar cannot place is reported once, with a hint', () => {
     assert.deepEqual(report('x * * 2'), ['(x * 0.0)', ['"x * * 2": unexpected *']]);
     assert.deepEqual(report('a : b'), ['a', ['"a : b": unexpected :']]);
     assert.deepEqual(report('x ! y'), ['x', ['"x ! y": unexpected !']]);
+    assert.deepEqual(report('x) * 2'), ['x', ['"x) * 2": unexpected )']]);
     // nothing to report
     assert.deepEqual(report('max(x, 1) * (y + 2)'), ['(max(x, 1.0) * (y + 2.0))', []]);
 });

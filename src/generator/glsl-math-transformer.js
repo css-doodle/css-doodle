@@ -323,6 +323,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     }
 
     const tree = parse();
+    if (peek()) report(`unexpected ${peek().value}`);
     return { type: infer(tree), code: exp => gen(tree, exp) };
 }
 

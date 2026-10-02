@@ -200,8 +200,12 @@ function compile(value, scope, ctx, expect = null) {
         rgba = channels(rgba);
         return vector(rgba.length, rgba.map(float));
     }
-    let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim()).filter(Boolean);
+    let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim());
     if (!items.length) return null;
+    if (items.some(v => !v)) {
+        ctx.warn('a list value has an empty item');
+        return null;
+    }
     if (items.length === 1) {
         let e = expr(items[0], scope, ctx);
         let type = e.type === 'int' ? 'float' : e.type;

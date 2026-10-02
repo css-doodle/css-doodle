@@ -309,6 +309,19 @@ test('a head without a colon is reported, not glued to the statement before it',
     messages = [];
     draw('match { x > 1 { fill: red } junk; }', extra, m => messages.push(m));
     assert.deepEqual(messages, ['match {} takes only arms with a test']);
+    // a block without a name is skipped whole, what follows it still compiles
+    messages = [];
+    s = main('2 { fill: x } fill: y');
+    assert.match(s, /cssd_color = vec4\(vec3\(y\), 1\.0\);/);
+    draw('match(x > .5) { 3 { size: 1 } fill: y } fill: 1', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['"3 {}" is not a statement; write name: value']);
+});
+
+test('a list with an empty item is reported, not shifted', () => {
+    let messages = [];
+    let s = draw('fill: 1,,0,0', extra, m => messages.push(m)).fragment;
+    assert.deepEqual(messages, ['a list value has an empty item']);
+    assert.doesNotMatch(s, /cssd_color = vec4\(vec/);
 });
 
 test('line comments are whitespace', () => {

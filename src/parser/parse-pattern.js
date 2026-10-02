@@ -47,7 +47,8 @@ function readMatchBlocks(iter, head) {
     }
     let selectors = parseSelector(head);
     if (!selectors.length) {
-        return null;
+        readRaw(iter);
+        return readTail([...head, { value: ' {}' }]);
     }
     let block = parseBody(iter, { type: 'block', name: '', value: [] }, pattern);
     return selectors.map(({ name, args }) => Object.assign({}, block, { name, args }));
