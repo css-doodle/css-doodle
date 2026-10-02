@@ -76,15 +76,15 @@ Selector.nth = ({ count }) => {
     return (...exprs) => matchAny(count, exprs);
 };
 
-Selector.y = ({ y }) => {
+Selector.row = ({ y }) => {
     return (...exprs) => matchAny(y, exprs);
 };
 
-Selector.x = ({ x }) => {
+Selector.col = ({ x }) => {
     return (...exprs) => matchAny(x, exprs);
 };
 
-Selector.z = ({ z }) => {
+Selector.depth = ({ z }) => {
     return (...exprs) => matchAny(z, exprs);
 };
 
@@ -141,9 +141,9 @@ Selector.cell = (cell, env, position) => {
 };
 
 export const alias = {
-    col: 'x',
-    row: 'y',
-    depth: 'z',
+    x: 'col',
+    y: 'row',
+    z: 'depth',
 };
 
 export default addAlias(Selector, alias);
