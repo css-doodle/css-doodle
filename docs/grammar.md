@@ -596,6 +596,10 @@ would apply, 1 inside and 0 outside, for layering: `fill: mix(bg, red,
 shape(d, .6))`; `shape(abs(d), w)` is a stroke of width `w` along
 `d = 0`.
 
+`rand()` without arguments is a number from 0 to 1 that holds for the
+cell and the `repeat` step and differs at each place it is written:
+`w: mix(.3, .5, rand())`.
+
 `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient:
 a value, then an optional number position after a space (`#f80 .5`).
 Below the first stop and above the last the value holds. The first

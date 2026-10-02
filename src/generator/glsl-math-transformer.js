@@ -110,7 +110,7 @@ function lex(code) {
     return tokens;
 }
 
-export function compile(code, { types = { __proto__: null }, names = null, unknown = null, warn = null } = {}) {
+export function compile(code, { types = { __proto__: null }, names = null, unknown = null, warn = null, rand = null } = {}) {
     const tokens = lex(code);
 
     let pos = 0;
@@ -220,6 +220,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         }
         inArgs = outer;
         consume();
+        if (name === 'rand' && !args.length && rand) return { type: 'Var', val: rand() };
         return { type: 'Call', val: name, args };
     }
 

@@ -191,7 +191,7 @@ const HELPERS = glsl`
 `;
 
 function newScope(parent = null) {
-    return { ids: { __proto__: parent ? parent.ids : null } };
+    return { ids: { __proto__: parent ? parent.ids : null }, key: parent?.key };
 }
 
 function compile(value, scope, ctx, expect = null) {
@@ -234,7 +234,11 @@ function vector(n, items) {
 }
 
 function expr(code, scope, ctx) {
-    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn });
+    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn, rand: () => randAt(scope, ctx) });
+}
+
+function randAt(scope, ctx) {
+    return `rand(vec2(i, ${scope.key || '0.0'}) + ${float(String(++ctx.sites))} * vec2(0.7548, 0.5698))`;
 }
 
 function generateStatement(name, value, scope, ctx) {
@@ -330,6 +334,7 @@ function generateRepeat(token, scope, ctx, opts) {
     ctx.types[counter] = 'float';
     ctx.readonly.add(counter);
     if (m[2]) inner.ids[m[2]] = counter;
+    inner.key = scope.key ? `(${scope.key} * ${float(times)} + ${counter})` : counter;
     let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work });
     let stop = stops.map(s => expr(s, inner, ctx).code('bool')).filter(Boolean).join(' && ');
     return glsl`
@@ -427,7 +432,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let known = new Map(BUILTINS.map(name => [name, null]));
     let ctx = {
-        extra, warn, id: 0, types: { __proto__: null }, readonly: new Set(), masked: false,
+        extra, warn, id: 0, sites: 0, types: { __proto__: null }, readonly: new Set(), masked: false,
         unknown: name => {
             if (!known.has(name)) {
                 let rgba = extra.getRgbaColor(name);

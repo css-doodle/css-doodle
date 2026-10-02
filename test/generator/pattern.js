@@ -685,6 +685,16 @@ test('repeat enforces count and nested work limits', () => {
     assert.equal((s.match(/for \(float/g) || []).length, 1);
 });
 
+test('rand() without arguments holds for the cell and the repeat step, and differs per call', () => {
+    let s = main('a: rand(); repeat(3 as i) { b: rand(); repeat(2) { c: rand() } }');
+    assert.match(s, /float cssd1 = rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    assert.match(s, /float cssd3 = rand\(vec2\(i, cssd2\) \+ 2\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    // nested steps get one key each: outer * count + inner
+    assert.match(s, /float cssd5 = rand\(vec2\(i, \(cssd2 \* 2\.0 \+ cssd4\)\) \+ 3\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    // the GLSL i is the cell index even where `as i` names the step
+    assert.match(main('fill: rand() + rand(x, y)'), /cssd_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(x, y\)\)\), 1\.0\);/);
+});
+
 // --- vectors ---
 
 test('a variable can hold a vector and be swizzled', () => {
