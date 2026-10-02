@@ -331,6 +331,48 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
     assert.equal(transform('match(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
 });
 
+test('ramp() mixes its stops, each segment linear and at least a pixel wide', () => {
+    assert.equal(transform('ramp(x, 0, 1)', { expect: 'float' }),
+        'mix(0.0, 1.0, clamp((x - 0.0) / max(1.0 - 0.0, fwidth(x) + 1e-5), 0.0, 1.0))');
+    assert.equal(transform('ramp(x, #fff)'), 'vec3(1.0, 1.0, 1.0)');
+    assert.equal(transform('ramp(x)', { expect: 'float' }), '0.0');
+    // the widest stop value is the type, and every stop takes it
+    assert.equal(transform('ramp(x, 0, 1)', { type: true }), 'float');
+    assert.equal(transform('ramp(x, #000 .5, #fff)', { type: true }), 'vec3');
+    assert.equal(transform('ramp(x, vec4(1), 0)', { type: true }), 'vec4');
+    assert.match(transform('ramp(x, vec4(1), 0)'), /^mix\(vec4\(1\.0\), vec4\(0\.0\), /);
+    assert.match(transform('ramp(x, 1 - x, 0)', { expect: 'float' }), /^mix\(\(1\.0 - x\), 0\.0, /);
+    assert.match(transform('ramp(x, 2t .5, 0)', { expect: 'float' }), /^mix\(\(2\.0 \* t\), 0\.0, clamp\(\(x - 0\.5\)/);
+});
+
+test('ramp() places its stops as CSS does', () => {
+    const segments = code => [...transform(code, { expect: 'float' }).matchAll(/\(x - (\S+)\) \/ max\((\S+) - /g)]
+        .map(m => m[1] + ' ' + m[2]);
+    // the first defaults to 0, the last to 1, missing ones spread evenly
+    assert.deepEqual(segments('ramp(x, 0, 1, 0)'), ['0.0 0.5', '0.5 1.0']);
+    assert.deepEqual(segments('ramp(x, 0 .2, 1, 0 .9, 1)'), ['0.2 0.55', '0.55 0.9', '0.9 1.0']);
+    assert.deepEqual(segments('ramp(x, 0, 1, 0, 1)'), ['0.0 0.3333333333333333', '0.3333333333333333 0.6666666666666667', '0.6666666666666667 1.0']);
+    // a position never goes back, and a repeated one is a hard edge
+    assert.deepEqual(segments('ramp(x, 1 .5, 0 .2)'), ['0.5 0.5']);
+    assert.deepEqual(segments('ramp(x, #f80 .28, #068 .28, #015 .83)'), ['0.28 0.28', '0.28 0.83']);
+    assert.deepEqual(segments('ramp(x, 0 -.1, 1)'), ['-0.1 1.0']);
+});
+
+test('ramp() reports positions that are not one number, and leaves them out', () => {
+    const run = code => {
+        const messages = [];
+        return [transform(code, { expect: 'float', warn: m => messages.push(m) }), messages];
+    };
+    let [out, messages] = run('ramp(x, 0, 1 p, 0)');
+    assert.match(out, /^mix\(mix\(0\.0, 1\.0, .*\(x - 0\.5\) \/ max\(1\.0 - 0\.5, /);
+    assert.deepEqual(messages, ['"ramp(x, 0, 1 p, 0)": ramp() positions must be numbers']);
+    [out, messages] = run('ramp(x, 0 .2 .5, 1)');
+    assert.match(out, /\(x - 0\.2\) \/ max\(1\.0 - 0\.2, /);
+    assert.deepEqual(messages, ['"ramp(x, 0 .2 .5, 1)": a ramp() stop takes one position']);
+    // elsewhere a space still separates arguments
+    assert.equal(transform('hsl(h .75 .65)'), 'hsl(h, .75, .65)');
+});
+
 test('a bool from a vector or bvec uses any()', () => {
     assert.equal(transform('uv', { expect: 'bool' }), 'any(bvec2(uv))');
     assert.equal(transform('lessThan(uv, vec2(.5))', { expect: 'bool' }), 'any(lessThan(uv, vec2(.5)))');

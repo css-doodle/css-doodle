@@ -569,7 +569,8 @@ A number directly followed by a name, a call or `(`
 multiplies: `2t`, `2sin(t)`, `2(t + 1)`. Other values side by side,
 including a number and a value with a space between, do not multiply
 and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. Inside call
-parentheses a space separates arguments like a comma: `hsl(h .75 .65)`.
+parentheses a space separates arguments like a comma: `hsl(h .75 .65)`,
+except in `ramp()` stops.
 
 **Variables.** The cell names of §8 except `z` and `Z`, plus:
 
@@ -584,15 +585,24 @@ parentheses a space separates arguments like a comma: `hsl(h .75 .65)`.
 Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
 address every pixel.
 
-**Functions.** GLSL, plus `rand`, `noise`, `fbm`, `voronoi`, `hsl`,
-`hsv`, `rot`, `smin`, `ngon`, `box`, `segment`, `escape`, `spiral` and
-`dither`. A point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
-`escape` runs 96 steps with a bailout radius of 16. `box(p, b)` is the
-signed distance to a box of half size `b`, a `vec2` or one float, and
-`segment(p, a, b)` the distance to the segment from `a` to `b`.
-`shape(d, size)` is the mask that `shape: d; size: size` would apply,
-1 inside and 0 outside, for layering: `fill: mix(bg, red, shape(d,
-.6))`; `shape(abs(d), w)` is a stroke of width `w` along `d = 0`.
+**Functions.** GLSL, plus `ramp`, `rand`, `noise`, `fbm`, `voronoi`,
+`hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`, `escape`,
+`spiral` and `dither`. A point is one `vec2` or two floats: `fbm(p)`,
+`ngon(p, 6)`. `escape` runs 96 steps with a bailout radius of 16.
+`box(p, b)` is the signed distance to a box of half size `b`, a `vec2`
+or one float, and `segment(p, a, b)` the distance to the segment from
+`a` to `b`. `shape(d, size)` is the mask that `shape: d; size: size`
+would apply, 1 inside and 0 outside, for layering: `fill: mix(bg, red,
+shape(d, .6))`; `shape(abs(d), w)` is a stroke of width `w` along
+`d = 0`.
+
+`ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient:
+a value, then an optional number position after a space (`#f80 .5`).
+Below the first stop and above the last the value holds. The first
+position defaults to 0 and the last to 1, missing ones spread evenly,
+and a position never goes back. A repeated position is a hard edge,
+antialiased over a pixel. Stops are colors or numbers:
+`fill: ramp(dr, #f99a53 .28, #006b50 .28, #00055f .83)`.
 
 **Textures.** A top-level `texture…` block, named as in §9.4, holds a
 doodle rendered at the pattern's size. `texture(name, p)` samples it

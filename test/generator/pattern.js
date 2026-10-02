@@ -783,6 +783,13 @@ test('repeat keeps int expressions in the float pattern number model', () => {
 
 // --- match() as a function ---
 
+test('ramp() in a fill maps a number to colors', () => {
+    assert.match(color('fill: ramp(dr, #000, #fff)'),
+        /^cssd_color = vec4\(mix\(vec3\(0\.0, 0\.0, 0\.0\), vec3\(1\.0, 1\.0, 1\.0\), clamp\(\(dr - 0\.0\) \/ max\(1\.0 - 0\.0, fwidth\(dr\) \+ 1e-5\), 0\.0, 1\.0\)\), 1\.0\);$/);
+    // a ramp of numbers is a float variable
+    assert.match(main('k: ramp(x, 0, 1, 0); fill: k'), /float cssd1 = mix\(mix\(0\.0, 1\.0, /);
+});
+
 test('match() in a value chooses between expressions, colors included', () => {
     assert.equal(color('fill: match(dr < 2, #fff, #000)'),
         'cssd_color = vec4(((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0)), 1.0);');

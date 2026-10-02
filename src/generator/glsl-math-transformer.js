@@ -58,6 +58,7 @@ const RANK = [
 
 const ZERO = { type: 'Lit', val: '0' };
 
+const valueOf = stop => stop.type === 'Stop' ? stop.left : stop;
 const isVector = type => /^(vec|mat)/.test(type);
 const isFactor = t => t && !t.spaced && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
 const isValue = t => t && !PREC[t.value] && !PREFIX[t.value] && (t.isWord() || t.isNumber() || t.value === '(' || t.value === 'π');
@@ -204,9 +205,18 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         const args = [];
         const outer = inArgs;
         inArgs = true;
+        let comma = true;
         while (peek() && peek().value !== ')') {
-            args.push(parse());
-            if (peek()?.value === ',') consume();
+            const arg = parse();
+            // in ramp() a stop's position follows its value after a space: #f80 .5
+            if (name === 'ramp' && !comma && args.length > 1) {
+                if (args[args.length - 1].type === 'Stop') report('a ramp() stop takes one position');
+                else args.push({ type: 'Stop', left: args.pop(), right: arg });
+            } else {
+                args.push(arg);
+            }
+            comma = peek()?.value === ',';
+            if (comma) consume();
         }
         inArgs = outer;
         consume();
@@ -246,6 +256,9 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             }
             return out;
         }
+        if (n.type === 'Call' && n.val === 'ramp') {
+            return cast(ramp(n.args, infer(n)), infer(n), exp);
+        }
         if (n.type === 'Call') {
             // arguments are numbers unless the function yields a bool or bvec
             const res = infer(n);
@@ -282,6 +295,30 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         return cast(op === '%' ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`, res, exp);
     }
 
+    function ramp([t, ...stops], type) {
+        if (!stops.length) return gen(ZERO, type);
+        const at = stops.map(s => {
+            if (s.type !== 'Stop') return NaN;
+            if (s.right.type !== 'Lit') report('ramp() positions must be numbers');
+            return +s.right.val;
+        });
+        const n = at.length - 1;
+        at[0] ||= 0;
+        if (isNaN(at[n])) at[n] = 1;
+        for (let i = 1, j = 0; i <= n; i++) {
+            if (j <= i) for (j = i; isNaN(at[j]); j++);
+            const next = isNaN(at[i]) ? at[i - 1] + (at[j] - at[i - 1]) / (j - i + 1) : at[i];
+            at[i] = Math.max(at[i - 1], next);
+        }
+        const v = gen(t, 'float');
+        let out = gen(valueOf(stops[0]), type);
+        for (let i = 1; i <= n; i++) {
+            const a = float(String(at[i - 1])), b = float(String(at[i]));
+            out = `mix(${out}, ${gen(valueOf(stops[i]), type)}, clamp((${v} - ${a}) / max(${b} - ${a}, fwidth(${v}) + 1e-5), 0.0, 1.0))`;
+        }
+        return out;
+    }
+
     // the GLSL type of a node, computed once
     function infer(n) {
         return n ? n.t || (n.t = inferType(n)) : 'float';
@@ -307,6 +344,8 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             if (/^(b?vec[234]|mat[234]|float|int|bool)$/.test(n.val)) return n.val;
             // match(t1, v1, …, else) yields one of its values
             if (n.val === 'match') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
+            // ramp(t, stops…) yields the widest of its stop values
+            if (n.val === 'ramp') return widest(n.args.slice(1).map(a => infer(valueOf(a))), true);
             // any other function returns the type of its widest argument, a number at least
             return widest(n.args.map(infer), true);
         }
