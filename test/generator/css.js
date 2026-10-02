@@ -957,3 +957,9 @@ test('random() in expressions follows the seed on a stream of its own', () => {
     let r = sheet => sheet.match(/--r:[\d.]+/g).join();
     assert.equal(r(cells('--r: @r(10);', '3')), r(cells('--a: $(random()); --r: @r(10);', '3')));
 });
+
+test('a lone $(name) evaluates its value once', () => {
+    // one random() draw per read, the same as any other expression of it
+    let read = code => cells(code, '3', 7).match(/width:[\d.]+/g).join();
+    assert.equal(read('--a: random(); width: $(a);'), read('--a: random(); width: $(a * 1);'));
+});

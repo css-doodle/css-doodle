@@ -359,9 +359,9 @@ test('deref: a lone variable name acts as a generation-time var()', () => {
     assert.equal(deref('my-color', ctx), 'gold');
     // single-name chains resolve to the final value
     assert.equal(deref('a', ctx), 'tomato');
-    // values that read as math stay on the numeric path
-    assert.equal(deref('n', ctx), undefined);
-    assert.equal(deref('e', ctx), undefined);
+    // values that read as math evaluate, once
+    assert.equal(deref('n', ctx), 3);
+    assert.equal(deref('e', ctx), 5);
     // operations and unknown names are not references
     assert.equal(deref('n + 2', ctx), undefined);
     assert.equal(deref('x', ctx), undefined);

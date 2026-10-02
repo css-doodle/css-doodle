@@ -469,7 +469,7 @@ class Rules {
                 if (!unit && input.length === 1) {
                     let value = deref(input[0], context);
                     if (value !== undefined) {
-                        return value;
+                        return typeof value === 'number' ? tidyNumber(value) : value;
                     }
                 }
                 return _fn(input, context) + unit;

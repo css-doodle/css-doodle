@@ -535,7 +535,7 @@ function compileInput(input, ctx) {
 const RE_NAME = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
 
 // A $ expression that is just the name of a variable acts as a
-// generation-time var(): values that read as math evaluate as usual,
+// generation-time var(): values that read as math evaluate once, here,
 // anything else — colors, transforms, dimensioned literals — passes
 // through verbatim. Returns undefined when the numeric path applies.
 export function deref(input, context) {
@@ -558,11 +558,9 @@ export function deref(input, context) {
     if (readDimension(value, context) !== undefined) {
         return value;
     }
-    const history = [];
-    compileInput(value, context)(context, history);
-    if (history.misses) {
-        return value;
-    }
+    const history = [value];
+    const result = compileInput(value, context)(context, history);
+    return history.misses ? value : result;
 }
 
 const RE_SAFE_AFTER = /^[),+\-*/%^!<>=&|≤≥≠]/;
