@@ -8,6 +8,5 @@ function identity(strings, ...values) {
 
 export {
     identity as css,
-    identity as svg,
     identity as glsl
 };

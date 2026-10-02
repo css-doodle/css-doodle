@@ -3,19 +3,21 @@
 
 const WIDTH = 256;
 const MASK = WIDTH - 1;
-const CHUNKS = 6;
-const DIGITS = 52;
-const START_DENOM = WIDTH ** CHUNKS;
-const SIGNIFICANCE = 2 ** DIGITS;
+const START_DENOM = WIDTH ** 6;
+const SIGNIFICANCE = 2 ** 52;
 const OVERFLOW = SIGNIFICANCE * 2;
 
-function ARC4(key) {
-    let i = 0, j = 0, t;
-    const s = this.S = [];
-
+// seed is a string
+export default function seedrandom(seed) {
+    let key = [];
+    let smear = 0;
+    for (let i = 0; i < seed.length; i++) {
+        key[MASK & i] = MASK & ((smear ^= key[MASK & i] * 19) + seed.charCodeAt(i));
+    }
     if (!key.length) key = [0];
 
     // Key scheduling algorithm
+    let s = [], i = 0, j = 0, t;
     while (i < WIDTH) s[i] = i++;
     for (i = 0; i < WIDTH; i++) {
         t = s[i];
@@ -23,45 +25,27 @@ function ARC4(key) {
         s[i] = s[j];
         s[j] = t;
     }
+    i = j = 0;
 
-    this.i = this.j = 0;
+    const g = count => {
+        let r = 0;
+        while (count--) {
+            t = s[i = MASK & (i + 1)];
+            r = r * WIDTH + s[MASK & ((s[i] = s[j = MASK & (j + t)]) + (s[j] = t))];
+        }
+        return r;
+    };
     // RC4-drop[256] for unpredictability
-    this.g(WIDTH);
-}
-
-ARC4.prototype.g = function(count) {
-    let { i, j, S: s } = this;
-    let r = 0, t;
-    while (count--) {
-        t = s[i = MASK & (i + 1)];
-        r = r * WIDTH + s[MASK & ((s[i] = s[j = MASK & (j + t)]) + (s[j] = t))];
-    }
-    this.i = i;
-    this.j = j;
-    return r;
-};
-
-function mixkey(seed) {
-    const key = [];
-    let smear = 0;
-    for (let i = 0; i < seed.length; i++) {
-        key[MASK & i] = MASK & ((smear ^= key[MASK & i] * 19) + seed.charCodeAt(i));
-    }
-    return key;
-}
-
-// seed is a string
-export default function seedrandom(seed) {
-    const arc4 = new ARC4(mixkey(seed));
+    g(WIDTH);
 
     return () => {
-        let n = arc4.g(CHUNKS);
+        let n = g(6);
         let d = START_DENOM;
         let x = 0;
         while (n < SIGNIFICANCE) {
             n = (n + x) * WIDTH;
             d *= WIDTH;
-            x = arc4.g(1);
+            x = g(1);
         }
         while (n >= OVERFLOW) {
             n /= 2;

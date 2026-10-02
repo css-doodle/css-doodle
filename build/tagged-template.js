@@ -1,6 +1,6 @@
 import * as acorn from 'acorn';
 
-const TAGS = ['css', 'svg', 'glsl'];
+const TAGS = ['css', 'glsl'];
 export const TAG_RE = new RegExp(String.raw`\b(?:${TAGS.join('|')})\``);
 
 const GLSL_PUNCT = /[-+*/%<>=!&|?:,;(){}\[\]]/;
