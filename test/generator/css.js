@@ -320,6 +320,13 @@ test('@svg-filter mixes root commands with compact channels blocks', () => {
     assert.deepEqual(compiled.warnings, []);
 });
 
+test('@svg-filter shares one element between identical filters', () => {
+    let same = compile('filter: @svg-filter(.2, 5);', '4');
+    assert.equal(Object.keys(same.filters).length, 1);
+    let random = compile('filter: @svg-filter(@r(1), 5);', '4');
+    assert.equal(Object.keys(random.filters).length, 16);
+});
+
 test('@svg-filter supports symmetric region expansion', () => {
     let compiled = compile('filter: @svg-filter(region: 20%; channels { b: 2b; });');
     let [filter] = Object.values(compiled.filters);
@@ -555,7 +562,7 @@ test('generated ids are positional and carry the instance token', () => {
     assert.equal(a.styles.all, b.styles.all);
     // one counter for every kind, numbered in compose order
     assert.deepEqual(Object.keys(a.doodles), ['doodle-1', 'doodle-4']);
-    assert.deepEqual(Object.keys(a.filters), ['filter-2', 'filter-5']);
+    assert.deepEqual(Object.keys(a.filters), ['filter-2']);
     assert.deepEqual(Object.keys(a.shaders), ['shader-3']);
     let c = run('k3j');
     assert.deepEqual(Object.keys(c.shaders), ['shader-k3j-3']);

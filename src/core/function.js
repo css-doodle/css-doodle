@@ -664,13 +664,20 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
         }
         value = generateSvg(expanded, warn);
     }
-    let id = env.rules.nextId('filter');
-    let svg = normalizeSvg(value).replace(
+    let markup = normalizeSvg(value);
+    let rules = env.rules;
+    let id = rules.filterIds?.get(markup);
+    if (id) {
+        return `url(#${ id })`;
+    }
+    id = rules.nextId('filter');
+    let svg = markup.replace(
         /<filter([\s>])/,
         `<filter id="${ id }"$1`
     );
-    if (env.rules?.filters) {
-        env.rules.filters[id] = svg;
+    if (rules.filters) {
+        rules.filters[id] = svg;
+        rules.filterIds.set(markup, id);
         return `url(#${ id })`;
     }
     return createSvgUrl(svg, id);

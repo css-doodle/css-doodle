@@ -401,6 +401,7 @@ class Rules {
         this.patterns = {};
         this.shaders = {};
         this.filters = {};
+        this.filterIds = new Map();
         this.content = {};
         this.vars = {};
         this.scanTokens(tokens);
