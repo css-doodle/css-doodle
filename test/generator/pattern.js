@@ -703,6 +703,7 @@ test('repeat state keeps vector and matrix types', () => {
     let matrix = main('m: 9; r: mat2(1, 0, 0, 1); repeat(2) { m: m + 1; r: r * 2 }');
     assert.match(matrix, /float cssd\d+ = 9\.0;\s*mat2 cssd\d+ = mat2\(1\.0, 0\.0, 0\.0, 1\.0\);/);
     assert.doesNotMatch(matrix, /float\(cssd\d+\)/);
+    assert.match(main('r: mat3(vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1)); p: r * vec3(uv, 1)'), /mat3 cssd1 = mat3\(.*\);\s*vec3 cssd2 = \(cssd1 \* vec3\(uv, 1\.0\)\);/);
     assert.match(main('c: vec2(1, 2); z: c; p: vec2(dv, du)*3; repeat(2) { z: z + c; p: p*2 }'), /vec2 cssd1 = vec2\(1\.0, 2\.0\);\s*vec2 cssd2 = cssd1;\s*vec2 cssd3 = \(vec2\(dv, du\) \* 3\.0\);/);
 });
 

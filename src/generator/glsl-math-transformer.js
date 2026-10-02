@@ -53,7 +53,7 @@ for (const [type, names] of typeList) {
 }
 
 const RANK = [
-    'bool', 'int', 'float', 'mat2', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'
+    'bool', 'int', 'float', 'mat2', 'mat3', 'mat4', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'
 ];
 
 const ZERO = { type: 'Lit', val: '0' };
@@ -304,7 +304,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             const known = CALL_TYPES[n.val];
             if (known === 'bvec') return infer(n.args[0]).replace(/^vec/, 'bvec').replace('float', 'bool');
             if (known) return known;
-            if (/^(b?vec[234]|mat2|float|int|bool)$/.test(n.val)) return n.val;
+            if (/^(b?vec[234]|mat[234]|float|int|bool)$/.test(n.val)) return n.val;
             // match(t1, v1, …, else) yields one of its values
             if (n.val === 'match') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
             // any other function returns the type of its widest argument, a number at least

@@ -292,6 +292,11 @@ test('expression types follow vectors, calls, operators and swizzles', () => {
     assert.equal(transform('p*2', { types: { p: 'vec2' } }), '(p * 2.0)');
     assert.equal(transform('m*2', { types: { m: 'mat2' } }), '(m * 2.0)');
     assert.equal(transform('m*p', { types: { m: 'mat2', p: 'vec2' } }), '(m * p)');
+    assert.equal(transform('mat3(1, 0, 0, 0, 1, 0, 0, 0, 1)', { type: true }), 'mat3');
+    assert.equal(transform('mat3(vec3(1), vec3(2), vec3(3))', { type: true }), 'mat3');
+    assert.equal(transform('mat4(1)', { type: true }), 'mat4');
+    assert.equal(transform('m*v', { types: { m: 'mat3', v: 'vec3' }, type: true }), 'vec3');
+    assert.equal(transform('m*m', { types: { m: 'mat4' }, type: true }), 'mat4');
     // a name that is not a variable has no type from the prototype
     assert.equal(transform('constructor', { type: true }), 'float');
 });
