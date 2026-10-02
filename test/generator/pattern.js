@@ -761,3 +761,16 @@ test('texture blocks: the last of a name wins, only at the top level', () => {
     draw('match(x > 1) { texture_1 { background: red } } fill: 1', extra, m => messages.push(m));
     assert.deepEqual(messages, ['texture must be at the top level']);
 });
+
+test('box() and segment() are floats a fill or shape can read', () => {
+    let warned = [];
+    let { fragment: out } = draw('d: box(pos, .3); e: segment(pos, vec2(0), vec2(.3, .3)); shape: box(du, dv, .2); fill: hsl(d + e, .5, .5);', extra, m => warned.push(m));
+    assert.deepEqual(warned, []);
+    assert.match(out, /float cssd1 = box\(pos, \.3\);/);
+    assert.match(out, /float cssd2 = segment\(pos, vec2\(0\.0\), vec2\(\.3, \.3\)\);/);
+    assert.match(out, /cssd_dist = box\(du, dv, \.2\);/);
+    assert.match(out, /float box\(vec2 p, vec2 b\)/);
+    assert.match(out, /float box\(float px, float py, float b\)/);
+    assert.match(out, /float segment\(vec2 p, vec2 a, vec2 b\)/);
+});
+

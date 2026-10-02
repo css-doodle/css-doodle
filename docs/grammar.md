@@ -582,9 +582,11 @@ Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
 address every pixel.
 
 **Functions.** GLSL, plus `rand`, `noise`, `fbm`, `voronoi`, `hsl`,
-`hsv`, `rot`, `smin`, `ngon`, `escape`, `spiral` and `dither`. A point
-is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`. `escape` runs 96
-steps with a bailout radius of 16.
+`hsv`, `rot`, `smin`, `ngon`, `box`, `segment`, `escape`, `spiral` and
+`dither`. A point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
+`escape` runs 96 steps with a bailout radius of 16. `box(p, b)` is the
+signed distance to a box of half size `b`, a `vec2` or one float, and
+`segment(p, a, b)` the distance to the segment from `a` to `b`.
 
 **Textures.** A top-level `texture…` block, named as in §9.4, holds a
 doodle rendered at the pattern's size. `texture(name, p)` samples it

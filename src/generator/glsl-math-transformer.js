@@ -38,7 +38,7 @@ const VEC_COMPARE = {
 
 const CALL_TYPES = { __proto__: null };
 const typeList = Object.entries({
-    float: 'rand noise fbm voronoi ngon escape spiral dither length distance dot determinant',
+    float: 'rand noise fbm voronoi ngon box segment escape spiral dither length distance dot determinant',
     vec2: 'rot',
     vec3: 'hsl hsv',
     vec4: 'texture',
