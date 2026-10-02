@@ -15,6 +15,7 @@ import Noise from '../lib/noise.js';
 import calc, { defaultContext } from './calc.js';
 import { memo } from '../lib/cache.js';
 
+import { calcContext } from './selector.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
@@ -186,7 +187,7 @@ function seq(token, make) {
 }
 
 function createPlot(unit, scatter) {
-    let plot = memo((commands, max, scatter) => {
+    let plot = memo((commands, max) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
             delete rules['fill'];
             delete rules['fill-rule'];
@@ -212,7 +213,7 @@ function createPlot(unit, scatter) {
         return (...args) => {
             let idx = e[SEQ.n] ?? count;
             let max = e[SEQ.max] ?? grid.count;
-            let { points, rules } = plot(args.join(','), max, scatter);
+            let { points, rules } = plot(args.join(','), max);
             return rules.hasPoints ? points : points[idx - 1];
         };
     };
@@ -236,20 +237,12 @@ function createPick(name, fn, random = false, upstream = false) {
             ? last(upextra.length ? upextra : extra)
             : last(extra);
         let sig = lastExtra?.[SEQ.sig] ?? '';
-        let prefix = upstream ? name.toUpperCase() : name;
-        let counter = `${prefix}-counter${position}:${sig}:${level}`;
-        let valuesKey = `${prefix}-values${position}:${sig}`;
+        let counter = `${name}-counter${position}:${sig}:${level}`;
+        let valuesKey = `${name}-values${position}:${sig}`;
 
         return expand((...args) => {
-            if (!context[counter]) context[counter] = 0;
-            context[counter] += 1;
-            let source = args;
-            if (random) {
-                if (!context[valuesKey]) {
-                    context[valuesKey] = shuffle(args || []);
-                }
-                source = context[valuesKey];
-            }
+            context[counter] = (context[counter] || 0) + 1;
+            let source = random ? (context[valuesKey] ??= shuffle(args)) : args;
             let max = args.length;
             let idx = (lastExtra && lastExtra[SEQ.index]) ?? context[counter];
             let value = fn(source, (idx - 1) % max, max);
@@ -428,15 +421,15 @@ Function.P = (_, { context, pick }, position) => {
 
 Function.pn = createPick('pn', (args, pos) => args[pos]);
 
-Function.PN = createPick('pn', (args, pos) => args[pos], false, true);
+Function.PN = createPick('PN', (args, pos) => args[pos], false, true);
 
 Function.pnr = createPick('pnr', (args, pos, max) => args[max - pos - 1]);
 
-Function.PNR = createPick('pnr', (args, pos, max) => args[max - pos - 1], false, true);
+Function.PNR = createPick('PNR', (args, pos, max) => args[max - pos - 1], false, true);
 
 Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
-Function.PD = createPick('pd', (args, pos) => args[pos], true, true);
+Function.PD = createPick('PD', (args, pos) => args[pos], true, true);
 
 Function.lp = (_, { context }) => (n = 1) => lastOf(context.lastPick, n);
 
@@ -488,12 +481,9 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
 
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
-Function.match = ({ x, y, z, count, grid }, { extra }) => {
+Function.match = (cell, { extra }) => {
     let e = last(extra) || [];
-    let variables = {
-        x, y, z, i: count, I: grid.count, X: grid.x, Y: grid.y, Z: grid.z,
-        ...cellMetrics(x, y, grid),
-    };
+    let variables = calcContext(cell);
     if (!isNil(e[SEQ.n])) variables.n = e[SEQ.n];
     if (!isNil(e[SEQ.x])) variables.nx = e[SEQ.x];
     if (!isNil(e[SEQ.y])) variables.ny = e[SEQ.y];
@@ -649,7 +639,7 @@ Function.svg = lazy((_, env, position, ...args) => {
 Function['svg-filter'] = lazy((_, env, position, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
-    // legacy positional / name=value shorthand
+    // the positional / name=value short form
     let shorthand = values.every(n =>
         !/[{}<>]/.test(n) && (/^[\-\d.]/.test(n) || /^\w+=/.test(n))
     );
@@ -713,7 +703,7 @@ Function.raw = (cell, { rules }) => {
     return (...args) => {
         let raw = args.join(',');
         let id = placeholderId(raw);
-        if (id && rules.doodles && rules.doodles[id]) {
+        if (id && rules.doodles?.[id]) {
             return `<css-doodle>${rules.doodles[id].doodle}</css-doodle>`
         }
         if (raw.startsWith('url("data:image/svg+xml;utf8')) {

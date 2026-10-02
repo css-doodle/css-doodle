@@ -27,17 +27,19 @@ function matchAny(value, exprs) {
     return exprs.some(expr => compare(expr, value));
 }
 
-// the variable scope for arithmetic selector expressions
-function calcContext({ x, y, z, count, grid }, random) {
-    return {
+// the cell variables of a calc expression; selectors draw random()
+// from the main stream, @match from the math stream of calc
+export function calcContext({ x, y, z, count, grid }, random) {
+    let context = {
         __proto__: defaultContext,
         x, X: grid.x,
         y, Y: grid.y,
         z, Z: grid.z,
         i: count, I: grid.count,
         ...cellMetrics(x, y, grid),
-        random,
     };
+    if (random) context.random = random;
+    return context;
 }
 
 function randomCell({ count, grid }, { context, random }, position, n) {
