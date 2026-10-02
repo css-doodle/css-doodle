@@ -534,14 +534,14 @@ match         = 'match' '(' expression ')'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
 repeat-body   = { name ':' value ';' | match-block | repeat-block }
-value         = expression | expression ',' expression ',' expression [ ',' expression ]
-              | css-color
+value         = css-color | expression { ',' expression }
 ```
 
 **Names.** `grid`, `shape`, `size` and `fill` are built in. Any other
 name is a variable: its first assignment declares it and fixes its
-type, and numbers become floats. Undeclared, invalid and `cssd…` names
-are reported (§11).
+type, and numbers become floats. A color is a `vec3`, or a `vec4` when
+it has an alpha. Undeclared, invalid and `cssd…` names are reported
+(§11).
 
 **Blocks.** A `match` block runs where its test holds, and
 `match(a), match(b) { … }` runs where either holds. `match { … }`
@@ -551,8 +551,9 @@ each opens its own scope.
 In a value, `match(t1, v1, t2, v2, …, else)` gives the value after the
 first test that holds.
 
-**Output.** `fill` is a CSS color, three or four channels from 0 to 1,
-or an expression; the last one wins. After the body the cell is masked
+**Output.** `fill` is a CSS color, an expression, or a list whose
+channels add up to three or four: `x / X, y / Y, .5`, `red, .5`; the
+last one wins. After the body the cell is masked
 by `shape`, a distance from the center, antialiased at half of `size`.
 `shape` is `circle`, `square`, `diamond`, `none`, or an expression in
 `du` and `dv`. Setting only `size` masks with a square.
@@ -562,8 +563,9 @@ power, and the logic words are `and`, `or` and `not`. For xor,
 compare two conditions: `a < .5 != b < .5`. GLSL's `pow` is undefined
 for a negative base, so a whole exponent from 2 to 4 multiplies
 instead. There are no units, no `var()` and no `?:`.
-Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`, and `#rgb` is a
-`vec3`. A number directly followed by a name, a call or `(`
+Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`. A color name or
+`#rgb` is a `vec3` and `#rgba` a `vec4`: `mix(red, #00f, du + .5)`.
+A number directly followed by a name, a call or `(`
 multiplies: `2t`, `2sin(t)`, `2(t + 1)`. Other values side by side,
 including a number and a value with a space between, do not multiply
 and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`.
@@ -587,6 +589,9 @@ address every pixel.
 `escape` runs 96 steps with a bailout radius of 16. `box(p, b)` is the
 signed distance to a box of half size `b`, a `vec2` or one float, and
 `segment(p, a, b)` the distance to the segment from `a` to `b`.
+`shape(d, size)` is the mask that `shape: d; size: size` would apply,
+1 inside and 0 outside, for layering: `fill: mix(bg, red, shape(d,
+.6))`; `shape(abs(d), w)` is a stroke of width `w` along `d = 0`.
 
 **Textures.** A top-level `texture…` block, named as in §9.4, holds a
 doodle rendered at the pattern's size. `texture(name, p)` samples it

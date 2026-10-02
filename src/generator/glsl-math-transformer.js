@@ -38,7 +38,7 @@ const VEC_COMPARE = {
 
 const CALL_TYPES = { __proto__: null };
 const typeList = Object.entries({
-    float: 'rand noise fbm voronoi ngon box segment escape spiral dither length distance dot determinant',
+    float: 'rand noise fbm voronoi ngon box segment shape escape spiral dither length distance dot determinant',
     vec2: 'rot',
     vec3: 'hsl hsv',
     vec4: 'texture',
@@ -72,11 +72,11 @@ function cast(out, res, exp) {
     return `${exp}(${out})`;
 }
 
-// #rgb and #rrggbb are vec3 literals
 function hexColors(code) {
-    return code.replace(/#([0-9a-f]{3}|[0-9a-f]{6})\b/gi, (_, hex) => {
-        if (hex.length === 3) hex = hex.replace(/./g, '$&$&');
-        return `vec3(${[0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).join(', ')})`;
+    return code.replace(/#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/gi, (_, hex) => {
+        if (hex.length < 6) hex = hex.replace(/./g, '$&$&');
+        const channels = hex.match(/../g).map(h => parseInt(h, 16) / 255);
+        return `vec${channels.length}(${channels.join(', ')})`;
     });
 }
 
@@ -119,8 +119,10 @@ export default function transform(code, { expect = null, type = false, types = {
         const head = dot > 0 ? val.slice(0, dot) : val;
         const id = names?.[head];
         if (id) return { type: 'Var', val: id + val.slice(head.length) };
-        if (unknown && !types[head]) unknown(head);
-        return { type: 'Var', val };
+        const rgba = !types[head] && unknown?.(head);
+        if (!rgba) return { type: 'Var', val };
+        const color = { type: 'Call', val: `vec${rgba.length}`, args: rgba.map(v => ({ type: 'Lit', val: String(v) })) };
+        return dot > 0 ? { type: 'Member', val: val.slice(dot), left: color } : color;
     }
 
     function primary() {
@@ -242,6 +244,7 @@ export default function transform(code, { expect = null, type = false, types = {
             if (n.val === 'float' && n.args.length === 1 && !isVector(infer(n.args[0]))) {
                 return cast(args, 'float', exp);
             }
+            if (n.val === 'shape') return cast(`cssd_shape(${args}${n.args.length === 1 ? ', 1.0' : ''})`, res, exp);
             return cast(`${n.val}(${args})`, res, exp);
         }
 

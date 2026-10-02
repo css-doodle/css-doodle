@@ -199,10 +199,12 @@ function newScope(parent = null) {
 }
 
 function compile(value, scope, ctx, expect = null) {
-    let rgba = ctx.extra.getRgbaColor(value);
-    let items = rgba
-        ? rgba.map(float)
-        : parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim()).filter(Boolean);
+    let rgba = scope.ids[value] ? null : ctx.extra.getRgbaColor(value);
+    if (rgba) {
+        rgba = channels(rgba);
+        return vector(rgba.length, rgba.map(float), expect);
+    }
+    let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim()).filter(Boolean);
     if (!items.length) return null;
     if (items.length === 1) {
         let type = expr(items[0], scope, ctx, null, true);
@@ -210,14 +212,26 @@ function compile(value, scope, ctx, expect = null) {
         let code = expr(items[0], scope, ctx, expect || type);
         return code ? { type, code } : null;
     }
-    if (items.length !== 3 && items.length !== 4) {
-        ctx.warn(`a list value needs 3 or 4 items, not ${items.length}`);
+    let parts = items.map(v => {
+        let type = expr(v, scope, ctx, null, true);
+        let width = /^vec\d$/.test(type) ? Number(type[3]) : 1;
+        return { width, code: expr(v, scope, ctx, width > 1 ? type : 'float') };
+    });
+    let n = parts.reduce((sum, p) => sum + p.width, 0);
+    if (n !== 3 && n !== 4) {
+        ctx.warn(`a list value needs 3 or 4 channels, not ${n}`);
         return null;
     }
-    let channels = rgba ? items : items.map(v => expr(v, scope, ctx, 'float'));
-    if (!channels.every(Boolean)) return null;
-    let type = `vec${items.length}`;
-    let code = `${type}(${channels.join(', ')})`;
+    return parts.every(p => p.code) ? vector(n, parts.map(p => p.code), expect) : null;
+}
+
+function channels(rgba) {
+    return rgba[3] === 1 ? rgba.slice(0, 3) : rgba;
+}
+
+function vector(n, items, expect) {
+    let type = `vec${n}`;
+    let code = `${type}(${items.join(', ')})`;
     return { type, code: expect && expect !== type ? `${expect}(${code})` : code };
 }
 
@@ -242,7 +256,7 @@ function generateStatement(name, value, scope, ctx) {
         }
         let type = ctx.types[id];
         let v = compile(value, scope, ctx, type);
-        if (v && /vec|mat/.test(v.type) && !/vec|mat/.test(type)) {
+        if (v && /vec|mat/.test(v.type) && v.type !== type) {
             ctx.warn(`${name} is a ${type}, not a ${v.type}`);
             return '';
         }
@@ -413,12 +427,16 @@ function generateShader({ grid, body, masked }) {
 
 export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
-    let reported = new Set(BUILTINS);
+    let known = new Map(BUILTINS.map(name => [name, null]));
     let ctx = {
         extra, warn, id: 0, types: { __proto__: null }, readonly: new Set(), masked: false,
         unknown: name => {
-            if (!reported.has(name)) warn(`unknown name ${name}`);
-            reported.add(name);
+            if (!known.has(name)) {
+                let rgba = extra.getRgbaColor(name);
+                known.set(name, rgba && channels(rgba));
+                if (!rgba) warn(`unknown name ${name}`);
+            }
+            return known.get(name);
         },
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;

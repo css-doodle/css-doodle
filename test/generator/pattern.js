@@ -14,7 +14,7 @@ function isCssColor(v) {
     return false;
 }
 const extra = {
-    getRgbaColor: v => isCssColor(v) ? [1, 0, 0, 1] : null,
+    getRgbaColor: v => v === 'transparent' ? [0, 0, 0, 0] : isCssColor(v) ? [1, 0, 0, 1] : null,
 };
 
 const shader = code => draw(code, extra).fragment;
@@ -101,13 +101,13 @@ test('a match block assigns to a variable of an enclosing scope', () => {
 test('match {} runs the first arm whose test holds', () => {
     assert.match(
         main('match { x > 1 { fill: red } y > 1 { fill: red } else { fill: 0, 0, 0 } }'),
-        /if \(\(x > 1\.0\)\) \{\s*cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);\s*\} else if \(\(y > 1\.0\)\) \{[^}]*\} else \{\s*cssd_color = vec4\(vec3\(0\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/
+        /if \(\(x > 1\.0\)\) \{\s*cssd_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);\s*\} else if \(\(y > 1\.0\)\) \{[^}]*\} else \{\s*cssd_color = vec4\(vec3\(0\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/
     );
     let s = main('match { x > 1 { c: 1; fill: c, c, c } else { c: 2; fill: c, c, c } }');
     assert.match(s, /\{\s*float cssd1 = 1\.0;[^}]*\} else \{\s*float cssd2 = 2\.0;/);
     s = main('match { x > 1 { match { y > 1 { fill: red } else { fill: 0, 0, 0 } } } }');
     assert.match(s, /if \(\(x > 1\.0\)\) \{\s*if \(\(y > 1\.0\)\) \{[^}]*\} else \{[^}]*\}\s*\}/);
-    assert.match(main('match { else { fill: red } }'), /\{\s*cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);\s*\}/);
+    assert.match(main('match { else { fill: red } }'), /\{\s*cssd_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/);
 });
 
 test('match {} reports misplaced arms and else', () => {
@@ -118,7 +118,7 @@ test('match {} reports misplaced arms and else', () => {
     };
     let [s, messages] = run('match { x > 1 { fill: red } else { fill: 0, 0, 0 } y > 1 { fill: red } }');
     assert.deepEqual(messages, ['else must be the last arm']);
-    assert.doesNotMatch(s, /vec3/);
+    assert.doesNotMatch(s, /vec3\(0\.0, 0\.0, 0\.0\)/);
     [s, messages] = run('match { x > 1 { fill: red } size: .5; else { fill: red } }');
     assert.deepEqual(messages, ['match {} takes only arms with a test']);
     assert.doesNotMatch(s, /size = \.5/);
@@ -206,9 +206,42 @@ test('dx and dy: cell index centered on the grid', () => {
 // --- fill ---
 
 test('static colors stay byte-identical', () => {
-    assert.equal(color('fill: red'), 'cssd_color = vec4(1.0, 0.0, 0.0, 1.0);');
-    assert.equal(color('fill: #f00'), 'cssd_color = vec4(1.0, 0.0, 0.0, 1.0);');
-    assert.equal(color('fill: rgb(10, 20, 30)'), 'cssd_color = vec4(1.0, 0.0, 0.0, 1.0);');
+    assert.equal(color('fill: red'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: #f00'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: rgb(10, 20, 30)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    // a color with an alpha keeps its four channels
+    assert.equal(color('fill: transparent'), 'cssd_color = vec4(0.0, 0.0, 0.0, 0.0);');
+});
+
+test('a color name in an expression is a vec3 literal, a translucent one a vec4', () => {
+    let messages = [];
+    let s = draw('fill: mix(red, #00f, .5)', extra, m => messages.push(m)).fragment;
+    assert.match(s, /cssd_color = vec4\(mix\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(0\.0, 0\.0, 1\.0\), \.5\), 1\.0\);/);
+    assert.deepEqual(messages, []);
+    assert.equal(color('fill: match(x > 2, red, black)'), 'cssd_color = vec4(((x > 2.0) ? vec3(1.0, 0.0, 0.0) : vec3(1.0, 0.0, 0.0)), 1.0);');
+    assert.equal(color('fill: transparent.a + red.r'), 'cssd_color = vec4(vec3((vec4(0.0, 0.0, 0.0, 0.0).a + vec3(1.0, 0.0, 0.0).r)), 1.0);');
+    // a variable of the same name wins
+    assert.match(main('red: .5; fill: red'), /float cssd1 = \.5;\s*cssd_color = vec4\(vec3\(cssd1\), 1\.0\);/);
+    // unknown names are still reported, once
+    messages = [];
+    draw('fill: foo + foo', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['unknown name foo']);
+});
+
+test('a list may hold vectors; its channels add up to 3 or 4', () => {
+    assert.equal(color('fill: red, .5'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
+    assert.match(main('c: hsl(x / X, 1, .5); fill: c, rand(i)'), /cssd_color = vec4\(cssd1, rand\(i\)\);/);
+    assert.equal(color('fill: vec2(du, dv), 0, 1'), 'cssd_color = vec4(vec2(du, dv), 0.0, 1.0);');
+    let messages = [];
+    draw('fill: red, 0, 0', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['a list value needs 3 or 4 channels, not 5']);
+});
+
+test('shape() in a value is the mask of the shape and size statements', () => {
+    assert.equal(color('fill: mix(#000, red, shape(length(vec2(du, dv)), .6))'),
+        'cssd_color = vec4(mix(vec3(0.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), cssd_shape(length(vec2(du, dv)), .6)), 1.0);');
+    // a stroke: the mask of |d| at the line width
+    assert.match(main('d: box(du, dv, .3); fill: shape(abs(d), .05)'), /cssd_color = vec4\(vec3\(cssd_shape\(abs\(cssd1\), \.05\)\), 1\.0\);/);
 });
 
 test('a vec3 expression is a color, a scalar a gray', () => {
@@ -267,7 +300,7 @@ test('declarations are read in source order', () => {
 test('a head without a colon is reported, not glued to the statement before it', () => {
     let messages = [];
     let s = main('fill: red; k = 1; size: k');
-    assert.match(s, /cssd_color = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);/);
+    assert.match(s, /cssd_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);/);
     draw('fill: red; k = 1; size: k', extra, m => messages.push(m));
     assert.deepEqual(messages, ['"k = 1" is not a statement; write name: value', 'unknown name k']);
     messages = [];
@@ -318,19 +351,24 @@ test('variable names inside hex literals are not substituted', () => {
 });
 
 test('a variable may hold a CSS color or a channel list', () => {
-    assert.match(main('c: red; fill: c'), /vec4 cssd1 = vec4\(1\.0, 0\.0, 0\.0, 1\.0\);\s*cssd_color = cssd1;/);
+    assert.match(main('c: red; fill: c'), /vec3 cssd1 = vec3\(1\.0, 0\.0, 0\.0\);\s*cssd_color = vec4\(cssd1, 1\.0\);/);
+    assert.match(main('c: transparent; fill: c'), /vec4 cssd1 = vec4\(0\.0, 0\.0, 0\.0, 0\.0\);\s*cssd_color = cssd1;/);
     assert.match(main('c: 1, 0, 0; fill: c'), /vec3 cssd1 = vec3\(1\.0, 0\.0, 0\.0\);\s*cssd_color = vec4\(cssd1, 1\.0\);/);
     assert.match(main('c: 1, 0, 0, .5; fill: c'), /vec4 cssd1 = vec4\(1\.0, 0\.0, 0\.0, \.5\);\s*cssd_color = cssd1;/);
     // and takes part in arithmetic like any vector
-    assert.equal(color('c: red; fill: c * .5'), 'cssd_color = (cssd1 * .5);');
+    assert.equal(color('c: red; fill: c * .5'), 'cssd_color = vec4((cssd1 * .5), 1.0);');
     let messages = [];
     draw('c: 1, 2; fill: red', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['a list value needs 3 or 4 items, not 2']);
+    assert.deepEqual(messages, ['a list value needs 3 or 4 channels, not 2']);
+    // a vector keeps its width
+    messages = [];
+    draw('c: red; c: transparent; fill: c', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['c is a vec3, not a vec4']);
 });
 
 test('CSS color functions stay static; unitless hsl()/hsv() mean the shader helpers', () => {
-    assert.equal(color('fill: hsla(210, 50%, 50%, 0.5)'), 'cssd_color = vec4(1.0, 0.0, 0.0, 1.0);');
-    assert.equal(color('fill: hsl(120, 50%, 50%)'), 'cssd_color = vec4(1.0, 0.0, 0.0, 1.0);');
+    assert.equal(color('fill: hsla(210, 50%, 50%, 0.5)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: hsl(120, 50%, 50%)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
     assert.equal(color('fill: hsl(x/X, 0.5, 0.5)'), 'cssd_color = vec4(hsl((x / X), 0.5, 0.5), 1.0);');
     // anything the CSS engine rejects compiles as an expression
     assert.equal(color('fill: rgb(x*20, 0, 0)'), 'cssd_color = vec4(vec3(rgb((x * 20.0), 0.0, 0.0)), 1.0);');

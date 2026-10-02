@@ -351,7 +351,7 @@ test('names map to GLSL identifiers, swizzles and calls left alone', () => {
 
 test('unknown is told of the names that are neither mapped nor typed', () => {
     const seen = [];
-    transform('a + b.x + c(d) + e', { names: { __proto__: null, a: 'cssd1' }, types: { e: 'float' }, unknown: n => seen.push(n) });
+    transform('a + b.x + c(d) + e', { names: { __proto__: null, a: 'cssd1' }, types: { e: 'float' }, unknown: n => { seen.push(n); } });
     assert.deepEqual(seen, ['b', 'd']);
 });
 
@@ -376,6 +376,26 @@ test('#rgb and #rrggbb are vec3 literals', () => {
     assert.equal(transform('#FF8000 * .5'), '(vec3(1.0, 0.5019607843137255, 0.0) * .5)');
     assert.equal(transform('match(dr < 2, #fff, #000)', { expect: 'float' }),
         '((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0))');
-    // other lengths are not colors and stay as written
-    assert.equal(transform('#fffe'), '#fffe');
+    // #rgba and #rrggbbaa are vec4 literals; other lengths stay as written
+    assert.equal(transform('#f008'), 'vec4(1.0, 0.0, 0.0, 0.5333333333333333)');
+    assert.equal(transform('#ff000080 * .5'), '(vec4(1.0, 0.0, 0.0, 0.5019607843137255) * .5)');
+    assert.equal(transform('#fffef'), '#fffef');
+});
+
+test('unknown may answer with a color, which is a vec3 or vec4 literal', () => {
+    const colors = { __proto__: null, red: [1, 0, 0], glass: [0, 0, 1, 0.5] };
+    const unknown = n => colors[n];
+    assert.equal(transform('red', { unknown }), 'vec3(1.0, 0.0, 0.0)');
+    assert.equal(transform('mix(red, glass, .5)', { unknown }), 'mix(vec3(1.0, 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.5), .5)');
+    assert.equal(transform('red.g + glass.a', { unknown }), '(vec3(1.0, 0.0, 0.0).g + vec4(0.0, 0.0, 1.0, 0.5).a)');
+    assert.equal(transform('red', { unknown, type: true }), 'vec3');
+    // a mapped name wins over a color of the same spelling
+    assert.equal(transform('red', { unknown, names: { __proto__: null, red: 'cssd1' } }), 'cssd1');
+});
+
+test('shape(d, size) is the mask of the shape and size statements', () => {
+    assert.equal(transform('shape(d, .5)'), 'cssd_shape(d, .5)');
+    assert.equal(transform('shape(length(uv))'), 'cssd_shape(length(uv), 1.0)');
+    assert.equal(transform('mix(a, b, shape(d, .5))', { types: { a: 'vec3', b: 'vec3' } }), 'mix(a, b, cssd_shape(d, .5))');
+    assert.equal(transform('shape(d, .5)', { type: true }), 'float');
 });
