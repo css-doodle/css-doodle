@@ -26,20 +26,11 @@ let isUtimeSet = false;
 
 function regUtime() {
     if (!isUtimeSet) {
-        try {
-            CSS.registerProperty({
-                name: utime,
-                syntax: '<integer>',
-                initialValue: 0,
-                inherits: true
-            });
-            CSS.registerProperty({
-                name: UTime,
-                syntax: '<integer>',
-                initialValue: 0,
-                inherits: true
-            });
-        } catch (e) {}
+        for (let name of [utime, UTime]) {
+            try {
+                CSS.registerProperty({ name, syntax: '<integer>', initialValue: 0, inherits: true });
+            } catch (e) {}
+        }
         isUtimeSet = true;
     }
 }
@@ -49,21 +40,19 @@ function regUmouse(host, mousex, mousey, mouse) {
     let init = !host.umouseFn;
     if (init) {
         host.umouseFn = e => {
-            let data = e.detail || e;
             let { mousex, mousey, mouse } = host.umouseFlags;
             if (mouse) {
-                host._umouse = { x: data.offsetX, y: data.offsetY };
+                host._umouse = { x: e.offsetX, y: e.offsetY };
             }
             if (mousex || mousey) {
-                host.style.setProperty(umousex, data.offsetX);
-                host.style.setProperty(umousey, data.offsetY);
+                host.style.setProperty(umousex, e.offsetX);
+                host.style.setProperty(umousey, e.offsetY);
             }
         }
         host.addEventListener('pointermove', host.umouseFn);
     }
     if (init || (mouse && !host._umouse)) {
-        let event = new CustomEvent('pointermove', { detail: { offsetX: 0, offsetY: 0 }});
-        host.dispatchEvent(event);
+        host.umouseFn({ offsetX: 0, offsetY: 0 });
     }
 }
 
