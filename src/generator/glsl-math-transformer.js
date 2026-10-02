@@ -72,6 +72,8 @@ function cast(out, res, exp) {
     return `${exp}(${out})`;
 }
 
+export const float = v => /[.e]/i.test(v) ? v : v + '.0';
+
 function hexColors(code) {
     return code.replace(/#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/gi, (_, hex) => {
         if (hex.length < 6) hex = hex.replace(/./g, '$&$&');
@@ -107,7 +109,7 @@ function lex(code) {
     return tokens;
 }
 
-export default function transform(code, { expect = null, type = false, types = { __proto__: null }, names = null, unknown = null, warn = null } = {}) {
+export function compile(code, { types = { __proto__: null }, names = null, unknown = null, warn = null } = {}) {
     const tokens = lex(code);
 
     let pos = 0;
@@ -118,11 +120,11 @@ export default function transform(code, { expect = null, type = false, types = {
         const dot = val.indexOf('.');
         const head = dot > 0 ? val.slice(0, dot) : val;
         const id = names?.[head];
-        if (id) return { type: 'Var', val: id + val.slice(head.length) };
-        const rgba = !types[head] && unknown?.(head);
-        if (!rgba) return { type: 'Var', val };
-        const color = { type: 'Call', val: `vec${rgba.length}`, args: rgba.map(v => ({ type: 'Lit', val: String(v) })) };
-        return dot > 0 ? { type: 'Member', val: val.slice(dot), left: color } : color;
+        const rgba = !id && !types[head] && unknown?.(head);
+        const n = rgba
+            ? { type: 'Call', val: `vec${rgba.length}`, args: rgba.map(v => ({ type: 'Lit', val: String(v) })) }
+            : { type: 'Var', val: id || head };
+        return dot > 0 ? { type: 'Member', val: val.slice(dot), left: n } : n;
     }
 
     function primary() {
@@ -208,7 +210,7 @@ export default function transform(code, { expect = null, type = false, types = {
         if (!n) return '';
         if (n.type === 'Lit') {
             if (exp === 'int') return String(Math.floor(n.val));
-            return cast(/[.e]/i.test(n.val) ? n.val : n.val + '.0', 'float', exp);
+            return cast(float(n.val), 'float', exp);
         }
         if (n.type === 'Var') {
             return cast(n.val, infer(n), exp);
@@ -281,8 +283,6 @@ export default function transform(code, { expect = null, type = false, types = {
         if (n.type === 'Lit') return 'float';
         if (n.type === 'Var') {
             if (n.val === 'true' || n.val === 'false') return 'bool';
-            const dot = n.val.indexOf('.');
-            if (dot > 0) return swizzle(n.val.slice(dot));
             return types[n.val] || (n.val === 'uv' || n.val === 'pos' ? 'vec2' : 'float');
         }
         if (n.type === 'Member') return swizzle(n.val);
@@ -315,9 +315,14 @@ export default function transform(code, { expect = null, type = false, types = {
         return number && !isVector(res) ? 'float' : res;
     }
 
+    const tree = parse();
+    return { type: infer(tree), code: exp => gen(tree, exp) };
+}
+
+export default function transform(code, { expect = null, type = false, ...opts } = {}) {
     try {
-        const tree = parse();
-        return type ? infer(tree) : gen(tree, expect);
+        const e = compile(code, opts);
+        return type ? e.type : e.code(expect);
     }
     catch (e) { console.error(e); return code; }
 }

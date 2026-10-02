@@ -1,7 +1,7 @@
 import parsePattern from '../parser/parse-pattern.js';
 import parseGrid from '../parser/parse-grid.js';
 import parseValueGroup from '../parser/parse-value-group.js';
-import transform from './glsl-math-transformer.js';
+import { compile as parse, float } from './glsl-math-transformer.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const MAX_REPEAT = 1024;
@@ -190,10 +190,6 @@ const HELPERS = glsl`
     }
 `;
 
-function float(n) {
-    return String(n).includes('.') ? n : n + '.0';
-}
-
 function newScope(parent = null) {
     return { ids: { __proto__: parent ? parent.ids : null } };
 }
@@ -202,41 +198,39 @@ function compile(value, scope, ctx, expect = null) {
     let rgba = scope.ids[value] ? null : ctx.extra.getRgbaColor(value);
     if (rgba) {
         rgba = channels(rgba);
-        return vector(rgba.length, rgba.map(float), expect);
+        return vector(rgba.length, rgba.map(float));
     }
     let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim()).filter(Boolean);
     if (!items.length) return null;
     if (items.length === 1) {
-        let type = expr(items[0], scope, ctx, null, true);
-        if (type === 'int') type = 'float';
-        let code = expr(items[0], scope, ctx, expect || type);
+        let e = expr(items[0], scope, ctx);
+        let type = e.type === 'int' ? 'float' : e.type;
+        let code = e.code(expect || type);
         return code ? { type, code } : null;
     }
     let parts = items.map(v => {
-        let type = expr(v, scope, ctx, null, true);
+        let { type, code } = expr(v, scope, ctx);
         let width = /^vec\d$/.test(type) ? Number(type[3]) : 1;
-        return { width, code: expr(v, scope, ctx, width > 1 ? type : 'float') };
+        return { width, code: code(width > 1 ? type : 'float') };
     });
     let n = parts.reduce((sum, p) => sum + p.width, 0);
     if (n !== 3 && n !== 4) {
         ctx.warn(`a list value needs 3 or 4 channels, not ${n}`);
         return null;
     }
-    return parts.every(p => p.code) ? vector(n, parts.map(p => p.code), expect) : null;
+    return parts.every(p => p.code) ? vector(n, parts.map(p => p.code)) : null;
 }
 
 function channels(rgba) {
     return rgba[3] === 1 ? rgba.slice(0, 3) : rgba;
 }
 
-function vector(n, items, expect) {
-    let type = `vec${n}`;
-    let code = `${type}(${items.join(', ')})`;
-    return { type, code: expect && expect !== type ? `${expect}(${code})` : code };
+function vector(n, items) {
+    return { type: `vec${n}`, code: `vec${n}(${items.join(', ')})` };
 }
 
-function expr(code, scope, ctx, expect, type = false) {
-    return transform(code, { expect, type, types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: type ? null : ctx.warn });
+function expr(code, scope, ctx) {
+    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn });
 }
 
 function generateStatement(name, value, scope, ctx) {
@@ -285,12 +279,12 @@ function generateFill(value, scope, ctx) {
 }
 
 function asFloat(value, scope, ctx, what) {
-    let type = expr(value, scope, ctx, null, true);
-    if (type && type !== 'float' && type !== 'int' && type !== 'bool') {
+    let { type, code } = expr(value, scope, ctx);
+    if (type !== 'float' && type !== 'int' && type !== 'bool') {
         ctx.warn(`${what} needs a number`);
         return '';
     }
-    return expr(value, scope, ctx, 'float');
+    return code('float');
 }
 
 function generateShape(value, scope, ctx) {
@@ -333,7 +327,7 @@ function generateRepeat(token, scope, ctx, opts) {
     ctx.readonly.add(counter);
     if (m[2]) inner.ids[m[2]] = counter;
     let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work });
-    let stop = stops.map(s => expr(s, inner, ctx, 'bool')).filter(Boolean).join(' && ');
+    let stop = stops.map(s => expr(s, inner, ctx).code('bool')).filter(Boolean).join(' && ');
     return glsl`
         for (float ${counter} = 0.0; ${counter} < ${float(times)}; ${counter}++) {
           ${body}
@@ -348,7 +342,7 @@ function generateMatch(arms, scope, ctx, opts) {
         let isElse = test === 'else';
         if (type !== 'arm' || !test) ctx.warn('match {} takes only arms with a test');
         else if (isElse && k < arms.length - 1) ctx.warn('else must be the last arm');
-        else if (isElse || (test = expr(test, scope, ctx, 'bool'))) {
+        else if (isElse || (test = expr(test, scope, ctx).code('bool'))) {
             let body = generateBody(value, newScope(scope), ctx, opts);
             out += (out ? ' else ' : '') + (isElse ? '' : `if (${test}) `) + `{\n${body}}`;
         }
@@ -442,7 +436,9 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
     for (let name of textures.keys()) ctx.types[name] = 'sampler2D';
-    let body = generateBody(tokens, newScope(), ctx, { top: true });
+    let body = '';
+    try { body = generateBody(tokens, newScope(), ctx, { top: true }); }
+    catch (e) { warn(e.message); }
     let fragment = generateShader({
         grid: grid === undefined ? { x: 1, y: 1 } : parseGrid(grid, Infinity),
         body,
