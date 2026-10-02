@@ -338,8 +338,9 @@ function generateRepeat(token, scope, ctx, opts) {
     ctx.readonly.add(counter);
     if (m[2]) inner.ids[m[2]] = counter;
     inner.key = scope.key ? `(${scope.key} * ${float(times)} + ${counter})` : counter;
-    let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work });
+    let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work, branched: opts.branched || stops.length > 0 });
     let stop = stops.map(s => expr(s, inner, ctx).code('bool')).filter(Boolean).join(' && ');
+    if (stop) checkDerivatives(body, 'in a repeat() that stops early', ctx, opts);
     return glsl`
         for (float ${counter} = 0.0; ${counter} < ${float(times)}; ${counter}++) {
           ${body}
@@ -355,11 +356,18 @@ function generateMatch(arms, scope, ctx, opts) {
         if (type !== 'arm' || !test) ctx.warn('match {} takes only arms with a test');
         else if (isElse && k < arms.length - 1) ctx.warn('else must be the last arm');
         else if (isElse || (test = expr(test, scope, ctx).code('bool'))) {
-            let body = generateBody(value, newScope(scope), ctx, opts);
+            let body = generateBody(value, newScope(scope), ctx, { ...opts, branched: true });
             out += (out ? ' else ' : '') + (isElse ? '' : `if (${test}) `) + `{\n${body}}`;
         }
     }
+    checkDerivatives(out, 'inside match', ctx, opts);
     return out && out + '\n';
+}
+
+function checkDerivatives(code, where, ctx, opts) {
+    if (!opts.branched && /\b(fwidth|dFdx|dFdy|cssd_shape)\(/.test(code)) {
+        ctx.warn(`ramp(), shape(), fwidth(), dFdx() and dFdy() are unreliable ${where}; compute them before it`);
+    }
 }
 
 // the statements and blocks of a body, in source order

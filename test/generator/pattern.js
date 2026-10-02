@@ -709,6 +709,23 @@ test('rand() without arguments holds for the cell and the repeat step, and diffe
     assert.match(main('fill: rand() + rand(x, y)'), /cssd_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(x, y\)\)\), 1\.0\);/);
 });
 
+test('derivatives where only some pixels run the code are reported once per outer block', () => {
+    const warnings = code => {
+        let messages = [];
+        draw(code, extra, m => messages.push(m));
+        return messages;
+    };
+    const unreliable = where => [`ramp(), shape(), fwidth(), dFdx() and dFdy() are unreliable ${where}; compute them before it`];
+    assert.deepEqual(warnings('match(du > 0) { c: ramp(du, 0, 1) }'), unreliable('inside match'));
+    assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('inside match'));
+    assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('inside match'));
+    assert.deepEqual(warnings('repeat(4, du > 0) { match(dv > 0) { c: fwidth(du) } }'), unreliable('in a repeat() that stops early'));
+    // before the block, in a loop that never stops early, or as the pattern's shape: fine
+    assert.deepEqual(warnings('c: ramp(du, 0, 1); match(du > 0) { k: c }'), []);
+    assert.deepEqual(warnings('repeat(4) { c: fwidth(du) }'), []);
+    assert.deepEqual(warnings('match(du > 0) { shape: circle; size: .5; fill: 1 }'), []);
+});
+
 // --- vectors ---
 
 test('a variable can hold a vector and be swizzled', () => {

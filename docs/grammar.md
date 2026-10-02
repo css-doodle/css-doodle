@@ -771,6 +771,9 @@ skipped. Undeclared or reserved pattern names are reported, and so
 are statements without a colon and what an expression cannot place:
 values side by side, `?:`, a trailing operator. Arms without a test,
 declarations between arms and arms after `else` are skipped.
+`ramp()`, `shape()` and GLSL derivatives inside a `match` block or a
+`repeat` with stops are reported, since GLSL leaves them undefined
+where only some pixels run the code.
 
 An unclosed raw body (`@doodle`, `@shaders`, `@pattern`) runs to end
 of source without a report.
