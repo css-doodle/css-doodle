@@ -98,14 +98,15 @@ function isOperator(value) {
 }
 
 // Push a value, resolving adjacency with the previous token:
-// "2x" → 2*x, "2sin(1)" → 2*sin(1), "k -1" → k-1
-function pushValue(tokens, value) {
+// "2x" → 2*x, "2sin(1)" → 2*sin(1), "k -1" → k-1; after a space
+// there is no product, so "2 x" leaves two values and reads as 2
+function pushValue(tokens, value, spaced) {
     const prev = last(tokens);
     if (prev && (prev.type === VALUE || prev.value === ')')) {
         if (value[0] === '-') {
             tokens.push(tk(OPERATOR, '-'));
             value = value.slice(1);
-        } else {
+        } else if (!spaced) {
             tokens.push(tk(OPERATOR, '*'));
         }
     }
@@ -117,16 +118,19 @@ function pushValue(tokens, value) {
 // the context defines to that name, so its tokens collapse into one word
 function transformTokens(rawTokens, spans) {
     const raw = [];
-    let end = 0;
+    let end = 0, spaced = false;
     for (const token of rawTokens) {
+        if (token.type === 'Space') spaced = true;
         if (token.type === 'Space' || token.index < end) continue;
         const name = spans && spans.get(token.index);
         if (name) {
             end = token.index + name.length;
-            raw.push({ type: 'Word', value: name, index: token.index });
+            raw.push({ type: 'Word', value: name, index: token.index, spaced });
         } else {
+            token.spaced = spaced;
             raw.push(token);
         }
+        spaced = false;
     }
 
     const tokens = [];
@@ -134,11 +138,11 @@ function transformTokens(rawTokens, spans) {
     let sign = '';
 
     for (let i = 0; i < raw.length; i++) {
-        const { type, value, index } = raw[i];
+        const { type, value, index, spaced } = raw[i];
         const next = raw[i + 1];
 
         if (type === 'Number') {
-            pushValue(tokens, sign && value[0] === '-' ? value.slice(1) : sign + value);
+            pushValue(tokens, sign && value[0] === '-' ? value.slice(1) : sign + value, spaced);
             sign = '';
             continue;
         }
@@ -151,10 +155,10 @@ function transformTokens(rawTokens, spans) {
             }
             // "x1" is one name, not x*1
             if (next && next.type === 'Number' && next.index === index + value.length) {
-                pushValue(tokens, sign + value + next.value);
+                pushValue(tokens, sign + value + next.value, spaced);
                 i++;
             } else {
-                pushValue(tokens, sign + value);
+                pushValue(tokens, sign + value, spaced);
             }
             sign = '';
             continue;
@@ -196,7 +200,7 @@ function transformTokens(rawTokens, spans) {
         if (value === '(') {
             // "2(3+4)" → "2*(3+4)", "(1+2)(3+4)" → "(1+2)*(3+4)", but not "fn("
             const prev = last(tokens);
-            if (prev && (prev.value === ')' || (prev.type === VALUE && RE_NUMBER.test(prev.value)))) {
+            if (prev && !spaced && (prev.value === ')' || (prev.type === VALUE && RE_NUMBER.test(prev.value)))) {
                 tokens.push(tk(OPERATOR, '*'));
             }
         }
@@ -205,7 +209,7 @@ function transformTokens(rawTokens, spans) {
             tokens.push(tk(OPERATOR, value));
         } else {
             // π, and stray symbols that read as misses
-            pushValue(tokens, value);
+            pushValue(tokens, value, spaced);
         }
     }
 

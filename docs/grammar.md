@@ -302,8 +302,8 @@ Operators, highest precedence first:
 - **Everything is a number.** Units are dropped: with `--w: 10px`,
   `$(w * 2)` is `20`. Comparisons give `1` or `0`, and `&&` and `||`
   return the deciding operand. `%` takes the sign of the left operand.
-- **Values side by side multiply**, with or without a space: `2x`,
-  `2 x`, `x 2`, `2(3)` and `2π` are products. A name directly before
+- **Adjacent values multiply**: `2x`, `2(3)` and `2π` are products.
+  A space ends the product, so `2 x` reads as `2`. A name directly before
   `(` is a call. A sign binds to the value after it, so `-2^2` is `4`;
   write `-(2^2)` for `-4`.
 - **Dashed names.** `a-b` is one variable when the context defines it,
