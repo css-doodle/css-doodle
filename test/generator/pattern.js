@@ -685,6 +685,20 @@ test('repeat enforces count and nested work limits', () => {
     assert.equal((s.match(/for \(float/g) || []).length, 1);
 });
 
+test('repeat takes its count from a name set once to a whole number', () => {
+    assert.match(main('n: 72; repeat(n as k) { a: k / n }'), /for \(float cssd2 = 0\.0; cssd2 < 72\.0; cssd2\+\+\) \{\s*float cssd3 = \(cssd2 \/ cssd1\);/);
+    for (let code of ['n: 72; n: 5; repeat(n) { a: 1 }', 'n: 72; match(x > 1) { n: 5 } repeat(n) { a: 1 }', 'n: 7.5; repeat(n) { a: 1 }', 'repeat(m) { a: 1 }']) {
+        let messages = [];
+        let s = draw(code, extra, m => messages.push(m)).fragment;
+        let name = code.match(/repeat\((\w+)/)[1];
+        assert.deepEqual(messages, [`repeat() count ${name} must be a whole number, or a name set to one and never changed`], code);
+        assert.doesNotMatch(s, /for \(float/, code);
+    }
+    let messages = [];
+    draw('n: 2000; repeat(n) { a: 1 }', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['repeat() step count cannot exceed 1024']);
+});
+
 test('rand() without arguments holds for the cell and the repeat step, and differs per call', () => {
     let s = main('a: rand(); repeat(3 as i) { b: rand(); repeat(2) { c: rand() } }');
     assert.match(s, /float cssd1 = rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\);/);

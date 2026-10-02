@@ -256,6 +256,7 @@ function generateStatement(name, value, scope, ctx) {
             ctx.warn(`repeat() index ${name} is read-only`);
             return '';
         }
+        ctx.counts.delete(id);
         let type = ctx.types[id];
         let v = compile(value, scope, ctx, type);
         if (v && /vec|mat/.test(v.type) && v.type !== type) {
@@ -268,6 +269,7 @@ function generateStatement(name, value, scope, ctx) {
     if (!v) return '';
     id = scope.ids[name] = `cssd${++ctx.id}`;
     ctx.types[id] = v.type;
+    if (/^\d+$/.test(value)) ctx.counts.set(id, Number(value));
     return `${v.type} ${id} = ${v.code};\n`;
 }
 
@@ -317,10 +319,11 @@ const OUTPUT_GENERATORS = {
 
 function generateRepeat(token, scope, ctx, opts) {
     let [head = '', ...stops] = token.args;
-    let m = head.match(/^(\d+)(?:\s+as\s+(\S+))?$/);
-    let times = m && Number(m[1]);
+    let m = head.match(/^(\w+)(?:\s+as\s+(\S+))?$/);
+    let times = m && (/^\d+$/.test(m[1]) ? Number(m[1]) : ctx.counts.get(scope.ids[m[1]]));
     let work = (opts.work || 1) * times;
     let error = !m ? 'repeat() needs a step count'
+        : times === undefined ? `repeat() count ${m[1]} must be a whole number, or a name set to one and never changed`
         : times > MAX_REPEAT ? `repeat() step count cannot exceed ${MAX_REPEAT}`
         : work > MAX_REPEAT_WORK ? `nested repeat() work cannot exceed ${MAX_REPEAT_WORK}`
         : m[2] && !NAME.test(m[2]) ? `"${m[2]}" is not a valid name`
@@ -432,7 +435,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let known = new Map(BUILTINS.map(name => [name, null]));
     let ctx = {
-        extra, warn, id: 0, sites: 0, types: { __proto__: null }, readonly: new Set(), masked: false,
+        extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
         unknown: name => {
             if (!known.has(name)) {
                 let rgba = extra.getRgbaColor(name);

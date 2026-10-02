@@ -624,10 +624,11 @@ wins.
 ```
 
 **`repeat(n [as i] [, stop …])`** runs its body `n` times, with `i`
-counting from zero. The loop ends early once every stop expression
-holds. Counts over 1024, nested products over 65536 and invalid counts
-skip the block (§11). `fill`, `shape`, `size` and `grid` are not
-allowed inside it.
+counting from zero. `n` is a whole number, or a name declared as one
+and never changed: `n: 72; repeat(n as i) { y: i / n; }`. The loop
+ends early once every stop expression holds. Counts over 1024, nested
+products over 65536 and invalid counts skip the block (§11). `fill`,
+`shape`, `size` and `grid` are not allowed inside it.
 
 ### 9.4 Shaders
 
