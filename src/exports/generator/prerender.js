@@ -3,6 +3,7 @@ import generateCss from '../../generator/css.js';
 
 import { FilterHolderStyle } from '../../lib/svg.js';
 import { removeParens } from '../../lib/type.js';
+import { hash } from '../../lib/math.js';
 import { utime, UTime } from '../../core/uniforms.js';
 
 import { parseCssCached } from '../../component/parse-cache.js';
@@ -25,14 +26,6 @@ function dropStrayTemplateEnds(html) {
         if (!end) return depth++, tag;
         return depth ? (depth--, tag) : '';
     });
-}
-
-function hash(text) {
-    let h = 2166136261;
-    for (let i = 0; i < text.length; i++) {
-        h = Math.imul(h ^ text.charCodeAt(i), 16777619);
-    }
-    return h >>> 0;
 }
 
 /*
@@ -82,7 +75,7 @@ export default async function prerender(code = '', options = {}) {
         report: list => warnings.push(...list),
         hasAttribute: name => name in attributes,
         clockNow: () => 0,
-        _clock: { base: 0, since: 0 },
+        _clock: { base: 0 },
         draw: { shader: skip, pattern: skip, url },
     };
 
