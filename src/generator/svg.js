@@ -80,7 +80,7 @@ function escapeAttr(text) {
 
 function transformViewBox(token, warn) {
     let viewBox = token.detail.value;
-    let p = token.detail.padding || token.detail.p || token.detail.expand;
+    let p = token.detail.padding || token.detail.p;
     // `viewBox: 10` is `0 0 10 10`, `viewBox: 10 5` is `0 0 10 5`
     if (viewBox.length === 1) {
         viewBox = [0, 0, viewBox[0], viewBox[0]];
