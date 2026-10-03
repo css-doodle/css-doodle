@@ -22,5 +22,4 @@ test('an easing function is a keyword, a bezier or a calc expression in t', () =
     assert.equal(at('t*t', .5), .25);
     assert.equal(at('ease', 0), 0);
     assert.equal(at('ease', 1), 1);
-    assert.equal(getEasingFunction(t => 1 - t)(.25), .75);
 });

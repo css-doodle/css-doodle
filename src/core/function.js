@@ -21,7 +21,7 @@ import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
 import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
 import { cellMetrics } from '../lib/cell.js';
-import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
+import { isLetter, isNil, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
 import { placeholderId } from '../lib/placeholder.js';
 import { lerp, clamp, tidyNumber } from '../lib/math.js';
@@ -58,7 +58,6 @@ function compute(op, a, b) {
         case '*': return a * b;
         case '/': return a / b;
         case '%': return a % b;
-        default: return 0;
     }
 }
 
@@ -82,9 +81,6 @@ const parseOperation = memo(input => {
 });
 
 function calcValue(base, v) {
-    if (isEmpty(v) || isEmpty(base)) {
-        return [];
-    }
     let { op, prefix, value, unit } = parseOperation(v);
     // prefix op: base comes first; suffix op: base comes last
     let [a, b] = prefix ? [base, value] : [value, base];
@@ -306,15 +302,6 @@ const flipVPath = transformPath(1, 0, 0, -1);
 const flipPath = transformPath(-1, 0, 0, -1);
 const invertPath = transformPath(0, 1, 1, 0);
 
-function tryDecode(raw) {
-    let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
-    try {
-        return decodeURIComponent(cut);
-    } catch (e) {
-        return raw;
-    }
-}
-
 // the url is memoized, so the warnings travel with it to be reported per call
 const composeSvgUrl = memo(value => {
     let warnings = [];
@@ -482,12 +469,14 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
 Function.match = (cell, { extra }) => {
-    let e = last(extra) || [];
+    let e = last(extra);
     let variables = calcContext(cell);
-    if (!isNil(e[SEQ.n])) variables.n = e[SEQ.n];
-    if (!isNil(e[SEQ.x])) variables.nx = e[SEQ.x];
-    if (!isNil(e[SEQ.y])) variables.ny = e[SEQ.y];
-    if (!isNil(e[SEQ.max])) variables.N = e[SEQ.max];
+    if (e && e.length) {
+        variables.n = e[SEQ.n];
+        variables.nx = e[SEQ.x];
+        variables.ny = e[SEQ.y];
+        variables.N = e[SEQ.max];
+    }
     return (...args) => {
         if (args.length <= 1) {
             return '';
@@ -623,12 +612,8 @@ Function.reverse = () => {
 Function.svg = lazy((_, env, position, ...args) => {
     let outer = env.svg;
     env.svg = true;
-    let value;
-    try {
-        value = args.map(input => getValue(input())).join(',');
-    } finally {
-        env.svg = outer;
-    }
+    let value = args.map(input => getValue(input())).join(',');
+    env.svg = outer;
     let { url, warnings } = composeSvgUrl(value);
     for (let message of warnings) {
         env.rules.warn(message);
@@ -703,7 +688,9 @@ Function.raw = (cell, { rules }) => {
             return `<css-doodle>${rules.doodles[id].doodle}</css-doodle>`
         }
         if (raw.startsWith('url("data:image/svg+xml;utf8')) {
-            return tryDecode(raw);
+            try {
+                return decodeURIComponent(raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")')));
+            } catch (e) {}
         }
         return raw;
     }
