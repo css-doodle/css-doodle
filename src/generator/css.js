@@ -12,7 +12,7 @@ import gridStyleRules from './grid-style.js';
 import { cellId, isTreeGrid } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
-import { isNil, getValue, removeQuotes, removeParens } from '../lib/type.js';
+import { isNil, getValue, removeQuotes, removeParens, hasEntries } from '../lib/type.js';
 import { join, last, removeEmptyValues } from '../lib/list.js';
 import { nextId } from '../lib/fn.js';
 import {
@@ -27,11 +27,6 @@ function hasShorthandSize(value) {
         else if (c === ')') depth--;
         else if (c === '/' && !depth) return true;
     }
-    return false;
-}
-
-function hasEntries(obj) {
-    for (let _ in obj) return true;
     return false;
 }
 
@@ -248,7 +243,6 @@ function compileArgument(argument, parent) {
         } else {
             let segments = [''];
             let holes = [];
-            let hasVarRead = false;
             for (let v of values) {
                 if (v.type === 'text') {
                     segments[segments.length - 1] += v.value;
@@ -260,7 +254,6 @@ function compileArgument(argument, parent) {
                     holes.push(compiledFn.seqRead
                         || ((frame, extra) => compiledFn(frame, extra, true).value));
                 } else if (v.type === 'var') {
-                    hasVarRead = true;
                     holes.push((parent && parent.name === '@var')
                         ? () => v.name
                         : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable));
@@ -291,8 +284,7 @@ function compileArgument(argument, parent) {
                 };
                 compiled.composed = true;
             }
-            // `--x` reads resolve through readVar, outside the template
-            if (!argument.cluster && !hasVarRead) {
+            if (!argument.cluster) {
                 let template = compileTemplate(segments);
                 if (template !== null) {
                     compiled.calcTemplate = { ...template, segments, holes, singlePart: values.length === 1 };
@@ -402,7 +394,9 @@ class Rules {
         this.filters = {};
         this.filterIds = new Map();
         this.content = {};
-        this.vars = {};
+        // cell variables shadow container variables, which shadow host ones
+        this.vars = { host: Object.create(null) };
+        this.vars.container = Object.create(this.vars.host);
         this.scanTokens(tokens);
     }
 
@@ -427,34 +421,25 @@ class Rules {
         if (name) this.fonts.add(name);
     }
 
-    scopedVars(count, extra) {
-        return Object.assign({},
-            this.vars['host'],
-            this.vars['container'],
-            this.vars[count],
-            extra
-        );
+    scopedVars(count) {
+        return this.vars[count] || this.vars.container;
     }
 
     calcContext(count, contextVariable) {
-        let group = this.scopedVars(count, contextVariable);
+        let group = this.scopedVars(count);
         let context = Object.create(defaultContext);
-        for (let [name, key] of Object.entries(group)) {
-            context[name.slice(2)] = key;
-        }
+        for (let name in group) context[name.slice(2)] = group[name];
+        for (let name in contextVariable) context[name.slice(2)] = contextVariable[name];
         return context;
     }
 
     // the compiled-template variant of the $ branch in callFunc: the
     // expression is stable, the function results ride in as variables
-    callCalc(unit, count, template, holes, contextVariable = {}) {
-        let hasVars = hasEntries(this.vars['host'])
-            || hasEntries(this.vars['container'])
-            || hasEntries(this.vars[count])
-            || hasEntries(contextVariable);
-        let context = hasVars
-            ? Object.assign(this.calcContext(count, contextVariable), holes)
-            : holes;
+    callCalc(unit, count, template, holes, contextVariable) {
+        let context = holes;
+        if (hasEntries(this.scopedVars(count)) || hasEntries(contextVariable)) {
+            context = Object.assign(this.calcContext(count, contextVariable), holes);
+        }
         return tidyNumber(calc(template, context)) + unit;
     }
 
@@ -493,12 +478,11 @@ class Rules {
         return selector.slice(0, i) + base + tail;
     }
 
-    readVar(value, count, contextVariable) {
-        let group = this.scopedVars(count, contextVariable);
-        if (group[value] !== undefined) {
-            return removeParens(String(group[value]).trim()).replace(/;+$/g, '');
-        }
-        return value;
+    readVar(name, count, contextVariable) {
+        let value = contextVariable && contextVariable[name];
+        if (value === undefined) value = this.scopedVars(count)[name];
+        if (value === undefined) return name;
+        return removeParens(String(value).trim()).replace(/;+$/g, '');
     }
 
     composeComposable(fname, node, cell, env, selector, property) {
@@ -576,9 +560,8 @@ class Rules {
 
     injectVariables(value, count) {
         let variables = '';
-        for (let [name, key] of Object.entries(this.scopedVars(count))) {
-            variables += `${name}: ${key};`;
-        }
+        let group = this.scopedVars(count);
+        for (let name in group) variables += `${name}: ${group[name]};`;
         return variables ? `:doodle {${variables}}` + value : value;
     }
 
@@ -772,7 +755,7 @@ class Rules {
     composeVars(count, selector, prop, value) {
         let key = isHostSelector(selector) ? 'host'
             : isParentSelector(selector) ? 'container' : count;
-        (this.vars[key] ??= {})[prop] = value;
+        (this.vars[key] ??= Object.create(this.vars.container))[prop] = value;
     }
 
     preComposeRule(token, cell, env, selector) {
