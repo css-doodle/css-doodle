@@ -5,7 +5,7 @@ import parseShapeCommands from '../parser/parse-shape-commands.js';
 
 import { clamp, tidyNumber } from '../lib/math.js';
 import { isEmpty } from '../lib/type.js';
-import calc from '../core/calc.js';
+import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 
 const { cos, sin, atan2, sqrt, ceil, min, max, PI } = Math;
@@ -80,7 +80,7 @@ function createPointFunction(props, split) {
     let cosR = cos(rad), sinR = sin(rad);
 
     let index = 0;
-    let context = Object.assign({}, props, {
+    let context = Object.assign(Object.create(defaultContext), props, {
         't': 0,
         'θ': 0,
         'i': 0,
