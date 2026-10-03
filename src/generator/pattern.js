@@ -195,7 +195,8 @@ function newScope(parent = null) {
 }
 
 function compile(value, scope, ctx, expect = null) {
-    let rgba = scope.ids[value] ? null : ctx.extra.getRgbaColor(value);
+    // `hsl(h .75 .65)` without % is the shader hsl(), not a CSS color
+    let rgba = scope.ids[value] || /^hsl\([^%]*\)$/i.test(value) ? null : ctx.extra.getRgbaColor(value);
     if (rgba) {
         rgba = channels(rgba);
         return vector(rgba.length, rgba.map(float));

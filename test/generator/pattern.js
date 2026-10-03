@@ -9,8 +9,7 @@ import draw from '../../src/generator/pattern.js';
 function isCssColor(v) {
     if (/^#[0-9a-f]{3,8}$/i.test(v)) return true;
     if (/^(red|black|white|tan|transparent)$/i.test(v)) return true;
-    if (/^(rgb|rgba|hsla)\(\s*[\d.,%\s/]+\)$/i.test(v)) return true;
-    if (/^hsl\([^)]*%[^)]*\)$/i.test(v)) return true;
+    if (/^(rgb|rgba|hsl|hsla)\(\s*[\d.,%\s/]+\)$/i.test(v)) return true;
     return false;
 }
 const extra = {
@@ -353,6 +352,9 @@ test('values side by side are reported once', () => {
     draw('fill: hsl(x/X .75 .65)', extra, m => messages.push(m));
     assert.deepEqual(messages, []);
     assert.equal(color('fill: hsl(x/X .75 .65)'), 'cssd_color = vec4(hsl((x / X), .75, .65), 1.0);');
+    // all-number arguments are a CSS color to the browser, but without % it is the shader hsl()
+    assert.equal(color('fill: hsl(.5 .75 .65)'), 'cssd_color = vec4(hsl(.5, .75, .65), 1.0);');
+    assert.equal(color('fill: hsl(210 70% 60%)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
 });
 
 test('unknown names are reported once each', () => {
