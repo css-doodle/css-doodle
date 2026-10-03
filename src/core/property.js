@@ -123,7 +123,7 @@ Property.grid = (value, options) => {
     let temp = parseValueGroup(value, { symbol: ' ' }).map(item => {
         if (/^row$/i.test(item)) result.flex = 'row';
         else if (/^col$/i.test(item)) result.flex = 'column';
-        else if (/^border(:|$)/i.test(item)) result.borderLegacy = item.split(':')[1] || '';
+        else if (/^border(:|$)/i.test(item)) result.border = '1px solid ' + (item.split(':')[1] || '');
         else if (/^no\-*clip$/i.test(item)) result.clip = false;
         else if (/^p3d$/i.test(item)) result.p3d = true;
         else {

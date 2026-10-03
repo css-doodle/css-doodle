@@ -5,7 +5,7 @@ import { css } from '../lib/tagged-template.js';
  */
 export default function gridStyleRules({
     fill, clip, rotate, hueRotate, scale, translate, enlarge, persp,
-    flex, p3d, border, borderLegacy, gap, rowRule, columnRule, backdropFilter
+    flex, p3d, border, gap, rowRule, columnRule, backdropFilter
 }, add) {
     if (fill) {
         add(':host', `background:${fill};`);
@@ -68,9 +68,6 @@ export default function gridStyleRules({
         let s = 'transform-style:preserve-3d;';
         add(':host', s);
         add(':container', s);
-    }
-    if (borderLegacy !== undefined) {
-        add(':host', `border: 1px solid ${borderLegacy};`);
     }
     if (border !== undefined) {
         add(':host', `border: ${border};`);

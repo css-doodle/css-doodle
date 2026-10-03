@@ -88,7 +88,7 @@ test('grid: the border flag matches only a standalone token', () => {
     assert.deepEqual(grid('1 / 100% / var(--border-color)'), {
         ...base, size: 'width:100%;height:100%;', fill: 'var(--border-color)',
     });
-    assert.deepEqual(grid('1 border:red'), { ...base, borderLegacy: 'red' });
+    assert.deepEqual(grid('1 border:red'), { ...base, border: '1px solid red' });
 });
 
 test('grid: _ gap command', () => {
