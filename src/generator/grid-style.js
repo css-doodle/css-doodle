@@ -1,14 +1,12 @@
 import { css } from '../lib/tagged-template.js';
 
 /**
- * Map the transformed @grid options to static [selector, rule] pairs.
+ * Add the static rules of the transformed @grid options.
  */
 export default function gridStyleRules({
     fill, clip, rotate, hueRotate, scale, translate, enlarge, persp,
     flex, p3d, border, borderLegacy, gap, rowRule, columnRule, backdropFilter
-}) {
-    let rules = [];
-    let add = (selector, rule) => rules.push([selector, rule]);
+}, add) {
     if (fill) {
         add(':host', `background:${fill};`);
     }
@@ -88,5 +86,4 @@ export default function gridStyleRules({
       backdrop-filter: ${backdropFilter};
     `);
     }
-    return rules;
 }

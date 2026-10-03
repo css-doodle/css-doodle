@@ -7,7 +7,6 @@ export default function svg(rules, options = {}) {
         { x: 1, y: 1, z: 1, count: 1, ratio: 1 },
         options.seed
     );
-    if (!result) return '';
     return result.content['#c-1-1-1'] || '';
 }
 

@@ -87,10 +87,7 @@ const compiledArguments = new WeakMap();
 function compileValue(value) {
     let compiled = compiledValues.get(value);
     if (compiled === undefined) {
-        let parts = value.map(v => {
-            if (v.type === 'func') return compileFunc(v);
-            return (v.type === 'text') ? ('' + v.value) : '';
-        });
+        let parts = value.map(v => v.type === 'func' ? compileFunc(v) : v.value);
         if (parts.every(part => typeof part === 'string')) {
             let constant = { value: parts.join(''), extra: '' };
             compiled = () => constant;
@@ -253,12 +250,10 @@ function compileArgument(argument, parent) {
                     let compiledFn = compileFunc(v);
                     holes.push(compiledFn.seqRead
                         || ((frame, extra) => compiledFn(frame, extra, true).value));
-                } else if (v.type === 'var') {
+                } else {
                     holes.push((parent && parent.name === '@var')
                         ? () => v.name
                         : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable));
-                } else {
-                    holes.push(() => undefined);
                 }
             }
             if (values.length === 1) {
@@ -488,28 +483,21 @@ class Rules {
 
     composeComposable(fname, node, cell, env, selector, property) {
         let value = node.arguments.map(a => getValue(a.values[0])).join(',');
-        if (value) {
-            switch (fname) {
-                case 'doodle':
-                    return this.composeDoodle(
-                        this.injectVariables(value, cell.uid), node.size,
-                        env.extra.length ? structuredClone(env.extra) : undefined);
-                case 'shaders':
-                case 'pattern':
-                    return this.composePaint(fname, value, cell, node.size, selector, property, node);
-            }
+        if (!value) return;
+        if (fname !== 'doodle') {
+            return this.composePaint(fname, value, cell, node.size, selector, property, node);
         }
+        let id = this.nextId('doodle');
+        this.doodles[id] = {
+            doodle: this.injectVariables(value, cell.uid), arg: node.size,
+            upextra: env.extra.length ? structuredClone(env.extra) : undefined,
+        };
+        return placeholder(id);
     }
 
     composeArgument(argument, cell, env) {
         let compiled = compileArgument(argument);
         return compiled.constant ? compiled() : compiled({ cell, env }, EMPTY_EXTRA);
-    }
-
-    composeDoodle(doodle, arg, upextra) {
-        let id = this.nextId('doodle');
-        this.doodles[id] = { doodle, arg, upextra };
-        return placeholder(id);
     }
 
     resolvePaintVars(fname, source, count, node) {
@@ -570,29 +558,19 @@ class Rules {
         for (let [name, value] of Object.entries(variables)) {
             result[name] = this.getComposedValue(value, cell, env, result).value;
         }
-        return result;
     }
 
     getComposedValue(value, cell, env, context, selector, property) {
         let extra;
         let group = [];
-        if (Array.isArray(value)) {
-            let frame = { cell, env, contextVariable: context || {}, selector, property };
-            for (let v of value) {
-                if (!Array.isArray(v)) continue;
-                let composed = compileValue(v)(frame);
-                if (composed.value) group.push(composed.value);
-                if (composed.extra) extra = composed.extra;
-            }
+        let frame = { cell, env, contextVariable: context || {}, selector, property };
+        for (let v of value) {
+            let composed = compileValue(v)(frame);
+            if (composed.value) group.push(composed.value);
+            if (composed.extra) extra = composed.extra;
         }
         return {
             extra, group, value: group.join(',')
-        }
-    }
-
-    addGridStyle(transformed) {
-        for (let [selector, rule] of gridStyleRules(transformed)) {
-            this.addRule(selector, rule);
         }
     }
 
@@ -700,10 +678,10 @@ class Rules {
                     rule = '';
                     if (isHostSelector(selector)) {
                         rule = transformed.size || '';
-                        this.addGridStyle(transformed);
+                        gridStyleRules(transformed, (s, r) => this.addRule(s, r));
                     } else if (!this.grid) {
-                        this.addRule(':host', transformed.size || '');
-                        this.addGridStyle(transformed);
+                        this.addRule(':host', transformed.size);
+                        gridStyleRules(transformed, (s, r) => this.addRule(s, r));
                     }
                     this.grid = cell.grid;
                     break;
@@ -796,7 +774,7 @@ class Rules {
     }
 
     scanTokens(tokens) {
-        for (let token of tokens || []) {
+        for (let token of tokens) {
             if (token.type === 'keyframes') {
                 this.registerKeyframes(token);
             } else if (token.type === 'rule') {
@@ -1000,9 +978,7 @@ class Rules {
         for (let [prelude, group] of scope.groups) {
             let body = '';
             for (let [name, rule] of group.rules) {
-                if (rule.length) {
-                    body += `${specialName(name)} {${join(rule)}}`;
-                }
+                body += `${specialName(name)} {${join(rule)}}`;
             }
             body += this.layoutCells(group) + this.printGroups(group);
             if (body) groups.push(`${prelude} {${body}}`);
