@@ -730,7 +730,7 @@ class Rules {
                     this.content[key] = Func.raw(cell, env)(this.content[key] || '');
                     break;
                 }
-                case 'place-cell': case 'place': case 'offset': {
+                case 'place-cell': case 'place': {
                     if (isHostSelector(selector)) break;
                     rule = transformed;
                     let shared = selector.replaceAll('&', SHARED_CELL(this.cellPrefix));
@@ -801,7 +801,7 @@ class Rules {
                 this.registerKeyframes(token);
             } else if (token.type === 'rule') {
                 this.ruleOrder.push(token);
-                if (/^@(place|place-cell|offset)$/.test(token.property)) this.hasPlace = true;
+                if (/^@place(-cell)?$/.test(token.property)) this.hasPlace = true;
             } else if (token.type === 'cond' || token.type === 'pseudo') {
                 this.scanTokens(token.styles);
             }

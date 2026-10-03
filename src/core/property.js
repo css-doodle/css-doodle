@@ -181,9 +181,8 @@ Property.shape = memo(value => {
 });
 
 export const alias = {
-    // legacy names.
+    // legacy name
     'place-cell': 'place',
-    'offset': 'place',
 };
 
 export default addAlias(Property, alias);
