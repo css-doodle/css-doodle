@@ -1,17 +1,14 @@
 import { parseLinear } from '../parser/parse-linear-expr.js';
+import { tidyNumber } from '../lib/math.js';
 
 const CHANNELS = ['r', 'g', 'b', 'a'];
-
-function tidyCoefficient(value) {
-    return Number.isInteger(value) ? value + 0 : Number(value.toPrecision(12));
-}
 
 function parseRow(input) {
     let expr = String(input).trim().toLowerCase();
     if (!expr) return;
     let { coefficients, constant, error } = parseLinear(expr, CHANNELS);
     if (error) return;
-    return [...coefficients, constant].map(tidyCoefficient);
+    return [...coefficients, constant].map(tidyNumber);
 }
 
 export function expandColorMatrices(root, warn = () => {}) {
