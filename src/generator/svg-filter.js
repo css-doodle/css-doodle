@@ -65,9 +65,7 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
     }
 }
 
-export function expandFilterShorthands(root, seed, warn = () => {}, { chainInput = true } = {}) {
-    if (root?.name !== 'filter' || !Array.isArray(root.value)) return root;
-
+export function expandFilterShorthands(root, seed, warn, { chainInput = true } = {}) {
     let used = new Set(root.value.filter(isPrimitive).flatMap(token => {
         let result = findStatement(token.value, 'result');
         return result ? [removeQuotes(result.value)] : [];

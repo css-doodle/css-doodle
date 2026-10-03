@@ -40,10 +40,6 @@ class Cursor {
         let t = this.tokens[this.i];
         return t ? t.index : this.source.length;
     }
-    tailEnd() {
-        let t = this.tokens[this.i - 1];
-        return t ? tokenEnd(t) : 0;
-    }
     position() {
         return ++this.ctx.position;
     }
@@ -94,19 +90,6 @@ function separateFuncName(name) {
     return { fname, extra };
 }
 
-function hasTimesSyntax(token) {
-    if (!token) return false;
-    if (token.times) return true;
-    let value = token.value;
-    if (Array.isArray(value)) {
-        return value.some(hasTimesSyntax);
-    }
-    if (typeof value === 'object') {
-        return hasTimesSyntax(value);
-    }
-    return false;
-}
-
 const Node = {
     text(value) {
         return { type: 'text', value };
@@ -114,16 +97,13 @@ const Node = {
     var(name) {
         return { type: 'var', name };
     },
-    func() {
-        return { type: 'func', name: '', arguments: [] };
-    },
     argument(values, cluster = false) {
         return { values, cluster };
     },
 };
 
 // index of the first top-level terminator ahead, -1 if none
-function probe(cur, ...terminators) {
+function probe(cur, a, b, c) {
     let paren = 0, quote = false;
     for (let i = cur.i; i < cur.tokens.length; ++i) {
         let t = cur.tokens[i];
@@ -131,7 +111,7 @@ function probe(cur, ...terminators) {
         else if (t.status === 'close') quote = false;
         if (!quote && t.isSymbol('(')) paren++;
         else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
-        else if (paren === 0 && !quote && t.isSymbol(terminators)) {
+        else if (paren === 0 && !quote && t.isSymbol(a, b, c)) {
             return i;
         }
     }
@@ -148,7 +128,7 @@ function atRuleName(cur) {
     return name;
 }
 
-function parseValue(cur, extra, breakOn) {
+function parseValue(cur, breakOn) {
     let head = cur.peek();
     let groups = [[]];
     let group = groups[0];
@@ -190,7 +170,7 @@ function parseValue(cur, extra, breakOn) {
             }
             if ((v === '@' || v === '$') && isFuncStart(cur)) {
                 flush();
-                group.push(parseFunc(cur, extra));
+                group.push(parseFunc(cur));
                 hasFunc = true;
                 continue;
             }
@@ -251,7 +231,7 @@ function splitDollars(tokens) {
     return result;
 }
 
-function parseFunc(cur, extra, variables = {}) {
+function parseFunc(cur, variables = {}) {
     let tok = cur.next(); // '@' or '$'
     let isCalc = tok.isSymbol('$');
     let name = '@';
@@ -264,11 +244,11 @@ function parseFunc(cur, extra, variables = {}) {
         end += t.value.length;
         cur.next();
     }
-    return finishFunc(cur, name, end, isCalc, extra, variables, tok.index);
+    return finishFunc(cur, name, end, isCalc, variables, tok.index);
 }
 
-function finishFunc(cur, name, end, isCalc, extra, variables, index) {
-    let func = Node.func();
+function finishFunc(cur, name, end, isCalc, variables, index) {
+    let func = { type: 'func', name: '', arguments: [] };
     func.index = index;
     let hasArguments = false;
 
@@ -276,10 +256,10 @@ function finishFunc(cur, name, end, isCalc, extra, variables, index) {
     if (dot > 0) {
         let inner;
         if (dot < name.length - 1) {
-            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, extra, variables, index + dot + 1);
+            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, variables, index + dot + 1);
             inner.dotted = true;
         } else {
-            inner = parseFunc(cur, extra);
+            inner = parseFunc(cur);
         }
         name = name.slice(0, dot);
         func.arguments = [Node.argument([inner])];
@@ -293,11 +273,11 @@ function finishFunc(cur, name, end, isCalc, extra, variables, index) {
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1);
             } else {
-                let closed = parseArguments(cur, extra, variables);
+                let closed = parseArguments(cur, variables);
                 func.arguments = closed.args;
                 if (isSvg(name)) {
                     func.arguments = expandSvg(
-                        cur, cur.source.slice(paren.index + 1, closed.end), closed.args, extra, variables);
+                        cur, cur.source.slice(paren.index + 1, closed.end), closed.args, variables);
                 }
             }
             func.variables = variables;
@@ -376,7 +356,7 @@ function declaresVar(cur) {
     return !!t && t.isSymbol(':');
 }
 
-function parseArguments(cur, extra, variables) {
+function parseArguments(cur, variables) {
     let args = [];
     let values = [];
     let buf = '';
@@ -430,7 +410,7 @@ function parseArguments(cur, extra, variables) {
         // functions fire inside quotes too
         if (tok.isSymbol('@', '$')) {
             flush(true);
-            values.push(parseFunc(cur, extra, variables));
+            values.push(parseFunc(cur, variables));
             continue;
         }
         if (!quote && tok.isSymbol()) {
@@ -488,8 +468,7 @@ function normalizeArgument(values) {
     if (ft && ed && ft.type === 'text' && ed.type === 'text') {
         let cf = ft.value[0];
         let ce = ed.value[ed.value.length - 1];
-        let wraps = (cf === '(') ? parensWrapWhole(values) : quotesWrapWhole(values, cf);
-        if (PAIRS[cf] === ce && wraps) {
+        if (PAIRS[cf] === ce && (cf === '(' ? parensWrapWhole(values) : quotesWrapWhole(values, cf))) {
             ft.value = ft.value.slice(1);
             ed.value = ed.value.slice(0, ed.value.length - 1);
             cluster = true;
@@ -562,34 +541,36 @@ function parseDoodleBody(cur, start) {
     return [normalizeArgument([Node.text(body.trim() || body)])];
 }
 
-function expandSvg(cur, raw, args, extra, variables) {
+function expandSvg(cur, raw, args, variables) {
     let parsedSvg = parseSvg(raw);
+    let times = parsedSvg.times;
     // `--name:` anywhere in the body declares for the whole call, last wins
     function collect(block) {
         for (let item of block.value) {
             if (item.variable) {
-                let rules = parseSource(`${item.name}: ${item.value}`, extra, cur.ctx);
+                let rules = parseSource(`${item.name}: ${item.value}`, cur.ctx);
                 if (rules[0]) {
                     variables[item.name] = rules[0].value;
                 }
             } else {
                 let child = item.type === 'block' ? item : item.value;
                 if (child && Array.isArray(child.value)) {
+                    times ||= child.times;
                     collect(child);
                 }
             }
         }
     }
     collect(parsedSvg);
-    if (hasTimesSyntax(parsedSvg)) {
+    if (times) {
         let svg = svgSourceOf(parsedSvg) + ')';
         let sub = new Cursor(svg, cur.ctx);
-        return parseArguments(sub, extra, variables).args;
+        return parseArguments(sub, variables).args;
     }
     return args;
 }
 
-function parseRule(cur, extra) {
+function parseRule(cur) {
     let rule = { type: 'rule', property: '', value: [] };
     let source = cur.source;
     let start = cur.headIndex();
@@ -605,7 +586,7 @@ function parseRule(cur, extra) {
         rule.property = head;
         colon = tok.index;
         cur.next();
-        rule.value = head === '@use' ? parseUse(cur, extra) : parseValue(cur, extra);
+        rule.value = head === '@use' ? parseUse(cur) : parseValue(cur);
         end = cur.headIndex();
         if (!cur.end() && cur.peek().isSymbol(';')) {
             cur.next();
@@ -626,13 +607,14 @@ function parseRule(cur, extra) {
     return rule;
 }
 
-function parseUse(cur, extra) {
+function parseUse(cur) {
     let head = cur.peek();
     let pos = head && head.pos;
     let ctx = cur.ctx;
+    let extra = ctx.extra;
     let read = name => (extra && extra.getVariable) ? extra.getVariable(name) : '';
     let statements = [];
-    for (let [node] of parseValue(cur, extra)) {
+    for (let [node] of parseValue(cur)) {
         if (!node || node.type !== 'text') continue;
         for (let p of parseVar(node.value)) {
             let name = p.name;
@@ -649,7 +631,7 @@ function parseUse(cur, extra) {
             }
             ctx.using.push(name);
             try {
-                statements.push(...parseSource(rule, extra, ctx));
+                statements.push(...parseSource(rule, ctx));
             } catch (e) {}
             ctx.using.pop();
         }
@@ -657,7 +639,7 @@ function parseUse(cur, extra) {
     return statements;
 }
 
-function parseBlockBody(cur, extra, top) {
+function parseBlockBody(cur, top) {
     let styles = [];
     while (!cur.end()) {
         let tok = cur.peek();
@@ -678,26 +660,26 @@ function parseBlockBody(cur, extra, top) {
         let brace = probe(cur, '{', ';', '}');
         let opensBlock = brace >= 0 && cur.tokens[brace].isSymbol('{');
         if (!opensBlock) {
-            let rule = parseRule(cur, extra);
+            let rule = parseRule(cur);
             if (rule.property === '@use') {
                 styles.push(...rule.value);
             } else if (rule.property || (top && rule.type === 'at-rule')) {
                 styles.push(rule);
             }
         } else if (name === '@keyframes') {
-            let keyframes = parseKeyframes(cur, extra, brace);
+            let keyframes = parseKeyframes(cur, brace);
             if (keyframes.name) styles.push(keyframes);
         } else if (!name) {
-            let pseudo = parsePseudo(cur, extra, brace);
+            let pseudo = parsePseudo(cur, brace);
             if (pseudo.selector) styles.push(pseudo);
         } else {
-            styles.push(parseCond(cur, extra, brace));
+            styles.push(parseCond(cur, brace));
         }
     }
     return styles;
 }
 
-function parsePseudo(cur, extra, brace) {
+function parsePseudo(cur, brace) {
     let start = cur.headIndex();
     cur.i = brace;
     let selector = cur.source.slice(start, cur.headIndex()).trim();
@@ -706,7 +688,7 @@ function parsePseudo(cur, extra, brace) {
     let ctx = cur.ctx;
     let outer = ctx.selectors;
     let selectors = ctx.selectors = nestSelectors(splitSelectors(selector), outer);
-    let styles = parseBlockBody(cur, extra);
+    let styles = parseBlockBody(cur);
     ctx.selectors = outer;
     return { type: 'pseudo', selector, selectors, styles };
 }
@@ -753,14 +735,14 @@ function splitSelectors(input) {
     return list.map(s => s.trim().replace(/\s+/g, ' ')).filter(s => s.length);
 }
 
-function parseCond(cur, extra, brace) {
+function parseCond(cur, brace) {
     let source = cur.source;
     let start = cur.headIndex();
     let cond = { type: 'cond', ...parseCondSelector(cur, brace) };
     cur.i = brace;
     cur.next(); // '{'
-    cond.styles = parseBlockBody(cur, extra);
-    let end = cur.tailEnd();
+    cond.styles = parseBlockBody(cur);
+    let end = tokenEnd(cur.tokens[cur.i - 1]);
     cond.raw = () => source.slice(start, end);
     return cond;
 }
@@ -787,7 +769,7 @@ function parseCondSelector(cur, brace) {
         let tok = cur.next();
         if (tok.isSymbol('(')) {
             flush();
-            let args = parseArguments(cur, undefined, {}).args;
+            let args = parseArguments(cur, {}).args;
             segments.push({ arguments: args, spaced });
             spaced = false;
         } else if (tok.isSpace()) {
@@ -801,7 +783,7 @@ function parseCondSelector(cur, brace) {
     return { name, segments, position: cur.position() };
 }
 
-function parseKeyframes(cur, extra, brace) {
+function parseKeyframes(cur, brace) {
     let keyframes = { type: 'keyframes', name: '', steps: [] };
     cur.next(); // '@'
     cur.next(); // 'keyframes'
@@ -833,17 +815,17 @@ function parseKeyframes(cur, extra, brace) {
             cur.next();
             break;
         }
-        keyframes.steps.push(parseStep(cur, extra));
+        keyframes.steps.push(parseStep(cur));
     }
     return keyframes;
 }
 
-function parseStep(cur, extra) {
-    let step = { type: 'step', name: parseValue(cur, extra, '{'), styles: [] };
+function parseStep(cur) {
+    let step = { type: 'step', name: parseValue(cur, '{'), styles: [] };
     // a '}' stays put so the keyframes loop closes the block
     if (!cur.end() && cur.peek().isSymbol('{')) {
         cur.next();
-        step.styles = parseBlockBody(cur, extra).filter(n => n.type === 'rule');
+        step.styles = parseBlockBody(cur).filter(n => n.type === 'rule');
     } else if (!cur.end() && !cur.peek().isSymbol('}')) {
         cur.next();
     }
@@ -857,14 +839,14 @@ function skipTag(cur) {
     cur.next();
 }
 
-function parseSource(input, extra, ctx) {
+function parseSource(input, ctx) {
     let source = String(input ?? '').trim();
-    return parseBlockBody(new Cursor(source, ctx), extra, true);
+    return parseBlockBody(new Cursor(source, ctx), true);
 }
 
 export default function parse(input, extra) {
-    let ctx = { position: 0, warnings: [], selectors: ['&'], using: [] };
-    let result = parseSource(input, extra, ctx);
+    let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [] };
+    let result = parseSource(input, ctx);
     result.warnings = ctx.warnings;
     return result;
 }

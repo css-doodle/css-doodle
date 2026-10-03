@@ -25,14 +25,15 @@ function parse(input) {
             continue;
         }
         if (curr.isWord()) {
-            for (let name of RE_COMMANDS.test(curr.value) ? curr.value : [curr.value]) {
+            let known = RE_COMMANDS.test(curr.value);
+            for (let name of known ? curr.value : [curr.value]) {
                 if (temp.name) {
                     result.commands.push(temp);
                     temp = {};
                 }
                 temp.name = name;
                 temp.value = [];
-                if (!RE_COMMANDS.test(name) || name.length !== 1) {
+                if (!known) {
                     temp.type = 'unknown';
                     result.valid = false;
                 } else {

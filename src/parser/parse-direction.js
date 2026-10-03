@@ -1,19 +1,17 @@
-import { iterator, scan } from './tokenizer.js';
+import { scan } from './tokenizer.js';
 import calc from '../core/calc.js';
 
 const keywords = ['auto', 'reverse'];
 const units = ['deg', 'rad', 'grad', 'turn'];
 
 function parse(input) {
-    let iter = iterator(scan(input));
     let unit = '';
     let expr = '';
     let ret = {
         direction: '',
         angle: 0,
     };
-    while (iter.next()) {
-        let curr = iter.curr();
+    for (let curr of scan(input)) {
         if (curr.isWord()) {
             if (keywords.includes(curr.value)) {
                 ret.direction = curr.value;
