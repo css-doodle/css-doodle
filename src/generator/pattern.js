@@ -378,8 +378,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     let hasShape = has('shape');
     if (!loop && !hasShape && !opts.shaped && has('size')) out += generateShape('square', scope, ctx);
     opts = { ...opts, top: false, shaped: opts.shaped || hasShape };
-    for (let k = 0; k < tokens.length; k++) {
-        let t = tokens[k];
+    for (let t of tokens) {
         if (t.type === 'statement') {
             if (t.name === 'grid') {
                 if (!top) ctx.warn('grid must be at the top level');
@@ -399,12 +398,12 @@ function generateBody(tokens, scope, ctx, opts = {}) {
         } else if (t.arms) {
             out += generateMatch(t.arms, scope, ctx, opts);
         } else if (t.name === 'match') {
-            let blocks = [t];
-            while (tokens[k + 1]?.value === t.value) blocks.push(tokens[++k]);
-            let test = blocks.map(b => b.args.filter(Boolean))
-                .filter(args => args.length === 1 || ctx.warn('match() needs one expression'))
-                .map(([arg]) => `(${arg})`).join(' || ');
-            if (test) out += generateMatch([{ type: 'arm', test, value: t.value }], scope, ctx, opts);
+            let args = t.args.filter(Boolean);
+            if (args.length === 1) {
+                out += generateMatch([{ type: 'arm', test: `(${args[0]})`, value: t.value }], scope, ctx, opts);
+            } else {
+                ctx.warn('match() needs one expression');
+            }
         } else {
             ctx.warn(t.name === 'else' ? 'else is an arm: match { test { … } else { … } }' : `unknown block ${t.name}`);
         }

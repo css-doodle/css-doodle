@@ -1,9 +1,6 @@
 import { scan, iterator, textOf } from './tokenizer.js';
 import { parseBody, readValue } from './parse-body.js';
 
-// commands whose leading `-` is dropped rather than applied to the value
-const KEEP_NEGATIVE = ['fill-rule', 'fill'];
-
 // `-x: sin(t)` negates the value; `-: 10` and dashed names like `--x` do not
 function readShapeStatement(iter, head) {
     let negative = head.length > 1 && head[0].isSymbol('-') && !head[1].isSymbol('-');
@@ -20,7 +17,8 @@ const shape = {
 function parse(input) {
     let commands = {};
     for (let { name, value, negative } of parseBody(iterator(scan(input)), null, shape)) {
-        commands[name] = (negative && value && !KEEP_NEGATIVE.includes(name))
+        // a leading `-` on fill is dropped rather than applied to the value
+        commands[name] = (negative && value && name !== 'fill')
             ? `-1 * (${value})`
             : value;
     }

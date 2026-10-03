@@ -38,12 +38,9 @@ test('match {} holds arms, each head is its test', () => {
     assert.deepEqual(parsePattern('match { a: 1; x {} }').at(0).arms, [statement('a', '1'), arm('x')]);
 });
 
-test('a comma list of selectors shares one body', () => {
-    assert.deepEqual(parsePattern('a, b {}'), [block('a'), block('b')]);
-    assert.deepEqual(parsePattern('match(2), match {}'), [block('match', ['2']), block('match')]);
-    // duplicates and empty entries collapse
-    assert.deepEqual(parsePattern('a,,,{}'), [block('a')]);
-    assert.deepEqual(parsePattern('a, a {}'), [block('a')]);
+test('a comma list of selectors is no block', () => {
+    assert.deepEqual(parsePattern('a, b {}'), [{ type: 'text', value: 'a,b {}' }]);
+    assert.deepEqual(parsePattern('match(x > 1), repeat(3) { fill: red }'), [{ type: 'text', value: 'match(x > 1),repeat(3) {}' }]);
 });
 
 test('line comments are whitespace, a head without a colon is text', () => {
@@ -85,12 +82,5 @@ test('repeat headers and nested repeats use the existing block grammar', () => {
                 statement('value', 'value + inner'),
             ]),
         ]),
-    ]);
-});
-
-test('selector deduplication tells the arguments apart', () => {
-    assert.deepEqual(parsePattern('match(a, b), match(ab), match(a, b) {}'), [
-        block('match', ['a', 'b']),
-        block('match', ['ab']),
     ]);
 });

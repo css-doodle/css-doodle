@@ -34,5 +34,5 @@ test('a leading - negates the value, except for dashed names', () => {
     assert.deepEqual(parseShapeCommands('-x: sin(t)'), { x: '-1 * (sin(t))' });
     assert.deepEqual(parseShapeCommands('-x: sin(t)+5'), { x: '-1 * (sin(t)+5)' });
     assert.deepEqual(parseShapeCommands('--x: 10'), { '--x': '10' });
-    assert.deepEqual(parseShapeCommands('-fill-rule: evenodd'), { 'fill-rule': 'evenodd' });
+    assert.deepEqual(parseShapeCommands('-fill: evenodd'), { fill: 'evenodd' });
 });

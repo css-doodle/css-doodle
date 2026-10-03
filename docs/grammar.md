@@ -527,10 +527,9 @@ across the shape.
 ```
 pattern-body  = { name ':' value ';' | match-block | repeat-block | texture-block }
 texture-block = texture-name '{' doodle '}'
-match-block   = match { ',' match } '{' pattern-body '}'
+match-block   = 'match' '(' expression ')' '{' pattern-body '}'
               | 'match' '{' { expression '{' pattern-body '}' }
                             [ 'else' '{' pattern-body '}' ] '}'
-match         = 'match' '(' expression ')'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
 repeat-body   = { name ':' value ';' | match-block | repeat-block }
@@ -543,8 +542,7 @@ type, and numbers become floats. A color is a `vec3`, or a `vec4` when
 it has an alpha. Undeclared, invalid and `cssd…` names are reported
 (§11).
 
-**Blocks.** A `match` block runs where its test holds, and
-`match(a), match(b) { … }` runs where either holds. `match { … }`
+**Blocks.** A `match` block runs where its test holds. `match { … }`
 holds arms, each a test and a body, and runs the first arm whose test
 holds; a last `else { … }` arm runs when none does. Blocks nest, and
 each opens its own scope.

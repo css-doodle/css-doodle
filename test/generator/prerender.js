@@ -39,14 +39,10 @@ test('the same input renders the same output', async () => {
     assert.notEqual(a.html, c.html);
 });
 
-test('the seed comes from options, the seed attribute or data-seed', async () => {
+test('the seed comes from options or the seed attribute', async () => {
     let code = '@grid: 1; background: red;';
     assert.match((await prerender(code, { seed: 5, attributes: { seed: 6 } })).html, / seed="5"/);
     assert.match((await prerender(code, { attributes: { seed: 6 } })).html, / seed="6"/);
-    assert.match((await prerender(code, { attributes: { seed: '', 'data-seed': 8 } })).html, / seed="8"/);
-    let fromData = await prerender(code, { attributes: { 'data-seed': 7 } });
-    assert.match(fromData.html, / seed="7"/);
-    assert.doesNotMatch(fromData.html, /data-seed/);
     // without one the source picks it, and it is written out so the runtime can redraw it
     let picked = await prerender(code);
     assert.equal(typeof picked.seed, 'number');

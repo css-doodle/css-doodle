@@ -47,9 +47,8 @@ function dropStrayTemplateEnds(html) {
 export default async function prerender(code = '', options = {}) {
     let attributes = { ...options.attributes };
     let variables = options.variables ?? {};
-    let seed = options.seed ?? (attributes.seed || attributes['data-seed'] || hash(JSON.stringify(attributes) + code));
+    let seed = options.seed ?? (attributes.seed || hash(JSON.stringify(attributes) + code));
     attributes.seed = seed;
-    delete attributes['data-seed'];
 
     let needs = new Set();
     let warnings = [];

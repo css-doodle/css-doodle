@@ -186,13 +186,12 @@ function createPlot(unit, scatter) {
     let plot = memo((commands, max) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
             delete rules['fill'];
-            delete rules['fill-rule'];
             delete rules['frame'];
             if (scatter) {
                 let count = parseInt(rules.points);
                 rules.hasPoints = count > 0;
                 rules.scatter = clamp(rules.hasPoints ? count : max, 1, MAX_SCATTER);
-                rules.points = rules.split || rules.vertices || SCATTER_OUTLINE;
+                rules.points = rules.split || SCATTER_OUTLINE;
             } else if (!preset && (rules.split || rules.points)) {
                 rules.hasPoints = true;
             } else {
@@ -770,29 +769,18 @@ export const alias = {
     'pick': 'p',
     'rn': 'R',
 
-    // error prone
-    'stripes': 'stripe',
-    'strip': 'stripe',
-    'patern': 'pattern',
-    'flipv': 'flipV',
-    'fliph': 'flipH',
-
     // legacy names, keep them before 1.0
     'filter': 'svg-filter',
     'multiple': 'm',
     'repeat': 'rep',
     'ms': 'M',
     'size': 'I',
-    'Svg': 'svg',
     'pl': 'pn',
     'pr': 'pnr',
     'PL': 'PN',
     'PR': 'PNR',
     'pick-n': 'pn',
-    'pick-d': 'pd',
-    'offset': 'plot',
-    'point': 'plot',
-    'unicode': 'code'
+    'pick-d': 'pd'
 };
 
 export default addAlias(Function, alias);

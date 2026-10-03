@@ -4,6 +4,7 @@ import generateShape from '../generator/shapes.js';
 
 import { isPreset, getPreset } from './preset-size.js';
 
+import { addAlias } from '../lib/fn.js';
 import { isEmpty } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 
@@ -179,6 +180,9 @@ Property.shape = memo(value => {
     return preset ? `clip-path:polygon(${points.join(',')});` : '';
 });
 
-export const alias = {};
+export const alias = {
+    // legacy name
+    'place-cell': 'place',
+};
 
-export default Property;
+export default addAlias(Property, alias);

@@ -191,9 +191,7 @@ function scatter(outline, count) {
 }
 
 function createShapePoints(props, {min, max}) {
-    let split = clamp(parseInt(props.vertices || props.points || props.split), min, max);
-    if (props.degree) props.rotate = props.degree;
-    if (props.origin) props.move = props.origin;
+    let split = clamp(parseInt(props.points || props.split), min, max);
 
     // `r: 10px` carries the unit, but `2t` and `2i` are products
     let { unit, value } = parseCompoundValue(isEmpty(props.r) ? '' : props.r);
@@ -207,8 +205,8 @@ function createShapePoints(props, {min, max}) {
 
     let turn = Number(props.turn) || 1;
     let frame = props.frame;
-    let fill = props['fill'] || props['fill-rule'];
-    let dir = props['direction'] || props['dir'] || '';
+    let fill = props.fill;
+    let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
     let [fx, fy] = parsePair(props.scale, 1);
     let [dx, dy] = parsePair(props.move, 0);

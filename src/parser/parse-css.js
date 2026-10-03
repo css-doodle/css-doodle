@@ -1,5 +1,5 @@
 // AST:
-//   rule       { type: 'rule', property, value: Group[] } + raw(), rawValue(); Group[] carries hasFunc
+//   rule       { type: 'rule', property, value: Group[] } + rawValue(); Group[] carries hasFunc
 //   at-rule    { type: 'at-rule', property: '', value: string }  a statement: @import ...;
 //   pseudo     { type: 'pseudo', selector, selectors, styles }  selectors resolved, '&' is the cell
 //   cond       { type: 'cond', name, segments, position, styles } + raw(); segments { keyword } | { arguments }, spaced
@@ -573,7 +573,6 @@ function expandSvg(cur, raw, args, variables) {
 function parseRule(cur) {
     let rule = { type: 'rule', property: '', value: [] };
     let source = cur.source;
-    let start = cur.headIndex();
     let colon = -1;
     let end = source.length;
     let stop = probe(cur, ':', ';', '}');
@@ -600,7 +599,6 @@ function parseRule(cur) {
         end = tok.index;
     }
 
-    rule.raw = () => source.slice(start, end).trim();
     rule.rawValue = colon < 0
         ? () => ''
         : () => source.slice(colon + 1, end).trim();

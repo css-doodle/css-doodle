@@ -1,35 +1,24 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import { parseBody, readRaw, readValue } from './parse-body.js';
 
-// `match(x > y), match(mod(x, 2) == 0)` → { name, args } per
-// selector, duplicates dropped
+// `match(x > y)` → { name, args }: one word, then its parens; anything
+// else but stray closing parens makes it no selector
 function parseSelector(tokens) {
-    let selectors = [];
-    let seen = new Set();
-    for (let group of itemsOf(tokens)) {
-        let open = group.findIndex(t => t.isSymbol('('));
-        let head = open < 0 ? group : group.slice(0, open);
-        let word = head.find(t => t.isWord());
-        if (!word) {
-            continue;
+    let open = tokens.findIndex(t => t.isSymbol('('));
+    let [word, ...rest] = (open < 0 ? tokens : tokens.slice(0, open)).filter(t => !t.isSpace());
+    if (!word?.isWord() || rest.length) return null;
+    let args = [];
+    if (open >= 0) {
+        let close = open + 1;
+        for (let depth = 1; close < tokens.length && depth; ++close) {
+            if (tokens[close].isSymbol('(')) depth++;
+            else if (tokens[close].isSymbol(')')) depth--;
         }
-        let args = [];
-        if (open >= 0) {
-            let close = open + 1;
-            for (let depth = 1; close < group.length && depth; ++close) {
-                if (group[close].isSymbol('(')) depth++;
-                else if (group[close].isSymbol(')')) depth--;
-            }
-            let inner = group.slice(open + 1, group[close - 1].isSymbol(')') ? close - 1 : close);
-            args = itemsOf(inner).map(textOf);
-        }
-        let key = word.value + '(' + args.join(',') + ')';
-        if (!seen.has(key)) {
-            seen.add(key);
-            selectors.push({ name: word.value, args });
-        }
+        if (tokens.slice(close).some(t => !t.isSpace() && !t.isSymbol(')'))) return null;
+        let inner = tokens.slice(open + 1, tokens[close - 1].isSymbol(')') ? close - 1 : close);
+        args = itemsOf(inner).map(textOf);
     }
-    return selectors;
+    return { name: word.value, args };
 }
 
 function readArm(iter, head) {
@@ -45,13 +34,12 @@ function readMatchBlocks(iter, head) {
         let { value } = parseBody(iter, {}, { readBlocks: readArm, readStatement: readPatternStatement, readTail });
         return [{ type: 'block', name: 'match', arms: value }];
     }
-    let selectors = parseSelector(head);
-    if (!selectors.length) {
+    let selector = parseSelector(head);
+    if (!selector) {
         readRaw(iter);
         return readTail([...head, { value: ' {}' }]);
     }
-    let block = parseBody(iter, { type: 'block', name: '', value: [] }, pattern);
-    return selectors.map(({ name, args }) => Object.assign({}, block, { name, args }));
+    return [parseBody(iter, { type: 'block', ...selector, value: [] }, pattern)];
 }
 
 function readPatternStatement(iter, head) {

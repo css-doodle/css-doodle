@@ -304,7 +304,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         generate(code, seed) {
-            seed = this.getAttribute('seed') || this.getAttribute('data-seed') || seed;
+            seed = this.getAttribute('seed') || seed;
             if (isNil(seed)) {
                 seed = Date.now();
             }
@@ -361,7 +361,6 @@ if (typeof HTMLElement !== 'undefined') {
             }
             setTimeout(() => {
                 this.triggerEvent('render');
-                this.triggerEvent('afterUpdate');
                 this.triggerEvent('update');
             });
         }

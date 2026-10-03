@@ -64,10 +64,9 @@ test('comments vanish from properties and values but survive in code arguments',
     assert.ok(body.includes('\n'));
 });
 
-test('raw() and rawValue() span the source text', () => {
+test('rawValue() spans the source text', () => {
     let [seed] = parseCss(`@seed: 42;`);
     assert.equal(seed.rawValue(), '42');
-    assert.equal(seed.raw(), '@seed: 42');
 
     [seed] = parseCss(`@seed: 4 2 }`);
     assert.equal(seed.rawValue(), '4 2');

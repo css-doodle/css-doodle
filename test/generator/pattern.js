@@ -130,10 +130,10 @@ test('match {} reports misplaced arms and else', () => {
     assert.doesNotMatch(s, /else/);
 });
 
-test('the selectors of one head make one test over one body', () => {
-    let s = main('match(x < 3), match(x > 4) { c: 1; fill: red } match(y > 2) { fill: red }');
-    assert.match(s, /if \(\(\(x < 3\.0\) \|\| \(x > 4\.0\)\)\) \{\s*float cssd1 = 1\.0;/);
-    assert.equal((s.match(/if \(/g) || []).length, 2);
+test('a comma list of selectors is reported, not run', () => {
+    let messages = [];
+    draw('match(x < 3), match(x > 4) { fill: red }', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['"match(x < 3),match(x > 4) {}" is not a statement; write name: value']);
 });
 
 // --- built-in variables ---
