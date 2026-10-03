@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
+import parseShaders from '../../src/parser/parse-shaders.js';
 import generateCss from '../../src/generator/css.js';
 
 // maxGrid 64 mirrors the component's getMaxGrid()
@@ -919,17 +920,20 @@ test('$name in a shaders body reads the variable at generation time', () => {
         --speed: 2;
         @content: @shaders(
             fragment { $fragment }
+            // a comment is not read: $nope
             vertex { void main() { gl_Position = vec4($speed); } }
             texture0 { $texture }
-            texture1 { @grid: 2; background: red; }
+            texture1 { @grid: 2; --d: $speed; background: red; }
         );
     `);
     let [shader] = Object.values(shaders);
-    assert.equal(shader.source.fragment.replace(/\s/g, ''), 'voidmain(){FragColor=vec4(1.);}');
-    assert.equal(shader.source.vertex, 'void main(){gl_Position = vec4(2);}');
-    assert.equal(shader.source.textures[0].value, '@grid: 8; background: @p(red, blue);');
-    // a texture section sees the variables, like @doodle() does
-    assert.match(shader.source.textures[1].value, /^:doodle \{--texture: .*--speed: 2;\}@grid:2;background:red;$/);
+    let source = parseShaders(shader.source);
+    assert.equal(source.fragment.replace(/\s/g, ''), 'voidmain(){FragColor=vec4(1.);}');
+    assert.equal(source.vertex, 'void main(){gl_Position = vec4(2);}');
+    // a bound doodle comes as stored; any other texture sees the variables
+    // like @doodle() does, and $name is read there like anywhere else
+    assert.equal(source.textures[0].value, '@grid:8;background:@p(red,blue);');
+    assert.match(source.textures[1].value.replace(/\s/g, ''), /^:doodle\{--texture:.*--speed:2;\}@grid:2;--d:2;background:red;$/);
     assert.deepEqual(warnings, []);
 });
 
@@ -940,7 +944,7 @@ test('texture doodles see the variables, and their own declarations win', () => 
         @content: @pattern(texture_0 { background: @p(--c); } fill: texture(texture_0, uv));
     `);
     let [shader] = Object.values(shaders);
-    assert.equal(shader.source.textures[0].value, ':doodle {--c: red;}--d:blue;background:@p(--c);');
+    assert.equal(parseShaders(shader.source).textures[0].value, ':doodle{--c:red;}--d:blue;background:@p(--c);');
     let [pattern] = Object.values(patterns);
     assert.equal(pattern.source.replace(/\s+/g, ' ').trim(),
         'texture_0 {:doodle {--c: red;} background: @p(--c); } fill: texture(texture_0, uv)');
@@ -953,21 +957,19 @@ test('an unknown $name skips the shader with a warning instead of reaching GLSL'
         assert.equal(styles.all.includes('$missing'), false);
         assert.deepEqual(warnings.map(w => w.message), ['unknown variable $missing in @shaders()']);
     }
-    // a texture body keeps its own $ reads: they belong to the nested doodle
-    let [own] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { --a: 1; width: $a })').shaders);
-    assert.deepEqual(own.source.textures, [{ name: 'texture0', value: '--a:1;width:$a' }]);
-    // the source stays a string when nothing reads a variable
+    // a body that reads nothing is stored as written
     let [plain] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { @grid: 2 })').shaders);
-    assert.equal(typeof plain.source, 'string');
+    assert.equal(plain.source, 'fragment { void main() {} } texture0 { @grid: 2 }');
 });
 
-test('$name in a pattern body reads the cell variable, outside texture blocks', () => {
+test('$name in a pattern body reads the cell variable, texture blocks included', () => {
     let { patterns, warnings } = compile(`
         --k: @i;
         --n: 3;
         --ring-count: 2;
         @content: @pattern(
-            texture_0 { --a: 1; :doodle { width: $a; } }
+            texture_0 { :doodle { width: $k; } }
+            // $nope is not read
             repeat($n as j) { a: j; }
             fill: $k / 4, ($n-1) / 4, $ring-count / 4;
         );
@@ -975,10 +977,15 @@ test('$name in a pattern body reads the cell variable, outside texture blocks', 
     assert.deepEqual(warnings, []);
     let sources = Object.values(patterns).map(p => p.source.replace(/\s+/g, ' ').trim());
     assert.deepEqual(sources, [1, 2, 3, 4].map(k =>
-        `texture_0 {:doodle {--k: ${k};--n: 3;--ring-count: 2;} --a: 1; :doodle { width: $a; } } repeat(3 as j) { a: j; } fill: ${k} / 4, (3-1) / 4, 2 / 4;`));
-    let missing = compile('background: @pattern(fill: $nope, 0, 0)');
-    assert.deepEqual(Object.keys(missing.patterns), []);
-    assert.deepEqual(missing.warnings.map(w => w.message), ['unknown variable $nope in @pattern()']);
+        `texture_0 {:doodle {--k: ${k};--n: 3;--ring-count: 2;} :doodle { width: ${k}; } } // $nope is not read repeat(3 as j) { a: j; } fill: ${k} / 4, (3-1) / 4, 2 / 4;`));
+    // a texture block whose whole body is $name draws the stored doodle, as in @shaders
+    let bound = compile('--t: @doodle(@grid: 2; background: red;); background: @pattern(texture_0 { $t } fill: texture(texture_0, uv))');
+    assert.equal(Object.values(bound.patterns)[0].source, 'texture_0 { @grid: 2; background: red; } fill: texture(texture_0, uv)');
+    for (let [code, name] of [['fill: $nope, 0, 0', 'nope'], ['fill: $ring-count', 'ring-count']]) {
+        let missing = compile(`background: @pattern(${code})`);
+        assert.deepEqual(Object.keys(missing.patterns), []);
+        assert.deepEqual(missing.warnings.map(w => w.message), [`unknown variable $${name} in @pattern()`]);
+    }
 });
 
 test('random() in expressions follows the seed on a stream of its own', () => {

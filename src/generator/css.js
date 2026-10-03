@@ -3,7 +3,6 @@ import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLead
 import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
-import parseShaders from '../parser/parse-shaders.js';
 
 import createRandom from '../core/random.js';
 import seedrandom from '../lib/seedrandom.js';
@@ -529,59 +528,31 @@ class Rules {
     }
 
     resolvePaintVars(fname, source, count, node) {
+        source = source.replace(/\btexture\w*\s*\{(?!\s*\$[\w-]+\s*\})/g, m => m + this.injectVariables('', count));
+        if (!/\$[\w-]/.test(source)) return source;
         let group = this.scopedVars(count);
-        let inherit = /\btexture/.test(source) && Object.keys(group).length;
-        if (!inherit && !/\$[\w-]/.test(source)) return source;
         let missing = null;
-        const read = (_, name) => {
-            let rest = '';
+        source = source.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\/|\$([\w-]+)/g, (m, full) => {
+            if (!full) return m;
+            let name = full, rest = '';
             while (group['--' + name] === undefined && name.includes('-')) {
                 rest = name.slice(name.lastIndexOf('-')) + rest;
                 name = name.slice(0, name.lastIndexOf('-'));
             }
             let key = '--' + name;
             if (group[key] === undefined) {
-                missing ??= name;
+                missing ??= full;
                 return '';
             }
             let value = this.readVar(key, count);
             let id = placeholderId(value);
             return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
-        };
-        let parsed;
-        if (fname === 'shaders') {
-            parsed = parseShaders(source);
-            for (let key of ['fragment', 'vertex']) {
-                if (parsed[key]) parsed[key] = parsed[key].replace(/\$([\w-]+)/g, read);
-            }
-            for (let texture of parsed.textures) {
-                texture.value = /^\$[\w-]+$/.test(texture.value)
-                    ? texture.value.replace(/^\$([\w-]+)$/, read)
-                    : this.injectVariables(texture.value, count);
-            }
-        } else {
-            parsed = '';
-            let re = /\btexture\w*\s*\{|\$([\w-]+)/g, m, from = 0;
-            while ((m = re.exec(source))) {
-                let end = re.lastIndex;
-                if (!m[1]) {
-                    for (let depth = 1; depth && end < source.length; end++) {
-                        depth += source[end] === '{' ? 1 : source[end] === '}' ? -1 : 0;
-                    }
-                    re.lastIndex = end;
-                }
-                let open = m.index + m[0].length;
-                parsed += source.slice(from, m.index) + (m[1] ? read(...m)
-                    : m[0] + this.injectVariables(source.slice(open, end - 1), count) + source.slice(end - 1, end));
-                from = end;
-            }
-            parsed += source.slice(from);
-        }
+        });
         if (missing !== null) {
             this.warn(`unknown variable $${missing} in @${fname}()`, node);
             return null;
         }
-        return parsed;
+        return source;
     }
 
     composePaint(fname, source, cell, arg, selector, property, node) {

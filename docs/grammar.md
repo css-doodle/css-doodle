@@ -587,11 +587,12 @@ address every pixel. An animated pattern in `@content` draws each
 frame straight to a canvas; anywhere else it is re-encoded as an image
 every frame, which is several times slower.
 
-`$name` inserts the text of the cell's custom property `--name` when
-the pattern is generated, so `--k: @i` gives each cell its own value
-and `--n: 72` can be a `repeat` count. `$a-b` reads `--a-b` when it is
-defined and subtracts otherwise. `texture…` blocks keep their own `$`.
-A name that is not defined skips the pattern and is reported (§11).
+`$name` inserts the text of the cell's custom property `--name`
+anywhere in the body but its comments when the pattern is generated,
+so `--k: @i` gives each cell its own value and `--n: 72` can be a
+`repeat` count. `$a-b` reads `--a-b` when it is defined and subtracts
+otherwise. A name that is not defined skips the pattern and is
+reported (§11).
 
 **Functions.** GLSL, plus `ramp`, `rand`, `noise`, `fbm`, `voronoi`,
 `hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`, `escape`,
@@ -618,10 +619,11 @@ antialiased over a pixel. Stops are colors or numbers:
 
 **Textures.** A top-level `texture…` block, named as in §9.4, holds a
 doodle rendered at the pattern's size. The doodle sees the cell's
-custom properties, and its own declarations win. `texture(name, p)`
-samples it at `p` from 0 to 1 and gives a `vec4`; it wraps past the
-edges, and `texture(texture_0, uv)` draws it unchanged. The last block
-of a name wins.
+custom properties, and its own declarations win; a block whose whole
+body is `$name` draws the doodle stored in `--name: @doodle(…)`.
+`texture(name, p)` samples it at `p` from 0 to 1 and gives a `vec4`;
+it wraps past the edges, and `texture(texture_0, uv)` draws it
+unchanged. The last block of a name wins.
 
 ```css
 @pattern(
@@ -667,14 +669,14 @@ fragment is compiled with `precision highp float` unless it declares
 its own precision. `pos` is a centered, aspect-correct coordinate:
 the short axis of the canvas is −0.5 to 0.5 and `pos.y` is upward.
 
-`$name` reads the custom property `--name` when the shader is
-generated. In `fragment` and `vertex` it inserts the text of the
-variable, so `--fragment: @raw(...)` can hold GLSL and `--speed:
-@r(1, 3)` can feed an expression. A `texture…` section whose whole
-body is `$name` binds the doodle stored in `--name: @doodle(...)`. A
-name that is not defined skips the shader and is reported (§11). Text
-stored in a variable is one line: keep `//` comments and `#`
-directives in the section itself.
+`$name` inserts the text of the custom property `--name` anywhere in
+the body but its comments when the shader is generated, so
+`--fragment: @raw(...)` can hold GLSL and `--speed: @r(1, 3)` can feed
+an expression. A `texture…` section whose whole body is `$name` draws
+the doodle stored in `--name: @doodle(...)`. A name that is not
+defined skips the shader and is reported (§11). Text stored in a
+variable is one line: keep `//` comments and `#` directives in the
+section itself.
 
 ## 10. Directive values
 
