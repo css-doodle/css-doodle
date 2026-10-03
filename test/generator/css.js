@@ -927,11 +927,23 @@ test('$name in a shaders body reads the variable at generation time', () => {
     let [shader] = Object.values(shaders);
     assert.equal(shader.source.fragment.replace(/\s/g, ''), 'voidmain(){FragColor=vec4(1.);}');
     assert.equal(shader.source.vertex, 'void main(){gl_Position = vec4(2);}');
-    assert.deepEqual(shader.source.textures, [
-        { name: 'texture0', value: '@grid: 8; background: @p(red, blue);' },
-        { name: 'texture1', value: '@grid:2;background:red;' },
-    ]);
+    assert.equal(shader.source.textures[0].value, '@grid: 8; background: @p(red, blue);');
+    // a texture section sees the variables, like @doodle() does
+    assert.match(shader.source.textures[1].value, /^:doodle \{--texture: .*--speed: 2;\}@grid:2;background:red;$/);
     assert.deepEqual(warnings, []);
+});
+
+test('texture doodles see the variables, and their own declarations win', () => {
+    let { shaders, patterns } = compile(`
+        --c: red;
+        background: @shaders(fragment { void main() {} } texture0 { --d: blue; background: @p(--c); });
+        @content: @pattern(texture_0 { background: @p(--c); } fill: texture(texture_0, uv));
+    `);
+    let [shader] = Object.values(shaders);
+    assert.equal(shader.source.textures[0].value, ':doodle {--c: red;}--d:blue;background:@p(--c);');
+    let [pattern] = Object.values(patterns);
+    assert.equal(pattern.source.replace(/\s+/g, ' ').trim(),
+        'texture_0 {:doodle {--c: red;} background: @p(--c); } fill: texture(texture_0, uv)');
 });
 
 test('an unknown $name skips the shader with a warning instead of reaching GLSL', () => {
@@ -947,6 +959,26 @@ test('an unknown $name skips the shader with a warning instead of reaching GLSL'
     // the source stays a string when nothing reads a variable
     let [plain] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { @grid: 2 })').shaders);
     assert.equal(typeof plain.source, 'string');
+});
+
+test('$name in a pattern body reads the cell variable, outside texture blocks', () => {
+    let { patterns, warnings } = compile(`
+        --k: @i;
+        --n: 3;
+        --ring-count: 2;
+        @content: @pattern(
+            texture_0 { --a: 1; :doodle { width: $a; } }
+            repeat($n as j) { a: j; }
+            fill: $k / 4, ($n-1) / 4, $ring-count / 4;
+        );
+    `, '2');
+    assert.deepEqual(warnings, []);
+    let sources = Object.values(patterns).map(p => p.source.replace(/\s+/g, ' ').trim());
+    assert.deepEqual(sources, [1, 2, 3, 4].map(k =>
+        `texture_0 {:doodle {--k: ${k};--n: 3;--ring-count: 2;} --a: 1; :doodle { width: $a; } } repeat(3 as j) { a: j; } fill: ${k} / 4, (3-1) / 4, 2 / 4;`));
+    let missing = compile('background: @pattern(fill: $nope, 0, 0)');
+    assert.deepEqual(Object.keys(missing.patterns), []);
+    assert.deepEqual(missing.warnings.map(w => w.message), ['unknown variable $nope in @pattern()']);
 });
 
 test('random() in expressions follows the seed on a stream of its own', () => {

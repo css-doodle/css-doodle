@@ -228,6 +228,19 @@ test('a color name in an expression is a vec3 literal, a translucent one a vec4'
     assert.deepEqual(messages, ['unknown name foo']);
 });
 
+test('a CSS unit read as a name says that patterns have no units', () => {
+    let messages = [];
+    draw('fill: sin(90deg) + 2px', extra, m => messages.push(m));
+    assert.deepEqual(messages, [
+        'unknown name deg; @pattern has no units, angles are radians',
+        'unknown name px; @pattern has no units, angles are radians',
+    ]);
+    // a declared variable of that name is just a variable
+    messages = [];
+    draw('rad: 2; fill: rad', extra, m => messages.push(m));
+    assert.deepEqual(messages, []);
+});
+
 test('a list may hold vectors; its channels add up to 3 or 4', () => {
     assert.equal(color('fill: red, .5'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
     assert.match(main('c: hsl(x / X, 1, .5); fill: c, rand(i)'), /cssd_color = vec4\(cssd1, rand\(i\)\);/);

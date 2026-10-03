@@ -583,15 +583,23 @@ except in `ramp()` stops.
 | `size`     | the current `size`, `1` until set                          |
 
 Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
-address every pixel.
+address every pixel. An animated pattern in `@content` draws each
+frame straight to a canvas; anywhere else it is re-encoded as an image
+every frame, which is several times slower.
+
+`$name` inserts the text of the cell's custom property `--name` when
+the pattern is generated, so `--k: @i` gives each cell its own value
+and `--n: 72` can be a `repeat` count. `$a-b` reads `--a-b` when it is
+defined and subtracts otherwise. `texture…` blocks keep their own `$`.
+A name that is not defined skips the pattern and is reported (§11).
 
 **Functions.** GLSL, plus `ramp`, `rand`, `noise`, `fbm`, `voronoi`,
 `hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`, `escape`,
-`spiral` and `dither`. A point is one `vec2` or two floats: `fbm(p)`,
-`ngon(p, 6)`. `escape` runs 96 steps with a bailout radius of 16.
-`box(p, b)` is the signed distance to a box of half size `b`, a `vec2`
-or one float, and `segment(p, a, b)` the distance to the segment from
-`a` to `b`. `shape(d, size)` is the mask that `shape: d; size: size`
+`spiral` and `dither`. A point is one `vec2` or two floats:
+`fbm(p)`, `ngon(p, 6)`. `escape` runs 96 steps with a bailout radius
+of 16. `box(p, b)` is the signed distance to a box of half size `b`, a
+`vec2` or one float, and `segment(p, a, b)` the distance to the segment
+from `a` to `b`. `shape(d, size)` is the mask that `shape: d; size: size`
 would apply, 1 inside and 0 outside, for layering: `fill: mix(bg, red,
 shape(d, .6))`; `shape(abs(d), w)` is a stroke of width `w` along
 `d = 0`.
@@ -609,10 +617,11 @@ antialiased over a pixel. Stops are colors or numbers:
 `fill: ramp(dr, #f99a53 .28, #006b50 .28, #00055f .83)`.
 
 **Textures.** A top-level `texture…` block, named as in §9.4, holds a
-doodle rendered at the pattern's size. `texture(name, p)` samples it
-at `p` from 0 to 1 and gives a `vec4`; it wraps past the edges, and
-`texture(texture_0, uv)` draws it unchanged. The last block of a name
-wins.
+doodle rendered at the pattern's size. The doodle sees the cell's
+custom properties, and its own declarations win. `texture(name, p)`
+samples it at `p` from 0 to 1 and gives a `vec4`; it wraps past the
+edges, and `texture(texture_0, uv)` draws it unchanged. The last block
+of a name wins.
 
 ```css
 @pattern(
@@ -651,7 +660,8 @@ texture-name = 'texture' { ASCII-letter | digit | '_' }
 
 A `@shaders` body is either plain GLSL fragment source or a list of
 named sections. A `texture…` section holds a doodle that is rendered
-to an image and bound as the sampler of that name. `//` comments are
+to an image and bound as the sampler of that name; like `@doodle(…)`,
+it sees the cell's custom properties. `//` comments are
 removed, and `#define` lines are kept on their own line. The
 fragment is compiled with `precision highp float` unless it declares
 its own precision. `pos` is a centered, aspect-correct coordinate:
@@ -759,7 +769,8 @@ at most once per component:
 the last top-level `,` are kept. `@keyframes` without a name produces
 nothing.
 
-**While generating.** `@use` cycles skip the variable (§2). Unknown
+**While generating.** `@use` cycles skip the variable (§2). An
+undefined `$name` skips its `@shaders` or `@pattern`. Unknown
 called functions emit as `@name`. Invalid cell selector modifiers match
 nothing. Bad `@svg` `viewBox` counts drop the attribute. Inline
 `defs` with other than one element becomes empty. Bad `draw:` or missing

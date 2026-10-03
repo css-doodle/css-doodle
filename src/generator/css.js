@@ -528,12 +528,17 @@ class Rules {
         return placeholder(id);
     }
 
-    resolveShaderVars(source, count, node) {
-        if (!/\$[\w-]/.test(source)) return source;
-        let parsed = parseShaders(source);
+    resolvePaintVars(fname, source, count, node) {
         let group = this.scopedVars(count);
+        let inherit = /\btexture/.test(source) && Object.keys(group).length;
+        if (!inherit && !/\$[\w-]/.test(source)) return source;
         let missing = null;
         const read = (_, name) => {
+            let rest = '';
+            while (group['--' + name] === undefined && name.includes('-')) {
+                rest = name.slice(name.lastIndexOf('-')) + rest;
+                name = name.slice(0, name.lastIndexOf('-'));
+            }
             let key = '--' + name;
             if (group[key] === undefined) {
                 missing ??= name;
@@ -541,16 +546,39 @@ class Rules {
             }
             let value = this.readVar(key, count);
             let id = placeholderId(value);
-            return (id && this.doodles[id]) ? this.doodles[id].doodle : value;
+            return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
         };
-        for (let key of ['fragment', 'vertex']) {
-            if (parsed[key]) parsed[key] = parsed[key].replace(/\$([\w-]+)/g, read);
-        }
-        for (let texture of parsed.textures) {
-            texture.value = texture.value.replace(/^\$([\w-]+)$/, read);
+        let parsed;
+        if (fname === 'shaders') {
+            parsed = parseShaders(source);
+            for (let key of ['fragment', 'vertex']) {
+                if (parsed[key]) parsed[key] = parsed[key].replace(/\$([\w-]+)/g, read);
+            }
+            for (let texture of parsed.textures) {
+                texture.value = /^\$[\w-]+$/.test(texture.value)
+                    ? texture.value.replace(/^\$([\w-]+)$/, read)
+                    : this.injectVariables(texture.value, count);
+            }
+        } else {
+            parsed = '';
+            let re = /\btexture\w*\s*\{|\$([\w-]+)/g, m, from = 0;
+            while ((m = re.exec(source))) {
+                let end = re.lastIndex;
+                if (!m[1]) {
+                    for (let depth = 1; depth && end < source.length; end++) {
+                        depth += source[end] === '{' ? 1 : source[end] === '}' ? -1 : 0;
+                    }
+                    re.lastIndex = end;
+                }
+                let open = m.index + m[0].length;
+                parsed += source.slice(from, m.index) + (m[1] ? read(...m)
+                    : m[0] + this.injectVariables(source.slice(open, end - 1), count) + source.slice(end - 1, end));
+                from = end;
+            }
+            parsed += source.slice(from);
         }
         if (missing !== null) {
-            this.warn(`unknown variable $${missing} in @shaders()`, node);
+            this.warn(`unknown variable $${missing} in @${fname}()`, node);
             return null;
         }
         return parsed;
@@ -558,10 +586,8 @@ class Rules {
 
     composePaint(fname, source, cell, arg, selector, property, node) {
         let kind = fname === 'shaders' ? 'shader' : 'pattern';
-        if (kind === 'shader') {
-            source = this.resolveShaderVars(source, cell.uid, node);
-            if (source === null) return '';
-        }
+        source = this.resolvePaintVars(fname, source, cell.uid, node);
+        if (source === null) return '';
         let id = this.nextId(kind);
         let special = isSpecialSelector(selector);
         this[kind + 's'][id] = {

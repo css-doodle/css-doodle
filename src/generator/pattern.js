@@ -448,7 +448,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
             if (!known.has(name)) {
                 let rgba = extra.getRgbaColor(name);
                 known.set(name, rgba && channels(rgba));
-                if (!rgba) warn(`unknown name ${name}`);
+                if (!rgba) warn(`unknown name ${name}` + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; @pattern has no units, angles are radians' : ''));
             }
             return known.get(name);
         },
