@@ -3,7 +3,7 @@ import * as acorn from 'acorn';
 const TAGS = ['css', 'glsl'];
 export const TAG_RE = new RegExp(String.raw`\b(?:${TAGS.join('|')})\``);
 
-const GLSL_PUNCT = /[-+*/%<>=!&|?:,;(){}\[\]]/;
+const GLSL_PUNCT = /[-+*/%<>=!&|^?:,;(){}\[\]]/;
 const GLSL_GLUE = /^(\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\^\^|[-+*/%&|^]=|\/[/*])$/;
 
 function cssCollapse(s) {
@@ -16,7 +16,9 @@ function cssCollapse(s) {
 }
 
 function glslSqueeze(line) {
-    return line.replace(/\s+/g, ' ').replace(/(.) (?=(.))/g, (space, before, after) =>
+    return line.replace(/\s+/g, ' ')
+        // 1.0 → 1., 0.5 → .5
+        .replace(/(?<=[^\w.])(\d+\.)0+(?=[^\w.])/g, '$1').replace(/(?<=[^\w.])0\.(?=\d)/g, '.').replace(/(.) (?=(.))/g, (space, before, after) =>
         (GLSL_PUNCT.test(before) || GLSL_PUNCT.test(after)) && !GLSL_GLUE.test(before + after)
             ? before
             : space

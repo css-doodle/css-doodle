@@ -8,7 +8,7 @@ test('glsl template substitutions keep spaces needed between tokens', () => {
         const loop = glsl\`for (float \${counter} = 0.0; \${counter} < \${times}; \${counter}++) { \${body} }\`;
     `);
     let loop = Function('counter', 'times', 'body', `${source}; return loop`)('cssd1', '8.0', 'cssd2 = cssd1;');
-    assert.equal(loop, 'for(float cssd1 =0.0; cssd1 < 8.0; cssd1++){ cssd2 = cssd1; }');
+    assert.equal(loop, 'for(float cssd1 =0.; cssd1 < 8.0; cssd1++){ cssd2 = cssd1; }');
 });
 
 test('glsl # directives keep their own lines, even around substitutions', () => {

@@ -314,7 +314,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         const v = gen(t, 'float');
         let out = gen(valueOf(stops[0]), type);
         for (let i = 1; i <= n; i++) {
-            const a = float(String(at[i - 1])), b = float(String(at[i]));
+            const a = float(at[i - 1]), b = float(at[i]);
             out = `mix(${out}, ${gen(valueOf(stops[i]), type)}, clamp((${v} - ${a}) / max(${b} - ${a}, fwidth(${v}) + 1e-5), 0.0, 1.0))`;
         }
         return out;

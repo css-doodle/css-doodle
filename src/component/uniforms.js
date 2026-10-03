@@ -36,11 +36,11 @@ function regUtime() {
 }
 
 function regUmouse(host, mousex, mousey, mouse) {
-    host.umouseFlags = { mousex, mousey, mouse };
-    let init = !host.umouseFn;
+    host._umouse_flags = { mousex, mousey, mouse };
+    let init = !host._umouse_fn;
     if (init) {
-        host.umouseFn = e => {
-            let { mousex, mousey, mouse } = host.umouseFlags;
+        host._umouse_fn = e => {
+            let { mousex, mousey, mouse } = host._umouse_flags;
             if (mouse) {
                 host._umouse = { x: e.offsetX, y: e.offsetY };
             }
@@ -49,40 +49,40 @@ function regUmouse(host, mousex, mousey, mouse) {
                 host.style.setProperty(umousey, e.offsetY);
             }
         }
-        host.addEventListener('pointermove', host.umouseFn);
+        host.addEventListener('pointermove', host._umouse_fn);
     }
     if (init || (mouse && !host._umouse)) {
-        host.umouseFn({ offsetX: 0, offsetY: 0 });
+        host._umouse_fn({ offsetX: 0, offsetY: 0 });
     }
 }
 
 function offUmouse(host) {
-    if (host.umouseFn) {
+    if (host._umouse_fn) {
         host.style.removeProperty(umousex);
         host.style.removeProperty(umousey);
-        host.removeEventListener('pointermove', host.umouseFn);
-        host.umouseFn = null;
-        host.umouseFlags = null;
+        host.removeEventListener('pointermove', host._umouse_fn);
+        host._umouse_fn = null;
+        host._umouse_flags = null;
         delete host._umouse;
     }
 }
 
 function regUsize(host) {
-    if (!host.usizeObserver) {
-        host.usizeObserver = new ResizeObserver(() => {
+    if (!host._usize_observer) {
+        host._usize_observer = new ResizeObserver(() => {
             let box = host.getBoundingClientRect();
             host.style.setProperty(uwidth, box.width);
             host.style.setProperty(uheight, box.height);
         });
-        host.usizeObserver.observe(host);
+        host._usize_observer.observe(host);
     }
 }
 
 function offUsize(host) {
-    if (host.usizeObserver) {
+    if (host._usize_observer) {
         host.style.removeProperty(uwidth);
         host.style.removeProperty(uheight);
-        host.usizeObserver.unobserve(host);
-        host.usizeObserver = null;
+        host._usize_observer.unobserve(host);
+        host._usize_observer = null;
     }
 }

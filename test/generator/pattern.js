@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import draw from '../../src/generator/pattern.js';
+import { generateFragment } from '../../src/generator/shaders.js';
 
 // emulates the browser's parse-or-null getRgbaColor: values the CSS
 // engine would accept as colors resolve (to red, for easy assertions),
@@ -172,7 +173,8 @@ test('db: distance to the grid boundary', () => {
 test('pos: centered, aspect-correct canvas position', () => {
     assert.equal(color('fill: length(pos)'), 'cssd_color = vec4(vec3(length(pos)), 1.0);');
     assert.equal(color('fill: pos.x + .5'), 'cssd_color = vec4(vec3((pos.x + .5)), 1.0);');
-    assert.match(main('fill: length(pos)'), /vec2 pos = \(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
+    // the shader wrapper defines pos
+    assert.match(generateFragment(shader('fill: length(pos)'), []), /#define pos \(\(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\)\)/);
     // a user pos shadows the built-in; the wrapper then sees no `pos` to define
     assert.match(main('pos: uv; fill: pos.x'), /vec2 cssd1 = uv;\s*cssd_color = vec4\(vec3\(cssd1\.x\), 1\.0\);/);
     assert.doesNotMatch(main('pos: uv; fill: pos.x'), /\bpos\b/);

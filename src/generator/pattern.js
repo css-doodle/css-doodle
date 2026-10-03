@@ -239,7 +239,7 @@ function expr(code, scope, ctx) {
 }
 
 function randAt(scope, ctx) {
-    return `rand(vec2(i, ${scope.key || '0.0'}) + ${float(String(++ctx.sites))} * vec2(0.7548, 0.5698))`;
+    return `rand(vec2(i, ${scope.key || '0.0'}) + ${float(++ctx.sites)} * vec2(0.7548, 0.5698))`;
 }
 
 function generateStatement(name, value, scope, ctx) {
@@ -282,7 +282,7 @@ function generateFill(value, scope, ctx) {
     if (type === 'vec3') return `cssd_color = vec4(${code}, 1.0);\n`;
     if (type === 'vec2') return `cssd_color = vec4(${code}, 0.0, 1.0);\n`;
     if (type === 'bool') code = `float(${code})`;
-    else if (type !== 'float' && type !== 'int') {
+    else if (type !== 'float') {
         ctx.warn(`fill cannot take a ${type}`);
         return '';
     }
@@ -306,7 +306,6 @@ function generateShape(value, scope, ctx) {
 }
 
 function generateSize(value, scope, ctx) {
-    ctx.masked = true;
     let size = asFloat(value, scope, ctx, 'size');
     return size ? `size = ${size};\n` : '';
 }
@@ -415,15 +414,12 @@ function generateBody(tokens, scope, ctx, opts = {}) {
 
 function generateShader({ grid, body, masked }) {
     let usesTime = /(?<![\w.])t\b/.test(body);
-    let usesPos = /(?<![\w.])pos\b/.test(body);
     return glsl`
-    precision highp float;
     precision highp int;
     const float PI = 3.1415926535897932;
     ${HELPERS}
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-        ${usesPos ? 'vec2 pos = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);' : ''}
         float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;

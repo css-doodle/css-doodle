@@ -192,7 +192,7 @@ function createSurface(width, height) {
         if (surface.disposed) return;
         surface.disposed = true;
         surfaces.delete(width + 'x' + height);
-        surface.users.forEach(drawing => drawing.onLost && drawing.onLost());
+        surface.users.forEach(drawing => drawing.onLost());
     });
 
     return surface;
@@ -241,9 +241,9 @@ function releaseSurface(surface, drawing) {
 
 export default function drawShader(shaders, seed, cell, onLost) {
     const dpr = devicePixelRatio || 1;
-    const textures = shaders.textures || [];
+    const { textures } = shaders;
     const vertex = shaders.vertex || DEFAULT_VERTEX_SHADER;
-    const fragment = generateFragment(shaders.fragment || '', textures);
+    const fragment = generateFragment(shaders.fragment, textures);
     const uploaded = textures.map(t => t.value);
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
 
@@ -273,10 +273,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
         textures.forEach((n, i) => {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
-        const uSeed = gl.getUniformLocation(program, 'u_seed');
-        if (uSeed) {
-            gl.uniform2f(uSeed, hash(seed) / 1e16, hash(seed + cell, 1) / 1e16);
-        }
+        gl.uniform2f(gl.getUniformLocation(program, 'u_seed'), hash(seed) / 1e16, hash(seed + cell, 1) / 1e16);
         uniforms = {
             time: gl.getUniformLocation(program, 'u_time'),
             frame: gl.getUniformLocation(program, 'u_frameIndex'),
