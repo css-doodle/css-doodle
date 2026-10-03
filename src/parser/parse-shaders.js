@@ -19,7 +19,7 @@ function parse(input) {
     };
     while (iter.next()) {
         let curr = iter.curr();
-        let name = curr.isSymbol('{') ? textOf(tokens) : '';
+        let name = curr.isSymbol('{') && isIdentifier(tokens[0]?.value) ? textOf(tokens) : '';
         if (isIdentifier(name)) {
             let body = readRaw(iter);
             let texture = name.startsWith('texture');
