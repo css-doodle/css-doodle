@@ -385,6 +385,7 @@ class Rules {
         this.warnings = [];
         this.warned = new Set();
         this.ruleOrder = [];
+        this.hasPlace = false;
         this.cells = [];
         this.bgSized = new Set();
         this.nextId = nextId(this.instance);
@@ -668,7 +669,7 @@ class Rules {
 
         let rule = `${prop}:${value};`
 
-        if (flags.size && !isSpecialSelector(selector)) {
+        if (flags.size && this.hasPlace && !isSpecialSelector(selector)) {
             rule += `--_cell-${prop}:${value};`;
         }
 
@@ -688,6 +689,7 @@ class Rules {
             let transformed = Property[name](value, {
                 // the grid always styles the host
                 isSpecialSelector: name === 'grid' || isSpecialSelector(selector),
+                place: this.hasPlace,
                 grid: cell.grid,
                 maxGrid: env.maxGrid,
                 extra
@@ -799,6 +801,7 @@ class Rules {
                 this.registerKeyframes(token);
             } else if (token.type === 'rule') {
                 this.ruleOrder.push(token);
+                if (/^@(place|place-cell|offset)$/.test(token.property)) this.hasPlace = true;
             } else if (token.type === 'cond' || token.type === 'pseudo') {
                 this.scanTokens(token.styles);
             }

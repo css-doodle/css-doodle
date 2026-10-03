@@ -84,7 +84,7 @@ function formatGap(value) {
 
 const Property = Object.create(null);
 
-Property.size = (value, { isSpecialSelector, grid }) => {
+Property.size = (value, { isSpecialSelector, place, grid }) => {
     let [w, h = w, ratio] = parseValueGroup(value);
     if (isEmpty(w)) return '';
     if (isPreset(w)) {
@@ -101,7 +101,7 @@ Property.size = (value, { isSpecialSelector, grid }) => {
         }
         if (ratio) styles += `aspect-ratio: ${ratio};`;
     }
-    if (!isSpecialSelector) {
+    if (place && !isSpecialSelector) {
         styles += `${iw}:${w};${ih}:${h};`;
     }
     return styles;

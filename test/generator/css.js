@@ -723,11 +723,11 @@ test('conditional group rules scope bare rules to the cell and come last', () =>
     assert.ok(at > all.indexOf('#c-1-1-1 {color:blue;}'));
     let group = all.slice(at);
     for (let expected of [
-        '#c-1-1-1 {color:red;\nwidth:1px;--_cell-width:1px;}',
+        '#c-1-1-1 {color:red;\nwidth:1px;}',
         ':host,.host {--a:1;}',
         'grid {gap:1px;}',
         '#c-1-1-1:after {content:"m";}',
-        '@supports (x: y) {#c-1-1-1 {height:2px;--_cell-height:2px;}}',
+        '@supports (x: y) {#c-1-1-1 {height:2px;}}',
     ]) {
         assert.ok(group.includes(expected), expected);
     }
@@ -785,7 +785,7 @@ test('the same text in every cell prints once for all cells', () => {
         `:is(cell,#_) {background:${gradient};\n--g:${gradient};\nborder-radius:50%;}`
     );
     assert.equal(cells('&:hover { color: red }', '2x2'), ':is(cell,#_):hover {color:red;}');
-    assert.equal(cells('width: 1px', '2x1'), ':is(cell,#_) {width:1px;--_cell-width:1px;}');
+    assert.equal(cells('width: 1px', '2x1'), ':is(cell,#_) {width:1px;}');
 });
 
 test('a static @shape polygon prints once per selector', () => {
@@ -853,7 +853,7 @@ test('rules inside a group at-rule print once under its prelude, laid out like t
         '@media (x) {#c-1-1-1 {color:red;}#c-2-1-1 {color:blue;}}');
     // the same prelude written twice is one block, rules in source order
     assert.equal(cells('@media (x) { color: red; } @media (x) { @nth(1) { width: 1px; } }', '2x1'),
-        '@media (x) {:is(cell,#_) {color:red;}#c-1-1-1 {width:1px;--_cell-width:1px;}}');
+        '@media (x) {:is(cell,#_) {color:red;}#c-1-1-1 {width:1px;}}');
     // a prelude composed per cell keeps a block of its own
     assert.equal(cells('@media (min-width: @calc(@i * 10)px) { color: red; }', '2x1'),
         '@media (min-width: 10px) {#c-1-1-1 {color:red;}}\n@media (min-width: 20px) {#c-2-1-1 {color:red;}}');
