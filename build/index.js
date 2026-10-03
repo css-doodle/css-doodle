@@ -27,6 +27,7 @@ const { metafile, outputFiles } = await esbuild.build({
     platform: 'browser',
     metafile: true,
     minify: true,
+    mangleProps: /^_/,
     plugins: [collapseTaggedTemplates],
 });
 
@@ -40,9 +41,7 @@ const { code } = await swc.minify(outputFiles[0].text, {
         unsafe_proto: true,
         unsafe_arrows: true
     },
-    mangle: {
-        props: { regex: '^_' },
-    },
+    mangle: true,
     format: {
         asciiOnly: true,
     },
