@@ -24,10 +24,10 @@ function parse(input, option = {}) {
     let quote = 0;
     for (let i = 0; i < tokens.length; i++) {
         let curr = tokens[i];
-        if (curr.isSymbol('(')) paren++;
-        if (curr.isSymbol(')')) paren = Math.max(0, paren - 1);
         if (curr.status === 'open') quote++;
         if (curr.status === 'close') quote = Math.max(0, quote - 1);
+        if (!quote && curr.isSymbol('(')) paren++;
+        if (!quote && curr.isSymbol(')')) paren = Math.max(0, paren - 1);
         let top = !paren && !quote;
         if (top && curr.isSpace()) {
             if (!buf.length) continue;

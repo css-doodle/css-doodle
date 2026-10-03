@@ -62,3 +62,8 @@ test('a symbol with a max count stops splitting after it', () => {
     assert.deepEqual(group('1 / 2 / 3'), ['1', '2', '3']);
     assert.deepEqual(group('1 / 2 / 3 / 4'), ['1', '2', '3 / 4']);
 });
+
+test('parens inside quotes do not group', () => {
+    assert.deepEqual(parseValueGroup('"(", a'), ['"("', 'a']);
+    assert.deepEqual(parseValueGroup('f("("), b'), ['f("(")', 'b']);
+});
