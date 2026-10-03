@@ -10,8 +10,8 @@ import { debounce } from '../lib/fn.js';
 import { doodleToImage, svgUrl, frameSvg } from './doodle-image.js';
 
 export const draw = {
-    shader: (host, value) => shaderToImage(host, value),
-    pattern: (host, value) => patternToImage(host, value),
+    shader: shaderToImage,
+    pattern: patternToImage,
     url: safariImage,
 };
 
@@ -33,7 +33,7 @@ function patternToImage(host, pattern) {
     return shaderToImage(host, { ...pattern, name, source });
 }
 
-export async function shaderToImage(host, { source, cell, id, arg, target, compiled, name = '@shaders' }) {
+async function shaderToImage(host, { source, cell, id, arg, target, compiled, name = '@shaders' }) {
     // restamping the sheet resolves its placeholders again; a rendered shader stays
     if (host.shaderRenders.has(id)) return;
     let elements;
@@ -48,9 +48,6 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
     let element = elements[0];
 
     let fixed = arg ? parseGrid(arg, Infinity) : null;
-    if (fixed && !(fixed.x && fixed.y)) {
-        fixed = null;
-    }
     const measure = () => fixed
         ? { width: fixed.x, height: fixed.y }
         : element.getBoundingClientRect();
@@ -61,10 +58,6 @@ export async function shaderToImage(host, { source, cell, id, arg, target, compi
     let textures = [];
 
     const tick = drawing => {
-        if (host._generation !== generation) {
-            drawing.dispose();
-            return;
-        }
         drawing.draw(0, width, height, host._umouse, textures);
 
         let present;

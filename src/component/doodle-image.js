@@ -86,11 +86,9 @@ export async function doodleToImage(host, code, options) {
     let { width, height } = options;
     if (options.arg) {
         let v = parseGrid(options.arg, Infinity);
-        if (v.x && v.y) {
-            width = v.x + 'px';
-            height = v.y + 'px';
-            viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
-        }
+        width = v.x + 'px';
+        height = v.y + 'px';
+        viewBox = `viewBox="0 0 ${v.x} ${v.y}"`;
     }
     let size = (width && height)
         ? `width="${width}" height="${height}"`
@@ -112,7 +110,7 @@ export async function doodleToImage(host, code, options) {
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
                 ${smilTick(sheet)}
                 <foreignObject width="100%" height="100%">
-                    <div class="host" width="100%" height="100%" ${NSXHtml}>
+                    <div class="host" ${NSXHtml}>
                         <style>${cdata(sheet)}</style>
                         ${markup}
                     </div>

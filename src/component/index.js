@@ -512,22 +512,14 @@ if (typeof HTMLElement !== 'undefined') {
             }
         }
 
+        // a render that was replaced while waiting must not write its styles
         setStyle(input) {
-            if (input instanceof Promise) {
-                // a render that was replaced while waiting must not write its styles
-                let generation = this._generation;
-                this._styleReady = input.then(v => {
-                    if (this._generation === generation) {
-                        this.setStyle(v);
-                    }
-                }).catch(console.error);
-            } else {
-                const el = this.shadowRoot.querySelector('style');
-                if (el) {
-                    el.textContent = input.replace(/\n\s+/g, ' ');
+            let generation = this._generation;
+            this._styleReady = input.then(sheet => {
+                if (this._generation === generation) {
+                    this.shadowRoot.querySelector('style').textContent = sheet.replace(/\n\s+/g, ' ');
                 }
-                this._styleReady = Promise.resolve();
-            }
+            }).catch(console.error);
         }
 
         reflow() {

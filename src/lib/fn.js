@@ -27,6 +27,6 @@ export function nextId(scope = '') {
     return (prefix = '') => `${prefix}${scope}-${++id}`;
 }
 
-export function uniqueId(prefix = '') {
-    return prefix + Math.random().toString(32).slice(2);
+export function uniqueId() {
+    return Math.random().toString(32).slice(2);
 }

@@ -3,7 +3,7 @@ export function cellId(x, y, z) {
 }
 
 export function isTreeGrid(grid) {
-    return !!grid && grid.z > 1 && grid.x * grid.y > 1;
+    return grid.z > 1 && grid.x * grid.y > 1;
 }
 
 export function cellMetrics(x, y, grid) {

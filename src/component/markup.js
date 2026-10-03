@@ -4,7 +4,7 @@ import { hasEntries } from '../lib/type.js';
 import { css } from '../lib/tagged-template.js';
 
 export function getBasicStyles(grid) {
-    let { x, y } = grid || {};
+    let { x, y } = grid;
     return css`
     *,*::after,*::before,:host,.host {
         box-sizing: border-box;
@@ -77,7 +77,7 @@ function treeStyles({ x, y }) {
 const EMBEDDED_CONTENT = /^\$\{(shader|pattern)/;
 
 export function createGrid(gridObj, compiled) {
-    let { x, y, z } = gridObj || {};
+    let { x, y, z } = gridObj;
     let { content, styles } = compiled;
     let shared = isTreeGrid(gridObj);
     let open = shared ? '<cell class="c-' : '<cell id="c-';

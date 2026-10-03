@@ -1,18 +1,9 @@
 import parseCss from '../parser/parse-css.js';
+import { memo } from '../lib/cache.js';
 
-const parseCache = new Map();
+// only @use reads the element's variables while parsing
+const parseCached = memo(code => parseCss(code));
 
 export function parseCssCached(code, extra) {
-    if (code.includes('@use')) {
-        return parseCss(code, extra);
-    }
-    let parsed = parseCache.get(code);
-    if (!parsed) {
-        if (parseCache.size >= 4096) {
-            parseCache.clear();
-        }
-        parsed = parseCss(code, extra);
-        parseCache.set(code, parsed);
-    }
-    return parsed;
+    return code.includes('@use') ? parseCss(code, extra) : parseCached(code);
 }

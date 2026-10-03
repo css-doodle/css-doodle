@@ -23,9 +23,6 @@ export function getRgbaColor(root, value) {
         return null;
     }
     let element = root.querySelector('style');
-    if (!element) {
-        return [0, 0, 0, 1];
-    }
     element.style.color = `color-mix(in srgb, ${value} 100%, transparent)`;
     let [r, g, b, a = 1] = getComputedStyle(element).color.match(/-?[\d.]+/g).map(Number);
     return [r, g, b, a];
