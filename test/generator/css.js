@@ -1002,3 +1002,9 @@ test('a lone $(name) evaluates its value once', () => {
     let read = code => cells(code, '3', 7).match(/width:[\d.]+/g).join();
     assert.equal(read('--a: random(); width: $(a);'), read('--a: random(); width: $(a * 1);'));
 });
+
+test('@svg-polygon inside @m reads the sequence @n', () => {
+    let all = decodeURIComponent(css('background: @m(2, @svg-polygon(split: @n(+2)))'));
+    assert.ok(all.includes('points="1 0,-0.5 -0.866025403784,-0.5 0.866025403784"'));
+    assert.ok(all.includes('points="1 0,0 -1,-1 0,0 1"'));
+});

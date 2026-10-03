@@ -680,10 +680,7 @@ Function['svg-pattern'] = lazy((_, env, position, ...args) => {
     return composeSvgPatternUrl(value);
 });
 
-Function['svg-polygon'] = lazy((cell, env, position, ...args) => {
-    let commands = args.map(input => getValue(input())).join(',');
-    return composeSvgPolygonUrl(commands);
-});
+Function['svg-polygon'] = () => (...args) => composeSvgPolygonUrl(args.join(','));
 
 Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGradient('linearGradient', args));
 
