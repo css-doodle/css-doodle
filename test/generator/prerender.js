@@ -185,3 +185,9 @@ test('a still sized nested doodle is framed, an animated one is left for the run
     let unsized = await prerender('@grid: 1; background: @doodle(background: red);', { seed: 1 });
     assert.doesNotMatch(shadowStyle(unsized.html), /%3Cimage /);
 });
+
+test('a cssd-paused attribute renders the paused sheet', async () => {
+    let code = '@grid: 1 / 100px; background: @doodle(@grid: 2; background: red);';
+    let { html } = await prerender(code, { seed: 1, attributes: { 'cssd-paused': '' } });
+    assert.match(html, /background:url\("data:image\/svg\+xml/);
+});

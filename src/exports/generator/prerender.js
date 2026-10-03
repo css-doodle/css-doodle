@@ -81,6 +81,7 @@ export default async function prerender(code = '', options = {}) {
         getMaxGrid: () => maxGrid,
         report: list => warnings.push(...list),
         hasAttribute: name => name in attributes,
+        clockNow: () => 0,
         _clock: { base: 0, since: 0 },
         draw: { shader: skip, pattern: skip, url },
     };
