@@ -366,11 +366,3 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     if (peek()) report(`unexpected ${peek().value}`);
     return { type: infer(tree), code: exp => gen(tree, exp) };
 }
-
-export default function transform(code, { expect = null, type = false, ...opts } = {}) {
-    try {
-        const e = compile(code, opts);
-        return type ? e.type : e.code(expect);
-    }
-    catch (e) { console.error(e); return code; }
-}

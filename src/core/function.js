@@ -306,10 +306,10 @@ const flipVPath = transformPath(1, 0, 0, -1);
 const flipPath = transformPath(-1, 0, 0, -1);
 const invertPath = transformPath(0, 1, 1, 0);
 
-function tryDecode(raw, decode) {
+function tryDecode(raw) {
     let cut = raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")'));
     try {
-        return decode(cut);
+        return decodeURIComponent(cut);
     } catch (e) {
         return raw;
     }
@@ -666,21 +666,13 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
     }
     let markup = normalizeSvg(value);
     let rules = env.rules;
-    let id = rules.filterIds?.get(markup);
-    if (id) {
-        return `url(#${ id })`;
-    }
-    id = rules.nextId('filter');
-    let svg = markup.replace(
-        /<filter([\s>])/,
-        `<filter id="${ id }"$1`
-    );
-    if (rules.filters) {
-        rules.filters[id] = svg;
+    let id = rules.filterIds.get(markup);
+    if (!id) {
+        id = rules.nextId('filter');
+        rules.filters[id] = markup.replace(/<filter([\s>])/, `<filter id="${ id }"$1`);
         rules.filterIds.set(markup, id);
-        return `url(#${ id })`;
     }
-    return createSvgUrl(svg, id);
+    return `url(#${ id })`;
 });
 
 Function['svg-pattern'] = lazy((_, env, position, ...args) => {
@@ -710,18 +702,11 @@ Function.raw = (cell, { rules }) => {
     return (...args) => {
         let raw = args.join(',');
         let id = placeholderId(raw);
-        if (id && rules.doodles?.[id]) {
+        if (id && rules.doodles[id]) {
             return `<css-doodle>${rules.doodles[id].doodle}</css-doodle>`
         }
         if (raw.startsWith('url("data:image/svg+xml;utf8')) {
-            return tryDecode(raw, decodeURIComponent);
-        }
-        if (raw.startsWith('url("data:image/svg+xml;base64')) {
-            return tryDecode(raw, atob);
-        }
-        // future forms
-        if (raw.startsWith('url("data:image/png;base64')) {
-            return `<img src="${raw}" alt="" />`;
+            return tryDecode(raw);
         }
         return raw;
     }

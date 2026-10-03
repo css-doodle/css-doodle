@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import transform from '../../src/generator/glsl-math-transformer.js';
+import { compile } from '../../src/generator/glsl-math-transformer.js';
+
+const transform = (code, { expect = null, type = false, ...opts } = {}) => {
+    const e = compile(code, opts);
+    return type ? e.type : e.code(expect);
+};
 
 test('arithmetic: integers become floats, every operation is parenthesized', () => {
     assert.equal(transform('x * y'), '(x * y)');

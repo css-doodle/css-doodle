@@ -2,6 +2,7 @@
 // Translated from: https://mrl.nyu.edu/~perlin/noise/
 
 import { lerp } from './math.js';
+import { shuffle } from './list.js';
 
 // Perlin's permutation of 0…255 (151, 160, 137, 91, 90, 15, …), base64 encoded
 const map = Uint8Array.from(atob(
@@ -12,18 +13,6 @@ const map = Uint8Array.from(atob(
 
 function fade(t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
-function shuffle(arr, random) {
-    let ret = [...arr];
-    let m = arr.length;
-    while (m) {
-        let i = ~~(random() * m--);
-        let t = ret[m];
-        ret[m] = ret[i];
-        ret[i] = t;
-    }
-    return ret;
 }
 
 // Convert LO 4 bits of hash code into 12 gradient directions, at z = 0.

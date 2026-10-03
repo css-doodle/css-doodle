@@ -1,5 +1,6 @@
 import { utime, UTime } from '../core/uniforms.js';
 import { isTreeGrid } from '../lib/cell.js';
+import { hasEntries } from '../lib/type.js';
 import { css } from '../lib/tagged-template.js';
 
 export function getBasicStyles(grid) {
@@ -75,18 +76,13 @@ function treeStyles({ x, y }) {
 
 const EMBEDDED_CONTENT = /^\$\{(shader|pattern)/;
 
-function hasKeys(obj) {
-    for (let k in obj) return true;
-    return false;
-}
-
 export function createGrid(gridObj, compiled) {
     let { x, y, z } = gridObj || {};
     let { content, styles } = compiled;
     let shared = isTreeGrid(gridObj);
     let open = shared ? '<cell class="c-' : '<cell id="c-';
     let key = shared ? '.c-' : '#c-';
-    let hasContent = hasKeys(content);
+    let hasContent = hasEntries(content);
     let child = '';
     for (let k = z; k >= 1; k--) {
         let lookup = hasContent && !(shared && child);

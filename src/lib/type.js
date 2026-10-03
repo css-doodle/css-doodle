@@ -10,6 +10,11 @@ export function isEmpty(value) {
     return isNil(value) || value === '';
 }
 
+export function hasEntries(obj) {
+    for (let _ in obj) return true;
+    return false;
+}
+
 export function isLetter(c) {
     return /^[a-zA-Z]$/.test(c);
 }

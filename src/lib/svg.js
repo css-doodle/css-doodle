@@ -8,9 +8,8 @@ export function cdata(text) {
 
 export const FilterHolderStyle = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
 
-export function createSvgUrl(svg, id) {
-    let encoded = encodeURIComponent(svg) + (id ? `#${ id }` : '');
-    return `url("data:image/svg+xml;utf8,${ encoded }")`;
+export function createSvgUrl(svg) {
+    return `url("data:image/svg+xml;utf8,${ encodeURIComponent(svg) }")`;
 }
 
 export function normalizeSvg(input) {

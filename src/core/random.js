@@ -1,5 +1,6 @@
 import seedrandom from '../lib/seedrandom.js';
 import { lerp } from '../lib/math.js';
+import { shuffle as shuffleBy } from '../lib/list.js';
 
 export default function createRandom(seed) {
     let random = (typeof seed === 'function') ? seed : seedrandom(String(seed));
@@ -21,15 +22,7 @@ export default function createRandom(seed) {
     }
 
     function shuffle(arr) {
-        let ret = [...arr];
-        let m = arr.length;
-        while (m) {
-            let i = ~~(random() * m--);
-            let t = ret[m];
-            ret[m] = ret[i];
-            ret[i] = t;
-        }
-        return ret;
+        return shuffleBy(arr, random);
     }
 
     return {
