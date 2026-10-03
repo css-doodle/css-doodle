@@ -199,7 +199,8 @@ if (typeof HTMLElement !== 'undefined') {
                 }
             } else if (name === 'auto:update') {
                 if (newValue !== null) {
-                    this.autoUpdate();
+                    // before the first load, load() starts the timer
+                    if (this.compiled) this.autoUpdate();
                 } else {
                     this.cancelAutoUpdate();
                 }
