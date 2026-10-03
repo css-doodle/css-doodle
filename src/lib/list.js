@@ -1,11 +1,10 @@
 import { isNil } from './type.js';
 
-export function join(arr, splitter = '\n') {
-    return (arr || []).join(splitter);
+export function join(arr) {
+    return arr.join('\n');
 }
 
 export function last(arr) {
-    if (isNil(arr)) return;
     return arr[arr.length - 1];
 }
 

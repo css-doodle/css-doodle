@@ -1,3 +1,5 @@
+import { last } from '../lib/list.js';
+
 const symbols = ':;,()[]{}π±+-*/%"\'`@=^ß_<>&|!?~≤≥≠∆';
 const spacingIgnoredSymbols = new Set(':;,{}()[]');
 
@@ -145,16 +147,6 @@ function readNumber(input, i) {
     return j;
 }
 
-function readHexNumber(input, i) {
-    let j = i + 3;
-    while (isHexCode(input.charCodeAt(j))) j++;
-    return j;
-}
-
-function last(array) {
-    return array[array.length - 1];
-}
-
 function scan(source, options = {}) {
     let input = String(source);
     let len = input.length;
@@ -195,7 +187,8 @@ function scan(source, options = {}) {
             i = found === -1 ? len : found;
         }
         else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
-            let end = readHexNumber(input, i);
+            let end = i + 3;
+            while (isHexCode(input.charCodeAt(end))) end++;
             tokens.push(new Token('Number', '0x' + input.slice(i + 2, end), pos, index));
             i = end;
         }
