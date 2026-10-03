@@ -175,7 +175,7 @@ function scan(source, options = {}) {
         let next = input.charCodeAt(i + 1);
 
         if (!quote && curr === 47 && next === 42 /* slash-star */) {
-            let found = input.indexOf('*/', i + 1);
+            let found = input.indexOf('*/', i + 2);
             let end = found === -1 ? len : found + 2;
             for (let n = input.indexOf('\n', i + 2); n !== -1 && n < end; n = input.indexOf('\n', n + 1)) {
                 row++;

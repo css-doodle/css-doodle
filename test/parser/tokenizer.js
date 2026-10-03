@@ -391,3 +391,7 @@ test('index points at the first char of the token in the untrimmed source', () =
         prev = t.index;
     }
 });
+
+test('a comment does not close on the star that opens it', () => {
+    assert.deepEqual(scan('a /*/ b */ c').map(t => t.value), ['a', ' ', 'c']);
+});
