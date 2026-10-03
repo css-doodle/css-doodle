@@ -45,10 +45,9 @@ class Token {
         this.pos = pos;
         this.index = index;
     }
-    // no argument: any symbol; an array or up to three values: one of them
+    // no argument: any symbol; up to three values: one of them
     isSymbol(a, b, c) {
         if (a === undefined) return this.type == 'Symbol';
-        if (Array.isArray(a)) return a.includes(this.value);
         return this.value === a || this.value === b || this.value === c;
     }
     isSpace() {
