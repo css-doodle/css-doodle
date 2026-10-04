@@ -201,6 +201,11 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     // a single point sits at the middle of the shape
     let [cx, cy] = xy(Function.plot.scatter(cell(1), env)('r: 1'));
     assert.ok(Math.abs(cx - 50) < .5 && Math.abs(cy - 50) < .5, `${cx} ${cy}`);
+    // `fill: evenodd` leaves the centre of a pentagram empty, as @shape does
+    let pentagram = 'split: 5; turn: 2; points: 200';
+    let centre = list => list.map(xy).filter(([x, y]) => Math.hypot(x - 50, y - 50) < 15).length;
+    assert.ok(centre(Function.plot.scatter(cell(4), env)(pentagram)) > 10);
+    assert.equal(centre(Function.plot.scatter(cell(4), env)(pentagram + '; fill: evenodd')), 0);
     // a shape without an inside has no points, and does not hang
     assert.equal(Function.plot.scatter(cell(4), env)('points: 12; x: 0; y: 0').length, 0);
     let start = performance.now();

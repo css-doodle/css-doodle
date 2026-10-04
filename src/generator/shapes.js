@@ -8,7 +8,7 @@ import { isEmpty } from '../lib/type.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 
-const { cos, sin, atan2, sqrt, ceil, min, max, PI } = Math;
+const { cos, sin, atan2, sqrt, ceil, floor, min, max, PI } = Math;
 
 const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
@@ -122,72 +122,81 @@ function createPointFunction(props, split) {
     };
 }
 
-function insideTest(outline, y0, h) {
+function insideTest(outline, y0, h, evenodd) {
     let bands = Array.from({ length: SCATTER_BANDS }, () => []);
     let band = y => min(SCATTER_BANDS - 1, (y - y0) / h * SCATTER_BANDS | 0);
     for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
         let [ax, ay] = outline[j], [bx, by] = outline[i];
         for (let r = band(min(ay, by)); r <= band(max(ay, by)); ++r) {
-            bands[r].push([ax, ay, bx, by]);
+            bands[r].push(ax, ay, bx, by);
         }
     }
     return (x, y) => {
-        let n = 0;
-        for (let [ax, ay, bx, by] of bands[band(y)]) {
+        let n = 0, edges = bands[band(y)];
+        for (let i = 0; i < edges.length; i += 4) {
+            let ax = edges[i], ay = edges[i + 1], bx = edges[i + 2], by = edges[i + 3];
             if ((ay <= y) != (by <= y) && x < ax + (y - ay) * (bx - ax) / (by - ay)) {
                 n += by > ay ? 1 : -1;
             }
         }
-        return n;
+        return evenodd ? n & 1 : n;
     };
 }
 
-function scatter(outline, count) {
+function scatter(outline, count, evenodd) {
     let xs = outline.map(p => p[0]), ys = outline.map(p => p[1]);
     let x0 = min(...xs), y0 = min(...ys);
     let w = max(...xs) - x0, h = max(...ys) - y0;
-    let inside = insideTest(outline, y0, h);
-    let total = max(1024, SCATTER_SAMPLES * count), samples = [], tried = 0;
-    for (; samples.length < total && tried < (samples.length ? total * 100 : 1e3); ++tried) {
-        let x = x0 + (.5 + tried * .7548776662) % 1 * w;
-        let y = y0 + (.5 + tried * .5698402909) % 1 * h;
-        if (inside(x, y)) samples.push([x, y]);
+    let inside = insideTest(outline, y0, h, evenodd);
+    let total = max(1024, SCATTER_SAMPLES * count);
+    let sx = new Float64Array(total), sy = new Float64Array(total), n = 0, tried = 0;
+    // quasi-random R2 samples over the box, kept when inside the shape
+    for (; n < total && tried < (n ? total * 100 : 1e3); ++tried) {
+        let u = .5 + tried * .7548776662, v = .5 + tried * .5698402909;
+        let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
+        if (inside(x, y)) sx[n] = x, sy[n++] = y;
     }
-    let points = samples.slice(0, count);
-    let size = sqrt(w * h * samples.length / tried / count) || 1;
+    // the first samples are the initial points
+    let m = min(count, n);
+    let px = sx.slice(0, m), py = sy.slice(0, m);
+    let size = sqrt(w * h * n / tried / count) || 1;
     let cols = ceil(w / size) || 1, rows = ceil(h / size) || 1;
     let col = x => min(cols - 1, (x - x0) / size | 0);
     let row = y => min(rows - 1, (y - y0) / size | 0);
-    let head = new Int32Array(cols * rows), next = new Int32Array(count);
+    let head = new Int32Array(cols * rows), next = new Int32Array(m);
+    let sums = new Float64Array(m * 3);
     for (let r = 0; r < SCATTER_ROUNDS; ++r) {
         head.fill(-1);
-        let sums = points.map(([x, y], k) => {
-            let c = col(x) + cols * row(y);
+        sums.fill(0);
+        for (let k = 0; k < m; ++k) {
+            let c = col(px[k]) + cols * row(py[k]);
             next[k] = head[c];
             head[c] = k;
-            return [0, 0, 0];
-        });
-        for (let [x, y] of samples) {
+        }
+        for (let s = 0; s < n; ++s) {
+            let x = sx[s], y = sy[s];
             let cx = col(x), cy = row(y), near = -1, best = Infinity;
             for (let ring = 1; near < 0; ++ring) {
                 for (let j = max(0, cy - ring); j <= min(rows - 1, cy + ring); ++j) {
                     for (let i = max(0, cx - ring); i <= min(cols - 1, cx + ring); ++i) {
                         for (let k = head[i + cols * j]; k >= 0; k = next[k]) {
-                            let d = (x - points[k][0]) ** 2 + (y - points[k][1]) ** 2;
+                            let d = (x - px[k]) ** 2 + (y - py[k]) ** 2;
                             if (d < best) best = d, near = k;
                         }
                     }
                 }
             }
-            let s = sums[near];
-            s[0] += x; s[1] += y; s[2]++;
+            near *= 3;
+            sums[near] += x;
+            sums[near + 1] += y;
+            sums[near + 2]++;
         }
-        points = points.map((p, k) => {
-            let [x, y, n] = sums[k];
-            return n && inside(x /= n, y /= n) ? [x, y] : p;
-        });
+        for (let k = 0; k < m; ++k) {
+            let c = sums[k * 3 + 2], x = sums[k * 3] / c, y = sums[k * 3 + 1] / c;
+            if (c && inside(x, y)) px[k] = x, py[k] = y;
+        }
     }
-    return points.sort((a, b) => b[1] - a[1]);
+    return Array.from(px, (x, k) => [x, py[k]]).sort((a, b) => b[1] - a[1]);
 }
 
 function createShapePoints(props, {min, max}) {
@@ -242,7 +251,7 @@ function createShapePoints(props, {min, max}) {
         for (let i = 0; i < split; ++i) {
             outline.push(point(rad * i, i));
         }
-        scatter(outline, props.scatter).forEach(add);
+        scatter(outline, props.scatter, fill == 'evenodd').forEach(add);
         return points;
     }
 

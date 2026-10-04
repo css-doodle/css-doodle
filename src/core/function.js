@@ -185,17 +185,19 @@ function seq(token, make) {
 function createPlot(unit, scatter) {
     let plot = memo((commands, max) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
-            delete rules['fill'];
             delete rules['frame'];
             if (scatter) {
                 let count = parseInt(rules.points);
                 rules.hasPoints = count > 0;
                 rules.scatter = clamp(rules.hasPoints ? count : max, 1, MAX_SCATTER);
                 rules.points = rules.split || SCATTER_OUTLINE;
-            } else if (!preset && (rules.split || rules.points)) {
-                rules.hasPoints = true;
             } else {
-                rules.points = max;
+                delete rules['fill'];
+                if (!preset && (rules.split || rules.points)) {
+                    rules.hasPoints = true;
+                } else {
+                    rules.points = max;
+                }
             }
             if (unit) {
                 rules.unit = rules.unit || 'none';
