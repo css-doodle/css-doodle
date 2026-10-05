@@ -39,9 +39,6 @@ export function removeParens(text) {
 }
 
 export function getValue(input) {
-    if (typeof input === 'string' || typeof input === 'number') {
-        return input;
-    }
     if (input && typeof input === 'object' && 'value' in input) {
         return input.value ?? '';
     }

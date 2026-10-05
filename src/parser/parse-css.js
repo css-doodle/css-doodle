@@ -654,7 +654,7 @@ function parseUse(cur) {
 
 function parseBlockBody(cur, top) {
     let styles = [];
-    let brace = cur.peek(-1);
+    let open = cur.peek(-1);
     while (!cur.end()) {
         let tok = cur.peek();
         if (tok.isSpace() || tok.isSymbol(';')) {
@@ -691,7 +691,7 @@ function parseBlockBody(cur, top) {
         }
     }
     if (!top) {
-        warn(cur.ctx, 'unclosed {', brace.pos);
+        warn(cur.ctx, 'unclosed {', open.pos);
     }
     return styles;
 }
