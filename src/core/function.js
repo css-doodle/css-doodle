@@ -190,15 +190,16 @@ function createPlot(unit, scatter, tile) {
             delete rules['frame'];
             if (scatter) {
                 let count = parseInt(rules.points);
+                rules.split = rules.split || SCATTER_OUTLINE;
+                delete rules.points;
                 if (isEmpty(rules.seed)) {
                     rules.seed = Math.floor(seedrandom('scatter:' + seed)() * 1e4);
                 }
                 rules.tile = tile;
                 rules.hasPoints = count > 0 && !tile;
-                rules.count = max;
                 let points = tile == 'delaunay' ? Math.ceil(max / 2 + Math.sqrt(max)) : max;
                 rules.scatter = clamp(count > 0 ? count : points, 1, MAX_SCATTER);
-                rules.points = rules.split || SCATTER_OUTLINE;
+                rules.count = max;
             } else {
                 delete rules['fill'];
                 if (!preset && (rules.split || rules.points)) {

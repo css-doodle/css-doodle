@@ -156,7 +156,7 @@ function scatter(outline, count, evenodd, seed, density) {
     let total = max(1024, SCATTER_SAMPLES * count);
     let sx = new Float64Array(total), sy = new Float64Array(total), n = 0, tried = 0;
     let rnd = seedrandom('density:' + seed), peak = 0;
-    for (let i = 0; density && i < 1024; ++i) {
+    if (density) for (let i = 0; i < 1024; ++i) {
         let x = x0 + (i % 32 + .5) / 32 * w, y = y0 + ((i >> 5) + .5) / 32 * h;
         if (inside(x, y)) peak = max(peak, density(x, y));
     }
@@ -282,8 +282,6 @@ function regular(cx, cy, k, r, angle) {
     return out;
 }
 
-// centres of a lattice of k-gons (6 hex, 3 triangles) anchored at the box centre, reaching
-// a tile past `bounds`, each with the angle of its first vertex
 function lattice(k, box, bounds, s) {
     let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
     let h = s * sqrt(3) / 2, out = [];
@@ -298,6 +296,65 @@ function lattice(k, box, bounds, s) {
         }
     }
     return out;
+}
+
+function delaunay(px, py, box, inside, count, gap) {
+    let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0;
+    let tris = [];
+    voronoi(px, py, x0 - w, y0 - h, x1 + w, y1 + h, 0).forEach(([, ids], k) => {
+        for (let i = 0, n = ids.length; i < n; ++i) {
+            let a = ids[i], b = ids[(i + 1) % n];
+            if (a < k || b < k) continue;
+            let cx = (px[k] + px[a] + px[b]) / 3, cy = (py[k] + py[a] + py[b]) / 3;
+            if (inside(cx, cy)) tris.push([k, a, b, cx, cy]);
+        }
+    });
+    let d = (p, q) => (px[p] - px[q]) ** 2 + (py[p] - py[q]) ** 2;
+    let twice = (k, a, b) => (px[a] - px[k]) * (py[b] - py[k]) - (px[b] - px[k]) * (py[a] - py[k]);
+    let r2 = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
+    let sorted = tris.map(r2).sort((u, v) => u - v);
+    let keep = min(sorted[sorted.length >> 1] * 9, sorted[count - 1] ?? Infinity);
+    return tris.filter(t => r2(t) <= keep).slice(0, count).map(([k, a, b, cx, cy]) => {
+        let tri = [px[k], py[k], px[a], py[a], px[b], py[b]];
+        if (gap) {
+            let la = sqrt(d(a, b)), lb = sqrt(d(b, k)), lc = sqrt(d(k, a)), per = la + lb + lc;
+            let ix = (la * px[k] + lb * px[a] + lc * px[b]) / per, iy = (la * py[k] + lb * py[a] + lc * py[b]) / per;
+            let f = 1 - gap * per / 2 / abs(twice(k, a, b));
+            tri = f > 0 ? tri.map((v, i) => { let c = i & 1 ? iy : ix; return c + (v - c) * f; }) : [];
+        }
+        return [tri, [cx, cy]];
+    });
+}
+
+function tiles(k, box, screen, inside, count, gap) {
+    let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
+    let bounds = [min(...xs), min(...ys), max(...xs), max(...ys)];
+    let area = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]);
+    if (!(area > 0)) return [];
+    let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(c[0], c[1]));
+    let reaching = s => {
+        let r = s / sqrt(3), apothem = r * cos(PI / k);
+        return lattice(k, box, bounds, s).filter(([x, y, angle]) => {
+            if (inside(x, y)) return true;
+            let vs = regular(x, y, k, r, angle);
+            for (let i = 0; i < vs.length; i += 2) if (inside(vs[i], vs[i + 1])) return true;
+            return corners.some(([px, py]) => {
+                for (let m = 0; m < k; ++m) {
+                    let a = angle + PI / k + m * 2 * PI / k;
+                    if ((px - x) * cos(a) + (py - y) * sin(a) > apothem) return false;
+                }
+                return true;
+            });
+        });
+    };
+    let hi = sqrt(area / count);
+    for (let i = 0; i < 30 && reaching(hi).length > count; ++i) hi *= 1.25;
+    for (let lo = hi / 8, i = 0; i < 20; ++i) {
+        let mid = (lo + hi) / 2;
+        if (reaching(mid).length > count) lo = mid; else hi = mid;
+    }
+    let r = hi / sqrt(3) - gap / 2 / cos(PI / k);
+    return reaching(hi).map(([x, y, angle]) => [r > 0 ? regular(x, y, k, r, angle) : [], [x, y]]);
 }
 
 function createShapePoints(props, range) {
@@ -363,74 +420,15 @@ function createShapePoints(props, range) {
         return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, origin);
     };
 
-    let delaunay = inside => {
-        let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0;
-        let tris = [];
-        voronoi(px, py, x0 - w, y0 - h, x1 + w, y1 + h, 0).forEach(([, ids], k) => {
-            for (let i = 0, n = ids.length; i < n; ++i) {
-                let a = ids[i], b = ids[(i + 1) % n];
-                if (a < k || b < k) continue;
-                let cx = (px[k] + px[a] + px[b]) / 3, cy = (py[k] + py[a] + py[b]) / 3;
-                if (inside(cx, cy)) tris.push([k, a, b, cx, cy]);
-            }
-        });
-        let d = (p, q) => (px[p] - px[q]) ** 2 + (py[p] - py[q]) ** 2;
-        let twice = (k, a, b) => (px[a] - px[k]) * (py[b] - py[k]) - (px[b] - px[k]) * (py[a] - py[k]);
-        let r2 = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
-        let sorted = tris.map(r2).sort((u, v) => u - v);
-        let keep = min(sorted[sorted.length >> 1] * 9, sorted[props.count - 1] ?? Infinity);
-        return tris.filter(t => r2(t) <= keep).slice(0, props.count).map(([k, a, b, cx, cy]) => {
-            let tri = [px[k], py[k], px[a], py[a], px[b], py[b]];
-            if (gap) {
-                let la = sqrt(d(a, b)), lb = sqrt(d(b, k)), lc = sqrt(d(k, a)), per = la + lb + lc;
-                let ix = (la * px[k] + lb * px[a] + lc * px[b]) / per, iy = (la * py[k] + lb * py[a] + lc * py[b]) / per;
-                let f = 1 - gap * per / 2 / abs(twice(k, a, b));
-                tri = f > 0 ? tri.map((v, i) => { let c = i & 1 ? iy : ix; return c + (v - c) * f; }) : [];
-            }
-            return polygon(tri, fmt(cx, cy));
-        });
-    };
-
-    let tiles = (k, screen, inside) => {
-        let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
-        let bounds = [min(...xs), min(...ys), max(...xs), max(...ys)];
-        let area = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]);
-        if (!(area > 0)) return [];
-        let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(c[0], c[1]));
-        let fits = s => {
-            let r = s / sqrt(3), apothem = r * cos(PI / k);
-            return lattice(k, box, bounds, s).filter(([x, y, angle]) => {
-                if (inside(x, y)) return true;
-                let vs = regular(x, y, k, r, angle);
-                for (let i = 0; i < vs.length; i += 2) if (inside(vs[i], vs[i + 1])) return true;
-                return corners.some(([px, py]) => {
-                    for (let m = 0; m < k; ++m) {
-                        let a = angle + PI / k + m * 2 * PI / k;
-                        if ((px - x) * cos(a) + (py - y) * sin(a) > apothem) return false;
-                    }
-                    return true;
-                });
-            });
-        };
-        let count = props.scatter, hi = sqrt(area / count);
-        for (let i = 0; i < 30 && fits(hi).length > count; ++i) hi *= 1.25;
-        for (let lo = hi / 8, i = 0; i < 20; ++i) {
-            let mid = (lo + hi) / 2;
-            if (fits(mid).length > count) lo = mid; else hi = mid;
-        }
-        let r = hi / sqrt(3) - gap / 2 / cos(PI / k);
-        return fits(hi).map(([x, y, angle]) => polygon(r > 0 ? regular(x, y, k, r, angle) : [], fmt(x, y)));
-    };
-
     if (props.scatter) {
         let outline = [];
         for (let i = 0; i < split; ++i) {
             outline.push(point(rad * i, i));
         }
         let screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
+        let tile = ([poly, [x, y]]) => polygon(poly, fmt(x, y));
         let sides = { hex: 6, triangle: 3 }[props.tile];
-        if (sides) return tiles(sides, screen, inside);
-        // `density` is a formula in x and y over the shape's own coordinates
+        if (sides) return tiles(sides, box, screen, inside, props.scatter, gap).map(tile);
         let context = Object.assign(Object.create(defaultContext), props);
         let density = isEmpty(props.density) ? null : (x, y) => {
             context.x = x;
@@ -438,7 +436,7 @@ function createShapePoints(props, range) {
             return Number(calc(props.density, context)) || 0;
         };
         scatter(outline, props.scatter, evenodd, Number(props.seed) || 0, density).forEach(add);
-        if (props.tile == 'delaunay') return delaunay(inside);
+        if (props.tile == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (props.tile == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => polygon(poly, points[k].value, points[k].extra));
         return points;
     }
