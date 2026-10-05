@@ -212,3 +212,66 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     assert.equal(Function.plot.scatter(cell(4), env)('points: 8192; x: cos(t); y: 0').length, 0);
     assert.ok(performance.now() - start < 500);
 });
+
+test('@tile.voronoi: the box tiled around points scattered inside the shape, preset or formula', () => {
+    let env = { context: {}, extra: [] };
+    let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
+    let xy = p => String(p).split(' ').map(parseFloat);
+    let verts = p => String(p).slice(8, -1).split(', ').map(xy);
+    let area = vs => Math.abs(vs.reduce((s, [x, y], i) => s + x * vs[(i + 1) % vs.length][1] - vs[(i + 1) % vs.length][0] * y, 0)) / 2;
+    let inside = (vs, [x, y]) => {
+        let n = 0;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            let [ax, ay] = vs[i], [bx, by] = vs[j];
+            if ((ay > y) != (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) n++;
+        }
+        return n & 1;
+    };
+    let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile(cell(n, i + 1), { context: {}, extra: [], seed })(shape));
+    let covered = list => list.reduce((s, t) => s + (String(t) == 'polygon(0 0)' ? 0 : area(verts(t))), 0);
+    assert.equal(Function.tile.voronoi, Function.tile);
+    // a formula is an outline like a preset: four points scattered inside a circle give four tiles covering the box
+    let list = regions('r: .5', 4, 'a');
+    assert.ok(list.every(t => verts(t).length >= 3) && Math.abs(covered(list) - 10000) < 1e-6);
+    for (let i = 1; i <= 4; i++) {
+        // each tile holds its @plot.scatter point as the origin, inside the circle
+        let point = Function.plot.scatter(cell(4, i), { context: {}, extra: [], seed: 'a' })('r: .5');
+        assert.ok(inside(verts(list[i - 1]), xy(point)));
+        assert.ok(Math.hypot(...xy(point).map(v => v - 50)) < 25);
+        assert.equal(list[i - 1].origin, String(point));
+    }
+    assert.ok(!Function.plot(cell(4, 2), env)('r: .5').origin);
+    // a preset is filled with scattered points, still the whole box
+    let heart = regions('heart', 30, 'a');
+    assert.ok(Math.abs(covered(heart) - 10000) < 1e-6);
+    for (let i = 1; i <= 30; i++) {
+        let point = Function.plot.scatter(cell(30, i), { context: {}, extra: [], seed: 'a' })('heart');
+        assert.ok(inside(verts(heart[i - 1]), xy(point)));
+        assert.equal(heart[i - 1].origin, String(point));
+    }
+    // `points` sets the count, never a list; cells past it get none
+    let few = regions('r: .5; points: 3', 6);
+    assert.ok(!Array.isArray(few[0]) && few.slice(0, 3).every(t => verts(t).length >= 3) && Math.abs(covered(few) - 10000) < 1e-6);
+    assert.equal(String(few[5]), 'polygon(0 0)');
+    let fewer = regions('heart; points: 4', 6);
+    assert.ok(!Array.isArray(fewer[0]) && Math.abs(covered(fewer) - 10000) < 1e-6);
+    assert.equal(String(fewer[5]), 'polygon(0 0)');
+    // `gap` moves shared edges in by half, the box edge stays: a lone tile is still the box
+    assert.ok(Math.abs(area(verts(regions('r: .5; gap: 10', 1)[0])) - 10000) < 1e-6);
+    let pair = regions('r: .5; points: 2; gap: 10', 2, 'a');
+    let [a, b] = pair.map(t => xy(t.origin));
+    let half = ([x, y]) => Math.abs((b[0] - a[0]) * (x - (a[0] + b[0]) / 2) + (b[1] - a[1]) * (y - (a[1] + b[1]) / 2)) / Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let cuts = verts(pair[0]).filter(([x, y]) => !((x == 0 || x == 100) && (y == 0 || y == 100)));
+    assert.ok(cuts.length == 2 && cuts.every(v => Math.abs(half(v) - 5) < 1e-6), JSON.stringify(cuts));
+    let gapped = regions('heart; gap: 2', 30, 'a');
+    assert.ok(gapped.every((t, i) => area(verts(t)) > 0 && area(verts(t)) < area(verts(heart[i]))) && covered(gapped) < 10000);
+    // a filled preset follows the doodle seed, `seed: n` pins one, @plot.scatter too
+    let o = (shape, seed) => regions(shape, 30, seed).map(t => t.origin);
+    assert.notDeepEqual(o('heart', 'a'), o('heart', 'b'));
+    assert.deepEqual(o('heart', 'a'), o('heart', 'a'));
+    assert.deepEqual(o('heart; seed: 1', 'a'), o('heart; seed: 1', 'b'));
+    assert.notDeepEqual(o('heart; seed: 2', 'a'), o('heart; seed: 1', 'a'));
+    assert.notEqual(String(Function.plot.scatter(cell(30, 7), { context: {}, extra: [], seed: 'b' })('heart')), o('heart', 'a')[6]);
+    // a formula outline follows it too
+    assert.notDeepEqual(o('r: .5', 'a'), o('r: .5', 'b'));
+});

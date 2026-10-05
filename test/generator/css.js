@@ -89,6 +89,27 @@ test('a dotted name calls the variant of the function on its left', () => {
     }
     // Function.prototype methods are not variants
     assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown function @call/);
+    // @tile.voronoi: a preset is filled, a formula plotted
+    let regions = values('--v: @tile.voronoi(star);');
+    assert.equal(new Set(regions).size, 25);
+    assert.match(regions[0], /--v: ?polygon\(/);
+    assert.deepEqual(values('--v: @tile(star);'), regions);
+    let wedges = values('--v: @tile.voronoi(r: .5; gap: 2);');
+    assert.equal(new Set(wedges).size, 25);
+    assert.notDeepEqual(wedges, regions);
+    assert.match(compile('--v: @plot.voronoi(star);').warnings[0]?.message, /unknown function @voronoi/);
+});
+
+test('@tile in clip-path brings its own transform-origin', () => {
+    let sheet = cells('clip-path: @tile(star); --v: @tile(star);', '5');
+    let tiles = sheet.match(/clip-path:polygon\([^;]+;transform-origin:[^;]+;/g);
+    assert.equal(tiles.length, 25);
+    assert.equal(new Set(tiles).size, 25);
+    // only clip-path gets the origin
+    assert.equal((sheet.match(/transform-origin/g) || []).length, 25);
+    // the origin is the cell's @plot.scatter point
+    let seeds = cells('--v: @plot.scatter(star);', '5').match(/--v:[^;]+/g).map(v => v.slice(4));
+    tiles.forEach((t, i) => assert.ok(t.endsWith(`transform-origin:${seeds[i]};`), t));
 });
 
 // --- $ and calc ---

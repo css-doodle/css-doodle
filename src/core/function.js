@@ -12,6 +12,7 @@ import generateSvgGradient from '../generator/svg-gradient.js';
 import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
+import seedrandom from '../lib/seedrandom.js';
 import calc, { defaultContext } from './calc.js';
 import { memo } from '../lib/cache.js';
 
@@ -21,7 +22,7 @@ import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
 import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
 import { cellMetrics } from '../lib/cell.js';
-import { isLetter, isNil, getValue } from '../lib/type.js';
+import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
 import { placeholderId } from '../lib/placeholder.js';
 import { lerp, clamp, tidyNumber } from '../lib/math.js';
@@ -38,6 +39,7 @@ const RE_LETTER = /^[a-zA-Z]/;
 const MAX_SEQUENCE = 65536;
 const MAX_SCATTER = 8192;
 const SCATTER_OUTLINE = 360;
+const NO_TILE = 'polygon(0 0)';
 
 // layout of the sequence tuples pushed onto `extra` (see arguments.js)
 const SEQ = {
@@ -182,14 +184,18 @@ function seq(token, make) {
     };
 }
 
-function createPlot(unit, scatter) {
-    let plot = memo((commands, max) => {
+function createPlot(unit, scatter, voronoi) {
+    let plot = memo((commands, max, seed) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
             delete rules['frame'];
+            rules.voronoi = voronoi;
             if (scatter) {
                 let count = parseInt(rules.points);
-                rules.hasPoints = count > 0;
-                rules.scatter = clamp(rules.hasPoints ? count : max, 1, MAX_SCATTER);
+                if (isEmpty(rules.seed)) {
+                    rules.seed = Math.floor(seedrandom('scatter:' + seed)() * 1e4);
+                }
+                rules.hasPoints = count > 0 && !voronoi;
+                rules.scatter = clamp(count > 0 ? count : max, 1, MAX_SCATTER);
                 rules.points = rules.split || SCATTER_OUTLINE;
             } else {
                 delete rules['fill'];
@@ -205,13 +211,14 @@ function createPlot(unit, scatter) {
             return rules;
         });
     });
-    return ({ count, grid }, { extra }) => {
+    return ({ count, grid }, { extra, seed }) => {
         let e = last(extra) || [];
         return (...args) => {
             let idx = e[SEQ.n] ?? count;
             let max = e[SEQ.max] ?? grid.count;
-            let { points, rules } = plot(args.join(','), max);
-            return rules.hasPoints ? points : points[idx - 1];
+            let { points, rules } = plot(args.join(','), max, scatter ? String(seed ?? '') : '');
+            if (rules.hasPoints) return points;
+            return points[idx - 1] ?? (voronoi ? NO_TILE : undefined);
         };
     };
 }
@@ -563,6 +570,9 @@ Function.shape = () => shapePolygon;
 
 Function.plot = createPlot(false);
 Function.plot.scatter = createPlot(false, true);
+
+Function.tile = createPlot(false, true, true);
+Function.tile.voronoi = Function.tile;
 
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);

@@ -83,7 +83,7 @@ const compiledValues = new WeakMap();
 const compiledFuncs = new WeakMap();
 const compiledArguments = new WeakMap();
 
-// value: list of text/func nodes → env => { value, extra }
+// value: list of text/func nodes → env => { value, extra, origin }
 function compileValue(value) {
     let compiled = compiledValues.get(value);
     if (compiled === undefined) {
@@ -94,7 +94,7 @@ function compileValue(value) {
         } else {
             compiled = frame => {
                 let output = '';
-                let extra = '';
+                let extra = '', origin;
                 for (let part of parts) {
                     if (typeof part === 'string') {
                         output += part;
@@ -102,9 +102,10 @@ function compileValue(value) {
                         let evaluated = part(frame, EMPTY_EXTRA, false);
                         output += evaluated.value;
                         if (evaluated.extra) extra = evaluated.extra;
+                        if (evaluated.origin) origin = evaluated.origin;
                     }
                 }
-                return { value: output, extra };
+                return { value: output, extra, origin };
             };
         }
         compiledValues.set(value, compiled);
@@ -186,7 +187,7 @@ function compileFunc(node) {
                         let input = spliceTemplateInput(calcTemplate, values);
                         output = rules.callFunc(fn, frame, node.position, input, fname, unit);
                     }
-                    return { value: getValue(output), extra: output?.extra };
+                    return { value: getValue(output), extra: output?.extra, origin: output?.origin };
                 }
                 let input = constantInput;
                 if (input === null) {
@@ -217,7 +218,7 @@ function compileFunc(node) {
                     }
                 }
                 let output = rules.callFunc(fn, frame, node.position, input, fname, unit);
-                return { value: getValue(output), extra: output?.extra };
+                return { value: getValue(output), extra: output?.extra, origin: output?.origin };
             };
         }
         compiledFuncs.set(key, compiled);
@@ -561,16 +562,17 @@ class Rules {
     }
 
     getComposedValue(value, cell, env, context, selector, property) {
-        let extra;
+        let extra, origin;
         let group = [];
         let frame = { cell, env, contextVariable: context || {}, selector, property };
         for (let v of value) {
             let composed = compileValue(v)(frame);
             if (composed.value) group.push(composed.value);
             if (composed.extra) extra = composed.extra;
+            if (composed.origin) origin = composed.origin;
         }
         return {
-            extra, group, value: group.join(',')
+            extra, origin, group, value: group.join(',')
         }
     }
 
@@ -646,6 +648,11 @@ class Rules {
         }
 
         let rule = `${prop}:${value};`
+
+        // a tile turns and scales about its own point
+        if (composed.origin && prop === 'clip-path') {
+            rule += `transform-origin:${composed.origin};`;
+        }
 
         if (flags.size && this.hasPlace && !isSpecialSelector(selector)) {
             rule += `--_cell-${prop}:${value};`;

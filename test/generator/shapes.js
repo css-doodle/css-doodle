@@ -10,6 +10,19 @@ test('preset shapes', () => {
     assert.equal(generateShape('circle').points.length, 180);
 });
 
+test('commands after a preset add to it or override its own', () => {
+    let { points, preset } = generateShape('heart; split: 12');
+    assert.equal(preset, true);
+    assert.equal(points.length, 12);
+    assert.equal(generateShape('clover 5; split: 8').points.length, 8);
+    assert.equal(generateShape('clover 5; split: 8').preset, true);
+    // a new command keeps the outline
+    assert.equal(String(generateShape('heart; gap: 1').points), String(generateShape('heart').points));
+    // a formula after the preset overrides its own
+    assert.equal(generateShape('heart; r: .5').points.length, 180);
+    assert.notEqual(String(generateShape('heart; r: .5').points), String(generateShape('heart').points));
+});
+
 test('prototype names are not preset shapes', () => {
     assert.equal(generateShape('constructor').preset, false);
     assert.equal(generateShape('toString').preset, false);
