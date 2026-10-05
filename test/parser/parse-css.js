@@ -496,3 +496,14 @@ test('a < inside an open paren stays in the value', () => {
     let [color] = parseCss(`color: red</style>`);
     assert.equal(color.value[0][0].value, 'red');
 });
+
+test('a comment inside a selector list is not a selector', () => {
+    let [pseudo] = parseCss(`:before, /* :after, */ :hover { x: y }`);
+    assert.deepEqual(pseudo.selectors, ['&:before', '&:hover']);
+});
+
+test('π inside a quoted string stays as written', () => {
+    assert.deepEqual(ast(`content: "π"; --a: π;`), [rule('content', text('"π"')), rule('--a', text(String(Math.PI)))]);
+    let [p] = parseCss(`content: @p("π", π);`);
+    assert.deepEqual(p.value[0][0].arguments.map(a => a.values[0].value), ['π', String(Math.PI)]);
+});

@@ -31,7 +31,7 @@ import { getEasingFunction } from './easing.js';
 import { css } from '../lib/tagged-template.js';
 
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
-const RE_OP_SUFFIX = /[\+\*\-\/%]$/;
+const RE_OP_SUFFIX = /[\+\*\-\/]$|\D%$/;
 const RE_VAR = /var\(/;
 const RE_CALC = /^calc\(/;
 const RE_LETTER = /^[a-zA-Z]/;
@@ -448,7 +448,7 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
     let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
     let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
     return (...args) => {
-        let {from = 0, to, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
+        let {from, to, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
             'from', 'to', 'frequency', 'scale', 'octave'
         ]);
 
@@ -456,7 +456,8 @@ Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
         scale = clamp(scale, 0, Infinity);
         octave = clamp(octave, 1, 100);
 
-        if (to === undefined) [from, to] = [0, from];
+        if (to === undefined) [from, to] = [0, from ?? 1];
+        from ??= 0;
 
         let { noise2d, offsetX, offsetY } = context[counter] ??= {
             noise2d: new Noise(random), offsetX: random(), offsetY: random()

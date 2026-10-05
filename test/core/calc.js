@@ -166,6 +166,17 @@ test('a unary minus before a negative number negates it', () => {
     assert.equal(calc('max(- -1, 0)'), 1);
 });
 
+test('a minus before a parenthesized group is a prefix operator', () => {
+    // it used to read as -1 *, which binds looser than / % ^
+    assert.equal(calc('8 / -(2)'), -4);
+    assert.equal(calc('2 ^ -(1 + 1)'), 0.25);
+    assert.equal(calc('7 % -(3)'), 1);
+    assert.equal(calc('8 / +(2)'), 4);
+    assert.equal(calc('x / -(y + 1)', { x: 2, y: 1 }), -1);
+    // on its own operand it still binds looser than ^
+    assert.equal(calc('-(2) ^ 2'), -4);
+});
+
 test('decimal numbers', () => {
     assert.equal(calc('0.5 + 0.5'), 1);
     assert.equal(calc('.5 + .5'), 1);

@@ -41,6 +41,7 @@ const FAMILY = {
     'line-height': 'font',
     align: 'place', justify: 'place',
     columns: 'column', white: 'text',
+    'inline-size': 'width', 'block-size': 'height',
 };
 
 function familiesOf(text) {
@@ -796,7 +797,8 @@ class Rules {
     registerKeyframes(token) {
         if (this.keyframes.has(token.name)) return;
         let isStatic = token.steps.every(step =>
-            step.name.hasFunc === false && step.styles.every(isStaticRule));
+            step.name.hasFunc === false && step.styles.every(s =>
+                isStaticRule(s) || (s.property.startsWith('--') && s.value?.hasFunc === false)));
         let compose = (cell, env) => join(token.steps.map(step => {
             let name = this.getComposedValue(step.name, cell, env).value;
             let styles = join(step.styles.map(s => this.composeRule(s, cell, env)));

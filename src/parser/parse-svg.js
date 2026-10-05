@@ -1,4 +1,4 @@
-import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
+import { scan, iterator, textOf, itemsOf, Token } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
 import { parseBody, readRaw } from './parse-body.js';
 import { adjustName, isSpecialNamespaceAttr } from '../lib/svg.js';
@@ -80,12 +80,13 @@ function readStatement(iter, token) {
     let paren = 0;
     // `name: }`: nothing to read, the '}' is the block's
     let empty = iter.curr(1) && iter.curr(1).isSymbol('}');
+    let text = token.name === 'content';
     while (!empty && iter.next()) {
         let curr = iter.curr();
         let next = iter.curr(1);
-        if (curr.isSymbol('(') && !quote) {
+        if ((curr.isSymbol('(') || text && curr.isSymbol('{')) && !quote) {
             paren++;
-        } else if (curr.isSymbol(')') && !quote && paren) {
+        } else if ((curr.isSymbol(')') || text && curr.isSymbol('}')) && !quote && paren) {
             paren--;
         }
         if (curr.isSymbol("'", '"')) {
@@ -96,8 +97,12 @@ function readStatement(iter, token) {
             }
         }
         // the ';' of `&amp;` is content, any other one ends the statement
-        if (!quote && !paren && curr.isSymbol(';') && !endsEntity(fragment)) {
-            break;
+        if (!quote && !paren && curr.isSymbol(';')) {
+            if (!endsEntity(fragment)) break;
+            if (next && !next.isSymbol('}') && next.index > curr.index + 1) {
+                fragment.push(curr);
+                curr = new Token('Space', ' ', next.pos, curr.index + 1);
+            }
         }
         // a closing quote right before the `}` ends the statement even inside an open paren
         let isStatementBreak = !quote && (!paren || curr.isSymbol("'", '"')) && (!next || next.isSymbol('}'));
@@ -166,7 +171,7 @@ function readSvgStatement(iter, head) {
     let props = itemsOf(head).map(textOf);
     let statement = {
         type: 'statement',
-        name: 'unknown',
+        name: props[0],
         value: ''
     };
     if (props.length > 1) {

@@ -656,6 +656,12 @@ test('keyframes of static @shape values are emitted once', () => {
     assert.equal(cells, ':is(cell,#_) {animation:a 1s;}');
 });
 
+test('keyframes that only set custom properties are static and emitted once', () => {
+    let all = css('@keyframes k { from { --a: 0 } to { --a: 1 } } animation: k 1s;', '2');
+    assert.equal((all.match(/@keyframes/g) || []).length, 1);
+    assert.ok(all.includes(':is(cell,#_) {animation:k 1s;}'));
+});
+
 // --- selectors and group rules ---
 
 test('nested blocks in rule-only positions are ignored, not a crash', () => {
@@ -893,6 +899,13 @@ test('per-cell and host values stay inline', () => {
     assert.ok(all.includes('#c-1-1-1 {--long:linear-gradient('));
     assert.ok(all.includes(':host,.host {clip-path:polygon('));
     assert.equal(all.split('clip-path:polygon(').length - 1, 3);
+});
+
+test('logical sizes cascade against the physical ones they alias', () => {
+    assert.equal(cells('width: $(@i * 10)px; inline-size: 30px;', '2x1'),
+        '#c-1-1-1 {width:10px;}#c-2-1-1 {width:20px;}:is(cell,#_) {inline-size:30px;}');
+    assert.equal(cells('height: $(@i * 10)px; block-size: 30px;', '2x1'),
+        '#c-1-1-1 {height:10px;}#c-2-1-1 {height:20px;}:is(cell,#_) {block-size:30px;}');
 });
 
 // --- output channels ---

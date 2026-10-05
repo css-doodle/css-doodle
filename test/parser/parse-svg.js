@@ -243,3 +243,15 @@ test('everything beside svg {} belongs to it, in source order', () => {
     // not for a custom root
     assert.deepEqual(parseSvg('svg { a {} }', { type: 'block', name: 'filter' }), block('filter', [block('svg', [block('a')])]));
 });
+
+test('an entity keeps the space after it', () => {
+    assert.deepEqual(parseSvg('text { content: Tom &amp; Jerry }'), svg(
+        block('text', [statement('content', 'Tom &amp; Jerry')])
+    ));
+});
+
+test('braces in content are text, not an inline block', () => {
+    assert.deepEqual(parseSvg('text { content: a{b}c; } rect {}'), svg(
+        block('text', [statement('content', 'a{b}c')]), block('rect')
+    ));
+});

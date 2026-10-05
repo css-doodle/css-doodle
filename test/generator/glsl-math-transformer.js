@@ -456,3 +456,16 @@ test('shape(d, size) is the mask of the shape and size statements', () => {
     assert.equal(transform('mix(a, b, shape(d, .5))', { types: { a: 'vec3', b: 'vec3' } }), 'mix(a, b, cssd_shape(d, .5))');
     assert.equal(transform('shape(d, .5)', { type: true }), 'float');
 });
+
+test('a minus before a negative operand is not a decrement', () => {
+    assert.equal(transform('-(-x)'), '- -x');
+    assert.equal(transform('- -x'), '- -x');
+    assert.equal(transform('-(-x)', { expect: 'bool' }), 'bool(- -x)');
+    assert.equal(transform('x - -1'), '(x - -1.0)');
+});
+
+test('a unary plus is its operand', () => {
+    assert.equal(transform('+x'), 'x');
+    assert.equal(transform('1 + +x'), '(1.0 + x)');
+    assert.equal(transform('-(+x)'), '-x');
+});

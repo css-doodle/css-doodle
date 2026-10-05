@@ -406,3 +406,24 @@ test('load keeps a plain template wrapper around the source', () => {
     }
     assert.equal(rendered, source);
 });
+
+test('a redraw keeps the host variables of the images it draws again', () => {
+    let removed = [];
+    let next = { shaders: { 's-1': {} }, patterns: {} };
+    let host = {
+        compiled: { shaders: { 's-1': {}, 's-2': {} }, patterns: { 'p-1': {} } },
+        style: { removeProperty: name => removed.push(name) },
+        cleanup() {},
+        generate() { return this.compiled = next; },
+        getGrid() {},
+        shouldRebuild: () => false,
+        patch() {},
+        render: CSSDoodle.prototype.render,
+        disconnectedCallback: CSSDoodle.prototype.disconnectedCallback,
+    };
+    host.render('code');
+    assert.deepEqual(removed.sort(), ['--p-1', '--s-2']);
+    removed = [];
+    host.disconnectedCallback();
+    assert.deepEqual(removed, ['--s-1']);
+});

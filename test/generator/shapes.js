@@ -95,3 +95,15 @@ test('degenerate commands still give numbers', () => {
     assert.equal(String(one.points), '0% 50%');
     assert.doesNotMatch(String(generateShape('split: 3; frame: abc').points), /NaN/);
 });
+
+
+test('a large seed still spreads the scatter samples', () => {
+    let scatter = seed => generateShape('square', { min: 1, max: 65536 }, rules => Object.assign(rules, { scatter: 5, seed })).points.map(String);
+    for (let seed of [1e15, 1e20]) assert.equal(new Set(scatter(seed)).size, 5, String(seed));
+});
+
+test('a density that is nowhere positive scatters uniformly', () => {
+    let scatter = density => generateShape('square', { min: 1, max: 65536 }, rules => Object.assign(rules, { scatter: 6, seed: 1, density })).points.map(String);
+    assert.equal(scatter('-1').length, 6);
+    assert.deepEqual(scatter('-1'), scatter(undefined));
+});

@@ -160,9 +160,10 @@ function scatter(outline, count, evenodd, seed, density) {
         let x = x0 + (i % 32 + .5) / 32 * w, y = y0 + ((i >> 5) + .5) / 32 * h;
         if (inside(x, y)) peak = max(peak, density(x, y));
     }
+    if (!(peak > 0)) density = null;
     // quasi-random R2 samples over the box, kept when inside the shape
     for (; n < total && tried < (n ? total * 100 : 1e3); ++tried) {
-        let k = tried + seed * 1e4;
+        let k = tried + seed % 1e4 * 1e4;
         let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
         let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
         if (!inside(x, y) || density && density(x, y) < peak * rnd()) continue;

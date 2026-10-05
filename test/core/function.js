@@ -134,6 +134,13 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.ok(noise.every(n => n >= 0 && n <= 10) && new Set(noise).size > 1);
     assert.deepEqual(values(['10', 'frequency=1']), noise);
     assert.deepEqual(values(['to=10']), noise);
+    // no arguments is 0 to 1, as for @r
+    assert.deepEqual(values([]), values(['1']));
+});
+
+test('a trailing % is the percent unit, not the modulo operator', () => {
+    assert.equal(Function.i({ count: 7 })('50%'), '57%');
+    assert.equal(Function.i({ count: 7 })('%3'), '1');
 });
 
 test('@R: inside a sequence the sequence is the grid, even in a 1x1 doodle', () => {

@@ -180,7 +180,7 @@ function transformTokens(rawTokens, spans) {
             const prev = last(tokens);
             if (!prev || prev.type === COMMA || (prev.type === OPERATOR && prev.value !== ')')) {
                 // a run of unary signs folds into the following number or
-                // name; before anything else it multiplies by ±1
+                // name; before anything else a minus is a prefix operator
                 let negative = value === '-';
                 while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
                     if (raw[++i].value === '-') negative = !negative;
@@ -189,9 +189,8 @@ function transformTokens(rawTokens, spans) {
                 if (operand && (operand.type === 'Number'
                         || (operand.type === 'Word' && !isOperator(operand.value)))) {
                     sign = negative ? '-' : '';
-                } else {
-                    pushValue(tokens, negative ? '-1' : '1');
-                    tokens.push(tk(OPERATOR, '*'));
+                } else if (negative) {
+                    tokens.push(tk(OPERATOR, '-u'));
                 }
                 continue;
             }
@@ -243,12 +242,16 @@ function toPostfix(tokens) {
                     expr.push(tk(OPERATOR, opStack.pop()));
                 }
                 opStack.pop();
+            } else if (value === '!' || value === '-u') {
+                opStack.push(value);
             } else {
                 const prec = operators[value];
-                const rightAssoc = value === '^' || value === '**' || value === '!';
+                const rightAssoc = value === '^' || value === '**';
                 while (opStack.length) {
-                    const top = operators[last(opStack)];
-                    if (rightAssoc ? top > prec : top >= prec) {
+                    const top = last(opStack);
+                    // -(a) binds between * and ^, so -(a)^2 stays -(a^2)
+                    const topPrec = top === '-u' ? 8.5 : operators[top];
+                    if (rightAssoc ? topPrec > prec : topPrec >= prec) {
                         expr.push(tk(OPERATOR, opStack.pop()));
                     } else {
                         break;
@@ -443,9 +446,11 @@ function compile(expr) {
             stack.push(compileVariable(value));
         } else if (type === FUNCTION) {
             stack.push(compileFunction(node));
-        } else if (value === '!') {
+        } else if (value === '!' || value === '-u') {
             const operand = stack.pop() || (() => NaN);
-            stack.push((ctx, history) => Number(operand(ctx, history)) ? 0 : 1);
+            stack.push(value === '!'
+                ? (ctx, history) => Number(operand(ctx, history)) ? 0 : 1
+                : (ctx, history) => -Number(operand(ctx, history)));
         } else {
             const right = stack.pop();
             const left = stack.pop();

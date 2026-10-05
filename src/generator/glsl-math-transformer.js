@@ -17,7 +17,7 @@ const PREC = {
 
 const PREFIX = {
     __proto__: null,
-    '-': Infinity, '!': Infinity, '~': Infinity,
+    '-': Infinity, '+': Infinity, '!': Infinity, '~': Infinity,
     'not': PREC['&&'] + 1
 };
 
@@ -238,10 +238,13 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         }
         if (n.type === 'Pre') {
             if (!n.right) return gen(ZERO, exp);
+            if (n.val === '+') return gen(n.right, exp);
             if (n.val === '-') {
                 // minus keeps the type of its operand, and a bool has no minus
-                if (exp === 'bool') return `bool(-${gen(n.right, 'float')})`;
-                return `-${gen(n.right, exp)}`;
+                let right = gen(n.right, exp === 'bool' ? 'float' : exp);
+                // `- -x`: glued, `--x` would be a decrement
+                if (right[0] === '-') right = ' ' + right;
+                return exp === 'bool' ? `bool(-${right})` : `-${right}`;
             }
             // ! and ~ take a bool and an int; a bvec is negated with not()
             const type = infer(n);

@@ -181,7 +181,7 @@ function parseValue(cur, breakOn) {
                 else if (v === ')') paren = Math.max(0, paren - 1);
             }
             cur.next();
-            buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
+            buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
             continue;
         }
 
@@ -448,7 +448,7 @@ function parseArguments(cur, variables) {
         if (quote && tok.isWord() && cur.source[tok.index] === '\\') {
             buf += '\\' + v;
         } else {
-            buf += (v === 'π') ? substitutePi(v, cur.source[tok.index - 1]) : v;
+            buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
         }
         last = tok;
     }
@@ -680,7 +680,7 @@ function parseBlockBody(cur, top) {
 function parsePseudo(cur, brace) {
     let start = cur.headIndex();
     cur.i = brace;
-    let selector = cur.source.slice(start, cur.headIndex()).trim();
+    let selector = cur.source.slice(start, cur.headIndex()).replace(/\/\*[\s\S]*?\*\//g, ' ').trim();
     cur.next(); // '{'
 
     let ctx = cur.ctx;

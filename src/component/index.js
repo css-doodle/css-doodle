@@ -154,6 +154,9 @@ if (typeof HTMLElement !== 'undefined') {
 
         disconnectedCallback() {
             this.cleanup();
+            for (let id in { ...this.compiled?.shaders, ...this.compiled?.patterns }) {
+                this.style.removeProperty('--' + id);
+            }
             unbindUniforms(this);
             clearInterval(this._auto_update_timer);
             this._viewport?.disconnect();
@@ -370,6 +373,11 @@ if (typeof HTMLElement !== 'undefined') {
             this._code = code;
             let old = this.compiled;
             let compiled = this.generate(code, seed);
+            for (let id in { ...old?.shaders, ...old?.patterns }) {
+                if (!compiled.shaders[id] && !compiled.patterns[id]) {
+                    this.style.removeProperty('--' + id);
+                }
+            }
             let grid = compiled.grid || this.getGrid();
             let rebuild = this.shouldRebuild(compiled, old, grid);
             this.gridSize = grid;
@@ -537,13 +545,6 @@ if (typeof HTMLElement !== 'undefined') {
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
             this._clock = { base: 0, since: 0 };
-            // the shader and pattern images live in host variables
-            if (this.compiled) {
-                let { shaders, patterns } = this.compiled;
-                for (let id of [...Object.keys(shaders), ...Object.keys(patterns)]) {
-                    this.style.removeProperty('--' + id);
-                }
-            }
         }
 
         pause(auto) {
