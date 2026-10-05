@@ -1,3 +1,5 @@
+import { RE_URL_ESCAPE } from '../lib/svg.js';
+
 const TIME_UNITS = { ms: 1, s: 1000, min: 60000, h: 3600000 };
 export const TRANSITION_NONE = '*,*::before,*::after{transition:none!important}';
 const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
@@ -91,7 +93,7 @@ export function stampSvgImages(host, sheet) {
         if (paused && RE_CSS_CLOCK.test(svg)) {
             svg = svg.replace(/<\/svg>\s*$/, `<style>${PAUSED_RULE}</style></svg>`);
         }
-        return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}${hash}")`;
+        return `url("data:image/svg+xml;utf8,${svg.replace(RE_URL_ESCAPE, encodeURIComponent)}${hash}")`;
     });
 }
 

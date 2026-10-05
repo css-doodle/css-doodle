@@ -8,8 +8,13 @@ export function cdata(text) {
 
 export const FilterHolderStyle = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
 
+// enough for a quoted data url: url syntax, the css string, the url
+// parser dropping tabs and newlines, `>` for an outer CDATA and `:` to
+// hide an inner `animation:` from the sheet's clock regexes
+export const RE_URL_ESCAPE = /[\t\n\r"#%:<>\\]/g;
+
 export function createSvgUrl(svg) {
-    return `url("data:image/svg+xml;utf8,${ encodeURIComponent(svg) }")`;
+    return `url("data:image/svg+xml;utf8,${ svg.replace(RE_URL_ESCAPE, encodeURIComponent) }")`;
 }
 
 export function normalizeSvg(input) {

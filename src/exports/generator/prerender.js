@@ -6,7 +6,7 @@ import { removeParens } from '../../lib/type.js';
 import { hash } from '../../lib/math.js';
 import { utime, UTime } from '../../core/uniforms.js';
 
-import { parseCssCached } from '../../component/parse-cache.js';
+import parseCss from '../../parser/parse-css.js';
 import { createReplacer, svgUrl, frameSvg } from '../../component/doodle-image.js';
 import { isAnimatedSvg } from '../../component/clock.js';
 import { getBasicStyles, createGrid } from '../../component/markup.js';
@@ -85,7 +85,7 @@ export default async function prerender(code = '', options = {}) {
     let source = use + code;
     let grid = parseGrid(attributes.grid, maxGrid);
     let compiled = generateCss(
-        parseCssCached(source, host.extra), grid, seed, maxGrid, null, [],
+        parseCss(source, host.extra), grid, seed, maxGrid, null, [],
         's' + hash(JSON.stringify([attributes, variables]) + code).toString(36)
     );
     warnings.unshift(...compiled.warnings);

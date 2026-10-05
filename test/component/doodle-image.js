@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { svgUrl, frameSvg } from '../../src/component/doodle-image.js';
+import { svgUrl, frameSvg, doodleToImage } from '../../src/component/doodle-image.js';
 
 test('svgUrl escapes only what a data url needs', () => {
     assert.equal(svgUrl('<svg a="#b">50%</svg>'), 'data:image/svg+xml,%3Csvg a=%22%23b%22%3E50%25%3C/svg%3E');
+    assert.equal(svgUrl('<t>a\tb</t>'), 'data:image/svg+xml,%3Ct%3Ea%09b%3C/t%3E');
 });
 
 test('frameSvg draws the sized svg through an image of the same size', () => {
@@ -19,4 +20,13 @@ test('frameSvg draws the sized svg through an image of the same size', () => {
     // only the outer viewBox goes: inline svg content keeps its own
     let content = '<svg width="8" height="8"><foreignObject><svg viewBox="0 0 10 10"/></foreignObject></svg>';
     assert.ok(decodeURIComponent(frameSvg(content, 8, 8)).includes('<foreignObject><svg viewBox="0 0 10 10"/>'));
+});
+
+test('a nested doodle sheet carries no template indentation', async () => {
+    let host = { extra: {}, compiled: { seed: 42 }, getMaxGrid: () => 64, report: () => {}, hasAttribute: () => false, _clock: { base: 0 }, clockNow: () => 0 };
+    let url = await doodleToImage(host, 'background: red;', {});
+    let svg = decodeURIComponent(url.slice(url.indexOf(',') + 1));
+    let sheet = /<style><!\[CDATA\[([\s\S]*?)\]\]><\/style>/.exec(svg)[1];
+    assert.ok(sheet.includes('background:red') || sheet.includes('background: red'));
+    assert.doesNotMatch(sheet, /\n\s+/);
 });

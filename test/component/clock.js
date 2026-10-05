@@ -133,3 +133,9 @@ test('isAnimatedSvg finds css and SMIL animation, nested images included', () =>
     assert.equal(isAnimatedSvg('<svg><rect><set attributeName="x" to="0"/></rect></svg>'), true);
     assert.equal(isAnimatedSvg('<svg style="background:url(%22data:image/svg+xml,%3Csvg%3E%3Canimate/%3E%22)"></svg>'), true);
 });
+
+test('a stamped image keeps the light url escaping and its clock', () => {
+    let once = stampSvgImages(host(2.5, false), url('<svg><animate attributeName="r" dur="1s" repeatCount="indefinite"/></svg>'));
+    assert.equal(once, 'url("data:image/svg+xml;utf8,%3Csvg%3E%3Canimate attributeName=%22r%22 dur=%221s%22 repeatCount=%22indefinite%22 begin=%22-2500ms%22/%3E%3C/svg%3E")');
+    assert.ok(hasImageClock(once));
+});

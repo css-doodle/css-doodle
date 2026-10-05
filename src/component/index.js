@@ -1,4 +1,5 @@
 import parseGrid from '../parser/parse-grid.js';
+import parseCss from '../parser/parse-css.js';
 
 import generateCss from '../generator/css.js';
 import generatePng from '../generator/svg-to-png.js';
@@ -9,9 +10,9 @@ import { isNil } from '../lib/type.js';
 import { uniqueId } from '../lib/fn.js';
 import { isSafari } from '../lib/browser.js';
 import { css } from '../lib/tagged-template.js';
+import { RE_PLACEHOLDER, hasPlaceholder } from '../lib/placeholder.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
-import { parseCssCached } from './parse-cache.js';
 import { bindUniforms, unbindUniforms } from './uniforms.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
 import { createReplacer } from './doodle-image.js';
@@ -135,7 +136,15 @@ if (typeof HTMLElement !== 'undefined') {
         waitForSource() {
             let doc = this.ownerDocument;
             let timer;
+            // while loading, the source is complete once the parser has
+            // moved past the element: a node follows it or an ancestor
+            let passed = () => {
+                for (let node = this; node; node = node.parentNode) {
+                    if (node.nextSibling) return true;
+                }
+            };
             let done = () => {
+                if (doc.readyState === 'loading' && !passed()) return;
                 observer.disconnect();
                 clearTimeout(timer);
                 doc.removeEventListener('DOMContentLoaded', done);
@@ -144,7 +153,7 @@ if (typeof HTMLElement !== 'undefined') {
                 }
             };
             let observer = new MutationObserver(done);
-            observer.observe(this, { childList: true });
+            observer.observe(this.getRootNode(), { childList: true, subtree: true });
             if (doc.readyState === 'loading') {
                 doc.addEventListener('DOMContentLoaded', done);
             } else {
@@ -312,7 +321,7 @@ if (typeof HTMLElement !== 'undefined') {
                 seed = Date.now();
             }
             let source = this.getUse() + code;
-            let parsed = parseCssCached(source, this.extra);
+            let parsed = parseCss(source, this.extra);
             let compiled = this.compiled = generateCss(
                 parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance
             );
@@ -347,9 +356,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (this.hasAttribute('auto:update') || this._auto_update_timer) {
                 this.autoUpdate();
             }
-            setTimeout(() => {
-                this.triggerEvent('render');
-            });
+            this._styleReady.then(() => this.triggerEvent('render'));
         }
 
         update(styles, options = {}) {
@@ -362,7 +369,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
                 this.autoUpdate();
             }
-            setTimeout(() => {
+            this._styleReady.then(() => {
                 this.triggerEvent('render');
                 this.triggerEvent('update');
             });
@@ -392,7 +399,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (!old) {
                 return true;
             }
-            if (!this.shadowRoot.innerHTML || this.shadowRoot.querySelector('css-doodle')) {
+            if (!this.shadowRoot.firstChild || this.shadowRoot.querySelector('css-doodle')) {
                 return true;
             }
             let { x, y, z } = this.gridSize;
@@ -409,14 +416,17 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         buildGrid(compiled, grid) {
-            let { hasTransition, hasAnimation } = compiled.props;
+            let { hasTransition } = compiled.props;
             let { content, styles } = compiled;
             let hasContent = Object.keys(content).length;
+            let sheet = hasTransition || !hasPlaceholder(styles.all)
+                ? getBasicStyles(grid) + styles.main
+                : (styles.top + getBasicStyles(grid) + styles.all).replace(RE_PLACEHOLDER, '');
             this.shadowRoot.innerHTML = css`
-                <style>${(getBasicStyles(grid) + styles.main).replace(/<\/(style)/gi, '<\\/$1')}</style>
+                <style>${sheet.replace(/<\/(style)/gi, '<\\/$1')}</style>
                 ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
             `;
-            if (hasTransition || hasAnimation) {
+            if (hasTransition) {
                 this.reflow();
             }
             this.mount(compiled);

@@ -370,7 +370,7 @@ test('load leaves a prerendered template and filter holder out of the source', (
             assert.equal(selector, ':scope>template[shadowrootmode],:scope>ft');
             return [{ remove: () => { this.innerHTML = source; } }];
         },
-        render: code => { rendered = code; },
+        render(code) { rendered = code; this._styleReady = Promise.resolve(); },
         hasAttribute: () => false,
         triggerEvent: () => {},
     });
@@ -394,7 +394,7 @@ test('load keeps a plain template wrapper around the source', () => {
             assert.equal(selector, ':scope>template[shadowrootmode],:scope>ft');
             return [];
         },
-        render: code => { rendered = code; },
+        render(code) { rendered = code; this._styleReady = Promise.resolve(); },
         hasAttribute: () => false,
         triggerEvent: () => {},
     });
@@ -405,6 +405,108 @@ test('load keeps a plain template wrapper around the source', () => {
         delete globalThis.document;
     }
     assert.equal(rendered, source);
+});
+
+test('waitForSource waits for the end tag while the document parses', () => {
+    let fire;
+    let Observer = globalThis.MutationObserver;
+    globalThis.MutationObserver = class { constructor(fn) { fire = fn; } observe() {} disconnect() {} };
+    try {
+        let loads = 0;
+        let host = {
+            ownerDocument: { readyState: 'loading', addEventListener() {}, removeEventListener() {} },
+            parentNode: { nextSibling: null },
+            nextSibling: null,
+            isConnected: true,
+            getRootNode: () => ({}),
+            load() { loads++; this.compiled = {}; },
+            waitForSource: CSSDoodle.prototype.waitForSource,
+        };
+        host.waitForSource();
+        fire();
+        assert.equal(loads, 0, 'a text node alone may be a chunk of the source');
+        host.nextSibling = {};
+        fire();
+        assert.equal(loads, 1, 'the parser has passed the end tag');
+        // the last child of its parent: the parser passes the parent's end tag instead
+        host = { ...host, parentNode: { nextSibling: null }, nextSibling: null, compiled: undefined };
+        host.waitForSource();
+        fire();
+        assert.equal(loads, 1);
+        host.parentNode.nextSibling = {};
+        fire();
+        assert.equal(loads, 2, 'the parser has passed an ancestor');
+        // a parsed document loads on the first mutation
+        host = { ...host, ownerDocument: { ...host.ownerDocument, readyState: 'complete' }, nextSibling: null, compiled: undefined };
+        host.waitForSource();
+        fire();
+        assert.equal(loads, 3);
+    } finally {
+        globalThis.MutationObserver = Observer;
+    }
+});
+
+test('buildGrid writes the whole sheet without placeholders and reflows only for a transition', () => {
+    let written, reflows = 0;
+    let host = {
+        shadowRoot: { set innerHTML(html) { written = html; } },
+        reflow: () => reflows++,
+        mount() {},
+        buildGrid: CSSDoodle.prototype.buildGrid,
+    };
+    let build = code => {
+        let grid = parseGrid('2');
+        let compiled = generateCss(parseCss(code), grid, 42, 64);
+        host.buildGrid(compiled, grid);
+        return compiled;
+    };
+    let compiled = build('@size: 10px; background: @doodle(background: red;); animation: a 1s;');
+    assert.ok(compiled.props.hasAnimation);
+    assert.ok(compiled.styles.all.includes('${'), 'the sheet holds an image placeholder');
+    assert.ok(written.includes('10px') && written.includes('<grid'), 'cells are sized before images are measured');
+    assert.ok(!written.includes('${'), 'placeholders are stripped, their } would close a block');
+    assert.equal(reflows, 0, 'animations start without a forced layout');
+    build('background: red; transition: background 1s;');
+    assert.ok(!written.includes('transition'), 'a transition runs in from the host rules alone');
+    assert.equal(reflows, 1);
+    build('background: red;');
+    assert.ok(!written.includes('background'), 'with no images to wait for, the whole sheet follows at once');
+    assert.equal(reflows, 1);
+});
+
+test('shouldRebuild reads the first child instead of serializing the shadow root', () => {
+    let host = {
+        shadowRoot: { firstChild: null, get innerHTML() { throw new Error('serialized'); } },
+        shouldRebuild: CSSDoodle.prototype.shouldRebuild,
+    };
+    assert.equal(host.shouldRebuild({}, {}, {}), true);
+});
+
+test('render and update events follow the sheet', async () => {
+    let events = [];
+    let resolve;
+    let host = {
+        _code: 'x',
+        hasAttribute: () => false,
+        triggerEvent: name => events.push(name),
+        render() { this._styleReady = new Promise(r => { resolve = r; }); },
+        load: CSSDoodle.prototype.load,
+        update: CSSDoodle.prototype.update,
+    };
+    const tick = () => new Promise(r => setTimeout(r));
+    host.load();
+    await tick();
+    assert.deepEqual(events, [], 'the sheet is still pending');
+    resolve();
+    await tick();
+    assert.deepEqual(events, ['render']);
+    events = [];
+    host.update();
+    await tick();
+    assert.deepEqual(events, ['beforeUpdate']);
+    resolve();
+    await tick();
+    assert.deepEqual(events, ['beforeUpdate', 'render', 'update']);
 });
 
 test('a redraw keeps the host variables of the images it draws again', () => {
