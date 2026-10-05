@@ -153,9 +153,22 @@ test('@udx/@udy: cell center minus pointer, in doodle pixels', () => {
     assert.match(Function.udx(cell)('*1px'), /px/);
 });
 
+// the shape family: a cell of an n-cell grid, a point's coordinates, a polygon's vertices, area and point test
+let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
+let xy = p => String(p).split(' ').map(parseFloat);
+let verts = p => String(p).slice(8, -1).split(', ').map(xy);
+let area = vs => Math.abs(vs.reduce((s, [x, y], i) => s + x * vs[(i + 1) % vs.length][1] - vs[(i + 1) % vs.length][0] * y, 0)) / 2;
+let inside = (vs, [x, y]) => {
+    let n = 0;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let [ax, ay] = vs[i], [bx, by] = vs[j];
+        if ((ay > y) != (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) n++;
+    }
+    return n & 1;
+};
+
 test('@plot: the shape follows the grid count', () => {
     let env = { context: {}, extra: [] };
-    let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
     // the memo used to ignore the count, so a second grid got stale points
     let a = Function.plot(cell(25, 2), env)('r: 1');
     let b = Function.plot(cell(100, 2), env)('r: 1');
@@ -164,8 +177,7 @@ test('@plot: the shape follows the grid count', () => {
     // with a point count every point is returned
     assert.equal(Function.plot(cell(25), env)('r: 1; points: 25').length, 25);
     // a preset's own split is its outline, not a point count
-    let xy = n => String(Function.plot(cell(9, n), env)('triangle')).split(' ').map(parseFloat);
-    let points = [1, 2, 3, 4].map(xy);
+    let points = [1, 2, 3, 4].map(n => xy(Function.plot(cell(9, n), env)('triangle')));
     assert.equal(new Set(points.map(String)).size, 4);
     // the cells between two corners sit on the edge of the triangle
     let [[ax, ay], [bx, by], [cx, cy], [dx, dy]] = points;
@@ -179,8 +191,6 @@ test('@plot: the shape follows the grid count', () => {
 
 test('@plot: scatter spreads one point per cell inside the shape', () => {
     let env = { context: {}, extra: [] };
-    let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
-    let xy = p => String(p).split(' ').map(parseFloat);
     let points = Array.from({ length: 70 }, (_, i) => String(Function.plot.scatter(cell(70, i + 1), env)('star')));
     assert.equal(new Set(points).size, 70);
     // the same points every time, no randomness
@@ -215,18 +225,6 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
 
 test('@tile.voronoi: the box tiled around points scattered inside the shape, preset or formula', () => {
     let env = { context: {}, extra: [] };
-    let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y: 1, z: 1, count } });
-    let xy = p => String(p).split(' ').map(parseFloat);
-    let verts = p => String(p).slice(8, -1).split(', ').map(xy);
-    let area = vs => Math.abs(vs.reduce((s, [x, y], i) => s + x * vs[(i + 1) % vs.length][1] - vs[(i + 1) % vs.length][0] * y, 0)) / 2;
-    let inside = (vs, [x, y]) => {
-        let n = 0;
-        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-            let [ax, ay] = vs[i], [bx, by] = vs[j];
-            if ((ay > y) != (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) n++;
-        }
-        return n & 1;
-    };
     let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile(cell(n, i + 1), { context: {}, extra: [], seed })(shape));
     let covered = list => list.reduce((s, t) => s + (String(t) == 'polygon(0 0)' ? 0 : area(verts(t))), 0);
     assert.equal(Function.tile.voronoi, Function.tile);
@@ -274,4 +272,86 @@ test('@tile.voronoi: the box tiled around points scattered inside the shape, pre
     assert.notEqual(String(Function.plot.scatter(cell(30, 7), { context: {}, extra: [], seed: 'b' })('heart')), o('heart', 'a')[6]);
     // a formula outline follows it too
     assert.notDeepEqual(o('r: .5', 'a'), o('r: .5', 'b'));
+});
+
+test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as many as the grid allows', () => {
+    let round = v => Math.round(v * 1e6) / 1e6;
+    let tiles = (fn, shape, n, seed) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    // hexagons over the box: equal, pointy-top, symmetric about both axes, no more than the grid count
+    let hex = tiles(Function.tile.hex, 'square', 64);
+    assert.ok(hex.length > 40 && hex.length <= 64, hex.length);
+    let whole = hex.filter(t => verts(t).length == 6 && verts(t).every(([x, y]) => x > 0 && x < 100 && y > 0 && y < 100));
+    assert.ok(whole.length > 10 && new Set(whole.map(t => round(area(verts(t))))).size == 1);
+    let [h0] = whole.map(verts);
+    assert.ok(h0.some(([x], i) => near(x, h0[(i + 1) % 6][0])));
+    let origins = hex.map(t => xy(t.origin));
+    for (let [x, y] of origins) {
+        assert.ok(origins.some(([u, v]) => near(u, 100 - x) && near(v, y)) && origins.some(([u, v]) => near(u, x) && near(v, 100 - y)));
+    }
+    // triangles: equal, the origin is the centroid, every other one points the other way
+    let tri = tiles(Function.tile.triangle, 'circle', 100);
+    assert.ok(tri.length > 60 && tri.length <= 100, tri.length);
+    let full = tri.filter(t => verts(t).length == 3);
+    assert.ok(full.length > 40 && new Set(full.map(t => round(area(verts(t))))).size == 1);
+    for (let t of full) {
+        let vs = verts(t), [ox, oy] = xy(t.origin);
+        assert.ok(near(ox, (vs[0][0] + vs[1][0] + vs[2][0]) / 3) && near(oy, (vs[0][1] + vs[1][1] + vs[2][1]) / 3));
+    }
+    let apex = t => verts(t).filter(v => v[1] < xy(t.origin)[1]).length;
+    assert.ok(full.slice(0, 20).some((t, i) => i && apex(t) != apex(full[i - 1])));
+    // a tile is kept when its centre or a corner lies inside the shape, so the box is covered without holes
+    let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
+    let heart = tiles(Function.tile.hex, 'heart', 64);
+    assert.ok(heart.length > 20 && heart.length <= 64 && heart.every(t => [xy(t.origin), ...verts(t)].some(p => inside(outline, p))));
+    assert.ok(heart.some(t => !inside(outline, xy(t.origin))));
+    let covered = list => { for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) if (!list.some(t => inside(verts(t), [x, y]))) return false; return true; };
+    assert.ok(covered(hex) && covered(tiles(Function.tile.triangle, 'square', 100)));
+    // `gap` shrinks every tile; `points` caps the count
+    let gapped = tiles(Function.tile.triangle, 'circle; gap: 2', 100);
+    assert.ok(gapped.length == tri.length && gapped.every((t, i) => area(verts(t)) < area(verts(tri[i])) && t.origin == tri[i].origin));
+    assert.ok(tiles(Function.tile.hex, 'square; points: 10', 64).length <= 10);
+    // a lattice has no randomness: the seed changes nothing
+    assert.deepEqual(tiles(Function.tile.hex, 'heart', 30, 'z').map(String), tiles(Function.tile.hex, 'heart', 30).map(String));
+});
+
+test('@tile.delaunay: triangles between the points @tile.voronoi scatters', () => {
+    let env = seed => ({ context: {}, extra: [], seed });
+    let names = p => String(p).slice(8, -1).split(', ');
+    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.delaunay(cell(n, i + 1), env(seed))(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let scattered = (shape, n) => new Set(Array.from({ length: n }, (_, i) => String(Function.plot.scatter(cell(n, i + 1), env('a'))(shape))));
+    // every tile is a triangle whose corners are the scattered points, about half as many points as cells
+    let tris = tiles('circle', 60);
+    assert.ok(tris.length > 48 && tris.length <= 60, tris.length);
+    let corners = scattered('circle', Math.ceil(60 / 2 + Math.sqrt(60)));
+    assert.ok(tris.every(t => names(t).length == 3 && names(t).every(v => corners.has(v))));
+    // the origin is the centroid, and no triangle holds another's centroid
+    for (let t of tris) {
+        let vs = verts(t), [ox, oy] = xy(t.origin);
+        assert.ok(Math.abs(ox - (vs[0][0] + vs[1][0] + vs[2][0]) / 3) < 1e-6 && Math.abs(oy - (vs[0][1] + vs[1][1] + vs[2][1]) / 3) < 1e-6);
+        assert.ok(!tris.some(u => u !== t && inside(vs, xy(u.origin))));
+    }
+    // a concave shape keeps no triangle across its notch, where the heart outline starts
+    let notch = parseFloat(Function.shape()('heart').split(' ')[1]);
+    assert.ok(notch > 10 && !tiles('heart', 110).some(t => { let [x, y] = xy(t.origin); return Math.abs(x - 50) < 3 && y < notch - .5; }));
+    // `gap` shrinks every triangle, `points` sets the corner count, the seed moves everything
+    let gapped = tiles('circle; gap: 2', 60);
+    assert.ok(gapped.length <= tris.length && gapped.every(t => area(verts(t)) < area(verts(tris.find(u => u.origin == t.origin)))));
+    let few = tiles('circle; points: 12', 60), twelve = scattered('circle', 12);
+    assert.ok(few.length > 10 && few.length <= 22 && few.every(t => names(t).every(v => twelve.has(v))), few.length);
+    assert.notDeepEqual(tiles('circle', 60, 'b').map(String), tris.map(String));
+});
+
+test('scatter density: a formula in x and y (shape coordinates, y up) sets how many points land where', () => {
+    let env = seed => ({ context: {}, extra: [], seed });
+    let tiles = (shape, n = 200) => Array.from({ length: n }, (_, i) => Function.tile(cell(n, i + 1), env('a'))(shape));
+    // dense at the bottom (y = -1), sparse at the top: tiles there are several times larger
+    let graded = tiles('square; density: 1 - y');
+    let half = top => graded.filter(t => (xy(t.origin)[1] < 50) == top).map(t => area(verts(t)));
+    let mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+    assert.ok(half(false).length > half(true).length * 2 && mean(half(true)) > mean(half(false)) * 2);
+    // @plot.scatter with the same density lands on the tiles' points; a constant density changes nothing
+    assert.deepEqual(graded.map(t => t.origin), Array.from({ length: 200 }, (_, i) => String(Function.plot.scatter(cell(200, i + 1), env('a'))('square; density: 1 - y'))));
+    assert.deepEqual(tiles('square; density: 1').map(String), tiles('square').map(String));
+    assert.deepEqual(tiles('heart; density: 2').map(String), tiles('heart').map(String));
 });

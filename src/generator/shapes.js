@@ -5,6 +5,7 @@ import parseShapeCommands from '../parser/parse-shape-commands.js';
 
 import { clamp, tidyNumber } from '../lib/math.js';
 import { isEmpty } from '../lib/type.js';
+import seedrandom from '../lib/seedrandom.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 
@@ -124,7 +125,8 @@ function createPointFunction(props, split) {
     };
 }
 
-function insideTest(outline, y0, h, evenodd) {
+function insideTest(outline, evenodd) {
+    let ys = outline.map(p => p[1]), y0 = min(...ys), h = max(...ys) - y0;
     let bands = Array.from({ length: SCATTER_BANDS }, () => []);
     let band = y => min(SCATTER_BANDS - 1, (y - y0) / h * SCATTER_BANDS | 0);
     for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
@@ -134,6 +136,7 @@ function insideTest(outline, y0, h, evenodd) {
         }
     }
     return (x, y) => {
+        if (y < y0 || y > y0 + h) return 0;
         let n = 0, edges = bands[band(y)];
         for (let i = 0; i < edges.length; i += 4) {
             let ax = edges[i], ay = edges[i + 1], bx = edges[i + 2], by = edges[i + 3];
@@ -145,19 +148,25 @@ function insideTest(outline, y0, h, evenodd) {
     };
 }
 
-function scatter(outline, count, evenodd, seed) {
+function scatter(outline, count, evenodd, seed, density) {
     let xs = outline.map(p => p[0]), ys = outline.map(p => p[1]);
     let x0 = min(...xs), y0 = min(...ys);
     let w = max(...xs) - x0, h = max(...ys) - y0;
-    let inside = insideTest(outline, y0, h, evenodd);
+    let inside = insideTest(outline, evenodd);
     let total = max(1024, SCATTER_SAMPLES * count);
     let sx = new Float64Array(total), sy = new Float64Array(total), n = 0, tried = 0;
+    let rnd = seedrandom('density:' + seed), peak = 0;
+    for (let i = 0; density && i < 1024; ++i) {
+        let x = x0 + (i % 32 + .5) / 32 * w, y = y0 + ((i >> 5) + .5) / 32 * h;
+        if (inside(x, y)) peak = max(peak, density(x, y));
+    }
     // quasi-random R2 samples over the box, kept when inside the shape
     for (; n < total && tried < (n ? total * 100 : 1e3); ++tried) {
         let k = tried + seed * 1e4;
         let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
         let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
-        if (inside(x, y)) sx[n] = x, sy[n++] = y;
+        if (!inside(x, y) || density && density(x, y) < peak * rnd()) continue;
+        sx[n] = x, sy[n++] = y;
     }
     // the first samples are the initial points
     let m = min(count, n);
@@ -202,19 +211,23 @@ function scatter(outline, count, evenodd, seed) {
     return Array.from(px, (x, k) => [x, py[k]]).sort((a, b) => b[1] - a[1]);
 }
 
-function halfplane(poly, nx, ny, mx, my) {
-    let out = [];
+function halfplane(poly, nx, ny, mx, my, ids, q) {
+    let out = [], next = [];
     for (let a = 0, n = poly.length; a < n; a += 2) {
-        let b = (a + 2) % n;
+        let b = (a + 2) % n, id = ids[a / 2];
         let sa = nx * (poly[a] - mx) + ny * (poly[a + 1] - my);
         let sb = nx * (poly[b] - mx) + ny * (poly[b + 1] - my);
-        if (sa <= 0) out.push(poly[a], poly[a + 1]);
+        if (sa <= 0) {
+            out.push(poly[a], poly[a + 1]);
+            next.push(sa < 0 || sb <= 0 ? id : q);
+        }
         if (sa * sb < 0) {
             let t = sa / (sa - sb);
             out.push(poly[a] + (poly[b] - poly[a]) * t, poly[a + 1] + (poly[b + 1] - poly[a + 1]) * t);
+            next.push(sa < 0 ? q : id);
         }
     }
-    return out;
+    return [out, next];
 }
 
 function voronoi(px, py, x0, y0, x1, y1, gap) {
@@ -231,7 +244,7 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
     }
     return Array.from(px, (x, k) => {
         let y = py[k];
-        let poly = [x0, y0, x1, y0, x1, y1, x0, y1];
+        let poly = [x0, y0, x1, y0, x1, y1, x0, y1], ids = [-1, -1, -1, -1];
         let far = () => {
             let r = 0;
             for (let i = 0; i < poly.length; i += 2) {
@@ -250,18 +263,45 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
                         let ax = px[q] - x, ay = py[q] - y, d = sqrt(ax * ax + ay * ay);
                         if (q == k || d > gap && (d - gap) ** 2 / 4 > limit) continue;
                         let s = (d - gap) / (2 * d);
-                        poly = halfplane(poly, ax, ay, x + ax * s, y + ay * s);
+                        [poly, ids] = halfplane(poly, ax, ay, x + ax * s, y + ay * s, ids, q);
                         limit = far();
                     }
                 }
             }
         }
-        return poly;
+        return [poly, ids];
     });
 }
 
-function createShapePoints(props, {min, max}) {
-    let split = clamp(parseInt(props.points || props.split), min, max);
+function regular(cx, cy, k, r, angle) {
+    let out = [];
+    for (let m = 0; m < k; ++m) {
+        let a = angle + m * 2 * PI / k;
+        out.push(cx + r * cos(a), cy + r * sin(a));
+    }
+    return out;
+}
+
+// centres of a lattice of k-gons (6 hex, 3 triangles) anchored at the box centre, reaching
+// a tile past `bounds`, each with the angle of its first vertex
+function lattice(k, box, bounds, s) {
+    let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
+    let h = s * sqrt(3) / 2, out = [];
+    let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
+    let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
+    for (let j = j0; j <= j1; ++j) {
+        let y = cy + j * h, shift = j & 1 ? s / 2 : 0;
+        for (let i = i0; i <= i1; ++i) {
+            let x = cx + i * s + shift;
+            if (k == 6) out.push([x, y, PI / 6]);
+            else out.push([x + s / 2, y + h / 3, -PI / 6], [x + s, y + h * 2 / 3, PI / 6]);
+        }
+    }
+    return out;
+}
+
+function createShapePoints(props, range) {
+    let split = clamp(parseInt(props.points || props.split), range.min, range.max);
 
     // `r: 10px` carries the unit, but `2t` and `2i` are products
     let { unit, value } = parseCompoundValue(isEmpty(props.r) ? '' : props.r);
@@ -276,6 +316,8 @@ function createShapePoints(props, {min, max}) {
     let turn = Number(props.turn) || 1;
     let frame = props.frame;
     let fill = props.fill;
+    let evenodd = fill == 'evenodd';
+    let gap = Number(props.gap) || 0;
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
     let [fx, fy] = parsePair(props.scale, 1);
@@ -290,6 +332,14 @@ function createShapePoints(props, {min, max}) {
     let points = [];
     let px = [], py = [];
 
+    let toScreen = ([x, y]) => {
+        x = (x + dx) * fx;
+        y = -(y - dy) * fy;
+        return percent ? [(x + 1) * 50, (y + 1) * 50] : [x, y];
+    };
+    let box = percent ? [0, 0, 100, 100] : [-1, -1, 1, 1];
+    let fmt = (x, y) => tidyNumber(x) + suffix + ' ' + tidyNumber(y) + suffix;
+
     let add = ([x, y]) => {
         let angle = staticAngle;
         if (angle === null) {
@@ -297,30 +347,79 @@ function createShapePoints(props, {min, max}) {
             if (direction.direction === 'reverse') angle -= 180;
             angle = tidyNumber(angle + direction.angle);
         }
-        // to screen coordinates, y grows downwards
-        x = (x + dx) * fx;
-        y = -(y - dy) * fy;
-        if (percent) {
-            x = (x + 1) * 50;
-            y = (y + 1) * 50;
-        }
-        points.push(new Point(tidyNumber(x) + suffix + ' ' + tidyNumber(y) + suffix, angle));
+        [x, y] = toScreen([x, y]);
+        points.push(new Point(fmt(x, y), angle));
         px.push(x);
         py.push(y);
     };
 
-    let regions = () => {
-        if (!props.voronoi) return points;
-        let box = percent ? [0, 0, 100, 100] : [-1, -1, 1, 1];
-        return voronoi(px, py, ...box, Number(props.gap) || 0).map((poly, k) => {
-            let vs = [];
-            for (let i = 0; i < poly.length; i += 2) {
-                let v = tidyNumber(poly[i]) + suffix + ' ' + tidyNumber(poly[i + 1]) + suffix;
-                if (v !== vs[vs.length - 1]) vs.push(v);
+    let polygon = (poly, origin, extra) => {
+        let vs = [];
+        for (let i = 0; i < poly.length; i += 2) {
+            let v = fmt(poly[i], poly[i + 1]);
+            if (v !== vs[vs.length - 1]) vs.push(v);
+        }
+        if (vs.length > 1 && vs[0] === vs[vs.length - 1]) vs.pop();
+        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, origin);
+    };
+
+    let delaunay = inside => {
+        let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0;
+        let tris = [];
+        voronoi(px, py, x0 - w, y0 - h, x1 + w, y1 + h, 0).forEach(([, ids], k) => {
+            for (let i = 0, n = ids.length; i < n; ++i) {
+                let a = ids[i], b = ids[(i + 1) % n];
+                if (a < k || b < k) continue;
+                let cx = (px[k] + px[a] + px[b]) / 3, cy = (py[k] + py[a] + py[b]) / 3;
+                if (inside(cx, cy)) tris.push([k, a, b, cx, cy]);
             }
-            if (vs.length > 1 && vs[0] === vs[vs.length - 1]) vs.pop();
-            return new Point(`polygon(${vs.join(', ') || '0 0'})`, points[k].extra, points[k].value);
         });
+        let d = (p, q) => (px[p] - px[q]) ** 2 + (py[p] - py[q]) ** 2;
+        let twice = (k, a, b) => (px[a] - px[k]) * (py[b] - py[k]) - (px[b] - px[k]) * (py[a] - py[k]);
+        let r2 = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
+        let sorted = tris.map(r2).sort((u, v) => u - v);
+        let keep = min(sorted[sorted.length >> 1] * 9, sorted[props.count - 1] ?? Infinity);
+        return tris.filter(t => r2(t) <= keep).slice(0, props.count).map(([k, a, b, cx, cy]) => {
+            let tri = [px[k], py[k], px[a], py[a], px[b], py[b]];
+            if (gap) {
+                let la = sqrt(d(a, b)), lb = sqrt(d(b, k)), lc = sqrt(d(k, a)), per = la + lb + lc;
+                let ix = (la * px[k] + lb * px[a] + lc * px[b]) / per, iy = (la * py[k] + lb * py[a] + lc * py[b]) / per;
+                let f = 1 - gap * per / 2 / abs(twice(k, a, b));
+                tri = f > 0 ? tri.map((v, i) => { let c = i & 1 ? iy : ix; return c + (v - c) * f; }) : [];
+            }
+            return polygon(tri, fmt(cx, cy));
+        });
+    };
+
+    let tiles = (k, screen, inside) => {
+        let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
+        let bounds = [min(...xs), min(...ys), max(...xs), max(...ys)];
+        let area = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]);
+        if (!(area > 0)) return [];
+        let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(c[0], c[1]));
+        let fits = s => {
+            let r = s / sqrt(3), apothem = r * cos(PI / k);
+            return lattice(k, box, bounds, s).filter(([x, y, angle]) => {
+                if (inside(x, y)) return true;
+                let vs = regular(x, y, k, r, angle);
+                for (let i = 0; i < vs.length; i += 2) if (inside(vs[i], vs[i + 1])) return true;
+                return corners.some(([px, py]) => {
+                    for (let m = 0; m < k; ++m) {
+                        let a = angle + PI / k + m * 2 * PI / k;
+                        if ((px - x) * cos(a) + (py - y) * sin(a) > apothem) return false;
+                    }
+                    return true;
+                });
+            });
+        };
+        let count = props.scatter, hi = sqrt(area / count);
+        for (let i = 0; i < 30 && fits(hi).length > count; ++i) hi *= 1.25;
+        for (let lo = hi / 8, i = 0; i < 20; ++i) {
+            let mid = (lo + hi) / 2;
+            if (fits(mid).length > count) lo = mid; else hi = mid;
+        }
+        let r = hi / sqrt(3) - gap / 2 / cos(PI / k);
+        return fits(hi).map(([x, y, angle]) => polygon(r > 0 ? regular(x, y, k, r, angle) : [], fmt(x, y)));
     };
 
     if (props.scatter) {
@@ -328,8 +427,20 @@ function createShapePoints(props, {min, max}) {
         for (let i = 0; i < split; ++i) {
             outline.push(point(rad * i, i));
         }
-        scatter(outline, props.scatter, fill == 'evenodd', Number(props.seed) || 0).forEach(add);
-        return regions();
+        let screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
+        let sides = { hex: 6, triangle: 3 }[props.tile];
+        if (sides) return tiles(sides, screen, inside);
+        // `density` is a formula in x and y over the shape's own coordinates
+        let context = Object.assign(Object.create(defaultContext), props);
+        let density = isEmpty(props.density) ? null : (x, y) => {
+            context.x = x;
+            context.y = y;
+            return Number(calc(props.density, context)) || 0;
+        };
+        scatter(outline, props.scatter, evenodd, Number(props.seed) || 0, density).forEach(add);
+        if (props.tile == 'delaunay') return delaunay(inside);
+        if (props.tile == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => polygon(poly, points[k].value, points[k].extra));
+        return points;
     }
 
     if (fill == 'nonzero' || fill == 'evenodd') {
@@ -361,7 +472,7 @@ function createShapePoints(props, {min, max}) {
         add(first);
     }
 
-    return regions();
+    return points;
 }
 
 // The callers memoize: the results are shared and read-only.

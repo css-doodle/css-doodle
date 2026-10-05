@@ -184,18 +184,20 @@ function seq(token, make) {
     };
 }
 
-function createPlot(unit, scatter, voronoi) {
+function createPlot(unit, scatter, tile) {
     let plot = memo((commands, max, seed) => {
         return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
             delete rules['frame'];
-            rules.voronoi = voronoi;
             if (scatter) {
                 let count = parseInt(rules.points);
                 if (isEmpty(rules.seed)) {
                     rules.seed = Math.floor(seedrandom('scatter:' + seed)() * 1e4);
                 }
-                rules.hasPoints = count > 0 && !voronoi;
-                rules.scatter = clamp(count > 0 ? count : max, 1, MAX_SCATTER);
+                rules.tile = tile;
+                rules.hasPoints = count > 0 && !tile;
+                rules.count = max;
+                let points = tile == 'delaunay' ? Math.ceil(max / 2 + Math.sqrt(max)) : max;
+                rules.scatter = clamp(count > 0 ? count : points, 1, MAX_SCATTER);
                 rules.points = rules.split || SCATTER_OUTLINE;
             } else {
                 delete rules['fill'];
@@ -218,7 +220,7 @@ function createPlot(unit, scatter, voronoi) {
             let max = e[SEQ.max] ?? grid.count;
             let { points, rules } = plot(args.join(','), max, scatter ? String(seed ?? '') : '');
             if (rules.hasPoints) return points;
-            return points[idx - 1] ?? (voronoi ? NO_TILE : undefined);
+            return points[idx - 1] ?? (tile ? NO_TILE : undefined);
         };
     };
 }
@@ -571,8 +573,11 @@ Function.shape = () => shapePolygon;
 Function.plot = createPlot(false);
 Function.plot.scatter = createPlot(false, true);
 
-Function.tile = createPlot(false, true, true);
+Function.tile = createPlot(false, true, 'voronoi');
 Function.tile.voronoi = Function.tile;
+Function.tile.delaunay = createPlot(false, true, 'delaunay');
+Function.tile.hex = createPlot(false, true, 'hex');
+Function.tile.triangle = createPlot(false, true, 'triangle');
 
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);

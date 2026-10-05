@@ -89,7 +89,7 @@ test('a dotted name calls the variant of the function on its left', () => {
     }
     // Function.prototype methods are not variants
     assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown function @call/);
-    // @tile.voronoi: a preset is filled, a formula plotted
+    // @tile.voronoi fills a preset or a formula
     let regions = values('--v: @tile.voronoi(star);');
     assert.equal(new Set(regions).size, 25);
     assert.match(regions[0], /--v: ?polygon\(/);
