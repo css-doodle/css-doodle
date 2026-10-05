@@ -553,6 +553,7 @@ class Rules {
         let variables = '';
         let group = this.scopedVars(count);
         for (let name in group) variables += `${name}: ${group[name]};`;
+        variables = variables.replace(/var\(--cssd-(utime|UTime)\)/g, (_, n) => n == 'utime' ? '@t' : '@T');
         return variables ? `:doodle {${variables}}` + value : value;
     }
 
