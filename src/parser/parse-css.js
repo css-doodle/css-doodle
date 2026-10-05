@@ -157,7 +157,7 @@ function parseValue(cur, breakOn) {
         skip = false;
 
         if (tok.isSymbol()) {
-            if (!quote && (v === '}' || v === breakOn || ((v === ';' || v === '<') && paren === 0))) {
+            if (!quote && (v === '}' || v === breakOn || ((v === ';' || (v === '<' && isTagStart(cur))) && paren === 0))) {
                 break;
             }
             if (v === ',' && paren === 0 && !quote) {
@@ -197,6 +197,9 @@ function parseValue(cur, breakOn) {
     if (paren > 0) {
         warn(cur.ctx, 'unclosed ( in value', head && head.pos);
     }
+    if (quote) {
+        warn(cur.ctx, 'unclosed quote in value', head && head.pos);
+    }
     groups.hasFunc = hasFunc;
     return groups;
 }
@@ -205,6 +208,11 @@ function isFuncStart(cur) {
     let tok = cur.peek();
     let next = cur.peek(1);
     return !!(next && adjacent(tok, next) && RE_FUNC_START.test(next.value[0]));
+}
+
+function isTagStart(cur) {
+    let next = cur.peek(1);
+    return !!(next && adjacent(cur.peek(), next) && /^[\/!a-zA-Z]/.test(next.value));
 }
 
 // `$` is not a tokenizer symbol: a word carrying one is split around it
@@ -519,6 +527,7 @@ function parseDoodleBody(cur, start) {
     let paren = 0;
     let quote = false;
     let end = cur.source.length;
+    let head = cur.peek();
     while (!cur.end()) {
         let tok = cur.peek();
         if (tok.status === 'open') {
@@ -536,6 +545,9 @@ function parseDoodleBody(cur, start) {
             paren--;
         }
         cur.next();
+    }
+    if (end === cur.source.length) {
+        warn(cur.ctx, 'unterminated argument list', head && head.pos);
     }
     let body = substitutePi(cur.source.slice(start, end), cur.source[start - 1]);
     return [normalizeArgument([Node.text(body.trim() || body)])];
@@ -575,6 +587,7 @@ function parseRule(cur) {
     let source = cur.source;
     let colon = -1;
     let end = source.length;
+    let pos = cur.peek().pos;
     let stop = probe(cur, ':', ';', '}');
     if (stop < 0) stop = cur.tokens.length;
     let tok = cur.tokens[stop];
@@ -590,13 +603,15 @@ function parseRule(cur) {
         if (!cur.end() && cur.peek().isSymbol(';')) {
             cur.next();
         }
-    } else if (tok && tok.isSymbol(';')) {
+    } else if (tok && tok.isSymbol(';') && head.startsWith('@')) {
         cur.next();
         rule.type = 'at-rule';
         rule.value = head + ';';
-        end = tok.index + 1;
-    } else if (tok) {
-        end = tok.index;
+    } else {
+        // `color red;`, or a head that runs to the end: `@nth(1 { … }`
+        if (tok && tok.isSymbol(';')) cur.next();
+        let what = tok || !/[("'`]/.test(head) ? 'missing ":"' : 'unbalanced ( or quote';
+        warn(cur.ctx, `${what} in "${head.slice(0, 40)}"`, pos);
     }
 
     rule.rawValue = colon < 0
@@ -639,6 +654,7 @@ function parseUse(cur) {
 
 function parseBlockBody(cur, top) {
     let styles = [];
+    let brace = cur.peek(-1);
     while (!cur.end()) {
         let tok = cur.peek();
         if (tok.isSpace() || tok.isSymbol(';')) {
@@ -648,9 +664,9 @@ function parseBlockBody(cur, top) {
         if (tok.isSymbol('}')) {
             cur.next();
             if (top) continue;
-            break;
+            return styles;
         }
-        if (top && tok.isSymbol('<')) {
+        if (top && tok.isSymbol('<') && isTagStart(cur)) {
             skipTag(cur);
             continue;
         }
@@ -673,6 +689,9 @@ function parseBlockBody(cur, top) {
         } else {
             styles.push(parseCond(cur, brace));
         }
+    }
+    if (!top) {
+        warn(cur.ctx, 'unclosed {', brace.pos);
     }
     return styles;
 }
@@ -831,8 +850,12 @@ function parseStep(cur) {
 }
 
 function skipTag(cur) {
+    let head = cur.peek();
     while (!cur.end() && !cur.peek().isSymbol('>')) {
         cur.next();
+    }
+    if (cur.end()) {
+        warn(cur.ctx, 'unclosed tag', head.pos);
     }
     cur.next();
 }

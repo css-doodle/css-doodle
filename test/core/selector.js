@@ -72,6 +72,17 @@ test('match evaluates an expression over the cell variables', () => {
     assert.equal(match('x < 3'), true);
 });
 
+test('nth, row, col and depth warn about an expression that is not an+b', () => {
+    let warnings = [];
+    let rules = { warn: message => warnings.push(message) };
+    let a = cell(2, 3, 10);
+    assert.equal(selector.row(a, { ...env, rules })('4/2'), false);
+    assert.equal(selector.col(a, { ...env, rules })('x > 2'), false);
+    assert.equal(selector.nth(a, { ...env, rules })('2n + 1 of'), false);
+    assert.deepEqual(warnings.map(m => /an\+b/.test(m)), [true, true, true]);
+    assert.match(warnings[0], /4\/2/);
+});
+
 test('cell accepts comma lists, keywords and index checks', () => {
     let match = selector.cell(cell(2, 3, 10), env, 0);
     assert.equal(match('x = 2, y = 3'), true);

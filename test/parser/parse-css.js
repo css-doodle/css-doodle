@@ -497,13 +497,37 @@ test('a < inside an open paren stays in the value', () => {
     assert.equal(color.value[0][0].value, 'red');
 });
 
+test('a statement without a colon warns instead of passing through as an at-rule', () => {
+    // `color red;` used to be emitted verbatim, where the browser ate the rule after it
+    let parsed = parseCss(`color red; width: 1px; @import url(x);`);
+    assert.deepEqual(parsed.map(r => r.property || r.value), ['width', '@import url(x);']);
+    assert.deepEqual(parsed.warnings, [{ message: 'missing ":" in "color red"', pos: [0, 0] }]);
+});
+
 test('a comment inside a selector list is not a selector', () => {
     let [pseudo] = parseCss(`:before, /* :after, */ :hover { x: y }`);
     assert.deepEqual(pseudo.selectors, ['&:before', '&:hover']);
+});
+
+test('unbalanced parens, quotes and braces warn instead of silently dropping the rest', () => {
+    const messages = code => parseCss(code).warnings.map(w => w.message);
+    assert.deepEqual(messages(`@nth(1 { color: red; } width: 2px;`), ['unbalanced ( or quote in "@nth(1{color:red;}width:2px;"']);
+    assert.deepEqual(messages(`:a { :b { x: y`), ['unclosed {', 'unclosed {']);
+    assert.deepEqual(messages(`content: "oops; color: red;`), ['unclosed quote in value']);
+    assert.deepEqual(messages(`background: @pattern(fill: red`), ['unterminated argument list']);
 });
 
 test('π inside a quoted string stays as written', () => {
     assert.deepEqual(ast(`content: "π"; --a: π;`), [rule('content', text('"π"')), rule('--a', text(String(Math.PI)))]);
     let [p] = parseCss(`content: @p("π", π);`);
     assert.deepEqual(p.value[0][0].arguments.map(a => a.values[0].value), ['π', String(Math.PI)]);
+});
+
+test('a < in a value is text unless a tag follows', () => {
+    assert.deepEqual(ast(`--c: a < b; --d: 1 <= 2; color: red</style>`), [
+        rule('--c', text('a < b')), rule('--d', text('1 <= 2')), rule('color', text('red')),
+    ]);
+    let parsed = parseCss(`--x: 1; <!-- c --> color: red; <foo`);
+    assert.deepEqual(parsed.map(r => r.property), ['--x', 'color']);
+    assert.deepEqual(parsed.warnings, [{ message: 'unclosed tag', pos: [31, 0] }]);
 });

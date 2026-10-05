@@ -23,8 +23,12 @@ function compare(rule, value) {
     return n >= 0 && Number.isInteger(n);
 }
 
-function matchAny(value, exprs) {
-    return exprs.some(expr => compare(expr, value));
+function matchAny(value, exprs, env) {
+    return exprs.some(expr => {
+        let matched = compare(expr, value);
+        if (matched === undefined) env.rules.warn(`invalid an+b expression ${expr}`);
+        return matched;
+    });
 }
 
 // the cell variables of a calc expression; selectors draw random()
@@ -72,20 +76,20 @@ Selector.at = ({ x, y }) => {
     return (x1, y1) => (x == x1 && y == y1);
 };
 
-Selector.nth = ({ count }) => {
-    return (...exprs) => matchAny(count, exprs);
+Selector.nth = ({ count }, env) => {
+    return (...exprs) => matchAny(count, exprs, env);
 };
 
-Selector.row = ({ y }) => {
-    return (...exprs) => matchAny(y, exprs);
+Selector.row = ({ y }, env) => {
+    return (...exprs) => matchAny(y, exprs, env);
 };
 
-Selector.col = ({ x }) => {
-    return (...exprs) => matchAny(x, exprs);
+Selector.col = ({ x }, env) => {
+    return (...exprs) => matchAny(x, exprs, env);
 };
 
-Selector.depth = ({ z }) => {
-    return (...exprs) => matchAny(z, exprs);
+Selector.depth = ({ z }, env) => {
+    return (...exprs) => matchAny(z, exprs, env);
 };
 
 Selector.even = ({ x, y }) => {
