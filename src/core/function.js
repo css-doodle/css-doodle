@@ -186,7 +186,7 @@ function seq(token, make) {
 
 function createPlot(unit, scatter, tile) {
     let plot = memo((commands, max, seed) => {
-        return generateShape(commands, {min: 1, max: MAX_SEQUENCE}, (rules, preset) => {
+        return generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square'}, (rules, preset) => {
             delete rules['frame'];
             if (scatter) {
                 let count = parseInt(rules.points);
@@ -581,13 +581,13 @@ Function.shape = () => shapePolygon;
 Function.plot = createPlot(false);
 Function.plot.scatter = createPlot(false, true);
 
-Function.tile = createPlot(false, true, 'voronoi');
-Function.tile.voronoi = Function.tile;
+Function.tile = createPlot(false, true, 'slice');
+Function.tile.slice = Function.tile;
+Function.tile.voronoi = createPlot(false, true, 'voronoi');
 Function.tile.delaunay = createPlot(false, true, 'delaunay');
 Function.tile.hex = createPlot(false, true, 'hex');
 Function.tile.triangle = createPlot(false, true, 'triangle');
 Function.tile.circle = createPlot(false, true, 'circle');
-Function.tile.slice = createPlot(false, true, 'slice');
 Function.tile.cube = createPlot(false, true, 'cube');
 Function.tile.penrose = createPlot(false, true, 'penrose');
 Function.tile.x = tileAxis(0);

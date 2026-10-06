@@ -232,9 +232,8 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
 
 test('@tile.voronoi: the box tiled around points scattered inside the shape, preset or formula', () => {
     let env = { context: {}, extra: [] };
-    let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile(cell(n, i + 1), { context: {}, extra: [], seed })(shape));
+    let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), { context: {}, extra: [], seed })(shape));
     let covered = list => list.reduce((s, t) => s + (String(t) == 'polygon(0 0)' ? 0 : area(verts(t))), 0);
-    assert.equal(Function.tile.voronoi, Function.tile);
     // a formula is an outline like a preset: four points scattered inside a circle give four tiles covering the box
     let list = regions('r: .5', 4, 'a');
     assert.ok(list.every(t => verts(t).length >= 3) && Math.abs(covered(list) - 10000) < 1e-6);
@@ -479,7 +478,7 @@ test('@tile.kind: which kind of piece the cell\'s tile is', () => {
 
 test('scatter density: a formula in x and y (shape coordinates, y up) sets how many points land where', () => {
     let env = seed => ({ context: {}, extra: [], seed });
-    let tiles = (shape, n = 200) => Array.from({ length: n }, (_, i) => Function.tile(cell(n, i + 1), env('a'))(shape));
+    let tiles = (shape, n = 200) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), env('a'))(shape));
     // dense at the bottom (y = -1), sparse at the top: tiles there are several times larger
     let graded = tiles('square; density: 1 - y');
     let half = top => graded.filter(t => (xy(t.origin)[1] < 50) == top).map(t => area(verts(t)));

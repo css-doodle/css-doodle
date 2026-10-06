@@ -637,6 +637,10 @@ export default function generateShape(input, range = {}, modifier) {
         preset = preset(...args);
     }
     let rules = parseShapeCommands(preset === undefined ? input : preset + ';' + more);
+    if (preset === undefined && range.preset && ['x', 'y', 'r'].every(k => isEmpty(rules[k]))) {
+        preset = presetShapes[range.preset];
+        rules = parseShapeCommands(preset + ';' + input);
+    }
     if (typeof modifier === 'function') {
         rules = modifier(rules, preset !== undefined);
     }

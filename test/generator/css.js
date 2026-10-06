@@ -93,7 +93,12 @@ test('a dotted name calls the variant of the function on its left', () => {
     let regions = values('--v: @tile.voronoi(star);');
     assert.equal(new Set(regions).size, 25);
     assert.match(regions[0], /--v: ?polygon\(/);
-    assert.deepEqual(values('--v: @tile(star);'), regions);
+    // @tile is @tile.slice, every kind fills a square unless given a preset or a formula
+    assert.deepEqual(values('--v: @tile(star);'), values('--v: @tile.slice(star);'));
+    assert.deepEqual(values('--v: @tile();'), values('--v: @tile.slice(square);'));
+    assert.deepEqual(values('--v: @tile(gap: 1);'), values('--v: @tile.slice(square; gap: 1);'));
+    assert.deepEqual(values('--v: @tile.voronoi(gap: 1);'), values('--v: @tile.voronoi(square; gap: 1);'));
+    assert.notDeepEqual(values('--v: @tile.voronoi(r: .5);'), values('--v: @tile.voronoi(square);'));
     let wedges = values('--v: @tile.voronoi(r: .5; gap: 2);');
     assert.equal(new Set(wedges).size, 25);
     assert.notDeepEqual(wedges, regions);
@@ -101,7 +106,7 @@ test('a dotted name calls the variant of the function on its left', () => {
 });
 
 test('@tile in clip-path brings its own transform-origin', () => {
-    let sheet = cells('clip-path: @tile(star); --v: @tile(star);', '5');
+    let sheet = cells('clip-path: @tile.voronoi(star); --v: @tile.voronoi(star);', '5');
     let tiles = sheet.match(/clip-path:polygon\([^;]+;transform-origin:[^;]+;/g);
     assert.equal(tiles.length, 25);
     assert.equal(new Set(tiles).size, 25);
