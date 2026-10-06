@@ -16,38 +16,39 @@ const SCATTER_ROUNDS = 10;
 const SCATTER_BANDS = 256;
 const PHI = (1 + sqrt(5)) / 2;
 
-function ngon(n) {
-    return `r: cos(π/${n}) / cos(t % (2π/${n}) - π/${n})`;
+function ngon(k, inner = cos(PI / k)) {
+    let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
+    return `r: ${inner * y / l} / cos(abs(abs(t) % ${2 * a} - ${a}) + ${atan2(x, y)})`;
 }
 
 const presetShapes = {
     __proto__: null,
 
-    square:   css`split: 4; r: 1.42; rotate: 45`,
+    square:   css`split: 4; ${ngon(4)}; rotate: 45; scale: 1.42`,
     pentagon: css`split: 5; ${ngon(5)}; rotate: 54`,
-    circle:   css`split: 180; scale: .99`,
-    hexagon:  css`split: 6; ${ngon(6)}; rotate: 30; scale: .98`,
-    octagon:  css`split: 8; ${ngon(8)}; rotate: 22.5; scale: .99`,
+    circle:   css`split: 180`,
+    hexagon:  css`split: 6; ${ngon(6)}; rotate: 30`,
+    octagon:  css`split: 8; ${ngon(8)}; rotate: 22.5`,
     triangle: css`split: 3; ${ngon(3)}; rotate: 30; scale: 1.1; move: 0 .2`,
-    star:     css`split: 10; r: cos(5t); rotate: -18; scale: .99`,
     bean:     css`split: 180; r: sin(t)^3 + cos(t)^3; move: -.35 .35`,
     bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
-    fish:     css`split: 240; x: cos(t) - sin(t)^2 / sqrt(2) - .04; y: sin(2t)/2`,
-    infinity: css`split: 180; scale: .99; x: cos(t)*.99 / (sin(t)^2 + 1); y: x * sin(t)`,
+    fish:     css`split: 240; scale: .96; x: cos(t) - sin(t)^2 / sqrt(2) + .03; y: sin(2t)/2`,
+    infinity: css`split: 180; x: cos(t) / (sin(t)^2 + 1); y: x * sin(t)`,
     drop:     css`split: 180; rotate: 90; scale: .95; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`,
     vase:     css`split: 240; scale: .3; x: sin(4t) + sin(t) * 1.4; y: cos(t) + cos(t) * 4.8 + .3`,
     windmill: css`split: 18; R: seq(.618, 1, 0); T: seq(t-.55, t, t); x: R * cos(T); y: R * sin(T)`,
-    whale:    css`split: 240; rotate: 180; R: 3.4 * (sin(t)^2 - .5) * cos(t); x: cos(t) * R + .75; y: sin(t) * R * 1.2`,
     heart:    css`split: 180; rotate: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: (.75 * sin(t)^3) * 1.2; y: (a - b + .2) * -1.1`,
+    star(k = 5, inner = 1 / PHI ** 2) {
+        k = clamp(k, 3, 10);
+        return css`split: ${2 * k}; ${ngon(k, clamp(inner, .05, 1))}; rotate: ${-(90 % (360 / k))}`;
+    },
     clover(k = 3) {
-        k = clamp(k, 3, 5);
-        if (k == 4) k = 2;
-        return css`split: 240; r: cos(${k}t); scale: .98`;
+        k = clamp(k, 3, 10);
+        return css`split: 240; r: ${k % 2 ? `cos(${k}t)` : `abs(cos(${k / 2}t))`}`;
     },
     hypocycloid(k = 3) {
-        k = clamp(k, 3, 5);
-        let scale = [.34, .25, .19][k - 3];
-        return css`split: 240; scale: ${scale}; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`;
+        k = clamp(k, 3, 10);
+        return css`split: 240; scale: ${1 / k}; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`;
     },
     bud(k = 3) {
         k = clamp(k, 3, 10);
