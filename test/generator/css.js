@@ -652,7 +652,7 @@ test('keyframes declared inside a pseudo are registered', () => {
 
 test('keyframes of static @shape values are emitted once', () => {
     let { all, container, cells } = compile(
-        'animation: a 1s; @keyframes a { from { @shape: circle; } to { @shape: heart; } }', '2x1'
+        'animation: a 1s; @keyframes a { from { @shape: square; } to { @shape: heart; } }', '2x1'
     ).styles;
     assert.equal(container, '');
     assert.equal((all.match(/@keyframes/g) || []).length, 1);
@@ -821,7 +821,7 @@ test('the same text in every cell prints once for all cells', () => {
 });
 
 test('a static @shape polygon prints once per selector', () => {
-    let all = cells('@shape: circle; :after { content: ""; @shape: heart; }', '2x1');
+    let all = cells('@shape: square; :after { content: ""; @shape: heart; }', '2x1');
     assert.equal(all.split('polygon(').length - 1, 2);
     assert.match(all, /^:is\(cell,#_\) \{clip-path:polygon\([^;]+\);\}:is\(cell,#_\):after \{content:"";\nclip-path:polygon\([^;]+\);\}$/);
 });
@@ -894,11 +894,17 @@ test('rules inside a group at-rule print once under its prelude, laid out like t
         '@media (x) {:is(cell,#_) {color:red;}@supports (y) {:is(cell,#_) {color:blue;}}}');
 });
 
+test('a bare circle is the native ellipse, any command keeps the polygon', () => {
+    assert.equal(cells('@shape: circle;', '2x1'), ':is(cell,#_) {clip-path:ellipse(50% 50%);}');
+    assert.equal(cells('clip-path: @shape(circle);', '2x1'), ':is(cell,#_) {clip-path:ellipse(50% 50%);}');
+    assert.match(cells('clip-path: @shape(circle; frame: 5);', '2x1'), /^:is\(cell,#_\) \{clip-path:polygon\(/);
+});
+
 test('per-cell and host values stay inline', () => {
     let { all, container } = compile(`
         --long: linear-gradient(@r(360)deg,#ff0000 0%,#00ff00 10%,#0000ff 20%,#ffff00 30%,#ff00ff 40%,#00ffff 50%,#000000 60%,#ffffff 70%,#808080 80%);
-        @shape: @pn(circle, heart);
-        :doodle { @shape: circle; }
+        @shape: @pn(square, heart);
+        :doodle { @shape: square; }
     `, '2x1').styles;
     assert.equal(container, '');
     assert.ok(all.includes('#c-1-1-1 {--long:linear-gradient('));

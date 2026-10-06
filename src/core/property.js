@@ -176,6 +176,7 @@ Property.gap = formatGap;
 Property.seed = Property.content = value => value;
 
 Property.shape = memo(value => {
+    if (value.trim() == 'circle') return 'clip-path:ellipse(50% 50%);';
     let { points, preset } = generateShape(value);
     return preset ? `clip-path:polygon(${points.join(',')});` : '';
 });
