@@ -589,6 +589,7 @@ Function.tile.voronoi = createPlot(false, true, 'voronoi');
 Function.tile.delaunay = createPlot(false, true, 'delaunay');
 Function.tile.hex = createPlot(false, true, 'hex');
 Function.tile.triangle = createPlot(false, true, 'triangle');
+Function.tile.grid = createPlot(false, true, 'grid');
 Function.tile.circle = createPlot(false, true, 'circle');
 Function.tile.cube = createPlot(false, true, 'cube');
 Function.tile.penrose = createPlot(false, true, 'penrose');

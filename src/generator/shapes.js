@@ -309,15 +309,16 @@ function regular(cx, cy, k, r, angle) {
 
 function lattice(k, box, bounds, s) {
     let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
-    let h = s * sqrt(3) / 2, r = s / sqrt(3), out = [];
+    let h = k == 4 ? s : s * sqrt(3) / 2, r = k == 4 ? s / sqrt(2) : s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
     let add = (x, y, angle, kind) => out.push([regular(x, y, k, r, angle), [x, y], kind]);
     for (let j = j0; j <= j1; ++j) {
-        let y = cy + j * h, shift = j & 1 ? s / 2 : 0;
+        let y = cy + j * h, shift = j & 1 && k != 4 ? s / 2 : 0;
         for (let i = i0; i <= i1; ++i) {
             let x = cx + i * s + shift;
-            if (k == 6) add(x, y, PI / 6, 1);
+            if (k == 4) add(x, y, PI / 4, 1);
+            else if (k == 6) add(x, y, PI / 6, 1);
             else add(x + s / 2, y + h / 3, -PI / 6, 1), add(x + s, y + h * 2 / 3, PI / 6, 2);
         }
     }
@@ -378,13 +379,13 @@ function delaunay(px, py, box, inside, count, gap) {
 }
 
 // the smallest pieces of make(s) with no more than `count` reaching into the shape
-function tiles(make, box, screen, inside, count) {
+function tiles(make, box, screen, inside, count, grow = 1) {
     let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
     let bounds = [min(...xs), min(...ys), max(...xs), max(...ys)];
     let area = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]);
     if (!(area > 0)) return [];
     let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(c[0], c[1]));
-    let reaching = s => make(box, bounds, s).filter(([p, c]) => reaches(p, c, inside, corners));
+    let reaching = s => make(box, bounds, s).filter(([p, c]) => reaches(grow == 1 ? p : p.map((v, i) => c[i & 1] + (v - c[i & 1]) * grow), c, inside, corners));
     let hi = sqrt(area / count);
     for (let i = 0; i < 30 && reaching(hi).length > count; ++i) hi *= 1.25;
     for (let lo = hi / 8, i = 0; i < 20; ++i) {
@@ -394,13 +395,30 @@ function tiles(make, box, screen, inside, count) {
     return reaching(hi);
 }
 
-function inset(p, x, y, d) {
+function bend(p, [cx, cy], edge, classes, tol, toShape) {
+    let out = [];
+    for (let i = 0; i < p.length; i += 2) {
+        let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay;
+        let a = atan2(dy, dx), first = a > -1e-9 && a < PI - 1e-9;
+        let g = edge(floor(((a % PI) + PI) % PI / (PI / classes) + .25) % classes + 1, ...toShape(ax + dx / 2, ay + dy / 2));
+        let { f, n } = g, idx = g.idx ||= simplify(g, tol);
+        let nx = dy, ny = -dx;
+        if (nx * (ax - cx) + ny * (ay - cy) < 0) nx = -nx, ny = -ny;
+        for (let m = 0; m < idx.length - 1; ++m) {
+            let j = first ? idx[m] : n - idx[idx.length - 1 - m], o = first ? f[j] : -f[n - j];
+            out.push(ax + dx * j / n + nx * o, ay + dy * j / n + ny * o);
+        }
+    }
+    return out;
+}
+
+function inset(p, x, y, d, q = p) {
     let per = 0;
     for (let i = 0; i < p.length; i += 2) {
         per += Math.hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]);
     }
     let f = 1 - d * per / 2 / area(p);
-    return f > 0 ? p.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; }) : [];
+    return f > 0 ? q.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; }) : [];
 }
 
 function bbox(screen, box) {
@@ -517,6 +535,37 @@ function contains(p, x, y) {
     return true;
 }
 
+function edges(props, odd, seed, n = 256) {
+    let context = Object.assign(Object.create(defaultContext), props), cache = {};
+    let local = /\b[xy]\b|random/.test(props.edge);
+    return (e, x, y) => {
+        let key = local ? e + ',' + x.toFixed(4) + ',' + y.toFixed(4) : e;
+        if (cache[key]) return cache[key];
+        let rnd = seedrandom('edge:' + seed + ':' + key), draws = [], k;
+        Object.assign(context, { e, x, y, random: () => k < draws.length ? draws[k++] : (draws[k++] = rnd()) });
+        let f = Array.from({ length: n + 1 }, (_, j) => {
+            k = 0;
+            context.t = context['θ'] = 2 * PI * j / n;
+            return Number(calc(props.edge, context)) || 0;
+        });
+        f = f.map((v, j) => v - f[0] - (f[n] - f[0]) * j / n);
+        return cache[key] = { f: odd ? f.map((v, j) => (v - f[n - j]) / 2) : f, n };
+    };
+}
+
+function simplify({ f, n }, tol) {
+    let keep = [0, n], walk = (i, j) => {
+        let dx = (j - i) / n, dy = f[j] - f[i], len = Math.hypot(dx, dy), worst = tol, at = 0;
+        for (let k = i + 1; k < j; ++k) {
+            let e = abs((k - i) / n * dy - (f[k] - f[i]) * dx) / len;
+            if (e > worst) worst = e, at = k;
+        }
+        if (at) walk(i, at), keep.push(at), walk(at, j);
+    };
+    walk(0, n);
+    return keep.sort((a, b) => a - b);
+}
+
 function createShapePoints(props, range) {
     let split = clamp(parseInt(props.points || props.split), range.min, range.max);
 
@@ -588,15 +637,24 @@ function createShapePoints(props, range) {
         let screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
         let tile = ([poly, [x, y], kind]) => polygon(poly, fmt(x, y), undefined, kind);
         let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
-        let sides = { hex: 6, triangle: 3, cube: 6 }[name];
+        let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s) : name == 'penrose' && penrose;
         if (make) {
-            let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count);
+            let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
+            let probes = [-1, -.5, 0, .5, 1], bulge = 0;
+            if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) bulge = max(bulge, ...edge(e, x, y).f.map(abs));
+            let grow = edge ? 1 + 2 * Math.tan(PI / sides) * bulge : 1;
+            let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count, grow);
             // top, left, right faces of a hexagon
             if (name == 'cube') pieces = pieces.flatMap(([p, c]) => [6, 2, 10].map((i, face) => {
                 let q = [...c, ...[0, 1, 2, 3, 4, 5].map(m => p[(i + m) % 12])];
                 return [q, centre(q), face + 1];
             }));
+            if (edge && pieces.length) {
+                let [p] = pieces[0], tol = (box[2] - box[0]) * 5e-4 / Math.hypot(p[2] - p[0], p[3] - p[1]);
+                let toShape = percent ? (x, y) => [x / 50 - 1, 1 - y / 50] : (x, y) => [x, -y];
+                return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2, bend(p, c, edge, classes, tol, toShape)), c, kind]));
+            }
             return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2), c, kind]));
         }
         if (name == 'circle') return pack(screen, box, inside, count, seed).map(([x, y, r]) => {
