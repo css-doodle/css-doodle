@@ -168,7 +168,7 @@ let area = vs => Math.abs(vs.reduce((s, [x, y], i) => s + x * vs[(i + 1) % vs.le
 let inside = (vs, [x, y]) => {
     let n = 0;
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-        let [ax, ay] = vs[i], [bx, by] = vs[j];
+        let ax = vs[i][0], ay = vs[i][1], bx = vs[j][0], by = vs[j][1];
         if ((ay > y) != (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) n++;
     }
     return n & 1;
@@ -311,7 +311,7 @@ test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as ma
     let heart = tiles(Function.tile.hex, 'heart', 64);
     assert.ok(heart.length > 20 && heart.length <= 64 && heart.every(t => [xy(t.origin), ...verts(t)].some(p => inside(outline, p))));
     assert.ok(heart.some(t => !inside(outline, xy(t.origin))));
-    let covered = list => { for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) if (!list.some(t => inside(verts(t), [x, y]))) return false; return true; };
+    let covered = list => { let vs = list.map(verts); for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) if (!vs.some(v => inside(v, [x, y]))) return false; return true; };
     assert.ok(covered(hex) && covered(tiles(Function.tile.triangle, 'square', 100)));
     // `gap` shrinks every tile; `points` caps the count
     let gapped = tiles(Function.tile.triangle, 'circle; gap: 2', 100);
@@ -405,8 +405,9 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
     let near = (a, b) => Math.abs(a - b) < 1e-6;
     let side = ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     let covered = list => {
+        let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
-            if (list.filter(t => inside(verts(t), [x, y])).length != 1) return false;
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
         }
         return true;
     };
@@ -438,8 +439,9 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
 test('@tile.grid with shift: every other row, or column, moved by part of a cell', () => {
     let tiles = shape => Array.from({ length: 64 }, (_, i) => Function.tile.grid(cell(64, i + 1), { context: {}, extra: [], seed: 'a' })(shape)).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
+        let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
-            if (list.filter(t => inside(verts(t), [x, y])).length != 1) return false;
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
         }
         return true;
     };
@@ -464,8 +466,9 @@ test('@tile.grid with shift: every other row, or column, moved by part of a cell
 test('edge: bends every lattice edge with a formula, and neighbours still fit', () => {
     let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
+        let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
-            if (list.filter(t => inside(verts(t), [x, y])).length != 1) return false;
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
         }
         return true;
     };
