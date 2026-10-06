@@ -461,6 +461,42 @@ test('@tile.grid with shift: every other row, or column, moved by part of a cell
     assert.ok(covered(tiles('square; shift: .5; edge: .15 * sin(t)')));
 });
 
+test('edge: bends every lattice edge with a formula, and neighbours still fit', () => {
+    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let covered = list => {
+        for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
+            if (list.filter(t => inside(verts(t), [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    // distinct outlines, each moved to its origin
+    let shapes = list => new Set(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => (x - ox).toFixed(1) + ' ' + (y - oy).toFixed(1)).join(); })).size;
+    for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle]) {
+        // the same curve on every edge: the box is covered once and the tiles stay congruent
+        let bent = tiles(fn, 'square; edge: .15 * sin(t)');
+        assert.ok(covered(bent) && bent.every(t => verts(t).length > 12) && shapes(bent) <= 2);
+        // random() is drawn once per edge, x and y are the edge's midpoint: every edge differs, still covered
+        for (let edge of ['.2 * sin(t) * random()', '.1 * x * sin(2t)']) {
+            let varied = tiles(fn, `square; edge: ${edge}`);
+            assert.ok(covered(varied) && shapes(varied) > 5, edge);
+        }
+    }
+    // `e` is the edge direction: on a grid 1 is horizontal, so only the vertical edges bend
+    let s = Math.sqrt(area(verts(tiles(Function.tile.grid, 'square; edge: (e - 1) * .1 * sin(t)')[0])));
+    for (let t of tiles(Function.tile.grid, 'square; edge: (e - 1) * .1 * sin(t)')) {
+        let xs = verts(t).map(v => v[0]), ys = verts(t).map(v => v[1]);
+        assert.ok(Math.abs(Math.max(...ys) - Math.min(...ys) - s) < 1e-6 && Math.max(...xs) - Math.min(...xs) > s + 1);
+    }
+    // x, y and random read through a variable vary the edges just the same
+    assert.deepEqual(tiles(Function.tile.hex, 'square; a: .1 * x; edge: a * sin(2t)').map(String), tiles(Function.tile.hex, 'square; edge: .1 * x * sin(2t)').map(String));
+    assert.ok(shapes(tiles(Function.tile.grid, 'square; a: random(); edge: .2 * a * sin(t)')) > 10);
+    // the seed only reaches the curve through random()
+    let rnd = 'square; edge: .2 * sin(t) * random()';
+    assert.deepEqual(tiles(Function.tile.grid, rnd).map(String), tiles(Function.tile.grid, rnd).map(String));
+    assert.notDeepEqual(tiles(Function.tile.grid, rnd, 'b').map(String), tiles(Function.tile.grid, rnd).map(String));
+    assert.deepEqual(tiles(Function.tile.grid, 'square; edge: .15 * sin(t)', 'b').map(String), tiles(Function.tile.grid, 'square; edge: .15 * sin(t)').map(String));
+});
+
 test('@tile.r: the radius of the cell\'s @tile.circle', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let c = cell(20, 3);

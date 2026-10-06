@@ -542,7 +542,14 @@ function contains(p, x, y) {
 
 function edges(props, odd, seed, n = 256) {
     let context = Object.assign(Object.create(defaultContext), props), cache = {};
-    let local = /\b[xy]\b|random/.test(props.edge);
+    let local = false, seen = new Set(['edge', 'e', 't']), list = [props.edge];
+    while (!local && list.length) {
+        let text = String(list.pop());
+        local = /\b[xy]\b|random/.test(text);
+        for (let name of text.match(/[\w$-]+/g) || []) {
+            if (!seen.has(name) && Object.hasOwn(props, name)) seen.add(name), list.push(props[name]);
+        }
+    }
     return (e, x, y) => {
         let key = local ? e + ',' + x.toFixed(4) + ',' + y.toFixed(4) : e;
         if (cache[key]) return cache[key];
