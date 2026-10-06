@@ -663,7 +663,14 @@ function createShapePoints(props, lo, hi) {
         };
         scatter(outline, count, evenodd, seed, density).forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
-        if (name == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => tile([poly, [px[k], py[k]], 1, points[k].extra]));
+        if (name == 'voronoi') {
+            let kinds = [];
+            return voronoi(px, py, ...box, gap).map(([poly, ids], k) => {
+                let kind = 1;
+                while (ids.some(q => kinds[q] == kind)) ++kind;
+                return tile([poly, [px[k], py[k]], kinds[k] = kind, points[k].extra]);
+            });
+        }
         return points;
     }
 
