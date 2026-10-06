@@ -585,14 +585,9 @@ Function.plot.scatter = createPlot(false, true);
 
 Function.tile = createPlot(false, true, 'slice');
 Function.tile.slice = Function.tile;
-Function.tile.voronoi = createPlot(false, true, 'voronoi');
-Function.tile.delaunay = createPlot(false, true, 'delaunay');
-Function.tile.hex = createPlot(false, true, 'hex');
-Function.tile.triangle = createPlot(false, true, 'triangle');
-Function.tile.grid = createPlot(false, true, 'grid');
-Function.tile.circle = createPlot(false, true, 'circle');
-Function.tile.cube = createPlot(false, true, 'cube');
-Function.tile.penrose = createPlot(false, true, 'penrose');
+for (let kind of ['voronoi', 'delaunay', 'hex', 'triangle', 'grid', 'circle', 'cube', 'penrose']) {
+    Function.tile[kind] = createPlot(false, true, kind);
+}
 Function.tile.x = tileAxis(0);
 Function.tile.y = tileAxis(1);
 Function.tile.kind = cell => () => cellTiles.get(cell)?.kind ?? '';

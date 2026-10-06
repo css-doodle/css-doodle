@@ -9,7 +9,7 @@ import seedrandom from '../lib/seedrandom.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 
-const { cos, sin, atan2, sqrt, ceil, floor, abs, min, max, PI } = Math;
+const { cos, sin, tan, atan2, sqrt, hypot, log, ceil, floor, abs, min, max, PI } = Math;
 
 const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
@@ -23,13 +23,9 @@ function ngon(k, inner = cos(PI / k)) {
 
 function fit(commands) {
     let props = parseShapeCommands(commands), split = parseInt(props.split);
-    let point = createPointFunction(props, split), xs = [], ys = [];
-    for (let i = 0; i < split; ++i) {
-        let [x, y] = point(2 * PI * i / split, i);
-        xs.push(x);
-        ys.push(y);
-    }
-    let x0 = min(...xs), x1 = max(...xs), y0 = min(...ys), y1 = max(...ys);
+    let point = createPointFunction(props, split), ps = [];
+    for (let i = 0; i < split; ++i) ps.push(...point(2 * PI * i / split, i));
+    let [x0, y0, x1, y1] = bounds(ps);
     return `${commands}; move: ${-(x0 + x1) / 2} ${(y0 + y1) / 2}; scale: ${2 / max(x1 - x0, y1 - y0)}`;
 }
 
@@ -91,16 +87,13 @@ class Point {
 
 function parsePair(input, fallback) {
     let [a, b = a] = parseValueGroup(input);
-    a = parseFloat(a) || fallback;
-    b = parseFloat(b) || fallback;
-    return [a, b];
+    return [a, b].map(v => parseFloat(v) || fallback);
 }
 
 function createPointFunction(props, split) {
     let px = isEmpty(props.x) ? 'cos(t)' : props.x;
     let py = isEmpty(props.y) ? 'sin(t)' : props.y;
-    let pr = isEmpty(props.r) ? '' : props.r;
-    let pt = isEmpty(props.t) ? '' : props.t;
+    let pr = props.r, pt = props.t;
 
     let rotate = Number(props.rotate) || 0;
     let rad = -PI / 180 * rotate;
@@ -150,7 +143,7 @@ function createPointFunction(props, split) {
 }
 
 function insideTest(outline, evenodd) {
-    let ys = outline.map(p => p[1]), y0 = min(...ys), h = max(...ys) - y0;
+    let [, y0, , y1] = bounds(outline.flat()), h = y1 - y0;
     let bands = Array.from({ length: SCATTER_BANDS }, () => []);
     let band = y => min(SCATTER_BANDS - 1, (y - y0) / h * SCATTER_BANDS | 0);
     for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
@@ -173,9 +166,7 @@ function insideTest(outline, evenodd) {
 }
 
 function scatter(outline, count, evenodd, seed, density) {
-    let xs = outline.map(p => p[0]), ys = outline.map(p => p[1]);
-    let x0 = min(...xs), y0 = min(...ys);
-    let w = max(...xs) - x0, h = max(...ys) - y0;
+    let [x0, y0, x1, y1] = bounds(outline.flat()), w = x1 - x0, h = y1 - y0;
     let inside = insideTest(outline, evenodd);
     let total = max(1024, SCATTER_SAMPLES * count);
     let sx = new Float64Array(total), sy = new Float64Array(total), n = 0, tried = 0;
@@ -298,21 +289,19 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
     });
 }
 
-function regular(cx, cy, k, r, angle) {
-    let out = [];
-    for (let m = 0; m < k; ++m) {
-        let a = angle + m * 2 * PI / k;
-        out.push(cx + r * cos(a), cy + r * sin(a));
-    }
-    return out;
-}
-
-function lattice(k, box, bounds, s, [a, b] = [0, 0]) {
-    let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
+function lattice(k, box, bounds, s, [a, b]) {
+    let [cx, cy] = centre(box);
     let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
-    let add = (x, y, angle, kind) => out.push([regular(x, y, k, r, angle), [x, y], kind]);
+    let add = (x, y, angle, kind) => {
+        let p = [];
+        for (let m = 0; m < k; ++m) {
+            let a = angle + m * 2 * PI / k;
+            p.push(x + r * cos(a), y + r * sin(a));
+        }
+        out.push([p, [x, y], kind]);
+    };
     a -= floor(a), b = a ? 0 : b - floor(b);
     for (let j = j0; j <= j1; ++j) {
         let y = cy + j * h, shift = j & 1 ? k == 4 ? a * s : s / 2 : 0;
@@ -332,9 +321,9 @@ function lattice(k, box, bounds, s, [a, b] = [0, 0]) {
 
 // P3 rhombs from Robinson triangles; a rhombus is a triangle and its mirror over BC
 function penrose(box, bounds, s) {
-    let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
-    let far = max(...[0, 2].flatMap(i => [1, 3].map(j => Math.hypot(bounds[i] - cx, bounds[j] - cy)))) / cos(PI / 10) + 2 * s;
-    let n = max(0, ceil(Math.log(far / s) / Math.log(PHI))), r = s * PHI ** n, tris = [];
+    let [cx, cy] = centre(box);
+    let far = hypot(max(cx - bounds[0], bounds[2] - cx), max(cy - bounds[1], bounds[3] - cy)) / cos(PI / 10) + 2 * s;
+    let n = max(0, ceil(log(far / s) / log(PHI))), r = s * PHI ** n, tris = [];
     for (let i = 0; i < 10; ++i) {
         let b = (2 * i - 1) * PI / 10, c = (2 * i + 1) * PI / 10;
         if (i & 1) [b, c] = [c, b];
@@ -375,9 +364,7 @@ function delaunay(px, py, box, inside, count, gap) {
         let tri = [px[k], py[k], px[a], py[a], px[b], py[b]];
         if (gap) {
             let la = sqrt(d(a, b)), lb = sqrt(d(b, k)), lc = sqrt(d(k, a)), per = la + lb + lc;
-            let ix = (la * px[k] + lb * px[a] + lc * px[b]) / per, iy = (la * py[k] + lb * py[a] + lc * py[b]) / per;
-            let f = 1 - gap * per / 2 / abs(twice(k, a, b));
-            tri = f > 0 ? tri.map((v, i) => { let c = i & 1 ? iy : ix; return c + (v - c) * f; }) : [];
+            tri = inset(tri, (la * px[k] + lb * px[a] + lc * px[b]) / per, (la * py[k] + lb * py[a] + lc * py[b]) / per, gap / 2);
         }
         return [tri, [cx, cy]];
     });
@@ -385,12 +372,10 @@ function delaunay(px, py, box, inside, count, gap) {
 
 // the smallest pieces of make(s) with no more than `count` reaching into the shape
 function tiles(make, box, screen, inside, count, grow = 1) {
-    let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
-    let bounds = [min(...xs), min(...ys), max(...xs), max(...ys)];
-    let area = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]);
+    let [x0, y0, x1, y1] = bounds(screen.flat()), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
-    let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(c[0], c[1]));
-    let reaching = s => make(box, bounds, s).filter(([p, c]) => reaches(grow == 1 ? p : p.map((v, i) => c[i & 1] + (v - c[i & 1]) * grow), c, inside, corners));
+    let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
+    let reaching = s => make(box, [x0, y0, x1, y1], s).filter(([p, c]) => reaches(grow == 1 ? p : p.map((v, i) => c[i & 1] + (v - c[i & 1]) * grow), c, inside, corners));
     let hi = sqrt(area / count);
     for (let i = 0; i < 30 && reaching(hi).length > count; ++i) hi *= 1.25;
     for (let lo = hi / 8, i = 0; i < 20; ++i) {
@@ -420,15 +405,20 @@ function bend(p, [cx, cy], edge, classes, tol, toShape) {
 function inset(p, x, y, d, q = p) {
     let per = 0;
     for (let i = 0; i < p.length; i += 2) {
-        per += Math.hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]);
+        per += hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]);
     }
     let f = 1 - d * per / 2 / area(p);
     return f > 0 ? q.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; }) : [];
 }
 
+function bounds(p) {
+    let xs = p.filter((_, i) => !(i & 1)), ys = p.filter((_, i) => i & 1);
+    return [min(...xs), min(...ys), max(...xs), max(...ys)];
+}
+
 function bbox(screen, box) {
-    let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
-    return [max(box[0], min(...xs)), max(box[1], min(...ys)), min(box[2], max(...xs)), min(box[3], max(...ys))];
+    let [x0, y0, x1, y1] = bounds(screen.flat());
+    return [max(box[0], x0), max(box[1], y0), min(box[2], x1), min(box[3], y1)];
 }
 
 // largest circle first, at most 3x the average; room only shrinks, so a centre is measured again at the top of the heap
@@ -493,15 +483,12 @@ function slice(screen, box, inside, count, seed, gap, spread) {
         let sum = 0, pick = rnd() * total, k = 0;
         while (k < pieces.length - 1 && (sum += areas[k]) < pick) ++k;
         let p = pieces[k], [cx, cy] = centre(p);
-        let px = p.filter((_, i) => !(i & 1)), py = p.filter((_, i) => i & 1);
-        let wide = max(...px) - min(...px) > max(...py) - min(...py);
-        let a = (wide ? 0 : PI / 2) + (rnd() - .5) * spread;
+        let [l, t, r, b] = bounds(p);
+        let a = (r - l > b - t ? 0 : PI / 2) + (rnd() - .5) * spread;
         let nx = cos(a), ny = sin(a), shift = (rnd() - .5) * .5 * sqrt(areas[k]);
         let mx = cx + nx * shift, my = cy + ny * shift, g = gap / 2;
-        let parts = [
-            halfplane(p, nx, ny, mx - nx * g, my - ny * g, [])[0],
-            halfplane(p, -nx, -ny, mx + nx * g, my + ny * g, [])[0],
-        ].filter(p => p.length && reaches(p, centre(p), inside, screen));
+        let parts = [1, -1].map(d => halfplane(p, d * nx, d * ny, mx - d * nx * g, my - d * ny * g, [])[0])
+            .filter(p => p.length && reaches(p, centre(p), inside, screen));
         if (!parts.length) continue;
         let sizes = parts.map(area);
         total += sizes.reduce((a, b) => a + b, 0) - areas[k];
@@ -542,19 +529,15 @@ function contains(p, x, y) {
 
 function edges(props, odd, seed, n = 256) {
     let context = Object.assign(Object.create(defaultContext), props), cache = {};
-    let local = false, seen = new Set(['edge', 'e', 't']), list = [props.edge];
-    while (!local && list.length) {
-        let text = String(list.pop());
-        local = /\b[xy]\b|random/.test(text);
-        for (let name of text.match(/[\w$-]+/g) || []) {
-            if (!seen.has(name) && Object.hasOwn(props, name)) seen.add(name), list.push(props[name]);
-        }
-    }
+    let seen = new Set(['edge', 'e', 't']);
+    let reads = text => /\b[xy]\b|random/.test(text) || (String(text).match(/[\w$-]+/g) || []).some(name =>
+        !seen.has(name) && Object.hasOwn(props, name) && seen.add(name) && reads(props[name]));
+    let local = reads(props.edge);
     return (e, x, y) => {
         let key = local ? e + ',' + x.toFixed(4) + ',' + y.toFixed(4) : e;
         if (cache[key]) return cache[key];
         let rnd = seedrandom('edge:' + seed + ':' + key), draws = [], k;
-        Object.assign(context, { e, x, y, random: () => k < draws.length ? draws[k++] : (draws[k++] = rnd()) });
+        Object.assign(context, { e, x, y, random: () => draws[k++] ??= rnd() });
         let f = Array.from({ length: n + 1 }, (_, j) => {
             k = 0;
             context.t = context['θ'] = 2 * PI * j / n;
@@ -567,7 +550,7 @@ function edges(props, odd, seed, n = 256) {
 
 function simplify({ f, n }, tol) {
     let keep = [0, n], walk = (i, j) => {
-        let dx = (j - i) / n, dy = f[j] - f[i], len = Math.hypot(dx, dy), worst = tol, at = 0;
+        let dx = (j - i) / n, dy = f[j] - f[i], len = hypot(dx, dy), worst = tol, at = 0;
         for (let k = i + 1; k < j; ++k) {
             let e = abs((k - i) / n * dy - (f[k] - f[i]) * dx) / len;
             if (e > worst) worst = e, at = k;
@@ -578,8 +561,8 @@ function simplify({ f, n }, tol) {
     return keep.sort((a, b) => a - b);
 }
 
-function createShapePoints(props, range) {
-    let split = clamp(parseInt(props.points || props.split), range.min, range.max);
+function createShapePoints(props, lo, hi) {
+    let split = clamp(parseInt(props.points || props.split), lo, hi);
 
     // `r: 10px` carries the unit, but `2t` and `2i` are products
     let { unit, value } = parseCompoundValue(isEmpty(props.r) ? '' : props.r);
@@ -631,14 +614,14 @@ function createShapePoints(props, range) {
         py.push(y);
     };
 
-    let polygon = (poly, origin, extra, kind = 1) => {
+    let tile = ([poly, [x, y], kind = 1, extra]) => {
         let vs = [];
         for (let i = 0; i < poly.length; i += 2) {
             let v = fmt(poly[i], poly[i + 1]);
-            if (v !== vs[vs.length - 1]) vs.push(v);
+            if (v !== vs.at(-1)) vs.push(v);
         }
-        if (vs.length > 1 && vs[0] === vs[vs.length - 1]) vs.pop();
-        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, origin, kind);
+        if (vs.length > 1 && vs[0] === vs.at(-1)) vs.pop();
+        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, fmt(x, y), kind);
     };
 
     if (props.scatter) {
@@ -647,32 +630,29 @@ function createShapePoints(props, range) {
             outline.push(point(rad * i, i));
         }
         let screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
-        let tile = ([poly, [x, y], kind]) => polygon(poly, fmt(x, y), undefined, kind);
         let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
-        let shift = name == 'grid' && parsePair(props.shift, 0);
-        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift || undefined) : name == 'penrose' && penrose;
+        let shift = parsePair(props.shift, 0);
+        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift) : name == 'penrose' && penrose;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) bulge = max(bulge, ...edge(e, x, y).f.map(abs));
-            let grow = edge ? 1 + 2 * Math.tan(PI / sides) * bulge : 1;
+            let grow = edge ? 1 + 2 * tan(PI / sides) * bulge : 1;
             let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count, grow);
             // top, left, right faces of a hexagon
             if (name == 'cube') pieces = pieces.flatMap(([p, c]) => [6, 2, 10].map((i, face) => {
-                let q = [...c, ...[0, 1, 2, 3, 4, 5].map(m => p[(i + m) % 12])];
+                let q = [...c, ...[...p, ...p].slice(i, i + 6)];
                 return [q, centre(q), face + 1];
             }));
-            if (edge && pieces.length) {
-                let [p] = pieces[0], tol = (box[2] - box[0]) * 5e-4 / Math.hypot(p[2] - p[0], p[3] - p[1]);
-                let toShape = percent ? (x, y) => [x / 50 - 1, 1 - y / 50] : (x, y) => [x, -y];
-                return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2, bend(p, c, edge, classes, tol, toShape)), c, kind]));
-            }
-            return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2), c, kind]));
+            let p = pieces[0]?.[0], tol = edge && p && (box[2] - box[0]) * 5e-4 / hypot(p[2] - p[0], p[3] - p[1]);
+            let toShape = (x, y) => percent ? [x / 50 - 1, 1 - y / 50] : [x, -y];
+            return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape) : p), c, kind]));
         }
         if (name == 'circle') return pack(screen, box, inside, count, seed).map(([x, y, r]) => {
+            let at = fmt(x, y);
             r = tidyNumber(max(0, r - gap / 2)) + suffix;
-            return new Point(`ellipse(${r} ${r} at ${fmt(x, y)})`, undefined, fmt(x, y), 1);
+            return new Point(`ellipse(${r} ${r} at ${at})`, undefined, at, 1);
         });
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180).map(tile);
         let context = Object.assign(Object.create(defaultContext), props);
@@ -683,7 +663,7 @@ function createShapePoints(props, range) {
         };
         scatter(outline, count, evenodd, seed, density).forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
-        if (name == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => polygon(poly, points[k].value, points[k].extra));
+        if (name == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => tile([poly, [px[k], py[k]], 1, points[k].extra]));
         return points;
     }
 
@@ -701,9 +681,7 @@ function createShapePoints(props, range) {
     // an outline: back to the first point, then the inner ring in reverse
     if (frame !== undefined) {
         add(first);
-        let w = frame / 100;
-        if (turn > 1) w *= 2;
-        if (!w) w = .002;
+        let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
         let firstInner;
         for (let i = 0; i < split; ++i) {
             let [x, y] = point(-rad * i, i);
@@ -721,8 +699,6 @@ function createShapePoints(props, range) {
 
 // The callers memoize: the results are shared and read-only.
 export default function generateShape(input, range = {}, modifier) {
-    let min = range.min || 3;
-    let max = range.max || 3600;
     let [head, more = ''] = input.split(/;([^]*)/);
     let [name, ...args] = parseValueGroup(head);
     let preset = presetShapes[name];
@@ -734,9 +710,9 @@ export default function generateShape(input, range = {}, modifier) {
         preset = presetShapes[range.preset];
         rules = parseShapeCommands(preset + ';' + input);
     }
-    if (typeof modifier === 'function') {
+    if (modifier) {
         rules = modifier(rules, preset !== undefined);
     }
-    let points = createShapePoints(rules, {min, max});
+    let points = createShapePoints(rules, range.min || 3, range.max || 3600);
     return { rules, points, preset: preset !== undefined };
 }
