@@ -307,17 +307,22 @@ function regular(cx, cy, k, r, angle) {
     return out;
 }
 
-function lattice(k, box, bounds, s) {
+function lattice(k, box, bounds, s, [a, b] = [0, 0]) {
     let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
-    let h = k == 4 ? s : s * sqrt(3) / 2, r = k == 4 ? s / sqrt(2) : s / sqrt(3), out = [];
+    let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
     let add = (x, y, angle, kind) => out.push([regular(x, y, k, r, angle), [x, y], kind]);
+    a -= floor(a), b = a ? 0 : b - floor(b);
     for (let j = j0; j <= j1; ++j) {
-        let y = cy + j * h, shift = j & 1 && k != 4 ? s / 2 : 0;
+        let y = cy + j * h, shift = j & 1 ? k == 4 ? a * s : s / 2 : 0;
         for (let i = i0; i <= i1; ++i) {
             let x = cx + i * s + shift;
-            if (k == 4) add(x, y, PI / 4, 1);
+            if (k == 4) {
+                let m = y + (i & 1) * b * s, f = (j & 1 ? 1 - a : a) % 1 * s, g = (i & 1 ? 1 - b : b) % 1 * s;
+                let l = x - s / 2, t = m - s / 2, R = l + s, B = t + s;
+                out.push([[R, B, ...f ? [l + f, B] : [], l, B, ...g ? [l, t + g] : [], l, t, ...f ? [l + f, t] : [], R, t, ...g ? [R, t + g] : []], [x, m], 1]);
+            }
             else if (k == 6) add(x, y, PI / 6, 1);
             else add(x + s / 2, y + h / 3, -PI / 6, 1), add(x + s, y + h * 2 / 3, PI / 6, 2);
         }
@@ -638,7 +643,8 @@ function createShapePoints(props, range) {
         let tile = ([poly, [x, y], kind]) => polygon(poly, fmt(x, y), undefined, kind);
         let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
-        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s) : name == 'penrose' && penrose;
+        let shift = name == 'grid' && parsePair(props.shift, 0);
+        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift || undefined) : name == 'penrose' && penrose;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;

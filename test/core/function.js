@@ -435,6 +435,32 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
     assert.ok(gapped.every((t, i) => area(verts(t)) < area(verts(pen[i])) && t.origin == pen[i].origin));
 });
 
+test('@tile.grid with shift: every other row, or column, moved by part of a cell', () => {
+    let tiles = shape => Array.from({ length: 64 }, (_, i) => Function.tile.grid(cell(64, i + 1), { context: {}, extra: [], seed: 'a' })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let covered = list => {
+        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
+            if (list.filter(t => inside(verts(t), [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let rows = (list, i) => [...new Set(list.map(t => xy(t.origin)[i].toFixed(6)))].map(Number).sort((a, b) => a - b);
+    let plain = tiles('square');
+    // `.5`: bricks, the top and bottom edges split where the next row's squares meet
+    let brick = tiles('square; shift: .5'), s = Math.sqrt(area(verts(brick[0])));
+    assert.ok(covered(brick));
+    assert.ok(brick.every(t => verts(t).length == 6 && near(area(verts(t)), s * s)));
+    let phase = rows(brick, 1).map(y => brick.filter(t => near(xy(t.origin)[1], y)).map(t => ((xy(t.origin)[0] - 50) / s % 1 + 1) % 1));
+    assert.ok(phase.every((xs, j) => xs.every(x => near(Math.abs(x - phase[0][0]) % 1, j % 2 / 2))));
+    // `0 .3`: columns, the left and right edges split
+    let column = tiles('square; shift: 0 .3');
+    assert.ok(covered(column));
+    assert.ok(column.every(t => { let v = verts(t); return v.length == 6 && near(v[1][0], v[2][0]) && near(v[4][0], v[5][0]); }));
+    // whole cells change nothing; an edge formula bends the split edges and still covers
+    assert.deepEqual(tiles('square; shift: 2').map(String), plain.map(String));
+    assert.ok(covered(tiles('square; shift: .5; edge: .15 * sin(t)')));
+});
+
 test('@tile.r: the radius of the cell\'s @tile.circle', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let c = cell(20, 3);
