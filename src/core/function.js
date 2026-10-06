@@ -214,17 +214,23 @@ function createPlot(unit, scatter, tile) {
             return rules;
         });
     });
-    return ({ count, grid }, { extra, seed }) => {
+    return (cell, { extra, seed }) => {
         let e = last(extra) || [];
         return (...args) => {
-            let idx = e[SEQ.n] ?? count;
-            let max = e[SEQ.max] ?? grid.count;
+            let idx = e[SEQ.n] ?? cell.count;
+            let max = e[SEQ.max] ?? cell.grid.count;
             let { points, rules } = plot(args.join(','), max, scatter ? String(seed ?? '') : '');
             if (rules.hasPoints) return points;
-            return points[idx - 1] ?? (tile ? NO_TILE : undefined);
+            if (!tile) return points[idx - 1];
+            let point = points[idx - 1] ?? NO_TILE;
+            cellTiles.set(cell, point);
+            return point;
         };
     };
 }
+
+const cellTiles = new WeakMap();
+const tileAxis = i => cell => () => cellTiles.get(cell)?.origin?.split(' ')[i] ?? '';
 
 // appends the args in reverse; `even` repeats the turning point:
 // @mirror 1 2 3 → 1 2 3 3 2 1, @Mirror 1 2 3 → 1 2 3 2 1
@@ -580,6 +586,8 @@ Function.tile.voronoi = Function.tile;
 Function.tile.delaunay = createPlot(false, true, 'delaunay');
 Function.tile.hex = createPlot(false, true, 'hex');
 Function.tile.triangle = createPlot(false, true, 'triangle');
+Function.tile.x = tileAxis(0);
+Function.tile.y = tileAxis(1);
 
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);
