@@ -349,6 +349,134 @@ test('@tile.delaunay: triangles between the points @tile.voronoi scatters', () =
     assert.notDeepEqual(tiles('circle', 60, 'b').map(String), tris.map(String));
 });
 
+test('@tile.circle: circles packed inside the shape, one per cell, largest first', () => {
+    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.circle(cell(n, i + 1), { context: {}, extra: [], seed })(shape));
+    let circle = t => String(t).match(/^ellipse\((\S+)% (\S+)% at (\S+)% (\S+)%\)$/).slice(1).map(Number);
+    let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
+    let heart = tiles('heart', 100).map(circle);
+    assert.equal(heart.length, 100);
+    for (let [i, [r, ry, x, y]] of heart.entries()) {
+        assert.ok(r > 0 && r == ry && inside(outline, [x, y]));
+        // inside the outline (to its sampled points) and apart from the others
+        assert.ok(outline.every(([u, v]) => Math.hypot(u - x, v - y) > r - 1e-6));
+        assert.ok(heart.every(([s, , u, v], j) => i == j || Math.hypot(u - x, v - y) > r + s - 1e-6));
+        assert.ok(!i || heart[i - 1][0] >= r);
+    }
+    // the biggest is capped, so a circle is not one big circle
+    let round = tiles('circle', 30).map(circle);
+    assert.ok(round[0][0] < 30 && round[29][0] > 1);
+    // the origin is the centre; `gap` shrinks the radius by half; `points` caps the count
+    let [t] = tiles('heart', 100);
+    assert.equal(t.origin, String(t).split(' at ')[1].slice(0, -1));
+    assert.ok(tiles('heart; gap: 2', 100).every((t, i) => Math.abs(circle(t)[0] - Math.max(0, heart[i][0] - 1)) < 1e-6));
+    assert.equal(tiles('heart; points: 10', 100).filter(t => String(t) != 'polygon(0 0)').length, 10);
+    // the doodle seed moves them, `seed: n` pins them
+    assert.notEqual(String(tiles('heart', 20, 'b')[0]), String(tiles('heart', 20)[0]));
+    assert.equal(String(tiles('heart; seed: 7', 20, 'b')[3]), String(tiles('heart; seed: 7', 20)[3]));
+});
+
+test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
+    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.slice(cell(n, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let sum = list => list.reduce((s, t) => s + area(verts(t)), 0);
+    // the box in as many pieces as cells, cut across by default
+    let square = tiles('square', 50);
+    assert.equal(square.length, 50);
+    assert.ok(near(sum(square), 10000));
+    let straight = t => verts(t).every(([x, y], i, vs) => near(x, vs[(i + 1) % vs.length][0]) || near(y, vs[(i + 1) % vs.length][1]));
+    assert.ok(square.every(straight));
+    // `spread` turns the cuts, in degrees
+    let tilted = tiles('square; spread: 90', 50);
+    assert.ok(near(sum(tilted), 10000) && !tilted.every(straight));
+    // a shape keeps the pieces that reach into it
+    let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
+    let heart = tiles('heart', 80);
+    assert.equal(heart.length, 80);
+    assert.ok(heart.every(t => [xy(t.origin), ...verts(t)].some(p => inside(outline, p)) || outline.some(p => inside(verts(t), p))));
+    // `gap` opens the cuts, the outer edge stays
+    let gapped = tiles('square; gap: 2', 50);
+    assert.ok(sum(gapped) < 10000 - 50 && gapped.some(t => verts(t).some(([x, y]) => x == 0 || y == 0)));
+    // the doodle seed changes the cuts, `seed: n` pins them
+    assert.notEqual(tiles('square', 10, 'b').join(), tiles('square', 10).join());
+    assert.equal(tiles('square; seed: 3', 10, 'b').join(), tiles('square; seed: 3', 10).join());
+});
+
+test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as the grid allows', () => {
+    let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed: 'a' })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let side = ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    let covered = list => {
+        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
+            if (list.filter(t => inside(verts(t), [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    // cubes: a hexagon in three equal rhombs, top, left, right, with the hexagon centre as a corner
+    let cube = tiles(Function.tile.cube, 'square', 150);
+    assert.ok(cube.length > 100 && cube.length <= 150 && cube.length % 3 == 0, cube.length);
+    assert.ok(covered(cube));
+    for (let i = 0; i < cube.length; i += 3) {
+        let [top, left, right] = cube.slice(i, i + 3).map(verts);
+        assert.deepEqual(top[0], left[0]);
+        assert.ok(near(area(top), area(left)) && near(area(top), area(right)));
+        assert.ok(top[2][1] < top[0][1] && left[2][0] < left[0][0] && right[2][0] > right[0][0]);
+    }
+    // penrose: two kinds of rhombs with one side length, the box covered once
+    let pen = tiles(Function.tile.penrose, 'square', 100);
+    assert.ok(pen.length > 80 && pen.length <= 100, pen.length);
+    assert.ok(covered(pen));
+    let s = side(verts(pen[0]));
+    assert.ok(pen.every(t => verts(t).every((v, i, vs) => near(side([v, vs[(i + 1) % 4]]), s))));
+    let kinds = new Set(pen.map(t => (area(verts(t)) / s / s).toFixed(4)));
+    assert.deepEqual([...kinds].sort(), [Math.sin(Math.PI / 5).toFixed(4), Math.sin(2 * Math.PI / 5).toFixed(4)]);
+    // a heart keeps the rhombs reaching into it; `gap` shrinks every rhomb about its centre
+    let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
+    assert.ok(tiles(Function.tile.penrose, 'heart', 100).every(t => [xy(t.origin), ...verts(t)].some(p => inside(outline, p))));
+    let gapped = tiles(Function.tile.penrose, 'square; gap: 1', 100);
+    assert.ok(gapped.every((t, i) => area(verts(t)) < area(verts(pen[i])) && t.origin == pen[i].origin));
+});
+
+test('@tile.r: the radius of the cell\'s @tile.circle', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let c = cell(20, 3);
+    assert.equal(Function.tile.r(c)(), '');
+    let t = Function.tile.circle(c, env)('heart');
+    assert.equal(Function.tile.r(c)(), String(t).split(' ')[0].slice(8));
+    assert.match(Function.tile.r(c)(), /%$/);
+    Function.tile.hex(c, env)('heart');
+    assert.equal(Function.tile.r(c)(), '');
+});
+
+test('@tile.kind: which kind of piece the cell\'s tile is', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let kinds = (fn, shape, n) => Array.from({ length: n }, (_, i) => {
+        let c = cell(n, i + 1), t = fn(c, env)(shape);
+        return [t, Function.tile.kind(c)()];
+    }).filter(([t]) => String(t) != 'polygon(0 0)');
+    let c = cell(10, 2);
+    assert.equal(Function.tile.kind(c)(), '');
+    // penrose: 1 thin, 2 thick
+    let s = 0;
+    for (let [t, k] of kinds(Function.tile.penrose, 'square', 60)) {
+        let vs = verts(t), side = Math.hypot(vs[0][0] - vs[1][0], vs[0][1] - vs[1][1]);
+        assert.equal(k, area(vs) / side / side < .7 ? 1 : 2);
+        s |= 1 << k;
+    }
+    assert.equal(s, 6);
+    // cube: 1 top, 2 left, 3 right; triangle: 1 pointing down, 2 up
+    assert.deepEqual(kinds(Function.tile.cube, 'square', 30).slice(0, 6).map(([, k]) => k), [1, 2, 3, 1, 2, 3]);
+    for (let [t, k] of kinds(Function.tile.triangle, 'square', 40)) {
+        let vs = verts(t), [, oy] = xy(t.origin);
+        assert.equal(k, vs.filter(v => v[1] > oy).length == 1 ? 1 : 2);
+    }
+    // every other kind of piece is 1, an empty cell has none
+    for (let fn of [Function.tile, Function.tile.delaunay, Function.tile.hex, Function.tile.circle, Function.tile.slice]) {
+        assert.ok(kinds(fn, 'heart', 20).every(([, k]) => k === 1));
+    }
+    Function.tile.hex(c, env)('square; points: 1');
+    assert.equal(Function.tile.kind(c)(), '');
+});
+
 test('scatter density: a formula in x and y (shape coordinates, y up) sets how many points land where', () => {
     let env = seed => ({ context: {}, extra: [], seed });
     let tiles = (shape, n = 200) => Array.from({ length: n }, (_, i) => Function.tile(cell(n, i + 1), env('a'))(shape));

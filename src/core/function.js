@@ -586,8 +586,14 @@ Function.tile.voronoi = Function.tile;
 Function.tile.delaunay = createPlot(false, true, 'delaunay');
 Function.tile.hex = createPlot(false, true, 'hex');
 Function.tile.triangle = createPlot(false, true, 'triangle');
+Function.tile.circle = createPlot(false, true, 'circle');
+Function.tile.slice = createPlot(false, true, 'slice');
+Function.tile.cube = createPlot(false, true, 'cube');
+Function.tile.penrose = createPlot(false, true, 'penrose');
 Function.tile.x = tileAxis(0);
 Function.tile.y = tileAxis(1);
+Function.tile.kind = cell => () => cellTiles.get(cell)?.kind ?? '';
+Function.tile.r = cell => () => String(cellTiles.get(cell) ?? '').match(/^ellipse\((\S+)/)?.[1] ?? '';
 
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);

@@ -14,6 +14,7 @@ const { cos, sin, atan2, sqrt, ceil, floor, abs, min, max, PI } = Math;
 const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
 const SCATTER_BANDS = 256;
+const PHI = (1 + sqrt(5)) / 2;
 
 function ngon(n) {
     return `r: cos(π/${n}) / cos(t % (2π/${n}) - π/${n})`;
@@ -55,10 +56,11 @@ const presetShapes = {
 };
 
 class Point {
-    constructor(value, angle, origin) {
+    constructor(value, angle, origin, kind) {
         this.value = value;
         this.extra = angle;
         this.origin = origin;
+        this.kind = kind;
     }
     toString() {
         return this.value;
@@ -285,18 +287,44 @@ function regular(cx, cy, k, r, angle) {
 
 function lattice(k, box, bounds, s) {
     let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
-    let h = s * sqrt(3) / 2, out = [];
+    let h = s * sqrt(3) / 2, r = s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
+    let add = (x, y, angle, kind) => out.push([regular(x, y, k, r, angle), [x, y], kind]);
     for (let j = j0; j <= j1; ++j) {
         let y = cy + j * h, shift = j & 1 ? s / 2 : 0;
         for (let i = i0; i <= i1; ++i) {
             let x = cx + i * s + shift;
-            if (k == 6) out.push([x, y, PI / 6]);
-            else out.push([x + s / 2, y + h / 3, -PI / 6], [x + s, y + h * 2 / 3, PI / 6]);
+            if (k == 6) add(x, y, PI / 6, 1);
+            else add(x + s / 2, y + h / 3, -PI / 6, 1), add(x + s, y + h * 2 / 3, PI / 6, 2);
         }
     }
     return out;
+}
+
+// P3 rhombs from Robinson triangles; a rhombus is a triangle and its mirror over BC
+function penrose(box, bounds, s) {
+    let cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
+    let far = max(...[0, 2].flatMap(i => [1, 3].map(j => Math.hypot(bounds[i] - cx, bounds[j] - cy)))) / cos(PI / 10) + 2 * s;
+    let n = max(0, ceil(Math.log(far / s) / Math.log(PHI))), r = s * PHI ** n, tris = [];
+    for (let i = 0; i < 10; ++i) {
+        let b = (2 * i - 1) * PI / 10, c = (2 * i + 1) * PI / 10;
+        if (i & 1) [b, c] = [c, b];
+        tris.push([0, cx, cy, cx + r * cos(b), cy + r * sin(b), cx + r * cos(c), cy + r * sin(c)]);
+    }
+    let at = (ax, ay, bx, by) => [ax + (bx - ax) / PHI, ay + (by - ay) / PHI];
+    while (n--) tris = tris.flatMap(([t, ax, ay, bx, by, cx, cy]) => {
+        if (!t) {
+            let [px, py] = at(ax, ay, bx, by);
+            return [[0, cx, cy, px, py, bx, by], [1, px, py, cx, cy, ax, ay]];
+        }
+        let [qx, qy] = at(bx, by, ax, ay), [rx, ry] = at(bx, by, cx, cy);
+        return [[1, rx, ry, cx, cy, ax, ay], [1, qx, qy, rx, ry, bx, by], [0, rx, ry, qx, qy, ax, ay]];
+    });
+    return tris.filter(([, ax, ay, bx, by, cx, cy]) => (bx - ax) * (cy - ay) > (cx - ax) * (by - ay)).map(([t, ax, ay, bx, by, cx, cy]) => {
+        let p = [ax, ay, bx, by, bx + cx - ax, by + cy - ay, cx, cy];
+        return [p, centre(p), t + 1];
+    });
 }
 
 function delaunay(px, py, box, inside, count, gap) {
@@ -327,35 +355,144 @@ function delaunay(px, py, box, inside, count, gap) {
     });
 }
 
-function tiles(k, box, screen, inside, count, gap) {
+// the smallest pieces of make(s) with no more than `count` reaching into the shape
+function tiles(make, box, screen, inside, count) {
     let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
     let bounds = [min(...xs), min(...ys), max(...xs), max(...ys)];
     let area = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1]);
     if (!(area > 0)) return [];
     let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(c[0], c[1]));
-    let reaching = s => {
-        let r = s / sqrt(3), apothem = r * cos(PI / k);
-        return lattice(k, box, bounds, s).filter(([x, y, angle]) => {
-            if (inside(x, y)) return true;
-            let vs = regular(x, y, k, r, angle);
-            for (let i = 0; i < vs.length; i += 2) if (inside(vs[i], vs[i + 1])) return true;
-            return corners.some(([px, py]) => {
-                for (let m = 0; m < k; ++m) {
-                    let a = angle + PI / k + m * 2 * PI / k;
-                    if ((px - x) * cos(a) + (py - y) * sin(a) > apothem) return false;
-                }
-                return true;
-            });
-        });
-    };
+    let reaching = s => make(box, bounds, s).filter(([p, c]) => reaches(p, c, inside, corners));
     let hi = sqrt(area / count);
     for (let i = 0; i < 30 && reaching(hi).length > count; ++i) hi *= 1.25;
     for (let lo = hi / 8, i = 0; i < 20; ++i) {
         let mid = (lo + hi) / 2;
         if (reaching(mid).length > count) lo = mid; else hi = mid;
     }
-    let r = hi / sqrt(3) - gap / 2 / cos(PI / k);
-    return reaching(hi).map(([x, y, angle]) => [r > 0 ? regular(x, y, k, r, angle) : [], [x, y]]);
+    return reaching(hi);
+}
+
+function inset(p, x, y, d) {
+    let per = 0;
+    for (let i = 0; i < p.length; i += 2) {
+        per += Math.hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]);
+    }
+    let f = 1 - d * per / 2 / area(p);
+    return f > 0 ? p.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; }) : [];
+}
+
+function bbox(screen, box) {
+    let xs = screen.map(p => p[0]), ys = screen.map(p => p[1]);
+    return [max(box[0], min(...xs)), max(box[1], min(...ys)), min(box[2], max(...xs)), min(box[3], max(...ys))];
+}
+
+// largest circle first, at most 3x the average; room only shrinks, so a centre is measured again at the top of the heap
+function pack(screen, box, inside, count, seed) {
+    let [x0, y0, x1, y1] = bbox(screen, box), w = x1 - x0, h = y1 - y0;
+    let total = max(4096, 32 * count), xs = [], ys = [], heap = [], key = [], out = [];
+    let k = seed % 1e4 * 1e4, start = k;
+    for (; xs.length < total && k < start + total * 50; ++k) {
+        let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
+        let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
+        if (inside(x, y)) heap.push(xs.length), key.push(Infinity), xs.push(x), ys.push(y);
+    }
+    let cap = 3 * sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
+    let cols = ceil(w / cap) + 1, grid = Array.from({ length: cols * (ceil(h / cap) + 1) }, () => []);
+    let edge = [], segs = [];
+    screen.forEach(([bx, by], a) => {
+        let [ax, ay] = screen.at(a - 1), dx = bx - ax, dy = by - ay;
+        segs.push(ax, ay, dx, dy, 1 / (dx * dx + dy * dy) || 0);
+    });
+    let room = i => {
+        let x = xs[i], y = ys[i], r = edge[i];
+        if (r === undefined) {
+            r = min(cap, x - box[0], box[2] - x, y - box[1], box[3] - y) ** 2;
+            for (let a = 0; a < segs.length; a += 5) {
+                let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
+                let t = (ax * dx + ay * dy) * segs[a + 4];
+                t = t < 0 ? 0 : t > 1 ? 1 : t;
+                r = min(r, (ax - dx * t) ** 2 + (ay - dy * t) ** 2);
+            }
+            r = edge[i] = sqrt(r);
+        }
+        let c = (x - x0) / cap | 0, d = (y - y0) / cap | 0;
+        for (let j = max(0, d - 2); j <= d + 2; ++j) for (let m = max(0, c - 2); m < min(cols, c + 3); ++m) {
+            for (let [cx, cy, cr] of grid[m + cols * j] || []) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
+        }
+        return r;
+    };
+    while (out.length < count && heap.length) {
+        let i = heap[0], r = key[i] = room(i);
+        if (r > 0 && r >= max(key[heap[1]] ?? 0, key[heap[2]] ?? 0)) {
+            let x = xs[i], y = ys[i];
+            out.push([x, y, r]);
+            grid[((x - x0) / cap | 0) + cols * ((y - y0) / cap | 0)].push([x, y, r]);
+            r = 0;
+        }
+        if (!(r > 0)) heap[0] = heap.at(-1), heap.pop();
+        for (let a = 0, b; (b = 2 * a + 1) < heap.length; a = b) {
+            if (key[heap[b + 1]] > key[heap[b]]) ++b;
+            if (key[heap[a]] >= key[heap[b]]) break;
+            [heap[a], heap[b]] = [heap[b], heap[a]];
+        }
+    }
+    return out;
+}
+
+// a random piece, bigger ones more often, cut across its longer side
+function slice(screen, box, inside, count, seed, gap, spread) {
+    let [x0, y0, x1, y1] = bbox(screen, box);
+    let rnd = seedrandom('slice:' + seed);
+    let pieces = [[x0, y0, x1, y0, x1, y1, x0, y1]], areas = pieces.map(area), total = areas[0];
+    for (let tries = 0; pieces.length < count && tries < count * 4; ++tries) {
+        let sum = 0, pick = rnd() * total, k = 0;
+        while (k < pieces.length - 1 && (sum += areas[k]) < pick) ++k;
+        let p = pieces[k], [cx, cy] = centre(p);
+        let px = p.filter((_, i) => !(i & 1)), py = p.filter((_, i) => i & 1);
+        let wide = max(...px) - min(...px) > max(...py) - min(...py);
+        let a = (wide ? 0 : PI / 2) + (rnd() - .5) * spread;
+        let nx = cos(a), ny = sin(a), shift = (rnd() - .5) * .5 * sqrt(areas[k]);
+        let mx = cx + nx * shift, my = cy + ny * shift, g = gap / 2;
+        let parts = [
+            halfplane(p, nx, ny, mx - nx * g, my - ny * g, [])[0],
+            halfplane(p, -nx, -ny, mx + nx * g, my + ny * g, [])[0],
+        ].filter(p => p.length && reaches(p, centre(p), inside, screen));
+        if (!parts.length) continue;
+        let sizes = parts.map(area);
+        total += sizes.reduce((a, b) => a + b, 0) - areas[k];
+        pieces.splice(k, 1, ...parts);
+        areas.splice(k, 1, ...sizes);
+    }
+    return pieces.map(p => [p, centre(p)]).sort((a, b) => a[1][1] - b[1][1] || a[1][0] - b[1][0]);
+}
+
+function area(p) {
+    let a = 0;
+    for (let i = 0; i < p.length; i += 2) a += p[i] * p[(i + 3) % p.length] - p[(i + 2) % p.length] * p[i + 1];
+    return abs(a / 2);
+}
+
+function centre(p) {
+    let x = 0, y = 0, n = p.length / 2;
+    for (let i = 0; i < p.length; i += 2) x += p[i], y += p[i + 1];
+    return [x / n, y / n];
+}
+
+function reaches(p, [x, y], inside, points) {
+    if (inside(x, y)) return true;
+    for (let i = 0; i < p.length; i += 2) if (inside(p[i], p[i + 1])) return true;
+    return points.some(([px, py]) => contains(p, px, py));
+}
+
+function contains(p, x, y) {
+    let sign = 0;
+    for (let i = 0; i < p.length; i += 2) {
+        let j = (i + 2) % p.length;
+        let s = (p[j] - p[i]) * (y - p[i + 1]) - (p[j + 1] - p[i + 1]) * (x - p[i]);
+        if (s && sign && (s > 0) != (sign > 0)) return false;
+        if (s) sign = s;
+    }
+    return true;
 }
 
 function createShapePoints(props, range) {
@@ -411,14 +548,14 @@ function createShapePoints(props, range) {
         py.push(y);
     };
 
-    let polygon = (poly, origin, extra) => {
+    let polygon = (poly, origin, extra, kind = 1) => {
         let vs = [];
         for (let i = 0; i < poly.length; i += 2) {
             let v = fmt(poly[i], poly[i + 1]);
             if (v !== vs[vs.length - 1]) vs.push(v);
         }
         if (vs.length > 1 && vs[0] === vs[vs.length - 1]) vs.pop();
-        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, origin);
+        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, origin, kind);
     };
 
     if (props.scatter) {
@@ -427,18 +564,33 @@ function createShapePoints(props, range) {
             outline.push(point(rad * i, i));
         }
         let screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
-        let tile = ([poly, [x, y]]) => polygon(poly, fmt(x, y));
-        let sides = { hex: 6, triangle: 3 }[props.tile];
-        if (sides) return tiles(sides, box, screen, inside, props.scatter, gap).map(tile);
+        let tile = ([poly, [x, y], kind]) => polygon(poly, fmt(x, y), undefined, kind);
+        let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
+        let sides = { hex: 6, triangle: 3, cube: 6 }[name];
+        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s) : name == 'penrose' && penrose;
+        if (make) {
+            let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count);
+            // top, left, right faces of a hexagon
+            if (name == 'cube') pieces = pieces.flatMap(([p, c]) => [6, 2, 10].map((i, face) => {
+                let q = [...c, ...[0, 1, 2, 3, 4, 5].map(m => p[(i + m) % 12])];
+                return [q, centre(q), face + 1];
+            }));
+            return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2), c, kind]));
+        }
+        if (name == 'circle') return pack(screen, box, inside, count, seed).map(([x, y, r]) => {
+            r = tidyNumber(max(0, r - gap / 2)) + suffix;
+            return new Point(`ellipse(${r} ${r} at ${fmt(x, y)})`, undefined, fmt(x, y), 1);
+        });
+        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180).map(tile);
         let context = Object.assign(Object.create(defaultContext), props);
         let density = isEmpty(props.density) ? null : (x, y) => {
             context.x = x;
             context.y = y;
             return Number(calc(props.density, context)) || 0;
         };
-        scatter(outline, props.scatter, evenodd, Number(props.seed) || 0, density).forEach(add);
-        if (props.tile == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
-        if (props.tile == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => polygon(poly, points[k].value, points[k].extra));
+        scatter(outline, count, evenodd, seed, density).forEach(add);
+        if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
+        if (name == 'voronoi') return voronoi(px, py, ...box, gap).map(([poly], k) => polygon(poly, points[k].value, points[k].extra));
         return points;
     }
 
