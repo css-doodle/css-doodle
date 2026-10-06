@@ -23,6 +23,24 @@ test('commands after a preset add to it or override its own', () => {
     assert.notEqual(String(generateShape('heart; r: .5').points), String(generateShape('heart').points));
 });
 
+test('fitted presets fill the box, centred', () => {
+    let bounds = shape => {
+        let xs = [], ys = [];
+        for (let p of generateShape(shape).points) {
+            let [x, y] = String(p).split(' ').map(parseFloat);
+            xs.push(x), ys.push(y);
+        }
+        return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)].map(Math.round);
+    };
+    for (let shape of ['squircle', 'squircle 1', 'squircle .5', 'bud 4', 'hypocycloid 4']) {
+        assert.deepEqual(bounds(shape), [0, 100, 0, 100], shape);
+    }
+    // the longer side touches, the shorter one is centred
+    assert.deepEqual(bounds('cloud 1'), [0, 100, 7, 93]);
+    assert.deepEqual(bounds('triangle'), [0, 100, 7, 93]);
+    assert.deepEqual(bounds('hypocycloid 3'), [7, 93, 0, 100]);
+});
+
 test('prototype names are not preset shapes', () => {
     assert.equal(generateShape('constructor').preset, false);
     assert.equal(generateShape('toString').preset, false);

@@ -21,6 +21,18 @@ function ngon(k, inner = cos(PI / k)) {
     return `r: ${inner * y / l} / cos(abs(abs(t) % ${2 * a} - ${a}) + ${atan2(x, y)})`;
 }
 
+function fit(commands) {
+    let props = parseShapeCommands(commands), split = parseInt(props.split);
+    let point = createPointFunction(props, split), xs = [], ys = [];
+    for (let i = 0; i < split; ++i) {
+        let [x, y] = point(2 * PI * i / split, i);
+        xs.push(x);
+        ys.push(y);
+    }
+    let x0 = min(...xs), x1 = max(...xs), y0 = min(...ys), y1 = max(...ys);
+    return `${commands}; move: ${-(x0 + x1) / 2} ${(y0 + y1) / 2}; scale: ${2 / max(x1 - x0, y1 - y0)}`;
+}
+
 const presetShapes = {
     __proto__: null,
 
@@ -29,15 +41,15 @@ const presetShapes = {
     circle:   css`split: 180`,
     hexagon:  css`split: 6; ${ngon(6)}; rotate: 30`,
     octagon:  css`split: 8; ${ngon(8)}; rotate: 22.5`,
-    triangle: css`split: 3; ${ngon(3)}; rotate: 30; scale: 1.1; move: 0 .2`,
-    bean:     css`split: 180; r: sin(t)^3 + cos(t)^3; move: -.35 .35`,
+    triangle: () => fit(`split: 3; ${ngon(3)}; rotate: 30`),
+    bean:     () => fit(`split: 180; r: sin(t)^3 + cos(t)^3`),
     bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
-    fish:     css`split: 240; scale: .96; x: cos(t) - sin(t)^2 / sqrt(2) + .03; y: sin(2t)/2`,
+    fish:     () => fit(`split: 240; x: cos(t) - sin(t)^2 / sqrt(2); y: sin(2t)/2`),
     infinity: css`split: 180; x: cos(t) / (sin(t)^2 + 1); y: x * sin(t)`,
-    drop:     css`split: 180; rotate: 90; scale: .95; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`,
+    drop:     () => fit(`split: 180; rotate: 90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
     vase:     css`split: 240; scale: .3; x: sin(4t) + sin(t) * 1.4; y: cos(t) + cos(t) * 4.8 + .3`,
     windmill: css`split: 18; R: seq(.618, 1, 0); T: seq(t-.55, t, t); x: R * cos(T); y: R * sin(T)`,
-    heart:    css`split: 180; rotate: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: (.75 * sin(t)^3) * 1.2; y: (a - b + .2) * -1.1`,
+    heart:    () => fit(`split: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: -.9 * sin(t)^3; y: 1.1 * (a - b)`),
     star(k = 5, inner = 1 / PHI ** 2) {
         k = clamp(k, 3, 10);
         return css`split: ${2 * k}; ${ngon(k, clamp(inner, .05, 1))}; rotate: ${-(90 % (360 / k))}`;
@@ -48,11 +60,20 @@ const presetShapes = {
     },
     hypocycloid(k = 3) {
         k = clamp(k, 3, 10);
-        return css`split: 240; scale: ${1 / k}; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`;
+        return fit(`split: 240; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`);
+    },
+    cloud(k = 3) {
+        k = clamp(k, 1, 10);
+        return fit(`split: 180; k: ${k}; x: (k+1)*cos(t) - cos((k+1)*t); y: (k+1)*sin(t) - sin((k+1)*t); rotate: -90`);
+    },
+    // |x|^k + |y|^k = 1
+    squircle(k = 4) {
+        k = clamp(k, .2, 20);
+        return css`split: 180; k: ${k}; r: (abs(cos(t))^k + abs(sin(t))^k)^(-1/k)`;
     },
     bud(k = 3) {
         k = clamp(k, 3, 10);
-        return css`split: 240; scale: .8; r: 1 + .2 * cos(${k}t)`;
+        return fit(`split: 240; r: 1 + .2 * cos(${k}t)`);
     },
 };
 
