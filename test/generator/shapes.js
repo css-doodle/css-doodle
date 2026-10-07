@@ -162,3 +162,29 @@ test('cracked cells stay inside the shape', () => {
     assert.equal(cells.length, 200);
     assert.ok(cells.every(p => inside(...p.origin.match(/-?[\d.]+/g).map(Number))));
 });
+
+test('delaunay leaves no holes inside, even with random seeds', () => {
+    for (let [max, seed] of [[150, 11], [500, 11], [50, 9]]) {
+        let tris = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'delaunay', seed, relax: '0', scatter: Math.ceil(max / 2 + Math.sqrt(max)), count: max })).points;
+        let uses = new Map();
+        for (let t of tris) {
+            let v = String(t).slice(8, -1).split(', ');
+            v.forEach((a, i) => { let key = [a, v[(i + 1) % 3]].sort().join('|'); uses.set(key, (uses.get(key) || 0) + 1); });
+        }
+        let next = new Map(), loops = 0;
+        for (let [key, n] of uses) if (n == 1) {
+            let [a, b] = key.split('|');
+            next.set(a, [...(next.get(a) || []), b]);
+            next.set(b, [...(next.get(b) || []), a]);
+        }
+        let seen = new Set();
+        for (let start of next.keys()) if (!seen.has(start)) {
+            loops++;
+            for (let todo = [start]; todo.length;) {
+                let v = todo.pop();
+                if (!seen.has(v)) seen.add(v), todo.push(...next.get(v));
+            }
+        }
+        assert.equal(loops, 1, max + ':' + seed);
+    }
+});

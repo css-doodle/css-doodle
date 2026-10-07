@@ -313,8 +313,18 @@ function delaunay(px, py, box, inside, count, gap) {
     let twice = (k, a, b) => (px[a] - px[k]) * (py[b] - py[k]) - (px[b] - px[k]) * (py[a] - py[k]);
     let r2 = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
     let sorted = tris.map(r2).sort((u, v) => u - v);
-    let keep = min(sorted[sorted.length >> 1] * 9, sorted[count - 1] ?? Infinity);
-    return tris.filter(t => r2(t) <= keep).slice(0, count).map(([k, a, b, cx, cy]) => {
+    let keep = sorted[sorted.length >> 1] * 9, edge = (p, q) => min(p, q) + ' ' + max(p, q);
+    // long ones, then the largest over the count, are peeled from the outside so the inside keeps no holes
+    for (let drop = 1; drop;) {
+        let uses = {};
+        for (let [k, a, b] of tris) for (let e of [edge(k, a), edge(a, b), edge(b, k)]) uses[e] = (uses[e] || 0) + 1;
+        let outer = tris.filter(([k, a, b]) => uses[edge(k, a)] < 2 || uses[edge(a, b)] < 2 || uses[edge(b, k)] < 2);
+        drop = outer.filter(t => r2(t) > keep);
+        if (!drop.length) drop = outer.sort((u, v) => r2(v) - r2(u)).slice(0, max(0, tris.length - count));
+        tris = tris.filter(t => !drop.includes(t));
+        drop = drop.length;
+    }
+    return tris.map(([k, a, b, cx, cy]) => {
         let tri = [px[k], py[k], px[a], py[a], px[b], py[b]];
         if (gap) {
             let la = sqrt(d(a, b)), lb = sqrt(d(b, k)), lc = sqrt(d(k, a)), per = la + lb + lc;
