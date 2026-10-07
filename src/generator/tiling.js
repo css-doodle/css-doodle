@@ -2,7 +2,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { clamp } from '../lib/math.js';
 import calc, { defaultContext } from '../core/calc.js';
 
-const { cos, sin, atan2, sqrt, hypot, log, ceil, floor, abs, min, max, PI } = Math;
+const { cos, sin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;
 
 const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
@@ -252,6 +252,22 @@ function tiles(make, box, screen, inside, count, grow = 1) {
     return reaching(hi);
 }
 
+function shake(pieces, n, seed) {
+    let d = n * sqrt(pieces.reduce((s, [p]) => s + area(p), 0) / pieces.length), moved = {};
+    return pieces.map(([p, , kind]) => {
+        let q = [];
+        for (let i = 0; i < p.length; i += 2) {
+            let key = round(p[i] * 1e6) + ',' + round(p[i + 1] * 1e6);
+            let [dx, dy] = moved[key] ||= (rnd => {
+                let a = 2 * PI * rnd(), r = d * sqrt(rnd());
+                return [r * cos(a), r * sin(a)];
+            })(seedrandom('jitter:' + seed + ':' + key));
+            q.push(p[i] + dx, p[i + 1] + dy);
+        }
+        return [q, centre(q), kind];
+    });
+}
+
 function bend(p, [cx, cy], edge, classes, tol, toShape) {
     let out = [];
     for (let i = 0; i < p.length; i += 2) {
@@ -288,8 +304,7 @@ function bbox(screen, box) {
     return [max(box[0], x0), max(box[1], y0), min(box[2], x1), min(box[3], y1)];
 }
 
-// largest circle first, at most 3x the average; room only shrinks, so a centre is measured again at the top of the heap
-function pack(screen, box, inside, count, seed) {
+function pack(screen, box, inside, count, seed, size) {
     let [x0, y0, x1, y1] = bbox(screen, box), w = x1 - x0, h = y1 - y0;
     let total = max(4096, 32 * count), xs = [], ys = [], heap = [], key = [], out = [];
     let k = seed % 1e4 * 1e4, start = k;
@@ -298,7 +313,9 @@ function pack(screen, box, inside, count, seed) {
         let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
         if (inside(x, y)) heap.push(xs.length), key.push(Infinity), xs.push(x), ys.push(y);
     }
-    let cap = 3 * sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
+    let avg = sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
+    let caps = xs.map((x, i) => size ? avg * size(x, ys[i]) : 3 * avg), cap = caps.reduce((a, b) => max(a, b), 0);
+    if (!(cap > 0)) return out;
     let cols = ceil(w / cap) + 1, grid = Array.from({ length: cols * (ceil(h / cap) + 1) }, () => []);
     let edge = [], segs = [];
     screen.forEach(([bx, by], a) => {
@@ -308,7 +325,7 @@ function pack(screen, box, inside, count, seed) {
     let room = i => {
         let x = xs[i], y = ys[i], r = edge[i];
         if (r === undefined) {
-            r = min(cap, x - box[0], box[2] - x, y - box[1], box[3] - y) ** 2;
+            r = max(0, min(caps[i], x - box[0], box[2] - x, y - box[1], box[3] - y)) ** 2;
             for (let a = 0; a < segs.length; a += 5) {
                 let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
                 let t = (ax * dx + ay * dy) * segs[a + 4];
@@ -341,26 +358,37 @@ function pack(screen, box, inside, count, seed) {
     return out;
 }
 
-// a random piece, bigger ones more often, cut across its longer side
-function slice(screen, box, inside, count, seed, gap, spread) {
+function slice(screen, box, inside, count, seed, gap, spread, density) {
     let [x0, y0, x1, y1] = bbox(screen, box);
     let rnd = seedrandom('slice:' + seed);
-    let pieces = [[x0, y0, x1, y0, x1, y1, x0, y1]], areas = pieces.map(area), total = areas[0];
-    for (let tries = 0; pieces.length < count && tries < count * 4; ++tries) {
+    let N = 64, w = (x1 - x0) / N, h = (y1 - y0) / N;
+    let grid = density && Array.from({ length: N * N }, (_, i) => max(0, density(x0 + (i % N + .5) * w, y0 + ((i / N | 0) + .5) * h)));
+    let weight = p => {
+        if (!density) return area(p);
+        let [l, t, r, b] = bounds(p), sum = 0, n = 0;
+        for (let j = max(0, ceil((t - y0) / h - .5)); j <= min(N - 1, (b - y0) / h - .5); ++j) {
+            for (let i = max(0, ceil((l - x0) / w - .5)); i <= min(N - 1, (r - x0) / w - .5); ++i) {
+                if (contains(p, x0 + (i + .5) * w, y0 + (j + .5) * h)) sum += grid[i + N * j], ++n;
+            }
+        }
+        return area(p) * (n ? sum / n : max(0, density(...centre(p))));
+    };
+    let pieces = [[x0, y0, x1, y0, x1, y1, x0, y1]], weights = pieces.map(weight), total = weights[0];
+    for (let tries = 0; pieces.length < count && tries < count * 4 && total > 0; ++tries) {
         let sum = 0, pick = rnd() * total, k = 0;
-        while (k < pieces.length - 1 && (sum += areas[k]) < pick) ++k;
+        while (k < pieces.length - 1 && (sum += weights[k]) < pick) ++k;
         let p = pieces[k], [cx, cy] = centre(p);
         let [l, t, r, b] = bounds(p);
         let a = (r - l > b - t ? 0 : PI / 2) + (rnd() - .5) * spread;
-        let nx = cos(a), ny = sin(a), shift = (rnd() - .5) * .5 * sqrt(areas[k]);
+        let nx = cos(a), ny = sin(a), shift = (rnd() - .5) * .5 * sqrt(area(p));
         let mx = cx + nx * shift, my = cy + ny * shift, g = gap / 2;
         let parts = [1, -1].map(d => halfplane(p, d * nx, d * ny, mx - d * nx * g, my - d * ny * g, [])[0])
             .filter(p => p.length && reaches(p, centre(p), inside, screen));
         if (!parts.length) continue;
-        let sizes = parts.map(area);
-        total += sizes.reduce((a, b) => a + b, 0) - areas[k];
+        let sizes = parts.map(weight);
+        total += sizes.reduce((a, b) => a + b, 0) - weights[k];
         pieces.splice(k, 1, ...parts);
-        areas.splice(k, 1, ...sizes);
+        weights.splice(k, 1, ...sizes);
     }
     return pieces.map(p => [p, centre(p)]).sort((a, b) => a[1][1] - b[1][1] || a[1][0] - b[1][0]);
 }
@@ -430,5 +458,5 @@ function simplify({ f, n }, tol) {
 
 export {
     insideTest, scatter, voronoi, lattice, penrose, delaunay, tiles,
-    bend, inset, bounds, pack, slice, centre, edges,
+    shake, bend, inset, bounds, pack, slice, centre, edges,
 };

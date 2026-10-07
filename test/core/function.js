@@ -372,6 +372,14 @@ test('@tile.circle: circles packed inside the shape, one per cell, largest first
     // the doodle seed moves them, `seed: n` pins them
     assert.notEqual(String(tiles('heart', 20, 'b')[0]), String(tiles('heart', 20)[0]));
     assert.equal(String(tiles('heart; seed: 7', 20, 'b')[3]), String(tiles('heart; seed: 7', 20)[3]));
+    // `size: f(x, y)` caps the radius in average radii (3 by default), 0 leaves no centre there
+    assert.deepEqual(tiles('heart; size: 3', 100).map(String), tiles('heart', 100).map(String));
+    assert.ok(tiles('circle; size: 1', 60).map(circle)[0][0] < round[0][0] / 2);
+    let graded = tiles('circle; size: 1 + 3 * (1 + y)', 60).map(circle);
+    let biggest = top => Math.max(...graded.filter(c => (c[3] < 50) == top).map(c => c[0]));
+    assert.ok(biggest(true) > biggest(false) * 1.5);
+    assert.ok(tiles('circle; size: 3 * (x > 0)', 60).map(circle).every(c => c[2] > 50));
+    assert.deepEqual(tiles('circle; size: 1 + 4 * random()', 30).map(String), tiles('circle; size: 1 + 4 * random()', 30).map(String));
 });
 
 test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
@@ -398,6 +406,13 @@ test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
     // the doodle seed changes the cuts, `seed: n` pins them
     assert.notEqual(tiles('square', 10, 'b').join(), tiles('square', 10).join());
     assert.equal(tiles('square; seed: 3', 10, 'b').join(), tiles('square; seed: 3', 10).join());
+    // `density: f(x, y)` cuts the dense parts more often; zero leaves a part whole, a constant changes nothing
+    let graded = tiles('square; density: 1 - y', 200);
+    let below = graded.filter(t => xy(t.origin)[1] > 50).length;
+    assert.ok(below > (graded.length - below) * 2 && near(sum(graded), 10000));
+    let disc = tiles('square; density: hypot(x, y) < .5', 100);
+    assert.ok(disc.filter(t => Math.hypot(...xy(t.origin).map(v => v - 50)) < 30).length > 80);
+    assert.deepEqual(tiles('square; density: 2', 50).map(String), tiles('square', 50).map(String));
 });
 
 test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as the grid allows', () => {
@@ -461,6 +476,26 @@ test('@tile.grid with shift: every other row, or column, moved by part of a cell
     // whole cells change nothing; an edge formula bends the split edges and still covers
     assert.deepEqual(tiles('square; shift: 2').map(String), plain.map(String));
     assert.ok(covered(tiles('square; shift: .5; edge: .15 * sin(t)')));
+});
+
+test('jitter: lattice corners move by a seeded offset, the same in every piece sharing one', () => {
+    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let covered = list => {
+        let vs = list.map(verts);
+        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle, Function.tile.cube, Function.tile.penrose]) {
+        let plain = tiles(fn, 'square'), shaken = tiles(fn, 'jitter: .2');
+        assert.notDeepEqual(shaken.map(String), plain.map(String));
+        assert.ok(covered(shaken));
+        assert.deepEqual(tiles(fn, 'jitter: 0').map(String), plain.map(String));
+    }
+    // with shift and edge too; the seed changes the offsets
+    assert.ok(covered(tiles(Function.tile.grid, 'shift: .5; jitter: .2; edge: .1 * sin(t)')));
+    assert.notDeepEqual(tiles(Function.tile.hex, 'jitter: .2', 'b').map(String), tiles(Function.tile.hex, 'jitter: .2').map(String));
 });
 
 test('edge: bends every lattice edge with a formula, and neighbours still fit', () => {

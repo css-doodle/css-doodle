@@ -3,13 +3,14 @@ import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands from '../parser/parse-shape-commands.js';
 
+import seedrandom from '../lib/seedrandom.js';
 import { clamp, tidyNumber } from '../lib/math.js';
 import { isEmpty } from '../lib/type.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     insideTest, scatter, voronoi, lattice, penrose, delaunay, tiles,
-    bend, inset, bounds, pack, slice, centre, edges,
+    shake, bend, inset, bounds, pack, slice, centre, edges,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, max, PI } = Math;
@@ -214,34 +215,41 @@ function createShapePoints(props, lo, hi) {
         let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0);
+        let toShape = (x, y) => percent ? [x / 50 - 1, 1 - y / 50] : [x, -y];
         let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift) : name == 'penrose' && penrose;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) bulge = max(bulge, ...edge(e, x, y).f.map(abs));
-            let grow = edge ? 1 + 2 * tan(PI / sides) * bulge : 1;
+            let jitter = Number(props.jitter) || 0;
+            let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
             let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count, grow);
             // top, left, right faces of a hexagon
             if (name == 'cube') pieces = pieces.flatMap(([p, c]) => [6, 2, 10].map((i, face) => {
                 let q = [...c, ...[...p, ...p].slice(i, i + 6)];
                 return [q, centre(q), face + 1];
             }));
+            if (jitter) pieces = shake(pieces, jitter, seed);
             let p = pieces[0]?.[0], tol = edge && p && (box[2] - box[0]) * 5e-4 / hypot(p[2] - p[0], p[3] - p[1]);
-            let toShape = (x, y) => percent ? [x / 50 - 1, 1 - y / 50] : [x, -y];
             return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape) : p), c, kind]));
         }
-        if (name == 'circle') return pack(screen, box, inside, count, seed).map(([x, y, r]) => {
-            let at = fmt(x, y);
-            r = tidyNumber(max(0, r - gap / 2)) + suffix;
-            return new Point(`ellipse(${r} ${r} at ${at})`, undefined, at, 1);
-        });
-        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180).map(tile);
         let context = Object.assign(Object.create(defaultContext), props);
-        let density = isEmpty(props.density) ? null : (x, y) => {
+        let formula = text => isEmpty(text) ? null : (x, y) => {
             context.x = x;
             context.y = y;
-            return Number(calc(props.density, context)) || 0;
+            return Number(calc(text, context)) || 0;
         };
+        if (name == 'circle') {
+            let size = formula(props.size);
+            context.random = seedrandom('size:' + seed);
+            return pack(screen, box, inside, count, seed, size && ((x, y) => size(...toShape(x, y)))).map(([x, y, r]) => {
+                let at = fmt(x, y);
+                r = tidyNumber(max(0, r - gap / 2)) + suffix;
+                return new Point(`ellipse(${r} ${r} at ${at})`, undefined, at, 1);
+            });
+        }
+        let density = formula(props.density);
+        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, density && ((x, y) => density(...toShape(x, y)))).map(tile);
         scatter(outline, count, evenodd, seed, density).forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (name == 'voronoi') {
