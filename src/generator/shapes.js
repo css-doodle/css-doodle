@@ -209,6 +209,15 @@ function createShapePoints(props, lo, hi) {
     };
 
     if (props.scatter) {
+        // tiled in the element's proportions, with the shorter side as 100%, then mapped back
+        let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
+        let aspect = w / h > 0 ? w / h : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
+        if (aspect != 1) {
+            let [screenOf, format] = [toScreen, fmt];
+            toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };
+            fmt = (x, y) => format(x / sx, y / sy);
+            box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
+        }
         let outline = [];
         for (let i = 0; i < split; ++i) {
             outline.push(point(rad * i, i));
@@ -217,7 +226,7 @@ function createShapePoints(props, lo, hi) {
         let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0);
-        let toShape = (x, y) => percent ? [x / 50 - 1, 1 - y / 50] : [x, -y];
+        let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
         let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift) : name == 'penrose' && penrose;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
@@ -245,9 +254,8 @@ function createShapePoints(props, lo, hi) {
             let size = formula(props.size);
             context.random = seedrandom('size:' + seed);
             return pack(screen, box, inside, count, seed, size && ((x, y) => size(...toShape(x, y)))).map(([x, y, r]) => {
-                let at = fmt(x, y);
-                r = tidyNumber(max(0, r - gap / 2)) + suffix;
-                return new Point(`ellipse(${r} ${r} at ${at})`, undefined, at, 1);
+                let at = fmt(x, y), [rx, ry] = [sx, sy].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
+                return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
             });
         }
         let density = formula(props.density);

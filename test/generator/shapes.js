@@ -188,3 +188,13 @@ test('delaunay leaves no holes inside, even with random seeds', () => {
         assert.equal(loops, 1, max + ':' + seed);
     }
 });
+
+test('aspect tiles in the element proportions', () => {
+    let circles = aspect => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'circle', seed: 1, scatter: 20, aspect })).points.map(String);
+    for (let c of circles('2')) {
+        let [rx, ry] = c.match(/ellipse\(([\d.]+)% ([\d.]+)%/).slice(1).map(Number);
+        assert.ok(Math.abs(rx * 2 - ry) < 1e-6, c);
+    }
+    assert.deepEqual(circles('300 / 150'), circles('2'));
+    assert.deepEqual(circles('1'), circles(undefined));
+});
