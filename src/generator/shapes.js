@@ -10,12 +10,10 @@ import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     insideTest, scatter, voronoi, mosaic, rounded, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges,
+    shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, max, PI } = Math;
-
-const PHI = (1 + sqrt(5)) / 2;
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
@@ -38,15 +36,15 @@ const presetShapes = {
     circle:   css`split: 180`,
     hexagon:  css`split: 6; ${ngon(6)}; rotate: 30`,
     octagon:  css`split: 8; ${ngon(8)}; rotate: 22.5`,
-    triangle: () => fit(`split: 3; ${ngon(3)}; rotate: 30`),
-    bean:     () => fit(`split: 180; r: sin(t)^3 + cos(t)^3`),
+    triangle: () => fit(css`split: 3; ${ngon(3)}; rotate: 30`),
+    bean:     () => fit(css`split: 180; r: sin(t)^3 + cos(t)^3`),
     bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
-    fish:     () => fit(`split: 240; x: .89cos(t) + .19cos(2t) + .07cos(4t) - .02cos(5t) + .03cos(6t) + .01cos(8t); y: .41sin(t) + .18sin(3t) - .08sin(4t) - .02sin(5t) + .05sin(6t) - .02sin(7t)`),
+    fish:     () => fit(css`split: 240; x: .89cos(t) + .19cos(2t) + .07cos(4t) - .02cos(5t) + .03cos(6t) + .01cos(8t); y: .41sin(t) + .18sin(3t) - .08sin(4t) - .02sin(5t) + .05sin(6t) - .02sin(7t)`),
     infinity: css`split: 180; x: cos(t) / (sin(t)^2 + 1); y: x * sin(t)`,
-    drop:     () => fit(`split: 180; rotate: 90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
+    drop:     () => fit(css`split: 180; rotate: 90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
     vase:     css`split: 240; x: sign(sin(t)) * (.27 - .2cos(t) - .07cos(2t) + .09cos(3t)); y: cos(t)`,
     windmill: css`split: 18; R: seq(.618, 1, 0); T: seq(t-.55, t, t); x: R * cos(T); y: R * sin(T)`,
-    heart:    () => fit(`split: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: -.9 * sin(t)^3; y: 1.1 * (a - b)`),
+    heart:    () => fit(css`split: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: -.9 * sin(t)^3; y: 1.1 * (a - b)`),
     star(k = 5, inner = 1 / PHI ** 2) {
         k = clamp(k, 3, 10);
         return css`split: ${2 * k}; ${ngon(k, clamp(inner, .05, 1))}; rotate: ${-(90 % (360 / k))}`;
@@ -57,11 +55,11 @@ const presetShapes = {
     },
     hypocycloid(k = 3) {
         k = clamp(k, 3, 10);
-        return fit(`split: 240; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`);
+        return fit(css`split: 240; k: ${k}; x: (k-1)*cos(t) + cos((k-1)*t); y: (k-1)*sin(t) - sin((k-1)*t)`);
     },
     cloud(k = 3) {
         k = clamp(k, 1, 10);
-        return fit(`split: 180; k: ${k}; x: (k+1)*cos(t) - cos((k+1)*t); y: (k+1)*sin(t) - sin((k+1)*t); rotate: -90`);
+        return fit(css`split: 180; k: ${k}; x: (k+1)*cos(t) - cos((k+1)*t); y: (k+1)*sin(t) - sin((k+1)*t); rotate: -90`);
     },
     // |x|^k + |y|^k = 1
     squircle(k = 4) {
@@ -70,7 +68,7 @@ const presetShapes = {
     },
     bud(k = 3) {
         k = clamp(k, 3, 10);
-        return fit(`split: 240; r: 1 + .2 * cos(${k}t)`);
+        return fit(css`split: 240; r: 1 + .2 * cos(${k}t)`);
     },
 };
 
@@ -102,9 +100,6 @@ function createPointFunction(props, split) {
 
     let index = 0;
     let context = Object.assign(Object.create(defaultContext), props, {
-        't': 0,
-        'θ': 0,
-        'i': 0,
         seq(...list) {
             return list.length ? list[index % list.length] : '';
         },
@@ -208,6 +203,11 @@ function createShapePoints(props, lo, hi) {
         return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, fmt(x, y), kind);
     };
 
+    let outline = [];
+    for (let i = 0; i < split; ++i) {
+        outline.push(point(rad * i, i));
+    }
+
     if (props.scatter) {
         // tiled in the element's proportions, with the shorter side as 100%, then mapped back
         let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
@@ -217,10 +217,6 @@ function createShapePoints(props, lo, hi) {
             toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };
             fmt = (x, y) => format(x / sx, y / sy);
             box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
-        }
-        let outline = [];
-        for (let i = 0; i < split; ++i) {
-            outline.push(point(rad * i, i));
         }
         let screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
         let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
@@ -284,15 +280,11 @@ function createShapePoints(props, lo, hi) {
         points.push(new Point(fill, ''));
     }
 
-    let first;
-    for (let i = 0; i < split; ++i) {
-        let p = point(rad * i, i);
-        if (!i) first = p;
-        add(p);
-    }
+    outline.forEach(add);
 
     // an outline: back to the first point, then the inner ring in reverse
     if (frame !== undefined) {
+        let first = outline[0];
         add(first);
         let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
         let firstInner;

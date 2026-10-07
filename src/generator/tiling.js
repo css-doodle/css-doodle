@@ -166,13 +166,13 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         let u = ((x - ox) * c + (y - oy) * s) * k, v = ((y - oy) * c - (x - ox) * s) / k;
         return [ox + u * c - v * s, oy + u * s + v * c];
     };
-    let back = p => {
+    let back = (p, k) => {
         let q = [];
-        for (let i = 0; i < p.length; i += 2) q.push(...warp(p[i], p[i + 1]));
+        for (let i = 0; i < p.length; i += 2) q.push(...warp(p[i], p[i + 1], k));
         return q;
     };
     let corners = [x0, y0, x1, y0, x1, y1, x0, y1];
-    let shown = corners.flatMap((v, i) => i & 1 ? [] : warp(v, corners[i + 1], 1 / a)), [l, t, r, b] = bounds(shown);
+    let [l, t, r, b] = bounds(back(corners, 1 / a));
     let pad = (r - l + b - t) / 4, qbox = [l - pad, t - pad, r + pad, b + pad];
     let seeds = scatter(screen.map(p => warp(...p, 1 / a)), count, evenodd, seed, density && ((x, y) => density(...warp(x, y))), relax);
     let n = seeds.length, m = crack > 1 ? max(1, round(n / crack)) : n;
@@ -193,8 +193,8 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         while (ids.some(q => kinds[q] == kind)) ++kind;
         kinds[k] = kind;
     });
-    let finish = (p, d, outer, at, kind) => [clip(shrink(back(p), d), outer), at, kind];
-    if (m == n) return cells.map(([q], k) => finish(q, gap / 2, corners, warp(px[k], py[k]), kinds[k]));
+    let cut = (p, d, outer) => clip(shrink(back(p), d), outer);
+    if (m == n) return cells.map(([q], k) => [cut(q, gap / 2, corners), warp(px[k], py[k]), kinds[k]]);
     let groups = cells.map(() => []);
     seeds.forEach(([x, y]) => {
         let near = 0, best = Infinity;
@@ -205,8 +205,8 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         groups[near].push([x, y]);
     });
     return cells.flatMap(([q], i) => {
-        let outer = clip(shrink(back(q), gap / 2), corners), g = groups[i];
-        return voronoi(g.map(p => p[0]), g.map(p => p[1]), ...bounds(q), 0).map(([p], k) => finish(clip(p, q), fine / 2, outer, warp(...g[k]), kinds[i]));
+        let outer = cut(q, gap / 2, corners), g = groups[i];
+        return voronoi(g.map(p => p[0]), g.map(p => p[1]), ...bounds(q), 0).map(([p], k) => [cut(clip(p, q), fine / 2, outer), warp(...g[k]), kinds[i]]);
     });
 }
 
@@ -555,5 +555,5 @@ function simplify({ f, n }, tol) {
 
 export {
     insideTest, scatter, voronoi, mosaic, rounded, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges,
+    shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
 };

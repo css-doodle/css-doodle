@@ -140,11 +140,7 @@ function readStyleBlock(iter, selectors) {
     if (cssSelectors.length) {
         styleContent = cssSelectors.join(' ') + '{' + styleContent + '}';
     }
-    return {
-        type: 'block',
-        name: 'style',
-        value: styleContent
-    };
+    return makeBlock('style', styleContent);
 }
 
 // the head as svg selectors: `g circle, rect*3 {`, `style {`
@@ -251,9 +247,6 @@ function parseViewBox(tokens) {
     const viewBox = { value: [] };
     let field;
     for (let token of tokens) {
-        if (token.isSpace() || token.isSymbol(',', ';')) {
-            continue;
-        }
         if (token.isNumber()) {
             if (field) {
                 viewBox[field] = Number(token.value);
@@ -281,11 +274,7 @@ function skipHeadSVG(block) {
 
 function parse(source, root) {
     let iter = iterator(scan(source));
-    let tokens = parseBody(iter, root || {
-        type: 'block',
-        name: 'svg',
-        value: []
-    }, svg);
+    let tokens = parseBody(iter, root || makeBlock('svg'), svg);
     return root ? tokens : skipHeadSVG(tokens);
 }
 

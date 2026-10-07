@@ -28,8 +28,9 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
         type: 'block', name,
         value: attrs.map(([n, v]) => statement(n, v)),
     });
-    if (g.dilate) el('feMorphology', [['operator', 'dilate'], ['radius', g.dilate]]);
-    if (g.erode) el('feMorphology', [['operator', 'erode'], ['radius', g.erode]]);
+    for (let operator of ['dilate', 'erode']) {
+        if (g[operator]) el('feMorphology', [['operator', operator], ['radius', g[operator]]]);
+    }
     if (g.blur) el('feGaussianBlur', [['stdDeviation', g.blur]]);
     if (!g.frequency) {
         for (let name of ['scale', 'octave', 'seed']) {
