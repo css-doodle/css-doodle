@@ -41,7 +41,7 @@ const presetShapes = {
     triangle: () => fit(`split: 3; ${ngon(3)}; rotate: 30`),
     bean:     () => fit(`split: 180; r: sin(t)^3 + cos(t)^3`),
     bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
-    fish:     () => fit(`split: 240; x: cos(t) - sin(t)^2 / sqrt(2); y: sin(2t)/2`),
+    fish:     () => fit(`split: 240; x: .89cos(t) + .19cos(2t) + .07cos(4t) - .02cos(5t) + .03cos(6t) + .01cos(8t); y: .41sin(t) + .18sin(3t) - .08sin(4t) - .02sin(5t) + .05sin(6t) - .02sin(7t)`),
     infinity: css`split: 180; x: cos(t) / (sin(t)^2 + 1); y: x * sin(t)`,
     drop:     () => fit(`split: 180; rotate: 90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
     vase:     css`split: 240; scale: .3; x: sin(4t) + sin(t) * 1.4; y: cos(t) + cos(t) * 4.8 + .3`,
