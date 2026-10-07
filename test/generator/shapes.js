@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import generateShape from '../../src/generator/shapes.js';
+import { insideTest } from '../../src/generator/tiling.js';
 
 test('preset shapes', () => {
     let { points, preset } = generateShape('triangle');
@@ -145,8 +146,19 @@ test('stretched and cracked voronoi cells cover the box', () => {
     }
 });
 
-test('round smooths voronoi cells inside their gapped polygons', () => {
-    let cells = round => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 10, gap: '1', round })).points.map(String);
-    let [plain, round] = [cells('0'), cells('2')];
-    assert.ok(round.every((p, i) => p.split(',').length > plain[i].split(',').length));
+test('round curves the corners of every polygon tile', () => {
+    for (let tile of ['voronoi', 'hex', 'triangle', 'slice']) {
+        let cells = round => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile, seed: 2, scatter: 10, gap: '1', round })).points.map(String);
+        let [plain, round] = [cells('0'), cells('1')];
+        assert.ok(round.every((p, i) => p.split(',').length > plain[i].split(',').length), tile);
+        assert.deepEqual(cells('1'), cells('7'));
+    }
+});
+
+test('cracked cells stay inside the shape', () => {
+    let cells = generateShape('heart', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 200, crack: '10' })).points;
+    let outline = generateShape('heart', { min: 1, max: 65536 }, r => r).points.map(p => String(p).match(/-?[\d.]+/g).map(Number)).filter(p => p.length == 2);
+    let inside = insideTest(outline, false);
+    assert.equal(cells.length, 200);
+    assert.ok(cells.every(p => inside(...p.origin.match(/-?[\d.]+/g).map(Number))));
 });

@@ -9,7 +9,7 @@ import { isEmpty } from '../lib/type.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    insideTest, scatter, voronoi, mosaic, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, mosaic, rounded, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges,
 } from './tiling.js';
 
@@ -196,7 +196,9 @@ function createShapePoints(props, lo, hi) {
         py.push(y);
     };
 
+    let smooth = clamp(Number(props.round) || 0, 0, 1);
     let tile = ([poly, [x, y], kind = 1, extra]) => {
+        if (smooth) poly = rounded(poly, smooth, (box[2] - box[0]) / 1e3);
         let vs = [];
         for (let i = 0; i < poly.length; i += 2) {
             let v = fmt(poly[i], poly[i + 1]);
@@ -252,10 +254,10 @@ function createShapePoints(props, lo, hi) {
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, density && ((x, y) => density(...toShape(x, y)))).map(tile);
         let relax = isEmpty(props.relax) ? undefined : Number(props.relax);
         let [ratio, angle] = isEmpty(props.stretch) ? [] : parseValueGroup(String(props.stretch)).map(parseFloat);
-        let crack = Number(props.crack) || 0, smooth = clamp(Number(props.round) || 0, 0, 5) | 0;
-        if (name == 'voronoi' && (ratio > 0 || crack > 1 || smooth)) {
+        let crack = Number(props.crack) || 0;
+        if (name == 'voronoi' && (ratio > 0 || crack > 1)) {
             return mosaic(screen, box, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax,
-                ratio > 0 ? ratio : 1, (angle || 0) * PI / 180, crack, gap, fine, smooth).map(tile);
+                ratio > 0 ? ratio : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
         scatter(outline, count, evenodd, seed, density, relax).forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);

@@ -159,7 +159,7 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
     });
 }
 
-function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle, crack, gap, fine, smooth) {
+function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle, crack, gap, fine) {
     let [x0, y0, x1, y1] = box, ox = (x0 + x1) / 2, oy = (y0 + y1) / 2;
     let c = cos(angle), s = sin(angle), a = sqrt(ratio);
     let warp = (x, y, k = a) => {
@@ -172,31 +172,41 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         return q;
     };
     let corners = [x0, y0, x1, y0, x1, y1, x0, y1];
-    let spread = (outline, n, seed, evenodd) => {
-        let seeds = scatter(outline, n, evenodd, seed, density && ((x, y) => density(...warp(x, y))), relax);
-        return [seeds.map(p => p[0]), seeds.map(p => p[1])];
-    };
     let shown = corners.flatMap((v, i) => i & 1 ? [] : warp(v, corners[i + 1], 1 / a)), [l, t, r, b] = bounds(shown);
     let pad = (r - l + b - t) / 4, qbox = [l - pad, t - pad, r + pad, b + pad];
-    let [px, py] = spread(screen.map(p => warp(...p, 1 / a)), crack > 1 ? max(1, round(count / crack)) : count, seed, evenodd);
+    let seeds = scatter(screen.map(p => warp(...p, 1 / a)), count, evenodd, seed, density && ((x, y) => density(...warp(x, y))), relax);
+    let n = seeds.length, m = crack > 1 ? max(1, round(n / crack)) : n;
+    // parents are spread out among the seeds, or random ones when unrelaxed
+    let rnd = seedrandom('crack:' + seed), order = seeds.map((_, i) => i), parents = [];
+    for (let i = 0; i < n; ++i) {
+        let j = i + (rnd() * (n - i) | 0);
+        [order[i], order[j]] = [order[j], order[i]];
+    }
+    let reach = relax === 0 || m == n ? 0 : .7 * sqrt(area(screen.flat()) / m);
+    for (let pass = 0; pass < 2 && parents.length < m; ++pass) for (let i of order) {
+        if (parents.length < m && !parents.includes(i) && (pass || parents.every(j => hypot(seeds[i][0] - seeds[j][0], seeds[i][1] - seeds[j][1]) >= reach))) parents.push(i);
+    }
+    let px = parents.map(i => seeds[i][0]), py = parents.map(i => seeds[i][1]);
     let cells = voronoi(px, py, ...qbox, 0), kinds = [];
     cells.forEach(([, ids], k) => {
         let kind = 1;
         while (ids.some(q => kinds[q] == kind)) ++kind;
         kinds[k] = kind;
     });
-    let finish = (p, d, outer, at, kind) => [chaikin(clip(shrink(back(p), d), outer), smooth), at, kind];
-    if (!(crack > 1)) return cells.map(([q], k) => finish(q, gap / 2, corners, warp(px[k], py[k]), kinds[k]));
-    let areas = cells.map(([q]) => area(clip(q, shown)));
-    let total = areas.reduce((x, y) => x + y, 0), sum = 0, at = 0;
-    let share = areas.map(v => -at + (at = round(sum += 1 + (count - cells.length) * v / total)));
+    let finish = (p, d, outer, at, kind) => [clip(shrink(back(p), d), outer), at, kind];
+    if (m == n) return cells.map(([q], k) => finish(q, gap / 2, corners, warp(px[k], py[k]), kinds[k]));
+    let groups = cells.map(() => []);
+    seeds.forEach(([x, y]) => {
+        let near = 0, best = Infinity;
+        for (let k = 0; k < m; ++k) {
+            let d = (x - px[k]) ** 2 + (y - py[k]) ** 2;
+            if (d < best) best = d, near = k;
+        }
+        groups[near].push([x, y]);
+    });
     return cells.flatMap(([q], i) => {
-        let outer = clip(shrink(back(q), gap / 2), corners), part = clip(q, shown), ring = [];
-        for (let j = 0; j < part.length; j += 2) ring.push([part[j], part[j + 1]]);
-        let [sx, sy] = spread(ring, share[i], seed + (i + 1) * 7919, false);
-        // a sliver can miss every sample, it stays whole
-        if (!sx.length) sx = [px[i]], sy = [py[i]];
-        return voronoi(sx, sy, ...bounds(q), 0).map(([p], k) => finish(clip(p, q), fine / 2, outer, warp(sx[k], sy[k]), kinds[i]));
+        let outer = clip(shrink(back(q), gap / 2), corners), g = groups[i];
+        return voronoi(g.map(p => p[0]), g.map(p => p[1]), ...bounds(q), 0).map(([p], k) => finish(clip(p, q), fine / 2, outer, warp(...g[k]), kinds[i]));
     });
 }
 
@@ -213,16 +223,24 @@ function shrink(p, d) {
     return d ? clip(p, p, d) : p;
 }
 
-function chaikin(p, n) {
-    for (; n > 0; --n) {
-        let q = [];
-        for (let i = 0; i < p.length; i += 2) {
-            let ax = p[i], ay = p[i + 1], bx = p[(i + 2) % p.length], by = p[(i + 3) % p.length];
-            q.push(.75 * ax + .25 * bx, .75 * ay + .25 * by, .25 * ax + .75 * bx, .25 * ay + .75 * by);
+// corners become quadratic curves through the edge points f / 2 of the way along
+function rounded(p, f, tol) {
+    let out = [], n = p.length;
+    for (let i = 0; i < n; i += 2) {
+        let bx = p[i], by = p[i + 1];
+        let ax = bx + (p[(i + n - 2) % n] - bx) * f / 2, ay = by + (p[(i + n - 1) % n] - by) * f / 2;
+        let cx = bx + (p[(i + 2) % n] - bx) * f / 2, cy = by + (p[(i + 3) % n] - by) * f / 2;
+        let bend = hypot(ax - 2 * bx + cx, ay - 2 * by + cy) / 4;
+        if (bend <= tol) {
+            out.push(bx, by);
+            continue;
         }
-        p = q;
+        for (let j = 0, k = ceil(sqrt(bend / tol)); j <= k; ++j) {
+            let t = j / k, u = 1 - t;
+            out.push(u * u * ax + 2 * u * t * bx + t * t * cx, u * u * ay + 2 * u * t * by + t * t * cy);
+        }
     }
-    return p;
+    return out;
 }
 
 function lattice(k, box, bounds, s, [a, b]) {
@@ -526,6 +544,6 @@ function simplify({ f, n }, tol) {
 }
 
 export {
-    insideTest, scatter, voronoi, mosaic, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, mosaic, rounded, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges,
 };
