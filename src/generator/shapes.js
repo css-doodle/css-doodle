@@ -44,7 +44,7 @@ const presetShapes = {
     fish:     () => fit(`split: 240; x: .89cos(t) + .19cos(2t) + .07cos(4t) - .02cos(5t) + .03cos(6t) + .01cos(8t); y: .41sin(t) + .18sin(3t) - .08sin(4t) - .02sin(5t) + .05sin(6t) - .02sin(7t)`),
     infinity: css`split: 180; x: cos(t) / (sin(t)^2 + 1); y: x * sin(t)`,
     drop:     () => fit(`split: 180; rotate: 90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
-    vase:     css`split: 240; scale: .3; x: sin(4t) + sin(t) * 1.4; y: cos(t) + cos(t) * 4.8 + .3`,
+    vase:     css`split: 240; x: sign(sin(t)) * (.27 - .2cos(t) - .07cos(2t) + .09cos(3t)); y: cos(t)`,
     windmill: css`split: 18; R: seq(.618, 1, 0); T: seq(t-.55, t, t); x: R * cos(T); y: R * sin(T)`,
     heart:    () => fit(`split: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: -.9 * sin(t)^3; y: 1.1 * (a - b)`),
     star(k = 5, inner = 1 / PHI ** 2) {
