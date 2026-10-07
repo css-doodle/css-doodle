@@ -1053,3 +1053,11 @@ test('@svg-polygon inside @m reads the sequence @n', () => {
     assert.ok(all.includes('points="1 0,-0.5 -0.866025403784,-0.5 0.866025403784"'));
     assert.ok(all.includes('points="1 0,0 -1,-1 0,0 1"'));
 });
+
+test('@palette: the same colors in every cell, and the @r stream stays untouched', () => {
+    let values = (sheet, name) => [...sheet.matchAll(new RegExp(`${name}:([^;]+);`, 'g'))].map(m => m[1]);
+    let plain = cells('--r: @r(1000);', '3x3', 7);
+    let mixed = cells('--c: @palette(4); --r: @r(1000);', '3x3', 7);
+    assert.deepEqual(values(mixed, '--r'), values(plain, '--r'));
+    assert.equal(new Set(values(mixed, '--c')).size, 1);
+});

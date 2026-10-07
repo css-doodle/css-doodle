@@ -589,3 +589,24 @@ test('scatter density: a formula in x and y (shape coordinates, y up) sets how m
     assert.deepEqual(tiles('square; density: 1').map(String), tiles('square').map(String));
     assert.deepEqual(tiles('heart; density: 2').map(String), tiles('heart').map(String));
 });
+
+test('@palette: a seeded curve through oklch, the count samples it evenly', () => {
+    let env = seed => ({ context: {}, seed });
+    let palette = Function.palette(null, env('a'));
+    let five = palette(5);
+    assert.equal(five.length, 5);
+    assert.ok(five.every(c => /^oklch\([\d.]+ [\d.]+ [\d.]+\)$/.test(c)));
+    // the default count is 5; every count shares the ends, odd counts the middle
+    assert.deepEqual(palette(), five);
+    assert.deepEqual(palette(2), [five[0], five[4]]);
+    assert.deepEqual(palette(3), [five[0], five[2], five[4]]);
+    assert.deepEqual(palette(9).filter((_, i) => i % 2 == 0), five);
+    // the seed decides it; counts are clamped, truncated and take arithmetic
+    assert.deepEqual(Function.palette(null, env('a'))('2 + 1'), palette(3));
+    assert.deepEqual(palette(3.7), palette(3));
+    assert.deepEqual(palette(0), [five[2]]);
+    assert.notDeepEqual(Function.palette(null, env('b'))(5), five);
+    // results are copies
+    palette(5).reverse();
+    assert.deepEqual(palette(5), five);
+});

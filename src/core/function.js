@@ -546,7 +546,82 @@ Function.stripe = () => (...input) => {
     }).join(',');
 };
 
-// list — argument list transforms
+function maxChroma(L, h) {
+    let x = Math.cos(h), y = Math.sin(h);
+    let ax = .3963377774 * x + .2158037573 * y;
+    let am = .1055613458 * x + .0638541728 * y;
+    let as = .0894841775 * x + 1.291485548 * y;
+    let inside = c => {
+        let l = (L + c * ax) ** 3;
+        let m = (L - c * am) ** 3;
+        let s = (L - c * as) ** 3;
+        return [
+            4.0767416621 * l - 3.3077115913 * m + .2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - .3413193965 * s,
+            -.0041960863 * l - .7034186147 * m + 1.707614701 * s
+        ].every(v => v >= -1e-4 && v <= 1.0001);
+    };
+    let lo = 0, hi = .4;
+    for (let i = 0; i < 12; ++i) {
+        let c = (lo + hi) / 2;
+        inside(c) ? lo = c : hi = c;
+    }
+    return lo;
+}
+
+const PALETTE_HUES = [
+    [16, 30, 32, 33, 38, 42, 45, 49, 70, 84, 93, 101],
+    [29, 55, 61, 63, 69, 74, 79, 84, 91, 94, 96, 101],
+    [6, 15, 48, 72, 81, 86, 92, 95, 96, 97, 98, 101]
+];
+
+const PALETTE_LIGHTNESS = [.2, .37, .48, .58, .65, .72, .78, .84, .89, .94, .98];
+const TAU = Math.PI * 2;
+const hueTurn = (a, b) => ((b - a) % TAU + TAU + Math.PI) % TAU - Math.PI;
+
+function paletteAnchor(r) {
+    let x = r(), i = ~~(x * 10);
+    let L = lerp(x * 10 - i, PALETTE_LIGHTNESS[i], PALETTE_LIGHTNESS[i + 1]);
+    let row = PALETTE_HUES[L < .5 ? 0 : L < .75 ? 1 : 2];
+    let y = r() * row[11], j = row.findIndex(v => v > y);
+    let h = ((j + r()) * 30) * Math.PI / 180;
+    h += hueTurn(h, (L > .6 ? 70 : 250) * Math.PI / 180) * .875 * Math.abs(L - .6);
+    let z = r();
+    let C = maxChroma(L, h) * (z < .15 ? z / 3 : .05 + .95 * ((z - .15) / .85) ** .5);
+    return [L, C * Math.cos(h), C * Math.sin(h)];
+}
+
+function samplePalette([a, b, c], n) {
+    let colors = [];
+    for (let k = 0; k < n; ++k) {
+        let t = n > 1 ? k / (n - 1) : .5;
+        let [L, x, y] = a.map((v, i) =>
+            v * (1 - t) * (1 - 2 * t) + 4 * b[i] * t * (1 - t) + c[i] * t * (2 * t - 1));
+        L = clamp(L, .15, .98);
+        let h = Math.atan2(y, x);
+        colors.push([L, Math.min(Math.hypot(x, y), maxChroma(L, h)), h]);
+    }
+    return colors;
+}
+
+const colorDistance = ([L1, C1, h1], [L2, C2, h2]) =>
+    Math.sqrt((L1 - L2) ** 2 + C1 * C1 + C2 * C2 - 2 * C1 * C2 * Math.cos(h1 - h2));
+
+const palette = memo((key, n) => {
+    let r = seedrandom(key), anchors;
+    for (let i = 0; i < 24; ++i) {
+        anchors = [r, r, r].map(paletteAnchor);
+        let five = samplePalette(anchors, 5);
+        if (five.every((c, k) => !k || colorDistance(c, five[k - 1]) >= .08)
+            && colorDistance(five[0], five[4]) >= .25) break;
+    }
+    return samplePalette(anchors, n).map(([L, C, h]) =>
+        `oklch(${+L.toFixed(3)} ${+C.toFixed(3)} ${+((h * 180 / Math.PI + 360) % 360).toFixed(1)})`);
+});
+
+Function.palette = (_, { seed }) => (n = 5) =>
+    [...palette('palette:' + seed, ~~clamp(calc(n), 1, 256))];
+
 
 Function.cycle = () => {
     return (...args) => {
