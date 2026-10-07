@@ -125,3 +125,28 @@ test('a density that is nowhere positive scatters uniformly', () => {
     assert.equal(scatter('-1').length, 6);
     assert.deepEqual(scatter('-1'), scatter(undefined));
 });
+
+test('relax sets the scatter rounds, 0 picks random seeds', () => {
+    let scatter = relax => generateShape('square', { min: 1, max: 65536 }, rules => Object.assign(rules, { scatter: 20, seed: 1, relax })).points.map(String);
+    assert.deepEqual(scatter('10'), scatter(undefined));
+    assert.notDeepEqual(scatter('0'), scatter(undefined));
+});
+
+test('stretched and cracked voronoi cells cover the box', () => {
+    let area = p => {
+        let v = String(p).match(/-?[\d.e-]+(?=%)/g).map(Number), a = 0;
+        for (let i = 0; i < v.length; i += 2) a += v[i] * v[(i + 3) % v.length] - v[(i + 2) % v.length] * v[i + 1];
+        return Math.abs(a / 2);
+    };
+    for (let rules of [{ stretch: '3 30' }, { crack: '8' }, { crack: '6', stretch: '2 90', relax: '0' }]) {
+        let cells = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60 }, rules)).points;
+        assert.equal(cells.length, 60);
+        assert.ok(Math.abs(cells.reduce((sum, p) => sum + area(p), 0) - 1e4) < 1e-3, JSON.stringify(rules));
+    }
+});
+
+test('round smooths voronoi cells inside their gapped polygons', () => {
+    let cells = round => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 10, gap: '1', round })).points.map(String);
+    let [plain, round] = [cells('0'), cells('2')];
+    assert.ok(round.every((p, i) => p.split(',').length > plain[i].split(',').length));
+});

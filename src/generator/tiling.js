@@ -32,7 +32,7 @@ function insideTest(outline, evenodd) {
     };
 }
 
-function scatter(outline, count, evenodd, seed, density) {
+function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS) {
     let [x0, y0, x1, y1] = bounds(outline.flat()), w = x1 - x0, h = y1 - y0;
     let inside = insideTest(outline, evenodd);
     let total = max(1024, SCATTER_SAMPLES * count);
@@ -51,8 +51,11 @@ function scatter(outline, count, evenodd, seed, density) {
         if (!inside(x, y) || density && density(x, y) < peak * rnd()) continue;
         sx[n] = x, sy[n++] = y;
     }
-    // the first samples are the initial points
     let m = min(count, n);
+    if (!rounds) for (let i = 0, rnd = seedrandom('relax:' + seed); i < m; ++i) {
+        let j = i + (rnd() * (n - i) | 0);
+        [sx[i], sx[j], sy[i], sy[j]] = [sx[j], sx[i], sy[j], sy[i]];
+    }
     let px = sx.slice(0, m), py = sy.slice(0, m);
     let size = sqrt(w * h * n / tried / count) || 1;
     let cols = ceil(w / size) || 1, rows = ceil(h / size) || 1;
@@ -60,7 +63,7 @@ function scatter(outline, count, evenodd, seed, density) {
     let row = y => min(rows - 1, (y - y0) / size | 0);
     let head = new Int32Array(cols * rows), next = new Int32Array(m);
     let sums = new Float64Array(m * 3);
-    for (let r = 0; r < SCATTER_ROUNDS; ++r) {
+    for (let r = 0; r < rounds; ++r) {
         head.fill(-1);
         sums.fill(0);
         for (let k = 0; k < m; ++k) {
@@ -154,6 +157,72 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
         }
         return [poly, ids];
     });
+}
+
+function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle, crack, gap, fine, smooth) {
+    let [x0, y0, x1, y1] = box, ox = (x0 + x1) / 2, oy = (y0 + y1) / 2;
+    let c = cos(angle), s = sin(angle), a = sqrt(ratio);
+    let warp = (x, y, k = a) => {
+        let u = ((x - ox) * c + (y - oy) * s) * k, v = ((y - oy) * c - (x - ox) * s) / k;
+        return [ox + u * c - v * s, oy + u * s + v * c];
+    };
+    let back = p => {
+        let q = [];
+        for (let i = 0; i < p.length; i += 2) q.push(...warp(p[i], p[i + 1]));
+        return q;
+    };
+    let corners = [x0, y0, x1, y0, x1, y1, x0, y1];
+    let spread = (outline, n, seed, evenodd) => {
+        let seeds = scatter(outline, n, evenodd, seed, density && ((x, y) => density(...warp(x, y))), relax);
+        return [seeds.map(p => p[0]), seeds.map(p => p[1])];
+    };
+    let shown = corners.flatMap((v, i) => i & 1 ? [] : warp(v, corners[i + 1], 1 / a)), [l, t, r, b] = bounds(shown);
+    let pad = (r - l + b - t) / 4, qbox = [l - pad, t - pad, r + pad, b + pad];
+    let [px, py] = spread(screen.map(p => warp(...p, 1 / a)), crack > 1 ? max(1, round(count / crack)) : count, seed, evenodd);
+    let cells = voronoi(px, py, ...qbox, 0), kinds = [];
+    cells.forEach(([, ids], k) => {
+        let kind = 1;
+        while (ids.some(q => kinds[q] == kind)) ++kind;
+        kinds[k] = kind;
+    });
+    let finish = (p, d, outer, at, kind) => [chaikin(clip(shrink(back(p), d), outer), smooth), at, kind];
+    if (!(crack > 1)) return cells.map(([q], k) => finish(q, gap / 2, corners, warp(px[k], py[k]), kinds[k]));
+    let areas = cells.map(([q]) => area(clip(q, shown)));
+    let total = areas.reduce((x, y) => x + y, 0), sum = 0, at = 0;
+    let share = areas.map(v => -at + (at = round(sum += 1 + (count - cells.length) * v / total)));
+    return cells.flatMap(([q], i) => {
+        let outer = clip(shrink(back(q), gap / 2), corners), part = clip(q, shown), ring = [];
+        for (let j = 0; j < part.length; j += 2) ring.push([part[j], part[j + 1]]);
+        let [sx, sy] = spread(ring, share[i], seed + (i + 1) * 7919, false);
+        // a sliver can miss every sample, it stays whole
+        if (!sx.length) sx = [px[i]], sy = [py[i]];
+        return voronoi(sx, sy, ...bounds(q), 0).map(([p], k) => finish(clip(p, q), fine / 2, outer, warp(sx[k], sy[k]), kinds[i]));
+    });
+}
+
+function clip(p, outer, d = 0) {
+    for (let i = 0, n = outer.length; i < n && p.length; i += 2) {
+        let dx = outer[(i + 2) % n] - outer[i], dy = outer[(i + 3) % n] - outer[i + 1], l = hypot(dx, dy) || 1;
+        let nx = dy / l, ny = -dx / l;
+        p = halfplane(p, nx, ny, outer[i] - nx * d, outer[i + 1] - ny * d, [])[0];
+    }
+    return p;
+}
+
+function shrink(p, d) {
+    return d ? clip(p, p, d) : p;
+}
+
+function chaikin(p, n) {
+    for (; n > 0; --n) {
+        let q = [];
+        for (let i = 0; i < p.length; i += 2) {
+            let ax = p[i], ay = p[i + 1], bx = p[(i + 2) % p.length], by = p[(i + 3) % p.length];
+            q.push(.75 * ax + .25 * bx, .75 * ay + .25 * by, .25 * ax + .75 * bx, .25 * ay + .75 * by);
+        }
+        p = q;
+    }
+    return p;
 }
 
 function lattice(k, box, bounds, s, [a, b]) {
@@ -457,6 +526,6 @@ function simplify({ f, n }, tol) {
 }
 
 export {
-    insideTest, scatter, voronoi, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, mosaic, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges,
 };

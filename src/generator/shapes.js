@@ -9,7 +9,7 @@ import { isEmpty } from '../lib/type.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    insideTest, scatter, voronoi, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, mosaic, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges,
 } from './tiling.js';
 
@@ -160,7 +160,7 @@ function createShapePoints(props, lo, hi) {
     let frame = props.frame;
     let fill = props.fill;
     let evenodd = fill == 'evenodd';
-    let gap = Number(props.gap) || 0;
+    let [gap = 0, fine = gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
     let [fx, fy] = parsePair(props.scale, 1);
@@ -250,7 +250,14 @@ function createShapePoints(props, lo, hi) {
         }
         let density = formula(props.density);
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, density && ((x, y) => density(...toShape(x, y)))).map(tile);
-        scatter(outline, count, evenodd, seed, density).forEach(add);
+        let relax = isEmpty(props.relax) ? undefined : Number(props.relax);
+        let [ratio, angle] = isEmpty(props.stretch) ? [] : parseValueGroup(String(props.stretch)).map(parseFloat);
+        let crack = Number(props.crack) || 0, smooth = clamp(Number(props.round) || 0, 0, 5) | 0;
+        if (name == 'voronoi' && (ratio > 0 || crack > 1 || smooth)) {
+            return mosaic(screen, box, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax,
+                ratio > 0 ? ratio : 1, (angle || 0) * PI / 180, crack, gap, fine, smooth).map(tile);
+        }
+        scatter(outline, count, evenodd, seed, density, relax).forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (name == 'voronoi') {
             let kinds = [];
