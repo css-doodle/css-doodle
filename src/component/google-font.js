@@ -60,8 +60,6 @@ function extractFonts(css) {
 }
 
 async function toBase64(url) {
-    let cached = embedFonts.get(url);
-    if (cached) return cached;
     let res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch font (${res.status}): ${url}`);
     let blob = await res.blob();
@@ -71,26 +69,33 @@ async function toBase64(url) {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
-    embedFonts.set(url, base64);
     return base64;
 }
 
+async function embedFont(link) {
+    let res = await fetch(link);
+    if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
+    let fonts = extractFonts(await res.text());
+    let embedded = await Promise.all(
+        fonts.map(async ({ family, url, weight, style, range }) => {
+            let base64 = await toBase64(url);
+            let rangeRule = range ? `unicode-range:${range};` : '';
+            return `@font-face{font-family:"${family}";font-weight:${weight};font-style:${style};${rangeRule}src:url("data:font/woff2;base64,${base64}") format("woff2");}`;
+        })
+    );
+    return embedded.join('\n');
+}
+
+// every nested doodle of a render asks at once, so they share one fetch
 export async function loadGoogleFontEmbed(names) {
     if (!names.length) return '';
-    try {
-        let res = await fetch(getGoogleFontLink(names));
-        if (!res.ok) throw new Error(`Failed to fetch fonts: ${res.status}`);
-        let fonts = extractFonts(await res.text());
-        let embedded = await Promise.all(
-            fonts.map(async ({ family, url, weight, style, range }) => {
-                let base64 = await toBase64(url);
-                let rangeRule = range ? `unicode-range:${range};` : '';
-                return `@font-face{font-family:"${family}";font-weight:${weight};font-style:${style};${rangeRule}src:url("data:font/woff2;base64,${base64}") format("woff2");}`;
-            })
-        );
-        return embedded.join('\n');
-    } catch (error) {
-        console.warn('Error loading fonts:', error);
-        return '';
+    let link = getGoogleFontLink(names);
+    if (!embedFonts.has(link)) {
+        embedFonts.set(link, embedFont(link).catch(error => {
+            embedFonts.delete(link);
+            console.warn('Error loading fonts:', error);
+            return '';
+        }));
     }
+    return embedFonts.get(link);
 }
