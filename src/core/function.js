@@ -25,7 +25,7 @@ import { cellMetrics } from '../lib/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
 import { placeholderId } from '../lib/placeholder.js';
-import { lerp, clamp, tidyNumber } from '../lib/math.js';
+import { lerp, clamp, tidyNumber, map2d } from '../lib/math.js';
 import { last } from '../lib/list.js';
 import { getEasingFunction } from './easing.js';
 import { css } from '../lib/tagged-template.js';
@@ -122,13 +122,6 @@ function calcWithEasing(t) {
     }
 }
 
-function map2d(value, min, max, amp = 1) {
-    let v = Math.sqrt(2 / 4) * amp;
-    let normalized = (value + v) / (2 * v);
-    normalized = clamp(normalized, 0, 1);
-    return lerp(normalized, min * amp, max * amp);
-}
-
 const STACK_LIMIT = 1024;
 
 function pushStack(context, name, value) {
@@ -186,7 +179,7 @@ function seq(token, make) {
 
 function createPlot(unit, scatter, tile) {
     let plot = memo((commands, max, seed) => {
-        return generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square'}, (rules, preset) => {
+        return generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
             if (scatter) {
                 let count = parseInt(rules.points);
@@ -202,6 +195,7 @@ function createPlot(unit, scatter, tile) {
                 rules.count = max;
             } else {
                 delete rules['fill'];
+                delete rules['round'];
                 if (!preset && (rules.split || rules.points)) {
                     rules.hasPoints = true;
                 } else {
@@ -219,7 +213,7 @@ function createPlot(unit, scatter, tile) {
         return (...args) => {
             let idx = e[SEQ.n] ?? cell.count;
             let max = e[SEQ.max] ?? cell.grid.count;
-            let { points, rules } = plot(args.join(','), max, scatter ? String(seed ?? '') : '');
+            let { points, rules } = plot(args.join(','), max, String(seed ?? ''));
             if (rules.hasPoints) return points;
             if (!tile) return points[idx - 1];
             let point = points[idx - 1] ?? NO_TILE;
@@ -328,8 +322,8 @@ const composeSvgUrl = memo(value => {
     return { url: createSvgUrl(normalizeSvg(value)), warnings };
 });
 
-const composeSvgPolygonUrl = memo(commands => {
-    let { rules, points } = generateShape(commands, {min: 3, max: MAX_SEQUENCE}, rules => {
+const composeSvgPolygonUrl = memo((commands, seed) => {
+    let { rules, points } = generateShape(commands, {min: 3, max: MAX_SEQUENCE, seed}, rules => {
         delete rules.frame;
         rules['unit'] = 'none';
         rules['stroke-width'] ??= .01;
@@ -448,41 +442,57 @@ Function.ri = (_, { context, rand }) => (...args) => {
     return pushStack(context, 'lastRand', transform(randInt)(...args));
 };
 
-Function.R = ({ x, y, grid }, { context, extra, random }, position) => {
-    let counter = 'noise-2d' + position;
-    let e = last(extra) || [];
-    let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
-    let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
-    return (...args) => {
-        let {from, to, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
-            'from', 'to', 'frequency', 'scale', 'octave'
-        ]);
+function createNoise(outline) {
+    return ({ x, y, grid }, { context, extra, random }, position) => {
+        let counter = (outline ? 'noise-t' : 'noise-2d') + position;
+        let e = last(extra) || [];
+        let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
+        let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
+        return (...args) => {
+            let {from, to, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
+                'from', 'to', 'frequency', 'scale', 'octave'
+            ]);
 
-        frequency = clamp(frequency, 0, Infinity);
-        scale = clamp(scale, 0, Infinity);
-        octave = clamp(octave, 1, 100);
+            frequency = clamp(frequency, 0, Infinity);
+            scale = clamp(scale, 0, Infinity);
+            octave = clamp(octave, 1, 100);
 
-        if (to === undefined) [from, to] = [0, from ?? 1];
-        from ??= 0;
+            if (to === undefined) [from, to] = [0, from ?? 1];
+            from ??= 0;
 
-        let { noise2d, offsetX, offsetY } = context[counter] ??= {
-            noise2d: new Noise(random), offsetX: random(), offsetY: random()
+            let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : [x, y, grid.x, grid.y];
+            let u = X <= 1 ? .5 : (cx - 1) / X;
+            let v = Y <= 1 ? .5 : (cy - 1) / Y;
+
+            if (outline) {
+                let { offsetX, offsetY } = context[counter] ??= {
+                    offsetX: random() * 256, offsetY: random() * 256
+                };
+                let at = [(offsetX + u) * frequency, (offsetY + v) * frequency, octave, scale, parseFloat(from), parseFloat(to)];
+                return `noise(t,${at.map(tidyNumber)})`;
+            }
+
+            let { noise2d, offsetX, offsetY } = context[counter] ??= {
+                noise2d: new Noise(random), offsetX: random(), offsetY: random()
+            };
+            let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
+            let _x = offsetX + u;
+            let _y = offsetY + v;
+
+            let t = noise2d.noise(_x * frequency, _y * frequency) * scale;
+
+            for (let i = 1; i < octave; ++i) {
+                let i2 = i * 2;
+                t += noise2d.noise(_x * frequency * i2, _y * frequency * i2) * (scale / i2);
+            }
+            let fn = transform((from, to) => map2d(t, from, to, scale));
+            return pushStack(context, 'lastRand', fn(from, to));
         };
-        let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
-        let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : [x, y, grid.x, grid.y];
-        let _x = offsetX + (X <= 1 ? .5 : (cx - 1) / X);
-        let _y = offsetY + (Y <= 1 ? .5 : (cy - 1) / Y);
-
-        let t = noise2d.noise(_x * frequency, _y * frequency) * scale;
-
-        for (let i = 1; i < octave; ++i) {
-            let i2 = i * 2;
-            t += noise2d.noise(_x * frequency * i2, _y * frequency * i2) * (scale / i2);
-        }
-        let fn = transform((from, to) => map2d(t, from, to, scale));
-        return pushStack(context, 'lastRand', fn(from, to));
     };
-};
+}
+
+Function.R = createNoise();
+Function.R.t = createNoise(true);
 
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
@@ -646,14 +656,13 @@ Function.code = () => {
     }
 };
 
-const shapePolygon = memo((...args) => {
-    let input = args.join(',');
+const shapePolygon = memo((input, seed) => {
     if (input.trim() == 'circle') return 'ellipse(50% 50%)';
-    let { points } = generateShape(input);
+    let { points } = generateShape(input, { seed });
     return `polygon(${points.join(',')})`;
 });
 
-Function.shape = () => shapePolygon;
+Function.shape = (_, { seed } = {}) => (...args) => shapePolygon(args.join(','), seed);
 
 Function.plot = createPlot(false);
 Function.plot.scatter = createPlot(false, true);
@@ -770,7 +779,7 @@ Function['svg-pattern'] = lazy((_, env, position, ...args) => {
     return composeSvgPatternUrl(value);
 });
 
-Function['svg-polygon'] = () => (...args) => composeSvgPolygonUrl(args.join(','));
+Function['svg-polygon'] = (_, { seed } = {}) => (...args) => composeSvgPolygonUrl(args.join(','), seed);
 
 Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGradient('linearGradient', args));
 

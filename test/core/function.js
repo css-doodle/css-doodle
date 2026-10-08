@@ -138,6 +138,25 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.deepEqual(values([]), values(['1']));
 });
 
+test('@R.t: @R written out for a shape, one site per call, inside the bounds', () => {
+    let grid = { x: 4, y: 1, z: 1, count: 4 };
+    let env = { context: {}, extra: [], random: createRandom('1').random, seed: '1' };
+    let call = (x, site, ...args) => Function.R.t({ x, y: 1, grid }, env, site)(...args);
+    assert.match(call(1, 1, '.8', '1.2'), /^noise\(t,[^)]*\)$/);
+    // the same site keeps its offsets across cells, another site has its own
+    assert.notEqual(call(1, 1), call(2, 1));
+    assert.notEqual(call(1, 1), call(1, 2));
+    let r = Function.shape({}, env)(`points: 60; unit: none; r: ${call(3, 1, '.8', '1.2')}`);
+    let radii = r.slice(8, -1).split(',').map(p => Math.hypot(...p.trim().split(' ').map(parseFloat)));
+    assert.ok(radii.every(v => v >= .8 - 1e-9 && v <= 1.2 + 1e-9) && new Set(radii).size > 30);
+});
+
+test('@plot keeps one point per cell, round: only rounds outlines', () => {
+    let cell = { x: 1, y: 1, z: 1, count: 1, grid: { x: 5, y: 1, z: 1, count: 5 } };
+    let env = { context: {}, extra: [], seed: '1' };
+    assert.equal(Function.plot(cell, env)('points: 5; round: 1').length, 5);
+});
+
 test('a trailing % is the percent unit, not the modulo operator', () => {
     assert.equal(Function.i({ count: 7 })('50%'), '57%');
     assert.equal(Function.i({ count: 7 })('%3'), '1');

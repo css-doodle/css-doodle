@@ -198,3 +198,26 @@ test('aspect tiles in the element proportions', () => {
     assert.deepEqual(circles('300 / 150'), circles('2'));
     assert.deepEqual(circles('1'), circles(undefined));
 });
+
+test('round: softens the corners of an outline, smooth curves stay', () => {
+    assert.ok(generateShape('star; round: .5').points.length > 10);
+    assert.equal(String(generateShape('circle; round: 1').points), String(generateShape('circle').points));
+    // the frame closes back on the rounded outline
+    let points = generateShape('star; round: .5; frame: 10').points.map(String);
+    assert.equal(points.at(-1), points[0]);
+});
+
+test('noise(), what @R.t writes, closes at 2π and follows the seed', () => {
+    let shape = s => generateShape(`points: 90; ${s}`, { seed: 'a' }).points.map(String);
+    let at = 'noise(t, 3.2, 7.1)';
+    assert.deepEqual(shape(`x: ${at}; y: 0`), shape(`x: ${at}; y: 0`));
+    assert.deepEqual(shape(`x: ${at} - noise(t + 2π, 3.2, 7.1); y: 0`), shape('x: 0; y: 0'));
+    // the doodle's seed by default, a seed: command over it
+    assert.notDeepEqual(shape(`x: ${at}; y: 0`), generateShape(`points: 90; x: ${at}; y: 0`, { seed: 'b' }).points.map(String));
+    assert.notDeepEqual(shape(`x: ${at}; y: 0`), shape(`seed: 1; x: ${at}; y: 0`));
+    // a shape's own variable of that name still wins
+    assert.equal(String(generateShape('points: 4; noise: .5; r: 1 + noise').points), '125% 50%,50% -25%,-25% 50%,50% 125%');
+    // nearby points, nearby outlines
+    let gap = (a, b) => Math.max(...a.map((p, i) => Math.abs(parseFloat(p) - parseFloat(b[i]))));
+    assert.ok(gap(shape(`x: ${at}; y: 0`), shape('x: noise(t, 3.21, 7.1); y: 0')) < 2);
+});

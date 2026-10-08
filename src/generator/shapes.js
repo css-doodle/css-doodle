@@ -4,8 +4,10 @@ import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands from '../parser/parse-shape-commands.js';
 
 import seedrandom from '../lib/seedrandom.js';
-import { clamp, tidyNumber } from '../lib/math.js';
+import { clamp, tidyNumber, map2d } from '../lib/math.js';
+import Perlin from '../lib/noise.js';
 import { isEmpty } from '../lib/type.js';
+import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
@@ -14,6 +16,8 @@ import {
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, max, PI } = Math;
+
+const perlinOf = memo(seed => new Perlin(seedrandom('noise:' + seed)));
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
@@ -98,8 +102,18 @@ function createPointFunction(props, split) {
     let rad = -PI / 180 * rotate;
     let cosR = cos(rad), sinR = sin(rad);
 
-    let index = 0;
-    let context = Object.assign(Object.create(defaultContext), props, {
+    let index = 0, perlin;
+    let context = Object.assign(Object.create(defaultContext), {
+        noise(t, x, y, octave = 1, scale = 1, from = 0, to = 1) {
+            perlin ??= perlinOf(props.seed ?? '');
+            let px = x + cos(t), py = y + sin(t), v = 0;
+            for (let i = 0; i < octave; ++i) {
+                let m = i ? 2 * i : 1;
+                v += perlin.noise(px * m, py * m) * scale / m;
+            }
+            return map2d(v, from, to, scale);
+        }
+    }, props, {
         seq(...list) {
             return list.length ? list[index % list.length] : '';
         },
@@ -207,6 +221,12 @@ function createShapePoints(props, lo, hi) {
     for (let i = 0; i < split; ++i) {
         outline.push(point(rad * i, i));
     }
+    let round = ps => {
+        if (!smooth) return ps;
+        let p = rounded(ps.flat(), smooth, .002), out = [];
+        for (let i = 0; i < p.length; i += 2) out.push([p[i], p[i + 1]]);
+        return out;
+    };
 
     if (props.scatter) {
         // tiled in the element's proportions, with the shorter side as 100%, then mapped back
@@ -280,6 +300,7 @@ function createShapePoints(props, lo, hi) {
         points.push(new Point(fill, ''));
     }
 
+    outline = round(outline);
     outline.forEach(add);
 
     // an outline: back to the first point, then the inner ring in reverse
@@ -287,15 +308,15 @@ function createShapePoints(props, lo, hi) {
         let first = outline[0];
         add(first);
         let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
-        let firstInner;
+        let inner = [];
         for (let i = 0; i < split; ++i) {
             let [x, y] = point(-rad * i, i);
             let theta = atan2(y, x);
-            let p = [x - w * cos(theta), y - w * sin(theta)];
-            if (!i) firstInner = p;
-            add(p);
+            inner.push([x - w * cos(theta), y - w * sin(theta)]);
         }
-        add(firstInner);
+        inner = round(inner);
+        inner.forEach(add);
+        add(inner[0]);
         add(first);
     }
 
@@ -317,6 +338,9 @@ export default function generateShape(input, range = {}, modifier) {
     }
     if (modifier) {
         rules = modifier(rules, preset !== undefined);
+    }
+    if (isEmpty(rules.seed) && range.seed != null) {
+        rules.seed = range.seed;
     }
     let points = createShapePoints(rules, range.min || 3, range.max || 3600);
     return { rules, points, preset: preset !== undefined };

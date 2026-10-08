@@ -7,6 +7,13 @@ export function lerp(t, a, b) {
     return a + t * (b - a);
 }
 
+export function map2d(value, min, max, amp = 1) {
+    let v = Math.sqrt(2 / 4) * amp;
+    let normalized = (value + v) / (2 * v);
+    normalized = clamp(normalized, 0, 1);
+    return lerp(normalized, min * amp, max * amp);
+}
+
 export function tidyNumber(n) {
     if (!Number.isFinite(n) || Number.isInteger(n)) return n;
     if (Math.abs(n) < 1e-9) return 0;
