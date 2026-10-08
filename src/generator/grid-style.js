@@ -1,4 +1,10 @@
 import { css } from '../lib/tagged-template.js';
+import parseCompoundValue from '../parser/parse-compound-value.js';
+
+function isBareNumber(value) {
+    let { value: num, unit } = parseCompoundValue(value);
+    return num !== undefined && unit === undefined;
+}
 
 /**
  * Add the static rules of the transformed @grid options.
@@ -14,13 +20,13 @@ export default function gridStyleRules({
         add(':host', 'contain:none;');
     }
     if (rotate) {
-        if (/[0-9]$/.test(rotate)) {
+        if (isBareNumber(rotate)) {
             rotate += 'deg';
         }
         add(':container', `rotate:${rotate};`);
     }
     if (hueRotate) {
-        if (/[0-9]$/.test(hueRotate)) {
+        if (isBareNumber(hueRotate)) {
             hueRotate += 'deg';
         }
         add(':host', `filter:hue-rotate(${hueRotate});`);
@@ -40,14 +46,8 @@ export default function gridStyleRules({
     }
     if (enlarge) {
         let [sx, sy = sx] = enlarge;
-        let width = `calc(${sx} + 100%)`;
-        let height = `calc(${sy} + 100%)`;
-        if (/[0-9]$/.test(sx)) {
-            width = `calc(${sx} * 100%)`;
-        }
-        if (/[0-9]$/.test(sy)) {
-            height = `calc(${sy} * 100%)`;
-        }
+        let width = isBareNumber(sx) ? `calc(${sx} * 100%)` : `calc(${sx} + 100%)`;
+        let height = isBareNumber(sy) ? `calc(${sy} * 100%)` : `calc(${sy} + 100%)`;
         add(':container', css`
             width: ${width};
             height: ${height};
