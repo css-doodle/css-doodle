@@ -231,11 +231,11 @@ function rounded(p, f, tol) {
         let ax = bx + (p[(i + n - 2) % n] - bx) * f / 2, ay = by + (p[(i + n - 1) % n] - by) * f / 2;
         let cx = bx + (p[(i + 2) % n] - bx) * f / 2, cy = by + (p[(i + 3) % n] - by) * f / 2;
         let bend = hypot(ax - 2 * bx + cx, ay - 2 * by + cy) / 4;
-        if (bend <= tol) {
+        if (!(bend > tol)) {
             out.push(bx, by);
             continue;
         }
-        for (let j = 0, k = ceil(sqrt(bend / tol)); j <= k; ++j) {
+        for (let j = 0, k = min(ceil(sqrt(bend / tol)), 64); j <= k; ++j) {
             let t = j / k, u = 1 - t;
             out.push(u * u * ax + 2 * u * t * bx + t * t * cx, u * u * ay + 2 * u * t * by + t * t * cy);
         }
@@ -260,6 +260,7 @@ function thin(p, tol) {
 function wave(ps, f, tol) {
     let sides = ps.map(([x, y], i) => [x, y, ...ps[(i + 1) % ps.length]]), len = 0, s = 0, a = 0, q = [];
     for (let [x, y, ex, ey] of sides) len += hypot(ex - x, ey - y);
+    if (!(len > 0 && len < Infinity)) return ps;
     for (let [x, y, ex, ey] of sides) {
         let l = hypot(ex - x, ey - y);
         for (let j = 0, k = ceil(l / len * 1024 - 1e-9); j < k; ++j) {

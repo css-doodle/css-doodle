@@ -240,3 +240,12 @@ test('noise(), what @R.t writes, closes at 2π and follows the seed', () => {
     let gap = (a, b) => Math.max(...a.map((p, i) => Math.abs(parseFloat(p) - parseFloat(b[i]))));
     assert.ok(gap(shape(`x: ${at}; y: 0`), shape('x: noise(t, 3.21, 7.1); y: 0')) < 2);
 });
+
+test('round: and edge: survive degenerate outlines', () => {
+    // a zero-length outline has no normals: the points stay put
+    assert.equal(String(generateShape('points: 3; x: 0; y: 0; edge: .1').points), '50% 50%,50% 50%,50% 50%');
+    // poles in the formula: finite output count, no throw
+    assert.ok(generateShape('split: 4; y: tan(t); round: .5').points.length < 4 * 66);
+    assert.ok(generateShape('r: 1/t; round: .5').points.length > 0);
+    assert.ok(generateShape('r: 1/t; edge: .1').points.length > 0);
+});
