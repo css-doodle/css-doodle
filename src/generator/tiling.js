@@ -479,17 +479,21 @@ function pack(screen, box, inside, count, seed, size) {
     let avg = sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
     let caps = xs.map((x, i) => size ? avg * size(x, ys[i]) : 3 * avg), cap = caps.reduce((a, b) => max(a, b), 0);
     if (!(cap > 0)) return out;
-    let cols = ceil(w / cap) + 1, grid = Array.from({ length: cols * (ceil(h / cap) + 1) }, () => []);
-    let edge = [], segs = [];
+    let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, grid = Array.from({ length: cols * rows }, () => []);
+    // a side further than cap from a point can't narrow its room, so each grid cell lists the sides near it
+    let edge = [], segs = [], sides = grid.map(() => []), cell = (v, o) => floor((v - o) / cap);
     screen.forEach(([bx, by], a) => {
         let [ax, ay] = screen.at(a - 1), dx = bx - ax, dy = by - ay;
+        for (let j = max(0, cell(min(ay, by), y0) - 2); j <= min(rows - 1, cell(max(ay, by), y0) + 2); ++j) {
+            for (let m = max(0, cell(min(ax, bx), x0) - 2); m <= min(cols - 1, cell(max(ax, bx), x0) + 2); ++m) sides[m + cols * j].push(segs.length);
+        }
         segs.push(ax, ay, dx, dy, 1 / (dx * dx + dy * dy) || 0);
     });
     let room = i => {
         let x = xs[i], y = ys[i], r = edge[i];
         if (r === undefined) {
             r = max(0, min(caps[i], x - box[0], box[2] - x, y - box[1], box[3] - y)) ** 2;
-            for (let a = 0; a < segs.length; a += 5) {
+            for (let a of sides[((x - x0) / cap | 0) + cols * ((y - y0) / cap | 0)]) {
                 let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
                 let t = (ax * dx + ay * dy) * segs[a + 4];
                 t = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -498,8 +502,8 @@ function pack(screen, box, inside, count, seed, size) {
             r = edge[i] = sqrt(r);
         }
         let c = (x - x0) / cap | 0, d = (y - y0) / cap | 0;
-        for (let j = max(0, d - 2); j <= d + 2; ++j) for (let m = max(0, c - 2); m < min(cols, c + 3); ++m) {
-            for (let [cx, cy, cr] of grid[m + cols * j] || []) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
+        for (let j = max(0, d - 2); j <= min(rows - 1, d + 2) && r > 0; ++j) for (let m = max(0, c - 2); m < min(cols, c + 3); ++m) {
+            for (let [cx, cy, cr] of grid[m + cols * j]) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
         }
         return r;
     };
@@ -513,7 +517,7 @@ function pack(screen, box, inside, count, seed, size) {
         }
         if (!(r > 0)) heap[0] = heap.at(-1), heap.pop();
         for (let a = 0, b; (b = 2 * a + 1) < heap.length; a = b) {
-            if (key[heap[b + 1]] > key[heap[b]]) ++b;
+            if (b + 1 < heap.length && key[heap[b + 1]] > key[heap[b]]) ++b;
             if (key[heap[a]] >= key[heap[b]]) break;
             [heap[a], heap[b]] = [heap[b], heap[a]];
         }
