@@ -250,12 +250,12 @@ function rounded(p, f, tol) {
     return out;
 }
 
-// Douglas–Peucker: the indexes from 0 to n that keep every other k within tol, by error(i, j, k)
+// Douglas–Peucker: the indexes from 0 to n that keep every other k within tol, by error(i, j)(k)
 function keepers(n, error, tol) {
     let keep = [0], walk = (i, j) => {
-        let worst = tol, at = 0;
+        let worst = tol, at = 0, of = error(i, j);
         for (let k = i + 1; k < j; ++k) {
-            let e = error(i, j, k);
+            let e = of(k);
             if (e > worst) worst = e, at = k;
         }
         if (at) walk(i, at), walk(at, j);
@@ -266,10 +266,12 @@ function keepers(n, error, tol) {
 }
 
 function thin(p, tol) {
-    let n = p.length, keep = keepers(n, (i, j, k) => {
+    let n = p.length, keep = keepers(n, (i, j) => {
         let [ax, ay] = p[i], [bx, by] = p[j % n], dx = bx - ax, dy = by - ay, len = hypot(dx, dy);
-        let x = p[k][0] - ax, y = p[k][1] - ay;
-        return len ? abs(x * dy - y * dx) / len : hypot(x, y);
+        return k => {
+            let x = p[k][0] - ax, y = p[k][1] - ay;
+            return len ? abs(x * dy - y * dx) / len : hypot(x, y);
+        };
     }, tol);
     keep.pop();
     return keep.length > 2 ? keep.map(i => p[i]) : p;
@@ -609,9 +611,9 @@ function edges(props, odd, seed, n = 256) {
 
 function simplify({ f, g, n }, tol) {
     let u = k => k / n + g[k];
-    return keepers(n, (i, j, k) => {
-        let dx = u(j) - u(i), dy = f[j] - f[i];
-        return abs((u(k) - u(i)) * dy - (f[k] - f[i]) * dx) / (hypot(dx, dy) || 1e-9);
+    return keepers(n, (i, j) => {
+        let dx = u(j) - u(i), dy = f[j] - f[i], len = hypot(dx, dy) || 1e-9;
+        return k => abs((u(k) - u(i)) * dy - (f[k] - f[i]) * dx) / len;
     }, tol);
 }
 
