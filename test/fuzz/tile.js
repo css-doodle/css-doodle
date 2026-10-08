@@ -24,7 +24,7 @@ const ARGS = {
     gap: VALUES, points: ['1', '3', '50', '300', '0', 'abc'], seed: ['0', '1', '1e20', 'abc'],
     relax: VALUES, density: ['1 - y', 'x * x', '0', '-1', 'random()', '1/0'], aspect: ['2', '1 / 3', '16/0', '0', '-1', 'abc'],
     round: VALUES, jitter: VALUES, size: ['1 + x', '0', '-1', '1e9', 'random()'], spread: VALUES,
-    stretch: ['3 30', '0', '1e9', '-2'], crack: ['3', '1', '0', '1e9', '-5'], shift: ['.5', '0 .3', '1e9', 'abc'],
+    stretch: ['3 30', '0', '1e9', '1e-9', '.5', '-2'], crack: ['3', '1', '0', '1e9', '-5'], shift: ['.5', '0 .3', '1e9', 'abc'],
     edge: ['.1 * sin(t)', '1e9', '(random() - .5) * sin(t)', '.1 * x * e', '1/0'], slide: ['.05', '.1 * sin(t)', '1e9'],
     pair: ['turn', 'abc'], unit: ['px', 'none', '%'], scale: ['0', '2', '-1'], move: ['.3 -.2', '1e9'],
 };

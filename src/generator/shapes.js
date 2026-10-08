@@ -295,7 +295,7 @@ function createShapePoints(props, lo, hi) {
         let crack = Number(props.crack) || 0;
         if (name == 'voronoi' && (ratio > 0 || crack > 1)) {
             return mosaic(screen, box, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax,
-                ratio > 0 ? ratio : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
+                ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
         // relaxed in the element's proportions, then back to the shape's (top first)
         let seeds = aspect == 1 ? scatter(outline, count, evenodd, seed, density, relax)
