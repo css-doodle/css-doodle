@@ -179,7 +179,7 @@ function createSurface(width, height) {
         throw new Error('WebGL2 is not available');
     }
 
-    const surface = { canvas, gl, width, height, users: new Set(), disposed: false };
+    const surface = { canvas, gl, width, height, users: new Set(), programs: new Map(), disposed: false };
     surface.buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
@@ -215,7 +215,25 @@ function sweep() {
             surfaces.delete(key);
             disposeSurface(surface);
         }
+        for (const [source, entry] of surface.programs) {
+            if (!entry.users) {
+                surface.programs.delete(source);
+                surface.gl.deleteProgram(entry.program);
+            }
+        }
     }
+}
+
+// cells repeating one shader link it once per surface
+function acquireProgram(surface, vertex, fragment) {
+    const source = vertex + fragment;
+    let entry = surface.programs.get(source);
+    if (!entry) {
+        entry = { program: createProgram(surface.gl, vertex, fragment), users: 0 };
+        surface.programs.set(source, entry);
+    }
+    entry.users++;
+    return entry;
 }
 
 function acquireSurface(width, height, drawing) {
@@ -246,8 +264,9 @@ export default function drawShader(shaders, seed, cell, onLost) {
     const fragment = generateFragment(shaders.fragment, textures);
     const uploaded = textures.map(t => t.value);
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
+    const seeds = [hash(seed) / 1e16, hash(seed + cell, 1) / 1e16];
 
-    let surface, gl, program, position, textureList, uniforms;
+    let surface, gl, entry, program, position, textureList, uniforms;
     let frameIndex = 0;
     let currentTime = 0;
 
@@ -257,12 +276,13 @@ export default function drawShader(shaders, seed, cell, onLost) {
         surface = acquireSurface(width, height, drawing);
         gl = surface.gl;
         try {
-            program = createProgram(gl, vertex, fragment);
+            entry = acquireProgram(surface, vertex, fragment);
         } catch (e) {
             releaseSurface(surface, drawing);
             surface = null;
             throw e;
         }
+        program = entry.program;
         drawing.canvas = surface.canvas;
         position = gl.getAttribLocation(program, 'position');
         textureList = uploaded.map((image, i) => loadTexture(gl, image, i));
@@ -273,19 +293,20 @@ export default function drawShader(shaders, seed, cell, onLost) {
         textures.forEach((n, i) => {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
-        gl.uniform2f(gl.getUniformLocation(program, 'u_seed'), hash(seed) / 1e16, hash(seed + cell, 1) / 1e16);
         uniforms = {
+            seed: gl.getUniformLocation(program, 'u_seed'),
             time: gl.getUniformLocation(program, 'u_time'),
             frame: gl.getUniformLocation(program, 'u_frameIndex'),
             delta: gl.getUniformLocation(program, 'u_timeDelta'),
             mouse: gl.getUniformLocation(program, 'u_mouse'),
         };
         drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta);
+        drawing.seeded = !!uniforms.seed;
     }
 
     function teardown() {
         textureList.forEach(texture => gl.deleteTexture(texture));
-        gl.deleteProgram(program);
+        entry.users--;
         releaseSurface(surface, drawing);
         surface = null;
     }
@@ -316,9 +337,11 @@ export default function drawShader(shaders, seed, cell, onLost) {
         });
 
         gl.clear(gl.COLOR_BUFFER_BIT);
+        // the program may be shared with other cells
+        if (uniforms.seed) gl.uniform2f(uniforms.seed, seeds[0], seeds[1]);
         if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
         if (uniforms.frame) gl.uniform1i(uniforms.frame, frameIndex++);
-        if (uniforms.mouse && mouse) gl.uniform2f(uniforms.mouse, mouse.x * dpr, (h - mouse.y) * dpr);
+        if (uniforms.mouse) gl.uniform2f(uniforms.mouse, mouse ? mouse.x * dpr : 0, mouse ? (h - mouse.y) * dpr : 0);
         if (uniforms.delta) {
             gl.uniform1f(uniforms.delta, (t - currentTime) * 0.001);
             currentTime = t;
