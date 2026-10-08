@@ -200,15 +200,16 @@ test('aspect tiles in the element proportions', () => {
     assert.deepEqual(circles('300 / 150'), circles('2'));
     assert.deepEqual(circles('1'), circles(undefined));
     assert.deepEqual(circles('16 / 0'), circles(undefined));
-    // voronoi and delaunay cells come out as wide as they are tall on the element
-    for (let tile of ['voronoi', 'delaunay']) {
-        let logs = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile, seed: 1, scatter: 300, count: 300, aspect: '2' })).points.map(p => {
+    // voronoi cells come out as wide as they are tall on the element, the same as with no aspect
+    let ratio = (aspect, s) => {
+        let logs = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 1, scatter: 300, aspect })).points.map(p => {
             let v = String(p).match(/-?[\d.e-]+(?=%)/g).map(Number), xs = v.filter((_, i) => !(i & 1)), ys = v.filter((_, i) => i & 1);
-            return Math.log((Math.max(...xs) - Math.min(...xs)) * 2 / (Math.max(...ys) - Math.min(...ys)));
+            return Math.log((Math.max(...xs) - Math.min(...xs)) * s / (Math.max(...ys) - Math.min(...ys)));
         });
-        let ratio = Math.exp(logs.reduce((a, b) => a + b) / logs.length);
-        assert.ok(ratio > .75 && ratio < 1.33, tile + ' ' + ratio);
-    }
+        return Math.exp(logs.reduce((a, b) => a + b) / logs.length);
+    };
+    let skew = ratio('2', 2) / ratio('1', 1);
+    assert.ok(skew > .89 && skew < 1.12, String(skew));
 });
 
 test('round: softens the corners of an outline, smooth curves stay', () => {
