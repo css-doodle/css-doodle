@@ -571,6 +571,26 @@ test('edge: bends every lattice edge with a formula, and neighbours still fit', 
     assert.deepEqual(tiles(Function.tile.grid, 'square; edge: .15 * sin(t)', 'b').map(String), tiles(Function.tile.grid, 'square; edge: .15 * sin(t)').map(String));
 });
 
+test('edge: understands noise(), the formula @R.t compiles to', () => {
+    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let covered = list => {
+        let vs = list.map(verts);
+        for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    let shapes = list => new Set(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => (x - ox).toFixed(1) + ' ' + (y - oy).toFixed(1)).join(); })).size;
+    let noiseEdge = 'square; edge: noise(t, x, y, 1, 1, -.1, .1, 1)';
+    for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle]) {
+        let bent = tiles(fn, noiseEdge);
+        assert.ok(covered(bent) && shapes(bent) > 5, String(fn));
+    }
+    // seeded like every other edge formula: same seed reproduces, a different one doesn't
+    assert.deepEqual(tiles(Function.tile.grid, noiseEdge).map(String), tiles(Function.tile.grid, noiseEdge).map(String));
+    assert.notDeepEqual(tiles(Function.tile.grid, noiseEdge, 'b').map(String), tiles(Function.tile.grid, noiseEdge).map(String));
+});
+
 test('pair: turn and slide: edges paired by turns about the corners, and bent along themselves', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let tiles = (fn, shape) => Array.from({ length: 64 }, (_, i) => {

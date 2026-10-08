@@ -1,5 +1,7 @@
 import seedrandom from '../lib/seedrandom.js';
-import { clamp } from '../lib/math.js';
+import { clamp, map2d } from '../lib/math.js';
+import Perlin from '../lib/noise.js';
+import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 
 const { cos, sin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;
@@ -8,6 +10,21 @@ const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
 const SCATTER_BANDS = 256;
 const PHI = (1 + sqrt(5)) / 2;
+
+const perlinOf = memo(seed => new Perlin(seedrandom('noise:' + seed)));
+
+function noiseOf(props) {
+    let perlin;
+    return (t, x, y, octave = 1, scale = 1, from = 0, to = 1, r = 1) => {
+        perlin ??= perlinOf(props.seed ?? '');
+        let px = x + r * cos(t), py = y + r * sin(t), v = 0;
+        for (let i = 0; i < octave; ++i) {
+            let m = i ? 2 * i : 1;
+            v += perlin.noise(px * m, py * m) * scale / m;
+        }
+        return map2d(v, from, to, scale);
+    };
+}
 
 function insideTest(outline, evenodd) {
     let [, y0, , y1] = bounds(outline.flat()), h = y1 - y0;
@@ -586,7 +603,7 @@ function contains(p, x, y) {
 }
 
 function edges(props, odd, seed, n = 256) {
-    let context = Object.assign(Object.create(defaultContext), props), cache = {};
+    let context = Object.assign(Object.create(defaultContext), { noise: noiseOf(props) }, props), cache = {};
     let seen = new Set(['edge', 'slide', 'e', 't']);
     let reads = text => /\b[xy]\b|random/.test(text) || (String(text).match(/[\w$-]+/g) || []).some(name =>
         !seen.has(name) && Object.hasOwn(props, name) && seen.add(name) && reads(props[name]));
@@ -620,5 +637,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, PHI,
 };

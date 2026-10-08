@@ -4,20 +4,17 @@ import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands from '../parser/parse-shape-commands.js';
 
 import seedrandom from '../lib/seedrandom.js';
-import { clamp, tidyNumber, map2d } from '../lib/math.js';
-import Perlin from '../lib/noise.js';
+import { clamp, tidyNumber } from '../lib/math.js';
 import { isEmpty } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, max, PI } = Math;
-
-const perlinOf = memo(seed => new Perlin(seedrandom('noise:' + seed)));
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
@@ -102,19 +99,8 @@ function createPointFunction(props, split) {
     let rad = -PI / 180 * rotate;
     let cosR = cos(rad), sinR = sin(rad);
 
-    let index = 0, perlin;
-    let context = Object.assign(Object.create(defaultContext), {
-        // sampled around a circle so the outline closes; a larger circle crosses more bumps
-        noise(t, x, y, octave = 1, scale = 1, from = 0, to = 1, r = 1) {
-            perlin ??= perlinOf(props.seed ?? '');
-            let px = x + r * cos(t), py = y + r * sin(t), v = 0;
-            for (let i = 0; i < octave; ++i) {
-                let m = i ? 2 * i : 1;
-                v += perlin.noise(px * m, py * m) * scale / m;
-            }
-            return map2d(v, from, to, scale);
-        }
-    }, props, {
+    let index = 0;
+    let context = Object.assign(Object.create(defaultContext), { noise: noiseOf(props) }, props, {
         seq(...list) {
             return list.length ? list[index % list.length] : '';
         },
