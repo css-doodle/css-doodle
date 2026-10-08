@@ -241,7 +241,7 @@ function createShapePoints(props, lo, hi) {
     if (props.scatter) {
         // tiled in the element's proportions, with the shorter side as 100%, then mapped back
         let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
-        let aspect = w / h > 0 ? w / h : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
+        let aspect = w / h > 0 && w / h < Infinity ? w / h : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
             let [screenOf, format] = [toScreen, fmt];
             toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };
@@ -287,7 +287,7 @@ function createShapePoints(props, lo, hi) {
         }
         let density = formula(props.density);
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, density && ((x, y) => density(...toShape(x, y)))).map(tile);
-        let relax = isEmpty(props.relax) ? undefined : Number(props.relax);
+        let relax = isEmpty(props.relax) ? undefined : clamp(props.relax, 0, 50);
         let [ratio, angle] = isEmpty(props.stretch) ? [] : parseValueGroup(String(props.stretch)).map(parseFloat);
         let crack = Number(props.crack) || 0;
         if (name == 'voronoi' && (ratio > 0 || crack > 1)) {

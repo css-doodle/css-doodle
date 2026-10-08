@@ -131,6 +131,8 @@ test('relax sets the scatter rounds, 0 picks random seeds', () => {
     let scatter = relax => generateShape('square', { min: 1, max: 65536 }, rules => Object.assign(rules, { scatter: 20, seed: 1, relax })).points.map(String);
     assert.deepEqual(scatter('10'), scatter(undefined));
     assert.notDeepEqual(scatter('0'), scatter(undefined));
+    // capped: a huge count of rounds takes no longer than 50
+    assert.deepEqual(scatter('1e9'), scatter('50'));
 });
 
 test('stretched and cracked voronoi cells cover the box', () => {
@@ -197,6 +199,7 @@ test('aspect tiles in the element proportions', () => {
     }
     assert.deepEqual(circles('300 / 150'), circles('2'));
     assert.deepEqual(circles('1'), circles(undefined));
+    assert.deepEqual(circles('16 / 0'), circles(undefined));
 });
 
 test('round: softens the corners of an outline, smooth curves stay', () => {
