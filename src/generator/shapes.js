@@ -283,7 +283,10 @@ function createShapePoints(props, lo, hi) {
             context.random = seedrandom('size:' + seed);
             return pack(screen, box, inside, count, seed, size && ((x, y) => size(...toShape(x, y)))).map(([x, y, r]) => {
                 let at = fmt(x, y), [rx, ry] = [sx, sy].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
-                return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
+                let point = new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
+                point.rx = rx;
+                point.ry = ry;
+                return point;
             });
         }
         // its own stream: the result is memoized, so drawing from the doodle's would shift later random() calls on a cache hit
