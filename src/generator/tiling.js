@@ -250,18 +250,29 @@ function rounded(p, f, tol) {
     return out;
 }
 
-function thin(p, tol) {
-    let n = p.length, keep = [p[0]], walk = (i, j) => {
-        let [ax, ay] = p[i], [bx, by] = p[j % n], dx = bx - ax, dy = by - ay, len = hypot(dx, dy), worst = tol, at = 0;
+// Douglas–Peucker: the indexes from 0 to n that keep every other k within tol, by error(i, j, k)
+function keepers(n, error, tol) {
+    let keep = [0], walk = (i, j) => {
+        let worst = tol, at = 0;
         for (let k = i + 1; k < j; ++k) {
-            let x = p[k][0] - ax, y = p[k][1] - ay, e = len ? abs(x * dy - y * dx) / len : hypot(x, y);
+            let e = error(i, j, k);
             if (e > worst) worst = e, at = k;
         }
         if (at) walk(i, at), walk(at, j);
-        else if (j < n) keep.push(p[j]);
+        else keep.push(j);
     };
     walk(0, n);
-    return keep.length > 2 ? keep : p;
+    return keep;
+}
+
+function thin(p, tol) {
+    let n = p.length, keep = keepers(n, (i, j, k) => {
+        let [ax, ay] = p[i], [bx, by] = p[j % n], dx = bx - ax, dy = by - ay, len = hypot(dx, dy);
+        let x = p[k][0] - ax, y = p[k][1] - ay;
+        return len ? abs(x * dy - y * dx) / len : hypot(x, y);
+    }, tol);
+    keep.pop();
+    return keep.length > 2 ? keep.map(i => p[i]) : p;
 }
 
 function wave(ps, f, tol) {
@@ -598,16 +609,10 @@ function edges(props, odd, seed, n = 256) {
 
 function simplify({ f, g, n }, tol) {
     let u = k => k / n + g[k];
-    let keep = [0, n], walk = (i, j) => {
-        let dx = u(j) - u(i), dy = f[j] - f[i], len = hypot(dx, dy) || 1e-9, worst = tol, at = 0;
-        for (let k = i + 1; k < j; ++k) {
-            let e = abs((u(k) - u(i)) * dy - (f[k] - f[i]) * dx) / len;
-            if (e > worst) worst = e, at = k;
-        }
-        if (at) walk(i, at), keep.push(at), walk(at, j);
-    };
-    walk(0, n);
-    return keep.sort((a, b) => a - b);
+    return keepers(n, (i, j, k) => {
+        let dx = u(j) - u(i), dy = f[j] - f[i];
+        return abs((u(k) - u(i)) * dy - (f[k] - f[i]) * dx) / (hypot(dx, dy) || 1e-9);
+    }, tol);
 }
 
 export {
