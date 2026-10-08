@@ -2,7 +2,7 @@ import parseGrid from '../parser/parse-grid.js';
 import parseCss from '../parser/parse-css.js';
 import generateCss from '../generator/css.js';
 
-import { NS, NSXHtml, FilterHolderStyle, RE_URL_ESCAPE, cdata } from '../lib/svg.js';
+import { NS, NSXHtml, FilterHolderStyle, escapeSvg, cdata } from '../lib/svg.js';
 import { utime, UTime } from '../core/uniforms.js';
 import { RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { css } from '../lib/tagged-template.js';
@@ -12,7 +12,7 @@ import { stampSheet, stampSmil, smilTick, TRANSITION_NONE } from './clock.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 export function svgUrl(svg) {
-    return 'data:image/svg+xml,' + svg.replace(RE_URL_ESCAPE, encodeURIComponent);
+    return 'data:image/svg+xml,' + escapeSvg(svg);
 }
 
 export function frameSvg(svg, width, height) {

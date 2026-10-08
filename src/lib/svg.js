@@ -11,10 +11,18 @@ export const FilterHolderStyle = 'position:absolute;width:0;height:0;overflow:hi
 // enough for a quoted data url: url syntax, the css string, the url
 // parser dropping tabs and newlines, `>` for an outer CDATA and `:` to
 // hide an inner `animation:` from the sheet's clock regexes
-export const RE_URL_ESCAPE = /[\t\n\r"#%:<>\\]/g;
+const RE_URL_ESCAPE = /[\t\n\r"#%:<>\\]/g;
+
+// a table lookup is twice as fast as calling encodeURIComponent per match
+const URL_ESCAPES = {};
+for (let c of '\t\n\r"#%:<>\\') URL_ESCAPES[c] = encodeURIComponent(c);
+
+export function escapeSvg(svg) {
+    return svg.replace(RE_URL_ESCAPE, c => URL_ESCAPES[c]);
+}
 
 export function createSvgUrl(svg) {
-    return `url("data:image/svg+xml;utf8,${ svg.replace(RE_URL_ESCAPE, encodeURIComponent) }")`;
+    return `url("data:image/svg+xml;utf8,${ escapeSvg(svg) }")`;
 }
 
 export function normalizeSvg(input) {
