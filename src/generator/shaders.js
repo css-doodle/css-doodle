@@ -55,7 +55,6 @@ export function shaderError(log, source) {
 }
 
 export function generateFragment(fragment, textures) {
-    // the generated source supplies its own version directive
     fragment = fragment.replace(/^\s*#version[^\n]*/, '');
 
     const isShadertoy = fragment.includes('void mainImage');
@@ -224,7 +223,6 @@ function sweep() {
     }
 }
 
-// cells repeating one shader link it once per surface
 function acquireProgram(surface, vertex, fragment) {
     const source = vertex + fragment;
     let entry = surface.programs.get(source);
@@ -320,7 +318,6 @@ export default function drawShader(shaders, seed, cell, onLost) {
             setup(width, height);
         }
 
-        // the context is shared: bind everything this program needs
         gl.useProgram(program);
         gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
         gl.enableVertexAttribArray(position);
@@ -337,7 +334,6 @@ export default function drawShader(shaders, seed, cell, onLost) {
         });
 
         gl.clear(gl.COLOR_BUFFER_BIT);
-        // the program may be shared with other cells
         if (uniforms.seed) gl.uniform2f(uniforms.seed, seeds[0], seeds[1]);
         if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
         if (uniforms.frame) gl.uniform1i(uniforms.frame, frameIndex++);

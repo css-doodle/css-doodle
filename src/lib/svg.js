@@ -8,12 +8,8 @@ export function cdata(text) {
 
 export const FilterHolderStyle = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
 
-// enough for a quoted data url: url syntax, the css string, the url
-// parser dropping tabs and newlines, `>` for an outer CDATA and `:` to
-// hide an inner `animation:` from the sheet's clock regexes
 const RE_URL_ESCAPE = /[\t\n\r"#%:<>\\]/g;
 
-// a table lookup is twice as fast as calling encodeURIComponent per match
 const URL_ESCAPES = {};
 for (let c of '\t\n\r"#%:<>\\') URL_ESCAPES[c] = encodeURIComponent(c);
 
@@ -35,7 +31,6 @@ export function normalizeSvg(input) {
     return input;
 }
 
-// the camelCase names of SVG, keyed by their lowercase spelling
 const NAMES = 'animateMotion animateTransform clipPath feBlend feColorMatrix feComponentTransfer '
     + 'feComposite feConvolveMatrix feDiffuseLighting feDisplacementMap feDistantLight '
     + 'feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR feGaussianBlur feImage feMerge '

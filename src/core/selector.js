@@ -31,17 +31,15 @@ function matchAny(value, exprs, env) {
     });
 }
 
-// the cell variables of a calc expression; selectors draw random()
-// from the main stream, @match from the math stream of calc
 export function calcContext({ x, y, z, count, grid }, random) {
-    // plain stores: a literal with __proto__ and a spread is several times slower
-    let context = Object.create(defaultContext);
-    context.x = x; context.X = grid.x;
-    context.y = y; context.Y = grid.y;
-    context.z = z; context.Z = grid.z;
-    context.i = count; context.I = grid.count;
-    Object.assign(context, cellMetrics(x, y, grid));
-    if (random) context.random = random;
+    let context = Object.assign({},
+        defaultContext,
+        { x, y, z, X: grid.x, Y: grid.y, Z: grid.z, i: count, I: grid.count },
+        cellMetrics(x, y, grid)
+    );
+    if (random) {
+        context.random = random;
+    }
     return context;
 }
 

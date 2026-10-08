@@ -245,7 +245,6 @@ function createPick(name, fn, random = false, upstream = false) {
             ? last(upextra.length ? upextra : extra)
             : last(extra);
         let sig = lastExtra?.[SEQ.sig] ?? '';
-        // inside a sequence the iteration index picks, no counter needed
         let index = lastExtra?.[SEQ.index];
         let counter = `${name}-counter${position}:${level}`;
         let valuesKey = `${name}-values${position}:${sig}`;
@@ -315,7 +314,6 @@ const flipVPath = transformPath(1, 0, 0, -1);
 const flipPath = transformPath(-1, 0, 0, -1);
 const invertPath = transformPath(0, 1, 1, 0);
 
-// the url is memoized, so the warnings travel with it to be reported per call
 const composeSvgUrl = memo(value => {
     let warnings = [];
     if (!value.startsWith('<')) {

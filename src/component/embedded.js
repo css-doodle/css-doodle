@@ -24,7 +24,6 @@ function safariImage(svg, width, height) {
     return url;
 }
 
-// a still is the same image for every cell with the same source and size
 const stills = new WeakMap();
 
 function patternToImage(host, pattern) {
@@ -33,12 +32,10 @@ function patternToImage(host, pattern) {
         name = '';
         host.report([{ message }]);
     });
-    // pattern code reads the doodle seed only, never the cell's
     return shaderToImage(host, { ...pattern, name, source, seedCell: '' });
 }
 
 async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders' }) {
-    // restamping the sheet resolves its placeholders again; a rendered shader stays
     if (host.shaderRenders.has(id)) return;
     let elements;
     if (target.selector === ':host') {

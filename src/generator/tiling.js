@@ -377,7 +377,6 @@ function delaunay(px, py, box, inside, count, gap) {
     let r2 = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
     let sorted = tris.map(r2).sort((u, v) => u - v);
     let keep = sorted[sorted.length >> 1] * 9, edge = (p, q) => min(p, q) + ' ' + max(p, q);
-    // long ones, then the largest over the count, are peeled from the outside so the inside keeps no holes
     for (let drop = 1; drop;) {
         let uses = {};
         for (let [k, a, b] of tris) for (let e of [edge(k, a), edge(a, b), edge(b, k)]) uses[e] = (uses[e] || 0) + 1;
@@ -397,9 +396,7 @@ function delaunay(px, py, box, inside, count, gap) {
     });
 }
 
-// the smallest pieces of make(s) with no more than `count` reaching into the shape
 function tiles(make, box, screen, inside, count, grow = 1) {
-    // no further out than the box's own size, so an outline moved far away can't ask for millions of pieces
     let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
     let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
@@ -480,7 +477,6 @@ function pack(screen, box, inside, count, seed, size) {
     let caps = xs.map((x, i) => size ? avg * size(x, ys[i]) : 3 * avg), cap = caps.reduce((a, b) => max(a, b), 0);
     if (!(cap > 0)) return out;
     let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, grid = Array.from({ length: cols * rows }, () => []);
-    // a side further than cap from a point can't narrow its room, so each grid cell lists the sides near it
     let edge = [], segs = [], sides = grid.map(() => []), cell = (v, o) => floor((v - o) / cap);
     screen.forEach(([bx, by], a) => {
         let [ax, ay] = screen.at(a - 1), dx = bx - ax, dy = by - ay;

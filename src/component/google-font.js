@@ -86,7 +86,6 @@ async function embedFont(link) {
     return embedded.join('\n');
 }
 
-// every nested doodle of a render asks at once, so they share one fetch
 export async function loadGoogleFontEmbed(names) {
     if (!names.length) return '';
     let link = getGoogleFontLink(names);
