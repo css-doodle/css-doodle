@@ -296,7 +296,14 @@ function createShapePoints(props, lo, hi) {
             return mosaic(screen, box, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax,
                 ratio > 0 ? ratio : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
-        scatter(outline, count, evenodd, seed, density, relax).forEach(add);
+        // relaxed in the element's proportions, then back to the shape's (top first)
+        let seeds = aspect == 1 ? scatter(outline, count, evenodd, seed, density, relax)
+            : scatter(screen, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax).reverse().map(([x, y]) => {
+                x /= sx, y /= sy;
+                if (percent) x = x / 50 - 1, y = y / 50 - 1;
+                return [x / fx - dx, dy - y / fy];
+            });
+        seeds.forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (name == 'voronoi') {
             let kinds = [];

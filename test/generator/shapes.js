@@ -200,6 +200,15 @@ test('aspect tiles in the element proportions', () => {
     assert.deepEqual(circles('300 / 150'), circles('2'));
     assert.deepEqual(circles('1'), circles(undefined));
     assert.deepEqual(circles('16 / 0'), circles(undefined));
+    // voronoi and delaunay cells come out as wide as they are tall on the element
+    for (let tile of ['voronoi', 'delaunay']) {
+        let logs = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile, seed: 1, scatter: 300, count: 300, aspect: '2' })).points.map(p => {
+            let v = String(p).match(/-?[\d.e-]+(?=%)/g).map(Number), xs = v.filter((_, i) => !(i & 1)), ys = v.filter((_, i) => i & 1);
+            return Math.log((Math.max(...xs) - Math.min(...xs)) * 2 / (Math.max(...ys) - Math.min(...ys)));
+        });
+        let ratio = Math.exp(logs.reduce((a, b) => a + b) / logs.length);
+        assert.ok(ratio > .75 && ratio < 1.33, tile + ' ' + ratio);
+    }
 });
 
 test('round: softens the corners of an outline, smooth curves stay', () => {
