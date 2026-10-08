@@ -676,7 +676,11 @@ for (let kind of ['voronoi', 'delaunay', 'hex', 'triangle', 'grid', 'circle', 'c
 Function.tile.x = tileAxis(0);
 Function.tile.y = tileAxis(1);
 Function.tile.kind = cell => () => cellTiles.get(cell)?.kind ?? '';
-Function.tile.r = cell => () => String(cellTiles.get(cell) ?? '').match(/^ellipse\((\S+)/)?.[1] ?? '';
+// in percent of the shorter side, the larger of the two radii when the element is not square
+Function.tile.r = cell => () => {
+    let [, rx, ry] = String(cellTiles.get(cell) ?? '').match(/^ellipse\((\S+) (\S+)/) ?? [];
+    return rx ? (parseFloat(rx) < parseFloat(ry) ? ry : rx) : '';
+};
 
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);

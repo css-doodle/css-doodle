@@ -600,6 +600,11 @@ test('@tile.r: the radius of the cell\'s @tile.circle', () => {
     let t = Function.tile.circle(c, env)('heart');
     assert.equal(Function.tile.r(c)(), String(t).split(' ')[0].slice(8));
     assert.match(Function.tile.r(c)(), /%$/);
+    // the larger radius, in percent of the shorter side, on a wide or tall element
+    for (let aspect of ['2', '1 / 2']) {
+        let [rx, ry] = String(Function.tile.circle(c, env)('heart; aspect: ' + aspect)).slice(8).split(' ');
+        assert.equal(Function.tile.r(c)(), aspect == '2' ? ry : rx);
+    }
     Function.tile.hex(c, env)('heart');
     assert.equal(Function.tile.r(c)(), '');
 });
