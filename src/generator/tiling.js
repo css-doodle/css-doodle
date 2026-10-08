@@ -188,12 +188,7 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         if (parents.length < m && !parents.includes(i) && (pass || parents.every(j => hypot(seeds[i][0] - seeds[j][0], seeds[i][1] - seeds[j][1]) >= reach))) parents.push(i);
     }
     let px = parents.map(i => seeds[i][0]), py = parents.map(i => seeds[i][1]);
-    let cells = voronoi(px, py, ...qbox, 0), kinds = [];
-    cells.forEach(([, ids], k) => {
-        let kind = 1;
-        while (ids.some(q => kinds[q] == kind)) ++kind;
-        kinds[k] = kind;
-    });
+    let cells = voronoi(px, py, ...qbox, 0), kinds = colors(cells);
     let cut = (p, d, outer) => clip(shrink(back(p), d), outer);
     if (m == n) return cells.map(([q], k) => [cut(q, gap / 2, corners), warp(px[k], py[k]), kinds[k]]);
     let groups = cells.map(() => []);
@@ -209,6 +204,17 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         let outer = cut(q, gap / 2, corners), g = groups[i];
         return voronoi(g.map(p => p[0]), g.map(p => p[1]), ...bounds(q), 0).map(([p], k) => [cut(clip(p, q), fine / 2, outer), warp(...g[k]), kinds[i]]);
     });
+}
+
+// greedy coloring: each cell takes the lowest kind none of its neighbours has
+function colors(cells) {
+    let kinds = [];
+    cells.forEach(([, ids], k) => {
+        let kind = 1;
+        while (ids.some(q => kinds[q] == kind)) ++kind;
+        kinds[k] = kind;
+    });
+    return kinds;
 }
 
 function clip(p, outer, d = 0) {
@@ -605,6 +611,6 @@ function simplify({ f, g, n }, tol) {
 }
 
 export {
-    insideTest, scatter, voronoi, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
 };

@@ -11,7 +11,7 @@ import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    insideTest, scatter, voronoi, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
 } from './tiling.js';
 
@@ -307,12 +307,8 @@ function createShapePoints(props, lo, hi) {
         seeds.forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (name == 'voronoi') {
-            let kinds = [];
-            return voronoi(px, py, ...box, gap).map(([poly, ids], k) => {
-                let kind = 1;
-                while (ids.some(q => kinds[q] == kind)) ++kind;
-                return tile([poly, [px[k], py[k]], kinds[k] = kind, points[k].extra]);
-            });
+            let cells = voronoi(px, py, ...box, gap), kinds = colors(cells);
+            return cells.map(([poly], k) => tile([poly, [px[k], py[k]], kinds[k], points[k].extra]));
         }
         return points;
     }
