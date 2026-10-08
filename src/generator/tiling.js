@@ -183,6 +183,7 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
         [order[i], order[j]] = [order[j], order[i]];
     }
     let reach = relax === 0 || m == n ? 0 : .7 * sqrt(area(screen.flat()) / m);
+    if (!reach) parents = order.slice(0, m);
     for (let pass = 0; pass < 2 && parents.length < m; ++pass) for (let i of order) {
         if (parents.length < m && !parents.includes(i) && (pass || parents.every(j => hypot(seeds[i][0] - seeds[j][0], seeds[i][1] - seeds[j][1]) >= reach))) parents.push(i);
     }
