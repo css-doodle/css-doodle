@@ -276,28 +276,37 @@ function wave(ps, f, tol) {
     }), tol);
 }
 
-function lattice(k, box, bounds, s, [a, b]) {
+function lattice(k, box, bounds, s, [a, b], turn) {
     let [cx, cy] = centre(box);
     let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
-    let add = (x, y, angle, kind) => {
+    let add = (x, y, angle, kind, marks) => {
         let p = [];
         for (let m = 0; m < k; ++m) {
             let a = angle + m * 2 * PI / k;
             p.push(x + r * cos(a), y + r * sin(a));
         }
-        out.push([p, [x, y], kind]);
+        out.push([p, [x, y], kind, marks]);
     };
+    let mod = (v, m) => (v % m + m) % m;
     a -= floor(a), b = a ? 0 : b - floor(b);
     for (let j = j0; j <= j1; ++j) {
         let y = cy + j * h, shift = j & 1 ? k == 4 ? a * s : s / 2 : 0;
         for (let i = i0; i <= i1; ++i) {
             let x = cx + i * s + shift;
-            if (k == 4) {
+            if (k == 4 && turn && !a && !b) {
+                let l = x - s / 2, t = y - s / 2, R = l + s, B = t + s, mk = (u, v) => (u + v) & 1 ? 0 : (u & 1) + 1;
+                out.push([[R, B, l, B, l, t, R, t], [x, y], 1 + (2 * (i & 1) + 3 * ((i + j) & 1)) % 4, [mk(i + 1, j + 1), mk(i, j + 1), mk(i, j), mk(i + 1, j)]]);
+            }
+            else if (k == 4) {
                 let m = y + (i & 1) * b * s, f = (j & 1 ? 1 - a : a) % 1 * s, g = (i & 1 ? 1 - b : b) % 1 * s;
                 let l = x - s / 2, t = m - s / 2, R = l + s, B = t + s;
                 out.push([[R, B, ...f ? [l + f, B] : [], l, B, ...g ? [l, t + g] : [], l, t, ...f ? [l + f, t] : [], R, t, ...g ? [R, t + g] : []], [x, m], 1]);
+            }
+            else if (k == 6 && turn) {
+                let c = mod(i - (j >> 1) - j, 3);
+                add(x, y, PI / 6, c + 1, [mod(c - 1, 3) + 1, 0, mod(c - 2, 3) + 1, 0, c + 1, 0]);
             }
             else if (k == 6) add(x, y, PI / 6, 1);
             else add(x + s / 2, y + h / 3, -PI / 6, 1), add(x + s, y + h * 2 / 3, PI / 6, 2);
@@ -398,18 +407,20 @@ function shake(pieces, n, seed) {
     });
 }
 
-function bend(p, [cx, cy], edge, classes, tol, toShape) {
+function bend(p, [cx, cy], edge, classes, tol, toShape, marks) {
     let out = [];
     for (let i = 0; i < p.length; i += 2) {
         let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay;
-        let a = atan2(dy, dx), first = a > -1e-9 && a < PI - 1e-9;
-        let g = edge(floor(((a % PI) + PI) % PI / (PI / classes) + .25) % classes + 1, ...toShape(ax + dx / 2, ay + dy / 2));
-        let { f, n } = g, idx = g.idx ||= simplify(g, tol);
+        let a = atan2(dy, dx), first = a > -1e-9 && a < PI - 1e-9, e;
+        if (marks) e = marks[i / 2] || marks[(i / 2 + 1) % marks.length], first = !!marks[i / 2];
+        else e = floor(((a % PI) + PI) % PI / (PI / classes) + .25) % classes + 1;
+        let table = edge(e, ...toShape(ax + dx / 2, ay + dy / 2));
+        let { f, g, n } = table, idx = table.idx ||= simplify(table, tol);
         let nx = dy, ny = -dx;
-        if (nx * (ax - cx) + ny * (ay - cy) < 0) nx = -nx, ny = -ny;
+        if (!marks && nx * (ax - cx) + ny * (ay - cy) < 0) nx = -nx, ny = -ny;
         for (let m = 0; m < idx.length - 1; ++m) {
-            let j = first ? idx[m] : n - idx[idx.length - 1 - m], o = first ? f[j] : -f[n - j];
-            out.push(ax + dx * j / n + nx * o, ay + dy * j / n + ny * o);
+            let j = first ? idx[m] : n - idx[idx.length - 1 - m], o = first ? f[j] : -f[n - j], u = j / n + (first ? g[j] : -g[n - j]);
+            out.push(ax + dx * u + nx * o, ay + dy * u + ny * o);
         }
     }
     return out;
@@ -554,30 +565,34 @@ function contains(p, x, y) {
 
 function edges(props, odd, seed, n = 256) {
     let context = Object.assign(Object.create(defaultContext), props), cache = {};
-    let seen = new Set(['edge', 'e', 't']);
+    let seen = new Set(['edge', 'slide', 'e', 't']);
     let reads = text => /\b[xy]\b|random/.test(text) || (String(text).match(/[\w$-]+/g) || []).some(name =>
         !seen.has(name) && Object.hasOwn(props, name) && seen.add(name) && reads(props[name]));
-    let local = reads(props.edge);
+    let local = reads(props.edge) || reads(props.slide || '');
     return (e, x, y) => {
         let key = local ? e + ',' + x.toFixed(4) + ',' + y.toFixed(4) : e;
         if (cache[key]) return cache[key];
         let rnd = seedrandom('edge:' + seed + ':' + key), draws = [], k;
         Object.assign(context, { e, x, y, random: () => draws[k++] ??= rnd() });
-        let f = Array.from({ length: n + 1 }, (_, j) => {
-            k = 0;
-            context.t = context['θ'] = 2 * PI * j / n;
-            return Number(calc(props.edge, context)) || 0;
-        });
-        f = f.map((v, j) => v - f[0] - (f[n] - f[0]) * j / n);
-        return cache[key] = { f: odd ? f.map((v, j) => (v - f[n - j]) / 2) : f, n };
+        let table = text => {
+            let f = Array.from({ length: n + 1 }, (_, j) => {
+                k = 0;
+                context.t = context['θ'] = 2 * PI * j / n;
+                return text ? Number(calc(text, context)) || 0 : 0;
+            });
+            f = f.map((v, j) => v - f[0] - (f[n] - f[0]) * j / n);
+            return odd ? f.map((v, j) => (v - f[n - j]) / 2) : f;
+        };
+        return cache[key] = { f: table(props.edge), g: table(props.slide), n };
     };
 }
 
-function simplify({ f, n }, tol) {
+function simplify({ f, g, n }, tol) {
+    let u = k => k / n + g[k];
     let keep = [0, n], walk = (i, j) => {
-        let dx = (j - i) / n, dy = f[j] - f[i], len = hypot(dx, dy), worst = tol, at = 0;
+        let dx = u(j) - u(i), dy = f[j] - f[i], len = hypot(dx, dy) || 1e-9, worst = tol, at = 0;
         for (let k = i + 1; k < j; ++k) {
-            let e = abs((k - i) / n * dy - (f[k] - f[i]) * dx) / len;
+            let e = abs((u(k) - u(i)) * dy - (f[k] - f[i]) * dx) / len;
             if (e > worst) worst = e, at = k;
         }
         if (at) walk(i, at), keep.push(at), walk(at, j);

@@ -555,6 +555,37 @@ test('edge: bends every lattice edge with a formula, and neighbours still fit', 
     assert.deepEqual(tiles(Function.tile.grid, 'square; edge: .15 * sin(t)', 'b').map(String), tiles(Function.tile.grid, 'square; edge: .15 * sin(t)').map(String));
 });
 
+test('pair: turn and slide: edges paired by turns about the corners, and bent along themselves', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let tiles = (fn, shape) => Array.from({ length: 64 }, (_, i) => {
+        let c = cell(64, i + 1), t = fn(c, env)(shape);
+        return String(t) == 'polygon(0 0)' ? null : Object.assign(t, { k: Number(Function.tile.kind(c)()) });
+    }).filter(Boolean);
+    let covered = list => {
+        let vs = list.map(verts);
+        for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    // whole tiles turned back by their kind, then moved to their origin
+    let shapes = (list, step) => new Set(list.filter(t => verts(t).every(([x, y]) => x > 0 && x < 100 && y > 0 && y < 100)).map(t => {
+        let [ox, oy] = xy(t.origin), a = -(t.k - 1) * step * Math.PI / 180, r = v => Math.round(v * 10) / 10;
+        return verts(t).map(([x, y]) => [x - ox, y - oy]).map(([x, y]) => r(x * Math.cos(a) - y * Math.sin(a)) + ' ' + r(x * Math.sin(a) + y * Math.cos(a))).sort().join();
+    })).size;
+    for (let [fn, kinds, step] of [[Function.tile.hex, 3, 120], [Function.tile.grid, 4, 90]]) {
+        for (let shape of ['edge: .3 * sin(t/2)^2 * (e - 2) + .1 * sin(t)', 'edge: .3 * sin(t/2)^2 * (e - 2) + .1 * sin(t); slide: .4 * sin(t/2)^4 * (e - 2)']) {
+            let turned = tiles(fn, `square; pair: turn; ${shape}`);
+            assert.ok(covered(turned), shape);
+            assert.equal(new Set(turned.map(t => t.k)).size, kinds);
+            assert.equal(shapes(turned, step), 1, shape);
+        }
+    }
+    // ignored on triangles and shifted grids
+    assert.deepEqual(tiles(Function.tile.triangle, 'square; pair: turn; edge: .1 * sin(t)').map(String), tiles(Function.tile.triangle, 'square; edge: .1 * sin(t)').map(String));
+    assert.deepEqual(tiles(Function.tile.grid, 'square; shift: .5; pair: turn; edge: .1 * sin(t)').map(String), tiles(Function.tile.grid, 'square; shift: .5; edge: .1 * sin(t)').map(String));
+});
+
 test('@tile.r: the radius of the cell\'s @tile.circle', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let c = cell(20, 3);

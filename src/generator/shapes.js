@@ -253,11 +253,12 @@ function createShapePoints(props, lo, hi) {
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0);
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
-        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift) : name == 'penrose' && penrose;
+        let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
+        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift, turn) : name == 'penrose' && penrose;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
-            if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) bulge = max(bulge, ...edge(e, x, y).f.map(abs));
+            if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
             let jitter = Number(props.jitter) || 0;
             let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
             let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count, grow);
@@ -268,7 +269,7 @@ function createShapePoints(props, lo, hi) {
             }));
             if (jitter) pieces = shake(pieces, jitter, seed);
             let p = pieces[0]?.[0], tol = edge && p && (box[2] - box[0]) * 5e-4 / hypot(p[2] - p[0], p[3] - p[1]);
-            return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape) : p), c, kind]));
+            return pieces.map(([p, c, kind, marks]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape, marks) : p), c, kind]));
         }
         let context = Object.assign(Object.create(defaultContext), props);
         let formula = text => isEmpty(text) ? null : (x, y) => {
