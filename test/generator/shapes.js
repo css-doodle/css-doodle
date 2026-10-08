@@ -207,6 +207,25 @@ test('round: softens the corners of an outline, smooth curves stay', () => {
     assert.equal(points.at(-1), points[0]);
 });
 
+test('edge: pushes the outline out along its normals, measured along the outline', () => {
+    let radii = s => generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
+    // a constant grows the shape, both ways round
+    assert.ok(radii('circle; edge: .1').every(r => Math.abs(r - 55) < .01));
+    assert.ok(radii('circle; edge: .1; x: -cos(t)').every(r => Math.abs(r - 55) < .01));
+    assert.ok(radii('circle; edge: -.1').every(r => Math.abs(r - 45) < .01));
+    // straight sides stay straight, the corners bevelled
+    assert.equal(generateShape('square; edge: .1').points.length, 12);
+    // even bumps on a square: as far out at the middle of a side as at the corners
+    let r = radii('square; scale: 1; edge: .1abs(cos(8t))');
+    assert.ok([50, 25 * Math.SQRT2].every(at => r.some(v => Math.abs(v - at - 5) < .01)));
+    // the ends meet even when f(2π) is not f(0)
+    let p = generateShape('circle; edge: .1t / 2π').points.map(String);
+    assert.ok(Math.abs(parseFloat(p[0]) - parseFloat(p.at(-1))) < 1);
+    // the frame's inner ring follows the same edge
+    let ring = generateShape('circle; edge: .05sin(12t); frame: 10').points.map(String);
+    assert.equal(ring.at(-1), ring[0]);
+});
+
 test('noise(), what @R.t writes, closes at 2π and follows the seed', () => {
     let shape = s => generateShape(`points: 90; ${s}`, { seed: 'a' }).points.map(String);
     let at = 'noise(t, 3.2, 7.1)';

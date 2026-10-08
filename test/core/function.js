@@ -151,10 +151,11 @@ test('@R.t: @R written out for a shape, one site per call, inside the bounds', (
     assert.ok(radii.every(v => v >= .8 - 1e-9 && v <= 1.2 + 1e-9) && new Set(radii).size > 30);
 });
 
-test('@plot keeps one point per cell, round: only rounds outlines', () => {
+test('@plot keeps one point per cell, round:/edge: only change outlines', () => {
     let cell = { x: 1, y: 1, z: 1, count: 1, grid: { x: 5, y: 1, z: 1, count: 5 } };
     let env = { context: {}, extra: [], seed: '1' };
     assert.equal(Function.plot(cell, env)('points: 5; round: 1').length, 5);
+    assert.equal(Function.plot(cell, env)('points: 5; edge: .1sin(9t)').length, 5);
 });
 
 test('a trailing % is the percent unit, not the modulo operator', () => {

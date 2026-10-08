@@ -243,6 +243,39 @@ function rounded(p, f, tol) {
     return out;
 }
 
+function thin(p, tol) {
+    let n = p.length, keep = [p[0]], walk = (i, j) => {
+        let [ax, ay] = p[i], [bx, by] = p[j % n], dx = bx - ax, dy = by - ay, len = hypot(dx, dy), worst = tol, at = 0;
+        for (let k = i + 1; k < j; ++k) {
+            let x = p[k][0] - ax, y = p[k][1] - ay, e = len ? abs(x * dy - y * dx) / len : hypot(x, y);
+            if (e > worst) worst = e, at = k;
+        }
+        if (at) walk(i, at), walk(at, j);
+        else if (j < n) keep.push(p[j]);
+    };
+    walk(0, n);
+    return keep.length > 2 ? keep : p;
+}
+
+function wave(ps, f, tol) {
+    let sides = ps.map(([x, y], i) => [x, y, ...ps[(i + 1) % ps.length]]), len = 0, s = 0, a = 0, q = [];
+    for (let [x, y, ex, ey] of sides) len += hypot(ex - x, ey - y);
+    for (let [x, y, ex, ey] of sides) {
+        let l = hypot(ex - x, ey - y);
+        for (let j = 0, k = ceil(l / len * 1024 - 1e-9); j < k; ++j) {
+            q.push([x + (ex - x) * j / k, y + (ey - y) * j / k, 2 * PI * (s + l * j / k) / len]);
+        }
+        s += l;
+        a += x * ey - ex * y;
+    }
+    let f0 = f(0), drift = (f(2 * PI) - f0) / 2 / PI;
+    return thin(q.map(([x, y, t], i) => {
+        let [px, py] = q.at(i - 1), [nx, ny] = q[(i + 1) % q.length];
+        let v = (f(t) - drift * t) / (hypot(nx - px, ny - py) || 1) * (a < 0 ? -1 : 1);
+        return [x + (ny - py) * v, y - (nx - px) * v];
+    }), tol);
+}
+
 function lattice(k, box, bounds, s, [a, b]) {
     let [cx, cy] = centre(box);
     let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
@@ -554,6 +587,6 @@ function simplify({ f, n }, tol) {
 }
 
 export {
-    insideTest, scatter, voronoi, mosaic, rounded, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
 };

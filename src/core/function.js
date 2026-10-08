@@ -196,6 +196,7 @@ function createPlot(unit, scatter, tile) {
             } else {
                 delete rules['fill'];
                 delete rules['round'];
+                delete rules['edge'];
                 if (!preset && (rules.split || rules.points)) {
                     rules.hasPoints = true;
                 } else {

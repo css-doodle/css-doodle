@@ -11,7 +11,7 @@ import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    insideTest, scatter, voronoi, mosaic, rounded, lattice, penrose, delaunay, tiles,
+    insideTest, scatter, voronoi, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, PHI,
 } from './tiling.js';
 
@@ -126,7 +126,7 @@ function createPointFunction(props, split) {
         }
     });
 
-    return (t, i) => {
+    let point = (t, i) => {
         index = i;
         context['i'] = i + 1;
         context['t'] = context['θ'] = t;
@@ -150,6 +150,11 @@ function createPointFunction(props, split) {
         }
         return [x, y];
     };
+    point.formula = text => t => {
+        context['t'] = context['θ'] = t;
+        return Number(calc(text, context)) || 0;
+    };
+    return point;
 }
 
 function createShapePoints(props, lo, hi) {
@@ -221,11 +226,16 @@ function createShapePoints(props, lo, hi) {
     for (let i = 0; i < split; ++i) {
         outline.push(point(rad * i, i));
     }
-    let round = ps => {
-        if (!smooth) return ps;
-        let p = rounded(ps.flat(), smooth, .002), out = [];
-        for (let i = 0; i < p.length; i += 2) out.push([p[i], p[i + 1]]);
-        return out;
+    let edge = !isEmpty(props.edge) && point.formula(props.edge);
+    let shape = (ps, back) => {
+        if (back) ps = [ps[0], ...ps.slice(1).reverse()];
+        if (edge) ps = wave(ps, edge, .001);
+        if (smooth) {
+            let p = rounded(ps.flat(), smooth, .002);
+            ps = [];
+            for (let i = 0; i < p.length; i += 2) ps.push([p[i], p[i + 1]]);
+        }
+        return back ? [ps[0], ...ps.slice(1).reverse()] : ps;
     };
 
     if (props.scatter) {
@@ -300,7 +310,7 @@ function createShapePoints(props, lo, hi) {
         points.push(new Point(fill, ''));
     }
 
-    outline = round(outline);
+    outline = shape(outline);
     outline.forEach(add);
 
     // an outline: back to the first point, then the inner ring in reverse
@@ -314,7 +324,7 @@ function createShapePoints(props, lo, hi) {
             let theta = atan2(y, x);
             inner.push([x - w * cos(theta), y - w * sin(theta)]);
         }
-        inner = round(inner);
+        inner = shape(inner, true);
         inner.forEach(add);
         add(inner[0]);
         add(first);
