@@ -520,7 +520,8 @@ across the shape.
 pushes the outline along its normal, outward when positive. In it `t`
 runs from 0 to 2π by length along the outline, not by angle, and any
 difference between its values at 0 and 2π is spread along the outline
-so the ends still meet. Sharp corners come out beveled.
+so the ends still meet. Sharp corners come out beveled. `round` runs
+first, so `edge` follows the rounded outline.
 `@R.t(from, to)` writes a closed noise curve in `t` for one cell, as in
 `r: @R.t(.8, 1)` or `edge: @R.t(-.05, .05)`. It follows the doodle's
 seed, or the `seed` command. `@plot` reads only the points, so it

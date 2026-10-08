@@ -218,6 +218,9 @@ test('round: softens the corners of an outline, smooth curves stay', () => {
     // the frame closes back on the rounded outline
     let points = generateShape('star; round: .5; frame: 10').points.map(String);
     assert.equal(points.at(-1), points[0]);
+    // corners are rounded before edge: runs along the outline
+    let far = s => Math.max(...generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50))));
+    assert.ok(far('square; round: 1; edge: .02 * sin(8t)') < 60);
 });
 
 test('edge: pushes the outline out along its normals, measured along the outline', () => {

@@ -230,12 +230,12 @@ function createShapePoints(props, lo, hi) {
     let edge = !isEmpty(props.edge) && point.formula(props.edge);
     let shape = (ps, back) => {
         if (back) ps = [ps[0], ...ps.slice(1).reverse()];
-        if (edge) ps = wave(ps, edge, .001);
         if (smooth) {
             let p = rounded(ps.flat(), smooth, .002);
             ps = [];
             for (let i = 0; i < p.length; i += 2) ps.push([p[i], p[i + 1]]);
         }
+        if (edge) ps = wave(ps, edge, .001);
         return back ? [ps[0], ...ps.slice(1).reverse()] : ps;
     };
 
