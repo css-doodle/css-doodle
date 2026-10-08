@@ -1042,6 +1042,11 @@ test('random() in expressions follows the seed on a stream of its own', () => {
     assert.equal(r(cells('--r: @r(10);', '3')), r(cells('--a: $(random()); --r: @r(10);', '3')));
 });
 
+test('random() in a scatter density leaves the doodle stream alone, so a second render matches the first', () => {
+    let code = 'clip-path: @tile.voronoi(density: random() + y); --v: $(random());';
+    assert.equal(cells(code, '3', 7), cells(code, '3', 7));
+});
+
 test('a lone $(name) evaluates its value once', () => {
     // one random() draw per read, the same as any other expression of it
     let read = code => cells(code, '3', 7).match(/width:[\d.]+/g).join();

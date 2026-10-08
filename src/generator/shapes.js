@@ -285,6 +285,8 @@ function createShapePoints(props, lo, hi) {
                 return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
             });
         }
+        // its own stream: the result is memoized, so drawing from the doodle's would shift later random() calls on a cache hit
+        context.random = seedrandom('random:density:' + seed);
         let density = formula(props.density);
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, density && ((x, y) => density(...toShape(x, y)))).map(tile);
         let relax = isEmpty(props.relax) ? undefined : clamp(props.relax, 0, 50);
