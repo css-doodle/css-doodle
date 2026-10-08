@@ -564,6 +564,10 @@ export function deref(input, context) {
     }
     if (value === undefined || typeof value === 'number') return;
     value = String(value).trim();
+    const plain = toPlainNumber(value);
+    if (plain !== null) {
+        return plain;
+    }
     if (readDimension(value, context) !== undefined) {
         return value;
     }
