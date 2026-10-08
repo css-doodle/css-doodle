@@ -379,7 +379,8 @@ function delaunay(px, py, box, inside, count, gap) {
 
 // the smallest pieces of make(s) with no more than `count` reaching into the shape
 function tiles(make, box, screen, inside, count, grow = 1) {
-    let [x0, y0, x1, y1] = bounds(screen.flat()), area = (x1 - x0) * (y1 - y0);
+    // no further out than the box's own size, so an outline moved far away can't ask for millions of pieces
+    let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
     let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
     let reaching = s => make(box, [x0, y0, x1, y1], s).filter(([p, c]) => reaches(grow == 1 ? p : p.map((v, i) => c[i & 1] + (v - c[i & 1]) * grow), c, inside, corners));
