@@ -771,8 +771,16 @@ class Rules {
                 }
             }
         }
+        let literal = {};
         for (let [token] of rules) {
-            if (token.property === '@seed') this.seed = token.rawValue();
+            if (token.property.startsWith('--') && !token.value.hasFunc) {
+                literal[token.property] = token.rawValue();
+            }
+        }
+        for (let [token, selector] of rules) {
+            if (token.property === '@seed') this.seed = token.value.hasFunc
+                ? this.getComposedValue(token.value, cell, env, literal, selector).value
+                : token.rawValue();
         }
         if (this.seed) {
             env.updateRandom(this.seed);

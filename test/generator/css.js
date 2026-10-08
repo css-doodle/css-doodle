@@ -5,6 +5,7 @@ import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
 import parseShaders from '../../src/parser/parse-shaders.js';
 import generateCss from '../../src/generator/css.js';
+import createRandom from '../../src/core/random.js';
 
 // maxGrid 64 mirrors the component's getMaxGrid()
 const compile = (code, grid = '1', seed = 42, extra) =>
@@ -1065,4 +1066,17 @@ test('@palette: the same colors in every cell, and the @r stream stays untouched
     let mixed = cells('--c: @palette(4); --r: @r(1000);', '3x3', 7);
     assert.deepEqual(values(mixed, '--r'), values(plain, '--r'));
     assert.equal(new Set(values(mixed, '--c')).size, 1);
+});
+
+// --- @seed ---
+
+test('@seed takes a computed value: functions draw from the incoming stream, $name reads literal vars', () => {
+    assert.equal(compile('@seed: hello world;').seed, 'hello world');
+    assert.equal(compile('@seed: $k; --k: 7;').seed, '7');
+    assert.equal(compile(':doodle { --k: 7 } @seed: $k;').seed, '7');
+    let shared = createRandom('parent').random;
+    let nested = () => generateCss(parseCss('@seed: @r(1e6);'), parseGrid('1'), 'parent', 64, shared).seed;
+    let a = nested(), b = nested();
+    assert.notEqual(a, b);
+    assert.equal(a, generateCss(parseCss('@seed: @r(1e6);'), parseGrid('1'), 'parent', 64, createRandom('parent').random).seed);
 });
