@@ -15,6 +15,7 @@ test('grid: dimensions, size and fill', () => {
     assert.deepEqual(grid('1 / 100%'), { ...base, size: 'width:100%;height:100%;' });
     assert.deepEqual(grid('1 / 100% / #fff'), { ...base, size: 'width:100%;height:100%;', fill: '#fff' });
     assert.deepEqual(grid('1/100%/#fff'), { ...base, size: 'width:100%;height:100%;', fill: '#fff' });
+    assert.deepEqual(grid('32/100px').grid, { x: 32, y: 32, z: 1, count: 1024, ratio: 1 });
 });
 
 test('grid: aspect ratio in the size', () => {

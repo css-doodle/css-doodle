@@ -41,3 +41,9 @@ test('values clamp to the allowed range and keep the integer part', () => {
     assert.deepEqual(parseGrid('1x5.2'), { x: 1, y: 5, z: 1, count: 5, ratio: 1 / 5 });
     assert.deepEqual(parseGrid('1x5.8'), { x: 1, y: 5, z: 1, count: 5, ratio: 1 / 5 });
 });
+
+test('a modifier glued to the count is ignored', () => {
+    assert.deepEqual(parseGrid('32/600px'), { x: 32, y: 32, z: 1, count: 1024, ratio: 1 });
+    assert.deepEqual(parseGrid('8x4/200px'), { x: 8, y: 4, z: 1, count: 32, ratio: 2 });
+    assert.deepEqual(parseGrid('5.8+1.5'), { x: 5, y: 5, z: 1, count: 25, ratio: 1 });
+});
