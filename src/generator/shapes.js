@@ -300,9 +300,8 @@ function createShapePoints(props, lo, hi) {
         // relaxed in the element's proportions, then back to the shape's (top first)
         let seeds = aspect == 1 ? scatter(outline, count, evenodd, seed, density, relax)
             : scatter(screen, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax).reverse().map(([x, y]) => {
-                x /= sx, y /= sy;
-                if (percent) x = x / 50 - 1, y = y / 50 - 1;
-                return [x / fx - dx, dy - y / fy];
+                let [u, v] = toShape(x, y);
+                return [u / fx - dx, dy + v / fy];
             });
         seeds.forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
