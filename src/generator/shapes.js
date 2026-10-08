@@ -24,13 +24,13 @@ function ngon(k, inner = cos(PI / k)) {
     return `r: ${inner * y / l} / cos(abs(abs(t) % ${2 * a} - ${a}) + ${atan2(x, y)})`;
 }
 
-function fit(commands) {
+const fit = memo(commands => {
     let props = parseShapeCommands(commands), split = parseInt(props.split);
     let point = createPointFunction(props, split), ps = [];
     for (let i = 0; i < split; ++i) ps.push(...point(2 * PI * i / split, i));
     let [x0, y0, x1, y1] = bounds(ps);
     return `${commands}; move: ${-(x0 + x1) / 2} ${(y0 + y1) / 2}; scale: ${2 / max(x1 - x0, y1 - y0)}`;
-}
+});
 
 const presetShapes = {
     __proto__: null,
