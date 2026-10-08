@@ -350,6 +350,27 @@ function ruleFlags(prop) {
     };
 }
 
+const RE_PLACE = /^@place(-cell)?$/;
+const RE_TILE_READ = /^@(x|y|kind|r)$/;
+
+function usesTile(nodes) {
+    for (let node of nodes) {
+        if (node.type !== 'func') continue;
+        let dotted = node.arguments[0]?.values[0];
+        if (node.name === '@tile' && !(dotted?.dotted && RE_TILE_READ.test(dotted.name))) return true;
+        for (let arg of node.arguments) {
+            if (usesTile(arg.values)) return true;
+        }
+    }
+    return false;
+}
+
+function defaultRule(property, text) {
+    let value = [[{ type: 'text', value: text }]];
+    value.hasFunc = false;
+    return { type: 'rule', property, value, rawValue: () => text };
+}
+
 function specialName(selector) {
     if (isParentSelector(selector)) {
         return selector.replace(':container', 'grid');
@@ -383,6 +404,7 @@ class Rules {
         this.warned = new Set();
         this.ruleOrder = [];
         this.hasPlace = false;
+        this.hasTile = false;
         this.cells = [];
         this.bgSized = new Set();
         this.nextId = nextId(this.instance);
@@ -392,10 +414,21 @@ class Rules {
         this.filters = {};
         this.filterIds = new Map();
         this.content = {};
-        // cell variables shadow container variables, which shadow host ones
         this.vars = { host: Object.create(null) };
         this.vars.container = Object.create(this.vars.host);
-        this.scanTokens(tokens);
+        this.scanTokens(this.tokens);
+        if (this.hasTile) {
+            let isSet = re => tokens.some(token => token.type === 'rule' && re.test(token.property));
+            let extra = [];
+            if (!isSet(RE_PLACE)) extra.push(defaultRule('@place', 'center'));
+            if (!isSet(/^@size$/)) extra.push(defaultRule('@size', '100%'));
+            if (extra.length) {
+                this.hasPlace = true;
+                this.tokens = extra.concat(this.tokens);
+                this.tokens.warnings = tokens.warnings;
+                this.ruleOrder = extra.concat(this.ruleOrder);
+            }
+        }
     }
 
     warn(message, node) {
@@ -796,7 +829,8 @@ class Rules {
                 this.registerKeyframes(token);
             } else if (token.type === 'rule') {
                 this.ruleOrder.push(token);
-                if (/^@place(-cell)?$/.test(token.property)) this.hasPlace = true;
+                if (RE_PLACE.test(token.property)) this.hasPlace = true;
+                if (!this.hasTile && token.value.some(usesTile)) this.hasTile = true;
             } else if (token.type === 'cond' || token.type === 'pseudo') {
                 this.scanTokens(token.styles);
             }
