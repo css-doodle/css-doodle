@@ -24,16 +24,20 @@ function safariImage(svg, width, height) {
     return url;
 }
 
+// a still is the same image for every cell with the same source and size
+const stills = new WeakMap();
+
 function patternToImage(host, pattern) {
     let name = '@pattern';
     let source = generatePattern(pattern.source, host.extra, message => {
         name = '';
         host.report([{ message }]);
     });
-    return shaderToImage(host, { ...pattern, name, source });
+    // pattern code reads the doodle seed only, never the cell's
+    return shaderToImage(host, { ...pattern, name, source, seedCell: '' });
 }
 
-async function shaderToImage(host, { source, cell, id, arg, target, compiled, name = '@shaders' }) {
+async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders' }) {
     // restamping the sheet resolves its placeholders again; a rendered shader stays
     if (host.shaderRenders.has(id)) return;
     let elements;
@@ -81,7 +85,14 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 }
             }
         } else {
-            present = () => host.style.setProperty(id, `url("${drawing.canvas.toDataURL()}")`);
+            let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
+            let key = !drawing.animated && !textures.length
+                && [parsed.vertex, parsed.fragment, width, height, drawing.seeded && seedCell].join('\n');
+            present = () => {
+                let url = urls.get(key) || `url("${drawing.canvas.toDataURL()}")`;
+                if (key) urls.set(key, url);
+                host.style.setProperty(id, url);
+            }
         }
 
         present();
@@ -136,7 +147,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             textures = result;
         }
         try {
-            tick(generateShaders({ ...parsed, textures, width, height }, host.seed, cell, () => {
+            tick(generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell, () => {
                 host.report([{ message: 'WebGL context lost' }]);
             }));
         } catch (err) {
