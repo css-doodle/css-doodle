@@ -104,9 +104,10 @@ function createPointFunction(props, split) {
 
     let index = 0, perlin;
     let context = Object.assign(Object.create(defaultContext), {
-        noise(t, x, y, octave = 1, scale = 1, from = 0, to = 1) {
+        // sampled around a circle so the outline closes; a larger circle crosses more bumps
+        noise(t, x, y, octave = 1, scale = 1, from = 0, to = 1, r = 1) {
             perlin ??= perlinOf(props.seed ?? '');
-            let px = x + cos(t), py = y + sin(t), v = 0;
+            let px = x + r * cos(t), py = y + r * sin(t), v = 0;
             for (let i = 0; i < octave; ++i) {
                 let m = i ? 2 * i : 1;
                 v += perlin.noise(px * m, py * m) * scale / m;

@@ -149,6 +149,13 @@ test('@R.t: @R written out for a shape, one site per call, inside the bounds', (
     let r = Function.shape({}, env)(`points: 60; unit: none; r: ${call(3, 1, '.8', '1.2')}`);
     let radii = r.slice(8, -1).split(',').map(p => Math.hypot(...p.trim().split(' ').map(parseFloat)));
     assert.ok(radii.every(v => v >= .8 - 1e-9 && v <= 1.2 + 1e-9) && new Set(radii).size > 30);
+    // a higher frequency puts more bumps along the outline
+    let bumps = frequency => {
+        let r = Function.shape({}, env)(`points: 720; unit: none; r: ${call(3, 1, '.8', '1.2', `frequency=${frequency}`)}`);
+        let v = r.slice(8, -1).split(',').map(p => Math.hypot(...p.trim().split(' ').map(parseFloat)));
+        return v.reduce((sum, x, i) => sum + Math.abs(x - v.at(i - 1)), 0);
+    };
+    assert.ok(bumps(4) > bumps(1) * 2, `${bumps(4)} vs ${bumps(1)}`);
 });
 
 test('@plot keeps one point per cell, round:/edge: only change outlines', () => {

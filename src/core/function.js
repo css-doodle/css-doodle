@@ -469,7 +469,7 @@ function createNoise(outline) {
                 let { offsetX, offsetY } = context[counter] ??= {
                     offsetX: random() * 256, offsetY: random() * 256
                 };
-                let at = [(offsetX + u) * frequency, (offsetY + v) * frequency, octave, scale, parseFloat(from), parseFloat(to)];
+                let at = [(offsetX + u) * frequency, (offsetY + v) * frequency, octave, scale, parseFloat(from), parseFloat(to), frequency];
                 return `noise(t,${at.map(tidyNumber)})`;
             }
 
