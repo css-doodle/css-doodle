@@ -597,11 +597,12 @@ function edges(props, odd, seed, n = 256) {
         let rnd = seedrandom('edge:' + seed + ':' + key), draws = [], k;
         Object.assign(context, { e, x, y, random: () => draws[k++] ??= rnd() });
         let table = text => {
-            let f = Array.from({ length: n + 1 }, (_, j) => {
+            let f = [];
+            for (let j = 0; j <= n; ++j) {
                 k = 0;
                 context.t = context['θ'] = 2 * PI * j / n;
-                return text ? Number(calc(text, context)) || 0 : 0;
-            });
+                f.push(text ? Number(calc(text, context)) || 0 : 0);
+            }
             f = f.map((v, j) => v - f[0] - (f[n] - f[0]) * j / n);
             return odd ? f.map((v, j) => (v - f[n - j]) / 2) : f;
         };
