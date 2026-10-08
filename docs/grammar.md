@@ -496,6 +496,7 @@ shape-function = preset | { command ';' }
 command        = [ '-' ] command-name ':' expression
 command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
                | 'frame' | 'unit' | 'direction' | 'fill'
+               | 'round' | 'edge' | 'seed'
                | 'r' | 't' | 'x' | 'y'
                | variable-name
 ```
@@ -513,6 +514,45 @@ value, except on `fill`. The expressions also see the point index `i`,
 from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
 from point to point, and `range(a, b)` interpolates from `a` to `b`
 across the shape.
+
+`round`, from 0 to 1, turns every corner into a curve that starts
+`round / 2` of the way along each side. `edge` is an expression that
+pushes the outline along its normal, outward when positive. In it `t`
+runs from 0 to 2π by length along the outline, not by angle, and any
+difference between its values at 0 and 2π is spread along the outline
+so the ends still meet. Sharp corners come out beveled.
+`@R.t(from, to)` writes a closed noise curve in `t` for one cell, as in
+`r: @R.t(.8, 1)` or `edge: @R.t(-.05, .05)`. It follows the doodle's
+seed, or the `seed` command. `@plot` reads only the points, so it
+ignores `fill`, `frame`, `round` and `edge`.
+
+**Tiles.** `@tile.kind(…)` and `@plot.scatter(…)` read the same body
+as the region to fill, `square` by default for `@tile`, along with
+these commands:
+
+| Command          | Kinds                                   | Value                                                          |
+|------------------|-----------------------------------------|----------------------------------------------------------------|
+| `points`         | all                                     | the number of pieces, or of points for `voronoi`, `delaunay` and scatter |
+| `seed`           | all                                     | the seed; defaults to the doodle's                             |
+| `aspect`         | all                                     | the element's width over its height, `2` or `16 / 9`           |
+| `gap`            | all but scatter                         | the space between pieces, in percent of the element            |
+| `density`        | `slice`, `voronoi`, `delaunay`, scatter | where pieces are smaller, an expression in `x` and `y`         |
+| `relax`          | `voronoi`, `delaunay`, scatter          | rounds that even out the points, 0 to 50, default 10           |
+| `spread`         | `slice`                                 | how far a cut may tilt, in degrees                             |
+| `crack`          | `voronoi`                               | groups the regions, about this many each; a second `gap` value is the space inside a group |
+| `stretch`        | `voronoi`                               | `ratio [angle]`, regions that many times longer, up to 1000    |
+| `round`          | all but `circle` and scatter            | curves the corners, 0 to 1                                     |
+| `jitter`         | `grid`, `hex`, `triangle`, `cube`, `penrose` | moves each corner by up to that part of a piece           |
+| `shift`          | `grid`                                  | `a [b]`, slides every other row by `a`, or column by `b`       |
+| `edge`, `slide`  | `grid`, `hex`, `triangle`               | bends each edge across and along itself, expressions in `t`, `e`, `x`, `y` and `random()` |
+| `pair`           | `grid` without `shift`, `hex`           | `turn` pairs edges by a turn about a corner, so every piece is one shape turned by its kind |
+| `size`           | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x` and `y` |
+
+The kinds are `slice` (the default), `voronoi`, `delaunay`, `grid`,
+`hex`, `triangle`, `cube`, `penrose` and `circle`. Once a cell has its
+piece, `@tile.x` and `@tile.y` read its center, `@tile.kind` its kind,
+and `@tile.r` the radius of a `circle` piece, in percent of the
+element's shorter side.
 
 ### 9.3 Patterns
 
