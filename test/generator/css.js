@@ -209,7 +209,7 @@ test('$ falls back to splicing when a function result is not a number', () => {
 
 test('$ inside a sequence tracks the iteration variables', () => {
     assertContains('@grid: 1; --l: @M4($(@n*2));', '--l:2 4 6 8;');
-    assertContains('@grid: 1; --l: @m(3.8, @n);', '--l:1,2,3;');
+    assertContains('@grid: 1; --l: @m(3.8, @n);', '--l:1,2,3,4;');
 });
 
 test('a sequence count that evaluates to 0 repeats nothing', () => {

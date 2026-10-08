@@ -113,6 +113,15 @@ test('@ri: an integer with no arguments too, not a character code', () => {
     assert.match(String(ri('a', 'c')), /^[a-c]$/);
 });
 
+test('@ri: both bounds can come up', () => {
+    let { rand } = createRandom('1');
+    let ri = Function.ri({}, { context: {}, rand });
+    let seen = new Set(Array.from({ length: 200 }, () => ri(0, 1)));
+    assert.deepEqual([...seen].sort(), [0, 1]);
+    seen = new Set(Array.from({ length: 200 }, () => ri('a', 'c')));
+    assert.deepEqual([...seen].sort(), ['a', 'b', 'c']);
+});
+
 test('@pn inside an argument keeps a counter per call site', () => {
     // argument composition pushes an empty tuple, which used to turn the key into NaN
     let env = { context: {}, extra: [[]], upextra: [], shuffle: a => a };
