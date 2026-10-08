@@ -141,7 +141,7 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
         let limit = far(), cx = col(x), cy = row(y);
         for (let ring = 0; ring < max(cols, rows); ++ring) {
             let reach = (ring - 1) * size - gap;
-            if (reach > 0 && reach * reach / 4 > limit) break;
+            if (!poly.length || reach > 0 && reach * reach / 4 > limit) break;
             for (let j = max(0, cy - ring); j <= min(rows - 1, cy + ring); ++j) {
                 for (let i = max(0, cx - ring); i <= min(cols - 1, cx + ring); ++i) {
                     if (max(abs(i - cx), abs(j - cy)) != ring) continue;
