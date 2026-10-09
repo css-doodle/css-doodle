@@ -306,10 +306,11 @@ function createShapePoints(props, lo, hi) {
             context.y = y;
             return Number(calc(text, context)) || 0;
         };
+        let onScreen = f => f && ((x, y) => f(...toShape(x, y)));
         if (name == 'circle') {
             let size = formula(props.size);
             context.random = seedrandom('size:' + seed);
-            return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, size && ((x, y) => size(...toShape(x, y)))).map(([x, y, r]) => {
+            return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, onScreen(size)).map(([x, y, r]) => {
                 let at = fmt(x, y), [rx, ry] = [sx, sy].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
                 let point = new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
                 point.rx = rx;
@@ -320,17 +321,17 @@ function createShapePoints(props, lo, hi) {
         // its own stream: the result is memoized, so drawing from the doodle's would shift later random() calls on a cache hit
         context.random = seedrandom('random:density:' + seed);
         let density = formula(props.density);
-        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, density && ((x, y) => density(...toShape(x, y)))).map(tile);
+        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, onScreen(density)).map(tile);
         let relax = isEmpty(props.relax) ? undefined : clamp(props.relax, 0, 50);
         let [ratio, angle] = isEmpty(props.stretch) ? [] : parseValueGroup(String(props.stretch)).map(parseFloat);
         let crack = Number(props.crack) || 0;
         if (name == 'voronoi' && (ratio > 0 || crack > 1)) {
-            return mosaic(screen, box, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax,
+            return mosaic(screen, box, count, evenodd, seed, onScreen(density), relax,
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
         // relaxed in the element's proportions, then back to the shape's (top first)
         let seeds = aspect == 1 ? scatter(outline, count, evenodd, seed, density, relax)
-            : scatter(screen, count, evenodd, seed, density && ((x, y) => density(...toShape(x, y))), relax).reverse().map(([x, y]) => {
+            : scatter(screen, count, evenodd, seed, onScreen(density), relax).reverse().map(([x, y]) => {
                 let [u, v] = toShape(x, y);
                 return [u / fx - dx, dy + v / fy];
             });

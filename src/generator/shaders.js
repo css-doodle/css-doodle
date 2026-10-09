@@ -34,8 +34,6 @@ function createProgram(gl, vss, fss) {
     const [log, source] = linked ? [] : [[gl.getShaderInfoLog(fs), fss], [gl.getShaderInfoLog(vs), vss]]
         .find(([log]) => /ERROR/.test(log)) || [gl.getProgramInfoLog(prog) || '', ''];
 
-    gl.detachShader(prog, vs);
-    gl.detachShader(prog, fs);
     gl.deleteShader(vs);
     gl.deleteShader(fs);
 

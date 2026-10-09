@@ -13,7 +13,7 @@ import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
 import seedrandom from '../lib/seedrandom.js';
-import calc, { defaultContext } from './calc.js';
+import calc, { defaultContext, binary } from './calc.js';
 import { memo } from '../lib/cache.js';
 
 import { calcContext } from './selector.js';
@@ -53,16 +53,6 @@ const SEQ = {
     sig: 7    // invocation signature, separates pick counters across @m calls
 };
 
-function compute(op, a, b) {
-    switch (op) {
-        case '+': return a + b;
-        case '-': return a - b;
-        case '*': return a * b;
-        case '/': return a / b;
-        case '%': return a % b;
-    }
-}
-
 // an operator argument ('*10', '%360deg', '-.5') parses once; computing
 // against a base — which runs per cell and per sequence iteration — is
 // then plain arithmetic
@@ -90,7 +80,7 @@ function calcValue(base, v) {
         let expr = (op === '%') ? `mod(${a}, ${b})` : `${a} ${op} ${b}`;
         return [`calc(${expr})`, unit];
     }
-    return [compute(op, Number(a), Number(b)), unit];
+    return [binary[op](Number(a), Number(b)), unit];
 }
 
 function calcWith(base) {
@@ -460,8 +450,9 @@ function createNoise(outline) {
     return ({ x, y, grid }, { context, extra, random }, position) => {
         let counter = (outline ? 'noise-t' : 'noise-2d') + position;
         let e = last(extra) || [];
-        let [nx, ny, NX, NY] = [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]];
-        let isSeqContext = (e[SEQ.n] && e[SEQ.max]);
+        let [cx, cy, X, Y] = (e[SEQ.n] && e[SEQ.max]) ? [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
+        let u = X <= 1 ? .5 : (cx - 1) / X;
+        let v = Y <= 1 ? .5 : (cy - 1) / Y;
         return (...args) => {
             let {from, to, frequency = 1, scale = 1, octave = 1} = getNamedArguments(args, [
                 'from', 'to', 'frequency', 'scale', 'octave'
@@ -473,10 +464,6 @@ function createNoise(outline) {
 
             if (to === undefined) [from, to] = [0, from ?? 1];
             from ??= 0;
-
-            let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
-            let u = X <= 1 ? .5 : (cx - 1) / X;
-            let v = Y <= 1 ? .5 : (cy - 1) / Y;
 
             if (outline) {
                 let { offsetX, offsetY } = context[counter] ??= {

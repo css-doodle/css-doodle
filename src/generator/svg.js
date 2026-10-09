@@ -166,13 +166,7 @@ function generate(token, element, parent, root, warn) {
                 root = el;
                 root.attr('xmlns', NS.split('=')[1]);
             }
-            if (token.name === 'defs') {
-                let defsElement = root.findSpareDefs();
-                // replace with existing defs
-                if (defsElement) {
-                    el = defsElement;
-                }
-            }
+            if (token.name === 'defs') el = root.findSpareDefs() || el;
             for (let block of token.value) {
                 let id = generate(block, el, token, root, warn);
                 if (id) { inlineId = id }

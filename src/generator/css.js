@@ -178,49 +178,47 @@ function compileFunc(node) {
                 if (!inArgument && node.variables) {
                     rules.composeVariables(node.variables, cell, env, frame.contextVariable);
                 }
+                let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
+                let output;
                 if (calcTemplate !== null) {
-                    let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                     let { context, values } = evalTemplateHoles(calcTemplate, frame, e);
-                    let output;
-                    if (context) {
-                        output = isDollar
-                            ? rules.callCalc(unit, cell.uid, calcTemplate.template, context, frame.contextVariable)
-                            : rules.callFunc(fn, frame, node.position, [calcTemplate.template, context], fname);
+                    if (!context) {
+                        output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
+                    } else if (isDollar) {
+                        output = rules.callCalc(unit, cell.uid, calcTemplate.template, context, frame.contextVariable);
                     } else {
-                        let input = spliceTemplateInput(calcTemplate, values);
-                        output = rules.callFunc(fn, frame, node.position, input, fname, unit);
+                        output = rules.callFunc(fn, frame, node.position, [calcTemplate.template, context], fname);
                     }
-                    return { value: getValue(output), extra: output?.extra, origin: output?.origin };
-                }
-                let input = constantInput;
-                if (input === null) {
-                    if (fn.lazy) {
-                        input = args.map(arg => (...lazy) => arg(frame, lazy));
-                    } else {
-                        input = [];
-                        let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
-                        for (let arg of args) {
-                            if (arg.split) {
-                                input.push(...arg.split);
-                                continue;
-                            }
-                            if (isMath && arg.calcTemplate) {
-                                let t = arg.calcTemplate;
-                                let { context, values } = evalTemplateHoles(t, frame, e);
-                                if (context) {
-                                    input.push(calc(t.template, context));
-                                } else {
-                                    input.push(...spliceTemplateInput(t, values));
+                } else {
+                    let input = constantInput;
+                    if (input === null) {
+                        if (fn.lazy) {
+                            input = args.map(arg => (...lazy) => arg(frame, lazy));
+                        } else {
+                            input = [];
+                            for (let arg of args) {
+                                if (arg.split) {
+                                    input.push(...arg.split);
+                                    continue;
                                 }
-                                continue;
+                                if (isMath && arg.calcTemplate) {
+                                    let t = arg.calcTemplate;
+                                    let { context, values } = evalTemplateHoles(t, frame, e);
+                                    if (context) {
+                                        input.push(calc(t.template, context));
+                                    } else {
+                                        input.push(...spliceTemplateInput(t, values));
+                                    }
+                                    continue;
+                                }
+                                let v = arg.constant ? arg() : arg(frame, e);
+                                pushInput(input, v, arg.cluster || arg.composed);
                             }
-                            let v = arg.constant ? arg() : arg(frame, e);
-                            pushInput(input, v, arg.cluster || arg.composed);
+                            input = removeEmptyValues(input);
                         }
-                        input = removeEmptyValues(input);
                     }
+                    output = rules.callFunc(fn, frame, node.position, input, fname, unit);
                 }
-                let output = rules.callFunc(fn, frame, node.position, input, fname, unit);
                 return { value: getValue(output), extra: output?.extra, origin: output?.origin };
             };
         }
@@ -784,13 +782,11 @@ class Rules {
 
     preComposeRule(token, cell, env, selector) {
         let prop = token.property;
-        if (prop.startsWith('--')) {
-            let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
-            this.composeVars(cell.uid, selector, prop, value);
-        } else if (prop === '@grid') {
-            let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
-            this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
-        }
+        let isVar = prop.startsWith('--');
+        if (!isVar && prop !== '@grid') return;
+        let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
+        if (isVar) this.composeVars(cell.uid, selector, prop, value);
+        else this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
     }
 
     // the top-level rules and the host block: the seed first, so the

@@ -50,7 +50,7 @@ export const operators = {
     '(': 0, ')': 0,
 };
 
-const binary = {
+export const binary = {
     __proto__: null,
 
     '+': (a, b) => a + b,

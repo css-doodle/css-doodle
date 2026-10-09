@@ -28,7 +28,6 @@ const ALIAS = {
 };
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
-const COMPARISON_OPS = new Set([...RELATIONAL_OPS, '==', '!=']);
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 const VEC_COMPARE = {
     __proto__: null,
@@ -291,8 +290,8 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             return cast(`pow(${l}, ${gen(n.right, arg)})`, res, exp);
         }
         const lt = infer(n.left), rt = infer(n.right);
-        const vec = COMPARISON_OPS.has(op) && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
-        const arg = vec || (COMPARISON_OPS.has(op) || isVector(res) ? 'float' : res);
+        const vec = VEC_COMPARE[op] && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
+        const arg = vec || (VEC_COMPARE[op] || isVector(res) ? 'float' : res);
         const l = gen(n.left, arg);
         const r = gen(n.right, arg);
         if (vec) return cast(`${op === '!=' ? 'any' : 'all'}(${VEC_COMPARE[op]}(${l}, ${r}))`, 'bool', exp);
@@ -353,7 +352,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             // any other function returns the type of its widest argument, a number at least
             return widest(n.args.map(infer), true);
         }
-        if (COMPARISON_OPS.has(n.val) || n.val === '&&' || n.val === '||') return 'bool';
+        if (VEC_COMPARE[n.val] || n.val === '&&' || n.val === '||') return 'bool';
         if (INT_OPS.has(n.val)) return 'int';
         // arithmetic is done in floats unless a vector is involved
         return widest([infer(n.left), infer(n.right)], true);

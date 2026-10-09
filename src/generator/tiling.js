@@ -193,7 +193,6 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
     let pad = (r - l + b - t) / 4, qbox = [l - pad, t - pad, r + pad, b + pad];
     let seeds = scatter(screen.map(p => warp(...p, 1 / a)), count, evenodd, seed, density && ((x, y) => density(...warp(x, y))), relax);
     let n = seeds.length, m = crack > 1 ? max(1, round(n / crack)) : n;
-    // parents are spread out among the seeds, or random ones when unrelaxed
     let rnd = seedrandom('crack:' + seed), order = seeds.map((_, i) => i), parents = [];
     for (let i = 0; i < n; ++i) {
         let j = i + (rnd() * (n - i) | 0);
@@ -206,7 +205,10 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
     }
     let px = parents.map(i => seeds[i][0]), py = parents.map(i => seeds[i][1]);
     let cells = voronoi(px, py, ...qbox, 0), kinds = colors(cells);
-    let cut = (p, d, outer) => clip(shrink(back(p), d), outer);
+    let cut = (p, d, outer) => {
+        p = back(p);
+        return clip(d ? clip(p, p, d) : p, outer);
+    };
     if (m == n) return cells.map(([q], k) => [cut(q, gap / 2, corners), warp(px[k], py[k]), kinds[k]]);
     let groups = cells.map(() => []);
     seeds.forEach(([x, y]) => {
@@ -223,7 +225,6 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
     });
 }
 
-// greedy coloring: each cell takes the lowest kind none of its neighbours has
 function colors(cells) {
     let kinds = [];
     cells.forEach(([, ids], k) => {
@@ -241,10 +242,6 @@ function clip(p, outer, d = 0) {
         p = halfplane(p, nx, ny, outer[i] - nx * d, outer[i + 1] - ny * d, [])[0];
     }
     return p;
-}
-
-function shrink(p, d) {
-    return d ? clip(p, p, d) : p;
 }
 
 function rounded(p, f, tol) {
@@ -338,14 +335,15 @@ function lattice(k, box, bounds, s, [a, b], turn) {
         let y = cy + j * h, shift = j & 1 ? k == 4 ? a * s : s / 2 : 0;
         for (let i = i0; i <= i1; ++i) {
             let x = cx + i * s + shift;
-            if (k == 4 && turn && !a && !b) {
-                let l = x - s / 2, t = y - s / 2, R = l + s, B = t + s, mk = (u, v) => (u + v) & 1 ? 0 : (u & 1) + 1;
-                out.push([[R, B, l, B, l, t, R, t], [x, y], 1 + (2 * (i & 1) + 3 * ((i + j) & 1)) % 4, [mk(i + 1, j + 1), mk(i, j + 1), mk(i, j), mk(i + 1, j)]]);
-            }
-            else if (k == 4) {
+            if (k == 4) {
                 let m = y + (i & 1) * b * s, f = (j & 1 ? 1 - a : a) % 1 * s, g = (i & 1 ? 1 - b : b) % 1 * s;
                 let l = x - s / 2, t = m - s / 2, R = l + s, B = t + s;
-                out.push([[R, B, ...f ? [l + f, B] : [], l, B, ...g ? [l, t + g] : [], l, t, ...f ? [l + f, t] : [], R, t, ...g ? [R, t + g] : []], [x, m], 1]);
+                let p = [R, B, ...f ? [l + f, B] : [], l, B, ...g ? [l, t + g] : [], l, t, ...f ? [l + f, t] : [], R, t, ...g ? [R, t + g] : []];
+                if (turn && !a && !b) {
+                    let mk = (u, v) => (u + v) & 1 ? 0 : (u & 1) + 1;
+                    out.push([p, [x, m], 1 + (2 * (i & 1) + 3 * ((i + j) & 1)) % 4, [mk(i + 1, j + 1), mk(i, j + 1), mk(i, j), mk(i + 1, j)]]);
+                }
+                else out.push([p, [x, m], 1]);
             }
             else if (k == 6 && turn) {
                 let c = mod(i - (j >> 1) - j, 3);
@@ -438,11 +436,11 @@ function shake(pieces, n, seed) {
         let q = [];
         for (let i = 0; i < p.length; i += 2) {
             let key = round(p[i] * 1e6) + ',' + round(p[i + 1] * 1e6);
-            let [dx, dy] = moved[key] ||= (rnd => {
-                let a = 2 * PI * rnd(), r = d * sqrt(rnd());
-                return [r * cos(a), r * sin(a)];
-            })(seedrandom('jitter:' + seed + ':' + key));
-            q.push(p[i] + dx, p[i + 1] + dy);
+            if (!moved[key]) {
+                let rnd = seedrandom('jitter:' + seed + ':' + key), a = 2 * PI * rnd(), r = d * sqrt(rnd());
+                moved[key] = [r * cos(a), r * sin(a)];
+            }
+            q.push(p[i] + moved[key][0], p[i + 1] + moved[key][1]);
         }
         return [q, centre(q), kind];
     });
@@ -512,7 +510,7 @@ function pack(rings, box, inside, count, seed, size) {
         let x = xs[i], y = ys[i], r = edge[i];
         if (r === undefined) {
             r = max(0, min(caps[i], x - box[0], box[2] - x, y - box[1], box[3] - y)) ** 2;
-            for (let a of sides[((x - x0) / cap | 0) + cols * ((y - y0) / cap | 0)]) {
+            for (let a of sides[cell(x, x0) + cols * cell(y, y0)]) {
                 let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
                 let t = (ax * dx + ay * dy) * segs[a + 4];
                 t = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -520,7 +518,7 @@ function pack(rings, box, inside, count, seed, size) {
             }
             r = edge[i] = sqrt(r);
         }
-        let c = (x - x0) / cap | 0, d = (y - y0) / cap | 0;
+        let c = cell(x, x0), d = cell(y, y0);
         for (let j = max(0, d - 2); j <= min(rows - 1, d + 2) && r > 0; ++j) for (let m = max(0, c - 2); m < min(cols, c + 3); ++m) {
             for (let [cx, cy, cr] of grid[m + cols * j]) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
         }
@@ -531,7 +529,7 @@ function pack(rings, box, inside, count, seed, size) {
         if (r > 0 && r >= max(key[heap[1]] ?? 0, key[heap[2]] ?? 0)) {
             let x = xs[i], y = ys[i];
             out.push([x, y, r]);
-            grid[((x - x0) / cap | 0) + cols * ((y - y0) / cap | 0)].push([x, y, r]);
+            grid[cell(x, x0) + cols * cell(y, y0)].push([x, y, r]);
             r = 0;
         }
         if (!(r > 0)) heap[0] = heap.at(-1), heap.pop();
