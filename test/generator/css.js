@@ -118,6 +118,28 @@ test('@tile in clip-path brings its own transform-origin', () => {
     tiles.forEach((t, i) => assert.ok(t.endsWith(`transform-origin:${seeds[i]};`), t));
 });
 
+test('@R.t in a tile edge reads no cell, so every cell cuts from one tiling, each edge bent its own way', () => {
+    let polys = cells('clip-path: @tile.grid(square; edge: @R.t(-.1, .1));', '6').match(/polygon\([^)]+\)/g)
+        .filter(t => t != 'polygon(0 0)').map(t => t.slice(8, -1).split(', ').map(p => p.split(' ').map(parseFloat)));
+    let inside = (vs, [x, y]) => {
+        let n = 0;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            let [ax, ay] = vs[i], [bx, by] = vs[j];
+            if ((ay > y) != (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) n++;
+        }
+        return n & 1;
+    };
+    // @R.t used to bake each cell's position in, so each cell cut from its own tiling
+    for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
+        assert.equal(polys.filter(vs => inside(vs, [x, y])).length, 1, `${x} ${y}`);
+    }
+    let shapes = new Set(polys.map(vs => {
+        let x0 = Math.min(...vs.map(v => v[0])), y0 = Math.min(...vs.map(v => v[1]));
+        return vs.map(([x, y]) => (x - x0).toFixed(1) + ' ' + (y - y0).toFixed(1)).sort().join();
+    }));
+    assert.ok(shapes.size > polys.length / 2, `${shapes.size} shapes in ${polys.length} tiles`);
+});
+
 // --- $ and calc ---
 
 test('$ name suffix reads as a unit appended to the calc result', () => {

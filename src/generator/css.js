@@ -59,6 +59,7 @@ function familiesOf(text) {
 }
 
 const EMPTY_EXTRA = [];
+const SHARED_EXTRA = Object.assign([], { shared: true });
 
 function pushInput(input, value, whole) {
     if (!whole && (typeof value === 'number' || typeof value === 'string')) {
@@ -146,6 +147,7 @@ function compileFunc(node) {
             let composable = COMPOSABLE.has(fname);
             let args = node.arguments.map(arg => compileArgument(arg, node));
             let isDollar = fname === '$';
+            let shared = fname === 'tile';
             let unit = node.unit || '';
             let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
             let isMath = fn === MathFunc[fname];
@@ -177,7 +179,7 @@ function compileFunc(node) {
                     rules.composeVariables(node.variables, cell, env, frame.contextVariable);
                 }
                 if (calcTemplate !== null) {
-                    let e = inArgument ? extra : EMPTY_EXTRA;
+                    let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                     let { context, values } = evalTemplateHoles(calcTemplate, frame, e);
                     let output;
                     if (context) {
@@ -196,7 +198,7 @@ function compileFunc(node) {
                         input = args.map(arg => (...lazy) => arg(frame, lazy));
                     } else {
                         input = [];
-                        let e = inArgument ? extra : EMPTY_EXTRA;
+                        let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                         for (let arg of args) {
                             if (arg.split) {
                                 input.push(...arg.split);

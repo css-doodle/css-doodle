@@ -460,7 +460,7 @@ function createNoise(outline) {
             if (to === undefined) [from, to] = [0, from ?? 1];
             from ??= 0;
 
-            let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : [x, y, grid.x, grid.y];
+            let [cx, cy, X, Y] = isSeqContext ? [nx, ny, NX, NY] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
             let u = X <= 1 ? .5 : (cx - 1) / X;
             let v = Y <= 1 ? .5 : (cy - 1) / Y;
 

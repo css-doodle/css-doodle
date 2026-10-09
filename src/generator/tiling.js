@@ -603,9 +603,13 @@ function contains(p, x, y) {
 }
 
 function edges(props, odd, seed, n = 256) {
-    let context = Object.assign(Object.create(defaultContext), { noise: noiseOf(props) }, props), cache = {};
+    let noise = noiseOf(props);
+    let context = Object.assign(Object.create(defaultContext), {
+        noise: (t, a, b, octave, scale, from, to, r = 1) =>
+            noise(t, a + context.x * r / 2, b + context.y * r / 2, octave, scale, from, to, r)
+    }, props), cache = {};
     let seen = new Set(['edge', 'slide', 'e', 't']);
-    let reads = text => /\b[xy]\b|random/.test(text) || (String(text).match(/[\w$-]+/g) || []).some(name =>
+    let reads = text => /\b[xy]\b|random|noise/.test(text) || (String(text).match(/[\w$-]+/g) || []).some(name =>
         !seen.has(name) && Object.hasOwn(props, name) && seen.add(name) && reads(props[name]));
     let local = reads(props.edge) || reads(props.slide || '');
     return (e, x, y) => {
