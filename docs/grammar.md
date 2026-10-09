@@ -520,7 +520,7 @@ the way `background` takes layers: the shorter lists repeat, `t` and
 `i` start over in each contour, and `points: 0` leaves one out. Under
 `fill: evenodd` the inner contours cut holes, so `points: 120, 60;
 r: 1, .5` is a ring, and `@tile` and `@plot.scatter` read the region
-with its holes. `frame` applies to a single contour only.
+with its holes. `frame` outlines each contour.
 
 `round`, from 0 to 1, turns every corner into a curve that starts
 `round / 2` of the way along each side. `edge` is an expression that

@@ -170,8 +170,7 @@ function createShapePoints(props, lo, hi) {
         p.split = clamp(n, lo, hi);
         contours.push(p);
     }
-    let split = contours[0].split;
-    let point = createPointFunction(contours[0], split);
+    let fns = contours.map(p => createPointFunction(p, p.split)), point = fns[0];
 
     let turn = Number(props.turn) || 1;
     let frame = props.frame;
@@ -188,7 +187,6 @@ function createShapePoints(props, lo, hi) {
     let staticAngle = props.scatter && !dir ? 0
         : direction.direction ? null : 90 + direction.angle;
 
-    let rad = (PI * 2) * turn / split;
     let points = [];
     let px = [], py = [];
 
@@ -250,8 +248,8 @@ function createShapePoints(props, lo, hi) {
     };
 
     let rings = contours.map((p, c) => {
-        let f = c ? createPointFunction(p, p.split) : point, step = (PI * 2) * turn / p.split, ring = [];
-        for (let i = 0; i < p.split; ++i) ring.push(f(step * i, i));
+        let step = (PI * 2) * turn / p.split, ring = [];
+        for (let i = 0; i < p.split; ++i) ring.push(fns[c](step * i, i));
         return ring;
     });
     let outline = bridge(rings);
@@ -349,30 +347,27 @@ function createShapePoints(props, lo, hi) {
     }
 
     let paths = [], from = points.length;
+    let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
     rings = rings.map((ring, c) => {
         let [ps, path] = shape(ring), at = points.length;
-        if (!c) outline = ps;
         paths.push(path);
         ps.forEach(add);
+        // an outline: back to the first point, then the inner ring in reverse
+        if (frame !== undefined) {
+            let step = (PI * 2) * turn / contours[c].split, inner = [];
+            add(ps[0]);
+            for (let i = 0; i < contours[c].split; ++i) {
+                let [x, y] = fns[c](-step * i, i);
+                let theta = atan2(y, x);
+                inner.push([x - w * cos(theta), y - w * sin(theta)]);
+            }
+            [inner] = shape(inner, true);
+            inner.forEach(add);
+            add(inner[0]);
+            add(ps[0]);
+        }
         return points.slice(at);
     });
-
-    // an outline: back to the first point, then the inner ring in reverse
-    if (frame !== undefined && rings.length == 1) {
-        let first = outline[0];
-        add(first);
-        let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
-        let inner = [];
-        for (let i = 0; i < split; ++i) {
-            let [x, y] = point(-rad * i, i);
-            let theta = atan2(y, x);
-            inner.push([x - w * cos(theta), y - w * sin(theta)]);
-        }
-        [inner] = shape(inner, true);
-        inner.forEach(add);
-        add(inner[0]);
-        add(first);
-    }
 
     points.rings = rings;
     points.clip = !edge && frame === undefined && paths.some(curved)

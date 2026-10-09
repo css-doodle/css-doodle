@@ -252,6 +252,10 @@ test('a list in points, r, t, x, y or rotate draws one contour per item', () => 
     assert.deepEqual(star.slice(3), generateShape('points: 3; rotate: 180').points.map(String));
     // `t` and `i` start over in each contour
     assert.equal(String(generateShape('points: 4, 3; r: 1, .5; t: t + i').points[4]), String(generateShape('points: 3; r: .5; t: t + i').points[0]));
+    // frame outlines each contour: around it, back to its start, the inner ring, back again
+    let { rings } = generateShape('points: 4; r: 1, .5; frame: 10').points;
+    assert.deepEqual(rings.map(ring => ring.length), [11, 11]);
+    assert.ok(rings.every(ring => String(ring.at(-1)) === String(ring[0])));
     // curves print one subpath per contour
     assert.match(generateShape('points: 6, 4; r: 1, .5; round: .4').clip, /^shape\(from [^]+,close,move to [^]+,close\)$/);
     // scatter fills between them
