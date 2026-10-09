@@ -179,7 +179,7 @@ function seq(token, make) {
 
 function createPlot(unit, scatter, tile) {
     let plot = memo((commands, max, seed) => {
-        return generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square', seed}, (rules, preset) => {
+        let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
             if (scatter) {
                 let count = parseInt(rules.points);
@@ -200,7 +200,7 @@ function createPlot(unit, scatter, tile) {
                 if (!preset && (rules.split || rules.points)) {
                     rules.hasPoints = true;
                 } else {
-                    rules.points = max;
+                    rules.points = count;
                 }
             }
             if (unit) {
@@ -208,6 +208,22 @@ function createPlot(unit, scatter, tile) {
             }
             return rules;
         });
+        let shape = make(max), { rings } = shape.points;
+        // the cells spread over the contours by their lengths
+        if (!shape.rules.hasPoints && rings?.length > 1) {
+            let xy = p => String(p).split(' ').map(parseFloat), total = 0, done = 0;
+            // running totals of the lengths
+            let runs = rings.map(ring => total += ring.reduce((sum, p, i) => {
+                let [x, y] = xy(p), [a, b] = xy(ring.at(i - 1));
+                return sum + Math.hypot(x - a, y - b);
+            }, 0));
+            if (total) shape = make(runs.map(run => {
+                let n = Math.round(max * run / total) - done;
+                done += n;
+                return n;
+            }).join(','));
+        }
+        return shape;
     });
     return (cell, { extra, seed }) => {
         let e = last(extra) || [];

@@ -232,6 +232,16 @@ test('@plot: the shape follows the grid count', () => {
     assert.doesNotMatch(String(Function.Plot(cell(4), env)('r: 1')), /%/);
 });
 
+test('@plot: the cells spread over the contours by their lengths', () => {
+    let env = { context: {}, extra: [] };
+    let radii = [];
+    for (let n = 1; n <= 30; ++n) {
+        let [x, y] = xy(Function.plot(cell(30, n), env)('r: 1, .5'));
+        radii.push(Math.round(Math.hypot(x - 50, y - 50)));
+    }
+    assert.deepEqual(radii, [...Array(20).fill(50), ...Array(10).fill(25)]);
+});
+
 test('@plot: scatter spreads one point per cell inside the shape', () => {
     let env = { context: {}, extra: [] };
     let points = Array.from({ length: 70 }, (_, i) => String(Function.plot.scatter(cell(70, i + 1), env)('star')));
