@@ -525,6 +525,11 @@ one out. Under `fill: evenodd` the inner contours cut holes, so
 read the region with its holes, and `@plot` spreads its cells over the
 contours by length. `frame` outlines each contour.
 
+A body in parentheses reads as commands, so one kept in a custom
+property is reused with `$name`: given `--gear: (points: 4n; r: 1, .5)`,
+`@shape($gear; n: 6)` adds to it or overrides it, and `@plot`, `@tile`
+and `@svg-polygon` read it the same way.
+
 `round`, from 0 to 1, turns every corner into a curve that starts
 `round / 2` of the way along each side. `edge` is an expression that
 pushes the outline along its normal, outward when positive. In it `t`

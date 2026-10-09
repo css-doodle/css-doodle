@@ -5,7 +5,7 @@ import parseShapeCommands from '../parser/parse-shape-commands.js';
 
 import seedrandom from '../lib/seedrandom.js';
 import { clamp, tidyNumber } from '../lib/math.js';
-import { isEmpty } from '../lib/type.js';
+import { isEmpty, removeParens } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
@@ -377,8 +377,17 @@ function createShapePoints(props, lo, hi) {
     return points;
 }
 
+// a body kept in a variable comes in parentheses: `$gear; n: 24` adds to it
+function unwrap(input) {
+    return parseValueGroup(input, { symbol: ';', noSpace: true }).map(s => {
+        let inner = removeParens(s);
+        return inner === s ? s : unwrap(inner);
+    }).join(';');
+}
+
 // The callers memoize: the results are shared and read-only.
 export default function generateShape(input, range = {}, modifier) {
+    if (input.includes('(')) input = unwrap(input);
     let [head, more = ''] = input.split(/;([^]*)/);
     let [name, ...args] = parseValueGroup(head);
     let preset = presetShapes[name];

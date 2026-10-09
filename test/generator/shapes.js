@@ -272,6 +272,17 @@ test('a list in points, r, t, x, y, rotate or edge draws one contour per item', 
     assert.ok(circles.some(p => { let [x, y] = p.origin.split(' ').map(parseFloat); return x > 70 && Math.abs(y - 50) < 8; }));
 });
 
+test('a body in parentheses, as a variable keeps it, is read as commands', () => {
+    let shape = s => String(generateShape(s).points);
+    assert.equal(shape('(points: 8; r: 1, .5; fill: evenodd)'), shape('points: 8; r: 1, .5; fill: evenodd'));
+    // commands after it add to it or override it
+    assert.equal(shape('(points: 8; r: 1, .5); points: 4'), shape('points: 4; r: 1, .5'));
+    assert.equal(shape('(points: 4n); n: 3'), shape('points: 12'));
+    // a preset inside, and bodies nest
+    assert.equal(shape('(heart; frame: 5)'), shape('heart; frame: 5'));
+    assert.equal(shape('((points: 6); r: .5)'), shape('points: 6; r: .5'));
+});
+
 test('points and rotate read like variables: units drop, expressions are worked out', () => {
     let shape = s => String(generateShape(s).points);
     assert.equal(generateShape('points: 2 * 3').points.length, 6);

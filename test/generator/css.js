@@ -1088,6 +1088,15 @@ test('@m writes contour lists with arithmetic in rotate and points', () => {
         css('clip-path: @shape(r: .5, 1; points: 4, 8; rotate: 15, 30)'));
 });
 
+test('a shape body kept in a variable is reused with $name', () => {
+    let body = '--gear: (points: 4n; r: 1, .5; fill: evenodd);';
+    assert.equal(css(body + ' clip-path: @shape($gear; n: 2);'), css(body + ' clip-path: @shape(points: 8; r: 1, .5; fill: evenodd);'));
+    // once on :doodle, read by every cell, in any shape reader
+    let host = ':doodle { --ring: (points: 8; r: 1, .5); }';
+    assert.equal(css(host + ' clip-path: @shape($ring);'), css(host + ' clip-path: @shape(points: 8; r: 1, .5);'));
+    assert.match(decodeURIComponent(css(host + ' background: @svg-polygon($ring);')), /<path [^>]*d="M1 0L/);
+});
+
 test('@svg-polygon draws contours as subpaths of one path', () => {
     let all = decodeURIComponent(css('background: @svg-polygon(points: 4, 3; r: 1, .5)'));
     assert.ok(all.includes('d="M1 0L0 -1L-1 0L0 1ZM0.5 0L-0.25 -0.433012701892L-0.25 0.433012701892Z"'), all);
