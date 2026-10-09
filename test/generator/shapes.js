@@ -237,7 +237,7 @@ test('round: corners print as curves in CSS shape(), unless the outline is waved
     }
 });
 
-test('a list in points, r, t, x or y draws one contour per item', () => {
+test('a list in points, r, t, x, y or rotate draws one contour per item', () => {
     // the polygon goes out from the first point to each contour and back
     let { clip, points } = generateShape('points: 4, 3; r: 1, .5; fill: evenodd');
     assert.equal(points.length, 8);
@@ -247,6 +247,9 @@ test('a list in points, r, t, x or y draws one contour per item', () => {
     assert.equal(generateShape('points: 6; r: 1, .5, .25').points.length, 18);
     assert.equal(generateShape('points: 6, 0, 4; r: 1, .7, .5').points.length, 10);
     assert.equal(generateShape('points: 6; r: max(.5, cos(t))').points.length, 6);
+    // rotate turns each contour by its own item
+    let star = generateShape('points: 3; rotate: 0, 180').points.map(String);
+    assert.deepEqual(star.slice(3), generateShape('points: 3; rotate: 180').points.map(String));
     // `t` and `i` start over in each contour
     assert.equal(String(generateShape('points: 4, 3; r: 1, .5; t: t + i').points[4]), String(generateShape('points: 3; r: .5; t: t + i').points[0]));
     // curves print one subpath per contour

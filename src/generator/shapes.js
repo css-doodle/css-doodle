@@ -147,7 +147,7 @@ function createPointFunction(props, split) {
 function createShapePoints(props, lo, hi) {
     // `r: 1, .5` draws one contour per item, the shorter lists repeat, `points: 0` leaves one out
     let lists = {}, count = 1, contours = [];
-    for (let k of ['points', 't', 'r', 'x', 'y']) {
+    for (let k of ['points', 't', 'r', 'x', 'y', 'rotate']) {
         if (String(props[k]).includes(',')) {
             lists[k] = parseValueGroup(props[k], { noSpace: true });
             count = max(count, lists[k].length);

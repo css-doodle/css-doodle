@@ -515,7 +515,7 @@ from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
 from point to point, and `range(a, b)` interpolates from `a` to `b`
 across the shape.
 
-A `,` in `points`, `r`, `t`, `x` or `y` draws one contour per item,
+A `,` in `points`, `r`, `t`, `x`, `y` or `rotate` draws one contour per item,
 the way `background` takes layers: the shorter lists repeat, `t` and
 `i` start over in each contour, and `points: 0` leaves one out. Under
 `fill: evenodd` the inner contours cut holes, so `points: 120, 60;
