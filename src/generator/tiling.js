@@ -497,10 +497,12 @@ function pack(rings, box, inside, count, seed, size) {
     let avg = sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
     let caps = xs.map((x, i) => size ? avg * size(x, ys[i]) : 3 * avg), cap = caps.reduce((a, b) => max(a, b), 0);
     if (!(cap > 0)) return out;
-    // cells no finer than the mean radius, so small size: values don't blow up the grid
     cap = max(cap, avg);
-    let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, grid = Array.from({ length: cols * rows }, () => []);
-    let edge = [], segs = [], sides = grid.map(() => []), cell = (v, o) => floor((v - o) / cap);
+    let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, sides = Array.from({ length: cols * rows }, () => []);
+    let edge = [], segs = [], cell = (v, o) => floor((v - o) / cap);
+    let span = 3 * avg, gx = ceil(w / span) + 1, gy = ceil(h / span) + 1, grid = Array.from({ length: gx * gy }, () => []);
+    let slot = (v, o, n) => clamp(floor((v - o) / span), 0, n - 1);
+    let under = (x, y, r) => [slot(x - r, x0, gx), slot(x + r, x0, gx), slot(y - r, y0, gy), slot(y + r, y0, gy)];
     for (let ring of rings) ring.forEach(([bx, by], a) => {
         let [ax, ay] = ring.at(a - 1), dx = bx - ax, dy = by - ay;
         for (let j = max(0, cell(min(ay, by), y0) - 2); j <= min(rows - 1, cell(max(ay, by), y0) + 2); ++j) {
@@ -520,9 +522,8 @@ function pack(rings, box, inside, count, seed, size) {
             }
             r = edge[i] = sqrt(r);
         }
-        let c = cell(x, x0), d = cell(y, y0);
-        for (let j = max(0, d - 2); j <= min(rows - 1, d + 2) && r > 0; ++j) for (let m = max(0, c - 2); m < min(cols, c + 3); ++m) {
-            for (let [cx, cy, cr] of grid[m + cols * j]) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
+        for (let [m0, m1, j, j1] = under(x, y, r); j <= j1 && r > 0; ++j) for (let m = m0; m <= m1; ++m) {
+            for (let [cx, cy, cr] of grid[m + gx * j]) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
         }
         return r;
     };
@@ -531,7 +532,7 @@ function pack(rings, box, inside, count, seed, size) {
         if (r > 0 && r >= max(key[heap[1]] ?? 0, key[heap[2]] ?? 0)) {
             let x = xs[i], y = ys[i];
             out.push([x, y, r]);
-            grid[cell(x, x0) + cols * cell(y, y0)].push([x, y, r]);
+            for (let [m0, m1, j, j1] = under(x, y, r); j <= j1; ++j) for (let m = m0; m <= m1; ++m) grid[m + gx * j].push([x, y, r]);
             r = 0;
         }
         if (!(r > 0)) heap[0] = heap.at(-1), heap.pop();
