@@ -348,7 +348,7 @@ test('line comments are whitespace', () => {
 test('values side by side are reported once', () => {
     let messages = [];
     draw('r: length(pos); fill: fract(r) 9', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"fract(r) 9": values side by side do not multiply; write * between them']);
+    assert.deepEqual(messages, ['"fract(r) 9": unexpected 9']);
     // inside call parentheses a space separates arguments
     messages = [];
     draw('fill: hsl(x/X .75 .65)', extra, m => messages.push(m));

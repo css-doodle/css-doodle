@@ -26,6 +26,8 @@ test('numeric coefficients imply multiplication', () => {
     assert.equal(transform('tπ'), '(t * PI)');
     assert.equal(transform('sin(t)π'), '(sin(t) * PI)');
     assert.equal(transform('sin(2πt)'), 'sin(((2.0 * PI) * t))');
+    // π before a group is a product, never a call
+    assert.equal(transform('π(t + 1)'), '(PI * (t + 1.0))');
     assert.equal(
         transform('.5 + .5 * sin(dr - 2t)', { expect: 'float' }),
         '(.5 + (.5 * sin((dr - (2.0 * t)))))'
@@ -74,12 +76,13 @@ test('** is power, right-associative, on floats and vectors', () => {
     assert.equal(transform('x ^ 2'), '(int(x) ^ 2)');
 });
 
-test('what the grammar cannot place is reported once, with a hint', () => {
+test('what the grammar cannot place is reported once', () => {
     const report = code => {
         const messages = [];
         return [transform(code, { warn: m => messages.push(m) }), messages];
     };
-    assert.deepEqual(report('x > 1 ? 1 : 0'), ['(x > 1.0)', ['"x > 1 ? 1 : 0": there is no ?:; write match(test, a, b)']]);
+    assert.deepEqual(report('x > 1 ? 1 : 0'), ['(x > 1.0)', ['"x > 1 ? 1 : 0": unexpected ?']]);
+    assert.deepEqual(report('2 t'), ['2.0', ['"2 t": unexpected t']]);
     assert.deepEqual(report('50%'), ['50.0', ['"50%": % needs a value after it']]);
     assert.deepEqual(report('x and'), ['x', ['"x and": && needs a value after it']]);
     assert.deepEqual(report('x * * 2'), ['(x * 0.0)', ['"x * * 2": unexpected *']]);
@@ -93,7 +96,7 @@ test('what the grammar cannot place is reported once, with a hint', () => {
 test('xor is not an operator; != between two conditions is', () => {
     const messages = [];
     assert.equal(transform('x < .5 xor y < .5', { warn: m => messages.push(m) }), '(x < .5)');
-    assert.deepEqual(messages, ['"x < .5 xor y < .5": there is no xor; write != between the two conditions']);
+    assert.deepEqual(messages, ['"x < .5 xor y < .5": unexpected xor']);
     assert.equal(transform('x < .5 != y < .5'), '(float((x < .5)) != float((y < .5)))');
 });
 
@@ -208,6 +211,9 @@ test('unary operators', () => {
     assert.equal(transform('!x'), '!bool(x)');
     assert.equal(transform('~x'), '~int(x)');
     assert.equal(transform('-~x'), '-~int(x)');
+    // the operand is taken in the operator's own type and the result cast like any value
+    assert.equal(transform('-x & 1'), '(int(-x) & 1)');
+    assert.equal(transform('-(x > 1)'), '-float((x > 1.0))');
 });
 
 test('chained comparisons desugar to &&', () => {

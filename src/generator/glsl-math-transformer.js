@@ -36,19 +36,15 @@ const VEC_COMPARE = {
 };
 
 const CALL_TYPES = { __proto__: null };
-const typeList = Object.entries({
+for (const [type, names] of Object.entries({
     float: 'rand noise fbm voronoi ngon box segment shape escape spiral dither length distance dot determinant',
     vec2: 'rot',
     vec3: 'hsl hsv',
     vec4: 'texture',
     bool: 'any all',
     bvec: 'isnan isinf lessThan lessThanEqual greaterThan greaterThanEqual equal notEqual',
-
-});
-for (const [type, names] of typeList) {
-    for (const name of names.split(' ')) {
-        CALL_TYPES[name] = type;
-    }
+})) {
+    for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
 const RANK = [
@@ -113,9 +109,18 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     const tokens = lex(code);
 
     let pos = 0;
-    let inArgs = false;
     const peek = () => tokens[pos];
     const consume = () => tokens[pos++];
+
+    function report(message) {
+        if (warn) warn(`"${code.trim()}": ${message}`);
+        warn = null;
+    }
+
+    function stray(end) {
+        const t = peek();
+        if (t && t.value !== end) report(`unexpected ${t.value}`);
+    }
 
     function variable(val) {
         const dot = val.indexOf('.');
@@ -136,10 +141,8 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         if (t.isNumber()) {
             n = { type: 'Lit', val: t.value };
         } else if (t.value === '(') {
-            const outer = inArgs;
-            inArgs = false;
             n = parse();
-            inArgs = outer;
+            stray(')');
             consume();
         } else if (PREFIX[t.value]) {
             n = { type: 'Pre', val: t.value === 'not' ? '!' : t.value, right: parse(PREFIX[t.value]) };
@@ -161,13 +164,8 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     function parse(min = 0) {
         let n = primary();
         if (!n) return null;
-        // a number or π touching a name, a call or a group multiplies: 2t, 2πt, 2sin(t), 2(t + 1)
-        if (n.type === 'Lit' || n.type === 'Var' && n.val === 'PI') {
-            while (isFactor(peek())) {
-                n = { type: 'Bin', val: '*', left: n, right: primary() };
-            }
-        }
-        while (peek()?.value === 'π' && !peek().spaced) {
+        const product = n.type === 'Lit' || n.type === 'Var' && n.val === 'PI';
+        while (isFactor(peek()) && (product || peek().value === 'π')) {
             n = { type: 'Bin', val: '*', left: n, right: primary() };
         }
         while (peek()) {
@@ -182,28 +180,12 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             }
             n = { type: 'Bin', val: op, left: n, right };
         }
-        // a token the grammar cannot place: 2 t, r 9, (a)(b), a ? b : c
-        const t = peek();
-        if (t && !PREC[t.value] && t.value !== ')' && t.value !== ',' && !(inArgs && isValue(t))) {
-            const word = t.value.toLowerCase();
-            report(word === 'xor' ? 'there is no xor; write != between the two conditions'
-                : word === '?' ? 'there is no ?:; write match(test, a, b)'
-                : isValue(t) ? 'values side by side do not multiply; write * between them'
-                : `unexpected ${t.value}`);
-        }
         return n;
-    }
-
-    function report(message) {
-        if (warn) warn(`"${code.trim()}": ${message}`);
-        warn = null;
     }
 
     function call(name) {
         consume();
         const args = [];
-        const outer = inArgs;
-        inArgs = true;
         let comma = true;
         while (peek() && peek().value !== ')') {
             const arg = parse();
@@ -216,8 +198,8 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             }
             comma = peek()?.value === ',';
             if (comma) consume();
+            else if (!isValue(peek())) stray(')');
         }
-        inArgs = outer;
         consume();
         if (name === 'rand' && !args.length && rand) return { type: 'Var', val: rand() };
         return { type: 'Call', val: name, args };
@@ -238,38 +220,25 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         if (n.type === 'Pre') {
             if (!n.right) return gen(ZERO, exp);
             if (n.val === '+') return gen(n.right, exp);
-            if (n.val === '-') {
-                // minus keeps the type of its operand, and a bool has no minus
-                let right = gen(n.right, exp === 'bool' ? 'float' : exp);
-                // `- -x`: glued, `--x` would be a decrement
-                if (right[0] === '-') right = ' ' + right;
-                return exp === 'bool' ? `bool(-${right})` : `-${right}`;
-            }
-            // ! and ~ take a bool and an int; a bvec is negated with not()
             const type = infer(n);
-            const right = gen(n.right, type);
-            return cast(type.startsWith('bvec') ? `not(${right})` : n.val + right, type, exp);
-        }
-        if (n.type === 'Call' && n.val === 'match') {
-            // match(t1, v1, t2, v2, …, else): the value after the first test that holds
-            const a = n.args;
-            let out = gen(a.length % 2 ? a[a.length - 1] : ZERO, exp);
-            for (let i = a.length - 2 - a.length % 2; i >= 0; i -= 2) {
-                out = `(${gen(a[i], 'bool')} ? ${gen(a[i + 1], exp)} : ${out})`;
-            }
-            return out;
-        }
-        if (n.type === 'Call' && n.val === 'ramp') {
-            return cast(ramp(n.args, infer(n)), infer(n), exp);
+            let right = gen(n.right, type);
+            if (right[0] === '-') right = ' ' + right;
+            return cast(n.val === '!' && type.startsWith('bvec') ? `not(${right})` : n.val + right, type, exp);
         }
         if (n.type === 'Call') {
-            // arguments are numbers unless the function yields a bool or bvec
-            const res = infer(n);
-            const args = n.args.map(a => gen(a, /^b/.test(res) ? null : 'float')).join(', ');
-            if (n.val === 'float' && n.args.length === 1 && !isVector(infer(n.args[0]))) {
-                return cast(args, 'float', exp);
+            const a = n.args;
+            if (n.val === 'match') {
+                let out = gen(a.length % 2 ? a[a.length - 1] : ZERO, exp);
+                for (let i = a.length - 2 - a.length % 2; i >= 0; i -= 2) {
+                    out = `(${gen(a[i], 'bool')} ? ${gen(a[i + 1], exp)} : ${out})`;
+                }
+                return out;
             }
-            if (n.val === 'shape') return cast(`cssd_shape(${args}${n.args.length === 1 ? ', 1.0' : ''})`, res, exp);
+            const res = infer(n);
+            if (n.val === 'ramp') return cast(ramp(a, res), res, exp);
+            const args = a.map(v => gen(v, res[0] === 'b' ? null : 'float')).join(', ');
+            if (n.val === 'float' && a.length === 1 && !isVector(infer(a[0]))) return cast(args, 'float', exp);
+            if (n.val === 'shape') return cast(`cssd_shape(${args}${a.length === 1 ? ', 1.0' : ''})`, res, exp);
             return cast(`${n.val}(${args})`, res, exp);
         }
 
@@ -286,8 +255,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             const arg = isVector(res) ? res : 'float';
             const l = gen(n.left, arg);
             const k = n.right.type === 'Lit' ? Number(n.right.val) : 0;
-            if (Number.isInteger(k) && k > 1 && k < 5) return cast(`(${Array(k).fill(l).join(' * ')})`, res, exp);
-            return cast(`pow(${l}, ${gen(n.right, arg)})`, res, exp);
+            return cast(Number.isInteger(k) && k > 1 && k < 5 ? `(${Array(k).fill(l).join(' * ')})` : `pow(${l}, ${gen(n.right, arg)})`, res, exp);
         }
         const lt = infer(n.left), rt = infer(n.right);
         const vec = VEC_COMPARE[op] && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
@@ -309,9 +277,9 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         at[0] ||= 0;
         if (isNaN(at[n])) at[n] = 1;
         for (let i = 1, j = 0; i <= n; i++) {
-            if (j <= i) for (j = i; isNaN(at[j]); j++);
-            const next = isNaN(at[i]) ? at[i - 1] + (at[j] - at[i - 1]) / (j - i + 1) : at[i];
-            at[i] = Math.max(at[i - 1], next);
+            for (j = Math.max(i, j); isNaN(at[j]); j++);
+            if (isNaN(at[i])) at[i] = at[i - 1] + (at[j] - at[i - 1]) / (j - i + 1);
+            at[i] = Math.max(at[i - 1], at[i]);
         }
         const v = gen(t, 'float');
         let out = gen(valueOf(stops[0]), type);
@@ -336,35 +304,29 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         if (n.type === 'Pre') {
             if (n.val === '~') return 'int';
             const right = infer(n.right);
-            // `not` of a bvec is a bvec, of anything else a bool
             if (n.val === '!') return right.startsWith('bvec') ? right : 'bool';
-            return right;
+            return n.val === '-' && right === 'bool' ? 'float' : right;
         }
         if (n.type === 'Call') {
             const known = CALL_TYPES[n.val];
             if (known === 'bvec') return infer(n.args[0]).replace(/^vec/, 'bvec').replace('float', 'bool');
             if (known) return known;
             if (/^(b?vec[234]|mat[234]|float|int|bool)$/.test(n.val)) return n.val;
-            // match(t1, v1, …, else) yields one of its values
             if (n.val === 'match') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
-            // ramp(t, stops…) yields the widest of its stop values
             if (n.val === 'ramp') return widest(n.args.slice(1).map(a => infer(valueOf(a))), true);
-            // any other function returns the type of its widest argument, a number at least
             return widest(n.args.map(infer), true);
         }
         if (VEC_COMPARE[n.val] || n.val === '&&' || n.val === '||') return 'bool';
         if (INT_OPS.has(n.val)) return 'int';
-        // arithmetic is done in floats unless a vector is involved
         return widest([infer(n.left), infer(n.right)], true);
     }
 
-    // the widest of the types; `number` settles for a float unless a vector is among them
     function widest(values, number) {
         const res = values.reduce((a, b) => RANK.indexOf(b) > RANK.indexOf(a) ? b : a, values[0] || 'float');
         return number && !isVector(res) ? 'float' : res;
     }
 
     const tree = parse();
-    if (peek()) report(`unexpected ${peek().value}`);
+    stray();
     return { type: infer(tree), code: exp => gen(tree, exp) };
 }
