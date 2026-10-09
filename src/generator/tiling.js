@@ -486,8 +486,9 @@ function bbox(screen, box) {
     return [max(box[0], x0), max(box[1], y0), min(box[2], x1), min(box[3], y1)];
 }
 
-function pack(screen, box, inside, count, seed, size) {
-    let [x0, y0, x1, y1] = bbox(screen, box), w = x1 - x0, h = y1 - y0;
+// the circles keep clear of every contour, given apart so the bridges between them are no walls
+function pack(rings, box, inside, count, seed, size) {
+    let [x0, y0, x1, y1] = bbox(rings.flat(), box), w = x1 - x0, h = y1 - y0;
     let total = max(4096, 32 * count), xs = [], ys = [], heap = [], key = [], out = [];
     let k = seed % 1e4 * 1e4, start = k;
     for (; xs.length < total && k < start + total * 50; ++k) {
@@ -500,8 +501,8 @@ function pack(screen, box, inside, count, seed, size) {
     if (!(cap > 0)) return out;
     let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, grid = Array.from({ length: cols * rows }, () => []);
     let edge = [], segs = [], sides = grid.map(() => []), cell = (v, o) => floor((v - o) / cap);
-    screen.forEach(([bx, by], a) => {
-        let [ax, ay] = screen.at(a - 1), dx = bx - ax, dy = by - ay;
+    for (let ring of rings) ring.forEach(([bx, by], a) => {
+        let [ax, ay] = ring.at(a - 1), dx = bx - ax, dy = by - ay;
         for (let j = max(0, cell(min(ay, by), y0) - 2); j <= min(rows - 1, cell(max(ay, by), y0) + 2); ++j) {
             for (let m = max(0, cell(min(ax, bx), x0) - 2); m <= min(cols - 1, cell(max(ax, bx), x0) + 2); ++m) sides[m + cols * j].push(segs.length);
         }

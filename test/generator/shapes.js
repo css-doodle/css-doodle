@@ -262,6 +262,9 @@ test('a list in points, r, t, x, y or rotate draws one contour per item', () => 
     let radii = generateShape('r: 1, .5; fill: evenodd', { min: 1, max: 65536 }, rules => Object.assign(rules, { split: 180, scatter: 40, seed: 1 }))
         .points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
     assert.ok(radii.every(r => r > 25 && r < 50), String(radii));
+    // circle tiles cross the bridge between contours, it is no wall
+    let circles = generateShape('r: 1, .5; fill: evenodd', { min: 1, max: 65536 }, rules => Object.assign(rules, { split: 180, scatter: 80, seed: 1, tile: 'circle', count: 80 })).points;
+    assert.ok(circles.some(p => { let [x, y] = p.origin.split(' ').map(parseFloat); return x > 70 && Math.abs(y - 50) < 8; }));
 });
 
 test('edge: pushes the outline out along its normals, measured along the outline', () => {
