@@ -296,6 +296,8 @@ test('@tile.voronoi: the box tiled around points scattered inside the shape, pre
     let fewer = regions('heart; points: 4', 6);
     assert.ok(!Array.isArray(fewer[0]) && Math.abs(covered(fewer) - 10000) < 1e-6);
     assert.equal(String(fewer[5]), 'polygon(0 0)');
+    // more `points` than cells changes nothing, so a body copied from @shape keeps the whole box tiled
+    assert.deepEqual(regions('heart; points: 720', 6, 'a').map(String), regions('heart', 6, 'a').map(String));
     // `gap` moves shared edges in by half, the box edge stays: a lone tile is still the box
     assert.ok(Math.abs(area(verts(regions('r: .5; gap: 10', 1)[0])) - 10000) < 1e-6);
     let pair = regions('r: .5; points: 2; gap: 10', 2, 'a');

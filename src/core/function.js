@@ -191,7 +191,7 @@ function createPlot(unit, scatter, tile) {
                 rules.tile = tile;
                 rules.hasPoints = count > 0 && !tile;
                 let points = tile == 'delaunay' ? Math.ceil(max / 2 + Math.sqrt(max)) : max;
-                rules.scatter = clamp(count > 0 ? count : points, 1, MAX_SCATTER);
+                rules.scatter = clamp(count > 0 && (!tile || count < points) ? count : points, 1, MAX_SCATTER);
                 rules.count = max;
             } else {
                 delete rules['fill'];

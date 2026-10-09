@@ -529,11 +529,12 @@ ignores `fill`, `frame`, `round` and `edge`.
 
 **Tiles.** `@tile.kind(…)` and `@plot.scatter(…)` read the same body
 as the region to fill, `square` by default for `@tile`, along with
-these commands:
+these commands. Here `points` counts what comes out, not the
+outline's corners, so a body copied from `@shape` leaves it out:
 
 | Command          | Kinds                                   | Value                                                          |
 |------------------|-----------------------------------------|----------------------------------------------------------------|
-| `points`         | all                                     | the number of pieces, or of points for `voronoi`, `delaunay` and scatter |
+| `points`         | all                                     | at most this many pieces, or points for `delaunay`; scatter returns that many as one list |
 | `seed`           | all                                     | the seed; defaults to the doodle's                             |
 | `aspect`         | all                                     | the element's width over its height, `2` or `16 / 9`           |
 | `gap`            | all but scatter                         | the space between pieces, in percent of the element            |
