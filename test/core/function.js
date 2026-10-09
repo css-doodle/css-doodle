@@ -248,6 +248,8 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     assert.equal(new Set(points).size, 70);
     // the same points every time, no randomness
     assert.equal(String(Function.plot.scatter(cell(70, 5), env)('star')), points[4]);
+    // the point count is an expression too
+    assert.equal(Function.plot.scatter(cell(70), env)('r: 1; points: 2 * 5').length, 10);
     // top row first
     assert.ok(xy(points[0])[1] < xy(points[69])[1]);
     // inside a circle of radius .5 → within 25%..75%, clear of the edge

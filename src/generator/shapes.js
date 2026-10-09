@@ -95,10 +95,6 @@ function createPointFunction(props, split) {
     let py = isEmpty(props.y) ? 'sin(t)' : props.y;
     let pr = props.r, pt = props.t;
 
-    let rotate = Number(props.rotate) || 0;
-    let rad = -PI / 180 * rotate;
-    let cosR = cos(rad), sinR = sin(rad);
-
     let index = 0;
     let context = Object.assign(Object.create(defaultContext), { noise: noiseOf(props) }, props, {
         seq(...list) {
@@ -112,6 +108,9 @@ function createPointFunction(props, split) {
             return a + step * index;
         }
     });
+    // read like a variable: `30deg` is 30, `@n * 5` is worked out
+    let rad = -PI / 180 * calc('rotate', context);
+    let cosR = cos(rad), sinR = sin(rad);
 
     let point = (t, i) => {
         index = i;
@@ -130,7 +129,7 @@ function createPointFunction(props, split) {
             x = calc(px, context);
             y = calc(py, context);
         }
-        if (rotate) {
+        if (rad) {
             let rx = x * cosR - y * sinR;
             y = y * cosR + x * sinR;
             x = rx;
@@ -159,7 +158,9 @@ function createShapePoints(props, lo, hi) {
             p = { ...props };
             for (let k in lists) p[k] = lists[k][c % lists[k].length];
         }
-        let n = parseInt(p.points || p.split);
+        // read like a variable: `20px` is 20, `10n` and `@n * 30` are worked out
+        let n = isEmpty(p.points || p.split) ? NaN
+            : Math.trunc(calc(p.points ? 'points' : 'split', Object.assign(Object.create(defaultContext), p)));
         if (c && n === 0) continue;
         // `r: 10px` carries the unit, but `2t` and `2i` are products
         let { unit, value } = parseCompoundValue(isEmpty(p.r) ? '' : p.r);

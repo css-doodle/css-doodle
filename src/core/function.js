@@ -182,7 +182,7 @@ function createPlot(unit, scatter, tile) {
         let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
             if (scatter) {
-                let count = parseInt(rules.points);
+                let count = Math.trunc(calc('points', Object.assign(Object.create(defaultContext), rules)));
                 rules.split = rules.split || SCATTER_OUTLINE;
                 delete rules.points;
                 if (isEmpty(rules.seed)) {

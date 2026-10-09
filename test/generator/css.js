@@ -1082,6 +1082,12 @@ test('@svg-polygon inside @m reads the sequence @n', () => {
     assert.ok(all.includes('points="1 0,0 -1,-1 0,0 1"'));
 });
 
+test('@m writes contour lists with arithmetic in rotate and points', () => {
+    assert.equal(
+        css('clip-path: @shape(r: @m2(@n / 2); points: @m2(@n * 4); rotate: @m2(@n * 15))'),
+        css('clip-path: @shape(r: .5, 1; points: 4, 8; rotate: 15, 30)'));
+});
+
 test('@svg-polygon draws contours as subpaths of one path', () => {
     let all = decodeURIComponent(css('background: @svg-polygon(points: 4, 3; r: 1, .5)'));
     assert.ok(all.includes('d="M1 0L0 -1L-1 0L0 1ZM0.5 0L-0.25 -0.433012701892L-0.25 0.433012701892Z"'), all);

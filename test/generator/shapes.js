@@ -272,6 +272,18 @@ test('a list in points, r, t, x, y, rotate or edge draws one contour per item', 
     assert.ok(circles.some(p => { let [x, y] = p.origin.split(' ').map(parseFloat); return x > 70 && Math.abs(y - 50) < 8; }));
 });
 
+test('points and rotate read like variables: units drop, expressions are worked out', () => {
+    let shape = s => String(generateShape(s).points);
+    assert.equal(generateShape('points: 2 * 3').points.length, 6);
+    assert.equal(generateShape('n: 5; points: 4n').points.length, 20);
+    assert.equal(generateShape('points: 20px').points.length, 20);
+    assert.equal(generateShape('points: 12.7').points.length, 12);
+    assert.equal(shape('points: 4; n: 2; rotate: n * 15'), shape('points: 4; rotate: 30'));
+    assert.equal(shape('points: 4; rotate: 30deg'), shape('points: 4; rotate: 30'));
+    // per contour, so @m can write the list
+    assert.equal(shape('points: 4; r: 1, .5; rotate: 1 * 15, 2 * 15'), shape('points: 4; r: 1, .5; rotate: 15, 30'));
+});
+
 test('edge: pushes the outline out along its normals, measured along the outline', () => {
     let radii = s => generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
     // a constant grows the shape, both ways round

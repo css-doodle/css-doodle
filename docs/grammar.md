@@ -508,7 +508,9 @@ custom polygons.
 
 `r`, `x` and `y` are expressions in the angle `t`, evaluated `points`
 times around the circle. The other named commands transform the
-resulting points. Any other name defines a variable for the
+resulting points. `points` and `rotate` read like variables, so a unit
+drops (`30deg` is 30) and `points: 4n` is worked out, with the
+fraction cut off. Any other name defines a variable for the
 expressions that follow it. A `-` before a command name negates its
 value, except on `fill`. The expressions also see the point index `i`,
 from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
