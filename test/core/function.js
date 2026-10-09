@@ -696,23 +696,56 @@ test('scatter density: a formula in x and y (shape coordinates, y up) sets how m
     assert.deepEqual(tiles('heart; density: 2').map(String), tiles('heart').map(String));
 });
 
-test('@palette: a seeded curve through oklch, the count samples it evenly', () => {
+test('@palette: seeded distinct colors, or now and then a gradient', () => {
     let env = seed => ({ context: {}, seed });
     let palette = Function.palette(null, env('a'));
     let five = palette(5);
     assert.equal(five.length, 5);
+    assert.equal(new Set(five).size, 5);
     assert.ok(five.every(c => /^oklch\([\d.]+ [\d.]+ [\d.]+\)$/.test(c)));
-    // the default count is 5; every count shares the ends, odd counts the middle
+    // the default count is 5; distinct colors keep the smaller counts as their start
     assert.deepEqual(palette(), five);
-    assert.deepEqual(palette(2), [five[0], five[4]]);
-    assert.deepEqual(palette(3), [five[0], five[2], five[4]]);
-    assert.deepEqual(palette(9).filter((_, i) => i % 2 == 0), five);
+    assert.deepEqual(palette(3), five.slice(0, 3));
+    assert.deepEqual(palette(9).slice(0, 5), five);
+    // a gradient seed gives the same colors as v0.56; every count shares the ends, odd counts the middle
+    let ramp = Function.palette(null, env('b'));
+    assert.deepEqual(ramp(5), ['oklch(0.8 0.075 86.1)', 'oklch(0.792 0.093 35.8)', 'oklch(0.734 0.094 12.6)', 'oklch(0.626 0.061 334.9)', 'oklch(0.466 0.092 248.5)']);
+    assert.deepEqual(ramp(3), [ramp(5)[0], ramp(5)[2], ramp(5)[4]]);
+    assert.deepEqual(ramp(9).filter((_, i) => i % 2 == 0), ramp(5));
     // the seed decides it; counts are clamped, truncated and take arithmetic
     assert.deepEqual(Function.palette(null, env('a'))('2 + 1'), palette(3));
     assert.deepEqual(palette(3.7), palette(3));
-    assert.deepEqual(palette(0), [five[2]]);
-    assert.notDeepEqual(Function.palette(null, env('b'))(5), five);
+    assert.deepEqual(palette(0), [five[0]]);
+    assert.notDeepEqual(Function.palette(null, env('c'))(5), five);
     // results are copies
     palette(5).reverse();
     assert.deepEqual(palette(5), five);
+});
+
+test('@palette: the ground comes first, the ink second, around an optional base color', () => {
+    let lch = c => c.slice(6, -1).split(' ').map(Number);
+    // the browser's OKLab reading of a few colors, as getRgbaColor(color, 'oklab') gives it
+    let OKLAB = { '#e6437d': [0.632987, 0.202416, 0.0123368, 1], tomato: [0.696226, 0.165255, 0.104555, 1] };
+    let host = { getRgbaColor: (color, space) => space == 'oklab' && OKLAB[color] || null };
+    let env = (seed, warns = []) => ({ context: {}, seed, host, rules: { warn: m => warns.push(m) } });
+    // palettes mostly start with a paper ground, and an ink far from it
+    let all = Array.from({ length: 200 }, (_, i) => Function.palette(null, env('g' + i))(5).map(lch));
+    let paper = all.filter(p => p[0][0] > .85).length / all.length;
+    assert.ok(paper > .4 && paper < .7);
+    assert.ok(all.filter(p => Math.abs(p[1][0] - p[0][0]) >= .25).length > all.length * .6);
+    // a base color is the second color as written, after a ground picked for it
+    let palette = Function.palette(null, env('a'));
+    let five = palette(5, '#e6437d');
+    assert.equal(five[1], '#e6437d');
+    assert.deepEqual(palette(3, '#e6437d'), five.slice(0, 3));
+    assert.deepEqual(palette(1, '#e6437d'), [five[0]]);
+    assert.ok(Math.abs(lch(five[0])[0] - .64) > .25);
+    // any color the browser reads; a gradient seed builds distinct colors around it
+    assert.equal(Function.palette(null, env('b'))(5, 'tomato')[1], 'tomato');
+    assert.notDeepEqual(Function.palette(null, env('b'))(5, '#e6437d').slice(2), Function.palette(null, env('b'))(5).slice(2));
+    // a color it can't read, or no browser to read it, warns and is left out
+    let warns = [];
+    assert.deepEqual(Function.palette(null, env('a', warns))(5, 'nope'), palette(5));
+    assert.deepEqual(Function.palette(null, { ...env('a', warns), host: undefined })(5, '#e6437d'), palette(5));
+    assert.equal(warns.length, 2);
 });

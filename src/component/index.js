@@ -114,7 +114,7 @@ if (typeof HTMLElement !== 'undefined') {
             this._warned = new Set();
             this.extra = {
                 getVariable: name => getVariable(this, name),
-                getRgbaColor: value => getRgbaColor(this.shadowRoot, value),
+                getRgbaColor: (value, space) => getRgbaColor(this.shadowRoot, value, space),
             };
             this.draw = draw;
         }
@@ -323,7 +323,7 @@ if (typeof HTMLElement !== 'undefined') {
             let source = this.getUse() + code;
             let parsed = parseCss(source, this.extra);
             let compiled = this.compiled = generateCss(
-                parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance
+                parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance, this.extra
             );
             this.report(compiled.warnings, source);
             return compiled;

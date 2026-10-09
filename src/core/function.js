@@ -590,16 +590,20 @@ const PALETTE_LIGHTNESS = [.2, .37, .48, .58, .65, .72, .78, .84, .89, .94, .98]
 const TAU = Math.PI * 2;
 const hueTurn = (a, b) => ((b - a) % TAU + TAU + Math.PI) % TAU - Math.PI;
 
-function paletteAnchor(r) {
-    let x = r(), i = ~~(x * 10);
+function paletteAnchor(r, hues = [], e = 1, x = r()) {
+    let i = ~~(x * 10), h;
     let L = lerp(x * 10 - i, PALETTE_LIGHTNESS[i], PALETTE_LIGHTNESS[i + 1]);
-    let row = PALETTE_HUES[L < .5 ? 0 : L < .75 ? 1 : 2];
-    let y = r() * row[11], j = row.findIndex(v => v > y);
-    let h = ((j + r()) * 30) * Math.PI / 180;
-    h += hueTurn(h, (L > .6 ? 70 : 250) * Math.PI / 180) * .875 * Math.abs(L - .6);
-    let z = r();
-    let C = maxChroma(L, h) * (z < .15 ? z / 3 : .05 + .95 * ((z - .15) / .85) ** .5);
-    return [L, C * Math.cos(h), C * Math.sin(h)];
+    if (hues.length && r() < .6) {
+        h = hues[~~(r() * hues.length)] + (r() - .5) / 2;
+    } else {
+        let row = PALETTE_HUES[L < .5 ? 0 : L < .75 ? 1 : 2];
+        let y = r() * row[11], j = row.findIndex(v => v > y);
+        h = ((j + r()) * 30) * Math.PI / 180;
+    }
+    let H = h + hueTurn(h, (L > .6 ? 70 : 250) * Math.PI / 180) * .875 * Math.abs(L - .6);
+    let z = r() ** e;
+    let C = maxChroma(L, H) * (z < .15 ? z / 3 : .05 + .95 * ((z - .15) / .85) ** .5);
+    return [L, C * Math.cos(H), C * Math.sin(H), h];
 }
 
 function samplePalette([a, b, c], n) {
@@ -618,25 +622,67 @@ function samplePalette([a, b, c], n) {
 const colorDistance = ([L1, C1, h1], [L2, C2, h2]) =>
     Math.sqrt((L1 - L2) ** 2 + C1 * C1 + C2 * C2 - 2 * C1 * C2 * Math.cos(h1 - h2));
 
-const palette = memo((key, n) => {
-    let r = seedrandom(key), anchors;
-    for (let i = 0; i < 24; ++i) {
-        anchors = [r, r, r].map(paletteAnchor);
-        let five = samplePalette(anchors, 5);
-        if (five.every((c, k) => !k || colorDistance(c, five[k - 1]) >= .08)
-            && colorDistance(five[0], five[4]) >= .25) break;
+const labDistance = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+
+const palette = memo((key, n, color, lab) => {
+    let r = seedrandom(key), colors = [], base = lab && lab.split(' ').map(Number);
+    if (base) base.push(Math.atan2(base[2], base[1]));
+    if (r() < .75 || base) {
+        let e = lerp(r(), .5, 1.2), hues = base && Math.hypot(base[1], base[2]) > .02 ? [base[3]] : [];
+        let w = r() < .2 ? .3 + .3 * r() : 1, lo = r() * (1 - w), ground;
+        for (let k = 0; k < 8; ++k) {
+            let g = r(), t = g < .6 ? .85 + .15 * r() : g < .72 ? .05 * r() : .3 + .5 * r();
+            let [L, a, b, h] = paletteAnchor(r, hues, .3, lo + t * w);
+            let tint = L > .85 || L < .3 ? .35 * r() : .3 + .4 * r();
+            ground = [L, a * tint, b * tint, h];
+            if (!base || labDistance(ground, base) >= .3) break;
+        }
+        colors.push(ground);
+        hues.push(ground[3]);
+        if (base) colors.push(base);
+        while (colors.length < n) {
+            let best, far = -1;
+            for (let k = 0; k < 8 && (colors.length < 2 || far < .1); ++k) {
+                let c = paletteAnchor(r, hues, e, lo + r() * w);
+                let d = Math.min(...colors.map(o => labDistance(o, c)));
+                if (Math.hypot(c[1], c[2]) < .03 && c[0] > .35 && c[0] < .85) d /= 2;
+                if (d > far) best = c, far = d;
+            }
+            colors.push(best);
+            hues.push(best[3]);
+        }
+        colors = colors.slice(0, n).map(([L, a, b]) => [L, Math.hypot(a, b), Math.atan2(b, a)]);
+    } else {
+        let anchors;
+        r = seedrandom(key);
+        for (let i = 0; i < 24; ++i) {
+            anchors = [0, 0, 0].map(() => paletteAnchor(r));
+            let five = samplePalette(anchors, 5);
+            if (five.every((c, k) => !k || colorDistance(c, five[k - 1]) >= .08)
+                && colorDistance(five[0], five[4]) >= .25) break;
+        }
+        colors = samplePalette(anchors, n);
     }
-    return samplePalette(anchors, n).map(([L, C, h]) =>
+    return colors.map(([L, C, h], i) => base && i == 1 ? color :
         `oklch(${+L.toFixed(3)} ${+C.toFixed(3)} ${+((h * 180 / Math.PI + 360) % 360).toFixed(1)})`);
 });
 
-Function.palette = (_, { seed }) => (n = 5) =>
-    [...palette('palette:' + seed, ~~clamp(calc(n), 1, 256))];
+Function.palette = (_, { seed, rules, host }) => (n = 5, color) => {
+    let lab = '';
+    if (color = color && String(color).trim()) {
+        let read = rules.colors ??= new Map();
+        if (!read.has(color)) {
+            read.set(color, host?.getRgbaColor?.(color, 'oklab')?.slice(0, 3).map(v => v.toFixed(2)).join(' ') || '');
+        }
+        lab = read.get(color);
+        if (!lab) rules.warn(`can't read the color ${color} in @palette()`), color = '';
+    }
+    return [...palette('palette:' + seed, ~~clamp(calc(n), 1, 256), color, lab)];
+};
 
 
 Function.cycle = () => {
     return (...args) => {
-        // one argument rotates its words, several rotate the arguments
         let separator = args.length == 1 ? ' ' : ',';
         let list = parseValueGroup(args.join(separator), { symbol: separator });
         let result = [];

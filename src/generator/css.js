@@ -1147,13 +1147,13 @@ function useMathStream(random, seed) {
     });
 }
 
-export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '') {
+export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '', host) {
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
     let restore = useMathStream(R.random, seedValue);
 
     let envAt = (rules, seed) => ({
-        rules, context: {}, extra: [], upextra, level: 0,
+        rules, context: {}, extra: [], upextra, level: 0, host,
         rand, pick, shuffle, random: R.random, updateRandom,
         seed, maxGrid,
     });

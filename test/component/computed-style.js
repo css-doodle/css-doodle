@@ -11,6 +11,9 @@ test('getRgbaColor gives null where there is no computed color', () => {
         assert.equal(getRgbaColor(root, 'red'), null, 'off-document');
         globalThis.getComputedStyle = () => ({ color: 'rgb(255, 0, 0)' });
         assert.deepEqual(getRgbaColor(root, 'red'), [255, 0, 0, 1]);
+        // Firefox writes tiny channels with an exponent
+        globalThis.getComputedStyle = () => ({ color: 'oklab(0.599871 2.98023e-8 -1e-7)' });
+        assert.deepEqual(getRgbaColor(root, 'gray', 'oklab'), [0.599871, 2.98023e-8, -1e-7, 1]);
     } finally {
         delete globalThis.CSS;
         delete globalThis.getComputedStyle;
