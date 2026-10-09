@@ -515,13 +515,13 @@ from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
 from point to point, and `range(a, b)` interpolates from `a` to `b`
 across the shape.
 
-A `,` in `points`, `r`, `t`, `x`, `y` or `rotate` draws one contour per item,
-the way `background` takes layers: the shorter lists repeat, `t` and
-`i` start over in each contour, and `points: 0` leaves one out. Under
-`fill: evenodd` the inner contours cut holes, so `points: 120, 60;
-r: 1, .5` is a ring. `@tile` and `@plot.scatter` read the region with
-its holes, and `@plot` spreads its cells over the contours by length.
-`frame` outlines each contour.
+A `,` in `points`, `r`, `t`, `x`, `y`, `rotate` or `edge` draws one
+contour per item, the way `background` takes layers: the shorter lists
+repeat, `t` and `i` start over in each contour, and `points: 0` leaves
+one out. Under `fill: evenodd` the inner contours cut holes, so
+`points: 120, 60; r: 1, .5` is a ring. `@tile` and `@plot.scatter`
+read the region with its holes, and `@plot` spreads its cells over the
+contours by length. `frame` outlines each contour.
 
 `round`, from 0 to 1, turns every corner into a curve that starts
 `round / 2` of the way along each side. `edge` is an expression that

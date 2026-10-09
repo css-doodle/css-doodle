@@ -147,7 +147,7 @@ function createPointFunction(props, split) {
 function createShapePoints(props, lo, hi) {
     // `r: 1, .5` draws one contour per item, the shorter lists repeat, `points: 0` leaves one out
     let lists = {}, count = 1, contours = [];
-    for (let k of ['points', 't', 'r', 'x', 'y', 'rotate']) {
+    for (let k of ['points', 't', 'r', 'x', 'y', 'rotate', 'edge']) {
         if (String(props[k]).includes(',')) {
             lists[k] = parseValueGroup(props[k], { noSpace: true });
             count = max(count, lists[k].length);
@@ -170,7 +170,7 @@ function createShapePoints(props, lo, hi) {
         p.split = clamp(n, lo, hi);
         contours.push(p);
     }
-    let fns = contours.map(p => createPointFunction(p, p.split)), point = fns[0];
+    let fns = contours.map(p => createPointFunction(p, p.split));
 
     let turn = Number(props.turn) || 1;
     let frame = props.frame;
@@ -253,8 +253,8 @@ function createShapePoints(props, lo, hi) {
         return ring;
     });
     let outline = bridge(rings);
-    let edge = !isEmpty(props.edge) && point.formula(props.edge);
-    let shape = (ps, back) => {
+    let waves = contours.map((p, c) => !isEmpty(p.edge) && fns[c].formula(p.edge));
+    let shape = (ps, back, edge) => {
         if (back) ps = [ps[0], ...ps.slice(1).reverse()];
         let path = smooth && rounded(ps.flat(), smooth, .002);
         if (path) {
@@ -349,7 +349,7 @@ function createShapePoints(props, lo, hi) {
     let paths = [], from = points.length;
     let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
     rings = rings.map((ring, c) => {
-        let [ps, path] = shape(ring), at = points.length;
+        let [ps, path] = shape(ring, false, waves[c]), at = points.length;
         paths.push(path);
         ps.forEach(add);
         // an outline: back to the first point, then the inner ring in reverse
@@ -361,7 +361,7 @@ function createShapePoints(props, lo, hi) {
                 let theta = atan2(y, x);
                 inner.push([x - w * cos(theta), y - w * sin(theta)]);
             }
-            [inner] = shape(inner, true);
+            [inner] = shape(inner, true, waves[c]);
             inner.forEach(add);
             add(inner[0]);
             add(ps[0]);
@@ -370,7 +370,7 @@ function createShapePoints(props, lo, hi) {
     });
 
     points.rings = rings;
-    points.clip = !edge && frame === undefined && paths.some(curved)
+    points.clip = !waves.some(Boolean) && frame === undefined && paths.some(curved)
         ? toPath(paths, toScreen, (fill == 'nonzero' || fill == 'evenodd') && fill)
         : `polygon(${rings.length < 2 ? points.join(',') : [...points.slice(0, from), ...bridge(rings)].join(',')})`;
     return points;

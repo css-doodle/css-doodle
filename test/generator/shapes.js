@@ -237,7 +237,7 @@ test('round: corners print as curves in CSS shape(), unless the outline is waved
     }
 });
 
-test('a list in points, r, t, x, y or rotate draws one contour per item', () => {
+test('a list in points, r, t, x, y, rotate or edge draws one contour per item', () => {
     // the polygon goes out from the first point to each contour and back
     let { clip, points } = generateShape('points: 4, 3; r: 1, .5; fill: evenodd');
     assert.equal(points.length, 8);
@@ -252,6 +252,11 @@ test('a list in points, r, t, x, y or rotate draws one contour per item', () => 
     assert.deepEqual(star.slice(3), generateShape('points: 3; rotate: 180').points.map(String));
     // `t` and `i` start over in each contour
     assert.equal(String(generateShape('points: 4, 3; r: 1, .5; t: t + i').points[4]), String(generateShape('points: 3; r: .5; t: t + i').points[0]));
+    // edge waves each contour by its own item: a wavy rim around a round hole
+    let [rim, hole] = generateShape('points: 90; r: 1, .5; edge: .05sin(12t), 0').points.rings
+        .map(ring => ring.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50))));
+    assert.ok(Math.max(...rim) - Math.min(...rim) > 4);
+    assert.ok(hole.every(r => Math.abs(r - 25) < .05));
     // frame outlines each contour: around it, back to its start, the inner ring, back again
     let { rings } = generateShape('points: 4; r: 1, .5; frame: 10').points;
     assert.deepEqual(rings.map(ring => ring.length), [11, 11]);
