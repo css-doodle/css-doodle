@@ -1,16 +1,15 @@
 import { escapeSvg } from '../lib/svg.js';
 
-const TIME_UNITS = { ms: 1, s: 1000, min: 60000, h: 3600000 };
-export const TRANSITION_NONE = '*,*::before,*::after{transition:none!important}';
-const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
 const RE_CSS_CLOCK = /\banimation(?:-name)?\s*:/;
 const RE_IMAGE_CLOCK = /%3Canimate|animation(?:-name)?%3A/;
 const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/g;
 const RE_ATTR = /([\w:-]+)=("[^"]*"|'[^']*')/g;
 
-// Chrome runs the animation timer of an svg image with no delay when its css
-// animations sit on ::before/::after, a main-thread busy loop; one SMIL element
-// makes it tick at the normal frame rate
+const TIME_UNITS = { ms: 1, s: 1000, min: 60000, h: 3600000 };
+const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
+
+export const TRANSITION_NONE = '*,*::before,*::after{transition:none!important}';
+
 export function smilTick(sheet) {
     return RE_CSS_CLOCK.test(sheet) ? '<rect width="0" height="0"><set attributeName="x" to="0"/></rect>' : '';
 }
@@ -30,9 +29,8 @@ function clockValue(value = '') {
 
 function setAttr(tag, name, value) {
     let re = new RegExp(`\\s${name}=("[^"]*"|'[^']*')`);
-    return re.test(tag)
-        ? tag.replace(re, ` ${name}="${value}"`)
-        : tag.replace(/\s*\/?>$/, m => ` ${name}="${value}"${m.trim()}`);
+    let attr = ` ${name}="${value}"`;
+    return re.test(tag) ? tag.replace(re, attr) : tag.replace(/\s*\/?>$/, m => attr + m.trim());
 }
 
 function shiftSmil(tag, t, paused) {
@@ -43,16 +41,12 @@ function shiftSmil(tag, t, paused) {
     let begin = clockValue(attrs.begin ?? '0');
     if (begin === null) return tag;
     let elapsed = Math.round(t - begin);
-    if (elapsed < 0) {
-        return setAttr(tag, 'begin', paused ? 'indefinite' : -elapsed + 'ms');
-    }
+    if (paused && elapsed < 0) return setAttr(tag, 'begin', 'indefinite');
     tag = setAttr(tag, 'begin', -elapsed + 'ms');
+    if (!paused) return tag;
     let dur = clockValue(attrs.dur);
     let repeat = attrs.repeatCount === 'indefinite' ? Infinity : (parseFloat(attrs.repeatCount) || 1);
-    let active = dur === null || elapsed < dur * repeat;
-    if (paused && active) {
-        // SMIL drops an interval that does not end after document time 0,
-        // so the cut-off sits one ms in and the value there is held
+    if (dur === null || elapsed < dur * repeat) {
         tag = setAttr(setAttr(tag, 'end', '1ms'), 'fill', 'freeze');
     }
     return tag;
@@ -62,18 +56,13 @@ export function shiftCssAnimations(css, t) {
     if (!t) return css;
     return css.replace(/(\banimation(-delay)?\s*:\s*)([^;}]+)/g, (m, head, longhand, value) => {
         if (/\b(var|calc)\(|\([^)]*\(/.test(value)) return m;
-        // commas inside timing functions do not split the list
         let items = value.split(/,(?![^(]*\))/).map(item => {
-            // in the shorthand the second time is the delay, the first the duration
             let count = 0;
-            let out = item.replace(RE_TIME, (m, num, unit) => {
+            item = item.replace(RE_TIME, (m, num, unit) => {
                 let ms = parseFloat(num) * TIME_UNITS[unit];
                 return (longhand || ++count === 2) ? Math.round(ms - t) + 'ms' : m;
             });
-            if (!longhand && count === 1) {
-                out = out.replace(RE_TIME, m => `${m} ${Math.round(-t)}ms`);
-            }
-            return out;
+            return (!longhand && count === 1) ? item.replace(RE_TIME, m => `${m} ${Math.round(-t)}ms`) : item;
         });
         return head + items.join(',');
     });
