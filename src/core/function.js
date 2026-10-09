@@ -667,9 +667,12 @@ const palette = memo((key, n, color, lab) => {
         `oklch(${+L.toFixed(3)} ${+C.toFixed(3)} ${+((h * 180 / Math.PI + 360) % 360).toFixed(1)})`);
 });
 
-Function.palette = (_, { seed, rules, host }) => (n = 5, color) => {
-    let lab = '';
-    if (color = color && String(color).trim()) {
+Function.palette = (_, { seed, rules, host }) => (...args) => {
+    let n = 5, color = '', lab = '';
+    for (let arg of args) {
+        if (/[a-z#]/i.test(arg)) color = String(arg).trim(); else n = arg;
+    }
+    if (color) {
         let read = rules.colors ??= new Map();
         if (!read.has(color)) {
             read.set(color, host?.getRgbaColor?.(color, 'oklab')?.slice(0, 3).map(v => v.toFixed(2)).join(' ') || '');

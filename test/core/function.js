@@ -739,6 +739,10 @@ test('@palette: the ground comes first, the ink second, around an optional base 
     assert.equal(five[1], '#e6437d');
     assert.deepEqual(palette(3, '#e6437d'), five.slice(0, 3));
     assert.deepEqual(palette(1, '#e6437d'), [five[0]]);
+    // the color and the count are told apart, in either order, and the count defaults to 5
+    assert.deepEqual(palette('#e6437d', 3), five.slice(0, 3));
+    assert.deepEqual(palette('#e6437d'), five);
+    assert.deepEqual(palette(' #e6437d ', '2 + 1'), five.slice(0, 3));
     assert.ok(Math.abs(lch(five[0])[0] - .64) > .25);
     // any color the browser reads; a gradient seed builds distinct colors around it
     assert.equal(Function.palette(null, env('b'))(5, 'tomato')[1], 'tomato');
