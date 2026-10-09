@@ -652,6 +652,15 @@ test('@tile.r: the radius of the cell\'s @tile.circle', () => {
     assert.equal(Function.tile.r(c)(), '');
 });
 
+test('@tile.x, @tile.y, @tile.xy: the center of the cell\'s tile', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let c = cell(20, 3);
+    assert.equal(Function.tile.xy(c)(), '');
+    let t = Function.tile.hex(c, env)('heart');
+    assert.equal(Function.tile.xy(c)(), t.origin);
+    assert.equal(Function.tile.xy(c)(), Function.tile.x(c)() + ' ' + Function.tile.y(c)());
+});
+
 test('@tile.kind: which kind of piece the cell\'s tile is', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let kinds = (fn, shape, n) => Array.from({ length: n }, (_, i) => {

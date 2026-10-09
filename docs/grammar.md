@@ -567,7 +567,8 @@ outline's corners, so a body copied from `@shape` leaves it out:
 
 The kinds are `slice` (the default), `voronoi`, `delaunay`, `grid`,
 `hex`, `triangle`, `cube`, `penrose` and `circle`. Once a cell has its
-piece, `@tile.x` and `@tile.y` read its center, `@tile.kind` its kind,
+piece, `@tile.x` and `@tile.y` read its center, `@tile.xy` both as
+`x y`, `@tile.kind` its kind,
 and `@tile.r` the radius of a `circle` piece, in percent of the
 element's shorter side.
 
