@@ -169,7 +169,13 @@ function transformTokens(rawTokens, spans) {
             continue;
         }
 
-        // compound operators the scanner splits: ** == != <= >= && || << >>
+        if (value === '%' && !spaced && raw[i - 1]?.type === 'Number'
+                && !(next && (next.type === 'Number' ? !/^[+-]/.test(next.value)
+                    : next.type === 'Word' ? !isOperator(next.value)
+                    : next.value === '(' || next.value === 'π'))) {
+            continue;
+        }
+
         if (next && next.type === 'Symbol' && isOperator(value + next.value)) {
             tokens.push(tk(OPERATOR, value + next.value));
             i++;
@@ -613,6 +619,7 @@ export function compileTemplate(segments) {
         let before = despaced[i];
         let after = despaced[i + 1];
         if (after === '' ? i < n - 1 : !RE_SAFE_AFTER.test(after)) return null;
+        if (/%$/.test(segments[i]) || segments[i + 1][0] === '%') return null;
         let sensitive = false;
         if (before === '') {
             if (i > 0) return null;

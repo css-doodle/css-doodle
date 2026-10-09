@@ -154,6 +154,8 @@ test('known re-association hazards stay on the splicing path', () => {
         [['k ', ''], ['5']],          // a name before a hole glues when unspaced: k5
         [['', ' 7'], ['5']],          // `·a 7` glues into a variable
         [['', ' (2)'], ['5']],        // `·a (2)` reads as a call
+        [['', '%-3'], ['5']],         // `5%-3` is 5 - 3, `·a%-3` a remainder
+        [['4%', ''], ['-5']],         // `4%-5` is 4 - 5
     ];
     for (let [segments, values] of hazards) {
         assert.equal(
@@ -167,6 +169,7 @@ test('known re-association hazards stay on the splicing path', () => {
         [['(', ')'], ['-3']],
         [['2*', ''], ['-3']],
         [['', '+1'], ['-3']],
+        [['', ' % 2'], ['5']],
     ];
     for (let [segments, values] of fine) {
         assert.equal(

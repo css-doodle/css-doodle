@@ -302,6 +302,9 @@ Operators, highest precedence first:
 - **Everything is a number.** Units are dropped: with `--w: 10px`,
   `$(w * 2)` is `20`. Comparisons give `1` or `0`, and `&&` and `||`
   return the deciding operand. `%` takes the sign of the left operand.
+  Right after a number, `%` is a percent sign and is dropped unless an
+  unsigned number, a name or `(` follows it, so `@tile.y > 50` works:
+  `25% > 10` is `1` and `25%-5` is `20`, while `7%3` is `1`.
 - **Adjacent values multiply**: `2x`, `2(3)` and `2π` are products.
   A space ends the product, so `2 x` reads as `2`. A name directly before
   `(` is a call. A sign binds to the value after it, so `-2^2` is `4`;

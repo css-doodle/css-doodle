@@ -356,6 +356,23 @@ test('variables holding dimensioned values', () => {
     assert.equal(calc('c + 1', { c: 'red' }), 1);
 });
 
+test('a % glued to a number is a percent sign unless an operand follows', () => {
+    // what @tile.x or @r(100%) leave in an expression
+    assert.equal(calc('75% > 10'), 1);
+    assert.equal(calc('(75% - 53) / 2'), 11);
+    assert.equal(calc('10% * 2 + 1'), 21);
+    assert.equal(calc('max(25%, 3)'), 25);
+    assert.equal(calc('25%-5'), 20);
+    assert.equal(calc('-25% < 0'), 1);
+    // remainders
+    assert.equal(calc('7%3'), 1);
+    assert.equal(calc('7% 3'), 1);
+    assert.equal(calc('7%(3)'), 1);
+    assert.equal(calc('7%x', { x: 3 }), 1);
+    assert.equal(calc('7 % -3'), 1);
+    assert.equal(calc('x% 3', { x: 7 }), 1);
+});
+
 test('deref: a lone variable name acts as a generation-time var()', () => {
     const ctx = {
         c: 'tomato', t: 'rotate(30deg)', w: '10px',
