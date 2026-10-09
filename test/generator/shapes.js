@@ -237,6 +237,26 @@ test('round: corners print as curves in CSS shape(), unless the outline is waved
     }
 });
 
+test('a list in points, r, t, x or y draws one contour per item', () => {
+    // the polygon goes out from the first point to each contour and back
+    let { clip, points } = generateShape('points: 4, 3; r: 1, .5; fill: evenodd');
+    assert.equal(points.length, 8);
+    assert.equal(clip, 'polygon(evenodd,100% 50%,50% 0%,0% 50%,50% 100%,100% 50%,'
+        + '75% 50%,37.5% 28.3493649054%,37.5% 71.6506350946%,75% 50%,100% 50%)');
+    // the shorter lists repeat, `points: 0` leaves one out, commas inside a call are no list
+    assert.equal(generateShape('points: 6; r: 1, .5, .25').points.length, 18);
+    assert.equal(generateShape('points: 6, 0, 4; r: 1, .7, .5').points.length, 10);
+    assert.equal(generateShape('points: 6; r: max(.5, cos(t))').points.length, 6);
+    // `t` and `i` start over in each contour
+    assert.equal(String(generateShape('points: 4, 3; r: 1, .5; t: t + i').points[4]), String(generateShape('points: 3; r: .5; t: t + i').points[0]));
+    // curves print one subpath per contour
+    assert.match(generateShape('points: 6, 4; r: 1, .5; round: .4').clip, /^shape\(from [^]+,close,move to [^]+,close\)$/);
+    // scatter fills between them
+    let radii = generateShape('r: 1, .5; fill: evenodd', { min: 1, max: 65536 }, rules => Object.assign(rules, { split: 180, scatter: 40, seed: 1 }))
+        .points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
+    assert.ok(radii.every(r => r > 25 && r < 50), String(radii));
+});
+
 test('edge: pushes the outline out along its normals, measured along the outline', () => {
     let radii = s => generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
     // a constant grows the shape, both ways round

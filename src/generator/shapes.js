@@ -145,17 +145,33 @@ function createPointFunction(props, split) {
 }
 
 function createShapePoints(props, lo, hi) {
-    let split = clamp(parseInt(props.points || props.split), lo, hi);
-
-    // `r: 10px` carries the unit, but `2t` and `2i` are products
-    let { unit, value } = parseCompoundValue(isEmpty(props.r) ? '' : props.r);
-    if (unit && !props[unit] && !/^[tθi]$/.test(unit)) {
-        if (isEmpty(props.unit)) props.unit = unit;
-        props.r = value;
+    // `r: 1, .5` draws one contour per item, the shorter lists repeat, `points: 0` leaves one out
+    let lists = {}, count = 1, contours = [];
+    for (let k of ['points', 't', 'r', 'x', 'y']) {
+        if (String(props[k]).includes(',')) {
+            lists[k] = parseValueGroup(props[k], { noSpace: true });
+            count = max(count, lists[k].length);
+        }
     }
-    props.split = split;
-
-    let point = createPointFunction(props, split);
+    for (let c = 0; c < count; ++c) {
+        let p = props;
+        if (count > 1) {
+            p = { ...props };
+            for (let k in lists) p[k] = lists[k][c % lists[k].length];
+        }
+        let n = parseInt(p.points || p.split);
+        if (c && n === 0) continue;
+        // `r: 10px` carries the unit, but `2t` and `2i` are products
+        let { unit, value } = parseCompoundValue(isEmpty(p.r) ? '' : p.r);
+        if (unit && !p[unit] && !/^[tθi]$/.test(unit)) {
+            if (isEmpty(props.unit)) props.unit = unit;
+            p.r = value;
+        }
+        p.split = clamp(n, lo, hi);
+        contours.push(p);
+    }
+    let split = contours[0].split;
+    let point = createPointFunction(contours[0], split);
 
     let turn = Number(props.turn) || 1;
     let frame = props.frame;
@@ -198,22 +214,30 @@ function createShapePoints(props, lo, hi) {
     };
 
     let curved = path => suffix && path && path.some(e => e[2] !== undefined);
-    let toPath = (path, map = p => p, rule) => {
-        let out = [], last;
-        for (let [x, y, bx, by] of path) {
-            let at = fmt(...map([x, y]));
-            if (bx !== undefined) out.push(`curve to ${at} with ${fmt(...map([bx, by]))}`);
-            else if (at != last) out.push((out.length ? 'line to ' : 'from ') + at);
-            last = at;
+    // one subpath per contour
+    let toPath = (paths, map = p => p, rule) => {
+        let out = [];
+        for (let path of paths) {
+            let last, start = out.length, head = start ? 'move to ' : 'from ';
+            for (let [x, y, bx, by] of path) {
+                let at = fmt(...map([x, y]));
+                if (bx !== undefined) out.push(`curve to ${at} with ${fmt(...map([bx, by]))}`);
+                else if (at != last) out.push((out.length > start ? 'line to ' : head) + at);
+                last = at;
+            }
+            out.push('close');
         }
-        return `shape(${rule ? rule + ' ' : ''}${out.join(',')},close)`;
+        return `shape(${rule ? rule + ' ' : ''}${out.join(',')})`;
     };
+    // contours in one polygon: out from the first point to each and back, so the bridges cancel
+    let bridge = rings => rings.length < 2 ? rings[0]
+        : [...rings[0], ...rings.slice(1).flatMap(ring => [rings[0][0], ...ring, ring[0]]), rings[0][0]];
 
     let smooth = clamp(Number(props.round) || 0, 0, 1);
     let tile = ([poly, [x, y], kind = 1, extra]) => {
         if (smooth) {
             let tol = (box[2] - box[0]) / 1e3, path = rounded(poly, smooth, tol);
-            if (curved(path)) return new Point(toPath(path), extra, fmt(x, y), kind);
+            if (curved(path)) return new Point(toPath([path]), extra, fmt(x, y), kind);
             poly = flatten(path, tol);
         }
         let vs = [];
@@ -225,10 +249,12 @@ function createShapePoints(props, lo, hi) {
         return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, fmt(x, y), kind);
     };
 
-    let outline = [];
-    for (let i = 0; i < split; ++i) {
-        outline.push(point(rad * i, i));
-    }
+    let rings = contours.map((p, c) => {
+        let f = c ? createPointFunction(p, p.split) : point, step = (PI * 2) * turn / p.split, ring = [];
+        for (let i = 0; i < p.split; ++i) ring.push(f(step * i, i));
+        return ring;
+    });
+    let outline = bridge(rings);
     let edge = !isEmpty(props.edge) && point.formula(props.edge);
     let shape = (ps, back) => {
         if (back) ps = [ps[0], ...ps.slice(1).reverse()];
@@ -322,12 +348,17 @@ function createShapePoints(props, lo, hi) {
         points.push(new Point(fill, ''));
     }
 
-    let path;
-    [outline, path] = shape(outline);
-    outline.forEach(add);
+    let paths = [], from = points.length;
+    rings = rings.map((ring, c) => {
+        let [ps, path] = shape(ring), at = points.length;
+        if (!c) outline = ps;
+        paths.push(path);
+        ps.forEach(add);
+        return points.slice(at);
+    });
 
     // an outline: back to the first point, then the inner ring in reverse
-    if (frame !== undefined) {
+    if (frame !== undefined && rings.length == 1) {
         let first = outline[0];
         add(first);
         let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
@@ -343,9 +374,10 @@ function createShapePoints(props, lo, hi) {
         add(first);
     }
 
-    points.clip = !edge && frame === undefined && curved(path)
-        ? toPath(path, toScreen, (fill == 'nonzero' || fill == 'evenodd') && fill)
-        : `polygon(${points.join(',')})`;
+    points.rings = rings;
+    points.clip = !edge && frame === undefined && paths.some(curved)
+        ? toPath(paths, toScreen, (fill == 'nonzero' || fill == 'evenodd') && fill)
+        : `polygon(${rings.length < 2 ? points.join(',') : [...points.slice(0, from), ...bridge(rings)].join(',')})`;
     return points;
 }
 

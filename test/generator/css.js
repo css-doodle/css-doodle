@@ -1082,6 +1082,11 @@ test('@svg-polygon inside @m reads the sequence @n', () => {
     assert.ok(all.includes('points="1 0,0 -1,-1 0,0 1"'));
 });
 
+test('@svg-polygon draws contours as subpaths of one path', () => {
+    let all = decodeURIComponent(css('background: @svg-polygon(points: 4, 3; r: 1, .5)'));
+    assert.ok(all.includes('d="M1 0L0 -1L-1 0L0 1ZM0.5 0L-0.25 -0.433012701892L-0.25 0.433012701892Z"'), all);
+});
+
 test('@palette: the same colors in every cell, and the @r stream stays untouched', () => {
     let values = (sheet, name) => [...sheet.matchAll(new RegExp(`${name}:([^;]+);`, 'g'))].map(m => m[1]);
     let plain = cells('--r: @r(1000);', '3x3', 7);
