@@ -11,7 +11,7 @@ import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, max, PI } = Math;
@@ -197,9 +197,25 @@ function createShapePoints(props, lo, hi) {
         py.push(y);
     };
 
+    let curved = path => suffix && path && path.some(e => e[2] !== undefined);
+    let toPath = (path, map = p => p, rule) => {
+        let out = [], last;
+        for (let [x, y, bx, by] of path) {
+            let at = fmt(...map([x, y]));
+            if (bx !== undefined) out.push(`curve to ${at} with ${fmt(...map([bx, by]))}`);
+            else if (at != last) out.push((out.length ? 'line to ' : 'from ') + at);
+            last = at;
+        }
+        return `shape(${rule ? rule + ' ' : ''}${out.join(',')},close)`;
+    };
+
     let smooth = clamp(Number(props.round) || 0, 0, 1);
     let tile = ([poly, [x, y], kind = 1, extra]) => {
-        if (smooth) poly = rounded(poly, smooth, (box[2] - box[0]) / 1e3);
+        if (smooth) {
+            let tol = (box[2] - box[0]) / 1e3, path = rounded(poly, smooth, tol);
+            if (curved(path)) return new Point(toPath(path), extra, fmt(x, y), kind);
+            poly = flatten(path, tol);
+        }
         let vs = [];
         for (let i = 0; i < poly.length; i += 2) {
             let v = fmt(poly[i], poly[i + 1]);
@@ -216,13 +232,14 @@ function createShapePoints(props, lo, hi) {
     let edge = !isEmpty(props.edge) && point.formula(props.edge);
     let shape = (ps, back) => {
         if (back) ps = [ps[0], ...ps.slice(1).reverse()];
-        if (smooth) {
-            let p = rounded(ps.flat(), smooth, .002);
+        let path = smooth && rounded(ps.flat(), smooth, .002);
+        if (path) {
+            let p = flatten(path, .002);
             ps = [];
             for (let i = 0; i < p.length; i += 2) ps.push([p[i], p[i + 1]]);
         }
         if (edge) ps = wave(ps, edge, .001);
-        return back ? [ps[0], ...ps.slice(1).reverse()] : ps;
+        return [back ? [ps[0], ...ps.slice(1).reverse()] : ps, path];
     };
 
     if (props.scatter) {
@@ -305,7 +322,8 @@ function createShapePoints(props, lo, hi) {
         points.push(new Point(fill, ''));
     }
 
-    outline = shape(outline);
+    let path;
+    [outline, path] = shape(outline);
     outline.forEach(add);
 
     // an outline: back to the first point, then the inner ring in reverse
@@ -319,12 +337,15 @@ function createShapePoints(props, lo, hi) {
             let theta = atan2(y, x);
             inner.push([x - w * cos(theta), y - w * sin(theta)]);
         }
-        inner = shape(inner, true);
+        [inner] = shape(inner, true);
         inner.forEach(add);
         add(inner[0]);
         add(first);
     }
 
+    points.clip = !edge && frame === undefined && curved(path)
+        ? toPath(path, toScreen, (fill == 'nonzero' || fill == 'evenodd') && fill)
+        : `polygon(${points.join(',')})`;
     return points;
 }
 
@@ -348,5 +369,5 @@ export default function generateShape(input, range = {}, modifier) {
         rules.seed = range.seed;
     }
     let points = createShapePoints(rules, range.min || 3, range.max || 3600);
-    return { rules, points, preset: preset !== undefined };
+    return { rules, points, clip: points.clip, preset: preset !== undefined };
 }

@@ -247,23 +247,28 @@ function shrink(p, d) {
     return d ? clip(p, p, d) : p;
 }
 
-// corners become quadratic curves through the edge points f / 2 of the way along
 function rounded(p, f, tol) {
     let out = [], n = p.length;
     for (let i = 0; i < n; i += 2) {
         let bx = p[i], by = p[i + 1];
         let ax = bx + (p[(i + n - 2) % n] - bx) * f / 2, ay = by + (p[(i + n - 1) % n] - by) * f / 2;
         let cx = bx + (p[(i + 2) % n] - bx) * f / 2, cy = by + (p[(i + 3) % n] - by) * f / 2;
-        let bend = hypot(ax - 2 * bx + cx, ay - 2 * by + cy) / 4;
-        if (!(bend > tol)) {
-            out.push(bx, by);
-            continue;
-        }
-        for (let j = 0, k = min(ceil(sqrt(bend / tol)), 64); j <= k; ++j) {
-            let t = j / k, u = 1 - t;
-            out.push(u * u * ax + 2 * u * t * bx + t * t * cx, u * u * ay + 2 * u * t * by + t * t * cy);
-        }
+        if (hypot(ax - 2 * bx + cx, ay - 2 * by + cy) / 4 > tol) out.push([ax, ay], [cx, cy, bx, by]);
+        else out.push([bx, by]);
     }
+    return out;
+}
+
+function flatten(path, tol) {
+    let out = [];
+    path.forEach(([x, y, bx, by], i) => {
+        if (bx === undefined) return out.push(x, y);
+        let [ax, ay] = path[i - 1];
+        for (let j = 1, k = min(ceil(sqrt(hypot(ax - 2 * bx + x, ay - 2 * by + y) / 4 / tol)), 64); j <= k; ++j) {
+            let t = j / k, u = 1 - t;
+            out.push(u * u * ax + 2 * u * t * bx + t * t * x, u * u * ay + 2 * u * t * by + t * t * y);
+        }
+    });
     return out;
 }
 
@@ -641,5 +646,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, PHI,
 };

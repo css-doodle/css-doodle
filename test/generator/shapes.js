@@ -223,6 +223,20 @@ test('round: softens the corners of an outline, smooth curves stay', () => {
     assert.ok(far('square; round: 1; edge: .02 * sin(8t)') < 60);
 });
 
+test('round: corners print as curves in CSS shape(), unless the outline is waved, framed or unitless', () => {
+    let { clip, points } = generateShape('square; round: .5');
+    assert.match(clip, /^shape\(from [^,]+(,(line|curve) to [^,]+)+,close\)$/);
+    assert.equal(clip.match(/curve to \S+ \S+ with \S+ \S+,/g).length, 4);
+    // where the polygon starts too
+    assert.ok(clip.startsWith('shape(from ' + points[0] + ','));
+    assert.match(generateShape('square; round: .5; fill: evenodd').clip, /^shape\(evenodd from /);
+    assert.match(generateShape('square; round: .5; unit: px').clip, /^shape\(from \S+px \S+px,/);
+    for (let s of ['square', 'circle; round: 1', 'square; round: .5; edge: .02 * sin(8t)', 'square; round: .5; frame: 10', 'square; round: .5; unit: none']) {
+        let { clip, points } = generateShape(s);
+        assert.equal(clip, `polygon(${points.join(',')})`, s);
+    }
+});
+
 test('edge: pushes the outline out along its normals, measured along the outline', () => {
     let radii = s => generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
     // a constant grows the shape, both ways round

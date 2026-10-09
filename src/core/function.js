@@ -658,8 +658,7 @@ Function.code = () => {
 
 const shapePolygon = memo((input, seed) => {
     if (input.trim() == 'circle') return 'ellipse(50% 50%)';
-    let { points } = generateShape(input, { seed });
-    return `polygon(${points.join(',')})`;
+    return generateShape(input, { seed }).clip;
 });
 
 Function.shape = (_, { seed } = {}) => (...args) => shapePolygon(args.join(','), seed);
