@@ -495,7 +495,7 @@ function pack(rings, box, inside, count, seed, size) {
         if (inside(x, y)) heap.push(xs.length), key.push(Infinity), xs.push(x), ys.push(y);
     }
     let avg = sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
-    let caps = xs.map((x, i) => size ? avg * size(x, ys[i]) : 3 * avg), cap = caps.reduce((a, b) => max(a, b), 0);
+    let caps = xs.map((x, i) => avg * size(x, ys[i])), cap = caps.reduce((a, b) => max(a, b), 0);
     if (!(cap > 0)) return out;
     cap = max(cap, avg);
     let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, sides = Array.from({ length: cols * rows }, () => []);

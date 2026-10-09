@@ -14,7 +14,7 @@ import {
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, PHI,
 } from './tiling.js';
 
-const { cos, sin, tan, atan2, sqrt, hypot, abs, max, PI } = Math;
+const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, PI } = Math;
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
@@ -313,7 +313,8 @@ function createShapePoints(props, lo, hi) {
         if (name == 'circle') {
             let size = formula(props.size);
             context.random = seedrandom('size:' + seed);
-            return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, onScreen(size)).map(([x, y, r]) => {
+            size = onScreen(size) || (count < 2 ? () => 1 : () => min(1.5, sqrt(count) / 2) + min(count / 100, sqrt(count) / 5) * context.random() ** 24);
+            return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, size).map(([x, y, r]) => {
                 let at = fmt(x, y), [rx, ry] = [sx, sy].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
                 let point = new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
                 point.rx = rx;

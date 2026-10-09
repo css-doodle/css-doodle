@@ -422,8 +422,15 @@ test('@tile.circle: circles packed inside the shape, one per cell, largest first
     // the doodle seed moves them, `seed: n` pins them
     assert.notEqual(String(tiles('heart', 20, 'b')[0]), String(tiles('heart', 20)[0]));
     assert.equal(String(tiles('heart; seed: 7', 20, 'b')[3]), String(tiles('heart; seed: 7', 20)[3]));
-    // `size: f(x, y)` caps the radius in average radii (3 by default), 0 leaves no centre there
-    assert.deepEqual(tiles('heart; size: 3', 100).map(String), tiles('heart', 100).map(String));
+    // `size: f(x, y)` caps the radius in average radii, 0 leaves no centre there;
+    // by default a rare few get larger caps, so the biggest step down instead of stopping at one size
+    assert.deepEqual(tiles('heart; size: min(1.5, sqrt(count)/2) + min(count/100, sqrt(count)/5) * random()^24', 100).map(String), tiles('heart', 100).map(String));
+    let top = size => new Set(tiles('heart' + size, 400).slice(0, 10).map(t => circle(t)[0])).size;
+    assert.ok(top('') == 10 && top('; size: 3') < 10);
+    // a single circle fills the shape, two share it
+    assert.equal(String(tiles('circle', 1)[0]), String(tiles('circle; size: 3', 1)[0]));
+    let [a, b] = tiles('circle', 2).map(circle);
+    assert.ok(a[0] < 30 && b[0] > a[0] / 2);
     assert.ok(tiles('circle; size: 1', 60).map(circle)[0][0] < round[0][0] / 2);
     let graded = tiles('circle; size: 1 + 3 * (1 + y)', 60).map(circle);
     let biggest = top => Math.max(...graded.filter(c => (c[3] < 50) == top).map(c => c[0]));
