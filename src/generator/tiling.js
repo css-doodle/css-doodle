@@ -497,6 +497,8 @@ function pack(rings, box, inside, count, seed, size) {
     let avg = sqrt(w * h * xs.length / (k - start) / count / PI) || 1;
     let caps = xs.map((x, i) => size ? avg * size(x, ys[i]) : 3 * avg), cap = caps.reduce((a, b) => max(a, b), 0);
     if (!(cap > 0)) return out;
+    // cells no finer than the mean radius, so small size: values don't blow up the grid
+    cap = max(cap, avg);
     let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, grid = Array.from({ length: cols * rows }, () => []);
     let edge = [], segs = [], sides = grid.map(() => []), cell = (v, o) => floor((v - o) / cap);
     for (let ring of rings) ring.forEach(([bx, by], a) => {
@@ -504,7 +506,7 @@ function pack(rings, box, inside, count, seed, size) {
         for (let j = max(0, cell(min(ay, by), y0) - 2); j <= min(rows - 1, cell(max(ay, by), y0) + 2); ++j) {
             for (let m = max(0, cell(min(ax, bx), x0) - 2); m <= min(cols - 1, cell(max(ax, bx), x0) + 2); ++m) sides[m + cols * j].push(segs.length);
         }
-        segs.push(ax, ay, dx, dy, 1 / (dx * dx + dy * dy) || 0);
+        segs.push(ax, ay, dx, dy, 1 / (dx * dx + dy * dy || Infinity));
     });
     let room = i => {
         let x = xs[i], y = ys[i], r = edge[i];

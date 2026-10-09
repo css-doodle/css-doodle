@@ -297,7 +297,10 @@ function createShapePoints(props, lo, hi) {
                 return [q, centre(q), face + 1];
             }));
             if (jitter) pieces = shake(pieces, jitter, seed);
-            let p = pieces[0]?.[0], tol = edge && p && (box[2] - box[0]) * 5e-4 / hypot(p[2] - p[0], p[3] - p[1]);
+            // the bend tolerance is in edge lengths: take the longest side, a notch from shift: can be tiny
+            let p = pieces[0]?.[0] || [], len = 0;
+            for (let i = 0; i < p.length; i += 2) len = max(len, hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]));
+            let tol = (box[2] - box[0]) * 5e-4 / len;
             return pieces.map(([p, c, kind, marks]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape, marks) : p), c, kind]));
         }
         let context = Object.assign(Object.create(defaultContext), props);
