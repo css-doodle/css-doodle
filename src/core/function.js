@@ -354,14 +354,10 @@ const composeSvgPolygonUrl = memo((commands, seed) => {
             props += `${name}: ${rules[name]};`
         }
     }
-    // contours as subpaths, so no stroke runs between them
-    let { rings } = points, many = rings?.length > 1;
-    let parsed = parseSvg(css`
-    viewBox: -1 -1 2 2 p ${p};
-    ${many ? 'path' : 'polygon'} {
-      ${props} ${many ? `d: ${rings.map(ring => 'M' + ring.join('L') + 'Z').join('')}` : `points: ${points}`};
-    }
-  `);
+    let { rings } = points, shape = rings?.length > 1
+        ? `path { ${props} d: ${rings.map(ring => 'M' + ring.join('L') + 'Z').join('')}; }`
+        : `polygon { ${props} points: ${points}; }`;
+    let parsed = parseSvg(css`viewBox: -1 -1 2 2 p ${p}; ${shape}`);
     return createSvgUrl(generateSvg(parsed));
 });
 
