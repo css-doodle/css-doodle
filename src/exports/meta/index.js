@@ -7,10 +7,23 @@ function canonical(registry, alias) {
     return Object.keys(registry).filter(n => !Object.hasOwn(alias, n)).sort();
 }
 
+// variants called as @a.b, e.g. @tile.penrose, keyed by canonical name
+function variants(registry, names) {
+    let result = {};
+    for (let name of names) {
+        let fn = registry[name];
+        let list = Object.keys(fn).filter(key => typeof fn[key] === 'function').sort();
+        if (list.length) result[name] = list;
+    }
+    return result;
+}
+
 // @-functions: canonical names plus the alias → target map
+const functionNames = canonical(Func, functionAlias);
 export const functions = {
-    names: canonical(Func, functionAlias),
+    names: functionNames,
     alias: { ...functionAlias },
+    variants: variants(Func, functionNames),
 };
 
 // JS Math members exposed as @-functions

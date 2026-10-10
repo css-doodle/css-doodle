@@ -684,6 +684,12 @@ test('keyframes of static @shape values are emitted once', () => {
     assert.equal(cells, ':is(cell,#_) {animation:a 1s;}');
 });
 
+test('@place inside keyframes carries the cell size in the frame', () => {
+    // used to throw: a keyframe step has no selector
+    let all = css('@keyframes k { to { @place: 20% 30%; } } animation: k 1s;', '2');
+    assert.match(all, /@keyframes k \{to \{position:absolute;left:20%;[^}]*width:var\(--_cell-width, 25%\);height:var\(--_cell-height, 25%\);\}\}/);
+});
+
 test('keyframes that only set custom properties are static and emitted once', () => {
     let all = css('@keyframes k { from { --a: 0 } to { --a: 1 } } animation: k 1s;', '2');
     assert.equal((all.match(/@keyframes/g) || []).length, 1);

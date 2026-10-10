@@ -753,6 +753,10 @@ class Rules {
                 case 'place-cell': case 'place': {
                     if (isHostSelector(selector)) break;
                     rule = transformed;
+                    if (selector === undefined) {
+                        rule += placeShared;
+                        break;
+                    }
                     let shared = selector.replaceAll('&', SHARED_CELL(this.cellPrefix));
                     let rules = this.scope.rules.get(shared);
                     if (!rules || !rules.includes(placeShared)) {

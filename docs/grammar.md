@@ -564,16 +564,21 @@ outline's corners, so a body copied from `@shape` leaves it out:
 | `round`          | all but `circle` and scatter            | curves the corners, 0 to 1                                     |
 | `jitter`         | `grid`, `hex`, `triangle`, `cube`, `penrose` | moves each corner by up to that part of a piece           |
 | `shift`          | `grid`                                  | `a [b]`, slides every other row by `a`, or column by `b`       |
-| `edge`, `slide`  | `grid`, `hex`, `triangle`               | bends each edge across and along itself, expressions in `t`, `e`, `x`, `y` and `random()` |
+| `edge`, `slide`  | `grid`, `hex`, `triangle`               | bends each edge across and along itself, expressions in `t`, `e`, `x`, `y` and `random()`; `edge` is ignored with `op` or `star` |
 | `pair`           | `grid` without `shift`, `hex`           | `turn` pairs edges by a turn about a corner, so every piece is one shape turned by its kind |
-| `size`           | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x` and `y` |
+| `op`             | `grid`, `hex`, `triangle`, `cube`, `penrose`, `voronoi` without `crack` or `stretch` | Conway's operators, one letter per step, right to left: `d a t k e b s`, and `g j m o` for `ds da kda de`; other letters are skipped |
+| `star`           | the same as `op`                        | after `op`, turns every piece into a Hankin star: lines leave each side's middle at this angle, in degrees between 0 and 90 |
+| `size`           | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x` and `y`; by default 1.5 with a rare few larger |
 
 The kinds are `slice` (the default), `voronoi`, `delaunay`, `grid`,
 `hex`, `triangle`, `cube`, `penrose` and `circle`. Once a cell has its
 piece, `@tile.x` and `@tile.y` read its center, `@tile.xy` both as
 `x y`, `@tile.kind` its kind,
 and `@tile.r` the radius of a `circle` piece, in percent of the
-element's shorter side.
+element's shorter side. A piece that `op` or `star` makes from a piece
+keeps its kind; the pieces made at the corners take the next kind up,
+and those made along the sides by `e`, `b` and `s` the one after. `d`
+makes every piece kind 1.
 
 ### 9.3 Patterns
 
