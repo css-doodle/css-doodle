@@ -4,7 +4,7 @@ import Perlin from '../lib/noise.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 
-const { cos, sin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;
+const { cos, sin, tan, asin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;
 
 const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;
@@ -381,6 +381,86 @@ function penrose(box, bounds, s) {
     });
 }
 
+function conway(op, star, pre) {
+    let letters = [...String(op ?? '').replace(/[^abdegjkmost]/g, '').replace(/[gjmo]/g, c => ({ g: 'ds', j: 'da', m: 'kda', o: 'de' })[c])].reverse();
+    star = parseFloat(star);
+    if (star > 0 && star < 90) letters.push('*');
+    let fn = pieces => {
+        if (pre) pieces = pre(pieces);
+        for (let letter of letters) pieces = derive(pieces, letter, star * PI / 180);
+        return pieces;
+    };
+    return { rim: letters.length + 1, fn };
+}
+
+function derive(pieces, letter, angle) {
+    let eps = sqrt(area(pieces[0]?.[0] || [])) * 1e-7 || 1e-9, ids = new Map(), V = [], F = [], top = 0;
+    for (let [p, c, kind = 1] of pieces) {
+        let f = [], twice = 0;
+        for (let i = 0; i < p.length; i += 2) {
+            let key = round(p[i] / eps) + ' ' + round(p[i + 1] / eps), v = ids.get(key);
+            if (v === undefined) ids.set(key, v = V.length), V.push([p[i], p[i + 1]]);
+            if (v !== f.at(-1)) f.push(v);
+            twice += p[i] * p[(i + 3) % p.length] - p[(i + 2) % p.length] * p[i + 1];
+        }
+        if (f[0] === f.at(-1)) f.pop();
+        if (f.length > 2) F.push([twice < 0 ? f.reverse() : f, c, kind]), top = max(top, kind);
+    }
+    let n = V.length, half = new Map(), first = [], out = [];
+    F.forEach(([f], k) => f.forEach((v, i) => {
+        half.set(v * n + f[(i + 1) % f.length], [k, i]);
+        first[v] ??= [k, i];
+    }));
+    let id = (k, i) => F[k][0].at(i % F[k][0].length), at = (k, i) => V[id(k, i)];
+    let rings = first.map(([k, i], v) => {
+        let ring = [], k0 = k;
+        do {
+            ring.push([k, i]);
+            [k, i] = half.get(id(k, i + 1) * n + v) || [];
+            if (k === undefined) return;
+            ++i;
+        } while (k != k0);
+        return ring;
+    });
+    let emit = (ps, kind) => out.push([ps.flat(2), kind]);
+    let mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
+    if (letter == 'd') rings.forEach(ring => ring && emit(ring.map(([k]) => F[k][1]), 1));
+    else if (letter == 'k') F.forEach(([f, c, kind], k) => f.forEach((v, i) => emit([c, at(k, i), at(k, i + 1)], kind)));
+    else {
+        let pair = (k, i) => {
+            let [cx, cy] = F[k][1], b = PI / F[k][0].length, T = tan(b) ** 2, x = 1 / (2 + 2 * cos(b)), a = 0, r, w = at(k, i);
+            if (letter == 'a') return [w = mix(w, at(k, i + 1), .5), w];
+            if (letter == 't') return [-1, 1].map(d => mix(w, at(k, i + d), 1 / (2 + 2 * sin(PI / (rings[id(k, i)]?.length || 3)))));
+            if (letter == '*') {
+                let ex = cx - w[0], ey = cy - w[1], l = 0;
+                for (let d of [-1, 1]) {
+                    let [ux, uy] = at(k, i + d), dx = w[0] - ux, dy = w[1] - uy, h = hypot(dx, dy), cs = cos(angle) / h, sn = -d * sin(angle) / h;
+                    let rx = cs * dx - sn * dy, ry = cs * dy + sn * dx, det = rx * ey - ex * ry;
+                    let t = det && (ry * dx - rx * dy) / 2 / det, s = det && (ey * dx - ex * dy) / 2 / det;
+                    l += t > 0 && t < 1 && s > 0 ? t / 2 : .5;
+                }
+                return [mix(w, [cx, cy], l), mix(w, at(k, i + 1), .5)];
+            }
+            if (letter == 's') r = sqrt((1 + T - sqrt(3 * T)) / (1 - T + T * T)), a = asin(r * tan(b) / 2);
+            else r = 1 / (1 + tan(b) * (letter == 'b' ? 1 - 2 * x : 1));
+            let turn = j => { let [px, py] = at(k, j); px -= cx, py -= cy; return [cx + (px * cos(a) - py * sin(a)) * r, cy + (px * sin(a) + py * cos(a)) * r]; };
+            return letter == 'b' ? [mix(turn(i), turn(i - 1), x), mix(turn(i), turn(i + 1), x)] : [w = turn(i), w];
+        };
+        F.forEach(([f, , kind], k) => emit(f.map((v, i) => pair(k, i)), kind));
+        rings.forEach(ring => ring && emit(ring.map(([k, i]) => pair(k, i)), top + 1));
+        if ('esb'.includes(letter)) F.forEach(([f], k) => f.forEach((u, i) => {
+            let [g, j] = half.get(f[(i + 1) % f.length] * n + u) || [];
+            if (g < k) {
+                let [a, b, c, d] = [pair(k, i)[1], pair(k, i + 1)[0], pair(g, j)[1], pair(g, j + 1)[0]];
+                if (letter != 's') emit([a, b, c, d], top + 2);
+                else if (hypot(a[0] - c[0], a[1] - c[1]) < hypot(b[0] - d[0], b[1] - d[1])) emit([a, b, c], top + 2), emit([a, c, d], top + 2);
+                else emit([a, b, d], top + 2), emit([b, c, d], top + 2);
+            }
+        }));
+    }
+    return out.map(([p, kind]) => [p, centre(p), kind]);
+}
+
 function delaunay(px, py, box, inside, count, gap) {
     let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0;
     let tris = [];
@@ -416,18 +496,44 @@ function delaunay(px, py, box, inside, count, gap) {
     });
 }
 
-function tiles(make, box, screen, inside, count, grow = 1) {
+function reacher(box, inside, grow, derived) {
+    let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
+    let crosses = p => {
+        for (let i = 0; i < p.length; i += 2) {
+            let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay, t0 = 0, t1 = 1;
+            let clip = (d, q) => d < 0 ? t0 = max(t0, q / d) : d > 0 ? t1 = min(t1, q / d) : q < 0 && (t1 = -1);
+            clip(-dx, ax - box[0]), clip(dx, box[2] - ax), clip(-dy, ay - box[1]), clip(dy, box[3] - ay);
+            if (t0 < t1 && inside(ax + dx * (t0 + t1) / 2, ay + dy * (t0 + t1) / 2)) return true;
+        }
+    };
+    return ([p, c]) => reaches(grow == 1 ? p : scale(p, c, grow), c, inside, corners) || derived && crosses(p);
+}
+
+function tiles(make, box, screen, inside, count, grow = 1, derive) {
     let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
-    let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
-    let reaching = s => make(box, [x0, y0, x1, y1], s).filter(([p, c]) => reaches(grow == 1 ? p : p.map((v, i) => c[i & 1] + (v - c[i & 1]) * grow), c, inside, corners));
-    let hi = sqrt(area / count);
-    for (let i = 0; i < 30 && reaching(hi).length > count; ++i) hi *= 1.25;
-    for (let lo = hi / 8, i = 0; i < 20; ++i) {
-        let mid = (lo + hi) / 2;
-        if (reaching(mid).length > count) lo = mid; else hi = mid;
-    }
-    return reaching(hi);
+    let keep = pieces => pieces.filter(reacher(box, inside, grow, derive));
+    let reaching = s => keep(make(box, [x0, y0, x1, y1], s));
+    let hi = sqrt(area / count), fit = (size, hi, lo) => {
+        for (let i = 0; i < 30 && size(hi).length > count; ++i) hi *= 1.25;
+        lo ??= hi / 8;
+        for (let i = 0; i < 20; ++i) {
+            let mid = (lo + hi) / 2;
+            if (size(mid).length > count) lo = mid; else hi = mid;
+        }
+        return size(hi);
+    };
+    if (!derive) return fit(reaching, hi);
+    let [cx, cy] = centre(box), { rim, fn } = derive, d = (rim + 3) * hi;
+    let near = ps => ps.filter(([, [x, y]]) => abs(x - cx) < 2 * hi && abs(y - cy) < 2 * hi).length;
+    let probe = make(box, [cx - d, cy - d, cx + d, cy + d], hi);
+    let s = hi * sqrt(near(fn(probe)) / near(probe) * reaching(hi).length / count || 1) / 1.25;
+    let [u0, v0, u1, v1] = [min(x0, cx), min(y0, cy), max(x1, cx), max(y1, cy)];
+    let pieces = fn(make(box, [x0 - rim * s, y0 - rim * s, x1 + rim * s, y1 + rim * s], s)).filter(([p]) => {
+        let [a, b, c, d] = bounds(p);
+        return a < u1 && c > u0 && b < v1 && d > v0;
+    });
+    return fit(t => keep(pieces.map(([p, c, kind]) => [scale(p, [cx, cy], t / s), scale(c, [cx, cy], t / s), kind])), s, s);
 }
 
 function shake(pieces, n, seed) {
@@ -471,7 +577,11 @@ function inset(p, x, y, d, q = p) {
         per += hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]);
     }
     let f = 1 - d * per / 2 / area(p);
-    return f > 0 ? q.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; }) : [];
+    return f > 0 ? scale(q, [x, y], f) : [];
+}
+
+function scale(p, [x, y], f) {
+    return p.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; });
 }
 
 function bounds(p) {
@@ -647,6 +757,6 @@ function simplify({ f, g, n }, tol) {
 }
 
 export {
-    insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
+    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, PHI,
 };

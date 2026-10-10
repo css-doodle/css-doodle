@@ -698,6 +698,53 @@ test('@tile.kind: which kind of piece the cell\'s tile is', () => {
     assert.equal(Function.tile.kind(c)(), '');
 });
 
+test('@tile op: and star: derive a tiling from a tiling', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => {
+        let c = cell(n, i + 1), t = fn(c, env)(shape);
+        return Object.assign(Object(t), { k: Function.tile.kind(c)() });
+    }).filter(t => String(t) != 'polygon(0 0)');
+    let covered = list => {
+        let vs = list.map(verts);
+        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
+            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
+        }
+        return true;
+    };
+    let sides = t => verts(t).map((v, i, vs) => Math.hypot(v[0] - vs[(i + 1) % vs.length][0], v[1] - vs[(i + 1) % vs.length][1]));
+    let inner = list => list.filter(t => verts(t).every(([x, y]) => x > 3 && x < 97 && y > 3 && y < 97));
+    let spread = list => { let ls = inner(list).flatMap(sides); return Math.max(...ls) / Math.min(...ls); };
+    let corners = list => [...new Set(inner(list).map(t => verts(t).length))].sort((a, b) => a - b);
+    // the Archimedean tilings from the regular ones, every side the same length
+    for (let [fn, op, ns] of [
+        [Function.tile.grid, 't', [4, 8]], [Function.tile.hex, 't', [3, 12]], [Function.tile.hex, 'a', [3, 6]],
+        [Function.tile.hex, 'e', [3, 4, 6]], [Function.tile.hex, 'b', [4, 6, 12]], [Function.tile.grid, 's', [3, 4]], [Function.tile.hex, 's', [3, 6]],
+    ]) {
+        let list = tiles(fn, `square; op: ${op}`, 100);
+        assert.ok(list.length > 70 && list.length <= 100, `${op} ${list.length}`);
+        assert.ok(covered(list), op);
+        assert.ok(spread(list) < 1 + 1e-6, `${op} ${spread(list)}`);
+        assert.deepEqual(corners(list), ns, op);
+    }
+    // right to left: g is the dual of the snub, the Cairo pentagons, four long sides to a short one of (√3 - 1)
+    let cairo = tiles(Function.tile.grid, 'square; op: g', 100);
+    assert.ok(covered(cairo));
+    assert.deepEqual(corners(cairo), [5]);
+    assert.ok(Math.abs(spread(cairo) - (1 + Math.sqrt(3)) / 2) < 1e-6);
+    assert.equal(tiles(Function.tile.grid, 'square; op: ds', 100).join(), cairo.join());
+    // letters outside the operator set are skipped, so the seed letter of Wikipedia's `tQ` does no harm
+    assert.equal(tiles(Function.tile.grid, 'square; op: tQ', 100).join(), tiles(Function.tile.grid, 'square; op: t', 100).join());
+    // faces keep their kind, then the corner pieces: octagons 1, squares 2
+    for (let t of inner(tiles(Function.tile.grid, 'square; op: t', 100))) assert.equal(t.k, verts(t).length == 8 ? 1 : 2);
+    // stars on octagons and squares, then the pieces round each corner; on penrose and voronoi too
+    let stars = tiles(Function.tile.grid, 'square; op: t; star: 67.5deg', 150);
+    assert.ok(covered(stars));
+    assert.deepEqual([...new Set(stars.map(t => t.k))].sort(), [1, 2, 3]);
+    assert.ok(covered(tiles(Function.tile.penrose, 'square; star: 54deg', 100)));
+    assert.ok(covered(tiles(Function.tile.voronoi, 'square; op: t', 80)));
+    assert.ok(covered(tiles(Function.tile.voronoi, 'square; op: d', 80)));
+});
+
 test('scatter density: a formula in x and y (shape coordinates, y up) sets how many points land where', () => {
     let env = seed => ({ context: {}, extra: [], seed });
     let tiles = (shape, n = 200) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), env('a'))(shape));

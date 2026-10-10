@@ -10,7 +10,7 @@ import { memo } from '../lib/cache.js';
 import calc, { defaultContext } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
+    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, PHI,
 } from './tiling.js';
 
@@ -83,6 +83,13 @@ class Point {
     toString() {
         return this.value;
     }
+}
+
+function faces3(pieces) {
+    return pieces.flatMap(([p, c]) => [6, 2, 10].map((i, face) => {
+        let q = [...c, ...[...p, ...p].slice(i, i + 6)];
+        return [q, centre(q), face + 1];
+    }));
 }
 
 function parsePair(input, fallback) {
@@ -284,18 +291,15 @@ function createShapePoints(props, lo, hi) {
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
         let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
         let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift, turn) : name == 'penrose' && penrose;
+        let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3);
         if (make) {
-            let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && edges(props, sides == 3, seed);
+            let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && !derive && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
             let jitter = Number(props.jitter) || 0;
             let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
-            let pieces = tiles(make, box, screen, inside, name == 'cube' ? max(1, count / 3 | 0) : count, grow);
-            // top, left, right faces of a hexagon
-            if (name == 'cube') pieces = pieces.flatMap(([p, c]) => [6, 2, 10].map((i, face) => {
-                let q = [...c, ...[...p, ...p].slice(i, i + 6)];
-                return [q, centre(q), face + 1];
-            }));
+            let pieces = tiles(make, box, screen, inside, name == 'cube' && !derive ? max(1, count / 3 | 0) : count, grow, derive);
+            if (name == 'cube' && !derive) pieces = faces3(pieces);
             if (jitter) pieces = shake(pieces, jitter, seed);
             // the bend tolerance is in edge lengths: take the longest side, a notch from shift: can be tiny
             let p = pieces[0]?.[0] || [], len = 0;
@@ -334,12 +338,24 @@ function createShapePoints(props, lo, hi) {
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
         // relaxed in the element's proportions, then back to the shape's (top first)
-        let seeds = aspect == 1 ? scatter(outline, count, evenodd, seed, density, relax)
-            : scatter(screen, count, evenodd, seed, onScreen(density), relax).reverse().map(([x, y]) => {
+        let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density, relax)
+            : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(([x, y]) => {
                 let [u, v] = toShape(x, y);
                 return [u / fx - dx, dy + v / fy];
             });
-        seeds.forEach(add);
+        if (name == 'voronoi' && derive) {
+            let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0, fits = reacher(box, inside, 1, 1), pieces = [];
+            for (let n = count, i = 0; i < 5 && n >= 1; ++i) {
+                let at = sow(n).map(toScreen);
+                at = at.concat(...[[2 * x0, 1], [2 * x1, 1], [2 * y0, 0], [2 * y1, 0]].map(([m, a]) => at.map(([x, y]) => a ? [m - x, y] : [x, m - y])));
+                let cells = voronoi(at.map(p => p[0]), at.map(p => p[1]), x0 - w, y0 - h, x1 + w, y1 + h, 0), kinds = colors(cells);
+                pieces = derive.fn(cells.map(([poly], k) => [poly, at[k], kinds[k]])).filter(fits);
+                if (pieces.length <= count) break;
+                n = n * count / pieces.length * .98 | 0;
+            }
+            return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2), c, kind]));
+        }
+        sow(count).forEach(add);
         if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (name == 'voronoi') {
             let cells = voronoi(px, py, ...box, gap), kinds = colors(cells);
