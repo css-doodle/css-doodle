@@ -648,12 +648,20 @@ export function compileTemplate(segments) {
     return { template, names, signSensitive };
 }
 
+function scope(context) {
+    return context && Object.getPrototypeOf(context) === defaultContext
+        ? context
+        : Object.assign(Object.create(defaultContext), context);
+}
+
+export function evaluate(value, context) {
+    return evaluateValue(value, scope(context), []);
+}
+
 export default function(input, context) {
     if (typeof input === 'number' && Number.isFinite(input)) {
         return input;
     }
-    if (!context || Object.getPrototypeOf(context) !== defaultContext) {
-        context = Object.assign(Object.create(defaultContext), context);
-    }
+    context = scope(context);
     return compileInput(input, context)(context, []);
 }

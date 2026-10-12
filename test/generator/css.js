@@ -1121,6 +1121,17 @@ test('a shape body kept in a variable is reused with $name', () => {
     assert.match(decodeURIComponent(css(host + ' background: @svg-polygon($ring);')), /<path [^>]*d="M1 0L/);
 });
 
+test('a shape body kept in a variable joins a group with $name', () => {
+    let body = '--hole: (circle; scale: .5);';
+    assert.equal(css(body + ' clip-path: @shape(subtract { square; $hole });'), css(body + ' clip-path: @shape(subtract { square; circle { scale: .5 } });'));
+    // a whole group kept in a custom property, braces and all
+    let group = '--cut: (subtract { circle; circle { scale: .3 } });';
+    assert.equal(css(group + ' clip-path: @shape($cut);'), css(group + ' clip-path: @shape(subtract { circle; circle { scale: .3 } });'));
+    // @plot spreads the cells over the joined outline
+    let places = [...cells('@place: @plot(union { circle { scale: .5; move: -.8 0 } circle { scale: .5; move: .8 0 } });', '1x6').matchAll(/left:([\d.]+)%;[^}]*top:([\d.]+)%/g)];
+    assert.equal(new Set(places.map(m => m[1] + ' ' + m[2])).size, 6);
+});
+
 test('@svg-polygon draws contours as subpaths of one path', () => {
     let all = decodeURIComponent(css('background: @svg-polygon(points: 4, 3; r: 1, .5)'));
     assert.ok(all.includes('d="M1 0L0 -1L-1 0L0 1ZM0.5 0L-0.25 -0.433012701892L-0.25 0.433012701892Z"'), all);

@@ -283,7 +283,53 @@ test('a body in parentheses, as a variable keeps it, is read as commands', () =>
     assert.equal(shape('((points: 6); r: .5)'), shape('points: 6; r: .5'));
 });
 
-test('points and rotate read like variables: units drop, expressions are worked out', () => {
+test('union, subtract and intersect join whole shapes, first to last', () => {
+    // filled where the winding of the rings is not 0, in percent of the box
+    let fill = s => {
+        let rings = generateShape(s).points.rings.map(ring => ring.map(p => String(p).split(' ').map(parseFloat)));
+        return (x, y) => rings.reduce((n, ring) => n + insideTest(ring)(x, y), 0) != 0;
+    };
+    // a crescent: the cut leaves no sliver where it reaches past the circle, as evenodd would
+    let crescent = fill('subtract { circle; circle { scale: .9; move: .5 .15 } }');
+    assert.deepEqual([crescent(10, 50), crescent(72.5, 56.75), crescent(98, 56.75), crescent(110, 56.75)], [true, false, false, false]);
+    assert.equal(fill('points: 180; x: cos(t), .9cos(t) + .45; y: sin(t), .9sin(t) - .135; fill: evenodd')(110, 56.75), true);
+    let lens = fill('intersect { circle { move: -.45 0 } circle { move: .45 0 } }');
+    assert.deepEqual([lens(50, 50), lens(50, 10), lens(10, 50), lens(50, 2)], [true, true, false, false]);
+    let pair = 'union { circle { scale: .5; move: -.8 0 } circle { scale: .5; move: .8 0 } }';
+    assert.equal(generateShape(pair).points.rings.length, 1);
+    assert.deepEqual([fill(pair)(30, 50), fill(pair)(50, 50), fill(pair)(50, 30)], [true, true, false]);
+    // smooth rounds where they meet: the notch above the waist fills in
+    assert.equal(fill(pair)(50, 33), false);
+    assert.equal(fill(pair.replace('{', '{ smooth: .2;'))(50, 33), true);
+    // commands after the group apply to the result, rotate turns clockwise as on a plain shape; groups nest, a body in parentheses is one shape
+    let turned = fill('union { circle { scale: .5; move: 1 0 } } rotate: 90');
+    assert.deepEqual([turned(50, 75), turned(75, 50)], [true, false]);
+    let nested = fill('subtract { circle; union { circle { scale: .2; move: -2 0 } circle { scale: .2; move: 2 0 } } }');
+    assert.deepEqual([nested(30, 50), nested(70, 50), nested(50, 50)], [false, false, true]);
+    assert.equal(String(generateShape('union { (points: 8; r: .5) }').points), String(generateShape('union { shape { points: 8; r: .5 } }').points));
+    // the group's variables reach its shapes, down nested groups; its commands do not
+    let points = s => String(generateShape(s).points);
+    assert.equal(points('k: 7; union { subtract { shape { points: 300; r: .6 + .3cos(k*t) } circle { scale: .1 } } }'),
+        points('union { subtract { shape { points: 300; r: .6 + .3cos(7*t) } circle { scale: .1 } } }'));
+    assert.equal(points('k: 2; union { shape { points: 3; r: 2k } }'), points('union { shape { points: 3; r: 4 } }'));
+    assert.equal(points('rotate: 90; union { shape { points: 3 } }'), points('union { shape { points: 3; rotate: 90 } }'));
+    // copies see n: in move, in a turned group, across a grid
+    let two = points('union { circle { scale: .4; move: -1.5 0 } circle { scale: .4; move: 1.5 0 } }');
+    assert.equal(points('union { circle*2 { scale: .4; move: (n * 3 - 4.5) 0 } }'), two);
+    assert.equal(points('union { circle*2 { scale: .4; move: 3n-4.5 0 } }'), two);
+    assert.equal(generateShape('union { union*6 { rotate: n * 60; circle { scale: .2; move: 0 -3 } } }').points.rings.length, 6);
+    assert.equal(generateShape('subtract { square { scale: 1.3 } circle*3x3 { scale: .12; move: (nx * 5 - 10) (ny * 5 - 10) } }').points.rings.length, 10);
+    // a framed shape joins as its outline band
+    let band = fill('union { circle { frame: 10 } circle { scale: .2; move: 3 0 } }');
+    assert.deepEqual([band(50, 50), band(97, 50), band(80, 50), band(20, 50)], [false, true, true, false]);
+    // points spreads that many over the outline, so two cuts morph; nothing left clips everything
+    assert.equal(generateShape('subtract { circle; circle { scale: .9; move: .5 .15 } } points: 40').points.length, 40);
+    // a list gives each outline its own count, so a shape with a hole morphs too
+    assert.deepEqual(generateShape('subtract { circle; circle { scale: .3; move: .5 0 } } points: 50, 10').points.rings.map(r => r.length), [50, 10]);
+    assert.equal(generateShape('subtract { circle; circle { scale: 1.2 } }').clip, 'polygon(50% 50%)');
+});
+
+test('points, rotate, move and scale read like variables: units drop, expressions are worked out', () => {
     let shape = s => String(generateShape(s).points);
     assert.equal(generateShape('points: 2 * 3').points.length, 6);
     assert.equal(generateShape('n: 5; points: 4n').points.length, 20);
@@ -291,6 +337,8 @@ test('points and rotate read like variables: units drop, expressions are worked 
     assert.equal(generateShape('points: 12.7').points.length, 12);
     assert.equal(shape('points: 4; n: 2; rotate: n * 15'), shape('points: 4; rotate: 30'));
     assert.equal(shape('points: 4; rotate: 30deg'), shape('points: 4; rotate: 30'));
+    assert.equal(shape('points: 4; move: 10px 0'), shape('points: 4; move: 10 0'));
+    assert.equal(shape('points: 4; k: .5; scale: k (k * 2)'), shape('points: 4; scale: .5 1'));
     // per contour, so @m can write the list
     assert.equal(shape('points: 4; r: 1, .5; rotate: 1 * 15, 2 * 15'), shape('points: 4; r: 1, .5; rotate: 15, 30'));
 });

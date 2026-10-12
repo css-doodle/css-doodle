@@ -49,6 +49,125 @@ function insideTest(outline, evenodd) {
     };
 }
 
+function bridge(rings) {
+    return rings.length < 2 ? rings[0]
+        : [...rings[0], ...rings.slice(1).flatMap(ring => [rings[0][0], ...ring, ring[0]]), rings[0][0]];
+}
+
+function overlay(A, B, op, joints) {
+    let test = rings => rings.length ? insideTest(bridge(rings), rings.evenodd) : () => 0;
+    let a = test(A), b = test(B), T = 1e-9, sides = [], from = new Map(), rings = [];
+    let result = (x, y) => {
+        let p = !!a(x, y), q = !!b(x, y);
+        return op == 'subtract' ? p && !q : op == 'intersect' ? p && q : p || q;
+    };
+    [A, B].forEach((rings, k) => rings.forEach(ring => ring.forEach((p, i) => {
+        let q = ring[(i + 1) % ring.length];
+        if (p[0] != q[0] || p[1] != q[1]) sides.push({ a: p, b: q, x0: min(p[0], q[0]), cuts: [], k });
+    })));
+    // swept along x: a side meets only the ones starting before it ends
+    sides.sort((e, g) => e.x0 - g.x0);
+    sides.forEach((e, i) => {
+        let [ax, ay] = e.a, [bx, by] = e.b, rx = bx - ax, ry = by - ay, x1 = max(ax, bx), y0 = min(ay, by), y1 = max(ay, by), lr = hypot(rx, ry);
+        for (let j = i + 1; j < sides.length && sides[j].x0 <= x1; ++j) {
+            let g = sides[j], [cx, cy] = g.a, [dx, dy] = g.b;
+            if (max(cy, dy) < y0 || min(cy, dy) > y1) continue;
+            let sx = dx - cx, sy = dy - cy, wx = cx - ax, wy = cy - ay, d = rx * sy - ry * sx;
+            if (abs(d) > 1e-12 * lr * hypot(sx, sy)) {
+                let t = (wx * sy - wy * sx) / d, u = (wx * ry - wy * rx) / d;
+                if (t < -T || t > 1 + T || u < -T || u > 1 + T) continue;
+                let X = t < T ? e.a : t > 1 - T ? e.b : u < T ? g.a : u > 1 - T ? g.b : [ax + t * rx, ay + t * ry];
+                if (e.k != g.k) joints.add(X);
+                if (t > T && t < 1 - T) e.cuts.push([t, X]);
+                if (u > T && u < 1 - T) g.cuts.push([u, X]);
+            } else if (abs(wx * ry - wy * rx) < 1e-12 * lr * lr) {
+                for (let [h, P] of [[e, g.a], [e, g.b], [g, e.a], [g, e.b]]) {
+                    let [hx, hy] = h.a, vx = h.b[0] - hx, vy = h.b[1] - hy;
+                    let t = ((P[0] - hx) * vx + (P[1] - hy) * vy) / (vx * vx + vy * vy);
+                    if (t > T && t < 1 - T) h.cuts.push([t, P]);
+                }
+            }
+        }
+    });
+    let key = ([x, y]) => round(x * 1e9) + ',' + round(y * 1e9);
+    for (let e of sides) {
+        let ps = [e.a, ...e.cuts.sort((p, q) => p[0] - q[0]).map(c => c[1]), e.b], ks = ps.map(key);
+        for (let i = 1; i < ps.length; ++i) {
+            let p = ps[i - 1], q = ps[i], kp = ks[i - 1], kq = ks[i], dx = q[0] - p[0], dy = q[1] - p[1], len = hypot(dx, dy);
+            if (kp == kq) continue;
+            let s = min(1e-7, len / 4) / len, mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
+            let left = result(mx - dy * s, my + dx * s);
+            if (left == result(mx + dy * s, my - dx * s)) continue;
+            if (!left) [p, q, kp, kq] = [q, p, kq, kp];
+            let list = from.get(kp);
+            if (!list) from.set(kp, list = []);
+            if (!list.some(s => s[3] == kq)) list.push([p, q, kp, kq]);
+        }
+    }
+    for (let list of from.values()) for (let piece of list) {
+        let ring = [], cur = piece, start = piece[2];
+        while (cur && !cur.used) {
+            let [p, q, , kq] = cur, dx = q[0] - p[0], dy = q[1] - p[1], best = -Infinity;
+            cur.used = true;
+            ring.push(q);
+            if (kq == start) break;
+            for (let s of from.get(kq) || []) {
+                let ex = s[1][0] - s[0][0], ey = s[1][1] - s[0][1], turn = atan2(dx * ey - dy * ex, dx * ex + dy * ey);
+                if (!s.used && turn > best) best = turn, cur = s;
+            }
+        }
+        if (ring.length > 2) rings.push(ring);
+    }
+    return rings;
+}
+
+function fillet(ring, joints, k) {
+    // only where the outline turns: shapes that just touch keep their outlines
+    joints = new Set(ring.filter((p, i) => {
+        let [ax, ay] = ring.at(i - 1), [bx, by] = ring[(i + 1) % ring.length];
+        let ux = p[0] - ax, uy = p[1] - ay, vx = bx - p[0], vy = by - p[1];
+        return joints.has(p) && abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy)) > .1;
+    }));
+    let j0 = ring.findIndex(p => joints.has(p));
+    if (j0 < 0) return ring;
+    ring = [...ring.slice(j0), ...ring.slice(0, j0), ring[j0]];
+    let s = [0], js = [], out = [];
+    for (let i = 1; i < ring.length; ++i) s.push(s[i - 1] + hypot(ring[i][0] - ring[i - 1][0], ring[i][1] - ring[i - 1][1]));
+    ring.forEach((p, i) => i < ring.length - 1 && joints.has(p) && js.push(i));
+    let L = s.at(-1), gaps = js.map((j, m) => ((m + 1 < js.length ? s[js[m + 1]] : L) - s[j]) / 2);
+    let r = js.map((_, m) => min(k, gaps[m], gaps.at(m - 1)));
+    let at = d => {
+        let i = 1;
+        d = (d + L) % L;
+        while (i < s.length - 1 && s[i] < d) ++i;
+        let f = (d - s[i - 1]) / (s[i] - s[i - 1] || 1), [ax, ay] = ring[i - 1], [bx, by] = ring[i];
+        return [ax + (bx - ax) * f, ay + (by - ay) * f];
+    };
+    js.forEach((j, m) => {
+        let curve = flatten([at(s[j] - r[m]), [...at(s[j] + r[m]), ...ring[j]]], .002);
+        for (let i = 0; i < curve.length; i += 2) out.push([curve[i], curve[i + 1]]);
+        let end = m + 1 < js.length ? s[js[m + 1]] - r[m + 1] : L - r[0];
+        for (let i = j + 1; i < ring.length - 1 && s[i] < end; ++i) if (s[i] > s[j] + r[m]) out.push(ring[i]);
+    });
+    return out;
+}
+
+function resample(rings, counts) {
+    let sides = rings.map(ring => ring.map((p, i) => hypot(ring[(i + 1) % ring.length][0] - p[0], ring[(i + 1) % ring.length][1] - p[1])));
+    let lens = sides.map(s => s.reduce((a, b) => a + b, 0)), total = lens.reduce((a, b) => a + b, 0), run = 0, done = 0;
+    return rings.map((ring, k) => {
+        let m = counts.length > 1 ? counts[k % counts.length] : round(counts[0] * (run += lens[k]) / total) - done, out = [];
+        done += m;
+        for (let j = 0, i = 0, s = 0; j < m; ++j) {
+            let d = j * lens[k] / m;
+            while (s + sides[k][i] < d) s += sides[k][i++];
+            let f = (d - s) / (sides[k][i] || 1), [ax, ay] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
+            out.push([ax + (bx - ax) * f, ay + (by - ay) * f]);
+        }
+        return out;
+    }).filter(ring => ring.length);
+}
+
 function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS) {
     let [x0, y0, x1, y1] = bounds(outline.flat()), w = x1 - x0, h = y1 - y0;
     let inside = insideTest(outline, evenodd);
@@ -758,5 +877,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
 };

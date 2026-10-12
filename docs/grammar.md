@@ -495,7 +495,11 @@ clip-path: @shape(
 
 ```
 shape-property = preset
-shape-function = preset | { command ';' }
+shape-function = preset | { command ';' | group }
+group          = ( 'union' | 'subtract' | 'intersect' ) [ copies ]
+                 '{' { command ';' | group | member } '}'
+member         = ( preset | '(' body ')' | name ) [ copies ] [ '{' { command ';' } '}' ]
+copies         = '*' count [ 'x' count ]
 command        = [ '-' ] command-name ':' expression
 command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
                | 'frame' | 'unit' | 'direction' | 'fill'
@@ -511,9 +515,10 @@ custom polygons.
 
 `r`, `x` and `y` are expressions in the angle `t`, evaluated `points`
 times around the circle. The other named commands transform the
-resulting points. `points` and `rotate` read like variables, so a unit
-drops (`30deg` is 30) and `points: 4n` is worked out, with the
-fraction cut off. Any other name defines a variable for the
+resulting points. `points`, `rotate` and each part of `move` and
+`scale` read like variables, so a unit drops (`30deg` is 30) and
+`points: 4n` is worked out, with the fraction cut off; a part with
+spaces goes in parentheses, `move: (k * .5) 0`. Any other name defines a variable for the
 expressions that follow it. A `-` before a command name negates its
 value, except on `fill`. The expressions also see the point index `i`,
 from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
@@ -532,6 +537,30 @@ A body in parentheses reads as commands, so one kept in a custom
 property is reused with `$name`: given `--gear: (points: 4n; r: 1, .5)`,
 `@shape($gear; n: 6)` adds to it or overrides it, and `@plot`, `@tile`
 and `@svg-polygon` read it the same way.
+
+**Groups.** `union`, `subtract` and `intersect` join whole shapes, as
+in `@scene`: `subtract { circle; circle { scale: .9; move: .5 .15 } }`
+is a crescent. Each row is a shape, a preset with its arguments, a
+preset or `shape` with a block of commands, a body in parentheses, so
+`$name` works, or another group. `subtract` takes the rest from the
+first. A shape is drawn with its own commands, `frame` included, and
+sees the variables of the groups around it, as in `k: 7; union { shape
+{ r: .6 + .3cos(k*t) } }`. With a group in it, a body draws only the
+group: its own `r`, `x`, `y`, `t` and preset are not drawn.
+`name*N` or `name*XxY` repeats a shape or a group, and each copy sees
+`n` from 1, `N`, and `nx`, `ny` across the grid:
+`circle*3 { scale: .2; move: (n * 3 - 6) 0 }`. Inside a body `rotate`
+turns the shape before `move`, so copies around the center turn a
+group: `union*6 { rotate: n * 60; circle { scale: .2; move: 0 -3 } }`. The outlines are cut where they cross, so a cut that reaches past
+the shape leaves nothing there, which `fill: evenodd` would fill.
+`smooth: k` rounds every point where two shapes meet, cut back `k`
+along both sides, in the units where the box is 2 across. A group's
+`rotate`, `move`, `scale`, `round` and `edge` apply to the joined
+outline, and so do the commands after a group at the top. `points`
+there spreads that many points over the outlines by length, and a list
+gives each outline its own count, so two groups with the same counts
+morph in `@keyframes`, `points: 180, 20` when there is a hole; without
+it the count follows the cuts.
 
 `round`, from 0 to 1, turns every corner into a curve that starts
 `round / 2` of the way along each side. `edge` is an expression that

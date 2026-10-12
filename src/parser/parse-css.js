@@ -128,13 +128,14 @@ function atRuleName(cur) {
     return name;
 }
 
-function parseValue(cur, breakOn) {
+function parseValue(cur, breakOn, custom) {
     let head = cur.peek();
     let groups = [[]];
     let group = groups[0];
     let buf = '';
     let skip = true;
     let paren = 0;
+    let brace = 0;
     let quote = false;
     let hasFunc = false;
 
@@ -157,7 +158,7 @@ function parseValue(cur, breakOn) {
         skip = false;
 
         if (tok.isSymbol()) {
-            if (!quote && (v === '}' || v === breakOn || ((v === ';' || (v === '<' && isTagStart(cur))) && paren === 0))) {
+            if (!quote && ((v === '}' && !brace) || v === breakOn || ((v === ';' || (v === '<' && isTagStart(cur))) && paren === 0))) {
                 break;
             }
             if (v === ',' && paren === 0 && !quote) {
@@ -179,6 +180,8 @@ function parseValue(cur, breakOn) {
             else if (!quote) {
                 if (v === '(') paren++;
                 else if (v === ')') paren = Math.max(0, paren - 1);
+                else if (v === '{' && paren && custom) brace++;
+                else if (v === '}') brace--;
             }
             cur.next();
             buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
@@ -631,7 +634,7 @@ function parseRule(cur) {
         rule.property = head;
         colon = tok.index;
         cur.next();
-        rule.value = head === '@use' ? parseUse(cur) : parseValue(cur);
+        rule.value = head === '@use' ? parseUse(cur) : parseValue(cur, null, head.startsWith('--'));
         end = cur.headIndex();
         if (!cur.end() && cur.peek().isSymbol(';')) {
             cur.next();

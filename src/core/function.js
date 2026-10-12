@@ -199,8 +199,7 @@ function createPlot(unit, scatter, tile) {
             return rules;
         });
         let shape = make(max), { rings } = shape.points;
-        // the cells spread over the contours by their lengths
-        if (!shape.rules.hasPoints && rings?.length > 1) {
+        if (!shape.rules.hasPoints && !shape.rules.blocks && rings?.length > 1) {
             let xy = p => String(p).split(' ').map(parseFloat), total = 0, done = 0;
             // running totals of the lengths
             let runs = rings.map(ring => total += ring.reduce((sum, p, i) => {
