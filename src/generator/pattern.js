@@ -34,7 +34,7 @@ const CELL_INDEX = glsl`
 `;
 
 // Built-ins of the pattern language (grammar §9.3)
-const HELPERS = glsl`
+export const HELPERS = glsl`
     float cssd_hash(vec2 p) {
         vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
         p3 += dot(p3, p3.yzx + 33.33);

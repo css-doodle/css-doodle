@@ -838,7 +838,7 @@ Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGrad
 
 Function.radialGradient = lazy((cell, env, position, ...args) => generateSvgGradient('radialGradient', args));
 
-Function.doodle = Function.shaders = Function.pattern = () => {};
+Function.doodle = Function.shaders = Function.pattern = Function.scene = () => {};
 
 Function.once = lazy((cell, { context }, position, ...args) => {
     let counter = 'once-counter' + position;

@@ -64,7 +64,7 @@ function isSvg(name) {
 }
 
 function composable(name) {
-    return /^@(shaders|doodle|pattern)/.test(name);
+    return /^@(shaders|doodle|pattern|scene)/.test(name);
 }
 
 function substitutePi(input, prev) {
