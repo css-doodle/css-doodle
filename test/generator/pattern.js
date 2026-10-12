@@ -20,8 +20,8 @@ const extra = {
 const shader = code => draw(code, extra).fragment;
 const lines = code => shader(code).split('\n').map(l => l.trim());
 
-// the `cssd_color = ...;` assignment inside main
-const color = code => lines(code).find(l => l.startsWith('cssd_color = ')) || '';
+// the `g_color = ...;` assignment inside main
+const color = code => lines(code).find(l => l.startsWith('g_color = ')) || '';
 
 const main = code => shader(code).slice(shader(code).indexOf('void main()'));
 
@@ -50,7 +50,7 @@ test('match with no arguments emits no if block', () => {
 test('nested match blocks are emitted recursively', () => {
     assert.match(
         shader('match(x>3) { match(y>3) { fill: red } }'),
-        /if \(\(x > 3\.0\)\) \{[\s\S]*if \(\(y > 3\.0\)\) \{[\s\S]*cssd_color = vec4/
+        /if \(\(x > 3\.0\)\) \{[\s\S]*if \(\(y > 3\.0\)\) \{[\s\S]*g_color = vec4/
     );
 });
 
@@ -75,7 +75,7 @@ test('a non-comparison root is bool-coerced', () => {
 test('variables inside match blocks are scoped', () => {
     assert.match(
         main('match(x > 1) { c: x/X; fill: hsl(c, 0.5, 0.5) }'),
-        /if \(\(x > 1\.0\)\) \{\s*float cssd1 = \(x \/ X\);\s*cssd_color = vec4\(hsl\(cssd1, 0\.5, 0\.5\), 1\.0\);/
+        /if \(\(x > 1\.0\)\) \{\s*float g_1 = \(x \/ X\);\s*g_color = vec4\(hsl\(g_1, 0\.5, 0\.5\), 1\.0\);/
     );
     // and they do not leak into the outer scope
     let messages = [];
@@ -87,27 +87,27 @@ test('variables inside match blocks are scoped', () => {
 test('a match block assigns to a variable of an enclosing scope', () => {
     assert.match(
         main('c: 1; match(x > 1) { c: c * 2 } fill: c'),
-        /float cssd1 = 1\.0;\s*if \(\(x > 1\.0\)\) \{\s*cssd1 = \(cssd1 \* 2\.0\);\s*\}\s*cssd_color = vec4\(vec3\(cssd1\), 1\.0\);/
+        /float g_1 = 1\.0;\s*if \(\(x > 1\.0\)\) \{\s*g_1 = \(g_1 \* 2\.0\);\s*\}\s*g_color = vec4\(vec3\(g_1\), 1\.0\);/
     );
     // the assignment keeps the declared type
-    assert.match(main('p: uv; match(x > 1) { p: 1 } fill: p.x'), /cssd1 = vec2\(1\.0\);/);
+    assert.match(main('p: uv; match(x > 1) { p: 1 } fill: p.x'), /g_1 = vec2\(1\.0\);/);
     // a vector does not convert to another type
     let messages = [];
     let s = draw('z: 0; repeat(4) { z: z * uv } fill: z', extra, m => messages.push(m)).fragment;
-    assert.doesNotMatch(s, /cssd1 = \(cssd1 \* uv\)/);
+    assert.doesNotMatch(s, /g_1 = \(g_1 \* uv\)/);
     assert.deepEqual(messages, ['z is a float, not a vec2']);
 });
 
 test('match {} runs the first arm whose test holds', () => {
     assert.match(
         main('match { x > 1 { fill: red } y > 1 { fill: red } else { fill: 0, 0, 0 } }'),
-        /if \(\(x > 1\.0\)\) \{\s*cssd_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);\s*\} else if \(\(y > 1\.0\)\) \{[^}]*\} else \{\s*cssd_color = vec4\(vec3\(0\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/
+        /if \(\(x > 1\.0\)\) \{\s*g_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);\s*\} else if \(\(y > 1\.0\)\) \{[^}]*\} else \{\s*g_color = vec4\(vec3\(0\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/
     );
     let s = main('match { x > 1 { c: 1; fill: c, c, c } else { c: 2; fill: c, c, c } }');
-    assert.match(s, /\{\s*float cssd1 = 1\.0;[^}]*\} else \{\s*float cssd2 = 2\.0;/);
+    assert.match(s, /\{\s*float g_1 = 1\.0;[^}]*\} else \{\s*float g_2 = 2\.0;/);
     s = main('match { x > 1 { match { y > 1 { fill: red } else { fill: 0, 0, 0 } } } }');
     assert.match(s, /if \(\(x > 1\.0\)\) \{\s*if \(\(y > 1\.0\)\) \{[^}]*\} else \{[^}]*\}\s*\}/);
-    assert.match(main('match { else { fill: red } }'), /\{\s*cssd_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/);
+    assert.match(main('match { else { fill: red } }'), /\{\s*g_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);\s*\}/);
 });
 
 test('match {} reports misplaced arms and else', () => {
@@ -171,12 +171,12 @@ test('db: distance to the grid boundary', () => {
 });
 
 test('pos: centered, aspect-correct canvas position', () => {
-    assert.equal(color('fill: length(pos)'), 'cssd_color = vec4(vec3(length(pos)), 1.0);');
-    assert.equal(color('fill: pos.x + .5'), 'cssd_color = vec4(vec3((pos.x + .5)), 1.0);');
+    assert.equal(color('fill: length(pos)'), 'g_color = vec4(vec3(length(pos)), 1.0);');
+    assert.equal(color('fill: pos.x + .5'), 'g_color = vec4(vec3((pos.x + .5)), 1.0);');
     // the shader wrapper defines pos
     assert.match(generateFragment(shader('fill: length(pos)'), []), /#define pos \(\(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\)\)/);
     // a user pos shadows the built-in; the wrapper then sees no `pos` to define
-    assert.match(main('pos: uv; fill: pos.x'), /vec2 cssd1 = uv;\s*cssd_color = vec4\(vec3\(cssd1\.x\), 1\.0\);/);
+    assert.match(main('pos: uv; fill: pos.x'), /vec2 g_1 = uv;\s*g_color = vec4\(vec3\(g_1\.x\), 1\.0\);/);
     assert.doesNotMatch(main('pos: uv; fill: pos.x'), /\bpos\b/);
 });
 
@@ -187,7 +187,7 @@ test('du and dv: coordinates inside the cell', () => {
     // composes with ngon() for per-cell polygon masks
     assert.equal(condition('match(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(du, dv, 6.0) < 0.4)) {');
     // a bare `du` is not a CSS color, so it compiles as an expression
-    assert.equal(color('fill: du'), 'cssd_color = vec4(vec3(du), 1.0);');
+    assert.equal(color('fill: du'), 'g_color = vec4(vec3(du), 1.0);');
 });
 
 test('dx and dy: cell index centered on the grid', () => {
@@ -207,22 +207,22 @@ test('dx and dy: cell index centered on the grid', () => {
 // --- fill ---
 
 test('static colors stay byte-identical', () => {
-    assert.equal(color('fill: red'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
-    assert.equal(color('fill: #f00'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
-    assert.equal(color('fill: rgb(10, 20, 30)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: red'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: #f00'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: rgb(10, 20, 30)'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
     // a color with an alpha keeps its four channels
-    assert.equal(color('fill: transparent'), 'cssd_color = vec4(0.0, 0.0, 0.0, 0.0);');
+    assert.equal(color('fill: transparent'), 'g_color = vec4(0.0, 0.0, 0.0, 0.0);');
 });
 
 test('a color name in an expression is a vec3 literal, a translucent one a vec4', () => {
     let messages = [];
     let s = draw('fill: mix(red, #00f, .5)', extra, m => messages.push(m)).fragment;
-    assert.match(s, /cssd_color = vec4\(mix\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(0\.0, 0\.0, 1\.0\), \.5\), 1\.0\);/);
+    assert.match(s, /g_color = vec4\(mix\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(0\.0, 0\.0, 1\.0\), \.5\), 1\.0\);/);
     assert.deepEqual(messages, []);
-    assert.equal(color('fill: match(x > 2, red, black)'), 'cssd_color = vec4(((x > 2.0) ? vec3(1.0, 0.0, 0.0) : vec3(1.0, 0.0, 0.0)), 1.0);');
-    assert.equal(color('fill: transparent.a + red.r'), 'cssd_color = vec4(vec3((vec4(0.0, 0.0, 0.0, 0.0).a + vec3(1.0, 0.0, 0.0).r)), 1.0);');
+    assert.equal(color('fill: match(x > 2, red, black)'), 'g_color = vec4(((x > 2.0) ? vec3(1.0, 0.0, 0.0) : vec3(1.0, 0.0, 0.0)), 1.0);');
+    assert.equal(color('fill: transparent.a + red.r'), 'g_color = vec4(vec3((vec4(0.0, 0.0, 0.0, 0.0).a + vec3(1.0, 0.0, 0.0).r)), 1.0);');
     // a variable of the same name wins
-    assert.match(main('red: .5; fill: red'), /float cssd1 = \.5;\s*cssd_color = vec4\(vec3\(cssd1\), 1\.0\);/);
+    assert.match(main('red: .5; fill: red'), /float g_1 = \.5;\s*g_color = vec4\(vec3\(g_1\), 1\.0\);/);
     // unknown names are still reported, once
     messages = [];
     draw('fill: foo + foo', extra, m => messages.push(m));
@@ -243,9 +243,9 @@ test('a CSS unit read as a name says that patterns have no units', () => {
 });
 
 test('a list may hold vectors; its channels add up to 3 or 4', () => {
-    assert.equal(color('fill: red, .5'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
-    assert.match(main('c: hsl(x / X, 1, .5); fill: c, rand(i)'), /cssd_color = vec4\(cssd1, rand\(i\)\);/);
-    assert.equal(color('fill: vec2(du, dv), 0, 1'), 'cssd_color = vec4(vec2(du, dv), 0.0, 1.0);');
+    assert.equal(color('fill: red, .5'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
+    assert.match(main('c: hsl(x / X, 1, .5); fill: c, rand(i)'), /g_color = vec4\(g_1, rand\(i\)\);/);
+    assert.equal(color('fill: vec2(du, dv), 0, 1'), 'g_color = vec4(vec2(du, dv), 0.0, 1.0);');
     let messages = [];
     draw('fill: red, 0, 0', extra, m => messages.push(m));
     assert.deepEqual(messages, ['a list value needs 3 or 4 channels, not 5']);
@@ -253,20 +253,20 @@ test('a list may hold vectors; its channels add up to 3 or 4', () => {
 
 test('shape() in a value is the mask of the shape and size statements', () => {
     assert.equal(color('fill: mix(#000, red, shape(length(vec2(du, dv)), .6))'),
-        'cssd_color = vec4(mix(vec3(0.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), cssd_shape(length(vec2(du, dv)), .6)), 1.0);');
+        'g_color = vec4(mix(vec3(0.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), g_shape(length(vec2(du, dv)), .6)), 1.0);');
     // a stroke: the mask of |d| at the line width
-    assert.match(main('d: box(du, dv, .3); fill: shape(abs(d), .05)'), /cssd_color = vec4\(vec3\(cssd_shape\(abs\(cssd1\), \.05\)\), 1\.0\);/);
+    assert.match(main('d: box(du, dv, .3); fill: shape(abs(d), .05)'), /g_color = vec4\(vec3\(g_shape\(abs\(g_1\), \.05\)\), 1\.0\);/);
 });
 
 test('a vec3 expression is a color, a scalar a gray', () => {
-    assert.equal(color('fill: hsl(da, 0.8, 0.5)'), 'cssd_color = vec4(hsl(da, 0.8, 0.5), 1.0);');
-    assert.equal(color('fill: dr/10'), 'cssd_color = vec4(vec3((dr / 10.0)), 1.0);');
+    assert.equal(color('fill: hsl(da, 0.8, 0.5)'), 'g_color = vec4(hsl(da, 0.8, 0.5), 1.0);');
+    assert.equal(color('fill: dr/10'), 'g_color = vec4(vec3((dr / 10.0)), 1.0);');
 });
 
 test('fill accepts vec2 and bool; other vector types are rejected', () => {
-    assert.equal(color('fill: uv'), 'cssd_color = vec4(uv, 0.0, 1.0);');
-    assert.equal(color('fill: rot(du, dv, 0)'), 'cssd_color = vec4(rot(du, dv, 0.0), 0.0, 1.0);');
-    assert.equal(color('fill: x > 1'), 'cssd_color = vec4(vec3(float((x > 1.0))), 1.0);');
+    assert.equal(color('fill: uv'), 'g_color = vec4(uv, 0.0, 1.0);');
+    assert.equal(color('fill: rot(du, dv, 0)'), 'g_color = vec4(rot(du, dv, 0.0), 0.0, 1.0);');
+    assert.equal(color('fill: x > 1'), 'g_color = vec4(vec3(float((x > 1.0))), 1.0);');
     let messages = [];
     draw('fill: mat2(1)', extra, m => messages.push(m));
     assert.deepEqual(messages, ['fill cannot take a mat2']);
@@ -280,9 +280,9 @@ test('size and shape reject vectors', () => {
 });
 
 test('three or four top-level commas become channels, nested commas do not', () => {
-    assert.equal(color('fill: x/X, y/Y, 0.5'), 'cssd_color = vec4(vec3((x / X), (y / Y), 0.5), 1.0);');
-    assert.equal(color('fill: x/X, y/Y, t, 0.6'), 'cssd_color = vec4((x / X), (y / Y), t, 0.6);');
-    assert.equal(color('fill: vec3(x/X, y/Y, t)'), 'cssd_color = vec4(vec3((x / X), (y / Y), t), 1.0);');
+    assert.equal(color('fill: x/X, y/Y, 0.5'), 'g_color = vec4(vec3((x / X), (y / Y), 0.5), 1.0);');
+    assert.equal(color('fill: x/X, y/Y, t, 0.6'), 'g_color = vec4((x / X), (y / Y), t, 0.6);');
+    assert.equal(color('fill: vec3(x/X, y/Y, t)'), 'g_color = vec4(vec3((x / X), (y / Y), t), 1.0);');
 });
 
 test('invalid channel counts and empty fills are dropped', () => {
@@ -295,12 +295,12 @@ test('invalid channel counts and empty fills are dropped', () => {
 });
 
 test('a variable is declared once, typed by its value, and read by name', () => {
-    assert.match(main('c: hsv(i/I, 1, 1); fill: c'), /vec3 cssd1 = hsv\(\(i \/ I\), 1\.0, 1\.0\);\s*cssd_color = vec4\(cssd1, 1\.0\);/);
-    assert.equal(color('p: 2; fill: hsl(.16p, .75, .65)'), 'cssd_color = vec4(hsl((.16 * cssd1), .75, .65), 1.0);');
+    assert.match(main('c: hsv(i/I, 1, 1); fill: c'), /vec3 g_1 = hsv\(\(i \/ I\), 1\.0, 1\.0\);\s*g_color = vec4\(g_1, 1\.0\);/);
+    assert.equal(color('p: 2; fill: hsl(.16p, .75, .65)'), 'g_color = vec4(hsl((.16 * g_1), .75, .65), 1.0);');
     // however often it is read, its value is computed once
     let s = main('n: fbm(uv * 8); fill: n, n * n, sqrt(n)');
     assert.equal((s.match(/fbm\(/g) || []).length, 1);
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1, \(cssd1 \* cssd1\), sqrt\(cssd1\)\), 1\.0\);/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1, \(g_1 \* g_1\), sqrt\(g_1\)\), 1\.0\);/);
 });
 
 test('declarations are read in source order', () => {
@@ -308,13 +308,13 @@ test('declarations are read in source order', () => {
     draw('fill: c; c: hsv(i/I, 1, 1)', extra, m => messages.push(m));
     assert.deepEqual(messages, ['unknown name c']);
     // a second declaration of a name assigns to it
-    assert.match(main('a: 1; fill: a; a: 2; fill: a'), /float cssd1 = 1\.0;\s*cssd_color = vec4\(vec3\(cssd1\), 1\.0\);\s*cssd1 = 2\.0;/);
+    assert.match(main('a: 1; fill: a; a: 2; fill: a'), /float g_1 = 1\.0;\s*g_color = vec4\(vec3\(g_1\), 1\.0\);\s*g_1 = 2\.0;/);
 });
 
 test('a head without a colon is reported, not glued to the statement before it', () => {
     let messages = [];
     let s = main('fill: red; k = 1; size: k');
-    assert.match(s, /cssd_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);/);
+    assert.match(s, /g_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);/);
     draw('fill: red; k = 1; size: k', extra, m => messages.push(m));
     assert.deepEqual(messages, ['"k = 1" is not a statement; write name: value', 'unknown name k']);
     messages = [];
@@ -326,7 +326,7 @@ test('a head without a colon is reported, not glued to the statement before it',
     // a block without a name is skipped whole, what follows it still compiles
     messages = [];
     s = main('2 { fill: x } fill: y');
-    assert.match(s, /cssd_color = vec4\(vec3\(y\), 1\.0\);/);
+    assert.match(s, /g_color = vec4\(vec3\(y\), 1\.0\);/);
     draw('match(x > .5) { 3 { size: 1 } fill: y } fill: 1', extra, m => messages.push(m));
     assert.deepEqual(messages, ['"3 {}" is not a statement; write name: value']);
 });
@@ -335,13 +335,13 @@ test('a list with an empty item is reported, not shifted', () => {
     let messages = [];
     let s = draw('fill: 1,,0,0', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, ['a list value has an empty item']);
-    assert.doesNotMatch(s, /cssd_color = vec4\(vec/);
+    assert.doesNotMatch(s, /g_color = vec4\(vec/);
 });
 
 test('line comments are whitespace', () => {
     let messages = [];
     let s = draw('fill: red; // a note\n size: .5; /* block */ shape: circle', extra, m => messages.push(m)).fragment;
-    assert.match(s, /size = \.5;\s*cssd_dist = length\(vec2\(du, dv\)\);/);
+    assert.match(s, /size = \.5;\s*g_dist = length\(vec2\(du, dv\)\);/);
     assert.deepEqual(messages, []);
 });
 
@@ -353,10 +353,10 @@ test('values side by side are reported once', () => {
     messages = [];
     draw('fill: hsl(x/X .75 .65)', extra, m => messages.push(m));
     assert.deepEqual(messages, []);
-    assert.equal(color('fill: hsl(x/X .75 .65)'), 'cssd_color = vec4(hsl((x / X), .75, .65), 1.0);');
+    assert.equal(color('fill: hsl(x/X .75 .65)'), 'g_color = vec4(hsl((x / X), .75, .65), 1.0);');
     // all-number arguments are a CSS color to the browser, but without % it is the shader hsl()
-    assert.equal(color('fill: hsl(.5 .75 .65)'), 'cssd_color = vec4(hsl(.5, .75, .65), 1.0);');
-    assert.equal(color('fill: hsl(210 70% 60%)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: hsl(.5 .75 .65)'), 'g_color = vec4(hsl(.5, .75, .65), 1.0);');
+    assert.equal(color('fill: hsl(210 70% 60%)'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
 });
 
 test('unknown names are reported once each', () => {
@@ -375,27 +375,27 @@ test('unknown names are reported once each', () => {
 
 test('invalid and reserved names are reported', () => {
     let messages = [];
-    draw('size-2: 3; cssd1: 1; --c: red; repeat(2 as a-b) { } fill: red', extra, m => messages.push(m));
+    draw('size-2: 3; g_1: 1; --c: red; repeat(2 as a-b) { } fill: red', extra, m => messages.push(m));
     assert.deepEqual(messages, [
         '"size-2" is not a valid name',
-        'names starting with cssd are reserved',
+        'names starting with g_ are reserved',
         '"--c" is not a valid name',
         '"a-b" is not a valid name',
     ]);
 });
 
 test('variable names inside hex literals are not substituted', () => {
-    assert.equal(color('a: .5; fill: #f0a * a'), 'cssd_color = vec4((vec3(1.0, 0.0, 0.6666666666666666) * cssd1), 1.0);');
-    assert.equal(color('fab: .5; fill: #FAB * fab'), 'cssd_color = vec4((vec3(1.0, 0.6666666666666666, 0.7333333333333333) * cssd1), 1.0);');
+    assert.equal(color('a: .5; fill: #f0a * a'), 'g_color = vec4((vec3(1.0, 0.0, 0.6666666666666666) * g_1), 1.0);');
+    assert.equal(color('fab: .5; fill: #FAB * fab'), 'g_color = vec4((vec3(1.0, 0.6666666666666666, 0.7333333333333333) * g_1), 1.0);');
 });
 
 test('a variable may hold a CSS color or a channel list', () => {
-    assert.match(main('c: red; fill: c'), /vec3 cssd1 = vec3\(1\.0, 0\.0, 0\.0\);\s*cssd_color = vec4\(cssd1, 1\.0\);/);
-    assert.match(main('c: transparent; fill: c'), /vec4 cssd1 = vec4\(0\.0, 0\.0, 0\.0, 0\.0\);\s*cssd_color = cssd1;/);
-    assert.match(main('c: 1, 0, 0; fill: c'), /vec3 cssd1 = vec3\(1\.0, 0\.0, 0\.0\);\s*cssd_color = vec4\(cssd1, 1\.0\);/);
-    assert.match(main('c: 1, 0, 0, .5; fill: c'), /vec4 cssd1 = vec4\(1\.0, 0\.0, 0\.0, \.5\);\s*cssd_color = cssd1;/);
+    assert.match(main('c: red; fill: c'), /vec3 g_1 = vec3\(1\.0, 0\.0, 0\.0\);\s*g_color = vec4\(g_1, 1\.0\);/);
+    assert.match(main('c: transparent; fill: c'), /vec4 g_1 = vec4\(0\.0, 0\.0, 0\.0, 0\.0\);\s*g_color = g_1;/);
+    assert.match(main('c: 1, 0, 0; fill: c'), /vec3 g_1 = vec3\(1\.0, 0\.0, 0\.0\);\s*g_color = vec4\(g_1, 1\.0\);/);
+    assert.match(main('c: 1, 0, 0, .5; fill: c'), /vec4 g_1 = vec4\(1\.0, 0\.0, 0\.0, \.5\);\s*g_color = g_1;/);
     // and takes part in arithmetic like any vector
-    assert.equal(color('c: red; fill: c * .5'), 'cssd_color = vec4((cssd1 * .5), 1.0);');
+    assert.equal(color('c: red; fill: c * .5'), 'g_color = vec4((g_1 * .5), 1.0);');
     let messages = [];
     draw('c: 1, 2; fill: red', extra, m => messages.push(m));
     assert.deepEqual(messages, ['a list value needs 3 or 4 channels, not 2']);
@@ -406,27 +406,27 @@ test('a variable may hold a CSS color or a channel list', () => {
 });
 
 test('CSS color functions stay static; unitless hsl()/hsv() mean the shader helpers', () => {
-    assert.equal(color('fill: hsla(210, 50%, 50%, 0.5)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
-    assert.equal(color('fill: hsl(120, 50%, 50%)'), 'cssd_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
-    assert.equal(color('fill: hsl(x/X, 0.5, 0.5)'), 'cssd_color = vec4(hsl((x / X), 0.5, 0.5), 1.0);');
+    assert.equal(color('fill: hsla(210, 50%, 50%, 0.5)'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: hsl(120, 50%, 50%)'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
+    assert.equal(color('fill: hsl(x/X, 0.5, 0.5)'), 'g_color = vec4(hsl((x / X), 0.5, 0.5), 1.0);');
     // anything the CSS engine rejects compiles as an expression
-    assert.equal(color('fill: rgb(x*20, 0, 0)'), 'cssd_color = vec4(vec3(rgb((x * 20.0), 0.0, 0.0)), 1.0);');
+    assert.equal(color('fill: rgb(x*20, 0, 0)'), 'g_color = vec4(vec3(rgb((x * 20.0), 0.0, 0.0)), 1.0);');
 });
 
 // --- shape and size ---
 
 // shape and size are state; the mask is computed from them once, at the end
-const MASK = /float cssd_mask = cssd_shape\(cssd_dist, size\);\s*if \(cssd_masked\) cssd_color\.a \*= cssd_mask;/;
+const MASK = /float g_mask = g_shape\(g_dist, size\);\s*if \(g_masked\) g_color\.a \*= g_mask;/;
 
 test('size scales the mask radius per cell', () => {
     let s = main('shape: circle; size: x/X; fill: #000');
-    assert.match(s, /cssd_dist = length\(vec2\(du, dv\)\);\s*cssd_masked = true;\s*size = \(x \/ X\);/);
+    assert.match(s, /g_dist = length\(vec2\(du, dv\)\);\s*g_masked = true;\s*size = \(x \/ X\);/);
     assert.match(s, MASK);
-    assert.equal((s.match(/cssd_shape\(/g) || []).length, 1);
+    assert.equal((s.match(/g_shape\(/g) || []).length, 1);
 });
 
 test('size without an explicit shape uses a square mask', () => {
-    assert.match(main('size: rand(i); fill: #000'), /cssd_dist = max\(abs\(du\), abs\(dv\)\);\s*cssd_masked = true;\s*size = rand\(i\);/);
+    assert.match(main('size: rand(i); fill: #000'), /g_dist = max\(abs\(du\), abs\(dv\)\);\s*g_masked = true;\s*size = rand\(i\);/);
 });
 
 test('size expressions coerce to float', () => {
@@ -447,23 +447,23 @@ test('size expressions support numeric coefficients', () => {
 
 test('no shape and no size leaves the mask out', () => {
     let s = main('fill: #000');
-    assert.doesNotMatch(s, /cssd_mask|cssd_dist/);
+    assert.doesNotMatch(s, /g_mask|g_dist/);
     assert.match(s, /float size = 1\.0;/);
 });
 
 test('shape: none turns the mask off', () => {
     let s = main('shape: none; size: 0.5; fill: red');
-    assert.match(s, /cssd_masked = false;\s*size = 0\.5;/);
-    assert.doesNotMatch(s, /cssd_dist = [a-z]/);
-    assert.match(main('shape: circle; match(x > 2) { shape: none; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*cssd_masked = false;/);
+    assert.match(s, /g_masked = false;\s*size = 0\.5;/);
+    assert.doesNotMatch(s, /g_dist = [a-z]/);
+    assert.match(main('shape: circle; match(x > 2) { shape: none; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*g_masked = false;/);
 });
 
 test('a shape may be a name, a variable or a distance expression', () => {
-    assert.match(main('shape: diamond; fill: red'), /cssd_dist = abs\(du\) \+ abs\(dv\);/);
-    assert.match(main('shape: ngon(du, dv, 6); size: .8; fill: red'), /cssd_dist = ngon\(du, dv, 6\.0\);\s*cssd_masked = true;\s*size = \.8;/);
-    assert.match(main('d: length(vec2(du, dv) - .1); shape: d; fill: red'), /float cssd1 = length\(\(vec2\(du, dv\) - \.1\)\);\s*cssd_dist = cssd1;/);
+    assert.match(main('shape: diamond; fill: red'), /g_dist = abs\(du\) \+ abs\(dv\);/);
+    assert.match(main('shape: ngon(du, dv, 6); size: .8; fill: red'), /g_dist = ngon\(du, dv, 6\.0\);\s*g_masked = true;\s*size = \.8;/);
+    assert.match(main('d: length(vec2(du, dv) - .1); shape: d; fill: red'), /float g_1 = length\(\(vec2\(du, dv\) - \.1\)\);\s*g_dist = g_1;/);
     // a built-in distance is a shape too
-    assert.match(main('shape: dm; fill: red'), /cssd_dist = dm;/);
+    assert.match(main('shape: dm; fill: red'), /g_dist = dm;/);
     // an unknown word is reported like any unknown name
     let messages = [];
     draw('shape: blob; size: .5; fill: red', extra, m => messages.push(m));
@@ -472,12 +472,12 @@ test('a shape may be a name, a variable or a distance expression', () => {
 
 test('shape inside a match block applies the matching mask', () => {
     // no top-level shape/size, so any mask must come from the block
-    assert.match(main('match(x > 2) { shape: square; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*cssd_dist = max\(abs\(du\), abs\(dv\)\);\s*cssd_masked = true;/);
-    assert.match(main('match(x > 2) { shape: circle; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*cssd_dist = length\(vec2\(du, dv\)\);\s*cssd_masked = true;/);
+    assert.match(main('match(x > 2) { shape: square; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*g_dist = max\(abs\(du\), abs\(dv\)\);\s*g_masked = true;/);
+    assert.match(main('match(x > 2) { shape: circle; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*g_dist = length\(vec2\(du, dv\)\);\s*g_masked = true;/);
     // a size alone masks with a square, inside the block only
     let s = main('match(x > 2) { size: .5; fill: red }');
-    assert.match(s, /if \(\(x > 2\.0\)\) \{\s*cssd_dist = max\(abs\(du\), abs\(dv\)\);/);
-    assert.equal((s.match(/cssd_dist = [a-z]/g) || []).length, 1);
+    assert.match(s, /if \(\(x > 2\.0\)\) \{\s*g_dist = max\(abs\(du\), abs\(dv\)\);/);
+    assert.equal((s.match(/g_dist = [a-z]/g) || []).length, 1);
 });
 
 test('in-block shape and size are read by the one mask at the end', () => {
@@ -487,17 +487,17 @@ test('in-block shape and size are read by the one mask at the end', () => {
     ]) {
         let s = main(code);
         assert.match(s, /if \(\(x > 1\.0\)\) \{[^}]*size = 0\.5;[^}]*\}/, code);
-        assert.match(s, /if \(\(x > 1\.0\)\) \{[^}]*cssd_dist = length\(vec2\(du, dv\)\);[^}]*\}/, code);
-        assert.equal((s.match(/cssd_shape\(/g) || []).length, 1, code);
+        assert.match(s, /if \(\(x > 1\.0\)\) \{[^}]*g_dist = length\(vec2\(du, dv\)\);[^}]*\}/, code);
+        assert.equal((s.match(/g_shape\(/g) || []).length, 1, code);
     }
     // the last shape written wins
     let dup = main('match(x > 1) { shape: circle; shape: square; fill: red }');
-    assert.match(dup, /cssd_dist = length\(vec2\(du, dv\)\);[\s\S]*cssd_dist = max\(abs\(du\), abs\(dv\)\);/);
+    assert.match(dup, /g_dist = length\(vec2\(du, dv\)\);[\s\S]*g_dist = max\(abs\(du\), abs\(dv\)\);/);
 });
 
 test('in-block size keeps the enclosing shape', () => {
     let s = main('shape: circle; match(x > 1) { size: 0.5; fill: red }');
-    assert.equal((s.match(/cssd_dist = [a-z]/g) || []).length, 1);
+    assert.equal((s.match(/g_dist = [a-z]/g) || []).length, 1);
     assert.match(s, /if \(\(x > 1\.0\)\) \{\s*size = 0\.5;/);
 });
 
@@ -574,15 +574,15 @@ test('a point argument may be one vec2 or two floats', () => {
     assert.match(s, /float fbm\(float px, float py\) \{\s*return fbm\(vec2\(px, py\)\);/);
     assert.match(s, /float escape\(float cx, float cy\) \{\s*return escape\(vec2\(0\.0\), vec2\(cx, cy\)\);/);
     // a vector variable passes straight through to the vec2 form
-    assert.equal(color('p: uv*3; fill: fbm(p)'), 'cssd_color = vec4(vec3(fbm(cssd1)), 1.0);');
+    assert.equal(color('p: uv*3; fill: fbm(p)'), 'g_color = vec4(vec3(fbm(g_1)), 1.0);');
     assert.equal(color('z: vec2(0); c: uv*3 - 2; fill: escape(z, c)'),
-        'cssd_color = vec4(vec3(escape(cssd1, cssd2)), 1.0);');
+        'g_color = vec4(vec3(escape(g_1, g_2)), 1.0);');
 });
 
 test('rot() returns the rotated point', () => {
     assert.equal(color('p: rot(vec2(du, dv), t); fill: p.x + .5'),
-        'cssd_color = vec4(vec3((cssd1.x + .5)), 1.0);');
-    assert.equal(color('fill: rot(du, dv, PI).y'), 'cssd_color = vec4(vec3(rot(du, dv, PI).y), 1.0);');
+        'g_color = vec4(vec3((g_1.x + .5)), 1.0);');
+    assert.equal(color('fill: rot(du, dv, PI).y'), 'g_color = vec4(vec3(rot(du, dv, PI).y), 1.0);');
 });
 
 test('ints are highp so bitwise operators survive large grids', () => {
@@ -594,28 +594,28 @@ test('variable names with regex metacharacters do not crash generation', () => {
 });
 
 // --- repeat() blocks ---
-// a state becomes the GLSL variable cssdN, numbered in order of declaration;
+// a state becomes the GLSL variable g_N, numbered in order of declaration;
 // the loop counter takes the next number, then the locals of the body
 
 test('repeat updates existing variables sequentially', () => {
     let s = main('a: 1; b: 2; repeat(1) { a: b; b: a } fill: a, b, 0');
-    assert.match(s, /float cssd1 = 1\.0;\s*float cssd2 = 2\.0;\s*for \(float cssd3 = 0\.0; cssd3 < 1\.0; cssd3\+\+\) \{\s*cssd1 = cssd2;\s*cssd2 = cssd1;/);
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1, cssd2, 0\.0\), 1\.0\);/);
+    assert.match(s, /float g_1 = 1\.0;\s*float g_2 = 2\.0;\s*for \(float g_3 = 0\.0; g_3 < 1\.0; g_3\+\+\) \{\s*g_1 = g_2;\s*g_2 = g_1;/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1, g_2, 0\.0\), 1\.0\);/);
 });
 
 test('repeat names new to the body are loop locals, declared once where they appear', () => {
     let s = main('sum: 0; repeat(4 as k) { value: k*k; sum: sum + value } fill: sum');
-    assert.match(s, /float cssd3 = \(cssd2 \* cssd2\);\s*cssd1 = \(cssd1 \+ cssd3\);/);
-    assert.equal((s.match(/float cssd3 =/g) || []).length, 1);
+    assert.match(s, /float g_3 = \(g_2 \* g_2\);\s*g_1 = \(g_1 \+ g_3\);/);
+    assert.equal((s.match(/float g_3 =/g) || []).length, 1);
     // the local does not leak out
-    assert.match(main('repeat(1) { v: 1 } fill: v'), /cssd_color = vec4\(vec3\(v\), 1\.0\);/);
+    assert.match(main('repeat(1) { v: 1 } fill: v'), /g_color = vec4\(vec3\(v\), 1\.0\);/);
 });
 
 test('repeat uses a zero-based named index and checks the stop conditions after the body', () => {
     let s = main('steps: 0; repeat(8 as k, steps > 3) { steps: k + 1 } fill: steps');
-    assert.match(s, /for \(float cssd2 = 0\.0; cssd2 < 8\.0; cssd2\+\+\) \{\s*cssd1 = \(cssd2 \+ 1\.0\);\s*if \(\(cssd1 > 3\.0\)\) break;/);
+    assert.match(s, /for \(float g_2 = 0\.0; g_2 < 8\.0; g_2\+\+\) \{\s*g_1 = \(g_2 \+ 1\.0\);\s*if \(\(g_1 > 3\.0\)\) break;/);
     // several stop conditions all have to hold
-    assert.match(main('a: 0; b: 0; repeat(3, a > 1, b > 1) { a: a + 1; b: b + 1 }'), /if \(\(cssd1 > 1\.0\) && \(cssd2 > 1\.0\)\) break;/);
+    assert.match(main('a: 0; b: 0; repeat(3, a > 1, b > 1) { a: a + 1; b: b + 1 }'), /if \(\(g_1 > 1\.0\) && \(g_2 > 1\.0\)\) break;/);
 });
 
 test('repeat without a stop condition never breaks early', () => {
@@ -629,7 +629,7 @@ test('repeat without a valid step count is skipped and reported', () => {
     assert.deepEqual(messages, ['repeat() needs a step count']);
     assert.doesNotMatch(s, /for \(float/);
     // the variable keeps its declared value
-    assert.match(s, /float cssd1 = 0\.0;\s*cssd_color = vec4\(hsl\(cssd1, 1\.0, 1\.0\), 1\.0\);/);
+    assert.match(s, /float g_1 = 0\.0;\s*g_color = vec4\(hsl\(g_1, 1\.0, 1\.0\), 1\.0\);/);
 });
 
 test('fbm() rotates the domain between octaves', () => {
@@ -642,16 +642,16 @@ test('escape() bails out at |z| = 16 with the base-2 smooth count', () => {
 
 test('a second repeat continues the same state without redeclaring it', () => {
     let s = main('zx: 0; repeat(3) { zx: zx + 1 } repeat(2) { zx: zx * 2 } fill: zx');
-    assert.equal((s.match(/float cssd1 =/g) || []).length, 1);
+    assert.equal((s.match(/float g_1 =/g) || []).length, 1);
     assert.equal((s.match(/for \(float/g) || []).length, 2);
-    assert.match(s, /cssd1 = \(cssd1 \* 2\.0\);/);
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1\), 1\.0\);/);
+    assert.match(s, /g_1 = \(g_1 \* 2\.0\);/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1\), 1\.0\);/);
 });
 
 test('repeat inside match updates the outer state where the match holds', () => {
     let s = main('zx: 0; match(x > 1) { repeat(2) { zx: zx + 1 } fill: hsl(zx, 1, 1) } fill: hsl(zx, 1, 1)');
-    assert.match(s, /float cssd1 = 0\.0;\s*if \(\(x > 1\.0\)\) \{\s*for \(float cssd2[^}]*cssd1 = \(cssd1 \+ 1\.0\);[\s\S]*hsl\(cssd1, 1\.0, 1\.0\)[\s\S]*\}/);
-    assert.equal((s.match(/hsl\(cssd1, 1\.0, 1\.0\)/g) || []).length, 2);
+    assert.match(s, /float g_1 = 0\.0;\s*if \(\(x > 1\.0\)\) \{\s*for \(float g_2[^}]*g_1 = \(g_1 \+ 1\.0\);[\s\S]*hsl\(g_1, 1\.0, 1\.0\)[\s\S]*\}/);
+    assert.equal((s.match(/hsl\(g_1, 1\.0, 1\.0\)/g) || []).length, 2);
     // a name new to the block stays inside it
     let messages = [];
     draw('match(x > 1) { repeat(2) { n: 1 } } fill: n', extra, m => messages.push(m));
@@ -660,13 +660,13 @@ test('repeat inside match updates the outer state where the match holds', () => 
 
 test('repeat blocks may nest and read both named indices', () => {
     let s = main('sum: 0; repeat(4 as a) { repeat(3 as b) { sum: sum + a + b } } fill: sum');
-    assert.match(s, /float cssd1 = 0\.0;\s*for \(float cssd2 = 0\.0; cssd2 < 4\.0;[^{]*\{\s*for \(float cssd3 = 0\.0; cssd3 < 3\.0;[^{]*\{\s*cssd1 = \(\(cssd1 \+ cssd2\) \+ cssd3\);/);
+    assert.match(s, /float g_1 = 0\.0;\s*for \(float g_2 = 0\.0; g_2 < 4\.0;[^{]*\{\s*for \(float g_3 = 0\.0; g_3 < 3\.0;[^{]*\{\s*g_1 = \(\(g_1 \+ g_2\) \+ g_3\);/);
 });
 
 test('a repeat index shadows an outer variable without mutating it, and is read-only', () => {
     let s = main('k: 9; sum: 0; repeat(2 as k) { repeat(1) { sum: sum + k } sum: sum + k } fill: k, sum, 0');
-    assert.equal((s.match(/cssd2 = \(cssd2 \+ cssd3\);/g) || []).length, 2);
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1, cssd2, 0\.0\), 1\.0\);/);
+    assert.equal((s.match(/g_2 = \(g_2 \+ g_3\);/g) || []).length, 2);
+    assert.match(s, /g_color = vec4\(vec3\(g_1, g_2, 0\.0\), 1\.0\);/);
     let messages = [];
     draw('repeat(2 as k) { k: 1 }', extra, m => messages.push(m));
     assert.deepEqual(messages, ['repeat() index k is read-only']);
@@ -674,8 +674,8 @@ test('a repeat index shadows an outer variable without mutating it, and is read-
 
 test('variables may take the names of the shader internals', () => {
     let s = main('x: 0; t: 1; repeat(1) { x: x + 1; t: t*2 } fill: x, t, 0');
-    assert.match(s, /float cssd1 = 0\.0;\s*float cssd2 = 1\.0;/);
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1, cssd2, 0\.0\), 1\.0\);/);
+    assert.match(s, /float g_1 = 0\.0;\s*float g_2 = 1\.0;/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1, g_2, 0\.0\), 1\.0\);/);
     assert.match(s, /float t = 0\.0;/);
 });
 
@@ -686,7 +686,7 @@ test('repeat reports pattern outputs and allows match blocks in its body', () =>
         'repeat() does not allow fill',
         'repeat() does not allow size',
     ]);
-    assert.match(s.slice(s.indexOf('void main()')), /for \(float cssd2[^}]*if \(\(cssd1 < 1\.0\)\) \{\s*cssd1 = \(cssd1 \+ 1\.0\);\s*\}/);
+    assert.match(s.slice(s.indexOf('void main()')), /for \(float g_2[^}]*if \(\(g_1 < 1\.0\)\) \{\s*g_1 = \(g_1 \+ 1\.0\);\s*\}/);
     messages = [];
     draw('repeat(2) { match(x < 1) { fill: red } }', extra, m => messages.push(m));
     assert.deepEqual(messages, ['repeat() does not allow fill']);
@@ -703,7 +703,7 @@ test('repeat enforces count and nested work limits', () => {
 });
 
 test('repeat takes its count from a name set once to a whole number', () => {
-    assert.match(main('n: 72; repeat(n as k) { a: k / n }'), /for \(float cssd2 = 0\.0; cssd2 < 72\.0; cssd2\+\+\) \{\s*float cssd3 = \(cssd2 \/ cssd1\);/);
+    assert.match(main('n: 72; repeat(n as k) { a: k / n }'), /for \(float g_2 = 0\.0; g_2 < 72\.0; g_2\+\+\) \{\s*float g_3 = \(g_2 \/ g_1\);/);
     for (let code of ['n: 72; n: 5; repeat(n) { a: 1 }', 'n: 72; match(x > 1) { n: 5 } repeat(n) { a: 1 }', 'n: 7.5; repeat(n) { a: 1 }', 'repeat(m) { a: 1 }']) {
         let messages = [];
         let s = draw(code, extra, m => messages.push(m)).fragment;
@@ -718,12 +718,12 @@ test('repeat takes its count from a name set once to a whole number', () => {
 
 test('rand() without arguments holds for the cell and the repeat step, and differs per call', () => {
     let s = main('a: rand(); repeat(3 as i) { b: rand(); repeat(2) { c: rand() } }');
-    assert.match(s, /float cssd1 = rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
-    assert.match(s, /float cssd3 = rand\(vec2\(i, cssd2\) \+ 2\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    assert.match(s, /float g_1 = rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    assert.match(s, /float g_3 = rand\(vec2\(i, g_2\) \+ 2\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
     // nested steps get one key each: outer * count + inner
-    assert.match(s, /float cssd5 = rand\(vec2\(i, \(cssd2 \* 2\.0 \+ cssd4\)\) \+ 3\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    assert.match(s, /float g_5 = rand\(vec2\(i, \(g_2 \* 2\.0 \+ g_4\)\) \+ 3\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
     // the GLSL i is the cell index even where `as i` names the step
-    assert.match(main('fill: rand() + rand(x, y)'), /cssd_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(x, y\)\)\), 1\.0\);/);
+    assert.match(main('fill: rand() + rand(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(x, y\)\)\), 1\.0\);/);
 });
 
 test('derivatives where only some pixels run the code are reported once per outer block', () => {
@@ -747,113 +747,113 @@ test('derivatives where only some pixels run the code are reported once per oute
 
 test('a variable can hold a vector and be swizzled', () => {
     let s = main('c: vec2(uv.x*3 - 2.2, uv.y*2.6 - 1.3); fill: hsl(c.x, 1, c.y)');
-    assert.match(s, /vec2 cssd1 = vec2\(\(\(uv\.x \* 3\.0\) - 2\.2\), \(\(uv\.y \* 2\.6\) - 1\.3\)\);/);
-    assert.match(s, /cssd_color = vec4\(hsl\(cssd1\.x, 1\.0, cssd1\.y\), 1\.0\);/);
+    assert.match(s, /vec2 g_1 = vec2\(\(\(uv\.x \* 3\.0\) - 2\.2\), \(\(uv\.y \* 2\.6\) - 1\.3\)\);/);
+    assert.match(s, /g_color = vec4\(hsl\(g_1\.x, 1\.0, g_1\.y\), 1\.0\);/);
 });
 
 test('a swizzle component is never mistaken for a variable of that name', () => {
-    assert.equal(color('b: 3; v: vec3(1, 2, 3); fill: v.b + b'), 'cssd_color = vec4(vec3((cssd2.b + cssd1)), 1.0);');
+    assert.equal(color('b: 3; v: vec3(1, 2, 3); fill: v.b + b'), 'g_color = vec4(vec3((g_2.b + g_1)), 1.0);');
 });
 
 test('repeat state keeps vector and matrix types', () => {
     let s = main('z: uv*3.2 - 1.6; c: vec2(-0.8, 0.156); repeat(8, dot(z, z) > 4) { z: z + c }');
-    assert.match(s, /vec2 cssd\d+ = \(\(uv \* 3\.2\) - 1\.6\);/);
+    assert.match(s, /vec2 g_\d+ = \(\(uv \* 3\.2\) - 1\.6\);/);
     let matrix = main('m: 9; r: mat2(1, 0, 0, 1); repeat(2) { m: m + 1; r: r * 2 }');
-    assert.match(matrix, /float cssd\d+ = 9\.0;\s*mat2 cssd\d+ = mat2\(1\.0, 0\.0, 0\.0, 1\.0\);/);
-    assert.doesNotMatch(matrix, /float\(cssd\d+\)/);
-    assert.match(main('r: mat3(vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1)); p: r * vec3(uv, 1)'), /mat3 cssd1 = mat3\(.*\);\s*vec3 cssd2 = \(cssd1 \* vec3\(uv, 1\.0\)\);/);
-    assert.match(main('c: vec2(1, 2); z: c; p: vec2(dv, du)*3; repeat(2) { z: z + c; p: p*2 }'), /vec2 cssd1 = vec2\(1\.0, 2\.0\);\s*vec2 cssd2 = cssd1;\s*vec2 cssd3 = \(vec2\(dv, du\) \* 3\.0\);/);
+    assert.match(matrix, /float g_\d+ = 9\.0;\s*mat2 g_\d+ = mat2\(1\.0, 0\.0, 0\.0, 1\.0\);/);
+    assert.doesNotMatch(matrix, /float\(g_\d+\)/);
+    assert.match(main('r: mat3(vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1)); p: r * vec3(uv, 1)'), /mat3 g_1 = mat3\(.*\);\s*vec3 g_2 = \(g_1 \* vec3\(uv, 1\.0\)\);/);
+    assert.match(main('c: vec2(1, 2); z: c; p: vec2(dv, du)*3; repeat(2) { z: z + c; p: p*2 }'), /vec2 g_1 = vec2\(1\.0, 2\.0\);\s*vec2 g_2 = g_1;\s*vec2 g_3 = \(vec2\(dv, du\) \* 3\.0\);/);
 });
 
 test('repeat state recognizes float- and vector-returning calls', () => {
     let s = main('s: fbm(uv); d: length(uv - .5); p: rot(uv, 1); c: hsl(0, 1, 1); repeat(2) { s: s*.5; d: d*2; p: p*2; c: c*.5 }');
-    assert.match(s, /float cssd\d+ = fbm\(uv\);\s*float cssd\d+ = length\(\(uv - \.5\)\);\s*vec2 cssd\d+ = rot\(uv, 1\.0\);\s*vec3 cssd\d+ = hsl\(0\.0, 1\.0, 1\.0\);/);
-    assert.doesNotMatch(s, /float\(cssd\d+\)/);
+    assert.match(s, /float g_\d+ = fbm\(uv\);\s*float g_\d+ = length\(\(uv - \.5\)\);\s*vec2 g_\d+ = rot\(uv, 1\.0\);\s*vec3 g_\d+ = hsl\(0\.0, 1\.0, 1\.0\);/);
+    assert.doesNotMatch(s, /float\(g_\d+\)/);
 });
 
 test('repeat type inference uses the expression result, not any nested constructor', () => {
     let s = main('a: max(length(vec2(1)), 1); b: .5*hsl(0, 1, 1); repeat(2) { a: a + 1; b: b*.5 }');
-    assert.match(s, /float cssd\d+ = max\(length\(vec2\(1\.0\)\), 1\.0\);/);
-    assert.match(s, /vec3 cssd\d+ = \(\.5 \* hsl\(0\.0, 1\.0, 1\.0\)\);/);
+    assert.match(s, /float g_\d+ = max\(length\(vec2\(1\.0\)\), 1\.0\);/);
+    assert.match(s, /vec3 g_\d+ = \(\.5 \* hsl\(0\.0, 1\.0, 1\.0\)\);/);
 });
 
 test('repeat recognizes scaled vector expressions', () => {
     let s = main('p: .5*uv; q: 2*rot(uv, 1); r: 3*vec2(1); repeat(1) { p: p + uv; q: q + uv; r: r + uv }');
-    assert.match(s, /vec2 cssd\d+ = \(\.5 \* uv\);/);
-    assert.match(s, /vec2 cssd\d+ = \(2\.0 \* rot\(uv, 1\.0\)\);/);
-    assert.match(s, /vec2 cssd\d+ = \(3\.0 \* vec2\(1\.0\)\);/);
+    assert.match(s, /vec2 g_\d+ = \(\.5 \* uv\);/);
+    assert.match(s, /vec2 g_\d+ = \(2\.0 \* rot\(uv, 1\.0\)\);/);
+    assert.match(s, /vec2 g_\d+ = \(3\.0 \* vec2\(1\.0\)\);/);
 });
 
 test('repeat does not infer a nested vector helper as the result type', () => {
     let s = main('v: max(length(hsl(0, 1, 1)), 1); repeat(1) { v: v + 1 }');
-    assert.match(s, /float cssd\d+ = max\(length\(hsl\(0\.0, 1\.0, 1\.0\)\), 1\.0\);/);
+    assert.match(s, /float g_\d+ = max\(length\(hsl\(0\.0, 1\.0, 1\.0\)\), 1\.0\);/);
 });
 
 test('repeat recognizes vectors on either side of arithmetic and narrowed swizzles', () => {
     let s = main('p: 1 - uv; v: vec3(1); q: v.xy; repeat(2) { p: p*.5; q: q + uv }');
-    assert.match(s, /vec2 cssd1 = \(1\.0 - uv\);/);
-    assert.match(s, /vec2 cssd3 = cssd2\.xy;/);
+    assert.match(s, /vec2 g_1 = \(1\.0 - uv\);/);
+    assert.match(s, /vec2 g_3 = g_2\.xy;/);
 });
 
 test('repeat initializes and updates bool state without float casts', () => {
     let s = main('flag: x > 1; repeat(1) { flag: not flag; local: y > 1 }');
-    assert.match(s, /bool cssd\d+ = \(x > 1\.0\);/);
-    assert.match(s, /cssd\d+ = !cssd\d+;/);
-    assert.match(s, /bool cssd\d+ = \(y > 1\.0\);/);
-    assert.doesNotMatch(s, /bool cssd\d+ = float\(/);
+    assert.match(s, /bool g_\d+ = \(x > 1\.0\);/);
+    assert.match(s, /g_\d+ = !g_\d+;/);
+    assert.match(s, /bool g_\d+ = \(y > 1\.0\);/);
+    assert.doesNotMatch(s, /bool g_\d+ = float\(/);
 });
 
 test('fill and size read repeat state by its type', () => {
     let s = main('flag: x > 1; repeat(1) { flag: not flag } fill: flag*.5, 0, 0');
-    assert.match(s, /cssd_color = vec4\(vec3\(\(float\(cssd1\) \* \.5\), 0\.0, 0\.0\), 1\.0\);/);
+    assert.match(s, /g_color = vec4\(vec3\(\(float\(g_1\) \* \.5\), 0\.0, 0\.0\), 1\.0\);/);
     s = main('p: uv; repeat(1) { p: p*2 } match(x > 1) { size: length(p); fill: p.x, p.y, 0 }');
-    assert.match(s, /size = length\(cssd1\);/);
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1\.x, cssd1\.y, 0\.0\), 1\.0\);/);
+    assert.match(s, /size = length\(g_1\);/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1\.x, g_1\.y, 0\.0\), 1\.0\);/);
 });
 
 test('the size is set where it is written, so it reads the state so far', () => {
     let s = main('s: 1; repeat(4) { s: s*1.1 } size: s; fill: #000');
-    assert.match(s, /float cssd1 = 1\.0;\s*for \(float cssd2[^}]*\}\s*size = cssd1;/);
+    assert.match(s, /float g_1 = 1\.0;\s*for \(float g_2[^}]*\}\s*size = g_1;/);
     // a fill written before the repeat reads the state before it
     s = main('s: 1; fill: s; repeat(4) { s: s*1.1 } match(x > 1) { size: s }');
-    assert.match(s, /cssd_color = vec4\(vec3\(cssd1\), 1\.0\);\s*for \(float cssd2[^}]*\}\s*if \(\(x > 1\.0\)\) \{[^}]*size = cssd1;/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1\), 1\.0\);\s*for \(float g_2[^}]*\}\s*if \(\(x > 1\.0\)\) \{[^}]*size = g_1;/);
 });
 
 test('repeat recognizes bool literals and GLSL vector comparisons', () => {
     let s = main('a: true; b: any(lessThan(uv, vec2(.5))); repeat(1) { a: not a; b: not b }');
-    assert.match(s, /bool cssd\d+ = true;/);
-    assert.match(s, /bool cssd\d+ = any\(lessThan\(uv, vec2\(\.5\)\)\);/);
+    assert.match(s, /bool g_\d+ = true;/);
+    assert.match(s, /bool g_\d+ = any\(lessThan\(uv, vec2\(\.5\)\)\);/);
 });
 
 test('repeat recognizes vector bool results', () => {
     let s = main('a: isnan(uv); b: isinf(vec3(1)); c: bvec2(true); repeat(1) { a: not a; b: b; c: c }');
-    assert.match(s, /bvec2 cssd\d+ = isnan\(uv\);/);
-    assert.match(s, /bvec3 cssd\d+ = isinf\(vec3\(1\.0\)\);/);
-    assert.match(s, /bvec2 cssd\d+ = bvec2\(true\);/);
-    assert.match(s, /cssd\d+ = not\(cssd\d+\);/);
+    assert.match(s, /bvec2 g_\d+ = isnan\(uv\);/);
+    assert.match(s, /bvec3 g_\d+ = isinf\(vec3\(1\.0\)\);/);
+    assert.match(s, /bvec2 g_\d+ = bvec2\(true\);/);
+    assert.match(s, /g_\d+ = not\(g_\d+\);/);
 });
 
 test('repeat keeps int expressions in the float pattern number model', () => {
     let s = main('a: int(x); repeat(2) { a: a + 1 }');
-    assert.match(s, /float cssd\d+ = float\(int\(x\)\);/);
-    assert.match(s, /cssd\d+ = \(cssd\d+ \+ 1\.0\);/);
+    assert.match(s, /float g_\d+ = float\(int\(x\)\);/);
+    assert.match(s, /g_\d+ = \(g_\d+ \+ 1\.0\);/);
 });
 
 // --- match() as a function ---
 
 test('ramp() in a fill maps a number to colors', () => {
     assert.match(color('fill: ramp(dr, #000, #fff)'),
-        /^cssd_color = vec4\(mix\(vec3\(0\.0, 0\.0, 0\.0\), vec3\(1\.0, 1\.0, 1\.0\), clamp\(\(dr - 0\.0\) \/ max\(1\.0 - 0\.0, fwidth\(dr\) \+ 1e-5\), 0\.0, 1\.0\)\), 1\.0\);$/);
+        /^g_color = vec4\(mix\(vec3\(0\.0, 0\.0, 0\.0\), vec3\(1\.0, 1\.0, 1\.0\), clamp\(\(dr - 0\.0\) \/ max\(1\.0 - 0\.0, fwidth\(dr\) \+ 1e-5\), 0\.0, 1\.0\)\), 1\.0\);$/);
     // a ramp of numbers is a float variable
-    assert.match(main('k: ramp(x, 0, 1, 0); fill: k'), /float cssd1 = mix\(mix\(0\.0, 1\.0, /);
+    assert.match(main('k: ramp(x, 0, 1, 0); fill: k'), /float g_1 = mix\(mix\(0\.0, 1\.0, /);
 });
 
 test('match() in a value chooses between expressions, colors included', () => {
     assert.equal(color('fill: match(dr < 2, #fff, #000)'),
-        'cssd_color = vec4(((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0)), 1.0);');
+        'g_color = vec4(((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0)), 1.0);');
     let s = main('c: match(db = 0, 1, dr < 3, .5, 0); fill: hsl(c, .8, .5)');
-    assert.match(s, /float cssd1 = \(\(db == 0\.0\) \? 1\.0 : \(\(dr < 3\.0\) \? \.5 : 0\.0\)\);/);
-    assert.match(s, /cssd_color = vec4\(hsl\(cssd1, \.8, \.5\), 1\.0\);/);
+    assert.match(s, /float g_1 = \(\(db == 0\.0\) \? 1\.0 : \(\(dr < 3\.0\) \? \.5 : 0\.0\)\);/);
+    assert.match(s, /g_color = vec4\(hsl\(g_1, \.8, \.5\), 1\.0\);/);
     assert.match(shader('size: match(x > 4, .8, .3); fill: #000'), /size = \(\(x > 4\.0\) \? \.8 : \.3\);/);
     // as a block test its branches are already bool, so no outer cast
     assert.equal(condition('match(match(x > 2, y > 2, 0)) { fill: red }'),
@@ -874,10 +874,10 @@ test('a texture block is a doodle sampled with texture()', () => {
     assert.equal(textures[0].name, 'texture_0');
     assert.match(textures[0].value, /^background:\s*linear-gradient\(red,\s*blue\)$/);
     // the sampler passes as is, the result is a vec4
-    assert.match(fragment, /vec4 cssd1 = texture\(texture_0, uv\);/);
-    assert.match(fragment, /cssd_color = cssd1;/);
+    assert.match(fragment, /vec4 g_1 = texture\(texture_0, uv\);/);
+    assert.match(fragment, /g_color = g_1;/);
     assert.equal(color('texture0 { background: red } fill: texture(texture0, pos * .5 + .5)'),
-        'cssd_color = texture(texture0, ((pos * .5) + .5));');
+        'g_color = texture(texture0, ((pos * .5) + .5));');
 });
 
 test('texture blocks: the last of a name wins, only at the top level', () => {
@@ -892,9 +892,9 @@ test('box() and segment() are floats a fill or shape can read', () => {
     let warned = [];
     let { fragment: out } = draw('d: box(pos, .3); e: segment(pos, vec2(0), vec2(.3, .3)); shape: box(du, dv, .2); fill: hsl(d + e, .5, .5);', extra, m => warned.push(m));
     assert.deepEqual(warned, []);
-    assert.match(out, /float cssd1 = box\(pos, \.3\);/);
-    assert.match(out, /float cssd2 = segment\(pos, vec2\(0\.0\), vec2\(\.3, \.3\)\);/);
-    assert.match(out, /cssd_dist = box\(du, dv, \.2\);/);
+    assert.match(out, /float g_1 = box\(pos, \.3\);/);
+    assert.match(out, /float g_2 = segment\(pos, vec2\(0\.0\), vec2\(\.3, \.3\)\);/);
+    assert.match(out, /g_dist = box\(du, dv, \.2\);/);
     assert.match(out, /float box\(vec2 p, vec2 b\)/);
     assert.match(out, /float box\(float px, float py, float b\)/);
     assert.match(out, /float segment\(vec2 p, vec2 a, vec2 b\)/);

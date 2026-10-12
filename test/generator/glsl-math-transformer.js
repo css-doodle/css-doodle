@@ -404,17 +404,17 @@ test('float() of a vector is not stripped', () => {
 });
 
 test('names map to GLSL identifiers, swizzles and calls left alone', () => {
-    const names = { __proto__: null, p: 'cssd1', rand: 'cssd2' };
-    assert.equal(transform('p.x + p', { names, types: { cssd1: 'vec2' } }), '(cssd1.x + cssd1)');
-    assert.equal(transform('rand(p)', { names }), 'rand(cssd1)');
-    assert.equal(transform('p', { names, type: true, types: { cssd1: 'vec2' } }), 'vec2');
+    const names = { __proto__: null, p: 'g_1', rand: 'g_2' };
+    assert.equal(transform('p.x + p', { names, types: { g_1: 'vec2' } }), '(g_1.x + g_1)');
+    assert.equal(transform('rand(p)', { names }), 'rand(g_1)');
+    assert.equal(transform('p', { names, type: true, types: { g_1: 'vec2' } }), 'vec2');
     // a #hex color is never a name
-    assert.equal(transform('#abc', { names: { __proto__: null, abc: 'cssd1' } }), 'vec3(0.6666666666666666, 0.7333333333333333, 0.8)');
+    assert.equal(transform('#abc', { names: { __proto__: null, abc: 'g_1' } }), 'vec3(0.6666666666666666, 0.7333333333333333, 0.8)');
 });
 
 test('unknown is told of the names that are neither mapped nor typed', () => {
     const seen = [];
-    transform('a + b.x + c(d) + e', { names: { __proto__: null, a: 'cssd1' }, types: { e: 'float' }, unknown: n => { seen.push(n); } });
+    transform('a + b.x + c(d) + e', { names: { __proto__: null, a: 'g_1' }, types: { e: 'float' }, unknown: n => { seen.push(n); } });
     assert.deepEqual(seen, ['b', 'd']);
 });
 
@@ -425,8 +425,8 @@ test('an underscore is part of a name', () => {
 });
 
 test('a name ending in a digit keeps its swizzle', () => {
-    const names = { __proto__: null, uv2: 'cssd1' };
-    assert.equal(transform('uv2.x', { names, types: { cssd1: 'vec2' } }), 'cssd1.x');
+    const names = { __proto__: null, uv2: 'g_1' };
+    assert.equal(transform('uv2.x', { names, types: { g_1: 'vec2' } }), 'g_1.x');
     assert.equal(transform('p2.yx * 2', { types: { p2: 'vec2' } }), '(p2.yx * 2.0)');
 });
 
@@ -453,13 +453,13 @@ test('unknown may answer with a color, which is a vec3 or vec4 literal', () => {
     assert.equal(transform('red.g + glass.a', { unknown }), '(vec3(1.0, 0.0, 0.0).g + vec4(0.0, 0.0, 1.0, 0.5).a)');
     assert.equal(transform('red', { unknown, type: true }), 'vec3');
     // a mapped name wins over a color of the same spelling
-    assert.equal(transform('red', { unknown, names: { __proto__: null, red: 'cssd1' } }), 'cssd1');
+    assert.equal(transform('red', { unknown, names: { __proto__: null, red: 'g_1' } }), 'g_1');
 });
 
 test('shape(d, size) is the mask of the shape and size statements', () => {
-    assert.equal(transform('shape(d, .5)'), 'cssd_shape(d, .5)');
-    assert.equal(transform('shape(length(uv))'), 'cssd_shape(length(uv), 1.0)');
-    assert.equal(transform('mix(a, b, shape(d, .5))', { types: { a: 'vec3', b: 'vec3' } }), 'mix(a, b, cssd_shape(d, .5))');
+    assert.equal(transform('shape(d, .5)'), 'g_shape(d, .5)');
+    assert.equal(transform('shape(length(uv))'), 'g_shape(length(uv), 1.0)');
+    assert.equal(transform('mix(a, b, shape(d, .5))', { types: { a: 'vec3', b: 'vec3' } }), 'mix(a, b, g_shape(d, .5))');
     assert.equal(transform('shape(d, .5)', { type: true }), 'float');
 });
 

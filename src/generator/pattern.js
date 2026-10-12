@@ -35,21 +35,21 @@ const CELL_INDEX = glsl`
 
 // Built-ins of the pattern language (grammar §9.3)
 export const HELPERS = glsl`
-    float cssd_hash(vec2 p) {
+    float g_hash(vec2 p) {
         vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
         p3 += dot(p3, p3.yzx + 33.33);
         return fract((p3.x + p3.y) * p3.z);
     }
-    vec3 cssd_hue(float h) {
+    vec3 g_hue(float h) {
         return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
     }
-    float cssd_shape(float d, float size) {
+    float g_shape(float d, float size) {
         float r = 0.5 * size;
         return 1.0 - smoothstep(r - max(fwidth(d), 1e-5), r, d);
     }
 
     float rand(vec2 p) {
-        return cssd_hash(p + u_seed.x * 71.0);
+        return g_hash(p + u_seed.x * 71.0);
     }
     float rand(float a, float b) {
         return rand(vec2(a, b));
@@ -61,8 +61,8 @@ export const HELPERS = glsl`
         vec2 ip = floor(p) + u_seed.x * 71.0;
         vec2 u = fract(p);
         u = u * u * (3.0 - 2.0 * u);
-        float r0 = mix(cssd_hash(ip), cssd_hash(ip + vec2(1.0, 0.0)), u.x);
-        float r1 = mix(cssd_hash(ip + vec2(0.0, 1.0)), cssd_hash(ip + vec2(1.0, 1.0)), u.x);
+        float r0 = mix(g_hash(ip), g_hash(ip + vec2(1.0, 0.0)), u.x);
+        float r1 = mix(g_hash(ip + vec2(0.0, 1.0)), g_hash(ip + vec2(1.0, 1.0)), u.x);
         return mix(r0, r1, u.y);
     }
     float noise(float a, float b) {
@@ -88,7 +88,7 @@ export const HELPERS = glsl`
         for (int j = -1; j <= 1; j++)
         for (int i = -1; i <= 1; i++) {
             vec2 g = vec2(float(i), float(j));
-            vec2 o = vec2(cssd_hash(ip + g), cssd_hash(ip + g + 19.7));
+            vec2 o = vec2(g_hash(ip + g), g_hash(ip + g + 19.7));
             vec2 r = g + o - fp;
             md = min(md, dot(r, r));
         }
@@ -99,10 +99,10 @@ export const HELPERS = glsl`
     }
 
     vec3 hsl(float h, float s, float l) {
-        return l + s * (cssd_hue(h) - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+        return l + s * (g_hue(h) - 0.5) * (1.0 - abs(2.0 * l - 1.0));
     }
     vec3 hsv(float h, float s, float v) {
-        return v * mix(vec3(1.0), cssd_hue(h), s);
+        return v * mix(vec3(1.0), g_hue(h), s);
     }
 
     vec2 rot(vec2 p, float a) {
@@ -247,8 +247,8 @@ function generateStatement(name, value, scope, ctx) {
         ctx.warn(`"${name}" is not a valid name`);
         return '';
     }
-    if (name.startsWith('cssd')) {
-        ctx.warn(`names starting with cssd are reserved`);
+    if (name.startsWith('g_')) {
+        ctx.warn(`names starting with g_ are reserved`);
         return '';
     }
     let id = scope.ids[name];
@@ -268,7 +268,7 @@ function generateStatement(name, value, scope, ctx) {
     }
     let v = compile(value, scope, ctx);
     if (!v) return '';
-    id = scope.ids[name] = `cssd${++ctx.id}`;
+    id = scope.ids[name] = `g_${++ctx.id}`;
     ctx.types[id] = v.type;
     if (/^\d+$/.test(value)) ctx.counts.set(id, Number(value));
     return `${v.type} ${id} = ${v.code};\n`;
@@ -278,15 +278,15 @@ function generateFill(value, scope, ctx) {
     let v = compile(value, scope, ctx);
     if (!v) return '';
     let { type, code } = v;
-    if (type === 'vec4') return `cssd_color = ${code};\n`;
-    if (type === 'vec3') return `cssd_color = vec4(${code}, 1.0);\n`;
-    if (type === 'vec2') return `cssd_color = vec4(${code}, 0.0, 1.0);\n`;
+    if (type === 'vec4') return `g_color = ${code};\n`;
+    if (type === 'vec3') return `g_color = vec4(${code}, 1.0);\n`;
+    if (type === 'vec2') return `g_color = vec4(${code}, 0.0, 1.0);\n`;
     if (type === 'bool') code = `float(${code})`;
     else if (type !== 'float') {
         ctx.warn(`fill cannot take a ${type}`);
         return '';
     }
-    return `cssd_color = vec4(vec3(${code}), 1.0);\n`;
+    return `g_color = vec4(vec3(${code}), 1.0);\n`;
 }
 
 function asFloat(value, scope, ctx, what) {
@@ -300,9 +300,9 @@ function asFloat(value, scope, ctx, what) {
 
 function generateShape(value, scope, ctx) {
     ctx.masked = true;
-    if (value === 'none') return 'cssd_masked = false;\n';
+    if (value === 'none') return 'g_masked = false;\n';
     let d = MASKS[value] || asFloat(value, scope, ctx, 'shape');
-    return d ? `cssd_dist = ${d};\ncssd_masked = true;\n` : '';
+    return d ? `g_dist = ${d};\ng_masked = true;\n` : '';
 }
 
 function generateSize(value, scope, ctx) {
@@ -333,7 +333,7 @@ function generateRepeat(token, scope, ctx, opts) {
         return '';
     }
     let inner = newScope(scope);
-    let counter = `cssd${++ctx.id}`;
+    let counter = `g_${++ctx.id}`;
     ctx.types[counter] = 'float';
     ctx.readonly.add(counter);
     if (m[2]) inner.ids[m[2]] = counter;
@@ -365,7 +365,7 @@ function generateMatch(arms, scope, ctx, opts) {
 }
 
 function checkDerivatives(code, where, ctx, opts) {
-    if (!opts.branched && /\b(fwidth|dFdx|dFdy|cssd_shape)\(/.test(code)) {
+    if (!opts.branched && /\b(fwidth|dFdx|dFdy|g_shape)\(/.test(code)) {
         ctx.warn(`ramp(), shape(), fwidth(), dFdx() and dFdy() are unreliable ${where}; compute them before it`);
     }
 }
@@ -425,12 +425,12 @@ function generateShader({ grid, body, masked }) {
         float i = x + (y - 1.0) * X;
         float t = ${usesTime ? 'u_time' : '0.0'};
         ${CELL_INDEX}
-        vec4 cssd_color = vec4(0.0);
+        vec4 g_color = vec4(0.0);
         float size = 1.0;
-        ${masked ? 'float cssd_dist = 0.0;\nbool cssd_masked = false;' : ''}
+        ${masked ? 'float g_dist = 0.0;\nbool g_masked = false;' : ''}
         ${body}
-        ${masked ? 'float cssd_mask = cssd_shape(cssd_dist, size);\nif (cssd_masked) cssd_color.a *= cssd_mask;' : ''}
-        FragColor = cssd_color;
+        ${masked ? 'float g_mask = g_shape(g_dist, size);\nif (g_masked) g_color.a *= g_mask;' : ''}
+        FragColor = g_color;
     }
   `;
 }

@@ -21,50 +21,50 @@ const SHAPES = {
     sdf: ['d'],
 };
 
-// the signs cssd_op takes
+// the signs g_op takes
 const GROUPS = { __proto__: null, union: '1.0, 1.0', subtract: '-1.0, 1.0', intersect: '-1.0, -1.0' };
 
 const COMMANDS = new Set(['translate', 'rotate', 'scale', 'mirror', 'repeat', 'twist', 'grow', 'shell']);
 const AXES = { __proto__: null, x: '1.0, 0.0, 0.0', y: '0.0, 1.0, 0.0', z: '0.0, 0.0, 1.0' };
 
 const SCENE_HELPERS = glsl`
-    vec4 cssd_op(vec4 a, vec4 b, float k, float sa, float sb) {
+    vec4 g_op(vec4 a, vec4 b, float k, float sa, float sb) {
         a.w *= sa;
         b.w *= sb;
         k = max(k, 1e-6);
         float h = clamp(0.5 + 0.5 * (b.w - a.w) / k, 0.0, 1.0);
         return vec4(mix(b.rgb, a.rgb, h), sa * (mix(b.w, a.w, h) - k * h * (1.0 - h)));
     }
-    vec3 cssd_rotate(vec3 p, vec3 k, float a) {
+    vec3 g_rotate(vec3 p, vec3 k, float a) {
         k = normalize(k);
         return mix(k * dot(k, p), p, cos(a)) - cross(k, p) * sin(a);
     }
-    float cssd_smin(float a, float b, float k, float sa, float sb) {
+    float g_smin(float a, float b, float k, float sa, float sb) {
         a *= sa;
         b *= sb;
         k = max(k, 1e-6);
         float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
         return sa * (mix(b, a, h) - k * h * (1.0 - h));
     }
-    float cssd_box(vec3 p, vec3 b) {
+    float g_box(vec3 p, vec3 b) {
         vec3 d = abs(p) - b;
         return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
     }
-    float cssd_ellipsoid(vec3 p, vec3 r) {
+    float g_ellipsoid(vec3 p, vec3 r) {
         float k0 = length(p / r);
         return max(k0 * (k0 - 1.0) / length(p / (r * r)), length(p) - max(r.x, max(r.y, r.z)));
     }
-    float cssd_cylinder(vec3 p, float r, float h) {
+    float g_cylinder(vec3 p, float r, float h) {
         vec2 d = vec2(length(p.xz) - r, abs(p.y) - h);
         return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
     }
-    float cssd_cone(vec3 p, float h, float r1, float r2) {
+    float g_cone(vec3 p, float h, float r1, float r2) {
         vec2 q = vec2(length(p.xz), p.y), k1 = vec2(r2, h), k2 = vec2(r2 - r1, 2.0 * h);
         vec2 ca = vec2(q.x - min(q.x, q.y < 0.0 ? r1 : r2), abs(q.y) - h);
         vec2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot(k2, k2), 0.0, 1.0);
         return (cb.x < 0.0 && ca.y < 0.0 ? -1.0 : 1.0) * sqrt(min(dot(ca, ca), dot(cb, cb)));
     }
-    float cssd_capsule(vec3 p, vec3 a, vec3 b, vec2 r) {
+    float g_capsule(vec3 p, vec3 a, vec3 b, vec2 r) {
         vec3 pa = p - a, ba = b - a;
         float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
         return length(pa - ba * h) - mix(r.x, r.y, h);
@@ -164,7 +164,7 @@ export default function drawScene(code, extra, report = () => {}) {
             }
             return known.get(name);
         };
-        let next = () => `cssd${++ctx.id}`;
+        let next = () => `g_${++ctx.id}`;
         let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
             types: ctx.types, warn, unknown,
             names: { __proto__: ctx.names, p },
@@ -172,9 +172,9 @@ export default function drawScene(code, extra, report = () => {}) {
         });
         // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']
         let numbers = (tokens, p) => {
-            let code = compile(`cssd(${textOf(tokens)})`, p).code();
-            let items = [], depth = 0, last = 5;
-            for (let i = 5; i < code.length; i++) {
+            let code = compile(`g_(${textOf(tokens)})`, p).code();
+            let items = [], depth = 0, last = 3;
+            for (let i = 3; i < code.length; i++) {
                 if (code[i] === '(') depth++;
                 else if (code[i] === ')' && depth) depth--;
                 else if (code[i] === ',' && !depth || code[i] === ')') {
@@ -208,7 +208,7 @@ export default function drawScene(code, extra, report = () => {}) {
         if (!dist) out += `vec3 ${base} = vec3(0.9);\n`;
         let join = (a, b, k, signs = '1.0, 1.0') => `${a} = ${dist && k === '0.0'
             ? { '1.0, 1.0': `min(${a}, ${b})`, '-1.0, 1.0': `max(${a}, -${b})`, '-1.0, -1.0': `max(${a}, ${b})` }[signs]
-            : `${dist ? 'cssd_smin' : 'cssd_op'}(${a}, ${b}, ${k}, ${signs})`};\n`;
+            : `${dist ? 'g_smin' : 'g_op'}(${a}, ${b}, ${k}, ${signs})`};\n`;
         let row = (node, name) => node.rows.findLast(r => r.name === name)?.value || [];
         let first = (tokens, p) => numbers(tokens, p)[0] || '0.0';
 
@@ -278,7 +278,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     else if (v.length === 4) [axis, angle] = [v.slice(0, 3).join(', '), v[3]];
                     else if (v.length === 1) angle = v[0];
                 }
-                out += `vec3 ${q} = cssd_rotate(${p}, vec3(${axis}), ${angle});\n`;
+                out += `vec3 ${q} = g_rotate(${p}, vec3(${axis}), ${angle});\n`;
             } else if (m.name === 'mirror') {
                 // every reflection reuses the same rand() sites
                 let axes = [];
@@ -380,12 +380,12 @@ export default function drawScene(code, extra, report = () => {}) {
             let get = name => numbers(row(node, name), p);
             let [r1, r2] = get('r'), name = node.name, d;
             if (name === 'sphere') d = `length(${p}) - ${r1 || '0.3'}`;
-            else if (name === 'ellipsoid') d = `cssd_ellipsoid(${p}, ${vec3(get('r'), '0.3')})`;
-            else if (name === 'box') d = `cssd_box(${p}, ${vec3(get('size'), '0.5')} * 0.5 - ${k}) - ${k}`;
+            else if (name === 'ellipsoid') d = `g_ellipsoid(${p}, ${vec3(get('r'), '0.3')})`;
+            else if (name === 'box') d = `g_box(${p}, ${vec3(get('size'), '0.5')} * 0.5 - ${k}) - ${k}`;
             else if (name === 'torus') d = `length(vec2(length(${p}.xz) - ${r1 || '0.3'}, ${p}.y)) - ${r2 || '0.08'}`;
-            else if (name === 'cylinder') d = `cssd_cylinder(${p}, ${r1 || '0.2'} - ${k}, ${get('height')[0] || '0.5'} * 0.5 - ${k}) - ${k}`;
-            else if (name === 'cone') d = `cssd_cone(${p}, ${get('height')[0] || '0.4'} * 0.5, ${r1 || '0.2'}, ${r2 || '0.0'})`;
-            else if (name === 'capsule') d = `cssd_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
+            else if (name === 'cylinder') d = `g_cylinder(${p}, ${r1 || '0.2'} - ${k}, ${get('height')[0] || '0.5'} * 0.5 - ${k}) - ${k}`;
+            else if (name === 'cone') d = `g_cone(${p}, ${get('height')[0] || '0.4'} * 0.5, ${r1 || '0.2'}, ${r2 || '0.0'})`;
+            else if (name === 'capsule') d = `g_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
             else if (name === 'plane') d = `${p}.y`;
             else if (name === 'sdf') {
                 let value = textOf(row(node, 'd')), start = ctx.sites;
@@ -453,9 +453,9 @@ export default function drawScene(code, extra, report = () => {}) {
     `;
     let basis = glsl`
         t = ${usesTime ? 'u_time' : '0.0'};
-        vec3 cssd_x = cssd_rotate(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), ${turn});
-        vec3 cssd_y = cssd_rotate(cssd_rotate(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), ${tilt}), vec3(0.0, 1.0, 0.0), ${turn});
-        vec3 cssd_z = cross(cssd_x, cssd_y);
+        vec3 g_x = g_rotate(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), ${turn});
+        vec3 g_y = g_rotate(g_rotate(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), ${tilt}), vec3(0.0, 1.0, 0.0), ${turn});
+        vec3 g_z = cross(g_x, g_y);
     `;
     // probes at 50 and 1000 read as a line, so a distance that is uniformly too low still fits
     let vertex = glsl`#version 300 es
@@ -465,84 +465,84 @@ export default function drawScene(code, extra, report = () => {}) {
     in vec4 position;
     uniform float u_time;
     uniform vec2 u_seed;
-    flat out vec3 cssd_vhi, cssd_vlo;
+    flat out vec3 g_vhi, g_vlo;
     ${common}
-    float cssd_fit(vec3 p) {
+    float g_fit(vec3 p) {
         ${fit.out}
         return ${fit.result};
     }
-    float cssd_reach(vec3 e) {
-        float b = 50.0 - cssd_fit(e * 50.0);
-        float s = (1e3 - cssd_fit(e * 1e3) - b) / 950.0;
+    float g_reach(vec3 e) {
+        float b = 50.0 - g_fit(e * 50.0);
+        float s = (1e3 - g_fit(e * 1e3) - b) / 950.0;
         return s < 0.9 ? (b - s * 50.0) / (1.0 - s) : 1e9;
     }
     void main() {
         gl_Position = position;
         ${basis}
-        cssd_vhi = vec3(cssd_reach(cssd_x), cssd_reach(cssd_y), cssd_reach(cssd_z));
-        cssd_vlo = -vec3(cssd_reach(-cssd_x), cssd_reach(-cssd_y), cssd_reach(-cssd_z));
+        g_vhi = vec3(g_reach(g_x), g_reach(g_y), g_reach(g_z));
+        g_vlo = -vec3(g_reach(-g_x), g_reach(-g_y), g_reach(-g_z));
     }
     `;
     let fragment = glsl`
     precision highp int;
-    flat in vec3 cssd_vhi, cssd_vlo;
+    flat in vec3 g_vhi, g_vlo;
     ${common}
-    float cssd_dist(vec3 p) {
+    float g_dist(vec3 p) {
         ${bare.out}
         return ${bare.result};
     }
-    vec4 cssd_scene(vec3 p) {
+    vec4 g_scene(vec3 p) {
         ${full.out}
         return ${full.result};
     }
     void main() {
         ${basis}
-        float cssd_m = min(u_resolution.x, u_resolution.y);
-        vec2 cssd_q = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / cssd_m;
-        mat3 cssd_v = mat3(cssd_x, cssd_y, cssd_z);
+        float g_m = min(u_resolution.x, u_resolution.y);
+        vec2 g_q = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / g_m;
+        mat3 g_v = mat3(g_x, g_y, g_z);
         // zoom out and shift only as far as keeps the model in view
-        float cssd_d = ${depth}, cssd_f = cssd_d > 0.0 ? 1.0 / cssd_d : 0.0;
-        vec2 cssd_w = 0.5 * u_resolution.xy / cssd_m;
-        vec3 cssd_hi = cssd_vhi, cssd_lo = cssd_vlo;
-        vec2 cssd_n = (cssd_hi.xy - cssd_lo.xy) * 0.5 / cssd_w + cssd_hi.z * cssd_f;
-        float cssd_k = max(1.0, max(cssd_n.x, cssd_n.y));
-        bool cssd_b = cssd_n.x + cssd_n.y < 1e3;
-        if (!cssd_b) { cssd_k = 1.0; cssd_hi = cssd_lo = vec3(0.0); }
-        cssd_w *= cssd_k - cssd_hi.z * cssd_f;
-        float cssd_z0 = cssd_d > 0.0 ? cssd_d * cssd_k : max(cssd_hi.z, 0.0) + cssd_k;
-        vec3 cssd_o = vec3(clamp(vec2(0.0), cssd_hi.xy - cssd_w, cssd_lo.xy + cssd_w) + (cssd_d > 0.0 ? vec2(0.0) : cssd_q * cssd_k), cssd_z0);
-        vec3 cssd_r = normalize(vec3(cssd_d > 0.0 ? cssd_q : vec2(0.0), -max(cssd_d, 1.0)));
+        float g_d = ${depth}, g_f = g_d > 0.0 ? 1.0 / g_d : 0.0;
+        vec2 g_w = 0.5 * u_resolution.xy / g_m;
+        vec3 g_hi = g_vhi, g_lo = g_vlo;
+        vec2 g_n = (g_hi.xy - g_lo.xy) * 0.5 / g_w + g_hi.z * g_f;
+        float g_k = max(1.0, max(g_n.x, g_n.y));
+        bool g_b = g_n.x + g_n.y < 1e3;
+        if (!g_b) { g_k = 1.0; g_hi = g_lo = vec3(0.0); }
+        g_w *= g_k - g_hi.z * g_f;
+        float g_z0 = g_d > 0.0 ? g_d * g_k : max(g_hi.z, 0.0) + g_k;
+        vec3 g_o = vec3(clamp(vec2(0.0), g_hi.xy - g_w, g_lo.xy + g_w) + (g_d > 0.0 ? vec2(0.0) : g_q * g_k), g_z0);
+        vec3 g_r = normalize(vec3(g_d > 0.0 ? g_q : vec2(0.0), -max(g_d, 1.0)));
         // march inside the model's box only
-        vec3 cssd_a = (cssd_lo - 0.02 * cssd_k - cssd_o) / (cssd_r + 1e-9), cssd_c = (cssd_hi + 0.02 * cssd_k - cssd_o) / (cssd_r + 1e-9);
-        vec3 cssd_in = min(cssd_a, cssd_c), cssd_out = max(cssd_a, cssd_c);
-        float cssd_t = cssd_b ? max(max(max(cssd_in.x, cssd_in.y), cssd_in.z), 0.0) : 0.0;
-        float cssd_far = cssd_b ? min(min(cssd_out.x, cssd_out.y), cssd_out.z) : cssd_z0 + 4.0 * cssd_k;
-        if (cssd_t > cssd_far) {
+        vec3 g_a = (g_lo - 0.02 * g_k - g_o) / (g_r + 1e-9), g_c = (g_hi + 0.02 * g_k - g_o) / (g_r + 1e-9);
+        vec3 g_in = min(g_a, g_c), g_out = max(g_a, g_c);
+        float g_t = g_b ? max(max(max(g_in.x, g_in.y), g_in.z), 0.0) : 0.0;
+        float g_far = g_b ? min(min(g_out.x, g_out.y), g_out.z) : g_z0 + 4.0 * g_k;
+        if (g_t > g_far) {
             FragColor = vec4(0.0);
             return;
         }
-        vec3 cssd_ro = cssd_v * cssd_o, cssd_rd = cssd_v * cssd_r;
+        vec3 g_ro = g_v * g_o, g_rd = g_v * g_r;
         // the closest approach in pixels gives the smooth edge
-        float cssd_tn = cssd_t, cssd_near = 1e9;
+        float g_tn = g_t, g_near = 1e9;
         for (int k = 0; k < 128; k++) {
-            float d = cssd_dist(cssd_ro + cssd_rd * cssd_t);
-            float e = d * cssd_m / (cssd_d > 0.0 ? cssd_t * cssd_f : cssd_k);
-            if (e < cssd_near) { cssd_near = e; cssd_tn = cssd_t; }
-            if (cssd_near < 0.1 || cssd_t > cssd_far) break;
-            cssd_t += d;
+            float d = g_dist(g_ro + g_rd * g_t);
+            float e = d * g_m / (g_d > 0.0 ? g_t * g_f : g_k);
+            if (e < g_near) { g_near = e; g_tn = g_t; }
+            if (g_near < 0.1 || g_t > g_far) break;
+            g_t += d;
         }
-        vec3 cssd_h = cssd_ro + cssd_rd * cssd_tn;
+        vec3 g_h = g_ro + g_rd * g_tn;
         vec3 n = vec3(0.0);
         for (int k = 0; k < 4; k++) {
             vec3 e = 0.5773 * (2.0 * vec3(float(((k + 3) >> 1) & 1), float((k >> 1) & 1), float(k & 1)) - 1.0);
-            n += e * cssd_dist(cssd_h + e * 5e-4 * cssd_k);
+            n += e * g_dist(g_h + e * 5e-4 * g_k);
         }
         // a miss reads its closest approach at full strength, so squashed and blended shapes keep a one-pixel edge
-        if (cssd_near >= 0.1) cssd_near /= clamp(length(n) * 1500.0 / cssd_k, 1e-3, 1.0);
+        if (g_near >= 0.1) g_near /= clamp(length(n) * 1500.0 / g_k, 1e-3, 1.0);
         n = normalize(n);
-        vec3 cssd_l = cssd_v * normalize(vec3(0.6, 0.8, 0.5));
-        float light = sqrt(0.7 * max(dot(n, cssd_l), 0.0) + 0.3 * (0.6 + 0.4 * dot(n, cssd_y)));
-        FragColor = vec4(cssd_scene(cssd_h).rgb * light, 1.0 - clamp(cssd_near - 0.1, 0.0, 1.0));
+        vec3 g_l = g_v * normalize(vec3(0.6, 0.8, 0.5));
+        float light = sqrt(0.7 * max(dot(n, g_l), 0.0) + 0.3 * (0.6 + 0.4 * dot(n, g_y)));
+        FragColor = vec4(g_scene(g_h).rgb * light, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
     }
   `;
     return { vertex, fragment, textures: [] };

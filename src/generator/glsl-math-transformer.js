@@ -238,7 +238,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             if (n.val === 'ramp') return cast(ramp(a, res), res, exp);
             const args = a.map(v => gen(v, res[0] === 'b' ? null : 'float')).join(', ');
             if (n.val === 'float' && a.length === 1 && !isVector(infer(a[0]))) return cast(args, 'float', exp);
-            if (n.val === 'shape') return cast(`cssd_shape(${args}${a.length === 1 ? ', 1.0' : ''})`, res, exp);
+            if (n.val === 'shape') return cast(`g_shape(${args}${a.length === 1 ? ', 1.0' : ''})`, res, exp);
             return cast(`${n.val}(${args})`, res, exp);
         }
 
