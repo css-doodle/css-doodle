@@ -279,7 +279,7 @@ function finishFunc(cur, name, end, isCalc, variables, index) {
         if (paren && paren.index === end && paren.isSymbol('(')) {
             cur.next();
             if (composable(name)) {
-                func.arguments = parseDoodleBody(cur, paren.index + 1);
+                func.arguments = parseDoodleBody(cur, paren.index + 1, name.startsWith('@scene'));
             } else {
                 let closed = parseArguments(cur, variables);
                 func.arguments = closed.args;
@@ -523,13 +523,41 @@ function quotesWrapWhole(values, quote) {
     return true;
 }
 
-function parseDoodleBody(cur, start) {
+function parseDoodleBody(cur, start, expand) {
     let paren = 0;
     let quote = false;
     let end = cur.source.length;
     let head = cur.peek();
+    let values = [], blocks = [], from = start, mark = start;
+    const cut = to => {
+        values.push(Node.text(substitutePi(cur.source.slice(from, to), cur.source[from - 1])));
+        from = to;
+    };
+    const repeat = (count, values) => ({ type: 'func', name: '@M', arguments: [Node.argument([Node.text(count)]), Node.argument(values)] });
     while (!cur.end()) {
         let tok = cur.peek();
+        if (expand && !quote) {
+            if (tok.isSymbol('@')) {
+                cut(tok.index);
+                values.push(parseFunc(cur));
+                from = tokenEnd(cur.tokens[cur.i - 1]);
+                continue;
+            }
+            if (tok.isSymbol('{')) {
+                cut(tok.index + 1);
+                let count = /\*\s*([1-9]\d*(?:x[1-9]\d*)?)\s*$/.exec(cur.source.slice(mark, tok.index));
+                blocks.push({ values, count: count && count[1] });
+                values = [];
+            } else if (tok.isSymbol('}') && blocks.length) {
+                cut(tok.index);
+                let { values: outer, count } = blocks.pop();
+                if (count && values.some(v => v.type === 'func')) {
+                    values = [repeat(count, [Node.text('{'), ...values, Node.text('}')])];
+                }
+                values = outer.concat(values);
+            }
+            if (tok.isSymbol('{', '}', ';')) mark = tok.index + 1;
+        }
         if (tok.status === 'open') {
             quote = true;
         } else if (tok.status === 'close') {
@@ -548,6 +576,11 @@ function parseDoodleBody(cur, start) {
     }
     if (end === cur.source.length) {
         warn(cur.ctx, 'unterminated argument list', head && head.pos);
+    }
+    if (expand) {
+        cut(end);
+        while (blocks.length) values = blocks.pop().values.concat(values);
+        if (values.some(v => v.type === 'func')) return [normalizeArgument([repeat('1', values)])];
     }
     let body = substitutePi(cur.source.slice(start, end), cur.source[start - 1]);
     return [normalizeArgument([Node.text(body.trim() || body)])];

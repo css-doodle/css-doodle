@@ -517,7 +517,7 @@ class Rules {
     }
 
     composeComposable(fname, node, cell, env, selector, property) {
-        let value = node.arguments.map(a => getValue(a.values[0])).join(',');
+        let value = node.arguments.map(a => this.composeArgument(a, cell, env)).join(',');
         if (!value) return;
         if (fname !== 'doodle') {
             return this.composePaint(fname, value, cell, node.size, selector, property, node);

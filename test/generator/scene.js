@@ -109,6 +109,25 @@ test('mirror evaluates every reflection', () => {
     assert.equal(body.match(/length\(cssd\d+\) - \.1/g).length, 4);
 });
 
+test('a copy block of bodies writes each copy out and draws what the loop draws', () => {
+    let rands = code => scene(code).body.match(/rand\(vec2\([^)]*\)[^,]*, [\d.]+\)/g);
+    assert.deepEqual(rands('sphere*2 { r: rand() }'), ['rand(vec2((0.0 * 31.0 + cssd5), 1.0)']);
+    assert.deepEqual(rands('sphere*2 { { r: rand() } { r: rand() } }'), [
+        'rand(vec2((0.0 * 31.0 + 1.0), 1.0)',
+        'rand(vec2((0.0 * 31.0 + 2.0), 1.0)',
+    ]);
+    let { body, warnings } = scene('sphere*2 { { r: .1; colr: red } { r: .2; colr: red } }');
+    assert.doesNotMatch(body, /for \(/);
+    assert.match(body, /length\(p\) - \.1[^]*length\(p\) - \.2/);
+    assert.deepEqual(warnings, ['sphere has no colr']);
+});
+
+test('outside copies the scene is one copy', () => {
+    let { body, warnings } = scene('sphere { r: n * nx * ny * N * .2 }');
+    assert.deepEqual(warnings, []);
+    assert.match(body, /length\(p\) - \(\(\(\(1\.0 \* 1\.0\) \* 1\.0\) \* 1\.0\) \* \.2\)/);
+});
+
 test('named shapes, with or without rows', () => {
     assert.deepEqual(scene('leg2: capsule { from: 0 0 0; to: 0 .2 0; r: .02 } leg2 { translate: .1 0 0 }').warnings, []);
     assert.deepEqual(scene('cap: union { sphere { r: .2 } box { size: .1 } } cap;').warnings, []);

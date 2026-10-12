@@ -570,6 +570,21 @@ test('@pattern bodies reach the pattern renderer whole', () => {
     assert.equal(pattern.source, 'grid: 2; fill: @p(red, blue);');
 });
 
+test('@scene bodies evaluate their @ functions per cell, like @svg', () => {
+    let { patterns } = compile('--k: 2; background: @scene(/* @r(9) */ fill: @p(#f00); box { size: @i * $k; rotate: π });', '2x1');
+    assert.deepEqual(Object.values(patterns).map(p => p.source), [
+        '/* @r(9) */ fill: #f00; box { size: 1 * 2; rotate: 3.141592653589793 }',
+        '/* @r(9) */ fill: #f00; box { size: 2 * 2; rotate: 3.141592653589793 }',
+    ]);
+});
+
+test('@scene copies holding @ functions repeat their body per copy, like @svg', () => {
+    let { patterns } = compile('background: @scene(box { size: @i @nx @ny } sphere*2x2 { r: @nx @ny; translate: n 0 0 } cone*2 { r: .1 });');
+    assert.equal(Object.values(patterns)[0].source,
+        'box { size: 1 1 1 } sphere*2x2 {{ r: 1 1; translate: n 0 0 } { r: 2 1; translate: n 0 0 } ' +
+        '{ r: 1 2; translate: n 0 0 } { r: 2 2; translate: n 0 0 }} cone*2 { r: .1 }');
+});
+
 test('@use at the top level is inlined by the parser', () => {
     let extra = {
         getVariable: () => '@seed: 7; color: red; @keyframes k { to { color: blue } }',

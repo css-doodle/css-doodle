@@ -111,7 +111,8 @@ function shapeOf({ head, value }, warn) {
     count = count ? [+count[1], +(count[2] || 1)] : 0;
     let node = { name, count, rows: [], children: [] };
     for (let r of value) {
-        if (r.head) node.children.push(shapeOf(r, warn));
+        if (count && r.head && !textOf(r.head).trim()) (node.copies ||= []).push(shapeOf({ head, value: r.value }, warn));
+        else if (r.head) node.children.push(shapeOf(r, warn));
         else if (Array.isArray(r.value)) node.rows.push(r);
         else warn(`name shapes at the top level: ${r.name}`);
     }
@@ -119,7 +120,8 @@ function shapeOf({ head, value }, warn) {
     return node;
 }
 
-export default function drawScene(code, extra, warn = () => {}) {
+export default function drawScene(code, extra, report = () => {}) {
+    let said = new Set(), warn = message => said.has(message) || (said.add(message), report(message));
     let root = { name: 'union', count: 0, rows: [], children: [] };
     let defs = new Map(), pending = [], camera = {};
     for (let r of parseBody(iterator(scan(code, { ignoreInlineComment: true })), null, reader)) {
@@ -150,7 +152,8 @@ export default function drawScene(code, extra, warn = () => {}) {
         let ctx = {
             id: 0, sites: 0, key: '0.0', using: new Set(),
             types: { __proto__: null },
-            names: { __proto__: null, t: 't', deg: '(PI / 180.0)', turn: '(2.0 * PI)' },
+            // outside copies the scene is one copy
+            names: { __proto__: null, t: 't', deg: '(PI / 180.0)', turn: '(2.0 * PI)', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' },
         };
         let known = new Map();
         let unknown = name => {
@@ -210,21 +213,33 @@ export default function drawScene(code, extra, warn = () => {}) {
         let first = (tokens, p) => numbers(tokens, p)[0] || '0.0';
 
         function generate(node, p) {
-            let commands = node.rows.filter(r => COMMANDS.has(r.name)).map(r => ({ name: r.name, args: r.value }));
-            if (!node.count) return chain(node, commands, p);
-            let [X, Y] = node.count, [i, n, nx, ny, r] = [next(), next(), next(), next(), next()];
-            let key = ctx.key, names = ctx.names;
-            ctx.names = { __proto__: names, n, N: float(X * Y), nx, ny };
-            ctx.key = `(${key} * 31.0 + ${n})`;
-            out += glsl`
-                ${T} ${r} = ${none};
-                for (int ${i} = 0; ${i} < ${X * Y}; ${i}++) {
-                    float ${n} = float(${i} + 1), ${nx} = float(${i} % ${X} + 1), ${ny} = float(${i} / ${X} + 1);
-            ` + '\n';
-            let c = chain(node, commands, p);
-            out += join(r, c, first(row(node, 'smooth'), p)) + '}\n';
+            let commands = node => node.rows.filter(r => COMMANDS.has(r.name)).map(r => ({ name: r.name, args: r.value }));
+            if (!node.count) return chain(node, commands(node), p);
+            let [X, Y] = node.count, r = next();
+            let key = ctx.key, names = ctx.names, start = ctx.sites, end = start;
+            let copy = (node, n, nx, ny) => {
+                ctx.names = { __proto__: names, n, N: float(X * Y), nx, ny };
+                ctx.key = `(${key} * 31.0 + ${n})`;
+                ctx.sites = start;
+                let c = chain(node, commands(node), p);
+                out += join(r, c, first(row(node, 'smooth'), p));
+                end = Math.max(end, ctx.sites);
+            };
+            out += `${T} ${r} = ${none};\n`;
+            if (node.copies) {
+                node.copies.forEach((c, i) => copy(c, float(i + 1), float(i % X + 1), float((i / X | 0) + 1)));
+            } else {
+                let [i, n, nx, ny] = [next(), next(), next(), next()];
+                out += glsl`
+                    for (int ${i} = 0; ${i} < ${X * Y}; ${i}++) {
+                        float ${n} = float(${i} + 1), ${nx} = float(${i} % ${X} + 1), ${ny} = float(${i} / ${X} + 1);
+                ` + '\n';
+                copy(node, n, nx, ny);
+                out += '}\n';
+            }
             ctx.names = names;
             ctx.key = key;
+            ctx.sites = end;
             return r;
         }
 
