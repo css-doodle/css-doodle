@@ -21,7 +21,6 @@ const SHAPES = {
     sdf: ['d'],
 };
 
-// the signs g_op takes
 const GROUPS = { __proto__: null, union: '1.0, 1.0', subtract: '-1.0, 1.0', intersect: '-1.0, -1.0' };
 
 const COMMANDS = new Set(['translate', 'rotate', 'scale', 'mirror', 'repeat', 'twist', 'grow', 'shell']);
@@ -117,6 +116,7 @@ function shapeOf({ head, value }, warn) {
         else warn(`name shapes at the top level: ${r.name}`);
     }
     if (SHAPES[name] || GROUPS[name]) check(node, warn);
+    node.copies?.forEach(c => (c.rows.unshift(...node.rows), c.children.unshift(...node.children)));
     return node;
 }
 
@@ -133,17 +133,19 @@ export default function drawScene(code, extra, report = () => {}) {
         else pending.push(r);
     }
     // a value is a shape when it starts with a primitive, a group or a named shape
+    let done = new Set();
     for (let found = true; found;) {
         found = false;
         for (let r of pending) {
             let t = textOf(r.value).match(/^\s*([a-zA-Z_]\w*)/)?.[1];
-            if (!defs.has(r.name) && (SHAPES[t] || GROUPS[t] || defs.has(t))) {
+            if (!done.has(r) && (SHAPES[t] || GROUPS[t] || defs.has(t))) {
                 defs.set(r.name, shapeOf({ head: r.value, value: [] }, warn));
+                done.add(r);
                 found = true;
             }
         }
     }
-    let vars = pending.filter(r => !defs.has(r.name));
+    let vars = pending.filter(r => !done.has(r));
     if (!root.children.length) warn('@scene draws nothing: add a shape such as sphere { r: .3 }');
     if (/\bcalc\(/.test(code)) warn('@scene does math without calc(): write (t * 30deg)');
 
@@ -377,10 +379,10 @@ export default function drawScene(code, extra, report = () => {}) {
             }
             // round keeps the outer size: shrink by r, then grow by r
             let k = first(row(node, 'round'), p);
-            let get = name => numbers(row(node, name), p);
-            let [r1, r2] = get('r'), name = node.name, d;
+            let get = name => numbers(row(node, name), p), name = node.name;
+            let rs = SHAPES[name].includes('r') ? get('r') : [], [r1, r2] = rs, d;
             if (name === 'sphere') d = `length(${p}) - ${r1 || '0.3'}`;
-            else if (name === 'ellipsoid') d = `g_ellipsoid(${p}, ${vec3(get('r'), '0.3')})`;
+            else if (name === 'ellipsoid') d = `g_ellipsoid(${p}, ${vec3(rs, '0.3')})`;
             else if (name === 'box') d = `g_box(${p}, ${vec3(get('size'), '0.5')} * 0.5 - ${k}) - ${k}`;
             else if (name === 'torus') d = `length(vec2(length(${p}.xz) - ${r1 || '0.3'}, ${p}.y)) - ${r2 || '0.08'}`;
             else if (name === 'cylinder') d = `g_cylinder(${p}, ${r1 || '0.2'} - ${k}, ${get('height')[0] || '0.5'} * 0.5 - ${k}) - ${k}`;

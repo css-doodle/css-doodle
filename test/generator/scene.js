@@ -173,3 +173,26 @@ test('unknown shapes are reported', () => {
     assert.deepEqual(scene('cube { size: .2 }').warnings, ['unknown shape cube']);
     assert.deepEqual(scene('difference { box; sphere { r: .1 } }').warnings, ['unknown shape difference']);
 });
+
+test('a copy block adds to the rows and shapes around it', () => {
+    let { body, warnings } = scene('box*2 { size: .3; translate: n 0 0; { fill: red } { fill: white; scale: 2 } }');
+    assert.deepEqual(warnings, []);
+    assert.equal(body.match(/g_box\(g_\d+, vec3\(\.3\)/g).length, 2);
+    assert.match(body, /p - vec3\(1\.0, 0\.0, 0\.0\)[^]*p \/ g_\d+;\nvec3 g_\d+ = g_\d+ - vec3\(2\.0, 0\.0, 0\.0\)/);
+    assert.equal(scene('union*2 { sphere { r: .1 } { translate: .5 0 0 } { translate: -.5 0 0 } }').body.match(/length\(g_\d+\) - \.1/g).length, 2);
+});
+
+test('r is read only where a shape takes it', () => {
+    let { body, warnings } = scene('box { r: rand() } sphere { r: rand() } ellipsoid { r: rand() .2 .1 }');
+    assert.deepEqual(warnings, ['box has no r']);
+    assert.match(body, /length\(p\) - rand\(vec2\(0\.0, 1\.0\)/);
+    assert.match(body, /g_ellipsoid\(p, vec3\(rand\(vec2\(0\.0, 2\.0\)[^;]*, \.2, \.1\)\)/);
+    assert.equal(body.match(/rand\(/g).length, 2);
+});
+
+test('the last definition of a name wins', () => {
+    let { body, warnings } = scene('a: sphere { r: .2 } a: box; a { }');
+    assert.deepEqual(warnings, []);
+    assert.match(body, /g_box\(/);
+    assert.doesNotMatch(body, /length\(p\)/);
+});
