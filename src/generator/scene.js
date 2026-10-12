@@ -97,6 +97,7 @@ function check(node, warn) {
             || name === 'smooth' && (GROUPS[node.name] || node.count)) continue;
         warn(`${node.name} has no ${name}`);
     }
+    if (node.children.length && !GROUPS[node.name]) warn(`${node.name} cannot hold shapes; put them in a union`);
 }
 
 // `box*5x5 { rows }` → { name, count: [5, 5], rows, children }
@@ -115,7 +116,6 @@ function shapeOf({ head, value }, warn) {
         else warn(`name shapes at the top level: ${r.name}`);
     }
     if (SHAPES[name] || GROUPS[name]) check(node, warn);
-    if (node.children.length && !GROUPS[name]) warn(`${name} cannot hold shapes; put them in a union`);
     return node;
 }
 
@@ -395,7 +395,7 @@ export default function drawScene(code, extra, warn = () => {}) {
         let result = generate(root, 'p');
         // the named shapes nothing draws are compiled too, so their mistakes show
         let used = out;
-        for (let [name, def] of defs) if (!def.used) shape({ name, rows: [] }, 'p');
+        for (let [name, def] of defs) if (!def.used) shape({ name, rows: [], children: [] }, 'p');
         out = used;
 
         let [turn = '0.0', tilt = '0.0'] = numbers(camera.view || [], 'p');

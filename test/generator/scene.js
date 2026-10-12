@@ -68,6 +68,7 @@ test('attributes a shape does not take are reported', () => {
     assert.deepEqual(scene('sphere { r: .2; round: .02; colr: red }').warnings, ['sphere has no round', 'sphere has no colr']);
     assert.deepEqual(scene('sphere { smooth: .1 }').warnings, ['sphere has no smooth']);
     assert.deepEqual(scene('box { sphere { r: .1 } }').warnings, ['box cannot hold shapes; put them in a union']);
+    assert.deepEqual(scene('leg: box; leg { sphere { r: .1 } }').warnings, ['leg cannot hold shapes; put them in a union']);
 });
 
 test('fill colors a group and the shapes in it without their own', () => {
@@ -135,4 +136,5 @@ test('the model is measured once per vertex, not per pixel', () => {
 
 test('unknown shapes are reported', () => {
     assert.deepEqual(scene('cube { size: .2 }').warnings, ['unknown shape cube']);
+    assert.deepEqual(scene('difference { box; sphere { r: .1 } }').warnings, ['unknown shape difference']);
 });
