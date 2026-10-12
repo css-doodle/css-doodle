@@ -19,16 +19,26 @@ function copies(head) {
     return [name, x && out];
 }
 
+function copy(body, v) {
+    return typeof body == 'string' ? body + ';' + Object.entries(v).map(e => e.join(':')).join(';') : { ...body, ...v };
+}
+
 function repeat(body, list) {
-    return list ? list.map(v => body + ';' + Object.entries(v).map(e => e.join(':')).join(';')) : [body];
+    return list ? list.map(v => copy(body, v)) : [body];
 }
 
 function readBlock(iter, text) {
     let [head, list] = copies(text);
-    if (!GROUPS.includes(head)) return repeat(head + ';' + textOf(readRaw(iter)), list);
-    // a bare name or a parenthesised body in a group is a shape of its own
-    let group = collect(parseBody(iter, {}, { ...shape, readTail: head => repeat(...copies(textOf(head).trim())) }).value, head);
-    return list ? list.map(v => ({ ...group, ...v })) : [group];
+    let read = iter => GROUPS.includes(head)
+        ? collect(parseBody(iter, {}, { ...shape, readTail: head => repeat(...copies(textOf(head).trim())) }).value, head)
+        : head + ';' + textOf(readRaw(iter));
+    if (!list || !iter.curr(1)?.isSymbol('{')) return repeat(read(iter), list);
+    let tokens = readRaw(iter), bodies = [], depth = 0, from;
+    tokens.forEach((t, i) => {
+        if (t.isSymbol('{') && !depth++) from = i + 1;
+        else if (t.isSymbol('}') && !--depth) bodies.push(read(iterator(tokens.slice(from, i))));
+    });
+    return list.slice(0, bodies.length).map((v, i) => copy(bodies[i], v));
 }
 
 const shape = {

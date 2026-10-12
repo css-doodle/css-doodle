@@ -585,6 +585,20 @@ test('@scene copies holding @ functions repeat their body per copy, like @svg', 
         '{ r: 1 2; translate: n 0 0 } { r: 2 2; translate: n 0 0 }} cone*2 { r: .1 }');
 });
 
+test('@shape copies holding @ functions draw each copy with its own values', () => {
+    let shape = body => css(`clip-path: @shape(intersect { ${body} });`);
+    let lens = shape('circle { move: -.45 0 } circle { move: .45 0 }');
+    assert.equal(shape('circle*2 { move: @pn(-.45 0, .45 0); }'), lens);
+    assert.equal(shape('union*2 { circle { move: @pn(-.45 0, .45 0) } }'), lens);
+    // commas inside the copy stay in it, and n still counts the copies
+    assert.equal(shape('shape*2 { x: cos(t), .5cos(t); y: sin(t), .5sin(t); move: @pn(-.45, .45) 0 }'),
+        shape('shape { x: cos(t), .5cos(t); y: sin(t), .5sin(t); move: -.45 0 } shape { x: cos(t), .5cos(t); y: sin(t), .5sin(t); move: .45 0 }'));
+    assert.equal(shape('circle*2 { move: (.9n - 1.35) @p(0) }'), lens);
+    // dotted names read shapes too
+    let tile = body => css(`--t: @tile.voronoi(union { ${body} });`, '3x3');
+    assert.equal(tile('circle*2 { scale: .5; move: @pn(-.5 0, .5 0) }'), tile('circle { scale: .5; move: -.5 0 } circle { scale: .5; move: .5 0 }'));
+});
+
 test('@use at the top level is inlined by the parser', () => {
     let extra = {
         getVariable: () => '@seed: 7; color: red; @keyframes k { to { color: blue } }',

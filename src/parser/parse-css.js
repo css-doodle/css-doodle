@@ -67,6 +67,10 @@ function composable(name) {
     return /^@(shaders|doodle|pattern|scene)/.test(name);
 }
 
+function readsShape(name) {
+    return /^@(shape|plot|tile|svg-polygon)\b/i.test(name);
+}
+
 function substitutePi(input, prev) {
     if (!input.includes('π')) return input;
     let result = '';
@@ -101,6 +105,12 @@ const Node = {
         return { values, cluster };
     },
 };
+
+const COPIES = /\*\s*([1-9]\d*(?:x[1-9]\d*)?)\s*$/;
+
+function repeat(count, values) {
+    return { type: 'func', name: '@M', arguments: [Node.argument([Node.text(count)]), Node.argument(values)] };
+}
 
 // index of the first top-level terminator ahead, -1 if none
 function probe(cur, a, b, c) {
@@ -258,7 +268,7 @@ function parseFunc(cur, variables = {}) {
     return finishFunc(cur, name, end, isCalc, variables, tok.index);
 }
 
-function finishFunc(cur, name, end, isCalc, variables, index) {
+function finishFunc(cur, name, end, isCalc, variables, index, shaped) {
     let func = { type: 'func', name: '', arguments: [] };
     func.index = index;
     let hasArguments = false;
@@ -267,7 +277,7 @@ function finishFunc(cur, name, end, isCalc, variables, index) {
     if (dot > 0) {
         let inner;
         if (dot < name.length - 1) {
-            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, variables, index + dot + 1);
+            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, variables, index + dot + 1, readsShape(name));
             inner.dotted = true;
         } else {
             inner = parseFunc(cur);
@@ -284,7 +294,7 @@ function finishFunc(cur, name, end, isCalc, variables, index) {
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name.startsWith('@scene'));
             } else {
-                let closed = parseArguments(cur, variables);
+                let closed = parseArguments(cur, variables, shaped || readsShape(name));
                 func.arguments = closed.args;
                 if (isSvg(name)) {
                     func.arguments = expandSvg(
@@ -367,7 +377,7 @@ function declaresVar(cur) {
     return !!t && t.isSymbol(':');
 }
 
-function parseArguments(cur, variables) {
+function parseArguments(cur, variables, copying) {
     let args = [];
     let values = [];
     let buf = '';
@@ -376,6 +386,7 @@ function parseArguments(cur, variables) {
     let quote = false;
     let end = cur.source.length;
     let head = cur.peek();
+    let blocks = [];
 
     const flush = atFunc => {
         let text = buf;
@@ -435,6 +446,21 @@ function parseArguments(cur, variables) {
                 }
                 cur.i = at;
             }
+            if (copying) {
+                if (v === '{') {
+                    let count = COPIES.exec(buf);
+                    if (count) flush(true);
+                    blocks.push(count && [values.length, count[1]]);
+                } else if (v === '}' && blocks.length) {
+                    let block = blocks.pop();
+                    if (block) {
+                        flush(true);
+                        let inner = values.splice(block[0]);
+                        if (inner.some(v => v.type === 'func')) inner = [Node.text('{'), repeat(block[1], [...inner, Node.text('}')])];
+                        values.push(...inner);
+                    }
+                }
+            }
             if (v === '(') {
                 paren++;
             } else if (v === ')') {
@@ -446,7 +472,7 @@ function parseArguments(cur, variables) {
                     return { args, end };
                 }
                 paren--;
-            } else if (v === ',' && paren === 0) {
+            } else if (v === ',' && paren === 0 && !blocks.some(Boolean)) {
                 flush(false);
                 pushArgument();
                 cur.next();
@@ -536,7 +562,6 @@ function parseDoodleBody(cur, start, expand) {
         values.push(Node.text(substitutePi(cur.source.slice(from, to), cur.source[from - 1])));
         from = to;
     };
-    const repeat = (count, values) => ({ type: 'func', name: '@M', arguments: [Node.argument([Node.text(count)]), Node.argument(values)] });
     while (!cur.end()) {
         let tok = cur.peek();
         if (expand && !quote) {
@@ -548,7 +573,7 @@ function parseDoodleBody(cur, start, expand) {
             }
             if (tok.isSymbol('{')) {
                 cut(tok.index + 1);
-                let count = /\*\s*([1-9]\d*(?:x[1-9]\d*)?)\s*$/.exec(cur.source.slice(mark, tok.index));
+                let count = COPIES.exec(cur.source.slice(mark, tok.index));
                 blocks.push([values, count && count[1]]);
                 values = [];
             } else if (tok.isSymbol('}') && blocks.length) {

@@ -549,7 +549,9 @@ sees the variables of the groups around it, as in `k: 7; union { shape
 group: its own `r`, `x`, `y`, `t` and preset are not drawn.
 `name*N` or `name*XxY` repeats a shape or a group, and each copy sees
 `n` from 1, `N`, and `nx`, `ny` across the grid:
-`circle*3 { scale: .2; move: (n * 3 - 6) 0 }`. Inside a body `rotate`
+`circle*3 { scale: .2; move: (n * 3 - 6) 0 }`. `@` functions in a copy
+run once per copy, so `circle*2 { move: @pn(-.6 0, .6 0) }` draws two
+circles apart. Inside a body `rotate`
 turns the shape before `move`, so copies around the center turn a
 group: `union*6 { rotate: n * 60; circle { scale: .2; move: 0 -3 } }`. The outlines are cut where they cross, so a cut that reaches past
 the shape leaves nothing there, which `fill: evenodd` would fill.
