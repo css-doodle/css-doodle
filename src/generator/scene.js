@@ -22,7 +22,7 @@ const SHAPES = {
 };
 
 // the signs cssd_op takes
-const GROUPS = { __proto__: null, union: '1.0, 1.0', difference: '-1.0, 1.0', intersection: '-1.0, -1.0' };
+const GROUPS = { __proto__: null, union: '1.0, 1.0', subtract: '-1.0, 1.0', intersect: '-1.0, -1.0' };
 
 const COMMANDS = new Set(['translate', 'rotate', 'scale', 'mirror', 'repeat', 'twist', 'grow', 'shell']);
 const AXES = { __proto__: null, x: '1.0, 0.0, 0.0', y: '0.0, 1.0, 0.0', z: '0.0, 0.0, 1.0' };

@@ -42,12 +42,12 @@ test('shapes take no parentheses', () => {
 test('groups join their shapes with smooth', () => {
     let join = code => scene(code).body.match(/cssd_op\(cssd\d+, cssd\d+, ([^,]+), ([^)]+)\)/).slice(1).join(' ');
     assert.equal(join('union { smooth: .1; sphere { r: .2 } sphere { r: .1 } }'), '.1 1.0, 1.0');
-    assert.equal(join('difference { box { size: .4 } sphere { r: .2 } }'), '0.0 -1.0, 1.0');
-    assert.equal(join('intersection { box { size: .4 } sphere { r: .3 } }'), '0.0 -1.0, -1.0');
+    assert.equal(join('subtract { box { size: .4 } sphere { r: .2 } }'), '0.0 -1.0, 1.0');
+    assert.equal(join('intersect { box { size: .4 } sphere { r: .3 } }'), '0.0 -1.0, -1.0');
 });
 
 test('the distance alone joins with min and max', () => {
-    let { dist } = scene('difference { union { box { size: .4 } sphere { r: .3 } } sphere { r: .2; fill: red } }');
+    let { dist } = scene('subtract { union { box { size: .4 } sphere { r: .3 } } sphere { r: .2; fill: red } }');
     assert.match(dist, /= min\(cssd\d+, cssd\d+\);/);
     assert.match(dist, /= max\(cssd\d+, -cssd\d+\);/);
     assert.doesNotMatch(dist, /vec4|cssd_op/);
