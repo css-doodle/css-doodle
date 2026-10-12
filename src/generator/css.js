@@ -501,12 +501,7 @@ class Rules {
 
     // '&' in a selector stands for the cell
     composeSelector(cell, selector = '&') {
-        let base = this.cellPrefix + cell.id;
-        let i = selector.indexOf('&');
-        if (i < 0) return selector;
-        let tail = selector.slice(i + 1);
-        if (tail.includes('&')) tail = tail.replaceAll('&', base);
-        return selector.slice(0, i) + base + tail;
+        return selector.replaceAll('&', this.cellPrefix + cell.id);
     }
 
     readVar(name, count, contextVariable) {

@@ -751,6 +751,13 @@ test('selectors nest against the enclosing one', () => {
         '#c-1-1-1:a:c {color:red;}#c-1-1-1:b:c {color:red;}#c-1-1-1:a:d {color:red;}#c-1-1-1:b:d {color:red;}');
 });
 
+test('every & in a selector resolves to the same cell', () => {
+    assert.equal(css('& + & { color: red }'),
+        '#c-1-1-1 + #c-1-1-1 {color:red;}');
+    assert.equal(css('@nth(1) { & + & { color: red } }', '2x1x2'),
+        '.c-1-1-1 + .c-1-1-1,.c-1-1-2 + .c-1-1-2 {color:red;}');
+});
+
 test('nested pseudo lists and & selectors compose per selector', () => {
     assertContains(':hover { :after, :before { color: red } & .foo { color: blue } }',
         '#c-1-1-1:hover:after {color:red;}',
