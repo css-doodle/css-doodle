@@ -165,9 +165,9 @@ export default function drawScene(code, extra, report = () => {}) {
             return known.get(name);
         };
         let next = () => `cssd${++ctx.id}`;
-        let compile = (value, p, names = {}) => parse(value.replace(/\bcalc\(/g, '('), {
+        let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
             types: ctx.types, warn, unknown,
-            names: { __proto__: ctx.names, p, ...names },
+            names: { __proto__: ctx.names, p },
             rand: () => `rand(vec2(${ctx.key}, ${float(++ctx.sites)}) * vec2(0.7548, 0.5698))`,
         });
         // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']
@@ -200,8 +200,8 @@ export default function drawScene(code, extra, report = () => {}) {
         for (let { name, value } of vars) {
             let { type, code } = compile(textOf(value), 'p');
             let id = ctx.names[name] = next();
-            ctx.types[id] = type === 'int' ? 'float' : type;
-            out += `${ctx.types[id]} ${id} = ${code(ctx.types[id])};\n`;
+            let t = ctx.types[id] = type === 'int' ? 'float' : type;
+            out += `${t} ${id} = ${code(t)};\n`;
         }
         let base = ctx.fill = next(), none = dist ? '1e5' : `vec4(${base}, 1e5)`;
         let T = dist ? 'float' : 'vec4', W = dist ? '' : '.w';
@@ -213,7 +213,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let first = (tokens, p) => numbers(tokens, p)[0] || '0.0';
 
         function generate(node, p) {
-            let commands = node => node.rows.filter(r => COMMANDS.has(r.name)).map(r => ({ name: r.name, args: r.value }));
+            let commands = node => node.rows.filter(r => COMMANDS.has(r.name));
             if (!node.count) return chain(node, commands(node), p);
             let [X, Y] = node.count, r = next();
             let key = ctx.key, names = ctx.names, start = ctx.sites, end = start;
@@ -247,7 +247,7 @@ export default function drawScene(code, extra, report = () => {}) {
         function chain(node, mods, p) {
             if (!mods.length) return atom(node, p);
             let m = mods.at(-1), inner = mods.slice(0, -1);
-            let args = () => numbers(m.args, p);
+            let args = () => numbers(m.value, p);
             let q = next(), r;
             ctx.types[q] = 'vec3';
             if (m.name === 'translate') {
@@ -270,7 +270,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 return r;
             } else if (m.name === 'rotate') {
                 let axis = AXES.z, angle = '0.0';
-                for (let g of itemsOf(m.args)) {
+                for (let g of itemsOf(m.value)) {
                     let named = g.find(t => t.isWord() && AXES[t.value]);
                     if (named) axis = AXES[named.value];
                     let v = numbers(g.filter(t => t !== named), p);
@@ -282,7 +282,7 @@ export default function drawScene(code, extra, report = () => {}) {
             } else if (m.name === 'mirror') {
                 // every reflection reuses the same rand() sites
                 let axes = [];
-                for (let t of m.args.filter(t => !t.isSpace() && !t.isSymbol(','))) {
+                for (let t of m.value.filter(t => !t.isSpace() && !t.isSymbol(','))) {
                     if (AXES[t.value]) axes.push(t.value);
                     else warn(`mirror takes x, y or z, not ${t.value}`);
                 }
@@ -305,7 +305,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 out += `vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -(${args()[0] || '0.0'}) * ${p}.y);\n`;
             } else if (m.name === 'repeat') {
                 // the nearest cell and its neighbours toward p, so copies may differ
-                let [s = [], n] = itemsOf(m.args).map(g => numbers(g, p));
+                let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
                 if (n) warn('repeat takes a spacing only; for a counted grid write box*5x5');
                 let [on, base, dir, id, k, key] = [next(), next(), next(), next(), next(), ctx.key];
                 r = next();
@@ -388,9 +388,9 @@ export default function drawScene(code, extra, report = () => {}) {
             else if (name === 'capsule') d = `cssd_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
             else if (name === 'plane') d = `${p}.y`;
             else if (name === 'sdf') {
-                let value = textOf(row(node, 'd')) || '1e5', start = ctx.sites;
-                let { type, code } = compile(value, p);
-                let ok = row(node, 'd').length && /^(float|int)$/.test(type);
+                let value = textOf(row(node, 'd')), start = ctx.sites;
+                let { type, code } = compile(value || '1e5', p);
+                let ok = value && /^(float|int)$/.test(type);
                 if (!ok) warn('sdf needs a distance in d');
                 d = ok ? code('float') : '1e5';
                 // a distance written at part strength, like `* .5`, reads at full strength so it hides no other part;

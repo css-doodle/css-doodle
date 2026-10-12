@@ -13,6 +13,14 @@ const PHI = (1 + sqrt(5)) / 2;
 
 const perlinOf = memo(seed => new Perlin(seedrandom('noise:' + seed)));
 
+const mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
+const dist = (p, q) => hypot(p[0] - q[0], p[1] - q[1]);
+// the k-th point of the R2 sequence over the box
+const r2 = (k, x0, y0, w, h) => {
+    let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
+    return [x0 + (u - floor(u)) * w, y0 + (v - floor(v)) * h];
+};
+
 function noiseOf(props) {
     let perlin;
     return (t, x, y, octave = 1, scale = 1, from = 0, to = 1, r = 1) => {
@@ -76,7 +84,7 @@ function overlay(A, B, op, joints) {
             if (abs(d) > 1e-12 * lr * hypot(sx, sy)) {
                 let t = (wx * sy - wy * sx) / d, u = (wx * ry - wy * rx) / d;
                 if (t < -T || t > 1 + T || u < -T || u > 1 + T) continue;
-                let X = t < T ? e.a : t > 1 - T ? e.b : u < T ? g.a : u > 1 - T ? g.b : [ax + t * rx, ay + t * ry];
+                let X = t < T ? e.a : t > 1 - T ? e.b : u < T ? g.a : u > 1 - T ? g.b : mix(e.a, e.b, t);
                 if (e.k != g.k) joints.add(X);
                 if (t > T && t < 1 - T) e.cuts.push([t, X]);
                 if (u > T && u < 1 - T) g.cuts.push([u, X]);
@@ -132,7 +140,7 @@ function fillet(ring, joints, k) {
     if (j0 < 0) return ring;
     ring = [...ring.slice(j0), ...ring.slice(0, j0), ring[j0]];
     let s = [0], js = [], out = [];
-    for (let i = 1; i < ring.length; ++i) s.push(s[i - 1] + hypot(ring[i][0] - ring[i - 1][0], ring[i][1] - ring[i - 1][1]));
+    for (let i = 1; i < ring.length; ++i) s.push(s[i - 1] + dist(ring[i], ring[i - 1]));
     ring.forEach((p, i) => i < ring.length - 1 && joints.has(p) && js.push(i));
     let L = s.at(-1), gaps = js.map((j, m) => ((m + 1 < js.length ? s[js[m + 1]] : L) - s[j]) / 2);
     let r = js.map((_, m) => min(k, gaps[m], gaps.at(m - 1)));
@@ -140,8 +148,7 @@ function fillet(ring, joints, k) {
         let i = 1;
         d = (d + L) % L;
         while (i < s.length - 1 && s[i] < d) ++i;
-        let f = (d - s[i - 1]) / (s[i] - s[i - 1] || 1), [ax, ay] = ring[i - 1], [bx, by] = ring[i];
-        return [ax + (bx - ax) * f, ay + (by - ay) * f];
+        return mix(ring[i - 1], ring[i], (d - s[i - 1]) / (s[i] - s[i - 1] || 1));
     };
     js.forEach((j, m) => {
         let curve = flatten([at(s[j] - r[m]), [...at(s[j] + r[m]), ...ring[j]]], .002);
@@ -153,7 +160,7 @@ function fillet(ring, joints, k) {
 }
 
 function resample(rings, counts) {
-    let sides = rings.map(ring => ring.map((p, i) => hypot(ring[(i + 1) % ring.length][0] - p[0], ring[(i + 1) % ring.length][1] - p[1])));
+    let sides = rings.map(ring => ring.map((p, i) => dist(ring[(i + 1) % ring.length], p)));
     let lens = sides.map(s => s.reduce((a, b) => a + b, 0)), total = lens.reduce((a, b) => a + b, 0), run = 0, done = 0;
     return rings.map((ring, k) => {
         let m = counts.length > 1 ? counts[k % counts.length] : round(counts[0] * (run += lens[k]) / total) - done, out = [];
@@ -161,8 +168,7 @@ function resample(rings, counts) {
         for (let j = 0, i = 0, s = 0; j < m; ++j) {
             let d = j * lens[k] / m;
             while (s + sides[k][i] < d) s += sides[k][i++];
-            let f = (d - s) / (sides[k][i] || 1), [ax, ay] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
-            out.push([ax + (bx - ax) * f, ay + (by - ay) * f]);
+            out.push(mix(ring[i], ring[(i + 1) % ring.length], (d - s) / (sides[k][i] || 1)));
         }
         return out;
     }).filter(ring => ring.length);
@@ -181,9 +187,7 @@ function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS
     if (!(peak > 0)) density = null;
     // quasi-random R2 samples over the box, kept when inside the shape
     for (; n < total && tried < (n ? total * 100 : 1e3); ++tried) {
-        let k = tried + seed % 1e4 * 1e4;
-        let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
-        let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
+        let [x, y] = r2(tried + seed % 1e4 * 1e4, x0, y0, w, h);
         if (!inside(x, y) || density && density(x, y) < peak * rnd()) continue;
         sx[n] = x, sy[n++] = y;
     }
@@ -320,7 +324,7 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
     let reach = relax === 0 || m == n ? 0 : .7 * sqrt(area(screen.flat()) / m);
     if (!reach) parents = order.slice(0, m);
     for (let pass = 0; pass < 2 && parents.length < m; ++pass) for (let i of order) {
-        if (parents.length < m && !parents.includes(i) && (pass || parents.every(j => hypot(seeds[i][0] - seeds[j][0], seeds[i][1] - seeds[j][1]) >= reach))) parents.push(i);
+        if (parents.length < m && !parents.includes(i) && (pass || parents.every(j => dist(seeds[i], seeds[j]) >= reach))) parents.push(i);
     }
     let px = parents.map(i => seeds[i][0]), py = parents.map(i => seeds[i][1]);
     let cells = voronoi(px, py, ...qbox, 0), kinds = colors(cells);
@@ -542,7 +546,6 @@ function derive(pieces, letter, angle) {
         return ring;
     });
     let emit = (ps, kind) => out.push([ps.flat(2), kind]);
-    let mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
     if (letter == 'd') rings.forEach(ring => ring && emit(ring.map(([k]) => F[k][1]), 1));
     else if (letter == 'k') F.forEach(([f, c, kind], k) => f.forEach((v, i) => emit([c, at(k, i), at(k, i + 1)], kind)));
     else {
@@ -572,7 +575,7 @@ function derive(pieces, letter, angle) {
             if (g < k) {
                 let [a, b, c, d] = [pair(k, i)[1], pair(k, i + 1)[0], pair(g, j)[1], pair(g, j + 1)[0]];
                 if (letter != 's') emit([a, b, c, d], top + 2);
-                else if (hypot(a[0] - c[0], a[1] - c[1]) < hypot(b[0] - d[0], b[1] - d[1])) emit([a, b, c], top + 2), emit([a, c, d], top + 2);
+                else if (dist(a, c) < dist(b, d)) emit([a, b, c], top + 2), emit([a, c, d], top + 2);
                 else emit([a, b, d], top + 2), emit([b, c, d], top + 2);
             }
         }));
@@ -719,8 +722,7 @@ function pack(rings, box, inside, count, seed, size) {
     let total = max(4096, 32 * count), xs = [], ys = [], heap = [], key = [], out = [];
     let k = seed % 1e4 * 1e4, start = k;
     for (; xs.length < total && k < start + total * 50; ++k) {
-        let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
-        let x = x0 + (u - floor(u)) * w, y = y0 + (v - floor(v)) * h;
+        let [x, y] = r2(k, x0, y0, w, h);
         if (inside(x, y)) heap.push(xs.length), key.push(Infinity), xs.push(x), ys.push(y);
     }
     let avg = sqrt(w * h * xs.length / (k - start) / count / PI) || 1;

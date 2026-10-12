@@ -549,11 +549,11 @@ function parseDoodleBody(cur, start, expand) {
             if (tok.isSymbol('{')) {
                 cut(tok.index + 1);
                 let count = /\*\s*([1-9]\d*(?:x[1-9]\d*)?)\s*$/.exec(cur.source.slice(mark, tok.index));
-                blocks.push({ values, count: count && count[1] });
+                blocks.push([values, count && count[1]]);
                 values = [];
             } else if (tok.isSymbol('}') && blocks.length) {
                 cut(tok.index);
-                let { values: outer, count } = blocks.pop();
+                let [outer, count] = blocks.pop();
                 if (count && values.some(v => v.type === 'func')) {
                     values = [repeat(count, [Node.text('{'), ...values, Node.text('}')])];
                 }
@@ -582,7 +582,7 @@ function parseDoodleBody(cur, start, expand) {
     }
     if (expand) {
         cut(end);
-        while (blocks.length) values = blocks.pop().values.concat(values);
+        while (blocks.length) values = blocks.pop()[0].concat(values);
         if (values.some(v => v.type === 'func')) return [normalizeArgument([repeat('1', values)])];
     }
     let body = substitutePi(cur.source.slice(start, end), cur.source[start - 1]);

@@ -162,9 +162,8 @@ function combine(props, lo, hi) {
             : createShapePoints({ ...vars, ...item }, lo, hi, true);
         rings = rings ? overlay(rings, next, op, joints) : next;
     }
-    let k = calc('smooth', props), a = -PI / 180 * calc('rotate', props);
-    return (rings || []).map(ring => (k > 0 ? fillet(ring, joints, k) : ring)
-        .map(([x, y]) => [x * cos(a) - y * sin(a), y * cos(a) + x * sin(a)]));
+    let k = calc('smooth', props), a = -PI / 180 * calc('rotate', props), c = cos(a), s = sin(a);
+    return (rings || []).map(ring => (k > 0 ? fillet(ring, joints, k) : ring).map(([x, y]) => [x * c - y * s, y * c + x * s]));
 }
 
 function createShapePoints(props, lo, hi, raw) {
@@ -324,15 +323,15 @@ function createShapePoints(props, lo, hi, raw) {
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
         let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
         let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift, turn) : name == 'penrose' && penrose;
-        let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3);
+        let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3), cube = name == 'cube' && !derive;
         if (make) {
-            let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && name != 'cube' && !derive && edges(props, sides == 3, seed);
+            let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && !derive && !cube && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
             let jitter = Number(props.jitter) || 0;
             let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
-            let pieces = tiles(make, box, screen, inside, name == 'cube' && !derive ? max(1, count / 3 | 0) : count, grow, derive);
-            if (name == 'cube' && !derive) pieces = faces3(pieces);
+            let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive);
+            if (cube) pieces = faces3(pieces);
             if (jitter) pieces = shake(pieces, jitter, seed);
             // the bend tolerance is in edge lengths: take the longest side, a notch from shift: can be tiny
             let p = pieces[0]?.[0] || [], len = 0;

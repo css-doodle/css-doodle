@@ -37,14 +37,14 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
         } else if (curr.isSymbol(')') && depth) {
             depth--;
         }
-        if (parent && (!next || curr.isSymbol('}'))) {
+        if (parent && (!next || curr.isSymbol('}') && !depth)) {
             if (!curr.isSymbol('}', ';')) {
                 head.push(curr);
             }
             appendTail();
             break;
         }
-        else if (curr.isSymbol('{')) {
+        else if (curr.isSymbol('{') && !depth) {
             let blocks = readBlocks(iter, head);
             if (blocks) {
                 rules.push(...blocks);
@@ -60,7 +60,7 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
                 head.push(curr);
             }
         }
-        else if (curr.isSymbol(';')) {
+        else if (curr.isSymbol(';') && !depth) {
             appendTail();
         }
         else {
