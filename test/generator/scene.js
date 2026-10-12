@@ -134,6 +134,22 @@ test('the model is measured once per vertex, not per pixel', () => {
     assert.doesNotMatch(fragment, /cssd_reach/);
 });
 
+test('the fit reads a scaled shape at its full size', () => {
+    let { vertex, dist } = scene('sphere { r: .2; scale: 2 1 1 }');
+    assert.match(dist, /= p \/ (cssd\d+);[^]*\*= min\(abs\(\1\.x\), min\(abs\(\1\.y\), abs\(\1\.z\)\)\);/);
+    assert.match(vertex, /= p \* cssd\d+;\nvec3 cssd\d+ = normalize\(cssd\d+\) \* length\(p\);/);
+    assert.doesNotMatch(vertex, /cssd_dist/);
+});
+
+test('the fit reads an sdf at full strength, except inside an intersect', () => {
+    let fit = code => scene(code).vertex.match(/float cssd_fit[^]*?return/)[0];
+    let union = fit('sdf { d: (length(p) - .2 - .1 * rand()) * .5 } box { size: .2 }');
+    assert.equal(union.match(/rand\(vec2\(0\.0, 1\.0\)/g).length, 2);
+    assert.match(union, /= cssd\d+ > 0\.1 \? cssd\d+ \/ cssd\d+ : cssd\d+;/);
+    assert.doesNotMatch(fit('intersect { box { size: .2 } sdf { d: p.y * .7 } }'), /\? /);
+    assert.doesNotMatch(scene('sdf { d: (length(p) - .2) * .5 }').dist, /\? /);
+});
+
 test('unknown shapes are reported', () => {
     assert.deepEqual(scene('cube { size: .2 }').warnings, ['unknown shape cube']);
     assert.deepEqual(scene('difference { box; sphere { r: .1 } }').warnings, ['unknown shape difference']);

@@ -145,8 +145,8 @@ export default function drawScene(code, extra, warn = () => {}) {
     if (!root.children.length) warn('@scene draws nothing: add a shape such as sphere { r: .3 }');
     if (/\bcalc\(/.test(code)) warn('@scene does math without calc(): write (t * 30deg)');
 
-    // compiled twice: distances alone for marching, then with colors for the hit
-    let build = (dist, warn) => {
+    // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
+    let build = (dist, warn, fit) => {
         let ctx = {
             id: 0, sites: 0, key: '0.0', using: new Set(),
             types: { __proto__: null },
@@ -238,10 +238,20 @@ export default function drawScene(code, extra, warn = () => {}) {
             if (m.name === 'translate') {
                 out += `vec3 ${q} = ${p} - ${vec3(args())};\n`;
             } else if (m.name === 'scale') {
-                let s = args();
-                out += `vec3 ${q} = ${p} / ${vec3(s, '1.0')};\n`;
+                let s = next();
+                out += `vec3 ${s} = ${vec3(args(), '1.0')};\n`;
+                if (fit) {
+                    // far away a shape reads |p| - its reach; scaled, it reaches |S e| times the inner reach along S e
+                    let w = next();
+                    out += `vec3 ${w} = ${p} * ${s};\nvec3 ${q} = normalize(${w}) * length(${p});\n`;
+                    r = chain(node, inner, q);
+                    out += `${r} = length(${p}) - length(${w}) + ${r} * length(${w}) / length(${p});\n`;
+                    return r;
+                }
+                out += `vec3 ${q} = ${p} / ${s};\n`;
                 r = chain(node, inner, q);
-                out += `${r}${W} *= ${s.length > 1 ? `min(min(${s[0]}, ${s[1]}), ${s[2] || '1.0'})` : s[0] || '1.0'};\n`;
+                // a negative scale mirrors
+                out += `${r}${W} *= min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)));\n`;
                 return r;
             } else if (m.name === 'rotate') {
                 let axis = AXES.z, angle = '0.0';
@@ -325,12 +335,14 @@ export default function drawScene(code, extra, warn = () => {}) {
         function shape(node, p) {
             let r = next();
             if (GROUPS[node.name]) {
-                let k = first(row(node, 'smooth'), p), a;
+                let k = first(row(node, 'smooth'), p), a, cut = ctx.cut;
+                ctx.cut ||= node.name === 'intersect';
                 for (let child of node.children) {
                     let b = generate(child, p);
                     if (a) out += join(a, b, k, GROUPS[node.name]);
                     a ??= b;
                 }
+                ctx.cut = cut;
                 out += `${T} ${r} = ${a || none};\n`;
                 return r;
             }
@@ -361,10 +373,21 @@ export default function drawScene(code, extra, warn = () => {}) {
             else if (name === 'capsule') d = `cssd_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
             else if (name === 'plane') d = `${p}.y`;
             else if (name === 'sdf') {
-                let { type, code } = compile(textOf(row(node, 'd')) || '1e5', p);
+                let value = textOf(row(node, 'd')) || '1e5', start = ctx.sites;
+                let { type, code } = compile(value, p);
                 let ok = row(node, 'd').length && /^(float|int)$/.test(type);
                 if (!ok) warn('sdf needs a distance in d');
                 d = ok ? code('float') : '1e5';
+                // a distance written at part strength, like `* .5`, reads at full strength so it hides no other part;
+                // inside an intersect it may only shrink the fit, so it stays as written
+                if (ok && fit && !ctx.cut) {
+                    let [a, h, c, end] = [next(), next(), next(), ctx.sites];
+                    ctx.types[h] = 'vec3';
+                    ctx.sites = start;
+                    out += `float ${a} = ${d};\nvec3 ${h} = ${p} * 0.5;\nfloat ${c} = 2.0 * (${a} - ${compile(value, h).code('float')}) / length(${p});\n`;
+                    ctx.sites = end;
+                    d = `${c} > 0.1 ? ${a} / ${c} : ${a}`;
+                }
             } else {
                 // in the xy plane, `depth` thick along z
                 let pts = itemsOf(row(node, 'points')).map(g => numbers(g, p));
@@ -404,7 +427,7 @@ export default function drawScene(code, extra, warn = () => {}) {
             : first(camera.perspective, 'p');
         return { out, result, turn, tilt, depth };
     };
-    let full = build(false, warn), bare = build(true, () => {});
+    let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
     let { turn, tilt, depth } = full;
     let usesTime = /(?<![\w.])t\b/.test(code);
     let common = glsl`
@@ -412,10 +435,6 @@ export default function drawScene(code, extra, warn = () => {}) {
     float t;
     ${HELPERS}
     ${SCENE_HELPERS}
-    float cssd_dist(vec3 p) {
-        ${bare.out}
-        return ${bare.result};
-    }
     `;
     let basis = glsl`
         t = ${usesTime ? 'u_time' : '0.0'};
@@ -433,9 +452,13 @@ export default function drawScene(code, extra, warn = () => {}) {
     uniform vec2 u_seed;
     flat out vec3 cssd_vhi, cssd_vlo;
     ${common}
+    float cssd_fit(vec3 p) {
+        ${fit.out}
+        return ${fit.result};
+    }
     float cssd_reach(vec3 e) {
-        float b = 50.0 - cssd_dist(e * 50.0);
-        float s = (1e3 - cssd_dist(e * 1e3) - b) / 950.0;
+        float b = 50.0 - cssd_fit(e * 50.0);
+        float s = (1e3 - cssd_fit(e * 1e3) - b) / 950.0;
         return s < 0.9 ? (b - s * 50.0) / (1.0 - s) : 1e9;
     }
     void main() {
@@ -449,6 +472,10 @@ export default function drawScene(code, extra, warn = () => {}) {
     precision highp int;
     flat in vec3 cssd_vhi, cssd_vlo;
     ${common}
+    float cssd_dist(vec3 p) {
+        ${bare.out}
+        return ${bare.result};
+    }
     vec4 cssd_scene(vec3 p) {
         ${full.out}
         return ${full.result};
@@ -495,6 +522,8 @@ export default function drawScene(code, extra, warn = () => {}) {
             vec3 e = 0.5773 * (2.0 * vec3(float(((k + 3) >> 1) & 1), float((k >> 1) & 1), float(k & 1)) - 1.0);
             n += e * cssd_dist(cssd_h + e * 5e-4 * cssd_k);
         }
+        // a miss reads its closest approach at full strength, so squashed and blended shapes keep a one-pixel edge
+        if (cssd_near >= 0.1) cssd_near /= clamp(length(n) * 1500.0 / cssd_k, 1e-3, 1.0);
         n = normalize(n);
         vec3 cssd_l = cssd_v * normalize(vec3(0.6, 0.8, 0.5));
         float light = sqrt(0.7 * max(dot(n, cssd_l), 0.0) + 0.3 * (0.6 + 0.4 * dot(n, cssd_y)));
