@@ -1168,20 +1168,13 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     pre.preCompose(cellAt(1, 1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
 
     gridSize = pre.grid || gridSize;
-    let seed = pre.seed;
-
-    if (seed) {
-        updateRandom(seed);
-    } else {
-        seed = seedValue;
-    }
-
-    if (isNil(seed)) {
-        seed = Date.now();
-        updateRandom(seed);
-    }
-
+    let seed = pre.seed || seedValue;
+    if (isNil(seed)) seed = Date.now();
     seed = String(seed);
+
+    if (pre.seed || !seedRandom) {
+        updateRandom(seed);
+    }
     useMathStream(R.random, seed);
     let tree = isTreeGrid(gridSize);
     let rules = new Rules(tokens, instance);

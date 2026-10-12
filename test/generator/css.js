@@ -580,12 +580,15 @@ test('@use at the top level is inlined by the parser', () => {
     assert.ok(compiled.styles.all.includes('@keyframes k {to {color:blue;}}'));
 });
 
-test('a seed attribute keeps drawing past the pre-pass', () => {
-    // values from v0.51.0: the cells continue the stream the top-level
-    // vars drew from, so seeded artwork stays the same across releases
-    let all = css('--x: @r(100); background: hsl(@r(360) 50% 50%);', '1', '12345');
-    assert.ok(all.includes('--x:66.0271088304;'), all);
-    assert.ok(all.includes('background:hsl(180.341739421 50% 50%);'), all);
+test('a seed attribute and @seed give the same cells', () => {
+    // top-level vars draw during the pre-pass; the cells start over from
+    // the seed either way, and @seed in the code wins over the attribute
+    let code = '--x: @r(100); background: hsl(@r(360) 50% 50%);';
+    assert.equal(css(code, '3', '12345'), css('@seed: 12345; ' + code, '3', 'other'));
+    // a nested doodle continues its parent's stream instead of starting over
+    let shared = createRandom('parent').random;
+    let nested = () => generateCss(parseCss(code), parseGrid('1'), 'parent', 64, shared).styles.cells;
+    assert.notEqual(nested(), nested());
 });
 
 test('@svg problems are reported once for the whole grid', () => {
