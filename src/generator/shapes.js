@@ -1,7 +1,7 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
-import parseShapeCommands from '../parser/parse-shape-commands.js';
+import parseShapeCommands, { readShapes, commandsOf, GROUPS } from '../parser/parse-shape-commands.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
@@ -11,7 +11,7 @@ import { memo } from '../lib/cache.js';
 import calc, { defaultContext, evaluate } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
+    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
 } from './tiling.js';
 
@@ -24,32 +24,34 @@ function ngon(k, inner = cos(PI / k)) {
 
 const fit = memo(commands => {
     let props = parseShapeCommands(commands), split = parseInt(props.split);
-    let point = createPointFunction(props, split), ps = [];
-    for (let i = 0; i < split; ++i) ps.push(...point(2 * PI * i / split, i));
+    let point = createPointFunction(props, split), ps = [], a = PI / 180 * (Number(props.rotate) || 0);
+    for (let i = 0; i < split; ++i) {
+        let [x, y] = point(2 * PI * i / split, i);
+        ps.push(x * cos(a) - y * sin(a), y * cos(a) + x * sin(a));
+    }
     let [x0, y0, x1, y1] = bounds(ps);
-    return `${commands}; move: ${-(x0 + x1) / 2} ${(y0 + y1) / 2}; scale: ${2 / max(x1 - x0, y1 - y0)}`;
+    return `${commands}; move: ${-(x0 + x1) / 2} ${-(y0 + y1) / 2}; scale: ${2 / max(x1 - x0, y1 - y0)}`;
 });
 
 const presetShapes = {
     __proto__: null,
 
-    square:   css`split: 4; ${ngon(4)}; rotate: 45; scale: 1.42`,
-    pentagon: css`split: 5; ${ngon(5)}; rotate: 54`,
+    square:   css`split: 4; ${ngon(4)}; rotate: -45; scale: 1.42`,
+    pentagon: css`split: 5; ${ngon(5)}; rotate: -54`,
     circle:   css`split: 180`,
-    hexagon:  css`split: 6; ${ngon(6)}; rotate: 30`,
-    octagon:  css`split: 8; ${ngon(8)}; rotate: 22.5`,
-    triangle: () => fit(css`split: 3; ${ngon(3)}; rotate: 30`),
+    hexagon:  css`split: 6; ${ngon(6)}; rotate: -30`,
+    octagon:  css`split: 8; ${ngon(8)}; rotate: -22.5`,
+    triangle: () => fit(css`split: 3; ${ngon(3)}; rotate: -30`),
     bean:     () => fit(css`split: 180; r: sin(t)^3 + cos(t)^3`),
-    bicorn:   css`split: 180; x: cos(t); y: sin(t)^2 / (2 + sin(t)) - .5`,
-    fish:     () => fit(css`split: 240; x: .89cos(t) + .19cos(2t) + .07cos(4t) - .02cos(5t) + .03cos(6t) + .01cos(8t); y: .41sin(t) + .18sin(3t) - .08sin(4t) - .02sin(5t) + .05sin(6t) - .02sin(7t)`),
+    fish:     css`subtract {union{leaf .6 {rotate: 90; scale: .72; move: .25 0} polygon { points: -.35 0, -.95 .52, -.75 0, -.95 -.52 }} circle {scale: .065; move: .58 .1}} round: .03`,
     infinity: css`split: 180; x: cos(t) / (sin(t)^2 + 1); y: x * sin(t)`,
-    drop:     () => fit(css`split: 180; rotate: 90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
+    drop:     () => fit(css`split: 180; rotate: -90; x: sin(t); y: (1 + sin(t)) * cos(t) / 1.6`),
     vase:     css`split: 240; x: sign(sin(t)) * (.27 - .2cos(t) - .07cos(2t) + .09cos(3t)); y: cos(t)`,
     windmill: css`split: 18; R: seq(.618, 1, 0); T: seq(t-.55, t, t); x: R * cos(T); y: R * sin(T)`,
     heart:    () => fit(css`split: 180; a: cos(t)*13/18 - cos(2t)*5/18; b: cos(3t)/18 + cos(4t)/18; x: -.9 * sin(t)^3; y: 1.1 * (a - b)`),
     star(k = 5, inner = 1 / PHI ** 2) {
         k = clamp(k, 3, 10);
-        return css`split: ${2 * k}; ${ngon(k, clamp(inner, .05, 1))}; rotate: ${-(90 % (360 / k))}`;
+        return css`split: ${2 * k}; ${ngon(k, clamp(inner, .05, 1))}; rotate: ${90 % (360 / k)}`;
     },
     clover(k = 3) {
         k = clamp(k, 3, 10);
@@ -61,7 +63,7 @@ const presetShapes = {
     },
     cloud(k = 3) {
         k = clamp(k, 1, 10);
-        return fit(css`split: 180; k: ${k}; x: (k+1)*cos(t) - cos((k+1)*t); y: (k+1)*sin(t) - sin((k+1)*t); rotate: -90`);
+        return fit(css`split: 180; k: ${k}; x: (k+1)*cos(t) - cos((k+1)*t); y: (k+1)*sin(t) - sin((k+1)*t); rotate: 90`);
     },
     // |x|^k + |y|^k = 1
     squircle(k = 4) {
@@ -71,6 +73,14 @@ const presetShapes = {
     bud(k = 3) {
         k = clamp(k, 3, 10);
         return fit(css`split: 240; r: 1 + .2 * cos(${k}t)`);
+    },
+    cross(k = .3) {
+        k = clamp(k, .05, 1);
+        return css`points: 1 ${-k}, 1 ${k}, ${k} ${k}, ${k} 1, ${-k} 1, ${-k} ${k}, -1 ${k}, -1 ${-k}, ${-k} ${-k}, ${-k} -1, ${k} -1, ${k} ${-k}`;
+    },
+    leaf(k = .5) {
+        k = clamp(k, .05, 1);
+        return css`split: 180; x: ${k} * cos(t) * abs(cos(t)); y: sin(t)`;
     },
 };
 
@@ -93,8 +103,18 @@ function faces3(pieces) {
     }));
 }
 
+function spaced(input) {
+    let parts = [];
+    for (let v of parseValueGroup(input)) {
+        if (parts.length && (/[-+*/%^]$/.test(parts.at(-1)) || /^([*/%^]|[-+]$)/.test(v))) parts[parts.length - 1] += ' ' + v;
+        else parts.push(v);
+    }
+    return parts;
+}
+
 function parsePair(input, fallback, context) {
-    let [a, b = a] = parseValueGroup(input);
+    let parts = parseValueGroup(input, { noSpace: true });
+    let [a, b = a] = parts.length > 1 ? parts : spaced(input);
     return [a, b].map(v => v === undefined ? fallback : evaluate(v, context) || fallback);
 }
 
@@ -116,10 +136,6 @@ function createPointFunction(props, split) {
             return a + step * index;
         }
     });
-    // read like a variable: `30deg` is 30, `@n * 5` is worked out
-    let rad = -PI / 180 * calc('rotate', context);
-    let cosR = cos(rad), sinR = sin(rad);
-
     let point = (t, i) => {
         index = i;
         context['i'] = i + 1;
@@ -137,11 +153,6 @@ function createPointFunction(props, split) {
             x = calc(px, context);
             y = calc(py, context);
         }
-        if (rad) {
-            let rx = x * cosR - y * sinR;
-            y = y * cosR + x * sinR;
-            x = rx;
-        }
         return [x, y];
     };
     point.formula = text => t => {
@@ -151,7 +162,13 @@ function createPointFunction(props, split) {
     return point;
 }
 
-const COMMANDS = new Set(['points', 'split', 'turn', 'r', 't', 'x', 'y', 'rotate', 'move', 'scale', 'round', 'edge', 'frame', 'fill', 'unit', 'smooth', 'blocks']);
+const COMMANDS = new Set('points split turn r t x y rotate move scale round grow frame fill fill-rule unit smooth blocks steps'.split(' '));
+
+function check(node, warn) {
+    let name = node.name.split(' ')[0];
+    if (name && !(name in presetShapes) && !GROUPS.includes(name) && !/^(shape|polygon)$|^\(/.test(name)) warn(`unknown shape ${node.name}`);
+    [...node.copies || node.children, ...node.unused || []].forEach(n => check(n, warn));
+}
 
 function combine(props, lo, hi) {
     let { op, items } = props.blocks, joints = new Set(), vars = {}, rings;
@@ -162,14 +179,28 @@ function combine(props, lo, hi) {
             : createShapePoints({ ...vars, ...item }, lo, hi, true);
         rings = rings ? overlay(rings, next, op, joints) : next;
     }
-    let k = calc('smooth', props), a = -PI / 180 * calc('rotate', props), c = cos(a), s = sin(a);
-    return (rings || []).map(ring => (k > 0 ? fillet(ring, joints, k) : ring).map(([x, y]) => [x * c - y * s, y * c + x * s]));
+    let k = calc('smooth', props);
+    return (rings || []).map(ring => k > 0 ? fillet(ring, joints, k) : ring);
+}
+
+// [x0, y0, x1, y1, …] → [[x0, y0], [x1, y1], …]
+function toPairs(flat) {
+    let out = [];
+    for (let i = 0; i < flat.length; i += 2) out.push([flat[i], flat[i + 1]]);
+    return out;
+}
+
+function pairsOf(points) {
+    let pairs = isEmpty(points) ? [] : parseValueGroup(points, { noSpace: true }).map(spaced);
+    return pairs.length > 2 && pairs.every(p => p.length == 2) && pairs;
 }
 
 function createShapePoints(props, lo, hi, raw) {
-    // `r: 1, .5` draws one contour per item, the shorter lists repeat, `points: 0` leaves one out
-    let lists = {}, count = 1, contours = [];
-    for (let k of ['points', 't', 'r', 'x', 'y', 'rotate', 'edge']) {
+    let pairs = pairsOf(props.points);
+    let vertices = pairs && pairs.map(p => p.map(v => evaluate(v, props) || 0));
+    if (vertices) props = { ...props, points: String(vertices.length) };
+    let lists = {}, count = 1, contours = [], index = [];
+    for (let k of ['points', 't', 'r', 'x', 'y', 'rotate', 'grow']) {
         if (String(props[k]).includes(',')) {
             lists[k] = parseValueGroup(props[k], { noSpace: true });
             count = max(count, lists[k].length);
@@ -181,11 +212,9 @@ function createShapePoints(props, lo, hi, raw) {
             p = { ...props };
             for (let k in lists) p[k] = lists[k][c % lists[k].length];
         }
-        // read like a variable: `20px` is 20, `10n` and `@n * 30` are worked out
-        let n = isEmpty(p.points || p.split) ? NaN
-            : Math.trunc(calc(p.points ? 'points' : 'split', Object.assign(Object.create(defaultContext), p)));
+        let n = !isEmpty(p.points || p.split) ? Math.trunc(calc(p.points ? 'points' : 'split', p))
+            : /(?<![a-zA-Z_]\w*|\.)[tθ]\b/.test([p.r, p.x, p.y].join(' ')) ? 180 : NaN;
         if (c && n === 0) continue;
-        // `r: 10px` carries the unit, but `2t` and `2i` are products
         let { unit, value } = parseCompoundValue(isEmpty(p.r) ? '' : p.r);
         if (unit && !p[unit] && !/^[tθi]$/.test(unit)) {
             if (isEmpty(props.unit)) props.unit = unit;
@@ -193,19 +222,27 @@ function createShapePoints(props, lo, hi, raw) {
         }
         p.split = clamp(n, lo, hi);
         contours.push(p);
+        index.push(c);
     }
     let fns = contours.map(p => createPointFunction(p, p.split));
 
     let turn = Number(props.turn) || 1;
-    let frame = props.frame;
-    let fill = props.fill;
+    let fill = props['fill-rule'] ?? props.fill;
     let evenodd = fill == 'evenodd';
     let [gap = 0, fine = gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
-    let [fx, fy] = parsePair(props.scale, 1, props);
-    let [dx, dy] = parsePair(props.move, 0, props);
-    // percentages of the element by default, else the unit or none
+    let steps = (props.steps || []).filter(([k]) => props[k] !== undefined);
+    let changed = steps.some(([k]) => k == 'grow' || k == 'frame');
+    let last = steps.length;
+    while (last && /^(move|scale)$/.test(steps[last - 1][0])) last--;
+    let place = steps.slice(last).map(([k, v]) => [k, ...parsePair(v, k == 'move' ? 0 : 1, props)]);
+    steps = steps.slice(0, last);
+    let view = ([x, y]) => {
+        for (let [k, a, b] of place) k == 'move' ? (x += a, y += b) : (x *= a, y *= b);
+        return [x, y];
+    };
+    let [fx, fy] = place.reduce(([x, y], [k, a, b]) => k == 'move' ? [x, y] : [x * a, y * b], [1, 1]);
     let percent = props.unit === undefined || props.unit === '%';
     let suffix = percent ? '%' : (props.unit === 'none' ? '' : props.unit);
     let staticAngle = props.scatter && !dir ? 0
@@ -214,18 +251,18 @@ function createShapePoints(props, lo, hi, raw) {
     let points = [];
     let px = [], py = [];
 
-    let toScreen = ([x, y]) => {
-        x = (x + dx) * fx;
-        y = -(y - dy) * fy;
-        return percent ? [(x + 1) * 50, (y + 1) * 50] : [x, y];
+    let toScreen = p => {
+        let [x, y] = view(p);
+        return percent ? [(x + 1) * 50, (1 - y) * 50] : [x, -y];
     };
+    let origin = [0, 0];
     let box = percent ? [0, 0, 100, 100] : [-1, -1, 1, 1];
     let fmt = (x, y) => tidyNumber(x) + suffix + ' ' + tidyNumber(y) + suffix;
 
     let add = ([x, y]) => {
         let angle = staticAngle;
         if (angle === null) {
-            angle = atan2(-y * fy, x * fx) * 180 / PI;
+            angle = atan2((origin[1] - y) * fy, (x - origin[0]) * fx) * 180 / PI;
             if (direction.direction === 'reverse') angle -= 180;
             angle = tidyNumber(angle + direction.angle);
         }
@@ -236,7 +273,6 @@ function createShapePoints(props, lo, hi, raw) {
     };
 
     let curved = path => suffix && path && path.some(e => e[2] !== undefined);
-    // one subpath per contour
     let toPath = (paths, map = p => p, rule) => {
         let out = [];
         for (let path of paths) {
@@ -251,63 +287,78 @@ function createShapePoints(props, lo, hi, raw) {
         }
         return `shape(${rule ? rule + ' ' : ''}${out.join(',')})`;
     };
-    let smooth = clamp(Number(props.round) || 0, 0, 1);
+    let radius = max(0, Number(props.round) || 0);
     let tile = ([poly, [x, y], kind = 1, extra]) => {
-        if (smooth) {
-            let tol = (box[2] - box[0]) / 1e3, path = rounded(poly, smooth, tol);
+        if (radius) {
+            let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
+            let path = corners(toPairs(poly), null, r);
             if (curved(path)) return new Point(toPath([path]), extra, fmt(x, y), kind);
             poly = flatten(path, tol);
         }
         let vs = [];
-        for (let i = 0; i < poly.length; i += 2) {
-            let v = fmt(poly[i], poly[i + 1]);
+        for (let [x, y] of toPairs(poly)) {
+            let v = fmt(x, y);
             if (v !== vs.at(-1)) vs.push(v);
         }
         if (vs.length > 1 && vs[0] === vs.at(-1)) vs.pop();
         return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, fmt(x, y), kind);
     };
 
-    let trace = (c, sign = 1) => {
-        let { split } = contours[c], step = sign * (PI * 2) * turn / split, ring = [];
-        for (let i = 0; i < split; ++i) ring.push(fns[c](step * i, i));
-        return ring;
+    let trace = ({ split }, c) => {
+        let step = PI * 2 * turn / split;
+        return Array.from({ length: split }, (_, i) => fns[c](step * i, i));
     };
-    let rings = props.blocks ? combine(props, lo, hi) : contours.map((_, c) => trace(c));
-    // `points:` spreads that many over a group's outlines, a list gives each its own
+    let rings = props.blocks ? combine(props, lo, hi) : vertices ? [vertices] : contours.map(trace);
     if (props.blocks && !isEmpty(props.points)) rings = resample(rings, contours.map(p => p.split));
     if (!rings.length) rings = [[[0, 0]]];
-    let waves = rings.map((_, c) => {
-        let p = c % contours.length;
-        return !isEmpty(contours[p].edge) && fns[p].formula(contours[p].edge);
-    });
-    let shape = (ps, edge) => {
-        let path = smooth && rounded(ps.flat(), smooth, .002);
-        if (path) {
-            let p = flatten(path, .002);
-            ps = [];
-            for (let i = 0; i < p.length; i += 2) ps.push([p[i], p[i + 1]]);
+    let run = (ring, c, rounding = radius) => {
+        let k = c % contours.length, p = contours[k], o = [0, 0], ps = ring, inner;
+        let path = rounding && corners(ring, null, rounding);
+        if (path) ps = toPairs(flatten(path, .002));
+        let map = fn => {
+            ps = ps.map(fn);
+            inner = inner?.map(fn);
+            path = path && path.map(([x, y, bx, by]) => bx === undefined ? fn([x, y]) : [...fn([x, y]), ...fn([bx, by])]);
+            o = fn(o);
+        };
+        for (let [name, text] of steps) {
+            if ((name == 'rotate' || name == 'grow') && text.includes(',')) {
+                let list = parseValueGroup(text, { noSpace: true });
+                text = list[index[k] % list.length];
+            }
+            if (name == 'rotate') {
+                let a = PI / 180 * (evaluate(text.replace(/(\d)turn\b/g, '$1*360'), p) || 0), cs = cos(a), sn = sin(a);
+                map(([x, y]) => [x * cs - y * sn, y * cs + x * sn]);
+            } else if (name == 'move' || name == 'scale') {
+                let [a, b] = parsePair(text, name == 'move' ? 0 : 1, p);
+                map(([x, y]) => name == 'move' ? [x + a, y + b] : [x * a, y * b]);
+            } else if (name == 'grow') {
+                let f = fns[k].formula(text);
+                ps = wave(ps, f, .001);
+                inner &&= wave(inner, f, .001);
+                path = null;
+            } else {
+                let w = text * (turn > 1 ? 2 : 1) || .002;
+                inner = ps.map(([x, y]) => {
+                    let a = atan2(y - o[1], x - o[0]);
+                    return [x - w * cos(a), y - w * sin(a)];
+                });
+                path = null;
+            }
         }
-        if (edge) ps = wave(ps, edge, .001);
-        return [ps, path];
+        origin = o;
+        return [ps, path, inner && [inner[0], ...inner.slice(1).reverse()]];
     };
 
-    let w = frame / 100 * (turn > 1 ? 2 : 1) || .002;
-    let back = ps => [ps[0], ...ps.slice(1).reverse()];
-    let inner = (ring, c) => back(shape((props.blocks ? ring : back(trace(c, -1))).map(([x, y]) => {
-        let theta = atan2(y, x);
-        return [x - w * cos(theta), y - w * sin(theta)];
-    }), waves[c])[0]);
-
-    // a shape in a group: its outline only, a framed one with its inner side, moved and scaled
     if (raw) {
         return Object.assign(rings.flatMap((ring, c) => {
-            let [ps] = shape(ring, waves[c]);
-            return frame === undefined ? [ps] : [ps, inner(ring, c)];
-        }).map(ps => ps.map(([x, y]) => [(x + dx) * fx, (y - dy) * fy])), { evenodd });
+            let [ps, , inner] = run(ring, c);
+            return (inner ? [ps, inner] : [ps]).map(ps => ps.map(view));
+        }), { evenodd });
     }
 
     if (props.scatter) {
-        // tiled in the element's proportions, with the shorter side as 100%, then mapped back
+        rings = rings.map((ring, c) => run(ring, c, 0)[0]);
         let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
         let aspect = w / h > 0 && w / h < Infinity ? w / h : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
@@ -333,7 +384,6 @@ function createShapePoints(props, lo, hi, raw) {
             let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive);
             if (cube) pieces = faces3(pieces);
             if (jitter) pieces = shake(pieces, jitter, seed);
-            // the bend tolerance is in edge lengths: take the longest side, a notch from shift: can be tiny
             let p = pieces[0]?.[0] || [], len = 0;
             for (let i = 0; i < p.length; i += 2) len = max(len, hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]));
             let tol = (box[2] - box[0]) * 5e-4 / len;
@@ -358,7 +408,6 @@ function createShapePoints(props, lo, hi, raw) {
                 return point;
             });
         }
-        // its own stream: the result is memoized, so drawing from the doodle's would shift later random() calls on a cache hit
         context.random = seedrandom('random:density:' + seed);
         let density = formula(props.density);
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, onScreen(density)).map(tile);
@@ -369,11 +418,11 @@ function createShapePoints(props, lo, hi, raw) {
             return mosaic(screen, box, count, evenodd, seed, onScreen(density), relax,
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
-        // relaxed in the element's proportions, then back to the shape's (top first)
         let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density, relax)
             : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(([x, y]) => {
                 let [u, v] = toShape(x, y);
-                return [u / fx - dx, dy + v / fy];
+                for (let [k, a, b] of [...place].reverse()) k == 'move' ? (u -= a, v -= b) : (u /= a, v /= b);
+                return [u, v];
             });
         if (name == 'voronoi' && derive) {
             let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0, fits = reacher(box, inside, 1, 1), pieces = [];
@@ -401,12 +450,11 @@ function createShapePoints(props, lo, hi, raw) {
 
     let paths = [];
     rings = rings.map((ring, c) => {
-        let [ps, path] = shape(ring, waves[c]), at = points.length;
+        let [ps, path, side] = run(ring, c), at = points.length;
         paths.push(path);
         ps.forEach(add);
-        if (frame !== undefined) {
+        if (side) {
             add(ps[0]);
-            let side = inner(ring, c);
             side.forEach(add);
             add(side[0]);
             add(ps[0]);
@@ -415,13 +463,12 @@ function createShapePoints(props, lo, hi, raw) {
     });
 
     points.rings = rings;
-    points.clip = !waves.some(Boolean) && frame === undefined && paths.some(curved)
+    points.clip = !changed && paths.some(curved)
         ? toPath(paths, toScreen, rule)
         : `polygon(${rule ? rule + ',' : ''}${bridge(rings).join(',')})`;
     return points;
 }
 
-// a body kept in a variable comes in parentheses: `$gear; n: 24` adds to it
 function unwrap(input) {
     let pieces = [''], depth = 0;
     for (let t of scan(input)) {
@@ -435,7 +482,18 @@ function unwrap(input) {
     }).join(';');
 }
 
-// The callers memoize: the results are shared and read-only.
+export function outline(polygon, warn) {
+    check(polygon, warn);
+    let rings = createShapePoints(commandsOf({ rows: polygon.rows.filter(r => r.name === 'points'), children: polygon.children }), 3, 3600, true);
+    return rings.flat().length > 256 ? resample(rings, [256]) : rings;
+}
+
+export const shapeWarnings = memo(input => {
+    let list = [], warn = message => list.push(message);
+    check(readShapes(input.includes('(') ? unwrap(input) : input, warn), warn);
+    return list;
+});
+
 export default function generateShape(input, range = {}, modifier) {
     if (input.includes('(')) input = unwrap(input);
     let [head, more = ''] = input.split(/;([^]*)/);
@@ -445,6 +503,10 @@ export default function generateShape(input, range = {}, modifier) {
         preset = preset(...args);
     }
     let rules = parseShapeCommands(preset === undefined ? input : preset + ';' + more);
+    if (!rules.blocks && pairsOf(rules.points)) {
+        rules.blocks = { op: 'union', items: [{ points: rules.points }] };
+        delete rules.points;
+    }
     if (preset === undefined && range.preset && !rules.blocks && ['x', 'y', 'r'].every(k => isEmpty(rules[k]))) {
         preset = presetShapes[range.preset];
         rules = parseShapeCommands(preset + ';' + input);

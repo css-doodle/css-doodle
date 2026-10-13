@@ -88,6 +88,12 @@ test('a dotted name calls the variant of the function on its left', () => {
     for (let code of ['@plot.@scatter(star)', '@plot(@scatter(star))', '@scatter(star)', '@shape.scatter(star)']) {
         assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown function @scatter/, code);
     }
+    let corners = values('--v: @plot(points: -.5 .6, .5 .6, .9 .15, 0 -.85, -.9 .15);');
+    assert.equal(new Set(corners).size, 25);
+    assert.deepEqual(corners, values('--v: @plot(polygon { points: -.5 .6, .5 .6, .9 .15, 0 -.85, -.9 .15 });'));
+    for (let code of ['clip-path: @shape(cirle)', '@shape: cirle', '--v: @plot(cirle)', '--v: @tile(cirle)', 'background: @svg-polygon(cirle)']) {
+        assert.equal(compile(`${code};`).warnings[0]?.message, 'unknown shape cirle', code);
+    }
     // Function.prototype methods are not variants
     assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown function @call/);
     // @tile.voronoi fills a preset or a formula
@@ -579,10 +585,10 @@ test('@scene bodies evaluate their @ functions per cell, like @svg', () => {
 });
 
 test('@scene copies holding @ functions repeat their body per copy, like @svg', () => {
-    let { patterns } = compile('background: @scene(box { size: @i @nx @ny } sphere*2x2 { r: @nx @ny; translate: n 0 0 } cone*2 { r: .1 });');
+    let { patterns } = compile('background: @scene(box { size: @i @nx @ny } sphere*2x2 { r: @nx @ny; move: n 0 0 } cone*2 { r: .1 });');
     assert.equal(Object.values(patterns)[0].source,
-        'box { size: 1 1 1 } sphere*2x2 {{ r: 1 1; translate: n 0 0 } { r: 2 1; translate: n 0 0 } ' +
-        '{ r: 1 2; translate: n 0 0 } { r: 2 2; translate: n 0 0 }} cone*2 { r: .1 }');
+        'box { size: 1 1 1 } sphere*2x2 {{ r: 1 1; move: n 0 0 } { r: 2 1; move: n 0 0 } ' +
+        '{ r: 1 2; move: n 0 0 } { r: 2 2; move: n 0 0 }} cone*2 { r: .1 }');
 });
 
 test('@shape copies holding @ functions draw each copy with its own values', () => {
@@ -965,7 +971,7 @@ test('rules inside a group at-rule print once under its prelude, laid out like t
 test('a bare circle is the native ellipse, any command keeps the polygon', () => {
     assert.equal(cells('@shape: circle;', '2x1'), ':is(cell,#_) {clip-path:ellipse(50% 50%);}');
     assert.equal(cells('clip-path: @shape(circle);', '2x1'), ':is(cell,#_) {clip-path:ellipse(50% 50%);}');
-    assert.match(cells('clip-path: @shape(circle; frame: 5);', '2x1'), /^:is\(cell,#_\) \{clip-path:polygon\(/);
+    assert.match(cells('clip-path: @shape(circle; frame: .05);', '2x1'), /^:is\(cell,#_\) \{clip-path:polygon\(/);
 });
 
 test('per-cell and host values stay inline', () => {
@@ -1134,8 +1140,8 @@ test('@m writes contour lists with arithmetic in rotate and points', () => {
 });
 
 test('a shape body kept in a variable is reused with $name', () => {
-    let body = '--gear: (points: 4n; r: 1, .5; fill: evenodd);';
-    assert.equal(css(body + ' clip-path: @shape($gear; n: 2);'), css(body + ' clip-path: @shape(points: 8; r: 1, .5; fill: evenodd);'));
+    let body = '--gear: (points: 4n; r: 1, .5; fill-rule: evenodd);';
+    assert.equal(css(body + ' clip-path: @shape($gear; n: 2);'), css(body + ' clip-path: @shape(points: 8; r: 1, .5; fill-rule: evenodd);'));
     // once on :doodle, read by every cell, in any shape reader
     let host = ':doodle { --ring: (points: 8; r: 1, .5); }';
     assert.equal(css(host + ' clip-path: @shape($ring);'), css(host + ' clip-path: @shape(points: 8; r: 1, .5);'));
@@ -1149,13 +1155,15 @@ test('a shape body kept in a variable joins a group with $name', () => {
     let group = '--cut: (subtract { circle; circle { scale: .3 } });';
     assert.equal(css(group + ' clip-path: @shape($cut);'), css(group + ' clip-path: @shape(subtract { circle; circle { scale: .3 } });'));
     // @plot spreads the cells over the joined outline
-    let places = [...cells('@place: @plot(union { circle { scale: .5; move: -.8 0 } circle { scale: .5; move: .8 0 } });', '1x6').matchAll(/left:([\d.]+)%;[^}]*top:([\d.]+)%/g)];
+    let places = [...cells('@place: @plot(union { circle { scale: .5; move: -.4 0 } circle { scale: .5; move: .4 0 } });', '1x6').matchAll(/left:([\d.]+)%;[^}]*top:([\d.]+)%/g)];
     assert.equal(new Set(places.map(m => m[1] + ' ' + m[2])).size, 6);
 });
 
 test('@svg-polygon draws contours as subpaths of one path', () => {
     let all = decodeURIComponent(css('background: @svg-polygon(points: 4, 3; r: 1, .5)'));
     assert.ok(all.includes('d="M1 0L0 -1L-1 0L0 1ZM0.5 0L-0.25 -0.433012701892L-0.25 0.433012701892Z"'), all);
+    // the fill rule is an attribute, not a point
+    assert.match(decodeURIComponent(css('background: @svg-polygon(points: 4; fill-rule: evenodd)')), /fill-rule="evenodd"[^>]* points="1 0,0 -1,-1 0,0 1"/);
 });
 
 test('@palette: the same colors in every cell, and the @r stream stays untouched', () => {
@@ -1177,4 +1185,11 @@ test('@seed takes a computed value: functions draw from the incoming stream, $na
     let a = nested(), b = nested();
     assert.notEqual(a, b);
     assert.equal(a, generateCss(parseCss('@seed: @r(1e6);'), parseGrid('1'), 'parent', 64, createRandom('parent').random).seed);
+});
+
+test('@shape names shapes with #id, and their copies still run @ functions per copy', () => {
+    let named = css('clip-path: @shape(circle#hole*2 { scale: .2; move: @pn(-2 0, 2 0) } subtract { circle; #hole });');
+    let inline = css('clip-path: @shape(subtract { circle; circle*2 { scale: .2; move: @pn(-2 0, 2 0) } });');
+    assert.equal(named, inline);
+    assert.notEqual(named, css('clip-path: @shape(subtract { circle; circle { scale: .2; move: -2 0 } });'));
 });

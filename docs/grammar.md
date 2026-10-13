@@ -224,8 +224,8 @@ otherwise it is plain text. The name and the `(` must be adjacent too.
 
 **Digits in a name** split off as the first argument: `@m3(a)` is
 `@m(3, a)`, `@n1.5(a)` is `@n(1.5, a)`, `@p1-2(a)` is `@p(1-2, a)`.
-A `Math` name keeps its digits: `@log2(8)`. `@doodle`, `@shaders` and
-`@pattern` take a size suffix instead: `@doodle100x50(…)` renders at
+A `Math` name keeps its digits: `@log2(8)`. `@doodle`, `@shaders`,
+`@pattern` and `@scene` take a size suffix instead: `@doodle100x50(…)` renders at
 100 by 50; a single number is square.
 
 **A `.` followed by a letter** ends the name and composes calls,
@@ -265,8 +265,9 @@ is part of it, so `@p(a b, c)` has two arguments.
 - Function calls are recognized anywhere in an argument, including
   inside quotes, and a bare `@` or `$` is a call with an empty name.
 
-`@doodle`, `@shaders` and `@pattern` take their body as raw text up to
-the matching `)`, respecting quotes. `@svg` takes its body in the SVG
+`@doodle`, `@shaders`, `@pattern` and `@scene` take their body as raw
+text up to the matching `)`, respecting quotes; `@scene` runs the `@`
+functions in it for each cell, once per copy in a `*N` block. `@svg` takes its body in the SVG
 language (§9.1): `--name: value` declarations anywhere in it define
 variables for the call, the last one winning, and `element*count` is
 expanded before the body is read as arguments.
@@ -275,7 +276,8 @@ expanded before the body is read as arguments.
 
 One expression language is shared by `$(…)`, `@match(…)` (function and
 cell selector), `@cell(…)`, `@random(ratio)` and the commands of
-`@shape`. `@pattern` has its own GLSL-oriented language (§9.3).
+`@shape`. `@pattern` has its own GLSL-oriented language (§9.3), which
+`@scene` uses too (§9.2).
 
 ```
 expression = operand { operator operand }
@@ -481,102 +483,146 @@ pie slice, and
 `@arc(r: 50; to: 120) L -15 26 @arc(r: 30; from: 120; to: 0) Z` is a
 ring segment.
 
-### 9.2 Polygons
+### 9.2 Shapes
 
 ```css
-@shape: star;
-
 clip-path: @shape(
-  points: 200;
-  r: cos(5t);
-  fill: evenodd;
+  polygon#tooth { points: -.11 0, .11 0, .07 .22, -.07 .22 }
+  subtract {
+    union { circle { r: .72 } #tooth*12 { move: 0 .66; rotate: n * 30 } }
+    circle { r: .26 }
+  }
+  round: .03;
+);
+
+background: @scene(
+  box#leg { size: .06 .5 .06 }
+  box { size: 1 .06 .7; move: 0 .28 0; round: .02 }
+  #leg*2x2 { move: nx * .84 - 1.26, 0, ny * .54 - .81 }
+  view: 35 25;
 );
 ```
 
+`@shape` draws outlines in 2D, for `clip-path`, and `@plot`, `@tile`
+and `@svg-polygon` read the same body. `@scene` draws a model in 3D, as
+an image. Both use one language; only their shapes and a few commands
+differ.
+
 ```
 shape-property = preset
-shape-function = preset | { command ';' | group }
-group          = ( 'union' | 'subtract' | 'intersect' | 'exclude' ) [ copies ]
-                 '{' { command ';' | group | member } '}'
-member         = ( preset | '(' body ')' | name ) [ copies ] [ '{' { command ';' } '}' ]
+body           = { row | shape }
+row            = [ '-' ] name ':' value [ ';' ]
+shape          = head [ '{' body '}' ] [ ';' ]
+head           = kind [ '#' id ] [ copies ] | kind copies '#' id | '#' id [ copies ]
+kind           = group | shape-name [ arguments ] | '(' body ')'
+group          = 'union' | 'subtract' | 'intersect' | 'exclude'
 copies         = '*' count [ 'x' count ]
-command        = [ '-' ] command-name ':' expression
-command-name   = 'points' | 'turn' | 'scale' | 'rotate' | 'move'
-               | 'frame' | 'unit' | 'direction' | 'fill'
-               | 'round' | 'edge' | 'seed'
-               | 'r' | 't' | 'x' | 'y'
-               | variable-name
 ```
 
-The `@shape:` directive takes a preset name (`circle`, `star`,
-`heart`, …) and emits `clip-path: polygon(…)`. The `@shape(…)`
-function takes a preset or a command body, and is the form for
-custom polygons.
+**Rows.** A row is a command, an attribute of the shape it is in, or,
+for any other name, a variable that the rows and shapes of its block
+read: `k: .3; sphere { r: k }`. Both report an unknown shape or `#id`,
+and `@scene` also reports a name nothing reads, which is how a
+misspelled attribute shows.
+
+**Order.** `move`, `rotate`, `scale`, `grow` and `frame` run in the
+order written, each on the shape so far: `scale: .5; move: .5 0` halves
+the shape, then moves it a quarter of the box to the right. A `rotate`
+after `move` turns the shape around the center, and one written twice
+runs twice. Every other row is an attribute, and the last one wins. A
+preset's own steps come first, so `square; scale: .5` halves the
+square. `y` points up, and `rotate` turns counterclockwise, in degrees:
+`.25turn` is 90. The parts of `move` and `scale` are split by spaces,
+or by commas, and an operator keeps its operands: `move: k * .5 0` and
+`move: .5 -.25` are two parts each. `grow: d` pushes the outline out by
+`d`, and `frame: w` keeps a band `w` wide inside it, both as the shape
+is at that step.
+
+**Groups.** `union`, `subtract` and `intersect` join whole shapes:
+`subtract { circle; circle { scale: .9; move: .45 .135 } }` is a
+crescent. `subtract` takes the rest from the first. `exclude` keeps
+what an odd number of the shapes cover; it is only in `@shape`, since in
+3D it would look like `union`. `smooth: r` rounds every place where two
+shapes meet with a curve of radius `r`. A group's own rows apply to the
+joined shapes, and so do the rows at the top of a body.
+
+**Names.** `name#id` keeps a shape or a group for later instead of
+drawing it, and `#id` draws it with the rows given there added: an
+attribute replaces its own, a command runs after its own, as in
+`circle#hole { scale: .2 } subtract { circle; #hole { move: .5 0 } }`.
+A name may be used before it is given, the last one given wins, and
+`#id` works at the top of a body too. The id goes right after the
+name, before or after a count, and a space before `#` starts the next
+shape, so `#knob #knob { rotate: 90 }` draws two.
+
+**Copies.** `name*N` or `name*XxY` repeats a shape or a group, and each
+copy sees `n` from 1, `N`, and `nx`, `ny` across the grid:
+`circle*6 { scale: .2; move: 0 -.6; rotate: n * 60 }` rings the
+center. `@` functions in a copy run once per copy, so
+`circle*2 { move: @pn(-.6 0, .6 0) }` draws two circles apart.
+
+|            | `@shape`                                                                 | `@scene`                                                                 |
+|------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `plane`, `sdf { d }` |
+| Steps      | `move: x y`, `rotate`, `scale: x [y]`, `grow`, `frame`                    | the same in 3D, `rotate: [axis] angle`, and `mirror`, `repeat`, `twist`  |
+| Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`       | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`             |
+| Groups     | `union`, `subtract`, `intersect`, `exclude`                              | `union`, `subtract`, `intersect`                                         |
+| Space      | the box is 2 across, `0 0` at its center                                 | the camera fits the model, so only its proportions matter               |
+
+**In `@shape`.** The `@shape:` directive takes a preset name and
+emits `clip-path: polygon(…)`. The `@shape(…)` function takes a preset
+or a body, and a bare name at the top of a body is its preset, as in
+`@shape(heart; scale: .5)`.
 
 `r`, `x` and `y` are expressions in the angle `t`, evaluated `points`
-times around the circle. The other named commands transform the
-resulting points. `points`, `rotate` and each part of `move` and
-`scale` read like variables, so a unit drops (`30deg` is 30) and
-`points: 4n` is worked out, with the fraction cut off; a part with
-spaces goes in parentheses, `move: (k * .5) 0`. Any other name defines a variable for the
-expressions that follow it. A `-` before a command name negates its
-value, except on `fill`. The expressions also see the point index `i`,
+times around the circle: 180 when they read `t` and `points` is not
+given, else 3. Here `t` is the angle, where in `@scene` and `@pattern`
+it is the time. `points` may list the corners instead, `x y` pairs as
+in SVG: `points: 0 1, 1 -1, -1 -1` is a triangle, the same as
+`polygon { points: … }`, so `@plot` spreads its cells along it and
+`@tile` fills it. `points`,
+`rotate` and each part of `move` and `scale` read like variables, so a
+unit drops (`20px` is 20) and `points: 4n` is worked out, with the
+fraction cut off. A `-` before a command name negates its value,
+except on `fill-rule`. The expressions also see the point index `i`,
 from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
 from point to point, and `range(a, b)` interpolates from `a` to `b`
 across the shape.
 
-A `,` in `points`, `r`, `t`, `x`, `y`, `rotate` or `edge` draws one
+A `,` in `points`, `r`, `t`, `x`, `y`, `rotate` or `grow` draws one
 contour per item, the way `background` takes layers: the shorter lists
 repeat, `t` and `i` start over in each contour, and `points: 0` leaves
-one out. Under `fill: evenodd` the inner contours cut holes, so
+one out. Under `fill-rule: evenodd` the inner contours cut holes, so
 `points: 120, 60; r: 1, .5` is a ring. `@tile` and `@plot.scatter`
 read the region with its holes, and `@plot` spreads its cells over the
-contours by length. `frame` outlines each contour.
+contours by length. `frame` outlines each contour. Contour lists suit
+rings and other shapes around one center; for holes and cutouts
+elsewhere, a `subtract` group says the same thing more plainly.
 
 A body in parentheses reads as commands, so one kept in a custom
 property is reused with `$name`: given `--gear: (points: 4n; r: 1, .5)`,
 `@shape($gear; n: 6)` adds to it or overrides it, and `@plot`, `@tile`
 and `@svg-polygon` read it the same way.
 
-**Groups.** `union`, `subtract` and `intersect` join whole shapes, as
-in `@scene`: `subtract { circle; circle { scale: .9; move: .5 .15 } }`
-is a crescent. Each row is a shape, a preset with its arguments, a
-preset or `shape` with a block of commands, a body in parentheses, so
-`$name` works, or another group. `subtract` takes the rest from the
-first. `exclude` keeps what an odd number of the shapes cover, like
-`fill: evenodd` across whole shapes; `exclude` is not in `@scene`,
-where it would look like `union`. A shape is drawn with its own commands, `frame` included, and
-sees the variables of the groups around it, as in `k: 7; union { shape
-{ r: .6 + .3cos(k*t) } }`. With a group in it, a body draws only the
-group: its own `r`, `x`, `y`, `t` and preset are not drawn.
-`name*N` or `name*XxY` repeats a shape or a group, and each copy sees
-`n` from 1, `N`, and `nx`, `ny` across the grid:
-`circle*3 { scale: .2; move: (n * 3 - 6) 0 }`. `@` functions in a copy
-run once per copy, so `circle*2 { move: @pn(-.6 0, .6 0) }` draws two
-circles apart. Inside a body `rotate`
-turns the shape before `move`, so copies around the center turn a
-group: `union*6 { rotate: n * 60; circle { scale: .2; move: 0 -3 } }`. The outlines are cut where they cross, so a cut that reaches past
-the shape leaves nothing there, which `fill: evenodd` would fill.
-`smooth: k` rounds every point where two shapes meet, cut back `k`
-along both sides, in the units where the box is 2 across. A group's
-`rotate`, `move`, `scale`, `round` and `edge` apply to the joined
-outline, and so do the commands after a group at the top. `points`
-there spreads that many points over the outlines by length, and a list
-gives each outline its own count, so two groups with the same counts
-morph in `@keyframes`, `points: 180, 20` when there is a hole; without
-it the count follows the cuts.
+In a group the outlines are cut where they cross, so a cut that reaches
+past the shape leaves nothing there, which `fill-rule: evenodd` would
+fill. With a group in it, a body draws only the group: its own `r`,
+`x`, `y`, `t` and preset are not drawn. `points` at the top spreads
+that many points over the outlines by length, and a list gives each
+outline its own count, so two groups with the same counts morph in
+`@keyframes`, `points: 180, 20` when there is a hole; without it the
+count follows the cuts.
 
-`round`, from 0 to 1, turns every corner into a curve that starts
-`round / 2` of the way along each side. `edge` is an expression that
-pushes the outline along its normal, outward when positive. In it `t`
-runs from 0 to 2π by length along the outline, not by angle, and any
-difference between its values at 0 and 2π is spread along the outline
-so the ends still meet. Sharp corners come out beveled. `round` runs
-first, so `edge` follows the rounded outline.
-`@R.t(from, to)` writes a closed noise curve in `t` for one cell, as in
-`r: @R.t(.8, 1)` or `edge: @R.t(-.05, .05)`. It follows the doodle's
-seed, or the `seed` command. `@plot` reads only the points, so it
-ignores `fill`, `frame`, `round` and `edge`.
+Lengths are in the units where the box is 2 across. `round: r` turns
+every corner into a curve of radius `r`, as far as the sides allow,
+the same on an outline of 4 points or 400; it runs before the steps.
+`grow` takes an expression in which `t` runs from 0 to 2π by length
+along the outline, not by angle, and any difference between its values
+at 0 and 2π is spread along the outline so the ends still meet. Sharp
+corners come out beveled. `@R.t(from, to)` writes a closed noise curve
+in `t` for one cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`.
+It follows the doodle's seed, or the `seed` command. `@plot` reads only
+the points, so it ignores `fill-rule`, `frame`, `round` and `grow`.
 
 **Tiles.** `@tile.kind(…)` and `@plot.scatter(…)` read the same body
 as the region to fill, `square` by default for `@tile`, along with
@@ -594,7 +640,7 @@ outline's corners, so a body copied from `@shape` leaves it out:
 | `spread`         | `slice`                                 | how far a cut may tilt, in degrees                             |
 | `crack`          | `voronoi`                               | groups the regions, about this many each; a second `gap` value is the space inside a group |
 | `stretch`        | `voronoi`                               | `ratio [angle]`, regions that many times longer, up to 1000    |
-| `round`          | all but `circle` and scatter            | curves the corners, 0 to 1                                     |
+| `round`          | all but `circle` and scatter            | curves the corners, a radius in the units where the box is 2 across |
 | `jitter`         | `grid`, `hex`, `triangle`, `cube`, `penrose` | moves each corner by up to that part of a piece           |
 | `shift`          | `grid`                                  | `a [b]`, slides every other row by `a`, or column by `b`       |
 | `edge`, `slide`  | `grid`, `hex`, `triangle`               | bends each edge across and along itself, expressions in `t`, `e`, `x`, `y` and `random()`; `edge` is ignored with `op` or `star` |
@@ -612,6 +658,29 @@ element's shorter side. A piece that `op` or `star` makes from a piece
 keeps its kind; the pieces made at the corners take the next kind up,
 and those made along the sides by `e`, `b` and `s` the one after. `d`
 makes every piece kind 1.
+
+**In `@scene`.** The model is raymarched in WebGL into an image, as
+`@pattern`'s is (§9.3), and its values are written in the same math: `p`
+is the point in the shape's own space, `t` the time in seconds, and
+`rand()` differs from copy to copy. `fill` takes a color, or an
+expression in `p` that gives one; the shapes in a group take its fill
+unless they have their own, and shapes joined with `smooth` blend their
+colors. `round` keeps the outer size of a `box`, `cylinder` or
+`polygon`, while `grow` makes any shape bigger. `mirror: x z` keeps the
+shape and its reflections across those axes, `repeat: x y z` repeats it
+that far apart along each axis, 0 for none, and `twist: a` turns it `a`
+degrees for each unit up `y`. `sdf { d: … }` takes a distance written in
+`p`. `polygon` takes `points`, or a `@shape` body as its outline, holes
+and all, in `@shape`'s units where the box is 2 across:
+`polygon { heart; depth: .2 }`. The rows inside the body move the
+outline in 2D, and the polygon's own rows move it in 3D, except
+`points: n`, which resamples the outline as it does in `@shape`. At the
+top, `view: turn tilt` turns the camera around `y` and tilts it, in
+degrees, and `perspective: d` sets its distance, 2 by default, or `none`
+for a parallel view. The camera fits the model, a moving one where it is
+now and over its first 2π seconds, so it holds still while the model or
+the view moves: `view: 30t` spins it in place. An animated scene draws
+best in `@content`.
 
 ### 9.3 Patterns
 

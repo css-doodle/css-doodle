@@ -1,6 +1,6 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseGrid from '../parser/parse-grid.js';
-import generateShape from '../generator/shapes.js';
+import generateShape, { shapeWarnings } from '../generator/shapes.js';
 
 import { isPreset, getPreset } from './preset-size.js';
 
@@ -175,11 +175,16 @@ Property.gap = formatGap;
 
 Property.seed = Property.content = value => value;
 
-Property.shape = memo(value => {
+const shapeRule = memo(value => {
     if (value.trim() == 'circle') return 'clip-path:ellipse(50% 50%);';
     let { clip, preset } = generateShape(value);
     return preset ? `clip-path:${clip};` : '';
 });
+
+Property.shape = (value, { rules }) => {
+    shapeWarnings(value).forEach(m => rules.warn(m));
+    return shapeRule(value);
+};
 
 export const alias = {
     // legacy name

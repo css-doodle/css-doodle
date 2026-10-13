@@ -7,7 +7,7 @@ import parseDirection from '../parser/parse-direction.js';
 import svgSourceOf from '../parser/svg-source.js';
 
 import generateSvg from '../generator/svg.js';
-import generateShape from '../generator/shapes.js';
+import generateShape, { shapeWarnings } from '../generator/shapes.js';
 import generateSvgGradient from '../generator/svg-gradient.js';
 import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
@@ -185,8 +185,9 @@ function createPlot(unit, scatter, tile) {
                 rules.count = max;
             } else {
                 delete rules['fill'];
+                delete rules['fill-rule'];
                 delete rules['round'];
-                delete rules['edge'];
+                delete rules['grow'];
                 if (!preset && (rules.split || rules.points)) {
                     rules.hasPoints = true;
                 } else {
@@ -214,13 +215,15 @@ function createPlot(unit, scatter, tile) {
         }
         return shape;
     });
-    return (cell, { extra, seed }) => {
+    return (cell, { extra, seed, rules }) => {
         let e = last(extra) || [];
         return (...args) => {
             let idx = e[SEQ.n] ?? cell.count;
             let max = e[SEQ.max] ?? cell.grid.count;
-            let { points, rules } = plot(args.join(','), max, String(seed ?? ''));
-            if (rules.hasPoints) return points;
+            let input = args.join(',');
+            shapeWarnings(input).forEach(m => rules?.warn(m));
+            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''));
+            if (hasPoints) return points;
             if (!tile) return points[idx - 1];
             let point = points[idx - 1] ?? NO_TILE;
             cellTiles.set(cell, point);
@@ -345,7 +348,7 @@ const composeSvgPolygonUrl = memo((commands, seed) => {
     }
     let { rings } = points, shape = rings?.length > 1
         ? `path { ${props} d: ${rings.map(ring => 'M' + ring.join('L') + 'Z').join('')}; }`
-        : `polygon { ${props} points: ${points}; }`;
+        : `polygon { ${props} points: ${rings?.[0] || points}; }`;
     let parsed = parseSvg(css`viewBox: -1 -1 2 2 p ${p}; ${shape}`);
     return createSvgUrl(generateSvg(parsed));
 });
@@ -710,7 +713,13 @@ const shapePolygon = memo((input, seed) => {
     return generateShape(input, { seed }).clip;
 });
 
-Function.shape = (_, { seed } = {}) => (...args) => shapePolygon(args.join(','), seed);
+const shaped = compose => (_, { seed, rules } = {}) => (...args) => {
+    let input = args.join(',');
+    shapeWarnings(input).forEach(m => rules?.warn(m));
+    return compose(input, seed);
+};
+
+Function.shape = shaped(shapePolygon);
 
 Function.plot = createPlot(false);
 Function.plot.scatter = createPlot(false, true);
@@ -831,7 +840,7 @@ Function['svg-pattern'] = lazy((_, env, position, ...args) => {
     return composeSvgPatternUrl(value);
 });
 
-Function['svg-polygon'] = (_, { seed } = {}) => (...args) => composeSvgPolygonUrl(args.join(','), seed);
+Function['svg-polygon'] = shaped(composeSvgPolygonUrl);
 
 Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGradient('linearGradient', args));
 

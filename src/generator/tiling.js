@@ -15,6 +15,8 @@ const perlinOf = memo(seed => new Perlin(seedrandom('noise:' + seed)));
 
 const mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
 const dist = (p, q) => hypot(p[0] - q[0], p[1] - q[1]);
+const lists = n => Array.from({ length: n }, () => []);
+const sum = list => list.reduce((a, b) => a + b, 0);
 // the k-th point of the R2 sequence over the box
 const r2 = (k, x0, y0, w, h) => {
     let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
@@ -36,7 +38,7 @@ function noiseOf(props) {
 
 function insideTest(outline, evenodd) {
     let [, y0, , y1] = bounds(outline.flat()), h = y1 - y0;
-    let bands = Array.from({ length: SCATTER_BANDS }, () => []);
+    let bands = lists(SCATTER_BANDS);
     let band = y => min(SCATTER_BANDS - 1, (y - y0) / h * SCATTER_BANDS | 0);
     for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
         let [ax, ay] = outline[j], [bx, by] = outline[i];
@@ -129,39 +131,73 @@ function overlay(A, B, op, joints) {
     return rings;
 }
 
-function fillet(ring, joints, k) {
-    // only where the outline turns: shapes that just touch keep their outlines
-    joints = new Set(ring.filter((p, i) => {
+// a ring with its corners (only joints when given) as curves `[x, y, bx, by]` of radius r
+function corners(ring, joints, r) {
+    let turns = new Set(ring.filter((p, i) => {
         let [ax, ay] = ring.at(i - 1), [bx, by] = ring[(i + 1) % ring.length];
         let ux = p[0] - ax, uy = p[1] - ay, vx = bx - p[0], vy = by - p[1];
-        return joints.has(p) && abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy)) > .1;
+        return (!joints || joints.has(p)) && abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy)) > .1;
     }));
-    let j0 = ring.findIndex(p => joints.has(p));
+    let j0 = ring.findIndex(p => turns.has(p));
     if (j0 < 0) return ring;
     ring = [...ring.slice(j0), ...ring.slice(0, j0), ring[j0]];
     let s = [0], js = [], out = [];
     for (let i = 1; i < ring.length; ++i) s.push(s[i - 1] + dist(ring[i], ring[i - 1]));
-    ring.forEach((p, i) => i < ring.length - 1 && joints.has(p) && js.push(i));
+    ring.forEach((p, i) => i < ring.length - 1 && turns.has(p) && js.push(i));
     let L = s.at(-1), gaps = js.map((j, m) => ((m + 1 < js.length ? s[js[m + 1]] : L) - s[j]) / 2);
-    let r = js.map((_, m) => min(k, gaps[m], gaps.at(m - 1)));
-    let at = d => {
+    let index = d => {
         let i = 1;
         d = (d + L) % L;
         while (i < s.length - 1 && s[i] < d) ++i;
-        return mix(ring[i - 1], ring[i], (d - s[i - 1]) / (s[i] - s[i - 1] || 1));
+        return [i, d];
     };
-    js.forEach((j, m) => {
-        let curve = flatten([at(s[j] - r[m]), [...at(s[j] + r[m]), ...ring[j]]], .002);
-        for (let i = 0; i < curve.length; i += 2) out.push([curve[i], curve[i + 1]]);
-        let end = m + 1 < js.length ? s[js[m + 1]] - r[m + 1] : L - r[0];
-        for (let i = j + 1; i < ring.length - 1 && s[i] < end; ++i) if (s[i] > s[j] + r[m]) out.push(ring[i]);
+    let at = d => {
+        let [i, e] = index(d);
+        return mix(ring[i - 1], ring[i], (e - s[i - 1]) / (s[i] - s[i - 1] || 1));
+    };
+    // bend through where the sides' tangents meet, so a curve leaves each side along it
+    let control = (j, d) => {
+        let p = at(s[j] - d), q = at(s[j] + d), [i] = index(s[j] - d), [k] = index(s[j] + d);
+        let ux = ring[i][0] - ring[i - 1][0], uy = ring[i][1] - ring[i - 1][1];
+        let vx = ring[k][0] - ring[k - 1][0], vy = ring[k][1] - ring[k - 1][1];
+        let den = ux * vy - uy * vx, t = ((q[0] - p[0]) * vy - (q[1] - p[1]) * vx) / den;
+        let c = [p[0] + t * ux, p[1] + t * uy];
+        return t > 0 && dist(c, ring[j]) > 1e-9 * L && dist(c, ring[j]) < d ? c : ring[j];
+    };
+    let cuts = js.map((j, m) => {
+        let [bx, by] = ring[j], limit = min(gaps[m], gaps.at(m - 1), L / 4), lo = 0, hi = limit;
+        // the radius a cut of d gives, exact at once on straight sides
+        let curve = d => {
+            let [px, py] = at(s[j] - d), [qx, qy] = at(s[j] + d);
+            let ux = px - bx, uy = py - by, vx = qx - bx, vy = qy - by;
+            return d * tan(abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy)) / 2);
+        };
+        let d = r * limit / curve(limit);
+        if (!(d < limit)) return limit;
+        if (abs(curve(d) - r) < 1e-9) return d;
+        for (let i = 0; i < 30; ++i) curve((lo + hi) / 2) < r ? lo = (lo + hi) / 2 : hi = (lo + hi) / 2;
+        return hi;
     });
+    js.forEach((j, m) => {
+        out.push(at(s[j] - cuts[m]), [...at(s[j] + cuts[m]), ...control(j, cuts[m])]);
+        let end = m + 1 < js.length ? s[js[m + 1]] - cuts[m + 1] : L - cuts[0];
+        for (let i = j + 1; i < ring.length - 1 && s[i] < end; ++i) if (s[i] > s[j] + cuts[m]) out.push(ring[i]);
+    });
+    return out;
+}
+
+// only where the outline turns: shapes that just touch keep their outlines
+function fillet(ring, joints, r) {
+    let path = corners(ring, joints, r), out = [];
+    if (path === ring) return ring;
+    let f = flatten(path, .002);
+    for (let i = 0; i < f.length; i += 2) out.push([f[i], f[i + 1]]);
     return out;
 }
 
 function resample(rings, counts) {
     let sides = rings.map(ring => ring.map((p, i) => dist(ring[(i + 1) % ring.length], p)));
-    let lens = sides.map(s => s.reduce((a, b) => a + b, 0)), total = lens.reduce((a, b) => a + b, 0), run = 0, done = 0;
+    let lens = sides.map(sum), total = sum(lens), run = 0, done = 0;
     return rings.map((ring, k) => {
         let m = counts.length > 1 ? counts[k % counts.length] : round(counts[0] * (run += lens[k]) / total) - done, out = [];
         done += m;
@@ -367,18 +403,6 @@ function clip(p, outer, d = 0) {
     return p;
 }
 
-function rounded(p, f, tol) {
-    let out = [], n = p.length;
-    for (let i = 0; i < n; i += 2) {
-        let bx = p[i], by = p[i + 1];
-        let ax = bx + (p[(i + n - 2) % n] - bx) * f / 2, ay = by + (p[(i + n - 1) % n] - by) * f / 2;
-        let cx = bx + (p[(i + 2) % n] - bx) * f / 2, cy = by + (p[(i + 3) % n] - by) * f / 2;
-        if (hypot(ax - 2 * bx + cx, ay - 2 * by + cy) / 4 > tol) out.push([ax, ay], [cx, cy, bx, by]);
-        else out.push([bx, by]);
-    }
-    return out;
-}
-
 function flatten(path, tol) {
     let out = [];
     path.forEach(([x, y, bx, by], i) => {
@@ -519,15 +543,14 @@ function conway(op, star, pre) {
 function derive(pieces, letter, angle) {
     let eps = sqrt(area(pieces[0]?.[0] || [])) * 1e-7 || 1e-9, ids = new Map(), V = [], F = [], top = 0;
     for (let [p, c, kind = 1] of pieces) {
-        let f = [], twice = 0;
+        let f = [];
         for (let i = 0; i < p.length; i += 2) {
             let key = round(p[i] / eps) + ' ' + round(p[i + 1] / eps), v = ids.get(key);
             if (v === undefined) ids.set(key, v = V.length), V.push([p[i], p[i + 1]]);
             if (v !== f.at(-1)) f.push(v);
-            twice += p[i] * p[(i + 3) % p.length] - p[(i + 2) % p.length] * p[i + 1];
         }
         if (f[0] === f.at(-1)) f.pop();
-        if (f.length > 2) F.push([twice < 0 ? f.reverse() : f, c, kind]), top = max(top, kind);
+        if (f.length > 2) F.push([signed(p) < 0 ? f.reverse() : f, c, kind]), top = max(top, kind);
     }
     let n = V.length, half = new Map(), first = [], out = [];
     F.forEach(([f], k) => f.forEach((v, i) => {
@@ -646,7 +669,7 @@ function tiles(make, box, screen, inside, count, grow = 1, derive) {
         return size(hi);
     };
     if (!derive) return fit(reaching, hi);
-    let [cx, cy] = centre(box), { rim, fn } = derive, d = (rim + 3) * hi;
+    let o = centre(box), [cx, cy] = o, { rim, fn } = derive, d = (rim + 3) * hi;
     let near = ps => ps.filter(([, [x, y]]) => abs(x - cx) < 2 * hi && abs(y - cy) < 2 * hi).length;
     let probe = make(box, [cx - d, cy - d, cx + d, cy + d], hi);
     let s = hi * sqrt(near(fn(probe)) / near(probe) * reaching(hi).length / count || 1) / 1.25;
@@ -655,7 +678,7 @@ function tiles(make, box, screen, inside, count, grow = 1, derive) {
         let [a, b, c, d] = bounds(p);
         return a < u1 && c > u0 && b < v1 && d > v0;
     });
-    return fit(t => keep(pieces.map(([p, c, kind]) => [scale(p, [cx, cy], t / s), scale(c, [cx, cy], t / s), kind])), s, s);
+    return fit(t => keep(pieces.map(([p, c, kind]) => [scale(p, o, t / s), scale(c, o, t / s), kind])), s, s);
 }
 
 function shake(pieces, n, seed) {
@@ -702,8 +725,8 @@ function inset(p, x, y, d, q = p) {
     return f > 0 ? scale(q, [x, y], f) : [];
 }
 
-function scale(p, [x, y], f) {
-    return p.map((v, i) => { let c = i & 1 ? y : x; return c + (v - c) * f; });
+function scale(p, o, f) {
+    return p.map((v, i) => o[i & 1] + (v - o[i & 1]) * f);
 }
 
 function bounds(p) {
@@ -729,11 +752,15 @@ function pack(rings, box, inside, count, seed, size) {
     let caps = xs.map((x, i) => avg * size(x, ys[i])), cap = caps.reduce((a, b) => max(a, b), 0);
     if (!(cap > 0)) return out;
     cap = max(cap, avg);
-    let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, sides = Array.from({ length: cols * rows }, () => []);
+    let cols = ceil(w / cap) + 1, rows = ceil(h / cap) + 1, sides = lists(cols * rows);
     let edge = [], segs = [], cell = (v, o) => floor((v - o) / cap);
-    let span = 3 * avg, gx = ceil(w / span) + 1, gy = ceil(h / span) + 1, grid = Array.from({ length: gx * gy }, () => []);
+    let span = 3 * avg, gx = ceil(w / span) + 1, gy = ceil(h / span) + 1, grid = lists(gx * gy);
     let slot = (v, o, n) => clamp(floor((v - o) / span), 0, n - 1);
-    let under = (x, y, r) => [slot(x - r, x0, gx), slot(x + r, x0, gx), slot(y - r, y0, gy), slot(y + r, y0, gy)];
+    let under = (x, y, r, fn) => {
+        for (let j = slot(y - r, y0, gy), j1 = slot(y + r, y0, gy); j <= j1; ++j) {
+            for (let m = slot(x - r, x0, gx), m1 = slot(x + r, x0, gx); m <= m1; ++m) fn(grid[m + gx * j]);
+        }
+    };
     for (let ring of rings) ring.forEach(([bx, by], a) => {
         let [ax, ay] = ring.at(a - 1), dx = bx - ax, dy = by - ay;
         for (let j = max(0, cell(min(ay, by), y0) - 2); j <= min(rows - 1, cell(max(ay, by), y0) + 2); ++j) {
@@ -753,9 +780,9 @@ function pack(rings, box, inside, count, seed, size) {
             }
             r = edge[i] = sqrt(r);
         }
-        for (let [m0, m1, j, j1] = under(x, y, r); j <= j1 && r > 0; ++j) for (let m = m0; m <= m1; ++m) {
-            for (let [cx, cy, cr] of grid[m + gx * j]) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
-        }
+        under(x, y, r, circles => {
+            if (r > 0) for (let [cx, cy, cr] of circles) r = min(r, sqrt((x - cx) ** 2 + (y - cy) ** 2) - cr);
+        });
         return r;
     };
     while (out.length < count && heap.length) {
@@ -763,7 +790,7 @@ function pack(rings, box, inside, count, seed, size) {
         if (r > 0 && r >= max(key[heap[1]] ?? 0, key[heap[2]] ?? 0)) {
             let x = xs[i], y = ys[i];
             out.push([x, y, r]);
-            for (let [m0, m1, j, j1] = under(x, y, r); j <= j1; ++j) for (let m = m0; m <= m1; ++m) grid[m + gx * j].push([x, y, r]);
+            under(x, y, r, circles => circles.push([x, y, r]));
             r = 0;
         }
         if (!(r > 0)) heap[0] = heap.at(-1), heap.pop();
@@ -783,18 +810,18 @@ function slice(screen, box, inside, count, seed, gap, spread, density) {
     let grid = density && Array.from({ length: N * N }, (_, i) => max(0, density(x0 + (i % N + .5) * w, y0 + ((i / N | 0) + .5) * h)));
     let weight = p => {
         if (!density) return area(p);
-        let [l, t, r, b] = bounds(p), sum = 0, n = 0;
+        let [l, t, r, b] = bounds(p), acc = 0, n = 0;
         for (let j = max(0, ceil((t - y0) / h - .5)); j <= min(N - 1, (b - y0) / h - .5); ++j) {
             for (let i = max(0, ceil((l - x0) / w - .5)); i <= min(N - 1, (r - x0) / w - .5); ++i) {
-                if (contains(p, x0 + (i + .5) * w, y0 + (j + .5) * h)) sum += grid[i + N * j], ++n;
+                if (contains(p, x0 + (i + .5) * w, y0 + (j + .5) * h)) acc += grid[i + N * j], ++n;
             }
         }
-        return area(p) * (n ? sum / n : max(0, density(...centre(p))));
+        return area(p) * (n ? acc / n : max(0, density(...centre(p))));
     };
     let pieces = [[x0, y0, x1, y0, x1, y1, x0, y1]], weights = pieces.map(weight), total = weights[0];
     for (let tries = 0; pieces.length < count && tries < count * 4 && total > 0; ++tries) {
-        let sum = 0, pick = rnd() * total, k = 0;
-        while (k < pieces.length - 1 && (sum += weights[k]) < pick) ++k;
+        let run = 0, pick = rnd() * total, k = 0;
+        while (k < pieces.length - 1 && (run += weights[k]) < pick) ++k;
         let p = pieces[k], [cx, cy] = centre(p);
         let [l, t, r, b] = bounds(p);
         let a = (r - l > b - t ? 0 : PI / 2) + (rnd() - .5) * spread;
@@ -804,17 +831,22 @@ function slice(screen, box, inside, count, seed, gap, spread, density) {
             .filter(p => p.length && reaches(p, centre(p), inside, screen));
         if (!parts.length) continue;
         let sizes = parts.map(weight);
-        total += sizes.reduce((a, b) => a + b, 0) - weights[k];
+        total += sum(sizes) - weights[k];
         pieces.splice(k, 1, ...parts);
         weights.splice(k, 1, ...sizes);
     }
     return pieces.map(p => [p, centre(p)]).sort((a, b) => a[1][1] - b[1][1] || a[1][0] - b[1][0]);
 }
 
-function area(p) {
+// twice the signed area: negative when the polygon runs clockwise
+function signed(p) {
     let a = 0;
     for (let i = 0; i < p.length; i += 2) a += p[i] * p[(i + 3) % p.length] - p[(i + 2) % p.length] * p[i + 1];
-    return abs(a / 2);
+    return a;
+}
+
+function area(p) {
+    return abs(signed(p) / 2);
 }
 
 function centre(p) {
@@ -878,6 +910,6 @@ function simplify({ f, g, n }, tol) {
 }
 
 export {
-    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, rounded, wave, lattice, penrose, delaunay, tiles,
+    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
 };

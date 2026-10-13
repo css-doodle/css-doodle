@@ -708,7 +708,8 @@ class Rules {
                 place: this.hasPlace,
                 grid: cell.grid,
                 maxGrid: env.maxGrid,
-                extra
+                extra,
+                rules: this
             });
 
             switch (name) {

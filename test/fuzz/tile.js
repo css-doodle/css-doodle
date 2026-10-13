@@ -18,7 +18,7 @@ function makeRandom(seed) {
 }
 
 const KINDS = ['slice', 'voronoi', 'delaunay', 'hex', 'triangle', 'grid', 'circle', 'cube', 'penrose'];
-const OUTLINES = ['', 'circle', 'heart', 'star', 'infinity', 'square; scale: .5 2', 'r: .02', 'split: 5; turn: 2; fill: evenodd', 'x: 0; y: 0', 'r: cos(4t)'];
+const OUTLINES = ['', 'circle', 'heart', 'star', 'infinity', 'square; scale: .5 2', 'r: .02', 'split: 5; turn: 2; fill-rule: evenodd', 'x: 0; y: 0', 'r: cos(4t)'];
 const VALUES = ['0', '1', '-1', '.5', '3', '1e9', '-1e9', 'abc', '1/0', '', 'sin(t)', 'random()'];
 const ARGS = {
     gap: VALUES, points: ['1', '3', '50', '300', '0', 'abc'], seed: ['0', '1', '1e20', 'abc'],
