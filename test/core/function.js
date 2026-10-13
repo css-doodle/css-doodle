@@ -371,16 +371,20 @@ test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as ma
     assert.deepEqual(tiles(Function.tile.hex, 'heart', 30, 'z').map(String), tiles(Function.tile.hex, 'heart', 30).map(String));
 });
 
-test('@tile.delaunay: triangles between the points @tile.voronoi scatters', () => {
+test('@tile.delaunay: triangles between points scattered inside the shape and spaced along its outline', () => {
     let env = seed => ({ context: {}, extra: [], seed });
     let names = p => String(p).slice(8, -1).split(', ');
     let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.delaunay(cell(n, i + 1), env(seed))(shape)).filter(t => String(t) != 'polygon(0 0)');
-    let scattered = (shape, n) => new Set(Array.from({ length: n }, (_, i) => String(Function.plot.scatter(cell(n, i + 1), env('a'))(shape))));
-    // every tile is a triangle whose corners are the scattered points, about half as many points as cells
     let tris = tiles('circle', 60);
     assert.ok(tris.length > 48 && tris.length <= 60, tris.length);
-    let corners = scattered('circle', Math.ceil(60 / 2 + Math.sqrt(60)));
-    assert.ok(tris.every(t => names(t).length == 3 && names(t).every(v => corners.has(v))));
+    let radii = tris.flatMap(verts).map(([x, y]) => Math.hypot(x - 50, y - 50));
+    assert.ok(tris.every(t => names(t).length == 3) && radii.every(r => r < 50.01) && radii.filter(r => r > 49.9).length > 12);
+    let covered = tris.reduce((sum, t) => sum + area(verts(t)), 0) / (Math.PI * 2500);
+    assert.ok(covered > .97 && covered < 1, covered);
+    let square = tiles('', 100).map(verts);
+    for (let x = 1.37; x < 100; x += 3) for (let y = 1.71; y < 100; y += 3) {
+        assert.equal(square.filter(v => inside(v, [x, y])).length, 1, x + ' ' + y);
+    }
     // the origin is the centroid, and no triangle holds another's centroid
     for (let t of tris) {
         let vs = verts(t), [ox, oy] = xy(t.origin);
@@ -389,12 +393,15 @@ test('@tile.delaunay: triangles between the points @tile.voronoi scatters', () =
     }
     // a concave shape keeps no triangle across its notch, where the heart outline starts
     let notch = parseFloat(Function.shape()('heart').split(' ')[1]);
-    assert.ok(notch > 10 && !tiles('heart', 110).some(t => { let [x, y] = xy(t.origin); return Math.abs(x - 50) < 3 && y < notch - .5; }));
+    assert.ok(notch > 10 && !tiles('heart', 110).some(t => {
+        let above = verts(t).filter(([, y]) => y < notch - .5);
+        return above.some(([x]) => x < 49) && above.some(([x]) => x > 51);
+    }));
     // `gap` shrinks every triangle, `points` sets the corner count, the seed moves everything
     let gapped = tiles('circle; gap: 2', 60);
     assert.ok(gapped.length <= tris.length && gapped.every(t => area(verts(t)) < area(verts(tris.find(u => u.origin == t.origin)))));
-    let few = tiles('circle; points: 12', 60), twelve = scattered('circle', 12);
-    assert.ok(few.length > 10 && few.length <= 22 && few.every(t => names(t).every(v => twelve.has(v))), few.length);
+    let few = tiles('circle; points: 12', 60);
+    assert.ok(few.length > 6 && few.length <= 22 && new Set(few.flatMap(names)).size <= 12, few.length);
     assert.notDeepEqual(tiles('circle', 60, 'b').map(String), tris.map(String));
 });
 
@@ -520,6 +527,7 @@ test('@tile.grid with shift: every other row, or column, moved by part of a cell
     let near = (a, b) => Math.abs(a - b) < 1e-6;
     let rows = (list, i) => [...new Set(list.map(t => xy(t.origin)[i].toFixed(6)))].map(Number).sort((a, b) => a - b);
     let plain = tiles('square');
+    assert.equal(plain.length, 64);
     // `.5`: bricks, the top and bottom edges split where the next row's squares meet
     let brick = tiles('square; shift: .5'), s = Math.sqrt(area(verts(brick[0])));
     assert.ok(covered(brick));

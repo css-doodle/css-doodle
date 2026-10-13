@@ -124,6 +124,13 @@ test('@tile in clip-path brings its own transform-origin', () => {
     tiles.forEach((t, i) => assert.ok(t.endsWith(`transform-origin:${seeds[i]};`), t));
 });
 
+test('rules that read the tile wait for the rule that makes it, wherever they are written', () => {
+    let after = cells('clip-path: @tile.cube(); --k: @tile.kind; ::after { left: @tile.x; --o: @tile.xy }', '1x6');
+    let before = cells('--k: @tile.kind; ::after { left: @tile.x; --o: @tile.xy } clip-path: @tile.cube();', '1x6');
+    assert.match(after, /--k:3;/);
+    assert.equal(before, after);
+});
+
 test('@R.t in a tile edge reads no cell, so every cell cuts from one tiling, each edge bent its own way', () => {
     let polys = cells('clip-path: @tile.grid(square; edge: @R.t(-.1, .1));', '6').match(/polygon\([^)]+\)/g)
         .filter(t => t != 'polygon(0 0)').map(t => t.slice(8, -1).split(', ').map(p => p.split(' ').map(parseFloat)));

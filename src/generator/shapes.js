@@ -11,7 +11,7 @@ import { memo } from '../lib/cache.js';
 import calc, { defaultContext, evaluate } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, tiles,
+    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
 } from './tiling.js';
 
@@ -373,7 +373,7 @@ function createShapePoints(props, lo, hi, raw) {
         let shift = parsePair(props.shift, 0, props);
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
         let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
-        let make = sides ? (box, bounds, s) => lattice(sides, box, bounds, s, shift, turn) : name == 'penrose' && penrose;
+        let make = sides ? (box, bounds, s, half) => lattice(sides, box, bounds, s, shift, turn, half) : name == 'penrose' && penrose;
         let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3), cube = name == 'cube' && !derive;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && !derive && !cube && edges(props, sides == 3, seed);
@@ -381,7 +381,7 @@ function createShapePoints(props, lo, hi, raw) {
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
             let jitter = Number(props.jitter) || 0;
             let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
-            let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive);
+            let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive, sides);
             if (cube) pieces = faces3(pieces);
             if (jitter) pieces = shake(pieces, jitter, seed);
             let p = pieces[0]?.[0] || [], len = 0;
@@ -436,8 +436,13 @@ function createShapePoints(props, lo, hi, raw) {
             }
             return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2), c, kind]));
         }
+        if (name == 'delaunay') {
+            let rim = border(rings.map(ring => ring.map(toScreen)), count);
+            sow(count - rim.length).forEach(add);
+            for (let [x, y] of rim) px.push(x), py.push(y);
+            return delaunay(px, py, box, inside, props.count, gap).map(tile);
+        }
         sow(count).forEach(add);
-        if (name == 'delaunay') return delaunay(px, py, box, inside, props.count, gap).map(tile);
         if (name == 'voronoi') {
             let cells = voronoi(px, py, ...box, gap), kinds = colors(cells);
             return cells.map(([poly], k) => tile([poly, [px[k], py[k]], kinds[k], points[k].extra]));

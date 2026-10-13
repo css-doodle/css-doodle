@@ -351,18 +351,28 @@ function ruleFlags(prop) {
 }
 
 const RE_PLACE = /^@place(-cell)?$/;
-const RE_TILE_READ = /^@(x|y|kind|r)$/;
+const RE_TILE_READ = /^@(x|y|xy|kind|r)$/;
 
-function usesTile(nodes) {
+function usesTile(nodes, read = false) {
     for (let node of nodes) {
         if (node.type !== 'func') continue;
         let dotted = node.arguments[0]?.values[0];
-        if (node.name === '@tile' && !(dotted?.dotted && RE_TILE_READ.test(dotted.name))) return true;
+        if (node.name === '@tile' && read === !!(dotted?.dotted && RE_TILE_READ.test(dotted.name))) return true;
         for (let arg of node.arguments) {
-            if (usesTile(arg.values)) return true;
+            if (usesTile(arg.values, read)) return true;
         }
     }
     return false;
+}
+
+function tileFirst(tokens) {
+    let holds = (t, read) => t.type === 'rule' ? t.value.some(v => usesTile(v, read)) : !!t.styles?.some(s => holds(s, read));
+    let g = tokens.findIndex(t => holds(t)), wait = tokens.filter((t, i) => i < g && holds(t, true));
+    if (!wait.length) return tokens;
+    let list = tokens.filter(t => !wait.includes(t));
+    list.splice(list.indexOf(tokens[g]) + 1, 0, ...wait);
+    list.warnings = tokens.warnings;
+    return list;
 }
 
 function defaultRule(property, text) {
@@ -385,7 +395,7 @@ class Rules {
 
     constructor(tokens, instance) {
         this.instance = instance ? '-' + instance : '';
-        this.tokens = tokens;
+        this.tokens = tokens = tileFirst(tokens);
         this.root = { rules: new Map(), entries: new Map(), groups: new Map() };
         this.scope = this.root;
         this.rawRules = new Set();
@@ -829,7 +839,7 @@ class Rules {
             } else if (token.type === 'rule') {
                 this.ruleOrder.push(token);
                 if (RE_PLACE.test(token.property)) this.hasPlace = true;
-                if (!this.hasTile && token.value.some(usesTile)) this.hasTile = true;
+                if (!this.hasTile && token.value.some(v => usesTile(v))) this.hasTile = true;
             } else if (token.type === 'cond' || token.type === 'pseudo') {
                 this.scanTokens(token.styles);
             }

@@ -17,6 +17,11 @@ const mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
 const dist = (p, q) => hypot(p[0] - q[0], p[1] - q[1]);
 const lists = n => Array.from({ length: n }, () => []);
 const sum = list => list.reduce((a, b) => a + b, 0);
+const turn = (ring, i) => {
+    let [ax, ay] = ring.at(i - 1), [px, py] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
+    let ux = px - ax, uy = py - ay, vx = bx - px, vy = by - py;
+    return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy));
+};
 // the k-th point of the R2 sequence over the box
 const r2 = (k, x0, y0, w, h) => {
     let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
@@ -133,11 +138,7 @@ function overlay(A, B, op, joints) {
 
 // a ring with its corners (only joints when given) as curves `[x, y, bx, by]` of radius r
 function corners(ring, joints, r) {
-    let turns = new Set(ring.filter((p, i) => {
-        let [ax, ay] = ring.at(i - 1), [bx, by] = ring[(i + 1) % ring.length];
-        let ux = p[0] - ax, uy = p[1] - ay, vx = bx - p[0], vy = by - p[1];
-        return (!joints || joints.has(p)) && abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy)) > .1;
-    }));
+    let turns = new Set(ring.filter((p, i) => (!joints || joints.has(p)) && turn(ring, i) > .1));
     let j0 = ring.findIndex(p => turns.has(p));
     if (j0 < 0) return ring;
     ring = [...ring.slice(j0), ...ring.slice(0, j0), ring[j0]];
@@ -463,8 +464,9 @@ function wave(ps, f, tol) {
     }), tol);
 }
 
-function lattice(k, box, bounds, s, [a, b], turn) {
+function lattice(k, box, bounds, s, [a, b], turn, half) {
     let [cx, cy] = centre(box);
+    if (half) cx += s / 2, cy += k == 4 ? s / 2 : 0;
     let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
@@ -641,6 +643,14 @@ function delaunay(px, py, box, inside, count, gap) {
     });
 }
 
+function border(rings, count) {
+    let len = sum(rings.map(ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1)))))), a = area(bridge(rings).flat());
+    let s = (len * sqrt(3) / 4 + sqrt(len * len * 3 / 16 + 2 * sqrt(3) * count * a)) / (sqrt(3) * count);
+    let rim = [], sharp = rings.flatMap(ring => ring.filter((p, i) => turn(ring, i) > .5));
+    for (let p of sharp.concat(resample(rings, [round(len / s)]).flat())) if (rim.length < count - 1 && rim.every(q => dist(p, q) > s / 2)) rim.push(p);
+    return rim;
+}
+
 function reacher(box, inside, grow, derived) {
     let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
     let crosses = p => {
@@ -654,11 +664,11 @@ function reacher(box, inside, grow, derived) {
     return ([p, c]) => reaches(grow == 1 ? p : scale(p, c, grow), c, inside, corners) || derived && crosses(p);
 }
 
-function tiles(make, box, screen, inside, count, grow = 1, derive) {
+function tiles(make, box, screen, inside, count, grow, derive, half) {
     let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
     let keep = pieces => pieces.filter(reacher(box, inside, grow, derive));
-    let reaching = s => keep(make(box, [x0, y0, x1, y1], s));
+    let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half));
     let hi = sqrt(area / count), fit = (size, hi, lo) => {
         for (let i = 0; i < 30 && size(hi).length > count; ++i) hi *= 1.25;
         lo ??= hi / 8;
@@ -668,7 +678,10 @@ function tiles(make, box, screen, inside, count, grow = 1, derive) {
         }
         return size(hi);
     };
-    if (!derive) return fit(reaching, hi);
+    if (!derive) {
+        let best = fit(reaching, hi), other = half && fit(s => reaching(s, 1), hi), fill = p => p.length > count ? 0 : p.length;
+        return other && fill(other) > fill(best) ? other : best;
+    }
     let o = centre(box), [cx, cy] = o, { rim, fn } = derive, d = (rim + 3) * hi;
     let near = ps => ps.filter(([, [x, y]]) => abs(x - cx) < 2 * hi && abs(y - cy) < 2 * hi).length;
     let probe = make(box, [cx - d, cy - d, cx + d, cy + d], hi);
@@ -910,6 +923,6 @@ function simplify({ f, g, n }, tol) {
 }
 
 export {
-    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, tiles,
+    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
     shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
 };
