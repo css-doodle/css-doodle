@@ -496,7 +496,7 @@ clip-path: @shape(
 ```
 shape-property = preset
 shape-function = preset | { command ';' | group }
-group          = ( 'union' | 'subtract' | 'intersect' ) [ copies ]
+group          = ( 'union' | 'subtract' | 'intersect' | 'exclude' ) [ copies ]
                  '{' { command ';' | group | member } '}'
 member         = ( preset | '(' body ')' | name ) [ copies ] [ '{' { command ';' } '}' ]
 copies         = '*' count [ 'x' count ]
@@ -543,7 +543,9 @@ in `@scene`: `subtract { circle; circle { scale: .9; move: .5 .15 } }`
 is a crescent. Each row is a shape, a preset with its arguments, a
 preset or `shape` with a block of commands, a body in parentheses, so
 `$name` works, or another group. `subtract` takes the rest from the
-first. A shape is drawn with its own commands, `frame` included, and
+first. `exclude` keeps what an odd number of the shapes cover, like
+`fill: evenodd` across whole shapes; `exclude` is not in `@scene`,
+where it would look like `union`. A shape is drawn with its own commands, `frame` included, and
 sees the variables of the groups around it, as in `k: 7; union { shape
 { r: .6 + .3cos(k*t) } }`. With a group in it, a body draws only the
 group: its own `r`, `x`, `y`, `t` and preset are not drawn.

@@ -67,7 +67,7 @@ function overlay(A, B, op, joints) {
     let a = test(A), b = test(B), T = 1e-9, sides = [], from = new Map(), rings = [];
     let result = (x, y) => {
         let p = !!a(x, y), q = !!b(x, y);
-        return op == 'subtract' ? p && !q : op == 'intersect' ? p && q : p || q;
+        return op == 'subtract' ? p && !q : op == 'intersect' ? p && q : op == 'exclude' ? p != q : p || q;
     };
     [A, B].forEach((rings, k) => rings.forEach(ring => ring.forEach((p, i) => {
         let q = ring[(i + 1) % ring.length];

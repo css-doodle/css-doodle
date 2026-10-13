@@ -283,7 +283,7 @@ test('a body in parentheses, as a variable keeps it, is read as commands', () =>
     assert.equal(shape('((points: 6); r: .5)'), shape('points: 6; r: .5'));
 });
 
-test('union, subtract and intersect join whole shapes, first to last', () => {
+test('union, subtract, intersect and exclude join whole shapes, first to last', () => {
     // filled where the winding of the rings is not 0, in percent of the box
     let fill = s => {
         let rings = generateShape(s).points.rings.map(ring => ring.map(p => String(p).split(' ').map(parseFloat)));
@@ -295,6 +295,11 @@ test('union, subtract and intersect join whole shapes, first to last', () => {
     assert.equal(fill('points: 180; x: cos(t), .9cos(t) + .45; y: sin(t), .9sin(t) - .135; fill: evenodd')(110, 56.75), true);
     let lens = fill('intersect { circle { move: -.45 0 } circle { move: .45 0 } }');
     assert.deepEqual([lens(50, 50), lens(50, 10), lens(10, 50), lens(50, 2)], [true, true, false, false]);
+    // exclude keeps what an odd number of shapes cover
+    let pieces = fill('exclude { circle { move: -.45 0 } circle { move: .45 0 } }');
+    assert.deepEqual([pieces(50, 50), pieces(10, 50), pieces(90, 50), pieces(50, 2)], [false, true, true, false]);
+    let three = fill('exclude { union*3 { rotate: n * 120; circle { scale: .5; move: 0 -.6 } } }');
+    assert.deepEqual([three(50, 50), three(50, 15), three(71.65, 37.5)], [true, true, false]);
     let pair = 'union { circle { scale: .5; move: -.8 0 } circle { scale: .5; move: .8 0 } }';
     assert.equal(generateShape(pair).points.rings.length, 1);
     assert.deepEqual([fill(pair)(30, 50), fill(pair)(50, 50), fill(pair)(50, 30)], [true, true, false]);

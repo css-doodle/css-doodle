@@ -1,7 +1,7 @@
 import { scan, iterator, textOf } from './tokenizer.js';
 import { parseBody, readValue, readRaw } from './parse-body.js';
 
-const GROUPS = ['union', 'subtract', 'intersect'];
+const GROUPS = ['union', 'subtract', 'intersect', 'exclude'];
 
 // `-x: sin(t)` negates the value; `-: 10` and dashed names like `--x` do not
 function readShapeStatement(iter, head) {
