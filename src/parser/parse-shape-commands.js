@@ -1,5 +1,6 @@
 import { scan, iterator, textOf } from './tokenizer.js';
 import { parseBody } from './parse-body.js';
+import parseValueGroup from './parse-value-group.js';
 
 // The language @shape and @scene share:
 //
@@ -31,6 +32,24 @@ function shapeOf(text, value) {
     });
     node.copy = !text;
     return node;
+}
+
+// parts split at spaces, but an operator keeps its operands: `k * .5 0` → ['k * .5', '0']
+function spaced(input) {
+    let parts = [];
+    for (let v of parseValueGroup(input)) {
+        if (parts.length && (/[-+*/%^]$/.test(parts.at(-1)) || /^([*/%^]|[-+]$)/.test(v))) parts[parts.length - 1] += ' ' + v;
+        else parts.push(v);
+    }
+    return parts;
+}
+
+// an angle's own units are degrees, `90deg` is 90 and `.25turn` 90; inside calls like `sin(…)` they keep their math values
+function degrees(text) {
+    let calls = [];
+    return text.replace(/([a-zA-Z_]\w*)?\(|\)|(\d)(deg|turn)\b/g, (m, name, d, unit) =>
+        m.endsWith('(') ? (calls.push(!!name), m) : m == ')' ? (calls.pop(), m)
+        : calls.includes(true) ? m : unit == 'deg' ? d : d + '*360');
 }
 
 // a space before `#` starts another shape: `#a #b { … }`
@@ -111,10 +130,15 @@ function readShapes(input, warn = () => {}, options) {
 function commandsOf(node) {
     let commands = {};
     for (let { name, value } of node.rows) {
-        // `-x: sin(t)` negates the value; `-: 10` and dashed names like `--x` do not
+        // `-x: sin(t)` negates the value, each part of `-move: .5 0`; `-: 10` and dashed names like `--x` do not
         let negative = /^-[^-]/.test(name), text = textOf(value);
         if (negative) name = name.slice(1).trim();
-        commands[name] = text = negative && text && !name.startsWith('fill') ? `-1 * (${text})` : text;
+        if (negative && text && !name.startsWith('fill')) {
+            let items = parseValueGroup(text, { noSpace: true });
+            if ((name == 'move' || name == 'scale') && items.length < 2) items = spaced(text);
+            text = items.map(v => `-1 * (${v})`).join(', ');
+        }
+        commands[name] = text;
         if (STEPS.includes(name)) (commands.steps ||= []).push([name, text]);
     }
     let items = node.children.flatMap(member);
@@ -143,5 +167,5 @@ function parse(input) {
     return commandsOf(root);
 }
 
-export { readShapes, commandsOf, GROUPS };
+export { readShapes, commandsOf, spaced, degrees, GROUPS };
 export default parse;

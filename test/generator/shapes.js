@@ -369,6 +369,25 @@ test('points, rotate, move and scale read like variables: units drop, expression
     assert.equal(shape('points: 4; r: 1, .5; rotate: 1 * 15, 2 * 15'), shape('points: 4; r: 1, .5; rotate: 15, 30'));
 });
 
+test('round, frame and turn are worked out too, and an angle\'s own units are degrees', () => {
+    let shape = s => String(generateShape(s).points);
+    assert.equal(generateShape('square; round: .1 * 2').clip, generateShape('square; round: .2').clip);
+    assert.equal(shape('circle; frame: .05 * 2'), shape('circle; frame: .1'));
+    assert.equal(shape('hexagon; turn: 1 + 1; frame: .1'), shape('hexagon; turn: 2; frame: .1'));
+    assert.equal(shape('points: 4; rotate: 2 * 30deg'), shape('points: 4; rotate: 60'));
+    assert.equal(shape('points: 4; rotate: 2 * .25turn'), shape('points: 4; rotate: 180'));
+    assert.equal(shape('circle*3 { scale: .2; move: 0 .5; rotate: n * 30deg }'), shape('circle*3 { scale: .2; move: 0 .5; rotate: n * 30 }'));
+    // inside a call they are radians
+    assert.equal(shape('points: 4; rotate: 45 * sin(90deg)'), shape('points: 4; rotate: 45'));
+});
+
+test('a leading - negates each part of move and scale, and each contour of a list', () => {
+    let shape = s => String(generateShape(s).points);
+    assert.equal(shape('circle; scale: .2; -move: .5 0'), shape('circle; scale: .2; move: -.5 0'));
+    assert.equal(shape('circle; scale: .2; -move: .5, .25'), shape('circle; scale: .2; move: -.5 -.25'));
+    assert.equal(shape('points: 3, 3; -r: 1, .5'), shape('points: 3, 3; r: -1, -.5'));
+});
+
 test('grow: pushes the outline out along its normals, measured along the outline', () => {
     let radii = s => generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
     // a constant grows the shape, both ways round

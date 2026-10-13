@@ -62,6 +62,12 @@ test('angles are degrees, and turn converts', () => {
     assert.match(fragment, /g_x = g_rotate\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(0\.0, 1\.0, 0\.0\), radians\(30\.0\)\)/);
 });
 
+test('an angle\'s own deg and turn are degrees; inside a call they are radians, and a variable may be named turn', () => {
+    assert.match(scene('box { rotate: y (t * 30deg) }').body, /radians\(\(t \* 30\.0\)\)/);
+    assert.match(scene('box { rotate: 45 * sin(t * 90deg) }').body, /sin\(\(t \* \(90\.0 \* \(PI \/ 180\.0\)\)\)\)/);
+    assert.match(scene('turn: 2; box { rotate: turn * 45 }').body, /radians\(\(g_\d+ \* 45\.0\)\)/);
+});
+
 test('commands apply top to bottom', () => {
     let { body } = scene('box { size: .2; rotate: 30deg; move: .3 0 0 }');
     assert.ok(body.indexOf('- vec3(.3, 0.0, 0.0)') < body.indexOf('g_rotate('));

@@ -1,4 +1,4 @@
-import { readShapes } from '../parser/parse-shape-commands.js';
+import { readShapes, degrees } from '../parser/parse-shape-commands.js';
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
@@ -25,7 +25,6 @@ const GROUPS = { __proto__: null, union: '1.0, 1.0', subtract: '-1.0, 1.0', inte
 
 const COMMANDS = new Set(['move', 'rotate', 'scale', 'mirror', 'repeat', 'twist', 'grow', 'frame']);
 const AXES = { __proto__: null, x: '1.0, 0.0, 0.0', y: '0.0, 1.0, 0.0', z: '0.0, 0.0, 1.0' };
-const DEGREES = { deg: '1.0', turn: '360.0' };
 
 const SCENE_HELPERS = glsl`
     vec4 g_op(vec4 a, vec4 b, float k, float sa, float sb) {
@@ -137,14 +136,14 @@ export default function drawScene(code, extra, report = () => {}) {
             return known.get(name);
         };
         let next = () => `g_${++ctx.id}`;
-        let compile = (value, p, units) => parse(value.replace(/\bcalc\(/g, '('), {
+        let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
             types: ctx.types, warn, unknown,
-            names: { __proto__: ctx.names, p, ...units },
+            names: { __proto__: ctx.names, p },
             rand: () => `rand(vec2(${ctx.key}, ${float(++ctx.sites)}) * vec2(0.7548, 0.5698))`,
         });
-        // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']
-        let numbers = (tokens, p, units) => {
-            let code = compile(`g_(${textOf(tokens)})`, p, units).code();
+        // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']; an angle in degrees
+        let numbers = (tokens, p, angle) => {
+            let text = textOf(tokens), code = compile(`g_(${angle ? degrees(text) : text})`, p).code();
             let items = [], depth = 0, last = 3;
             for (let i = 3; i < code.length; i++) {
                 if (code[i] === '(') depth++;
@@ -185,7 +184,7 @@ export default function drawScene(code, extra, report = () => {}) {
             ? signs === '1.0, 1.0' ? `min(${a}, ${b})` : `max(${a}, ${signs === '-1.0, 1.0' ? '-' : ''}${b})`
             : `${dist ? 'g_smin' : 'g_op'}(${a}, ${b}, ${k}, ${signs})`};\n`;
         let row = (node, name) => node.rows.findLast(r => r.name === name)?.value || [];
-        let first = (tokens, p, units) => numbers(tokens, p, units)[0] || '0.0';
+        let first = (tokens, p, angle) => numbers(tokens, p, angle)[0] || '0.0';
 
         function generate(node, p) {
             let commands = node => node.rows.filter(r => COMMANDS.has(r.name));
@@ -256,7 +255,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 for (let g of itemsOf(m.value)) {
                     let named = g.find(t => t.isWord() && AXES[t.value]);
                     if (named) axis = AXES[named.value];
-                    let v = numbers(g.filter(t => t !== named), p, DEGREES);
+                    let v = numbers(g.filter(t => t !== named), p, true);
                     if (v.length === 3) axis = v.join(', ');
                     else if (v.length === 4) [axis, angle] = [v.slice(0, 3).join(', '), `radians(${v[3]})`];
                     else if (v.length === 1) angle = `radians(${v[0]})`;
@@ -285,7 +284,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 ctx.sites = end;
                 return r;
             } else if (m.name === 'twist') {
-                let a = first(m.value, p, DEGREES);
+                let a = first(m.value, p, true);
                 if (fit) {
                     let k = next();
                     r = next();
@@ -458,7 +457,7 @@ export default function drawScene(code, extra, report = () => {}) {
             [...arrays.keys()].slice(size).forEach(k => arrays.delete(k));
         }
 
-        let [turn = '0.0', tilt = '0.0'] = numbers(camera.view || [], 'p', DEGREES).map(v => `radians(${v})`);
+        let [turn = '0.0', tilt = '0.0'] = numbers(camera.view || [], 'p', true).map(v => `radians(${v})`);
         let depth = !camera.perspective ? '2.0'
             : /^\s*none\s*$/.test(textOf(camera.perspective)) ? '0.0'
             : first(camera.perspective, 'p');

@@ -532,7 +532,8 @@ after `move` turns the shape around the center, and one written twice
 runs twice. Every other row is an attribute, and the last one wins. A
 preset's own steps come first, so `square; scale: .5` halves the
 square. `y` points up, and `rotate` turns counterclockwise, in degrees:
-`.25turn` is 90. The parts of `move` and `scale` are split by spaces,
+`.25turn` is 90 and `2 * 30deg` is 60, while inside a call such as
+`sin(90deg)` the units are radians, as in math. The parts of `move` and `scale` are split by spaces,
 or by commas, and an operator keeps its operands: `move: k * .5 0` and
 `move: .5 -.25` are two parts each. `grow: d` pushes the outline out by
 `d`, and `frame: w` keeps a band `w` wide inside it, both as the shape
@@ -580,11 +581,11 @@ given, else 3. Here `t` is the angle, where in `@scene` and `@pattern`
 it is the time. `points` may list the corners instead, `x y` pairs as
 in SVG: `points: 0 1, 1 -1, -1 -1` is a triangle, the same as
 `polygon { points: … }`, so `@plot` spreads its cells along it and
-`@tile` fills it. `points`,
-`rotate` and each part of `move` and `scale` read like variables, so a
-unit drops (`20px` is 20) and `points: 4n` is worked out, with the
-fraction cut off. A `-` before a command name negates its value,
-except on `fill-rule`. The expressions also see the point index `i`,
+`@tile` fills it. `points`, `rotate`, `round`, `frame`, `turn` and
+each part of `move` and `scale` read like variables, so a unit drops
+(`20px` is 20) and `points: 4n` is worked out, with the fraction cut
+off. A `-` before a command name negates its value, each part of `move`
+and `scale` and each item of a list, except on `fill-rule`. The expressions also see the point index `i`,
 from 1, and two helpers: `seq(a, b, …)` cycles through its arguments
 from point to point, and `range(a, b)` interpolates from `a` to `b`
 across the shape.

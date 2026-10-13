@@ -1,7 +1,7 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
-import parseShapeCommands, { readShapes, commandsOf, GROUPS } from '../parser/parse-shape-commands.js';
+import parseShapeCommands, { readShapes, commandsOf, spaced, degrees, GROUPS } from '../parser/parse-shape-commands.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
@@ -101,15 +101,6 @@ function faces3(pieces) {
         let q = [...c, ...[...p, ...p].slice(i, i + 6)];
         return [q, centre(q), face + 1];
     }));
-}
-
-function spaced(input) {
-    let parts = [];
-    for (let v of parseValueGroup(input)) {
-        if (parts.length && (/[-+*/%^]$/.test(parts.at(-1)) || /^([*/%^]|[-+]$)/.test(v))) parts[parts.length - 1] += ' ' + v;
-        else parts.push(v);
-    }
-    return parts;
 }
 
 function parsePair(input, fallback, context) {
@@ -226,7 +217,7 @@ function createShapePoints(props, lo, hi, raw) {
     }
     let fns = contours.map(p => createPointFunction(p, p.split));
 
-    let turn = Number(props.turn) || 1;
+    let turn = isEmpty(props.turn) ? 1 : evaluate(props.turn, props) || 1;
     let fill = props['fill-rule'] ?? props.fill;
     let evenodd = fill == 'evenodd';
     let [gap = 0, fine = gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
@@ -287,7 +278,7 @@ function createShapePoints(props, lo, hi, raw) {
         }
         return `shape(${rule ? rule + ' ' : ''}${out.join(',')})`;
     };
-    let radius = max(0, Number(props.round) || 0);
+    let radius = isEmpty(props.round) ? 0 : max(0, evaluate(props.round, props) || 0);
     let tile = ([poly, [x, y], kind = 1, extra]) => {
         if (radius) {
             let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
@@ -327,7 +318,7 @@ function createShapePoints(props, lo, hi, raw) {
                 text = list[index[k] % list.length];
             }
             if (name == 'rotate') {
-                let a = PI / 180 * (evaluate(text.replace(/(\d)turn\b/g, '$1*360'), p) || 0), cs = cos(a), sn = sin(a);
+                let a = PI / 180 * (evaluate(degrees(text), { ...p, deg: PI / 180, turn: 2 * PI }) || 0), cs = cos(a), sn = sin(a);
                 map(([x, y]) => [x * cs - y * sn, y * cs + x * sn]);
             } else if (name == 'move' || name == 'scale') {
                 let [a, b] = parsePair(text, name == 'move' ? 0 : 1, p);
@@ -338,7 +329,7 @@ function createShapePoints(props, lo, hi, raw) {
                 inner &&= wave(inner, f, .001);
                 path = null;
             } else {
-                let w = text * (turn > 1 ? 2 : 1) || .002;
+                let w = evaluate(text, p) * (turn > 1 ? 2 : 1) || .002;
                 inner = ps.map(([x, y]) => {
                     let a = atan2(y - o[1], x - o[0]);
                     return [x - w * cos(a), y - w * sin(a)];
