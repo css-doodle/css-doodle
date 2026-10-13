@@ -190,14 +190,16 @@ function corners(ring, joints, r) {
         let [i, e] = index(d);
         return mix(ring[i - 1], ring[i], (e - s[i - 1]) / (s[i] - s[i - 1] || 1));
     };
-    // bend through where the sides' tangents meet, so a curve leaves each side along it
+    // bend through where the sides' tangents meet, so a curve leaves each side along it,
+    // unless the curve would then reach past the corner
     let control = (j, d) => {
         let p = at(s[j] - d), q = at(s[j] + d), [i] = index(s[j] - d), [k] = index(s[j] + d);
         let ux = ring[i][0] - ring[i - 1][0], uy = ring[i][1] - ring[i - 1][1];
         let vx = ring[k][0] - ring[k - 1][0], vy = ring[k][1] - ring[k - 1][1];
         let den = ux * vy - uy * vx, t = ((q[0] - p[0]) * vy - (q[1] - p[1]) * vx) / den;
-        let c = [p[0] + t * ux, p[1] + t * uy];
-        return t > 0 && dist(c, ring[j]) > 1e-9 * L && dist(c, ring[j]) < d ? c : ring[j];
+        let c = [p[0] + t * ux, p[1] + t * uy], h = ([x, y]) => (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+        let hc = h(c), hv = h(ring[j]);
+        return t > 0 && dist(c, ring[j]) > 1e-9 * L && dist(c, ring[j]) < d && hc * hv > 0 && abs(hc) <= 2 * abs(hv) ? c : ring[j];
     };
     let cuts = js.map((j, m) => {
         let [bx, by] = ring[j], limit = min(gaps[m], gaps.at(m - 1), L / 4), lo = 0, hi = limit;

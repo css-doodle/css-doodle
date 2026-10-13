@@ -514,6 +514,13 @@ test('round: curves leave the outline along it, also between curved sides', () =
         turns = Math.max(turns, Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))));
     });
     assert.ok(turns < .2, `a curve turns ${turns} rad where it starts`);
+    // however big the radius, no curve reaches past its corner: the heart's notch fills, its lobes stay put
+    let ys = s => {
+        let steps = [...generateShape(s).clip.matchAll(/(?:from|line to|curve to) ([-\d.]+)% ([-\d.]+)%(?: with ([-\d.]+)% ([-\d.]+)%)?/g)].map(m => m.slice(1).filter(Boolean).map(Number));
+        return steps.flatMap((step, i) => step.length < 4 ? [step[1]] : [step[1], (steps[i - 1][1] + 2 * step[3] + step[1]) / 4]);
+    };
+    let heart = generateShape('heart').points.map(p => parseFloat(String(p).split(' ')[1]));
+    assert.ok(Math.min(...ys('heart; round: 2')) >= Math.min(...heart) && Math.max(...ys('heart; round: 2')) <= Math.max(...heart));
 });
 
 test('unknown shapes are reported', () => {
