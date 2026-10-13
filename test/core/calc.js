@@ -246,6 +246,18 @@ test('empty input, division by zero and NaN', () => {
     assert.equal(calc('sqrt(-1)'), 0);
 });
 
+test('a missing operand reads as 0, as when a value left nothing', () => {
+    assert.equal(calc(' == 1'), 0);
+    assert.equal(calc(' == 0'), 1);
+    assert.equal(calc(' < 50'), 1);
+    assert.equal(calc(' * 2'), 0);
+    assert.equal(calc('1 + '), 1);
+    assert.equal(calc('3 - '), 3);
+    assert.equal(calc('2 * '), 0);
+    assert.equal(calc('max(1, == 2) + ( == 0)'), 2);
+    assert.equal(calc('1 + * 2'), 1);
+});
+
 test('context functions', () => {
     assert.equal(calc('double(5)', { double: x => x * 2 }), 10);
     assert.equal(calc('add(2, 3)', { add: (a, b) => a + b }), 5);

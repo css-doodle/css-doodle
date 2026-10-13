@@ -12,7 +12,7 @@ import calc, { defaultContext, evaluate } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
+    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, PI } = Math;
@@ -85,11 +85,12 @@ const presetShapes = {
 };
 
 class Point {
-    constructor(value, angle, origin, kind) {
+    constructor(value, angle, origin, kind, r) {
         this.value = value;
         this.extra = angle;
         this.origin = origin;
         this.kind = kind;
+        this.r = r;
     }
     toString() {
         return this.value;
@@ -281,10 +282,12 @@ function createShapePoints(props, lo, hi, raw) {
     };
     let radius = isEmpty(props.round) ? 0 : max(0, evaluate(props.round, props) || 0);
     let tile = ([poly, [x, y], kind = 1, extra]) => {
+        let at = fmt(x, y), inner = room(poly, x, y);
+        inner = inner < Infinity ? tidyNumber(inner) + suffix : '';
         if (radius) {
             let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
             let path = corners(toPairs(poly), null, r);
-            if (curved(path)) return new Point(toPath([path]), extra, fmt(x, y), kind);
+            if (curved(path)) return new Point(toPath([path]), extra, at, kind, inner);
             poly = flatten(path, tol);
         }
         let vs = [];
@@ -293,7 +296,7 @@ function createShapePoints(props, lo, hi, raw) {
             if (v !== vs.at(-1)) vs.push(v);
         }
         if (vs.length > 1 && vs[0] === vs.at(-1)) vs.pop();
-        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, fmt(x, y), kind);
+        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, at, kind, inner);
     };
 
     let trace = ({ split }, c) => {
@@ -396,11 +399,8 @@ function createShapePoints(props, lo, hi, raw) {
             context.random = seedrandom('size:' + seed);
             size = onScreen(size) || (count < 2 ? () => 1 : () => min(1.5, sqrt(count) / 2) + min(count / 100, sqrt(count) / 5) * context.random() ** 24);
             return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, size).map(([x, y, r]) => {
-                let at = fmt(x, y), [rx, ry] = [sx, sy].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
-                let point = new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1);
-                point.rx = rx;
-                point.ry = ry;
-                return point;
+                let at = fmt(x, y), [rx, ry, rr] = [sx, sy, 1].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
+                return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1, rr);
             });
         }
         context.random = seedrandom('random:density:' + seed);

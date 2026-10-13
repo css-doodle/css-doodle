@@ -632,7 +632,7 @@ many points as the outline, so frames of different widths morph in
 `@keyframes`. `@plot` reads only the points, so it ignores `fill-rule`,
 `frame`, `round` and `grow`.
 
-**Tiles.** `@tile.kind(…)` and `@plot.scatter(…)` read the same body
+**Tiles.** `@tile(…)` of every kind and `@plot.scatter(…)` read the same body
 as the region to fill, `square` by default for `@tile`, along with
 these commands. Here `points` counts what comes out, not the
 outline's corners, so a body copied from `@shape` leaves it out:
@@ -660,9 +660,10 @@ outline's corners, so a body copied from `@shape` leaves it out:
 The kinds are `slice` (the default), `voronoi`, `delaunay`, `grid`,
 `hex`, `triangle`, `cube`, `penrose` and `circle`. Once a cell has its
 piece, `@tile.x` and `@tile.y` read its center, `@tile.xy` both as
-`x y`, `@tile.kind` its kind,
-and `@tile.r` the radius of a `circle` piece, in percent of the
-element's shorter side. A piece that `op` or `star` makes from a piece
+`x y`, `@tile.k` its kind, and `@tile.r` the radius of the largest
+circle about the center that fits in the piece, in percent of the
+element's shorter side. At the top level, a rule may read them before
+the rule that makes the piece. A piece that `op` or `star` makes from a piece
 keeps its kind; the pieces made at the corners take the next kind up,
 and those made along the sides by `e`, `b` and `s` the one after. `d`
 makes every piece kind 1.

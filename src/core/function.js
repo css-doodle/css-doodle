@@ -732,11 +732,8 @@ for (let kind of ['voronoi', 'delaunay', 'hex', 'triangle', 'grid', 'circle', 'c
 Function.tile.x = tileAxis(0);
 Function.tile.y = tileAxis(1);
 Function.tile.xy = cell => () => cellTiles.get(cell)?.origin ?? '';
-Function.tile.kind = cell => () => cellTiles.get(cell)?.kind ?? '';
-Function.tile.r = cell => () => {
-    let { rx, ry } = cellTiles.get(cell) || {};
-    return rx ? (parseFloat(rx) < parseFloat(ry) ? ry : rx) : '';
-};
+Function.tile.k = cell => () => cellTiles.get(cell)?.kind ?? '';
+Function.tile.r = cell => () => cellTiles.get(cell)?.r ?? '';
 
 Function.Plot = createPlot(true);
 Function.Plot.scatter = createPlot(true, true);

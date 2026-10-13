@@ -125,8 +125,8 @@ test('@tile in clip-path brings its own transform-origin', () => {
 });
 
 test('rules that read the tile wait for the rule that makes it, wherever they are written', () => {
-    let after = cells('clip-path: @tile.cube(); --k: @tile.kind; ::after { left: @tile.x; --o: @tile.xy }', '1x6');
-    let before = cells('--k: @tile.kind; ::after { left: @tile.x; --o: @tile.xy } clip-path: @tile.cube();', '1x6');
+    let after = cells('clip-path: @tile.cube(); --k: @tile.k; ::after { left: @tile.x; --o: @tile.xy; --r: @tile.r }', '1x6');
+    let before = cells('--k: @tile.k; ::after { left: @tile.x; --o: @tile.xy; --r: @tile.r } clip-path: @tile.cube();', '1x6');
     assert.match(after, /--k:3;/);
     assert.equal(before, after);
 });

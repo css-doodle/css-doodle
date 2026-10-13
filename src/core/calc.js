@@ -251,6 +251,8 @@ function toPostfix(tokens) {
             } else if (value === '!' || value === '-u') {
                 opStack.push(value);
             } else {
+                const prev = tokens[i - 1], next = tokens[i + 1];
+                if (!prev || prev.type === OPERATOR && prev.value !== ')') expr.push(tk(NUMBER, 0));
                 const prec = operators[value];
                 const rightAssoc = value === '^' || value === '**';
                 while (opStack.length) {
@@ -264,6 +266,7 @@ function toPostfix(tokens) {
                     }
                 }
                 opStack.push(value);
+                if (!next || next.value === ')') expr.push(tk(NUMBER, 0));
             }
         }
     }
@@ -460,16 +463,9 @@ function compile(expr) {
         } else {
             const right = stack.pop();
             const left = stack.pop();
-
-            if (i === expr.length - 1 && left === undefined) {
-                // a trailing operator with a single operand acts as identity
-                stack.push(right || (() => 0));
-                continue;
-            }
             const l = left || (() => NaN);
             const r = right || (() => NaN);
             if (value === '&&' || value === '∧') {
-                // short-circuit: the right side only runs when needed
                 stack.push((ctx, history) => {
                     const a = Number(l(ctx, history));
                     return a ? Number(r(ctx, history)) : a;

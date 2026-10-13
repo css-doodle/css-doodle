@@ -351,7 +351,7 @@ function ruleFlags(prop) {
 }
 
 const RE_PLACE = /^@place(-cell)?$/;
-const RE_TILE_READ = /^@(x|y|xy|kind|r)$/;
+const RE_TILE_READ = /^@(x|y|xy|k|r)$/;
 
 function usesTile(nodes, read = false) {
     for (let node of nodes) {

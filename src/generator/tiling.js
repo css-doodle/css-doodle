@@ -22,7 +22,7 @@ const turn = (ring, i) => {
     let ux = px - ax, uy = py - ay, vx = bx - px, vy = by - py;
     return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy));
 };
-// the k-th point of the R2 sequence over the box
+
 const r2 = (k, x0, y0, w, h) => {
     let u = .5 + k * .7548776662, v = .5 + k * .5698402909;
     return [x0 + (u - floor(u)) * w, y0 + (v - floor(v)) * h];
@@ -798,6 +798,16 @@ function inset(p, x, y, d, q = p) {
     return f > 0 ? scale(q, [x, y], f) : [];
 }
 
+function room(p, x, y) {
+    let r = Infinity;
+    for (let i = 0; i < p.length; i += 2) {
+        let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay;
+        let t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+        r = min(r, hypot(x - ax - dx * t, y - ay - dy * t));
+    }
+    return r;
+}
+
 function scale(p, o, f) {
     return p.map((v, i) => o[i & 1] + (v - o[i & 1]) * f);
 }
@@ -881,6 +891,7 @@ function slice(screen, box, inside, count, seed, gap, spread, density) {
     let rnd = seedrandom('slice:' + seed);
     let N = 64, w = (x1 - x0) / N, h = (y1 - y0) / N;
     let grid = density && Array.from({ length: N * N }, (_, i) => max(0, density(x0 + (i % N + .5) * w, y0 + ((i / N | 0) + .5) * h)));
+    if (grid && !grid.some(v => v > 0)) density = null;
     let weight = p => {
         if (!density) return area(p);
         let [l, t, r, b] = bounds(p), acc = 0, n = 0;
@@ -984,5 +995,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
+    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
 };

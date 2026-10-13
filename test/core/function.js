@@ -477,6 +477,8 @@ test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
     let disc = tiles('square; density: hypot(x, y) < .5', 100);
     assert.ok(disc.filter(t => Math.hypot(...xy(t.origin).map(v => v - 50)) < 30).length > 80);
     assert.deepEqual(tiles('square; density: 2', 50).map(String), tiles('square', 50).map(String));
+    // nowhere positive cuts evenly, as scatter does
+    assert.deepEqual(tiles('square; density: -1', 50).map(String), tiles('square', 50).map(String));
 });
 
 test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as the grid allows', () => {
@@ -624,7 +626,7 @@ test('pair: turn and slide: edges paired by turns about the corners, and bent al
     let env = { context: {}, extra: [], seed: 'a' };
     let tiles = (fn, shape) => Array.from({ length: 64 }, (_, i) => {
         let c = cell(64, i + 1), t = fn(c, env)(shape);
-        return String(t) == 'polygon(0 0)' ? null : Object.assign(t, { k: Number(Function.tile.kind(c)()) });
+        return String(t) == 'polygon(0 0)' ? null : Object.assign(t, { k: Number(Function.tile.k(c)()) });
     }).filter(Boolean);
     let covered = list => {
         let vs = list.map(verts);
@@ -651,7 +653,7 @@ test('pair: turn and slide: edges paired by turns about the corners, and bent al
     assert.deepEqual(tiles(Function.tile.grid, 'square; shift: .5; pair: turn; edge: .1 * sin(t)').map(String), tiles(Function.tile.grid, 'square; shift: .5; edge: .1 * sin(t)').map(String));
 });
 
-test('@tile.r: the radius of the cell\'s @tile.circle', () => {
+test('@tile.r: the radius of the largest circle about the tile\'s center that fits in it', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let c = cell(20, 3);
     assert.equal(Function.tile.r(c)(), '');
@@ -663,8 +665,17 @@ test('@tile.r: the radius of the cell\'s @tile.circle', () => {
         let [rx, ry] = String(Function.tile.circle(c, env)('heart; aspect: ' + aspect)).slice(8).split(' ');
         assert.equal(Function.tile.r(c)(), aspect == '2' ? ry : rx);
     }
-    Function.tile.hex(c, env)('heart');
-    assert.equal(Function.tile.r(c)(), '');
+    // a polygon's: the distance from its center to the nearest side
+    for (let [fn, shape] of [[Function.tile.hex, 'square'], [Function.tile.voronoi, 'heart'], [Function.tile.slice, 'circle; gap: 2']]) {
+        let t = fn(c, env)(shape), vs = verts(t), [ox, oy] = xy(t.origin), r = parseFloat(Function.tile.r(c)());
+        let sides = vs.map(([ax, ay], i) => {
+            let [bx, by] = vs[(i + 1) % vs.length], dx = bx - ax, dy = by - ay;
+            let u = Math.max(0, Math.min(1, ((ox - ax) * dx + (oy - ay) * dy) / (dx * dx + dy * dy)));
+            return Math.hypot(ox - ax - dx * u, oy - ay - dy * u);
+        });
+        assert.ok(r > 0 && Math.abs(r - Math.min(...sides)) < 1e-6, r);
+        assert.match(Function.tile.r(c)(), /%$/);
+    }
 });
 
 test('@tile.x, @tile.y, @tile.xy: the center of the cell\'s tile', () => {
@@ -676,14 +687,16 @@ test('@tile.x, @tile.y, @tile.xy: the center of the cell\'s tile', () => {
     assert.equal(Function.tile.xy(c)(), Function.tile.x(c)() + ' ' + Function.tile.y(c)());
 });
 
-test('@tile.kind: which kind of piece the cell\'s tile is', () => {
+test('@tile.k: which kind of piece the cell\'s tile is', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let kinds = (fn, shape, n) => Array.from({ length: n }, (_, i) => {
         let c = cell(n, i + 1), t = fn(c, env)(shape);
-        return [t, Function.tile.kind(c)()];
+        return [t, Function.tile.k(c)()];
     }).filter(([t]) => String(t) != 'polygon(0 0)');
     let c = cell(10, 2);
-    assert.equal(Function.tile.kind(c)(), '');
+    assert.equal(Function.tile.k(c)(), '');
+    Function.tile.cube(c, { context: {}, extra: [], seed: 'a' })('square');
+    assert.equal(Function.tile.k(c)(), 2);
     // penrose: 1 thin, 2 thick
     let s = 0;
     for (let [t, k] of kinds(Function.tile.penrose, 'square', 60)) {
@@ -703,14 +716,14 @@ test('@tile.kind: which kind of piece the cell\'s tile is', () => {
         assert.ok(kinds(fn, 'heart', 20).every(([, k]) => k === 1));
     }
     Function.tile.hex(c, env)('square; points: 1');
-    assert.equal(Function.tile.kind(c)(), '');
+    assert.equal(Function.tile.k(c)(), '');
 });
 
 test('@tile op: and star: derive a tiling from a tiling', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => {
         let c = cell(n, i + 1), t = fn(c, env)(shape);
-        return Object.assign(Object(t), { k: Function.tile.kind(c)() });
+        return Object.assign(Object(t), { k: Function.tile.k(c)() });
     }).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
         let vs = list.map(verts);
