@@ -479,7 +479,8 @@ function unwrap(input) {
 export function outline(polygon, warn) {
     polygon.children.forEach(n => check(n, warn));
     let rings = createShapePoints(commandsOf({ rows: polygon.rows.filter(r => r.name === 'points'), children: polygon.children }), 3, 3600, true);
-    return rings.flat().length > 256 ? resample(rings, [256]) : rings;
+    // thinned to 256 points, a hole too small for 3 of them is left out
+    return rings.flat().length > 256 ? resample(rings, [256]).filter(ring => ring.length > 2) : rings;
 }
 
 export const shapeWarnings = memo(input => {

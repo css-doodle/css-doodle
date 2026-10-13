@@ -234,6 +234,10 @@ test('a polygon takes a @shape body as its outline, holes and all', () => {
     assert.match(scene('polygon { heart; points: 64; depth: .2 }').fragment, /const vec2 g_c0\[\] = vec2\[65\]/);
     assert.match(scene('polygon { heart; points: 1000 }').fragment, /const vec2 g_c0\[\] = vec2\[257\]/);
     assert.deepEqual(scene('polygon { cirle; depth: .2 }').warnings, ['unknown shape cirle']);
+    // a hole too small to keep is left out, not the polygon
+    let speck = scene('polygon { subtract { heart; circle { scale: .01 } } }');
+    assert.deepEqual(speck.warnings, []);
+    assert.match(speck.fragment, /const vec2 g_c0\[\] = vec2\[255\]/);
 });
 
 test('a lathe turns an outline around y', () => {
