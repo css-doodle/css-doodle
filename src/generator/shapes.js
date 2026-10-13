@@ -203,8 +203,9 @@ function createShapePoints(props, lo, hi, raw) {
             p = { ...props };
             for (let k in lists) p[k] = lists[k][c % lists[k].length];
         }
-        let n = !isEmpty(p.points || p.split) ? Math.trunc(calc(p.points ? 'points' : 'split', p))
-            : /(?<![a-zA-Z_]\w*|\.)[tθ]\b/.test([p.r, p.x, p.y].join(' ')) ? 180 : NaN;
+        // a curve in t, also through a variable, gets as many points as a circle
+        let f = createPointFunction(p, 3), n = !isEmpty(p.points || p.split) ? Math.trunc(calc(p.points ? 'points' : 'split', p))
+            : [p.r, p.x, p.y].some(v => !isEmpty(v) && (v = f.formula(v), v(1) != v(2))) ? 180 : NaN;
         if (c && n === 0) continue;
         let { unit, value } = parseCompoundValue(isEmpty(p.r) ? '' : p.r);
         if (unit && !p[unit] && !/^[tθi]$/.test(unit)) {
