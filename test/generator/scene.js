@@ -236,6 +236,16 @@ test('a polygon takes a @shape body as its outline, holes and all', () => {
     assert.deepEqual(scene('polygon { cirle; depth: .2 }').warnings, ['unknown shape cirle']);
 });
 
+test('a lathe turns an outline around y', () => {
+    let { dist, warnings } = scene('lathe { vase }');
+    assert.deepEqual(warnings, []);
+    assert.match(dist, /vec2 g_\d+ = vec2\(length\(p\.xz\), p\.y\);/);
+    assert.doesNotMatch(dist, /abs\(p\.z\)/);
+    assert.match(scene('lathe { points: 0 -1, .5 -1, .3 0, .6 1, 0 1 }').dist, /length\(p\.xz\)/);
+    assert.deepEqual(scene('lathe { cirle }').warnings, ['unknown shape cirle']);
+    assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points: x y, x y, x y, …']);
+});
+
 test('unknown shapes are reported', () => {
     assert.deepEqual(scene('cube { size: .2 }').warnings, ['unknown shape cube']);
     assert.deepEqual(scene('difference { box; sphere { r: .1 } }').warnings, ['unknown shape difference']);

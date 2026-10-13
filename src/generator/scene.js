@@ -17,6 +17,7 @@ const SHAPES = {
     torus: ['r'],
     capsule: ['from', 'to', 'r'],
     polygon: ['points', 'depth', 'round'],
+    lathe: ['points'],
     plane: [],
     sdf: ['d'],
 };
@@ -95,7 +96,7 @@ function checkAll(node, warn, unread, code) {
             warn(!valid ? `"${r.name}" is not a valid name` : top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
         }
     }
-    if (node.name === 'polygon' && node.children.length) {
+    if (/^(polygon|lathe)$/.test(node.name) && node.children.length) {
         node.rings = outline(node, warn).map(ring => ring.map(xy => xy.map(float)));
         node.children = [];
     }
@@ -384,10 +385,10 @@ export default function drawScene(code, extra, report = () => {}) {
                     d = `${c} > 0.1 ? ${a} / ${c} : ${a}`;
                 }
             } else {
-                // in the xy plane, `depth` thick along z
-                let rings = node.rings || [itemsOf(row(node, 'points')).map(g => numbers(g, p))];
+                // in the xy plane, `depth` thick along z, or a lathe's outline turned around y
+                let rings = node.rings || [itemsOf(row(node, 'points')).map(g => numbers(g, p))], lathe = name === 'lathe';
                 if (!rings.length || rings.some(ring => ring.length < 3)) {
-                    warn('polygon needs points: x y, x y, x y, …');
+                    warn(`${name} needs points: x y, x y, x y, …`);
                     d = '1e5';
                 } else {
                     let all = rings.flatMap(ring => [...ring, ring[0]]), n = all.length, at = 0, v;
@@ -404,7 +405,7 @@ export default function drawScene(code, extra, report = () => {}) {
                             if (g_cross(${q}, a, ${v}[i + 1])) ${s} = -${s};
                         }
                     ` + '\n';
-                    out += `vec2 ${q} = ${p}.xy;\nfloat ${e} = 1e30, ${s} = 1.0;\n`;
+                    out += `vec2 ${q} = ${lathe ? `vec2(length(${p}.xz), ${p}.y)` : `${p}.xy`};\nfloat ${e} = 1e30, ${s} = 1.0;\n`;
                     if (!plain || n < 64) {
                         for (let ring of rings) {
                             out += walk(at, at + ring.length);
@@ -438,10 +439,13 @@ export default function drawScene(code, extra, report = () => {}) {
                             }
                         ` + '\n';
                     }
-                    out += glsl`
-                        vec2 ${w} = vec2(${s} * sqrt(${e}) + ${k}, abs(${p}.z) - ${get('depth')[0] || '0.1'} * 0.5 + ${k});
-                    ` + '\n';
-                    d = `min(max(${w}.x, ${w}.y), 0.0) + length(max(${w}, 0.0)) - ${k}`;
+                    if (lathe) d = `${s} * sqrt(${e})`;
+                    else {
+                        out += glsl`
+                            vec2 ${w} = vec2(${s} * sqrt(${e}) + ${k}, abs(${p}.z) - ${get('depth')[0] || '0.1'} * 0.5 + ${k});
+                        ` + '\n';
+                        d = `min(max(${w}.x, ${w}.y), 0.0) + length(max(${w}, 0.0)) - ${k}`;
+                    }
                 }
             }
             out += `${T} ${r} = ${dist ? d : `vec4(${ctx.fill}, ${d})`};\n`;

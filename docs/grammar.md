@@ -564,7 +564,7 @@ center. `@` functions in a copy run once per copy, so
 
 |            | `@shape`                                                                 | `@scene`                                                                 |
 |------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `plane`, `sdf { d }` |
+| Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `lathe { points }` or `lathe { body }`, `plane`, `sdf { d }` |
 | Steps      | `move: x y`, `rotate`, `scale: x [y]`, `grow`, `frame`                    | the same in 3D, `rotate: [axis] angle`, and `mirror`, `repeat`, `twist`  |
 | Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`       | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`             |
 | Groups     | `union`, `subtract`, `intersect`, `exclude`                              | `union`, `subtract`, `intersect`                                         |
@@ -675,7 +675,9 @@ degrees for each unit up `y`. `sdf { d: … }` takes a distance written in
 and all, in `@shape`'s units where the box is 2 across:
 `polygon { heart; depth: .2 }`. The rows inside the body move the
 outline in 2D, and the polygon's own rows move it in 3D, except
-`points: n`, which resamples the outline as it does in `@shape`. At the
+`points: n`, which resamples the outline as it does in `@shape`.
+`lathe` takes the same outline and turns its right half, where `x` is
+0 or more, around `y`, so `lathe { vase }` is a vase. At the
 top, `view: turn tilt` turns the camera around `y` and tilts it, in
 degrees, and `perspective: d` sets its distance, 2 by default, or `none`
 for a parallel view. The camera fits the model, a moving one where it is

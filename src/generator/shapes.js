@@ -479,7 +479,7 @@ function unwrap(input) {
 }
 
 export function outline(polygon, warn) {
-    check(polygon, warn);
+    polygon.children.forEach(n => check(n, warn));
     let rings = createShapePoints(commandsOf({ rows: polygon.rows.filter(r => r.name === 'points'), children: polygon.children }), 3, 3600, true);
     return rings.flat().length > 256 ? resample(rings, [256]) : rings;
 }
