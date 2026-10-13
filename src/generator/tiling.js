@@ -113,7 +113,7 @@ function overlay(A, B, op, joints) {
         for (let i = 1; i < ps.length; ++i) {
             let p = ps[i - 1], q = ps[i], kp = ks[i - 1], kq = ks[i], dx = q[0] - p[0], dy = q[1] - p[1], len = hypot(dx, dy);
             if (kp == kq) continue;
-            let s = min(1e-7, len / 4) / len, mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
+            let s = min(1e-10, len / 4) / len, mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
             let left = result(mx - dy * s, my + dx * s);
             if (left == result(mx + dy * s, my - dx * s)) continue;
             if (!left) [p, q, kp, kq] = [q, p, kq, kp];

@@ -344,6 +344,8 @@ test('union, subtract, intersect and exclude join whole shapes, first to last', 
     assert.equal(points('union { circle*2 { scale: .4; move: 3n-4.5 0 } }'), two);
     assert.equal(generateShape('union { union*6 { rotate: n * 60; circle { scale: .2; move: 0 -.6 } } }').points.rings.length, 6);
     assert.equal(generateShape('subtract { square { scale: 1.3 } circle*3x3 { scale: .12; move: (nx * .6 - 1.2) (ny * .6 - 1.2) } }').points.rings.length, 10);
+    // shapes that meet at one point keep every piece: four leaves tip to tip
+    assert.equal(generateShape('union { leaf*4 { scale: .5; move: 0 .5; rotate: n * 90 } }').points.rings.length, 4);
     // a framed shape joins as its outline band
     let band = fill('union { circle { frame: .1 } circle { scale: .2; move: .6 0 } }');
     assert.deepEqual([band(50, 50), band(97, 50), band(80, 50), band(20, 50)], [false, true, true, false]);
