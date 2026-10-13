@@ -236,9 +236,8 @@ test('round: is a radius, the same on a sparse outline and a dense one', () => {
 test('round: softens the corners of an outline, smooth curves stay', () => {
     assert.ok(generateShape('star; round: .5').points.length > 10);
     assert.equal(String(generateShape('circle; round: 1').points), String(generateShape('circle').points));
-    // the frame closes back on the rounded outline
-    let points = generateShape('star; round: .5; frame: .1').points.map(String);
-    assert.equal(points.at(-1), points[0]);
+    // the frame is the rounded outline and a ring inside it
+    assert.equal(generateShape('star; round: .5; frame: .1').points.rings.length, 2);
     // corners are rounded before grow: runs along the outline
     let far = s => Math.max(...generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50))));
     assert.ok(far('square; round: 1; grow: .02 * sin(8t)') < 60);
@@ -252,10 +251,11 @@ test('round: corners print as curves in CSS shape(), unless the outline is waved
     assert.ok(clip.startsWith('shape(from ' + points[0] + ','));
     assert.match(generateShape('square; round: .5; fill-rule: evenodd').clip, /^shape\(evenodd from /);
     assert.match(generateShape('square; round: .5; unit: px').clip, /^shape\(from \S+px \S+px,/);
-    for (let s of ['square', 'circle; round: 1', 'square; round: .5; grow: .02 * sin(8t)', 'square; round: .5; frame: .1', 'square; round: .5; unit: none']) {
+    for (let s of ['square', 'circle; round: 1', 'square; round: .5; grow: .02 * sin(8t)', 'square; round: .5; unit: none']) {
         let { clip, points } = generateShape(s);
         assert.equal(clip, `polygon(${points.join(',')})`, s);
     }
+    assert.match(generateShape('square; round: .5; frame: .1').clip, /^polygon\(/);
 });
 
 test('a list in points, r, t, x, y, rotate or grow draws one contour per item', () => {
@@ -278,10 +278,9 @@ test('a list in points, r, t, x, y, rotate or grow draws one contour per item', 
         .map(ring => ring.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50))));
     assert.ok(Math.max(...rim) - Math.min(...rim) > 4);
     assert.ok(hole.every(r => Math.abs(r - 25) < .05));
-    // frame outlines each contour: around it, back to its start, the inner ring, back again
+    // frame outlines each contour: its own outline and a ring inside it
     let { rings } = generateShape('points: 4; r: 1, .5; frame: .1').points;
-    assert.deepEqual(rings.map(ring => ring.length), [11, 11]);
-    assert.ok(rings.every(ring => String(ring.at(-1)) === String(ring[0])));
+    assert.deepEqual(rings.map(ring => ring.length), [4, 4, 4, 4]);
     // curves print one subpath per contour
     assert.match(generateShape('points: 6, 4; r: 1, .5; round: .4').clip, /^shape\(from [^]+,close,move to [^]+,close\)$/);
     // scatter fills between them
@@ -388,14 +387,18 @@ test('a leading - negates each part of move and scale, and each contour of a lis
     assert.equal(shape('points: 3, 3; -r: 1, .5'), shape('points: 3, 3; r: -1, -.5'));
 });
 
-test('grow: pushes the outline out along its normals, measured along the outline', () => {
+test('grow: by a constant moves the whole outline that far; in t, along its normals, measured along the outline', () => {
     let radii = s => generateShape(s).points.map(p => Math.hypot(...String(p).split(' ').map(v => parseFloat(v) - 50)));
     // a constant grows the shape, both ways round
     assert.ok(radii('circle; grow: .1').every(r => Math.abs(r - 55) < .01));
     assert.ok(radii('circle; grow: .1; x: -cos(t)').every(r => Math.abs(r - 55) < .01));
     assert.ok(radii('circle; grow: -.1').every(r => Math.abs(r - 45) < .01));
-    // straight sides stay straight, the corners bevelled
-    assert.equal(generateShape('square; grow: .1').points.length, 12);
+    // straight sides stay straight, the corners round
+    assert.ok(Math.abs(Math.max(...radii('square; grow: .1')) - Math.max(...radii('square')) - 5) < .01);
+    assert.equal(generateShape('square; grow: -.1').points.length, 4);
+    // a star never crosses itself, and a shape shrunk away is gone
+    assert.equal(generateShape('star; grow: .1').points.rings.length, 1);
+    assert.equal(String(generateShape('circle; grow: -1.2').points), '50% 50%');
     // even bumps on a square: as far out at the middle of a side as at the corners
     let r = radii('points: 4; rotate: 45; grow: .1abs(cos(8t))');
     assert.ok([50, 25 * Math.SQRT2].every(at => r.some(v => Math.abs(v - at - 5) < .01)));
@@ -403,8 +406,27 @@ test('grow: pushes the outline out along its normals, measured along the outline
     let p = generateShape('circle; grow: .1t / 2π').points.map(String);
     assert.ok(Math.abs(parseFloat(p[0]) - parseFloat(p.at(-1))) < 1);
     // the frame's inner ring follows the same grow
-    let ring = generateShape('circle; grow: .05sin(12t); frame: .1').points.map(String);
-    assert.equal(ring.at(-1), ring[0]);
+    assert.equal(generateShape('circle; grow: .05sin(12t); frame: .1').points.rings.length, 2);
+});
+
+test('frame and grow by a constant are exact, as in @scene: a band w wide inside, the whole region d out', () => {
+    let rings = s => generateShape(s).points.rings.map(ring => ring.map(p => String(p).split(' ').map(v => parseFloat(v) / 50 - 1)));
+    let far = (q, rings) => Math.min(...rings.flatMap(r => r.map((a, i) => {
+        let b = r[(i + 1) % r.length], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+        return Math.hypot(q[0] - a[0] - t * dx, q[1] - a[1] - t * dy);
+    })));
+    // the inner ring of a crescent's frame is .1 from its outline everywhere, also where the outline wraps the center
+    let moon = 'subtract { circle; circle { scale: .9; move: .45 .135 } }', outline = rings(moon);
+    let [, inner] = rings(moon + '; frame: .1');
+    assert.ok(inner.every(q => Math.abs(far(q, outline) - .1) < .002));
+    // a star grown is the star .1 out, its corners round
+    assert.ok(rings('star; grow: .1')[0].every(q => Math.abs(far(q, rings('star')) - .1) < .002));
+    // a group's rings move together: the hole of a ring gets smaller
+    let [rim, hole] = rings('subtract { circle; circle { scale: .5 } } grow: .1');
+    assert.ok(rim.every(q => Math.abs(Math.hypot(...q) - 1.1) < .002) && hole.every(q => Math.abs(Math.hypot(...q) - .4) < .002));
+    // the inner rings take the outline's count, so frames of any width morph
+    let count = w => generateShape(`heart; frame: ${w}`).clip.split(',').length;
+    assert.equal(count(.04), count(.3));
 });
 
 test('noise(), what @R.t writes, closes at 2π and follows the seed', () => {

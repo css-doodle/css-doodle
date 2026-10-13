@@ -533,11 +533,14 @@ runs twice. Every other row is an attribute, and the last one wins. A
 preset's own steps come first, so `square; scale: .5` halves the
 square. `y` points up, and `rotate` turns counterclockwise, in degrees:
 `.25turn` is 90 and `2 * 30deg` is 60, while inside a call such as
-`sin(90deg)` the units are radians, as in math. The parts of `move` and `scale` are split by spaces,
-or by commas, and an operator keeps its operands: `move: k * .5 0` and
-`move: .5 -.25` are two parts each. `grow: d` pushes the outline out by
-`d`, and `frame: w` keeps a band `w` wide inside it, both as the shape
-is at that step.
+`sin(90deg)` the units are radians, as in math. The parts of `move` and
+`scale` are split by spaces, or by commas, and an operator keeps its
+operands: `move: k * .5 0` and `move: .5 -.25` are two parts each.
+`grow: d` pushes the outline out by `d`, and `frame: w` keeps a band
+`w` wide inside it, both as the shape is at that step and exactly, as
+in `@scene`: corners the outline turns away from come out round, and
+the outlines of a group move together, so its holes get smaller as it
+grows.
 
 **Groups.** `union`, `subtract` and `intersect` join whole shapes:
 `subtract { circle; circle { scale: .9; move: .45 .135 } }` is a
@@ -596,9 +599,10 @@ repeat, `t` and `i` start over in each contour, and `points: 0` leaves
 one out. Under `fill-rule: evenodd` the inner contours cut holes, so
 `points: 120, 60; r: 1, .5` is a ring. `@tile` and `@plot.scatter`
 read the region with its holes, and `@plot` spreads its cells over the
-contours by length. `frame` outlines each contour. Contour lists suit
-rings and other shapes around one center; for holes and cutouts
-elsewhere, a `subtract` group says the same thing more plainly.
+contours by length. `frame` and `grow` take each contour as a shape of
+its own. Contour lists suit rings and other shapes around one center;
+for holes and cutouts elsewhere, a `subtract` group says the same thing
+more plainly.
 
 A body in parentheses reads as commands, so one kept in a custom
 property is reused with `$name`: given `--gear: (points: 4n; r: 1, .5)`,
@@ -615,15 +619,18 @@ outline its own count, so two groups with the same counts morph in
 count follows the cuts.
 
 Lengths are in the units where the box is 2 across. `round: r` turns
-every corner into a curve of radius `r`, as far as the sides allow,
-the same on an outline of 4 points or 400; it runs before the steps.
-`grow` takes an expression in which `t` runs from 0 to 2π by length
+every corner into a curve of radius `r`, as far as the sides allow, the
+same on an outline of 4 points or 400; it runs before the steps. `grow`
+may also be an expression in `t`, which runs from 0 to 2π by length
 along the outline, not by angle, and any difference between its values
-at 0 and 2π is spread along the outline so the ends still meet. Sharp
-corners come out beveled. `@R.t(from, to)` writes a closed noise curve
-in `t` for one cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`.
-It follows the doodle's seed, or the `seed` command. `@plot` reads only
-the points, so it ignores `fill-rule`, `frame`, `round` and `grow`.
+at 0 and 2π is spread along the outline so the ends still meet. Each
+point then moves along the outline's normal, and sharp corners come out
+beveled. `@R.t(from, to)` writes a closed noise curve in `t` for one
+cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`. It follows the
+doodle's seed, or the `seed` command. A frame's inner outlines take as
+many points as the outline, so frames of different widths morph in
+`@keyframes`. `@plot` reads only the points, so it ignores `fill-rule`,
+`frame`, `round` and `grow`.
 
 **Tiles.** `@tile.kind(…)` and `@plot.scatter(…)` read the same body
 as the region to fill, `square` by default for `@tile`, along with

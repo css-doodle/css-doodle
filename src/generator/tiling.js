@@ -70,7 +70,10 @@ function bridge(rings) {
 }
 
 function overlay(A, B, op, joints) {
-    let test = rings => rings.length ? insideTest(bridge(rings), rings.evenodd) : () => 0;
+    let test = rings => {
+        let f = rings.length ? insideTest(bridge(rings), rings.evenodd) : () => 0;
+        return rings.positive ? (x, y) => f(x, y) > 0 : f;
+    };
     let a = test(A), b = test(B), T = 1e-9, sides = [], from = new Map(), rings = [];
     let result = (x, y) => {
         let p = !!a(x, y), q = !!b(x, y);
@@ -134,6 +137,37 @@ function overlay(A, B, op, joints) {
         if (ring.length > 2) rings.push(ring);
     }
     return rings;
+}
+
+// the region pushed out by d, or in when d < 0, round where it bends away, as rings filled on their left
+function offset(rings, d, evenodd) {
+    rings = overlay(Object.assign([...rings], { evenodd }), [], 'union', new Set());
+    let [x0, y0, x1, y1] = bounds(rings.flat(2));
+    // nothing is that far inside
+    if (d < 0 && -2 * d >= min(x1 - x0, y1 - y0)) return [];
+    if (!d) return rings;
+    let tol = .002, raw = rings.map(ring => {
+        let out = [];
+        ring.forEach((p, i) => {
+            let a = ring.at(i - 1), b = ring[(i + 1) % ring.length], ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - p[0], vy = b[1] - p[1];
+            let lu = hypot(ux, uy), lv = hypot(vx, vy), n = [uy / lu, -ux / lu], m = [vy / lv, -vx / lv];
+            let turn = atan2(ux * vy - uy * vx, ux * vx + uy * vy), at = ([x, y]) => [p[0] + d * x, p[1] + d * y];
+            if (turn * d > 0) {
+                // an arc around the corner, as a disk rolled along the outline leaves
+                let from = atan2(n[1], n[0]), k = min(64, ceil(abs(turn) / sqrt(8 * tol / abs(d))));
+                for (let j = 0; j <= k; ++j) out.push(at([cos(from + turn * j / k), sin(from + turn * j / k)]));
+            } else if (abs(d) * tan(abs(turn) / 2) < min(lu, lv) / 2) {
+                // the moved sides overlap: they meet, and no side turns around
+                let k = 1 + n[0] * m[0] + n[1] * m[1];
+                out.push(at([(n[0] + m[0]) / k, (n[1] + m[1]) / k]));
+            } else {
+                // or back through the corner, so what turns around winds the other way and is cut
+                out.push(at(n), p, at(m));
+            }
+        });
+        return out;
+    });
+    return overlay(Object.assign(raw, { positive: true }), [], 'union', new Set()).map(ring => thin(ring, tol / 2));
 }
 
 // a ring with its corners (only joints when given) as curves `[x, y, bx, by]` of radius r
@@ -209,6 +243,30 @@ function resample(rings, counts) {
         }
         return out;
     }).filter(ring => ring.length);
+}
+
+// rings with n points between them, by length, corners kept: the longest sides split, the shortest
+// folded into where the sides next to them meet, so an arc folds into the corner of its sides
+function recount(rings, n) {
+    let lens = rings.map(ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1))))), total = sum(lens), run = 0, done = 0;
+    return rings.map((ring, k) => {
+        let m = max(3, round(n * (run += lens[k]) / total) - done), at = i => ring[(i + ring.length) % ring.length];
+        let side = i => dist(at(i), at(i + 1)), pick = better => ring.reduce((j, p, i) => better(side(i), side(j)) ? i : j, 0);
+        done += m;
+        ring = [...ring];
+        while (ring.length < m) {
+            let i = pick((a, b) => a > b);
+            ring.splice(i + 1, 0, mix(at(i), at(i + 1), .5));
+        }
+        while (ring.length > m) {
+            let i = pick((a, b) => a < b), j = (i + 1) % ring.length, [a, p, q, b] = [at(i - 1), ring[i], ring[j], at(i + 2)];
+            let ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - q[0], vy = b[1] - q[1];
+            let t = ((q[0] - a[0]) * vy - (q[1] - a[1]) * vx) / (ux * vy - uy * vx), x = [a[0] + t * ux, a[1] + t * uy];
+            ring[i] = t >= 1 && dist(x, p) + dist(x, q) < dist(a, p) + dist(q, b) ? x : mix(p, q, .5);
+            ring.splice(j, 1);
+        }
+        return ring;
+    });
 }
 
 function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS) {
@@ -924,5 +982,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
 };

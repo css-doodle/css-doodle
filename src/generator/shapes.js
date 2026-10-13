@@ -12,7 +12,7 @@ import calc, { defaultContext, evaluate } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, fillet, resample, PHI,
+    shake, bend, inset, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, PI } = Math;
@@ -302,54 +302,57 @@ function createShapePoints(props, lo, hi, raw) {
     let rings = props.blocks ? combine(props, lo, hi) : vertices ? [vertices] : contours.map(trace);
     if (props.blocks && !isEmpty(props.points)) rings = resample(rings, contours.map(p => p.split));
     if (!rings.length) rings = [[[0, 0]]];
-    let run = (ring, c, rounding = radius) => {
-        let k = c % contours.length, p = contours[k], o = [0, 0], ps = ring, inner;
-        let path = rounding && corners(ring, null, rounding);
-        if (path) ps = toPairs(flatten(path, .002));
-        let map = fn => {
-            ps = ps.map(fn);
-            inner = inner?.map(fn);
-            path = path && path.map(([x, y, bx, by]) => bx === undefined ? fn([x, y]) : [...fn([x, y]), ...fn([bx, by])]);
-            o = fn(o);
-        };
+    // every ring at once: for grow and frame a group's rings are one region, each contour of a list its own
+    let run = (rings, rounding = radius) => {
+        let paths = rings.map(ring => rounding && corners(ring, null, rounding));
+        let os = rings.map(() => [0, 0]), units = rings.map((_, c) => props.blocks ? 0 : c);
+        rings = rings.map((ring, c) => paths[c] ? toPairs(flatten(paths[c], .002)) : ring);
         for (let [name, text] of steps) {
-            if ((name == 'rotate' || name == 'grow') && text.includes(',')) {
-                let list = parseValueGroup(text, { noSpace: true });
-                text = list[index[k] % list.length];
+            let f = fns[0].formula(text), frame = name == 'frame';
+            // a frame, or a grow by a constant, is exact: the band inside, the region moved out
+            if (frame || name == 'grow' && !text.includes(',') && [1, 2, 4].every(t => f(t) == f(0))) {
+                let d = frame ? -(evaluate(text, props) || .002) : f(0), next = [], ids = [];
+                for (let u of new Set(units)) {
+                    let own = rings.filter((_, c) => units[c] == u), region = own.flat(2).every(isFinite) && offset(own, 0, evenodd);
+                    // an outline with no area stays put; a frame's inner rings take as many points as its outline, so frames morph
+                    if (region.length) own = frame ? [...region, ...recount(offset(region, d), region.flat().length).map(ring => ring.reverse())] : offset(region, d);
+                    own.forEach(ring => next.push(ring) && ids.push(u));
+                }
+                os = next.map(() => os[0] || [0, 0]);
+                [rings, units, paths] = [next, ids, []];
+                continue;
             }
-            if (name == 'rotate') {
-                let a = PI / 180 * (evaluate(degrees(text), { ...p, deg: PI / 180, turn: 2 * PI }) || 0), cs = cos(a), sn = sin(a);
-                map(([x, y]) => [x * cs - y * sn, y * cs + x * sn]);
-            } else if (name == 'move' || name == 'scale') {
-                let [a, b] = parsePair(text, name == 'move' ? 0 : 1, p);
-                map(([x, y]) => name == 'move' ? [x + a, y + b] : [x * a, y * b]);
-            } else if (name == 'grow') {
-                let f = fns[k].formula(text);
-                ps = wave(ps, f, .001);
-                inner &&= wave(inner, f, .001);
-                path = null;
-            } else {
-                let w = evaluate(text, p) * (turn > 1 ? 2 : 1) || .002;
-                inner = ps.map(([x, y]) => {
-                    let a = atan2(y - o[1], x - o[0]);
-                    return [x - w * cos(a), y - w * sin(a)];
-                });
-                path = null;
-            }
+            rings = rings.map((ring, c) => {
+                let k = c % contours.length, p = contours[k], value = text, fn;
+                if ((name == 'rotate' || name == 'grow') && text.includes(',')) {
+                    let list = parseValueGroup(text, { noSpace: true });
+                    value = list[index[k] % list.length];
+                }
+                if (name == 'grow') {
+                    paths[c] = null;
+                    return wave(ring, fns[k].formula(value), .001);
+                }
+                if (name == 'rotate') {
+                    let a = PI / 180 * (evaluate(degrees(value), { ...p, deg: PI / 180, turn: 2 * PI }) || 0), cs = cos(a), sn = sin(a);
+                    fn = ([x, y]) => [x * cs - y * sn, y * cs + x * sn];
+                } else {
+                    let [a, b] = parsePair(value, name == 'move' ? 0 : 1, p);
+                    fn = ([x, y]) => name == 'move' ? [x + a, y + b] : [x * a, y * b];
+                }
+                paths[c] = paths[c] && paths[c].map(([x, y, bx, by]) => bx === undefined ? fn([x, y]) : [...fn([x, y]), ...fn([bx, by])]);
+                os[c] = fn(os[c]);
+                return ring.map(fn);
+            });
         }
-        origin = o;
-        return [ps, path, inner && [inner[0], ...inner.slice(1).reverse()]];
+        return rings.length ? { rings, paths, os } : { rings: [[[0, 0]]], paths, os: [[0, 0]] };
     };
 
     if (raw) {
-        return Object.assign(rings.flatMap((ring, c) => {
-            let [ps, , inner] = run(ring, c);
-            return (inner ? [ps, inner] : [ps]).map(ps => ps.map(view));
-        }), { evenodd });
+        return Object.assign(run(rings).rings.map(ring => ring.map(view)), { evenodd });
     }
 
     if (props.scatter) {
-        rings = rings.map((ring, c) => run(ring, c, 0)[0]);
+        rings = run(rings, 0).rings;
         let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
         let aspect = w / h > 0 && w / h < Infinity ? w / h : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
@@ -444,17 +447,11 @@ function createShapePoints(props, lo, hi, raw) {
     let rule = (fill == 'nonzero' || fill == 'evenodd') && fill;
     if (rule) points.push(new Point(rule, ''));
 
-    let paths = [];
-    rings = rings.map((ring, c) => {
-        let [ps, path, side] = run(ring, c), at = points.length;
-        paths.push(path);
-        ps.forEach(add);
-        if (side) {
-            add(ps[0]);
-            side.forEach(add);
-            add(side[0]);
-            add(ps[0]);
-        }
+    let { rings: out, paths, os } = run(rings);
+    rings = out.map((ring, c) => {
+        let at = points.length;
+        origin = os[c];
+        ring.forEach(add);
         return points.slice(at);
     });
 
