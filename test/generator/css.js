@@ -1035,6 +1035,11 @@ test('shaders and patterns are records of the same shape', () => {
     let [pattern] = Object.values(patterns);
     assert.equal(pattern.source, 'grid: 2; fill: red;');
     assert.deepEqual(pattern.target, { selector: 'c-1-1-1', type: 'background' });
+    // a pseudo-element or state of the host or grid is measured on the host or grid
+    let target = code => Object.values(compile(code, '2').patterns)[0].target.selector;
+    assert.equal(target(':doodle::after { background: @pattern(fill: red) }'), ':host');
+    assert.equal(target(':doodle(:hover) { background: @pattern(fill: red) }'), ':host');
+    assert.equal(target(':container::before { background: @pattern(fill: red) }'), ':container');
 });
 
 test('@udx/@udy bind pointer and size uniforms together', () => {

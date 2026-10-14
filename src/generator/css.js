@@ -577,7 +577,8 @@ class Rules {
         this[kind + 's'][id] = {
             source,
             target: {
-                selector: special ? selector : (property === '@grid') ? ':host' : cell.id,
+                // the element to measure: :host::after measures the host, :container::before the grid
+                selector: special ? (isHostSelector(selector) ? ':host' : ':container') : (property === '@grid') ? ':host' : cell.id,
                 type: (!special && property === '@content') ? 'content' : 'background',
             },
             arg,
