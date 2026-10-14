@@ -894,12 +894,7 @@ function parseKeyframes(cur, brace) {
     cur.next(); // '{'
 
     while (!cur.end()) {
-        let tok = cur.peek();
-        if (tok.isSpace()) {
-            cur.next();
-            continue;
-        }
-        if (tok.isSymbol('}')) {
+        if (cur.peek().isSymbol('}')) {
             cur.next();
             break;
         }
