@@ -17,6 +17,7 @@ const mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
 const dist = (p, q) => hypot(p[0] - q[0], p[1] - q[1]);
 const lists = n => Array.from({ length: n }, () => []);
 const sum = list => list.reduce((a, b) => a + b, 0);
+const perimeter = ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1))));
 const turn = (ring, i) => {
     let [ax, ay] = ring.at(i - 1), [px, py] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
     let ux = px - ax, uy = py - ay, vx = bx - px, vy = by - py;
@@ -69,7 +70,7 @@ function bridge(rings) {
         : [...rings[0], ...rings.slice(1).flatMap(ring => [rings[0][0], ...ring, ring[0]]), rings[0][0]];
 }
 
-function overlay(A, B, op, joints) {
+function overlay(A, B, op, joints = new Set()) {
     let test = rings => {
         let f = rings.length ? insideTest(bridge(rings), rings.evenodd) : () => 0;
         return rings.positive ? (x, y) => f(x, y) > 0 : f;
@@ -141,7 +142,7 @@ function overlay(A, B, op, joints) {
 
 // the region pushed out by d, or in when d < 0, round where it bends away, as rings filled on their left
 function offset(rings, d, evenodd) {
-    rings = overlay(Object.assign([...rings], { evenodd }), [], 'union', new Set());
+    rings = overlay(Object.assign([...rings], { evenodd }), [], 'union');
     let [x0, y0, x1, y1] = bounds(rings.flat(2));
     // nothing is that far inside
     if (d < 0 && -2 * d >= min(x1 - x0, y1 - y0)) return [];
@@ -167,7 +168,7 @@ function offset(rings, d, evenodd) {
         });
         return out;
     });
-    return overlay(Object.assign(raw, { positive: true }), [], 'union', new Set()).map(ring => thin(ring, tol / 2));
+    return overlay(Object.assign(raw, { positive: true }), [], 'union').map(ring => thin(ring, tol / 2));
 }
 
 // a ring with its corners (only joints when given) as curves `[x, y, bx, by]` of radius r
@@ -241,7 +242,7 @@ function resample(rings, counts) {
 // rings with n points between them, by length, corners kept: the longest sides split, the shortest
 // folded into where the sides next to them meet, so an arc folds into the corner of its sides
 function recount(rings, n) {
-    let lens = rings.map(ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1))))), total = sum(lens), run = 0, done = 0;
+    let lens = rings.map(perimeter), total = sum(lens), run = 0, done = 0;
     return rings.map((ring, k) => {
         let m = max(3, round(n * (run += lens[k]) / total) - done), at = i => ring[(i + ring.length) % ring.length];
         let side = i => dist(at(i), at(i + 1)), pick = better => ring.reduce((j, p, i) => better(side(i), side(j)) ? i : j, 0);
@@ -702,7 +703,7 @@ function delaunay(px, py, box, inside, count, gap) {
 }
 
 function border(rings, count) {
-    let len = sum(rings.map(ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1)))))), a = area(bridge(rings).flat());
+    let len = sum(rings.map(perimeter)), a = area(bridge(rings).flat());
     let s = (len * sqrt(3) / 4 + sqrt(len * len * 3 / 16 + 2 * sqrt(3) * count * a)) / (sqrt(3) * count);
     let rim = [], sharp = rings.flatMap(ring => ring.filter((p, i) => turn(ring, i) > .5));
     for (let p of sharp.concat(resample(rings, [round(len / s)]).flat())) if (rim.length < count - 1 && rim.every(q => dist(p, q) > s / 2)) rim.push(p);
