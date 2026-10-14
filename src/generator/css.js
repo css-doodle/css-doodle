@@ -953,29 +953,17 @@ class Rules {
             e.families = familiesOf(texts[0]);
         }
 
-        let runs = new Map();
+        // a rule leaves the per-cell run only past rules on other properties
+        let shares = (a, b) => a.families.has('*') || b.families.has('*') || [...a.families].some(f => b.families.has(f));
         for (let i = 0; i < entries.length; i++) {
             let e = entries[i];
-            if (e.kind !== 'cells') continue;
-            for (let f of e.families) {
-                let r = runs.get(f);
-                if (r) r.last = i;
-                else runs.set(f, { first: i, last: i });
-            }
+            e.before = e.kind !== 'cells' && entries.slice(0, i).every(p => p.before || !shares(p, e));
         }
-        for (let i = 0; i < entries.length; i++) {
+        for (let i = entries.length - 1; i >= 0; i--) {
             let e = entries[i];
-            if (e.kind === 'cells') {
-                e.where = 'run';
-                continue;
-            }
-            let before = true, after = true;
-            for (let [f, r] of runs) {
-                if (f !== '*' && !e.families.has('*') && !e.families.has(f)) continue;
-                if (r.first < i) before = false;
-                if (r.last > i) after = false;
-            }
-            e.where = before ? 'before' : after ? 'after' : 'run';
+            e.where = e.before ? 'before'
+                : e.kind !== 'cells' && entries.slice(i + 1).every(n => n.where === 'after' || !shares(n, e)) ? 'after'
+                : 'run';
         }
 
         let sections = { before: '', after: '' };

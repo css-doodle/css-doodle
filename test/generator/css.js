@@ -949,6 +949,9 @@ test('shared rules keep the cascade order of their property family', () => {
         '#c-1-1-1 {top:1 px;}#c-2-1-1 {top:2 px;}:is(cell,#_) {inset:0;}');
     assert.equal(cells('top: @i px; all: unset;', '2x1'),
         '#c-1-1-1 {top:1 px;}#c-2-1-1 {top:2 px;}:is(cell,#_) {all:unset;}');
+    // a shared rule cannot pass another shared rule of its family
+    assert.match(cells('width: @i px; @size: 10px; height: 20px;', '2x1'), /height:10px;[^]*height:20px;/);
+    assert.match(cells('top: @i px; @place: center; position: relative;', '2x1'), /absolute;[^]*position:relative;/);
 });
 
 test('a declaration inside a conditional block keeps its source order', () => {
