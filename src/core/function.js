@@ -152,6 +152,8 @@ function makeSequence(c) {
                 sequence(count, run);
                 return '';
             }
+            // whole first: as text, 1e-7 would read as the range 1-7
+            evaluated = Math.ceil(evaluated);
         }
         // nested sequences multiply, so they share one budget
         let outer = env.extra.reduce((n, e) => n * (Number(e?.[SEQ.max]) || 1), 1);

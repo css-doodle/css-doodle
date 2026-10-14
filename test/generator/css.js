@@ -245,6 +245,9 @@ test('$ falls back to splicing when a function result is not a number', () => {
 test('$ inside a sequence tracks the iteration variables', () => {
     assertContains('@grid: 1; --l: @M4($(@n*2));', '--l:2 4 6 8;');
     assertContains('@grid: 1; --l: @m(3.8, @n);', '--l:1,2,3,4;');
+    // a tiny count is one item, not a range read from its exponent
+    assertContains('@grid: 1; --l: @m(0.1 + 0.2 - 0.3, @n);', '--l:1;');
+    assertContains('@grid: 1; --l: @m(sin(π), @n);', '--l:1;');
 });
 
 test('nested sequences share the 65536 item limit', () => {
