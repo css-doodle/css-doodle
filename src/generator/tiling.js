@@ -223,15 +223,6 @@ function corners(ring, joints, r) {
     return out;
 }
 
-// only where the outline turns: shapes that just touch keep their outlines
-function fillet(ring, joints, r) {
-    let path = corners(ring, joints, r), out = [];
-    if (path === ring) return ring;
-    let f = flatten(path, .002);
-    for (let i = 0; i < f.length; i += 2) out.push([f[i], f[i + 1]]);
-    return out;
-}
-
 function resample(rings, counts) {
     let sides = rings.map(ring => ring.map((p, i) => dist(ring[(i + 1) % ring.length], p)));
     let lens = sides.map(sum), total = sum(lens), run = 0, done = 0;
@@ -995,5 +986,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
+    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, PHI,
 };

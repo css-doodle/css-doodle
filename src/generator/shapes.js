@@ -12,7 +12,7 @@ import calc, { defaultContext, evaluate } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, fillet, resample, PHI,
+    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, PI } = Math;
@@ -172,7 +172,7 @@ function combine(props, lo, hi) {
         rings = rings ? overlay(rings, next, op, joints) : next;
     }
     let k = calc('smooth', props);
-    return (rings || []).map(ring => k > 0 ? fillet(ring, joints, k) : ring);
+    return (rings || []).map(ring => k > 0 ? toPairs(flatten(corners(ring, joints, k), .002)) : ring);
 }
 
 // [x0, y0, x1, y1, …] → [[x0, y0], [x1, y1], …]
