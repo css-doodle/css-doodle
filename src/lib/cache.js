@@ -6,13 +6,14 @@ export function memo(fn) {
             : args.join('\0');
         let value = cache.get(key);
         if (value === undefined) {
-            if (cache.size >= 4096 || size > 1 << 20) {
+            // string results count too: a polygon can be 100k characters
+            if (cache.size >= 4096 || size > 1 << 22) {
                 cache.clear();
                 size = 0;
             }
             value = fn(...args);
             cache.set(key, value);
-            size += key.length;
+            size += key.length + (typeof value === 'string' ? value.length : 0);
         }
         return value;
     }
