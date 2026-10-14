@@ -249,6 +249,11 @@ test('nested blocks inside a pseudo parse as conds', () => {
     assert.equal(pseudo.styles[0].name, '@nth');
 });
 
+test('a @doodle body keeps its π for its own parse, which skips quotes', () => {
+    let [rule] = parseCss(`background: @doodle(:after { content: "π" } --a: π);`);
+    assert.equal(rule.value[0][0].arguments[0].values[0].value, ':after { content: "π" } --a: π');
+});
+
 test('@pattern bodies are kept verbatim like @doodle', () => {
     let [rule] = parseCss(`background: @pattern(grid: 2; fill: @p(red, blue););`);
     let [arg] = rule.value[0][0].arguments;

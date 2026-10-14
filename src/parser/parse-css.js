@@ -293,7 +293,7 @@ function finishFunc(cur, name, end, isCalc, variables, index, shaped) {
         if (paren && paren.index === end && paren.isSymbol('(')) {
             cur.next();
             if (composable(name)) {
-                func.arguments = parseDoodleBody(cur, paren.index + 1, name.startsWith('@scene'));
+                func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
                 let closed = parseArguments(cur, variables, shaped || readsShape(name));
                 func.arguments = closed.args;
@@ -553,7 +553,8 @@ function quotesWrapWhole(values, quote) {
     return true;
 }
 
-function parseDoodleBody(cur, start, expand) {
+function parseDoodleBody(cur, start, name) {
+    let expand = name.startsWith('@scene');
     let paren = 0;
     let quote = false;
     let end = cur.source.length;
@@ -611,7 +612,9 @@ function parseDoodleBody(cur, start, expand) {
         while (blocks.length) values = blocks.pop()[0].concat(values);
         if (values.some(v => v.type === 'func')) return [normalizeArgument([repeat('1', values)])];
     }
-    let body = substitutePi(cur.source.slice(start, end), cur.source[start - 1]);
+    let body = cur.source.slice(start, end);
+    // a nested doodle is parsed again, and that parse leaves the π in quotes alone
+    if (!name.startsWith('@doodle')) body = substitutePi(body, cur.source[start - 1]);
     return [normalizeArgument([Node.text(body.trim() || body)])];
 }
 
