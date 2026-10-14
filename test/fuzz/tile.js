@@ -62,6 +62,14 @@ test('tiles survive random commands', () => {
     }
 });
 
+test('penrose builds no tiles far outside a small outline', () => {
+    let start = performance.now();
+    for (let i = 1; i <= 30; ++i) {
+        Function.tile.penrose(cellOf(30, i), { context: {}, extra: [], seed: '1' })('circle; scale: .01; move: .9 .9');
+    }
+    assert.ok(performance.now() - start < 1000);
+});
+
 test('scatter survives random commands', () => {
     let random = makeRandom(SEED + 1);
     for (let c = 0; c < CASES / 4; ++c) {

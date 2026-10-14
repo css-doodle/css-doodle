@@ -557,7 +557,7 @@ function lattice(k, box, bounds, s, [a, b], turn, half) {
 }
 
 // P3 rhombs from Robinson triangles; a rhombus is a triangle and its mirror over BC
-function penrose(box, bounds, s) {
+function penrose(box, bounds, s, half, grow = 1) {
     let [cx, cy] = centre(box);
     let far = hypot(max(cx - bounds[0], bounds[2] - cx), max(cy - bounds[1], bounds[3] - cy)) / cos(PI / 10) + 2 * s;
     let n = max(0, ceil(log(far / s) / log(PHI))), r = s * PHI ** n, tris = [];
@@ -574,6 +574,11 @@ function penrose(box, bounds, s) {
         }
         let [qx, qy] = at(bx, by, ax, ay), [rx, ry] = at(bx, by, cx, cy);
         return [[1, rx, ry, cx, cy, ax, ay], [1, qx, qy, rx, ry, bx, by], [0, rx, ry, qx, qy, ax, ay]];
+    }).filter(([, ax, ay, bx, by, cx, cy]) => {
+        // its rhombs, grown as the reach test grows them, stay within grow sides of it
+        let m = grow * max(abs(bx - ax), abs(cx - ax), abs(cx - bx), abs(by - ay), abs(cy - ay), abs(cy - by));
+        return min(ax, bx, cx) - m < bounds[2] && max(ax, bx, cx) + m > bounds[0]
+            && min(ay, by, cy) - m < bounds[3] && max(ay, by, cy) + m > bounds[1];
     });
     return tris.filter(([, ax, ay, bx, by, cx, cy]) => (bx - ax) * (cy - ay) > (cx - ax) * (by - ay)).map(([t, ax, ay, bx, by, cx, cy]) => {
         let p = [ax, ay, bx, by, bx + cx - ax, by + cy - ay, cx, cy];
@@ -719,7 +724,7 @@ function tiles(make, box, screen, inside, count, grow, derive, half) {
     let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
     let keep = pieces => pieces.filter(reacher(box, inside, grow, derive));
-    let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half));
+    let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half, grow));
     let hi = sqrt(area / count), fit = (size, hi, lo) => {
         for (let i = 0; i < 30 && size(hi).length > count; ++i) hi *= 1.25;
         lo ??= hi / 8;
