@@ -127,6 +127,8 @@ test('sdf takes a distance in d', () => {
 test('mirror evaluates every reflection', () => {
     let { body } = scene('sphere { r: .1; mirror: x z }');
     assert.equal(body.match(/length\(g_\d+\) - \.1/g).length, 4);
+    // a repeated axis adds no copies
+    assert.equal(scene('sphere { r: .1; mirror: x z x z x }').body.match(/length\(g_\d+\) - \.1/g).length, 4);
 });
 
 test('a copy block of bodies writes each copy out and draws what the loop draws', () => {

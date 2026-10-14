@@ -266,7 +266,8 @@ export default function drawScene(code, extra, report = () => {}) {
                 // every reflection reuses the same rand() sites
                 let axes = [];
                 for (let t of m.value.filter(t => !t.isSpace() && !t.isSymbol(','))) {
-                    if (AXES[t.value]) axes.push(t.value);
+                    // a repeated axis mirrors nothing new, and each axis doubles the code
+                    if (AXES[t.value]) axes.includes(t.value) || axes.push(t.value);
                     else warn(`mirror takes x, y or z, not ${t.value}`);
                 }
                 let start = ctx.sites, end = start;
