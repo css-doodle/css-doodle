@@ -259,6 +259,8 @@ test('nested sequences share the 65536 item limit', () => {
     assert.equal(count('--l: @M(1000, @M(1000, x));'), 1000 * 65);
     assert.equal(count('--l: @M(65536, @M(65536, @M(65536, x)));'), 65536);
     assert.equal(count('--l: @M(3, @M(4, x));'), 12);
+    // the outer sequence counts once, however deep the inner one sits
+    assertContains('--l: @m(40, @n(*@pn(@m2(1), @m2(-1))));', '--l:1,2,-3,-4,5,6,-7,-8,');
 });
 
 test('a sequence count that evaluates to 0 repeats nothing', () => {

@@ -145,24 +145,23 @@ function makeSequence(c) {
                     getValue(action(n, x, y, max, X, Y, index, signature))).join(',');
         if (/\D/.test(count) && !/\d+[x-]\d+|^\s*\d+\s*x\s*\d+\s*$/.test(count)) {
             evaluated = calc(count);
-            // a zero count repeats nothing; the text form still runs for its
-            // random draws, so every later random value stays the same
             if (evaluated === 0) {
                 sequence(count, run);
                 return '';
             }
-            // whole first: as text, 1e-7 would read as the range 1-7
             evaluated = Math.ceil(evaluated);
         }
-        // nested sequences multiply, so they share one budget
-        let outer = env.extra.reduce((n, e) => n * (Number(e?.[SEQ.max]) || 1), 1);
+        let seen = new Set();
+        let outer = env.extra.reduce((n, e) => {
+            let key = e?.[SEQ.sig] ?? e;
+            if (seen.has(key)) return n;
+            seen.add(key);
+            return n * (Number(e?.[SEQ.max]) || 1);
+        }, 1);
         return sequence(evaluated, run, Math.max(1, Math.floor(MAX_SEQUENCE / outer))).join(c);
     });
 }
 
-// The @n family: with no sequence tuple in scope the source token is
-// echoed back as-is (a non-function return passes through callFunc).
-// Argument composition pushes an empty tuple, which is no context either.
 function seq(token, make) {
     return (cell, { extra }) => {
         let e = last(extra);
