@@ -9,11 +9,9 @@ const statement = (name, value, extra) => ({ type: 'statement', name, value, ...
 
 test('empty and malformed input yields an empty svg block', () => {
     assert.deepEqual(parseSvg(''), svg());
-    assert.deepEqual(parseSvg('any'), svg());
     assert.deepEqual(parseSvg('{}'), svg());
     assert.deepEqual(parseSvg('{'), svg());
     assert.deepEqual(parseSvg('}'), svg());
-    assert.deepEqual(parseSvg('{any}'), svg());
     assert.deepEqual(parseSvg('any:;'), svg(statement('any', '')));
     assert.deepEqual(parseSvg('circle {}'), svg(block('circle')));
     assert.deepEqual(parseSvg('circle { name: } '), svg(block('circle', [statement('name', '')])));
@@ -101,10 +99,21 @@ test('#id and .class expand into statements', () => {
     assert.deepEqual(parseSvg('#abc {}'), svg(block('#abc')));
 });
 
-test('trailing semicolons and stray words after a block are dropped', () => {
+test('trailing semicolons after a block are dropped', () => {
     assert.deepEqual(parseSvg('path {};'), svg(block('path')));
-    assert.deepEqual(parseSvg('circle { cx: 5 } junk;'), svg(block('circle', [statement('cx', '5')])));
-    assert.deepEqual(parseSvg('circle { cx: 5 } junk'), svg(block('circle', [statement('cx', '5')])));
+});
+
+test('a bare name is an empty element unless it continues a statement', () => {
+    assert.deepEqual(parseSvg('feMerge { feMergeNode; feMergeNode { in: a } }'), svg(
+        block('feMerge', [block('feMergeNode'), block('feMergeNode', [statement('in', 'a')])])
+    ));
+    assert.deepEqual(parseSvg('feMerge { femergenode }'), svg(block('feMerge', [block('feMergeNode')])));
+    assert.deepEqual(parseSvg('any'), svg(block('any')));
+    assert.deepEqual(parseSvg('circle { cx: 5 } junk'), svg(block('circle', [statement('cx', '5')]), block('junk')));
+    // after a statement it is the statement's next value
+    assert.deepEqual(parseSvg('animate { values: red; blue }'), svg(block('animate', [statement('values', 'red;blue')])));
+    // anything but a plain name is dropped
+    assert.deepEqual(parseSvg('circle {} a(1); #b; .c; 12; rect*3; g circle;'), svg(block('circle')));
 });
 
 test('quoted values keep their quotes and braces', () => {

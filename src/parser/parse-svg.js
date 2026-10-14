@@ -199,9 +199,19 @@ function readSvgStatement(iter, head) {
     return rules;
 }
 
+function readSvgTail(head, last) {
+    let text = textOf(head);
+    if (last && typeof last.value === 'string') {
+        last.value += ';' + text;
+        return [];
+    }
+    return /^\s*[a-z][\w-]*\s*$/i.test(text) ? [makeBlock(adjustName(text.trim()))] : [];
+}
+
 const svg = {
     readBlocks: readSvgBlocks,
     readStatement: readSvgStatement,
+    readTail: readSvgTail,
 };
 
 // one selector chain per comma group: `g.a > circle*3, rect`

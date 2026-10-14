@@ -304,6 +304,11 @@ test('a leading lineto in d becomes the moveto, so @arc data chains', () => {
         `<svg ${NS}><path><animate attributeName="d" values="M 1 0 A 1 1 0 0 1 0 1;M 2 0 A 2 2 0 0 1 0 2" dur="1s"/></path></svg>`);
 });
 
+test('a bare name is an empty element', () => {
+    assert.equal(svg('feMerge { feMergeNode; feMergeNode { in: SourceGraphic } }'),
+        `<svg ${NS}><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></svg>`);
+});
+
 test('repeatCount accepts infinite', () => {
     assert.equal(svg('circle { animate { attributeName: r; values: 1;5; dur: 2s; repeatCount: infinite } }'),
         `<svg ${NS}><circle><animate attributeName="r" values="1;5" dur="2s" repeatCount="indefinite"/></circle></svg>`);

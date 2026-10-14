@@ -9,23 +9,16 @@ import { textOf } from './tokenizer.js';
 // The language supplies the two readers. Both get the iterator on the
 // ':' or '{' and the head tokens before it; null means the symbol is
 // no separator here: readBlocks keeps the head and skips the '{',
-// readStatement leaves the ':' in the head (xlink:href). An optional
-// readTail gets a head that ends with neither.
+// readStatement leaves the ':' in the head (xlink:href). readTail gets
+// a head that ends with neither, and the rule before it.
 
 function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
     let rules = [];
     let head = [];
     let depth = 0;
 
-    // leftovers before a ';' or the end of the block belong to the last
-    // statement, `animate { values: 1; 2; 3 }`, unless the language reads them
     const appendTail = () => {
-        let last = rules[rules.length - 1];
-        if (readTail) {
-            if (textOf(head).trim()) rules.push(...readTail(head));
-        } else if (last && head.length && typeof last.value === 'string') {
-            last.value += ';' + textOf(head);
-        }
+        if (textOf(head).trim()) rules.push(...readTail(head, rules[rules.length - 1]));
         head = [];
     };
 

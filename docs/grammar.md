@@ -385,8 +385,9 @@ it is a declaration whose value is a block.
 ```
 
 ```
-svg-body        = { svg-block | svg-declaration }
+svg-body        = { svg-block | svg-element | svg-declaration }
 svg-block       = selector { ',' selector } '{' svg-body '}'
+svg-element     = name [ ';' ]
 selector        = element { [ '>' ] element }
 element         = name [ '#' id ] { '.' class } [ '*' count ]
 count           = number | number 'x' number | number '-' number
@@ -403,7 +404,9 @@ attributes. `#id` and `.class` set `id` and `class`; `id:` wins over
 case-insensitive and emitted in SVG spelling (`lineargradient` →
 `linearGradient`); custom property names keep their case. `g circle` and
 `g > circle` both nest; declarations beside an `svg { … }` block belong
-to it, and several `svg` blocks merge.
+to it, and several `svg` blocks merge. A name alone, `feMergeNode;`, is
+an empty element, except right after a declaration, where it is the
+next `;`-separated value: `values: 1; 2; 3`.
 
 `*count` repeats the element like `@M(count, …)`. The count is a
 number, a grid (`2x3`) or a range (`1-3`). Inside the element `@n` is
