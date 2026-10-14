@@ -483,6 +483,8 @@ function compile(expr) {
     }
 
     const root = stack[0] || (() => 0);
+    // a value left over, as in "10px solid red", makes a list, not a number
+    if (stack.length > 1) return (ctx, history) => (miss(history), Number(root(ctx, history)) || 0);
     return (ctx, history) => Number(root(ctx, history)) || 0;
 }
 

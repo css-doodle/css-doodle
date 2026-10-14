@@ -390,6 +390,7 @@ test('deref: a lone variable name acts as a generation-time var()', () => {
         c: 'tomato', t: 'rotate(30deg)', w: '10px',
         s: 'calc(100px + 10em)', n: '3', e: 'n + 2',
         a: 'b', b: 'tomato', 'my-color': 'gold',
+        border: '10px solid red', pad: '1px 2px',
     };
     // non-math values pass through verbatim
     assert.equal(deref('c', ctx), 'tomato');
@@ -397,6 +398,8 @@ test('deref: a lone variable name acts as a generation-time var()', () => {
     assert.equal(deref('w', ctx), '10px');
     assert.equal(deref('s', ctx), 'calc(100px + 10em)');
     assert.equal(deref('my-color', ctx), 'gold');
+    assert.equal(deref('border', ctx), '10px solid red');
+    assert.equal(deref('pad', ctx), '1px 2px');
     // single-name chains resolve to the final value
     assert.equal(deref('a', ctx), 'tomato');
     // values that read as math evaluate, once
