@@ -51,10 +51,8 @@ export default function gridStyleRules({
         add(':container', css`
             width: ${width};
             height: ${height};
-            left: 50%;
-            top: 50%;
-            transform-origin: 0 0;
-            transform: translate(-50%, -50%);
+            left: calc((100% - ${width}) / 2);
+            top: calc((100% - ${height}) / 2);
         `);
     }
     if (flex) {
