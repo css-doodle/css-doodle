@@ -762,11 +762,17 @@ function parsePseudo(cur, brace) {
     let start = cur.headIndex();
     cur.i = brace;
     let selector = cur.source.slice(start, cur.headIndex()).replace(/\/\*[\s\S]*?\*\//g, ' ').trim();
-    cur.next(); // '{'
+    let open = cur.next(); // '{'
 
     let ctx = cur.ctx;
     let outer = ctx.selectors;
-    let selectors = ctx.selectors = nestSelectors(splitSelectors(selector), outer);
+    let selectors = nestSelectors(splitSelectors(selector), outer);
+    // nested lists multiply: a block past this is dropped
+    if (selectors.length > 1000 || selectors.some(s => s.length > 1e4)) {
+        warn(ctx, 'selector too large', open.pos);
+        selectors = [];
+    }
+    ctx.selectors = selectors;
     let styles = parseBlockBody(cur);
     ctx.selectors = outer;
     return { type: 'pseudo', selector, selectors, styles };

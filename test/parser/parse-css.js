@@ -298,6 +298,14 @@ test('selectors resolve against the enclosing block', () => {
     assert.deepEqual(hover.styles.map(n => n.selectors), [[':host'], [':container']]);
 });
 
+test('nested lists that multiply past 1000 selectors drop their block', () => {
+    for (let open of [':a,:b{', '& &{']) {
+        let rules = parseCss(open.repeat(30) + 'x: y' + '}'.repeat(30) + 'z: w');
+        assert.equal(rules.at(-1).property, 'z');
+        assert.deepEqual(rules.warnings.map(w => w.message), ['selector too large']);
+    }
+});
+
 test('selector lists split on top-level commas only', () => {
     let [pseudo] = parseCss(`:is(a, b), [title="a,b"],
         & :hover { x: y }`);
