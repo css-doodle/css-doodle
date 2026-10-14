@@ -116,6 +116,7 @@ test('needs lists what only the runtime can do', async () => {
     assert.deepEqual(await needs('rotate: @t(*1deg);'), []);
     assert.deepEqual(await needs('color: red;', { attributes: { 'click:update': '' } }), ['update']);
     assert.deepEqual(await needs('color: red;', { attributes: { 'auto:update': '2s' } }), ['update']);
+    assert.deepEqual(await needs('@content: @doodle(@grid: 2; background: red);'), ['doodle']);
     assert.deepEqual(await needs('color: red; transition: color 1s;'), []);
     assert.deepEqual(await needs('', { attributes: { use: 'var(--rule)' } }), ['variables']);
 });

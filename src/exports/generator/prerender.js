@@ -38,6 +38,7 @@ function dropStrayTemplateEnds(html) {
  *   mouse, size the pointer and size uniforms stay at 0
  *   clock       @T/@TS count from the build time, not the visit
  *   update      click:update / auto:update
+ *   doodle      a @doodle in @content stays its source text
  *   safari      an animated sized @doodle is drawn unscaled in Safari
  *   variables   a var() in `use` has no value in `options.variables`
  *
@@ -97,6 +98,7 @@ export default async function prerender(code = '', options = {}) {
     if ('click:update' in attributes || 'click-to-update' in attributes || 'auto:update' in attributes) {
         needs.add('update');
     }
+    if (Object.values(content).some(c => c.includes('<css-doodle'))) needs.add('doodle');
 
     grid = compiled.grid || grid;
     let replace = createReplacer(host, compiled);
