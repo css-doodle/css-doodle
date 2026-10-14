@@ -153,7 +153,9 @@ function makeSequence(c) {
                 return '';
             }
         }
-        return sequence(evaluated, run).join(c);
+        // nested sequences multiply, so they share one budget
+        let outer = env.extra.reduce((n, e) => n * (Number(e?.[SEQ.max]) || 1), 1);
+        return sequence(evaluated, run, Math.max(1, Math.floor(MAX_SEQUENCE / outer))).join(c);
     });
 }
 

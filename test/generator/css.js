@@ -247,6 +247,13 @@ test('$ inside a sequence tracks the iteration variables', () => {
     assertContains('@grid: 1; --l: @m(3.8, @n);', '--l:1,2,3,4;');
 });
 
+test('nested sequences share the 65536 item limit', () => {
+    let count = code => css(code).match(/--l:([^;]*)/)[1].split('x').length - 1;
+    assert.equal(count('--l: @M(1000, @M(1000, x));'), 1000 * 65);
+    assert.equal(count('--l: @M(65536, @M(65536, @M(65536, x)));'), 65536);
+    assert.equal(count('--l: @M(3, @M(4, x));'), 12);
+});
+
 test('a sequence count that evaluates to 0 repeats nothing', () => {
     assertContains('@grid: 1; --l: @m(@i - 1, x);', '--l:;');
     assertContains('@grid: 1; --l: @m(2 - 2, x);', '--l:;');

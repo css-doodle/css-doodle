@@ -5,7 +5,8 @@ import { clamp, tidyNumber } from '../lib/math.js';
 
 const MAX_SEQUENCE = 65536;
 
-export function sequence(count, fn) {
+// limit caps the number of items, for a sequence nested in others
+export function sequence(count, fn, limit = MAX_SEQUENCE) {
     let [x, y = 1] = String(count).split(/[x-]/);
     // a leading dash is a negative count, not a range
     if (x === '') return [];
@@ -17,8 +18,9 @@ export function sequence(count, fn) {
     let ret = [];
     let index = 1;
     if (/x/.test(count) || !/-/.test(count)) {
-        if (x * y > MAX_SEQUENCE) {
-            y = Math.max(1, Math.floor(MAX_SEQUENCE / x));
+        x = Math.min(x, limit);
+        if (x * y > limit) {
+            y = Math.max(1, Math.floor(limit / x));
         }
         let max = x * y;
         for (let i = 1; i <= y; ++i) {
@@ -29,7 +31,7 @@ export function sequence(count, fn) {
     } else {
         let max = Math.abs(x - y) + 1;
         let step = x <= y ? 1 : -1;
-        for (let i = x; i !== y + step; i += step) {
+        for (let i = x; i !== y + step && ret.length < limit; i += step) {
             ret.push(fn(i, i, 1, max, max, 1, index++));
         }
     }
