@@ -93,3 +93,12 @@ test('cell accepts comma lists, keywords and index checks', () => {
     assert.equal(match('i = 10'), true);
     assert.equal(match(), true);
 });
+
+test('each random argument of cell picks its own cells', () => {
+    let env = { random: Math.random, context: {} };
+    let picked = 0;
+    for (let i = 1; i <= 16; ++i) {
+        if (selector.cell(cell((i - 1) % 4 + 1, Math.ceil(i / 4), i), env, 0)('random 1', 'random 12')) picked++;
+    }
+    assert.ok(picked >= 12, picked);
+});

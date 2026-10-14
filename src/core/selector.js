@@ -122,7 +122,7 @@ Selector.match = (cell, { random }) => {
 Selector.cell = (cell, env, position) => {
     return (...args) => {
         if (!args.length) return true;
-        return args.map(arg => {
+        return args.map((arg, i) => {
             if (arg === 'even' || arg === 'odd') {
                 return Selector[arg](cell)();
             }
@@ -133,7 +133,8 @@ Selector.cell = (cell, env, position) => {
             if (arg.startsWith('random')) {
                 let n = Number(arg.slice(6).trim() || .5);
                 if (!Number.isNaN(n)) {
-                    return randomCell(cell, env, position, n);
+                    // each argument picks its own cells
+                    return randomCell(cell, env, position + ':' + i, n);
                 }
             }
             return !!calc(arg, calcContext(cell, env.random));
