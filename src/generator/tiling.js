@@ -810,9 +810,13 @@ function scale(p, o, f) {
     return p.map((v, i) => o[i & 1] + (v - o[i & 1]) * f);
 }
 
+// a loop, not min(...xs): spreading 120k points overflows the stack
 function bounds(p) {
-    let xs = p.filter((_, i) => !(i & 1)), ys = p.filter((_, i) => i & 1);
-    return [min(...xs), min(...ys), max(...xs), max(...ys)];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < p.length; i += 2) {
+        x0 = min(x0, p[i]), y0 = min(y0, p[i + 1]), x1 = max(x1, p[i]), y1 = max(y1, p[i + 1]);
+    }
+    return [x0, y0, x1, y1];
 }
 
 function bbox(screen, box) {

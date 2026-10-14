@@ -70,6 +70,10 @@ test('penrose builds no tiles far outside a small outline', () => {
     assert.ok(performance.now() - start < 1000);
 });
 
+test('an outline of 120k points does not overflow the stack', () => {
+    assert.doesNotThrow(() => Function.tile.hex(cellOf(1, 1), { context: {}, extra: [], seed: '1' })('split: 65536; r: 1, .9'));
+});
+
 test('an extreme aspect stays fast', () => {
     let start = performance.now();
     for (let [kind, aspect] of [['voronoi', '1e-7'], ['delaunay', '1e-6'], ['penrose', '1e6']]) {
