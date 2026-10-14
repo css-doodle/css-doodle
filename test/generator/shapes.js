@@ -534,6 +534,13 @@ test('unknown shapes are reported', () => {
     }
 });
 
+test('a group merges its first 32 shapes and reports the rest', () => {
+    let group = 'union { circle*40 { scale: .02; move: (n * .045 - .9) 0 } }';
+    assert.equal(generateShape(group).points.rings.length, 32);
+    assert.deepEqual(shapeWarnings(group), ['union merges only its first 32 of 40 shapes']);
+    assert.deepEqual(shapeWarnings('union { circle*4x8 { scale: .1 } }'), []);
+});
+
 test('a curve in t gets as many points as a circle unless points says otherwise; corners at the top are a polygon', () => {
     assert.equal(generateShape('r: cos(4t)').points.length, 180);
     assert.equal(generateShape('x: cos(t); y: sin(t)^3').points.length, 180);

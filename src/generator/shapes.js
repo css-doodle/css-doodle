@@ -156,16 +156,21 @@ function createPointFunction(props, split) {
 
 const COMMANDS = new Set('points split turn r t x y rotate move scale round grow frame fill fill-rule unit smooth blocks steps'.split(' '));
 
+// each shape of a group is merged into all merged before it
+const MAX_MEMBERS = 32;
+
 function check(node, warn) {
     let name = node.name.split(' ')[0];
     if (name && !(name in presetShapes) && !GROUPS.includes(name) && !/^(shape|polygon)$|^\(/.test(name)) warn(`unknown shape ${node.name}`);
+    let members = node.children.reduce((n, c) => n + (c.count ? c.count[0] * c.count[1] : 1), 0);
+    if (members > MAX_MEMBERS) warn(`${node.name || 'a group'} merges only its first ${MAX_MEMBERS} of ${members} shapes`);
     [...node.copies || node.children, ...node.unused || []].forEach(n => check(n, warn));
 }
 
 function combine(props, lo, hi) {
     let { op, items } = props.blocks, joints = new Set(), vars = {}, rings;
     for (let k in props) if (!COMMANDS.has(k)) vars[k] = props[k];
-    for (let item of items) {
+    for (let item of items.slice(0, MAX_MEMBERS)) {
         let next = typeof item == 'string'
             ? generateShape(item, { min: lo, max: hi, raw: true }, rules => ({ ...vars, ...rules })).points
             : createShapePoints({ ...vars, ...item }, lo, hi, true);
