@@ -863,7 +863,8 @@ Function.raw = (cell, { rules }) => {
         }
         if (raw.startsWith('url("data:image/svg+xml;utf8')) {
             try {
-                return decodeURIComponent(raw.substring(raw.indexOf(',') + 1, raw.lastIndexOf('")')));
+                // each svg url and the comma after it, so @svg(…), @svg(…) is two svgs and text after one stays
+                return raw.replace(/url\("data:image\/svg\+xml;utf8,([^"]*)"\),?/g, (_, svg) => decodeURIComponent(svg));
             } catch (e) {}
         }
         return raw;

@@ -451,6 +451,13 @@ test('@svg-filter accepts a lone named blur', () => {
     assert.match(filter, /<feGaussianBlur stdDeviation="5px"\/>/);
 });
 
+test('@content takes each @svg as markup and keeps the text around them', () => {
+    let content = code => compile(code).content['#c-1-1-1'];
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg">`;
+    assert.equal(content('@content: @svg(circle { r: 1 }), @svg(svg {});'), `${svg}<circle r="1"/></svg>${svg}</svg>`);
+    assert.equal(content('@content: @svg(svg {}) hi;'), `${svg}</svg> hi`);
+});
+
 test('@svg-filter expands into the svg document itself', () => {
     let compiled = compile(`@content: @svg(
         viewBox: 0 0 10 10;
