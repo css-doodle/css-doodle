@@ -1,5 +1,6 @@
 import { css } from '../lib/tagged-template.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
+import parseValueGroup from '../parser/parse-value-group.js';
 
 function isBareNumber(value) {
     let { value: num, unit } = parseCompoundValue(value);
@@ -20,10 +21,12 @@ export default function gridStyleRules({
         add(':host', 'contain:none;');
     }
     if (rotate) {
-        if (isBareNumber(rotate)) {
-            rotate += 'deg';
+        let parts = parseValueGroup(rotate, { symbol: ' ' });
+        let last = parts.length - 1;
+        if (isBareNumber(parts[last])) {
+            parts[last] += 'deg';
         }
-        add(':container', `rotate:${rotate};`);
+        add(':container', `rotate:${parts.join(' ')};`);
     }
     if (hueRotate) {
         if (isBareNumber(hueRotate)) {

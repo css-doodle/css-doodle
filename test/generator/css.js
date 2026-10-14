@@ -1237,3 +1237,10 @@ test('@shape names shapes with #id, and their copies still run @ functions per c
     assert.equal(named, inline);
     assert.notEqual(named, css('clip-path: @shape(subtract { circle; circle { scale: .2; move: -2 0 } });'));
 });
+
+test('@grid * takes a bare angle in degrees, also after an axis', () => {
+    assertContains('@grid: 1 *45;', 'rotate:45deg;');
+    assertContains('@grid: 1 *x 45 ∆200px;', 'rotate:x 45deg;', 'perspective:200px;');
+    assertContains('@grid: 1 *y .5turn;', 'rotate:y .5turn;');
+    assertContains('@grid: 1 *1 1 0 30;', 'rotate:1 1 0 30deg;');
+});
