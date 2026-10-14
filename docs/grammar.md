@@ -641,7 +641,7 @@ outline's corners, so a body copied from `@shape` leaves it out:
 |------------------|-----------------------------------------|----------------------------------------------------------------|
 | `points`         | all                                     | at most this many pieces, or points for `delaunay`; scatter returns that many as one list |
 | `seed`           | all                                     | the seed; defaults to the doodle's                             |
-| `aspect`         | all                                     | the element's width over its height, `2` or `16 / 9`           |
+| `aspect`         | all                                     | the element's width over its height, `2` or `16 / 9`, kept between 0.001 and 1000 |
 | `gap`            | all but scatter                         | the space between pieces, in percent of the element            |
 | `density`        | `slice`, `voronoi`, `delaunay`, scatter | where pieces are smaller, an expression in `x` and `y`         |
 | `relax`          | `voronoi`, `delaunay`, scatter          | rounds that even out the points, 0 to 50, default 10           |

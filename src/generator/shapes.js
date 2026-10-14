@@ -363,7 +363,7 @@ function createShapePoints(props, lo, hi, raw) {
     if (props.scatter) {
         rings = run(rings, 0).rings;
         let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
-        let aspect = w / h > 0 && w / h < Infinity ? w / h : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
+        let aspect = w / h > 0 && w / h < Infinity ? clamp(w / h, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
             let [screenOf, format] = [toScreen, fmt];
             toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };

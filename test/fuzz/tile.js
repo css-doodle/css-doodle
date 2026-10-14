@@ -70,6 +70,16 @@ test('penrose builds no tiles far outside a small outline', () => {
     assert.ok(performance.now() - start < 1000);
 });
 
+test('an extreme aspect stays fast', () => {
+    let start = performance.now();
+    for (let [kind, aspect] of [['voronoi', '1e-7'], ['delaunay', '1e-6'], ['penrose', '1e6']]) {
+        for (let i = 1; i <= 4; ++i) {
+            Function.tile[kind](cellOf(4, i), { context: {}, extra: [], seed: '1' })('aspect: ' + aspect);
+        }
+    }
+    assert.ok(performance.now() - start < 1000);
+});
+
 test('scatter survives random commands', () => {
     let random = makeRandom(SEED + 1);
     for (let c = 0; c < CASES / 4; ++c) {
