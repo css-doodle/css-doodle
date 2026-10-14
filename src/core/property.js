@@ -182,6 +182,7 @@ const shapeRule = memo(value => {
 });
 
 Property.shape = (value, { rules }) => {
+    if (value.trim() == 'none') return '';
     shapeWarnings(value).forEach(m => rules.warn(m));
     return shapeRule(value);
 };

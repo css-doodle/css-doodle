@@ -1244,3 +1244,11 @@ test('@grid * takes a bare angle in degrees, also after an axis', () => {
     assertContains('@grid: 1 *y .5turn;', 'rotate:y .5turn;');
     assertContains('@grid: 1 *1 1 0 30;', 'rotate:1 1 0 30deg;');
 });
+
+test('@shape: none clips nothing and warns nothing', () => {
+    let { styles, warnings } = compile('@grid: 2x1; @shape: @pn(none, star);');
+    assert.ok(!styles.cells.includes('#c-1-1-1 {clip-path'), styles.cells);
+    assert.ok(styles.cells.includes('#c-2-1-1 {clip-path:polygon('), styles.cells);
+    assert.deepEqual(warnings.map(w => w.message), []);
+    assert.deepEqual(compile('@grid: 1; @shape: nope;').warnings.map(w => w.message), ['unknown shape nope']);
+});
