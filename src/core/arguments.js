@@ -3,7 +3,7 @@ import parseCompoundValue from '../parser/parse-compound-value.js';
 import { memo } from '../lib/cache.js';
 import { clamp, tidyNumber } from '../lib/math.js';
 
-const MAX_SEQUENCE = 65536;
+export const MAX_SEQUENCE = 65536;
 
 // limit caps the number of items, for a sequence nested in others
 export function sequence(count, fn, limit = MAX_SEQUENCE) {

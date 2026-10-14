@@ -20,7 +20,7 @@ import { calcContext } from './selector.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
-import { sequence, expand, byUnit, byCharcode, getNamedArguments } from './arguments.js';
+import { sequence, expand, byUnit, byCharcode, getNamedArguments, MAX_SEQUENCE } from './arguments.js';
 import { cellMetrics } from '../lib/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
@@ -36,7 +36,6 @@ const RE_VAR = /var\(/;
 const RE_CALC = /^calc\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
-const MAX_SEQUENCE = 65536;
 const MAX_SCATTER = 8192;
 const SCATTER_OUTLINE = 360;
 const NO_TILE = 'polygon(0 0)';
