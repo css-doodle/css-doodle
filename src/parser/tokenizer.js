@@ -212,7 +212,8 @@ function scan(source, options = {}) {
             }
             let word = input.slice(start, end).replace(/^[\r\n\f]+/, '');
             if (word.length) {
-                tokens.push(new Token('Word', word, pos, index));
+                // after an escaped line break the word is plain text, indexed where it starts
+                tokens.push(new Token('Word', word, pos, word.length < end - start ? end - word.length : index));
             }
             i = end;
         }

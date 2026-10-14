@@ -383,6 +383,8 @@ test('index points at the first char of the token in the untrimmed source', () =
     // an escaped word indexes at the backslash; the value excludes it
     let word = scan('"say \\"hi\\""').find(t => t.value === '"hi');
     assert.equal(word.index, 5);
+    // after an escaped line break, at the word itself
+    assert.equal(scan('"a\\\nb"').find(t => t.value === 'b').index, 4);
 
     // indexes are strictly increasing
     let prev = -1;

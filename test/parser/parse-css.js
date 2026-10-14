@@ -24,6 +24,9 @@ test('quoted content keeps every character inside a pseudo', () => {
     assert.deepEqual(ast(`:after { content: "x;";;; }`), after(rule('content', text('"x;"'))));
     // escaped quotes stay inside the string instead of terminating it
     assert.deepEqual(ast(`:after { content: "a\\"b"; }`), after(rule('content', text('"a\\"b"'))));
+    // an escaped line break joins the lines
+    assert.deepEqual(ast(`:after { content: "a\\\nb"; }`), after(rule('content', text('"ab"'))));
+    assert.equal(parseCss(`content: @p("a\\\nb");`)[0].value[0][0].arguments[0].values[0].value, 'ab');
 });
 
 test('quoted content inside an @svg argument', () => {
