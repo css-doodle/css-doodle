@@ -458,6 +458,12 @@ test('@content takes each @svg as markup and keeps the text around them', () => 
     assert.equal(content('@content: @svg(svg {}) hi;'), `${svg}</svg> hi`);
 });
 
+test('@content under :doodle or :container fills no cell', () => {
+    for (let code of [':doodle { @content: hi; }', ':container { @content: hi; }']) {
+        assert.ok(!Object.values(compile(code, '2').content).includes('hi'), code);
+    }
+});
+
 test('@svg-filter expands into the svg document itself', () => {
     let compiled = compile(`@content: @svg(
         viewBox: 0 0 10 10;

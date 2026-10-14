@@ -752,7 +752,7 @@ class Rules {
                 case 'content': {
                     rule = '';
                     let key = this.composeSelector(cell);
-                    if (!isPseudoSelector(selector) && !isParentSelector(selector)) {
+                    if (!isPseudoSelector(selector) && !isSpecialSelector(selector)) {
                         this.content[key] = removeQuotes(String(transformed));
                     }
                     this.content[key] = Func.raw(cell, env)(this.content[key] || '');
