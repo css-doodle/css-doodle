@@ -271,6 +271,12 @@ test('text and attribute values are escaped, markup and entities pass through', 
     assert.equal(svg('style { a > b { fill: red } }'), `<svg ${NS}><style>a > b{fill:red}</style></svg>`);
 });
 
+test('script tags, event handlers and javascript: links are dropped', () => {
+    assert.equal(svg('script { content: alert(1) } rect { onload: alert(1); fill: red }'),
+        `<svg ${NS}><rect fill="red"/></svg>`);
+    assert.equal(svg('svg { onLoad: alert(1) } a { href: javascript:alert(1) }'), `<svg ${NS}><a/></svg>`);
+});
+
 test('comma selectors and the child combinator', () => {
     assert.equal(svg('circle, rect { fill: red }'), `<svg ${NS}><circle fill="red"/><rect fill="red"/></svg>`);
     assert.equal(svg('g > circle { fill: red }'), `<svg ${NS}><g><circle fill="red"/></g></svg>`);

@@ -47,9 +47,13 @@ class Tag {
         return this.attrs[name] = value;
     }
     toString() {
+        // a drawing runs no script: no script tags, handlers or javascript: links
+        if (/^script$/i.test(this.name)) return '';
         let open = '<' + this.name;
         for (let name in this.attrs) {
-            open += ' ' + name + '="' + escapeAttr(removeQuotes(this.attrs[name])) + '"';
+            let value = removeQuotes(this.attrs[name]);
+            if (/^on/i.test(name) || /^\s*javascript:/i.test(value)) continue;
+            open += ' ' + name + '="' + escapeAttr(value) + '"';
         }
         let content = '';
         for (let tag of this.body) {
