@@ -588,6 +588,8 @@ function penrose(box, bounds, s, half, grow = 1) {
 
 function conway(op, star, pre) {
     let letters = [...String(op ?? '').replace(/[^abdegjkmost]/g, '').replace(/[gjmo]/g, c => ({ g: 'ds', j: 'da', m: 'kda', o: 'de' })[c])].reverse();
+    // each step multiplies the pieces, so the first 5 run
+    letters.length = min(letters.length, 5);
     star = parseFloat(star);
     if (star > 0 && star < 90) letters.push('*');
     let fn = pieces => {

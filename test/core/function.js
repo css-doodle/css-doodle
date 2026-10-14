@@ -755,6 +755,8 @@ test('@tile op: and star: derive a tiling from a tiling', () => {
     assert.equal(tiles(Function.tile.grid, 'square; op: ds', 100).join(), cairo.join());
     // letters outside the operator set are skipped, so the seed letter of Wikipedia's `tQ` does no harm
     assert.equal(tiles(Function.tile.grid, 'square; op: tQ', 100).join(), tiles(Function.tile.grid, 'square; op: t', 100).join());
+    // five steps at most, the rightmost first
+    assert.equal(tiles(Function.tile.hex, 'square; op: tkkkkk', 20).join(), tiles(Function.tile.hex, 'square; op: kkkkk', 20).join());
     // faces keep their kind, then the corner pieces: octagons 1, squares 2
     for (let t of inner(tiles(Function.tile.grid, 'square; op: t', 100))) assert.equal(t.k, verts(t).length == 8 ? 1 : 2);
     // stars on octagons and squares, then the pieces round each corner; on penrose and voronoi too
