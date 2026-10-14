@@ -115,6 +115,28 @@ test('expand: anything else passes through', () => {
     assert.deepEqual(args('['), []);
 });
 
+test('expand: `...` fills in the gap up to the next value', () => {
+    assert.deepEqual(args('1', '3', '...', '11'), ['1', '3', '5', '7', '9', '11']);
+    assert.deepEqual(args('10', '8', '...', '1'), ['10', '8', '6', '4', '2', '1']);
+    assert.deepEqual(args('0px', '25px', '...', '100px'), ['0px', '25px', '50px', '75px', '100px']);
+    assert.deepEqual(args('.1', '.2', '...', '.5'), ['.1', '.2', '0.3', '0.4', '.5']);
+    assert.deepEqual(args('a', 'c', '...', 'i'), ['a', 'c', 'e', 'g', 'i']);
+    assert.deepEqual(args('1', '2', '...', '4', '6', '...', '10'), ['1', '2', '3', '4', '6', '8', '10']);
+    // a bare number takes the unit of the others
+    assert.deepEqual(args('0', '25%', '...', '100%'), ['0', '25%', '50%', '75%', '100%']);
+    assert.deepEqual(args('0', '1', '...', '3px'), ['0', '1', '2px', '3px']);
+    // ranges expand first
+    assert.deepEqual(args('[0-1]', '...', '3'), ['0', '1', '2', '3']);
+    // an end behind the gap, or no gap, fills nothing
+    assert.deepEqual(args('1', '3', '...', '0'), ['1', '3', '0']);
+    assert.deepEqual(args('1', '1', '...', '5'), ['1', '1', '5']);
+    // no gap to read stays as written
+    for (let list of [['1', '...', '5'], ['1px', '2deg', '...', '5px'], ['1px', '2px', '...', '5deg'],
+        ['a', '2', '...', 'z'], ['-.6 0', '.6 0', '...', '1.8 0'], ['1', '2', '...']]) {
+        assert.deepEqual(args(...list), list);
+    }
+});
+
 test('expand: every argument of the wrapped function expands', () => {
     assert.deepEqual(args('[a-b]', '[1-2]'), ['a', 'b', '1', '2']);
     assert.deepEqual(args('x', '[a-c]', 'y'), ['x', 'a', 'b', 'c', 'y']);

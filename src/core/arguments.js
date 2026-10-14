@@ -1,5 +1,6 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
+import { scan } from '../parser/tokenizer.js';
 import { memo } from '../lib/cache.js';
 import { clamp, tidyNumber } from '../lib/math.js';
 
@@ -60,14 +61,48 @@ const buildRange = memo(input => {
     return list;
 });
 
-// expand range arguments like [a-z] or [0-9] into individual values
+function stepOf(value) {
+    let [num, unit, rest] = scan(String(value));
+    if (num?.isNumber() && !rest && (!unit || unit.isWord() || unit.isSymbol())) {
+        return [Number(num.value), unit?.value ?? ''];
+    }
+    let chars = [...String(value)];
+    return chars.length === 1 ? [chars[0].codePointAt(0), null] : [];
+}
+
+function unitOf(u, v) {
+    if (u === v) return u;
+    if (u === '' && v || v === '' && u) return u || v;
+}
+
+export function carry(a, b, end) {
+    let [x, ux] = stepOf(a), [y, uy] = stepOf(b), [z, uz] = end === undefined ? [] : stepOf(end);
+    let unit = unitOf(ux, uy);
+    if (end !== undefined) unit = unitOf(unit, uz);
+    if (x === undefined || y === undefined || unit === undefined) return;
+    let gap = y - x;
+    let at = k => unit === null
+        ? String.fromCodePoint(clamp(y + gap * k, 0, 0x10ffff))
+        : tidyNumber(y + gap * k) + unit;
+    if (end === undefined) return at;
+    if (z === undefined) return;
+    let count = gap ? clamp(Math.ceil((z - y) / gap - 1e-9) - 1, 0, MAX_SEQUENCE) : 0;
+    return Array.from({ length: count }, (_, i) => at(i + 1));
+}
+
 export function expand(fn) {
     return (...args) => {
-        // most calls have nothing to expand
-        if (!args.some(n => Array.isArray(n) || String(n)[0] === '[')) {
+        if (!args.some(n => Array.isArray(n) || String(n)[0] === '[' || n === '...')) {
             return fn(...args);
         }
-        return fn(...args.flatMap(n => String(n).startsWith('[') ? buildRange(n) : n));
+        args = args.flatMap(n => String(n).startsWith('[') ? buildRange(n) : n);
+        let list = [];
+        for (let i = 0; i < args.length; ++i) {
+            let fill = args[i] === '...' && i + 1 < args.length && carry(list.at(-2), list.at(-1), args[i + 1]);
+            if (fill) list = list.concat(fill);
+            else list.push(args[i]);
+        }
+        return fn(...list);
     };
 }
 

@@ -20,7 +20,7 @@ import { calcContext } from './selector.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
-import { sequence, expand, byUnit, byCharcode, getNamedArguments, MAX_SEQUENCE } from './arguments.js';
+import { sequence, expand, carry, byUnit, byCharcode, getNamedArguments, MAX_SEQUENCE } from './arguments.js';
 import { cellMetrics } from '../lib/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
@@ -264,7 +264,7 @@ function createPick(name, fn, random = false, upstream = false) {
             let source = random ? (context[valuesKey] ??= shuffle(args)) : args;
             let max = args.length;
             let idx = index ?? (context[counter] = (context[counter] || 0) + 1);
-            let value = fn(source, (idx - 1) % max, max);
+            let value = fn(source, (idx - 1) % max, max, idx - 1);
             return pushStack(context, 'lastPick', value);
         });
     };
@@ -426,9 +426,14 @@ Function.P = (_, { context, pick }, position) => {
     });
 };
 
-Function.pn = createPick('pn', (args, pos) => args[pos]);
+function pickN(args, pos, max, i) {
+    let at = args[max - 1] === '...' && carry(args[max - 3], args[max - 2]);
+    return !at ? args[pos] : i < max - 1 ? args[i] : at(i - max + 2);
+}
 
-Function.PN = createPick('PN', (args, pos) => args[pos], false, true);
+Function.pn = createPick('pn', pickN);
+
+Function.PN = createPick('PN', pickN, false, true);
 
 Function.pnr = createPick('pnr', (args, pos, max) => args[max - pos - 1]);
 

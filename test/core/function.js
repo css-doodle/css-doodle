@@ -98,6 +98,22 @@ test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy n
     assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
 });
 
+test('@pn with a trailing `...` carries the list on', () => {
+    let env = { context: {}, extra: [], upextra: [], shuffle: a => a };
+    let run = (site, ...list) => {
+        let pn = Function.pn({}, env, site);
+        return Array.from({ length: 5 }, () => pn(...list));
+    };
+    assert.deepEqual(run(':1', '1', '3', '...'), ['1', '3', '5', '7', '9']);
+    assert.deepEqual(run(':2', 'x', '10px', '5px', '...'), ['x', '10px', '5px', '0px', '-5px']);
+    assert.deepEqual(run(':3', 'a', 'c', '...'), ['a', 'c', 'e', 'g', 'i']);
+    assert.deepEqual(run(':6', '0', '90deg', '...'), ['0', '90deg', '180deg', '270deg', '360deg']);
+    // no gap to read wraps round as before
+    assert.deepEqual(run(':4', 'a', '...'), ['a', '...', 'a', '...', 'a']);
+    // characters stop at the ends of unicode
+    assert.deepEqual(run(':5', '\x02', '\x01', '...'), ['\x02', '\x01', '\0', '\0', '\0']);
+});
+
 test('@match selects the first matching value', () => {
     let cell = { x: 2, y: 1, z: 1, count: 2, grid: { x: 3, y: 1, z: 1, count: 3 } };
     let match = Function.match(cell, { extra: [] });
