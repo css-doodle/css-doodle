@@ -395,6 +395,8 @@ test('grow: by a constant moves the whole outline that far; in t, along its norm
     assert.ok(radii('circle; grow: .1').every(r => Math.abs(r - 55) < .01));
     assert.ok(radii('circle; grow: .1; x: -cos(t)').every(r => Math.abs(r - 55) < .01));
     assert.ok(radii('circle; grow: -.1').every(r => Math.abs(r - 45) < .01));
+    // one that changes late in the turn is no constant
+    assert.notEqual(String(generateShape('circle; grow: .1 * (t > 5)').points), String(generateShape('circle; grow: 0').points));
     // straight sides stay straight, the corners round
     assert.ok(Math.abs(Math.max(...radii('square; grow: .1')) - Math.max(...radii('square')) - 5) < .01);
     assert.equal(generateShape('square; grow: -.1').points.length, 4);

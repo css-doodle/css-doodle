@@ -318,8 +318,9 @@ function createShapePoints(props, lo, hi, raw) {
         rings = rings.map((ring, c) => paths[c] ? toPairs(flatten(paths[c], .002)) : ring);
         for (let [name, text] of steps) {
             let f = fns[0].formula(text), frame = name == 'frame';
-            // a frame, or a grow by a constant, is exact: the band inside, the region moved out
-            if (frame || name == 'grow' && !text.includes(',') && [1, 2, 4].every(t => f(t) == f(0))) {
+            // a frame, or a grow by a constant, is exact: the band inside, the region moved out;
+            // constant means the same at 64 angles round the whole turn
+            if (frame || name == 'grow' && !text.includes(',') && Array.from({ length: 64 }, (_, i) => f(i * PI / 32)).every(v => v == f(0))) {
                 let d = frame ? -(evaluate(text, props) || .002) : f(0), next = [], ids = [];
                 for (let u of new Set(units)) {
                     let own = rings.filter((_, c) => units[c] == u), region = own.flat(2).every(isFinite) && offset(own, 0, evenodd);
