@@ -70,7 +70,7 @@ pattern and shader bodies (§9.3, §9.4).
 
 ```
 doodle            = { top-statement }
-top-statement     = declaration | at-statement | keyframes
+top-statement     = declaration | at-statement | keyframes | definition
                   | selector-block | conditional-block | ';'
 nested-statement  = declaration | keyframes | selector-block
                   | conditional-block | ';'
@@ -108,6 +108,38 @@ reported (§11).
 ```css
 @use: var(--rule), var(--other, var(--fallback));
 ```
+
+### Function definitions
+
+```css
+twice(x): $(x * 2);
+dot(r, c): circle { r: $r; fill: $c }
+dots(): { @dot(1, red) @dot(2, blue) }
+
+width: @twice(3)px;
+background: @svg(viewBox: 0 0 10 10; @dots);
+```
+
+```
+definition = name '(' [ name { ',' name } ] ')' ':' body
+body       = '{' text '}' | statement
+```
+
+A top-level statement that starts with a name and its parameter list
+followed by `:` defines a function, and emits nothing. With braces the
+body is the text inside them; without, it is one statement, up to its
+`;` or through the block it opens. `@name(arguments)` calls it
+anywhere, and `@name` calls it without arguments.
+
+A call is replaced by its body before the source is parsed, so the
+body works wherever the same text written in its place would: as a
+value, as `@svg` elements, with `*N` copies. In the body, `$p` and a
+bare `p` inside `$()` stand for the argument of parameter `p`, which
+inside `$()` is wrapped in parentheses. Arguments are pasted as
+written, so `@dot(@r(5), red)` draws a new radius at each `$r` it
+meets; give a shared random value a variable first. Quoted text is
+left alone. A definition replaces a built-in function of the same
+name.
 
 ### At-statements
 
@@ -952,6 +984,9 @@ at most once per component:
 `<`. An unclosed argument list runs to end of source; arguments before
 the last top-level `,` are kept. `@keyframes` without a name produces
 nothing.
+
+A function that calls itself, directly or through another, is
+reported and the call expands to nothing.
 
 **While generating.** `@use` cycles skip the variable (§2). An
 undefined `$name` skips its `@shaders` or `@pattern`. Unknown

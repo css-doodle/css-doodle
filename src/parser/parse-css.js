@@ -8,7 +8,7 @@
 //   text       { type: 'text', value }
 //   var        { type: 'var', name }  a `--name` leading an argument, bare or wrapped
 // The list carries warnings: [{ message, pos? }], pos a token [col, row]
-import { scan, textOf, Token } from './tokenizer.js';
+import { scan, textOf, itemsOf, Token } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
 import svgSourceOf from './svg-source.js';
@@ -931,9 +931,145 @@ function parseSource(input, ctx) {
     return parseBlockBody(new Cursor(source, ctx), true);
 }
 
+function tokensOf(text) {
+    let tokens = scan(text, { lineCommentsIn: /^(shaders|pattern|scene)/ });
+    return text.includes('$') ? splitDollars(tokens) : tokens;
+}
+
+// index of the bracket closing the one at tokens[i], -1 when unclosed
+function closing(tokens, i) {
+    let open = tokens[i].value;
+    let close = open === '(' ? ')' : '}';
+    for (let depth = 0; i < tokens.length; i++) {
+        if (tokens[i].isSymbol(open)) depth++;
+        else if (tokens[i].isSymbol(close) && !--depth) return i;
+    }
+    return -1;
+}
+
+function nextSolid(tokens, i) {
+    while (tokens[i] && tokens[i].isSpace()) i++;
+    return i;
+}
+
+// index of the last token of the statement at tokens[i]: its `;`, or the
+// `}` closing its block
+function statementEnd(tokens, i) {
+    for (let depth = 0; i < tokens.length; i++) {
+        let t = tokens[i];
+        if (t.isSymbol('(', '{')) depth++;
+        else if (t.isSymbol(')')) depth--;
+        else if (t.isSymbol('}') && !--depth) return i;
+        else if (t.isSymbol(';') && !depth) return i;
+    }
+    return tokens.length - 1;
+}
+
+const RE_PARAM = /^[a-zA-Z_]\w*$/;
+
+function expandFunctions(source, ctx) {
+    if (!/\)\s*:/.test(source)) return source;
+    let tokens = tokensOf(source);
+    let defs = Object.create(null);
+    let rest = '', from = 0;
+    for (let i = 0, depth = 0, prev; i < tokens.length; i++) {
+        let t = tokens[i];
+        if (t.isSymbol('(', '{')) depth++;
+        else if (t.isSymbol(')', '}')) depth--;
+        else if (!depth && t.isWord() && (!prev || prev.isSymbol(';', '}'))
+                && RE_PARAM.test(t.value) && tokens[i + 1]?.isSymbol('(') && adjacent(t, tokens[i + 1])) {
+            let close = closing(tokens, i + 1);
+            let colon = nextSolid(tokens, close + 1);
+            let open = nextSolid(tokens, colon + 1);
+            if (close > 0 && tokens[colon]?.isSymbol(':') && tokens[open]) {
+                let braced = tokens[open].isSymbol('{');
+                let end = braced ? closing(tokens, open) : statementEnd(tokens, open);
+                if (end < 0) break;
+                let last = tokens[end];
+                let params = itemsOf(tokens.slice(i + 2, close)).map(item => textOf(item).trim());
+                if (!params.every(p => RE_PARAM.test(p))) {
+                    warn(ctx, `invalid parameters in ${t.value}()`, t.pos);
+                }
+                let body = braced ? source.slice(tokens[open].index + 1, last.index)
+                    : source.slice(tokens[open].index, last.isSymbol(';') ? last.index : tokenEnd(last));
+                defs[t.value] = { params, body: body.trim() };
+                rest += source.slice(from, t.index);
+                from = tokenEnd(tokens[end]);
+                i = end;
+                t = tokens[end];
+            }
+        }
+        if (!t.isSpace()) prev = t;
+    }
+    if (from === 0) return source;
+    return expandCalls(rest + source.slice(from), defs, ctx, []);
+}
+
+function expandCalls(text, defs, ctx, chain) {
+    let tokens = tokensOf(text);
+    let out = '', from = 0, quote = '';
+    for (let i = 0; i < tokens.length; i++) {
+        let t = tokens[i];
+        if (t.isSymbol('"', "'")) quote = quote === t.value ? '' : (quote || t.value);
+        let name = tokens[i + 1];
+        let def = !quote && t.isSymbol('@') && name?.isWord() && adjacent(t, name) && defs[name.value];
+        if (!def) continue;
+        let end = i + 1, args = [];
+        if (tokens[i + 2]?.isSymbol('(') && adjacent(name, tokens[i + 2])) {
+            end = closing(tokens, i + 2);
+            if (end < 0) break;
+            args = itemsOf(tokens.slice(i + 3, end)).map(item => expandCalls(
+                text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain));
+        }
+        let body = '';
+        if (chain.includes(name.value)) {
+            warn(ctx, `@${name.value}() calls itself`);
+        } else {
+            body = expandCalls(bindParams(def, args), defs, ctx, [...chain, name.value]);
+        }
+        out += text.slice(from, t.index) + body;
+        from = tokenEnd(tokens[end]);
+        i = end;
+    }
+    return out + text.slice(from);
+}
+
+function bindParams({ params, body }, args) {
+    let tokens = tokensOf(body);
+    let out = '', from = 0;
+    let parens = [];
+    for (let i = 0; i < tokens.length; i++) {
+        let t = tokens[i], prev = tokens[i - 1], next = tokens[i + 1];
+        if (t.isSymbol('(')) {
+            parens.push(prev?.isSymbol('$') && adjacent(prev, t));
+            continue;
+        }
+        if (t.isSymbol(')')) {
+            parens.pop();
+            continue;
+        }
+        let k = t.isWord() ? params.indexOf(t.value) : -1;
+        if (k < 0) continue;
+        let arg = args[k] ?? '';
+        let start = t.index;
+        if (prev?.isSymbol('$') && adjacent(prev, t)) {
+            start = prev.index;
+        } else if (parens.includes(true)
+                && !(prev?.isSymbol('@') && adjacent(prev, t))
+                && !(next?.isSymbol('(') && adjacent(t, next))) {
+            arg = '(' + arg + ')';
+        } else {
+            continue;
+        }
+        out += body.slice(from, start) + arg;
+        from = tokenEnd(t);
+    }
+    return out + body.slice(from);
+}
+
 export default function parse(input, extra) {
     let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [] };
-    let result = parseSource(input, ctx);
+    let result = parseSource(expandFunctions(String(input ?? ''), ctx), ctx);
     result.warnings = ctx.warnings;
     return result;
 }

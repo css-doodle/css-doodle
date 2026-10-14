@@ -558,3 +558,49 @@ test('a < in a value is text unless a tag follows', () => {
     assert.deepEqual(parsed.map(r => r.property), ['--x', 'color']);
     assert.deepEqual(parsed.warnings, [{ message: 'unclosed tag', pos: [31, 0] }]);
 });
+
+test('a user function call parses as its body written inline', () => {
+    assert.deepEqual(ast(`twice(x): { $(x * 2) } width: @twice(3)px;`), ast(`width: $((3) * 2)px;`));
+    // the body can be @svg elements, *N copies included
+    assert.deepEqual(
+        ast(`dot(r, c): { circle { r: $r; fill: $c } } background: @svg(@dot(2, rgb(0, 0, 1)) @dot(3, red));`),
+        ast(`background: @svg(circle { r: 2; fill: rgb(0, 0, 1) } circle { r: 3; fill: red });`));
+    assert.deepEqual(
+        ast(`bars(m): { rect*$(m) { x: $(@n / m) } } background: @svg(@bars(4));`),
+        ast(`background: @svg(rect*$((4)) { x: $(@n / (4)) });`));
+    // a call without parens, and quoted text stays as written
+    assert.deepEqual(ast(`f(): { red } content: "@f()"; color: @f;`), ast(`content: "@f()"; color: red;`));
+});
+
+test('user function arguments', () => {
+    // a call inside an argument expands first, where it is written
+    assert.deepEqual(
+        ast(`a(x): { @b($x) } b(y): { $(y + 1) } width: @a(@b(1));`),
+        ast(`width: $(($((1) + 1)) + 1);`));
+    // @n and sin() keep their names even when a parameter shares them
+    assert.deepEqual(ast(`f(n, sin): { $(@n + sin(n)) } width: @f(2, 3);`), ast(`width: $(@n + sin((2)));`));
+    // only top-level commas split, and a missing argument is empty
+    assert.deepEqual(ast(`f(a, b): { $a|$b } x: @f(rgb(1, 2, 3)); y: @f(1, 2);`), ast(`x: rgb(1, 2, 3)|; y: 1|2;`));
+});
+
+test('a user function calling itself warns and expands to nothing', () => {
+    let code = `f(x): { [@g($x)] } g(x): { @f($x) } width: @f(1);`;
+    assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['@f() calls itself']);
+    assert.deepEqual(ast(code), ast(`width: [];`));
+});
+
+test('only a top-level name(params): { } is a user function definition', () => {
+    // inside a block it is still a nested selector
+    assert.equal(ast(`@at(1, 1) { f(x): { color: red } }`)[0].styles[0].selector, 'f(x):');
+    // a definition alone emits nothing
+    assert.deepEqual(ast(`f(x): { color: $x }`), []);
+});
+
+test('a user function body without braces is one statement', () => {
+    // up to its `;`, or through the block it opens
+    assert.deepEqual(
+        ast(`twice(x): $(x * 2); dot(r, c): circle { r: $r; fill: $c } width: @twice(3)px; background: @svg(@dot(2, red));`),
+        ast(`width: $((3) * 2)px; background: @svg(circle { r: 2; fill: red });`));
+    // a block inside parens does not end it
+    assert.deepEqual(ast(`pic(c): @svg(circle { fill: $c }); background: @pic(red);`), ast(`background: @svg(circle { fill: red });`));
+});
