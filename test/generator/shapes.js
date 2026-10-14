@@ -479,6 +479,8 @@ test('points: x y pairs give the corners themselves, a number how many', () => {
     assert.equal(String(generateShape('polygon { points: 0 1, 1 -1, -1 -1 }').points), '50% 0%,100% 100%,0% 100%');
     assert.equal(String(generateShape('k: .5; points: 0 k, k (-k), (-k) (-k); move: 0 .5').points), '50% 0%,75% 50%,25% 50%');
     assert.match(generateShape('points: 0 1, 1 -1, -1 -1; round: .2').clip, /^shape\(/);
+    // two pairs are a line
+    assert.equal(String(generateShape('points: 0 0, 1 1').points), '50% 50%,100% 0%');
     // counts stay counts
     assert.equal(generateShape('points: 2 * 3').points.length, 6);
     assert.equal(generateShape('points: 120, 60; r: 1, .5').points.rings.length, 2);

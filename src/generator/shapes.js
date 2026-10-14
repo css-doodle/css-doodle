@@ -189,7 +189,7 @@ function toPairs(flat) {
 
 function pairsOf(points) {
     let pairs = isEmpty(points) ? [] : parseValueGroup(points, { noSpace: true }).map(spaced);
-    return pairs.length > 2 && pairs.every(p => p.length == 2) && pairs;
+    return pairs.length > 1 && pairs.every(p => p.length == 2) && pairs;
 }
 
 function createShapePoints(props, lo, hi, raw) {
