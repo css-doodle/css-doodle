@@ -93,6 +93,14 @@ test('fill colors a group and the shapes in it without their own', () => {
     assert.notEqual(fills[0], fills[1]);
 });
 
+test('fill reads the surface normal as the camera sees it', () => {
+    let { body, fragment, warnings } = scene('sphere { fill: mix(red, white, normal.z) }');
+    assert.match(body, /mix\(vec3\([^)]*\), vec3\([^)]*\), normal\.z\)/);
+    assert.match(fragment, /normal = n \* g_v;/);
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(scene('sphere { r: .3 + .1 * normal.z }').warnings, ['only fill can read normal, not r']);
+});
+
 test('*N and *XxY make copies with n, N, nx and ny', () => {
     let { body, warnings } = scene('box*5x3 { size: .05; move: nx * .1, ny * .1, n / N }');
     assert.deepEqual(warnings, []);

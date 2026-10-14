@@ -677,8 +677,10 @@ is the point in the shape's own space, `t` the time in seconds, and
 `rand()` differs from copy to copy. `fill` takes a color, or an
 expression in `p` that gives one; the shapes in a group take its fill
 unless they have their own, and shapes joined with `smooth` blend their
-colors. `round` keeps the outer size of a `box`, `cylinder` or
-`polygon`, while `grow` makes any shape bigger. `mirror: x z` keeps the
+colors. `fill` also sees `normal`, the surface normal as the camera
+sees it, x right, y up and z toward the camera, so `1 - normal.z` is
+bright at the edges; the scene's light still shades the color it gives.
+`round` keeps the outer size of a `box`, `cylinder` or `polygon`, while `grow` makes any shape bigger. `mirror: x z` keeps the
 shape and its reflections across those axes, `repeat: x y z` repeats it
 that far apart along each axis, 0 for none, and `twist: a` turns it `a`
 degrees for each unit up `y`. `sdf { d: … }` takes a distance written in

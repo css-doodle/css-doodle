@@ -89,7 +89,10 @@ function checkAll(node, warn, unread, code) {
     }
     if (top || SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
-            if (!isVar(node, r.name)) continue;
+            if (!isVar(node, r.name)) {
+                if (r.name !== 'fill' && /\bnormal\b/.test(textOf(r.value))) warn(`only fill can read normal, not ${r.name}`);
+                continue;
+            }
             let valid = NAME.test(r.name);
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
@@ -123,7 +126,7 @@ export default function drawScene(code, extra, report = () => {}) {
     let build = (dist, warn, fit) => {
         let ctx = {
             id: 0, sites: 0, key: '0.0',
-            types: { __proto__: null, p: 'vec3' },
+            types: { __proto__: null, p: 'vec3', normal: 'vec3' },
             // outside copies the scene is one copy
             names: { __proto__: null, t: 't', deg: '(PI / 180.0)', turn: '(2.0 * PI)', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' },
         };
@@ -474,6 +477,7 @@ export default function drawScene(code, extra, report = () => {}) {
     let common = glsl`
     const float PI = 3.1415926535897932;
     float t;
+    vec3 normal = vec3(0.0, 0.0, 1.0);
     ${HELPERS}
     ${SCENE_HELPERS}
     ${[...arrays].map(([array, v]) => `const ${array.match(/^\w+/)} ${v}[] = ${array};`).join('\n')}
@@ -574,6 +578,7 @@ export default function drawScene(code, extra, report = () => {}) {
         // a miss reads its closest approach at full strength, so squashed and blended shapes keep a one-pixel edge
         if (g_near >= 0.1) g_near /= clamp(length(n) * 1500.0 / g_k, 1e-3, 1.0);
         n = normalize(n);
+        normal = n * g_v;
         vec3 g_l = g_v * normalize(vec3(0.6, 0.8, 0.5));
         float light = sqrt(0.7 * max(dot(n, g_l), 0.0) + 0.3 * (0.6 + 0.4 * dot(n, g_y)));
         FragColor = vec4(g_scene(g_h).rgb * light, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
