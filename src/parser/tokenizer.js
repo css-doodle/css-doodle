@@ -153,6 +153,8 @@ function scan(source, options = {}) {
     let tokens = [];
     let quote = '';
     let i = 0, row = 0, lineStart = 0;
+    // paren depth inside a call named by options.lineCommentsIn
+    let body = 0;
 
     while (i < len) {
         let curr = input.charCodeAt(i);
@@ -181,7 +183,7 @@ function scan(source, options = {}) {
             }
             i = end;
         }
-        else if (options.ignoreInlineComment && !quote && curr === 47 && next === 47) {
+        else if ((options.ignoreInlineComment || body) && !quote && curr === 47 && next === 47) {
             // Stop before the line break so it gets tokenized as space
             let found = input.indexOf('\n', i + 1);
             i = found === -1 ? len : found;
@@ -237,6 +239,15 @@ function scan(source, options = {}) {
                 } else if (!quote) {
                     quote = ch;
                     token.status = 'open';
+                }
+            }
+            if (options.lineCommentsIn && !quote) {
+                let name = tokens[tokens.length - 1];
+                if (curr === 40 /* ( */ && (body || (tokens[tokens.length - 2]?.isSymbol('@')
+                        && name.isWord() && options.lineCommentsIn.test(name.value)))) {
+                    body++;
+                } else if (curr === 41 /* ) */ && body) {
+                    body--;
                 }
             }
             tokens.push(token);

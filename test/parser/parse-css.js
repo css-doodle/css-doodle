@@ -253,6 +253,17 @@ test('@pattern bodies are kept verbatim like @doodle', () => {
     assert.equal(arg.values[0].value, 'grid: 2; fill: @p(red, blue);');
 });
 
+test('a quote or paren in a // comment does not end a @pattern, @shaders or @scene body', () => {
+    for (let name of ['pattern', 'shaders', 'scene']) {
+        let rules = parseCss(`background: @${name}(\n  // don't (fill\n  fill: #fff;\n); color: red;`);
+        assert.deepEqual(rules.map(r => r.property), ['background', 'color'], name);
+        assert.equal(rules[0].value[0][0].arguments[0].values[0].value, "// don't (fill\n  fill: #fff;");
+    }
+    // a nested doodle has no // comments; a url keeps its //
+    let [doodle] = parseCss(`background: @doodle(background: url(//a.b/c.png));`);
+    assert.equal(doodle.value[0][0].arguments[0].values[0].value, 'background: url(//a.b/c.png)');
+});
+
 test('empty statements are dropped', () => {
     let rules = parseCss(`color: red;; width: 1px; @keyframes x { from { ; opacity: 0 } }`);
     assert.deepEqual(rules.map(r => r.property || r.type), ['color', 'width', 'keyframes']);

@@ -22,7 +22,8 @@ const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?(
 class Cursor {
     constructor(source, ctx) {
         this.source = source;
-        let tokens = scan(source);
+        // the bodies are sliced raw, so their own parsers still see the comments
+        let tokens = scan(source, { lineCommentsIn: /^(shaders|pattern|scene)/ });
         this.tokens = source.includes('$') ? splitDollars(tokens) : tokens;
         this.ctx = ctx;
         this.i = 0;
