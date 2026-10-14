@@ -164,7 +164,7 @@ function readSvgStatement(iter, head) {
     if (prev && next && isSpecialNamespaceAttr(prev.value + ':' + next.value)) {
         return null;
     }
-    let props = itemsOf(head).map(textOf);
+    let props = itemsOf(head).map(t => textOf(t).trim());
     let statement = {
         type: 'statement',
         name: props[0],

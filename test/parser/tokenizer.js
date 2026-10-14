@@ -55,6 +55,20 @@ test('words, symbols and spaces', () => {
     ]);
 });
 
+test('a space is kept before ( [ : and after ) ], where it may be a combinator', () => {
+    assert.deepEqual(tokens('a :b'), [['Word', 'a'], ['Space', ' '], ['Symbol', ':'], ['Word', 'b']]);
+    assert.deepEqual(tokens('[a] 1'), [
+        ['Symbol', '['], ['Word', 'a'], ['Symbol', ']'], ['Space', ' '], ['Number', '1'],
+    ]);
+    assert.deepEqual(tokens('1 [a]'), [
+        ['Number', '1'], ['Space', ' '], ['Symbol', '['], ['Word', 'a'], ['Symbol', ']'],
+    ]);
+    // inside the brackets and after the colon it means nothing
+    assert.deepEqual(tokens('[ a ]: b'), [
+        ['Symbol', '['], ['Word', 'a'], ['Symbol', ']'], ['Symbol', ':'], ['Word', 'b'],
+    ]);
+});
+
 test('quotes open and close, the other quote inside is content', () => {
     assert.deepEqual(tokens('content: "hello: world"'), [
         ['Word', 'content'],

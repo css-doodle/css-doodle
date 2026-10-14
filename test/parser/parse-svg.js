@@ -130,6 +130,13 @@ test('a style block keeps its css as text', () => {
     assert.deepEqual(parseSvg('circle { style: { content: "}" }; r: 1 }'), svg(
         block('circle', [statement('style', 'content:"}"', { raw: true }), statement('r', '1')])
     ));
+    // the descendant combinator survives
+    assert.deepEqual(parseSvg('style { .a :first-child, [x] .b { x: 1 } }'),
+        svg(block('style', '.a :first-child,[x] .b{x:1}')));
+});
+
+test('a space before the colon is not part of the name', () => {
+    assert.deepEqual(parseSvg('circle { r : 1 }'), svg(block('circle', [statement('r', '1')])));
 });
 
 test('times syntax records the count and the pure name', () => {

@@ -1,7 +1,8 @@
 import { last } from '../lib/list.js';
 
 const symbols = ':;,()[]{}π±+-*/%"\'`@=^ß_<>&|!?~≤≥≠∆';
-const spacingIgnoredSymbols = new Set(':;,{}()[]');
+const dropSpaceAfter = new Set(':;,{}([');
+const dropSpaceBefore = new Set(';,{})]');
 
 const SYMBOL = 1;
 const SPACE = 2;
@@ -102,9 +103,7 @@ function iterator(input) {
 }
 
 function ignoreSpacingAround(prev, next) {
-    let ignoreLeft = spacingIgnoredSymbols.has(prev) && prev !== ')';
-    let ignoreRight = spacingIgnoredSymbols.has(next) && next !== '(';
-    return ignoreLeft || ignoreRight;
+    return dropSpaceAfter.has(prev) || dropSpaceBefore.has(next);
 }
 
 // The read* functions return the exclusive end of the token starting at i

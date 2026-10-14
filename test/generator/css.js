@@ -153,6 +153,10 @@ test('@R.t in a tile edge reads no cell, so every cell cuts from one tiling, eac
     assert.ok(shapes.size > polys.length / 2, `${shapes.size} shapes in ${polys.length} tiles`);
 });
 
+test('grid line names keep the spaces around them', () => {
+    assertContains('grid-template-columns: [a] 1fr [b] 2fr;', 'grid-template-columns:[a] 1fr [b] 2fr;');
+});
+
 // --- $ and calc ---
 
 test('$ name suffix reads as a unit appended to the calc result', () => {
