@@ -216,18 +216,13 @@ function getSelectors(tokens) {
     while (it.next()) {
         let curr = it.curr();
         let prev = it.curr(-1);
-        let next = it.curr(1);
         if (curr.isSymbol('>')) {
             hasSymbol = false;
             continue;
         }
-        let isTimeSymbol = (
-            prev && next &&
-            curr.value === 'x' &&
-            prev.isNumber()  &&
-            next.isNumber()
-        );
-        if (curr.isWord() && !hasSymbol && !isTimeSymbol) {
+        // a word right after a number continues it: `*2x3`, `*2x$(n)`, `*2x@p(3)`
+        let glued = prev && prev.isNumber();
+        if (curr.isWord() && !hasSymbol && !glued) {
             result.push(curr.value.trim());
         } else if (result.length) {
             result[result.length - 1] = (result[result.length - 1] + curr.value).trim();

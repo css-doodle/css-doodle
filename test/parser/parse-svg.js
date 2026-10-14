@@ -145,6 +145,18 @@ test('times syntax records the count and the pure name', () => {
     assert.deepEqual(parseSvg('circle.big*3 {}'), svg(
         block('circle', [statement('class', 'big')], { pureName: 'circle.big', times: '3' })
     ));
+    // a call after the `x` of a grid count is still the count, not a child element
+    assert.deepEqual(parseSvg('path*2x$(n) {}'), svg(
+        block('path', [], { pureName: 'path', times: '2x$(n)' })
+    ));
+    assert.deepEqual(parseSvg('path*2x@p(3) {}'), svg(
+        block('path', [], { pureName: 'path', times: '2x@p(3)' })
+    ));
+});
+
+test('letters after a digit stay in the name', () => {
+    assert.deepEqual(parseSvg('g.c1x {}'), svg(block('g', [statement('class', 'c1x')])));
+    assert.deepEqual(parseSvg('circle#a1b {}'), svg(block('circle', [statement('id', 'a1b')])));
 });
 
 test('values keep nested parens and their contents', () => {
