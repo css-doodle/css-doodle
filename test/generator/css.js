@@ -1245,6 +1245,10 @@ test('@grid * takes a bare angle in degrees, also after an axis', () => {
     assertContains('@grid: 1 *1 1 0 30;', 'rotate:1 1 0 30deg;');
 });
 
+test('@grid p3d keeps 3D on the container only', () => {
+    assert.equal(css('@grid: 1 p3d;'), 'grid {transform-style:preserve-3d;}');
+});
+
 test('@shape: none clips nothing and warns nothing', () => {
     let { styles, warnings } = compile('@grid: 2x1; @shape: @pn(none, star);');
     assert.ok(!styles.cells.includes('#c-1-1-1 {clip-path'), styles.cells);
