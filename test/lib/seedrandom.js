@@ -19,3 +19,11 @@ test('a seed keeps its stream', () => {
         assert.deepEqual([...first, x], values, seed);
     }
 });
+
+test('a seed repeating a shorter one draws its own stream', () => {
+    const first = seed => seedrandom(seed)();
+    const seeds = ['d', 'dd', 'ddd', 'dddd', 'ab', 'abab', '1', '11', '1111'];
+    assert.equal(new Set(seeds.map(first)).size, seeds.length);
+    assert.equal(first('d'), 0.9275344182753374);
+    assert.equal(first('ab'), 0.27335432315865854);
+});

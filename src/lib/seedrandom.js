@@ -14,7 +14,12 @@ export default function seedrandom(seed) {
     for (let i = 0; i < seed.length; i++) {
         key[MASK & i] = MASK & ((smear ^= key[MASK & i] * 19) + seed.charCodeAt(i));
     }
-    if (!key.length) key = [0];
+    if (!key.length) {
+        key = [0];
+    }
+    if ((seed + seed).indexOf(seed, 1) < seed.length) {
+        key.length = WIDTH, key.fill(0, seed.length);
+    }
 
     // Key scheduling algorithm
     let s = [], i = 0, j = 0, t;
