@@ -39,6 +39,9 @@ test('running animations restart from the host time', () => {
     // single quotes are read too
     out = decode(stampSvgImages(host(2.5, false), url("<svg><animate begin='1s' dur='4s'/></svg>")));
     assert.equal(out, `<svg><animate begin="-1500ms" dur='4s'/></svg>`);
+    // spaces round = and a signed offset are read too, so begin is not written twice
+    out = decode(stampSvgImages(host(2.5, false), url('<svg><animate begin = "+1s" dur="4s"/></svg>')));
+    assert.equal(out, '<svg><animate begin="-1500ms" dur="4s"/></svg>');
 });
 
 test('paused animations hold the value at the host time', () => {

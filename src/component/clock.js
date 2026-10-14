@@ -3,7 +3,8 @@ import { escapeSvg } from '../lib/svg.js';
 const RE_CSS_CLOCK = /\banimation(?:-name)?\s*:/;
 const RE_IMAGE_CLOCK = /%3Canimate|animation(?:-name)?%3A/;
 const RE_TIME = /(?<![\w.-])(-?\d*\.?\d+)(ms|s)(?![\w-])/g;
-const RE_ATTR = /([\w:-]+)=("[^"]*"|'[^']*')/g;
+const RE_ATTR = /([\w:-]+)\s*=\s*("[^"]*"|'[^']*')/g;
+const RE_SMIL = /<animate[^>]*>/g;
 
 const TIME_UNITS = { ms: 1, s: 1000, min: 60000, h: 3600000 };
 const PAUSED_RULE = '*,*::before,*::after{animation-play-state:paused!important}';
@@ -19,16 +20,16 @@ export function hasImageClock(sheet) {
 }
 
 export function isAnimatedSvg(svg) {
-    return /<(animate\w*|set)\b/.test(svg) || RE_CSS_CLOCK.test(svg) || RE_IMAGE_CLOCK.test(svg);
+    return /<(animate|set\b)/.test(svg) || RE_CSS_CLOCK.test(svg) || RE_IMAGE_CLOCK.test(svg);
 }
 
 function clockValue(value = '') {
-    let m = /^\s*(-?\d*\.?\d+)(ms|s|min|h)?\s*$/.exec(value);
+    let m = /^\s*([-+]?\d*\.?\d+)(ms|s|min|h)?\s*$/.exec(value);
     return m ? parseFloat(m[1]) * TIME_UNITS[m[2] ?? 's'] : null;
 }
 
 function setAttr(tag, name, value) {
-    let re = new RegExp(`\\s${name}=("[^"]*"|'[^']*')`);
+    let re = new RegExp(`\\s${name}\\s*=\\s*("[^"]*"|'[^']*')`);
     let attr = ` ${name}="${value}"`;
     return re.test(tag) ? tag.replace(re, attr) : tag.replace(/\s*\/?>$/, m => attr + m.trim());
 }
@@ -70,14 +71,12 @@ export function shiftCssAnimations(css, t) {
 
 export function stampSvgImages(host, sheet) {
     let paused = host.hasAttribute('cssd-paused');
-    if ((!paused && !host._clock.base) || !hasImageClock(sheet)) {
-        return sheet;
-    }
+    if (!paused && !host._clock.base) return sheet;
     let t = host.clockNow();
     return sheet.replace(/url\("data:image\/svg\+xml;utf8,([^"#]*)(#[^"]*)?"\)/g, (m, data, hash = '') => {
         if (!hasImageClock(data)) return m;
         let svg = decodeURIComponent(data)
-            .replace(/<animate\w*\b[^>]*>/g, tag => shiftSmil(tag, t, paused))
+            .replace(RE_SMIL, tag => shiftSmil(tag, t, paused))
             .replace(/<style[^>]*>[\s\S]*?<\/style>|\sstyle=(?:"[^"]*"|'[^']*')/g, s => shiftCssAnimations(s, t));
         if (paused && RE_CSS_CLOCK.test(svg)) {
             svg = svg.replace(/<\/svg>\s*$/, `<style>${PAUSED_RULE}</style></svg>`);
@@ -90,7 +89,7 @@ export function stampSmil(host, markup) {
     let paused = host.hasAttribute('cssd-paused');
     if (!paused && !host._clock.base) return markup;
     let t = host.clockNow();
-    return markup.replace(/<animate\w*\b[^>]*>/g, tag => shiftSmil(tag, t, paused));
+    return markup.replace(RE_SMIL, tag => shiftSmil(tag, t, paused));
 }
 
 export function stampSheet(host, sheet) {
