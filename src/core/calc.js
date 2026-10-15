@@ -1,4 +1,4 @@
-import { isInvalidNumber } from '../lib/type.js';
+import { isInvalidNumber, removeParens } from '../lib/type.js';
 import { last } from '../lib/list.js';
 import { tidyNumber } from '../lib/math.js';
 import { scan } from '../parser/tokenizer.js';
@@ -109,16 +109,10 @@ export const binary = {
     '<': (a, b) => a < b,
     '>': (a, b) => a > b,
     '^': (a, b) => a ** b,
-    '**': (a, b) => a ** b,
-    '÷': (a, b) => a / b,
     '/': (a, b) => a / b,
-    '=': (a, b) => a === b ? 1 : 0,
     '==': (a, b) => a === b ? 1 : 0,
-    '≤': (a, b) => a <= b,
     '<=': (a, b) => a <= b,
-    '≥': (a, b) => a >= b,
     '>=': (a, b) => a >= b,
-    '≠': (a, b) => a !== b ? 1 : 0,
     '!=': (a, b) => a !== b ? 1 : 0,
     '<<': (a, b) => a << b,
     '>>': (a, b) => a >> b,
@@ -529,18 +523,20 @@ function compile(expr) {
         const { type, value } = node;
 
         if (type === NUMBER) {
-            stack.push(() => value);
+            // a live value is kept as CSS text only where CSS math is wanted
+            stack.push(live(value) ? (ctx, history) => history.css ? value : miss(history) : () => value);
         } else if (type === VARIABLE) {
             stack.push(compileVariable(value));
         } else if (type === FUNCTION) {
             stack.push(compileFunction(node));
         } else if (value === '!' || value === '-u') {
             const operand = stack.pop() || (() => NaN);
-            stack.push((ctx, history) => {
-                const a = operand(ctx, history);
-                if (value === '-u') return live(a) ? neg(a) : -Number(a);
-                return live(a) ? not(truthy(a)) : Number(a) ? 0 : 1;
-            });
+            stack.push(value === '-u'
+                ? (ctx, history) => neg(operand(ctx, history))
+                : (ctx, history) => {
+                    const a = operand(ctx, history);
+                    return live(a) ? not(truthy(a)) : Number(a) ? 0 : 1;
+                });
         } else {
             const right = stack.pop();
             const left = stack.pop();
@@ -667,7 +663,7 @@ export function deref(input, context) {
     }
     const history = [value];
     const result = compileInput(value, context)(context, history);
-    return history.misses || live(result) ? value : result;
+    return history.misses ? value : result;
 }
 
 const RE_SAFE_AFTER = /^[),+\-*/%^!<>=&|≤≥≠]/;
@@ -742,15 +738,15 @@ function scope(context) {
         : Object.assign(Object.create(defaultContext), context);
 }
 
-// a live value has no number, so it reads as 0 here
 export function evaluate(value, context) {
-    const output = evaluateValue(value, scope(context), []);
-    return live(output) ? 0 : output;
+    return evaluateValue(value, scope(context), []);
 }
+
+const RE_CALC_HEAD = /^calc\(/;
 
 // A unit after lowered math multiplies in: calc(…) + deg → calc((…) * 1deg)
 export function withUnit(value, unit) {
-    return unit && /^calc\(/.test(value) ? `calc(${value.slice(4)} * 1${unit})` : value + unit;
+    return unit && RE_CALC_HEAD.test(value) ? `calc(${value.slice(4)} * 1${unit})` : value + unit;
 }
 
 // A number; with `css`, CSS math for an expression that reads a live
@@ -760,10 +756,9 @@ export default function(input, context, css) {
         return input;
     }
     context = scope(context);
-    const output = compileInput(input, context)(context, []);
-    if (!live(output)) {
-        return output;
-    }
+    const history = [];
+    history.css = css;
+    const output = compileInput(input, context)(context, history);
     // the outermost group is the calc() itself
-    return css ? `calc(${output[0] === '(' ? output.slice(1, -1) : output})` : 0;
+    return live(output) ? `calc(${removeParens(output)})` : output;
 }

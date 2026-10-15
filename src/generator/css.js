@@ -81,7 +81,6 @@ const UNIFORM_KEYS = {
     shaders: 'mouse',
 };
 
-const RE_CALC_HEAD = /^calc\(/;
 const RE_UNIT_HEAD = /^([a-z]+|%)/i;
 
 const compiledValues = new WeakMap();
@@ -109,7 +108,7 @@ function compileValue(value) {
                         part = evaluated.value;
                         // a unit glued to lowered math multiplies in: @calc(@t)deg
                         let next = parts[i + 1];
-                        let unit = RE_CALC_HEAD.test(part) && typeof next === 'string' && RE_UNIT_HEAD.exec(next);
+                        let unit = typeof next === 'string' && RE_UNIT_HEAD.exec(next);
                         if (unit) {
                             part = withUnit(part, unit[0]) + next.slice(unit[0].length);
                             i++;

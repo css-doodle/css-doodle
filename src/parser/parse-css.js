@@ -1050,7 +1050,7 @@ function bindParams({ params, defaults, body }, args, defs) {
             // $( or one with a unit, like $px( and $4(, but not a call's arguments
             let j = i - 1;
             while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
-            let calc = !!tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]);
+            let calc = tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]);
             parens.push(calc ? !defs[textOf(tokens.slice(j + 1, i))] : !!parens.at(-1));
             continue;
         }

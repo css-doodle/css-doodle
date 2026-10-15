@@ -32,7 +32,6 @@ import { css } from '../lib/tagged-template.js';
 
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
 const RE_OP_SUFFIX = /[\+\*\-\/]$|\D%$/;
-const RE_VAR = /var\(/;
 const RE_LIVE = /\b(var|calc)\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
@@ -75,7 +74,7 @@ function calcValue(base, v) {
     let { op, prefix, value, unit } = parseOperation(v);
     // prefix op: base comes first; suffix op: base comes last
     let [a, b] = prefix ? [base, value] : [value, base];
-    if (typeof base === 'string' && RE_VAR.test(base)) {
+    if (typeof base === 'string' && RE_LIVE.test(base)) {
         let expr = (op === '%') ? `mod(${a}, ${b})` : `${a} ${op} ${b}`;
         return [`calc(${expr})`, unit];
     }
