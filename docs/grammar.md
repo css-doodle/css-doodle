@@ -46,8 +46,9 @@ The source splits into whitespace, numbers, symbols and words.
 - Quotes, `"`, `'` and `` ` ``, keep whitespace as written; function
   calls inside them are still recognized.
 - Whitespace is trimmed and each run collapses to one space. It is
-  dropped next to `:` `;` `,` `{` `}` `[` `]`, after `(` and before
-  `)`, but kept before `(` and after `)`: `a (b)` and `a(b)` differ.
+  dropped around `;` `,` `{` `}`, after `:` `(` `[` and before `)`
+  `]`, but kept before `:` `(` `[` and after `)` `]`: `a (b)` and
+  `a(b)` differ, as do `a :hover` and `a:hover`.
 - `/* … */` is whitespace. `//` comments exist only in `@pattern`,
   `@scene` and `@shaders` bodies (§9.2–§9.4).
 
