@@ -105,8 +105,8 @@ body       = '{' text '}' | statement
 A top-level statement starting with `name(params):` defines a function
 and emits nothing. The body is the text inside braces, or else one
 statement, up to its `;` or through the block it opens. `@name(args)`,
-or `@name` without arguments, calls it anywhere except inside `"…"` or
-`'…'`. A definition replaces a built-in function of the same name.
+or `@name` without arguments, calls it anywhere except inside quotes.
+A definition replaces a built-in function of the same name.
 
 Calls are replaced by the body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`

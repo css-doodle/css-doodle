@@ -6,7 +6,7 @@ import { textOf } from './tokenizer.js';
 //   declaration = head ':' value [ ';' ]
 //   block       = head '{' ( body | raw ) '}'
 //
-// The language supplies the two readers. Both get the iterator on the
+// The language supplies three readers. Two get the iterator on the
 // ':' or '{' and the head tokens before it; null means the symbol is
 // no separator here: readBlocks keeps the head and skips the '{',
 // readStatement leaves the ':' in the head (xlink:href). readTail gets

@@ -570,6 +570,7 @@ test('a user function call parses as its body written inline', () => {
         ast(`background: @svg(rect*$((4)) { x: $(@n / (4)) });`));
     // a call without parens, and quoted text stays as written
     assert.deepEqual(ast(`f(): { red } content: "@f()"; color: @f;`), ast(`content: "@f()"; color: red;`));
+    assert.deepEqual(ast('f(): { red } content: `@f()`;'), ast('content: `@f()`;'));
 });
 
 test('user function arguments', () => {

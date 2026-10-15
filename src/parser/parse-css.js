@@ -22,9 +22,7 @@ const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?(
 class Cursor {
     constructor(source, ctx) {
         this.source = source;
-        // the bodies are sliced raw, so their own parsers still see the comments
-        let tokens = scan(source, { lineCommentsIn: /^(shaders|pattern|scene)/ });
-        this.tokens = source.includes('$') ? splitDollars(tokens) : tokens;
+        this.tokens = tokensOf(source);
         this.ctx = ctx;
         this.i = 0;
     }
@@ -994,9 +992,9 @@ function expandFunctions(source, ctx) {
                     : source.slice(tokens[open].index, last.isSymbol(';') ? last.index : tokenEnd(last));
                 defs[t.value] = { params, body: body.trim() };
                 rest += source.slice(from, t.index);
-                from = tokenEnd(tokens[end]);
+                from = tokenEnd(last);
                 i = end;
-                t = tokens[end];
+                t = last;
             }
         }
         if (!t.isSpace()) prev = t;
@@ -1007,10 +1005,10 @@ function expandFunctions(source, ctx) {
 
 function expandCalls(text, defs, ctx, chain) {
     let tokens = tokensOf(text);
-    let out = '', from = 0, quote = '';
+    let out = '', from = 0, quote = false;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i];
-        if (t.isSymbol('"', "'")) quote = quote === t.value ? '' : (quote || t.value);
+        if (t.status) quote = t.status === 'open';
         let name = tokens[i + 1];
         let def = !quote && t.isSymbol('@') && name?.isWord() && adjacent(t, name) && defs[name.value];
         if (!def) continue;
