@@ -9,6 +9,12 @@ const noop = () => {};
 
 const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
 
+// a quoted value as text, its escapes read: "a\"b" is a"b
+function unquote(value) {
+    let text = removeQuotes(value);
+    return text === String(value) ? text : text.replace(/\\(.)/gs, '$1');
+}
+
 // the body holds child tags and text, text as plain strings
 class Tag {
     constructor(name) {
@@ -51,7 +57,7 @@ class Tag {
         if (/^script$/i.test(this.name)) return '';
         let open = '<' + this.name;
         for (let name in this.attrs) {
-            let value = removeQuotes(this.attrs[name]);
+            let value = unquote(this.attrs[name]);
             if (/^on/i.test(name) || /^\s*javascript:/i.test(value)) continue;
             open += ' ' + name + '="' + escapeAttr(value) + '"';
         }
@@ -232,7 +238,7 @@ function generate(token, element, parent, root, warn) {
         let keyword = space < 0 ? token.name : token.name.slice(0, space);
         let name = space < 0 ? '' : token.name.slice(space + 1).trim();
         if (keyword === 'content') {
-            element.append(removeQuotes(value));
+            element.append(unquote(value));
         }
         // inline style, `style fill: red` or `style: { fill: red }`
         else if (keyword === 'style') {

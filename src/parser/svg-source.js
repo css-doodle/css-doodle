@@ -20,12 +20,15 @@ function generate(token, last, repeat) {
         }
         result += times ? '})' : '}';
     } else if (token.type === 'statement') {
-        if (repeat && token.variable && typeof token.value === 'string') {
-            return '@--(' + token.name.slice(2) + ',' + token.value + ')';
+        let value = token.origin ? token.origin.value : token.value;
+        if (repeat && token.from) {
+            value = '@--(' + token.from.slice(2) + ')';
+        }
+        if (repeat && token.variable && typeof value === 'string') {
+            return '@--(' + token.name.slice(2) + ',' + value + ')';
         }
         let skip = (token.origin && last === token.origin);
         let name = token.origin ? token.origin.name.join(',') : token.name;
-        let value = token.origin ? token.origin.value : token.value;
         if (!skip) {
             if (value && value.type) {
                 result += name + ':' + generate(value, null, repeat);

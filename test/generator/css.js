@@ -543,10 +543,22 @@ test('an @svg variable is set where it is written, once per copy inside *N', () 
         '<svg><circle r="2"/><circle r="4"/><circle r="6"/></svg>');
     // a comma group keeps its other names
     assert.equal(svgImage('background: @svg(rect { --b, x: 3, 4; y: $b })'), '<svg><rect x="4" y="3"/></svg>');
+    // one value goes to the whole group as drawn once, and as written
+    assert.match(svgImage('background: @svg(rect { x, --b: @r(9); y: $b })'), /<rect x="([\d.]+)" y="\1"\/>/);
+    assert.equal(svgImage('background: @svg(rect { --b, x: 1/2 })'), '<svg><rect x="1/2"/></svg>');
     // a declaration draws its random values once
     let x = code => svgImage(code).match(/<rect x="([^"]+)"/)[1];
     assert.equal(x('background: @svg(--p: @r(9); rect { x: @r(9) })'),
         x('background: @svg(g { x: @r(9) } rect { x: @r(9) })'));
+});
+
+test('an escaped quote in @svg survives a *N or a variable', () => {
+    assert.equal(svgImage(String.raw`background: @svg(text*2 { content: "a\"b" })`), '<svg><text>a"b</text><text>a"b</text></svg>');
+    assert.equal(svgImage(String.raw`background: @svg(--k: 1; text { content: 'it\'s' })`), "<svg><text>it's</text></svg>");
+});
+
+test('@-- without a name sets nothing', () => {
+    assert.equal(cells('a: @--; b: @--();'), '#c-1-1-1 {a:;\nb:;}');
 });
 
 test('@svg-filter does not repeat a `*n` block inside @svg()', () => {

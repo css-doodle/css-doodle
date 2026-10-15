@@ -179,6 +179,11 @@ function readSvgStatement(iter, head) {
     }
     let groupedValue = props.length > 1 ? parseValueGroup(statement.value) : null;
     let expand = !!groupedValue && groupedValue.length === props.length;
+    let shared = props.length > 1 && !expand && typeof statement.value === 'string'
+        && props.find(p => p.startsWith('--'));
+    if (shared) {
+        props = [shared, ...props.filter(p => p !== shared)];
+    }
 
     let rules = [];
     for (let i = 0; i < props.length; ++i) {
@@ -193,6 +198,8 @@ function readSvgStatement(iter, head) {
         }
         if (expand) {
             item.value = groupedValue[i];
+        } else if (shared && i) {
+            item.from = shared;
         }
         if (item.name === 'viewBox') {
             item.detail = parseViewBox(valueTokens);

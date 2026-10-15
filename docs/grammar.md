@@ -108,12 +108,18 @@ A top-level statement starting with `name(params):` defines a function
 and emits nothing. The body is the text inside braces, or else one
 statement, up to its `;` or through the block it opens. `@name(args)`,
 or `@name` without arguments, calls it anywhere except inside quotes.
-A definition replaces a built-in function of the same name.
+A definition replaces a built-in function of the same name. Text
+inserted by `@use` calls the functions of the sheet around it, and the
+ones it defines stay inside it.
+
+The name is letters, digits, `_`, and `-` between words. A call reads
+the whole name, so `@rand-int` does not call a function named `rand`.
+A parameter is an expression name (§8): `x1` and `a_b` are one name.
 
 Calls are replaced by the body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`
-copies. In the body, `$p`, and a bare `p` inside `$()`, become the
-argument of parameter `p`, parenthesized inside `$()`. A call with
+copies. In the body, `$p`, and a bare `p` inside `$()` or `$px()`,
+become the argument of parameter `p`, parenthesized inside `$()`. A call with
 fewer arguments takes the defaults, `c = red`, of the parameters left.
 Arguments and defaults are pasted as written, so `@dot(@r(5))` draws a
 new radius at each `$r`; store a shared random value in a variable

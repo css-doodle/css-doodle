@@ -103,19 +103,19 @@ test('quotes open and close, the other quote inside is content', () => {
     ]);
 });
 
-test('backslash escapes the next character', () => {
+test('a backslash escapes the next character and stays in the word', () => {
     assert.deepEqual(tokens('content: "\\"hello"'), [
         ['Word', 'content'],
         ['Symbol', ':'],
         ['Symbol', '"', 'open'],
-        ['Word', '"hello'],
+        ['Word', '\\"hello'],
         ['Symbol', '"', 'close'],
     ]);
     assert.deepEqual(tokens('content: "\\@p"'), [
         ['Word', 'content'],
         ['Symbol', ':'],
         ['Symbol', '"', 'open'],
-        ['Word', '@p'],
+        ['Word', '\\@p'],
         ['Symbol', '"', 'close'],
     ]);
     // outside a string a lone backslash is a word
@@ -133,21 +133,21 @@ test('backslash escapes the next character', () => {
         ['Symbol', '"', 'open'],
         ['Word', 'say'],
         ['Space', ' '],
-        ['Word', '"hi'],
-        ['Word', '"'],
+        ['Word', '\\"hi'],
+        ['Word', '\\"'],
         ['Symbol', '"', 'close'],
     ]);
     assert.deepEqual(tokens('"a\\\\"'), [
         ['Symbol', '"', 'open'],
         ['Word', 'a'],
-        ['Word', '\\'],
+        ['Word', '\\\\'],
         ['Symbol', '"', 'close'],
     ]);
     // an escaped space is kept: "a\ b" used to print "a\b"
     assert.deepEqual(tokens('"a\\ b"'), [
         ['Symbol', '"', 'open'],
         ['Word', 'a'],
-        ['Word', ' b'],
+        ['Word', '\\ b'],
         ['Symbol', '"', 'close'],
     ]);
     // an escaped line break continues the line
@@ -378,6 +378,7 @@ test('index points at the first char of the token in the untrimmed source', () =
         'content: "hello: world"; v[1]-2',
         'a/* x */b (1)-2',
         'grid: 4x4 / 100%;',
+        'content: "say \\"hi\\" a\\\\"',
     ]) {
         for (let t of scan(source)) {
             if (t.isSpace()) continue;
@@ -394,8 +395,8 @@ test('index points at the first char of the token in the untrimmed source', () =
         [['a', 0], [' ', 1], ['b', 12]]
     );
 
-    // an escaped word indexes at the backslash; the value excludes it
-    let word = scan('"say \\"hi\\""').find(t => t.value === '"hi');
+    // an escaped word indexes at its backslash
+    let word = scan('"say \\"hi\\""').find(t => t.value === '\\"hi');
     assert.equal(word.index, 5);
     // after an escaped line break, at the word itself
     assert.equal(scan('"a\\\nb"').find(t => t.value === 'b').index, 4);

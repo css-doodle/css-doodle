@@ -71,15 +71,17 @@ function textOf(tokens) {
     return text;
 }
 
-// the items of a comma list, split at the top level: `a, (b, c)` is two
+// the items of a comma list, split at the top level: `a, (b, c)` and
+// `a, "b, c"` are two
 function itemsOf(tokens) {
     let items = [];
     let item = [];
-    let depth = 0;
+    let depth = 0, quote = false;
     for (let token of tokens) {
-        if (token.isSymbol('(')) depth++;
-        else if (token.isSymbol(')') && depth) depth--;
-        if (!depth && token.isSymbol(',')) {
+        if (token.status) quote = token.status === 'open';
+        else if (!quote && token.isSymbol('(')) depth++;
+        else if (!quote && token.isSymbol(')') && depth) depth--;
+        if (!depth && !quote && token.isSymbol(',')) {
             if (item.length) items.push(item);
             item = [];
         } else {
@@ -210,9 +212,10 @@ function scan(source, options = {}) {
                 }
             }
             let word = input.slice(start, end).replace(/^[\r\n\f]+/, '');
-            if (word.length) {
-                // after an escaped line break the word is plain text, indexed where it starts
-                tokens.push(new Token('Word', word, pos, word.length < end - start ? end - word.length : index));
+            if (word.length === end - start) {
+                tokens.push(new Token('Word', input.slice(i, end), pos, index));
+            } else if (word.length) {
+                tokens.push(new Token('Word', word, pos, end - word.length));
             }
             i = end;
         }

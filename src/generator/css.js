@@ -128,11 +128,14 @@ function compileFunc(node) {
             node = { ...inner, name: node.name };
         }
         if (fname === '--') {
+            // @--(name, value) sets a variable, @--(name) reads it back as set
             let [name, ...value] = node.arguments.map(arg => compileArgument(arg, node));
             compiled = (frame, extra) => {
-                if (frame.contextVariable) {
-                    frame.contextVariable['--' + name(frame, extra)] = value.map(arg => arg(frame, extra)).join(',');
-                }
+                let vars = frame.contextVariable;
+                if (!name || !vars) return { value: '' };
+                let key = '--' + name(frame, extra);
+                if (!value.length) return { value: vars[key] ?? '' };
+                vars[key] = value.map(arg => arg(frame, extra)).join(',');
                 return { value: '' };
             };
         } else if (typeof fn !== 'function') {

@@ -607,3 +607,53 @@ test('a user function body without braces is one statement', () => {
     // a block inside parens does not end it
     assert.deepEqual(ast(`pic(c): @svg(circle { fill: $c }); background: @pic(red);`), ast(`background: @svg(circle { fill: red });`));
 });
+
+test('a user function name is read whole', () => {
+    // a call to rand-int is not a call to rand
+    assert.deepEqual(ast(`rand(x): [$x]; width: @rand-int(1, 3);`), ast(`width: @rand-int(1, 3);`));
+    // digits and a - between words are part of the name
+    assert.deepEqual(ast(`f2(x): [$x]; my-dot(r): <$r>; a: @f2(3); b: @my-dot(4);`), ast(`a: [3]; b: <4>;`));
+    // a - before a number is not
+    assert.deepEqual(ast(`k(x = 2): $x; a: $(@k-1);`), ast(`a: $(2-1);`));
+});
+
+test('a user function parameter name is read whole', () => {
+    // $x1 is not $x followed by 1
+    assert.deepEqual(ast(`f(x): [$x1|$x]; width: @f(5);`), ast(`width: [$x1|5];`));
+    // names with digits and _ bind, in and out of $()
+    assert.deepEqual(
+        ast(`f(a1, a_b, _c): [$a1|$a_b|$_c] $(a1 + a_b + _c2); width: @f(1, 2, 3);`),
+        ast(`width: [1|2|3] $((1) + (2) + _c2);`));
+});
+
+test('a user function parameter binds bare inside $() with a unit', () => {
+    assert.deepEqual(
+        ast(`f(x): $px(x) $4(x + 1) $%(x) rgb(x); width: @f(5);`),
+        ast(`width: $px((5)) $4((5) + 1) $%((5)) rgb(x);`));
+});
+
+test('a user function definition and call skip quoted text', () => {
+    // a ; or } in quotes ends neither the statement nor the body
+    assert.equal(ast(`content: "a;f(x): b";`)[0].value[0][0].value, '"a;f(x): b"');
+    assert.deepEqual(
+        ast(`f(x): content: "$x;}"; g(y): { content: "}" $y } a: @f(1); b: @g(2);`),
+        ast(`a: content: "1;}"; b: content: "}" 2;`));
+    // a comma or ) in quotes doesn't split or close the arguments
+    assert.deepEqual(ast(`f(x, y): [$x|$y]; a: @f("a,b", "c)d");`), ast(`a: ["a,b"|"c)d"];`));
+});
+
+test('text pulled in by @use calls the user functions around it and keeps its own', () => {
+    let vars = {
+        '--a': 'width: @twice(2)px;',
+        '--b': 'half(x): [$x]; height: @half(4);',
+        '--c': 'top: @half(1);',
+    };
+    let extra = { getVariable: name => vars[name] || '' };
+    let main = `twice(x): $(x * 2); @use: var(--a);`;
+    assert.deepEqual(ast(main, extra), ast(`width: $((2) * 2)px;`));
+    // half() is seen inside --b only: not by --c nor the main sheet
+    let [height, top, left] = ast(`@use: var(--b), var(--c); left: @half(1);`, extra);
+    assert.deepEqual(height.value, [[{ type: 'text', value: '[4]' }]]);
+    assert.equal(top.value[0][0].name, '@half');
+    assert.equal(left.value[0][0].name, '@half');
+});
