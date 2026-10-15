@@ -930,11 +930,6 @@ function closing(tokens, i) {
     return -1;
 }
 
-function nextSolid(tokens, i) {
-    while (tokens[i] && tokens[i].isSpace()) i++;
-    return i;
-}
-
 // index of the last token of the statement at tokens[i]: its `;`, or the
 // `}` closing its block
 function statementEnd(tokens, i) {
@@ -955,15 +950,16 @@ function expandFunctions(source, ctx) {
     let tokens = tokensOf(source);
     let defs = Object.create(null);
     let rest = '', from = 0;
-    for (let i = 0, depth = 0, prev; i < tokens.length; i++) {
-        let t = tokens[i];
+    for (let i = 0, depth = 0; i < tokens.length; i++) {
+        let t = tokens[i], prev = tokens[i - 1];
         if (t.isSymbol('(', '{')) depth++;
         else if (t.isSymbol(')', '}')) depth--;
         else if (!depth && t.isWord() && (!prev || prev.isSymbol(';', '}'))
                 && RE_PARAM.test(t.value) && tokens[i + 1]?.isSymbol('(') && adjacent(t, tokens[i + 1])) {
             let close = closing(tokens, i + 1);
-            let colon = nextSolid(tokens, close + 1);
-            let open = nextSolid(tokens, colon + 1);
+            let colon = close + 1;
+            while (tokens[colon]?.isSpace()) colon++;
+            let open = colon + 1;
             if (close > 0 && tokens[colon]?.isSymbol(':') && tokens[open]) {
                 let braced = tokens[open].isSymbol('{');
                 let end = braced ? closing(tokens, open) : statementEnd(tokens, open);
@@ -985,10 +981,8 @@ function expandFunctions(source, ctx) {
                 rest += source.slice(from, t.index);
                 from = tokenEnd(last);
                 i = end;
-                t = last;
             }
         }
-        if (!t.isSpace()) prev = t;
     }
     if (from === 0) return source;
     return expandCalls(rest + source.slice(from), defs, ctx, []);

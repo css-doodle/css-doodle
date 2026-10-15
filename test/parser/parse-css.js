@@ -598,6 +598,8 @@ test('only a top-level name(params): { } is a user function definition', () => {
     assert.equal(ast(`@at(1, 1) { f(x): { color: red } }`)[0].styles[0].selector, 'f(x):');
     // a definition alone emits nothing
     assert.deepEqual(ast(`f(x): { color: $x }`), []);
+    // the space kept before `:` doesn't stop it
+    assert.deepEqual(ast(`twice(x) : $(x * 2); width: @twice(3)px;`), ast(`width: $((3) * 2)px;`));
 });
 
 test('a user function body without braces is one statement', () => {
