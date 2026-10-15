@@ -154,7 +154,7 @@ function createPointFunction(props, split) {
     return point;
 }
 
-const COMMANDS = new Set('points split turn r t x y rotate move scale round grow frame fill fill-rule unit smooth blocks steps'.split(' '));
+const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill fill-rule unit smooth blocks steps'.split(' '));
 
 // each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
@@ -317,6 +317,16 @@ function createShapePoints(props, lo, hi, raw) {
         let os = rings.map(() => [0, 0]), units = rings.map((_, c) => props.blocks ? 0 : c);
         rings = rings.map((ring, c) => paths[c] ? toPairs(flatten(paths[c], .002)) : ring);
         for (let [name, text] of steps) {
+            if (name == 'mirror') {
+                for (let axis of new Set(text.split(/[\s,]+/))) {
+                    let flip = { x: ([x, y]) => [-x, y], y: ([x, y]) => [x, -y] }[axis];
+                    if (flip && rings.flat(2).every(isFinite)) {
+                        rings = overlay(Object.assign(rings, { evenodd }), Object.assign(rings.map(ring => ring.map(flip)), { evenodd }), 'union');
+                    }
+                }
+                [units, paths, os] = [rings.map(() => 0), [], rings.map(() => [0, 0])];
+                continue;
+            }
             let f = fns[0].formula(text), frame = name == 'frame';
             // a frame, or a grow by a constant, is exact: the band inside, the region moved out;
             // constant means the same at 64 angles round the whole turn

@@ -476,6 +476,24 @@ test('move, rotate, scale, grow and frame run in the order written', () => {
     assert.ok(radii('circle; grow: .1; scale: .5').every(r => Math.abs(r - 27.5) < .01));
 });
 
+test('mirror: keeps the shape and its reflections as one region, as in @scene', () => {
+    let fill = s => {
+        let rings = generateShape(s).points.rings.map(ring => ring.map(p => String(p).split(' ').map(parseFloat)));
+        return (x, y) => rings.reduce((n, ring) => n + insideTest(ring)(x, y), 0) != 0;
+    };
+    let grid = f => Array.from({ length: 400 }, (_, i) => f(i % 20 * 5 + 2.5, (i / 20 | 0) * 5 + 2.5));
+    // a curve leaning right, folded: the same as reading it at the mirrored angle
+    let lobe = a => `points: 240; r: .3 + exp(4 * (cos(${a} - .5) - 1))`;
+    assert.deepEqual(grid(fill(lobe('t') + '; mirror: x')), grid(fill(lobe('atan2(sin(t), abs(cos(t)))'))));
+    assert.deepEqual(grid(fill('heart; mirror: x')), grid(fill('heart')));
+    // in the order written: moved then mirrored is apart, mirrored then moved is one
+    assert.equal(generateShape('circle; scale: .3; move: .5 .5; mirror: x y').points.rings.length, 4);
+    assert.equal(generateShape('circle; mirror: x y; scale: .3; move: .5 .5').points.rings.length, 1);
+    let below = fill('circle; scale: .3; move: 0 .5; mirror: y');
+    assert.deepEqual([below(50, 25), below(50, 75), below(50, 50)], [true, true, false]);
+    assert.equal(String(generateShape('star; mirror: z').points), String(generateShape('star').points));
+});
+
 test('points: x y pairs give the corners themselves, a number how many', () => {
     assert.equal(String(generateShape('points: 0 1, 1 -1, -1 -1').points), '50% 0%,100% 100%,0% 100%');
     assert.equal(String(generateShape('polygon { points: 0 1, 1 -1, -1 -1 }').points), '50% 0%,100% 100%,0% 100%');

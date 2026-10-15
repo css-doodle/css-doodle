@@ -9,7 +9,7 @@ import parseValueGroup from './parse-value-group.js';
 //   shape = [ name ] [ '#' id ] [ '*' count [ 'x' count ] ] [ '{' body '}' ]
 
 const GROUPS = ['union', 'subtract', 'intersect', 'exclude'];
-const STEPS = ['move', 'rotate', 'scale', 'grow', 'frame'];
+const STEPS = ['move', 'rotate', 'scale', 'grow', 'frame', 'mirror'];
 const SEMICOLON = scan(';')[0];
 
 // `circle#dot*2x3` or `circle*2x3#dot` → { name: 'circle', id: 'dot', count: [2, 3] }
@@ -126,7 +126,7 @@ function readShapes(input, warn = () => {}, options) {
     return root;
 }
 
-// `steps` keeps move, rotate, scale, grow and frame in the order written
+// `steps` keeps move, rotate, scale, grow, frame and mirror in the order written
 function commandsOf(node) {
     let commands = {};
     for (let { name, value } of node.rows) {

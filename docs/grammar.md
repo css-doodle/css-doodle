@@ -548,10 +548,12 @@ name, variables that the rows and shapes of their block read:
 `@scene` also reports names nothing reads, such as a misspelled
 attribute.
 
-**Steps**, `move`, `rotate`, `scale`, `grow` and `frame`, run in the
-order written on the shape so far, and one written twice runs twice:
-`scale: .5; move: .5 0` halves the shape, then moves it a quarter of
-the box right, and a `rotate` after `move` turns it around the center.
+**Steps**, `move`, `rotate`, `scale`, `mirror`, `grow` and `frame`, run
+in the order written on the shape so far, and one written twice runs
+twice: `scale: .5; move: .5 0` halves the shape, then moves it a
+quarter of the box right, and a `rotate` after `move` turns it around
+the center. `mirror: x y` keeps the shape and its reflections across
+those axes as one shape, so a half drawn on the right makes both.
 A preset's own steps come first, so `square; scale: .5` halves the
 square. Other rows are attributes; the last one wins. `y` points up,
 and `rotate` turns counterclockwise in degrees (`.25turn` is 90,
@@ -587,7 +589,7 @@ circles apart.
 |            | `@shape`                                                                 | `@scene`                                                                 |
 |------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `lathe { points }` or `lathe { body }`, `plane`, `sdf { d }` |
-| Steps      | `move: x y`, `rotate`, `scale: x [y]`, `grow`, `frame`                   | the same in 3D, `rotate: [axis] angle`, and `mirror`, `repeat`, `twist`  |
+| Steps      | `move: x y`, `rotate`, `scale: x [y]`, `mirror`, `grow`, `frame`         | the same in 3D, `rotate: [axis] angle`, and `repeat`, `twist`            |
 | Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`      | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`             |
 | Groups     | `union`, `subtract`, `intersect`, `exclude`                              | `union`, `subtract`, `intersect`                                         |
 | Space      | lengths in units where the box is 2 across, `0 0` at its center         | the camera fits the model, so only its proportions matter               |
@@ -715,8 +717,7 @@ camera), so `1 - normal.z` is bright at the edges; the scene's light
 still shades the result.
 
 **Shapes.** `round` keeps the outer size of a `box`, `cylinder` or
-`polygon`, while `grow` makes any shape bigger. `mirror: x z` keeps
-the shape and its reflections across those axes, `repeat: x y z`
+`polygon`, while `grow` makes any shape bigger. `repeat: x y z`
 repeats it that far apart along each axis (0 for none), and
 `twist: a` turns it `a` degrees per unit up `y`. `sdf { d: … }` takes
 a distance written in `p`. `polygon` takes `points`, or a `@shape`
