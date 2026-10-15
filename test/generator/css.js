@@ -1321,3 +1321,33 @@ test('@shape: none clips nothing and warns nothing', () => {
     assert.deepEqual(warnings.map(w => w.message), []);
     assert.deepEqual(compile('@grid: 1; @shape: nope;').warnings.map(w => w.message), ['unknown shape nope']);
 });
+
+test('an arithmetic sequence count is not read as a range', () => {
+    assertContains('@grid: 1; --l: @m(2+3-1, x);', '--l:x,x,x,x;');
+    assertContains('@grid: 1; --l: @m(3-1, x);', '--l:x,x,x;');
+});
+
+test('@calc ignores extra arguments instead of reading them as its context', () => {
+    assertContains('@grid: 1; --v: @calc(1+1, 2);', '--v:2;');
+});
+
+test('a skipped call argument takes its default and later ones keep their place', () => {
+    assertContains('@grid: 1; --f(a = 1, b = 2): $(a - b); --v: $f(, 9);', '--v:-8;');
+});
+
+test('user functions that double on every call stop at an expansion limit', () => {
+    let defs = '--a0(x): x x;';
+    for (let i = 1; i < 30; i++) defs += ` --a${i}(x): $a${i - 1}(x) $a${i - 1}(x);`;
+    let { warnings } = compile(`${defs} @grid: 1; --v: $a29(1);`);
+    assert.ok(warnings.some(w => /too large/.test(w.message)), JSON.stringify(warnings));
+});
+
+test('a texture section does not inherit a variable holding GLSL statements', () => {
+    let { shaders, warnings } = compile(`
+        --fragment: @raw(void main() { FragColor = vec4(1.); });
+        @content: @shaders(fragment { $fragment } texture0 { background: red; });
+    `);
+    let [shader] = Object.values(shaders);
+    assert.ok(!parseShaders(shader.source).textures[0].value.includes('--fragment'), shader.source);
+    assert.deepEqual(warnings, []);
+});

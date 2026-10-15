@@ -310,3 +310,8 @@ test('#id rows need no ; before a block, and the count may come first', () => {
     assert.equal(body.match(/g_box\(/g).length, 2);
     assert.match(body, /for \(int g_\d+ = 0; g_\d+ < 2;/);
 });
+
+test('hsl() without percentages is the shader function, not a CSS color', () => {
+    let { body } = scene('sphere { fill: hsl(.6, .8, .5) }');
+    assert.ok(/hsl\(/.test(body), body);
+});

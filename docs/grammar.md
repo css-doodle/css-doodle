@@ -901,7 +901,7 @@ expression, and a section of only `$name` draws the doodle stored in
 grid-value = { flag } grid { flag | modifier }
 grid       = number [ sep number [ sep number ] ]
 sep        = 'x' | 'X' | ',' | '，'
-flag       = 'row' | 'col' | 'p3d' | 'noclip'
+flag       = 'row' | 'col' | 'p3d' | 'noclip' | 'border' [ ':' color ]
 modifier   = '/' size [ '/' fill ] | '+' value | '~' value
            | '*' [ 'h' ] value | '^' value | '∆' value | '_' value
            | '|' value | 'ß' value
@@ -924,7 +924,8 @@ attribute and the `grid:` of a `@pattern` read the same rule.
 | `ß value`           | border                                |
 
 A modifier's value runs to the next modifier symbol, spaces included.
-Flags are whole words, case-insensitive, allowed anywhere; the
+Flags are whole words, case-insensitive, allowed anywhere; `border` is
+shorthand for `ß 1px solid`, and `border:red` sets the color; the
 dimensions are the first item that is not a flag. A modifier written
 before the dimensions swallows them.
 

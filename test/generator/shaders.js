@@ -37,3 +37,8 @@ test('a link error without a line reads as its first line', () => {
     assert.ok(!err.line);
     assert.equal(shaderError('', '').message, 'link failed');
 });
+
+test('an out vec4 declared after other statements on its line is the output', () => {
+    let source = generateFragment('precision highp float; out vec4 o; void main() { o = vec4(1); }', []);
+    assert.ok(!source.includes('FragColor'), source);
+});

@@ -73,7 +73,7 @@ function textOf(tokens) {
 
 // the items of a comma list, split at the top level: `a, (b, c)` and
 // `a, "b, c"` are two
-function itemsOf(tokens) {
+function itemsOf(tokens, keepEmpty) {
     let items = [];
     let item = [];
     let depth = 0, quote = false;
@@ -82,13 +82,13 @@ function itemsOf(tokens) {
         else if (!quote && token.isSymbol('(')) depth++;
         else if (!quote && token.isSymbol(')') && depth) depth--;
         if (!depth && !quote && token.isSymbol(',')) {
-            if (item.length) items.push(item);
+            if (item.length || keepEmpty) items.push(item);
             item = [];
         } else {
             item.push(token);
         }
     }
-    if (item.length) items.push(item);
+    if (item.length || keepEmpty && items.length) items.push(item);
     return items;
 }
 

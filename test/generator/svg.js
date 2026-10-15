@@ -275,6 +275,9 @@ test('script tags, event handlers and javascript: links are dropped', () => {
     assert.equal(svg('script { content: alert(1) } rect { onload: alert(1); fill: red }'),
         `<svg ${NS}><rect fill="red"/></svg>`);
     assert.equal(svg('svg { onLoad: alert(1) } a { href: javascript:alert(1) }'), `<svg ${NS}><a/></svg>`);
+    // references and whitespace inside the scheme do not slip past
+    assert.equal(svg('a { href: "&#106;avascript:alert(1)" }'), `<svg ${NS}><a/></svg>`);
+    assert.equal(svg('a { href: "jav&#x0A;ascript:alert(1)" }'), `<svg ${NS}><a/></svg>`);
 });
 
 test('comma selectors and the child combinator', () => {

@@ -1009,6 +1009,8 @@ function expandFunctions(source, ctx) {
     return expandCalls(rest + source.slice(from), defs, ctx, []);
 }
 
+const MAX_EXPANSION = 1e6;
+
 function expandCalls(text, defs, ctx, chain) {
     let tokens = tokensOf(text);
     let out = '', from = 0, quote = false;
@@ -1024,13 +1026,18 @@ function expandCalls(text, defs, ctx, chain) {
         let start = end + 2;
         end = closing(tokens, end + 1);
         if (end < 0) break;
-        let args = itemsOf(tokens.slice(start, end)).map(item => expandCalls(
+        let args = itemsOf(tokens.slice(start, end), true).map(item => !item.length ? '' : expandCalls(
             text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain));
         let body = '';
         if (chain.includes(name)) {
             warn(ctx, `$${name}() calls itself`);
+        } else if (ctx.expanded > MAX_EXPANSION) {
+            if (ctx.expanded < Infinity) warn(ctx, 'user functions expand too large');
+            ctx.expanded = Infinity;
         } else {
-            body = expandCalls(bindParams(def, args, defs), defs, ctx, [...chain, name]);
+            body = bindParams(def, args, defs);
+            ctx.expanded = (ctx.expanded || 0) + body.length;
+            body = expandCalls(body, defs, ctx, [...chain, name]);
         }
         out += text.slice(from, t.index) + body;
         from = tokenEnd(tokens[end]);
@@ -1064,7 +1071,7 @@ function bindParams({ params, defaults, body }, args, defs) {
         let last = tokens[end], next = tokens[end + 1];
         i = end;
         if (k < 0) continue;
-        let arg = args[k] ?? defaults[k];
+        let arg = args[k] || defaults[k];
         let start = t.index;
         if (prev?.isSymbol('$') && adjacent(prev, t)) {
             start = prev.index;

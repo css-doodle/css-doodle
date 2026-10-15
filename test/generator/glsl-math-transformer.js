@@ -475,3 +475,14 @@ test('a unary plus is its operand', () => {
     assert.equal(transform('1 + +x'), '(1.0 + x)');
     assert.equal(transform('-(+x)'), '-x');
 });
+
+test('hex literals become decimal floats', () => {
+    assert.equal(transform('0x1f + 1'), '(31.0 + 1.0)');
+});
+
+test('powers of a large operand fall back to pow() so nesting stays linear', () => {
+    let code = 'x';
+    for (let i = 0; i < 12; i++) code = `(${code}) ** 4`;
+    assert.ok(transform(code).length < 5000);
+    assert.equal(transform('x ** 2'), '(x * x)');
+});

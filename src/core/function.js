@@ -136,7 +136,7 @@ function makeSequence(c) {
                 getValue(actions[0](n, x, y, max, X, Y, index, signature))
             : (n, x, y, max, X, Y, index) => actions.map(action =>
                     getValue(action(n, x, y, max, X, Y, index, signature))).join(',');
-        if (/\D/.test(count) && !/\d+[x-]\d+|^\s*\d+\s*x\s*\d+\s*$/.test(count)) {
+        if (/\D/.test(count) && !/^\d+[x-]\d+$|^\s*\d+\s*x\s*\d+\s*$/.test(count)) {
             evaluated = calc(count);
             if (evaluated === 0) {
                 sequence(count, run);
@@ -525,7 +525,7 @@ Function.match = (cell, { extra }) => {
     }
 };
 
-Function.calc = () => (value = '', context) => tidyNumber(calc(value, context, 1));
+Function.calc = () => (value = '', context) => tidyNumber(calc(value, typeof context === 'object' ? context : undefined, 1));
 
 Function.hex = () => (value = '') => {
     let n = parseInt(value);

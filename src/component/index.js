@@ -378,6 +378,7 @@ if (typeof HTMLElement !== 'undefined') {
         render(code, seed) {
             this.cleanup();
             this._code = code;
+            this._warned?.clear();
             let old = this.compiled;
             let compiled = this.generate(code, seed);
             for (let id in { ...old?.shaders, ...old?.patterns }) {

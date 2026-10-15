@@ -57,7 +57,7 @@ export function generateFragment(fragment, textures) {
 
     const isShadertoy = fragment.includes('void mainImage');
     const precisionMatch = fragment.match(/precision\s+(highp|mediump|lowp)\s+float\s*;/);
-    const outputMatch = fragment.match(/^\s*out\s+vec4\s+(\w+)/m);
+    const outputMatch = fragment.match(/\bout\s+vec4\s+(\w+)/);
     const output = outputMatch ? outputMatch[1] : 'FragColor';
     const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
     const hasTexture2d = /texture2D\s*\(/.test(fragment);
@@ -256,7 +256,7 @@ function releaseSurface(surface, drawing) {
 export default function drawShader(shaders, seed, cell, onLost) {
     const dpr = devicePixelRatio || 1;
     const { textures } = shaders;
-    const vertex = shaders.vertex || DEFAULT_VERTEX_SHADER;
+    const vertex = shaders.vertex?.trim() || DEFAULT_VERTEX_SHADER;
     const fragment = generateFragment(shaders.fragment, textures);
     const uploaded = textures.map(t => t.value);
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
@@ -296,7 +296,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
             delta: gl.getUniformLocation(program, 'u_timeDelta'),
             mouse: gl.getUniformLocation(program, 'u_mouse'),
         };
-        drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta);
+        drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta || uniforms.mouse);
         drawing.seeded = !!uniforms.seed;
     }
 

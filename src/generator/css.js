@@ -609,7 +609,11 @@ class Rules {
     injectVariables(value, count) {
         let variables = '';
         let group = this.scopedVars(count);
-        for (let name in group) variables += `${name}: ${group[name]};`;
+        for (let name in group) {
+            let bare = String(group[name]).replace(/"[^"]*"|'[^']*'|\$\{[\w-]+\}/g, '');
+            while (bare !== (bare = bare.replace(/\([^()]*\)/g, '')));
+            if (!/[;{}]/.test(bare)) variables += `${name}: ${group[name]};`;
+        }
         variables = variables.replace(/var\(--cssd-(utime|UTime)\)/g, (_, n) => n == 'utime' ? '@t' : '@T');
         return variables ? `:doodle {${variables}}` + value : value;
     }
@@ -1162,49 +1166,52 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
     let restore = useMathStream(R.random, seedValue);
+    try {
 
-    let envAt = (rules, seed) => ({
-        rules, context: {}, extra: [], upextra, level: 0, host,
-        rand, pick, shuffle, random: R.random, updateRandom,
-        seed, maxGrid,
-    });
-    let cellAt = (x, y, z, count, uid, grid) => ({ x, y, z, count, uid, grid, id: cellId(x, y, z) });
+        let envAt = (rules, seed) => ({
+            rules, context: {}, extra: [], upextra, level: 0, host,
+            rand, pick, shuffle, random: R.random, updateRandom,
+            seed, maxGrid,
+        });
+        let cellAt = (x, y, z, count, uid, grid) => ({ x, y, z, count, uid, grid, id: cellId(x, y, z) });
 
-    let pre = new Rules(tokens, instance);
-    pre.preCompose(cellAt(1, 1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
+        let pre = new Rules(tokens, instance);
+        pre.preCompose(cellAt(1, 1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
 
-    gridSize = pre.grid || gridSize;
-    let seed = pre.seed || seedValue;
-    if (isNil(seed)) seed = Date.now();
-    seed = String(seed);
+        gridSize = pre.grid || gridSize;
+        let seed = pre.seed || seedValue;
+        if (isNil(seed)) seed = Date.now();
+        seed = String(seed);
 
-    if (pre.seed || !seedRandom) {
-        updateRandom(seed);
-    }
-    useMathStream(R.random, seed);
-    let tree = isTreeGrid(gridSize);
-    let rules = new Rules(tokens, instance);
-    rules.seed = seed;
-    rules.random = R.random;
-    rules.cellPrefix = tree ? '.' : '#';
-
-    let env = envAt(rules, seed);
-    let cellGrid = tree ? { ...gridSize, count: gridSize.x * gridSize.y } : gridSize;
-    let uid = 0;
-    let count = 0;
-    for (let z = 1; z <= gridSize.z; ++z) {
-        if (tree) {
-            count = 0;
-            env.level = z;
+        if (pre.seed || !seedRandom) {
+            updateRandom(seed);
         }
-        for (let y = 1; y <= gridSize.y; ++y) {
-            for (let x = 1; x <= gridSize.x; ++x) {
-                rules.compose(cellAt(x, y, z, ++count, ++uid, cellGrid), env);
+        useMathStream(R.random, seed);
+        let tree = isTreeGrid(gridSize);
+        let rules = new Rules(tokens, instance);
+        rules.seed = seed;
+        rules.random = R.random;
+        rules.cellPrefix = tree ? '.' : '#';
+
+        let env = envAt(rules, seed);
+        let cellGrid = tree ? { ...gridSize, count: gridSize.x * gridSize.y } : gridSize;
+        let uid = 0;
+        let count = 0;
+        for (let z = 1; z <= gridSize.z; ++z) {
+            if (tree) {
+                count = 0;
+                env.level = z;
+            }
+            for (let y = 1; y <= gridSize.y; ++y) {
+                for (let x = 1; x <= gridSize.x; ++x) {
+                    rules.compose(cellAt(x, y, z, ++count, ++uid, cellGrid), env);
+                }
             }
         }
+        let output = rules.output(env);
+        if (tree && output.grid) output.grid = gridSize;
+        return output;
+    } finally {
+        useRandom(restore);
     }
-    let output = rules.output(env);
-    if (tree && output.grid) output.grid = gridSize;
-    useRandom(restore);
-    return output;
 }

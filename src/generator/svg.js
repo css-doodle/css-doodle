@@ -58,7 +58,7 @@ class Tag {
         let open = '<' + this.name;
         for (let name in this.attrs) {
             let value = unquote(this.attrs[name]);
-            if (/^on/i.test(name) || /^\s*javascript:/i.test(value)) continue;
+            if (/^on/i.test(name) || /^javascript:/i.test(plain(value))) continue;
             open += ' ' + name + '="' + escapeAttr(value) + '"';
         }
         let content = '';
@@ -80,6 +80,15 @@ function escapeText(text) {
     text = String(text);
     if (text.indexOf('&') < 0 && text.indexOf('<') < 0) return text;
     return text.replace(RE_AMP, '&amp;').replace(RE_LT_TEXT, '&lt;');
+}
+
+function plain(text) {
+    return text
+        .replace(/&#x([0-9a-f]+);?/gi, (_, h) => String.fromCodePoint(Math.min(parseInt(h, 16), 0x10ffff)))
+        .replace(/&#(\d+);?/g, (_, d) => String.fromCodePoint(Math.min(+d, 0x10ffff)))
+        .replace(/&(tab|newline);?/gi, '')
+        .replace(/&colon;?/gi, ':')
+        .replace(/[\0-\x20\x7f-\x9f]/g, '');
 }
 
 function escapeAttr(text) {

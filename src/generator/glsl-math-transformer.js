@@ -68,7 +68,7 @@ function cast(out, res, exp) {
     return `${exp}(${out})`;
 }
 
-export const float = v => /[.e]/i.test(v) ? v : v + '.0';
+export const float = v => /^0x/i.test(v) ? Number(v) + '.0' : /[.e]/i.test(v) ? v : v + '.0';
 
 function hexColors(code) {
     return code.replace(/#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/gi, (_, hex) => {
@@ -255,7 +255,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             const arg = isVector(res) ? res : 'float';
             const l = gen(n.left, arg);
             const k = n.right.type === 'Lit' ? Number(n.right.val) : 0;
-            return cast(Number.isInteger(k) && k > 1 && k < 5 ? `(${Array(k).fill(l).join(' * ')})` : `pow(${l}, ${gen(n.right, arg)})`, res, exp);
+            return cast(Number.isInteger(k) && k > 1 && k < 5 && l.length * k < 200 ? `(${Array(k).fill(l).join(' * ')})` : `pow(${l}, ${gen(n.right, arg)})`, res, exp);
         }
         const lt = infer(n.left), rt = infer(n.right);
         const vec = VEC_COMPARE[op] && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
