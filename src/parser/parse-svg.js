@@ -143,8 +143,14 @@ function readStyleBlock(iter, selectors) {
     return makeBlock('style', styleContent);
 }
 
-// the head as svg selectors: `g circle, rect*3 {`, `style {`
+// the head as svg selectors: `g circle, rect*3 {`, `style {`; or `@match(test) {`
 function readSvgBlocks(iter, head) {
+    let match = /^@\s*match\s*\((.*)\)$/s.exec(textOf(head).trim());
+    if (match) {
+        let block = parseBody(iter, makeBlock('match'), svg);
+        block.test = match[1].trim();
+        return [block];
+    }
     // `Style {}` is the style block too
     let groups = getSelectorGroups(head).map(group => group.map(s => /^style$/i.test(s) ? 'style' : s));
     if (!groups.length) {

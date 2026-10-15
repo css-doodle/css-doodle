@@ -4,7 +4,7 @@
 //   pseudo     { type: 'pseudo', selector, selectors, styles }  selectors resolved, '&' is the cell
 //   cond       { type: 'cond', name, segments, position, styles } + raw(); segments { keyword } | { arguments }, spaced
 //   keyframes  { type: 'keyframes', name, steps: [{ type: 'step', name: Group[], styles }] }
-//   func       { type: 'func', name, arguments: [{ values, cluster }], position, index, variables?, unit?, size? }
+//   func       { type: 'func', name, arguments: [{ values, cluster }], position, index, unit?, size? }
 //   text       { type: 'text', value }
 //   var        { type: 'var', name }  a `--name` leading an argument, bare or wrapped
 // The list carries warnings: [{ message, pos? }], pos a token [col, row]
@@ -251,7 +251,7 @@ function splitDollars(tokens) {
     return result;
 }
 
-function parseFunc(cur, variables = {}) {
+function parseFunc(cur) {
     let tok = cur.next(); // '@' or '$'
     let isCalc = tok.isSymbol('$');
     let name = '@';
@@ -264,10 +264,10 @@ function parseFunc(cur, variables = {}) {
         end += t.value.length;
         cur.next();
     }
-    return finishFunc(cur, name, end, isCalc, variables, tok.index);
+    return finishFunc(cur, name, end, isCalc, tok.index);
 }
 
-function finishFunc(cur, name, end, isCalc, variables, index, shaped) {
+function finishFunc(cur, name, end, isCalc, index, shaped) {
     let func = { type: 'func', name: '', arguments: [] };
     func.index = index;
     let hasArguments = false;
@@ -276,14 +276,13 @@ function finishFunc(cur, name, end, isCalc, variables, index, shaped) {
     if (dot > 0) {
         let inner;
         if (dot < name.length - 1) {
-            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, variables, index + dot + 1, readsShape(name));
+            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, index + dot + 1, readsShape(name));
             inner.dotted = true;
         } else {
             inner = parseFunc(cur);
         }
         name = name.slice(0, dot);
         func.arguments = [Node.argument([inner])];
-        func.variables = variables;
         hasArguments = true;
     }
     else {
@@ -293,14 +292,12 @@ function finishFunc(cur, name, end, isCalc, variables, index, shaped) {
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
-                let closed = parseArguments(cur, variables, shaped || readsShape(name));
+                let closed = parseArguments(cur, shaped || readsShape(name));
                 func.arguments = closed.args;
                 if (isSvg(name)) {
-                    func.arguments = expandSvg(
-                        cur, cur.source.slice(paren.index + 1, closed.end), closed.args, variables);
+                    func.arguments = expandSvg(cur, cur.source.slice(paren.index + 1, closed.end), closed.args);
                 }
             }
-            func.variables = variables;
             hasArguments = true;
         }
     }
@@ -376,7 +373,7 @@ function declaresVar(cur) {
     return !!t && t.isSymbol(':');
 }
 
-function parseArguments(cur, variables, copying) {
+function parseArguments(cur, copying) {
     let args = [];
     let values = [];
     let buf = '';
@@ -431,7 +428,7 @@ function parseArguments(cur, variables, copying) {
         // functions fire inside quotes too
         if (tok.isSymbol('@', '$')) {
             flush(true);
-            values.push(parseFunc(cur, variables));
+            values.push(parseFunc(cur));
             continue;
         }
         if (!quote && tok.isSymbol()) {
@@ -616,31 +613,19 @@ function parseDoodleBody(cur, start, name) {
     return [normalizeArgument([Node.text(body.trim() || body)])];
 }
 
-function expandSvg(cur, raw, args, variables) {
+function expandSvg(cur, raw, args) {
     let parsedSvg = parseSvg(raw);
-    let times = parsedSvg.times;
-    // `--name:` anywhere in the body declares for the whole call, last wins
-    function collect(block) {
+    function rewrites(block) {
+        if (block.times || block.test !== undefined) return true;
         for (let item of block.value) {
-            if (item.variable) {
-                let rules = parseSource(`${item.name}: ${item.value}`, cur.ctx);
-                if (rules[0]) {
-                    variables[item.name] = rules[0].value;
-                }
-            } else {
-                let child = item.type === 'block' ? item : item.value;
-                if (child && Array.isArray(child.value)) {
-                    times ||= child.times;
-                    collect(child);
-                }
-            }
+            let child = item.type === 'block' ? item : item.value;
+            if (item.variable || Array.isArray(child?.value) && rewrites(child)) return true;
         }
+        return false;
     }
-    collect(parsedSvg);
-    if (times) {
+    if (rewrites(parsedSvg)) {
         let svg = svgSourceOf(parsedSvg) + ')';
-        let sub = new Cursor(svg, cur.ctx);
-        return parseArguments(sub, variables).args;
+        return parseArguments(new Cursor(svg, cur.ctx)).args;
     }
     return args;
 }
@@ -855,7 +840,7 @@ function parseCondSelector(cur, brace) {
         let tok = cur.next();
         if (tok.isSymbol('(')) {
             flush();
-            let args = parseArguments(cur, {}).args;
+            let args = parseArguments(cur).args;
             segments.push({ arguments: args, spaced });
             spaced = false;
         } else if (tok.isSpace()) {

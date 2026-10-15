@@ -269,9 +269,8 @@ quotes does not split. Whitespace belongs to the argument, so
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
 for each cell, and once per copy in a `*N` block. `@svg` reads an SVG
-body (§9.1): `--name: value` anywhere in it defines a variable for the
-call, the last one winning, and `element*count` expands before the
-body is split into arguments.
+body (§9.1), where `element*count` expands before the body is split
+into arguments.
 
 ## 8. Expressions
 
@@ -322,8 +321,8 @@ name       = letter or '_', then letters, digits or '_'
 Each caller provides its own context:
 
 - **`$(…)`** sees the doodle's custom properties at host, container
-  and cell level, without `--`, and the `--name` declarations of an
-  enclosing `@svg`. Calls inside it run first. The result is rounded
+  and cell level, without `--`, and the `--name` declarations above it
+  in an enclosing `@svg`. Calls inside it run first. The result is rounded
   to 12 significant digits, magnitudes below `1e-9` become `0`, and
   the unit suffix is appended. A lone name like `$w` is a
   generation-time `var()`: arithmetic is evaluated, anything else
@@ -374,8 +373,9 @@ text (`style { … }` in SVG, every shader section). At the doodle level
 ```
 
 ```
-svg-body        = { svg-block | svg-element | svg-declaration }
+svg-body        = { svg-block | svg-match | svg-element | svg-declaration }
 svg-block       = selector { ',' selector } '{' svg-body '}'
+svg-match       = '@match' '(' expression ')' '{' svg-body '}'
 svg-element     = name [ ';' ]
 selector        = element { [ '>' ] element }
 element         = name [ '#' id ] { '.' class } [ '*' count ]
@@ -402,6 +402,20 @@ number, a grid (`2x3`) or a range (`1-3`). Inside, `@n` is the
 sequence value, plus `@nx` and `@ny` for a grid. `x, y: 1, 2` splits
 only when the value has as many parts as names. `content: text` adds
 a text node.
+
+`--name: value` sets a variable where it stands, once per copy inside
+a `*count`; a read after it sees the value, one before it reads the
+doodle's own. Blocks don't scope it, and the latest value wins:
+`circle*3 { --i: @n; r: $(i * 2) }` gives radii 2, 4 and 6.
+
+`@match(test) { … }` keeps its body only where the test holds: its
+elements go where the block stands, and its declarations set the
+attributes of the element around it. The test is evaluated like
+`$(…)` (§8), so it reads the custom properties and the `@n` of an
+enclosing `*count`. A body that is left out still evaluates its
+functions and `--name` declarations, so the random values after it
+are the same either way. As a value, `fill: @match(t, a, b)` is still
+the function (§8).
 
 A block value gets a generated id: `url(#id)`, or `#id` for `href`.
 Gradients, `pattern`, `filter`, `clipPath`, `mask`, `marker` and

@@ -127,7 +127,15 @@ function compileFunc(node) {
             fn = fn[name];
             node = { ...inner, name: node.name };
         }
-        if (typeof fn !== 'function') {
+        if (fname === '--') {
+            let [name, ...value] = node.arguments.map(arg => compileArgument(arg, node));
+            compiled = (frame, extra) => {
+                if (frame.contextVariable) {
+                    frame.contextVariable['--' + name(frame, extra)] = value.map(arg => arg(frame, extra)).join(',');
+                }
+                return { value: '' };
+            };
+        } else if (typeof fn !== 'function') {
             let literal = { value: node.name };
             compiled = frame => {
                 if (node.arguments.length) {
@@ -135,7 +143,7 @@ function compileFunc(node) {
                 }
                 return literal;
             };
-        } else if (SEQ_READERS.has(fn) && !node.arguments.length && !node.variables) {
+        } else if (SEQ_READERS.has(fn) && !node.arguments.length) {
             let index = SEQ_READERS.get(fn);
             let read = frame => {
                 let e = last(frame.env.extra);
@@ -174,9 +182,6 @@ function compileFunc(node) {
                 if (composable) {
                     let composed = rules.composeComposable(fname, node, cell, env, frame.selector, frame.property);
                     return { value: composed ?? '' };
-                }
-                if (!inArgument && node.variables) {
-                    rules.composeVariables(node.variables, cell, env, frame.contextVariable);
                 }
                 let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                 let output;
@@ -595,12 +600,6 @@ class Rules {
         for (let name in group) variables += `${name}: ${group[name]};`;
         variables = variables.replace(/var\(--cssd-(utime|UTime)\)/g, (_, n) => n == 'utime' ? '@t' : '@T');
         return variables ? `:doodle {${variables}}` + value : value;
-    }
-
-    composeVariables(variables, cell, env, result = {}) {
-        for (let [name, value] of Object.entries(variables)) {
-            result[name] = this.getComposedValue(value, cell, env, result).value;
-        }
     }
 
     getComposedValue(value, cell, env, context, selector, property) {

@@ -3,7 +3,11 @@ function generate(token, last, repeat) {
     if (token.type === 'block') {
         let times = repeat ? token.times : null;
         if (times) result += '@M(' + times + ',';
-        result += token.name + '{';
+        if (token.test === undefined) {
+            result += token.name + '{';
+        } else {
+            result += '@ match(' + (repeat ? '$(' + token.test + ')' : token.test) + '){';
+        }
         if (token.name === 'style') {
             result += token.value;
         }
@@ -16,9 +20,13 @@ function generate(token, last, repeat) {
         }
         result += times ? '})' : '}';
     } else if (token.type === 'statement') {
-        let skip = (token.origin && last === token.origin);
-        let name = token.origin ? token.origin.name.join(',') : token.name;
-        let value = token.origin ? token.origin.value : token.value;
+        if (repeat && token.variable && typeof token.value === 'string') {
+            return '@--(' + token.name.slice(2) + ',' + token.value + ')';
+        }
+        let group = repeat && token.origin?.name.some(n => n.startsWith('--')) ? null : token.origin;
+        let skip = (group && last === group);
+        let name = group ? group.name.join(',') : token.name;
+        let value = group ? group.value : token.value;
         if (!skip) {
             if (value && value.type) {
                 result += name + ':' + generate(value, null, repeat);

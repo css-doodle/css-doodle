@@ -45,6 +45,13 @@ test('a comma list of names declares each with its own value', () => {
     ));
 });
 
+test('@match(test) keeps the test text beside its body', () => {
+    assert.deepEqual(parseSvg('@match(k == 2) { circle {} r: 1 }'), svg(
+        block('match', [block('circle'), statement('r', '1')], { test: 'k == 2' })
+    ));
+    assert.deepEqual(parseSvg('@match (1) {}'), svg(block('match', [], { test: '1' })));
+});
+
 test('semicolons inside a value list stay in the value', () => {
     assert.deepEqual(parseSvg('values: 60; 100; 180'), svg(statement('values', '60;100;180')));
     assert.deepEqual(parseSvg('values: 20 50; 100; 110; cy: 10'), svg(

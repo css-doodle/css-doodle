@@ -12,6 +12,8 @@ const compile = (code, grid = '1', seed = 42, extra) =>
     generateCss(parseCss(code, extra), parseGrid(grid), seed, 64);
 const css = (code, grid, seed) => compile(code, grid, seed).styles.all;
 const cells = (code, grid, seed) => compile(code, grid, seed).styles.cells;
+// the first @svg image in the sheet, without its xmlns
+const svgImage = code => decodeURIComponent(css(code).match(/utf8,([^"]+)"/)[1]).replace(/ xmlns="[^"]+"/, '');
 
 // the sheet compiled from `code` contains every fragment
 function assertContains(code, ...fragments) {
@@ -517,6 +519,34 @@ test('@arc continues a path: a ring segment in @svg, a moveto at the start of d 
     assertContains(`clip-path: path('@arc(r: 40; move: 50 50) L 50 50 Z'); offset-path: path("@arc(r: 20)");`,
         `clip-path:path('M 90 50 A 40 40 0 1 1 10 50 A 40 40 0 1 1 90 50 L 50 50 Z');`,
         `offset-path:path("M 20 0 A 20 20 0 1 1 -20 0 A 20 20 0 1 1 20 0");`);
+});
+
+test('@match(test) in @svg reads the cell variables and the @n around it', () => {
+    assert.equal(svgImage('--k: 2; background: @svg(@match(k == 2) { circle {} } @match(k == 3) { rect {} })'),
+        '<svg><circle/></svg>');
+    assert.equal(svgImage('background: @svg(circle*4 { @match(@n % 2) { r: @n } })'),
+        '<svg><circle r="1"/><circle/><circle r="3"/><circle/></svg>');
+    // a body that isn't drawn still takes its random values, so later ones stay put
+    let x = test => svgImage(`background: @svg(@match(${test}) { circle { r: @r(9) } } rect { x: @r(9) })`).match(/x="[^"]+"/)[0];
+    assert.equal(x(0), x(1));
+    // as a value it is still the @match function
+    assert.equal(svgImage('background: @svg(g { fill: @match(1 > 0, red, blue) })'), '<svg><g fill="red"/></svg>');
+});
+
+test('an @svg variable is set where it is written, once per copy inside *N', () => {
+    // a read sees the latest value above it, the cell's before any
+    assert.equal(svgImage('--k: 1; background: @svg(circle { r: $k } --k: 5; rect { x: $k } --k: 7; line { x1: $k })'),
+        '<svg><circle r="1"/><rect x="5"/><line x1="7"/></svg>');
+    // blocks don't scope it
+    assert.equal(svgImage('background: @svg(g { --k: 3 } rect { x: $k })'), '<svg><g/><rect x="3"/></svg>');
+    assert.equal(svgImage('background: @svg(circle*3 { --i: @n; r: $(i * 2) })'),
+        '<svg><circle r="2"/><circle r="4"/><circle r="6"/></svg>');
+    // a comma group keeps its other names
+    assert.equal(svgImage('background: @svg(rect { --b, x: 3, 4; y: $b })'), '<svg><rect x="4" y="3"/></svg>');
+    // a declaration draws its random values once
+    let x = code => svgImage(code).match(/<rect x="([^"]+)"/)[1];
+    assert.equal(x('background: @svg(--p: @r(9); rect { x: @r(9) })'),
+        x('background: @svg(g { x: @r(9) } rect { x: @r(9) })'));
 });
 
 test('@svg-filter does not repeat a `*n` block inside @svg()', () => {

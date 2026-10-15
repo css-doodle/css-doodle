@@ -454,3 +454,12 @@ test('a defs that takes an id from its statements joins the shared defs once', (
         </svg>
     `));
 });
+
+test('an @match block puts its body in place unless the test is 0', () => {
+    assert.equal(svg('circle {} @match(1) { rect {} } @match(0) { line {} }'), `<svg ${NS}><circle/><rect/></svg>`);
+    assert.equal(svg('@match(1) { @match(0) { line {} } g {} }'), `<svg ${NS}><g/></svg>`);
+    // declarations go to the element around the block
+    assert.equal(svg('path { @match(1) { fill: red } @match(0) { stroke: blue } }'), `<svg ${NS}><path fill="red"/></svg>`);
+    // an inline defs reads the id of the element the block keeps
+    assert.match(svg('rect { fill: defs { @match(1) { linearGradient {} } } }'), /<rect fill="url\(#linearGradient-\d+\)"\/>/);
+});

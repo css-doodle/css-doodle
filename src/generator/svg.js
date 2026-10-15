@@ -162,7 +162,14 @@ function generate(token, element, parent, root, warn) {
             el.append(token.value);
             element.append(el);
         }
-        // normal svg elements
+        else if (token.test !== undefined) {
+            if (Number(token.test)) {
+                for (let block of token.value) {
+                    let id = generate(block, element, parent, root, warn);
+                    if (id) { inlineId = id }
+                }
+            }
+        }
         else {
             let el = new Tag(token.name);
             let fresh = false;
