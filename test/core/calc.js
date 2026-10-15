@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import calc, { deref } from '../../src/core/calc.js';
+import calc, { deref, withUnit } from '../../src/core/calc.js';
 
 test('basic operations', () => {
     assert.equal(calc('2 + 2'), 4);
@@ -498,4 +498,60 @@ test('dashed names the context defines read as one variable', () => {
     assert.equal(calc('a-b', { a: 3, b: 1 }), 2);
     assert.equal(calc('a-b', { 'a-b': 9, a: 3, b: 1 }), 9);
     assert.equal(calc('a-b', { a: 3, b: 1 }), 2);
+});
+
+test('a live var() or calc() lowers the math around it to CSS', () => {
+    const css = (input, context) => calc(input, context, true);
+    // numbers only by default: a live value reads as 0
+    assert.equal(calc('var(--t) * 2'), 0);
+    assert.equal(css('var(--t)'), 'calc(var(--t))');
+    assert.equal(css('var(--t) * 2 + 1'), 'calc((var(--t) * 2) + 1)');
+    assert.equal(css('2var(--t)'), 'calc(2 * var(--t))');
+    assert.equal(css('-var(--t)'), 'calc(var(--t) * -1)');
+    assert.equal(css('(var(--t) + 1) * (var(--t) - 1)'), 'calc((var(--t) + 1) * (var(--t) - 1))');
+    assert.equal(css('var(--t) % 3'), 'calc(rem(var(--t),3))');
+    assert.equal(css('2 ** var(--t) ÷ 4'), 'calc(pow(2,var(--t)) / 4)');
+    assert.equal(css('var(--x, 10px) - -3'), 'calc(var(--x, 10px) - -3)');
+    // numbers fold, dashed names inside var() are not variables
+    assert.equal(css('var(--t) + 2 * 3'), 'calc(var(--t) + 6)');
+    assert.equal(css('var(--a-b) + 1', { a: 1, b: 2, 'a-b': 3 }), 'calc(var(--a-b) + 1)');
+    // through a variable, negated there
+    assert.equal(css('t * 2', { t: 'var(--t)' }), 'calc(var(--t) * 2)');
+    assert.equal(css('-t', { t: 'var(--t)' }), 'calc(var(--t) * -1)');
+    assert.equal(css('calc(var(--t) / 1000) * 2'), 'calc((var(--t) / 1000) * 2)');
+    // no live value, a number
+    assert.equal(css('sin(0) + 2'), 2);
+});
+
+test('Math functions, comparisons and logic lower by name', () => {
+    const css = (input, context) => calc(input, context, true);
+    assert.equal(css('sin(var(--t))'), 'calc(sin(var(--t)))');
+    assert.equal(css('-sin(var(--t) + 1)'), 'calc(sin((var(--t) + 1)) * -1)');
+    assert.equal(css('max(1, var(--t), 3)'), 'calc(max(1,var(--t),3))');
+    assert.equal(css('sqrt.abs(var(--t))'), 'calc(sqrt(abs(var(--t))))');
+    assert.equal(css('floor(var(--t))'), 'calc(round(down,var(--t),1))');
+    assert.equal(css('round(var(--t))'), 'calc(round(var(--t),1))');
+    assert.equal(css('var(--t) > 3'), 'calc(max(0,sign(var(--t) - 3)))');
+    assert.equal(css('var(--t) < 3'), 'calc(max(0,sign(3 - var(--t))))');
+    assert.equal(css('var(--t) >= 3'), 'calc(1 - max(0,sign(3 - var(--t))))');
+    assert.equal(css('var(--t) ≠ 3'), 'calc(abs(sign(var(--t) - 3)))');
+    assert.equal(css('var(--t) = 3'), 'calc(1 - abs(sign(var(--t) - 3)))');
+    assert.equal(css('!var(--t)'), 'calc(1 - abs(sign(var(--t))))');
+    // a live condition weighs both sides by its truthiness
+    assert.equal(css('var(--t) && 5'), 'calc(abs(sign(var(--t))) * 5)');
+    assert.equal(css('var(--t) || 1'), 'calc(var(--t) + (1 - abs(sign(var(--t)))) * 1)');
+    assert.equal(css('match(var(--t), 1, 2)'), 'calc(1 * abs(sign(var(--t))) + 2 * (1 - abs(sign(var(--t)))))');
+    // chains nest to the right, so the text grows with the chain
+    assert.equal(css('var(--a) || var(--b) || 2'),
+        'calc(var(--a) + (1 - abs(sign(var(--a)))) * (var(--b) + (1 - abs(sign(var(--b)))) * 2))');
+    // no CSS form, or shadowed by the context: a miss, so 0
+    assert.equal(css('1 << var(--t)'), 0);
+    assert.equal(css('gcd(var(--t), 2)'), 0);
+    assert.equal(css('cbrt(var(--t))'), 0);
+    assert.equal(css('sin(var(--t))', { sin: x => x }), 0);
+    // a lone name holding a live value passes through
+    assert.equal(deref('t', { t: 'var(--t)' }), 'var(--t)');
+    assert.equal(withUnit('calc(var(--t))', 'deg'), 'calc((var(--t)) * 1deg)');
+    assert.equal(withUnit(2, 'deg'), '2deg');
+    assert.equal(withUnit('calc(var(--t))', ''), 'calc(var(--t))');
 });

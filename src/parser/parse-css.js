@@ -967,9 +967,13 @@ function expandFunctions(source, ctx) {
         if (t.status === 'open') i = quoteEnd(tokens, i);
         else if (t.isSymbol('(', '{')) depth++;
         else if (t.isSymbol(')', '}')) depth--;
-        else if (!depth && t.isWord() && (!prev || prev.isSymbol(';', '}'))) {
-            let paren = nameEnd(tokens, i, true) + 1;
-            let name = textOf(tokens.slice(i, paren));
+        else if (!depth && t.isSymbol('-') && (!prev || prev.isSymbol(';', '}'))) {
+            let dash = tokens[i + 1], word = tokens[i + 2];
+            if (!dash?.isSymbol('-') || !word?.isWord() || !adjacent(t, dash) || !adjacent(dash, word)) {
+                continue;
+            }
+            let paren = nameEnd(tokens, i + 2, true) + 1;
+            let name = textOf(tokens.slice(i + 2, paren));
             if (!RE_FUNC_NAME.test(name) || !tokens[paren]?.isSymbol('(') || !adjacent(tokens[paren - 1], tokens[paren])) {
                 continue;
             }
@@ -990,7 +994,7 @@ function expandFunctions(source, ctx) {
                     defaults.push(textOf(item.slice(at + 1)).trim());
                 }
                 if (!params.every(p => RE_PARAM.test(p))) {
-                    warn(ctx, `invalid parameters in ${name}()`, t.pos);
+                    warn(ctx, `invalid parameters in --${name}()`, t.pos);
                 }
                 let body = braced ? source.slice(tokens[open].index + 1, last.index)
                     : source.slice(tokens[open].index, last.isSymbol(';') ? last.index : tokenEnd(last));
@@ -1011,25 +1015,22 @@ function expandCalls(text, defs, ctx, chain) {
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i];
         if (t.status) quote = t.status === 'open';
-        if (quote || !t.isSymbol('@') || !tokens[i + 1]?.isWord() || !adjacent(t, tokens[i + 1])) continue;
+        if (quote || !t.isSymbol('$') || !tokens[i + 1]?.isWord() || !adjacent(t, tokens[i + 1])) continue;
         let end = nameEnd(tokens, i + 1, true);
         let name = textOf(tokens.slice(i + 1, end + 1));
         let def = defs[name];
-        if (!def) continue;
-        let args = [];
         let paren = tokens[end + 1];
-        if (paren?.isSymbol('(') && adjacent(tokens[end], paren)) {
-            let start = end + 2;
-            end = closing(tokens, end + 1);
-            if (end < 0) break;
-            args = itemsOf(tokens.slice(start, end)).map(item => expandCalls(
-                text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain));
-        }
+        if (!def || !paren?.isSymbol('(') || !adjacent(tokens[end], paren)) continue;
+        let start = end + 2;
+        end = closing(tokens, end + 1);
+        if (end < 0) break;
+        let args = itemsOf(tokens.slice(start, end)).map(item => expandCalls(
+            text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain));
         let body = '';
         if (chain.includes(name)) {
-            warn(ctx, `@${name}() calls itself`);
+            warn(ctx, `$${name}() calls itself`);
         } else {
-            body = expandCalls(bindParams(def, args), defs, ctx, [...chain, name]);
+            body = expandCalls(bindParams(def, args, defs), defs, ctx, [...chain, name]);
         }
         out += text.slice(from, t.index) + body;
         from = tokenEnd(tokens[end]);
@@ -1038,17 +1039,19 @@ function expandCalls(text, defs, ctx, chain) {
     return out + text.slice(from);
 }
 
-function bindParams({ params, defaults, body }, args) {
+function bindParams({ params, defaults, body }, args, defs) {
     let tokens = tokensOf(body);
     let out = '', from = 0;
+    // per open paren, whether a bare parameter binds inside it
     let parens = [];
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.isSymbol('(')) {
-            // $( or one with a unit, like $px( and $4(
+            // $( or one with a unit, like $px( and $4(, but not a call's arguments
             let j = i - 1;
             while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
-            parens.push(!!tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]));
+            let calc = !!tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]);
+            parens.push(calc ? !defs[textOf(tokens.slice(j + 1, i))] : !!parens.at(-1));
             continue;
         }
         if (t.isSymbol(')')) {
@@ -1065,7 +1068,7 @@ function bindParams({ params, defaults, body }, args) {
         let start = t.index;
         if (prev?.isSymbol('$') && adjacent(prev, t)) {
             start = prev.index;
-        } else if (parens.includes(true)
+        } else if (parens.at(-1)
                 && !(prev?.isSymbol('@') && adjacent(prev, t))
                 && !(next?.isSymbol('(') && adjacent(last, next))) {
             arg = '(' + arg + ')';

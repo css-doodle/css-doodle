@@ -549,111 +549,125 @@ test('a < in a value is text unless a tag follows', () => {
 });
 
 test('a user function call parses as its body written inline', () => {
-    assert.deepEqual(ast(`twice(x): { $(x * 2) } width: @twice(3)px;`), ast(`width: $((3) * 2)px;`));
+    assert.deepEqual(ast(`--twice(x): { $(x * 2) } width: $twice(3)px;`), ast(`width: $((3) * 2)px;`));
     // the body can be @svg elements, *N copies included
     assert.deepEqual(
-        ast(`dot(r, c): { circle { r: $r; fill: $c } } background: @svg(@dot(2, rgb(0, 0, 1)) @dot(3, red));`),
+        ast(`--dot(r, c): { circle { r: $r; fill: $c } } background: @svg($dot(2, rgb(0, 0, 1)) $dot(3, red));`),
         ast(`background: @svg(circle { r: 2; fill: rgb(0, 0, 1) } circle { r: 3; fill: red });`));
     assert.deepEqual(
-        ast(`bars(m): { rect*$(m) { x: $(@n / m) } } background: @svg(@bars(4));`),
+        ast(`--bars(m): { rect*$(m) { x: $(@n / m) } } background: @svg($bars(4));`),
         ast(`background: @svg(rect*$((4)) { x: $(@n / (4)) });`));
-    // a call without parens, and quoted text stays as written
-    assert.deepEqual(ast(`f(): { red } content: "@f()"; color: @f;`), ast(`content: "@f()"; color: red;`));
-    assert.deepEqual(ast('f(): { red } content: `@f()`;'), ast('content: `@f()`;'));
+    // quoted text stays as written
+    assert.deepEqual(ast(`--f(): { red } content: "$f()"; color: $f();`), ast(`content: "$f()"; color: red;`));
+    assert.deepEqual(ast('--f(): { red } content: `$f()`;'), ast('content: `$f()`;'));
+});
+
+test('a user function is called with parens, and only with $', () => {
+    // without parens $f reads the variable --f, and @f is a built-in call
+    assert.deepEqual(ast(`--f(): red; --f: 1; a: $f; b: $f(); c: @f();`), ast(`--f: 1; a: $f; b: red; c: @f();`));
+    // a name that isn't defined stays a unit
+    assert.deepEqual(ast(`--f(x): [$x]; a: $px(1 + 1); b: $g(2);`), ast(`a: $px(1 + 1); b: $g(2);`));
 });
 
 test('user function arguments', () => {
     // a call inside an argument expands first, where it is written
     assert.deepEqual(
-        ast(`a(x): { @b($x) } b(y): { $(y + 1) } width: @a(@b(1));`),
+        ast(`--a(x): { $b($x) } --b(y): { $(y + 1) } width: $a($b(1));`),
         ast(`width: $(($((1) + 1)) + 1);`));
     // @n and sin() keep their names even when a parameter shares them
-    assert.deepEqual(ast(`f(n, sin): { $(@n + sin(n)) } width: @f(2, 3);`), ast(`width: $(@n + sin((2)));`));
+    assert.deepEqual(ast(`--f(n, sin): { $(@n + sin(n)) } width: $f(2, 3);`), ast(`width: $(@n + sin((2)));`));
     // only top-level commas split, and a missing argument is empty
-    assert.deepEqual(ast(`f(a, b): { $a|$b } x: @f(rgb(1, 2, 3)); y: @f(1, 2);`), ast(`x: rgb(1, 2, 3)|; y: 1|2;`));
+    assert.deepEqual(ast(`--f(a, b): { $a|$b } x: $f(rgb(1, 2, 3)); y: $f(1, 2);`), ast(`x: rgb(1, 2, 3)|; y: 1|2;`));
 });
 
 test('a user function parameter can have a default', () => {
     // a call that stops short takes the defaults of the rest, pasted as written
     assert.deepEqual(
-        ast(`f(a, b = 2, c = $w): { $a|$b|$c } x: @f(1); y: @f(1, 3); z: @f(1, 3, 4);`),
+        ast(`--f(a, b = 2, c = $w): { $a|$b|$c } x: $f(1); y: $f(1, 3); z: $f(1, 3, 4);`),
         ast(`x: 1|2|$w; y: 1|3|$w; z: 1|3|4;`));
-    // a call without parens takes them all; inside $() a default is parenthesized
-    assert.deepEqual(ast(`k(n = @r(2, 3)): $(n * 3); width: @k;`), ast(`width: $((@r(2, 3)) * 3);`));
+    // a call without arguments takes them all; inside $() a default is parenthesized
+    assert.deepEqual(ast(`--k(n = @r(2, 3)): $(n * 3); width: $k();`), ast(`width: $((@r(2, 3)) * 3);`));
     // the `=` before a default comes first, one inside it stays
-    assert.deepEqual(ast(`k(n = $(2 = 2)): [$n]; width: @k;`), ast(`width: [$(2 = 2)];`));
+    assert.deepEqual(ast(`--k(n = $(2 = 2)): [$n]; width: $k();`), ast(`width: [$(2 = 2)];`));
 });
 
 test('a user function calling itself warns and expands to nothing', () => {
-    let code = `f(x): { [@g($x)] } g(x): { @f($x) } width: @f(1);`;
-    assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['@f() calls itself']);
+    let code = `--f(x): { [$g($x)] } --g(x): { $f($x) } width: $f(1);`;
+    assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['$f() calls itself']);
     assert.deepEqual(ast(code), ast(`width: [];`));
 });
 
-test('only a top-level name(params): { } is a user function definition', () => {
-    // inside a block it is still a nested selector
-    assert.equal(ast(`@at(1, 1) { f(x): { color: red } }`)[0].styles[0].selector, 'f(x):');
+test('only a top-level --name(params): { } is a user function definition', () => {
+    // inside a block it is still a declaration
+    assert.equal(ast(`@at(1, 1) { --f(x): red }`)[0].styles[0].property, '--f(x)');
     // a definition alone emits nothing
-    assert.deepEqual(ast(`f(x): { color: $x }`), []);
+    assert.deepEqual(ast(`--f(x): { color: $x }`), []);
     // the space kept before `:` doesn't stop it
-    assert.deepEqual(ast(`twice(x) : $(x * 2); width: @twice(3)px;`), ast(`width: $((3) * 2)px;`));
+    assert.deepEqual(ast(`--twice(x) : $(x * 2); width: $twice(3)px;`), ast(`width: $((3) * 2)px;`));
+    // without the dashes it stays a nested selector
+    assert.equal(ast(`f(x): { color: red }`)[0].selector, 'f(x):');
 });
 
 test('a user function body without braces is one statement', () => {
     // up to its `;`, or through the block it opens
     assert.deepEqual(
-        ast(`twice(x): $(x * 2); dot(r, c): circle { r: $r; fill: $c } width: @twice(3)px; background: @svg(@dot(2, red));`),
+        ast(`--twice(x): $(x * 2); --dot(r, c): circle { r: $r; fill: $c } width: $twice(3)px; background: @svg($dot(2, red));`),
         ast(`width: $((3) * 2)px; background: @svg(circle { r: 2; fill: red });`));
     // a block inside parens does not end it
-    assert.deepEqual(ast(`pic(c): @svg(circle { fill: $c }); background: @pic(red);`), ast(`background: @svg(circle { fill: red });`));
+    assert.deepEqual(ast(`--pic(c): @svg(circle { fill: $c }); background: $pic(red);`), ast(`background: @svg(circle { fill: red });`));
 });
 
 test('a user function name is read whole', () => {
     // a call to rand-int is not a call to rand
-    assert.deepEqual(ast(`rand(x): [$x]; width: @rand-int(1, 3);`), ast(`width: @rand-int(1, 3);`));
+    assert.deepEqual(ast(`--rand(x): [$x]; width: $rand-int(1, 3);`), ast(`width: $rand-int(1, 3);`));
     // digits and a - between words are part of the name
-    assert.deepEqual(ast(`f2(x): [$x]; my-dot(r): <$r>; a: @f2(3); b: @my-dot(4);`), ast(`a: [3]; b: <4>;`));
+    assert.deepEqual(ast(`--f2(x): [$x]; --my-dot(r): <$r>; a: $f2(3); b: $my-dot(4);`), ast(`a: [3]; b: <4>;`));
     // a - before a number is not
-    assert.deepEqual(ast(`k(x = 2): $x; a: $(@k-1);`), ast(`a: $(2-1);`));
+    assert.deepEqual(ast(`--k(x = 2): $x; a: $(k-1(5));`), ast(`a: $(k-1(5));`));
 });
 
 test('a user function parameter name is read whole', () => {
     // $x1 is not $x followed by 1
-    assert.deepEqual(ast(`f(x): [$x1|$x]; width: @f(5);`), ast(`width: [$x1|5];`));
+    assert.deepEqual(ast(`--f(x): [$x1|$x]; width: $f(5);`), ast(`width: [$x1|5];`));
     // names with digits and _ bind, in and out of $()
     assert.deepEqual(
-        ast(`f(a1, a_b, _c): [$a1|$a_b|$_c] $(a1 + a_b + _c2); width: @f(1, 2, 3);`),
+        ast(`--f(a1, a_b, _c): [$a1|$a_b|$_c] $(a1 + a_b + _c2); width: $f(1, 2, 3);`),
         ast(`width: [1|2|3] $((1) + (2) + _c2);`));
 });
 
-test('a user function parameter binds bare inside $() with a unit', () => {
+test('a user function parameter binds bare inside $() with a unit, not inside a call', () => {
     assert.deepEqual(
-        ast(`f(x): $px(x) $4(x + 1) $%(x) rgb(x); width: @f(5);`),
+        ast(`--f(x): $px(x) $4(x + 1) $%(x) rgb(x); width: $f(5);`),
         ast(`width: $px((5)) $4((5) + 1) $%((5)) rgb(x);`));
+    // a call's arguments are pasted as written, so pass $c
+    assert.deepEqual(
+        ast(`--g(c): [$c]; --f(c): $g(c) $g($c) $(c + $g(c)); width: $f(red);`),
+        ast(`width: [c] [red] $((red) + [c]);`));
 });
 
 test('a user function definition and call skip quoted text', () => {
     // a ; or } in quotes ends neither the statement nor the body
-    assert.equal(ast(`content: "a;f(x): b";`)[0].value[0][0].value, '"a;f(x): b"');
+    assert.equal(ast(`content: "a;--f(x): b";`)[0].value[0][0].value, '"a;--f(x): b"');
     assert.deepEqual(
-        ast(`f(x): content: "$x;}"; g(y): { content: "}" $y } a: @f(1); b: @g(2);`),
+        ast(`--f(x): content: "$x;}"; --g(y): { content: "}" $y } a: $f(1); b: $g(2);`),
         ast(`a: content: "1;}"; b: content: "}" 2;`));
     // a comma or ) in quotes doesn't split or close the arguments
-    assert.deepEqual(ast(`f(x, y): [$x|$y]; a: @f("a,b", "c)d");`), ast(`a: ["a,b"|"c)d"];`));
+    assert.deepEqual(ast(`--f(x, y): [$x|$y]; a: $f("a,b", "c)d");`), ast(`a: ["a,b"|"c)d"];`));
 });
 
 test('text pulled in by @use calls the user functions around it and keeps its own', () => {
     let vars = {
-        '--a': 'width: @twice(2)px;',
-        '--b': 'half(x): [$x]; height: @half(4);',
-        '--c': 'top: @half(1);',
+        '--a': 'width: $twice(2)px;',
+        '--b': '--half(x): [$x]; height: $half(4);',
+        '--c': 'top: $half(1);',
     };
     let extra = { getVariable: name => vars[name] || '' };
-    let main = `twice(x): $(x * 2); @use: var(--a);`;
+    let main = `--twice(x): $(x * 2); @use: var(--a);`;
     assert.deepEqual(ast(main, extra), ast(`width: $((2) * 2)px;`));
     // half() is seen inside --b only: not by --c nor the main sheet
-    let [height, top, left] = ast(`@use: var(--b), var(--c); left: @half(1);`, extra);
+    let [height, top, left] = ast(`@use: var(--b), var(--c); left: $half(1);`, extra);
     assert.deepEqual(height.value, [[{ type: 'text', value: '[4]' }]]);
-    assert.equal(top.value[0][0].name, '@half');
-    assert.equal(left.value[0][0].name, '@half');
+    // so they stay $ with the unit half
+    assert.equal(top.value[0][0].unit, 'half');
+    assert.equal(left.value[0][0].unit, 'half');
 });

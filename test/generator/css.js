@@ -307,8 +307,31 @@ test('function results that are not plain strings reach calc functions safely', 
     assertContains('width: @i(2*);', 'width:2;');
     assertContains('width: @i(%360deg);', 'width:1deg;');
     // a bare value adds on a live base too
-    assertContains('width: @t(+2);', 'width:calc(calc(var(--cssd-utime) + 2) * 1);');
-    assertContains('width: @ux(5);', 'width:calc(calc(var(--cssd-umousex) + 5) * 1);');
+    assertContains('width: @t(+2);', 'width:calc(var(--cssd-utime) + 2);');
+    assertContains('width: @ux(5);', 'width:calc(var(--cssd-umousex) + 5);');
+});
+
+test('math around time and pointer uniforms lowers to CSS', () => {
+    // a lone read stays a var(); math on it used to collapse to 0
+    assertContains('--t: @t; --a: $t;', '--t:var(--cssd-utime);', '--a:var(--cssd-utime);');
+    assertContains('opacity: @calc(@t / 1000);', 'opacity:calc(var(--cssd-utime) / 1000);');
+    assertContains('scale: @sin(@ts);', 'scale:calc(sin((var(--cssd-utime) / 1000)));');
+    assertContains('--z: @max(@t, 3);', '--z:calc(max(var(--cssd-utime),3));');
+    assertContains('--d: @calc(@ux - @uw / 2);', '--d:calc(var(--cssd-umousex) - (var(--cssd-uwidth) / 2));');
+    assertContains('--on: $(@t > 5);', '--on:calc(max(0,sign(var(--cssd-utime) - 5)));');
+    // through a variable
+    assertContains('--t: @t; width: $(t / 50)px;', 'width:calc((var(--cssd-utime) / 50) * 1px);');
+    // a unit after the lowered math multiplies in, glued or as a $ suffix
+    assertContains('rotate: $(@t / 10)deg;', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
+    assertContains('rotate: @calc(@t / 10)deg;', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
+    assertContains('rotate: $deg(@t / 10);', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
+    assertContains('width: @t(/1000)s;', 'width:calc((var(--cssd-utime) / 1000) * 1s);');
+    assertContains('width: $(@t)px solid;', 'width:calc((var(--cssd-utime)) * 1px) solid;');
+    // numbers still fold around it, and plain units stay glued
+    assertContains('--k: @calc(@t * @i);', '--k:calc(var(--cssd-utime) * 1);');
+    assertContains('--y: $(@i * 2 + 1)px; --x: @sin(1);', '--y:3px;', '--x:0.841470984808;');
+    // a stored var() or calc() reads as a live value too
+    assertContains('--s: calc(100px + 10em); width: $(s * 2);', 'width:calc((100px + 10em) * 2);');
 });
 
 // --- functions, properties and diagnostics ---

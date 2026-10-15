@@ -90,38 +90,40 @@ work; a variable already being inserted is skipped and reported (§11).
 ### Function definitions
 
 ```css
-twice(x): $(x * 2);
-dot(r, c = red): circle { r: $r; fill: $c }
-dots(): { @dot(1) @dot(2, blue) }
+--twice(x): $(x * 2);
+--dot(r, c = red): circle { r: $r; fill: $c }
+--dots(): { $dot(1) $dot(2, blue) }
 
-width: @twice(3)px;
-background: @svg(viewBox: 0 0 10 10; @dots);
+width: $twice(3)px;
+background: @svg(viewBox: 0 0 10 10; $dots());
 ```
 
 ```
-definition = name '(' [ param { ',' param } ] ')' ':' body
+definition = '--' name '(' [ param { ',' param } ] ')' ':' body
 param      = name [ '=' text ]
 body       = '{' text '}' | statement
 ```
 
-A top-level statement starting with `name(params):` defines a function
-and emits nothing. The body is the text inside braces, or else one
-statement, up to its `;` or through the block it opens. `@name(args)`,
-or `@name` without arguments, calls it anywhere except inside quotes.
-A definition replaces a built-in function of the same name. Text
-inserted by `@use` calls the functions of the sheet around it, and the
-ones it defines stay inside it.
+A top-level statement starting with `--name(params):` defines a
+function and emits nothing. The body is the text inside braces, or
+else one statement, up to its `;` or through the block it opens.
+`$name(args)` calls it anywhere except inside quotes, and `$name()`
+calls it without arguments. Without parentheses `$name` still reads
+the variable `--name`, and a `$name(` with no such function is still
+a unit (§6). Text inserted by `@use` calls the functions of the sheet
+around it, and the ones it defines stay inside it.
 
 The name is letters, digits, `_`, and `-` between words. A call reads
-the whole name, so `@rand-int` does not call a function named `rand`.
+the whole name, so `$rand-int()` does not call a function named `rand`.
 A parameter is an expression name (§8): `x1` and `a_b` are one name.
 
 Calls are replaced by the body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`
 copies. In the body, `$p`, and a bare `p` inside `$()` or `$px()`,
-become the argument of parameter `p`, parenthesized inside `$()`. A call with
-fewer arguments takes the defaults, `c = red`, of the parameters left.
-Arguments and defaults are pasted as written, so `@dot(@r(5))` draws a
+become the argument of parameter `p`, parenthesized inside `$()`. A
+call's arguments are not `$()`: pass `$p` there. A call with fewer
+arguments takes the defaults, `c = red`, of the parameters left.
+Arguments and defaults are pasted as written, so `$dot(@r(5))` draws a
 new radius at each `$r`; store a shared random value in a variable
 first.
 
@@ -246,8 +248,8 @@ and `$(` are calls with an empty name.
   `.@b` and `@a(@b(x))` always compose.
 - **`$` is the calc function.** `$(expr)` evaluates an expression
   (§8). `$unit(expr)` appends `unit` verbatim: `$px(1+1)` is `2px`,
-  `$4(1+1)` is `24`. `$name`, without parentheses, reads the variable
-  `name` (§8).
+  `$4(1+1)` is `24`, unless a function `--unit()` is defined (§2).
+  `$name`, without parentheses, reads the variable `name` (§8).
 
 ## 7. Arguments
 
@@ -302,8 +304,8 @@ name       = letter or '_', then letters, digits or '_'
 | `&`                                         | bitwise and                 | left          |
 | `\|`                                        | bitwise or                  | left          |
 | `<` `>` `<=` `>=` `≤` `≥` `=` `==` `!=` `≠` | compare, gives `1` or `0`   | left          |
-| `&&` `∧`                                    | and, short-circuit          | left          |
-| `\|\|` `∨`                                  | or, short-circuit           | left          |
+| `&&` `∧`                                    | and, short-circuit          | right         |
+| `\|\|` `∨`                                  | or, short-circuit           | right         |
 
 - **Everything is a number.** Units drop: with `--w: 10px`, `$(w * 2)`
   is `20`. `&&` and `||` return the deciding operand; `%` takes the
@@ -324,6 +326,19 @@ name       = letter or '_', then letters, digits or '_'
   returns.
 - **No errors.** Unknown names, cycles and missing operands read as
   `0`; division by zero gives `Infinity`.
+- **Live values.** A `var()`, as `@t`, `@ux` and the other uniforms
+  produce, has no number at generation time. The math around it is
+  written out as CSS math for the browser instead: `$(@t / 10)deg` is
+  `calc((var(--cssd-utime) / 10) * 1deg)`, `@sin(@ts)` is
+  `calc(sin((var(--cssd-utime) / 1000)))`. Operators map to `calc()`,
+  `rem()` and `pow()`; comparisons, `!`, `&&`, `||` and `match` become
+  `0`/`1` arithmetic through `sign()`, so both sides are written out;
+  `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `exp` `log`
+  `abs` `sign` `pow` `hypot` `min` `max` keep their names and
+  `round`/`floor`/`ceil`/`trunc` become `round()`. A `calc()` reads as a
+  group, so results compose. Anything else (shifts, bitwise operators,
+  `gcd`, other functions) reads as `0`, as does a live value where a
+  number is required (`@r(@t)`, `@nth`).
 
 Each caller provides its own context:
 

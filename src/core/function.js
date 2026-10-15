@@ -13,7 +13,7 @@ import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
 import seedrandom from '../lib/seedrandom.js';
-import calc, { defaultContext, binary } from './calc.js';
+import calc, { defaultContext, binary, withUnit } from './calc.js';
 import { memo } from '../lib/cache.js';
 
 import { calcContext } from './selector.js';
@@ -33,7 +33,7 @@ import { css } from '../lib/tagged-template.js';
 const RE_OP_PREFIX = /^[\+\*\-\/%][\-\.\d\s]/;
 const RE_OP_SUFFIX = /[\+\*\-\/]$|\D%$/;
 const RE_VAR = /var\(/;
-const RE_CALC = /^calc\(/;
+const RE_LIVE = /\b(var|calc)\(/;
 const RE_LETTER = /^[a-zA-Z]/;
 
 const MAX_SCATTER = 8192;
@@ -92,13 +92,7 @@ function calcWith(base) {
                 unit = outputUnit;
             }
         }
-        if (typeof base === 'string' && RE_CALC.test(base)) {
-            return `calc(${base} * 1${unit})`;
-        }
-        if (typeof base === 'number') {
-            base = tidyNumber(base);
-        }
-        return base + unit;
+        return withUnit(tidyNumber(base), unit);
     }
 }
 
@@ -532,7 +526,7 @@ Function.match = (cell, { extra }) => {
     }
 };
 
-Function.calc = () => (value = '', context) => tidyNumber(calc(value, context));
+Function.calc = () => (value = '', context) => tidyNumber(calc(value, context, 1));
 
 Function.hex = () => (value = '') => {
     let n = parseInt(value);
@@ -936,7 +930,9 @@ for (let name of Object.getOwnPropertyNames(Math)) {
     let member = defaultContext[name];
     MathFunc[name] = (typeof member === 'number')
         ? () => () => tidyNumber(member)
-        : () => (...args) => tidyNumber(member(...args.map(n => calc(n))));
+        : () => (...args) => tidyNumber(args.some(n => RE_LIVE.test(n))
+            ? calc(`${name}(${args})`, 0, 1)
+            : member(...args.map(n => calc(n))));
 }
 
 export const alias = {

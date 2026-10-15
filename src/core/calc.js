@@ -1,5 +1,6 @@
 import { isInvalidNumber } from '../lib/type.js';
 import { last } from '../lib/list.js';
+import { tidyNumber } from '../lib/math.js';
 import { scan } from '../parser/tokenizer.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 
@@ -30,6 +31,46 @@ export const defaultContext = {
     }
 };
 
+// A live value is CSS text: a var() such as time or the pointer, or a
+// calc() already lowered. It has no number at generation time, so the
+// math around it lowers to CSS math for the browser to evaluate
+const live = v => typeof v === 'string';
+const text = v => live(v) ? v : tidyNumber(+v || 0);
+const neg = v => live(v) ? `(${v} * -1)` : -v;
+const not = v => `(1 - ${v})`;
+// 0 or 1 for a value's truthiness
+const truthy = v => `abs(sign(${v}))`;
+const gt = (a, b) => `max(0,sign(${a} - ${b}))`;
+
+const LOWER = {
+    __proto__: null,
+    '%': (a, b) => `rem(${a},${b})`,
+    '^': (a, b) => `pow(${a},${b})`,
+    '>': gt,
+    '<': (a, b) => gt(b, a),
+    '>=': (a, b) => not(gt(b, a)),
+    '<=': (a, b) => not(gt(a, b)),
+    '==': (a, b) => not(truthy(a + ' - ' + b)),
+    '!=': (a, b) => truthy(a + ' - ' + b),
+    round: a => `round(${a},1)`,
+    floor: a => `round(down,${a},1)`,
+    ceil: a => `round(up,${a},1)`,
+    trunc: a => `round(to-zero,${a},1)`,
+};
+for (let sym of '+-*/') {
+    LOWER[sym] = (a, b) => `(${a} ${sym} ${b})`;
+}
+for (let name of 'sin cos tan asin acos atan atan2 sqrt exp log abs sign pow hypot min max'.split(' ')) {
+    LOWER[name] = (...args) => `${name}(${args})`;
+}
+
+// Operators, and the built-in Math functions the context doesn't
+// shadow, lower by name; the rest have no CSS form and miss
+function lower(name, args, history, fn) {
+    let to = LOWER[name];
+    return to && fn === MATH[name] ? to(...args.map(text)) : miss(history);
+}
+
 export const operators = {
     __proto__: null,
 
@@ -48,6 +89,12 @@ export const operators = {
     '∧': 2, '&&': 2,
     '∨': 1, '||': 1,
     '(': 0, ')': 0,
+};
+
+// spellings that share an implementation
+const spelling = {
+    __proto__: null,
+    '**': '^', '÷': '/', '=': '==', '≤': '<=', '≥': '>=', '≠': '!=', '∧': '&&', '∨': '||',
 };
 
 export const binary = {
@@ -93,6 +140,10 @@ function tk(type, value) {
     return { type, value };
 }
 
+function op(value) {
+    return tk(OPERATOR, spelling[value] || value);
+}
+
 function isOperator(value) {
     return value in operators;
 }
@@ -116,10 +167,10 @@ function pushValue(tokens, value, spaced) {
 // Rewrite scanner tokens into calc tokens: values (numbers and names),
 // operators and commas. `spans` maps the source index of a dashed name
 // the context defines to that name, so its tokens collapse into one word
-function transformTokens(rawTokens, spans) {
+function transformTokens(input, spans) {
     const raw = [];
     let end = 0, spaced = false;
-    for (const token of rawTokens) {
+    for (const token of scan(input)) {
         if (token.type === 'Space') spaced = true;
         if (token.type === 'Space' || token.index < end) continue;
         const name = spans && spans.get(token.index);
@@ -150,7 +201,22 @@ function transformTokens(rawTokens, spans) {
         if (type === 'Word') {
             // ÷ ∧ ∨ are not scanner symbols, so they arrive as words
             if (isOperator(value)) {
-                tokens.push(tk(OPERATOR, value));
+                tokens.push(op(value));
+                continue;
+            }
+            // var(…) is live, kept as CSS text; calc(…) reads as a group
+            if ((value === 'var' || value === 'calc') && next && next.value === '(') {
+                let depth = 0;
+                let j = i + 1;
+                for (; j < raw.length; j++) {
+                    if (raw[j].value === '(') depth++;
+                    else if (raw[j].value === ')' && !--depth) break;
+                }
+                let css = input.slice(value === 'var' ? index : next.index, raw[j] && raw[j].index + 1);
+                pushValue(tokens, sign ? neg(css) : css, spaced);
+                last(tokens).live = true;
+                sign = '';
+                i = j;
                 continue;
             }
             // "x1" is one name, not x*1
@@ -177,7 +243,7 @@ function transformTokens(rawTokens, spans) {
         }
 
         if (next && next.type === 'Symbol' && isOperator(value + next.value)) {
-            tokens.push(tk(OPERATOR, value + next.value));
+            tokens.push(op(value + next.value));
             i++;
             continue;
         }
@@ -211,7 +277,7 @@ function transformTokens(rawTokens, spans) {
         }
 
         if (isOperator(value)) {
-            tokens.push(tk(OPERATOR, value));
+            tokens.push(op(value));
         } else {
             // π, and stray symbols that read as misses
             pushValue(tokens, value, spaced);
@@ -231,7 +297,9 @@ function toPostfix(tokens) {
 
         if (type === VALUE) {
             const next = tokens[i + 1];
-            if (RE_NUMBER.test(value)) {
+            if (tokens[i].live) {
+                expr.push(tk(NUMBER, value));
+            } else if (RE_NUMBER.test(value)) {
                 expr.push(tk(NUMBER, Number(value)));
             } else if (next && next.value === '(') {
                 const { args, endIndex } = parseFunctionArgs(tokens, i + 1);
@@ -254,7 +322,9 @@ function toPostfix(tokens) {
                 const prev = tokens[i - 1], next = tokens[i + 1];
                 if (!prev || prev.type === OPERATOR && prev.value !== ')') expr.push(tk(NUMBER, 0));
                 const prec = operators[value];
-                const rightAssoc = value === '^' || value === '**';
+                // && and || nest to the right so a chain lowers to CSS
+                // text that grows with its length, not exponentially
+                const rightAssoc = ['^', '&&', '||'].includes(value);
                 while (opStack.length) {
                     const top = last(opStack);
                     // -(a) binds between * and ^, so -(a)^2 stays -(a^2)
@@ -354,10 +424,10 @@ function compileVariable(name) {
         if (typeof result === 'number' && !Number.isNaN(result)) {
             return result;
         }
-        let sign = 1;
+        let negated = false;
         if (negative && isInvalidNumber(result)) {
             result = ctx[key];
-            sign = -1;
+            negated = true;
         }
         if (isInvalidNumber(result)) {
             return miss(history);
@@ -369,7 +439,7 @@ function compileVariable(name) {
         if (typeof result !== 'number') {
             result = evaluateValue(result, ctx, history);
         }
-        return sign * result;
+        return negated ? neg(result) : result;
     };
 }
 
@@ -387,13 +457,17 @@ function compileFunction(node) {
             const fn = ctx[name];
             let output;
             if (fn === defaultContext.match) {
-                output = c(ctx, history) ? a(ctx, history) : b && b(ctx, history);
+                // a live condition takes both branches, weighted by its truthiness
+                const cond = c(ctx, history);
+                output = live(cond)
+                    ? `(${text(a(ctx, history))} * ${truthy(cond)} + ${text(b ? b(ctx, history) : 0)} * ${not(truthy(cond))})`
+                    : cond ? a(ctx, history) : b && b(ctx, history);
             } else if (typeof fn === 'function') {
                 output = fn(...argFns.map(f => f(ctx, history)));
             } else {
                 return miss(history);
             }
-            return negative ? -output : output;
+            return negative ? neg(output) : output;
         };
     }
 
@@ -405,23 +479,27 @@ function compileFunction(node) {
             return (ctx, history) => {
                 const fn = ctx[name];
                 if (typeof fn !== 'function') return miss(history);
-                const output = fn(a(ctx, history));
-                return negative ? -output : output;
+                const x = a(ctx, history);
+                const output = live(x) ? lower(name, [x], history, fn) : fn(x);
+                return negative ? neg(output) : output;
             };
         }
         if (argFns.length === 2) {
             return (ctx, history) => {
                 const fn = ctx[name];
                 if (typeof fn !== 'function') return miss(history);
-                const output = fn(a(ctx, history), b(ctx, history));
-                return negative ? -output : output;
+                const x = a(ctx, history);
+                const y = b(ctx, history);
+                const output = live(x) || live(y) ? lower(name, [x, y], history, fn) : fn(x, y);
+                return negative ? neg(output) : output;
             };
         }
         return (ctx, history) => {
             const fn = ctx[name];
             if (typeof fn !== 'function') return miss(history);
-            const output = fn(...argFns.map(f => f(ctx, history)));
-            return negative ? -output : output;
+            const args = argFns.map(f => f(ctx, history));
+            const output = args.some(live) ? lower(name, args, history, fn) : fn(...args);
+            return negative ? neg(output) : output;
         };
     }
 
@@ -435,9 +513,10 @@ function compileFunction(node) {
                 output = miss(history);
                 continue;
             }
-            output = Array.isArray(output) ? fn(...output) : fn(output);
+            const args = [].concat(output);
+            output = args.some(live) ? lower(chain[i], args, history, fn) : fn(...args);
         }
-        return negative ? -output : output;
+        return negative ? neg(output) : output;
     };
 }
 
@@ -457,27 +536,35 @@ function compile(expr) {
             stack.push(compileFunction(node));
         } else if (value === '!' || value === '-u') {
             const operand = stack.pop() || (() => NaN);
-            stack.push(value === '!'
-                ? (ctx, history) => Number(operand(ctx, history)) ? 0 : 1
-                : (ctx, history) => -Number(operand(ctx, history)));
+            stack.push((ctx, history) => {
+                const a = operand(ctx, history);
+                if (value === '-u') return live(a) ? neg(a) : -Number(a);
+                return live(a) ? not(truthy(a)) : Number(a) ? 0 : 1;
+            });
         } else {
             const right = stack.pop();
             const left = stack.pop();
             const l = left || (() => NaN);
             const r = right || (() => NaN);
-            if (value === '&&' || value === '∧') {
+            if (value === '&&') {
+                // short-circuit: the right side only runs when needed. A live
+                // a writes out both sides; a falsy a is 0, so it isn't repeated
                 stack.push((ctx, history) => {
-                    const a = Number(l(ctx, history));
-                    return a ? Number(r(ctx, history)) : a;
+                    const a = l(ctx, history);
+                    return live(a) ? `(${truthy(a)} * ${text(r(ctx, history))})` : +a && r(ctx, history);
                 });
-            } else if (value === '||' || value === '∨') {
+            } else if (value === '||') {
                 stack.push((ctx, history) => {
-                    const a = Number(l(ctx, history));
-                    return a ? a : Number(r(ctx, history));
+                    const a = l(ctx, history);
+                    return live(a) ? `(${a} + ${not(truthy(a))} * ${text(r(ctx, history))})` : +a || r(ctx, history);
                 });
             } else {
                 const op = binary[value] || (() => 0);
-                stack.push((ctx, history) => op(Number(l(ctx, history)), Number(r(ctx, history))));
+                stack.push((ctx, history) => {
+                    const a = l(ctx, history);
+                    const b = r(ctx, history);
+                    return live(a) || live(b) ? lower(value, [a, b], history) : op(Number(a), Number(b));
+                });
             }
         }
     }
@@ -485,7 +572,10 @@ function compile(expr) {
     const root = stack[0] || (() => 0);
     // a value left over, as in "10px solid red", makes a list, not a number
     if (stack.length > 1) return (ctx, history) => (miss(history), Number(root(ctx, history)) || 0);
-    return (ctx, history) => Number(root(ctx, history)) || 0;
+    return (ctx, history) => {
+        const output = root(ctx, history);
+        return live(output) ? output : Number(output) || 0;
+    };
 }
 
 const RE_DASHED = /(^|[^\p{L}_])([\p{L}_][\p{L}\p{N}_]*(?:-[\p{L}\p{N}_]+)+)/gu;
@@ -506,7 +596,7 @@ function dashedCandidates(input) {
 }
 
 function compileWith(input, spans) {
-    return compile(toPostfix(transformTokens(scan(input), spans)));
+    return compile(toPostfix(transformTokens(input, spans)));
 }
 
 const compiledCache = new Map();
@@ -577,7 +667,7 @@ export function deref(input, context) {
     }
     const history = [value];
     const result = compileInput(value, context)(context, history);
-    return history.misses ? value : result;
+    return history.misses || live(result) ? value : result;
 }
 
 const RE_SAFE_AFTER = /^[),+\-*/%^!<>=&|≤≥≠]/;
@@ -652,14 +742,28 @@ function scope(context) {
         : Object.assign(Object.create(defaultContext), context);
 }
 
+// a live value has no number, so it reads as 0 here
 export function evaluate(value, context) {
-    return evaluateValue(value, scope(context), []);
+    const output = evaluateValue(value, scope(context), []);
+    return live(output) ? 0 : output;
 }
 
-export default function(input, context) {
+// A unit after lowered math multiplies in: calc(…) + deg → calc((…) * 1deg)
+export function withUnit(value, unit) {
+    return unit && /^calc\(/.test(value) ? `calc(${value.slice(4)} * 1${unit})` : value + unit;
+}
+
+// A number; with `css`, CSS math for an expression that reads a live
+// value, which otherwise counts as a miss
+export default function(input, context, css) {
     if (typeof input === 'number' && Number.isFinite(input)) {
         return input;
     }
     context = scope(context);
-    return compileInput(input, context)(context, []);
+    const output = compileInput(input, context)(context, []);
+    if (!live(output)) {
+        return output;
+    }
+    // the outermost group is the calc() itself
+    return css ? `calc(${output[0] === '(' ? output.slice(1, -1) : output})` : 0;
 }

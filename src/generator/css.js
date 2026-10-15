@@ -1,5 +1,5 @@
 import Func, { MathFunc } from '../core/function.js';
-import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, useRandom } from '../core/calc.js';
+import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
@@ -81,6 +81,9 @@ const UNIFORM_KEYS = {
     shaders: 'mouse',
 };
 
+const RE_CALC_HEAD = /^calc\(/;
+const RE_UNIT_HEAD = /^([a-z]+|%)/i;
+
 const compiledValues = new WeakMap();
 const compiledFuncs = new WeakMap();
 const compiledArguments = new WeakMap();
@@ -97,15 +100,22 @@ function compileValue(value) {
             compiled = frame => {
                 let output = '';
                 let extra = '', origin;
-                for (let part of parts) {
-                    if (typeof part === 'string') {
-                        output += part;
-                    } else {
+                for (let i = 0; i < parts.length; i++) {
+                    let part = parts[i];
+                    if (typeof part !== 'string') {
                         let evaluated = part(frame, EMPTY_EXTRA, false);
-                        output += evaluated.value;
                         if (evaluated.extra) extra = evaluated.extra;
                         if (evaluated.origin) origin = evaluated.origin;
+                        part = evaluated.value;
+                        // a unit glued to lowered math multiplies in: @calc(@t)deg
+                        let next = parts[i + 1];
+                        let unit = RE_CALC_HEAD.test(part) && typeof next === 'string' && RE_UNIT_HEAD.exec(next);
+                        if (unit) {
+                            part = withUnit(part, unit[0]) + next.slice(unit[0].length);
+                            i++;
+                        }
                     }
+                    output += part;
                 }
                 return { value: output, extra, origin };
             };
@@ -489,7 +499,7 @@ class Rules {
         if (hasEntries(this.scopedVars(count)) || hasEntries(contextVariable)) {
             context = Object.assign(this.calcContext(count, contextVariable), holes);
         }
-        return tidyNumber(calc(template, context)) + unit;
+        return withUnit(tidyNumber(calc(template, context, 1)), unit);
     }
 
     callFunc(fn, { cell, env, contextVariable }, position, input, fname, unit = '') {
@@ -505,7 +515,7 @@ class Rules {
                         return typeof value === 'number' ? tidyNumber(value) : value;
                     }
                 }
-                return _fn(input, context) + unit;
+                return withUnit(_fn(input, context), unit);
             }
             return _fn(...input);
         }
