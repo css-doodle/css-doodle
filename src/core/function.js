@@ -2,7 +2,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseSvg from '../parser/parse-svg.js';
 import parseSvgPath from '../parser/parse-svg-path.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
-import parseShapeCommands from '../parser/parse-shape-commands.js';
+import parseShapeCommands, { spaced } from '../parser/parse-shape-commands.js';
 import parseDirection from '../parser/parse-direction.js';
 import svgSourceOf from '../parser/svg-source.js';
 
@@ -740,8 +740,8 @@ Function.Plot.scatter = createPlot(true, true);
 
 const arcPath = memo((...args) => {
     let c = parseShapeCommands(args.join(','));
-    let [rx, ry = rx] = parseValueGroup(c.r ?? '0').map(calc);
-    let [cx, cy = cx] = parseValueGroup(c.move ?? '0').map(calc);
+    let [rx, ry = rx] = spaced(c.r ?? '0').map(calc);
+    let [cx, cy = cx] = spaced(c.move ?? '0').map(calc);
     let from = parseDirection(c.from ?? '0').angle;
     let sweep = parseDirection(c.to ?? '360').angle - from;
     let full = Math.abs(sweep) >= 360;

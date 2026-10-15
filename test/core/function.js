@@ -22,6 +22,10 @@ test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     assert.equal(arc('r: 10; from: 0; to: 120'), 'L 10 0 A 10 10 0 0 1 -5 8.66025403784');
     // every parameter takes arithmetic
     assert.equal(arc('r: 80/2; from: 135; to: 135 + 270 * .7'), 'L -28.2842712475 28.2842712475 A 40 40 0 1 1 32.360679775 -23.5114100917');
+    // an operator keeps its operands, so spaced arithmetic in r and move is one value
+    assert.equal(arc('r: 2 * 5; to: 90'), arc('r: 10; to: 90'));
+    assert.equal(arc('r: 40 - 20 10; to: 90; move: 5 + 5 2 * 3'), arc('r: 20 10; to: 90; move: 10 6'));
+    assert.equal(arc('r: 10 -2; to: 90'), 'L 10 0 A 10 -2 0 0 1 0 -2');
     // the path helpers anchor on the leading lineto like on a moveto
     assert.equal(Function.flipH()(arc('r: 10; from: 0; to: 90')), 'L10 0 A10 10 0 0 0 20 10');
     assert.equal(Function.reverse()('L 1 2 A 3 3 0 0 1 4 5 L 6 7 Z'), 'L1 2 L6 7 A3 3 0 0 1 4 5 Z');
