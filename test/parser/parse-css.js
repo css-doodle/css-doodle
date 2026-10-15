@@ -584,6 +584,17 @@ test('user function arguments', () => {
     assert.deepEqual(ast(`f(a, b): { $a|$b } x: @f(rgb(1, 2, 3)); y: @f(1, 2);`), ast(`x: rgb(1, 2, 3)|; y: 1|2;`));
 });
 
+test('a user function parameter can have a default', () => {
+    // a call that stops short takes the defaults of the rest, pasted as written
+    assert.deepEqual(
+        ast(`f(a, b = 2, c = $w): { $a|$b|$c } x: @f(1); y: @f(1, 3); z: @f(1, 3, 4);`),
+        ast(`x: 1|2|$w; y: 1|3|$w; z: 1|3|4;`));
+    // a call without parens takes them all; inside $() a default is parenthesized
+    assert.deepEqual(ast(`k(n = @r(2, 3)): $(n * 3); width: @k;`), ast(`width: $((@r(2, 3)) * 3);`));
+    // the `=` before a default comes first, one inside it stays
+    assert.deepEqual(ast(`k(n = $(2 = 2)): [$n]; width: @k;`), ast(`width: [$(2 = 2)];`));
+});
+
 test('a user function calling itself warns and expands to nothing', () => {
     let code = `f(x): { [@g($x)] } g(x): { @f($x) } width: @f(1);`;
     assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['@f() calls itself']);

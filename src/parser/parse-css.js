@@ -984,13 +984,19 @@ function expandFunctions(source, ctx) {
                 let end = braced ? closing(tokens, open) : statementEnd(tokens, open);
                 if (end < 0) break;
                 let last = tokens[end];
-                let params = itemsOf(tokens.slice(i + 2, close)).map(item => textOf(item).trim());
+                let params = [], defaults = [];
+                for (let item of itemsOf(tokens.slice(i + 2, close))) {
+                    let at = item.findIndex(n => n.isSymbol('='));
+                    if (at < 0) at = item.length;
+                    params.push(textOf(item.slice(0, at)).trim());
+                    defaults.push(textOf(item.slice(at + 1)).trim());
+                }
                 if (!params.every(p => RE_PARAM.test(p))) {
                     warn(ctx, `invalid parameters in ${t.value}()`, t.pos);
                 }
                 let body = braced ? source.slice(tokens[open].index + 1, last.index)
                     : source.slice(tokens[open].index, last.isSymbol(';') ? last.index : tokenEnd(last));
-                defs[t.value] = { params, body: body.trim() };
+                defs[t.value] = { params, defaults, body: body.trim() };
                 rest += source.slice(from, t.index);
                 from = tokenEnd(last);
                 i = end;
@@ -1032,7 +1038,7 @@ function expandCalls(text, defs, ctx, chain) {
     return out + text.slice(from);
 }
 
-function bindParams({ params, body }, args) {
+function bindParams({ params, defaults, body }, args) {
     let tokens = tokensOf(body);
     let out = '', from = 0;
     let parens = [];
@@ -1048,7 +1054,7 @@ function bindParams({ params, body }, args) {
         }
         let k = t.isWord() ? params.indexOf(t.value) : -1;
         if (k < 0) continue;
-        let arg = args[k] ?? '';
+        let arg = args[k] ?? defaults[k];
         let start = t.index;
         if (prev?.isSymbol('$') && adjacent(prev, t)) {
             start = prev.index;

@@ -90,15 +90,16 @@ work; a variable already being inserted is skipped and reported (§11).
 
 ```css
 twice(x): $(x * 2);
-dot(r, c): circle { r: $r; fill: $c }
-dots(): { @dot(1, red) @dot(2, blue) }
+dot(r, c = red): circle { r: $r; fill: $c }
+dots(): { @dot(1) @dot(2, blue) }
 
 width: @twice(3)px;
 background: @svg(viewBox: 0 0 10 10; @dots);
 ```
 
 ```
-definition = name '(' [ name { ',' name } ] ')' ':' body
+definition = name '(' [ param { ',' param } ] ')' ':' body
+param      = name [ '=' text ]
 body       = '{' text '}' | statement
 ```
 
@@ -111,9 +112,11 @@ A definition replaces a built-in function of the same name.
 Calls are replaced by the body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`
 copies. In the body, `$p`, and a bare `p` inside `$()`, become the
-argument of parameter `p`, parenthesized inside `$()`. Arguments are
-pasted as written, so `@dot(@r(5), red)` draws a new radius at each
-`$r`; store a shared random value in a variable first.
+argument of parameter `p`, parenthesized inside `$()`. A call with
+fewer arguments takes the defaults, `c = red`, of the parameters left.
+Arguments and defaults are pasted as written, so `@dot(@r(5))` draws a
+new radius at each `$r`; store a shared random value in a variable
+first.
 
 ### At-statements
 
