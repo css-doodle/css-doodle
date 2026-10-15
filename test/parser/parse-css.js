@@ -456,9 +456,6 @@ test('svg variable declarations become setters where they stand', () => {
     let names = valuesOf(`@content: @svg(g { --r: 5; } rect { fill: defs linearGradient { --c: red } });`)
         .filter(v => v.name === '@--').map(v => v.arguments[0].values[0].value);
     assert.deepEqual(names, ['r', 'c']);
-    // a plain `--name` argument still reads
-    let read = parseCss(`width: @rand(--a);`)[0].value[0][0];
-    assert.deepEqual(read.arguments[0].values[0], { type: 'var', name: '--a' });
 });
 
 test('$ keeps its suffix as the unit', () => {

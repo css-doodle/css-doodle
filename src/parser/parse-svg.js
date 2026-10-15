@@ -128,9 +128,6 @@ function readStatement(iter, token) {
     } else if (fragment.length) {
         token.value = textOf(fragment);
     }
-    if (token.origin) {
-        token.origin.value = token.value;
-    }
     return fragment;
 }
 
@@ -176,10 +173,10 @@ function readSvgStatement(iter, head) {
         name: props[0],
         value: ''
     };
-    if (props.length > 1) {
-        statement.origin = { name: props };
-    }
     let valueTokens = readStatement(iter, statement);
+    if (props.length > 1 && !props.some(p => p.startsWith('--'))) {
+        statement.origin = { name: props, value: statement.value };
+    }
     let groupedValue = props.length > 1 ? parseValueGroup(statement.value) : null;
     let expand = !!groupedValue && groupedValue.length === props.length;
 

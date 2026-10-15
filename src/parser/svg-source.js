@@ -23,10 +23,9 @@ function generate(token, last, repeat) {
         if (repeat && token.variable && typeof token.value === 'string') {
             return '@--(' + token.name.slice(2) + ',' + token.value + ')';
         }
-        let group = repeat && token.origin?.name.some(n => n.startsWith('--')) ? null : token.origin;
-        let skip = (group && last === group);
-        let name = group ? group.name.join(',') : token.name;
-        let value = group ? group.value : token.value;
+        let skip = (token.origin && last === token.origin);
+        let name = token.origin ? token.origin.name.join(',') : token.name;
+        let value = token.origin ? token.origin.value : token.value;
         if (!skip) {
             if (value && value.type) {
                 result += name + ':' + generate(value, null, repeat);
