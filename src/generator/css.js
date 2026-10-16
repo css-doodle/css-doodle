@@ -61,6 +61,7 @@ function familiesOf(text) {
 
 const EMPTY_EXTRA = [];
 const SHARED_EXTRA = Object.assign([], { shared: true });
+const SCENE_EXTRA = [1, 1, 1, 1, 1, 1];
 
 function pushInput(input, value, whole) {
     if (!whole && (typeof value === 'number' || typeof value === 'string')) {
@@ -544,7 +545,8 @@ class Rules {
     }
 
     composeComposable(fname, node, cell, env, selector, property) {
-        let value = node.arguments.map(a => this.composeArgument(a, cell, env)).join(',');
+        let extra = fname === 'scene' ? SCENE_EXTRA : EMPTY_EXTRA;
+        let value = node.arguments.map(a => this.composeArgument(a, cell, env, extra)).join(',');
         if (!value) return;
         if (fname !== 'doodle') {
             return this.composePaint(fname, value, cell, node.size, selector, property, node);
@@ -557,9 +559,9 @@ class Rules {
         return placeholder(id);
     }
 
-    composeArgument(argument, cell, env) {
+    composeArgument(argument, cell, env, extra = EMPTY_EXTRA) {
         let compiled = compileArgument(argument);
-        return compiled.constant ? compiled() : compiled({ cell, env }, EMPTY_EXTRA);
+        return compiled.constant ? compiled() : compiled({ cell, env }, extra);
     }
 
     resolvePaintVars(fname, source, count, node) {

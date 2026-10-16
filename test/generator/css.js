@@ -734,6 +734,16 @@ test('@scene copies holding @ functions repeat their body per copy, like @svg', 
         '{ r: 1 2; move: n 0 0 } { r: 2 2; move: n 0 0 }} cone*2 { r: .1 }');
 });
 
+test('outside its copies a @scene picks, plots and samples noise per cell, like CSS', () => {
+    let scenes = body => Object.values(compile(`background: @scene(${body});`, '1x4').patterns).map(p => p.source);
+    let cssCells = value => [...css(`--v: ${value};`, '1x4').matchAll(/--v:([^;]+);/g)].map(m => `sphere { r: ${m[1]} }`);
+    for (let value of ['@pn(.1, .2, .3)', '@pnr(.1, .2, .3)', '@pd(.1, .2, .3, .4)', '@R(1)', '@plot(r: .5)']) {
+        assert.deepEqual(scenes(`sphere { r: ${value} }`), cssCells(value), value);
+    }
+    // copies still pick per copy
+    assert.equal(scenes('sphere*2 { r: @pn(.1, .2, .3) }')[1], 'sphere*2 {{ r: .1 } { r: .2 }}');
+});
+
 test('@shape copies holding @ functions draw each copy with its own values', () => {
     let shape = body => css(`clip-path: @shape(intersect { ${body} });`);
     let lens = shape('circle { move: -.45 0 } circle { move: .45 0 }');

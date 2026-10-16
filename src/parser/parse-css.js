@@ -641,7 +641,7 @@ function parseDoodleBody(cur, start, name) {
     if (expand) {
         cut(end);
         while (blocks.length) values = blocks.pop()[0].concat(values);
-        if (values.some(v => v.type === 'func')) return [normalizeArgument([repeat('1', values)])];
+        if (values.some(v => v.type === 'func')) return [Node.argument(values)];
     }
     let body = cur.source.slice(start, end);
     // a nested doodle is parsed again, and that parse leaves the π in quotes alone

@@ -214,8 +214,7 @@ function createPlot(unit, kind, pieces) {
     return (cell, { extra, seed, rules }) => {
         let e = last(extra) || [];
         return (...args) => {
-            let idx = e[SEQ.n] ?? cell.count;
-            let max = e[SEQ.max] ?? cell.grid.count;
+            let [idx, max] = e[SEQ.index] ? [e[SEQ.n], e[SEQ.max]] : [cell.count, cell.grid.count];
             let input = args.join(',');
             shapeWarnings(input).forEach(m => rules?.warn(m));
             let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''));
@@ -453,7 +452,7 @@ function createNoise(outline) {
     return ({ x, y, grid }, { context, extra, random }, position) => {
         let counter = (outline ? 'noise-t' : 'noise-2d') + position;
         let e = last(extra) || [];
-        let [cx, cy, X, Y] = (e[SEQ.n] && e[SEQ.max]) ? [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
+        let [cx, cy, X, Y] = (e[SEQ.index] && e[SEQ.n]) ? [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
         let u = X <= 1 ? .5 : (cx - 1) / X;
         let v = Y <= 1 ? .5 : (cy - 1) / Y;
         return (...args) => {
