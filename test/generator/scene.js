@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import draw from '../../src/generator/scene.js';
 
 const extra = {
-    getRgbaColor: v => /^(#[0-9a-f]{3,8}|red|white)$/i.test(v) ? [1, 0, 0, 1] : null,
+    getRgbaColor: v => /^(#[0-9a-f]{3,8}|red|white|rgb\(.*\))$/i.test(v) ? [1, 0, 0, 1] : null,
 };
 
 // the compiled scene function and the warnings it produced
@@ -184,6 +184,70 @@ test('perspective sets the camera distance, none makes it parallel', () => {
     assert.match(scene('sphere;').fragment, /float g_d = 2\.0/);
     assert.match(scene('perspective: 4; sphere;').fragment, /float g_d = 4\.0/);
     assert.match(scene('perspective: none; sphere;').fragment, /float g_d = 0\.0/);
+});
+
+test('zoom scales the fitted view', () => {
+    assert.match(scene('sphere;').fragment, /g_px = g_m \* 1\.0;/);
+    let { fragment, warnings } = scene('zoom: 2; sphere;');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /g_px = g_m \* 2\.0;\n\s*vec2 g_q = \(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ g_px;/);
+    assert.match(fragment, /float g_u = g_k \/ 2\.0;/);
+});
+
+test('light points toward each light as normal does, white by default', () => {
+    let lights = code => [...scene(code + '; sphere').fragment.matchAll(/vec3 g_l\d = g_v \* normalize\((.+)\);\ng_lit \+= (.+?) \* max/g)].map(m => m.slice(1));
+    assert.deepEqual(lights(''), [['vec3(0.6, 0.8, 0.5)', 'vec3(1.0)']]);
+    assert.deepEqual(lights('light: -1 1 .5'), [['vec3(-1.0, 1.0, .5)', 'vec3(1.0)']]);
+    // a number sets the strength, a color tints it, and a CSS color stands after the last space
+    assert.deepEqual(lights('light: 1 1 1 .5, cos(t) 1 sin(t) #ff0000 * 2, 0 1 0 rgb(255 0 0), #fff'), [
+        ['vec3(1.0, 1.0, 1.0)', 'vec3(.5)'],
+        ['vec3(cos(t), 1.0, sin(t))', 'vec3((vec3(1.0, 0.0, 0.0) * 2.0))'],
+        ['vec3(0.0, 1.0, 0.0)', 'vec3(1.0,0.0,0.0)'],
+        ['vec3(0.6, 0.8, 0.5)', 'vec3(1.0,0.0,0.0)'],
+    ]);
+    let { fragment, warnings } = scene('light: none; sphere');
+    assert.deepEqual(warnings, []);
+    assert.doesNotMatch(fragment, /g_lit/);
+});
+
+test('shadow dims the light that shapes block, and where they crowd', () => {
+    assert.doesNotMatch(scene('sphere').fragment, /g_shadow|g_open/);
+    let { fragment, warnings } = scene('light: 1 1 0, 0 1 1; shadow: .5; sphere');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /float g_shadow\(vec3 p, vec3 l, float far, float e\)/);
+    assert.equal(fragment.match(/\* mix\(1\.0, g_shadow\(g_h \+ n \* g_e, g_l\d, 2\.0 \* g_s, g_e\), g_sh\);/g).length, 2);
+    assert.match(fragment, /g_sh = \.5;/);
+    assert.match(fragment, /\* mix\(1\.0, g_open\(g_h, n, g_s\), g_sh\)\);/);
+    assert.doesNotMatch(scene('shadow: none; sphere').fragment, /g_shadow/);
+});
+
+test('ambient is the light from all around, sky above and ground below', () => {
+    let ambient = code => scene(code + '; sphere').fragment.match(/g_L = sqrt\(\(0\.7 \* g_lit \+ (.+)\)\);/)[1];
+    assert.equal(ambient(''), '0.3 * (0.6 + 0.4 * dot(n, g_y))');
+    // one value fades to a fifth facing down
+    assert.equal(ambient('ambient: .3'), 'mix(vec3(.3) * 0.2, vec3(.3), 0.5 + 0.5 * dot(n, g_y))');
+    assert.equal(ambient('ambient: #ff0000 .1'), 'mix(vec3(.1), vec3(vec3(1.0, 0.0, 0.0)), 0.5 + 0.5 * dot(n, g_y))');
+    // a CSS color stands last, and none is no ambient
+    assert.equal(ambient('ambient: .2 rgb(255 0 0)'), 'mix(vec3(vec3(1.0,0.0,0.0)), vec3(.2), 0.5 + 0.5 * dot(n, g_y))');
+    assert.equal(ambient('ambient: none'), 'mix(vec3(0.0) * 0.2, vec3(0.0), 0.5 + 0.5 * dot(n, g_y))');
+    assert.deepEqual(scene('ambient: .1; sphere').warnings, []);
+    assert.doesNotMatch(scene('light: none; ambient: .1; sphere').fragment, /g_L = sqrt/);
+});
+
+test('a fill that reads light is lit already, and the others are shaded', () => {
+    let plain = scene('sphere { fill: red } box');
+    assert.doesNotMatch(plain.body, /g_L/);
+    assert.match(plain.fragment, /FragColor = vec4\(g_scene\(g_h\)\.rgb \* g_L,/);
+    assert.doesNotMatch(plain.fragment, /light = dot/);
+    // directly or through a variable; a name of its own hides it
+    let { body, fragment, warnings } = scene('k: floor(light * 4) / 4; sphere { fill: red * k } box { fill: red } torus { light: 2; fill: red * light }');
+    assert.deepEqual(warnings, []);
+    assert.match(body, /vec3 g_1 = vec3\(0\.9\) \* g_L;/);
+    assert.match(body, /float (g_\d+) = \(floor\(\(light \* 4\.0\)\) \/ 4\.0\);\nvec3 g_\d+ = \(vec3\(1\.0, 0\.0, 0\.0\) \* \1\);/);
+    assert.match(body, /vec3 g_\d+ = vec3\(1\.0, 0\.0, 0\.0\) \* g_L;/);
+    assert.match(body, /vec3 g_\d+ = \(vec3\(1\.0, 0\.0, 0\.0\) \* g_\d+\) \* g_L;/);
+    assert.match(fragment, /light = dot\(g_L, vec3\(1\.0 \/ 3\.0\)\);\n\s*FragColor = vec4\(g_scene\(g_h\)\.rgb,/);
+    assert.deepEqual(scene('sphere { move: light 0 0 }').warnings, ['only fill can read light, not move']);
 });
 
 test('the model is measured once per vertex, not per pixel', () => {

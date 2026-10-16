@@ -76,6 +76,30 @@ const SCENE_HELPERS = glsl`
     }
 `;
 
+const LIGHT = 'vec3(0.6, 0.8, 0.5)', SHADE = ' * g_L';
+
+const SHADOWS = glsl`
+    // soft: how near the way to the light passes a shape, for how far along it
+    float g_shadow(vec3 p, vec3 l, float far, float e) {
+        float s = 1.0, t = e;
+        for (int k = 0; k < 64 && t < far && s > 1e-3; k++) {
+            float d = g_dist(p + l * t);
+            s = min(s, 10.0 * d / t);
+            t += max(d, e);
+        }
+        return smoothstep(0.0, 1.0, s);
+    }
+    // 1 in the open, less where other shapes crowd p along n
+    float g_open(vec3 p, vec3 n, float s) {
+        float o = 0.0;
+        for (int k = 1; k <= 4; k++) {
+            float h = 0.01 * s * float(k);
+            o += clamp(1.0 - g_dist(p + n * h) / h, 0.0, 1.0);
+        }
+        return 1.0 - o / 4.0;
+    }
+`;
+
 function isVar(node, name) {
     return !COMMANDS.has(name) && name !== 'fill' && !SHAPES[node.name]?.includes(name)
         && !(name === 'smooth' && (GROUPS[node.name] || node.count));
@@ -90,7 +114,8 @@ function checkAll(node, warn, unread, code) {
     if (top || SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
-                if (r.name !== 'fill' && /\bnormal\b/.test(textOf(r.value))) warn(`only fill can read normal, not ${r.name}`);
+                let m = r.name !== 'fill' && textOf(r.value).match(/\b(normal|light)\b/);
+                if (m) warn(`only fill can read ${m[1]}, not ${r.name}`);
                 continue;
             }
             let valid = NAME.test(r.name);
@@ -112,7 +137,7 @@ export default function drawScene(code, extra, report = () => {}) {
     let tree = readShapes(code, warn, { ignoreInlineComment: true });
     let root = { name: 'union', top: true, count: 0, rows: [], children: tree.children }, camera = {};
     for (let r of tree.rows) {
-        if (r.name === 'view' || r.name === 'perspective') camera[r.name] = r.value;
+        if (/^(view|perspective|zoom|light|shadow|ambient)$/.test(r.name)) camera[r.name] = r.value;
         else root.rows.push(r);
     }
     let unread = new Set();
@@ -126,7 +151,7 @@ export default function drawScene(code, extra, report = () => {}) {
     let build = (dist, warn, fit) => {
         let ctx = {
             id: 0, sites: 0, key: '0.0',
-            types: { __proto__: null, p: 'vec3', normal: 'vec3' },
+            types: { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' },
             // outside copies the scene is one copy
             names: { __proto__: null, t: 't', deg: '(PI / 180.0)', turn: '(2.0 * PI)', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' },
         };
@@ -172,17 +197,19 @@ export default function drawScene(code, extra, report = () => {}) {
         };
 
         let out = '';
+        let lit = new Set(['light']), reads = code => code.match(/\w+/g)?.some(w => lit.has(w));
         let scope = (node, p) => {
             for (let { name, value } of vars(node)) {
                 let { type, code } = compile(textOf(value), p);
-                let id = next(), t = ctx.types[id] = type === 'int' ? 'float' : type;
+                let id = next(), t = ctx.types[id] = type === 'int' ? 'float' : type, c = code(t);
                 ctx.names = { __proto__: ctx.names, [name]: id };
-                out += `${t} ${id} = ${code(t)};\n`;
+                if (reads(c)) lit.add(id);
+                out += `${t} ${id} = ${c};\n`;
             }
         };
         let base = ctx.fill = next(), none = dist ? '1e5' : `vec4(${base}, 1e5)`;
         let T = dist ? 'float' : 'vec4', W = dist ? '' : '.w';
-        if (!dist) out += `vec3 ${base} = vec3(0.9);\n`;
+        if (!dist) out += `vec3 ${base} = vec3(0.9)${SHADE};\n`;
         // a hard join is min for union, max against -b for subtract, max for intersect
         let join = (a, b, k, signs = '1.0, 1.0') => `${a} = ${dist && k === '0.0'
             ? signs === '1.0, 1.0' ? `min(${a}, ${b})` : `max(${a}, ${signs === '-1.0, 1.0' ? '-' : ''}${b})`
@@ -334,7 +361,7 @@ export default function drawScene(code, extra, report = () => {}) {
             let c = f.length && color(textOf(f), p);
             if (c && !dist) {
                 ctx.fill = next();
-                out += `vec3 ${ctx.fill} = ${c};\n`;
+                out += `vec3 ${ctx.fill} = ${c}${reads(c) ? (ctx.self = 1, '') : SHADE};\n`;
             }
             let r = shape(node, p);
             ctx.fill = saved;
@@ -456,7 +483,7 @@ export default function drawScene(code, extra, report = () => {}) {
             return r;
         }
 
-        let result = generate(root, 'p');
+        let result = generate(root, 'p'), self = ctx.self;
         // the named shapes nothing draws are compiled too, so their mistakes show
         if (!dist) {
             let used = out, size = arrays.size;
@@ -464,20 +491,44 @@ export default function drawScene(code, extra, report = () => {}) {
             out = used;
             [...arrays.keys()].slice(size).forEach(k => arrays.delete(k));
         }
+        if (!self) out = out.replaceAll(SHADE, '');
 
+        let off = v => /^\s*none\s*$/.test(textOf(v || []));
         let [turn = '0.0', tilt = '0.0'] = numbers(camera.view || [], 'p', true).map(v => `radians(${v})`);
-        let depth = !camera.perspective ? '2.0'
-            : /^\s*none\s*$/.test(textOf(camera.perspective)) ? '0.0'
-            : first(camera.perspective, 'p');
-        return { out, result, turn, tilt, depth };
+        let depth = !camera.perspective ? '2.0' : off(camera.perspective) ? '0.0' : first(camera.perspective, 'p');
+        let zoom = camera.zoom ? first(camera.zoom, 'p') : '1.0';
+        let shadow = camera.shadow && !off(camera.shadow) && first(camera.shadow, 'p');
+        // the values of a row, and a CSS color such as rgb() standing after the last space
+        let paint = g => {
+            let level = 0, at = 0;
+            g.forEach((t, i) => (level += t.isSymbol('(') - t.isSymbol(')')) || !t.isSpace() || (at = i));
+            let tail = textOf(g.slice(at)).trim(), rgba = !/^hsl\([^%]*\)$/i.test(tail) && extra.getRgbaColor(tail);
+            return [numbers(rgba ? g.slice(0, at) : g, 'p'), rgba && `vec3(${rgba.slice(0, 3).map(float)})`];
+        };
+        // `x y z color`, toward the light as `normal` sees it
+        let lights = off(camera.light) ? [] : itemsOf(camera.light || []).map(g => {
+            let [v, c] = paint(g);
+            return [v.length ? vec3(v.slice(0, 3)) : LIGHT, c || `vec3(${v[3] || '1.0'})`];
+        });
+        if (!camera.light) lights.push([LIGHT, 'vec3(1.0)']);
+        // `sky ground`, the light from all around: a surface facing up gets sky, one facing down ground, a fifth of sky unless given
+        let ambient = '0.3 * (0.6 + 0.4 * dot(n, g_y))';
+        if (camera.ambient) {
+            let [v, c] = off(camera.ambient) ? [['0.0']] : paint(camera.ambient), sky;
+            if (c) v.push(c);
+            sky = `vec3(${v[0]})`;
+            ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * dot(n, g_y))`;
+        }
+        return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
-    let { turn, tilt, depth } = full;
+    let { turn, tilt, depth, zoom, shadow, lights, ambient, self } = full;
     let usesTime = /(?<![a-zA-Z_]\w*|\.)t\b/.test(code);
     let common = glsl`
     const float PI = 3.1415926535897932;
     float t;
     vec3 normal = vec3(0.0, 0.0, 1.0);
+    float light = 1.0;
     ${HELPERS}
     ${SCENE_HELPERS}
     ${[...arrays].map(([array, v]) => `const ${array.match(/^\w+/)} ${v}[] = ${array};`).join('\n')}
@@ -528,6 +579,8 @@ export default function drawScene(code, extra, report = () => {}) {
         ${bare.out}
         return ${bare.result};
     }
+    ${shadow ? SHADOWS : ''}
+    vec3 g_L = vec3(1.0);
     vec4 g_scene(vec3 p) {
         ${full.out}
         return ${full.result};
@@ -535,8 +588,9 @@ export default function drawScene(code, extra, report = () => {}) {
     void main() {
         ${now}
         ${view}
-        float g_m = min(u_resolution.x, u_resolution.y);
-        vec2 g_q = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / g_m;
+        // zoom scales the fitted view about its center: pixels per unit, and units per unit of the fit
+        float g_m = min(u_resolution.x, u_resolution.y), g_px = g_m * ${zoom};
+        vec2 g_q = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / g_px;
         mat3 g_v = mat3(g_x, g_y, g_z);
         // zoom out and shift only as far as keeps the model in view
         float g_d = ${depth}, g_f = g_d > 0.0 ? 1.0 / g_d : 0.0;
@@ -564,24 +618,34 @@ export default function drawScene(code, extra, report = () => {}) {
         float g_tn = g_t, g_near = 1e9;
         for (int k = 0; k < 128; k++) {
             float d = g_dist(g_ro + g_rd * g_t);
-            float e = d * g_m / (g_d > 0.0 ? g_t * g_f : g_k);
+            float e = d * g_px / (g_d > 0.0 ? g_t * g_f : g_k);
             if (e < g_near) { g_near = e; g_tn = g_t; }
             if (g_near < 0.1 || g_t > g_far) break;
             g_t += d;
         }
         vec3 g_h = g_ro + g_rd * g_tn;
         vec3 n = vec3(0.0);
+        float g_u = g_k / ${zoom};
         for (int k = 0; k < 4; k++) {
             vec3 e = 0.5773 * (2.0 * vec3(float(((k + 3) >> 1) & 1), float((k >> 1) & 1), float(k & 1)) - 1.0);
-            n += e * g_dist(g_h + e * 5e-4 * g_k);
+            n += e * g_dist(g_h + e * 5e-4 * g_u);
         }
         // a miss reads its closest approach at full strength, so squashed and blended shapes keep a one-pixel edge
-        if (g_near >= 0.1) g_near /= clamp(length(n) * 1500.0 / g_k, 1e-3, 1.0);
+        if (g_near >= 0.1) g_near /= clamp(length(n) * 1500.0 / g_u, 1e-3, 1.0);
         n = normalize(n);
         normal = n * g_v;
-        vec3 g_l = g_v * normalize(vec3(0.6, 0.8, 0.5));
-        float light = sqrt(0.7 * max(dot(n, g_l), 0.0) + 0.3 * (0.6 + 0.4 * dot(n, g_y)));
-        FragColor = vec4(g_scene(g_h).rgb * light, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
+        ${lights.length ? glsl`
+            vec3 g_lit = vec3(0.0);
+            ${shadow ? glsl`
+                // a pixel at the hit, and the model's size
+                float g_e = (g_d > 0.0 ? g_tn * g_f : g_k) / g_px, g_s = g_b ? length(g_hi - g_lo) : g_k, g_sh = ${shadow};
+            ` : ''}
+            ${lights.map(([dir, color], i) => `vec3 g_l${i} = g_v * normalize(${dir});\ng_lit += ${color} * max(dot(n, g_l${i}), 0.0)${shadow
+                ? ` * mix(1.0, g_shadow(g_h + n * g_e, g_l${i}, 2.0 * g_s, g_e), g_sh)` : ''};`).join('\n')}
+            g_L = sqrt((0.7 * g_lit + ${ambient})${shadow ? ' * mix(1.0, g_open(g_h, n, g_s), g_sh)' : ''});
+        ` : ''}
+        ${self ? 'light = dot(g_L, vec3(1.0 / 3.0));' : ''}
+        FragColor = vec4(g_scene(g_h).rgb${self ? '' : SHADE}, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
     }
   `;
     return { vertex, fragment, textures: [] };

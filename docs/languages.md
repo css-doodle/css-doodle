@@ -277,7 +277,7 @@ a group take its fill unless they have their own, and shapes joined
 with `smooth` blend their colors. `fill` also sees `normal`, the
 surface normal as the camera sees it (x right, y up, z toward the
 camera), so `1 - normal.z` is bright at the edges; the scene's light
-still shades the result.
+still shades the result, unless the fill reads `light` (see Light).
 
 **Shapes.** `round` keeps the outer size of a `box`, `cylinder` or
 `polygon`, while `grow` makes any shape bigger. `repeat: x y z`
@@ -295,8 +295,34 @@ half of the same outline, where `x` is 0 or more, around `y`:
 and tilts it, in degrees, and `perspective: d` sets its distance, 2 by
 default or `none` for a parallel view. The camera fits the model, a
 moving one as it is now and over its first 2π seconds, so it holds
-still while the model or view moves: `view: 30t` spins it in place. An
+still while the model or view moves: `view: 30t` spins it in place.
+`zoom: k` then scales the view about its center, cropping above 1. An
 animated scene draws best in `@content`.
+
+**Light.** `light: x y z` points toward the light the way `normal`
+does, so the light turns with the camera; it is `.6 .8 .5` by default.
+A color after the direction tints it, and a number sets the strength
+of a white one: `light: -1 1 .5 #ffe2b8`. A list adds lights, as in
+`light: -1 1 .5, 1 0 -1 #5a7cff * .5`, and `light: none` leaves `fill`
+as the final color. `shadow: s`, from 0 to 1, darkens the light that
+shapes block, with soft edges, and the places where shapes crowd each
+other.
+
+`ambient: sky ground` is the light from all around, which fills the
+shade: a surface facing up, as the camera sees it, gets `sky`, one
+facing down gets `ground`, and one value fades to a fifth of itself
+facing down. It is `.3` by default, a grey; `ambient: 0` leaves only
+the lights, for deep shadows, and colors tint the shade, as in
+`ambient: #6b7a99 #3a2a1a`, cool from above and warm from below.
+
+A fill that reads `light`, itself or through a variable, lights
+itself: `light` is how much light reaches the point, shadows included,
+from about .25 in full shade to 1 facing a white light (the average of
+the colors, with several), and the scene leaves that fill as it is.
+`fill: #c3a066 * light` looks the same as `fill: #c3a066`, and
+`fill: mix(#5e6472, #e9d8a6, floor(light * 4) / 4)` paints in four
+steps, shadows too. Other shapes are shaded as usual, and with
+`light: none` it reads 1.
 
 ## 3. Patterns
 
