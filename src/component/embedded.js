@@ -72,8 +72,12 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         return element.getBoundingClientRect();
     };
 
-    let { width, height } = measure();
     let generation = host._generation;
+    if (target.type === 'content' && !fixed) {
+        await host._styleReady;
+        if (host._generation !== generation || host.shaderRenders.has(id)) return;
+    }
+    let { width, height } = measure();
     let parsed = typeof source === 'string' ? parseShaders(source) : source;
     let textures = [];
 

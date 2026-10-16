@@ -523,7 +523,7 @@ export default function drawScene(code, extra, report = () => {}) {
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
     let { turn, tilt, depth, zoom, shadow, lights, ambient, self } = full;
-    let usesTime = /(?<![a-zA-Z_]\w*|\.)t\b/.test(code);
+    let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, ambient, ...lights.flat()].join('\n'));
     let common = glsl`
     const float PI = 3.1415926535897932;
     float t;
