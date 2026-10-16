@@ -209,8 +209,8 @@ come out beveled.
 
 **`@plot` and `@tile`.** `@plot` spreads its cells along the outline,
 over the contours by length, and reads only the points, ignoring
-`fill-rule`, `frame`, `round` and `grow`. `@tile` and `@plot.scatter`
-fill the region, holes included.
+`fill-rule`, `frame`, `round` and `grow`. `@tile`, `@plot.scatter`,
+`@plot.hex` and `@plot.grid` fill the region, holes included.
 
 **Noise.** `@R.t(from, to)` writes a closed noise curve in `t` for one
 cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`, following the
@@ -218,14 +218,14 @@ doodle's seed or the `seed` command.
 
 ### Tiles
 
-`@tile(…)` of every kind and `@plot.scatter(…)` read the body as the
+`@tile(…)` of every kind and the filling `@plot` variants read the body as the
 region to fill (`square` by default for `@tile`), along with these
 commands. Here `points` counts what comes out, not the corners, so a
 body copied from `@shape` leaves it out.
 
 | Command         | Kinds                                   | Value                                                          |
 |-----------------|-----------------------------------------|----------------------------------------------------------------|
-| `points`        | all                                     | at most this many pieces, or points for `delaunay`; scatter returns that many as one list |
+| `points`        | all                                     | at most this many pieces, or points for `delaunay`; a `@plot` variant returns its points as one list |
 | `seed`          | all                                     | the seed, the doodle's by default                              |
 | `aspect`        | all                                     | the element's width over its height, `2` or `16 / 9`, kept between 0.001 and 1000 |
 | `gap`           | all but scatter                         | space between pieces, in percent of the element                |
@@ -254,6 +254,14 @@ makes the piece. A piece that `op` or `star` makes from a piece keeps
 its kind; pieces made at the corners take the next kind up, and those
 made along the sides by `e`, `b` and `s` the one after. `d` makes
 every piece kind 1.
+
+`@plot.hex(…)` and `@plot.grid(…)` give points instead of pieces, one per cell like `@plot.scatter(…)`: the centers of
+that lattice's pieces that sit inside the region, clear of its
+outline, as many as the grid allows, so a `k×k` grid in a `square`
+lands on the cell centers. A cell past them gets no point, and
+`@place` hides it. `jitter`, `shift`, `op` and `star` move the points,
+`@plot.hex(…; op: d)` a honeycomb; `gap`, `round` and `edge` change
+nothing.
 
 ### @scene
 

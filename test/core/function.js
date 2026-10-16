@@ -316,6 +316,47 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     assert.ok(performance.now() - start < 500);
 });
 
+test('@plot.hex, @plot.grid: lattice points inside the shape, as many as the grid allows', () => {
+    let env = { context: {}, extra: [] };
+    // the step is bisected, so to a few millionths
+    let near = (a, b) => Math.abs(a - b) < 1e-4;
+    let all = (fn, shape, n) => Array.from({ length: n }, (_, i) => String(fn(cell(n, i + 1), env)(shape)));
+    let dots = (fn, shape, n) => all(fn, shape, n).filter(Boolean).map(xy);
+    // a k×k grid in a square sits on the cell centres, as @grid does
+    let [lo, hi] = [0, 2].map(i => xy(String(Function.shape()('square')).slice(8, -1).split(',')[i])[0]).sort((a, b) => a - b);
+    let grid = dots(Function.plot.grid, 'square', 16);
+    let centres = [1, 3, 5, 7].map(k => lo + (hi - lo) * k / 8);
+    assert.equal(grid.length, 16);
+    assert.ok(grid.every(([x, y], i) => near(x, centres[i % 4]) && near(y, centres[i >> 2])), JSON.stringify(grid));
+    // hexagons' centres: rows half a step apart, every neighbour at the same distance, top row first
+    let hex = dots(Function.plot.hex, 'square', 7);
+    let gaps = hex.map(([x, y], i) => Math.min(...hex.map(([u, v], j) => i == j ? Infinity : Math.hypot(x - u, y - v))));
+    assert.ok(hex.length == 7 && gaps.every(g => near(g, gaps[0])) && hex[0][1] < hex[6][1], JSON.stringify(hex));
+    // inside the shape and clear of its outline: no point closer than a quarter step to a circle's edge
+    let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
+    for (let fn of [Function.plot.hex, Function.plot.grid]) {
+        let heart = dots(fn, 'heart', 100);
+        assert.ok(heart.length > 90 && heart.length <= 100 && heart.every(p => inside(outline, p)), heart.length);
+        let disc = dots(fn, 'r: .8', 60), step = Math.min(...disc.slice(1).map(([x, y]) => Math.hypot(x - disc[0][0], y - disc[0][1])));
+        assert.ok(disc.every(([x, y]) => 40 - Math.hypot(x - 50, y - 50) > step / 4 - 1e-6));
+        assert.equal(dots(fn, 'circle', 1).length, 1);
+    }
+    // `op: d` on hex is a honeycomb, three nearest neighbours where hex has six
+    let near3 = list => { let d = list.map(([x, y], i) => list.map(([u, v], j) => i == j ? Infinity : Math.hypot(x - u, y - v))), s = Math.min(...d.flat()); return Math.max(...d.map(r => r.filter(v => v < s * 1.05).length)); };
+    assert.equal(near3(dots(Function.plot.hex, 'circle; op: d', 100)), 3);
+    assert.equal(near3(dots(Function.plot.hex, 'circle', 100)), 6);
+    // where six pieces meet at the centre and none fit alone, the first that fit are cut to the count
+    assert.equal(dots(Function.plot.hex, 'circle; op: d', 4).length, 4);
+    // cells past the points a lattice fits get none
+    let some = all(Function.plot.hex, 'square', 100);
+    assert.ok(some.includes('') && some.indexOf('') == some.filter(Boolean).length);
+    // `points` returns them all, @Plot keeps the units, the seed changes nothing, `jitter` moves them
+    assert.equal(Function.plot.hex(cell(4), env)('heart; points: 10').length, 10);
+    assert.doesNotMatch(String(Function.Plot.grid(cell(4, 2), env)('square')), /%/);
+    assert.deepEqual(all(Function.plot.hex, 'heart', 30), Array.from({ length: 30 }, (_, i) => String(Function.plot.hex(cell(30, i + 1), { ...env, seed: 'z' })('heart'))));
+    assert.notDeepEqual(all(Function.plot.hex, 'heart; jitter: .3', 30), all(Function.plot.hex, 'heart', 30));
+});
+
 test('@tile.voronoi: the box tiled around points scattered inside the shape, preset or formula', () => {
     let env = { context: {}, extra: [] };
     let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), { context: {}, extra: [], seed })(shape));

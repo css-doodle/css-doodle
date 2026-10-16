@@ -723,10 +723,11 @@ function reacher(box, inside, grow, derived) {
     return ([p, c]) => reaches(grow == 1 ? p : scale(p, c, grow), c, inside, corners) || derived && crosses(p);
 }
 
-function tiles(make, box, screen, inside, count, grow, derive, half) {
+function tiles(make, box, screen, inside, count, grow, derive, half, dots) {
     let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
     if (!(area > 0)) return [];
-    let keep = pieces => pieces.filter(reacher(box, inside, grow, derive));
+    let clear = ([p, [x, y]]) => inside(x, y) && p.every((v, i) => i & 1 || inside((v + x) / 2, (p[i + 1] + y) / 2));
+    let keep = pieces => pieces.filter(dots ? clear : reacher(box, inside, grow, derive));
     let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half, grow));
     let hi = sqrt(area / count), fit = (size, hi, lo) => {
         for (let i = 0; i < 30 && size(hi).length > count; ++i) hi *= 1.25;
@@ -735,10 +736,19 @@ function tiles(make, box, screen, inside, count, grow, derive, half) {
             let mid = (lo + hi) / 2;
             if (size(mid).length > count) lo = mid; else hi = mid;
         }
-        return size(hi);
+        if (!dots) return size(hi);
+        if (!size(hi).length) return Object.assign(size(lo).slice(0, count), { cut: true });
+        let a = lo = hi, n = size(a).length;
+        for (let i = 0; i < 30 && size(hi).length >= n; ++i) hi *= 1.25;
+        for (let i = 0; i < 20; ++i) {
+            let mid = (lo + hi) / 2;
+            if (size(mid).length < n) hi = mid; else lo = mid;
+        }
+        let p = size(1 / (.25 / a + .75 / lo));
+        return p.length == n ? p : size(a);
     };
     if (!derive) {
-        let best = fit(reaching, hi), other = half && fit(s => reaching(s, 1), hi), fill = p => p.length > count ? 0 : p.length;
+        let best = fit(reaching, hi), other = half && fit(s => reaching(s, 1), hi), fill = p => p.cut || p.length > count ? 0 : p.length;
         return other && fill(other) > fill(best) ? other : best;
     }
     let o = centre(box), [cx, cy] = o, { rim, fn } = derive, d = (rim + 3) * hi;

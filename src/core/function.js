@@ -162,21 +162,22 @@ function seq(token, make) {
     };
 }
 
-function createPlot(unit, scatter, tile) {
+function createPlot(unit, kind, pieces) {
     let plot = memo((commands, max, seed) => {
-        let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: tile && 'square', seed}, (rules, preset) => {
+        let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: pieces && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
-            if (scatter) {
+            if (kind) {
                 let count = Math.trunc(calc('points', Object.assign(Object.create(defaultContext), rules)));
                 rules.split = rules.split || SCATTER_OUTLINE;
                 delete rules.points;
                 if (isEmpty(rules.seed)) {
                     rules.seed = Math.floor(seedrandom('scatter:' + seed)() * 1e4);
                 }
-                rules.tile = tile;
-                rules.hasPoints = count > 0 && !tile;
-                let points = tile == 'delaunay' ? Math.ceil(max / 2 + Math.sqrt(max)) : max;
-                rules.scatter = clamp(count > 0 && (!tile || count < points) ? count : points, 1, MAX_SCATTER);
+                rules.tile = kind;
+                rules.dots = !pieces;
+                rules.hasPoints = count > 0 && !pieces;
+                let points = kind == 'delaunay' ? Math.ceil(max / 2 + Math.sqrt(max)) : max;
+                rules.scatter = clamp(count > 0 && (!pieces || count < points) ? count : points, 1, MAX_SCATTER);
                 rules.count = max;
             } else {
                 delete rules['fill'];
@@ -219,7 +220,7 @@ function createPlot(unit, scatter, tile) {
             shapeWarnings(input).forEach(m => rules?.warn(m));
             let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''));
             if (hasPoints) return points;
-            if (!tile) return points[idx - 1];
+            if (!pieces) return points[idx - 1] ?? '';
             let point = points[idx - 1] ?? NO_TILE;
             cellTiles.set(cell, point);
             return point;
@@ -528,8 +529,6 @@ Function.match = lazy((cell, { extra }, position, ...args) => {
     }
 });
 
-// @pick(k: a, b, …), as the parser marks it: item k from 1 as written,
-// colors and all, wrapping around as @pn does; only that item is composed
 export const pickAt = lazy((cell, { context, extra }, position, ...args) => {
     if (args.length <= 1) {
         return '';
@@ -736,21 +735,22 @@ const shaped = compose => (_, { seed, rules } = {}) => (...args) => {
 Function.shape = shaped(shapePolygon);
 
 Function.plot = createPlot(false);
-Function.plot.scatter = createPlot(false, true);
+Function.Plot = createPlot(true);
+for (let kind of ['scatter', 'hex', 'grid']) {
+    Function.plot[kind] = createPlot(false, kind);
+    Function.Plot[kind] = createPlot(true, kind);
+}
 
-Function.tile = createPlot(false, true, 'slice');
+Function.tile = createPlot(false, 'slice', true);
 Function.tile.slice = Function.tile;
 for (let kind of ['voronoi', 'delaunay', 'hex', 'triangle', 'grid', 'circle', 'cube', 'penrose']) {
-    Function.tile[kind] = createPlot(false, true, kind);
+    Function.tile[kind] = createPlot(false, kind, true);
 }
 Function.tile.x = tileAxis(0);
 Function.tile.y = tileAxis(1);
 Function.tile.xy = cell => () => cellTiles.get(cell)?.origin ?? '';
 Function.tile.k = cell => () => cellTiles.get(cell)?.kind ?? '';
 Function.tile.r = cell => () => cellTiles.get(cell)?.r ?? '';
-
-Function.Plot = createPlot(true);
-Function.Plot.scatter = createPlot(true, true);
 
 const arcPath = memo((...args) => {
     let c = parseShapeCommands(args.join(','));

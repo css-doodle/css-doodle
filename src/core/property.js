@@ -110,6 +110,7 @@ Property.size = (value, { isSpecialSelector, place, grid }) => {
 export const placeShared = `width:${cw};height:${ch};`;
 
 Property.place = (value, { extra }) => {
+    if (isEmpty(value)) return 'display:none;';
     let [left, top, safe] = resolvePlace(value);
     return `position:absolute;left:${left};right:calc(100% - ${left});top:${top};bottom:calc(100% - ${top});`
         + `place-self:${safe ? 'center' : 'unsafe center'};grid-area:unset;`

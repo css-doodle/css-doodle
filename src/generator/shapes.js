@@ -386,6 +386,11 @@ function createShapePoints(props, lo, hi, raw) {
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0, props);
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
+        let back = ([x, y]) => {
+            let [u, v] = toShape(x, y);
+            for (let [k, a, b] of [...place].reverse()) k == 'move' ? (u -= a, v -= b) : (u /= a, v /= b);
+            return [u, v];
+        };
         let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
         let make = sides ? (box, bounds, s, half) => lattice(sides, box, bounds, s, shift, turn, half) : name == 'penrose' && penrose;
         let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3), cube = name == 'cube' && !derive;
@@ -395,9 +400,13 @@ function createShapePoints(props, lo, hi, raw) {
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
             let jitter = Number(props.jitter) || 0;
             let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
-            let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive, sides);
+            let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive, sides, props.dots);
             if (cube) pieces = faces3(pieces);
             if (jitter) pieces = shake(pieces, jitter, seed);
+            if (props.dots) {
+                pieces.forEach(([, c]) => add(back(c)));
+                return points;
+            }
             let p = pieces[0]?.[0] || [], len = 0;
             for (let i = 0; i < p.length; i += 2) len = max(len, hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]));
             let tol = (box[2] - box[0]) * 5e-4 / len;
@@ -430,11 +439,7 @@ function createShapePoints(props, lo, hi, raw) {
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
         let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density, relax)
-            : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(([x, y]) => {
-                let [u, v] = toShape(x, y);
-                for (let [k, a, b] of [...place].reverse()) k == 'move' ? (u -= a, v -= b) : (u /= a, v /= b);
-                return [u, v];
-            });
+            : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(back);
         if (name == 'voronoi' && derive) {
             let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0, fits = reacher(box, inside, 1, 1), pieces = [];
             for (let n = count, i = 0; i < 5 && n >= 1; ++i) {
