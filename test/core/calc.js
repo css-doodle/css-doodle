@@ -108,6 +108,30 @@ test('exponentiation is right-associative', () => {
     assert.equal(calc('.618^4 * cos(2π*.618)'), 0.618 ** 4 * Math.cos(2 * Math.PI * 0.618));
 });
 
+test('a power binds before a product of adjacent values, then a sign', () => {
+    assert.equal(calc('-2^2'), -4);
+    assert.equal(calc('-2 ** 2'), -4);
+    assert.equal(calc('-x^2', { x: 3 }), -9);
+    assert.equal(calc('-(x)^2', { x: 3 }), -9);
+    assert.equal(calc('-abs(2)^2'), -4);
+    assert.equal(calc('-x1^2', { x1: 3 }), -9);
+    assert.equal(calc('- -2^2'), 4);
+    assert.equal(calc('x -2^2', { x: 1 }), -3);
+    assert.equal(calc('2x^2', { x: 3 }), 18);
+    assert.equal(calc('-2x^2', { x: 3 }), -18);
+    assert.equal(calc('2(3)^2'), 18);
+    assert.equal(calc('1/2x', { x: 4 }), .125);
+    assert.equal(calc('1/2π'), 1 / (2 * Math.PI));
+    assert.equal(calc('2x/3', { x: 3 }), 2);
+    assert.equal(calc('2^-1'), .5);
+    assert.equal(calc('2^-x', { x: 1 }), .5);
+    assert.equal(calc('-2^-2'), -.25);
+    assert.equal(calc('-x * y', { x: 2, y: 3 }), -6);
+    assert.equal(calc('-x + y', { x: 2, y: 3 }), 1);
+    assert.equal(calc('-var(--t)^2', {}, 1), 'calc(pow(var(--t),2) * -1)');
+    assert.equal(calc('1/2var(--t)', {}, 1), 'calc(1 / (2 * var(--t)))');
+});
+
 test('comparison operators', () => {
     assert.equal(calc('3>2'), 1);
     assert.equal(calc('2 > 3'), 0);
@@ -197,6 +221,52 @@ test('multi-argument functions', () => {
     assert.equal(calc('pow(2, 3)'), 8);
     assert.equal(calc('gcd(12, 8)'), 4);
     assert.equal(calc('hypot(3, 4)'), 5);
+    assert.equal(calc('mod(7, 4)'), 3);
+    assert.equal(calc('mod(-1, 4)'), 3);
+    assert.equal(calc('mod(7, -4)'), -1);
+    assert.equal(calc('mod(5.5, 2)'), 1.5);
+});
+
+test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep', () => {
+    assert.equal(calc('fract(2.75)'), .75);
+    assert.equal(calc('fract(-.25)'), .75);
+    assert.equal(calc('clamp(5, 0, 1)'), 1);
+    assert.equal(calc('clamp(-2, 0, 1)'), 0);
+    assert.equal(calc('clamp(.3, 0, 1)'), .3);
+    assert.equal(calc('mix(10, 20, .25)'), 12.5);
+    // step is 1 from the edge on, as in GLSL
+    assert.equal(calc('step(.5, .4)'), 0);
+    assert.equal(calc('step(.5, .5)'), 1);
+    assert.equal(calc('smoothstep(0, 1, .5)'), .5);
+    assert.equal(calc('smoothstep(0, 1, 2)'), 1);
+    assert.equal(calc('smoothstep(0, 2, -1)'), 0);
+    assert.equal(calc('smoothstep(0, 4, 1)'), .15625);
+    // a variable of the same name shadows them, read bare
+    assert.equal(calc('step * 2', { step: 3 }), 6);
+});
+
+test('pick(k: a, b, …) takes item k from 1, wrapping, and evaluates only that one', () => {
+    assert.equal(calc('pick(1: 10, 20, 30)'), 10);
+    assert.equal(calc('pick(3: 10, 20, 30)'), 30);
+    assert.equal(calc('pick(4: 10, 20, 30)'), 10);
+    assert.equal(calc('pick(0: 10, 20, 30)'), 30);
+    assert.equal(calc('pick(-1: 10, 20, 30)'), 20);
+    // k rounds to the nearest item
+    assert.equal(calc('pick(2.4: 10, 20, 30)'), 20);
+    assert.equal(calc('pick(1.5: 10, 20, 30)'), 20);
+    assert.equal(calc('pick(k % 3 + 1: 1, 2, 3) * 10', { k: 5 }), 30);
+    assert.equal(calc('pick(k:10,20,30)', { k: 2 }), 20);
+    assert.equal(calc('pick(5:)'), 0);
+    // an empty index reads as 0, as in @pick, so the items don't shift into it
+    assert.equal(calc('pick(:)'), 0);
+    assert.equal(calc('pick(: 10, 20, 30)'), 30);
+    assert.equal(calc('pick(var(--k):)', {}, 1), 0);
+    // without an index it is no function of $()
+    assert.equal(calc('pick(10, 20)'), 0);
+    let calls = 0;
+    let context = { f: () => ++calls };
+    assert.equal(calc('pick(2: f(), 7, f())', context), 7);
+    assert.equal(calls, 0);
 });
 
 test('nested and composed functions', () => {
@@ -456,6 +526,17 @@ test('short-circuit evaluation', () => {
     assert.equal(calc('-match(1, 2, 3)'), -2);
 });
 
+test('match() takes test and value pairs, then an optional else', () => {
+    const boom = () => { throw new Error('evaluated'); };
+    assert.equal(calc('match(0, 5, 1, 7, 9)'), 7);
+    assert.equal(calc('match(0, 5, 0, 7, 9)'), 9);
+    assert.equal(calc('match(0, 5, 0, 7)'), 0);
+    assert.equal(calc('match(x > 2, 1, x > 1, 2, 3)', { x: 2 }), 2);
+    assert.equal(calc('match(0, boom(1), 1, 4, boom(2))', { boom }), 4);
+    assert.equal(calc('match(var(--t) > 1, 2, var(--t) > 2, 3, 4)', {}, 1),
+        'calc(2 * abs(sign(max(0,sign(var(--t) - 1)))) + (3 * abs(sign(max(0,sign(var(--t) - 2)))) + 4 * (1 - abs(sign(max(0,sign(var(--t) - 2)))))) * (1 - abs(sign(max(0,sign(var(--t) - 1))))))');
+});
+
 test('a bare reference to a zero-argument function calls it', () => {
     // the selector context passes `random` as a function; `random > .5`
     // used to read it as 0 and compile the function source
@@ -529,6 +610,7 @@ test('Math functions, comparisons and logic lower by name', () => {
     assert.equal(css('-sin(var(--t) + 1)'), 'calc(sin((var(--t) + 1)) * -1)');
     assert.equal(css('max(1, var(--t), 3)'), 'calc(max(1,var(--t),3))');
     assert.equal(css('sqrt.abs(var(--t))'), 'calc(sqrt(abs(var(--t))))');
+    assert.equal(css('mod(var(--t), 3)'), 'calc(mod(var(--t),3))');
     assert.equal(css('floor(var(--t))'), 'calc(round(down,var(--t),1))');
     assert.equal(css('round(var(--t))'), 'calc(round(var(--t),1))');
     assert.equal(css('var(--t) > 3'), 'calc(max(0,sign(var(--t) - 3)))');
@@ -549,6 +631,18 @@ test('Math functions, comparisons and logic lower by name', () => {
     assert.equal(css('gcd(var(--t), 2)'), 0);
     assert.equal(css('cbrt(var(--t))'), 0);
     assert.equal(css('sin(var(--t))', { sin: x => x }), 0);
+    assert.equal(css('mod(var(--t), 3)', { mod: (a, b) => a }), 0);
+    // the GLSL math lowers too, clamp with its bounds around the value
+    assert.equal(css('fract(var(--t))'), 'calc(mod(var(--t),1))');
+    assert.equal(css('clamp(var(--t), 0, 1)'), 'calc(clamp(0,var(--t),1))');
+    assert.equal(css('mix(1, 3, var(--t))'), 'calc(1 + (3 - 1) * var(--t))');
+    assert.equal(css('step(.5, var(--t))'), 'calc(1 - max(0,sign(0.5 - var(--t))))');
+    assert.equal(css('smoothstep(0, 1, var(--t))'),
+        'calc(clamp(0,(var(--t) - 0) / (1 - 0),1) * clamp(0,(var(--t) - 0) / (1 - 0),1) * (3 - 2 * clamp(0,(var(--t) - 0) / (1 - 0),1)))');
+    // a live k writes out every item, weighted by whether k takes it
+    assert.equal(css('pick(var(--k): 10, 20)'),
+        'calc(10 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 0))) + 20 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 1))))');
+    assert.equal(css('pick(2: var(--t), 5)'), 5);
     // a lone name holding a live value passes through
     assert.equal(deref('t', { t: 'var(--t)' }), 'var(--t)');
     assert.equal(withUnit('calc(var(--t))', 'deg'), 'calc((var(--t)) * 1deg)');

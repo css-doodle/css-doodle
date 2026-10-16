@@ -23,6 +23,18 @@ function assertContains(code, ...fragments) {
     }
 }
 
+// --- @pick(k: …) ---
+
+test('@pick(k: …) takes item k from 1 in each cell, wrapping, and $() and @match read pick(k: …)', () => {
+    let sheet = cells(`--c: @pick(@i: red, #00f, tan); --k: @i; --w: $(pick(k: 10, 20, 30));
+        @match(i > 3) { --m: @p(i: a, b); }`, '1x4');
+    assert.ok(/#c-1-1-1 \{--c:red;\s*--k:1;\s*--w:10;\}/.test(sheet), sheet);
+    assert.ok(/#c-1-3-1 \{--c:tan;\s*--k:3;\s*--w:30;\}/.test(sheet), sheet);
+    assert.ok(/#c-1-4-1 \{--c:red;\s*--k:4;\s*--w:10;\s*--m:b;\}/.test(sheet), sheet);
+});
+
+// --- functions cells define ---
+
 // --- depth on multi-cell grids ---
 
 test('a tree grid composes one rule set per (x, y, z) slot, as classes', () => {
@@ -171,6 +183,23 @@ test('$ name suffix reads as a unit appended to the calc result', () => {
     assertContains('width: $123;', 'width:123;');
 });
 
+test('a bare $ reads one variable name or number, as far as a CSS name goes', () => {
+    // names hold letters, digits, _, - and non-ASCII; anything else is text
+    assertContains('--s: 50; color: hsl(0 $s% 40%);', 'hsl(0 50% 40%)');
+    assertContains('width: $5%;', 'width:5%;');
+    assertContains('--s: 50; width: $s.x $s#a $s*2;', 'width:50.x 50#a 50*2;');
+    assertContains('--k: 7; width: $k%2 $(k%2);', 'width:7%2 1;');
+    assertContains('--é: tomato; color: $é;', 'color:tomato;');
+    assertContains('--a-b: 2; --c_d: 3; width: $a-b.x $c_d#;', 'width:2.x 3#;');
+    assertContains('width: $1.5 $-1.5;', 'width:1.5 -1.5;');
+    // a suffix opening a call is still its unit
+    assertContains('width: $%(1+1) $px.@x $px.r(1, 1);', 'width:2% 1px 1px;');
+    // user function parameters and @pattern names stop at the same place
+    assertContains('--f(s): $s%|$s.x; width: $f(30);', 'width:30%|30.x;');
+    let pattern = compile('--é: 3; background: @pattern(fill: $é.0 / 4);').patterns;
+    assert.deepEqual(Object.values(pattern).map(p => p.source), ['fill: 3.0 / 4']);
+});
+
 test('$ reads variables holding dimensioned values as numbers', () => {
     // `--w: 10px` used to poison the whole expression to 0
     assertContains('--w: 10px; width: $px(w * 2);', 'width:20px;');
@@ -246,6 +275,14 @@ test('$ falls back to splicing when a function result is not a number', () => {
     assertContains('@grid: 1; --b: 30; width: $(@p(b))px;', 'width:30px;');
     // a name spliced into math reads through the context
     assertContains('@grid: 1; --c: 7; width: $(@p(c)*2+@i)px;', 'width:15px;');
+});
+
+test('a negative function result or variable before a power is one operand', () => {
+    assertContains('@grid: 1; --v: @m4($(@nd^2));', '--v:2.25,0.25,0.25,2.25;');
+    assertContains('@grid: 1; --k: 2; --v: @m2($(1 + @nd ** 2 * k));', '--v:1.5,1.5;');
+    assertContains('@grid: 1; --k: -2; --a: $($k^2); --b: $(k^2); --c: $(-k^2);', '--a:4;', '--b:4;', '--c:-4;');
+    let pattern = compile('--k: -2; background: @pattern(fill: $k ** 2 + $k);').patterns;
+    assert.deepEqual(Object.values(pattern).map(p => p.source), ['fill: (-2) ** 2 + -2']);
 });
 
 test('$ inside a sequence tracks the iteration variables', () => {
@@ -556,6 +593,11 @@ test('@match(test) in @svg reads the cell variables and the @n around it', () =>
     assert.equal(svgImage('background: @svg(g { fill: @match(1 > 0, red, blue) })'), '<svg><g fill="red"/></svg>');
 });
 
+test('an @svg body is not split at its commas, so unquoted content keeps its spaces', () => {
+    assert.equal(svgImage('background: @svg(text { content: one, two: three; } polyline { points: 0 0, 1 1 })'),
+        '<svg><text>one, two: three</text><polyline points="0 0,1 1"/></svg>');
+});
+
 test('an @svg variable is set where it is written, once per copy inside *N', () => {
     // a read sees the latest value above it, the cell's before any
     assert.equal(svgImage('--k: 1; background: @svg(circle { r: $k } --k: 5; rect { x: $k } --k: 7; line { x1: $k })'),
@@ -801,10 +843,27 @@ test('keyframes with functions are copied per cell as name-count', () => {
     assert.ok(all.includes('#c-2-2-1 {animation:k-4 1s;}'));
 });
 
+test('a per-cell copy of keyframes prints only for a cell whose animation names it', () => {
+    let all = css(':container { animation: a 1s; } @keyframes a { from { --x: $(1 + 1); } }', '2');
+    assert.deepEqual(all.match(/@keyframes [\w-]+/g), ['@keyframes a']);
+    let some = css('@nth(3) { animation: k 1s; } @keyframes k { to { --v: @r(10) } } --w: @r(10);', '2');
+    let every = css('animation: k 1s; @keyframes k { to { --v: @r(10) } } --w: @r(10);', '2');
+    assert.deepEqual(some.match(/@keyframes [\w-]+/g), ['@keyframes k', '@keyframes k-3']);
+    let block = (all, name) => all.match(new RegExp(`@keyframes ${name} \\{[^}]+\\}`))[0];
+    assert.equal(block(some, 'k-3'), block(every, 'k-3'));
+    assert.deepEqual(some.match(/--w:[\d.]+/g), every.match(/--w:[\d.]+/g));
+});
+
 test('keyframes inside a conditional block are not duplicated by the nested compose', () => {
     let all = css('@even { animation: k 1s; @keyframes k { to { --v: @r(1) } } }', '2');
     let names = all.match(/@keyframes [\w-]+/g);
     assert.deepEqual(names, [...new Set(names)]);
+});
+
+test('a function writing whole keyframes steps adds no empty block', () => {
+    assertContains('@keyframes a { @M2(@n(* 50)% { --x: @n; }) to { --x: 3; } }',
+        '@keyframes a {50% { --x: 1; } 100% { --x: 2; } to {--x:3;}}');
+    assertContains('@keyframes b { 50%; to { --x: 3; } }', '@keyframes b {50% {}\nto {--x:3;}}');
 });
 
 test('keyframes declared inside a pseudo are registered', () => {
@@ -947,12 +1006,14 @@ test('host rules inside a group compose once', () => {
 });
 
 test('declaration-body at-rules are emitted once verbatim at the top', () => {
-    let { top, all } = compile(`
+    let { top, all, property } = compile(`
         @property --a { syntax: "<length>"; inherits: false; initial-value: 0px; }
         @function --double(--x) { result: calc(var(--x) * 2); @media (a) { result: 0; } }
         :doodle { @font-face { font-family: "X"; src: url(x.woff); } }
         width: --double(1px);
     `, '2').styles;
+    assert.deepEqual(property, ['@property --a { syntax: "<length>"; inherits: false; initial-value: 0px; }']);
+    assert.deepEqual(compile('color: red').styles.property, []);
     assert.equal(top,
         '@property --a { syntax: "<length>"; inherits: false; initial-value: 0px; }\n' +
         '@function --double(--x) { result: calc(var(--x) * 2); @media (a) { result: 0; } }\n' +
@@ -1007,6 +1068,13 @@ test('a few distinct texts print once each with their cells listed', () => {
         '#c-1-1-1 {color:blue;}#c-2-1-1,#c-3-1-1,#c-4-1-1 {color:red;}');
     assert.equal(cells('@match(x > 2) { color: red; }', '4x1'),
         '#c-3-1-1,#c-4-1-1 {color:red;}');
+});
+
+test('@match evaluates only the value it returns', () => {
+    assert.equal(cells('--v: @match(x % 2, @pn(a, b, c), x);', '6x1'),
+        '#c-1-1-1 {--v:a;}#c-2-1-1 {--v:x;}#c-3-1-1 {--v:b;}#c-4-1-1 {--v:x;}#c-5-1-1 {--v:c;}#c-6-1-1 {--v:x;}');
+    assert.equal(cells('--v: @match(1, @m2(x), y); --w: [@match(1, , y)];'), '#c-1-1-1 {--v:x,x;\n--w:[];}');
+    assert.equal(cells('--v: @m4(@match(@n % 2, a@n, b@n));'), '#c-1-1-1 {--v:a1,b2,a3,b4;}');
 });
 
 test('per-cell texts keep their blocks in cell order', () => {
@@ -1116,17 +1184,18 @@ test('shaders and patterns are records of the same shape', () => {
     let { shaders, patterns } = compile('background: @shaders(void main() {}); :after { background: @pattern(grid: 2; fill: red;) }');
     assert.deepEqual(Object.values(shaders), [{
         source: 'void main() {}',
-        target: { selector: 'c-1-1-1', type: 'background' },
+        target: { selector: 'c-1-1-1', pseudo: undefined, type: 'background' },
         arg: undefined, id: '--shader-1', cell: 'c-1-1-1',
     }]);
     let [pattern] = Object.values(patterns);
     assert.equal(pattern.source, 'grid: 2; fill: red;');
-    assert.deepEqual(pattern.target, { selector: 'c-1-1-1', type: 'background' });
-    // a pseudo-element or state of the host or grid is measured on the host or grid
-    let target = code => Object.values(compile(code, '2').patterns)[0].target.selector;
-    assert.equal(target(':doodle::after { background: @pattern(fill: red) }'), ':host');
-    assert.equal(target(':doodle(:hover) { background: @pattern(fill: red) }'), ':host');
-    assert.equal(target(':container::before { background: @pattern(fill: red) }'), ':container');
+    assert.deepEqual(pattern.target, { selector: 'c-1-1-1', pseudo: 'after', type: 'background' });
+    // a state of the host or grid is measured on the host or grid, a pseudo-element on itself
+    let target = code => Object.values(compile(code, '2').patterns)[0].target;
+    assert.deepEqual(target(':doodle::after { background: @pattern(fill: red) }'), { selector: ':host', pseudo: 'after', type: 'background' });
+    assert.equal(target(':doodle(:hover) { background: @pattern(fill: red) }').selector, ':host');
+    assert.deepEqual(target(':container::before { background: @pattern(fill: red) }'), { selector: ':container', pseudo: 'before', type: 'background' });
+    assert.equal(target(':hover::after { background: @pattern(fill: red) }').pseudo, 'after');
 });
 
 test('@udx/@udy bind pointer and size uniforms together', () => {

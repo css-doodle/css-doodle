@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import calc, { compileTemplate, toPlainNumber, isSignLeading } from '../../src/core/calc.js';
+import calc, { compileTemplate, toPlainNumber, isSignLeading, operand } from '../../src/core/calc.js';
 
 const SEED = parseInt(process.env.FUZZ_TEMPLATE_SEED) || 20260901;
 const ROUNDS = parseInt(process.env.FUZZ_TEMPLATE_ROUNDS) || 4000;
@@ -123,7 +123,7 @@ function genContext(random) {
 function splice(segments, values) {
     let out = segments[0];
     for (let i = 0; i < values.length; i++) {
-        out += values[i] + segments[i + 1];
+        out += operand(values[i], segments[i + 1]) + segments[i + 1];
     }
     return out;
 }

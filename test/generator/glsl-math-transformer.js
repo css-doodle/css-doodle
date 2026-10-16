@@ -69,9 +69,16 @@ test('** is power, right-associative, on floats and vectors', () => {
     assert.equal(transform('du ** 2 + dv ** 2'), '((du * du) + (dv * dv))');
     assert.equal(transform('x ** 4 * 3'), '((x * x * x * x) * 3.0)');
     assert.equal(transform('uv ** 2'), '(uv * uv)');
-    // a sign and an implicit product bind before the power, as in §8
-    assert.equal(transform('-2 ** 2'), '(-2.0 * -2.0)');
-    assert.equal(transform('2x ** 2'), '((2.0 * x) * (2.0 * x))');
+    // the power binds before an implicit product and a sign, as in §8
+    assert.equal(transform('-2 ** 2'), '-(2.0 * 2.0)');
+    assert.equal(transform('-x ** 2'), '-(x * x)');
+    assert.equal(transform('-(x) ** 2'), '-(x * x)');
+    assert.equal(transform('(-2) ** 2'), '(-2.0 * -2.0)');
+    assert.equal(transform('2x ** 2'), '(2.0 * (x * x))');
+    assert.equal(transform('-2x ** 2'), '(-2.0 * (x * x))');
+    assert.equal(transform('2 ** 2t'), '((2.0 * 2.0) * t)');
+    assert.equal(transform('2 ** -x'), 'pow(2.0, -x)');
+    assert.equal(transform('1 / 2π'), '(1.0 / (2.0 * PI))');
     assert.equal(transform('x ** 2', { type: true }), 'float');
     assert.equal(transform('x ^ 2'), '(int(x) ^ 2)');
 });
@@ -325,6 +332,17 @@ test('bools and ints become floats where a number is wanted, vectors pass as the
     // `not` of a bvec is a bvec
     assert.equal(transform('not flags', { type: true, types: { flags: 'bvec2' } }), 'bvec2');
     assert.equal(transform('not lessThan(uv, vec2(.5))', { expect: 'bvec2' }), 'not(lessThan(uv, vec2(.5)))');
+});
+
+test('pick(k: …) takes item k from 1, wrapping, in the widest type of the items', () => {
+    assert.equal(transform('pick(k: 1, 2, 3)', { expect: 'float' }),
+        '(g_pick(k, 3) == 0 ? 1.0 : (g_pick(k, 3) == 1 ? 2.0 : 3.0))');
+    assert.equal(transform('pick(k: #f00, c)', { types: { c: 'vec3' }, type: true }), 'vec3');
+    assert.equal(transform('pick(k + 1: #f00, c)', { types: { c: 'vec3' } }),
+        '(g_pick((k + 1.0), 2) == 0 ? vec3(1.0, 0.0, 0.0) : c)');
+    // one item is that item, none is 0
+    assert.equal(transform('pick(k: 5)', { expect: 'float' }), '5.0');
+    assert.equal(transform('pick(k:)', { expect: 'float' }), '0.0');
 });
 
 test('match() is a ternary chain: first test that holds, trailing default, else 0', () => {

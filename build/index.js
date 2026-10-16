@@ -27,7 +27,7 @@ const { metafile, outputFiles } = await esbuild.build({
     platform: 'browser',
     metafile: true,
     minify: true,
-    mangleProps: /^_/,
+    mangleProps: /^(_|is(Symbol|Space|Word|Number)$)/,
     plugins: [collapseTaggedTemplates],
 });
 

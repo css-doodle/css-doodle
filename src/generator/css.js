@@ -1,8 +1,9 @@
-import Func, { MathFunc } from '../core/function.js';
-import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, useRandom, withUnit } from '../core/calc.js';
+import Func, { MathFunc, pickAt } from '../core/function.js';
+import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
+import { NAME_CHAR } from '../parser/tokenizer.js';
 
 import createRandom from '../core/random.js';
 import seedrandom from '../lib/seedrandom.js';
@@ -82,6 +83,8 @@ const UNIFORM_KEYS = {
 };
 
 const RE_UNIT_HEAD = /^([a-z]+|%)/i;
+const RE_PAINT_VAR = new RegExp(String.raw`//[^\n]*|/\*[\s\S]*?\*/|\$(${NAME_CHAR}+)`, 'g');
+const RE_TEXTURE_OPEN = new RegExp(String.raw`\btexture\w*\s*\{(?!\s*\$${NAME_CHAR}+\s*\})`, 'g');
 
 const compiledValues = new WeakMap();
 const compiledFuncs = new WeakMap();
@@ -129,7 +132,7 @@ function compileFunc(node) {
     let compiled = compiledFuncs.get(key);
     if (compiled === undefined) {
         let fname = node.name.slice(1);
-        let fn = Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
+        let fn = node.at ? pickAt : Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
         let inner = node.arguments[0]?.values[0];
         let name = inner?.dotted && inner.name.slice(1);
         if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
@@ -290,7 +293,7 @@ function compileArgument(argument, parent) {
                     for (let i = 0; i < holes.length; i++) {
                         let v = holes[i](frame, extra);
                         // match Array#join: nil renders as nothing
-                        if (v != null) value += v;
+                        if (v != null) value += operand(v, segments[i + 1]);
                         value += segments[i + 1];
                     }
                     frame.env.extra.pop();
@@ -337,7 +340,7 @@ function spliceTemplateInput({ segments, singlePart }, values) {
     } else {
         let joined = segments[0];
         for (let i = 0; i < values.length; i++) {
-            joined += values[i] + segments[i + 1];
+            joined += operand(values[i], segments[i + 1]) + segments[i + 1];
         }
         input.push(joined);
     }
@@ -523,7 +526,9 @@ class Rules {
 
     composeAname(name, count) {
         let keyframes = this.keyframes.get(name);
-        return (keyframes && !keyframes.static && count > 1) ? `${name}-${count}` : name;
+        if (!keyframes || keyframes.static || count <= 1) return name;
+        keyframes.used.add(count);
+        return `${name}-${count}`;
     }
 
     // '&' in a selector stands for the cell
@@ -558,11 +563,11 @@ class Rules {
     }
 
     resolvePaintVars(fname, source, count, node) {
-        source = source.replace(/\btexture\w*\s*\{(?!\s*\$[\w-]+\s*\})/g, m => m + this.injectVariables('', count));
-        if (!/\$[\w-]/.test(source)) return source;
+        source = source.replace(RE_TEXTURE_OPEN, m => m + this.injectVariables('', count));
+        if (!source.includes('$')) return source;
         let group = this.scopedVars(count);
         let missing = null;
-        source = source.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\/|\$([\w-]+)/g, (m, full) => {
+        source = source.replace(RE_PAINT_VAR, (m, full, at) => {
             if (!full) return m;
             let name = full, rest = '';
             while (group['--' + name] === undefined && name.includes('-')) {
@@ -576,6 +581,7 @@ class Rules {
             }
             let value = this.readVar(key, count);
             let id = placeholderId(value);
+            if (!rest) value = operand(value, source.slice(at + m.length));
             return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
         });
         if (missing !== null) {
@@ -594,8 +600,9 @@ class Rules {
         this[kind + 's'][id] = {
             source,
             target: {
-                // the element to measure: :host::after measures the host, :container::before the grid
+                // the element to measure, and its pseudo-element: :host::after is the host's ::after
                 selector: special ? (isHostSelector(selector) ? ':host' : ':container') : (property === '@grid') ? ':host' : cell.id,
+                pseudo: isPseudoSelector(selector),
                 type: (!special && property === '@content') ? 'content' : 'background',
             },
             arg,
@@ -869,6 +876,7 @@ class Rules {
                 isStaticRule(s) || (s.property.startsWith('--') && s.value?.hasFunc === false)));
         let compose = (cell, env) => join(token.steps.map(step => {
             let name = this.getComposedValue(step.name, cell, env).value;
+            if (!step.styles) return name;
             let styles = join(step.styles.map(s => this.composeRule(s, cell, env)));
             return `${name} {${styles}}`;
         }));
@@ -876,6 +884,7 @@ class Rules {
         this.keyframes.set(token.name, {
             static: isStatic,
             compose: isStatic ? (cell, env) => body ??= compose(cell, env) : compose,
+            used: new Set(),
         });
     }
 
@@ -1108,8 +1117,9 @@ class Rules {
         for (let [name, frames] of this.keyframes) {
             let cells = frames.static ? this.cells.slice(0, 1) : this.cells;
             for (let cell of cells) {
-                let aname = this.composeAname(name, cell.uid);
-                keyframes += `@keyframes ${aname} {${frames.compose(cell, env)}}`;
+                let body = frames.compose(cell, env);
+                if (cell.uid <= 1) keyframes += `@keyframes ${name} {${body}}`;
+                else if (frames.used.has(cell.uid)) keyframes += `@keyframes ${name}-${cell.uid} {${body}}`;
             }
         }
 
@@ -1129,12 +1139,14 @@ class Rules {
 
         let { host, container, cells, backdrop } = styles;
         let main = keyframes + container + host;
-        let top = join([...this.rawRules]);
+        let raw = [...this.rawRules];
+        let top = join(raw);
         let gf = [...this.fonts];
+        let property = raw.filter(rule => /^@property\b/i.test(rule));
 
         return {
             props: this.props,
-            styles: { main, cells, container, backdrop, gf, top, all: main + backdrop + cells },
+            styles: { main, cells, container, backdrop, gf, top, property, all: main + backdrop + cells },
             grid: this.grid,
             seed: this.seed,
             random: this.random,

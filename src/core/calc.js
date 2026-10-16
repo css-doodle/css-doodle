@@ -1,12 +1,26 @@
 import { isInvalidNumber, removeParens } from '../lib/type.js';
 import { last } from '../lib/list.js';
 import { tidyNumber } from '../lib/math.js';
-import { scan } from '../parser/tokenizer.js';
+import { scan, NAME_CHAR } from '../parser/tokenizer.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 
 const MATH = Object.create(null);
 for (let name of Object.getOwnPropertyNames(Math)) {
     MATH[name] = Math[name];
+}
+// the GLSL math of @pattern and @scene, so a formula reads the same in both
+MATH.mod = (a, b) => a - b * Math.floor(a / b);
+MATH.fract = x => x - Math.floor(x);
+MATH.clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);
+MATH.mix = (a, b, t) => a + (b - a) * t;
+MATH.step = (edge, x) => x < edge ? 0 : 1;
+MATH.smoothstep = (e0, e1, x) => {
+    let t = MATH.clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * (3 - 2 * t);
+};
+
+export function pickIndex(k, n) {
+    return MATH.mod(Math.round(k) - 1, n);
 }
 
 let draw = Math.random;
@@ -26,8 +40,11 @@ export const defaultContext = {
         while (b) [a, b] = [b, a % b];
         return a;
     },
-    match(c, a, b) {
-        return c ? a : b
+    match(...args) {
+        for (let i = 0; i + 1 < args.length; i += 2) {
+            if (args[i]) return args[i + 1];
+        }
+        return args.length % 2 ? args[args.length - 1] : 0;
     }
 };
 
@@ -56,19 +73,28 @@ const LOWER = {
     floor: a => `round(down,${a},1)`,
     ceil: a => `round(up,${a},1)`,
     trunc: a => `round(to-zero,${a},1)`,
+    fract: a => `mod(${a},1)`,
+    // CSS takes the bounds around the value
+    clamp: (x, lo, hi) => `clamp(${lo},${x},${hi})`,
+    mix: (a, b, t) => `(${a} + (${b} - ${a}) * ${t})`,
+    step: (edge, x) => not(gt(edge, x)),
+    smoothstep: (e0, e1, x) => {
+        let t = `clamp(0,(${x} - ${e0}) / (${e1} - ${e0}),1)`;
+        return `(${t} * ${t} * (3 - 2 * ${t}))`;
+    },
 };
 for (let sym of '+-*/') {
     LOWER[sym] = (a, b) => `(${a} ${sym} ${b})`;
 }
-for (let name of 'sin cos tan asin acos atan atan2 sqrt exp log abs sign pow hypot min max'.split(' ')) {
+for (let name of 'sin cos tan asin acos atan atan2 sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
     LOWER[name] = (...args) => `${name}(${args})`;
 }
 
-// Operators, and the built-in Math functions the context doesn't
-// shadow, lower by name; the rest have no CSS form and miss
+// Operators, and the built-in functions the context doesn't shadow,
+// lower by name; the rest have no CSS form and miss
 function lower(name, args, history, fn) {
     let to = LOWER[name];
-    return to && fn === MATH[name] ? to(...args.map(text)) : miss(history);
+    return to && fn === defaultContext[name] ? to(...args.map(text)) : miss(history);
 }
 
 export const operators = {
@@ -90,6 +116,8 @@ export const operators = {
     '∨': 1, '||': 1,
     '(': 0, ')': 0,
 };
+
+const PREC = { __proto__: operators, '-u': 8.5, '·': 8.75 };
 
 // spellings that share an implementation
 const spelling = {
@@ -142,6 +170,10 @@ function isOperator(value) {
     return value in operators;
 }
 
+function isUnary(prev) {
+    return !prev || prev.type === COMMA || (prev.type === OPERATOR && prev.value !== ')');
+}
+
 // Push a value, resolving adjacency with the previous token:
 // "2x" → 2*x, "2sin(1)" → 2*sin(1), "k -1" → k-1; after a space
 // there is no product, so "2 x" leaves two values and reads as 2
@@ -152,7 +184,7 @@ function pushValue(tokens, value, spaced) {
             tokens.push(tk(OPERATOR, '-'));
             value = value.slice(1);
         } else if (!spaced) {
-            tokens.push(tk(OPERATOR, '*'));
+            tokens.push(tk(OPERATOR, '·'));
         }
     }
     tokens.push(tk(VALUE, value));
@@ -179,16 +211,18 @@ function transformTokens(input, spans) {
     }
 
     const tokens = [];
-    // a unary sign waiting for the number or name it applies to
-    let sign = '';
 
     for (let i = 0; i < raw.length; i++) {
         const { type, value, index, spaced } = raw[i];
         const next = raw[i + 1];
 
         if (type === 'Number') {
-            pushValue(tokens, sign && value[0] === '-' ? value.slice(1) : sign + value, spaced);
-            sign = '';
+            let number = value;
+            if (/^[+-]/.test(number) && isUnary(last(tokens))) {
+                if (number[0] === '-') tokens.push(tk(OPERATOR, '-u'));
+                number = number.slice(1);
+            }
+            pushValue(tokens, number, spaced);
             continue;
         }
 
@@ -207,24 +241,23 @@ function transformTokens(input, spans) {
                     else if (raw[j].value === ')' && !--depth) break;
                 }
                 let css = input.slice(value === 'var' ? index : next.index, raw[j] && raw[j].index + 1);
-                pushValue(tokens, sign ? neg(css) : css, spaced);
+                pushValue(tokens, css, spaced);
                 last(tokens).live = true;
-                sign = '';
                 i = j;
                 continue;
             }
             // "x1" is one name, not x*1
             if (next && next.type === 'Number' && next.index === index + value.length) {
-                pushValue(tokens, sign + value + next.value, spaced);
+                pushValue(tokens, value + next.value, spaced);
                 i++;
             } else {
-                pushValue(tokens, sign + value, spaced);
+                pushValue(tokens, value, spaced);
             }
-            sign = '';
             continue;
         }
 
-        if (value === ',') {
+        // the colon of pick(k: a, b, …) separates as a comma does
+        if (value === ',' || value === ':') {
             tokens.push(tk(COMMA, value));
             continue;
         }
@@ -243,21 +276,13 @@ function transformTokens(input, spans) {
         }
 
         if (value === '+' || value === '-') {
-            const prev = last(tokens);
-            if (!prev || prev.type === COMMA || (prev.type === OPERATOR && prev.value !== ')')) {
-                // a run of unary signs folds into the following number or
-                // name; before anything else a minus is a prefix operator
+            if (isUnary(last(tokens))) {
+                // a run of unary signs is one prefix operator
                 let negative = value === '-';
                 while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
                     if (raw[++i].value === '-') negative = !negative;
                 }
-                const operand = raw[i + 1];
-                if (operand && (operand.type === 'Number'
-                        || (operand.type === 'Word' && !isOperator(operand.value)))) {
-                    sign = negative ? '-' : '';
-                } else if (negative) {
-                    tokens.push(tk(OPERATOR, '-u'));
-                }
+                if (negative) tokens.push(tk(OPERATOR, '-u'));
                 continue;
             }
         }
@@ -266,7 +291,7 @@ function transformTokens(input, spans) {
             // "2(3+4)" → "2*(3+4)", "(1+2)(3+4)" → "(1+2)*(3+4)", but not "fn("
             const prev = last(tokens);
             if (prev && !spaced && (prev.value === ')' || (prev.type === VALUE && RE_NUMBER.test(prev.value)))) {
-                tokens.push(tk(OPERATOR, '*'));
+                tokens.push(tk(OPERATOR, '·'));
             }
         }
 
@@ -285,6 +310,10 @@ function transformTokens(input, spans) {
 function toPostfix(tokens) {
     const opStack = [];
     const expr = [];
+    const pop = () => {
+        const top = opStack.pop();
+        expr.push(tk(OPERATOR, top === '·' ? '*' : top));
+    };
 
     for (let i = 0; i < tokens.length; i++) {
         const { type, value } = tokens[i];
@@ -296,8 +325,8 @@ function toPostfix(tokens) {
             } else if (RE_NUMBER.test(value)) {
                 expr.push(tk(NUMBER, Number(value)));
             } else if (next && next.value === '(') {
-                const { args, endIndex } = parseFunctionArgs(tokens, i + 1);
-                expr.push({ type: FUNCTION, name: value, value: args });
+                const { args, endIndex, at } = parseFunctionArgs(tokens, i + 1, value === 'pick');
+                expr.push({ type: FUNCTION, name: value, value: args, at });
                 i = endIndex;
             } else {
                 expr.push(tk(VARIABLE, value));
@@ -307,7 +336,7 @@ function toPostfix(tokens) {
                 opStack.push(value);
             } else if (value === ')') {
                 while (opStack.length && last(opStack) !== '(') {
-                    expr.push(tk(OPERATOR, opStack.pop()));
+                    pop();
                 }
                 opStack.pop();
             } else if (value === '!' || value === '-u') {
@@ -315,16 +344,14 @@ function toPostfix(tokens) {
             } else {
                 const prev = tokens[i - 1], next = tokens[i + 1];
                 if (!prev || prev.type === OPERATOR && prev.value !== ')') expr.push(tk(NUMBER, 0));
-                const prec = operators[value];
+                const prec = PREC[value];
                 // && and || nest to the right so a chain lowers to CSS
                 // text that grows with its length, not exponentially
                 const rightAssoc = ['^', '&&', '||'].includes(value);
                 while (opStack.length) {
-                    const top = last(opStack);
-                    // -(a) binds between * and ^, so -(a)^2 stays -(a^2)
-                    const topPrec = top === '-u' ? 8.5 : operators[top];
+                    const topPrec = PREC[last(opStack)];
                     if (rightAssoc ? topPrec > prec : topPrec >= prec) {
-                        expr.push(tk(OPERATOR, opStack.pop()));
+                        pop();
                     } else {
                         break;
                     }
@@ -336,17 +363,19 @@ function toPostfix(tokens) {
     }
 
     while (opStack.length) {
-        expr.push(tk(OPERATOR, opStack.pop()));
+        pop();
     }
 
     return expr;
 }
 
-// Split the token stream of "(a, b, …)" into per-argument postfix lists
-function parseFunctionArgs(tokens, startIndex) {
+// Split the token stream of "(a, b, …)" into per-argument postfix lists;
+// in pick(k: a, b, …) the index ends at the colon
+function parseFunctionArgs(tokens, startIndex, indexed) {
     const args = [];
     let current = [];
     let depth = 1;
+    let at = false;
 
     let i = startIndex + 1;
     for (; i < tokens.length; i++) {
@@ -365,8 +394,9 @@ function parseFunctionArgs(tokens, startIndex) {
                 break;
             }
             current.push(token);
-        } else if (value === ',' && depth === 1) {
-            if (current.length) {
+        } else if (depth === 1 && (value === ',' || value === ':' && indexed && !at && !args.length)) {
+            at ||= value === ':';
+            if (current.length || value === ':') {
                 args.push(toPostfix(current));
             }
             current = [];
@@ -375,7 +405,7 @@ function parseFunctionArgs(tokens, startIndex) {
         }
     }
 
-    return { args, endIndex: i };
+    return { args, endIndex: i, at };
 }
 
 function miss(history) {
@@ -443,19 +473,22 @@ function compileFunction(node) {
     const chain = name.split('.');
     const argFns = node.value.map(compile);
 
-    // match(c, a, b) evaluates only the taken branch, unless a context
-    // value shadows the built-in
+    // match(t1, v1, t2, v2, …, else) evaluates only the taken branch,
+    // unless a context value shadows the built-in
     if (name === 'match' && argFns.length >= 2) {
-        const [c, a, b] = argFns;
+        const choose = (i, ctx, history) => {
+            if (i + 1 >= argFns.length) return i < argFns.length ? argFns[i](ctx, history) : 0;
+            const cond = argFns[i](ctx, history);
+            // a live condition takes both branches, weighted by its truthiness
+            return live(cond)
+                ? `(${text(argFns[i + 1](ctx, history))} * ${truthy(cond)} + ${text(choose(i + 2, ctx, history))} * ${not(truthy(cond))})`
+                : cond ? argFns[i + 1](ctx, history) : choose(i + 2, ctx, history);
+        };
         return (ctx, history) => {
             const fn = ctx[name];
             let output;
             if (fn === defaultContext.match) {
-                // a live condition takes both branches, weighted by its truthiness
-                const cond = c(ctx, history);
-                output = live(cond)
-                    ? `(${text(a(ctx, history))} * ${truthy(cond)} + ${text(b ? b(ctx, history) : 0)} * ${not(truthy(cond))})`
-                    : cond ? a(ctx, history) : b && b(ctx, history);
+                output = choose(0, ctx, history);
             } else if (typeof fn === 'function') {
                 output = fn(...argFns.map(f => f(ctx, history)));
             } else {
@@ -465,8 +498,22 @@ function compileFunction(node) {
         };
     }
 
-    // Plain calls; one and two arguments are passed directly because
-    // spreading them costs 40% on the hottest calls
+    if (node.at) {
+        const items = argFns.slice(1);
+        const n = items.length;
+        return (ctx, history) => {
+            const k = argFns[0](ctx, history);
+            let output = 0;
+            if (n && live(k)) {
+                const at = `mod(round(${k},1) - 1,${n})`;
+                output = `(${items.map((f, j) => `${text(f(ctx, history))} * ${not(truthy(`${at} - ${j}`))}`).join(' + ')})`;
+            } else if (n && Number.isFinite(+k)) {
+                output = items[pickIndex(+k, n)](ctx, history);
+            }
+            return negative ? neg(output) : output;
+        };
+    }
+
     if (chain.length === 1) {
         const [a, b] = argFns;
         if (argFns.length === 1) {
@@ -631,7 +678,7 @@ function compileInput(input, ctx) {
     return compiled;
 }
 
-const RE_NAME = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+const RE_NAME = new RegExp(`^(?![\\d-])${NAME_CHAR}+$`);
 
 // A $ expression that is just the name of a variable acts as a
 // generation-time var(): values that read as math evaluate once, here,
@@ -686,6 +733,10 @@ export function isSignLeading(v) {
         return v < 0;
     }
     return /^[+-]/.test(String(v).trim());
+}
+
+export function operand(v, after) {
+    return isSignLeading(v) && /^\s*(\^|\*\*)/.test(after) ? `(${v})` : v;
 }
 
 export function compileTemplate(segments) {

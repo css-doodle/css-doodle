@@ -27,6 +27,17 @@ function safariImage(svg, width, height) {
 
 const stills = new WeakMap();
 
+const MAX_URL = 2 ** 21;
+
+function toDataURL(canvas, scale) {
+    if (scale === 1) return canvas.toDataURL();
+    let small = document.createElement('canvas');
+    small.width = Math.max(1, Math.round(canvas.width * scale));
+    small.height = Math.max(1, Math.round(canvas.height * scale));
+    small.getContext('2d').drawImage(canvas, 0, 0, small.width, small.height);
+    return small.toDataURL();
+}
+
 function patternToImage(host, pattern) {
     let name = '@' + (pattern.fname || 'pattern');
     let source = (pattern.fname === 'scene' ? generateScene : generatePattern)(pattern.source, host.extra, message => {
@@ -50,9 +61,16 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
     let element = elements[0];
 
     let fixed = arg ? parseGrid(arg, Infinity) : null;
-    const measure = () => fixed
-        ? { width: fixed.x, height: fixed.y }
-        : element.getBoundingClientRect();
+    const measure = () => {
+        if (fixed) return { width: fixed.x, height: fixed.y };
+        if (target.pseudo) {
+            let { width, height } = getComputedStyle(element, '::' + target.pseudo);
+            if (width.endsWith('px') && height.endsWith('px')) {
+                return { width: parseFloat(width), height: parseFloat(height) };
+            }
+        }
+        return element.getBoundingClientRect();
+    };
 
     let { width, height } = measure();
     let generation = host._generation;
@@ -60,8 +78,6 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
     let textures = [];
 
     const tick = drawing => {
-        drawing.draw(0, width, height, host._umouse, textures);
-
         let present;
         if (target.type === 'content') {
             // the WebGL canvas is shared, so each cell keeps a copy of each frame
@@ -86,21 +102,33 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
             let key = !drawing.animated && !textures.length
                 && [parsed.vertex, parsed.fragment, width, height, drawing.seeded && seedCell].join('\n');
+            let scale = 1;
             present = () => {
-                let url = urls.get(key) || `url("${drawing.canvas.toDataURL()}")`;
+                let url = urls.get(key);
+                if (!url) {
+                    url = toDataURL(drawing.canvas, scale);
+                    while (url.length > MAX_URL && scale > .1) {
+                        scale *= .9 * Math.sqrt(MAX_URL / url.length);
+                        url = toDataURL(drawing.canvas, scale);
+                    }
+                    url = `url("${url}")`;
+                }
                 if (key) urls.set(key, url);
                 host.style.setProperty(id, url);
             }
         }
 
-        present();
+        const frame = t => {
+            if (!width || !height) return;
+            drawing.draw(t, width, height, host._umouse, textures);
+            present();
+        };
+
+        frame(0);
 
         if (drawing.animated) {
             // a new loop starts in the host's current state
-            let animation = createAnimation(t => {
-                drawing.draw(t, width, height, host._umouse, textures);
-                present();
-            });
+            let animation = createAnimation(frame);
             if (host._offscreen || host.hasAttribute('cssd-paused')) {
                 animation.pause();
             }

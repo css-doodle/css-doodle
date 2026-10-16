@@ -87,6 +87,11 @@ test('attributes a shape does not take are reported', () => {
     assert.deepEqual(scene('box#leg; #leg { sphere { r: .1 } }').warnings, ['box cannot hold shapes; put them in a union']);
 });
 
+test('PI is a known name, other unknown names are reported', () => {
+    assert.deepEqual(scene('sphere { r: .2 + sin(PI) * .1; rotate: PI / 4 }').warnings, []);
+    assert.deepEqual(scene('sphere { r: .2 + nope }').warnings, ['unknown name nope']);
+});
+
 test('fill colors a group and the shapes in it without their own', () => {
     let { body } = scene('union { fill: red; sphere { r: .1 } box { size: .1; fill: #fff } }');
     let fills = [...body.matchAll(/vec4\(g_(\d+), (length|g_box)/g)].map(m => m[1]);

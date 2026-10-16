@@ -9,7 +9,6 @@ const MAX_REPEAT_WORK = 65536;
 
 const BUILTINS = [
     'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size',
-    'PI', 'true', 'false',
 ];
 
 const NAME = /^[a-zA-Z_]\w*$/;
@@ -40,6 +39,9 @@ export const HELPERS = glsl`
         p3 += dot(p3, p3.yzx + 33.33);
         return fract((p3.x + p3.y) * p3.z);
     }
+    int g_pick(float k, int n) {
+        return int(mod(floor(k + 0.5) - 1.0, float(n)) + 0.5);
+    }
     vec3 g_hue(float h) {
         return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
     }
@@ -50,9 +52,6 @@ export const HELPERS = glsl`
 
     float rand(vec2 p) {
         return g_hash(p + u_seed.x * 71.0);
-    }
-    float rand(float a, float b) {
-        return rand(vec2(a, b));
     }
     float rand(float n) {
         return rand(vec2(n));
@@ -65,9 +64,6 @@ export const HELPERS = glsl`
         float r1 = mix(g_hash(ip + vec2(0.0, 1.0)), g_hash(ip + vec2(1.0, 1.0)), u.x);
         return mix(r0, r1, u.y);
     }
-    float noise(float a, float b) {
-        return noise(vec2(a, b));
-    }
     float noise(float n) {
         return noise(vec2(n, 0.0));
     }
@@ -78,9 +74,6 @@ export const HELPERS = glsl`
             p = mat2(0.8, 0.6, -0.6, 0.8) * p * 2.03; a *= 0.5;
         }
         return s;
-    }
-    float fbm(float px, float py) {
-        return fbm(vec2(px, py));
     }
     float voronoi(vec2 p) {
         vec2 ip = floor(p) + u_seed.x * 71.0, fp = fract(p);
@@ -94,9 +87,6 @@ export const HELPERS = glsl`
         }
         return sqrt(md);
     }
-    float voronoi(float px, float py) {
-        return voronoi(vec2(px, py));
-    }
 
     vec3 hsl(float h, float s, float l) {
         return l + s * (g_hue(h) - 0.5) * (1.0 - abs(2.0 * l - 1.0));
@@ -109,9 +99,6 @@ export const HELPERS = glsl`
         float c = cos(a), s = sin(a);
         return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
     }
-    vec2 rot(float px, float py, float a) {
-        return rot(vec2(px, py), a);
-    }
     float smin(float a, float b, float k) {
         k = max(k, 1e-6);
         float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
@@ -121,9 +108,6 @@ export const HELPERS = glsl`
         float seg = 2.0 * PI / max(n, 3.0);
         float a = atan(p.y, p.x);
         return cos(a - seg * floor(0.5 + a / seg)) * length(p);
-    }
-    float ngon(float px, float py, float n) {
-        return ngon(vec2(px, py), n);
     }
     float escape(vec2 z, vec2 c) {
         for (int k = 0; k < 96; k++) {
@@ -138,12 +122,6 @@ export const HELPERS = glsl`
     float escape(vec2 c) {
         return escape(vec2(0.0), c);
     }
-    float escape(float zx, float zy, float cx, float cy) {
-        return escape(vec2(zx, zy), vec2(cx, cy));
-    }
-    float escape(float cx, float cy) {
-        return escape(vec2(0.0), vec2(cx, cy));
-    }
 
     float spiral(vec2 d) {
         float r = max(abs(d.x), abs(d.y));
@@ -154,17 +132,11 @@ export const HELPERS = glsl`
         if (d.x == -r) return n + 2.0 * p + (r - d.y);
         return n + 3.0 * p + (r + d.x);
     }
-    float spiral(float dx, float dy) {
-        return spiral(vec2(dx, dy));
-    }
     float dither(vec2 f) {
         int X = int(mod(f.x, 4.0));
         int Y = int(mod(f.y, 4.0));
         int i = X ^ Y;
         return float((i & 1) * 8 + (Y & 1) * 4 + (i & 2) + ((Y >> 1) & 1)) / 16.0;
-    }
-    float dither(float fx, float fy) {
-        return dither(vec2(fx, fy));
     }
 
     float box(vec2 p, vec2 b) {
@@ -174,19 +146,10 @@ export const HELPERS = glsl`
     float box(vec2 p, float b) {
         return box(p, vec2(b));
     }
-    float box(float px, float py, float bx, float by) {
-        return box(vec2(px, py), vec2(bx, by));
-    }
-    float box(float px, float py, float b) {
-        return box(vec2(px, py), vec2(b));
-    }
     float segment(vec2 p, vec2 a, vec2 b) {
         vec2 pa = p - a, ba = b - a;
         float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
         return length(pa - ba * h);
-    }
-    float segment(float px, float py, float ax, float ay, float bx, float by) {
-        return segment(vec2(px, py), vec2(ax, ay), vec2(bx, by));
     }
 `;
 

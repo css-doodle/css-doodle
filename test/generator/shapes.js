@@ -3,12 +3,24 @@ import assert from 'node:assert/strict';
 
 import generateShape, { shapeWarnings } from '../../src/generator/shapes.js';
 import { insideTest } from '../../src/generator/tiling.js';
+import { useRandom } from '../../src/core/calc.js';
 
 test('preset shapes', () => {
     let { points, preset } = generateShape('triangle');
     assert.equal(preset, true);
     assert.equal(points.length, 3);
     assert.equal(generateShape('circle').points.length, 180);
+});
+
+test('random() in the commands draws from the shape seed, whatever ran before', () => {
+    let shape = (range, more = '') => generateShape('points: 0 0, 1 0, 0 1; rotate: random() * 90' + more, range).clip;
+    let first = shape({ seed: 7 });
+    let restore = useRandom(() => .5);
+    assert.equal(shape({ seed: 7 }), first);
+    useRandom(restore);
+    assert.notEqual(shape({ seed: 8 }), first);
+    assert.equal(shape({}, '; seed: 7'), first);
+    assert.equal(shape({}), shape({}));
 });
 
 test('commands after a preset add to it or override its own', () => {

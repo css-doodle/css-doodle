@@ -484,6 +484,14 @@ test('a glued value is the size of a composable and an argument otherwise', () =
     assert.deepEqual(m.arguments[0], argument([text('2x3')]));
 });
 
+test('a . after a function name with no call after it is text', () => {
+    const values = input => parseCss(input)[0].value[0].map(v => v.type === 'func' ? v.name : v.value);
+    assert.deepEqual(values(`content: "x @i. y";`), ['"x ', '@i', '. y"']);
+    assert.deepEqual(values(`content: @i...;`), ['@i', '...']);
+    assert.deepEqual(values(`a: @abs.@sin(1)`), ['@abs']);
+    assert.deepEqual(parseCss(`a: @i.5`)[0].value[0][0].arguments, [argument([text('.5')])]);
+});
+
 test('a ; inside an open paren stays in the value, as the browser reads it', () => {
     // `doodle(` without the @ used to end at the first `;`, leaving an
     // unbalanced value that swallowed every later rule in the browser
@@ -578,6 +586,9 @@ test('user function arguments', () => {
     assert.deepEqual(ast(`--f(n, sin): { $(@n + sin(n)) } width: $f(2, 3);`), ast(`width: $(@n + sin((2)));`));
     // only top-level commas split, and a missing argument is empty
     assert.deepEqual(ast(`--f(a, b): { $a|$b } x: $f(rgb(1, 2, 3)); y: $f(1, 2);`), ast(`x: rgb(1, 2, 3)|; y: 1|2;`));
+    assert.deepEqual(
+        ast(`--f(k): $($k * 10) $k * 10; width: $f(@i - 1);`),
+        ast(`width: $((@i - 1) * 10) @i - 1 * 10;`));
 });
 
 test('a user function parameter can have a default', () => {
@@ -589,6 +600,13 @@ test('a user function parameter can have a default', () => {
     assert.deepEqual(ast(`--k(n = @r(2, 3)): $(n * 3); width: $k();`), ast(`width: $((@r(2, 3)) * 3);`));
     // the `=` before a default comes first, one inside it stays
     assert.deepEqual(ast(`--k(n = $(2 = 2)): [$n]; width: $k();`), ast(`width: [$(2 = 2)];`));
+});
+
+test('a user function call with too many or too few arguments warns', () => {
+    let warnings = code => parseCss(code).warnings.map(w => w.message);
+    assert.deepEqual(warnings(`--f(k): $(k * 10); a: $f(1, 2, 3);`), ['$f() takes 1 argument, got 3']);
+    assert.deepEqual(warnings(`--f(a, b, c = 3): $(a + b); a: $f(1);`), ['$f() is missing b']);
+    assert.deepEqual(warnings(`--f(a, b = 2): [$a|$b]; --g(): red; a: $f(1); b: $f(, 2); c: $f(1, ); d: $g();`), []);
 });
 
 test('a user function calling itself warns and expands to nothing', () => {
@@ -645,6 +663,20 @@ test('a user function parameter binds bare inside $() with a unit, not inside a 
         ast(`width: [c] [red] $((red) + [c]);`));
 });
 
+test('@pick and @p split an index off their first argument at a colon', () => {
+    let pick = code => {
+        let [func] = parseCss(`a: ${code};`)[0].value[0];
+        return [func.at ?? false, func.arguments.map(arg => arg.values.map(v => v.value ?? v.name).join(''))];
+    };
+    assert.deepEqual(pick('@pick(x + y: red, blue)'), [true, ['x + y', 'red', 'blue']]);
+    assert.deepEqual(pick('@p(@i: a b, c)')[0], true);
+    // a quoted colon is text, and so is a colon past the first argument
+    assert.deepEqual(pick(`@pick('a:b', c)`), [false, ['a:b', 'c']]);
+    assert.deepEqual(pick('@pick(a, b: c)'), [false, ['a', 'b: c']]);
+    // the rest of the family reads the colon as written
+    assert.deepEqual(pick('@pn(k: a, b)'), [false, ['k: a', 'b']]);
+});
+
 test('a user function definition and call skip quoted text', () => {
     // a ; or } in quotes ends neither the statement nor the body
     assert.equal(ast(`content: "a;--f(x): b";`)[0].value[0][0].value, '"a;--f(x): b"');
@@ -653,6 +685,129 @@ test('a user function definition and call skip quoted text', () => {
         ast(`a: content: "1;}"; b: content: "}" 2;`));
     // a comma or ) in quotes doesn't split or close the arguments
     assert.deepEqual(ast(`--f(x, y): [$x|$y]; a: $f("a,b", "c)d");`), ast(`a: ["a,b"|"c)d"];`));
+});
+
+// the body of the first @pattern or @scene, as the preprocessor leaves it, spaces collapsed
+const paintOf = code => {
+    let find = n => Array.isArray(n) ? n.flatMap(find) : n && typeof n === 'object'
+        ? (n.type === 'func' && /^@(pattern|scene)/.test(n.name) ? [n] : Object.values(n).flatMap(find)) : [];
+    let [f] = find(parseCss(code));
+    return f.arguments.map(a => a.values.map(v => v.value).join('')).join(',').replace(/\s+/g, ' ').trim();
+};
+
+test('in @pattern and @scene a user function argument is one value', () => {
+    // a compound argument keeps its parentheses, a name or a number reads as written
+    assert.equal(paintOf(`--f(a, b): $a * $b; @content: @pattern(fill: $f(x + 1, uv.x););`),
+        'fill: (x + 1) * uv.x;');
+    assert.equal(paintOf(`--f(a): $a ** 2; @content: @scene(k: $f(-1); sphere { r: k });`),
+        'k: (-1) ** 2; sphere { r: k }');
+    // in CSS it is pasted as before
+    assert.deepEqual(ast(`--f(a, b): $a * $b; width: $f(1 + 1, 2);`), ast(`width: 1 + 1 * 2;`));
+});
+
+test('a function that assigns result runs its statements before the statement calling it', () => {
+    let code = `--perlin(p): { pi: floor($p); pf: fract($p); result: pf * pi; };
+        @content: @pattern(pi: 3; b: $perlin(uv * 4) + $perlin(pi); fill: b;);`;
+    // a compound argument is computed once into a name of the call's own, its
+    // names are its own, so the caller's pi stays 3, and its result takes the call's place
+    assert.equal(paintOf(code), [
+        'pi: 3;perlin_1_p: uv * 4; perlin_1_pi: floor(perlin_1_p); perlin_1_pf: fract(perlin_1_p); perlin_1_result: perlin_1_pf * perlin_1_pi;',
+        'perlin_2_pi: floor(pi); perlin_2_pf: fract(pi); perlin_2_result: perlin_2_pf * perlin_2_pi;',
+        'b: perlin_1_result + perlin_2_result; fill: b;',
+    ].join(' '));
+});
+
+test('the last result a call runs is its value, in a block too', () => {
+    assert.equal(paintOf(`--f(): { a: 1; result: a; result: a + 1; }; @content: @pattern(fill: $f(););`),
+        'f_1_a: 1; f_1_result: f_1_a; f_1_result: f_1_a + 1; fill: f_1_result;');
+    assert.equal(paintOf(`--inside(p): { d: length($p) - .5; result: 0; match(d < 0) { result: 1; } };
+        @content: @pattern(fill: $inside(uv - .5););`),
+        'inside_1_p: uv - .5; inside_1_d: length(inside_1_p) - .5; inside_1_result: 0; match(inside_1_d < 0) { inside_1_result: 1; } fill: inside_1_result;');
+    // a body of one statement, unbraced, and the ; after the last one is optional
+    assert.equal(paintOf(`--f(x): result: $x * 2; @content: @pattern(fill: $f(uv.x + 1););`),
+        'f_1_x: uv.x + 1; f_1_result: f_1_x * 2; fill: f_1_result;');
+    assert.equal(paintOf(`--f(): { a: 1; result: a }; @content: @pattern(fill: $f(););`),
+        'f_1_a: 1; f_1_result: f_1_a; fill: f_1_result;');
+});
+
+test('a value function reads the caller until it assigns a name, and writes the caller only through $p:', () => {
+    assert.equal(paintOf(`--f(): { w: w + 1; result: w * 2; }; @content: @pattern(w: 1; fill: $f(););`),
+        'w: 1;f_1_w: w + 1; f_1_result: f_1_w * 2; fill: f_1_result;');
+    // a parameter it assigns writes the variable passed for it
+    assert.equal(paintOf(`--f(out): { $out: 1; result: 2; }; @content: @pattern(n: 0; fill: $f(n) + n;);`),
+        'n: 0;n: 1; f_1_result: 2; fill: f_1_result + n;');
+    // the same for a parameter named over several tokens
+    assert.equal(paintOf(`--f(x1): { $x1: 1; result: 2; }; @content: @pattern(n: 0; fill: $f(n) + n;);`),
+        'n: 0;n: 1; f_1_result: 2; fill: f_1_result + n;');
+    // a color's digits are no names, whatever it calls its own
+    assert.equal(paintOf(`--f(): { a: 1; e: 2; result: mix(#e0402a, #fae, a / e); }; @content: @pattern(fill: $f(););`),
+        'f_1_a: 1; f_1_e: 2; f_1_result: mix(#e0402a, #fae, f_1_a / f_1_e); fill: f_1_result;');
+    // a loop name and the names in a block are its own too
+    assert.equal(paintOf(`--sum(n): { s: 0; repeat(4 as k) { s: s + k * $n; } result: s; }; @content: @pattern(fill: $sum(.1););`),
+        'sum_1_s: 0; repeat(4 as sum_1_k) { sum_1_s: sum_1_s + sum_1_k * .1; } sum_1_result: sum_1_s; fill: sum_1_result;');
+});
+
+test('value calls nest: in arguments, in bodies, in block heads', () => {
+    let code = `--twice(x): { y: 2 * $x; result: y; }; --sq(x): $x * $x;
+        @content: @pattern(match($twice(1) > 1) { fill: $sq($twice(uv.x + 1)); });`;
+    assert.equal(paintOf(code), [
+        'twice_1_y: 2 * 1; twice_1_result: twice_1_y;',
+        'match(twice_1_result > 1) {twice_2_x: uv.x + 1; twice_2_y: 2 * twice_2_x; twice_2_result: twice_2_y; fill: twice_2_result * twice_2_result; }',
+    ].join(' '));
+});
+
+test('in CSS a body of result declarations alone reads as the last one\'s value', () => {
+    assert.deepEqual(ast(`--double(x): { result: $(x * 2); } width: $double(2)px;`), ast(`width: $((2) * 2)px;`));
+    assert.deepEqual(ast(`--f(x): { result: 1; result: $x; } a: $f(red);`), ast(`a: red;`));
+    assert.deepEqual(ast(`--f(x): result: $x; a: $f("a;b");`), ast(`a: "a;b";`));
+    // with anything else it pastes, so an @svg-filter element keeps its result
+    assert.deepEqual(ast(`--fx(): { in: a; result: b; } a: $fx();`), ast(`a: in: a; result: b;`));
+});
+
+test('in @pattern and @scene a parameter reads bare, as a name of the function\'s own', () => {
+    // compound arguments once, swizzles kept, a call of the same name left alone
+    assert.equal(paintOf(`--n(p): { f: fract(p); result: f.x * p.y; }; @content: @pattern(fill: $n(uv * 4););`),
+        'n_1_p: uv * 4; n_1_f: fract(n_1_p); n_1_result: n_1_f.x * n_1_p.y; fill: n_1_result;');
+    assert.equal(paintOf(`--sq(a): a * a; --g(mix): mix(mix, 1, .5); @content: @pattern(fill: $sq(x + 1) + $g(uv.x););`),
+        'fill: (x + 1) * (x + 1) + mix(uv.x, 1, .5);');
+    // assigning it changes the function's copy, $p: the caller's variable
+    assert.equal(paintOf(`--f(p): { p: p * 2; result: p + 1; }; @content: @pattern(n: 1; fill: $f(n) + n;);`),
+        'n: 1;f_1_p: n * 2; f_1_result: f_1_p + 1; fill: f_1_result + n;');
+    assert.equal(paintOf(`--f(out): { $out: 1; result: out * 2; }; @content: @pattern(n: 0; fill: $f(n););`),
+        'n: 0;n: 1; f_1_result: n * 2; fill: f_1_result;');
+    // it hides a built-in of its name, and a loop name hides it
+    assert.equal(paintOf(`--f(x): x * 2; @content: @pattern(fill: $f(uv.y););`), 'fill: uv.y * 2;');
+    assert.equal(paintOf(`--f(k): { t: 0; repeat(4 as k) { t: t + k; } result: t; }; @content: @pattern(fill: $f(9););`),
+        'f_1_t: 0; repeat(4 as f_1_k) { f_1_t: f_1_t + f_1_k; } f_1_result: f_1_t; fill: f_1_result;');
+    // not in a color's digits, a texture's CSS, or as the name a statement sets
+    assert.equal(paintOf(`--f(a, e): mix(#e0402a, #fae, a / e); @content: @pattern(fill: $f(1, 2););`),
+        'fill: mix(#e0402a, #fae, 1 / 2);');
+    assert.equal(paintOf(`--paint(c): { texture_0 { background: c; } fill: c; }; @content: @pattern($paint(#f00));`),
+        'texture_0 { background: c; } fill: #f00;');
+    assert.equal(paintOf(`--ball(r): sphere { r: r; }; @content: @scene($ball(.5 + .1));`), 'sphere { r: (.5 + .1); }');
+    // in CSS a bare word stays text
+    assert.deepEqual(ast(`--f(fill): fill: $fill; a { $f(red) }`), ast(`a { fill: red; }`));
+});
+
+test('a value function cannot run in a repeat() head or a match arm test', () => {
+    let code = `--f(): { a: 1; result: a; }; @content: @pattern(repeat(4, $f() > 1) { x: 1; } match { $f() > 0 { fill: 1; } });`;
+    assert.deepEqual(parseCss(code).warnings.map(w => w.message), [
+        '$f() runs statements, so it cannot be called in a repeat() head',
+        '$f() runs statements, so it cannot be called in a match arm test',
+    ]);
+});
+
+test('a body of statements alone still writes the caller\'s names, and comments stay comments', () => {
+    assert.equal(paintOf(`--setup(): { a: 1; b: a + 1; }; @content: @pattern($setup() fill: b;);`),
+        'a: 1; b: a + 1; fill: b;');
+    // without result a body ending in an expression is statements too, as before
+    assert.equal(paintOf(`--g(): { a: 1; a + 1 }; @content: @pattern(fill: 1; $g());`), 'fill: 1; a: 1; a + 1');
+    // // starts a comment in a body, quotes and all
+    assert.equal(paintOf(`--f(): { a: 1; result: a; }; @content: @pattern(// don't call $f()
+        fill: $f(););`), "f_1_a: 1; f_1_result: f_1_a; // don't call $f() fill: f_1_result;");
+    // a texture holds a doodle, where calls are CSS
+    assert.equal(paintOf(`--f(a, b): $a * $b; @content: @pattern(texture_0 { width: $f(1 + 1, 2)px; } fill: 1;);`),
+        'texture_0 { width: 1 + 1 * 2px; } fill: 1;');
 });
 
 test('text pulled in by @use calls the user functions around it and keeps its own', () => {

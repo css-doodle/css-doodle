@@ -19,6 +19,19 @@ import { createReplacer } from './doodle-image.js';
 import { draw } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
+const propertyRules = new Map();
+let propertySheet = null;
+
+function hoistProperties(host, rules = []) {
+    if (rules.length) propertyRules.set(host, rules);
+    else if (!propertyRules.delete(host)) return;
+    let text = [...new Set([...propertyRules.values()].flat())].join('\n');
+    if (!propertySheet?.isConnected) {
+        propertySheet = document.head.appendChild(document.createElement('style'));
+    }
+    if (propertySheet.textContent !== text) propertySheet.textContent = text;
+}
+
 function unEntity(code) {
     let textarea = document.createElement('textarea');
     textarea.innerHTML = code;
@@ -167,6 +180,7 @@ if (typeof HTMLElement !== 'undefined') {
                 this.style.removeProperty('--' + id);
             }
             unbindUniforms(this);
+            hoistProperties(this);
             clearInterval(this._auto_update_timer);
             this._viewport?.disconnect();
             this._viewport = null;
@@ -445,6 +459,7 @@ if (typeof HTMLElement !== 'undefined') {
         mount(compiled) {
             let { styles, content, uniforms, filters } = compiled;
             loadGoogleFontLink(styles.gf);
+            hoistProperties(this, styles.property);
             let replace = this.applyStyles(compiled);
             replace(Object.values(content).join(' '));
             bindUniforms(this, uniforms);

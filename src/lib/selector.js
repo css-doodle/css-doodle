@@ -11,7 +11,7 @@ export function isSpecialSelector(s) {
 }
 
 export function isPseudoSelector(s) {
-    return /\:before|\:after/.test(s);
+    return /:(before|after)/.exec(s)?.[1];
 }
 
 export function isGroupAtRule(name) {

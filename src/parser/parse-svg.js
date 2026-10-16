@@ -126,7 +126,8 @@ function readStatement(iter, token) {
         token.value = inlineBlock;
         token.value.inline = true;
     } else if (fragment.length) {
-        token.value = textOf(fragment);
+        let last = fragment.at(-1);
+        token.value = text ? iter.source.slice(fragment[0].index, last.index + last.value.length) : textOf(fragment);
     }
     return fragment;
 }
@@ -288,7 +289,7 @@ function skipHeadSVG(block) {
 }
 
 function parse(source, root) {
-    let iter = iterator(scan(source));
+    let iter = Object.assign(iterator(scan(source)), { source });
     let tokens = parseBody(iter, root || makeBlock('svg'), svg);
     return root ? tokens : skipHeadSVG(tokens);
 }

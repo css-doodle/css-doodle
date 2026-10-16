@@ -13,7 +13,7 @@ import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
 import seedrandom from '../lib/seedrandom.js';
-import calc, { defaultContext, binary, withUnit } from './calc.js';
+import calc, { defaultContext, binary, withUnit, pickIndex } from './calc.js';
 import { memo } from '../lib/cache.js';
 
 import { calcContext } from './selector.js';
@@ -499,31 +499,45 @@ Function.R.t = createNoise(true);
 
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
-Function.match = (cell, { extra }) => {
-    let e = last(extra);
+// the cell variables, and n, nx, ny and N inside @m or @M
+function sequenceContext(cell, e) {
     let variables = calcContext(cell);
-    if (e && e.length) {
+    if (e.length) {
         variables.n = e[SEQ.n];
         variables.nx = e[SEQ.x];
         variables.ny = e[SEQ.y];
         variables.N = e[SEQ.max];
     }
-    return (...args) => {
-        if (args.length <= 1) {
-            return '';
+    return variables;
+}
+
+Function.match = lazy((cell, { extra }, position, ...args) => {
+    if (args.length <= 1) {
+        return '';
+    }
+    let e = last(extra) || [];
+    let variables = sequenceContext(cell, e);
+    let value = i => getValue(args[i](...e));
+    for (let i = 0; i < args.length; i += 2) {
+        if (i + 1 === args.length) {
+            return value(i);
         }
-        for (let i = 0; i < args.length; i += 2) {
-            let expr = args[i];
-            let pass = args[i + 1];
-            if (isNil(pass)) {
-                return expr;
-            }
-            if (calc(expr, variables)) {
-                return pass;
-            }
+        if (calc(value(i), variables)) {
+            return value(i + 1);
         }
     }
-};
+});
+
+// @pick(k: a, b, …), as the parser marks it: item k from 1 as written,
+// colors and all, wrapping around as @pn does; only that item is composed
+export const pickAt = lazy((cell, { context, extra }, position, ...args) => {
+    if (args.length <= 1) {
+        return '';
+    }
+    let e = last(extra) || [];
+    let k = calc(getValue(args[0](...e)), sequenceContext(cell, e));
+    return Number.isFinite(k) ? pushStack(context, 'lastPick', getValue(args[1 + pickIndex(k, args.length - 1)](...e))) : '';
+});
 
 Function.calc = () => (value = '', context) => tidyNumber(calc(value, typeof context === 'object' ? context : undefined, 1));
 

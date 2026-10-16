@@ -185,7 +185,7 @@ test('du and dv: coordinates inside the cell', () => {
     assert.match(s, /float du = fract\(uv\.x \* X\) - 0\.5;/);
     assert.match(s, /float dv = fract\(\(1\.0 - uv\.y\) \* Y\) - 0\.5;/);
     // composes with ngon() for per-cell polygon masks
-    assert.equal(condition('match(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(du, dv, 6.0) < 0.4)) {');
+    assert.equal(condition('match(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(vec2(du, dv), 6.0) < 0.4)) {');
     // a bare `du` is not a CSS color, so it compiles as an expression
     assert.equal(color('fill: du'), 'g_color = vec4(vec3(du), 1.0);');
 });
@@ -265,7 +265,7 @@ test('a vec3 expression is a color, a scalar a gray', () => {
 
 test('fill accepts vec2 and bool; other vector types are rejected', () => {
     assert.equal(color('fill: uv'), 'g_color = vec4(uv, 0.0, 1.0);');
-    assert.equal(color('fill: rot(du, dv, 0)'), 'g_color = vec4(rot(du, dv, 0.0), 0.0, 1.0);');
+    assert.equal(color('fill: rot(du, dv, 0)'), 'g_color = vec4(rot(vec2(du, dv), 0.0), 0.0, 1.0);');
     assert.equal(color('fill: x > 1'), 'g_color = vec4(vec3(float((x > 1.0))), 1.0);');
     let messages = [];
     draw('fill: mat2(1)', extra, m => messages.push(m));
@@ -460,7 +460,7 @@ test('shape: none turns the mask off', () => {
 
 test('a shape may be a name, a variable or a distance expression', () => {
     assert.match(main('shape: diamond; fill: red'), /g_dist = abs\(du\) \+ abs\(dv\);/);
-    assert.match(main('shape: ngon(du, dv, 6); size: .8; fill: red'), /g_dist = ngon\(du, dv, 6\.0\);\s*g_masked = true;\s*size = \.8;/);
+    assert.match(main('shape: ngon(du, dv, 6); size: .8; fill: red'), /g_dist = ngon\(vec2\(du, dv\), 6\.0\);\s*g_masked = true;\s*size = \.8;/);
     assert.match(main('d: length(vec2(du, dv) - .1); shape: d; fill: red'), /float g_1 = length\(\(vec2\(du, dv\) - \.1\)\);\s*g_dist = g_1;/);
     // a built-in distance is a shape too
     assert.match(main('shape: dm; fill: red'), /g_dist = dm;/);
@@ -515,9 +515,10 @@ test('u_time is only wired up when the pattern reads t', () => {
 test('rand/noise/hsl built-ins are declared in the prelude', () => {
     let s = shader('fill: #000');
     for (let sig of [
-        'float rand(float a, float b)',
+        'float rand(vec2 p)',
         'float rand(float n)',
-        'float noise(float a, float b)',
+        'float noise(vec2 p)',
+        'float noise(float n)',
         'vec3 hsl(float h, float s, float l)',
         'vec3 hsv(float h, float s, float v)',
     ]) {
@@ -529,9 +530,10 @@ test('rand/noise/hsl built-ins are declared in the prelude', () => {
 
 test('fbm() and voronoi() built-ins are available', () => {
     let s = shader('grid:40; fill: fbm(x/8, y/8)');
-    assert.ok(s.includes('float fbm(float px, float py)'));
-    assert.ok(s.includes('float voronoi(float px, float py)'));
-    assert.equal(condition('match(voronoi(x, y) > 0.3) { fill: red }'), 'if ((voronoi(x, y) > 0.3)) {');
+    assert.ok(s.includes('float fbm(vec2 p)'));
+    assert.ok(s.includes('float voronoi(vec2 p)'));
+    assert.ok(s.includes('fbm(vec2((x / 8.0), (y / 8.0)))'));
+    assert.equal(condition('match(voronoi(x, y) > 0.3) { fill: red }'), 'if ((voronoi(vec2(x, y)) > 0.3)) {');
 });
 
 test('noise() and voronoi() lattices are offset by the seed like rand', () => {
@@ -543,13 +545,12 @@ test('noise() and voronoi() lattices are offset by the seed like rand', () => {
 test('escape() and the math/geometry built-ins are available', () => {
     let s = shader('grid:1; fill: escape(0, 0, uv.x, uv.y)');
     for (let sig of [
-        'float escape(float zx, float zy, float cx, float cy)',
+        'float escape(vec2 z, vec2 c)',
         'vec2 rot(vec2 p, float a)',
-        'vec2 rot(float px, float py, float a)',
         'float smin(float a, float b, float k)',
-        'float ngon(float px, float py, float n)',
-        'float dither(float fx, float fy)',
-        'float spiral(float dx, float dy)',
+        'float ngon(vec2 p, float n)',
+        'float dither(vec2 f)',
+        'float spiral(vec2 d)',
     ]) {
         assert.ok(s.includes(sig), 'missing prelude helper: ' + sig);
     }
@@ -570,9 +571,13 @@ test('a point argument may be one vec2 or two floats', () => {
     ]) {
         assert.ok(s.includes(sig), 'missing vec2 form: ' + sig);
     }
-    // the two-float forms delegate to the vec2 ones
-    assert.match(s, /float fbm\(float px, float py\) \{\s*return fbm\(vec2\(px, py\)\);/);
-    assert.match(s, /float escape\(float cx, float cy\) \{\s*return escape\(vec2\(0\.0\), vec2\(cx, cy\)\);/);
+    // leading floats pair into points, a last odd one stays a float
+    assert.equal(color('fill: fbm(x, y)'), 'g_color = vec4(vec3(fbm(vec2(x, y))), 1.0);');
+    assert.equal(color('fill: escape(x, y)'), 'g_color = vec4(vec3(escape(vec2(x, y))), 1.0);');
+    assert.equal(color('fill: escape(0, 0, x, y)'), 'g_color = vec4(vec3(escape(vec2(0.0, 0.0), vec2(x, y))), 1.0);');
+    assert.equal(color('fill: segment(x, y, 0, 0, 1, 1)'), 'g_color = vec4(vec3(segment(vec2(x, y), vec2(0.0, 0.0), vec2(1.0, 1.0))), 1.0);');
+    // one float is not a point
+    assert.equal(color('fill: noise(x)'), 'g_color = vec4(vec3(noise(x)), 1.0);');
     // a vector variable passes straight through to the vec2 form
     assert.equal(color('p: uv*3; fill: fbm(p)'), 'g_color = vec4(vec3(fbm(g_1)), 1.0);');
     assert.equal(color('z: vec2(0); c: uv*3 - 2; fill: escape(z, c)'),
@@ -582,7 +587,7 @@ test('a point argument may be one vec2 or two floats', () => {
 test('rot() returns the rotated point', () => {
     assert.equal(color('p: rot(vec2(du, dv), t); fill: p.x + .5'),
         'g_color = vec4(vec3((g_1.x + .5)), 1.0);');
-    assert.equal(color('fill: rot(du, dv, PI).y'), 'g_color = vec4(vec3(rot(du, dv, PI).y), 1.0);');
+    assert.equal(color('fill: rot(du, dv, PI).y'), 'g_color = vec4(vec3(rot(vec2(du, dv), PI).y), 1.0);');
 });
 
 test('ints are highp so bitwise operators survive large grids', () => {
@@ -723,7 +728,7 @@ test('rand() without arguments holds for the cell and the repeat step, and diffe
     // nested steps get one key each: outer * count + inner
     assert.match(s, /float g_5 = rand\(vec2\(i, \(g_2 \* 2\.0 \+ g_4\)\) \+ 3\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
     // the GLSL i is the cell index even where `as i` names the step
-    assert.match(main('fill: rand() + rand(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(x, y\)\)\), 1\.0\);/);
+    assert.match(main('fill: rand() + rand(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
 });
 
 test('derivatives where only some pixels run the code are reported once per outer block', () => {
@@ -894,9 +899,9 @@ test('box() and segment() are floats a fill or shape can read', () => {
     assert.deepEqual(warned, []);
     assert.match(out, /float g_1 = box\(pos, \.3\);/);
     assert.match(out, /float g_2 = segment\(pos, vec2\(0\.0\), vec2\(\.3, \.3\)\);/);
-    assert.match(out, /g_dist = box\(du, dv, \.2\);/);
+    assert.match(out, /g_dist = box\(vec2\(du, dv\), \.2\);/);
     assert.match(out, /float box\(vec2 p, vec2 b\)/);
-    assert.match(out, /float box\(float px, float py, float b\)/);
+    assert.match(out, /float box\(vec2 p, float b\)/);
     assert.match(out, /float segment\(vec2 p, vec2 a, vec2 b\)/);
 });
 

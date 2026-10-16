@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import Function from '../../src/core/function.js';
+import Function, { pickAt } from '../../src/core/function.js';
 import createRandom from '../../src/core/random.js';
 
 test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
@@ -120,9 +120,27 @@ test('@pn with a trailing `...` carries the list on', () => {
 
 test('@match selects the first matching value', () => {
     let cell = { x: 2, y: 1, z: 1, count: 2, grid: { x: 3, y: 1, z: 1, count: 3 } };
-    let match = Function.match(cell, { extra: [] });
+    let read = [];
+    let args = (...values) => values.map(v => () => (read.push(v), v));
+    let match = (...values) => Function.match(cell, { extra: [] })(...args(...values));
     assert.equal(match('x < 2', 'a', 'x == 2', 'b', 'c'), 'b');
+    assert.deepEqual(read, ['x < 2', 'x == 2', 'b']);
     assert.equal(match('x > 2', 'a', 'fallback'), 'fallback');
+});
+
+test('@pick(k: …) takes item k from 1 as written, wrapping, composes only that one, and @lp repeats it', () => {
+    let cell = { x: 2, y: 1, z: 1, count: 2, grid: { x: 3, y: 1, z: 1, count: 3 } };
+    let read = [];
+    let context = {};
+    let args = (...values) => values.map(v => () => (read.push(v), v));
+    let pick = (...values) => pickAt(cell, { extra: [], context })(...args(...values));
+    assert.equal(pick('x', 'red', '#00f', 'tan'), '#00f');
+    assert.deepEqual(read, ['x', '#00f']);
+    assert.equal(Function.lp(cell, { context })(), '#00f');
+    assert.equal(pick('x + 2', 'red', '#00f', 'tan'), 'red');
+    assert.equal(pick('0', 'red', '#00f', 'tan'), 'tan');
+    assert.equal(pick('i * 2 - 1', 'a b', 'c d'), 'a b');
+    assert.equal(pick('1'), '');
 });
 
 test('@ri: an integer with no arguments too, not a character code', () => {

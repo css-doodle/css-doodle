@@ -127,6 +127,43 @@ Arguments and defaults are pasted as written, so `$dot(@r(5))` draws a
 new radius at each `$r`; store a shared random value in a variable
 first.
 
+A body made of `result` declarations alone gives the value of the last
+one, as a CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
+`$double(2)` is `4`. A body with any other statement is pasted as
+written, so an `@svg-filter` element keeps its `result` attribute.
+
+In a `@pattern` or `@scene` body an argument is one value: one that is
+not a name, a number or a color is parenthesized, so with `--f(a): a * 2`,
+`$f(x + 1)` reads `(x + 1) * 2`. There a parameter reads bare, `p` as
+`$p` does, and `p.xy` takes its swizzle; it hides a built-in of its
+name. A bare name stays as written where it calls a function, `p(…)`,
+where a statement assigns it or a `repeat` names its loop with it, and
+in the CSS of a `texture` block. A body that assigns `result` gives a
+value, as a CSS `@function` does:
+
+```css
+--noise2(p): {
+  i: floor(p);
+  f: fract(p);
+  result: mix(rand(i), rand(i + vec2(1, 0)), f.x);
+};
+@content: @pattern(fill: $noise2(uv * 8) * $noise2(uv * 3););
+```
+
+Its statements run before the statement that calls it, and the call
+reads as `result`. The last `result` assigned wins, in a block too, so
+`result: 0; match(d < 0) { result: 1; }` gives 1 inside; as with any
+name, one assigned only in a block is unknown after it. The names it
+assigns, and its `repeat` loop names, are its own for each call, so the
+`i` above leaves the pattern's `i` alone; until its first assignment
+ends a name reads the caller's. An argument other than a name, a number
+or a color is worked out once, first. Its parameters are its own too:
+`p: p * 2` changes its copy, and `$p: value` writes the variable passed
+for `p`, the way to give back more than one value. Such a call
+cannot stand in a `repeat()` head or a `match` arm test. A body without
+`result` runs where it is called and writes the caller's names, as its
+text would.
+
 ### At-statements
 
 A statement starting with `@` with no top-level `:`, such as
@@ -249,7 +286,10 @@ and `$(` are calls with an empty name.
 - **`$` is the calc function.** `$(expr)` evaluates an expression
   (§8). `$unit(expr)` appends `unit` verbatim: `$px(1+1)` is `2px`,
   `$4(1+1)` is `24`, unless a function `--unit()` is defined (§2).
-  `$name`, without parentheses, reads the variable `name` (§8).
+  `$name`, without parentheses, reads the variable `name` (§8) or a
+  number. The name ends where a CSS name does, at anything but letters,
+  digits, `_`, `-` and non-ASCII, so `$s%` is `50%` and `$s.x` is
+  `50.x` with `--s: 50`.
 
 ## 7. Arguments
 
@@ -274,6 +314,11 @@ quotes does not split. Whitespace belongs to the argument, so
   HTML attribute.
 - Calls are recognized anywhere, quotes included; a bare `@` or `$` is
   a call with an empty name.
+- In `@pick` and `@p`, a top-level colon in the first argument ends an
+  index: `@pick(k: a, b, …)` gives item `k` from 1, an expression (§8),
+  rounded and wrapping around as `@pn` does, and composes only that
+  item, so `@pick(@i: red, blue)` alternates. A quoted colon is text.
+  `pick(k: a, b, …)` is the same in `$()` (§8), `@pattern` and `@scene`.
 
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
@@ -284,8 +329,9 @@ into arguments.
 ## 8. Expressions
 
 One language serves `$(…)`, `@match(…)` (function and cell selector),
-`@cell(…)`, `@random(ratio)` and the `@shape` commands. `@pattern` and
-`@scene` use a GLSL-oriented one (§9.3).
+the index of `@pick(k: …)`, `@cell(…)`, `@random(ratio)` and the
+`@shape` commands. `@pattern` and `@scene` use a GLSL-oriented one
+(§9.3).
 
 ```
 expression = operand { operator operand }
@@ -298,6 +344,8 @@ name       = letter or '_', then letters, digits or '_'
 | ------------------------------------------- | --------------------------- | ------------- |
 | `!`                                         | not (prefix)                | right         |
 | `^` `**`                                    | power                       | right         |
+| adjacent values, `2x`                       | multiply                    | left          |
+| `-` `+`                                     | sign (prefix)               | right         |
 | `*` `/` `÷` `%`                             | multiply, divide, remainder | left          |
 | `+` `-`                                     | add, subtract               | left          |
 | `<<` `>>`                                   | shift                       | left          |
@@ -314,16 +362,26 @@ name       = letter or '_', then letters, digits or '_'
   `25% > 10` is `1`, so `@tile.y > 50` works; `25%-5` is `20`; `7%3`
   is `1`.
 - **Adjacent values multiply**: `2x`, `2(3)`, `2π`. A space ends the
-  product (`2 x` is `2`), and a name directly before `(` is a call. A
-  sign binds to the next value: `-2^2` is `4`, `-(2^2)` is `-4`.
+  product (`2 x` is `2`), and a name directly before `(` is a call.
+  The power binds first, then the product, then a sign: `-2^2` is
+  `-4`, `2x^2` is `2(x^2)`, `1/2π` is `1/(2π)`. A value keeps its own
+  sign: with `--k: -2`, `$k^2` and `@r(-2, -2)^2` are `4`.
 - **Dashed names.** `a-b` is one variable if the context defines it,
   else `a - b`; the longest defined name wins.
 - **Names** are looked up in the context, then among `π`, `random`,
-  `gcd` and `match`, then in JavaScript's `Math` (`PI`, `sin`,
-  `hypot`, …). Any other name is `0`.
+  `gcd` and `match`, the GLSL math of §9.3, `mod`, `fract`,
+  `clamp`, `mix`, `step` and `smoothstep`, then in JavaScript's `Math`
+  (`PI`, `sin`, `hypot`, …). Any other name is `0`. They read as in
+  GLSL: `mod(a, b)` takes the sign of `b`, so `mod(-1, 4)` is `3`, and
+  `step(edge, x)` is `1` from the edge on.
+- **`pick(k: a, b, …)`** gives item `k` from 1, rounded, wrapping
+  around as `@pn` does, and evaluates only that one: `pick(4: a, b, c)`
+  is `a`. Without the index, `pick` is no function here and reads as
+  `0`.
 - **Calls chain** right to left: `tan.cos.sin(x)` is
-  `tan(cos(sin(x)))`. `match(c, a, b)` evaluates only the branch it
-  returns.
+  `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the
+  value after the first test that holds, else the last odd argument
+  or `0`, and evaluates only the branch it returns.
 - **No errors.** Unknown names, cycles and missing operands read as
   `0`; division by zero gives `Infinity`.
 - **Live values.** A `var()`, as `@t`, `@ux` and the other uniforms
@@ -334,11 +392,12 @@ name       = letter or '_', then letters, digits or '_'
   `rem()` and `pow()`; comparisons, `!`, `&&`, `||` and `match` become
   `0`/`1` arithmetic through `sign()`, so both sides are written out;
   `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `exp` `log`
-  `abs` `sign` `pow` `hypot` `min` `max` keep their names and
-  `round`/`floor`/`ceil`/`trunc` become `round()`. A `calc()` reads as a
-  group, so results compose. Anything else (shifts, bitwise operators,
-  `gcd`, other functions) reads as `0`, as does a live value where a
-  number is required (`@r(@t)`, `@nth`).
+  `abs` `sign` `pow` `hypot` `min` `max` `mod` keep their names,
+  `round`/`floor`/`ceil`/`trunc` become `round()`, and `fract`,
+  `clamp`, `mix`, `step`, `smoothstep` and `pick(k: …)` are written out in
+  those. A `calc()` reads as a group, so results compose. Anything else
+  (shifts, bitwise operators, `gcd`, other functions) reads as `0`, as
+  does a live value where a number is required (`@r(@t)`, `@nth`).
 
 Each caller provides its own context:
 
@@ -784,7 +843,9 @@ and `mat2`. A color name or `#rgb` is a `vec3`, `#rgba` a `vec4`:
 `mix(red, #00f, du + .5)`. A number directly followed by a name, a call
 or `(` multiplies (`2t`, `2sin(t)`, `2(t + 1)`); other values side by
 side, including a number and a value with a space between, do not
-multiply and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. Inside
+multiply and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. As in
+§8, `**` binds before the product and a sign: `-x ** 2` is `-(x ** 2)`,
+`2x ** 2` is `2 * x ** 2`. Inside
 call parentheses a space separates arguments like a comma
 (`hsl(h .75 .65)`), except in `ramp()` stops.
 
@@ -809,10 +870,10 @@ anywhere in the body but its comments, when the pattern is generated:
 `repeat` count. `$a-b` reads `--a-b` if it is defined and subtracts
 otherwise. An undefined name skips the pattern and is reported (§11).
 
-**Functions.** GLSL, plus `ramp`, `rand`, `noise`, `fbm`, `voronoi`,
-`hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`, `escape`,
-`spiral` and `dither`. A point is one `vec2` or two floats: `fbm(p)`,
-`ngon(p, 6)`.
+**Functions.** GLSL, plus `pick(k: …)`, `ramp`, `rand`, `noise`, `fbm`,
+`voronoi`, `hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`,
+`escape`, `spiral` and `dither`. A point is one `vec2` or two floats:
+`fbm(p)`, `ngon(p, 6)`.
 
 - `escape` runs 96 steps with a bailout radius of 16.
 - `box(p, b)` is the signed distance to a box of half size `b`, a
@@ -825,6 +886,8 @@ otherwise. An undefined name skips the pattern and is reported (§11).
 - `rand()` without arguments is a number from 0 to 1 that holds for the
   cell and the `repeat` step and differs at each place it is written:
   `w: mix(.3, .5, rand())`.
+- `rand`, `noise`, `fbm` and `voronoi` follow the doodle's seed, so
+  another seed gives another pattern.
 - `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient,
   a color or number, then an optional number position after a space
   (`#f80 .5`). The value holds below the first stop and above the

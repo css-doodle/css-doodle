@@ -21,6 +21,8 @@ for (let s of symbols) {
     else wideSymbols.add(c);
 }
 
+export const NAME_CHAR = `(?:[\\w-]|[^\\x00-\\x7f${symbols.replace(/[\x00-\x7f]/g, '')}])`;
+
 function isSymbolCode(c) {
     return c < 128 ? (ctype[c] & SYMBOL) > 0 : wideSymbols.has(c);
 }

@@ -8,7 +8,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { clamp, tidyNumber } from '../lib/math.js';
 import { isEmpty, removeParens } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
-import calc, { defaultContext, evaluate } from '../core/calc.js';
+import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
@@ -522,12 +522,18 @@ export default function generateShape(input, range = {}, modifier) {
         preset = presetShapes[range.preset];
         rules = parseShapeCommands(preset + ';' + input);
     }
-    if (modifier) {
-        rules = modifier(rules, preset !== undefined);
+    let seed = isEmpty(rules.seed) ? range.seed : rules.seed;
+    let restore = useRandom(seedrandom('random:' + (seed ?? 0)));
+    try {
+        if (modifier) {
+            rules = modifier(rules, preset !== undefined);
+        }
+        if (isEmpty(rules.seed) && range.seed != null) {
+            rules.seed = range.seed;
+        }
+        let points = createShapePoints(rules, range.min || 3, range.max || 3600, range.raw);
+        return { rules, points, clip: points.clip, preset: preset !== undefined };
+    } finally {
+        useRandom(restore);
     }
-    if (isEmpty(rules.seed) && range.seed != null) {
-        rules.seed = range.seed;
-    }
-    let points = createShapePoints(rules, range.min || 3, range.max || 3600, range.raw);
-    return { rules, points, clip: points.clip, preset: preset !== undefined };
 }

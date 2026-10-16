@@ -28,6 +28,7 @@ const ALIAS = {
 };
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
+const GLSL_NAMES = new Set(['PI', 'true', 'false']);
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 const VEC_COMPARE = {
     __proto__: null,
@@ -46,6 +47,8 @@ for (const [type, names] of Object.entries({
 })) {
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
+
+const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment'.split(' '));
 
 const RANK = [
     'bool', 'int', 'float', 'mat2', 'mat3', 'mat4', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'
@@ -126,7 +129,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         const dot = val.indexOf('.');
         const head = dot > 0 ? val.slice(0, dot) : val;
         const id = names?.[head];
-        const rgba = !id && !types[head] && unknown?.(head);
+        const rgba = !id && !types[head] && !GLSL_NAMES.has(head) && unknown?.(head);
         const n = rgba
             ? { type: 'Call', val: `vec${rgba.length}`, args: rgba.map(v => ({ type: 'Lit', val: String(v) })) }
             : { type: 'Var', val: id || head };
@@ -161,19 +164,34 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         return n;
     }
 
+    function power(n) {
+        if (!n || peek()?.value !== '**') return n;
+        if (n.type === 'Lit' && n.val[0] === '-' && tokens[pos - 1].isNumber()) {
+            return { type: 'Pre', val: '-', right: power({ type: 'Lit', val: n.val.slice(1) }) };
+        }
+        consume();
+        const right = power(primary());
+        if (!right) {
+            report('** needs a value after it');
+            return n;
+        }
+        return { type: 'Bin', val: '**', left: n, right };
+    }
+
     function parse(min = 0) {
         let n = primary();
         if (!n) return null;
         const product = n.type === 'Lit' || n.type === 'Var' && n.val === 'PI';
+        n = power(n);
         while (isFactor(peek()) && (product || peek().value === 'π')) {
-            n = { type: 'Bin', val: '*', left: n, right: primary() };
+            n = { type: 'Bin', val: '*', left: n, right: power(primary()) };
         }
         while (peek()) {
             const op = peek().value;
             const p = PREC[op];
             if (!p || p < min) break;
             consume();
-            const right = parse(op === '**' ? p : p + 1);
+            const right = parse(p + 1);
             if (!right) {
                 report(`${op} needs a value after it`);
                 break;
@@ -186,7 +204,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     function call(name) {
         consume();
         const args = [];
-        let comma = true;
+        let comma = true, at = false;
         while (peek() && peek().value !== ')') {
             const arg = parse();
             // in ramp() a stop's position follows its value after a space: #f80 .5
@@ -197,12 +215,14 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
                 args.push(arg);
             }
             comma = peek()?.value === ',';
+            // pick(k: a, b, …): a colon ends the index
+            if (name === 'pick' && !at && args.length === 1 && peek()?.value === ':') comma = at = true;
             if (comma) consume();
             else if (!isValue(peek())) stray(')');
         }
         consume();
         if (name === 'rand' && !args.length && rand) return { type: 'Var', val: rand() };
-        return { type: 'Call', val: name, args };
+        return { type: 'Call', val: name, args, at };
     }
 
     function gen(n, exp) {
@@ -235,8 +255,22 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
                 return out;
             }
             const res = infer(n);
+            if (n.at) {
+                // pick(k: a, b, …): item k from 1, wrapping around; the last one, unless k takes another
+                if (a.length < 2) return gen(ZERO, exp);
+                const k = gen(a[0], 'float'), count = a.length - 1;
+                let out = gen(a[count], res);
+                for (let j = count - 2; j >= 0; j--) {
+                    out = `(g_pick(${k}, ${count}) == ${j} ? ${gen(a[j + 1], res)} : ${out})`;
+                }
+                return cast(out, res, exp);
+            }
             if (n.val === 'ramp') return cast(ramp(a, res), res, exp);
-            const args = a.map(v => gen(v, res[0] === 'b' ? null : 'float')).join(', ');
+            let args = a.map(v => gen(v, res[0] === 'b' ? null : 'float'));
+            if (POINTS.has(n.val) && a.length > 1 && !isVector(infer(a[0]))) {
+                args = args.flatMap((v, i) => i % 2 ? [] : i + 1 < args.length ? `vec2(${v}, ${args[i + 1]})` : v);
+            }
+            args = args.join(', ');
             if (n.val === 'float' && a.length === 1 && !isVector(infer(a[0]))) return cast(args, 'float', exp);
             if (n.val === 'shape') return cast(`g_shape(${args}${a.length === 1 ? ', 1.0' : ''})`, res, exp);
             return cast(`${n.val}(${args})`, res, exp);
@@ -313,6 +347,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             if (known) return known;
             if (/^(b?vec[234]|mat[234]|float|int|bool)$/.test(n.val)) return n.val;
             if (n.val === 'match') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
+            if (n.at) return widest(n.args.slice(1).map(infer));
             if (n.val === 'ramp') return widest(n.args.slice(1).map(a => infer(valueOf(a))), true);
             return widest(n.args.map(infer), true);
         }

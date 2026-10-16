@@ -136,6 +136,12 @@ test('quoted values keep their quotes and braces', () => {
     ));
 });
 
+test('unquoted content keeps its spaces after , and :', () => {
+    assert.deepEqual(parseSvg('text { content: one, two: three; x: 1, 2 }'), svg(
+        block('text', [statement('content', 'one, two: three'), statement('x', '1,2')])
+    ));
+});
+
 test('a style block keeps its css as text', () => {
     assert.deepEqual(parseSvg('style { a { fill: red } }'), svg(block('style', 'a{fill:red}')));
     assert.deepEqual(parseSvg('style a { fill: red }'), svg(block('style', 'a{fill:red}')));
