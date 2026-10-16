@@ -93,6 +93,15 @@ test('argument text is kept as written', () => {
     assert.deepEqual(values(`content: @p(01, 1.50, 0x10, 1e3);`), ['01', '1.50', '0x10', '1e3']);
 });
 
+test('a trailing comma adds no argument', () => {
+    // lazy @match read the empty one as its else value
+    const args = input => parseCss(input)[0].value[0][0].arguments.map(a => a.values);
+    assert.deepEqual(args(`a: @match(x, red, blue,);`), [[text('x')], [text('red')], [text('blue')]]);
+    assert.deepEqual(args(`a: @match(x, red, blue,\n);`), [[text('x')], [text('red')], [text('blue')]]);
+    assert.deepEqual(args(`a: @match(x, , blue);`), [[text('x')], [], [text('blue')]]);
+    assert.deepEqual(args(`a: @p();`), [[]]);
+});
+
 test('a leading ± expands an argument into its negative and positive', () => {
     const shape = values => values.map(v => v.type === 'func' ? v.name : v.value);
     const args = input => parseCss(input)[0].value[0][0].arguments;

@@ -500,7 +500,7 @@ function parseArguments(cur, copying, whole, indexed) {
             } else if (v === ')') {
                 if (paren === 0) {
                     flush(false);
-                    pushArgument();
+                    if (values.length || !args.length) pushArgument();
                     end = tok.index;
                     cur.next();
                     return { args, end, at };
@@ -1081,9 +1081,6 @@ function paintBodyAt(tokens, i) {
 function expandCalls(text, defs, ctx, chain, mode = CSS, hoist = null) {
     let tokens = tokensOf(text, mode !== CSS);
     let out = '', from = 0, quote = false;
-    // in a body: where the statement being read starts, in out and in text,
-    // the statements value calls in it run first, the paren depth, and the
-    // open blocks, true for the arms of a match { … }
     let start = 0, head = 0, pending = mode === BODY ? [] : hoist, depth = 0, blocks = [];
     let flush = end => {
         out += text.slice(from, end);
