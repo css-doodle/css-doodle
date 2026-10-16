@@ -1,11 +1,10 @@
 # Language Reference
 
 css-doodle is CSS for drawing on a grid: you style one cell, and
-css-doodle evaluates that style for every cell and emits plain CSS. It
-adds functions, arithmetic, cell selectors and small languages for
-SVG, shapes, patterns and shaders; anything else passes through as
-CSS. This is a reference, not a tutorial: it covers what the parser
-accepts and how the generator reads it.
+css-doodle evaluates that style for every cell and emits plain CSS.
+This page is the grammar: what the parser accepts and how it reads each
+form. What the embedded languages draw, their shapes, commands and
+functions, is in [languages.md](languages.md).
 
 ```css
 @grid: 8 / 200px;
@@ -36,21 +35,19 @@ symbol = one of  : ; , ( ) [ ] { } + - * / % ^ = < > & | ! ? ~ _ @ " ' ` π ± �
 word   = run of characters that are not whitespace, digits or symbols
 ```
 
-The source splits into whitespace, numbers, symbols and words.
-
 - A `-` before a digit is a sign unless a number, word, `)` or `]`
   precedes it: `a -1` is two tokens, `a-1` three.
 - A digit ends a word (`h1` → `h` `1`), and a number ends where it
   cannot continue (`10px` → `10` `px`). `#` is not a symbol, so `#fff`
   is one word.
-- Quotes, `"`, `'` and `` ` ``, keep whitespace as written; function
-  calls inside them are still recognized.
-- Whitespace is trimmed and each run collapses to one space. It is
-  dropped around `;` `,` `{` `}`, after `:` `(` `[` and before `)`
-  `]`, but kept before `:` `(` `[` and after `)` `]`: `a (b)` and
-  `a(b)` differ, as do `a :hover` and `a:hover`.
+- Quotes, `"`, `'` and `` ` ``, keep whitespace as written; calls inside
+  them are still recognized.
+- Whitespace collapses to one space. It is dropped around `;` `,` `{`
+  `}`, after `:` `(` `[` and before `)` `]`, but kept before `:` `(`
+  `[` and after `)` `]`: `a (b)` and `a(b)` differ, as do `a :hover`
+  and `a:hover`.
 - `/* … */` is whitespace. `//` comments exist only in `@pattern`,
-  `@scene` and `@shaders` bodies (§9.2–§9.4).
+  `@scene` and `@shaders` bodies.
 
 ## 2. Statements
 
@@ -61,7 +58,7 @@ top-statement    = declaration | at-statement | keyframes | definition
 nested-statement = declaration | keyframes | selector-block | conditional-block | ';'
 ```
 
-A statement is a block when its first top-level `{` precedes any
+A statement is a block when its first top-level `{` comes before any
 top-level `;` or `}`, and otherwise a declaration or at-statement.
 Markup tags (`<…>`) between statements outside blocks are skipped.
 
@@ -78,14 +75,14 @@ declaration = property ':' value [ ';' ]
 ```
 
 The property is everything before the first top-level `:`; the value
-runs to the next top-level `;`, or to a `}` or `<`. A property starting
-with `@` is a directive: `@grid`, `@size`, `@place`, `@gap`, `@shape`,
+runs to the next top-level `;`, `}` or `<`. A property starting with
+`@` is a directive: `@grid`, `@size`, `@place`, `@gap`, `@shape`,
 `@content`, `@seed` or `@use`. All others, custom properties included,
 are emitted as CSS.
 
 `@use: var(--rule), var(--other, var(--fallback))` inserts the
 statements stored in custom properties. Fallbacks and nested `@use`
-work; a variable already being inserted is skipped and reported (§11).
+work; a variable already being inserted is skipped and reported.
 
 ### Function definitions
 
@@ -104,65 +101,35 @@ param      = name [ '=' text ]
 body       = '{' text '}' | statement
 ```
 
-A top-level statement starting with `--name(params):` defines a
-function and emits nothing. The body is the text inside braces, or
-else one statement, up to its `;` or through the block it opens.
-`$name(args)` calls it anywhere except inside quotes, and `$name()`
-calls it without arguments. Without parentheses `$name` still reads
-the variable `--name`, and a `$name(` with no such function is still
-a unit (§6). Text inserted by `@use` calls the functions of the sheet
-around it, and the ones it defines stay inside it.
+A top-level `--name(params):` defines a function and emits nothing. The
+body is the text in braces, or else one statement, up to its `;` or
+through the block it opens. The name is letters, digits, `_`, and `-`
+between words, and a call reads it whole: `$rand-int()` does not call
+`rand`. A parameter is an expression name (§8): `x1` and `a_b` are one
+name.
 
-The name is letters, digits, `_`, and `-` between words. A call reads
-the whole name, so `$rand-int()` does not call a function named `rand`.
-A parameter is an expression name (§8): `x1` and `a_b` are one name.
+`$name(args)` calls it anywhere but inside quotes. Without parentheses
+`$name` still reads `--name`, and `$name(` with no such function is
+still a unit (§6). Text inserted by `@use` calls the sheet's functions,
+and the ones it defines stay inside it.
 
-Calls are replaced by the body before parsing, so the body works
+A call is replaced by its body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`
-copies. In the body, `$p`, and a bare `p` inside `$()` or `$px()`,
-become the argument of parameter `p`, parenthesized inside `$()`. A
-call's arguments are not `$()`: pass `$p` there. A call with fewer
-arguments takes the defaults, `c = red`, of the parameters left.
+copies. In the body, `$p`, and a bare `p` inside `$()` or `$px()`, is
+the argument for `p`, parenthesized inside `$()`. A call's arguments
+are not `$()`: pass `$p` there. Missing arguments take their defaults.
 Arguments and defaults are pasted as written, so `$dot(@r(5))` draws a
 new radius at each `$r`; store a shared random value in a variable
 first.
 
-A body made of `result` declarations alone gives the value of the last
-one, as a CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
+A body of `result` declarations alone gives the last one's value, as a
+CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
 `$double(2)` is `4`. A body with any other statement is pasted as
 written, so an `@svg-filter` element keeps its `result` attribute.
 
-In a `@pattern` or `@scene` body an argument is one value: one that is
-not a name, a number or a color is parenthesized, so with `--f(a): a * 2`,
-`$f(x + 1)` reads `(x + 1) * 2`. There a parameter reads bare, `p` as
-`$p` does, and `p.xy` takes its swizzle; it hides a built-in of its
-name. A bare name stays as written where it calls a function, `p(…)`,
-where a statement assigns it or a `repeat` names its loop with it, and
-in the CSS of a `texture` block. A body that assigns `result` gives a
-value, as a CSS `@function` does:
-
-```css
---noise2(p): {
-  i: floor(p);
-  f: fract(p);
-  result: mix(rand(i), rand(i + vec2(1, 0)), f.x);
-};
-@content: @pattern(fill: $noise2(uv * 8) * $noise2(uv * 3););
-```
-
-Its statements run before the statement that calls it, and the call
-reads as `result`. The last `result` assigned wins, in a block too, so
-`result: 0; match(d < 0) { result: 1; }` gives 1 inside; as with any
-name, one assigned only in a block is unknown after it. The names it
-assigns, and its `repeat` loop names, are its own for each call, so the
-`i` above leaves the pattern's `i` alone; until its first assignment
-ends a name reads the caller's. An argument other than a name, a number
-or a color is worked out once, first. Its parameters are its own too:
-`p: p * 2` changes its copy, and `$p: value` writes the variable passed
-for `p`, the way to give back more than one value. Such a call
-cannot stand in a `repeat()` head or a `match` arm test. A body without
-`result` runs where it is called and writes the caller's names, as its
-text would.
+In `@pattern` and `@scene` bodies a call passes values, a parameter
+reads bare, and a body that assigns `result` returns a value: see
+[Patterns](languages.md#3-patterns).
 
 ### At-statements
 
@@ -281,15 +248,15 @@ and `$(` are calls with an empty name.
   first: `@a.b(x)` and `@a.@b(x)` are `@a(@b(x))`, `@a.b.c(x)` is
   `@a(@b(@c(x)))`. Before a digit it stays in the name: `@a.5(x)` is
   `@a(.5, x)`. When `a` has a variant `b`, `@a.b(x)` calls the variant
-  instead (`@plot.scatter(star)` spreads the points inside the star);
-  `.@b` and `@a(@b(x))` always compose.
+  instead (`@plot.scatter(star)`); `.@b` and `@a(@b(x))` always
+  compose.
 - **`$` is the calc function.** `$(expr)` evaluates an expression
   (§8). `$unit(expr)` appends `unit` verbatim: `$px(1+1)` is `2px`,
   `$4(1+1)` is `24`, unless a function `--unit()` is defined (§2).
   `$name`, without parentheses, reads the variable `name` (§8) or a
   number. The name ends where a CSS name does, at anything but letters,
-  digits, `_`, `-` and non-ASCII, so `$s%` is `50%` and `$s.x` is
-  `50.x` with `--s: 50`.
+  digits, `_`, `-` and non-ASCII, so with `--s: 50`, `$s%` is `50%`
+  and `$s.x` is `50.x`.
 
 ## 7. Arguments
 
@@ -307,18 +274,15 @@ quotes does not split. Whitespace belongs to the argument, so
   is two strings.
 - An argument starting with `--x`, `(--x)` or `"--x"` refers to that
   custom property.
-- An argument starting with `±` expands into two arguments, `-x` and
-  `x`: `±1`,
+- An argument starting with `±` expands into two, `-x` and `x`: `±1`,
   `±(a + 1)`, `±@r(10)`. Elsewhere `±` is text.
 - Backticks read as double quotes, so a doodle fits in a double-quoted
   HTML attribute.
-- Calls are recognized anywhere, quotes included; a bare `@` or `$` is
-  a call with an empty name.
-- In `@pick` and `@p`, a top-level colon in the first argument ends an
-  index: `@pick(k: a, b, …)` gives item `k` from 1, an expression (§8),
-  rounded and wrapping around as `@pn` does, and composes only that
-  item, so `@pick(@i: red, blue)` alternates. A quoted colon is text.
-  `pick(k: a, b, …)` is the same in `$()` (§8), `@pattern` and `@scene`.
+- In `@pick` and `@p`, a top-level `:` in the first argument ends an
+  index: `@pick(k: a, b, …)` gives item `k`, an expression (§8)
+  counted from 1, rounded and wrapping around as `@pn` does. Only that
+  item is composed, so `@pick(@i: red, blue)` alternates. A quoted
+  colon is text.
 
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
@@ -369,14 +333,13 @@ name       = letter or '_', then letters, digits or '_'
 - **Dashed names.** `a-b` is one variable if the context defines it,
   else `a - b`; the longest defined name wins.
 - **Names** are looked up in the context, then among `π`, `random`,
-  `gcd` and `match`, the GLSL math of §9.3, `mod`, `fract`,
-  `clamp`, `mix`, `step` and `smoothstep`, then in JavaScript's `Math`
-  (`PI`, `sin`, `hypot`, …). Any other name is `0`. They read as in
-  GLSL: `mod(a, b)` takes the sign of `b`, so `mod(-1, 4)` is `3`, and
-  `step(edge, x)` is `1` from the edge on.
-- **`pick(k: a, b, …)`** gives item `k` from 1, rounded, wrapping
-  around as `@pn` does, and evaluates only that one: `pick(4: a, b, c)`
-  is `a`. Without the index, `pick` is no function here and reads as
+  `gcd`, `match` and the GLSL functions `mod`, `fract`, `clamp`, `mix`,
+  `step` and `smoothstep`, then in JavaScript's `Math` (`PI`, `sin`,
+  `hypot`, …). Any other name is `0`. The GLSL ones read as in
+  `@pattern`: `mod(a, b)` takes the sign of `b`, so `mod(-1, 4)` is
+  `3`, and `step(edge, x)` is `1` from the edge on.
+- **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
+  item `k`: `pick(4: a, b, c)` is `a`. Without the index it reads as
   `0`.
 - **Calls chain** right to left: `tan.cos.sin(x)` is
   `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the
@@ -384,28 +347,27 @@ name       = letter or '_', then letters, digits or '_'
   or `0`, and evaluates only the branch it returns.
 - **No errors.** Unknown names, cycles and missing operands read as
   `0`; division by zero gives `Infinity`.
-- **Live values.** A `var()`, as `@t`, `@ux` and the other uniforms
-  produce, has no number at generation time. The math around it is
-  written out as CSS math for the browser instead: `$(@t / 10)deg` is
-  `calc((var(--cssd-utime) / 10) * 1deg)`, `@sin(@ts)` is
-  `calc(sin((var(--cssd-utime) / 1000)))`. Operators map to `calc()`,
-  `rem()` and `pow()`; comparisons, `!`, `&&`, `||` and `match` become
-  `0`/`1` arithmetic through `sign()`, so both sides are written out;
+- **Live values.** A `var()`, such as `@t`, `@ux` and the other
+  uniforms give, has no number at generation time, so the math around
+  it is written out as CSS math: `$(@t / 10)deg` is
+  `calc((var(--cssd-utime) / 10) * 1deg)`. Operators become `calc()`,
+  `rem()` and `pow()`, and comparisons, `!`, `&&`, `||` and `match`
+  become `0`/`1` arithmetic through `sign()`, both sides written out.
   `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `exp` `log`
   `abs` `sign` `pow` `hypot` `min` `max` `mod` keep their names,
-  `round`/`floor`/`ceil`/`trunc` become `round()`, and `fract`,
-  `clamp`, `mix`, `step`, `smoothstep` and `pick(k: …)` are written out in
-  those. A `calc()` reads as a group, so results compose. Anything else
-  (shifts, bitwise operators, `gcd`, other functions) reads as `0`, as
-  does a live value where a number is required (`@r(@t)`, `@nth`).
+  `round`, `floor`, `ceil` and `trunc` become `round()`, and `fract`,
+  `clamp`, `mix`, `step`, `smoothstep` and `pick(k: …)` are written out
+  in those. A `calc()` reads as a group, so results compose. Shifts,
+  bitwise operators, `gcd` and other functions read as `0`, as does a
+  live value where a number is required (`@r(@t)`, `@nth`).
 
 Each caller provides its own context:
 
 - **`$(…)`** sees the doodle's custom properties at host, container
   and cell level, without `--`, and the `--name` declarations above it
-  in an enclosing `@svg`. Calls inside it run first. The result is rounded
-  to 12 significant digits, magnitudes below `1e-9` become `0`, and
-  the unit suffix is appended. A lone name like `$w` is a
+  in an enclosing `@svg`. Calls inside it run first. The result is
+  rounded to 12 significant digits, magnitudes below `1e-9` become
+  `0`, and the unit suffix is appended. A lone name like `$w` is a
   generation-time `var()`: arithmetic is evaluated, anything else
   passes through, so with `--c: tomato`, `$c` is `tomato`.
 - **`@match`, `@cell` and `@random`** see the cell variables below,
@@ -413,7 +375,7 @@ Each caller provides its own context:
   `ny` and `N`. The result is read as true or false. `@random(ratio)`
   defaults to `.5`: below `1` it is a per-cell probability, from `1`
   up it selects that many distinct cells, at most all of them.
-- **`@shape`** sees the shape commands (§9.2), unrounded.
+- **`@shape`** sees the shape commands, unrounded.
 
 | Name             | Value                                                       |
 | ---------------- | ----------------------------------------------------------- |
@@ -440,6 +402,8 @@ Each defines its heads and values, and which block bodies stay raw
 text (`style { … }` in SVG, every shader section). At the doodle level
 `a: b { … }` is a selector block, since a head may contain a colon
 (`a:hover { }`); inside `@svg` it is a declaration with a block value.
+What each language's commands, shapes and functions do is in
+[languages.md](languages.md).
 
 ### 9.1 SVG
 
@@ -468,102 +432,13 @@ svg-declaration = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
 timing          = duration { delay | repeat-count | easing | fill }
 ```
 
-An element block becomes an SVG element and its declarations its
-attributes. `#id` and `.class` set `id` and `class`; `id:` overrides
-`#id`, and `class:` adds to the selector's classes. Names are
-case-insensitive and emitted in SVG spelling (`lineargradient` →
-`linearGradient`), except custom property names. `g circle` and
-`g > circle` both nest. Declarations beside an `svg { … }` block belong
-to it, and `svg` blocks merge. A bare name, `feMergeNode;`, is an empty
+A block is an element and its declarations are its attributes;
+`g circle` and `g > circle` both nest. Names are case-insensitive and
+emitted in SVG spelling (`lineargradient` → `linearGradient`), except
+custom property names. A bare name, `feMergeNode;`, is an empty
 element, except right after a declaration, where it is the next
-`;`-separated value: `values: 1; 2; 3`.
-
-`*count` repeats an element like `@M(count, …)`; the count is a
-number, a grid (`2x3`) or a range (`1-3`). Inside, `@n` is the
-sequence value, plus `@nx` and `@ny` for a grid. `x, y: 1, 2` splits
-only when the value has as many parts as names. `content: text` adds
-a text node.
-
-`--name: value` sets a variable where it stands, once per copy inside
-a `*count`; a read after it sees the value, one before it reads the
-doodle's own. Blocks don't scope it, and the latest value wins:
-`circle*3 { --i: @n; r: $(i * 2) }` gives radii 2, 4 and 6.
-
-`@match(test) { … }` keeps its body only where the test holds: its
-elements go where the block stands, and its declarations set the
-attributes of the element around it. The test is evaluated like
-`$(…)` (§8), so it reads the custom properties and the `@n` of an
-enclosing `*count`. A body that is left out still evaluates its
-functions and `--name` declarations, so the random values after it
-are the same either way. As a value, `fill: @match(t, a, b)` is still
-the function (§8).
-
-A block value gets a generated id: `url(#id)`, or `#id` for `href`.
-Gradients, `pattern`, `filter`, `clipPath`, `mask`, `marker` and
-`symbol` go into `<defs>` with or without a `defs` prefix:
-`fill: linearGradient { … }` is `fill: defs linearGradient { … }`.
-
-`viewBox` takes four numbers, one (`0 0 n n`) or two (`0 0 w h`), and
-`padding n` grows it; other counts drop it. `style { … }` is raw CSS;
-`style: { … }` and `style fill: red` add to the `style` attribute. SVG
-1.1 `xlink:` and `xml:` attributes are supported.
-
-**Animation.** `animate r: 1; 5 / 2s ease-in-out infinite` adds an
-`<animate>`: values before `/`, where a single value animates `to` it,
-and timing after, read like the CSS `animation` shorthand.
-`animate transform: rotate 0; 90` makes an `<animateTransform>` whose
-first word is the `type`. `draw: 2s` strokes a shape along its length.
-Timing words not in this table are dropped and reported:
-
-| Timing word                    | Becomes                                 |
-| ------------------------------ | --------------------------------------- |
-| first time, second time        | `dur`, `begin`                          |
-| a number beside a duration     | `repeatCount`; without one, it is `dur` |
-| `infinite`                     | `repeatCount="indefinite"`              |
-| easing keyword, `cubic-bezier` | `keySplines`; `linear` is the default   |
-| `forwards`                     | `fill="freeze"`                         |
-
-**`@svg-filter`** builds a filter from short commands.
-
-```css
-filter: @svg-filter(
-  region: 20%;
-  frequency: .003 .008; scale: 80; octave: 10; seed: @r(1000);
-  channels { g: g - .5r; b: 2b + .2; }
-);
-```
-
-- **Commands.** `frequency` (one or two values), `octave` and `seed`
-  make turbulence, and `scale` displaces by it; `blur`, `erode` and
-  `dilate` add their primitive. Adjacent commands form a group,
-  emitted as dilation, erosion, blur, turbulence, then displacement;
-  any other attribute or a block starts a new group.
-- **Inputs.** `scale` displaces the nearest earlier primitive, or
-  `SourceGraphic` if there is none. `scale`, `octave` or `seed`
-  without `frequency` is dropped and reported. Generated result names
-  never collide with the author's.
-- **`region`** is `x [y] / width [height]`. One percentage grows every
-  side equally: `20%` is `-20% -20% / 140% 140%`, the default once any
-  command is used. `x`, `y`, `width` and `height` attributes override
-  their part.
-- **`channels { … }`** becomes an `feColorMatrix`. Declare only the
-  output channels that change, `r`, `g`, `b` or `a`, as `an+b` sums of
-  input channels and constants: `g - .5r`, `.5 * r`, `2b + .2`. All
-  read the original input, so `r: b; b: r` swaps red and blue.
-  Anything else is reported and leaves the channel unchanged; `in` and
-  `result` pass through, and nested blocks are dropped.
-- **Legacy forms**, `@svg-filter(.003, 80, 10)` and `blur=5px`, keep
-  the old graph, where displacement always reads `SourceGraphic`.
-
-**`@arc(r: 40; from: 0; to: 120; move: 50 50)`** is the path data of
-an arc, `L x y A …`, for `d:`. `r` is one or two radii, `move` the
-center. Angles are degrees clockwise from three o'clock, as in SVG's
-`rotate()`, and accept `deg`, `rad`, `grad` and `turn`; `from`
-defaults to `0`, `to` to `360`, and a full turn or more draws the
-whole circle. The arc continues the current path; at the start of `d:`
-or `path()` its first `L` becomes an `M`. So `@arc(…) L 0 0 Z` is a
-pie slice, and `@arc(r: 50; to: 120) L -15 26 @arc(r: 30; from: 120; to: 0) Z`
-a ring segment.
+`;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` splits only when
+the value has as many parts as names. `style { … }` is raw CSS.
 
 ### 9.2 Shapes
 
@@ -585,11 +460,6 @@ background: @scene(
 );
 ```
 
-`@shape` draws 2D outlines for `clip-path`, and `@plot`, `@tile` and
-`@svg-polygon` read the same body. `@scene` draws a 3D model as an
-image. The two share one language; only their shapes and a few
-commands differ.
-
 ```
 shape-property = preset
 body           = { row | shape }
@@ -601,198 +471,14 @@ group          = 'union' | 'subtract' | 'intersect' | 'exclude'
 copies         = '*' count [ 'x' count ]
 ```
 
-**Rows** are commands, attributes of their shape, or, for any other
-name, variables that the rows and shapes of their block read:
-`k: .3; sphere { r: k }`. Unknown shapes and `#id`s are reported;
-`@scene` also reports names nothing reads, such as a misspelled
-attribute.
-
-**Steps**, `move`, `rotate`, `scale`, `mirror`, `grow` and `frame`, run
-in the order written on the shape so far, and one written twice runs
-twice: `scale: .5; move: .5 0` halves the shape, then moves it a
-quarter of the box right, and a `rotate` after `move` turns it around
-the center. `mirror: x y` keeps the shape and its reflections across
-those axes as one shape, so a half drawn on the right makes both.
-A preset's own steps come first, so `square; scale: .5` halves the
-square. Other rows are attributes; the last one wins. `y` points up,
-and `rotate` turns counterclockwise in degrees (`.25turn` is 90,
-`2 * 30deg` is 60), but a call such as `sin(90deg)` takes radians. The
-parts of `move` and `scale` split at spaces or commas, and an operator
-keeps its operands: `move: k * .5 0` and `move: .5 -.25` have two
-parts each.
-
-**Groups.** `union`, `subtract` and `intersect` join whole shapes;
-`subtract` takes the rest from the first, so
-`subtract { circle; circle { scale: .9; move: .45 .135 } }` is a
-crescent. `exclude` keeps what an odd number of the shapes cover
-(`@shape` only; in 3D it would look like `union`). `smooth: r`
-rounds every place two shapes meet with a curve of radius `r`. A
-group's own rows, like the rows at the top of a body, apply to the
-joined shapes.
-
-**Names.** `name#id` keeps a shape or group for later instead of
-drawing it; `#id` draws it with the rows given there added, an
-attribute replacing its own and a command running after its own:
-`circle#hole { scale: .2 } subtract { circle; #hole { move: .5 0 } }`.
-A name may be used before it is given, the last one given wins, and
-`#id` works at the top of a body too. The id goes right after the
-name, before or after a count; a space before `#` starts a new shape,
-so `#knob #knob { rotate: 90 }` draws two.
-
-**Copies.** `name*N` or `name*XxY` repeats a shape or group. Each copy
-sees `n` from 1, `N`, and `nx`, `ny` across the grid, and runs its `@`
-functions anew: `circle*6 { scale: .2; move: 0 -.6; rotate: n * 60 }`
-rings the center, and `circle*2 { move: @pn(-.6 0, .6 0) }` draws two
-circles apart.
-
-|            | `@shape`                                                                 | `@scene`                                                                 |
-|------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `lathe { points }` or `lathe { body }`, `plane`, `sdf { d }` |
-| Steps      | `move: x y`, `rotate`, `scale: x [y]`, `mirror`, `grow`, `frame`         | the same in 3D, `rotate: [axis] angle`, and `repeat`, `twist`            |
-| Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`      | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`             |
-| Groups     | `union`, `subtract`, `intersect`, `exclude`                              | `union`, `subtract`, `intersect`                                         |
-| Space      | lengths in units where the box is 2 across, `0 0` at its center         | the camera fits the model, so only its proportions matter               |
-
-#### In `@shape`
-
-The `@shape:` directive takes a preset name and emits
-`clip-path: polygon(…)`. The `@shape(…)` function takes a preset or a
-body, where a bare name at the top is the preset:
-`@shape(heart; scale: .5)`.
-
-**Outlines.** `r`, `x` and `y` are expressions in the angle `t` (in
-`@scene` and `@pattern`, `t` is the time), evaluated at `points`
-points around the circle: by default 180 if they read `t`, else 3.
-They also see the point index `i` from 1, `seq(a, b, …)`, which cycles
-through its arguments point by point, and `range(a, b)`, which
-interpolates from `a` to `b` across the shape. `points` may instead
-list the corners as SVG `x y` pairs: `points: 0 1, 1 -1, -1 -1` is a
-triangle, the same as `polygon { points: … }`.
-
-**Values.** `points`, `rotate`, `round`, `frame`, `turn` and each part
-of `move` and `scale` read like variables: a unit drops (`20px` is 20)
-and `points: 4n` is worked out, the fraction cut off. A `-` before a
-command name negates its value, each part of `move` and `scale` and
-each item of a list, except on `fill-rule`.
-
-**Contour lists.** A `,` in `points`, `r`, `t`, `x`, `y`, `rotate` or
-`grow` draws one contour per item, the way `background` takes layers:
-shorter lists repeat, `t` and `i` restart in each contour, and
-`points: 0` leaves one out. Under `fill-rule: evenodd` inner contours
-cut holes, so `points: 120, 60; r: 1, .5` is a ring. `frame` and `grow`
-treat each contour as a shape of its own. Contour lists suit rings and
-other shapes around one center; for holes and cutouts elsewhere a
-`subtract` group is plainer.
-
-**Stored bodies.** A body in parentheses reads as commands, so one
-kept in a custom property is reused with `$name`: given
-`--gear: (points: 4n; r: 1, .5)`, `@shape($gear; n: 6)` adds to or
-overrides it, and `@plot`, `@tile` and `@svg-polygon` read it the same
-way.
-
-**Group outlines** are cut where they cross, so a cut that reaches
-past the shape leaves nothing there, where `fill-rule: evenodd` would
-fill. A body with a group draws only the group, not its own `r`, `x`,
-`y`, `t` or preset. `points` at the top then spreads that many points
-over the outlines by length, and a list gives each outline its own
-count, so two groups with the same counts morph in `@keyframes`
-(`points: 180, 20` with a hole); without it the count follows the
-cuts.
-
-**`round`, `grow`, `frame`.** `round: r` turns every corner into a
-curve of radius `r` as far as the sides allow, the same on 4 points or
-400, before the steps run. `grow: d` pushes the outline out by `d` and
-`frame: w` keeps a band `w` wide inside it, both exactly, as in
-`@scene`, on the shape as it is at that step: corners the outline
-turns away from come out round, and a group's outlines move together,
-so its holes shrink as it grows. A frame's inner outlines take as many
-points as the outline, so frames of different widths morph in
-`@keyframes`. `grow` may also be an expression in `t`, which then runs
-from 0 to 2π by length along the outline, not by angle; any difference
-between its values at 0 and 2π is spread along the outline so the ends
-meet, each point moves along the outline's normal, and sharp corners
-come out beveled.
-
-**`@plot` and `@tile`.** `@plot` spreads its cells along the outline,
-over the contours by length, and reads only the points, ignoring
-`fill-rule`, `frame`, `round` and `grow`. `@tile` and `@plot.scatter`
-fill the region, holes included.
-
-**Noise.** `@R.t(from, to)` writes a closed noise curve in `t` for one
-cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`, following the
-doodle's seed or the `seed` command.
-
-#### Tiles
-
-`@tile(…)` of every kind and `@plot.scatter(…)` read the body as the
-region to fill (`square` by default for `@tile`), along with these
-commands. Here `points` counts what comes out, not the corners, so a
-body copied from `@shape` leaves it out.
-
-| Command         | Kinds                                   | Value                                                          |
-|-----------------|-----------------------------------------|----------------------------------------------------------------|
-| `points`        | all                                     | at most this many pieces, or points for `delaunay`; scatter returns that many as one list |
-| `seed`          | all                                     | the seed, the doodle's by default                              |
-| `aspect`        | all                                     | the element's width over its height, `2` or `16 / 9`, kept between 0.001 and 1000 |
-| `gap`           | all but scatter                         | space between pieces, in percent of the element                |
-| `density`       | `slice`, `voronoi`, `delaunay`, scatter | where pieces are smaller, an expression in `x` and `y`         |
-| `relax`         | `voronoi`, `delaunay`, scatter          | rounds that even out the points, 0 to 50, default 10           |
-| `spread`        | `slice`                                 | how far a cut may tilt, in degrees                             |
-| `crack`         | `voronoi`                               | groups the regions, about this many each; a second `gap` value is the space inside a group |
-| `stretch`       | `voronoi`                               | `ratio [angle]`, regions that many times longer, up to 1000    |
-| `round`         | all but `circle` and scatter            | corner radius, in the units where the box is 2 across          |
-| `jitter`        | `grid`, `hex`, `triangle`, `cube`, `penrose` | moves each corner by up to that part of a piece           |
-| `shift`         | `grid`                                  | `a [b]`, slides every other row by `a`, or column by `b`       |
-| `edge`, `slide` | `grid`, `hex`, `triangle`               | bend each edge across and along itself, expressions in `t`, `e`, `x`, `y` and `random()`; `edge` is ignored with `op` or `star` |
-| `pair`          | `grid` without `shift`, `hex`           | `turn` pairs edges by a turn about a corner, so every piece is one shape turned by its kind |
-| `op`            | `grid`, `hex`, `triangle`, `cube`, `penrose`, `voronoi` without `crack` or `stretch` | Conway's operators, one letter per step, right to left: `d a t k e b s`, and `g j m o` for `ds da kda de`; other letters and steps past the fifth are skipped |
-| `star`          | the same as `op`                        | after `op`, turns every piece into a Hankin star: lines leave each side's middle at this angle, 0 to 90 degrees |
-| `size`          | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x` and `y`; by default 1.5 with a rare few larger |
-
-The kinds, chosen as a variant like `@tile.hex(…)`, are `slice` (the
-default), `voronoi`, `delaunay`, `grid`, `hex`, `triangle`, `cube`,
-`penrose` and `circle`. A cell with a piece reads its center as
-`@tile.x` and `@tile.y`, or `@tile.xy` for `x y`, its kind as
-`@tile.k`, and as `@tile.r` the radius of the largest circle about the
-center that fits in the piece, in percent of the element's shorter
-side. At the top level a rule may read these before the rule that
-makes the piece. A piece that `op` or `star` makes from a piece keeps
-its kind; pieces made at the corners take the next kind up, and those
-made along the sides by `e`, `b` and `s` the one after. `d` makes
-every piece kind 1.
-
-#### In `@scene`
-
-The model is raymarched in WebGL into an image, like `@pattern`
-(§9.3), and its values use the same math: `p` is the point in the
-shape's own space, `t` the time in seconds, and `rand()` differs from
-copy to copy.
-
-**Fill** is a color, or an expression in `p` that gives one. Shapes in
-a group take its fill unless they have their own, and shapes joined
-with `smooth` blend their colors. `fill` also sees `normal`, the
-surface normal as the camera sees it (x right, y up, z toward the
-camera), so `1 - normal.z` is bright at the edges; the scene's light
-still shades the result.
-
-**Shapes.** `round` keeps the outer size of a `box`, `cylinder` or
-`polygon`, while `grow` makes any shape bigger. `repeat: x y z`
-repeats it that far apart along each axis (0 for none), and
-`twist: a` turns it `a` degrees per unit up `y`. `sdf { d: … }` takes
-a distance written in `p`. `polygon` takes `points`, or a `@shape`
-body as its outline, holes and all, in `@shape`'s units:
-`polygon { heart; depth: .2 }`. Rows inside the body move the outline
-in 2D and the polygon's own rows move it in 3D, except `points: n`,
-which resamples the outline as in `@shape`. `lathe` turns the right
-half of the same outline, where `x` is 0 or more, around `y`:
-`lathe { vase }` is a vase.
-
-**Camera.** At the top, `view: turn tilt` turns the camera around `y`
-and tilts it, in degrees, and `perspective: d` sets its distance, 2 by
-default or `none` for a parallel view. The camera fits the model, a
-moving one as it is now and over its first 2π seconds, so it holds
-still while the model or view moves: `view: 30t` spins it in place. An
-animated scene draws best in `@content`.
+`@shape`, `@plot`, `@tile` and `@svg-polygon` read this body as 2D
+outlines, and `@scene` as a 3D model. A row is a command, an attribute
+of its shape, or else a variable. `kind#id` keeps a shape under a
+name, and `#id` alone draws it. The id goes right after the name,
+before or after a count; a space before `#` starts a new shape, so
+`#knob #knob { rotate: 90 }` draws two. The parts of `move` and
+`scale` split at spaces or commas, and an operator keeps its operands:
+`move: k * .5 0` and `move: .5 -.25` have two parts each.
 
 ### 9.3 Patterns
 
@@ -821,104 +507,25 @@ name is a variable, declared and typed by its first assignment:
 numbers become floats, and a color is a `vec3`, or a `vec4` with
 alpha. Undeclared, invalid and `cssd…` names are reported (§11).
 
-**Blocks.** A `match` block runs where its test holds. `match { … }`
-holds arms, each a test and a body, and runs the first whose test
-holds, or a last `else { … }` arm when none does. Blocks nest, each
-with its own scope. In a value, `match(t1, v1, t2, v2, …, else)` gives
-the value after the first test that holds.
-
-**Output.** `fill` is a CSS color, an expression, or a list whose
-channels add up to three or four (`x / X, y / Y, .5`, `red, .5`); the
-last one wins. After the body the cell is masked by `shape`, a distance
-from the center antialiased at half of `size`: `circle`, `square`,
-`diamond`, `none`, or an expression in `du` and `dv`. Setting only
-`size` masks with a square.
-
 **Expressions** use GLSL syntax, not §8: `^` is bitwise xor, `**` is
 power, and the logic words are `and`, `or` and `not`; for xor, compare
-two conditions, `a < .5 != b < .5`. GLSL's `pow` is undefined for a
-negative base, so whole exponents from 2 to 4 multiply instead. There
-are no units, `var()` or `?:`. Swizzles work on `vec2`, `vec3`, `vec4`
-and `mat2`. A color name or `#rgb` is a `vec3`, `#rgba` a `vec4`:
-`mix(red, #00f, du + .5)`. A number directly followed by a name, a call
-or `(` multiplies (`2t`, `2sin(t)`, `2(t + 1)`); other values side by
-side, including a number and a value with a space between, do not
-multiply and are reported: `2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. As in
-§8, `**` binds before the product and a sign: `-x ** 2` is `-(x ** 2)`,
-`2x ** 2` is `2 * x ** 2`. Inside
-call parentheses a space separates arguments like a comma
-(`hsl(h .75 .65)`), except in `ramp()` stops.
+two conditions, `a < .5 != b < .5`. There are no units, `var()` or
+`?:`. Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`. A color name
+or `#rgb` is a `vec3`, `#rgba` a `vec4`: `mix(red, #00f, du + .5)`.
 
-**Variables** are the cell names of §8 except `z` and `Z`, plus:
-
-| Name       | Value                                                |
-| ---------- | ---------------------------------------------------- |
-| `du`, `dv` | position inside the cell, −0.5 to 0.5, `dv` downward |
-| `uv`       | position in the whole pattern, 0 to 1, `uv.y` upward |
-| `pos`      | centered and aspect-correct, `pos.y` upward          |
-| `t`        | time in seconds; reading it animates the pattern     |
-| `size`     | the current `size`, `1` until set                    |
-
-Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
-address every pixel. An animated pattern in `@content` draws each
-frame straight to a canvas; elsewhere it is re-encoded as an image
-every frame, several times slower.
+A number directly followed by a name, a call or `(` multiplies (`2t`,
+`2sin(t)`, `2(t + 1)`). Other values side by side, including a number
+and a value with a space between, do not multiply and are reported:
+`2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. As in §8, `**` binds before the
+product and a sign: `-x ** 2` is `-(x ** 2)`, `2x ** 2` is
+`2 * x ** 2`. Inside call parentheses a space separates arguments like
+a comma (`hsl(h .75 .65)`), except in `ramp()` stops.
 
 **`$name`** inserts the text of the cell's custom property `--name`
 anywhere in the body but its comments, when the pattern is generated:
 `--k: @i` gives each cell its own value, and `--n: 72` can be a
 `repeat` count. `$a-b` reads `--a-b` if it is defined and subtracts
 otherwise. An undefined name skips the pattern and is reported (§11).
-
-**Functions.** GLSL, plus `pick(k: …)`, `ramp`, `rand`, `noise`, `fbm`,
-`voronoi`, `hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`,
-`escape`, `spiral` and `dither`. A point is one `vec2` or two floats:
-`fbm(p)`, `ngon(p, 6)`.
-
-- `escape` runs 96 steps with a bailout radius of 16.
-- `box(p, b)` is the signed distance to a box of half size `b`, a
-  `vec2` or one float; `segment(p, a, b)` is the distance to the
-  segment from `a` to `b`.
-- `shape(d, size)` is the mask that `shape: d; size: size` would
-  apply, 1 inside and 0 outside, for layering:
-  `fill: mix(bg, red, shape(d, .6))`. `shape(abs(d), w)` is a stroke
-  of width `w` along `d = 0`.
-- `rand()` without arguments is a number from 0 to 1 that holds for the
-  cell and the `repeat` step and differs at each place it is written:
-  `w: mix(.3, .5, rand())`.
-- `rand`, `noise`, `fbm` and `voronoi` follow the doodle's seed, so
-  another seed gives another pattern.
-- `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient,
-  a color or number, then an optional number position after a space
-  (`#f80 .5`). The value holds below the first stop and above the
-  last. The first position defaults to 0 and the last to 1, missing
-  ones spread evenly, and a position never goes back; a repeated
-  position is a hard edge, antialiased over a pixel:
-  `fill: ramp(dr, #f99a53 .28, #006b50 .28, #00055f .83)`.
-
-**Textures.** A top-level `texture…` block, named as in §9.4, holds a
-doodle rendered at the pattern's size. It sees the cell's custom
-properties, its own declarations winning, and a body of only `$name`
-draws the doodle stored in `--name: @doodle(…)`. The last block of
-a name wins. `texture(name, p)` samples it at `p` from 0 to 1 as a
-`vec4`, wrapping past the edges; `texture(texture_0, uv)` draws it
-unchanged.
-
-```css
-@pattern(
-  texture_0 { background: linear-gradient(@r(360deg), @stripe(red, gold)); }
-  r: length(pos);
-  s: 3atan(pos.y, pos.x) + 8log(r) - 2t;
-  fill: texture(texture_0, .5 + r * vec2(cos(s), sin(s)));
-)
-```
-
-**`repeat(n [as i] [, stop …])`** runs its body `n` times, with `i`
-counting from zero. `n` is a whole number, or a name declared as one
-and never changed: `n: 72; repeat(n as i) { y: i / n; }`. The loop
-ends early once every stop expression holds. Counts over 1024, nested
-products over 65536 and invalid counts skip the block (§11). `fill`,
-`shape`, `size` and `grid` are not allowed inside it.
 
 ### 9.4 Shaders
 
@@ -939,19 +546,11 @@ section      = ( 'fragment' | 'vertex' ) '{' glsl '}'
 texture-name = 'texture' { ASCII-letter | digit | '_' }
 ```
 
-The body is plain GLSL fragment source or a list of named sections. A
-`texture…` section holds a doodle rendered to an image and bound as
-the sampler of that name; like `@doodle(…)`, it sees the cell's custom
-properties. `//` comments are removed, and `#define` lines stay on
-their own line. The fragment is compiled with `precision highp float`
-unless it declares its own. `pos` is centered and aspect-correct: the
-canvas's short axis is −0.5 to 0.5, and `pos.y` is upward.
-
-`$name` works as in `@pattern`, an undefined name skipping the shader:
-`--fragment: @raw(...)` can hold GLSL, `--speed: @r(1, 3)` can feed an
-expression, and a section of only `$name` draws the doodle stored in
-`--name: @doodle(...)`. Text stored in a variable is one line, so keep
-`//` comments and `#` directives in the section itself.
+The body is plain GLSL fragment source or a list of named sections.
+`//` comments are removed, and `#define` lines stay on their own line.
+`$name` works as in `@pattern`, an undefined name skipping the shader.
+Text stored in a variable is one line, so keep `//` comments and `#`
+directives in the section itself.
 
 ## 10. Directive values
 
@@ -963,35 +562,27 @@ expression, and a section of only `$name` draws the doodle stored in
 
 ```
 grid-value = { flag } grid { flag | modifier }
-grid       = number [ sep number [ sep number ] ]
+grid       = number [ sep number [ sep number ] ]   columns, rows, depth
 sep        = 'x' | 'X' | ',' | '，'
 flag       = 'row' | 'col' | 'p3d' | 'noclip' | 'border' [ ':' color ]
-modifier   = '/' size [ '/' fill ] | '+' value | '~' value
-           | '*' [ 'h' ] value | '^' value | '∆' value | '_' value
-           | '|' value | 'ß' value
+modifier   = '/' size [ '/' fill ]                  @size, then a fill
+           | '+' value                              scale
+           | '~' value                              translate
+           | '*' value                              rotate
+           | '*h' value                             hue-rotate
+           | '^' value                              enlarge
+           | '∆' value                              perspective
+           | '_' value                              gap, as @gap
+           | '|' value                              backdrop-filter
+           | 'ß' value                              border
 ```
 
-The numbers are columns, rows and depth. The element's `grid`
-attribute and the `grid:` of a `@pattern` read the same rule.
-
-| Modifier            | Effect                                |
-| ------------------- | ------------------------------------- |
-| `/ size [ / fill ]` | `@size`, then a fill; at most two `/` |
-| `+ value`           | scale                                 |
-| `~ value`           | translate                             |
-| `* value`           | rotate                                |
-| `*h value`          | hue-rotate                            |
-| `^ value`           | enlarge                               |
-| `∆ value`           | perspective                           |
-| `_ value`           | gap, as `@gap`                        |
-| `\| value`          | backdrop-filter                       |
-| `ß value`           | border                                |
-
-A modifier's value runs to the next modifier symbol, spaces included.
-Flags are whole words, case-insensitive, allowed anywhere; `border` is
-shorthand for `ß 1px solid`, and `border:red` sets the color; the
-dimensions are the first item that is not a flag. A modifier written
-before the dimensions swallows them.
+The element's `grid` attribute and the `grid:` of a `@pattern` read
+the same rule. A modifier's value runs to the next modifier symbol,
+spaces included. Flags are whole words, case-insensitive, allowed
+anywhere; `border` is shorthand for `ß 1px solid`, and `border:red`
+sets the color. The dimensions are the first item that is not a flag,
+so a modifier written before them swallows them.
 
 ### @size
 
@@ -1012,8 +603,8 @@ is given.
 the gap, written like a border shorthand: a bare number gets `px`, a
 missing style is `solid`, a rule with no width fills its gap, and with
 no gap given the gap takes the rule's width. `@grid`'s `ß` modifier
-completes a border shorthand the same way, and also gives a lone color
-a `1px` width.
+completes a border the same way, and also gives a lone color a `1px`
+width.
 
 `@place` reads `left`, `right`, `top` and `bottom` as `0%` or `100%`
 on their axis and `center` as `50%`; the remaining values fill x, then
