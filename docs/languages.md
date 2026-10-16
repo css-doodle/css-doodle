@@ -210,7 +210,8 @@ come out beveled.
 **`@plot` and `@tile`.** `@plot` spreads its cells along the outline,
 over the contours by length, and reads only the points, ignoring
 `fill-rule`, `frame`, `round` and `grow`. `@tile`, `@plot.scatter`,
-`@plot.hex` and `@plot.grid` fill the region, holes included.
+`@plot.hex`, `@plot.grid` and `@plot.penrose` fill the region, holes
+included.
 
 **Noise.** `@R.t(from, to)` writes a closed noise curve in `t` for one
 cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`, following the
@@ -255,13 +256,14 @@ its kind; pieces made at the corners take the next kind up, and those
 made along the sides by `e`, `b` and `s` the one after. `d` makes
 every piece kind 1.
 
-`@plot.hex(…)` and `@plot.grid(…)` give points instead of pieces, one per cell like `@plot.scatter(…)`: the centers of
+`@plot.hex(…)`, `@plot.grid(…)` and `@plot.penrose(…)` give points instead of pieces, one per cell like `@plot.scatter(…)`: the centers of
 that lattice's pieces that sit inside the region, clear of its
 outline, as many as the grid allows, so a `k×k` grid in a `square`
 lands on the cell centers. A cell past them gets no point, and
 `@place` hides it. `jitter`, `shift`, `op` and `star` move the points,
 `@plot.hex(…; op: d)` a honeycomb; `gap`, `round` and `edge` change
-nothing.
+nothing. Penrose points sit at the rhombs' centers, five-fold about the
+middle and unevenly spaced, so they read best with a few hundred cells.
 
 ### @scene
 

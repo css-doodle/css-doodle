@@ -316,7 +316,7 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
     assert.ok(performance.now() - start < 500);
 });
 
-test('@plot.hex, @plot.grid: lattice points inside the shape, as many as the grid allows', () => {
+test('@plot.hex, @plot.grid, @plot.penrose: lattice points inside the shape, as many as the grid allows', () => {
     let env = { context: {}, extra: [] };
     // the step is bisected, so to a few millionths
     let near = (a, b) => Math.abs(a - b) < 1e-4;
@@ -347,6 +347,13 @@ test('@plot.hex, @plot.grid: lattice points inside the shape, as many as the gri
     assert.equal(near3(dots(Function.plot.hex, 'circle', 100)), 6);
     // where six pieces meet at the centre and none fit alone, the first that fit are cut to the count
     assert.equal(dots(Function.plot.hex, 'circle; op: d', 4).length, 4);
+    // penrose: rhombs' centres, five-fold in a circle as no lattice can be, inside the shape
+    let turned = ([x, y]) => [50 + (x - 50) * Math.cos(.4 * Math.PI) - (y - 50) * Math.sin(.4 * Math.PI), 50 + (x - 50) * Math.sin(.4 * Math.PI) + (y - 50) * Math.cos(.4 * Math.PI)];
+    let fivefold = list => list.every(p => list.some(q => Math.hypot(q[0] - turned(p)[0], q[1] - turned(p)[1]) < 1e-3));
+    assert.ok(fivefold(dots(Function.plot.penrose, 'circle', 100)) && !fivefold(dots(Function.plot.hex, 'circle', 100)));
+    let penrose = dots(Function.plot.penrose, 'heart', 100);
+    assert.ok(penrose.length > 90 && penrose.every(p => inside(outline, p)), penrose.length);
+    assert.equal(dots(Function.plot.penrose, 'circle', 1).length, 1);
     // cells past the points a lattice fits get none
     let some = all(Function.plot.hex, 'square', 100);
     assert.ok(some.includes('') && some.indexOf('') == some.filter(Boolean).length);

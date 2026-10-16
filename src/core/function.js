@@ -736,7 +736,7 @@ Function.shape = shaped(shapePolygon);
 
 Function.plot = createPlot(false);
 Function.Plot = createPlot(true);
-for (let kind of ['scatter', 'hex', 'grid']) {
+for (let kind of ['scatter', 'hex', 'grid', 'penrose']) {
     Function.plot[kind] = createPlot(false, kind);
     Function.Plot[kind] = createPlot(true, kind);
 }
