@@ -373,14 +373,14 @@ test('problems are reported through the warn callback', () => {
     });
     assert.deepEqual(warned('g { draw: 2s }'), {
         output: '<svg><g/></svg>',
-        warnings: ['draw: <g> has no path length to draw'],
+        warnings: ['draw: <g> has no path'],
     });
     assert.deepEqual(warned('circle { animate r: 1; 5 }'), {
         output: '<svg><circle><animate attributeName="r" values="1;5"/></circle></svg>',
-        warnings: ['animate r: needs a duration after /, as in `/ 2s`'],
+        warnings: ['animate r: needs a duration after /'],
     });
     assert.deepEqual(warned('circle { filter: defs { circle {} rect {} } }').warnings,
-        ['filter: an inline defs must hold exactly one element']);
+        ['filter: inline defs needs one element']);
     assert.deepEqual(warned('path { draw: 2s; animate r: 1 / 1s }').warnings, []);
     assert.deepEqual(warned('circle { animate r: 1; 5 / 2s bounce }'), {
         output: '<svg><circle><animate attributeName="r" values="1;5" dur="2s"/></circle></svg>',

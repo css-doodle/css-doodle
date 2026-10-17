@@ -167,7 +167,7 @@ function compile(value, scope, ctx, expect = null) {
     let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim());
     if (!items.length) return null;
     if (items.some(v => !v)) {
-        ctx.warn('a list value has an empty item');
+        ctx.warn('empty list item');
         return null;
     }
     if (items.length === 1) {
@@ -183,7 +183,7 @@ function compile(value, scope, ctx, expect = null) {
     });
     let n = parts.reduce((sum, p) => sum + p.width, 0);
     if (n !== 3 && n !== 4) {
-        ctx.warn(`a list value needs 3 or 4 channels, not ${n}`);
+        ctx.warn(`a list needs 3 or 4 channels, not ${n}`);
         return null;
     }
     return parts.every(p => p.code) ? vector(n, parts.map(p => p.code)) : null;
@@ -207,17 +207,17 @@ function randAt(scope, ctx) {
 
 function generateStatement(name, value, scope, ctx) {
     if (!NAME.test(name)) {
-        ctx.warn(`"${name}" is not a valid name`);
+        ctx.warn(`invalid name "${name}"`);
         return '';
     }
     if (name.startsWith('g_')) {
-        ctx.warn(`names starting with g_ are reserved`);
+        ctx.warn('g_ names are reserved');
         return '';
     }
     let id = scope.ids[name];
     if (id) {
         if (ctx.readonly.has(id)) {
-            ctx.warn(`repeat() index ${name} is read-only`);
+            ctx.warn(`${name} is read-only`);
             return '';
         }
         ctx.counts.delete(id);
@@ -285,11 +285,11 @@ function generateRepeat(token, scope, ctx, opts) {
     let m = head.match(/^(\w+)(?:\s+as\s+(\S+))?$/);
     let times = m && (/^\d+$/.test(m[1]) ? Number(m[1]) : ctx.counts.get(scope.ids[m[1]]));
     let work = (opts.work || 1) * times;
-    let error = !m ? 'repeat() needs a step count'
-        : times === undefined ? `repeat() count ${m[1]} must be a whole number, or a name set to one and never changed`
-        : times > MAX_REPEAT ? `repeat() step count cannot exceed ${MAX_REPEAT}`
-        : work > MAX_REPEAT_WORK ? `nested repeat() work cannot exceed ${MAX_REPEAT_WORK}`
-        : m[2] && !NAME.test(m[2]) ? `"${m[2]}" is not a valid name`
+    let error = !m ? 'repeat() needs a count'
+        : times === undefined ? `repeat() count ${m[1]} must be a fixed whole number`
+        : times > MAX_REPEAT ? `repeat() count exceeds ${MAX_REPEAT}`
+        : work > MAX_REPEAT_WORK ? `nested repeat() exceeds ${MAX_REPEAT_WORK} steps`
+        : m[2] && !NAME.test(m[2]) ? `invalid name "${m[2]}"`
         : '';
     if (error) {
         ctx.warn(error);
@@ -303,7 +303,7 @@ function generateRepeat(token, scope, ctx, opts) {
     inner.key = scope.key ? `(${scope.key} * ${float(times)} + ${counter})` : counter;
     let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work, branched: opts.branched || stops.length > 0 });
     let stop = stops.map(s => expr(s, inner, ctx).code('bool')).filter(Boolean).join(' && ');
-    if (stop) checkDerivatives(body, 'in a repeat() that stops early', ctx, opts);
+    if (stop) checkDerivatives(body, 'a repeat() that stops', ctx, opts);
     return glsl`
         for (float ${counter} = 0.0; ${counter} < ${float(times)}; ${counter}++) {
           ${body}
@@ -316,20 +316,23 @@ function generateMatch(arms, scope, ctx, opts) {
     let out = '';
     for (let [k, { type, test, value }] of arms.entries()) {
         let isElse = test === 'else';
-        if (type !== 'arm' || !test) ctx.warn('match {} takes only arms with a test');
-        else if (isElse && k < arms.length - 1) ctx.warn('else must be the last arm');
+        if (type !== 'arm' || !test) ctx.warn('match arms need a test');
+        else if (isElse && k < arms.length - 1) ctx.warn('else must be last');
         else if (isElse || (test = expr(test, scope, ctx).code('bool'))) {
             let body = generateBody(value, newScope(scope), ctx, { ...opts, branched: true });
             out += (out ? ' else ' : '') + (isElse ? '' : `if (${test}) `) + `{\n${body}}`;
         }
     }
-    checkDerivatives(out, 'inside match', ctx, opts);
+    checkDerivatives(out, 'match', ctx, opts);
     return out && out + '\n';
 }
 
+// code reading the slope between neighbouring pixels
+export const DERIVATIVES = /\b(fwidth|dFdx|dFdy|g_shape)\(/;
+
 function checkDerivatives(code, where, ctx, opts) {
-    if (!opts.branched && /\b(fwidth|dFdx|dFdy|g_shape)\(/.test(code)) {
-        ctx.warn(`ramp(), shape(), fwidth(), dFdx() and dFdy() are unreliable ${where}; compute them before it`);
+    if (!opts.branched && DERIVATIVES.test(code)) {
+        ctx.warn(`compute ramp(), shape() and fwidth() before ${where}`);
     }
 }
 
@@ -344,18 +347,18 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     for (let t of tokens) {
         if (t.type === 'statement') {
             if (t.name === 'grid') {
-                if (!top) ctx.warn('grid must be at the top level');
+                if (!top) ctx.warn('grid must be top level');
             } else if (!OUTPUT_GENERATORS[t.name]) {
                 out += generateStatement(t.name, t.value, scope, ctx);
             } else if (loop) {
-                ctx.warn(`repeat() does not allow ${t.name}`);
+                ctx.warn(`no ${t.name} in repeat()`);
             } else {
                 out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx);
             }
         } else if (t.type === 'text') {
-            ctx.warn(`"${t.value}" is not a statement; write name: value`);
+            ctx.warn(`write "${t.value}" as name: value`);
         } else if (t.type === 'texture') {
-            if (!top) ctx.warn('texture must be at the top level');
+            if (!top) ctx.warn('texture must be top level');
         } else if (t.name === 'repeat') {
             out += generateRepeat(t, scope, ctx, opts);
         } else if (t.arms) {
@@ -368,7 +371,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
                 ctx.warn('match() needs one expression');
             }
         } else {
-            ctx.warn(t.name === 'else' ? 'else is an arm: match { test { … } else { … } }' : `unknown block ${t.name}`);
+            ctx.warn(t.name === 'else' ? 'else goes in match { }' : `unknown block ${t.name}`);
         }
     }
     return out;
@@ -407,7 +410,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
             if (!known.has(name)) {
                 let rgba = extra.getRgbaColor(name);
                 known.set(name, rgba && channels(rgba));
-                if (!rgba) warn(`unknown name ${name}` + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; @pattern has no units, angles are radians' : ''));
+                if (!rgba) warn(`unknown name ${name}` + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : ''));
             }
             return known.get(name);
         },

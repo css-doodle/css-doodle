@@ -517,7 +517,7 @@ test('a ; inside an open paren stays in the value, as the browser reads it', () 
     // a value that never closes its paren runs to the block end and warns
     let parsed = parseCss(`width: calc(1px; height: 2px;`);
     assert.equal(parsed.length, 1);
-    assert.equal(parsed.warnings[0].message, 'unclosed ( in value');
+    assert.equal(parsed.warnings[0].message, 'unclosed (');
 });
 
 test('a < inside an open paren stays in the value', () => {
@@ -546,8 +546,8 @@ test('unbalanced parens, quotes and braces warn instead of silently dropping the
     const messages = code => parseCss(code).warnings.map(w => w.message);
     assert.deepEqual(messages(`@nth(1 { color: red; } width: 2px;`), ['unbalanced ( or quote in "@nth(1{color:red;}width:2px;"']);
     assert.deepEqual(messages(`:a { :b { x: y`), ['unclosed {', 'unclosed {']);
-    assert.deepEqual(messages(`content: "oops; color: red;`), ['unclosed quote in value']);
-    assert.deepEqual(messages(`background: @pattern(fill: red`), ['unterminated argument list']);
+    assert.deepEqual(messages(`content: "oops; color: red;`), ['unclosed quote']);
+    assert.deepEqual(messages(`background: @pattern(fill: red`), ['unclosed (']);
 });
 
 test('π inside a quoted string stays as written', () => {
@@ -613,7 +613,7 @@ test('a user function parameter can have a default', () => {
 
 test('a user function call with too many or too few arguments warns', () => {
     let warnings = code => parseCss(code).warnings.map(w => w.message);
-    assert.deepEqual(warnings(`--f(k): $(k * 10); a: $f(1, 2, 3);`), ['$f() takes 1 argument, got 3']);
+    assert.deepEqual(warnings(`--f(k): $(k * 10); a: $f(1, 2, 3);`), ['$f(k): too many args']);
     assert.deepEqual(warnings(`--f(a, b, c = 3): $(a + b); a: $f(1);`), ['$f() is missing b']);
     assert.deepEqual(warnings(`--f(a, b = 2): [$a|$b]; --g(): red; a: $f(1); b: $f(, 2); c: $f(1, ); d: $g();`), []);
 });
@@ -801,8 +801,8 @@ test('in @pattern and @scene a parameter reads bare, as a name of the function\'
 test('a value function cannot run in a repeat() head or a match arm test', () => {
     let code = `--f(): { a: 1; result: a; }; @content: @pattern(repeat(4, $f() > 1) { x: 1; } match { $f() > 0 { fill: 1; } });`;
     assert.deepEqual(parseCss(code).warnings.map(w => w.message), [
-        '$f() runs statements, so it cannot be called in a repeat() head',
-        '$f() runs statements, so it cannot be called in a match arm test',
+        '$f() runs statements; use it as one',
+        '$f() runs statements; use it as one',
     ]);
 });
 

@@ -26,7 +26,7 @@ function compare(rule, value) {
 function matchAny(value, exprs, env) {
     return exprs.some(expr => {
         let matched = compare(expr, value);
-        if (matched === undefined) env.rules.warn(`invalid an+b expression ${expr}`);
+        if (matched === undefined) env.rules.warn(`invalid an+b ${expr}`);
         return matched;
     });
 }

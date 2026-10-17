@@ -259,7 +259,7 @@ function generate(token, element, parent, root, warn) {
             if (value?.type === 'block') {
                 let id = generate(token.value, root, token, root, warn);
                 if (isNil(id)) {
-                    warn(`${token.name}: an inline defs must hold exactly one element`);
+                    warn(`${token.name}: inline defs needs one element`);
                     value = '';
                 } else {
                     value = `url(#${id})`;
@@ -277,7 +277,7 @@ function generate(token, element, parent, root, warn) {
             // `draw: 2s infinite` strokes a shape along its length
             else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
                 if (!isGraphicElement(parent.name)) {
-                    warn(`${keyword}: <${parent.name}> has no path length to draw`);
+                    warn(`${keyword}: <${parent.name}> has no path`);
                 } else {
                     element.attr('stroke-dasharray', 10);
                     element.attr('pathLength', 10);
@@ -286,7 +286,7 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('from', 10);
                     animate.attr('to', 0);
                     if (!timing(animate, value, keyword, warn)) {
-                        warn(`${keyword}: needs a duration, as in \`2s\``);
+                        warn(`${keyword}: needs a duration`);
                     }
                     element.append(animate);
                 }
@@ -314,7 +314,7 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('values', values.join(';'));
                 }
                 if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), `animate ${name}`, warn)) {
-                    warn(`animate ${name}: needs a duration after /, as in \`/ 2s\``);
+                    warn(`animate ${name}: needs a duration after /`);
                 }
                 element.append(animate);
             }

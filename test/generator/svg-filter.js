@@ -151,7 +151,7 @@ test('region shorthand works without filter commands', () => {
 test('malformed regions warn and are dropped; the last valid one wins', () => {
     let { root, warnings } = expand('region: 20px; channels {}');
     assert.equal(root.value.some(token => token.type === 'statement' && token.name === 'region'), false);
-    assert.deepEqual(warnings, ['svg-filter region: invalid value']);
+    assert.deepEqual(warnings, ['invalid svg-filter region']);
 
     ({ root, warnings } = expand('region: 10%; region: 20%; channels {}'));
     assert.deepEqual(root.value.slice(0, 4).map(token => token.value), ['-20%', '-20%', '140%', '140%']);
@@ -159,7 +159,7 @@ test('malformed regions warn and are dropped; the last valid one wins', () => {
 
     ({ root, warnings } = expand('region: 10%; region: nope; channels {}'));
     assert.deepEqual(root.value.slice(0, 4).map(token => token.value), ['-10%', '-10%', '120%', '120%']);
-    assert.deepEqual(warnings, ['svg-filter region: invalid value']);
+    assert.deepEqual(warnings, ['invalid svg-filter region']);
 });
 
 test('commands that depend on frequency warn and are omitted without it', () => {
@@ -195,7 +195,7 @@ test('numOctaves is a positive integer', () => {
 
     ({ root, warnings } = expand('frequency: .1; octave: high;'));
     assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, undefined);
-    assert.deepEqual(warnings, ['svg-filter numOctaves: expected integer']);
+    assert.deepEqual(warnings, ['numOctaves needs an integer']);
 
     ({ root, warnings } = expand('feTurbulence { numOctaves: 2.2; seed: 1 }'));
     assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, '2');

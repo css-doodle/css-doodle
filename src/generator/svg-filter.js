@@ -96,7 +96,7 @@ export function expandFilterShorthands(root, seed, warn, { chainInput = true } =
             found = true;
             let parsed = parseFilterRegion(token.value);
             if (parsed) region = parsed;
-            else warn('svg-filter region: invalid value');
+            else warn('invalid svg-filter region');
             continue;
         }
         if (name && FILTER_COMMANDS.includes(name)) {
@@ -125,7 +125,7 @@ export function expandFilterShorthands(root, seed, warn, { chainInput = true } =
                 t.value = String(Math.max(1, n));
                 return true;
             }
-            warn('svg-filter numOctaves: expected integer');
+            warn('numOctaves needs an integer');
         });
     }
     return root;

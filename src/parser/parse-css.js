@@ -207,10 +207,10 @@ function parseValue(cur, breakOn, custom) {
 
     flush();
     if (paren > 0) {
-        warn(cur.ctx, 'unclosed ( in value', head && head.pos);
+        warn(cur.ctx, 'unclosed (', head && head.pos);
     }
     if (quote) {
-        warn(cur.ctx, 'unclosed quote in value', head && head.pos);
+        warn(cur.ctx, 'unclosed quote', head && head.pos);
     }
     groups.hasFunc = hasFunc;
     return groups;
@@ -521,7 +521,7 @@ function parseArguments(cur, copying, whole, indexed) {
         buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
         last = tok;
     }
-    warn(cur.ctx, 'unterminated argument list', head && head.pos);
+    warn(cur.ctx, 'unclosed (', head && head.pos);
     return { args, end };
 }
 
@@ -636,7 +636,7 @@ function parseDoodleBody(cur, start, name) {
         cur.next();
     }
     if (end === cur.source.length) {
-        warn(cur.ctx, 'unterminated argument list', head && head.pos);
+        warn(cur.ctx, 'unclosed (', head && head.pos);
     }
     if (expand) {
         cut(end);
@@ -1143,7 +1143,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist = null) {
         while (given && !args[given - 1]) given--;
         let missing = params.filter((p, k) => k >= given && !defaults[k]);
         if (given > params.length) {
-            warn(ctx, `$${name}() takes ${params.length} argument${params.length === 1 ? '' : 's'}, got ${given}`);
+            warn(ctx, `$${name}(${params}): too many args`);
         } else if (missing.length) {
             warn(ctx, `$${name}() is missing ${missing.join(', ')}`);
         }
@@ -1157,7 +1157,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist = null) {
         } else if (kind === VALUE) {
             let lead = mode === BODY ? text.slice(head, t.index).trim() : '';
             if (!pending || blocks.at(-1) && !depth || RE_REPEAT_HEAD.test(lead)) {
-                warn(ctx, `$${name}() runs statements, so it cannot be called ${!pending ? 'here' : RE_REPEAT_HEAD.test(lead) ? 'in a repeat() head' : 'in a match arm test'}`);
+                warn(ctx, `$${name}() runs statements; use it as one`);
             } else {
                 let call = valueCall(name, def, args, defs, ctx);
                 ctx.expanded = (ctx.expanded || 0) + call.text.length;

@@ -692,7 +692,7 @@ Function.palette = (_, { seed, rules, host }) => (...args) => {
             read.set(color, host?.getRgbaColor?.(color, 'oklab')?.slice(0, 3).map(v => v.toFixed(2)).join(' ') || '');
         }
         lab = read.get(color);
-        if (!lab) rules.warn(`can't read the color ${color} in @palette()`), color = '';
+        if (!lab) rules.warn(`@palette() can't read ${color}`), color = '';
     }
     return [...palette('palette:' + seed, ~~clamp(calc(n), 1, 256), color, lab)];
 };

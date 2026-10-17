@@ -117,23 +117,23 @@ test('match {} reports misplaced arms and else', () => {
         return [s.slice(s.indexOf('void main()')), messages];
     };
     let [s, messages] = run('match { x > 1 { fill: red } else { fill: 0, 0, 0 } y > 1 { fill: red } }');
-    assert.deepEqual(messages, ['else must be the last arm']);
+    assert.deepEqual(messages, ['else must be last']);
     assert.doesNotMatch(s, /vec3\(0\.0, 0\.0, 0\.0\)/);
     [s, messages] = run('match { x > 1 { fill: red } size: .5; else { fill: red } }');
-    assert.deepEqual(messages, ['match {} takes only arms with a test']);
+    assert.deepEqual(messages, ['match arms need a test']);
     assert.doesNotMatch(s, /size = \.5/);
     [s, messages] = run('match { { fill: red } else { fill: 0, 0, 0 } }');
-    assert.deepEqual(messages, ['match {} takes only arms with a test']);
+    assert.deepEqual(messages, ['match arms need a test']);
     assert.doesNotMatch(s, /if \(/);
     [s, messages] = run('match(x > 1) { fill: red } else { fill: 0, 0, 0 }');
-    assert.deepEqual(messages, ['else is an arm: match { test { … } else { … } }']);
+    assert.deepEqual(messages, ['else goes in match { }']);
     assert.doesNotMatch(s, /else/);
 });
 
 test('a comma list of selectors is reported, not run', () => {
     let messages = [];
     draw('match(x < 3), match(x > 4) { fill: red }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"match(x < 3),match(x > 4) {}" is not a statement; write name: value']);
+    assert.deepEqual(messages, ['write "match(x < 3),match(x > 4) {}" as name: value']);
 });
 
 // --- built-in variables ---
@@ -233,8 +233,8 @@ test('a CSS unit read as a name says that patterns have no units', () => {
     let messages = [];
     draw('fill: sin(90deg) + 2px', extra, m => messages.push(m));
     assert.deepEqual(messages, [
-        'unknown name deg; @pattern has no units, angles are radians',
-        'unknown name px; @pattern has no units, angles are radians',
+        'unknown name deg; no units, angles are radians',
+        'unknown name px; no units, angles are radians',
     ]);
     // a declared variable of that name is just a variable
     messages = [];
@@ -248,7 +248,7 @@ test('a list may hold vectors; its channels add up to 3 or 4', () => {
     assert.equal(color('fill: vec2(du, dv), 0, 1'), 'g_color = vec4(vec2(du, dv), 0.0, 1.0);');
     let messages = [];
     draw('fill: red, 0, 0', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['a list value needs 3 or 4 channels, not 5']);
+    assert.deepEqual(messages, ['a list needs 3 or 4 channels, not 5']);
 });
 
 test('shape() in a value is the mask of the shape and size statements', () => {
@@ -316,25 +316,25 @@ test('a head without a colon is reported, not glued to the statement before it',
     let s = main('fill: red; k = 1; size: k');
     assert.match(s, /g_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);/);
     draw('fill: red; k = 1; size: k', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"k = 1" is not a statement; write name: value', 'unknown name k']);
+    assert.deepEqual(messages, ['write "k = 1" as name: value', 'unknown name k']);
     messages = [];
     draw('fill #fff', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"fill #fff" is not a statement; write name: value']);
+    assert.deepEqual(messages, ['write "fill #fff" as name: value']);
     messages = [];
     draw('match { x > 1 { fill: red } junk; }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['match {} takes only arms with a test']);
+    assert.deepEqual(messages, ['match arms need a test']);
     // a block without a name is skipped whole, what follows it still compiles
     messages = [];
     s = main('2 { fill: x } fill: y');
     assert.match(s, /g_color = vec4\(vec3\(y\), 1\.0\);/);
     draw('match(x > .5) { 3 { size: 1 } fill: y } fill: 1', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"3 {}" is not a statement; write name: value']);
+    assert.deepEqual(messages, ['write "3 {}" as name: value']);
 });
 
 test('a list with an empty item is reported, not shifted', () => {
     let messages = [];
     let s = draw('fill: 1,,0,0', extra, m => messages.push(m)).fragment;
-    assert.deepEqual(messages, ['a list value has an empty item']);
+    assert.deepEqual(messages, ['empty list item']);
     assert.doesNotMatch(s, /g_color = vec4\(vec/);
 });
 
@@ -377,10 +377,10 @@ test('invalid and reserved names are reported', () => {
     let messages = [];
     draw('size-2: 3; g_1: 1; --c: red; repeat(2 as a-b) { } fill: red', extra, m => messages.push(m));
     assert.deepEqual(messages, [
-        '"size-2" is not a valid name',
-        'names starting with g_ are reserved',
-        '"--c" is not a valid name',
-        '"a-b" is not a valid name',
+        'invalid name "size-2"',
+        'g_ names are reserved',
+        'invalid name "--c"',
+        'invalid name "a-b"',
     ]);
 });
 
@@ -398,7 +398,7 @@ test('a variable may hold a CSS color or a channel list', () => {
     assert.equal(color('c: red; fill: c * .5'), 'g_color = vec4((g_1 * .5), 1.0);');
     let messages = [];
     draw('c: 1, 2; fill: red', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['a list value needs 3 or 4 channels, not 2']);
+    assert.deepEqual(messages, ['a list needs 3 or 4 channels, not 2']);
     // a vector keeps its width
     messages = [];
     draw('c: red; c: transparent; fill: c', extra, m => messages.push(m));
@@ -631,7 +631,7 @@ test('repeat without a valid step count is skipped and reported', () => {
     let messages = [];
     let s = draw('zx: 0; repeat(zx > 2) { zx: zx + 1 } fill: hsl(zx, 1, 1)', extra, m => messages.push(m)).fragment;
     s = s.slice(s.indexOf('void main()'));
-    assert.deepEqual(messages, ['repeat() needs a step count']);
+    assert.deepEqual(messages, ['repeat() needs a count']);
     assert.doesNotMatch(s, /for \(float/);
     // the variable keeps its declared value
     assert.match(s, /float g_1 = 0\.0;\s*g_color = vec4\(hsl\(g_1, 1\.0, 1\.0\), 1\.0\);/);
@@ -674,7 +674,7 @@ test('a repeat index shadows an outer variable without mutating it, and is read-
     assert.match(s, /g_color = vec4\(vec3\(g_1, g_2, 0\.0\), 1\.0\);/);
     let messages = [];
     draw('repeat(2 as k) { k: 1 }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['repeat() index k is read-only']);
+    assert.deepEqual(messages, ['k is read-only']);
 });
 
 test('variables may take the names of the shader internals', () => {
@@ -688,21 +688,21 @@ test('repeat reports pattern outputs and allows match blocks in its body', () =>
     let messages = [];
     let s = draw('x: 0; repeat(2) { fill: #000; size: .5; match(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, [
-        'repeat() does not allow fill',
-        'repeat() does not allow size',
+        'no fill in repeat()',
+        'no size in repeat()',
     ]);
     assert.match(s.slice(s.indexOf('void main()')), /for \(float g_2[^}]*if \(\(g_1 < 1\.0\)\) \{\s*g_1 = \(g_1 \+ 1\.0\);\s*\}/);
     messages = [];
     draw('repeat(2) { match(x < 1) { fill: red } }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['repeat() does not allow fill']);
+    assert.deepEqual(messages, ['no fill in repeat()']);
 });
 
 test('repeat enforces count and nested work limits', () => {
     let messages = [];
     let s = draw('repeat(1025) { a: 1 } repeat(512) { repeat(512) { b: 1 } }', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, [
-        'repeat() step count cannot exceed 1024',
-        'nested repeat() work cannot exceed 65536',
+        'repeat() count exceeds 1024',
+        'nested repeat() exceeds 65536 steps',
     ]);
     assert.equal((s.match(/for \(float/g) || []).length, 1);
 });
@@ -713,12 +713,12 @@ test('repeat takes its count from a name set once to a whole number', () => {
         let messages = [];
         let s = draw(code, extra, m => messages.push(m)).fragment;
         let name = code.match(/repeat\((\w+)/)[1];
-        assert.deepEqual(messages, [`repeat() count ${name} must be a whole number, or a name set to one and never changed`], code);
+        assert.deepEqual(messages, [`repeat() count ${name} must be a fixed whole number`], code);
         assert.doesNotMatch(s, /for \(float/, code);
     }
     let messages = [];
     draw('n: 2000; repeat(n) { a: 1 }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['repeat() step count cannot exceed 1024']);
+    assert.deepEqual(messages, ['repeat() count exceeds 1024']);
 });
 
 test('rand() without arguments holds for the cell and the repeat step, and differs per call', () => {
@@ -737,11 +737,11 @@ test('derivatives where only some pixels run the code are reported once per oute
         draw(code, extra, m => messages.push(m));
         return messages;
     };
-    const unreliable = where => [`ramp(), shape(), fwidth(), dFdx() and dFdy() are unreliable ${where}; compute them before it`];
-    assert.deepEqual(warnings('match(du > 0) { c: ramp(du, 0, 1) }'), unreliable('inside match'));
-    assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('inside match'));
-    assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('inside match'));
-    assert.deepEqual(warnings('repeat(4, du > 0) { match(dv > 0) { c: fwidth(du) } }'), unreliable('in a repeat() that stops early'));
+    const unreliable = where => [`compute ramp(), shape() and fwidth() before ${where}`];
+    assert.deepEqual(warnings('match(du > 0) { c: ramp(du, 0, 1) }'), unreliable('match'));
+    assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('match'));
+    assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('match'));
+    assert.deepEqual(warnings('repeat(4, du > 0) { match(dv > 0) { c: fwidth(du) } }'), unreliable('a repeat() that stops'));
     // before the block, in a loop that never stops early, or as the pattern's shape: fine
     assert.deepEqual(warnings('c: ramp(du, 0, 1); match(du > 0) { k: c }'), []);
     assert.deepEqual(warnings('repeat(4) { c: fwidth(du) }'), []);
@@ -890,7 +890,7 @@ test('texture blocks: the last of a name wins, only at the top level', () => {
     let { textures } = draw('texture_0 { background: red } texture_0 { background: blue } fill: texture(texture_0, uv)', extra);
     assert.deepEqual(textures.map(t => t.value), ['background:blue']);
     draw('match(x > 1) { texture_1 { background: red } } fill: 1', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['texture must be at the top level']);
+    assert.deepEqual(messages, ['texture must be top level']);
 });
 
 test('box() and segment() are floats a fill or shape can read', () => {

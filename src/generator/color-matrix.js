@@ -28,7 +28,7 @@ export function expandColorMatrices(root, warn = () => {}) {
             if (row) {
                 rows[channel] = row;
             } else {
-                warn(`channels ${t.name}: invalid expression "${t.value}"; keeping identity`);
+                warn(`channels ${t.name}: invalid "${t.value}"`);
             }
         }
         token.name = 'feColorMatrix';

@@ -2,7 +2,7 @@ import { readShapes, degrees } from '../parser/parse-shape-commands.js';
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
-import { HELPERS } from './pattern.js';
+import { HELPERS, DERIVATIVES } from './pattern.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const NAME = /^[a-zA-Z_]\w*$/;
@@ -115,20 +115,20 @@ function checkAll(node, warn, unread, code) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
                 let m = r.name !== 'fill' && textOf(r.value).match(/\b(normal|light)\b/);
-                if (m) warn(`only fill can read ${m[1]}, not ${r.name}`);
+                if (m) warn(`${r.name} cannot read ${m[1]}`);
                 continue;
             }
             let valid = NAME.test(r.name);
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
-            warn(!valid ? `"${r.name}" is not a valid name` : top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
+            warn(!valid ? `invalid name "${r.name}"` : top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && node.children.length) {
         node.rings = outline(node, warn).map(ring => ring.map(xy => xy.map(float)));
         node.children = [];
     }
-    if (SHAPES[node.name] && node.children.length) warn(`${node.name} cannot hold shapes; put them in a union`);
+    if (SHAPES[node.name] && node.children.length) warn(`put shapes in a union, not ${node.name}`);
     for (let c of node.copies || node.children) checkAll(c, warn, unread, code);
 }
 
@@ -143,8 +143,8 @@ export default function drawScene(code, extra, report = () => {}) {
     let unread = new Set();
     for (let node of [root, ...tree.unused]) checkAll(node, warn, unread, code);
     let vars = node => node.rows.filter(r => isVar(node, r.name) && !unread.has(r));
-    if (!root.children.length) warn('@scene draws nothing: add a shape such as sphere { r: .3 }');
-    if (/\bcalc\(/.test(code)) warn('@scene does math without calc(): write (t * 30deg)');
+    if (!root.children.length) warn('@scene has no shapes');
+    if (/\bcalc\(/.test(code)) warn('no calc() in @scene; use ( )');
 
     // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
     let arrays = new Map();
@@ -216,6 +216,15 @@ export default function drawScene(code, extra, report = () => {}) {
             : `${dist ? 'g_smin' : 'g_op'}(${a}, ${b}, ${k}, ${signs})`};\n`;
         let row = (node, name) => node.rows.findLast(r => r.name === name)?.value || [];
         let first = (tokens, p, angle) => numbers(tokens, p, angle)[0] || '0.0';
+        // a part reading ctx.cap or more changes nothing, so a costly shape may stop at a bound that reaches it
+        let below = a => ctx.cap ? `min(${ctx.cap}, ${a})` : a;
+        let within = (cap, f) => {
+            let saved = ctx.cap;
+            ctx.cap = cap;
+            let r = f();
+            ctx.cap = saved;
+            return r;
+        };
 
         function generate(node, p) {
             let commands = node => node.rows.filter(r => COMMANDS.has(r.name));
@@ -233,7 +242,8 @@ export default function drawScene(code, extra, report = () => {}) {
                 ctx.key = `(${key} * 31.0 + ${n})`;
                 ctx.sites = start;
                 scope(node, p);
-                let c = chain(node, commands(node), p), k = first(row(node, 'smooth'), p);
+                let c = within(!row(node, 'smooth').length && below(r), () => chain(node, commands(node), p));
+                let k = first(row(node, 'smooth'), p);
                 out += join(r, c, k);
                 end = Math.max(end, ctx.sites);
                 return k;
@@ -277,9 +287,10 @@ export default function drawScene(code, extra, report = () => {}) {
                     return r;
                 }
                 out += `vec3 ${q} = ${p} / ${s};\n`;
-                r = chain(node, inner, q);
                 // a negative scale mirrors
-                out += `${r}${W} *= min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)));\n`;
+                let f = `min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)))`;
+                r = within(ctx.cap && `${ctx.cap} / ${f}`, () => chain(node, inner, q));
+                out += `${r}${W} *= ${f};\n`;
                 return r;
             } else if (m.name === 'rotate') {
                 let axis = AXES.z, angle = '0.0';
@@ -309,7 +320,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     out += `vec3 ${c} = ${p};\n`;
                     axes.forEach((a, j) => { if (k >> j & 1) out += `${c}.${a} = -${c}.${a};\n`; });
                     ctx.sites = start;
-                    let d = chain(node, inner, c);
+                    let d = within(below(r), () => chain(node, inner, c));
                     out += join(r, d, '0.0');
                     end = Math.max(end, ctx.sites);
                 }
@@ -328,7 +339,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 out += `vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -radians(${a}) * ${p}.y);\n`;
             } else if (m.name === 'repeat') {
                 let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
-                if (n) warn('repeat takes a spacing only; for a counted grid write box*5x5');
+                if (n) warn('repeat takes no count; write box*5x5');
                 let [on, base, dir, id, k, key] = [next(), next(), next(), next(), next(), ctx.key];
                 r = next();
                 out += glsl`
@@ -343,12 +354,13 @@ export default function drawScene(code, extra, report = () => {}) {
                         vec3 ${q} = ${p} - ${vec3(s)} * ${id};
                 ` + '\n';
                 ctx.key = `(${key} + dot(${id}, vec3(1.0, 57.0, 113.0)))`;
-                let c = chain(node, inner, q);
+                let c = within(below(r), () => chain(node, inner, q));
                 ctx.key = key;
                 out += join(r, c, '0.0') + '}\n';
                 return r;
             } else {
-                r = chain(node, inner, p);
+                // a frame only adds the inside back, while a grow subtracts a value read after the shape
+                r = within(m.name === 'frame' && ctx.cap, () => chain(node, inner, p));
                 let v = first(m.value, p);
                 out += m.name === 'grow' ? `${r}${W} -= ${v};\n` : `${r}${W} = max(${r}${W}, -${r}${W} - ${v});\n`;
                 return r;
@@ -371,10 +383,12 @@ export default function drawScene(code, extra, report = () => {}) {
         function shape(node, p) {
             let r = next();
             if (GROUPS[node.name]) {
-                let k = first(row(node, 'smooth'), p), a, cut = ctx.cut;
-                ctx.cut ||= node.name === 'intersect';
+                let k = first(row(node, 'smooth'), p), a, cut = ctx.cut, name = node.name;
+                ctx.cut ||= name === 'intersect';
                 for (let child of node.children) {
-                    let b = generate(child, p);
+                    // the first part of a subtract and every part of an intersect only raise the group
+                    let cap = k !== '0.0' ? null : !a || name === 'intersect' ? ctx.cap : name === 'union' ? below(a) : `-${a}`;
+                    let b = within(cap, () => generate(child, p));
                     if (a) out += join(a, b, k, GROUPS[node.name]);
                     a ??= b;
                 }
@@ -403,7 +417,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 let value = textOf(row(node, 'd')), start = ctx.sites;
                 let { type, code } = compile(value || '1e5', p);
                 let ok = value && /^(float|int)$/.test(type);
-                if (!ok) warn('sdf needs a distance in d');
+                if (!ok) warn('sdf needs d');
                 d = ok ? code('float') : '1e5';
                 // a distance written at part strength, like `* .5`, reads at full strength so it hides no other part;
                 // inside an intersect it may only shrink the fit, so it stays as written
@@ -419,7 +433,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 // in the xy plane, `depth` thick along z, or a lathe's outline turned around y
                 let rings = node.rings || [itemsOf(row(node, 'points')).map(g => numbers(g, p))], lathe = name === 'lathe';
                 if (!rings.length || rings.some(ring => ring.length < 3)) {
-                    warn(`${name} needs points: x y, x y, x y, …`);
+                    warn(`${name} needs points: x y, …`);
                     d = '1e5';
                 } else {
                     let all = rings.flatMap(ring => [...ring, ring[0]]), n = all.length, at = 0, v;
@@ -436,7 +450,9 @@ export default function drawScene(code, extra, report = () => {}) {
                             if (g_cross(${q}, a, ${v}[i + 1])) ${s} = -${s};
                         }
                     ` + '\n';
-                    out += `vec2 ${q} = ${lathe ? `vec2(length(${p}.xz), ${p}.y)` : `${p}.xy`};\nfloat ${e} = 1e30, ${s} = 1.0;\n`;
+                    out += `vec2 ${q} = ${lathe ? `vec2(length(${p}.xz), ${p}.y)` : `${p}.xy`};\n`;
+                    let mark = out.length, depth = lathe ? '' : get('depth')[0] || '0.1';
+                    out += `float ${e} = 1e30, ${s} = 1.0;\n`;
                     if (!plain || n < 64) {
                         for (let ring of rings) {
                             out += walk(at, at + ring.length);
@@ -473,9 +489,17 @@ export default function drawScene(code, extra, report = () => {}) {
                     if (lathe) d = `${s} * sqrt(${e})`;
                     else {
                         out += glsl`
-                            vec2 ${w} = vec2(${s} * sqrt(${e}) + ${k}, abs(${p}.z) - ${get('depth')[0] || '0.1'} * 0.5 + ${k});
+                            vec2 ${w} = vec2(${s} * sqrt(${e}) + ${k}, abs(${p}.z) - ${depth} * 0.5 + ${k});
                         ` + '\n';
                         d = `min(max(${w}.x, ${w}.y), 0.0) + length(max(${w}, 0.0)) - ${k}`;
+                    }
+                    // the outline's box is never farther than the outline, so the walk runs only where it may count
+                    if (plain && dist && !fit && ctx.cap) {
+                        let ends = [0, 1].map(i => all.map(xy => +xy[i])).map(v => [Math.max(...v), Math.min(...v)]);
+                        let box = `box(${q} - vec2(${ends.map(([a, b]) => float(+((a + b) / 2).toFixed(6)))}), vec2(${ends.map(([a, b]) => float(+((a - b) / 2 + 1e-5).toFixed(6)))}))`;
+                        let walk = out.slice(mark);
+                        out = out.slice(0, mark) + `float ${r} = ${lathe ? box : `max(${box}, abs(${p}.z) - ${depth} * 0.5)`};\nif (${r} < ${ctx.cap}) {\n${walk}${r} = ${d};\n}\n`;
+                        return r;
                     }
                 }
             }
@@ -524,6 +548,8 @@ export default function drawScene(code, extra, report = () => {}) {
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
     let { turn, tilt, depth, zoom, shadow, lights, ambient, self } = full;
     let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, ambient, ...lights.flat()].join('\n'));
+    // colors reading a slope need their neighbouring pixels shaded too, even transparent ones
+    let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
     let common = glsl`
     const float PI = 3.1415926535897932;
     float t;
@@ -623,6 +649,13 @@ export default function drawScene(code, extra, report = () => {}) {
             if (g_near < 0.1 || g_t > g_far) break;
             g_t += d;
         }
+        ${slopes ? '' : glsl`
+            // past the one-pixel edge a miss is transparent, and the normal below only widens it
+            if (g_near >= 1.1) {
+                FragColor = vec4(0.0);
+                return;
+            }
+        `}
         vec3 g_h = g_ro + g_rd * g_tn;
         vec3 n = vec3(0.0);
         float g_u = g_k / ${zoom};

@@ -662,8 +662,8 @@ test('@svg-filter channels warnings keep invalid rows at identity', () => {
     ), filter);
     assert.ok(filter.includes('opacity=".5"'), filter);
     assert.deepEqual(compiled.warnings.map(w => w.message), [
-        'channels r: invalid expression "r * g"; keeping identity',
-        'channels b: invalid expression "sin(b)"; keeping identity',
+        'channels r: invalid "r * g"',
+        'channels b: invalid "sin(b)"',
     ]);
 });
 
@@ -695,7 +695,7 @@ test('warnings collect on the compiled result', () => {
     assert.equal(compiled.warnings[0].index, 7);
     // parse-level warnings ride along too
     compiled = compile('width: @p(1, 2;');
-    assert.match(compiled.warnings[0].message, /unterminated argument list/);
+    assert.match(compiled.warnings[0].message, /unclosed \(/);
     // a plain @word without an argument list is not a typo signal
     compiled = compile('content: "hi @example";');
     assert.equal(compiled.warnings.length, 0);
@@ -783,13 +783,13 @@ test('@svg problems are reported once for the whole grid', () => {
     let compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '2');
     assert.deepEqual(compiled.warnings.map(w => w.message), [
         'viewBox needs 1, 2 or 4 numbers, got "0 0 100"',
-        'animate r: needs a duration after /, as in `/ 2s`',
+        'animate r: needs a duration after /',
     ]);
     // the same source is memoized: a second compile still reports
     compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '1');
     assert.equal(compiled.warnings.length, 2);
     compiled = compile('filter: @svg-filter(g { draw: 1s });');
-    assert.deepEqual(compiled.warnings.map(w => w.message), ['draw: <g> has no path length to draw']);
+    assert.deepEqual(compiled.warnings.map(w => w.message), ['draw: <g> has no path']);
 });
 
 test('generated ids are positional and carry the instance token', () => {

@@ -24,7 +24,7 @@ test('elements at the top level are joined', () => {
 });
 
 test('a scene without shapes draws nothing', () => {
-    assert.deepEqual(scene('fill: red;').warnings, ['@scene draws nothing: add a shape such as sphere { r: .3 }']);
+    assert.deepEqual(scene('fill: red;').warnings, ['@scene has no shapes']);
 });
 
 test('sizes are attributes', () => {
@@ -83,8 +83,8 @@ test('round and frame keep the outer size, grow inflates', () => {
 test('attributes a shape does not take are reported', () => {
     assert.deepEqual(scene('sphere { r: .2; round: .02; colr: red }').warnings, ['sphere has no round', 'sphere has no colr']);
     assert.deepEqual(scene('sphere { smooth: .1 }').warnings, ['sphere has no smooth']);
-    assert.deepEqual(scene('box { sphere { r: .1 } }').warnings, ['box cannot hold shapes; put them in a union']);
-    assert.deepEqual(scene('box#leg; #leg { sphere { r: .1 } }').warnings, ['box cannot hold shapes; put them in a union']);
+    assert.deepEqual(scene('box { sphere { r: .1 } }').warnings, ['put shapes in a union, not box']);
+    assert.deepEqual(scene('box#leg; #leg { sphere { r: .1 } }').warnings, ['put shapes in a union, not box']);
 });
 
 test('PI is a known name, other unknown names are reported', () => {
@@ -103,7 +103,7 @@ test('fill reads the surface normal as the camera sees it', () => {
     assert.match(body, /mix\(vec3\([^)]*\), vec3\([^)]*\), normal\.z\)/);
     assert.match(fragment, /normal = n \* g_v;/);
     assert.deepEqual(warnings, []);
-    assert.deepEqual(scene('sphere { r: .3 + .1 * normal.z }').warnings, ['only fill can read normal, not r']);
+    assert.deepEqual(scene('sphere { r: .3 + .1 * normal.z }').warnings, ['r cannot read normal']);
 });
 
 test('*N and *XxY make copies with n, N, nx and ny', () => {
@@ -119,7 +119,7 @@ test('*N and *XxY make copies with n, N, nx and ny', () => {
 
 test('repeat takes a spacing only', () => {
     assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2 }').warnings, []);
-    assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2, 5 1 5 }').warnings, ['repeat takes a spacing only; for a counted grid write box*5x5']);
+    assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2, 5 1 5 }').warnings, ['repeat takes no count; write box*5x5']);
 });
 
 test('polygon takes points and a depth', () => {
@@ -129,12 +129,12 @@ test('polygon takes points and a depth', () => {
     assert.match(body, /for \(int i = 0; i < 3; i\+\+\) \{\s*vec2 a = g_c0\[i\]/);
     assert.match(scene('polygon { k: .4; points: 0 0, 0 k, .2 0 }').body, /vec2 g_\d+\[4\] = vec2\[4\]\(vec2\(0\.0, 0\.0\), vec2\(0\.0, g_\d+\)/);
     assert.match(body, /abs\(p\.z\) - \.1 \* 0\.5/);
-    assert.deepEqual(scene('polygon { points: 0 0, 1 1 }').warnings, ['polygon needs points: x y, x y, x y, …']);
+    assert.deepEqual(scene('polygon { points: 0 0, 1 1 }').warnings, ['polygon needs points: x y, …']);
 });
 
 test('sdf takes a distance in d', () => {
     assert.match(scene('sdf { d: length(p) - .3 }').body, /length\(p\) - \.3/);
-    assert.deepEqual(scene('sdf { r: .3 }').warnings, ['sdf has no r', 'sdf needs a distance in d']);
+    assert.deepEqual(scene('sdf { r: .3 }').warnings, ['sdf has no r', 'sdf needs d']);
 });
 
 test('mirror evaluates every reflection', () => {
@@ -167,7 +167,7 @@ test('#id names a shape instead of drawing it, #id draws it with more rows', () 
     assert.deepEqual(scene('capsule#leg2 { from: 0 0 0; to: 0 .2 0; r: .02 } #leg2 { move: .1 0 0 }').warnings, []);
     assert.deepEqual(scene('union#cap { sphere { r: .2 } box { size: .1 } } #cap;').warnings, []);
     assert.deepEqual(scene('union#a { #a { scale: 2 } } #a;').warnings, ['#a uses itself']);
-    assert.deepEqual(scene('#nope;').warnings, ['unknown shape #nope', '@scene draws nothing: add a shape such as sphere { r: .3 }']);
+    assert.deepEqual(scene('#nope;').warnings, ['unknown shape #nope', '@scene has no shapes']);
     // an attribute given at #id replaces the shape's own
     let { body, warnings } = scene('capsule#leg { r: .1 } #leg { r: .2 }');
     assert.deepEqual(warnings, []);
@@ -247,7 +247,7 @@ test('a fill that reads light is lit already, and the others are shaded', () => 
     assert.match(body, /vec3 g_\d+ = vec3\(1\.0, 0\.0, 0\.0\) \* g_L;/);
     assert.match(body, /vec3 g_\d+ = \(vec3\(1\.0, 0\.0, 0\.0\) \* g_\d+\) \* g_L;/);
     assert.match(fragment, /light = dot\(g_L, vec3\(1\.0 \/ 3\.0\)\);\n\s*FragColor = vec4\(g_scene\(g_h\)\.rgb,/);
-    assert.deepEqual(scene('sphere { move: light 0 0 }').warnings, ['only fill can read light, not move']);
+    assert.deepEqual(scene('sphere { move: light 0 0 }').warnings, ['move cannot read light']);
 });
 
 test('the model is measured once per vertex, not per pixel', () => {
@@ -326,7 +326,29 @@ test('a lathe turns an outline around y', () => {
     assert.doesNotMatch(dist, /abs\(p\.z\)/);
     assert.match(scene('lathe { points: 0 -1, .5 -1, .3 0, .6 1, 0 1 }').dist, /length\(p\.xz\)/);
     assert.deepEqual(scene('lathe { cirle }').warnings, ['unknown shape cirle']);
-    assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points: x y, x y, x y, …']);
+    assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points: x y, …']);
+});
+
+test('an outline walks only where its box could change the parts before it', () => {
+    let outline = 'points: 0 0, .2 0, .2 .4';
+    let { dist, body } = scene(`box { size: .3 } lathe { ${outline} }`);
+    assert.match(dist, /float (g_\d+) = box\((g_\d+) - vec2\(0\.1,0\.2\), vec2\(0\.10001,0\.20001\)\);\nif \(\1 < (g_\d+)\) \{[^]*\1 = g_\d+ \* sqrt\(g_\d+\);\n\}\n\3 = min\(\3, \1\);/);
+    assert.doesNotMatch(body, /if \(g_\d+ < /);
+    // a polygon's box also has its depth, and a scale divides the value it must reach
+    assert.match(scene(`box { size: .3 } polygon { ${outline}; depth: .2; scale: 2 }`).dist, /max\(box\([^;]*, abs\(g_\d+\.z\) - \.2 \* 0\.5\);\nif \(g_\d+ < g_\d+ \/ min\(abs\(/);
+    // nothing before it, a blend or a grow changes any value, so the outline is walked everywhere
+    for (let code of [`lathe { ${outline} } box`, `union { smooth: .1; box; lathe { ${outline} } }`, `box; lathe { ${outline}; grow: .1 }`]) {
+        assert.doesNotMatch(scene(code).dist, /if \(g_\d+ < /, code);
+    }
+    // the first part of a subtract only raises it, a later one cuts at minus the part before
+    assert.match(scene(`box; subtract { lathe { ${outline} } box }`).dist, /if \(g_\d+ < g_\d+\)/);
+    assert.match(scene(`subtract { box; lathe { ${outline} } }`).dist, /if \(g_\d+ < -g_\d+\)/);
+});
+
+test('a miss past its edge is transparent, unless the colors read a slope', () => {
+    assert.match(scene('sphere').fragment, /if \(g_near >= 1\.1\) \{\s*FragColor = vec4\(0\.0\);\s*return;/);
+    assert.doesNotMatch(scene('sphere { fill: vec3(fwidth(p.x)) }').fragment, /g_near >= 1\.1/);
+    assert.doesNotMatch(scene('fill: vec3(ramp(light, #000000 .2, #ffffff .8)); sphere').fragment, /g_near >= 1\.1/);
 });
 
 test('unknown shapes are reported', () => {

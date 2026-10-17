@@ -172,7 +172,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         consume();
         const right = power(primary());
         if (!right) {
-            report('** needs a value after it');
+            report('nothing after **');
             return n;
         }
         return { type: 'Bin', val: '**', left: n, right };
@@ -193,7 +193,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             consume();
             const right = parse(p + 1);
             if (!right) {
-                report(`${op} needs a value after it`);
+                report(`nothing after ${op}`);
                 break;
             }
             n = { type: 'Bin', val: op, left: n, right };
