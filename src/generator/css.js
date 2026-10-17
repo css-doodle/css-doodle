@@ -348,15 +348,9 @@ function spliceTemplateInput({ segments, singlePart }, values) {
     return removeEmptyValues(input);
 }
 
-function isStaticRule(token) {
-    let prop = token.property;
-    // @shape is a pure function of its value, the other @-properties
-    // read the grid or the cell
-    if (prop.startsWith('@') && prop !== '@shape') return false;
-    if (prop.startsWith('--')) return false;
-    if (prop.startsWith('animation')) return false;
-    if (prop === 'background-size') return false;
-    return token.value?.hasFunc === false;
+// @shape is a pure function of its value, the other @-properties read the grid or the cell
+function isStaticRule({ property, value }) {
+    return value?.hasFunc === false && property !== 'background-size' && !/^(@(?!shape$)|--|animation)/.test(property);
 }
 
 function ruleFlags(prop) {

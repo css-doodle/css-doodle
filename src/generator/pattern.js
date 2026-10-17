@@ -158,8 +158,7 @@ function newScope(parent = null) {
 }
 
 function compile(value, scope, ctx, expect = null) {
-    // `hsl(h .75 .65)` without % is the shader hsl(), not a CSS color
-    let rgba = scope.ids[value] || /^hsl\([^%]*\)$/i.test(value) ? null : ctx.extra.getRgbaColor(value);
+    let rgba = scope.ids[value] ? null : cssColor(ctx.extra, value);
     if (rgba) {
         rgba = channels(rgba);
         return vector(rgba.length, rgba.map(float));
@@ -191,6 +190,24 @@ function compile(value, scope, ctx, expect = null) {
 
 function channels(rgba) {
     return rgba[3] === 1 ? rgba.slice(0, 3) : rgba;
+}
+
+// `hsl(h .75 .65)` without % is the shader hsl(), not a CSS color
+export function cssColor(extra, value) {
+    return /^hsl\([^%]*\)$/i.test(value) ? null : extra.getRgbaColor(value);
+}
+
+// the channels of a color named in an expression, read once; the names given are no colors
+export function colorReader(extra, miss, names = []) {
+    let known = new Map(names.map(name => [name, null]));
+    return name => {
+        if (!known.has(name)) {
+            let rgba = extra.getRgbaColor(name);
+            known.set(name, rgba && channels(rgba));
+            if (!rgba) miss(name);
+        }
+        return known.get(name);
+    };
 }
 
 function vector(n, items) {
@@ -403,17 +420,10 @@ function generateShader({ grid, body, masked }) {
 
 export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
-    let known = new Map(BUILTINS.map(name => [name, null]));
     let ctx = {
         extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
-        unknown: name => {
-            if (!known.has(name)) {
-                let rgba = extra.getRgbaColor(name);
-                known.set(name, rgba && channels(rgba));
-                if (!rgba) warn(`unknown name ${name}` + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : ''));
-            }
-            return known.get(name);
-        },
+        unknown: colorReader(extra, name => warn(`unknown name ${name}`
+            + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : '')), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));

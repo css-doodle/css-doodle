@@ -47,10 +47,6 @@ function isIdentifier(name) {
     return /^texture\w*$|^(fragment|vertex)$/.test(name);
 }
 
-function lineBreak() {
-    return new Token('LineBreak', '\n');
-}
-
 // The tokenizer drops line breaks next to ';' and braces; a `#define`
 // needs its own line, so put one back before it and where it ends.
 function withLineBreaks(tokens) {
@@ -60,11 +56,11 @@ function withLineBreaks(tokens) {
         let curr = tokens[i];
         let next = tokens[i + 1];
         if (line !== null && line != curr.pos[1]) {
-            result.push(lineBreak());
+            result.push(new Token('LineBreak', '\n'));
             line = null;
         }
         if (curr.isWord() && curr.value.startsWith('#')) {
-            result.push(lineBreak());
+            result.push(new Token('LineBreak', '\n'));
             line = (next || curr).pos[1];
         }
         result.push(curr);

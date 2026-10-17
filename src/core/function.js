@@ -442,11 +442,8 @@ Function.r = (_, { context, rand }) => (...args) => {
     return pushStack(context, 'lastRand', transform(rand)(...args));
 };
 
-Function.ri = (_, { context, rand }) => (...args) => {
-    let transform = (args.length && args.every(isLetter)) ? byCharcode : byUnit;
-    let randInt = (...range) => Math.round(rand(...range));
-    return pushStack(context, 'lastRand', transform(randInt)(...args));
-};
+// @r drawing whole numbers
+Function.ri = (cell, env) => Function.r(cell, { ...env, rand: (...range) => Math.round(env.rand(...range)) });
 
 function createNoise(outline) {
     return ({ x, y, grid }, { context, extra, random }, position) => {
@@ -698,27 +695,17 @@ Function.palette = (_, { seed, rules, host }) => (...args) => {
 };
 
 
-Function.cycle = () => {
-    return (...args) => {
-        let separator = args.length == 1 ? ' ' : ',';
-        let list = parseValueGroup(args.join(separator), { symbol: separator });
-        let result = [];
-        for (let i = 0; i < list.length; ++i) {
-            result.push(list.slice(i).concat(list.slice(0, i)).join(separator));
-        }
-        return result;
-    }
+Function.cycle = () => (...args) => {
+    let separator = args.length == 1 ? ' ' : ',';
+    let list = parseValueGroup(args.join(separator), { symbol: separator });
+    return list.map((_, i) => list.slice(i).concat(list.slice(0, i)).join(separator));
 };
 
 Function.mirror = createMirror(true);
 
 Function.Mirror = createMirror(false);
 
-Function.code = () => {
-    return (...args) => {
-        return args.map(code => String.fromCharCode(code));
-    }
-};
+Function.code = () => (...args) => args.map(code => String.fromCharCode(code));
 
 const shapePolygon = memo((input, seed) => {
     if (input.trim() == 'circle') return 'ellipse(50% 50%)';
@@ -783,15 +770,13 @@ Function.flipV = () => flipVPath;
 
 Function.flip = () => flipPath;
 
-Function.reverse = () => {
-    return (...args) => {
-        let { valid, commands } = parseSvgPath(args.join(','));
-        if (!valid) return args.reverse();
-        let list = commands.map(({ name, value }) => name + value.join(' '));
-        let head = /^[ml]/i.test(list[0]) ? list.shift() : '';
-        let tail = /^z$/i.test(list[list.length - 1]) ? list.pop() : '';
-        return [head, ...list.reverse(), tail].filter(Boolean).join(' ');
-    }
+Function.reverse = () => (...args) => {
+    let { valid, commands } = parseSvgPath(args.join(','));
+    if (!valid) return args.reverse();
+    let list = commands.map(({ name, value }) => name + value.join(' '));
+    let head = /^[ml]/i.test(list[0]) ? list.shift() : '';
+    let tail = /^z$/i.test(list[list.length - 1]) ? list.pop() : '';
+    return [head, ...list.reverse(), tail].filter(Boolean).join(' ');
 };
 
 Function.svg = lazy((_, env, position, ...args) => {
@@ -863,72 +848,49 @@ Function.once = lazy((cell, { context }, position, ...args) => {
     return context[counter] ??= args.map(input => getValue(input())).join(',');
 });
 
-Function.raw = (cell, { rules }) => {
-    return (...args) => {
-        let raw = args.join(',');
-        let id = placeholderId(raw);
-        if (id && rules.doodles[id]) {
-            return `<css-doodle>${rules.doodles[id].doodle}</css-doodle>`
-        }
-        if (raw.startsWith('url("data:image/svg+xml;utf8')) {
-            try {
-                // each svg url and the comma after it, so @svg(…), @svg(…) is two svgs and text after one stays
-                return raw.replace(/url\("data:image\/svg\+xml;utf8,([^"]*)"\),?/g, (_, svg) => decodeURIComponent(svg));
-            } catch (e) {}
-        }
-        return raw;
+Function.raw = (cell, { rules }) => (...args) => {
+    let raw = args.join(',');
+    let id = placeholderId(raw);
+    if (id && rules.doodles[id]) {
+        return `<css-doodle>${rules.doodles[id].doodle}</css-doodle>`
     }
+    if (raw.startsWith('url("data:image/svg+xml;utf8')) {
+        try {
+            // each svg url and the comma after it, so @svg(…), @svg(…) is two svgs and text after one stays
+            return raw.replace(/url\("data:image\/svg\+xml;utf8,([^"]*)"\),?/g, (_, svg) => decodeURIComponent(svg));
+        } catch (e) {}
+    }
+    return raw;
 };
 
-Function['google-font'] = (cell, { rules }) => {
-    return name => {
-        // the component loads the collected names
-        rules.addFont(name);
-        return name;
-    };
+// the component loads the collected names
+Function['google-font'] = (cell, { rules }) => name => {
+    rules.addFont(name);
+    return name;
 };
 
-Function.id = ({ id }) => {
-    return _ => id;
-};
+Function.id = ({ id }) => () => id;
 
-Function.i = c => calcWith(c.count);
-Function.I = c => calcWith(c.grid.count);
-
-Function.x = c => calcWith(c.x);
-Function.X = c => calcWith(c.grid.x);
-
-Function.y = c => calcWith(c.y);
-Function.Y = c => calcWith(c.grid.y);
-
-Function.z = c => calcWith(c.z);
-Function.Z = c => calcWith(c.grid.z);
-
-
-Function.iI = c => calcWithEasing(c.count / c.grid.count);
-Function.Ii = c => calcWithEasing((c.grid.count - c.count + 1) / c.grid.count);
-
-Function.xX = c => calcWithEasing(c.x / c.grid.x);
-Function.Xx = c => calcWithEasing((c.grid.x - c.x + 1) / c.grid.x);
-
-Function.yY = c => calcWithEasing(c.y / c.grid.y);
-Function.Yy = c => calcWithEasing((c.grid.y - c.y + 1) / c.grid.y);
+// @x and @X: the cell's column and the grid's; @xX and @Xx: the way along from either end, eased
+for (let [k, v] of [['i', 'count'], ['x', 'x'], ['y', 'y'], ['z', 'z']]) {
+    let K = k.toUpperCase();
+    Function[k] = c => calcWith(c[v]);
+    Function[K] = c => calcWith(c.grid[v]);
+    if (k === 'z') break;
+    Function[k + K] = c => calcWithEasing(c[v] / c.grid[v]);
+    Function[K + k] = c => calcWithEasing((c.grid[v] - c[v] + 1) / c.grid[v]);
+}
 
 for (let name of ['dx', 'dy', 'dr', 'dc', 'dm', 'da', 'db']) {
     Function[name] = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid)[name]);
 }
 
-Function.t =  () => calcWith(`var(${utime})`);
+for (let [name, u] of Object.entries({ t: utime, T: UTime, uw: uwidth, uh: uheight, ux: umousex, uy: umousey })) {
+    Function[name] = () => calcWith(`var(${u})`);
+}
+
 Function.ts = () => calcWith(`calc(var(${utime}) / 1000)`);
-
-Function.T =  () => calcWith(`var(${UTime})`);
 Function.TS = () => calcWith(`calc(var(${UTime}) / 1000)`);
-
-Function.uw = () => calcWith(`var(${uwidth})`);
-Function.uh = () => calcWith(`var(${uheight})`);
-
-Function.ux = () => calcWith(`var(${umousex})`);
-Function.uy = () => calcWith(`var(${umousey})`);
 
 Function.udx = ({ x, grid }) => calcWith(`calc(${tidyNumber((x - .5) / grid.x)} * var(${uwidth}) - var(${umousex}))`);
 Function.udy = ({ y, grid }) => calcWith(`calc(${tidyNumber((y - .5) / grid.y)} * var(${uheight}) - var(${umousey}))`);

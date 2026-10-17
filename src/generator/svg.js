@@ -1,11 +1,10 @@
 import { nextId } from '../lib/fn.js';
 import { isNil, removeQuotes } from '../lib/type.js';
-import { NS, NSXLink, adjustName, isDefinitionTag } from '../lib/svg.js';
+import { NS, NSXLink, adjustName } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
 
 const nextInlineId = nextId();
-const noop = () => {};
 
 const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
 
@@ -161,10 +160,6 @@ function timing(animate, value, label, warn) {
     return dur;
 }
 
-function isGraphicElement(name) {
-    return /^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(name);
-}
-
 function generate(token, element, parent, root, warn) {
     let inlineId;
     if (!element) {
@@ -212,7 +207,7 @@ function generate(token, element, parent, root, warn) {
                     fresh = true;
                 }
             }
-            if (token.inline && isDefinitionTag(token.name)) {
+            if (token.inline && /^(linearGradient|radialGradient|pattern|filter|clipPath|mask|marker|symbol)$/.test(token.name)) {
                 element = root.findSpareDefs();
                 if (!element) {
                     root.append(element = new Tag('defs'));
@@ -276,7 +271,7 @@ function generate(token, element, parent, root, warn) {
             }
             // `draw: 2s infinite` strokes a shape along its length
             else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
-                if (!isGraphicElement(parent.name)) {
+                if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name)) {
                     warn(`${keyword}: <${parent.name}> has no path`);
                 } else {
                     element.attr('stroke-dasharray', 10);
@@ -332,6 +327,6 @@ function generate(token, element, parent, root, warn) {
     return inlineId;
 }
 
-export default function generateSvg(token, warn = noop) {
+export default function generateSvg(token, warn = () => {}) {
     return generate(token, null, null, null, warn);
 }

@@ -2,7 +2,7 @@ import { readShapes, degrees } from '../parser/parse-shape-commands.js';
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
-import { HELPERS, DERIVATIVES } from './pattern.js';
+import { HELPERS, DERIVATIVES, cssColor, colorReader } from './pattern.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const NAME = /^[a-zA-Z_]\w*$/;
@@ -157,15 +157,7 @@ export default function drawScene(code, extra, report = () => {}) {
             // outside copies the scene is one copy
             names: { __proto__: null, t: 't', deg: '(PI / 180.0)', turn: '(2.0 * PI)', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' },
         };
-        let known = new Map();
-        let unknown = name => {
-            if (!known.has(name)) {
-                let rgba = extra.getRgbaColor(name);
-                known.set(name, rgba && (rgba[3] === 1 ? rgba.slice(0, 3) : rgba));
-                if (!rgba) warn(`unknown name ${name}`);
-            }
-            return known.get(name);
-        };
+        let unknown = colorReader(extra, name => warn(`unknown name ${name}`));
         let next = () => `g_${++ctx.id}`;
         let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
             types: ctx.types, warn, unknown,
@@ -188,7 +180,7 @@ export default function drawScene(code, extra, report = () => {}) {
         };
         let vec3 = (items, fill = '0.0') => `vec3(${items.length > 1 ? [0, 1, 2].map(i => items[i] || fill).join(', ') : items[0] || fill})`;
         let color = (value, p) => {
-            let rgba = /^hsl\([^%]*\)$/i.test(value.trim()) ? null : extra.getRgbaColor(value.trim());
+            let rgba = cssColor(extra, value.trim());
             if (rgba) return `vec3(${rgba.slice(0, 3).map(float).join(', ')})`;
             let { type, code } = compile(value, p);
             if (!/^vec[34]$/.test(type)) {
@@ -529,7 +521,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let paint = g => {
             let level = 0, at = 0;
             g.forEach((t, i) => (level += t.isSymbol('(') - t.isSymbol(')')) || !t.isSpace() || (at = i));
-            let tail = textOf(g.slice(at)).trim(), rgba = !/^hsl\([^%]*\)$/i.test(tail) && extra.getRgbaColor(tail);
+            let tail = textOf(g.slice(at)).trim(), rgba = cssColor(extra, tail);
             return [numbers(rgba ? g.slice(0, at) : g, 'p'), rgba && `vec3(${rgba.slice(0, 3).map(float)})`];
         };
         // `x y z color`, toward the light as `normal` sees it

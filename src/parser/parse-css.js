@@ -62,10 +62,6 @@ function warn(ctx, msg, pos) {
 
 const PAIRS = { '"': '"', "'": "'", '(': ')' };
 
-function isSvg(name) {
-    return /^@svg$/i.test(name);
-}
-
 function composable(name) {
     return /^@(shaders|doodle|pattern|scene)/.test(name);
 }
@@ -75,18 +71,10 @@ function readsShape(name) {
 }
 
 function substitutePi(input, prev) {
-    if (!input.includes('π')) return input;
-    let result = '';
-    for (let i = 0; i < input.length; ++i) {
-        let c = input[i];
-        if (c === 'π') {
-            let p = i > 0 ? input[i - 1] : prev;
-            result += (p >= '0' && p <= '9') ? c : PI;
-        } else {
-            result += c;
-        }
-    }
-    return result;
+    return input.replace(/π/g, (c, i) => {
+        let p = i > 0 ? input[i - 1] : prev;
+        return (p >= '0' && p <= '9') ? c : PI;
+    });
 }
 
 function separateFuncName(name) {
@@ -327,7 +315,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped) {
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
-                let svg = isSvg(name);
+                let svg = /^@svg$/i.test(name);
                 let closed = parseArguments(cur, shaped || readsShape(name), svg, RE_PICK.test(name));
                 func.arguments = closed.args;
                 if (closed.at) func.at = true;

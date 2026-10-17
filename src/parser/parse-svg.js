@@ -1,7 +1,7 @@
 import { scan, iterator, textOf, itemsOf, Token } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
 import { parseBody, readRaw } from './parse-body.js';
-import { adjustName, isSpecialNamespaceAttr } from '../lib/svg.js';
+import { adjustName } from '../lib/svg.js';
 
 // the ';' of `&amp;` or `&#x27;` belongs to the value, not the statement
 const RE_ENTITY_TAIL = /&(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos)$/;
@@ -165,7 +165,7 @@ function readSvgBlocks(iter, head) {
 function readSvgStatement(iter, head) {
     let prev = iter.curr(-1);
     let next = iter.curr(1);
-    if (prev && next && isSpecialNamespaceAttr(prev.value + ':' + next.value)) {
+    if (prev && next && /^(xlink:(actuate|arcrole|href|role|show|title|type)|xml:(base|lang|space))$/i.test(prev.value + ':' + next.value)) {
         return null;
     }
     let props = itemsOf(head).map(t => textOf(t).trim());

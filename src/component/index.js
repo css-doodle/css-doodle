@@ -7,7 +7,6 @@ import generatePng from '../generator/svg-to-png.js';
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
 import { NS, NSXHtml, FilterHolderStyle, cdata } from '../lib/svg.js';
 import { isNil } from '../lib/type.js';
-import { uniqueId } from '../lib/fn.js';
 import { isSafari } from '../lib/browser.js';
 import { css } from '../lib/tagged-template.js';
 import { RE_PLACEHOLDER, hasPlaceholder } from '../lib/placeholder.js';
@@ -85,13 +84,6 @@ function parseInterval(value) {
     return isNaN(ms) ? 2000 : Math.max(ms, 500);
 }
 
-function getPngName(name) {
-    let prefix = isNil(name)
-        ? Date.now()
-        : String(name).replace(/\.png$/, '');
-    return prefix + '.png';
-}
-
 const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
 
 let CSSDoodle = class {};
@@ -118,7 +110,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.animations = [];
             this.observers = new Map();
             this.shaderRenders = new Map();
-            this._instance = uniqueId();
+            this._instance = Math.random().toString(32).slice(2);
             this._generation = 0;
             this._clock = { base: 0, since: 0 };
             this._offscreen = false;
@@ -645,7 +637,7 @@ if (typeof HTMLElement !== 'undefined') {
                 let { source, blob } = await generatePng(svg, w, h, scale);
                 if (download) {
                     let a = document.createElement('a');
-                    a.download = getPngName(name);
+                    a.download = (isNil(name) ? Date.now() : String(name).replace(/\.png$/, '')) + '.png';
                     a.href = URL.createObjectURL(blob);
                     a.click();
                     setTimeout(() => URL.revokeObjectURL(a.href), 1000);

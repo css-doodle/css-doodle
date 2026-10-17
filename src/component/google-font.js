@@ -63,13 +63,12 @@ async function toBase64(url) {
     let res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch font (${res.status}): ${url}`);
     let blob = await res.blob();
-    let base64 = await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
         let reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
-    return base64;
 }
 
 async function embedFont(link) {

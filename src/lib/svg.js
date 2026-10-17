@@ -52,11 +52,3 @@ export function adjustName(name) {
     name = name.toLowerCase();
     return tagsMapping.get(name) || name;
 }
-
-export function isSpecialNamespaceAttr(name) {
-    return /^(xlink:(actuate|arcrole|href|role|show|title|type)|xml:(base|lang|space))$/i.test(name);
-}
-
-export function isDefinitionTag(tagName) {
-    return /^(linearGradient|radialGradient|pattern|filter|clipPath|mask|marker|symbol)$/.test(tagName);
-}
