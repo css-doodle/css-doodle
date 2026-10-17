@@ -44,7 +44,7 @@ export const defaultContext = {
         for (let i = 0; i + 1 < args.length; i += 2) {
             if (args[i]) return args[i + 1];
         }
-        return args.length % 2 ? args[args.length - 1] : 0;
+        return args.length % 2 ? args.at(-1) : 0;
     }
 };
 

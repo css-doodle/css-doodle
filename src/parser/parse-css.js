@@ -1078,8 +1078,8 @@ function paintBodyAt(tokens, i) {
     return RE_PAINT_HEAD.test(head) && tokens[j + 1]?.isSymbol('(') && adjacent(tokens[j], tokens[j + 1]) ? j + 1 : -1;
 }
 
-function expandCalls(text, defs, ctx, chain, mode = CSS, hoist = null) {
-    let tokens = tokensOf(text, mode !== CSS);
+function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
+    let paint = mode !== CSS, tokens = tokensOf(text, paint);
     let out = '', from = 0, quote = false;
     let start = 0, head = 0, pending = mode === BODY ? [] : hoist, depth = 0, blocks = [];
     let flush = end => {
@@ -1136,7 +1136,6 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist = null) {
         let first = end + 2;
         end = closing(tokens, end + 1);
         if (end < 0) break;
-        let paint = mode !== CSS;
         let args = itemsOf(tokens.slice(first, end), true).map(item => !item.length ? '' : expandCalls(
             text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain, paint ? EXPR : CSS, pending));
         let given = args.length, { params, defaults } = def;
@@ -1160,14 +1159,14 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist = null) {
                 warn(ctx, `$${name}() runs statements; use it as one`);
             } else {
                 let call = valueCall(name, def, args, defs, ctx);
-                ctx.expanded = (ctx.expanded || 0) + call.text.length;
+                ctx.expanded += call.text.length;
                 pending.push(expandCalls(call.text, defs, ctx, [...chain, name], BODY));
                 body = call.ret;
             }
         } else {
             let value = paint ? null : resultOf(def.body);
             body = bindParams(value === null ? def : { ...def, body: value }, args, defs, paint);
-            ctx.expanded = (ctx.expanded || 0) + body.length;
+            ctx.expanded += body.length;
             body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending);
         }
         flush(t.index);
@@ -1202,18 +1201,17 @@ function solidAt(tokens, j) {
 // too, the last assignment run being the value, as in a CSS @function; an
 // expression, when it is one statement declaring nothing and not a call of
 // a function that runs statements; else statements, run where it is called
-function bodyParts(def, defs) {
-    if (def.parts) return def.parts;
-    def.parts = { kind: INCLUDE };
-    let body = def.body;
-    let tokens = tokensOf(body, true);
+function kindOf(def, defs) {
+    if (def.kind) return def.kind;
+    def.kind = INCLUDE;
+    let tokens = tokensOf(def.body, true);
     let statements = 0, depth = 0, parens = 0, quote = false, start = true, declares = false;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i];
         if (t.status) quote = t.status === 'open';
         if (quote || t.isSpace()) continue;
         if (start && !parens && t.isWord() && t.value === 'result' && solidAt(tokens, i + 1)?.isSymbol(':')) {
-            return def.parts = { kind: VALUE };
+            return def.kind = VALUE;
         }
         start = !parens && t.isSymbol(';', '{', '}');
         if (t.isSymbol('(')) parens++;
@@ -1227,17 +1225,17 @@ function bodyParts(def, defs) {
     let line = tokens.filter(t => !t.isSpace());
     if (line.at(-1)?.isSymbol(';')) line.pop();
     else if (line.length) statements++;
-    if (statements !== 1 || declares) return def.parts;
+    if (statements !== 1 || declares) return def.kind;
     // a lone call reads as what that function gives
     if (line[0]?.isSymbol('$') && line[1]?.isWord()) {
         let end = nameEnd(line, 1, true);
         let callee = defs[textOf(line.slice(1, end + 1))];
         if (callee && line[end + 1]?.isSymbol('(') && closing(line, end + 1) === line.length - 1
                 && kindOf(callee, defs) === INCLUDE) {
-            return def.parts;
+            return def.kind;
         }
     }
-    return def.parts = { kind: EXPRESSION };
+    return def.kind = EXPRESSION;
 }
 
 // In CSS a body made of result declarations alone reads as the last
@@ -1255,15 +1253,11 @@ function resultOf(body) {
     return value;
 }
 
-function kindOf(def, defs) {
-    return bodyParts(def, defs).kind;
-}
-
 // The statements of one call of a value function: its arguments bound to
 // names and its names made its own, result among them, which is its value
 function valueCall(name, def, args, defs, ctx) {
     let { params, defaults } = def;
-    let ret = `${name.replace(/\W/g, '_')}_${ctx.calls = (ctx.calls || 0) + 1}`;
+    let ret = `${name.replace(/\W/g, '_')}_${++ctx.calls}`;
     let source = def.body.replace(RE_LINE_COMMENT, '').trim();
     let { text, targets } = renameLocals((/[;}]$/.test(source) ? source : source + ';') + '\n', ret);
     let bound = [], prelude = '';
@@ -1418,7 +1412,7 @@ function bindParams({ params, defaults, body }, args, defs, paint = false) {
 }
 
 export default function parse(input, extra) {
-    let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [] };
+    let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [], expanded: 0, calls: 0 };
     let result = parseSource(expandFunctions(String(input ?? ''), ctx), ctx);
     result.warnings = ctx.warnings;
     return result;
