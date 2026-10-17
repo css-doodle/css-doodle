@@ -23,15 +23,16 @@ export function frameSvg(svg, width, height) {
         + `<image width="${w}" height="${h}" preserveAspectRatio="none" href="${inner}"/></svg>`;
 }
 
-export function createReplacer(host, compiled) {
+export function createReplacer(host, compiled, inside) {
     const { doodles, shaders, patterns } = compiled;
     const unset = () => Promise.resolve();
     const { shader = unset, pattern = unset } = host.draw ?? {};
+    const paint = draw => (id, v) => draw(host, { ...v, compiled, inside }).then(url => url ?? `var(--${id})`);
     const groups = [
         [doodles, (id, v) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id, compiled })
             .then(url => `url("${url}")`)],
-        [shaders, (id, v) => shader(host, { ...v, compiled }).then(() => `var(--${id})`)],
-        [patterns, (id, v) => pattern(host, { ...v, compiled }).then(() => `var(--${id})`)],
+        [shaders, paint(shader)],
+        [patterns, paint(pattern)],
     ];
     return input => {
         let present = new Set();
@@ -104,7 +105,7 @@ export async function doodleToImage(host, code, options) {
             @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
         ` + getBasicStyles(grid) + styles.all).replace(/\n\s+/g, ' ') + TRANSITION_NONE;
         let markup = stampSmil(host, createGrid(grid, compiled) + filterDefs);
-        let svg = await createReplacer(host, compiled)(css`
+        let svg = await createReplacer(host, compiled, { width: parseFloat(width), height: parseFloat(height), grid })(css`
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
                 ${smilTick(sheet)}
                 <foreignObject width="100%" height="100%">

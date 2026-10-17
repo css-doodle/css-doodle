@@ -399,7 +399,11 @@ the pattern's size. It sees the cell's custom properties, its own
 declarations winning, and a body of only `$name` draws the doodle
 stored in `--name: @doodle(…)`. The last block of a name wins.
 `texture(name, p)` samples it at `p` from 0 to 1 as a `vec4`, wrapping
-past the edges; `texture(texture_0, uv)` draws it unchanged.
+past the edges; `texture(texture_0, uv)` draws it unchanged. The doodle
+may have a `@pattern` of its own as a background, drawn once as a still
+image with 8 bits a channel: a field worked out once and read many
+times, such as a color read at each stroke's center or a height read at
+neighboring points for a slope.
 
 ```css
 @pattern(

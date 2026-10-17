@@ -30,3 +30,25 @@ test('a nested doodle sheet carries no template indentation', async () => {
     assert.ok(sheet.includes('background:red') || sheet.includes('background: red'));
     assert.doesNotMatch(sheet, /\n\s+/);
 });
+
+test('a paint inside a doodle image is inlined as the url its drawer gives', async () => {
+    let seen = [];
+    let host = {
+        extra: {}, compiled: { seed: 42 }, getMaxGrid: () => 64, report: () => {}, hasAttribute: () => false,
+        _clock: { base: 0 }, clockNow: () => 0,
+        draw: { pattern: (h, v) => (seen.push(v.inside), Promise.resolve('url("p.png")')) },
+    };
+    let url = await doodleToImage(host, '@grid: 2x1; background: @pattern(fill: red;);', { width: 100, height: 50 });
+    let svg = decodeURIComponent(url.slice(url.indexOf(',') + 1));
+    assert.ok(svg.includes('url("p.png")'));
+    assert.doesNotMatch(svg, /var\(--pattern/);
+    // the drawer learns the image size and grid, to size the still
+    assert.equal(seen[0].width, 100);
+    assert.equal(seen[0].height, 50);
+    assert.equal(seen[0].grid.x, 2);
+
+    // a drawer that gives nothing leaves the custom property, as on the element
+    host.draw.pattern = () => Promise.resolve();
+    let left = await doodleToImage(host, 'background: @pattern(fill: blue;);', { width: 10, height: 10 });
+    assert.match(decodeURIComponent(left), /var\(--pattern/);
+});

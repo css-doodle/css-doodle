@@ -38,6 +38,62 @@ function toDataURL(canvas, scale) {
     return small.toDataURL();
 }
 
+function canvasUrl(canvas, fit) {
+    let url = toDataURL(canvas, fit.scale);
+    while (url.length > MAX_URL && fit.scale > .1) {
+        fit.scale *= .9 * Math.sqrt(MAX_URL / url.length);
+        url = toDataURL(canvas, fit.scale);
+    }
+    return `url("${url}")`;
+}
+
+function loadTexturesAt(host, parsed, width, height, id, compiled) {
+    let dpr = devicePixelRatio || 1;
+    return Promise.all(parsed.textures.map(({ name, value }) => {
+        let options = { width, height, instance: `${id.slice(2)}-${name}`, compiled };
+        return doodleToImage(host, value, options).then(src => new Promise(resolve => {
+            if (!src) {
+                return resolve({ name, value: null });
+            }
+            let img = new Image();
+            img.width = width * dpr;
+            img.height = height * dpr;
+            img.onload = () => resolve({ name, value: img });
+            img.onerror = () => resolve({ name, value: null });
+            img.src = src;
+        }));
+    }));
+}
+
+async function stillToUrl(host, { source, id, arg, target, compiled, inside }, seedCell, name) {
+    let { width, height, grid } = inside;
+    if (arg) {
+        ({ x: width, y: height } = parseGrid(arg, Infinity));
+    } else {
+        if (!(width && height)) {
+            let { x, y } = host.gridSize;
+            width = (host.offsetWidth || 300) / x;
+            height = (host.offsetHeight || 300) / y;
+        }
+        if (target.selector[0] !== ':') {
+            width /= grid.x;
+            height /= grid.y;
+        }
+    }
+    let parsed = typeof source === 'string' ? parseShaders(source) : source;
+    let textures = parsed.textures.length ? await loadTexturesAt(host, parsed, width, height, id, compiled) : [];
+    let drawing;
+    try {
+        drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell);
+        drawing.draw(0, width, height, 0, textures, [0, 0]);
+        return canvasUrl(drawing.canvas, { scale: 1 });
+    } catch (err) {
+        if (name) host.report([{ message: `${name}: ${err.message}` }]);
+    } finally {
+        drawing?.dispose();
+    }
+}
+
 function patternToImage(host, pattern) {
     let name = '@' + (pattern.fname || 'pattern');
     let source = (pattern.fname === 'scene' ? generateScene : generatePattern)(pattern.source, host.extra, message => {
@@ -47,7 +103,11 @@ function patternToImage(host, pattern) {
     return shaderToImage(host, { ...pattern, name, source, seedCell: '' });
 }
 
-async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders' }) {
+async function shaderToImage(host, options) {
+    let { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders' } = options;
+    if (options.inside) {
+        return stillToUrl(host, options, seedCell, name);
+    }
     if (host.shaderRenders.has(id)) return;
     let elements;
     if (target.selector === ':host') {
@@ -106,17 +166,9 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
             let key = !drawing.animated && !textures.length && !parsed.drag
                 && [parsed.vertex, parsed.fragment, width, height, drawing.seeded && seedCell].join('\n');
-            let scale = 1;
+            let fit = { scale: 1 };
             present = () => {
-                let url = urls.get(key);
-                if (!url) {
-                    url = toDataURL(drawing.canvas, scale);
-                    while (url.length > MAX_URL && scale > .1) {
-                        scale *= .9 * Math.sqrt(MAX_URL / url.length);
-                        url = toDataURL(drawing.canvas, scale);
-                    }
-                    url = `url("${url}")`;
-                }
+                let url = urls.get(key) || canvasUrl(drawing.canvas, fit);
                 if (key) urls.set(key, url);
                 host.style.setProperty(id, url);
             }
@@ -185,24 +237,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         }
     }
 
-    // the texture doodles, rendered at the drawing size
-    const loadTextures = () => {
-        let dpr = devicePixelRatio || 1;
-        return Promise.all(parsed.textures.map(({ name, value }) => {
-            let options = { width, height, instance: `${id.slice(2)}-${name}`, compiled };
-            return doodleToImage(host, value, options).then(src => new Promise(resolve => {
-                if (!src) {
-                    return resolve({ name, value: null });
-                }
-                let img = new Image();
-                img.width = width * dpr;
-                img.height = height * dpr;
-                img.onload = () => resolve({ name, value: img });
-                img.onerror = () => resolve({ name, value: null });
-                img.src = src;
-            }));
-        }));
-    }
+    const loadTextures = () => loadTexturesAt(host, parsed, width, height, id, compiled);
 
     let latest = 0;
     const isStale = token => token !== latest || host._generation !== generation;
