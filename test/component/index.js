@@ -518,6 +518,7 @@ test('a redraw keeps the host variables of the images it draws again', () => {
         cleanup() {},
         generate() { return this.compiled = next; },
         getGrid() {},
+        getUse: () => '',
         shouldRebuild: () => false,
         patch() {},
         render: CSSDoodle.prototype.render,

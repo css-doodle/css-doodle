@@ -478,7 +478,10 @@ name, and `#id` alone draws it. The id goes right after the name,
 before or after a count; a space before `#` starts a new shape, so
 `#knob #knob { rotate: 90 }` draws two. The parts of `move` and
 `scale` split at spaces or commas, and an operator keeps its operands:
-`move: k * .5 0` and `move: .5 -.25` have two parts each.
+`move: k * .5 0` and `move: .5 -.25` have two parts each. A `text:`
+row is its text traced in the browser as the outline, in the `font:`
+style, weight and family: `@plot.hex(text: A; font: 900 serif)`; a
+quoted value keeps its commas, `;` and parentheses.
 
 ### 9.3 Patterns
 

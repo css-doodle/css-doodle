@@ -67,14 +67,17 @@ function readShapes(input, warn = () => {}, options) {
             last = null;
             return [...parts.map(bare), node];
         },
-        // `;` inside parentheses stays: `seq(1; 2)`
+        // `;` inside parentheses or quotes stays: `seq(1; 2)`, `text: 'a;b'`
         readStatement(iter, head) {
-            let value = [], depth = 0;
-            while (iter.curr(1) && !iter.curr(1).isSymbol('}') && iter.next()) {
+            let value = [], depth = 0, quote = false;
+            while (iter.curr(1) && (quote || !iter.curr(1).isSymbol('}')) && iter.next()) {
                 let curr = iter.curr();
-                if (curr.isSymbol('(')) depth++;
-                else if (curr.isSymbol(')') && depth) depth--;
-                else if (curr.isSymbol(';') && !depth) break;
+                if (curr.status) quote = curr.status === 'open';
+                else if (!quote) {
+                    if (curr.isSymbol('(')) depth++;
+                    else if (curr.isSymbol(')') && depth) depth--;
+                    else if (curr.isSymbol(';') && !depth) break;
+                }
                 value.push(curr);
             }
             return [last = { name: textOf(head).trim(), value }];

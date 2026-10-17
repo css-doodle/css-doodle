@@ -7,6 +7,8 @@ import generatePng from '../generator/svg-to-png.js';
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
 import { NS, NSXHtml, FilterHolderStyle, cdata } from '../lib/svg.js';
 import { isNil } from '../lib/type.js';
+import { clearMemos } from '../lib/cache.js';
+import { fontsLoading } from '../generator/shapes.js';
 import { isSafari } from '../lib/browser.js';
 import { css } from '../lib/tagged-template.js';
 import { RE_PLACEHOLDER, hasPlaceholder } from '../lib/placeholder.js';
@@ -381,12 +383,21 @@ if (typeof HTMLElement !== 'undefined') {
             });
         }
 
-        render(code, seed) {
+        render(code, seed, tries = 2) {
             this.cleanup();
             this._code = code;
             this._warned?.clear();
             let old = this.compiled;
             let compiled = this.generate(code, seed);
+            if (/\btext\s*:/.test(this.getUse() + code)) {
+                let linked = loadGoogleFontLink(compiled.styles.gf), generation = this._generation;
+                if (linked) fontsLoading.add(linked);
+                let wait = [...fontsLoading];
+                if (wait.length && tries) Promise.allSettled(wait).then(() => {
+                    if (wait.map(p => fontsLoading.delete(p)).includes(true)) clearMemos();
+                    if (generation === this._generation) this.render(this._code, this.compiled.seed, tries - 1);
+                });
+            }
             for (let id in { ...old?.shaders, ...old?.patterns }) {
                 if (!compiled.shaders[id] && !compiled.patterns[id]) {
                     this.style.removeProperty('--' + id);

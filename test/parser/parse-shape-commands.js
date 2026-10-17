@@ -28,6 +28,7 @@ test('comments are ignored', () => {
 test('values keep their colons and calls, the last statement wins', () => {
     assert.deepEqual(parseShapeCommands('a: b:c;'), { a: 'b:c' });
     assert.deepEqual(parseShapeCommands('a: seq(1, 2);'), { a: 'seq(1,2)' });
+    assert.deepEqual(parseShapeCommands(`text: 'a;b}'; font: serif`), { text: `'a;b}'`, font: 'serif' });
     assert.deepEqual(parseShapeCommands('a: seq(1, 2); a: hello'), { a: 'hello' });
     assert.deepEqual(parseShapeCommands('a: seq(1, 2);; a: hello'), { a: 'hello' });
     assert.deepEqual(parseShapeCommands(':hello'), {});

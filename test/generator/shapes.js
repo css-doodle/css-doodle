@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import generateShape, { shapeWarnings } from '../../src/generator/shapes.js';
-import { insideTest } from '../../src/generator/tiling.js';
+import { insideTest, signed } from '../../src/generator/tiling.js';
 import { useRandom } from '../../src/core/calc.js';
 
 test('preset shapes', () => {
@@ -601,4 +601,43 @@ test('cross and leaf: arms and width k of the box, counterclockwise from the rig
     assert.ok(leaf.every(([x]) => x >= 35 - 1e-9 && x <= 65 + 1e-9));
     assert.deepEqual(shapeWarnings('bicorn'), ['unknown shape bicorn']);
     assert.equal(generateShape('fish').points.rings.length, 2);
+});
+
+test('text: traced in a canvas, holes wound against the outline, nothing without a canvas', () => {
+    assert.equal(generateShape('text: Q').clip, 'polygon(50% 50%)');
+    let fonts = [];
+    // whatever the text, the canvas inks a ring
+    globalThis.document = { fonts: { check: () => true }, createElement: () => {
+        let canvas = { getContext: () => ({
+            set font(f) { fonts.push(f); },
+            measureText: () => ({ actualBoundingBoxLeft: 50, actualBoundingBoxRight: 50, actualBoundingBoxAscent: 70, actualBoundingBoxDescent: 30 }),
+            setTransform() {},
+            fillText() {},
+            getImageData() {
+                let n = canvas.width, data = new Uint8ClampedArray(4 * n * n);
+                for (let i = 0; i < n * n; ++i) {
+                    let r = Math.hypot(i % n + .5 - n / 2, (i / n | 0) + .5 - n / 2) / n;
+                    data[4 * i + 3] = 255 * Math.min(Math.max((.45 - r) * n, 0), 1, Math.max((r - .2) * n, 0));
+                }
+                return { data };
+            },
+        }) };
+        return canvas;
+    } };
+    try {
+        let rings = generateShape('text: O; font: bold 40px serif', { raw: true }).points;
+        assert.equal(rings.length, 2);
+        assert.ok(signed(rings[0].flat()) > 2 * 3.14 * .9 ** 2 * .98 && signed(rings[1].flat()) < 0);
+        assert.equal(Math.sign(signed(generateShape('circle', { raw: true }).points[0].flat())), 1);
+        assert.equal(fonts.at(-1), 'bold 100px serif');
+        // dots stay in the band, not in the hole
+        let dots = generateShape(`text: 'O'; scatter: 60; tile: scatter; dots: true; split: 180`).points;
+        assert.equal(dots.length, 60);
+        assert.ok(dots.every(p => {
+            let [x, y] = String(p).split(' ').map(parseFloat), r = Math.hypot(x - 50, y - 50);
+            return r > 20 && r < 46;
+        }));
+    } finally {
+        delete globalThis.document;
+    }
 });

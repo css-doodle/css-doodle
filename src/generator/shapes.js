@@ -6,13 +6,13 @@ import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
 import { clamp, tidyNumber } from '../lib/math.js';
-import { isEmpty, removeParens } from '../lib/type.js';
+import { isEmpty, removeParens, removeQuotes } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, PHI,
+    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, PI } = Math;
@@ -84,6 +84,49 @@ const presetShapes = {
     },
 };
 
+export const fontsLoading = new Set();
+
+const glyphs = memo((text, font) => {
+    let [, lead, family] = (font + ' ').match(/^((?:(?:italic|oblique|bold|bolder|lighter|small-caps|\d+)\s+)*)(?:[\d.]+\S*\s+)?(.*)/);
+    let face = lead + '100px ' + (family.trim() || 'sans-serif'), doc = globalThis.document, canvas = doc?.createElement('canvas');
+    if (!canvas) return [];
+    if (!doc.fonts.check(face, text)) fontsLoading.add(doc.fonts.load(face, text));
+    let n = 512, size = n - 8;
+    canvas.width = canvas.height = n;
+    let ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.font = face;
+    let { actualBoundingBoxLeft: l, actualBoundingBoxRight: r, actualBoundingBoxAscent: a, actualBoundingBoxDescent: d } = ctx.measureText(text);
+    let s = size / max(l + r, a + d);
+    if (!(s < Infinity)) return [];
+    ctx.setTransform(s, 0, 0, s, (n - s * (r - l)) / 2, (n - s * (d - a)) / 2);
+    ctx.fillText(text, 0, 0);
+    let data = ctx.getImageData(0, 0, n, n).data, v = i => data[4 * i + 3] - 127.5;
+    let next = new Int32Array(2 * n * n).fill(-1), rings = [];
+    for (let i = 0; i < n * (n - 1); ++i) {
+        let sum = v(i) + v(i + 1) + v(i + n) + v(i + n + 1);
+        if (abs(sum) == 510) continue;
+        let c = [i, i + 1, i + n + 1, i + n].map(k => v(k) > 0), keys = [2 * i, 2 * i + 3, 2 * i + 2 * n, 2 * i + 1], list = [];
+        for (let j = 0; j < 4; ++j) if (c[j] != c[(j + 1) % 4]) list.push([keys[j], c[(j + 1) % 4]]);
+        let k = list.length, step = sum > 0 ? k - 1 : 1;
+        list.forEach(([key, into], m) => into && (next[key] = list[(m + step) % k][0]));
+    }
+    let at = key => {
+        let i = key >> 1, t = v(i) / (v(i) - v(i + (key & 1 ? n : 1))), x = i % n + .5, y = (i / n | 0) + .5;
+        key & 1 ? y += t : x += t;
+        return [(2 * x - n) / size, (n - 2 * y) / size];
+    };
+    for (let k = 0; k < next.length; ++k) {
+        if (next[k] < 0) continue;
+        let ring = [];
+        for (let key = k, to; (to = next[key]) >= 0; key = to) {
+            ring.push(at(key));
+            next[key] = -1;
+        }
+        if (area(ring.flat()) > 1e-4) rings.push(thin(ring, .002));
+    }
+    return rings;
+});
+
 class Point {
     constructor(value, angle, origin, kind, r) {
         this.value = value;
@@ -154,7 +197,7 @@ function createPointFunction(props, split) {
     return point;
 }
 
-const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill fill-rule unit smooth blocks steps'.split(' '));
+const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill fill-rule unit smooth blocks steps text font'.split(' '));
 
 // each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
@@ -308,10 +351,9 @@ function createShapePoints(props, lo, hi, raw) {
         let step = PI * 2 * turn / split;
         return Array.from({ length: split }, (_, i) => fns[c](step * i, i));
     };
-    let rings = props.blocks ? combine(props, lo, hi) : vertices ? [vertices] : contours.map(trace);
+    let rings = props.blocks ? combine(props, lo, hi) : props.text ? glyphs(removeQuotes(props.text), props.font || '') : vertices ? [vertices] : contours.map(trace);
     if (props.blocks && !isEmpty(props.points)) rings = resample(rings, contours.map(p => p.split));
     if (!rings.length) rings = [[[0, 0]]];
-    // every ring at once: for grow and frame a group's rings are one region, each contour of a list its own
     let run = (rings, rounding = radius) => {
         let paths = rings.map(ring => rounding && corners(ring, null, rounding));
         let os = rings.map(() => [0, 0]), units = rings.map((_, c) => props.blocks ? 0 : c);
@@ -522,6 +564,9 @@ export default function generateShape(input, range = {}, modifier) {
     if (!rules.blocks && pairsOf(rules.points)) {
         rules.blocks = { op: 'union', items: [{ points: rules.points }] };
         delete rules.points;
+    }
+    if (!rules.blocks && rules.text) {
+        rules.blocks = { op: 'union', items: [{ text: rules.text, font: rules.font }] };
     }
     if (preset === undefined && range.preset && !rules.blocks && ['x', 'y', 'r'].every(k => isEmpty(rules[k]))) {
         preset = presetShapes[range.preset];
