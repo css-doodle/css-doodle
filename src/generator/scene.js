@@ -137,9 +137,11 @@ export default function drawScene(code, extra, report = () => {}) {
     let tree = readShapes(code, warn, { ignoreInlineComment: true });
     let root = { name: 'union', top: true, count: 0, rows: [], children: tree.children }, camera = {};
     for (let r of tree.rows) {
-        if (/^(view|perspective|zoom|light|shadow|ambient)$/.test(r.name)) camera[r.name] = r.value;
+        if (/^(view|perspective|zoom|light|shadow|ambient|drag)$/.test(r.name)) camera[r.name] = r.value;
         else root.rows.push(r);
     }
+    let drag = textOf(camera.drag || []).split(/[\s,]+/).filter(w => w && w !== 'none');
+    for (let w of drag) if (!/^(turn|tilt)$/.test(w)) warn(`drag takes turn or tilt, not ${w}`);
     let unread = new Set();
     for (let node of [root, ...tree.unused]) checkAll(node, warn, unread, code);
     let vars = node => node.rows.filter(r => isVar(node, r.name) && !unread.has(r));
@@ -518,7 +520,8 @@ export default function drawScene(code, extra, report = () => {}) {
         if (!self) out = out.replaceAll(SHADE, '');
 
         let off = v => /^\s*none\s*$/.test(textOf(v || []));
-        let [turn = '0.0', tilt = '0.0'] = numbers(camera.view || [], 'p', true).map(v => `radians(${v})`);
+        let angles = numbers(camera.view || [], 'p', true);
+        let [turn = '0.0', tilt = '0.0'] = angles.map(v => `radians(${v})`);
         let depth = !camera.perspective ? '2.0' : off(camera.perspective) ? '0.0' : first(camera.perspective, 'p');
         let zoom = camera.zoom ? first(camera.zoom, 'p') : '1.0';
         let shadow = camera.shadow && !off(camera.shadow) && first(camera.shadow, 'p');
@@ -543,10 +546,10 @@ export default function drawScene(code, extra, report = () => {}) {
             sky = `vec3(${v[0]})`;
             ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * dot(n, g_y))`;
         }
-        return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self };
+        return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self, base: +angles[1] || 0 };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
-    let { turn, tilt, depth, zoom, shadow, lights, ambient, self } = full;
+    let { turn, tilt, depth, zoom, shadow, lights, ambient, self, base } = full;
     let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, ambient, ...lights.flat()].join('\n'));
     // colors reading a slope need their neighbouring pixels shaded too, even transparent ones
     let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
@@ -560,7 +563,7 @@ export default function drawScene(code, extra, report = () => {}) {
     ${[...arrays].map(([array, v]) => `const ${array.match(/^\w+/)} ${v}[] = ${array};`).join('\n')}
     `;
     let now = `t = ${usesTime ? 'u_time' : '0.0'};`;
-    let view = glsl`
+    let view = (turn, tilt) => glsl`
         vec3 g_x = g_rotate(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), ${turn});
         vec3 g_y = g_rotate(g_rotate(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), ${tilt}), vec3(0.0, 1.0, 0.0), ${turn});
         vec3 g_z = cross(g_x, g_y);
@@ -573,7 +576,7 @@ export default function drawScene(code, extra, report = () => {}) {
     in vec4 position;
     uniform float u_time;
     uniform vec2 u_seed;
-    flat out vec3 g_vhi, g_vlo;
+    flat out vec3 g_vhi, g_vlo, g_vc;
     ${common}
     float g_fit(vec3 p) {
         ${fit.out}
@@ -591,15 +594,23 @@ export default function drawScene(code, extra, report = () => {}) {
         g_vlo = vec3(1e9);
         for (int i = 0; i <= ${usesTime ? 32 : 0}; i++) {
             if (i > 0) t = float(i - 1) * PI / 16.0;
-            ${view}
+            ${drag.length ? view('0.0', '0.0') : view(turn, tilt)}
             g_vhi = max(g_vhi, vec3(g_reach(g_x), g_reach(g_y), g_reach(g_z)));
             g_vlo = min(g_vlo, -vec3(g_reach(-g_x), g_reach(-g_y), g_reach(-g_z)));
         }
+        g_vc = vec3(0.0);
+        ${drag.length ? glsl`
+            float r = length(g_vhi - g_vlo) * 0.5;
+            if (r < 1e8) g_vc = (g_vhi + g_vlo) * 0.5;
+            g_vhi = vec3(r);
+            g_vlo = -g_vhi;
+        ` : ''}
     }
     `;
     let fragment = glsl`
     precision highp int;
-    flat in vec3 g_vhi, g_vlo;
+    uniform vec2 u_drag;
+    flat in vec3 g_vhi, g_vlo, g_vc;
     ${common}
     float g_dist(vec3 p) {
         ${bare.out}
@@ -613,8 +624,7 @@ export default function drawScene(code, extra, report = () => {}) {
     }
     void main() {
         ${now}
-        ${view}
-        // zoom scales the fitted view about its center: pixels per unit, and units per unit of the fit
+        ${view(drag.includes('turn') ? turn + ' + u_drag.x' : turn, drag.includes('tilt') ? tilt + ' + u_drag.y' : tilt)}
         float g_m = min(u_resolution.x, u_resolution.y), g_px = g_m * ${zoom};
         vec2 g_q = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / g_px;
         mat3 g_v = mat3(g_x, g_y, g_z);
@@ -639,7 +649,7 @@ export default function drawScene(code, extra, report = () => {}) {
             FragColor = vec4(0.0);
             return;
         }
-        vec3 g_ro = g_v * g_o, g_rd = g_v * g_r;
+        vec3 g_ro = g_vc + g_v * g_o, g_rd = g_v * g_r;
         // the closest approach in pixels gives the smooth edge
         float g_tn = g_t, g_near = 1e9;
         for (int k = 0; k < 128; k++) {
@@ -681,5 +691,5 @@ export default function drawScene(code, extra, report = () => {}) {
         FragColor = vec4(g_scene(g_h).rgb${self ? '' : SHADE}, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
     }
   `;
-    return { vertex, fragment, textures: [] };
+    return { vertex, fragment, textures: [], drag: drag.length && [base * Math.PI / 180] };
 }

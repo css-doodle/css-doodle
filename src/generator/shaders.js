@@ -295,6 +295,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
             frame: gl.getUniformLocation(program, 'u_frameIndex'),
             delta: gl.getUniformLocation(program, 'u_timeDelta'),
             mouse: gl.getUniformLocation(program, 'u_mouse'),
+            drag: gl.getUniformLocation(program, 'u_drag'),
         };
         drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta || uniforms.mouse);
         drawing.seeded = !!uniforms.seed;
@@ -307,7 +308,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
         surface = null;
     }
 
-    function draw(t, w, h, mouse, images) {
+    function draw(t, w, h, mouse, images, drag) {
         if (!surface) return;
         const width = raster(w);
         const height = raster(h);
@@ -336,6 +337,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
         if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
         if (uniforms.frame) gl.uniform1i(uniforms.frame, frameIndex++);
         if (uniforms.mouse) gl.uniform2f(uniforms.mouse, mouse ? mouse.x * dpr : 0, mouse ? (h - mouse.y) * dpr : 0);
+        if (uniforms.drag) gl.uniform2f(uniforms.drag, ...drag);
         if (uniforms.delta) {
             gl.uniform1f(uniforms.delta, (t - currentTime) * 0.001);
             currentTime = t;

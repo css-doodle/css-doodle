@@ -253,8 +253,24 @@ test('a fill that reads light is lit already, and the others are shaded', () => 
 test('the model is measured once per vertex, not per pixel', () => {
     let { vertex, fragment } = scene('sphere { r: .2 }');
     assert.match(vertex, /g_vhi = max\(g_vhi, vec3\(g_reach\(g_x\), g_reach\(g_y\), g_reach\(g_z\)\)\)/);
-    assert.match(fragment, /flat in vec3 g_vhi, g_vlo;/);
+    assert.match(fragment, /flat in vec3 g_vhi, g_vlo, g_vc;/);
     assert.doesNotMatch(fragment, /g_reach/);
+});
+
+test('drag lets the pointer turn the view, which then fits a ball around the model', () => {
+    let { vertex, fragment, warnings } = scene('view: 30 20; drag: turn tilt; sphere');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /radians\(30\.0\) \+ u_drag\.x/);
+    assert.match(fragment, /radians\(20\.0\) \+ u_drag\.y/);
+    // the fit reads the model's box in world axes, whatever the view
+    assert.match(vertex, /g_vc = \(g_vhi \+ g_vlo\) \* 0\.5;/);
+    assert.doesNotMatch(vertex, /radians/);
+    // the pointer turns only the angles named, and starts from the view's tilt
+    assert.doesNotMatch(scene('drag: turn; sphere').fragment, /u_drag\.y/);
+    assert.deepEqual(draw('view: 30 20; drag: turn; sphere', extra).drag, [20 * Math.PI / 180]);
+    assert.equal(draw('drag: none; sphere', extra).drag, 0);
+    assert.doesNotMatch(scene('sphere').fragment, /u_drag\.x/);
+    assert.deepEqual(scene('drag: orbit; sphere').warnings, ['drag takes turn or tilt, not orbit']);
 });
 
 test('the fit reads a scaled shape at its full size', () => {

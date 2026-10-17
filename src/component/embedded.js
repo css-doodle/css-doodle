@@ -80,11 +80,11 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
     let { width, height } = measure();
     let parsed = typeof source === 'string' ? parseShaders(source) : source;
     let textures = [];
+    let turned = [0, 0], redraw;
 
     const tick = drawing => {
         let present;
         if (target.type === 'content') {
-            // the WebGL canvas is shared, so each cell keeps a copy of each frame
             let views = elements.map(el => {
                 let view = document.createElement('canvas');
                 el.replaceChildren(view);
@@ -104,7 +104,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             }
         } else {
             let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
-            let key = !drawing.animated && !textures.length
+            let key = !drawing.animated && !textures.length && !parsed.drag
                 && [parsed.vertex, parsed.fragment, width, height, drawing.seeded && seedCell].join('\n');
             let scale = 1;
             present = () => {
@@ -122,28 +122,66 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             }
         }
 
+        let now = 0;
         const frame = t => {
             if (!width || !height) return;
-            drawing.draw(t, width, height, host._umouse, textures);
+            drawing.draw(now = t, width, height, host._umouse, textures, turned);
             present();
         };
 
         frame(0);
+        redraw = () => frame(now);
 
         if (drawing.animated) {
-            // a new loop starts in the host's current state
             let animation = createAnimation(frame);
             if (host._offscreen || host.hasAttribute('cssd-paused')) {
                 animation.pause();
             }
             host.animations.push(animation);
-        } else {
+        } else if (!parsed.drag) {
             drawing.dispose();
         }
+        host.shaderRenders.get(id)?.dispose();
         host.shaderRenders.set(id, drawing);
 
         if (!fixed && !host.observers.has(id)) {
             watch();
+        }
+        if (parsed.drag && !host.observers.has(id + '-drag')) {
+            grab();
+        }
+    }
+
+    const grab = () => {
+        let [base] = parsed.drag, controller = new AbortController(), { signal } = controller, queued;
+        host.observers.set(id + '-drag', {
+            disconnect() {
+                controller.abort();
+                elements.forEach(el => el.style.touchAction = '');
+            }
+        });
+        for (let el of elements) {
+            let from;
+            el.style.touchAction = 'none';
+            el.addEventListener('pointerdown', e => {
+                if (!e.isPrimary || e.button) return;
+                e.preventDefault();
+                el.setPointerCapture(e.pointerId);
+                from = e;
+            }, { signal });
+            el.addEventListener('pointermove', e => {
+                if (!el.hasPointerCapture(e.pointerId)) return;
+                let rate = Math.PI / Math.min(width, height), half = Math.PI / 2;
+                turned[0] += (e.clientX - from.clientX) * rate;
+                turned[1] = Math.min(Math.max(turned[1] + (e.clientY - from.clientY) * rate, -half - base), half - base);
+                from = e;
+                if (!host.shaderRenders.get(id).animated || host.hasAttribute('cssd-paused')) {
+                    queued ||= requestAnimationFrame(() => {
+                        queued = 0;
+                        redraw();
+                    });
+                }
+            }, { signal });
         }
     }
 

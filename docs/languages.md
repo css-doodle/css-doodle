@@ -296,8 +296,13 @@ and tilts it, in degrees, and `perspective: d` sets its distance, 2 by
 default or `none` for a parallel view. The camera fits the model, a
 moving one as it is now and over its first 2π seconds, so it holds
 still while the model or view moves: `view: 30t` spins it in place.
-`zoom: k` then scales the view about its center, cropping above 1. An
-animated scene draws best in `@content`.
+`zoom: k` then scales the view about its center, cropping above 1.
+`drag: turn tilt` lets the pointer turn the view too, half a turn
+across the drawing's shorter side, with the tilt kept between straight
+down and straight up; `drag: turn` only turns it. The camera then
+circles the middle of the model and fits it from every side, so the
+model may draw smaller than without `drag`. An animated or dragged
+scene draws best in `@content`.
 
 **Light.** `light: x y z` points toward the light the way `normal`
 does, so the light turns with the camera; it is `.6 .8 .5` by default.
