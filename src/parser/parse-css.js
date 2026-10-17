@@ -1148,13 +1148,13 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
         }
         let body = '';
         let kind = paint ? kindOf(def, defs) : INCLUDE;
+        let lead = paint ? text.slice(head, t.index).trim() : '';
         if (chain.includes(name)) {
             warn(ctx, `$${name}() calls itself`);
         } else if (ctx.expanded > MAX_EXPANSION) {
             if (ctx.expanded < Infinity) warn(ctx, 'user functions expand too large');
             ctx.expanded = Infinity;
         } else if (kind === VALUE) {
-            let lead = mode === BODY ? text.slice(head, t.index).trim() : '';
             if (!pending || blocks.at(-1) && !depth || RE_REPEAT_HEAD.test(lead)) {
                 warn(ctx, `$${name}() runs statements; use it as one`);
             } else {
@@ -1168,6 +1168,11 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
             body = bindParams(value === null ? def : { ...def, body: value }, args, defs, paint);
             ctx.expanded += body.length;
             body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending);
+            let next = solidAt(tokens, end + 1);
+            let whole = (!lead || /[:(,]$/.test(lead)) && (!next || next.isSymbol(';', '{', '}') || next.isSymbol(')', ','));
+            if (kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1)) && !RE_SIMPLE_ARG.test(body.trim())) {
+                body = `(${body.trim()})`;
+            }
         }
         flush(t.index);
         if (mode === BODY && pending.length) {

@@ -413,7 +413,8 @@ past the edges; `texture(texture_0, uv)` draws it unchanged.
 **User functions**, `--name(params): body`, work on values in
 `@pattern` and `@scene`. Each argument is one value: one that is not a
 name, a number or a color is parenthesized, so with `--f(a): a * 2`,
-`$f(x + 1)` reads `(x + 1) * 2`. A parameter reads bare, `p` as `$p`,
+`$f(x + 1)` reads `(x + 1) * 2`. A body of one expression is one value
+too: with `--g(a): a + 1`, `$g(x) * 2` reads `(x + 1) * 2`. A parameter reads bare, `p` as `$p`,
 and `p.xy` takes its swizzle; it hides a built-in of its name. It stays
 as written where it is called, `p(…)`, assigned, or named by a
 `repeat` loop, and in a `texture` block's CSS. A body that assigns

@@ -714,6 +714,20 @@ test('in @pattern and @scene a user function argument is one value', () => {
     assert.deepEqual(ast(`--f(a, b): $a * $b; width: $f(1 + 1, 2);`), ast(`width: 1 + 1 * 2;`));
 });
 
+test('in @pattern and @scene an expression body is one value next to other terms', () => {
+    let h = `--h(x): -.07 + .045 * x;`;
+    assert.equal(paintOf(`${h} @content: @pattern(fill: vec3($h(1) - $h(2)););`),
+        'fill: vec3((-.07 + .045 * 1) - (-.07 + .045 * 2));');
+    assert.equal(paintOf(`${h} @content: @pattern(match { $h(1) - $h(2) > 0 { fill: 1; } });`),
+        'match { (-.07 + .045 * 1) - (-.07 + .045 * 2) > 0 { fill: 1; } }');
+    assert.equal(paintOf(`${h} --g(x): $h(x) * 2; @content: @pattern(fill: $g(1););`),
+        'fill: (-.07 + .045 * 1) * 2;');
+    // the whole value, an argument or a statement's head reads as written
+    assert.equal(paintOf(`${h} @content: @pattern(fill: $h(1););`), 'fill: -.07 + .045 * 1;');
+    assert.equal(paintOf(`${h} @content: @pattern(fill: sin($h(1)););`), 'fill: sin(-.07 + .045 * 1);');
+    assert.equal(paintOf(`--s(): sphere; @content: @scene($s() { r: .5 });`), 'sphere { r: .5 }');
+});
+
 test('a function that assigns result runs its statements before the statement calling it', () => {
     let code = `--perlin(p): { pi: floor($p); pf: fract($p); result: pf * pi; };
         @content: @pattern(pi: 3; b: $perlin(uv * 4) + $perlin(pi); fill: b;);`;
@@ -778,7 +792,7 @@ test('in @pattern and @scene a parameter reads bare, as a name of the function\'
     assert.equal(paintOf(`--n(p): { f: fract(p); result: f.x * p.y; }; @content: @pattern(fill: $n(uv * 4););`),
         'n_1_p: uv * 4; n_1_f: fract(n_1_p); n_1_result: n_1_f.x * n_1_p.y; fill: n_1_result;');
     assert.equal(paintOf(`--sq(a): a * a; --g(mix): mix(mix, 1, .5); @content: @pattern(fill: $sq(x + 1) + $g(uv.x););`),
-        'fill: (x + 1) * (x + 1) + mix(uv.x, 1, .5);');
+        'fill: ((x + 1) * (x + 1)) + (mix(uv.x, 1, .5));');
     // assigning it changes the function's copy, $p: the caller's variable
     assert.equal(paintOf(`--f(p): { p: p * 2; result: p + 1; }; @content: @pattern(n: 1; fill: $f(n) + n;);`),
         'n: 1;f_1_p: n * 2; f_1_result: f_1_p + 1; fill: f_1_result + n;');
