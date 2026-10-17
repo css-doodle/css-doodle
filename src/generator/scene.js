@@ -192,14 +192,27 @@ export default function drawScene(code, extra, report = () => {}) {
 
         let out = '';
         let lit = new Set(['light']), reads = code => code.match(/\w+/g)?.some(w => lit.has(w));
-        let scope = (node, p) => {
+        let scoped = new Map();
+        let scope = (node, p, sites) => {
+            let end = ctx.sites, moved = [p];
+            if (sites === undefined) scoped.set(node, { p, sites: ctx.sites });
+            else ctx.sites = sites;
             for (let { name, value } of vars(node)) {
                 let { type, code } = compile(textOf(value), p);
-                let id = next(), t = ctx.types[id] = type === 'int' ? 'float' : type, c = code(t);
+                let t = type === 'int' ? 'float' : type, c = code(t);
+                if (sites !== undefined && !new RegExp(`\\b(${moved.join('|')})\\b`).test(c)) continue;
+                let id = next();
+                ctx.types[id] = t;
+                moved.push(id);
                 ctx.names = { __proto__: ctx.names, [name]: id };
                 if (reads(c)) lit.add(id);
                 out += `${t} ${id} = ${c};\n`;
             }
+            if (sites !== undefined) ctx.sites = end;
+        };
+        let rescope = (node, p) => {
+            let first = scoped.get(node);
+            if (first && first.p !== p) scope(node, p, first.sites);
         };
         let base = ctx.fill = next(), none = dist ? '1e5' : `vec4(${base}, 1e5)`;
         let T = dist ? 'float' : 'vec4', W = dist ? '' : '.w';
@@ -363,7 +376,8 @@ export default function drawScene(code, extra, report = () => {}) {
         }
 
         function atom(node, p) {
-            let saved = ctx.fill, f = row(node, 'fill');
+            let saved = ctx.fill, names = ctx.names, f = row(node, 'fill');
+            rescope(node, p);
             let c = f.length && color(textOf(f), p);
             if (c && !dist) {
                 ctx.fill = next();
@@ -371,6 +385,7 @@ export default function drawScene(code, extra, report = () => {}) {
             }
             let r = shape(node, p);
             ctx.fill = saved;
+            ctx.names = names;
             return r;
         }
 
@@ -379,8 +394,8 @@ export default function drawScene(code, extra, report = () => {}) {
             if (GROUPS[node.name]) {
                 let k = first(row(node, 'smooth'), p), a, cut = ctx.cut, name = node.name;
                 ctx.cut ||= name === 'intersect';
+                ctx.loose ||= ctx.cut;
                 for (let child of node.children) {
-                    // the first part of a subtract and every part of an intersect only raise the group
                     let cap = k !== '0.0' ? null : !a || name === 'intersect' ? ctx.cap : name === 'union' ? below(a) : `-${a}`;
                     let b = within(cap, () => generate(child, p));
                     if (a) out += join(a, b, k, GROUPS[node.name]);
@@ -413,14 +428,16 @@ export default function drawScene(code, extra, report = () => {}) {
                 let ok = value && /^(float|int)$/.test(type);
                 if (!ok) warn('sdf needs d');
                 d = ok ? code('float') : '1e5';
-                // a distance written at part strength, like `* .5`, reads at full strength so it hides no other part;
-                // inside an intersect it may only shrink the fit, so it stays as written
+                ctx.loose = true;
                 if (ok && fit && !ctx.cut) {
-                    let [a, h, c, end] = [next(), next(), next(), ctx.sites];
+                    let [a, h, c, end, names] = [next(), next(), next(), ctx.sites, ctx.names];
                     ctx.types[h] = 'vec3';
+                    out += `float ${a} = ${d};\nvec3 ${h} = ${p} * 0.5;\n`;
+                    rescope(node, h);
                     ctx.sites = start;
-                    out += `float ${a} = ${d};\nvec3 ${h} = ${p} * 0.5;\nfloat ${c} = 2.0 * (${a} - ${compile(value, h).code('float')}) / length(${p});\n`;
+                    out += `float ${c} = 2.0 * (${a} - ${compile(value, h).code('float')}) / length(${p});\n`;
                     ctx.sites = end;
+                    ctx.names = names;
                     d = `${c} > 0.1 ? ${a} / ${c} : ${a}`;
                 }
             } else {
@@ -538,12 +555,11 @@ export default function drawScene(code, extra, report = () => {}) {
             sky = `vec3(${v[0]})`;
             ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * dot(n, g_y))`;
         }
-        return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self, base: +angles[1] || 0 };
+        return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self, base: +angles[1] || 0, loose: ctx.loose };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
     let { turn, tilt, depth, zoom, shadow, lights, ambient, self, base } = full;
     let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, ambient, ...lights.flat()].join('\n'));
-    // colors reading a slope need their neighbouring pixels shaded too, even transparent ones
     let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
     let common = glsl`
     const float PI = 3.1415926535897932;
@@ -574,10 +590,30 @@ export default function drawScene(code, extra, report = () => {}) {
         ${fit.out}
         return ${fit.result};
     }
+    ${fit.loose ? glsl`
+        float g_dist(vec3 p) {
+            ${bare.out}
+            return ${bare.result};
+        }
+        float g_walk(vec3 e) {
+            vec3 q = e * 50.0;
+            for (int k = 0; k < 16; k++) {
+                float d = g_dist(q), h = max(1e-3 * abs(d), 1e-5);
+                if (abs(d) < 1e-4) return dot(q, e);
+                vec3 g = vec3(0.0);
+                for (int j = 0; j < 4; j++) {
+                    vec3 o = 2.0 * vec3(float(((j + 3) >> 1) & 1), float((j >> 1) & 1), float(j & 1)) - 1.0;
+                    g += o * g_dist(q + o * h);
+                }
+                q -= d * g * 4.0 * h / max(dot(g, g), 1e-12);
+            }
+            return -1e9;
+        }
+    ` : ''}
     float g_reach(vec3 e) {
         float b = 50.0 - g_fit(e * 50.0);
         float s = (1e3 - g_fit(e * 1e3) - b) / 950.0;
-        return s < 0.9 ? (b - s * 50.0) / (1.0 - s) : 1e9;
+        return s < 0.9 ? ${fit.loose ? 'max(g_walk(e), (b - s * 50.0) / (1.0 - s))' : '(b - s * 50.0) / (1.0 - s)'} : 1e9;
     }
     void main() {
         gl_Position = position;
@@ -620,7 +656,6 @@ export default function drawScene(code, extra, report = () => {}) {
         float g_m = min(u_resolution.x, u_resolution.y), g_px = g_m * ${zoom};
         vec2 g_q = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / g_px;
         mat3 g_v = mat3(g_x, g_y, g_z);
-        // zoom out and shift only as far as keeps the model in view
         float g_d = ${depth}, g_f = g_d > 0.0 ? 1.0 / g_d : 0.0;
         vec2 g_w = 0.5 * u_resolution.xy / g_m;
         vec3 g_hi = g_vhi, g_lo = g_vlo;
@@ -632,7 +667,6 @@ export default function drawScene(code, extra, report = () => {}) {
         float g_z0 = g_d > 0.0 ? g_d * g_k : max(g_hi.z, 0.0) + g_k;
         vec3 g_o = vec3(clamp(vec2(0.0), g_hi.xy - g_w, g_lo.xy + g_w) + (g_d > 0.0 ? vec2(0.0) : g_q * g_k), g_z0);
         vec3 g_r = normalize(vec3(g_d > 0.0 ? g_q : vec2(0.0), -max(g_d, 1.0)));
-        // march inside the model's box only
         vec3 g_a = (g_lo - 0.02 * g_k - g_o) / (g_r + 1e-9), g_c = (g_hi + 0.02 * g_k - g_o) / (g_r + 1e-9);
         vec3 g_in = min(g_a, g_c), g_out = max(g_a, g_c);
         float g_t = g_b ? max(max(max(g_in.x, g_in.y), g_in.z), 0.0) : 0.0;
@@ -642,7 +676,6 @@ export default function drawScene(code, extra, report = () => {}) {
             return;
         }
         vec3 g_ro = g_vc + g_v * g_o, g_rd = g_v * g_r;
-        // the closest approach in pixels gives the smooth edge
         float g_tn = g_t, g_near = 1e9;
         for (int k = 0; k < 128; k++) {
             float d = g_dist(g_ro + g_rd * g_t);
@@ -652,7 +685,6 @@ export default function drawScene(code, extra, report = () => {}) {
             g_t += d;
         }
         ${slopes ? '' : glsl`
-            // past the one-pixel edge a miss is transparent, and the normal below only widens it
             if (g_near >= 1.1) {
                 FragColor = vec4(0.0);
                 return;
@@ -665,14 +697,12 @@ export default function drawScene(code, extra, report = () => {}) {
             vec3 e = 0.5773 * (2.0 * vec3(float(((k + 3) >> 1) & 1), float((k >> 1) & 1), float(k & 1)) - 1.0);
             n += e * g_dist(g_h + e * 5e-4 * g_u);
         }
-        // a miss reads its closest approach at full strength, so squashed and blended shapes keep a one-pixel edge
         if (g_near >= 0.1) g_near /= clamp(length(n) * 1500.0 / g_u, 1e-3, 1.0);
         n = normalize(n);
         normal = n * g_v;
         ${lights.length ? glsl`
             vec3 g_lit = vec3(0.0);
             ${shadow ? glsl`
-                // a pixel at the hit, and the model's size
                 float g_e = (g_d > 0.0 ? g_tn * g_f : g_k) / g_px, g_s = g_b ? length(g_hi - g_lo) : g_k, g_sh = ${shadow};
             ` : ''}
             ${lights.map(([dir, color], i) => `vec3 g_l${i} = g_v * normalize(${dir});\ng_lit += ${color} * max(dot(n, g_l${i}), 0.0)${shadow

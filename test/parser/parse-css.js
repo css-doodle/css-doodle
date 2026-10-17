@@ -586,6 +586,14 @@ test('a user function is called with parens, and only with $', () => {
     assert.deepEqual(ast(`--f(x): [$x]; a: $px(1 + 1); b: $g(2);`), ast(`a: $px(1 + 1); b: $g(2);`));
 });
 
+test('$name( calls the function even where a parameter shares its name', () => {
+    assert.deepEqual(
+        ast(`--two(x): $(x * 2); --c(two = 0): { path { d: M $two(5) $two } } background: @svg($c(100));`),
+        ast(`background: @svg(path { d: M $((5) * 2) 100 });`));
+    // the parameter is passed into the call as $two
+    assert.deepEqual(ast(`--g(a): $(a * 3); --f(g): $g($g); width: $f(2)px;`), ast(`width: $((2) * 3)px;`));
+});
+
 test('user function arguments', () => {
     // a call inside an argument expands first, where it is written
     assert.deepEqual(
@@ -712,6 +720,8 @@ test('in @pattern and @scene a user function argument is one value', () => {
         'k: (-1) ** 2; sphere { r: k }');
     // in CSS it is pasted as before
     assert.deepEqual(ast(`--f(a, b): $a * $b; width: $f(1 + 1, 2);`), ast(`width: 1 + 1 * 2;`));
+    // after a number it multiplies, so a number argument stays apart
+    assert.equal(paintOf(`--f(a): .5a + 2$a + a; @content: @pattern(fill: $f(.4););`), 'fill: .5(.4) + 2(.4) + .4;');
 });
 
 test('in @pattern and @scene an expression body is one value next to other terms', () => {

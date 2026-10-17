@@ -514,6 +514,9 @@ class Rules {
                 }
                 return withUnit(_fn(input, context), unit);
             }
+            if (fn.vars) {
+                return _fn(this.calcContext(cell.uid, contextVariable), ...input);
+            }
             return _fn(...input);
         }
         return _fn;

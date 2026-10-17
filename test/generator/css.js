@@ -1087,6 +1087,13 @@ test('@match evaluates only the value it returns', () => {
     assert.equal(cells('--v: @m4(@match(@n % 2, a@n, b@n));'), '#c-1-1-1 {--v:a1,b2,a3,b4;}');
 });
 
+test('@match() and @pick(k: …) read custom properties, under the cell names', () => {
+    assert.equal(svgImage('background: @svg(circle*3 { --c: 2; display: @match(@n > c, none, inline) })'),
+        '<svg><circle display="inline"/><circle display="inline"/><circle display="none"/></svg>');
+    assert.equal(cells('--k: 3; --v: @m3(@match(n < k - 1, a, b)); --w: @pick(k: a, b, c);'), '#c-1-1-1 {--k:3;\n--v:a,b,b;\n--w:c;}');
+    assert.equal(cells('--x: 5; color: @match(x > 1, red, blue);', '2x1'), ':is(cell,#_) {--x:5;}#c-1-1-1 {color:blue;}#c-2-1-1 {color:red;}');
+});
+
 test('per-cell texts keep their blocks in cell order', () => {
     assert.equal(cells('--i: @i; color: red;', '2x2'),
         ':is(cell,#_) {color:red;}'

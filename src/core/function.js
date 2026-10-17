@@ -496,9 +496,8 @@ Function.R.t = createNoise(true);
 
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
-// the cell variables, and n, nx, ny and N inside @m or @M
-function sequenceContext(cell, e) {
-    let variables = calcContext(cell);
+function sequenceContext(cell, e, vars) {
+    let variables = Object.assign(vars, calcContext(cell));
     if (e.length) {
         variables.n = e[SEQ.n];
         variables.nx = e[SEQ.x];
@@ -508,12 +507,12 @@ function sequenceContext(cell, e) {
     return variables;
 }
 
-Function.match = lazy((cell, { extra }, position, ...args) => {
+Function.match = lazy((cell, { extra }, position, vars, ...args) => {
     if (args.length <= 1) {
         return '';
     }
     let e = last(extra) || [];
-    let variables = sequenceContext(cell, e);
+    let variables = sequenceContext(cell, e, vars);
     let value = i => getValue(args[i](...e));
     for (let i = 0; i < args.length; i += 2) {
         if (i + 1 === args.length) {
@@ -525,14 +524,16 @@ Function.match = lazy((cell, { extra }, position, ...args) => {
     }
 });
 
-export const pickAt = lazy((cell, { context, extra }, position, ...args) => {
+export const pickAt = lazy((cell, { context, extra }, position, vars, ...args) => {
     if (args.length <= 1) {
         return '';
     }
     let e = last(extra) || [];
-    let k = calc(getValue(args[0](...e)), sequenceContext(cell, e));
+    let k = calc(getValue(args[0](...e)), sequenceContext(cell, e, vars));
     return Number.isFinite(k) ? pushStack(context, 'lastPick', getValue(args[1 + pickIndex(k, args.length - 1)](...e))) : '';
 });
+
+Function.match.vars = pickAt.vars = true;
 
 Function.calc = () => (value = '', context) => tidyNumber(calc(value, typeof context === 'object' ? context : undefined, 1));
 

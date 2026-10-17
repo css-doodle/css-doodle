@@ -289,6 +289,24 @@ test('the fit reads an sdf at full strength, except inside an intersect', () => 
     assert.doesNotMatch(scene('sdf { d: (length(p) - .2) * .5 }').dist, /\? /);
 });
 
+test('the fit walks onto the surface of an sdf or an intersect, whose far line may meet zero too near', () => {
+    assert.match(scene('sdf { d: max(length(p.xz) - .02, abs(p.y) - .9) }').vertex, /float g_dist[^]*float g_walk[^]*max\(g_walk\(e\)/);
+    assert.match(scene('intersect { box; sphere { r: .6 } }').vertex, /g_walk/);
+    assert.doesNotMatch(scene('box { size: .2 } sphere { r: .1 }').vertex, /g_walk|g_dist/);
+});
+
+test('a part\'s variables read p after its own commands, which read them before', () => {
+    let { body } = scene('sdf { q: p; k: .2; d: length(q) - k; move: k 0 0 }');
+    // q is read again from the moved point; k, which doesn't read p, is not
+    assert.match(body, /vec3 (g_\d+) = p - vec3\((g_\d+), 0\.0, 0\.0\);\nvec3 (g_\d+) = \1;\n[^]*length\(\3\) - \2/);
+    // a group's variables read the point its children see
+    assert.match(scene('union { k: p.x; move: .4 0 0; sphere { r: .2 + k } }').body, /vec3 (g_\d+) = p - vec3\(\.4[^;]*;\nfloat (g_\d+) = \1\.x;\n[^]*length\(\1\) - \(\.2 \+ \2\)/);
+    // read again, rand() takes the same values
+    let { body: random } = scene('sdf { q: p + rand(); d: length(q) - .2; move: .1 0 0 } sphere { r: rand() }');
+    assert.equal(random.match(/rand\(vec2\(0\.0, 1\.0\)/g).length, 2);
+    assert.match(random, /rand\(vec2\(0\.0, 2\.0\)/);
+});
+
 test('the fit reads a twisted shape turned all the way round y, since far probes would turn by any angle', () => {
     let { vertex, dist } = scene('box { size: .2; move: .8 0 0; twist: 10 }');
     let fit = vertex.match(/float g_fit[^]*?return/)[0];

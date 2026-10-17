@@ -1372,19 +1372,21 @@ function bindParams({ params, defaults, body }, args, defs, paint = false) {
         if (!t.isWord() && !t.isSymbol('_')) continue;
         let end = nameEnd(tokens, i);
         let name = textOf(tokens.slice(i, end + 1));
-        // a bare name ends at the dot of a swizzle: p.xy
         let dot = name.indexOf('.');
         let k = params.indexOf(dot > 0 ? name.slice(0, dot) : name);
         let last = tokens[end], next = tokens[end + 1];
+        let dollar = prev?.isSymbol('$') && adjacent(prev, t);
+        let ahead = tokens[dollar ? i - 2 : i - 1];
         i = end;
         if (k < 0) continue;
         let arg = args[k] || defaults[k];
         let start = t.index;
         let call = next?.isSymbol('(') && adjacent(last, next);
+        if (dollar && call && defs[name]) continue;
         let wrap = parens.at(-1) && !call;
-        // in @pattern and @scene an argument is one value
-        let one = paint && !!arg && !RE_SIMPLE_ARG.test(arg.trim());
-        if (prev?.isSymbol('$') && adjacent(prev, t)) {
+        let one = paint && !!arg && (!RE_SIMPLE_ARG.test(arg.trim())
+            || /^[\d.]/.test(arg.trim()) && ahead?.isNumber() && adjacent(ahead, dollar ? prev : t));
+        if (dollar) {
             start = prev.index;
             wrap ||= one;
         } else if (prev?.isSymbol('@') && adjacent(prev, t)) {
