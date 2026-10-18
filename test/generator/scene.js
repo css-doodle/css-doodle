@@ -189,6 +189,7 @@ test('perspective sets the camera distance, none makes it parallel', () => {
     assert.match(scene('sphere;').fragment, /float g_d = 2\.0/);
     assert.match(scene('perspective: 4; sphere;').fragment, /float g_d = 4\.0/);
     assert.match(scene('perspective: none; sphere;').fragment, /float g_d = 0\.0/);
+    assert.match(scene('perspective: .5; sphere;').fragment, /-\(g_d > 0\.0 \? g_d : 1\.0\)\)\);/);
 });
 
 test('zoom scales the fitted view', () => {
@@ -267,9 +268,18 @@ test('drag lets the pointer turn the view, which then fits a ball around the mod
     assert.deepEqual(warnings, []);
     assert.match(fragment, /radians\(30\.0\) \+ u_drag\.x/);
     assert.match(fragment, /radians\(20\.0\) \+ u_drag\.y/);
-    // the fit reads the model's box in world axes, whatever the view
-    assert.match(vertex, /g_vc = \(g_vhi \+ g_vlo\) \* 0\.5;/);
-    assert.doesNotMatch(vertex, /radians/);
+    assert.match(vertex, /vec3\(0\.0, 1\.0, 0\.0\), 0\.0\);[^]*g_vhi = max\(g_vhi/);
+    assert.match(vertex, /vec3 a = \(g_vhi - g_vlo\) \* 0\.5, c = \(g_vhi \+ g_vlo\) \* 0\.5;[^]*g_vc = c;/);
+    assert.match(vertex, /g_dhi\[k\] = max\(g_dhi\[k\], g_reach\(normalize\(g_corner\(k\) \* 2\.0 - 1\.0\)\)\);/);
+    assert.match(vertex, /r = min\(1\.02 \* sqrt\(m\), r\);/);
+    assert.doesNotMatch(scene('view: 30 20; sphere').vertex, /g_dhi|g_far/);
+    assert.match(vertex, /radians\(30\.0\)[^]*g_rhi = max\(g_rhi, vec3\(g_reach\(g_x\)/);
+    assert.match(fragment, /flat in vec3 g_rhi, g_rlo;/);
+    assert.match(fragment, /g_d = min\(min\(min\(g_w\.x, g_w\.y\) \* sqrt\(g_ra \* g_ra - g_hi\.x \* g_hi\.x\) \/ max\(g_hi\.x, 1e-6\), g_d\), g_ra\);/);
+    let still = scene('drag: turn tilt; sphere').vertex;
+    assert.doesNotMatch(still, /g_rhi = max/);
+    assert.match(still, /g_rhi = g_vhi;\s*g_rlo = g_vlo;\s*vec3 a = /);
+    assert.doesNotMatch(scene('view: 30 20; sphere').fragment, /g_rhi/);
     // the pointer turns only the angles named, and starts from the view's tilt
     assert.doesNotMatch(scene('drag: turn; sphere').fragment, /u_drag\.y/);
     assert.deepEqual(draw('view: 30 20; drag: turn; sphere', extra).drag, [20 * Math.PI / 180]);
@@ -378,6 +388,29 @@ test('a lathe turns an outline around y', () => {
     assert.deepEqual(xs('lathe { path: M0 0 L5 0 L5 10 L0 10 Z }'), [0, 1]);
     assert.deepEqual(xs('lathe { path: M-5 0 L5 0 L5 10 L-5 10 Z }'), [-1, 1]);
     assert.deepEqual(xs('lathe { shape { path: M0 0 L5 0 L5 10 L0 10 Z } }'), [-.5, .5]);
+    globalThis.document = { fonts: { check: () => true }, createElement: () => {
+        let canvas = { getContext: () => ({
+            measureText: () => ({ width: 100, fontBoundingBoxAscent: 80, fontBoundingBoxDescent: 20 }),
+            setTransform() {},
+            fillText() {},
+            getImageData() {
+                let n = canvas.width, data = new Uint8ClampedArray(4 * n * n);
+                for (let i = 0; i < n * n; ++i) {
+                    data[4 * i + 3] = Math.hypot(i % n + .5 - n / 2, (i / n | 0) + .5 - n / 2) < n * .4 ? 255 : 0;
+                }
+                return { data };
+            },
+        }) };
+        return canvas;
+    } };
+    try {
+        let [l, r] = xs('lathe { text: O }');
+        assert.ok(Math.abs(l) < .01 && Math.abs(r - 1) < .01, `${l} ${r}`);
+        [l, r] = xs('polygon { text: O }');
+        assert.ok(Math.abs(l + 1) < .01 && Math.abs(r - 1) < .01, `${l} ${r}`);
+    } finally {
+        delete globalThis.document;
+    }
 });
 
 test('an outline walks only where its box could change the parts before it', () => {

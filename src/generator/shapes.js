@@ -87,7 +87,7 @@ const presetShapes = {
 
 export const fontsLoading = new Set();
 
-function glyphs(text, font) {
+function glyphs(text, font, axis) {
     let [, lead, family] = (font + ' ').match(/^((?:(?:italic|oblique|bold|bolder|lighter|small-caps|\d+)\s+)*)(?:[\d.]+\S*\s+)?(.*)/);
     family = (family.trim() || 'sans-serif').split(',').map(f => (f = f.trim(), /^(['"]|-?[a-z_][\w-]*(\s+-?[a-z_][\w-]*)*$)/i.test(f) ? f : `"${f}"`));
     let face = lead + '100px ' + family.join(', '), ready;
@@ -96,10 +96,10 @@ function glyphs(text, font) {
     } catch {
         return [];
     }
-    return traced(text, face, ready);
+    return traced(text, face, ready, axis);
 }
 
-const traced = memo((text, face, ready) => {
+const traced = memo((text, face, ready, axis) => {
     if (!ready) fontsLoading.add(document.fonts.load(face, text));
     let n = 512, canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
     let draw = (s, x, y) => {
@@ -143,7 +143,7 @@ const traced = memo((text, face, ready) => {
         }
         rings.push(ring);
     }
-    return fitRings(rings);
+    return fitRings(rings, axis);
 });
 
 const pathRings = memo((d, axis) => {
@@ -203,9 +203,9 @@ const pathRings = memo((d, axis) => {
 
 function fitRings(rings, axis) {
     rings = rings.filter(ring => ring.length > 2);
-    let [l, t, r, b] = bounds(rings.flat(2));
-    if (axis) r = max(-l, r), l = -r;
-    let s = 2 / max(r - l, b - t), cx = (l + r) / 2, cy = (t + b) / 2;
+    let [l, t, r, b] = bounds(rings.flat(2)), cx = (l + r) / 2, cy = (t + b) / 2, w = r - l;
+    if (axis) cx = axis == 'start' ? l : 0, w = 2 * max(cx - l, r - cx);
+    let s = 2 / max(w, b - t);
     return s < Infinity ? rings.map(ring => thin(ring.map(([x, y]) => [(x - cx) * s, (cy - y) * s]), .002)).filter(ring => area(ring.flat()) > 1e-4) : [];
 }
 
@@ -624,8 +624,9 @@ function unwrap(input) {
 export function outline(polygon, warn) {
     polygon.children.forEach(n => check(n, warn));
     let commands = commandsOf({ rows: polygon.rows.filter(r => /^(points|text|font|path)$/.test(r.name)), children: polygon.children });
-    let rings = polygon.name == 'lathe' && commands.path && !commands.blocks
-        ? pathRings(removeQuotes(commands.path), true)
+    let lathe = polygon.name == 'lathe' && !commands.blocks;
+    let rings = lathe && commands.text ? glyphs(removeQuotes(commands.text), commands.font || '', 'start')
+        : lathe && commands.path ? pathRings(removeQuotes(commands.path), true)
         : createShapePoints(commands, 3, 3600, true);
     // thinned to 256 points, a hole too small for 3 of them is left out
     return rings.flat().length > 256 ? resample(rings, [256]).filter(ring => ring.length > 2) : rings;

@@ -287,9 +287,11 @@ a distance written in `p`. `polygon` takes `points`, or a `@shape`
 body as its outline, holes and all, in `@shape`'s units:
 `polygon { heart; depth: .2 }`. Rows inside the body move the outline
 in 2D and the polygon's own rows move it in 3D, except `points: n`,
-which resamples the outline as in `@shape`. `lathe` turns the right
+which resamples the outline as in `@shape`. Both also take `text`
+with `font`, or `path`, as `@shape` does. `lathe` turns the right
 half of the same outline, where `x` is 0 or more, around `y`:
-`lathe { vase }` is a vase.
+`lathe { vase }` is a vase. A path keeps its own `x = 0` as the axis,
+and text starts at it, so `lathe { text: 'abc' }` turns every letter.
 
 **Camera.** At the top, `view: turn tilt` turns the camera around `y`
 and tilts it, in degrees, and `perspective: d` sets its distance, 2 by
@@ -300,9 +302,10 @@ still while the model or view moves: `view: 30t` spins it in place.
 `drag: turn tilt` lets the pointer turn the view too, half a turn
 across the drawing's shorter side, with the tilt kept between straight
 down and straight up; `drag: turn` only turns it. The camera then
-circles the middle of the model and fits it from every side, so the
-model may draw smaller than without `drag`. An animated or dragged
-scene draws best in `@content`.
+circles the middle of the model at the distance it has without `drag`,
+so the perspective stays, and widens its view only where the model
+would not otherwise fit from every side. An animated or dragged scene
+draws best in `@content`.
 
 **Light.** `light: x y z` points toward the light the way `normal`
 does, so the light turns with the camera; it is `.6 .8 .5` by default.

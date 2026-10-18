@@ -563,6 +563,7 @@ export default function drawScene(code, extra, report = () => {}) {
     ${[...arrays].map(([array, v]) => `const ${array.match(/^\w+/)} ${v}[] = ${array};`).join('\n')}
     `;
     let now = `t = ${usesTime ? 'u_time' : '0.0'};`;
+    let turned = drag.length && (turn != '0.0' || tilt != '0.0');
     let view = (turn, tilt) => glsl`
         vec3 g_x = g_rotate(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), ${turn});
         vec3 g_y = g_rotate(g_rotate(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), ${tilt}), vec3(0.0, 1.0, 0.0), ${turn});
@@ -577,6 +578,7 @@ export default function drawScene(code, extra, report = () => {}) {
     uniform float u_time;
     uniform vec2 u_seed;
     flat out vec3 g_vhi, g_vlo, g_vc;
+    ${drag.length ? 'flat out vec3 g_rhi, g_rlo;' : ''}
     ${common}
     float g_fit(vec3 p) {
         ${fit.out}
@@ -607,21 +609,60 @@ export default function drawScene(code, extra, report = () => {}) {
         float s = (1e3 - g_fit(e * 1e3) - b) / 950.0;
         return s < 0.9 ? ${fit.loose ? 'max(g_walk(e), (b - s * 50.0) / (1.0 - s))' : '(b - s * 50.0) / (1.0 - s)'} : 1e9;
     }
+    ${drag.length ? glsl`
+        vec3 g_corner(int k) {
+            return vec3(float(k & 1), float((k >> 1) & 1), float((k >> 2) & 1));
+        }
+        float g_far(vec3 a, float h) {
+            float m = 0.0;
+            for (int k = 0; k < 8; k++) {
+                vec3 u = a * g_corner(k);
+                float s = u.x + u.y + u.z;
+                if (s <= h) m = max(m, dot(u, u));
+                for (int i = 0; i < 3; i++) {
+                    float v = h - s + u[i];
+                    if (((k >> i) & 1) == 0 || v < 0.0 || v > a[i]) continue;
+                    vec3 w = u;
+                    w[i] = v;
+                    m = max(m, dot(w, w));
+                }
+            }
+            return m;
+        }
+    ` : ''}
     void main() {
         gl_Position = position;
         ${now}
         g_vhi = vec3(-1e9);
         g_vlo = vec3(1e9);
+        ${turned ? 'g_rhi = vec3(-1e9);\ng_rlo = vec3(1e9);' : ''}
+        ${drag.length ? 'float g_dhi[8];\nfor (int k = 0; k < 8; k++) g_dhi[k] = -1e9;' : ''}
         for (int i = 0; i <= ${usesTime ? 32 : 0}; i++) {
             if (i > 0) t = float(i - 1) * PI / 16.0;
             ${drag.length ? view('0.0', '0.0') : view(turn, tilt)}
             g_vhi = max(g_vhi, vec3(g_reach(g_x), g_reach(g_y), g_reach(g_z)));
             g_vlo = min(g_vlo, -vec3(g_reach(-g_x), g_reach(-g_y), g_reach(-g_z)));
+            ${turned ? glsl`{
+                ${view(turn, tilt)}
+                g_rhi = max(g_rhi, vec3(g_reach(g_x), g_reach(g_y), g_reach(g_z)));
+                g_rlo = min(g_rlo, -vec3(g_reach(-g_x), g_reach(-g_y), g_reach(-g_z)));
+            }` : ''}
+            ${drag.length ? 'for (int k = 0; k < 8; k++) g_dhi[k] = max(g_dhi[k], g_reach(normalize(g_corner(k) * 2.0 - 1.0)));' : ''}
         }
         g_vc = vec3(0.0);
         ${drag.length ? glsl`
-            float r = length(g_vhi - g_vlo) * 0.5;
-            if (r < 1e8) g_vc = (g_vhi + g_vlo) * 0.5;
+            ${turned ? '' : 'g_rhi = g_vhi;\ng_rlo = g_vlo;'}
+            vec3 a = (g_vhi - g_vlo) * 0.5, c = (g_vhi + g_vlo) * 0.5;
+            float r = length(a);
+            if (r < 1e8) {
+                g_vc = c;
+                float m = 0.0;
+                for (int k = 0; k < 8; k++) {
+                    vec3 e = g_corner(k) * 2.0 - 1.0;
+                    m = max(m, g_far(a, sqrt(3.0) * g_dhi[k] - dot(e, c)));
+                }
+                r = min(1.02 * sqrt(m), r);
+            }
             g_vhi = vec3(r);
             g_vlo = -g_vhi;
         ` : ''}
@@ -631,6 +672,7 @@ export default function drawScene(code, extra, report = () => {}) {
     precision highp int;
     uniform vec2 u_drag;
     flat in vec3 g_vhi, g_vlo, g_vc;
+    ${drag.length ? 'flat in vec3 g_rhi, g_rlo;' : ''}
     ${common}
     float g_dist(vec3 p) {
         ${bare.out}
@@ -655,10 +697,18 @@ export default function drawScene(code, extra, report = () => {}) {
         float g_k = max(1.0, max(g_n.x, g_n.y));
         bool g_b = g_n.x + g_n.y < 1e3;
         if (!g_b) { g_k = 1.0; g_hi = g_lo = vec3(0.0); }
-        g_w *= g_k - g_hi.z * g_f;
+        ${drag.length ? glsl`
+            vec2 g_rn = (g_rhi.xy - g_rlo.xy) * 0.5 / g_w + g_rhi.z * g_f;
+            if (g_b && g_d > 0.0 && g_rn.x + g_rn.y < 1e3) {
+                float g_ra = max(g_d * max(1.0, max(g_rn.x, g_rn.y)) - 0.5 * (g_rhi.z + g_rlo.z), 1.25 * g_hi.x);
+                g_d = min(min(min(g_w.x, g_w.y) * sqrt(g_ra * g_ra - g_hi.x * g_hi.x) / max(g_hi.x, 1e-6), g_d), g_ra);
+                g_k = g_ra / g_d;
+                g_f = 1.0 / g_d;
+            }
+        ` : 'g_w *= g_k - g_hi.z * g_f;'}
         float g_z0 = g_d > 0.0 ? g_d * g_k : max(g_hi.z, 0.0) + g_k;
-        vec3 g_o = vec3(clamp(vec2(0.0), g_hi.xy - g_w, g_lo.xy + g_w) + (g_d > 0.0 ? vec2(0.0) : g_q * g_k), g_z0);
-        vec3 g_r = normalize(vec3(g_d > 0.0 ? g_q : vec2(0.0), -max(g_d, 1.0)));
+        vec3 g_o = vec3(${drag.length ? 'vec2(0.0)' : 'clamp(vec2(0.0), g_hi.xy - g_w, g_lo.xy + g_w)'} + (g_d > 0.0 ? vec2(0.0) : g_q * g_k), g_z0);
+        vec3 g_r = normalize(vec3(g_d > 0.0 ? g_q : vec2(0.0), -(g_d > 0.0 ? g_d : 1.0)));
         vec3 g_a = (g_lo - 0.02 * g_k - g_o) / (g_r + 1e-9), g_c = (g_hi + 0.02 * g_k - g_o) / (g_r + 1e-9);
         vec3 g_in = min(g_a, g_c), g_out = max(g_a, g_c);
         float g_t = g_b ? max(max(max(g_in.x, g_in.y), g_in.z), 0.0) : 0.0;
