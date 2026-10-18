@@ -259,9 +259,9 @@ test('pick(k: a, b, …) takes item k from 1, wrapping, and evaluates only that 
     assert.equal(calc('pick(1.5: 10, 20, 30)'), 20);
     assert.equal(calc('pick(k % 3 + 1: 1, 2, 3) * 10', { k: 5 }), 30);
     assert.equal(calc('pick(k:10,20,30)', { k: 2 }), 20);
-    // a huge k still lands on an item
-    assert.equal(calc('pick(216 ** 18: 10, 20, 30)'), 20);
-    assert.equal(calc('pick(-(216 ** 18): 10, 20, 30)'), 30);
+    // a huge k still lands on an item (2 ** n is exact; 216 ** 18 differs across V8 versions)
+    assert.equal(calc('pick(2 ** 81: 10, 20, 30)'), 30);
+    assert.equal(calc('pick(-(2 ** 81): 10, 20, 30)'), 20);
     assert.equal(calc('pick(5:)'), 0);
     // an empty index reads as 0, as in @pick, so the items don't shift into it
     assert.equal(calc('pick(:)'), 0);
