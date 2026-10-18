@@ -33,9 +33,13 @@ test('@pick(k: …) takes item k from 1 in each cell, wrapping, and $() and @mat
     assert.ok(/#c-1-4-1 \{--c:red;\s*--k:4;\s*--w:10;\s*--m:b;\}/.test(sheet), sheet);
 });
 
-test('@pick(k: …) picks from the list a lone item gives, as @p does', () => {
+test('@pick(k: …) picks from the list a lone item gives, and fills ..., as @pn does', () => {
     assert.equal(cells('--c: @p(@i: @palette(3));', '1x2'), cells('--c: @pn(@palette(3));', '1x2'));
     assert.equal(cells('--c: @p(@i: [a-c]); --d: @p(@i: @m3(x@n));', '1x2'), '#c-1-1-1 {--c:a;\n--d:x1;}#c-1-2-1 {--c:b;\n--d:x2;}');
+    assert.equal(cells('--c: @p(@i: "a, b");', '1x2'), ':is(cell,#_) {--c:a, b;}');
+    // a trailing ... goes on past the end, and below 1 stays on the first item
+    assert.equal(cells('--c: @p(@i + 1: 1, 3, ..., 5); --d: @p(@i * 5: 1, 2, ...); --e: @p(@i - 2: 1, 2, ...);', '1x2'),
+        ':is(cell,#_) {--e:1;}#c-1-1-1 {--c:3;\n--d:5;}#c-1-2-1 {--c:5;\n--d:10;}');
 });
 
 // --- functions cells define ---

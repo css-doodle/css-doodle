@@ -1,4 +1,4 @@
-import Func, { MathFunc, pickAt } from '../core/function.js';
+import Func, { MathFunc, pickAt, pickAtList } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
@@ -133,7 +133,9 @@ function compileFunc(node) {
     let compiled = compiledFuncs.get(key);
     if (compiled === undefined) {
         let fname = node.name.slice(1);
-        let fn = node.at ? pickAt : Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
+        let fn = node.at
+            ? node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt
+            : Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
         let inner = node.arguments[0]?.values[0];
         let name = inner?.dotted && inner.name.slice(1);
         if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {

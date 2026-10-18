@@ -525,17 +525,16 @@ export const pickAt = lazy((cell, { context, extra }, position, vars, ...args) =
     }
     let e = last(extra) || [];
     let k = calc(getValue(args[0](...e)), sequenceContext(cell, e, vars));
-    if (!Number.isFinite(k)) return '';
-    let items = args.slice(1), item = i => getValue(items[i](...e));
-    if (items.length == 1) {
-        let value = item(0);
-        items = expand((...list) => list)(...(Array.isArray(value) ? value : parseValueGroup(value, { noSpace: true })));
-        item = i => items[i] ?? '';
-    }
-    return pushStack(context, 'lastPick', item(pickIndex(k, items.length)));
+    return Number.isFinite(k) ? pushStack(context, 'lastPick', getValue(args[1 + pickIndex(k, args.length - 1)](...e))) : '';
 });
 
-Function.match.vars = pickAt.vars = true;
+export const pickAtList = (cell, { context, extra }) => (vars, k, ...items) => {
+    k = calc(k, sequenceContext(cell, last(extra) || [], vars));
+    return Number.isFinite(k) && items.length ? expand((...list) => pushStack(context, 'lastPick',
+        pickN(list, pickIndex(k, list.length), list.length, Math.max(Math.round(k) - 1, 0))))(...items) : '';
+};
+
+Function.match.vars = pickAt.vars = pickAtList.vars = true;
 
 Function.calc = () => (value = '', context) => tidyNumber(calc(value, typeof context === 'object' ? context : undefined, 1));
 

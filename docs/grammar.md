@@ -281,8 +281,10 @@ quotes does not split. Whitespace belongs to the argument, so
 - In `@pick` and `@p`, a top-level `:` in the first argument ends an
   index: `@pick(k: a, b, …)` gives item `k`, an expression (§8)
   counted from 1, rounded and wrapping around as `@pn` does. Only that
-  item is composed, so `@pick(@i: red, blue)` alternates. A quoted
-  colon is text.
+  item is composed, so `@pick(@i: red, blue)` alternates, and a
+  function's list counts as one item. A lone item, as in
+  `@pick(@i: @palette(5))`, or a list with `...` is composed whole and
+  picked from as `@pn` does. A quoted colon is text.
 
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
