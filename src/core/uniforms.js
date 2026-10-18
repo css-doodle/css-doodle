@@ -9,7 +9,7 @@ const ticks = 1000 * 60 * 60 * 24;
 const steps = `steps(${ticks / (1000 / 120)})`;
 const delay = new Date().setHours(0, 0, 0, 0) - Date.now();
 const u = 'cssd-u-ani';
-const U = 'cssd-U-ani';
+export const U = 'cssd-U-ani';
 
 export const timeKeyframes =
     `@keyframes ${u} {from {${utime}:0} to {${utime}:${ticks}}}` +

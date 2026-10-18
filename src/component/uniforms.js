@@ -1,4 +1,4 @@
-import { utime, UTime, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
+import { utime, UTime, U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
 
 export function bindUniforms(host, { time, mousex, mousey, mouse, width, height }) {
     if (time) {
@@ -13,6 +13,16 @@ export function bindUniforms(host, { time, mousex, mousey, mouse, width, height 
         regUsize(host);
     } else {
         offUsize(host);
+    }
+}
+
+export function syncUTime(host) {
+    if (!host.compiled?.uniforms.time) return;
+    for (let animation of host.getAnimations?.() ?? []) {
+        if (animation.animationName === U) {
+            animation.effect.updateTiming({ delay: 0 });
+            animation.currentTime = Date.now() - new Date().setHours(0, 0, 0, 0);
+        }
     }
 }
 

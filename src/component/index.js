@@ -14,7 +14,7 @@ import { css } from '../lib/tagged-template.js';
 import { RE_PLACEHOLDER, hasPlaceholder } from '../lib/placeholder.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
-import { bindUniforms, unbindUniforms } from './uniforms.js';
+import { bindUniforms, unbindUniforms, syncUTime } from './uniforms.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
 import { createReplacer } from './doodle-image.js';
 import { draw } from './embedded.js';
@@ -555,6 +555,7 @@ if (typeof HTMLElement !== 'undefined') {
             this._styleReady = input.then(sheet => {
                 if (this._generation === generation) {
                     this.shadowRoot.querySelector('style').textContent = sheet.replace(/\n\s+/g, ' ');
+                    syncUTime(this);
                 }
             }).catch(console.error);
         }
@@ -597,6 +598,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (!this.hasAttribute('cssd-paused')) return;
             this.removeAttribute('cssd-paused');
             this._clock.since = performance.now();
+            syncUTime(this);
             if (!this._offscreen) {
                 for (let am of this.animations) {
                     am.resume();
