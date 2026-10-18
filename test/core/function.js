@@ -143,6 +143,7 @@ test('@pick(k: …) takes item k from 1 as written, wrapping, composes only that
     assert.equal(pick('x + 2', 'red', '#00f', 'tan'), 'red');
     assert.equal(pick('0', 'red', '#00f', 'tan'), 'tan');
     assert.equal(pick('i * 2 - 1', 'a b', 'c d'), 'a b');
+    assert.equal(pick('216 ** 18', 'red', '#00f', 'tan'), '#00f');
     assert.equal(pick('1'), '');
 });
 

@@ -20,7 +20,7 @@ MATH.smoothstep = (e0, e1, x) => {
 };
 
 export function pickIndex(k, n) {
-    return MATH.mod(Math.round(k) - 1, n);
+    return ((Math.round(k) - 1) % n + n) % n;
 }
 
 let draw = Math.random;
