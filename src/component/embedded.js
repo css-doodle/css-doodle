@@ -201,19 +201,22 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             disconnect() {
                 controller.abort();
                 elements.forEach(el => el.style.touchAction = '');
+                host._dragged = false;
             }
         });
+        host.addEventListener('pointerdown', () => host._dragged = false, { signal, capture: true });
         for (let el of elements) {
-            let from;
+            let from, start;
             el.style.touchAction = 'none';
             el.addEventListener('pointerdown', e => {
                 if (!e.isPrimary || e.button) return;
                 e.preventDefault();
                 el.setPointerCapture(e.pointerId);
-                from = e;
+                from = start = e;
             }, { signal });
             el.addEventListener('pointermove', e => {
                 if (!el.hasPointerCapture(e.pointerId)) return;
+                if (Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) > 3) host._dragged = true;
                 let rate = Math.PI / Math.min(width, height), half = Math.PI / 2;
                 turned[0] += (e.clientX - from.clientX) * rate;
                 turned[1] = Math.min(Math.max(turned[1] + (e.clientY - from.clientY) * rate, -half - base), half - base);

@@ -288,6 +288,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         dispatchCellClick(event) {
+            if (this._dragged) return;
             let cell = event.composedPath().find(el => el.tagName === 'CELL');
             if (!cell) return;
             let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id || cell.className);
@@ -302,7 +303,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         bindClickToUpdate() {
-            this.update();
+            if (!this._dragged) this.update();
         }
 
         autoUpdate(interval) {

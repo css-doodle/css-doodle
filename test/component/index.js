@@ -553,3 +553,20 @@ test('a redraw keeps the host variables of the images it draws again', () => {
     host.disconnectedCallback();
     assert.deepEqual(removed, ['--s-1']);
 });
+
+test('the click that ends a drag neither updates the doodle nor clicks a cell', () => {
+    let updates = 0, events = [];
+    let cell = { tagName: 'CELL', id: 'c-1-2-1' };
+    let host = {
+        update() { updates++; },
+        triggerEvent(name) { events.push(name); },
+    };
+    let click = { composedPath: () => [cell] };
+    for (let dragged of [true, false]) {
+        host._dragged = dragged;
+        CSSDoodle.prototype.bindClickToUpdate.call(host);
+        CSSDoodle.prototype.dispatchCellClick.call(host, click);
+    }
+    assert.equal(updates, 1);
+    assert.deepEqual(events, ['click:cell']);
+});
