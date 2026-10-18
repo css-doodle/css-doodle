@@ -610,7 +610,7 @@ test('text: traced in a canvas, holes wound against the outline, nothing without
     globalThis.document = { fonts: { check: () => true }, createElement: () => {
         let canvas = { getContext: () => ({
             set font(f) { fonts.push(f); },
-            measureText: () => ({ actualBoundingBoxLeft: 50, actualBoundingBoxRight: 50, actualBoundingBoxAscent: 70, actualBoundingBoxDescent: 30 }),
+            measureText: () => ({ width: 100, fontBoundingBoxAscent: 80, fontBoundingBoxDescent: 20 }),
             setTransform() {},
             fillText() {},
             getImageData() {
@@ -627,7 +627,7 @@ test('text: traced in a canvas, holes wound against the outline, nothing without
     try {
         let rings = generateShape('text: O; font: bold 40px serif', { raw: true }).points;
         assert.equal(rings.length, 2);
-        assert.ok(signed(rings[0].flat()) > 2 * 3.14 * .9 ** 2 * .98 && signed(rings[1].flat()) < 0);
+        assert.ok(signed(rings[0].flat()) > 2 * 3.14 * .98 && signed(rings[1].flat()) < 0);
         assert.equal(Math.sign(signed(generateShape('circle', { raw: true }).points[0].flat())), 1);
         assert.equal(fonts.at(-1), 'bold 100px serif');
         // dots stay in the band, not in the hole
@@ -635,7 +635,7 @@ test('text: traced in a canvas, holes wound against the outline, nothing without
         assert.equal(dots.length, 60);
         assert.ok(dots.every(p => {
             let [x, y] = String(p).split(' ').map(parseFloat), r = Math.hypot(x - 50, y - 50);
-            return r > 20 && r < 46;
+            return r > 22 && r < 50;
         }));
     } finally {
         delete globalThis.document;

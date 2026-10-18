@@ -91,17 +91,26 @@ const glyphs = memo((text, font) => {
     let face = lead + '100px ' + (family.trim() || 'sans-serif'), doc = globalThis.document, canvas = doc?.createElement('canvas');
     if (!canvas) return [];
     if (!doc.fonts.check(face, text)) fontsLoading.add(doc.fonts.load(face, text));
-    let n = 512, size = n - 8;
-    canvas.width = canvas.height = n;
-    let ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let n = 512, ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let draw = (s, x, y) => {
+        canvas.width = canvas.height = n;
+        ctx.font = face;
+        ctx.setTransform(s, 0, 0, s, x, y);
+        ctx.fillText(text, 0, 0);
+        return ctx.getImageData(0, 0, n, n).data;
+    };
     ctx.font = face;
-    let { actualBoundingBoxLeft: l, actualBoundingBoxRight: r, actualBoundingBoxAscent: a, actualBoundingBoxDescent: d } = ctx.measureText(text);
-    let s = size / max(l + r, a + d);
+    let { width, fontBoundingBoxAscent: a, fontBoundingBoxDescent: d } = ctx.measureText(text), s = n / 2 / max(width, a + d);
     if (!(s < Infinity)) return [];
-    ctx.setTransform(s, 0, 0, s, (n - s * (r - l)) / 2, (n - s * (d - a)) / 2);
-    ctx.fillText(text, 0, 0);
-    let data = ctx.getImageData(0, 0, n, n).data, v = i => data[4 * i + 3] - 127.5;
-    let next = new Int32Array(2 * n * n).fill(-1), rings = [];
+    let data = draw(s, n / 4, n / 2), x0 = n, y0 = n, x1 = 0, y1 = 0;
+    for (let i = 0; i < n * n; ++i) if (data[4 * i + 3]) {
+        let x = i % n, y = i / n | 0;
+        x0 = min(x0, x), x1 = max(x1, x + 1), y0 = min(y0, y), y1 = max(y1, y + 1);
+    }
+    let k = (n - 16) / max(x1 - x0, y1 - y0);
+    if (!(k > 0)) return [];
+    data = draw(s * k, n / 2 + k * (n / 4 - (x0 + x1) / 2), n / 2 + k * (n / 2 - (y0 + y1) / 2));
+    let v = i => data[4 * i + 3] - 127.5, next = new Int32Array(2 * n * n).fill(-1), rings = [];
     for (let i = 0; i < n * (n - 1); ++i) {
         let sum = v(i) + v(i + 1) + v(i + n) + v(i + n + 1);
         if (abs(sum) == 510) continue;
@@ -113,7 +122,7 @@ const glyphs = memo((text, font) => {
     let at = key => {
         let i = key >> 1, t = v(i) / (v(i) - v(i + (key & 1 ? n : 1))), x = i % n + .5, y = (i / n | 0) + .5;
         key & 1 ? y += t : x += t;
-        return [(2 * x - n) / size, (n - 2 * y) / size];
+        return [x, y];
     };
     for (let k = 0; k < next.length; ++k) {
         if (next[k] < 0) continue;
@@ -122,9 +131,10 @@ const glyphs = memo((text, font) => {
             ring.push(at(key));
             next[key] = -1;
         }
-        if (area(ring.flat()) > 1e-4) rings.push(thin(ring, .002));
+        rings.push(ring);
     }
-    return rings;
+    let [l, t, r, b] = bounds(rings.flat(2)), f = 2 / max(r - l, b - t), cx = (l + r) / 2, cy = (t + b) / 2;
+    return rings.map(ring => thin(ring.map(([x, y]) => [(x - cx) * f, (cy - y) * f]), .002)).filter(ring => area(ring.flat()) > 1e-4);
 });
 
 class Point {

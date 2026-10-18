@@ -8,11 +8,13 @@ export function getGoogleFontLink(names) {
     return `https://fonts.googleapis.com/css?display=swap&family=${params}`;
 }
 
-// one <link> per batch of fonts not linked yet, settled when its stylesheet lands
+let loading = new Set();
+let landed = () => loading.size ? Promise.all(loading).then(landed) : 0;
+
 export function loadGoogleFontLink(fonts) {
     let names = fonts.filter(name => !linkFonts.has(name));
     if (!names.length) {
-        return;
+        return landed();
     }
     for (let name of names) {
         linkFonts.add(name);
@@ -21,7 +23,9 @@ export function loadGoogleFontLink(fonts) {
     link.rel = 'stylesheet';
     link.href = getGoogleFontLink(names);
     document.head.appendChild(link);
-    return new Promise(resolve => link.onload = link.onerror = resolve);
+    let done = new Promise(resolve => link.onload = link.onerror = resolve);
+    loading.add(done);
+    return done.then(() => loading.delete(done)).then(landed);
 }
 
 function extractFonts(css) {
