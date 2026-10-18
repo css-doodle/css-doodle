@@ -52,7 +52,7 @@ function familiesOf(text) {
             families.add(name);
             continue;
         }
-        name = name.replace(/^-\w+-/, '');
+        name = name.toLowerCase().replace(/^-\w+-/, '');
         let head = name.split('-')[0];
         families.add(head === 'all' ? '*' : name.endsWith('gap') ? 'gap' : (FAMILY[name] ?? FAMILY[head] ?? head));
     }
@@ -735,7 +735,10 @@ class Rules {
                     break;
                 }
                 case 'place-cell': case 'place': {
-                    if (isHostSelector(selector)) break;
+                    if (isHostSelector(selector)) {
+                        rule = '';
+                        break;
+                    }
                     rule = transformed;
                     if (selector === undefined) {
                         rule += placeShared;

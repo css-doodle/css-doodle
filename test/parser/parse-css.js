@@ -270,7 +270,7 @@ test('@pattern bodies are kept verbatim like @doodle', () => {
 });
 
 test('a quote or paren in a // comment does not end a @pattern, @shaders or @scene body', () => {
-    for (let name of ['pattern', 'shaders', 'scene']) {
+    for (let name of ['pattern', 'shaders', 'scene', 'shaders400', 'pattern2x3']) {
         let rules = parseCss(`background: @${name}(\n  // don't (fill\n  fill: #fff;\n); color: red;`);
         assert.deepEqual(rules.map(r => r.property), ['background', 'color'], name);
         assert.equal(rules[0].value[0][0].arguments[0].values[0].value, "// don't (fill\n  fill: #fff;");
@@ -659,6 +659,8 @@ test('a user function name is read whole', () => {
     assert.deepEqual(ast(`--f2(x): [$x]; --my-dot(r): <$r>; a: $f2(3); b: $my-dot(4);`), ast(`a: [3]; b: <4>;`));
     // a - before a number is not
     assert.deepEqual(ast(`--k(x = 2): $x; a: $(k-1(5));`), ast(`a: $(k-1(5));`));
+    // nor eaten by a parameter that names its start
+    assert.deepEqual(ast(`--rand-int(a): [$a]; --f(rand): $rand-int(1); width: $f(5);`), ast(`width: [1];`));
 });
 
 test('a user function parameter name is read whole', () => {
@@ -722,6 +724,8 @@ test('in @pattern and @scene a user function argument is one value', () => {
     assert.deepEqual(ast(`--f(a, b): $a * $b; width: $f(1 + 1, 2);`), ast(`width: 1 + 1 * 2;`));
     // after a number it multiplies, so a number argument stays apart
     assert.equal(paintOf(`--f(a): .5a + 2$a + a; @content: @pattern(fill: $f(.4););`), 'fill: .5(.4) + 2(.4) + .4;');
+    // so does a number the call gives
+    assert.equal(paintOf(`--k(): 3; --f(x): x; @content: @pattern(fill: 2$k() + $f(2)$f(.5););`), 'fill: 2(3) + 2(.5);');
 });
 
 test('in @pattern and @scene an expression body is one value next to other terms', () => {
@@ -810,6 +814,9 @@ test('in @pattern and @scene a parameter reads bare, as a name of the function\'
         'n: 0;n: 1; f_1_result: n * 2; fill: f_1_result;');
     // it hides a built-in of its name, and a loop name hides it
     assert.equal(paintOf(`--f(x): x * 2; @content: @pattern(fill: $f(uv.y););`), 'fill: uv.y * 2;');
+    // not as the end of a longer name
+    assert.equal(paintOf(`--f(p): { q_p: p * 2; result: q_p.x; }; @content: @pattern(fill: $f(uv););`),
+        'f_1_q_p: uv * 2; f_1_result: f_1_q_p.x; fill: f_1_result;');
     assert.equal(paintOf(`--f(k): { t: 0; repeat(4 as k) { t: t + k; } result: t; }; @content: @pattern(fill: $f(9););`),
         'f_1_t: 0; repeat(4 as f_1_k) { f_1_t: f_1_t + f_1_k; } f_1_result: f_1_t; fill: f_1_result;');
     // not in a color's digits, a texture's CSS, or as the name a statement sets

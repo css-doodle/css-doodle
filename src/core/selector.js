@@ -96,7 +96,9 @@ Selector.random = (cell, env, position) => (ratio = .5) => {
     return randomCell(cell, env, position, n);
 };
 
-Selector.match = (cell, { random }) => expr => !!calc(expr, calcContext(cell, random));
+Selector.match = (cell, { random }) => (vars, expr) => !!calc(expr, Object.assign(vars, calcContext(cell, random)));
+
+Selector.match.vars = true;
 
 // @cell(…): an argument is an an+b rule on the index, even/odd on the
 // checkerboard, `random [n]`, or an expression; any one matching

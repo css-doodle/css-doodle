@@ -637,6 +637,9 @@ test('text: traced in a canvas, holes wound against the outline, nothing without
             let [x, y] = String(p).split(' ').map(parseFloat), r = Math.hypot(x - 50, y - 50);
             return r > 22 && r < 50;
         }));
+        // a face the browser can't read draws nothing
+        globalThis.document.fonts.check = face => { if (/2P/.test(face)) throw new SyntaxError(face); return true; };
+        assert.equal(generateShape('text: A; font: Press Start 2P').clip, 'polygon(50% 50%)');
     } finally {
         delete globalThis.document;
     }
@@ -660,4 +663,18 @@ test('path: SVG path data as the outline, fitted to the box, y up', () => {
     assert.equal(generateShape('path: hello').clip, 'polygon(50% 50%)');
     assert.equal(generateShape('path: M0 0 L10 0').clip, 'polygon(50% 50%)');
     assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z; scale: .5'), [[[-.5, .5], [.5, .5], [.5, -.5], [-.5, -.5]]]);
+});
+
+test('scatter below 1 draws the shape, a fraction counts whole points', () => {
+    let circle = generateShape('circle').clip;
+    for (let v of ['0', '.5', '-2']) assert.equal(generateShape('circle; scatter: ' + v).clip, circle);
+    assert.equal(generateShape('circle; scatter: 2.5; tile: scatter; dots: true').points.length, 2);
+    assert.equal(generateShape('circle; scatter: 0; tile: voronoi').clip, circle);
+});
+
+test('steps and blocks rows do not overwrite the internal lists', () => {
+    let triangle = generateShape('r: 1').clip;
+    assert.equal(generateShape('steps: 3; r: 1').clip, triangle);
+    assert.equal(generateShape('blocks: 3; r: 1').clip, triangle);
+    assert.equal(generateShape('steps: 3; r: 1; rotate: 10').clip, generateShape('r: 1; rotate: 10').clip);
 });

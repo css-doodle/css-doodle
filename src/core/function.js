@@ -736,8 +736,8 @@ Function.tile.r = cell => () => cellTiles.get(cell)?.r ?? '';
 
 const arcPath = memo((...args) => {
     let c = parseShapeCommands(args.join(','));
-    let [rx, ry = rx] = spaced(c.r ?? '0').map(calc);
-    let [cx, cy = cx] = spaced(c.move ?? '0').map(calc);
+    let [rx, ry = rx] = spaced(c.r ?? '0').map(v => calc(v));
+    let [cx, cy = cx] = spaced(c.move ?? '0').map(v => calc(v));
     let from = parseDirection(c.from ?? '0').angle;
     let sweep = parseDirection(c.to ?? '360').angle - from;
     let full = Math.abs(sweep) >= 360;
@@ -860,9 +860,9 @@ Function.raw = (cell, { rules }) => (...args) => {
 };
 
 // the component loads the collected names
-Function['google-font'] = (cell, { rules }) => name => {
+Function['google-font'] = (cell, { rules }) => (name = '') => {
     rules.addFont(name);
-    return name;
+    return name && `"${name.split(':')[0]}"`;
 };
 
 Function.id = ({ id }) => () => id;

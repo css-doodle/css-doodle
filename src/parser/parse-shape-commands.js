@@ -136,6 +136,7 @@ function commandsOf(node) {
         // `-x: sin(t)` negates the value, each part of `-move: .5 0`; `-: 10` and dashed names like `--x` do not
         let negative = /^-[^-]/.test(name), text = textOf(value);
         if (negative) name = name.slice(1).trim();
+        if (name == 'steps' || name == 'blocks') continue;
         if (negative && text && !name.startsWith('fill')) {
             let items = parseValueGroup(text, { noSpace: true });
             if ((name == 'move' || name == 'scale') && items.length < 2) items = spaced(text);

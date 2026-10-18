@@ -386,10 +386,11 @@ if (typeof HTMLElement !== 'undefined') {
         render(code, seed, tries = 2) {
             this.cleanup();
             this._code = code;
-            this._warned?.clear();
+            if (tries > 1) this._warned?.clear();
             let old = this.compiled;
             let compiled = this.generate(code, seed);
-            if (/\btext\s*:/.test(this.getUse() + code)) {
+            let source = this.getUse() + code;
+            if (/\btext\s*:/.test(source.includes('@use') ? source + getAllVariables(this) : source)) {
                 let linked = loadGoogleFontLink(compiled.styles.gf), generation = this._generation;
                 if (linked) fontsLoading.add(linked);
                 let wait = [...fontsLoading];

@@ -59,12 +59,12 @@ test('z matches the depth and depth is its alias', () => {
     assert.equal(selector.z(a)('2n'), false);
     assert.equal(selector.depth, selector.z);
     // z and Z are in scope for expression selectors
-    assert.equal(selector.match(a, env)('z == 3'), true);
-    assert.equal(selector.match(a, env)('z == Z - 1'), true);
+    assert.equal(selector.match(a, env)({}, 'z == 3'), true);
+    assert.equal(selector.match(a, env)({}, 'z == Z - 1'), true);
 });
 
 test('match evaluates an expression over the cell variables', () => {
-    let match = selector.match(cell(2, 3, 10), env);
+    let match = expr => selector.match(cell(2, 3, 10), env)({}, expr);
     assert.equal(match('x = 2'), true);
     assert.equal(match('y = 3'), true);
     assert.equal(match('x = 2 && y = 3'), true);

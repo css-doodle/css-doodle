@@ -980,7 +980,7 @@ const RE_FUNC_NAME = /^[a-zA-Z_][\w-]*$/;
 function nameEnd(tokens, i, dash) {
     for (let t; (t = tokens[i + 1]) && adjacent(tokens[i], t); i++) {
         let glued = t.isSymbol('-') ? dash && tokens[i + 2]?.isWord() && adjacent(t, tokens[i + 2]) : isNamePart(t);
-        if (!glued) break;
+        if (!glued) return t.isWord() && nameLength(t.value) ? i + 1 : i;
     }
     return i;
 }
@@ -1153,7 +1153,8 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
             body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending);
             let next = solidAt(tokens, end + 1);
             let whole = (!lead || /[:(,]$/.test(lead)) && (!next || next.isSymbol(';', '{', '}') || next.isSymbol(')', ','));
-            if (kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1)) && !RE_SIMPLE_ARG.test(body.trim())) {
+            let glued = /[\d.]/.test(from < t.index ? text[t.index - 1] : out.at(-1)) && /^[\d.]/.test(body.trim());
+            if (kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1)) && (glued || !RE_SIMPLE_ARG.test(body.trim()))) {
                 body = `(${body.trim()})`;
             }
         }
@@ -1365,12 +1366,12 @@ function bindParams({ params, defaults, body }, args, defs, paint) {
             continue;
         }
         if (!t.isWord() && !t.isSymbol('_')) continue;
-        let end = nameEnd(tokens, i);
+        let dollar = prev?.isSymbol('$') && adjacent(prev, t);
+        let end = nameEnd(tokens, i, dollar);
         let name = textOf(tokens.slice(i, end + 1));
         let dot = name.indexOf('.');
         let k = params.indexOf(dot > 0 ? name.slice(0, dot) : name);
         let last = tokens[end], next = tokens[end + 1];
-        let dollar = prev?.isSymbol('$') && adjacent(prev, t);
         let ahead = tokens[dollar ? i - 2 : i - 1];
         i = end;
         if (k < 0) continue;

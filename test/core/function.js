@@ -20,6 +20,9 @@ test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     assert.equal(arc('r: 40; to: .25turn'), arc('r: 40; to: 90'));
     assert.equal(arc('r: 40; from: 30deg; to: -30'), 'L 34.6410161514 20 A 40 40 0 0 0 34.6410161514 -20');
     assert.equal(arc('r: 10; from: 0; to: 120'), 'L 10 0 A 10 10 0 0 1 -5 8.66025403784');
+    // a var() reads as 0, as an unknown name does
+    assert.equal(arc('r: var(--r); to: 90'), arc('r: foo; to: 90'));
+    assert.equal(arc('r: 1; move: var(--m); to: 90'), arc('r: 1; to: 90'));
     // every parameter takes arithmetic
     assert.equal(arc('r: 80/2; from: 135; to: 135 + 270 * .7'), 'L -28.2842712475 28.2842712475 A 40 40 0 1 1 32.360679775 -23.5114100917');
     // an operator keeps its operands, so spaced arithmetic in r and move is one value

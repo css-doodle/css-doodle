@@ -92,7 +92,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         textures = await loadTextures();
         let drawing;
         try {
-            drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell);
+            drawing = generateShaders({ ...parsed, textures, width, height }, compiled.seed, seedCell);
             drawing.draw(0, width, height, 0, textures, [0, 0]);
             return canvasUrl(drawing.canvas, { scale: 1 });
         } catch (err) {

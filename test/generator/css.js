@@ -898,6 +898,10 @@ test('@place inside keyframes carries the cell size in the frame', () => {
     assert.match(all, /@keyframes k \{to \{position:absolute;left:20%;[^}]*width:var\(--_cell-width, 25%\);height:var\(--_cell-height, 25%\);\}\}/);
 });
 
+test('@place on the host writes nothing', () => {
+    assert.doesNotMatch(css(':host { @place: center; color: red; }'), /@place/);
+});
+
 test('keyframes that only set custom properties are static and emitted once', () => {
     let all = css('@keyframes k { from { --a: 0 } to { --a: 1 } } animation: k 1s;', '2');
     assert.equal((all.match(/@keyframes/g) || []).length, 1);
@@ -1092,6 +1096,8 @@ test('@match() and @pick(k: …) read custom properties, under the cell names', 
         '<svg><circle display="inline"/><circle display="inline"/><circle display="none"/></svg>');
     assert.equal(cells('--k: 3; --v: @m3(@match(n < k - 1, a, b)); --w: @pick(k: a, b, c);'), '#c-1-1-1 {--k:3;\n--v:a,b,b;\n--w:c;}');
     assert.equal(cells('--x: 5; color: @match(x > 1, red, blue);', '2x1'), ':is(cell,#_) {--x:5;}#c-1-1-1 {color:blue;}#c-2-1-1 {color:red;}');
+    // so does the selector
+    assert.equal(cells('--k: 2; @match(k * x == 4) { color: red }', '3x1'), ':is(cell,#_) {--k:2;}#c-2-1-1 {color:red;}');
 });
 
 test('per-cell texts keep their blocks in cell order', () => {
@@ -1108,6 +1114,10 @@ test('shared rules keep the cascade order of their property family', () => {
     assert.equal(cells('background: rgb(@i,0,0); background: red;', '2x1'),
         '#c-1-1-1 {background:rgb(1,0,0);}#c-2-1-1 {background:rgb(2,0,0);}'
         + ':is(cell,#_) {background:red;}');
+    // in any case
+    assert.equal(cells('background: rgb(@i,0,0); BACKGROUND: red;', '2x1'),
+        '#c-1-1-1 {background:rgb(1,0,0);}#c-2-1-1 {background:rgb(2,0,0);}'
+        + ':is(cell,#_) {BACKGROUND:red;}');
     // a longhand of the same family counts, and so does a listed rule
     assert.equal(cells('background: rgb(@i,0,0); background-color: red;', '2x1'),
         '#c-1-1-1 {background:rgb(1,0,0);}#c-2-1-1 {background:rgb(2,0,0);}'
@@ -1195,6 +1205,10 @@ test('google font names collect once each', () => {
     let { gf } = compile('font-family: @google-font(Lato); :after { font-family: @google-font(Lato) }', '2').styles;
     assert.deepEqual(gf, ['Lato']);
     assert.deepEqual(compile('color: red').styles.gf, []);
+    // the name comes back quoted, a valid family whatever its words
+    assert.equal(cells('font-family: @google-font(Press Start 2P), serif;'), '#c-1-1-1 {font-family:"Press Start 2P",serif;}');
+    let roboto = compile("font-family: @google-font('Roboto:400,700');").styles;
+    assert.deepEqual([roboto.cells, roboto.gf], ['#c-1-1-1 {font-family:"Roboto";}', ['Roboto:400,700']]);
 });
 
 test('shaders and patterns are records of the same shape', () => {

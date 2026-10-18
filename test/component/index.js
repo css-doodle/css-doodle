@@ -253,6 +253,29 @@ test('a warning is dispatched each time, and printed once', () => {
     assert.deepEqual(printed, ['@shaders: syntax error']);
 });
 
+test('the redraw after a font stylesheet lands does not print the warnings again', async () => {
+    let links = [], printed = [], warn = console.warn, doc = globalThis.document;
+    globalThis.document = { createElement: tag => tag === 'link' ? {} : null, head: { appendChild: link => links.push(link) } };
+    console.warn = message => printed.push(message);
+    try {
+        let host = Object.assign(Object.create(CSSDoodle.prototype), {
+            getAttribute: () => null, hasAttribute: () => false,
+            _warned: new Set(), _generation: 0, extra: {},
+            cleanup() { this._generation++; },
+            style: { removeProperty() {} },
+            shouldRebuild: () => false, patch() {},
+            triggerEvent: () => true,
+        });
+        host.render('font-family: @google-font(Warn Once); clip-path: @shape(text: A); width: @nope(1);');
+        links[0].onload();
+        await new Promise(resolve => setTimeout(resolve, 10));
+        assert.deepEqual(printed.map(m => m.split(' (')[0]), ['unknown function @nope()']);
+    } finally {
+        console.warn = warn;
+        globalThis.document = doc;
+    }
+});
+
 test('a generator warning reports the line and column of its offset', () => {
     let printed = [];
     let warn = console.warn;

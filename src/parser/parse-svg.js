@@ -128,11 +128,11 @@ function readStatement(iter, token) {
     return fragment;
 }
 
-function readStyleBlock(iter, selectors) {
-    let cssSelectors = selectors.slice(selectors.indexOf('style') + 1);
+function readStyleBlock(iter, groups) {
+    let cssSelectors = groups.map(group => group.slice(group.indexOf('style') + 1).join(' ')).filter(Boolean);
     let styleContent = textOf(readRaw(iter));
     if (cssSelectors.length) {
-        styleContent = cssSelectors.join(' ') + '{' + styleContent + '}';
+        styleContent = cssSelectors.join(', ') + '{' + styleContent + '}';
     }
     return makeBlock('style', styleContent);
 }
@@ -151,7 +151,7 @@ function readSvgBlocks(iter, head) {
         return null;
     }
     if (groups[0].includes('style')) {
-        return [readStyleBlock(iter, groups[0])];
+        return [readStyleBlock(iter, groups)];
     }
     return readGroupBlocks(iter, groups);
 }

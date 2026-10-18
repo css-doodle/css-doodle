@@ -236,8 +236,10 @@ function scan(source, options = {}) {
                 }
             }
             if (options.lineCommentsIn && !quote) {
-                if (curr === 40 /* ( */ && (body || (tokens[tokens.length - 2]?.isSymbol('@')
-                        && lastToken.isWord() && options.lineCommentsIn.test(lastToken.value)))) {
+                let k = tokens.length - 1;
+                while (curr === 40 && !body && (tokens[k]?.isNumber() || tokens[k]?.value === 'x')) k--;
+                if (curr === 40 /* ( */ && (body || (tokens[k - 1]?.isSymbol('@')
+                        && tokens[k].isWord() && options.lineCommentsIn.test(tokens[k].value)))) {
                     body++;
                 } else if (curr === 41 /* ) */ && body) {
                     body--;

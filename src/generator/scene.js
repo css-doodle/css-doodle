@@ -439,8 +439,8 @@ export default function drawScene(code, extra, report = () => {}) {
                     warn(`${name} needs points: x y, …`);
                     d = '1e5';
                 } else {
-                    let all = rings.flatMap(ring => [...ring, ring[0]]), n = all.length, at = 0, v;
-                    let array = `vec2[${n}](${all.map(([x = '0.0', y = '0.0']) => `vec2(${x}, ${y})`).join(', ')})`;
+                    let all = rings.flatMap(ring => [...ring, ring[0]]).map(([x = '0.0', y = '0.0']) => [x, y]), n = all.length, at = 0, v;
+                    let array = `vec2[${n}](${all.map(([x, y]) => `vec2(${x}, ${y})`).join(', ')})`;
                     let [q, e, s, w] = [next(), next(), next(), next()];
                     let constant = array => arrays.get(array) || arrays.set(array, `g_c${arrays.size}`).get(array);
                     let plain = all.flat().every(x => !isNaN(x));

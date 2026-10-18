@@ -91,7 +91,11 @@ const glyphs = memo((text, font) => {
     let [, lead, family] = (font + ' ').match(/^((?:(?:italic|oblique|bold|bolder|lighter|small-caps|\d+)\s+)*)(?:[\d.]+\S*\s+)?(.*)/);
     let face = lead + '100px ' + (family.trim() || 'sans-serif'), doc = globalThis.document, canvas = doc?.createElement('canvas');
     if (!canvas) return [];
-    if (!doc.fonts.check(face, text)) fontsLoading.add(doc.fonts.load(face, text));
+    try {
+        if (!doc.fonts.check(face, text)) fontsLoading.add(doc.fonts.load(face, text));
+    } catch {
+        return [];
+    }
     let n = 512, ctx = canvas.getContext('2d', { willReadFrequently: true });
     let draw = (s, x, y) => {
         canvas.width = canvas.height = n;
@@ -357,7 +361,7 @@ function createShapePoints(props, lo, hi, raw) {
     let [fx, fy] = place.reduce(([x, y], [k, a, b]) => k == 'move' ? [x, y] : [x * a, y * b], [1, 1]);
     let percent = props.unit === undefined || props.unit === '%';
     let suffix = percent ? '%' : (props.unit === 'none' ? '' : props.unit);
-    let staticAngle = props.scatter && !dir ? 0
+    let staticAngle = props.scatter >= 1 && !dir ? 0
         : direction.direction ? null : 90 + direction.angle;
 
     let points = [];
@@ -484,7 +488,7 @@ function createShapePoints(props, lo, hi, raw) {
         return Object.assign(run(rings).rings.map(ring => ring.map(view)), { evenodd });
     }
 
-    if (props.scatter) {
+    if (props.scatter >= 1) {
         rings = run(rings, 0).rings;
         let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
         let aspect = w / h > 0 && w / h < Infinity ? clamp(w / h, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
@@ -495,7 +499,7 @@ function createShapePoints(props, lo, hi, raw) {
             box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
         }
         let outline = bridge(rings), screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
-        let name = props.tile, count = props.scatter, seed = Number(props.seed) || 0;
+        let name = props.tile, count = Math.trunc(props.scatter), seed = Number(props.seed) || 0;
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0, props);
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];

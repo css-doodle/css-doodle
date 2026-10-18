@@ -1,12 +1,16 @@
 let caches = [];
 
 export function clearMemos() {
-    caches.forEach(cache => cache.clear());
+    caches.forEach(clear => clear());
 }
 
 export function memo(fn) {
     let cache = new Map(), size = 0;
-    caches.push(cache);
+    let clear = () => {
+        cache.clear();
+        size = 0;
+    };
+    caches.push(clear);
     return (...args) => {
         let key = (args.length === 1 && typeof args[0] === 'string')
             ? args[0]
@@ -15,8 +19,7 @@ export function memo(fn) {
         if (value === undefined) {
             // string results count too: a polygon can be 100k characters
             if (cache.size >= 4096 || size > 1 << 22) {
-                cache.clear();
-                size = 0;
+                clear();
             }
             value = fn(...args);
             cache.set(key, value);

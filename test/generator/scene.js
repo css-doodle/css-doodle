@@ -130,6 +130,11 @@ test('polygon takes points and a depth', () => {
     assert.match(scene('polygon { k: .4; points: 0 0, 0 k, .2 0 }').body, /vec2 g_\d+\[4\] = vec2\[4\]\(vec2\(0\.0, 0\.0\), vec2\(0\.0, g_\d+\)/);
     assert.match(body, /abs\(p\.z\) - \.1 \* 0\.5/);
     assert.deepEqual(scene('polygon { points: 0 0, 1 1 }').warnings, ['polygon needs points: x y, …']);
+    // a point with one coordinate reads y as 0, in the culling box and the runs too
+    let ring = Array.from({ length: 70 }, (_, i) => i == 5 ? '.3' : `${Math.cos(i / 11).toFixed(3)} ${Math.sin(i / 11).toFixed(3)}`);
+    for (let code of ['box { size: .3 } lathe { points: 0 0, .2, .2 .4 }', `polygon { points: ${ring} }`]) {
+        assert.doesNotMatch(scene(code).fragment, /NaN/);
+    }
 });
 
 test('sdf takes a distance in d', () => {
