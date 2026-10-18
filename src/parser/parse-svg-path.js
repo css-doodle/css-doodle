@@ -19,6 +19,14 @@ function parse(input) {
         commands: [],
         valid: true
     };
+    let push = text => {
+        let n = temp.value.length % 7;
+        if (/^a$/i.test(temp.name) && (n == 3 || n == 4) && /^[01]./.test(text)) {
+            temp.value.push(+text[0]);
+            return push(text.slice(1));
+        }
+        temp.value.push(Number(text));
+    };
     while (iter.next()) {
         let curr = iter.curr();
         if (curr.isSpace() || curr.isSymbol(',')) {
@@ -41,17 +49,14 @@ function parse(input) {
                 }
             }
         } else if (temp.value) {
-            let value = curr.value;
-            if (curr.isNumber()) {
-                value = Number(curr.value);
-            } else if (curr.isSymbol('-', '+')) {
-                let next = iter.curr(1);
-                if (next && next.isNumber()) {
-                    iter.next();
-                    value = Number(curr.value + next.value);
-                }
+            let text = curr.value;
+            if (curr.isSymbol('-', '+') && iter.curr(1)?.isNumber()) {
+                text += iter.next().value;
+            } else if (!curr.isNumber()) {
+                temp.value.push(text);
+                continue;
             }
-            temp.value.push(value);
+            push(text);
         } else {
             // a value before the first command
             result.valid = false;
@@ -68,3 +73,4 @@ function parse(input) {
 
 // generated path strings vary per cell, so the memo stays bounded
 export default memo(parse);
+export { ARITY };

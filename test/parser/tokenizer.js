@@ -178,6 +178,8 @@ test('numbers: decimals, exponents, hex', () => {
     assert.deepEqual(tokens('.5px'), [['Number', '.5'], ['Word', 'px']]);
     assert.deepEqual(tokens('0..5'), [['Number', '0'], ['Word', '..'], ['Number', '5']]);
     assert.deepEqual(tokens('0.5.9'), [['Number', '0.5'], ['Number', '.9']]);
+    assert.deepEqual(tokens('M.5.5'), [['Word', 'M'], ['Number', '.5'], ['Number', '.5']]);
+    assert.deepEqual(tokens('a.b'), [['Word', 'a.b']]);
 
     assert.deepEqual(tokens('10e9'), [['Number', '10e9']]);
     assert.deepEqual(tokens('.5E9px'), [['Number', '.5E9'], ['Word', 'px']]);

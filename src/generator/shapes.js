@@ -2,6 +2,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands, { readShapes, commandsOf, spaced, degrees, GROUPS } from '../parser/parse-shape-commands.js';
+import parseSvgPath, { ARITY } from '../parser/parse-svg-path.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
@@ -12,10 +13,10 @@ import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, PHI,
+    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
 } from './tiling.js';
 
-const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, PI } = Math;
+const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, ceil, PI } = Math;
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
@@ -133,9 +134,69 @@ const glyphs = memo((text, font) => {
         }
         rings.push(ring);
     }
-    let [l, t, r, b] = bounds(rings.flat(2)), f = 2 / max(r - l, b - t), cx = (l + r) / 2, cy = (t + b) / 2;
-    return rings.map(ring => thin(ring.map(([x, y]) => [(x - cx) * f, (cy - y) * f]), .002)).filter(ring => area(ring.flat()) > 1e-4);
+    return fitRings(rings);
 });
+
+const pathRings = memo(d => {
+    let { commands, valid } = parseSvgPath(d), rings = [], ring = [], x = 0, y = 0, x0 = 0, y0 = 0, c, last;
+    if (!valid) return [];
+    let draw = (...p) => {
+        let ps = [[x, y], ...toPairs(p)], n = ps.length > 2 ? 32 : 1;
+        for (let j = 1; j <= n; ++j) {
+            let q = ps;
+            while (q.length > 1) q = q.slice(1).map((p, i) => mix(q[i], p, j / n));
+            ring.push(q[0]);
+        }
+        c = ps.at(-2);
+        [x, y] = ps.at(-1);
+    };
+    let arc = (rx, ry, deg, large, sweep, ex, ey) => {
+        let cs = cos(deg * PI / 180), sn = sin(deg * PI / 180), dx = (x - ex) / 2, dy = (y - ey) / 2;
+        let px = cs * dx + sn * dy, py = cs * dy - sn * dx;
+        rx = abs(rx), ry = abs(ry);
+        let s = (px / rx) ** 2 + (py / ry) ** 2;
+        if (!(s > 0 && s < Infinity)) return draw(ex, ey);
+        if (s > 1) rx *= sqrt(s), ry *= sqrt(s);
+        let k = (large == sweep ? -1 : 1) * sqrt(max(0, 1 / s - 1)), ux = k * rx * py / ry, uy = -k * ry * px / rx;
+        let a = atan2((py - uy) / ry, (px - ux) / rx), da = atan2((-py - uy) / ry, (-px - ux) / rx) - a;
+        if (sweep && da < 0) da += 2 * PI;
+        if (!sweep && da > 0) da -= 2 * PI;
+        let mx = (x + ex) / 2 + cs * ux - sn * uy, my = (y + ey) / 2 + sn * ux + cs * uy;
+        for (let j = 1, n = ceil(abs(da) * 8); j <= n; ++j) {
+            let t = a + da * j / n;
+            ring.push([mx + cs * rx * cos(t) - sn * ry * sin(t), my + sn * rx * cos(t) + cs * ry * sin(t)]);
+        }
+        x = ex, y = ey;
+    };
+    for (let { name, value } of commands) {
+        if (!ARITY[name.toLowerCase()]) name = 'M', value = [x0, y0];
+        let N = name.toUpperCase(), n = ARITY[name.toLowerCase()], rel = name != N;
+        for (let i = 0; i < value.length; i += n) {
+            let v = value.slice(i, i + n), ox = rel ? x : 0, oy = rel ? y : 0;
+            if (N == 'H') v = [v[0] + ox, y];
+            else if (N == 'V') v = [x, v[0] + oy];
+            else if (N == 'A') v[5] += ox, v[6] += oy;
+            else v = v.map((k, j) => k + (j % 2 ? oy : ox));
+            if (N == 'M' && !i) {
+                rings.push(ring);
+                [x, y] = [x0, y0] = v;
+                ring = [v];
+            }
+            else if (N == 'A') arc(...v);
+            else if (N == 'S' || N == 'T') draw(...(/[CS]S|[QT]T/.test(last + N) ? [2 * x - c[0], 2 * y - c[1]] : [x, y]), ...v);
+            else draw(...v);
+            last = N;
+        }
+    }
+    rings.push(ring);
+    return fitRings(rings);
+});
+
+function fitRings(rings) {
+    rings = rings.filter(ring => ring.length > 2);
+    let [l, t, r, b] = bounds(rings.flat(2)), s = 2 / max(r - l, b - t), cx = (l + r) / 2, cy = (t + b) / 2;
+    return s < Infinity ? rings.map(ring => thin(ring.map(([x, y]) => [(x - cx) * s, (cy - y) * s]), .002)).filter(ring => area(ring.flat()) > 1e-4) : [];
+}
 
 class Point {
     constructor(value, angle, origin, kind, r) {
@@ -207,7 +268,7 @@ function createPointFunction(props, split) {
     return point;
 }
 
-const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill fill-rule unit smooth blocks steps text font'.split(' '));
+const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill fill-rule unit smooth blocks steps text font path'.split(' '));
 
 // each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
@@ -361,7 +422,7 @@ function createShapePoints(props, lo, hi, raw) {
         let step = PI * 2 * turn / split;
         return Array.from({ length: split }, (_, i) => fns[c](step * i, i));
     };
-    let rings = props.blocks ? combine(props, lo, hi) : props.text ? glyphs(removeQuotes(props.text), props.font || '') : vertices ? [vertices] : contours.map(trace);
+    let rings = props.blocks ? combine(props, lo, hi) : props.text ? glyphs(removeQuotes(props.text), props.font || '') : props.path ? pathRings(removeQuotes(props.path)) : vertices ? [vertices] : contours.map(trace);
     if (props.blocks && !isEmpty(props.points)) rings = resample(rings, contours.map(p => p.split));
     if (!rings.length) rings = [[[0, 0]]];
     let run = (rings, rounding = radius) => {
@@ -575,8 +636,8 @@ export default function generateShape(input, range = {}, modifier) {
         rules.blocks = { op: 'union', items: [{ points: rules.points }] };
         delete rules.points;
     }
-    if (!rules.blocks && rules.text) {
-        rules.blocks = { op: 'union', items: [{ text: rules.text, font: rules.font }] };
+    if (!rules.blocks && (rules.text || rules.path)) {
+        rules.blocks = { op: 'union', items: [{ text: rules.text, font: rules.font, path: rules.path }] };
     }
     if (preset === undefined && range.preset && !rules.blocks && ['x', 'y', 'r'].every(k => isEmpty(rules[k]))) {
         preset = presetShapes[range.preset];

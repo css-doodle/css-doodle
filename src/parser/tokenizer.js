@@ -117,6 +117,7 @@ function readWord(input, i, len) {
     while (j < len) {
         let c = input.charCodeAt(j);
         if (isSymbolCode(c) || isSpaceCode(c) || isDigitCode(c) || c === 92 /* \ */) break;
+        if (c === 46 && isDigitCode(input.charCodeAt(j + 1)) && input.charCodeAt(j - 1) !== 46) break;
         j++;
     }
     return j;

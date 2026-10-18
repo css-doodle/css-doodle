@@ -481,7 +481,9 @@ before or after a count; a space before `#` starts a new shape, so
 `move: k * .5 0` and `move: .5 -.25` have two parts each. A `text:`
 row is its text traced in the browser as the outline, in the `font:`
 style, weight and family: `@plot.hex(text: A; font: 900 serif)`; a
-quoted value keeps its commas, `;` and parentheses.
+quoted value keeps its commas, `;` and parentheses. A `path:` row is
+SVG path data as the outline, `@shape(path: M12 2 L22 22 H2 Z)`. Both
+are fitted to the box by their ink.
 
 ### 9.3 Patterns
 

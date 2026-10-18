@@ -62,9 +62,9 @@ test('@flipH/@flipV/@flip/@invert: mirror path data around its start point', () 
     let path = 'M 2 3 l 1 2 c 1 2 3 4 5 6 a 5 3 30 0 1 10 0 H 9 V 1 z';
     assert.equal(flipV(flipH(path)), flip(path));
     assert.equal(invert(invert(path)), 'M2 3 l1 2 c1 2 3 4 5 6 a5 3 30 0 1 10 0 H9 V1 z');
+    assert.equal(flipH('M 0 0 a5 5 0 0110 0'), 'M0 0 a5 5 0 0 0 -10 0');
     // anything that is not path data passes through
     assert.equal(flipH('#000', '#fff'), '#000,#fff');
-    assert.equal(flipH('M 0 0 a5 5 0 0110 0'), 'M 0 0 a5 5 0 0110 0');
     assert.equal(flipH(''), '');
 });
 

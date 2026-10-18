@@ -641,3 +641,23 @@ test('text: traced in a canvas, holes wound against the outline, nothing without
         delete globalThis.document;
     }
 });
+
+test('path: SVG path data as the outline, fitted to the box, y up', () => {
+    let rings = input => [...generateShape(input, { raw: true }).points];
+    assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z'), [[[-1, 1], [1, 1], [1, -1], [-1, -1]]]);
+    let square = rings(`path: 'm0,0 h10 v10 h-10 z m2 2 v6 h6 v-6 z'`);
+    assert.equal(square.length, 2);
+    assert.ok(Math.sign(signed(square[0].flat())) != Math.sign(signed(square[1].flat())));
+    for (let d of ['M0 5a5 5 0 1 0 10 0a5 5 0 1 0-10 0', 'M0 5a5 5 0 1010 0 5 5 0 10-10 0z', 'M0 5C0 -1.67 10 -1.67 10 5S0 11.67 0 5']) {
+        let [ring] = rings('path: ' + d);
+        assert.ok(ring.length > 40 && ring.every(([x, y]) => Math.abs(x) < 1 + 1e-9 && Math.abs(y) < 1 + 1e-9), d);
+    }
+    assert.ok(Math.abs(signed(rings('path: M0 5a5 5 0 1 0 10 0a5 5 0 1 0-10 0')[0].flat()) / 2 - Math.PI) < .01);
+    assert.deepEqual(rings('path: M0 0 Q5 10 10 0 T20 0 L20 -20 L0 -20 Z'), rings('path: M0 0 Q5 10 10 0 Q15 -10 20 0 L20 -20 L0 -20 Z'));
+    assert.deepEqual(rings('path: M0 0 C0 10 10 10 10 0 Z S5 -5 0 -10 L-5 -5 Z'), rings('path: M0 0 C0 10 10 10 10 0 Z M0 0 S5 -5 0 -10 L-5 -5 Z'));
+    let star = 'path: M50 0 L79 90 L2 35 H98 L21 90 Z';
+    assert.notEqual(generateShape(star).clip, generateShape(star + '; fill: evenodd').clip);
+    assert.equal(generateShape('path: hello').clip, 'polygon(50% 50%)');
+    assert.equal(generateShape('path: M0 0 L10 0').clip, 'polygon(50% 50%)');
+    assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z; scale: .5'), [[[-.5, .5], [.5, .5], [.5, -.5], [-.5, -.5]]]);
+});

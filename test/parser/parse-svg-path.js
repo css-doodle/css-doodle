@@ -63,8 +63,9 @@ test('each command takes whole groups of numbers', () => {
     assert.equal(valid('M 0 0 l 5'), false);
     assert.equal(valid('M 5% 3'), false);
     assert.equal(valid('M 0 0 z 1'), false);
-    // arc flags glued together read as one number
-    assert.equal(valid('M 0 0 a5 5 0 0110 0'), false);
+    assert.deepEqual(parseSvgPath('M 0 0 a5 5 0 0110 0').commands[1].value, [5, 5, 0, 0, 1, 10, 0]);
+    assert.deepEqual(parseSvgPath('a1 1 0 01.5.5').commands[0].value, [1, 1, 0, 0, 1, .5, .5]);
+    assert.equal(valid('M 0 0 a 5 5 0 2 1 10 0'), true);
     // command letters on their own are not a path
     assert.equal(valid('a, c, s'), false);
 });
@@ -82,4 +83,12 @@ test('a close command glued to the next one splits', () => {
         ],
     });
     assert.equal(parseSvgPath('M0 0 mz').valid, false);
+});
+
+test('a number glued to a command by its dot', () => {
+    assert.deepEqual(parseSvgPath('M.5.5l1-1').commands, [
+        { name: 'M', type: 'absolute', value: [.5, .5] },
+        { name: 'l', type: 'relative', value: [1, -1] },
+    ]);
+    assert.equal(parseSvgPath('M0 0c.6.113.82-.258.82-.577').valid, true);
 });
