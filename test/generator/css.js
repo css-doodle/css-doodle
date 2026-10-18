@@ -33,6 +33,11 @@ test('@pick(k: …) takes item k from 1 in each cell, wrapping, and $() and @mat
     assert.ok(/#c-1-4-1 \{--c:red;\s*--k:4;\s*--w:10;\s*--m:b;\}/.test(sheet), sheet);
 });
 
+test('@pick(k: …) picks from the list a lone item gives, as @p does', () => {
+    assert.equal(cells('--c: @p(@i: @palette(3));', '1x2'), cells('--c: @pn(@palette(3));', '1x2'));
+    assert.equal(cells('--c: @p(@i: [a-c]); --d: @p(@i: @m3(x@n));', '1x2'), '#c-1-1-1 {--c:a;\n--d:x1;}#c-1-2-1 {--c:b;\n--d:x2;}');
+});
+
 // --- functions cells define ---
 
 // --- depth on multi-cell grids ---

@@ -525,7 +525,14 @@ export const pickAt = lazy((cell, { context, extra }, position, vars, ...args) =
     }
     let e = last(extra) || [];
     let k = calc(getValue(args[0](...e)), sequenceContext(cell, e, vars));
-    return Number.isFinite(k) ? pushStack(context, 'lastPick', getValue(args[1 + pickIndex(k, args.length - 1)](...e))) : '';
+    if (!Number.isFinite(k)) return '';
+    let items = args.slice(1), item = i => getValue(items[i](...e));
+    if (items.length == 1) {
+        let value = item(0);
+        items = expand((...list) => list)(...(Array.isArray(value) ? value : parseValueGroup(value, { noSpace: true })));
+        item = i => items[i] ?? '';
+    }
+    return pushStack(context, 'lastPick', item(pickIndex(k, items.length)));
 });
 
 Function.match.vars = pickAt.vars = true;
