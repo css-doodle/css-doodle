@@ -356,6 +356,11 @@ test('a polygon takes a @shape body as its outline, holes and all', () => {
     let speck = scene('polygon { subtract { heart; circle { scale: .01 } } }');
     assert.deepEqual(speck.warnings, []);
     assert.match(speck.fragment, /const vec2 g_c0\[\] = vec2\[255\]/);
+    let path = 'M0 0 L10 0 Q14 6 6 10 L0 10 Z';
+    let own = scene(`polygon { path: ${path} }`);
+    assert.deepEqual(own.warnings, []);
+    assert.equal(own.fragment, scene(`polygon { shape { path: ${path} } }`).fragment);
+    assert.deepEqual(scene('polygon { text: light; font: normal serif }').warnings, ['polygon needs points: x y, …']);
 });
 
 test('a lathe turns an outline around y', () => {
@@ -366,6 +371,13 @@ test('a lathe turns an outline around y', () => {
     assert.match(scene('lathe { points: 0 -1, .5 -1, .3 0, .6 1, 0 1 }').dist, /length\(p\.xz\)/);
     assert.deepEqual(scene('lathe { cirle }').warnings, ['unknown shape cirle']);
     assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points: x y, …']);
+    let xs = code => {
+        let x = [...scene(code).fragment.match(/g_c0\[\] = (.*)/)[1].matchAll(/vec2\((-?[\d.]+),/g)].map(m => +m[1]);
+        return [Math.min(...x), Math.max(...x)];
+    };
+    assert.deepEqual(xs('lathe { path: M0 0 L5 0 L5 10 L0 10 Z }'), [0, 1]);
+    assert.deepEqual(xs('lathe { path: M-5 0 L5 0 L5 10 L-5 10 Z }'), [-1, 1]);
+    assert.deepEqual(xs('lathe { shape { path: M0 0 L5 0 L5 10 L0 10 Z } }'), [-.5, .5]);
 });
 
 test('an outline walks only where its box could change the parts before it', () => {

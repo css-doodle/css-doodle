@@ -14,8 +14,8 @@ const SHAPES = {
     cone: ['r', 'height'],
     torus: ['r'],
     capsule: ['from', 'to', 'r'],
-    polygon: ['points', 'depth', 'round'],
-    lathe: ['points'],
+    polygon: ['points', 'text', 'font', 'path', 'depth', 'round'],
+    lathe: ['points', 'text', 'font', 'path'],
     plane: [],
     sdf: ['d'],
 };
@@ -111,7 +111,7 @@ function checkAll(node, warn, unread, code) {
     if (SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
-                let m = r.name !== 'fill' && textOf(r.value).match(/\b(normal|light)\b/);
+                let m = !/^(fill|text|font|path)$/.test(r.name) && textOf(r.value).match(/\b(normal|light)\b/);
                 if (m) warn(`${r.name} cannot read ${m[1]}`);
                 continue;
             }
@@ -121,7 +121,7 @@ function checkAll(node, warn, unread, code) {
             warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
         }
     }
-    if (/^(polygon|lathe)$/.test(node.name) && node.children.length) {
+    if (/^(polygon|lathe)$/.test(node.name) && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
         node.rings = outline(node, warn).map(ring => ring.map(xy => xy.map(float)));
         node.children = [];
     }

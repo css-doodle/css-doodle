@@ -638,8 +638,19 @@ test('text: traced in a canvas, holes wound against the outline, nothing without
             return r > 22 && r < 50;
         }));
         // a face the browser can't read draws nothing
+        generateShape('text: A; font: 900 Press Start 2P, monospace');
+        assert.equal(fonts.at(-1), '900 100px "Press Start 2P", monospace');
         globalThis.document.fonts.check = face => { if (/2P/.test(face)) throw new SyntaxError(face); return true; };
-        assert.equal(generateShape('text: A; font: Press Start 2P').clip, 'polygon(50% 50%)');
+        assert.equal(generateShape('text: B; font: Press Start 2P').clip, 'polygon(50% 50%)');
+        let loaded = false, loads = 0;
+        globalThis.document.fonts = { check: () => loaded, load: () => (loads++, Promise.resolve()) };
+        generateShape('text: C; font: Pacifico');
+        generateShape('text: C; font: Pacifico');
+        let count = fonts.length;
+        loaded = true;
+        generateShape('text: C; font: Pacifico');
+        assert.equal(loads, 1);
+        assert.ok(fonts.length > count);
     } finally {
         delete globalThis.document;
     }

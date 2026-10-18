@@ -389,16 +389,6 @@ if (typeof HTMLElement !== 'undefined') {
             if (tries > 1) this._warned?.clear();
             let old = this.compiled;
             let compiled = this.generate(code, seed);
-            let source = this.getUse() + code;
-            if (/\btext\s*:/.test(source.includes('@use') ? source + getAllVariables(this) : source)) {
-                let linked = loadGoogleFontLink(compiled.styles.gf), generation = this._generation;
-                if (linked) fontsLoading.add(linked);
-                let wait = [...fontsLoading];
-                if (wait.length && tries) Promise.allSettled(wait).then(() => {
-                    if (wait.map(p => fontsLoading.delete(p)).includes(true)) clearMemos();
-                    if (generation === this._generation) this.render(this._code, this.compiled.seed, tries - 1);
-                });
-            }
             for (let id in { ...old?.shaders, ...old?.patterns }) {
                 if (!compiled.shaders[id] && !compiled.patterns[id]) {
                     this.style.removeProperty('--' + id);
@@ -411,6 +401,16 @@ if (typeof HTMLElement !== 'undefined') {
                 this.buildGrid(compiled, grid);
             } else {
                 this.patch(compiled);
+            }
+            let source = this.getUse() + code;
+            if (/\btext\s*:/.test(source.includes('@use') ? source + getAllVariables(this) : source)) {
+                let linked = loadGoogleFontLink(compiled.styles.gf), generation = this._generation;
+                if (linked) fontsLoading.add(linked);
+                let wait = [...fontsLoading];
+                if (wait.length && tries) Promise.allSettled(wait).then(() => {
+                    if (wait.map(p => fontsLoading.delete(p)).includes(true)) clearMemos();
+                    if (generation === this._generation) this.render(this._code, this.compiled.seed, tries - 1);
+                });
             }
         }
 
