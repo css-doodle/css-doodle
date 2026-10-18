@@ -12,7 +12,9 @@ Each test file covers the source file of the same path:
 - `corpus/` — the fixture cases plus every `<css-doodle>` in the `*.html`
   files at the repo root. Shared by the fuzz tests, the perf scripts and
   the local golden harness; not a test itself.
-- `fuzz/` — seeded mutation and equivalence fuzzing. `FUZZ_TEMPLATE_SEED`
-  and `FUZZ_TEMPLATE_ROUNDS` tune the calc template one.
+- `fuzz/` — seeded mutation and equivalence fuzzing; `grammar.js`
+  generates valid doodles from the productions of `docs/grammar.md`.
+  `FUZZ_TEMPLATE_SEED`/`FUZZ_TEMPLATE_ROUNDS` and
+  `FUZZ_GRAMMAR_SEED`/`FUZZ_GRAMMAR_ROUNDS` tune those two.
 - `perf/`, `local/` — benchmarks and the golden/pixel harness. Both are
   gitignored and run by hand, for example `node test/perf/generate-bench.js 40`.
