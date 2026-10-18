@@ -2,10 +2,8 @@ import { readShapes, degrees } from '../parser/parse-shape-commands.js';
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
-import { HELPERS, DERIVATIVES, cssColor, colorReader } from './pattern.js';
+import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader } from './pattern.js';
 import { glsl } from '../lib/tagged-template.js';
-
-const NAME = /^[a-zA-Z_]\w*$/;
 
 const SHAPES = {
     __proto__: null,
@@ -106,12 +104,11 @@ function isVar(node, name) {
 }
 
 function checkAll(node, warn, unread, code) {
-    let { top } = node;
-    if (!top && !NAME.test(node.name)) {
+    if (!NAME.test(node.name)) {
         let text = node.name + (node.count ? '*' + node.count.join('x') : '');
         warn(`unexpected ${text}` + (node.name.includes('(') ? `: write ${node.name.split('(')[0]} { … }` : ''));
     }
-    if (top || SHAPES[node.name] || GROUPS[node.name]) {
+    if (SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
                 let m = r.name !== 'fill' && textOf(r.value).match(/\b(normal|light)\b/);
@@ -121,7 +118,7 @@ function checkAll(node, warn, unread, code) {
             let valid = NAME.test(r.name);
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
-            warn(!valid ? `invalid name "${r.name}"` : top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
+            warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && node.children.length) {
@@ -135,7 +132,7 @@ function checkAll(node, warn, unread, code) {
 export default function drawScene(code, extra, report = () => {}) {
     let said = new Set(), warn = message => said.has(message) || (said.add(message), report(message));
     let tree = readShapes(code, warn, { ignoreInlineComment: true });
-    let root = { name: 'union', top: true, count: 0, rows: [], children: tree.children }, camera = {};
+    let root = { name: 'union', top: true, rows: [], children: tree.children }, camera = {};
     for (let r of tree.rows) {
         if (/^(view|perspective|zoom|light|shadow|ambient|drag)$/.test(r.name)) camera[r.name] = r.value;
         else root.rows.push(r);
@@ -193,14 +190,15 @@ export default function drawScene(code, extra, report = () => {}) {
         let out = '';
         let lit = new Set(['light']), reads = code => code.match(/\w+/g)?.some(w => lit.has(w));
         let scoped = new Map();
-        let scope = (node, p, sites) => {
-            let end = ctx.sites, moved = [p];
-            if (sites === undefined) scoped.set(node, { p, sites: ctx.sites });
-            else ctx.sites = sites;
+        let scope = (node, p, again) => {
+            let first = scoped.get(node), end = ctx.sites, moved = [p];
+            if (!again) scoped.set(node, { p, sites: end });
+            else if (first.p === p) return;
+            else ctx.sites = first.sites;
             for (let { name, value } of vars(node)) {
                 let { type, code } = compile(textOf(value), p);
                 let t = type === 'int' ? 'float' : type, c = code(t);
-                if (sites !== undefined && !new RegExp(`\\b(${moved.join('|')})\\b`).test(c)) continue;
+                if (again && !new RegExp(`\\b(${moved.join('|')})\\b`).test(c)) continue;
                 let id = next();
                 ctx.types[id] = t;
                 moved.push(id);
@@ -208,11 +206,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 if (reads(c)) lit.add(id);
                 out += `${t} ${id} = ${c};\n`;
             }
-            if (sites !== undefined) ctx.sites = end;
-        };
-        let rescope = (node, p) => {
-            let first = scoped.get(node);
-            if (first && first.p !== p) scope(node, p, first.sites);
+            if (again) ctx.sites = end;
         };
         let base = ctx.fill = next(), none = dist ? '1e5' : `vec4(${base}, 1e5)`;
         let T = dist ? 'float' : 'vec4', W = dist ? '' : '.w';
@@ -377,7 +371,7 @@ export default function drawScene(code, extra, report = () => {}) {
 
         function atom(node, p) {
             let saved = ctx.fill, names = ctx.names, f = row(node, 'fill');
-            rescope(node, p);
+            scope(node, p, true);
             let c = f.length && color(textOf(f), p);
             if (c && !dist) {
                 ctx.fill = next();
@@ -430,14 +424,12 @@ export default function drawScene(code, extra, report = () => {}) {
                 d = ok ? code('float') : '1e5';
                 ctx.loose = true;
                 if (ok && fit && !ctx.cut) {
-                    let [a, h, c, end, names] = [next(), next(), next(), ctx.sites, ctx.names];
+                    let [a, h, c] = [next(), next(), next()];
                     ctx.types[h] = 'vec3';
                     out += `float ${a} = ${d};\nvec3 ${h} = ${p} * 0.5;\n`;
-                    rescope(node, h);
+                    scope(node, h, true);
                     ctx.sites = start;
                     out += `float ${c} = 2.0 * (${a} - ${compile(value, h).code('float')}) / length(${p});\n`;
-                    ctx.sites = end;
-                    ctx.names = names;
                     d = `${c} > 0.1 ? ${a} / ${c} : ${a}`;
                 }
             } else {

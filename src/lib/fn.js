@@ -14,14 +14,6 @@ export function lazy(fn) {
     return wrap;
 }
 
-export function debounce(fn, delay = 100) {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-    };
-}
-
 export function nextId(scope = '') {
     let id = 0;
     return (prefix = '') => `${prefix}${scope}-${++id}`;

@@ -68,7 +68,7 @@ export default function gridStyleRules({
     if (p3d) {
         add(':container', 'transform-style:preserve-3d;');
     }
-    if (border !== undefined) {
+    if (border) {
         add(':host', `border: ${border};`);
     }
     if (gap) {

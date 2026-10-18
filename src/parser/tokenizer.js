@@ -40,7 +40,7 @@ function isDigitCode(c) {
 }
 
 function isHexCode(c) {
-    return c < 128 && (ctype[c] & HEX) > 0;
+    return (ctype[c] & HEX) > 0;
 }
 
 class Token {
@@ -170,6 +170,7 @@ function scan(source, options = {}) {
         // Offset of the token's first raw char in the input
         let index = i;
         let next = input.charCodeAt(i + 1);
+        let lastToken = last(tokens);
 
         if (!quote && curr === 47 && next === 42 /* slash-star */) {
             let found = input.indexOf('*/', i + 2);
@@ -178,8 +179,6 @@ function scan(source, options = {}) {
                 row++;
                 lineStart = n + 1;
             }
-            // A comment separates tokens like a space does
-            let lastToken = last(tokens);
             let after = input[end];
             if (lastToken && !lastToken.isSpace() && after && !isSpaceCode(input.charCodeAt(end))
                     && !ignoreSpacingAround(lastToken.value, after)) {
@@ -199,7 +198,9 @@ function scan(source, options = {}) {
             i = end;
         }
         else if (isDigitCode(curr) || (
-            curr === 46 && isDigitCode(next) && input.charCodeAt(i - 1) !== 46)) {
+            curr === 46 && isDigitCode(next) && input.charCodeAt(i - 1) !== 46) || (
+            curr === 45 && (isDigitCode(next) || next === 46 && isDigitCode(input.charCodeAt(i + 2)))
+            && !(lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'))))) {
             let end = readNumber(input, i);
             tokens.push(new Token('Number', input.slice(i, end), pos, index));
             i = end;
@@ -224,19 +225,6 @@ function scan(source, options = {}) {
         }
         else if (isSymbolCode(curr)) {
             let ch = input[i];
-            // A minus before a digit is a sign unless it follows a value
-            let isNextDigit = isDigitCode(next) || (next === 46 && isDigitCode(input.charCodeAt(i + 2)));
-            if (curr === 45 /* - */ && isNextDigit) {
-                let lastToken = last(tokens);
-                let isAfterValue = lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'));
-                if (!isAfterValue) {
-                    let end = readNumber(input, i);
-                    tokens.push(new Token('Number', input.slice(i, end), pos, index));
-                    i = end;
-                    continue;
-                }
-            }
-
             let token = new Token('Symbol', ch, pos, index);
             if (curr === 34 || curr === 39 || curr === 96 /* " ' ` */) {
                 if (quote === ch) {
@@ -248,9 +236,8 @@ function scan(source, options = {}) {
                 }
             }
             if (options.lineCommentsIn && !quote) {
-                let name = tokens[tokens.length - 1];
                 if (curr === 40 /* ( */ && (body || (tokens[tokens.length - 2]?.isSymbol('@')
-                        && name.isWord() && options.lineCommentsIn.test(name.value)))) {
+                        && lastToken.isWord() && options.lineCommentsIn.test(lastToken.value)))) {
                     body++;
                 } else if (curr === 41 /* ) */ && body) {
                     body--;
@@ -272,7 +259,6 @@ function scan(source, options = {}) {
                 }
                 end++;
             }
-            let lastToken = last(tokens);
             // Leading and trailing spaces are dropped
             if (lastToken && end < len) {
                 if (quote) {
@@ -299,7 +285,7 @@ function scan(source, options = {}) {
     // Remove last space token
     let lastToken = last(tokens);
     if (lastToken && lastToken.isSpace()) {
-        tokens.length = tokens.length - 1;
+        tokens.pop();
     }
     return tokens;
 }

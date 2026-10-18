@@ -156,7 +156,6 @@ const VARIABLE = 'variable';
 const FUNCTION = 'function';
 
 const RE_NUMBER = /^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?|0x[\da-f]+)$/i;
-const RE_NEGATIVE_VAR = /^-\D/;
 
 function tk(type, value) {
     return { type, value };
@@ -175,17 +174,12 @@ function isUnary(prev) {
 }
 
 // Push a value, resolving adjacency with the previous token:
-// "2x" → 2*x, "2sin(1)" → 2*sin(1), "k -1" → k-1; after a space
-// there is no product, so "2 x" leaves two values and reads as 2
+// "2x" → 2*x, "2sin(1)" → 2*sin(1); after a space there is no
+// product, so "2 x" leaves two values and reads as 2
 function pushValue(tokens, value, spaced) {
     const prev = last(tokens);
-    if (prev && (prev.type === VALUE || prev.value === ')')) {
-        if (value[0] === '-') {
-            tokens.push(tk(OPERATOR, '-'));
-            value = value.slice(1);
-        } else if (!spaced) {
-            tokens.push(tk(OPERATOR, '·'));
-        }
+    if (!spaced && prev && (prev.type === VALUE || prev.value === ')')) {
+        tokens.push(tk(OPERATOR, '·'));
     }
     tokens.push(tk(VALUE, value));
 }
@@ -218,8 +212,8 @@ function transformTokens(input, spans) {
 
         if (type === 'Number') {
             let number = value;
-            if (/^[+-]/.test(number) && isUnary(last(tokens))) {
-                if (number[0] === '-') tokens.push(tk(OPERATOR, '-u'));
+            if (number[0] === '-') {
+                tokens.push(tk(OPERATOR, isUnary(last(tokens)) ? '-u' : '-'));
                 number = number.slice(1);
             }
             pushValue(tokens, number, spaced);
@@ -263,7 +257,7 @@ function transformTokens(input, spans) {
         }
 
         if (value === '%' && !spaced && raw[i - 1]?.type === 'Number'
-                && !(next && (next.type === 'Number' ? !/^[+-]/.test(next.value)
+                && !(next && (next.type === 'Number' ? next.value[0] !== '-'
                     : next.type === 'Word' ? !isOperator(next.value)
                     : next.value === '(' || next.value === 'π'))) {
             continue;
@@ -439,19 +433,12 @@ function evaluateValue(value, ctx, history) {
     return result;
 }
 
-// A name reads from the context; "-x" reads as -1 * x
+// A name reads from the context
 function compileVariable(name) {
-    const negative = RE_NEGATIVE_VAR.test(name);
-    const key = negative ? name.slice(1) : name;
     return (ctx, history) => {
         let result = ctx[name];
         if (typeof result === 'number' && !Number.isNaN(result)) {
             return result;
-        }
-        let negated = false;
-        if (negative && isInvalidNumber(result)) {
-            result = ctx[key];
-            negated = true;
         }
         if (isInvalidNumber(result)) {
             return miss(history);
@@ -460,16 +447,12 @@ function compileVariable(name) {
             // only a function that takes no arguments reads bare
             result = result.length ? miss(history) : result();
         }
-        if (typeof result !== 'number') {
-            result = evaluateValue(result, ctx, history);
-        }
-        return negated ? neg(result) : result;
+        return typeof result === 'number' ? result : evaluateValue(result, ctx, history);
     };
 }
 
 function compileFunction(node) {
-    const negative = node.name[0] === '-';
-    const name = negative ? node.name.slice(1) : node.name;
+    const name = node.name;
     const chain = name.split('.');
     const argFns = node.value.map(compile);
 
@@ -486,15 +469,10 @@ function compileFunction(node) {
         };
         return (ctx, history) => {
             const fn = ctx[name];
-            let output;
             if (fn === defaultContext.match) {
-                output = choose(0, ctx, history);
-            } else if (typeof fn === 'function') {
-                output = fn(...argFns.map(f => f(ctx, history)));
-            } else {
-                return miss(history);
+                return choose(0, ctx, history);
             }
-            return negative ? neg(output) : output;
+            return typeof fn === 'function' ? fn(...argFns.map(f => f(ctx, history))) : miss(history);
         };
     }
 
@@ -503,14 +481,11 @@ function compileFunction(node) {
         const n = items.length;
         return (ctx, history) => {
             const k = argFns[0](ctx, history);
-            let output = 0;
             if (n && live(k)) {
                 const at = `mod(round(${k},1) - 1,${n})`;
-                output = `(${items.map((f, j) => `${text(f(ctx, history))} * ${not(truthy(`${at} - ${j}`))}`).join(' + ')})`;
-            } else if (n && Number.isFinite(+k)) {
-                output = items[pickIndex(+k, n)](ctx, history);
+                return `(${items.map((f, j) => `${text(f(ctx, history))} * ${not(truthy(`${at} - ${j}`))}`).join(' + ')})`;
             }
-            return negative ? neg(output) : output;
+            return n && Number.isFinite(+k) ? items[pickIndex(+k, n)](ctx, history) : 0;
         };
     }
 
@@ -521,8 +496,7 @@ function compileFunction(node) {
                 const fn = ctx[name];
                 if (typeof fn !== 'function') return miss(history);
                 const x = a(ctx, history);
-                const output = live(x) ? lower(name, [x], history, fn) : fn(x);
-                return negative ? neg(output) : output;
+                return live(x) ? lower(name, [x], history, fn) : fn(x);
             };
         }
         if (argFns.length === 2) {
@@ -531,16 +505,14 @@ function compileFunction(node) {
                 if (typeof fn !== 'function') return miss(history);
                 const x = a(ctx, history);
                 const y = b(ctx, history);
-                const output = live(x) || live(y) ? lower(name, [x, y], history, fn) : fn(x, y);
-                return negative ? neg(output) : output;
+                return live(x) || live(y) ? lower(name, [x, y], history, fn) : fn(x, y);
             };
         }
         return (ctx, history) => {
             const fn = ctx[name];
             if (typeof fn !== 'function') return miss(history);
             const args = argFns.map(f => f(ctx, history));
-            const output = args.some(live) ? lower(name, args, history, fn) : fn(...args);
-            return negative ? neg(output) : output;
+            return args.some(live) ? lower(name, args, history, fn) : fn(...args);
         };
     }
 
@@ -557,7 +529,7 @@ function compileFunction(node) {
             const args = [].concat(output);
             output = args.some(live) ? lower(chain[i], args, history, fn) : fn(...args);
         }
-        return negative ? neg(output) : output;
+        return output;
     };
 }
 

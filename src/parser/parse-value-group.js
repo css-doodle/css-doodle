@@ -21,11 +21,10 @@ function parse(input, option = {}) {
     let buf = '';
     let name = '';
     let paren = 0;
-    let quote = 0;
+    let quote = false;
     for (let i = 0; i < tokens.length; i++) {
         let curr = tokens[i];
-        if (curr.status === 'open') quote++;
-        if (curr.status === 'close') quote = Math.max(0, quote - 1);
+        if (curr.status) quote = curr.status === 'open';
         if (!quote && curr.isSymbol('(')) paren++;
         if (!quote && curr.isSymbol(')')) paren = Math.max(0, paren - 1);
         let top = !paren && !quote;

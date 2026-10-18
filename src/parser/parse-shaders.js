@@ -7,12 +7,8 @@ import { readRaw } from './parse-body.js';
 // Text outside the sections is the fragment source when there is no
 // fragment section.
 function parse(input) {
-    let scanOptions = {
-        preserveLineBreak: true,
-        ignoreInlineComment: true,
-    };
     // a body or a section value from a custom property comes wrapped in parens
-    let iter = iterator(removeParens(scan(input, scanOptions)));
+    let iter = iterator(removeParens(scan(input, { preserveLineBreak: true, ignoreInlineComment: true })));
     let tokens = [];
     let result = {
         textures: [],
@@ -20,7 +16,7 @@ function parse(input) {
     while (iter.next()) {
         let curr = iter.curr();
         let name = curr.isSymbol('{') ? textOf(tokens) : '';
-        if (isIdentifier(name)) {
+        if (/^texture\w*$|^(fragment|vertex)$/.test(name)) {
             let body = readRaw(iter);
             let texture = name.startsWith('texture');
             let value = textOf(removeParens(texture ? body : withLineBreaks(body)));
@@ -41,10 +37,6 @@ function parse(input) {
         result.fragment = textOf(removeParens(withLineBreaks(tokens)));
     }
     return result;
-}
-
-function isIdentifier(name) {
-    return /^texture\w*$|^(fragment|vertex)$/.test(name);
 }
 
 // The tokenizer drops line breaks next to ';' and braces; a `#define`

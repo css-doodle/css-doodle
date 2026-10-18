@@ -7,7 +7,6 @@ import generateScene from '../generator/scene.js';
 
 import createAnimation from './animation.js';
 import { cacheImage, isSafari } from '../lib/browser.js';
-import { debounce } from '../lib/fn.js';
 import { doodleToImage, svgUrl, frameSvg } from './doodle-image.js';
 
 export const draw = {
@@ -47,53 +46,6 @@ function canvasUrl(canvas, fit) {
     return `url("${url}")`;
 }
 
-function loadTexturesAt(host, parsed, width, height, id, compiled) {
-    let dpr = devicePixelRatio || 1;
-    return Promise.all(parsed.textures.map(({ name, value }) => {
-        let options = { width, height, instance: `${id.slice(2)}-${name}`, compiled };
-        return doodleToImage(host, value, options).then(src => new Promise(resolve => {
-            if (!src) {
-                return resolve({ name, value: null });
-            }
-            let img = new Image();
-            img.width = width * dpr;
-            img.height = height * dpr;
-            img.onload = () => resolve({ name, value: img });
-            img.onerror = () => resolve({ name, value: null });
-            img.src = src;
-        }));
-    }));
-}
-
-async function stillToUrl(host, { source, id, arg, target, compiled, inside }, seedCell, name) {
-    let { width, height, grid } = inside;
-    if (arg) {
-        ({ x: width, y: height } = parseGrid(arg, Infinity));
-    } else {
-        if (!(width && height)) {
-            let { x, y } = host.gridSize;
-            width = (host.offsetWidth || 300) / x;
-            height = (host.offsetHeight || 300) / y;
-        }
-        if (target.selector[0] !== ':') {
-            width /= grid.x;
-            height /= grid.y;
-        }
-    }
-    let parsed = typeof source === 'string' ? parseShaders(source) : source;
-    let textures = parsed.textures.length ? await loadTexturesAt(host, parsed, width, height, id, compiled) : [];
-    let drawing;
-    try {
-        drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell);
-        drawing.draw(0, width, height, 0, textures, [0, 0]);
-        return canvasUrl(drawing.canvas, { scale: 1 });
-    } catch (err) {
-        if (name) host.report([{ message: `${name}: ${err.message}` }]);
-    } finally {
-        drawing?.dispose();
-    }
-}
-
 function patternToImage(host, pattern) {
     let name = '@' + (pattern.fname || 'pattern');
     let source = (pattern.fname === 'scene' ? generateScene : generatePattern)(pattern.source, host.extra, message => {
@@ -103,10 +55,52 @@ function patternToImage(host, pattern) {
     return shaderToImage(host, { ...pattern, name, source, seedCell: '' });
 }
 
-async function shaderToImage(host, options) {
-    let { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders' } = options;
-    if (options.inside) {
-        return stillToUrl(host, options, seedCell, name);
+async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders', inside }) {
+    let fixed = arg ? parseGrid(arg, Infinity) : null;
+    let parsed, width = fixed?.x, height = fixed?.y, textures = [];
+    const loadTextures = () => {
+        let dpr = devicePixelRatio || 1;
+        return Promise.all(parsed.textures.map(({ name, value }) => {
+            let options = { width, height, instance: `${id.slice(2)}-${name}`, compiled };
+            return doodleToImage(host, value, options).then(src => new Promise(resolve => {
+                if (!src) {
+                    return resolve({ name, value: null });
+                }
+                let img = new Image();
+                img.width = width * dpr;
+                img.height = height * dpr;
+                img.onload = () => resolve({ name, value: img });
+                img.onerror = () => resolve({ name, value: null });
+                img.src = src;
+            }));
+        }));
+    };
+    if (inside) {
+        if (!fixed) {
+            ({ width, height } = inside);
+            if (!(width && height)) {
+                let { x, y } = host.gridSize;
+                width = (host.offsetWidth || 300) / x;
+                height = (host.offsetHeight || 300) / y;
+            }
+            if (target.selector[0] !== ':') {
+                width /= inside.grid.x;
+                height /= inside.grid.y;
+            }
+        }
+        parsed = typeof source === 'string' ? parseShaders(source) : source;
+        textures = await loadTextures();
+        let drawing;
+        try {
+            drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell);
+            drawing.draw(0, width, height, 0, textures, [0, 0]);
+            return canvasUrl(drawing.canvas, { scale: 1 });
+        } catch (err) {
+            if (name) host.report([{ message: `${name}: ${err.message}` }]);
+        } finally {
+            drawing?.dispose();
+        }
+        return;
     }
     if (host.shaderRenders.has(id)) return;
     let elements;
@@ -120,9 +114,7 @@ async function shaderToImage(host, options) {
     }
     let element = elements[0];
 
-    let fixed = arg ? parseGrid(arg, Infinity) : null;
     const measure = () => {
-        if (fixed) return { width: fixed.x, height: fixed.y };
         if (target.pseudo) {
             let { width, height } = getComputedStyle(element, '::' + target.pseudo);
             if (width.endsWith('px') && height.endsWith('px')) {
@@ -137,9 +129,8 @@ async function shaderToImage(host, options) {
         await host._styleReady;
         if (host._generation !== generation || host.shaderRenders.has(id)) return;
     }
-    let { width, height } = measure();
-    let parsed = typeof source === 'string' ? parseShaders(source) : source;
-    let textures = [];
+    if (!fixed) ({ width, height } = measure());
+    parsed = typeof source === 'string' ? parseShaders(source) : source;
     let turned = [0, 0], redraw;
 
     const tick = drawing => {
@@ -237,8 +228,6 @@ async function shaderToImage(host, options) {
         }
     }
 
-    const loadTextures = () => loadTexturesAt(host, parsed, width, height, id, compiled);
-
     let latest = 0;
     const isStale = token => token !== latest || host._generation !== generation;
 
@@ -264,21 +253,24 @@ async function shaderToImage(host, options) {
 
     // a size change redraws; a running loop only needs its textures refreshed
     const watch = () => {
-        let observer = new ResizeObserver(debounce(() => {
-            if (host.observers.get(id) !== observer) return;
-            let size = measure();
-            if (size.width === width && size.height === height) return;
-            width = size.width;
-            height = size.height;
-            if (host.shaderRenders.get(id).animated) {
-                let token = ++latest;
-                loadTextures().then(result => {
-                    if (!isStale(token)) textures = result;
-                });
-            } else {
-                render();
-            }
-        }));
+        let timer, observer = new ResizeObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                if (host.observers.get(id) !== observer) return;
+                let size = measure();
+                if (size.width === width && size.height === height) return;
+                width = size.width;
+                height = size.height;
+                if (host.shaderRenders.get(id).animated) {
+                    let token = ++latest;
+                    loadTextures().then(result => {
+                        if (!isStale(token)) textures = result;
+                    });
+                } else {
+                    render();
+                }
+            }, 100);
+        });
         observer.observe(element);
         host.observers.set(id, observer);
     }

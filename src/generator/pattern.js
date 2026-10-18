@@ -11,7 +11,7 @@ const BUILTINS = [
     'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size',
 ];
 
-const NAME = /^[a-zA-Z_]\w*$/;
+export const NAME = /^[a-zA-Z_]\w*$/;
 
 const MASKS = {
     __proto__: null,
@@ -432,7 +432,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     try { body = generateBody(tokens, newScope(), ctx, { top: true }); }
     catch (e) { warn(e.message); }
     let fragment = generateShader({
-        grid: grid === undefined ? { x: 1, y: 1 } : parseGrid(grid, Infinity),
+        grid: parseGrid(grid, Infinity),
         body,
         masked: ctx.masked,
     });

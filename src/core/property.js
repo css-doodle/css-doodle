@@ -2,7 +2,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseGrid from '../parser/parse-grid.js';
 import generateShape, { shapeWarnings } from '../generator/shapes.js';
 
-import { isPreset, getPreset } from './preset-size.js';
+import { getPreset } from './preset-size.js';
 
 import { addAlias } from '../lib/fn.js';
 import { isEmpty } from '../lib/type.js';
@@ -87,8 +87,9 @@ const Property = Object.create(null);
 Property.size = (value, { isSpecialSelector, place, grid }) => {
     let [w, h = w, ratio] = parseValueGroup(value);
     if (isEmpty(w)) return '';
-    if (isPreset(w)) {
-        [w, h, ratio] = getPreset(w, h);
+    let preset = getPreset(w, h);
+    if (preset) {
+        [w, ratio] = preset;
         h = 'auto';
     }
     let styles = `width:${w};height:${h};`;

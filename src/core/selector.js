@@ -69,77 +69,57 @@ function randomN(N, n, random) {
 
 const Selector = Object.create(null);
 
-Selector.at = ({ x, y }) => {
-    return (x1, y1) => (x == x1 && y == y1);
-};
+Selector.at = ({ x, y }) => (x1, y1) => (x == x1 && y == y1);
 
-Selector.nth = ({ count }, env) => {
-    return (...exprs) => matchAny(count, exprs, env);
-};
+Selector.nth = ({ count }, env) => (...exprs) => matchAny(count, exprs, env);
 
-Selector.row = ({ y }, env) => {
-    return (...exprs) => matchAny(y, exprs, env);
-};
+Selector.row = ({ y }, env) => (...exprs) => matchAny(y, exprs, env);
 
-Selector.col = ({ x }, env) => {
-    return (...exprs) => matchAny(x, exprs, env);
-};
+Selector.col = ({ x }, env) => (...exprs) => matchAny(x, exprs, env);
 
-Selector.depth = ({ z }, env) => {
-    return (...exprs) => matchAny(z, exprs, env);
-};
+Selector.depth = ({ z }, env) => (...exprs) => matchAny(z, exprs, env);
 
-Selector.even = ({ x, y }) => {
-    return _ => odd(x + y);
-};
+Selector.even = ({ x, y }) => _ => odd(x + y);
 
-Selector.odd = ({ x, y }) => {
-    return _ => even(x + y);
-};
+Selector.odd = ({ x, y }) => _ => even(x + y);
 
 // @random(ratio): ratio < 1 is a per-cell probability (default .5),
 // ratio >= 1 a count of distinct cells; expressions are calc-ed with
 // the cell variables in scope
-Selector.random = (cell, env, position) => {
-    return (ratio = .5) => {
-        let n = Number(ratio);
-        if (Number.isNaN(n)) {
-            n = calc(ratio, calcContext(cell, env.random));
-        }
-        if (n >= cell.grid.count) return true;
-        if (n <= 0) return false;
-        return randomCell(cell, env, position, n);
-    };
+Selector.random = (cell, env, position) => (ratio = .5) => {
+    let n = Number(ratio);
+    if (Number.isNaN(n)) {
+        n = calc(ratio, calcContext(cell, env.random));
+    }
+    if (n >= cell.grid.count) return true;
+    if (n <= 0) return false;
+    return randomCell(cell, env, position, n);
 };
 
-Selector.match = (cell, { random }) => {
-    return expr => !!calc(expr, calcContext(cell, random));
-};
+Selector.match = (cell, { random }) => expr => !!calc(expr, calcContext(cell, random));
 
 // @cell(…): an argument is an an+b rule on the index, even/odd on the
 // checkerboard, `random [n]`, or an expression; any one matching
 // selects the cell.
-Selector.cell = (cell, env, position) => {
-    return (...args) => {
-        if (!args.length) return true;
-        return args.map((arg, i) => {
-            if (arg === 'even' || arg === 'odd') {
-                return Selector[arg](cell)();
+Selector.cell = (cell, env, position) => (...args) => {
+    if (!args.length) return true;
+    return args.map((arg, i) => {
+        if (arg === 'even' || arg === 'odd') {
+            return Selector[arg](cell)();
+        }
+        let matched = compare(arg, cell.count);
+        if (matched !== undefined) {
+            return matched;
+        }
+        if (arg.startsWith('random')) {
+            let n = Number(arg.slice(6).trim() || .5);
+            if (!Number.isNaN(n)) {
+                // each argument picks its own cells
+                return randomCell(cell, env, position + ':' + i, n);
             }
-            let matched = compare(arg, cell.count);
-            if (matched !== undefined) {
-                return matched;
-            }
-            if (arg.startsWith('random')) {
-                let n = Number(arg.slice(6).trim() || .5);
-                if (!Number.isNaN(n)) {
-                    // each argument picks its own cells
-                    return randomCell(cell, env, position + ':' + i, n);
-                }
-            }
-            return !!calc(arg, calcContext(cell, env.random));
-        }).some(Boolean);
-    };
+        }
+        return !!calc(arg, calcContext(cell, env.random));
+    }).some(Boolean);
 };
 
 export const alias = {

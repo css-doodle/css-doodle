@@ -13,7 +13,7 @@ function endsEntity(tokens) {
 
 function resolveId(block) {
     // pureName has the `*times` suffix stripped so it can't leak into id/class
-    let selector = block.pureName || block.name || '';
+    let selector = block.pureName || block.name;
     let baseName = selector.split(/[#.]/)[0];
     if (!baseName) {
         return block;
@@ -89,12 +89,8 @@ function readStatement(iter, token) {
         } else if ((curr.isSymbol(')') || text && curr.isSymbol('}')) && !quote && paren) {
             paren--;
         }
-        if (curr.isSymbol("'", '"')) {
-            if (curr.status === 'open') {
-                quote++;
-            } else if (curr.status === 'close') {
-                quote--;
-            }
+        if (curr.status && curr.isSymbol("'", '"')) {
+            quote += curr.status === 'open' ? 1 : -1;
         }
         // the ';' of `&amp;` is content, any other one ends the statement
         if (!quote && !paren && curr.isSymbol(';')) {
@@ -243,12 +239,10 @@ function getSelectors(tokens) {
         }
         // a word right after a number continues it: `*2x3`, `*2x$(n)`, `*2x@p(3)`
         let glued = prev && prev.isNumber();
-        if (curr.isWord() && !hasSymbol && !glued) {
+        if (curr.isWord() && !hasSymbol && !glued || !result.length) {
             result.push(curr.value.trim());
-        } else if (result.length) {
-            result[result.length - 1] = (result[result.length - 1] + curr.value).trim();
         } else {
-            result.push(curr.value.trim());
+            result[result.length - 1] = (result[result.length - 1] + curr.value).trim();
         }
         if (curr.isSymbol()) {
             hasSymbol = true;

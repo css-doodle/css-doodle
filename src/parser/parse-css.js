@@ -108,8 +108,7 @@ function probe(cur, a, b, c) {
     let paren = 0, quote = false;
     for (let i = cur.i; i < cur.tokens.length; ++i) {
         let t = cur.tokens[i];
-        if (t.status === 'open') quote = true;
-        else if (t.status === 'close') quote = false;
+        if (t.status) quote = t.status === 'open';
         if (!quote && t.isSymbol('(')) paren++;
         else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
         else if (paren === 0 && !quote && t.isSymbol(a, b, c)) {
@@ -176,8 +175,7 @@ function parseValue(cur, breakOn, custom) {
                 hasFunc = true;
                 continue;
             }
-            if (tok.status === 'open') quote = true;
-            else if (tok.status === 'close') quote = false;
+            if (tok.status) quote = tok.status === 'open';
             else if (!quote) {
                 if (v === '(') paren++;
                 else if (v === ')') paren = Math.max(0, paren - 1);
@@ -503,8 +501,7 @@ function parseArguments(cur, copying, whole, indexed) {
                 continue;
             }
         }
-        if (tok.status === 'open') quote = true;
-        else if (tok.status === 'close') quote = false;
+        if (tok.status) quote = tok.status === 'open';
         cur.next();
         buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
         last = tok;
@@ -522,7 +519,7 @@ function normalizeArgument(values) {
     let cluster = false;
     let ft = values[0];
     let ed = values[values.length - 1];
-    if (ft && ed && ft.type === 'text' && ed.type === 'text') {
+    if (ft && ft.type === 'text' && ed.type === 'text') {
         let cf = ft.value[0];
         let ce = ed.value[ed.value.length - 1];
         if (PAIRS[cf] === ce && (cf === '(' ? parensWrapWhole(values) : quotesWrapWhole(values, cf))) {
@@ -607,10 +604,8 @@ function parseDoodleBody(cur, start, name) {
             }
             if (tok.isSymbol('{', '}', ';')) mark = tok.index + 1;
         }
-        if (tok.status === 'open') {
-            quote = true;
-        } else if (tok.status === 'close') {
-            quote = false;
+        if (tok.status) {
+            quote = tok.status === 'open';
         } else if (!quote && tok.isSymbol('(')) {
             paren++;
         } else if (!quote && tok.isSymbol(')')) {
@@ -672,7 +667,7 @@ function parseRule(cur) {
         cur.next();
         rule.value = head === '@use' ? parseUse(cur) : parseValue(cur, null, head.startsWith('--'));
         end = cur.headIndex();
-        if (!cur.end() && cur.peek().isSymbol(';')) {
+        if (cur.peek()?.isSymbol(';')) {
             cur.next();
         }
     } else if (tok && tok.isSymbol(';') && head.startsWith('@')) {
@@ -915,7 +910,7 @@ function parseKeyframes(cur, brace) {
 function parseStep(cur) {
     let step = { type: 'step', name: parseValue(cur, '{'), styles: [] };
     // a '}' stays put so the keyframes loop closes the block
-    if (!cur.end() && cur.peek().isSymbol('{')) {
+    if (cur.peek()?.isSymbol('{')) {
         cur.next();
         step.styles = parseBlockBody(cur).filter(n => n.type === 'rule');
         return step;
@@ -942,7 +937,7 @@ function parseSource(input, ctx) {
 }
 
 // `paint` for text inside a @pattern or @scene body, where // starts a comment
-function tokensOf(text, paint = false) {
+function tokensOf(text, paint) {
     let tokens = scan(text, { lineCommentsIn: /^(shaders|pattern|scene)/, ignoreInlineComment: paint });
     return text.includes('$') ? splitDollars(tokens) : tokens;
 }
@@ -1337,7 +1332,7 @@ function renameLocals(text, prefix) {
     return { text: out + text.slice(from), targets };
 }
 
-function bindParams({ params, defaults, body }, args, defs, paint = false) {
+function bindParams({ params, defaults, body }, args, defs, paint) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0;
     // per open paren, whether a bare parameter binds inside it; in @pattern

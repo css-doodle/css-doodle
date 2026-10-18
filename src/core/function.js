@@ -100,7 +100,7 @@ function calcWithEasing(t) {
         if (RE_LETTER.test(head)) {
             return calcWith(getEasingFunction(head)(t))(...args);
         }
-        return calcWith(t)(...[].concat(head, args).filter(n => n !== ''));
+        return calcWith(t)(head, ...args);
     }
 }
 
@@ -311,11 +311,6 @@ function transformPath(xx, xy, yx, yy) {
         }).join(' ');
     };
 }
-
-const flipHPath = transformPath(-1, 0, 0, 1);
-const flipVPath = transformPath(1, 0, 0, -1);
-const flipPath = transformPath(-1, 0, 0, -1);
-const invertPath = transformPath(0, 1, 1, 0);
 
 const composeSvgUrl = memo(value => {
     let warnings = [];
@@ -763,13 +758,13 @@ const arcPath = memo((...args) => {
 
 Function.arc = () => arcPath;
 
-Function.invert = () => invertPath;
+Function.invert = () => transformPath(0, 1, 1, 0);
 
-Function.flipH = () => flipHPath;
+Function.flipH = () => transformPath(-1, 0, 0, 1);
 
-Function.flipV = () => flipVPath;
+Function.flipV = () => transformPath(1, 0, 0, -1);
 
-Function.flip = () => flipPath;
+Function.flip = () => transformPath(-1, 0, 0, -1);
 
 Function.reverse = () => (...args) => {
     let { valid, commands } = parseSvgPath(args.join(','));

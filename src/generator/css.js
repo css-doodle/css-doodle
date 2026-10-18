@@ -175,20 +175,30 @@ function compileFunc(node) {
             let unit = node.unit || '';
             let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
             let isMath = fn === MathFunc[fname];
-            let calcTemplate = null;
-            if ((isDollar || fname === 'calc') && node.arguments.length === 1) {
-                calcTemplate = args[0].calcTemplate || null;
-            }
-            // all-literal argument lists are interpreted here, once
-            let constantInput = null;
-            if (!fn.lazy && args.every(arg => arg.constant)) {
-                constantInput = [];
+            let calcTemplate = (isDollar || fname === 'calc') && args.length === 1 && args[0].calcTemplate;
+            let collect = (frame, e) => {
+                let input = [];
                 for (let arg of args) {
-                    if (arg.split) constantInput.push(...arg.split);
-                    else pushInput(constantInput, arg(), true);
+                    if (arg.split) {
+                        input.push(...arg.split);
+                        continue;
+                    }
+                    if (isMath && arg.calcTemplate) {
+                        let t = arg.calcTemplate;
+                        let { context, values } = evalTemplateHoles(t, frame, e);
+                        if (context) {
+                            input.push(calc(t.template, context));
+                        } else {
+                            input.push(...spliceTemplateInput(t, values));
+                        }
+                        continue;
+                    }
+                    pushInput(input, arg(frame, e), arg.cluster || arg.composed);
                 }
-                constantInput = removeEmptyValues(constantInput);
-            }
+                return removeEmptyValues(input);
+            };
+            // all-literal argument lists are interpreted here, once
+            let constantInput = !fn.lazy && args.every(arg => arg.constant) ? collect() : null;
             compiled = (frame, extra, inArgument) => {
                 let { cell, env } = frame;
                 let { rules } = env;
@@ -201,43 +211,20 @@ function compileFunc(node) {
                 }
                 let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                 let output;
-                if (calcTemplate !== null) {
+                if (calcTemplate) {
                     let { context, values } = evalTemplateHoles(calcTemplate, frame, e);
                     if (!context) {
                         output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
                     } else if (isDollar) {
-                        output = rules.callCalc(unit, cell.uid, calcTemplate.template, context, frame.contextVariable);
+                        if (hasEntries(rules.scopedVars(cell.uid)) || hasEntries(frame.contextVariable)) {
+                            context = Object.assign(rules.calcContext(cell.uid, frame.contextVariable), context);
+                        }
+                        output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
                     } else {
                         output = rules.callFunc(fn, frame, node.position, [calcTemplate.template, context], fname);
                     }
                 } else {
-                    let input = constantInput;
-                    if (input === null) {
-                        if (fn.lazy) {
-                            input = args.map(arg => (...lazy) => arg(frame, lazy));
-                        } else {
-                            input = [];
-                            for (let arg of args) {
-                                if (arg.split) {
-                                    input.push(...arg.split);
-                                    continue;
-                                }
-                                if (isMath && arg.calcTemplate) {
-                                    let t = arg.calcTemplate;
-                                    let { context, values } = evalTemplateHoles(t, frame, e);
-                                    if (context) {
-                                        input.push(calc(t.template, context));
-                                    } else {
-                                        input.push(...spliceTemplateInput(t, values));
-                                    }
-                                    continue;
-                                }
-                                let v = arg.constant ? arg() : arg(frame, e);
-                                pushInput(input, v, arg.cluster || arg.composed);
-                            }
-                            input = removeEmptyValues(input);
-                        }
-                    }
+                    let input = constantInput ?? (fn.lazy ? args.map(arg => (...lazy) => arg(frame, lazy)) : collect(frame, e));
                     output = rules.callFunc(fn, frame, node.position, input, fname, unit);
                 }
                 return { value: getValue(output), extra: output?.extra, origin: output?.origin };
@@ -391,9 +378,7 @@ function tileFirst(tokens) {
 }
 
 function defaultRule(property, text) {
-    let value = [[{ type: 'text', value: text }]];
-    value.hasFunc = false;
-    return { type: 'rule', property, value, rawValue: () => text };
+    return { type: 'rule', property, value: [[{ type: 'text', value: text }]] };
 }
 
 function specialName(selector) {
@@ -489,23 +474,11 @@ class Rules {
         return context;
     }
 
-    // the compiled-template variant of the $ branch in callFunc: the
-    // expression is stable, the function results ride in as variables
-    callCalc(unit, count, template, holes, contextVariable) {
-        let context = holes;
-        if (hasEntries(this.scopedVars(count)) || hasEntries(contextVariable)) {
-            context = Object.assign(this.calcContext(count, contextVariable), holes);
-        }
-        return withUnit(tidyNumber(calc(template, context, 1)), unit);
-    }
-
-    callFunc(fn, { cell, env, contextVariable }, position, input, fname, unit = '') {
+    callFunc(fn, { cell, env, contextVariable }, position, input, fname, unit) {
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
             if (fname === '$') {
                 let context = this.calcContext(cell.uid, contextVariable);
-                // a lone variable name with no unit reads as a
-                // generation-time var(): non-math values pass through
                 if (!unit && input.length === 1) {
                     let value = deref(input[0], context);
                     if (value !== undefined) {
@@ -520,13 +493,6 @@ class Rules {
             return _fn(...input);
         }
         return _fn;
-    }
-
-    composeAname(name, count) {
-        let keyframes = this.keyframes.get(name);
-        if (!keyframes || keyframes.static || count <= 1) return name;
-        keyframes.used.add(count);
-        return `${name}-${count}`;
     }
 
     // '&' in a selector stands for the cell
@@ -545,71 +511,60 @@ class Rules {
         let extra = fname === 'scene' ? SCENE_EXTRA : EMPTY_EXTRA;
         let value = node.arguments.map(a => this.composeArgument(a, cell, env, extra)).join(',');
         if (!value) return;
-        if (fname !== 'doodle') {
-            return this.composePaint(fname, value, cell, node.size, selector, property, node);
+        if (fname === 'doodle') {
+            let id = this.nextId('doodle');
+            this.doodles[id] = {
+                doodle: this.injectVariables(value, cell.uid), arg: node.size,
+                upextra: env.extra.length ? structuredClone(env.extra) : undefined,
+            };
+            return placeholder(id);
         }
-        let id = this.nextId('doodle');
-        this.doodles[id] = {
-            doodle: this.injectVariables(value, cell.uid), arg: node.size,
-            upextra: env.extra.length ? structuredClone(env.extra) : undefined,
-        };
-        return placeholder(id);
-    }
-
-    composeArgument(argument, cell, env, extra = EMPTY_EXTRA) {
-        let compiled = compileArgument(argument);
-        return compiled.constant ? compiled() : compiled({ cell, env }, extra);
-    }
-
-    resolvePaintVars(fname, source, count, node) {
-        source = source.replace(RE_TEXTURE_OPEN, m => m + this.injectVariables('', count));
-        if (!source.includes('$')) return source;
-        let group = this.scopedVars(count);
-        let missing = null;
-        source = source.replace(RE_PAINT_VAR, (m, full, at) => {
-            if (!full) return m;
-            let name = full, rest = '';
-            while (group['--' + name] === undefined && name.includes('-')) {
-                rest = name.slice(name.lastIndexOf('-')) + rest;
-                name = name.slice(0, name.lastIndexOf('-'));
-            }
-            let key = '--' + name;
-            if (group[key] === undefined) {
-                missing ??= full;
-                return '';
-            }
-            let value = this.readVar(key, count);
-            let id = placeholderId(value);
-            if (!rest) value = operand(value, source.slice(at + m.length));
-            return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
-        });
-        if (missing !== null) {
-            this.warn(`unknown variable $${missing} in @${fname}()`, node);
-            return null;
-        }
-        return source;
-    }
-
-    composePaint(fname, source, cell, arg, selector, property, node) {
         let kind = fname === 'shaders' ? 'shader' : 'pattern';
-        source = this.resolvePaintVars(fname, source, cell.uid, node);
-        if (source === null) return '';
+        let source = value.replace(RE_TEXTURE_OPEN, m => m + this.injectVariables('', cell.uid));
+        if (source.includes('$')) {
+            let group = this.scopedVars(cell.uid);
+            let missing = null;
+            source = source.replace(RE_PAINT_VAR, (m, full, at) => {
+                if (!full) return m;
+                let name = full, rest = '';
+                while (group['--' + name] === undefined && name.includes('-')) {
+                    rest = name.slice(name.lastIndexOf('-')) + rest;
+                    name = name.slice(0, name.lastIndexOf('-'));
+                }
+                let key = '--' + name;
+                if (group[key] === undefined) {
+                    missing ??= full;
+                    return '';
+                }
+                let value = this.readVar(key, cell.uid);
+                let id = placeholderId(value);
+                if (!rest) value = operand(value, source.slice(at + m.length));
+                return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
+            });
+            if (missing !== null) {
+                this.warn(`unknown variable $${missing} in @${fname}()`, node);
+                return;
+            }
+        }
         let id = this.nextId(kind);
         let special = isSpecialSelector(selector);
         this[kind + 's'][id] = {
             source,
             target: {
-                // the element to measure, and its pseudo-element: :host::after is the host's ::after
                 selector: special ? (isHostSelector(selector) ? ':host' : ':container') : (property === '@grid') ? ':host' : cell.id,
                 pseudo: isPseudoSelector(selector),
                 type: (!special && property === '@content') ? 'content' : 'background',
             },
-            arg,
+            arg: node.size,
             id: '--' + id,
             cell: cell.id,
             ...(fname === 'scene' && { fname }),
         };
         return placeholder(id);
+    }
+
+    composeArgument(argument, cell, env, extra = EMPTY_EXTRA) {
+        return compileArgument(argument)({ cell, env }, extra);
     }
 
     injectVariables(value, count) {
@@ -649,13 +604,10 @@ class Rules {
             };
             this.ruleMemo.set(token, info);
         }
-        if (!info.cache) {
-            return this.composeRuleValue(token, cell, env, selector, info.flags);
-        }
-        let cached = info.cache.get(selector);
+        let cached = info.cache?.get(selector);
         if (cached === undefined) {
             cached = this.composeRuleValue(token, cell, env, selector, info.flags);
-            info.cache.set(selector, cached);
+            info.cache?.set(selector, cached);
         }
         return cached;
     }
@@ -677,9 +629,12 @@ class Rules {
             this.props.hasAnimation = true;
             let { uid } = cell;
             if (prop === 'animation' || prop === 'animation-name') {
-                value = composed.group
-                    .map(n => n.split(/\s+/).map(w => this.composeAname(w, uid)).join(' '))
-                    .join(',');
+                value = composed.group.map(n => n.split(/\s+/).map(name => {
+                    let keyframes = this.keyframes.get(name);
+                    if (!keyframes || keyframes.static || uid <= 1) return name;
+                    keyframes.used.add(uid);
+                    return `${name}-${uid}`;
+                }).join(' ')).join(',');
             }
             if (isHostSelector(selector)) {
                 let prefix = timePrefix[prop];
@@ -774,7 +729,7 @@ class Rules {
                     rule = '';
                     let key = this.composeSelector(cell);
                     if (!isPseudoSelector(selector) && !isSpecialSelector(selector)) {
-                        this.content[key] = removeQuotes(String(transformed));
+                        this.content[key] = removeQuotes(transformed);
                     }
                     this.content[key] = Func.raw(cell, env)(this.content[key] || '');
                     break;
@@ -787,8 +742,7 @@ class Rules {
                         break;
                     }
                     let shared = selector.replaceAll('&', SHARED_CELL(this.cellPrefix));
-                    let rules = this.scope.rules.get(shared);
-                    if (!rules || !rules.includes(placeShared)) {
+                    if (!this.scope.rules.get(shared)?.includes(placeShared)) {
                         this.addRule(shared, placeShared);
                     }
                     break;
@@ -811,15 +765,6 @@ class Rules {
         let key = isHostSelector(selector) ? 'host'
             : isParentSelector(selector) ? 'container' : count;
         (this.vars[key] ??= Object.create(this.vars.container))[prop] = value;
-    }
-
-    preComposeRule(token, cell, env, selector) {
-        let prop = token.property;
-        let isVar = prop.startsWith('--');
-        if (!isVar && prop !== '@grid') return;
-        let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
-        if (isVar) this.composeVars(cell.uid, selector, prop, value);
-        else this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
     }
 
     // the top-level rules and the host block: the seed first, so the
@@ -850,41 +795,39 @@ class Rules {
             env.updateRandom(this.seed);
         }
         for (let [token, selector] of rules) {
-            this.preComposeRule(token, cell, env, selector);
+            let prop = token.property;
+            let isVar = prop.startsWith('--');
+            if (!isVar && prop !== '@grid') continue;
+            let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
+            if (isVar) this.composeVars(cell.uid, selector, prop, value);
+            else this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
         }
     }
 
     scanTokens(tokens) {
         for (let token of tokens) {
             if (token.type === 'keyframes') {
-                this.registerKeyframes(token);
+                if (this.keyframes.has(token.name)) continue;
+                this.keyframes.set(token.name, {
+                    static: token.steps.every(step =>
+                        step.name.hasFunc === false && step.styles.every(s =>
+                            isStaticRule(s) || (s.property.startsWith('--') && s.value?.hasFunc === false))),
+                    compose: (cell, env) => join(token.steps.map(step => {
+                        let name = this.getComposedValue(step.name, cell, env).value;
+                        if (!step.styles) return name;
+                        let styles = join(step.styles.map(s => this.composeRule(s, cell, env)));
+                        return `${name} {${styles}}`;
+                    })),
+                    used: new Set(),
+                });
             } else if (token.type === 'rule') {
                 this.ruleOrder.push(token);
                 if (RE_PLACE.test(token.property)) this.hasPlace = true;
-                if (!this.hasTile && token.value.some(v => usesTile(v))) this.hasTile = true;
+                this.hasTile ||= token.value.some(v => usesTile(v));
             } else if (token.type === 'cond' || token.type === 'pseudo') {
                 this.scanTokens(token.styles);
             }
         }
-    }
-
-    registerKeyframes(token) {
-        if (this.keyframes.has(token.name)) return;
-        let isStatic = token.steps.every(step =>
-            step.name.hasFunc === false && step.styles.every(s =>
-                isStaticRule(s) || (s.property.startsWith('--') && s.value?.hasFunc === false)));
-        let compose = (cell, env) => join(token.steps.map(step => {
-            let name = this.getComposedValue(step.name, cell, env).value;
-            if (!step.styles) return name;
-            let styles = join(step.styles.map(s => this.composeRule(s, cell, env)));
-            return `${name} {${styles}}`;
-        }));
-        let body = null;
-        this.keyframes.set(token.name, {
-            static: isStatic,
-            compose: isStatic ? (cell, env) => body ??= compose(cell, env) : compose,
-            used: new Set(),
-        });
     }
 
     condInfo(token) {
@@ -894,7 +837,7 @@ class Rules {
             let fn = Selector[name];
             let args = token.segments.find(n => n.arguments);
             info = {
-                name, fn,
+                fn,
                 args: args ? args.arguments : [],
                 not: token.segments[0]?.keyword === 'not',
                 raw: !fn && !isGroupAtRule(token.name),
@@ -930,18 +873,6 @@ class Rules {
         }
         if (!dynamic) info.text = text;
         return text;
-    }
-
-    matchCond(token, cell, env) {
-        let { fn, args, not } = this.condInfo(token);
-        if (!fn) return;
-        let input = [];
-        for (let arg of args) {
-            let { composed, cluster } = compileArgument(arg);
-            pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
-        }
-        let matched = this.callFunc(fn, { cell, env }, token.position, removeEmptyValues(input));
-        return not ? !matched : !!matched;
     }
 
     addCellRule(token, selector, cell, rule) {
@@ -1089,14 +1020,22 @@ class Rules {
                 }
 
                 case 'cond': {
-                    if (this.condInfo(token).raw) {
+                    let { fn, args, not, raw } = this.condInfo(token);
+                    if (raw) {
                         this.addRaw(token.raw());
                         break;
                     }
-                    let matched = this.matchCond(token, cell, env);
-                    if (matched === undefined) {
+                    if (!fn) {
                         this.composeGroup(token, cell, env, selectors);
-                    } else if (matched) {
+                        break;
+                    }
+                    let input = [];
+                    for (let arg of args) {
+                        let { composed, cluster } = compileArgument(arg);
+                        pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
+                    }
+                    let matched = this.callFunc(fn, { cell, env }, token.position, removeEmptyValues(input));
+                    if (not ? !matched : matched) {
                         this.compose(cell, env, token.styles, selectors);
                     }
                     break;
