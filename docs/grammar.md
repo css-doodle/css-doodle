@@ -115,9 +115,12 @@ and the ones it defines stay inside it.
 
 A call is replaced by its body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`
-copies. In the body, `$p`, and a bare `p` inside `$()` or `$px()`, is
-the argument for `p`, parenthesized inside `$()`. A call's arguments
-are not `$()`: pass `$p` there. Missing arguments take their defaults.
+copies. In the body, `$p` is the argument for `p`, and so is a bare `p`
+inside `$()` or `$px()`, in the arguments of calls there too. A call
+made inside `$()` reads its whole body that way, as one value: with
+`--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. Inside `$()` an argument is
+parenthesized; outside, a call's arguments are pasted as written, so
+pass `$p` there. Missing arguments take their defaults.
 Arguments and defaults are pasted as written, so `$dot(@r(5))` draws a
 new radius at each `$r`; store a shared random value in a variable
 first.
@@ -367,11 +370,13 @@ Each caller provides its own context:
 
 - **`$(…)`** sees the doodle's custom properties at host, container
   and cell level, without `--`, and the `--name` declarations above it
-  in an enclosing `@svg`. Calls inside it run first. The result is
-  rounded to 12 significant digits, magnitudes below `1e-9` become
-  `0`, and the unit suffix is appended. A lone name like `$w` is a
-  generation-time `var()`: arithmetic is evaluated, anything else
-  passes through, so with `--c: tomato`, `$c` is `tomato`.
+  in an enclosing `@svg`, then the cell variables below (at `:doodle`,
+  the first cell's). Calls inside it run first. The result is rounded
+  to 12 significant digits, magnitudes below `1e-9` become `0`, and the
+  unit suffix is appended. A lone name like `$w` is a generation-time
+  `var()`: arithmetic over the custom properties is evaluated, anything
+  else passes through, so with `--c: tomato`, `$c` is `tomato`, and
+  with `--s: y`, `$s` is `y`.
 - **`@match`, `@cell` and `@random`** see the cell variables below and
   the custom properties without `--`, a cell variable winning a shared
   name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,

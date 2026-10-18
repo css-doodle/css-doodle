@@ -672,14 +672,24 @@ test('a user function parameter name is read whole', () => {
         ast(`width: [1|2|3] $((1) + (2) + _c2);`));
 });
 
-test('a user function parameter binds bare inside $() with a unit, not inside a call', () => {
+test('a user function parameter binds bare inside $() with a unit, and in the calls there', () => {
     assert.deepEqual(
         ast(`--f(x): $px(x) $4(x + 1) $%(x) rgb(x); width: $f(5);`),
         ast(`width: $px((5)) $4((5) + 1) $%((5)) rgb(x);`));
-    // a call's arguments are pasted as written, so pass $c
     assert.deepEqual(
         ast(`--g(c): [$c]; --f(c): $g(c) $g($c) $(c + $g(c)); width: $f(red);`),
-        ast(`width: [c] [red] $((red) + [c]);`));
+        ast(`width: [c] [red] $((red) + ([((red))]));`));
+});
+
+test('a call inside $() reads its body as math, as one value', () => {
+    assert.deepEqual(
+        ast(`--h(x): x * 2 + $x; width: $(1 + $h(@x - 1) * 3);`),
+        ast(`width: $(1 + ((@x - 1) * 2 + (@x - 1)) * 3);`));
+    assert.deepEqual(
+        ast(`--h(x): x + 1; --b(x): $h(x) * 2; width: $($b(@y));`),
+        ast(`width: $(((((@y)) + 1) * 2));`));
+    assert.deepEqual(ast(`--n(): foo; width: $($n());`), ast(`width: $(foo);`));
+    assert.deepEqual(ast(`--h(x): x + $x; width: $h(2);`), ast(`width: x + 2;`));
 });
 
 test('@pick and @p split an index off their first argument at a colon', () => {

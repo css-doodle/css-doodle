@@ -677,11 +677,12 @@ export function deref(input, context) {
     if (plain !== null) {
         return plain;
     }
-    if (readDimension(value, context) !== undefined) {
+    const vars = Object.assign(Object.create(defaultContext), context);
+    if (readDimension(value, vars) !== undefined) {
         return value;
     }
     const history = [value];
-    const result = compileInput(value, context)(context, history);
+    const result = compileInput(value, vars)(vars, history);
     return history.misses ? value : result;
 }
 
@@ -756,7 +757,7 @@ export function compileTemplate(segments) {
 }
 
 function scope(context) {
-    return context && Object.getPrototypeOf(context) === defaultContext
+    return context && Object.prototype.isPrototypeOf.call(defaultContext, context)
         ? context
         : Object.assign(Object.create(defaultContext), context);
 }

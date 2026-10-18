@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import calc, { deref, withUnit } from '../../src/core/calc.js';
+import calc, { defaultContext, deref, withUnit } from '../../src/core/calc.js';
 
 test('basic operations', () => {
     assert.equal(calc('2 + 2'), 4);
@@ -39,6 +39,9 @@ test('context values', () => {
     assert.equal(calc('a + b + 2', { a: 2, b: 3 }), 7);
     assert.equal(calc('a + x + 2', { a: 2 }), 4);
     assert.equal(calc('-a + 2', { a: 2 }), 0);
+    let context = Object.create(Object.create(defaultContext, { b: { value: 3 } }));
+    context.a = 2;
+    assert.equal(calc('a + b + PI', context), 5 + Math.PI);
 });
 
 test('negated functions', () => {

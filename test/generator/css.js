@@ -1347,6 +1347,18 @@ test('a lone $(name) evaluates its value once', () => {
     assert.equal(read('--a: random(); width: $(a);'), read('--a: random(); width: $(a * 1);'));
 });
 
+test('$() reads the cell variables under the custom properties', () => {
+    let values = name => [...cells(`--a: $(x * 10 + y); --b: $(i + I); --c: $x;`, '2x2').matchAll(new RegExp(`${name}:([^;]+);`, 'g'))].map(m => m[1]);
+    assert.deepEqual(values('--a'), ['11', '21', '12', '22']);
+    assert.deepEqual(values('--b'), ['5', '6', '7', '8']);
+    assert.deepEqual(values('--c'), ['1', '2']);
+    assert.ok(cells(`--x: 7; --a: $(x);`, '2x1').includes('--a:7;'));
+    assert.ok(svgImage(`background: @svg(viewBox: 0 0 9 9; --dx: 3; circle { cx: $(dx); cy: $(y) });`).includes('cx="3" cy="1"'));
+    assert.ok(css(`:doodle { --w: $(X * 10); }`).includes('--w:10;'));
+    let labels = cells(`--sub: @pn(y, z, x + 1); --a: $sub; --b: $(sub);`, '3x1');
+    assert.ok(labels.includes('--a:y;\n--b:y;') && labels.includes('--a:x + 1;\n--b:x + 1;'), labels);
+});
+
 test('@svg-polygon inside @m reads the sequence @n', () => {
     let all = decodeURIComponent(css('background: @m(2, @svg-polygon(split: @n(+2)))'));
     assert.ok(all.includes('points="1 0,-0.5 -0.866025403784,-0.5 0.866025403784"'));

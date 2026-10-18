@@ -1061,9 +1061,9 @@ function paintBodyAt(tokens, i) {
     return RE_PAINT_HEAD.test(head) && tokens[j + 1]?.isSymbol('(') && adjacent(tokens[j], tokens[j + 1]) ? j + 1 : -1;
 }
 
-function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
+function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
     let paint = mode !== CSS, tokens = tokensOf(text, paint);
-    let out = '', from = 0, quote = false;
+    let out = '', from = 0, quote = false, maths = [];
     let start = 0, head = 0, pending = mode === BODY ? [] : hoist, depth = 0, blocks = [];
     let flush = end => {
         out += text.slice(from, end);
@@ -1074,6 +1074,8 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
         if (t.status) quote = t.status === 'open';
         if (quote) continue;
         if (mode === CSS) {
+            if (t.isSymbol('(')) maths.push(mathOpen(tokens, i, defs) || (maths.at(-1) ?? math));
+            else if (t.isSymbol(')')) maths.pop();
             let open = paintBodyAt(tokens, i);
             if (open > 0) {
                 let close = closing(tokens, open);
@@ -1119,8 +1121,9 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
         let first = end + 2;
         end = closing(tokens, end + 1);
         if (end < 0) break;
+        let inMath = !paint && (maths.at(-1) ?? math);
         let args = itemsOf(tokens.slice(first, end), true).map(item => !item.length ? '' : expandCalls(
-            text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain, paint ? EXPR : CSS, pending));
+            text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain, paint ? EXPR : CSS, pending, inMath));
         let given = args.length, { params, defaults } = def;
         while (given && !args[given - 1]) given--;
         let missing = params.filter((p, k) => k >= given && !defaults[k]);
@@ -1148,13 +1151,13 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist) {
             }
         } else {
             let value = paint ? null : resultOf(def.body);
-            body = bindParams(value === null ? def : { ...def, body: value }, args, defs, paint);
+            body = bindParams(value === null ? def : { ...def, body: value }, args, defs, paint, inMath);
             ctx.expanded += body.length;
-            body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending);
+            body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending, inMath);
             let next = solidAt(tokens, end + 1);
             let whole = (!lead || /[:(,]$/.test(lead)) && (!next || next.isSymbol(';', '{', '}') || next.isSymbol(')', ','));
             let glued = /[\d.]/.test(from < t.index ? text[t.index - 1] : out.at(-1)) && /^[\d.]/.test(body.trim());
-            if (kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1)) && (glued || !RE_SIMPLE_ARG.test(body.trim()))) {
+            if ((inMath || kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1))) && (glued || !RE_SIMPLE_ARG.test(body.trim()))) {
                 body = `(${body.trim()})`;
             }
         }
@@ -1333,22 +1336,24 @@ function renameLocals(text, prefix) {
     return { text: out + text.slice(from), targets };
 }
 
-function bindParams({ params, defaults, body }, args, defs, paint) {
+function mathOpen(tokens, i, defs) {
+    let j = i - 1;
+    while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
+    return !!tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]) && !defs[textOf(tokens.slice(j + 1, i))];
+}
+
+function bindParams({ params, defaults, body }, args, defs, paint, math) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0;
     // per open paren, whether a bare parameter binds inside it; in @pattern
     // and @scene one binds anywhere but in the CSS of a texture block, as
     // the name a statement assigns or a repeat's loop name: per open block,
     // whether it is a texture, and where the statement read starts
-    let parens = [], blocks = [], head = 0;
+    let parens = math ? [true] : [], blocks = [], head = 0;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.isSymbol('(')) {
-            // $( or one with a unit, like $px( and $4(, but not a call's arguments
-            let j = i - 1;
-            while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
-            let calc = tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]);
-            parens.push(calc ? !defs[textOf(tokens.slice(j + 1, i))] : !!parens.at(-1));
+            parens.push(mathOpen(tokens, i, defs) || !!parens.at(-1));
             continue;
         }
         if (t.isSymbol(')')) {

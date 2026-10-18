@@ -1,7 +1,7 @@
 import Func, { MathFunc, pickAt, pickAtList } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
-import Selector from '../core/selector.js';
+import Selector, { calcContext } from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { NAME_CHAR } from '../parser/tokenizer.js';
 
@@ -219,7 +219,7 @@ function compileFunc(node) {
                         output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
                     } else if (isDollar) {
                         if (hasEntries(rules.scopedVars(cell.uid)) || hasEntries(frame.contextVariable)) {
-                            context = Object.assign(rules.calcContext(cell.uid, frame.contextVariable), context);
+                            context = Object.assign(rules.calcContext(cell, frame.contextVariable), context);
                         }
                         output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
                     } else {
@@ -304,6 +304,20 @@ function compileArgument(argument, parent) {
     return compiled;
 }
 
+const CELL_REF = Symbol();
+const cellVars = Object.create(defaultContext);
+for (let name of 'x y z X Y Z i I dx dy dr dc dm da db'.split(' ')) {
+    Object.defineProperty(cellVars, name, {
+        get() { return (this[CELL_REF].vars ??= calcContext(this[CELL_REF], {}))[name]; },
+        set(value) { Object.defineProperty(this, name, { value, writable: true, enumerable: true, configurable: true }); }
+    });
+}
+function cellContext(cell) {
+    let context = Object.create(cellVars);
+    context[CELL_REF] = cell;
+    return context;
+}
+
 function evalTemplateHoles({ holes, names, signSensitive }, frame, extra) {
     let n = holes.length;
     let values = new Array(n);
@@ -312,7 +326,7 @@ function evalTemplateHoles({ holes, names, signSensitive }, frame, extra) {
         values[i] = holes[i](frame, extra);
     }
     frame.env.extra.pop();
-    let context = Object.create(defaultContext);
+    let context = cellContext(frame.cell);
     for (let i = 0; i < n; i++) {
         let num = toPlainNumber(values[i]);
         if (num === null || (signSensitive[i] && isSignLeading(values[i]))) {
@@ -468,9 +482,9 @@ class Rules {
         return this.vars[count] || this.vars.container;
     }
 
-    calcContext(count, contextVariable) {
-        let group = this.scopedVars(count);
-        let context = Object.create(defaultContext);
+    calcContext(cell, contextVariable, plain) {
+        let group = this.scopedVars(cell.uid);
+        let context = plain ? Object.create(defaultContext) : cellContext(cell);
         for (let name in group) context[name.slice(2)] = group[name];
         for (let name in contextVariable) context[name.slice(2)] = contextVariable[name];
         return context;
@@ -480,7 +494,7 @@ class Rules {
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
             if (fname === '$') {
-                let context = this.calcContext(cell.uid, contextVariable);
+                let context = this.calcContext(cell, contextVariable);
                 if (!unit && input.length === 1) {
                     let value = deref(input[0], context);
                     if (value !== undefined) {
@@ -490,7 +504,7 @@ class Rules {
                 return withUnit(_fn(input, context), unit);
             }
             if (fn.vars) {
-                return _fn(this.calcContext(cell.uid, contextVariable), ...input);
+                return _fn(this.calcContext(cell, contextVariable, true), ...input);
             }
             return _fn(...input);
         }
