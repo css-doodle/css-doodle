@@ -492,7 +492,7 @@ Function.R.t = createNoise(true);
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
 function sequenceContext(cell, e, vars) {
-    let variables = Object.assign(vars, calcContext(cell));
+    let variables = calcContext(cell, vars);
     if (e.length) {
         variables.n = e[SEQ.n];
         variables.nx = e[SEQ.x];
