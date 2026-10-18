@@ -370,8 +370,9 @@ Each caller provides its own context:
   `0`, and the unit suffix is appended. A lone name like `$w` is a
   generation-time `var()`: arithmetic is evaluated, anything else
   passes through, so with `--c: tomato`, `$c` is `tomato`.
-- **`@match`, `@cell` and `@random`** see the cell variables below,
-  and the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
+- **`@match`, `@cell` and `@random`** see the cell variables below and
+  the custom properties without `--`, a cell variable winning a shared
+  name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
   `ny` and `N`. The result is read as true or false. `@random(ratio)`
   defaults to `.5`: below `1` it is a per-cell probability, from `1`
   up it selects that many distinct cells, at most all of them.

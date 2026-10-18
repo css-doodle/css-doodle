@@ -84,7 +84,7 @@ test('nth, row, col and depth warn about an expression that is not an+b', () => 
 });
 
 test('cell accepts comma lists, keywords and index checks', () => {
-    let match = selector.cell(cell(2, 3, 10), env, 0);
+    let match = (...args) => selector.cell(cell(2, 3, 10), env, 0)({}, ...args);
     assert.equal(match('x = 2, y = 3'), true);
     assert.equal(match('x = 2 && y = 3'), true);
     assert.equal(match('even'), true);
@@ -98,7 +98,7 @@ test('each random argument of cell picks its own cells', () => {
     let env = { random: Math.random, context: {} };
     let picked = 0;
     for (let i = 1; i <= 16; ++i) {
-        if (selector.cell(cell((i - 1) % 4 + 1, Math.ceil(i / 4), i), env, 0)('random 1', 'random 12')) picked++;
+        if (selector.cell(cell((i - 1) % 4 + 1, Math.ceil(i / 4), i), env, 0)({}, 'random 1', 'random 12')) picked++;
     }
     assert.ok(picked >= 12, picked);
 });

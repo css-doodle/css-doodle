@@ -86,10 +86,10 @@ Selector.odd = ({ x, y }) => _ => even(x + y);
 // @random(ratio): ratio < 1 is a per-cell probability (default .5),
 // ratio >= 1 a count of distinct cells; expressions are calc-ed with
 // the cell variables in scope
-Selector.random = (cell, env, position) => (ratio = .5) => {
+Selector.random = (cell, env, position) => (vars, ratio = .5) => {
     let n = Number(ratio);
     if (Number.isNaN(n)) {
-        n = calc(ratio, calcContext(cell, env.random));
+        n = calc(ratio, Object.assign(vars, calcContext(cell, env.random)));
     }
     if (n >= cell.grid.count) return true;
     if (n <= 0) return false;
@@ -98,12 +98,10 @@ Selector.random = (cell, env, position) => (ratio = .5) => {
 
 Selector.match = (cell, { random }) => (vars, expr) => !!calc(expr, Object.assign(vars, calcContext(cell, random)));
 
-Selector.match.vars = true;
-
 // @cell(…): an argument is an an+b rule on the index, even/odd on the
 // checkerboard, `random [n]`, or an expression; any one matching
 // selects the cell.
-Selector.cell = (cell, env, position) => (...args) => {
+Selector.cell = (cell, env, position) => (vars, ...args) => {
     if (!args.length) return true;
     return args.map((arg, i) => {
         if (arg === 'even' || arg === 'odd') {
@@ -120,9 +118,11 @@ Selector.cell = (cell, env, position) => (...args) => {
                 return randomCell(cell, env, position + ':' + i, n);
             }
         }
-        return !!calc(arg, calcContext(cell, env.random));
+        return !!calc(arg, Object.assign(vars, calcContext(cell, env.random)));
     }).some(Boolean);
 };
+
+Selector.random.vars = Selector.match.vars = Selector.cell.vars = true;
 
 export const alias = {
     x: 'col',

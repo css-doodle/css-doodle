@@ -1096,8 +1096,10 @@ test('@match() and @pick(k: …) read custom properties, under the cell names', 
         '<svg><circle display="inline"/><circle display="inline"/><circle display="none"/></svg>');
     assert.equal(cells('--k: 3; --v: @m3(@match(n < k - 1, a, b)); --w: @pick(k: a, b, c);'), '#c-1-1-1 {--k:3;\n--v:a,b,b;\n--w:c;}');
     assert.equal(cells('--x: 5; color: @match(x > 1, red, blue);', '2x1'), ':is(cell,#_) {--x:5;}#c-1-1-1 {color:blue;}#c-2-1-1 {color:red;}');
-    // so does the selector
+    // so do the selectors that take an expression
     assert.equal(cells('--k: 2; @match(k * x == 4) { color: red }', '3x1'), ':is(cell,#_) {--k:2;}#c-2-1-1 {color:red;}');
+    assert.equal(cells('--k: 2; @cell(x > k) { color: red }', '3x1'), ':is(cell,#_) {--k:2;}#c-3-1-1 {color:red;}');
+    assert.equal(cells('--n: 3; @random(n) { color: red }', '3x1'), ':is(cell,#_) {--n:3;\ncolor:red;}');
 });
 
 test('per-cell texts keep their blocks in cell order', () => {
