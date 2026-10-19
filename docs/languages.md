@@ -318,9 +318,9 @@ shapes block, with soft edges, and the places where shapes crowd each
 other.
 
 `ambient: sky ground` is the light from all around, which fills the
-shade: a surface facing up, as the camera sees it, gets `sky`, one
-facing down gets `ground`, and one value fades to a fifth of itself
-facing down. It is `.3` by default, a grey; `ambient: 0` leaves only
+shade: a surface facing up in the scene gets `sky`, one facing down
+gets `ground`, so unlike `light` it stays put when the camera tilts,
+and one value fades to a fifth of itself facing down. It is `.3` by default, a grey; `ambient: 0` leaves only
 the lights, for deep shadows, and colors tint the shade, as in
 `ambient: #6b7a99 #3a2a1a`, cool from above and warm from below.
 

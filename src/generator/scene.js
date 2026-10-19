@@ -540,12 +540,12 @@ export default function drawScene(code, extra, report = () => {}) {
         });
         if (!camera.light) lights.push([LIGHT, 'vec3(1.0)']);
         // `sky ground`, the light from all around: a surface facing up gets sky, one facing down ground, a fifth of sky unless given
-        let ambient = '0.3 * (0.6 + 0.4 * dot(n, g_y))';
+        let ambient = '0.3 * (0.6 + 0.4 * n.y)';
         if (camera.ambient) {
             let [v, c] = off(camera.ambient) ? [['0.0']] : paint(camera.ambient), sky;
             if (c) v.push(c);
             sky = `vec3(${v[0]})`;
-            ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * dot(n, g_y))`;
+            ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * n.y)`;
         }
         return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self, base: +angles[1] || 0, loose: ctx.loose };
     };

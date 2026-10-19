@@ -242,13 +242,13 @@ test('shadow dims the light that shapes block, and where they crowd', () => {
 
 test('ambient is the light from all around, sky above and ground below', () => {
     let ambient = code => scene(code + '; sphere').fragment.match(/g_L = sqrt\(\(0\.7 \* g_lit \+ (.+)\)\);/)[1];
-    assert.equal(ambient(''), '0.3 * (0.6 + 0.4 * dot(n, g_y))');
+    assert.equal(ambient(''), '0.3 * (0.6 + 0.4 * n.y)');
     // one value fades to a fifth facing down
-    assert.equal(ambient('ambient: .3'), 'mix(vec3(.3) * 0.2, vec3(.3), 0.5 + 0.5 * dot(n, g_y))');
-    assert.equal(ambient('ambient: #ff0000 .1'), 'mix(vec3(.1), vec3(vec3(1.0, 0.0, 0.0)), 0.5 + 0.5 * dot(n, g_y))');
+    assert.equal(ambient('ambient: .3'), 'mix(vec3(.3) * 0.2, vec3(.3), 0.5 + 0.5 * n.y)');
+    assert.equal(ambient('ambient: #ff0000 .1'), 'mix(vec3(.1), vec3(vec3(1.0, 0.0, 0.0)), 0.5 + 0.5 * n.y)');
     // a CSS color stands last, and none is no ambient
-    assert.equal(ambient('ambient: .2 rgb(255 0 0)'), 'mix(vec3(vec3(1.0,0.0,0.0)), vec3(.2), 0.5 + 0.5 * dot(n, g_y))');
-    assert.equal(ambient('ambient: none'), 'mix(vec3(0.0) * 0.2, vec3(0.0), 0.5 + 0.5 * dot(n, g_y))');
+    assert.equal(ambient('ambient: .2 rgb(255 0 0)'), 'mix(vec3(vec3(1.0,0.0,0.0)), vec3(.2), 0.5 + 0.5 * n.y)');
+    assert.equal(ambient('ambient: none'), 'mix(vec3(0.0) * 0.2, vec3(0.0), 0.5 + 0.5 * n.y)');
     assert.deepEqual(scene('ambient: .1; sphere').warnings, []);
     assert.doesNotMatch(scene('light: none; ambient: .1; sphere').fragment, /g_L = sqrt/);
 });
