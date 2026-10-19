@@ -150,6 +150,63 @@ describe('component', { concurrency: 4 }, () => {
             await page.waitForFunction(el => !el.hasAttribute('cssd-paused'), el);
             assert.ok(await moving(page, el), 'nothing moves once motion is allowed');
         }));
+
+        let timed = code + ':doodle { --t: @t; }';
+        const clocks = el => el.evaluate(el => [
+            el.currentTime,
+            ...[...el.getAnimations(), ...el.shadowRoot.getAnimations()]
+                .filter(a => a.animationName !== 'cssd-U-ani').map(a => a.currentTime),
+            ...[...el.shadowRoot.querySelectorAll('svg')].map(svg => svg.getCurrentTime() * 1000),
+            ...[...el.shadowRoot.querySelectorAll('css-doodle')].map(d => d.currentTime),
+        ].map(Math.round));
+
+        test('currentTime seeks every kind of motion to one time', () => chrome.withPage(async page => {
+            let seeked = await mount(page, timed);
+            await seeked.evaluate(el => { el.pause(); el.currentTime = 1250; });
+            let ran = await mount(page, timed);
+            await page.waitForTimeout(700);
+            await ran.evaluate(el => { el.pause(); el.currentTime = 1250; });
+            assert.deepEqual(await clocks(seeked), Array(6).fill(1250));
+            assert.deepEqual(await clocks(ran), Array(6).fill(1250));
+            let a = await shot(page, seeked), b = await shot(page, ran);
+            assert.ok(a.png.equals(b.png), 'the same time draws a different picture');
+            assertColor(a.image, 120, 40, '#404040');
+        }));
+
+        test('currentTime set before the doodle draws applies when it does', () => chrome.withPage(async page => {
+            let els = [];
+            for (let before of [true, false]) {
+                let el = await page.evaluateHandle(({ code, before }) => {
+                    let el = document.createElement('css-doodle');
+                    el.setAttribute('seed', 1);
+                    el.textContent = code;
+                    el.rendered = new Promise(resolve => el.addEventListener('render', resolve, { once: true }));
+                    el.pause();
+                    if (before) el.currentTime = 1250;
+                    document.body.append(el);
+                    if (!before) el.currentTime = 1250;
+                    return el;
+                }, { code: timed, before });
+                assert.equal(await el.evaluate(el => el.currentTime), 1250);
+                await within(el.evaluate(el => el.rendered), 10000, 'no render event');
+                els.push(el);
+            }
+            let a = await shot(page, els[0]), b = await shot(page, els[1]);
+            for (let el of els) {
+                assert.deepEqual(await clocks(el), Array(6).fill(1250));
+            }
+            assert.ok(a.png.equals(b.png), 'the same time draws a different picture');
+            assertColor(a.image, 120, 40, '#404040');
+        }));
+
+        test('currentTime set while running runs on from there', () => chrome.withPage(async page => {
+            let el = await mount(page, timed);
+            await el.evaluate(el => el.currentTime = 5000);
+            await page.waitForTimeout(300);
+            let times = await clocks(el);
+            assert.ok(times.every(t => t > 5200 && t < 6000), `clocks at ${times}`);
+            assert.ok(Math.max(...times) - Math.min(...times) < 50, `clocks at ${times}`);
+        }));
     });
 
     test('a shader redraws at the new size when the host resizes', () => chrome.withPage(async page => {

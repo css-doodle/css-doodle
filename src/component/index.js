@@ -557,7 +557,13 @@ if (typeof HTMLElement !== 'undefined') {
             this._styleReady = input.then(sheet => {
                 if (this._generation === generation) {
                     this.shadowRoot.querySelector('style').textContent = sheet.replace(/\n\s+/g, ' ');
+                    this._landed = true;
                     syncUTime(this);
+                    if (!isNil(this._seek)) {
+                        let ms = this._seek;
+                        this._seek = null;
+                        this.currentTime = ms;
+                    }
                 }
             }).catch(console.error);
         }
@@ -578,6 +584,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
             this._clock = { base: 0, since: 0 };
+            this._landed = false;
         }
 
         pause(auto) {
@@ -613,9 +620,34 @@ if (typeof HTMLElement !== 'undefined') {
             this.restamp();
         }
 
+        get currentTime() {
+            return this._seek ?? this.clockNow();
+        }
+
+        set currentTime(ms) {
+            ms = +ms || 0;
+            if (!this._landed) {
+                this._seek = ms;
+                return;
+            }
+            this._clock = { base: ms, since: this.hasAttribute('cssd-paused') ? 0 : performance.now() };
+            for (let animation of [...this.getAnimations(), ...this.shadowRoot.getAnimations()]) {
+                if (animation.animationName) animation.currentTime = ms;
+            }
+            syncUTime(this);
+            for (let am of this.animations) {
+                am.seek(ms);
+            }
+            for (let nested of this.shadowRoot.querySelectorAll('css-doodle')) {
+                nested.currentTime = ms;
+            }
+            this.syncSvgAnimations(ms);
+            this.restamp();
+        }
+
         // SMIL animations in inline svg (content, filter defs) ignore
         // animation-play-state, so they follow the paused attribute here
-        syncSvgAnimations() {
+        syncSvgAnimations(ms) {
             let paused = this.hasAttribute('cssd-paused');
             let svgs = [
                 ...this.shadowRoot.querySelectorAll('svg'),
@@ -623,6 +655,7 @@ if (typeof HTMLElement !== 'undefined') {
             ];
             for (let svg of svgs) {
                 paused ? svg.pauseAnimations() : svg.unpauseAnimations();
+                if (!isNil(ms)) svg.setCurrentTime(ms / 1000);
             }
         }
 

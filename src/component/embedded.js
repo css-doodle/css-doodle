@@ -165,18 +165,18 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             }
         }
 
-        let now = 0;
+        let now = host.clockNow();
         const frame = t => {
             if (!width || !height) return;
             drawing.draw(now = t, width, height, host._umouse, textures, turned);
             present();
         };
 
-        frame(0);
+        frame(now);
         redraw = () => frame(now);
 
         if (drawing.animated) {
-            let animation = createAnimation(frame);
+            let animation = createAnimation(frame, now);
             if (host._offscreen || host.hasAttribute('cssd-paused')) {
                 animation.pause();
             }

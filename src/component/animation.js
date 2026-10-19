@@ -1,7 +1,6 @@
-export default function createAnimationFrame(fn) {
+export default function createAnimationFrame(fn, time) {
     let id = null;
     let paused = false;
-    let time = 0;
     let last = 0;
 
     function loop(now) {
@@ -30,6 +29,9 @@ export default function createAnimationFrame(fn) {
                 paused = false;
                 id = requestAnimationFrame(loop);
             }
+        },
+        seek(t) {
+            fn(time = t);
         },
         cancel() {
             paused = false;
