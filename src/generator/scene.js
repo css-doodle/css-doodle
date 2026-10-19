@@ -569,7 +569,6 @@ export default function drawScene(code, extra, report = () => {}) {
         vec3 g_y = g_rotate(g_rotate(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), ${tilt}), vec3(0.0, 1.0, 0.0), ${turn});
         vec3 g_z = cross(g_x, g_y);
     `;
-    // probes at 50 and 1000 read as a line, so a distance that is uniformly too low still fits
     let vertex = glsl`#version 300 es
     precision highp float;
     precision highp int;
@@ -605,9 +604,10 @@ export default function drawScene(code, extra, report = () => {}) {
         }
     ` : ''}
     float g_reach(vec3 e) {
-        float b = 50.0 - g_fit(e * 50.0);
-        float s = (1e3 - g_fit(e * 1e3) - b) / 950.0;
-        return s < 0.9 ? ${fit.loose ? 'max(g_walk(e), (b - s * 50.0) / (1.0 - s))' : '(b - s * 50.0) / (1.0 - s)'} : 1e9;
+        vec3 t = vec3(100.0, 400.0, 2e3), u;
+        for (int i = 0; i < 3; i++) u[i] = t[i] * (t[i] - g_fit(e * t[i]));
+        float g = (u.y - u.x) / 300.0, s = ((u.z - u.y) / 1600.0 - g) / 1900.0;
+        return s < 0.9 ? ${fit.loose ? 'max(g_walk(e), (g - 500.0 * s) / (1.0 - s))' : '(g - 500.0 * s) / (1.0 - s)'} : 1e9;
     }
     ${drag.length ? glsl`
         vec3 g_corner(int k) {

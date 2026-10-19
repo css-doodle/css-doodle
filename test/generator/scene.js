@@ -263,6 +263,12 @@ test('the model is measured once per vertex, not per pixel', () => {
     assert.doesNotMatch(fragment, /g_reach/);
 });
 
+test('the fit probes three distances, so a shape off the probe line keeps its full reach', () => {
+    let { vertex } = scene('sphere { r: .5; move: 3 0 0 }');
+    assert.match(vertex, /vec3 t = vec3\(100\.0, 400\.0, 2e3\), u;\s*for \(int i = 0; i < 3; i\+\+\) u\[i\] = t\[i\] \* \(t\[i\] - g_fit\(e \* t\[i\]\)\);/);
+    assert.match(vertex, /return s < 0\.9 \? \(g - 500\.0 \* s\) \/ \(1\.0 - s\) : 1e9;/);
+});
+
 test('drag lets the pointer turn the view, which then fits a ball around the model', () => {
     let { vertex, fragment, warnings } = scene('view: 30 20; drag: turn tilt; sphere');
     assert.deepEqual(warnings, []);
