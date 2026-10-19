@@ -1,23 +1,14 @@
-export default function createAnimationFrame(fn, fps = 60) {
+export default function createAnimationFrame(fn) {
     let id = null;
     let paused = false;
-    let duration = 1000 / fps;
     let time = 0;
     let last = 0;
-    let due = 0;
 
     function loop(now) {
         if (last) {
-            time += now - last;
+            fn(time += now - last);
         }
         last = now;
-        if (time >= due) {
-            fn(time);
-            due += duration;
-            if (due <= time) {
-                due = time + duration;
-            }
-        }
         if (!paused && id) {
             id = requestAnimationFrame(loop);
         }
