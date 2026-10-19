@@ -187,6 +187,8 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.deepEqual(values(['to=10']), noise);
     // no arguments is 0 to 1, as for @r
     assert.deepEqual(values([]), values(['1']));
+    assert.deepEqual(values(['abc']), values([]));
+    assert.deepEqual(values(['var(--cssd-utime)']), values([]));
 });
 
 test('@R.t: @R written out for a shape, one site per call, inside the bounds', () => {

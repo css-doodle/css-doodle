@@ -556,6 +556,14 @@ test('π inside a quoted string stays as written', () => {
     assert.deepEqual(p.value[0][0].arguments.map(a => a.values[0].value), ['π', String(Math.PI)]);
 });
 
+test('π touching a digit stays for the expression to multiply', () => {
+    assert.deepEqual(ast(`--a: π2; --b: 2π; --c: π x;`), [rule('--a', text('π2')), rule('--b', text('2π')), rule('--c', text(String(Math.PI) + ' x'))]);
+    let [p] = parseCss(`content: @p(π2, π);`);
+    assert.deepEqual(p.value[0][0].arguments.map(a => a.values[0].value), ['π2', String(Math.PI)]);
+    let [q] = parseCss(`background: @pattern(a: π2; b: π;);`);
+    assert.equal(q.value[0][0].arguments[0].values[0].value, `a: π2; b: ${Math.PI};`);
+});
+
 test('a < in a value is text unless a tag follows', () => {
     assert.deepEqual(ast(`--c: a < b; --d: 1 <= 2; color: red</style>`), [
         rule('--c', text('a < b')), rule('--d', text('1 <= 2')), rule('color', text('red')),
@@ -608,6 +616,11 @@ test('user function arguments', () => {
         ast(`width: $((@i - 1) * 10) @i - 1 * 10;`));
 });
 
+test('a user function name can start with _', () => {
+    assert.deepEqual(ast(`--_f(x): $(x * 2); --f_(y): { $y } w: $_f(3); v: $f_(1);`), ast(`w: $((3) * 2); v: 1;`));
+    assert.equal(parseCss(`w: $_f(3);`)[0].value[0][0].unit, '_f');
+});
+
 test('a user function parameter can have a default', () => {
     // a call that stops short takes the defaults of the rest, pasted as written
     assert.deepEqual(
@@ -650,6 +663,16 @@ test('a user function body without braces is one statement', () => {
         ast(`width: $((3) * 2)px; background: @svg(circle { r: 2; fill: red });`));
     // a block inside parens does not end it
     assert.deepEqual(ast(`--pic(c): @svg(circle { fill: $c }); background: $pic(red);`), ast(`background: @svg(circle { fill: red });`));
+    assert.deepEqual(ast(`--f(a): $(a*2); width: $f(@r(9));`), ast(`width: $((@r(9))*2);`));
+});
+
+test('a statement reading the parameters of the body without braces before it warns', () => {
+    let warnings = code => parseCss(code).warnings.map(w => w.message);
+    assert.deepEqual(warnings(`--f(x): width: $x; height: $x; $f(1px);`), ['--f(): body needs { }']);
+    assert.deepEqual(warnings(`--f(bx, w): M $(bx - w) 0; --d: L $(bx + w) 0;`), ['--f(): body needs { }']);
+    assert.deepEqual(warnings(`--f(x): width: $x; /* next */ --g(x): height: $x;`), []);
+    assert.deepEqual(warnings(`--c: red; --f(c): fill: $c; background: $c;`), []);
+    assert.deepEqual(warnings(`--f(x): { width: $x } height: $x;`), []);
 });
 
 test('a user function name is read whole', () => {

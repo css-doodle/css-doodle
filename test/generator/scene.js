@@ -98,6 +98,19 @@ test('fill colors a group and the shapes in it without their own', () => {
     assert.notEqual(fills[0], fills[1]);
 });
 
+test('fill reads a variable before a CSS color of the same name', () => {
+    let { body, warnings } = scene('white: vec3(0, 0, 1); sphere { fill: white }');
+    assert.match(body, /vec3 (g_\d+) = vec3\(0\.0, 0\.0, 1\.0\);\nvec3 g_\d+ = \1;/);
+    assert.deepEqual(warnings, []);
+});
+
+test('a space before ( ends a value, as after a number', () => {
+    let { body, warnings } = scene('k: .2; sphere { r: .1; move: k (0) 0 } box { move: .175 (k / 2) 0 }');
+    assert.match(body, /p - vec3\(g_\d+, 0\.0, 0\.0\)/);
+    assert.match(body, /p - vec3\(\.175, \(g_\d+ \/ 2\.0\), 0\.0\)/);
+    assert.deepEqual(warnings, []);
+});
+
 test('fill reads the surface normal as the camera sees it', () => {
     let { body, fragment, warnings } = scene('sphere { fill: mix(red, white, normal.z) }');
     assert.match(body, /mix\(vec3\([^)]*\), vec3\([^)]*\), normal\.z\)/);

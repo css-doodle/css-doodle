@@ -535,6 +535,15 @@ test('@content takes each @svg as markup and keeps the text around them', () => 
     assert.equal(content('@content: @svg(svg {}) hi;'), `${svg}</svg> hi`);
 });
 
+test('@raw passes its text on as written', () => {
+    let content = code => compile(code).content['#c-1-1-1'];
+    assert.equal(content('@content: @raw(A, B);'), 'A, B');
+    assert.equal(content('@content: @raw(<p>Note: hi; ok ( x ) { y }, a,b</p>);'), '<p>Note: hi; ok ( x ) { y }, a,b</p>');
+    assert.equal(content('--x: hi; @content: @raw(<b>@i, $x</b>, @p(a, b));'), '<b>1, hi</b>, a');
+    assert.equal(content('@content: @raw("A, B");'), 'A, B');
+    assert.equal(css(':after { content: @raw(A, B) }'), "#c-1-1-1:after {content:'A, B';}");
+});
+
 test('@content under :doodle or :container fills no cell', () => {
     for (let code of [':doodle { @content: hi; }', ':container { @content: hi; }']) {
         assert.ok(!Object.values(compile(code, '2').content).includes('hi'), code);
@@ -633,6 +642,7 @@ test('an escaped quote in @svg survives a *N or a variable', () => {
 
 test('@-- without a name sets nothing', () => {
     assert.equal(cells('a: @--; b: @--();'), '#c-1-1-1 {a:;\nb:;}');
+    assert.equal(cells('--k: 5; --d: @--(k);'), '#c-1-1-1 {--k:5;\n--d:;}');
 });
 
 test('@svg-filter does not repeat a `*n` block inside @svg()', () => {
@@ -1026,6 +1036,12 @@ test('host rules inside a group compose once', () => {
     let all = css('@media (a) { :doodle { color: red } color: blue }', '2');
     assert.equal(all.match(/:host,\.host \{color:red;\}/g).length, 1);
     assert.ok(all.endsWith('@media (a) {:host,.host {color:red;}:is(cell,#_) {color:blue;}}'), all);
+});
+
+test('host and container selectors in a mixed list compose once', () => {
+    let all = css(':doodle, :hover { color: red; span { color: blue } }', '2');
+    assert.equal(all, ':host,.host {color:red;}:host span,.host span {color:blue;}:is(cell,#_):hover {color:red;}:is(cell,#_):hover span {color:blue;}');
+    assert.equal(css(':container, :doodle { color: red }', '2'), 'grid {color:red;}:host,.host {color:red;}');
 });
 
 test('declaration-body at-rules are emitted once verbatim at the top', () => {
@@ -1456,6 +1472,22 @@ test('@calc ignores extra arguments instead of reading them as its context', () 
 
 test('a skipped call argument takes its default and later ones keep their place', () => {
     assertContains('@grid: 1; --f(a = 1, b = 2): $(a - b); --v: $f(, 9);', '--v:-8;');
+});
+
+test('a user function argument that would change with each use is worked out once', () => {
+    let numbers = (code, grid) => cells(code, grid).match(/-?\d+\.\d+/g).map(Number);
+    let [x0, x1] = numbers('--f(bx, w): M $(bx - w) 0 L $(bx + w) 0; --d: $f(@r(100), 1);');
+    assert.ok(Math.abs(x1 - x0 - 2) < 1e-9, `${x0} ${x1}`);
+    let square = cells('--sq(s): { width: $s; height: $s } $sq(@r(9)px);');
+    let [w, h] = square.match(/-?\d+\.\d+/g).map(Number);
+    assert.equal(w, h);
+    assert.ok(!square.includes('--1sq_s'), square);
+    let pairs = cells('--f(c): [$c|$c]; --d: @M(3, $f(@r(9)));').match(/\[[^\]]+\]/g);
+    assert.ok(pairs.every(p => p.split('|')[0].slice(1) === p.split('|')[1].slice(0, -1)), pairs);
+    assert.equal(new Set(pairs).size, 3);
+    assertContains('--turn(k): @M(2, L $(k) $(@n)); --d: @M(3, [$turn(@n)]);', '--d:[L 1 1 L 1 2] [L 2 1 L 2 2] [L 3 1 L 3 2];');
+    assertContains('--turn(k): @M(2, $k); background: @svg(viewBox: 0 0 1 1; path*2 { d: $turn(@n) });', 'd=%221 1%22', 'd=%222 2%22');
+    assert.equal(cells('--f(a): [$a] @r(9); width: $f(@r(9));', '2'), cells('width: [@r(9)] @r(9);', '2'));
 });
 
 test('user functions that double on every call stop at an expansion limit', () => {

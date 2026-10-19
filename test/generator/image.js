@@ -34,6 +34,11 @@ test('nested doodles stay inside the outer image', async () => {
     assert.match(svg, /url\("data:image\/svg\+xml,/);
 });
 
+test('an HTML void element in the content closes itself, as XML needs', async () => {
+    let { svg } = await image('@grid: 1; @content: @raw(a<br>b<br/>c<img src="x>y"><image href="z"/>);');
+    assert.match(svg, /<cell [^>]*>a<br\/>b<br\/>c<img src="x>y"\/><image href="z"\/><\/cell>/);
+});
+
 test('shader images are left out', async () => {
     let { svg, needs } = await image('@grid: 1; background: @pattern(fill: red);');
     assert.ok(svg.startsWith('<svg'));

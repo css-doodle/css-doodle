@@ -177,7 +177,7 @@ export default function drawScene(code, extra, report = () => {}) {
         };
         let vec3 = (items, fill = '0.0') => `vec3(${items.length > 1 ? [0, 1, 2].map(i => items[i] || fill).join(', ') : items[0] || fill})`;
         let color = (value, p) => {
-            let rgba = cssColor(extra, value.trim());
+            let rgba = !ctx.names[value.trim()] && cssColor(extra, value.trim());
             if (rgba) return `vec3(${rgba.slice(0, 3).map(float).join(', ')})`;
             let { type, code } = compile(value, p);
             if (!/^vec[34]$/.test(type)) {

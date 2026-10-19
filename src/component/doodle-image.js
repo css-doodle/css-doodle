@@ -62,6 +62,8 @@ export function createReplacer(host, compiled, inside) {
 
 const renders = new WeakMap();
 
+const VOID_TAGS = /<(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)\b((?:"[^"]*"|'[^']*'|[^"'>])*?)\s*\/?>/gi;
+
 export async function doodleToImage(host, code, options) {
     code = ':doodle {width:100%;height:100%}' + code;
     let baseGrid = parseGrid('');
@@ -104,7 +106,7 @@ export async function doodleToImage(host, code, options) {
             @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
             @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
         ` + getBasicStyles(grid) + styles.all).replace(/\n\s+/g, ' ') + TRANSITION_NONE;
-        let markup = stampSmil(host, createGrid(grid, compiled) + filterDefs);
+        let markup = stampSmil(host, createGrid(grid, compiled).replace(VOID_TAGS, '<$1$2/>') + filterDefs);
         let svg = await createReplacer(host, compiled, { width: parseFloat(width), height: parseFloat(height), grid })(css`
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>
                 ${smilTick(sheet)}

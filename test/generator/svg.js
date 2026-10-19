@@ -256,7 +256,7 @@ test('no id for multiple inline defs child elements', () => {
 test('a selector of nothing but spaces opens no block', () => {
     // getSelectors returned [''] for a whitespace-only fragment, which
     // reached the generator as a tag with no name and threw
-    assert.equal(svg('text `content: {hi`;'), `<svg ${NS} text \`content=" "></svg>`);
+    assert.equal(svg('text `content: {hi`;'), `<svg ${NS}></svg>`);
     assert.equal(svg('a { { } }'), `<svg ${NS}><a/></svg>`);
     // named selectors are untouched
     assert.equal(svg('g circle { fill: red }'), `<svg ${NS}><g><circle fill="red"/></g></svg>`);
@@ -387,6 +387,7 @@ test('problems are reported through the warn callback', () => {
         warnings: ['animate r: unknown timing word "bounce"'],
     });
     assert.deepEqual(warned('path { draw: 2s steps(4) }').warnings, ['draw: unknown timing word "steps(4)"']);
+    assert.deepEqual(warned('g { @seed: 7; circle { r: 5 } }'), { output: '<svg><g><circle r="5"/></g></svg>', warnings: [] });
 });
 
 test('timing takes a delay after the duration, like the css animation shorthand', () => {

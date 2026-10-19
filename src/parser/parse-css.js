@@ -70,10 +70,13 @@ function readsShape(name) {
     return /^@(shape|plot|tile|svg-polygon)\b/i.test(name);
 }
 
-function substitutePi(input, prev) {
+const isDigit = c => c >= '0' && c <= '9';
+
+function substitutePi(input, prev, next) {
     return input.replace(/π/g, (c, i) => {
         let p = i > 0 ? input[i - 1] : prev;
-        return (p >= '0' && p <= '9') ? c : PI;
+        let n = i < input.length - 1 ? input[i + 1] : next;
+        return isDigit(p) || isDigit(n) ? c : PI;
     });
 }
 
@@ -183,7 +186,7 @@ function parseValue(cur, breakOn, custom) {
                 else if (v === '}') brace--;
             }
             cur.next();
-            buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
+            buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1], cur.source[tok.index + 1]) : v;
             continue;
         }
 
@@ -313,9 +316,10 @@ function finishFunc(cur, name, end, isCalc, index, shaped) {
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
-                let svg = /^@svg$/i.test(name);
-                let closed = parseArguments(cur, shaped || readsShape(name), svg, RE_PICK.test(name));
+                let svg = /^@svg$/i.test(name), raw = name === '@raw';
+                let closed = parseArguments(cur, shaped || readsShape(name), svg || raw, RE_PICK.test(name));
                 func.arguments = closed.args;
+                if (raw) closed.args.forEach(arg => arg.cluster = true);
                 if (closed.at) func.at = true;
                 if (svg) {
                     func.arguments = expandSvg(cur, cur.source.slice(paren.index + 1, closed.end), closed.args);
@@ -503,7 +507,7 @@ function parseArguments(cur, copying, whole, indexed) {
         }
         if (tok.status) quote = tok.status === 'open';
         cur.next();
-        buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1]) : v;
+        buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1], cur.source[tok.index + 1]) : v;
         last = tok;
     }
     warn(cur.ctx, 'unclosed (', head && head.pos);
@@ -577,7 +581,7 @@ function parseDoodleBody(cur, start, name) {
     let head = cur.peek();
     let values = [], blocks = [], from = start, mark = start;
     const cut = to => {
-        values.push(Node.text(substitutePi(cur.source.slice(from, to), cur.source[from - 1])));
+        values.push(Node.text(substitutePi(cur.source.slice(from, to), cur.source[from - 1], cur.source[to])));
         from = to;
     };
     while (!cur.end()) {
@@ -628,7 +632,7 @@ function parseDoodleBody(cur, start, name) {
     }
     let body = cur.source.slice(start, end);
     // a nested doodle is parsed again, and that parse leaves the π in quotes alone
-    if (!name.startsWith('@doodle')) body = substitutePi(body, cur.source[start - 1]);
+    if (!name.startsWith('@doodle')) body = substitutePi(body, cur.source[start - 1], cur.source[end]);
     return [normalizeArgument([Node.text(body.trim() || body)])];
 }
 
@@ -977,6 +981,10 @@ function statementEnd(tokens, i) {
 const RE_PARAM = /^[a-zA-Z_]\w*$/;
 const RE_FUNC_NAME = /^[a-zA-Z_][\w-]*$/;
 
+function isNameStart(t) {
+    return !!t && (t.isWord() || t.isSymbol('_'));
+}
+
 function nameEnd(tokens, i, dash) {
     for (let t; (t = tokens[i + 1]) && adjacent(tokens[i], t); i++) {
         let glued = t.isSymbol('-') ? dash && tokens[i + 2]?.isWord() && adjacent(t, tokens[i + 2]) : isNamePart(t);
@@ -996,7 +1004,7 @@ function expandFunctions(source, ctx) {
         else if (t.isSymbol(')', '}')) depth--;
         else if (!depth && t.isSymbol('-') && (!prev || prev.isSymbol(';', '}'))) {
             let dash = tokens[i + 1], word = tokens[i + 2];
-            if (!dash?.isSymbol('-') || !word?.isWord() || !adjacent(t, dash) || !adjacent(dash, word)) {
+            if (!dash?.isSymbol('-') || !isNameStart(word) || !adjacent(t, dash) || !adjacent(dash, word)) {
                 continue;
             }
             let paren = nameEnd(tokens, i + 2, true) + 1;
@@ -1026,6 +1034,11 @@ function expandFunctions(source, ctx) {
                 let body = braced ? source.slice(tokens[open].index + 1, last.index)
                     : source.slice(tokens[open].index, last.isSymbol(';') ? last.index : tokenEnd(last));
                 defs[name] = { params, defaults, body: body.trim() };
+                let after = source.slice(tokenEnd(last), tokenEnd(tokens[statementEnd(tokens, end + 1)] ?? last)).replace(/\/\*[\s\S]*?\*\//g, '');
+                let unset = params.filter(p => !source.includes(`--${p}:`));
+                if (!braced && !/^\s*--[\w-]+\(/.test(after) && bindParams({ params: unset, defaults, body: after }, unset.map(() => '\0'), defs).includes('\0')) {
+                    warn(ctx, `--${name}(): body needs { }`, t.pos);
+                }
                 rest += source.slice(from, t.index);
                 from = tokenEnd(last);
                 i = end;
@@ -1048,6 +1061,10 @@ const INCLUDE = 'include', VALUE = 'value', EXPRESSION = 'expression';
 const RE_PAINT_HEAD = /^(pattern|scene)[\dxX.]*$/;
 const RE_TEXTURE_HEAD = /^texture\w*$/;
 const RE_REPEAT_HEAD = /^repeat\s*\(/;
+const RE_NESTED_DOODLE = /@(doodle|pattern|scene|shaders)/;
+const RE_VARYING = /@(r|ri|R|rn|rand|p|pick|P|pn|PN|pnr|PNR|pl|pr|PL|PR|pd|PD|pick-n|pick-d|lp|lr)(?![\w-])/;
+const RE_COUNTER = /@(n|nx|ny|N|nN|Nn|nd)(?![\w-])/;
+const RE_LOOP = /@(m|M|rep|repeat|multiple|ms)\d*\(|\w\*[^{};]*\{|\brepeat\s*\(/;
 const RE_LINE_COMMENT = /\/\/[^\n]*/g;
 // a name, a swizzle, an unsigned number or a hex color reads the same in parentheses or not
 const RE_SIMPLE_ARG = /^(#[\da-f]+|[a-z_][\w.]*|(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)$/i;
@@ -1112,7 +1129,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
                 continue;
             }
         }
-        if (!t.isSymbol('$') || !tokens[i + 1]?.isWord() || !adjacent(t, tokens[i + 1])) continue;
+        if (!t.isSymbol('$') || !isNameStart(tokens[i + 1]) || !adjacent(t, tokens[i + 1])) continue;
         let end = nameEnd(tokens, i + 1, true);
         let name = textOf(tokens.slice(i + 1, end + 1));
         let def = defs[name];
@@ -1135,13 +1152,15 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
         let body = '';
         let kind = paint ? kindOf(def, defs) : INCLUDE;
         let lead = paint ? text.slice(head, t.index).trim() : '';
+        let hoists = pending && !(blocks.at(-1) && !depth) && !RE_REPEAT_HEAD.test(lead);
+        let next = solidAt(tokens, end + 1);
         if (chain.includes(name)) {
             warn(ctx, `$${name}() calls itself`);
         } else if (ctx.expanded > MAX_EXPANSION) {
             if (ctx.expanded < Infinity) warn(ctx, 'user functions expand too large');
             ctx.expanded = Infinity;
         } else if (kind === VALUE) {
-            if (!pending || blocks.at(-1) && !depth || RE_REPEAT_HEAD.test(lead)) {
+            if (!hoists) {
                 warn(ctx, `$${name}() runs statements; use it as one`);
             } else {
                 let call = valueCall(name, def, args, defs, ctx);
@@ -1151,10 +1170,26 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
             }
         } else {
             let value = paint ? null : resultOf(def.body);
-            body = bindParams(value === null ? def : { ...def, body: value }, args, defs, paint, inMath);
+            let source = value === null ? def : { ...def, body: value };
+            let n = ctx.calls + 1, word = name.replace(/\W/g, '_'), loops = RE_LOOP.test(source.body), uses = [];
+            let vary = params.map((p, k) => {
+                let arg = args[k] || defaults[k];
+                return !!arg && (RE_VARYING.test(arg) || loops && RE_COUNTER.test(arg))
+                    && (paint ? hoists : !isStatements(arg) && !RE_NESTED_DOODLE.test(def.body));
+            });
+            if (vary.includes(true)) bindParams(source, [], defs, paint, inMath, uses);
+            let ids = params.map((p, k) => vary[k] && (loops || uses[k] > 1)
+                && (paint ? `${word}_${n}_${p}` : `${n}${word}_${p}`));
+            body = bindParams(source, ids.map((id, k) => !id ? args[k] : paint ? id : `@--(${id})`), defs, paint, inMath);
+            let lets = ids.map((id, k) => id && uses[k] ? [id, (args[k] || defaults[k]).trim()] : '').filter(Boolean);
+            if (lets.length) ctx.calls++;
+            if (paint && lets.length) pending.push(lets.map(([id, arg]) => `${id}: ${arg};\n`).join(''));
             ctx.expanded += body.length;
             body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending, inMath);
-            let next = solidAt(tokens, end + 1);
+            if (!paint && lets.length) {
+                let statements = isStatements(body);
+                body = lets.map(([id, arg]) => statements ? `--${id}: ${arg}; ` : `@--(${id}, ${arg})`).join('') + body;
+            }
             let whole = (!lead || /[:(,]$/.test(lead)) && (!next || next.isSymbol(';', '{', '}') || next.isSymbol(')', ','));
             let glued = /[\d.]/.test(from < t.index ? text[t.index - 1] : out.at(-1)) && /^[\d.]/.test(body.trim());
             if ((inMath || kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1))) && (glued || !RE_SIMPLE_ARG.test(body.trim()))) {
@@ -1181,6 +1216,18 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
 function hexEnd(tokens, i) {
     while (tokens[i + 1] && adjacent(tokens[i], tokens[i + 1]) && /^[\da-f]+$/i.test(tokens[i + 1].value)) i++;
     return i;
+}
+
+function isStatements(text) {
+    let tokens = tokensOf(text);
+    for (let i = 0, depth = 0; i < tokens.length; i++) {
+        let t = tokens[i];
+        if (t.status === 'open') i = quoteEnd(tokens, i);
+        else if (t.isSymbol('(')) depth++;
+        else if (t.isSymbol(')')) depth--;
+        else if (!depth && t.isSymbol(';', '{', ':')) return true;
+    }
+    return false;
 }
 
 // the token at j or the first after it that is not a space
@@ -1219,7 +1266,7 @@ function kindOf(def, defs) {
     else if (line.length) statements++;
     if (statements !== 1 || declares) return def.kind;
     // a lone call reads as what that function gives
-    if (line[0]?.isSymbol('$') && line[1]?.isWord()) {
+    if (line[0]?.isSymbol('$') && isNameStart(line[1])) {
         let end = nameEnd(line, 1, true);
         let callee = defs[textOf(line.slice(1, end + 1))];
         if (callee && line[end + 1]?.isSymbol('(') && closing(line, end + 1) === line.length - 1
@@ -1342,7 +1389,7 @@ function mathOpen(tokens, i, defs) {
     return !!tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]) && !defs[textOf(tokens.slice(j + 1, i))];
 }
 
-function bindParams({ params, defaults, body }, args, defs, paint, math) {
+function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0;
     // per open paren, whether a bare parameter binds inside it; in @pattern
@@ -1400,6 +1447,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math) {
             }
             wrap = one;
         }
+        if (uses) uses[k] = (uses[k] || 0) + 1;
         if (wrap) arg = '(' + arg + ')';
         out += body.slice(from, start) + arg;
         from = dot > 0 ? t.index + dot : tokenEnd(last);

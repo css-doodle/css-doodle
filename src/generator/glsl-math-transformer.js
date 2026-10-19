@@ -83,7 +83,7 @@ function hexColors(code) {
 
 function joinsName(last, t) {
     if (last.isWord()) {
-        return t.value === '_' || t.isNumber() && !ALIAS[last.value.toLowerCase()] || t.isWord() && /[_.]$/.test(last.value);
+        return t.value === '_' || t.isNumber() && !ALIAS[last.value.toLowerCase()] || t.isWord() && /[\d_.]$/.test(last.value);
     }
     return last.value === '_' && (t.isWord() || t.isNumber());
 }
@@ -152,7 +152,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         } else if (t.value === 'π') {
             n = { type: 'Var', val: 'PI' };
         } else if (t.isWord()) {
-            n = peek()?.value === '(' ? call(t.value) : variable(t.value);
+            n = peek()?.value === '(' && !peek().spaced ? call(t.value) : variable(t.value);
         } else {
             report(`unexpected ${t.value}`);
             n = ZERO;

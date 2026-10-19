@@ -56,6 +56,8 @@ test('only a number or π touching a value starts a product; other values side b
     assert.deepEqual(report('hsl(h .75 .65)'), ['hsl(h, .75, .65)', 0]);
     assert.deepEqual(report('max(a b) + 1'), ['(max(a, b) + 1.0)', 0]);
     assert.deepEqual(report('hsl((a b), 1, 2)')[1], 1);
+    assert.deepEqual(report('vec3(k (0) 1)'), ['vec3(k, 0.0, 1.0)', 0]);
+    assert.deepEqual(report('sin (t)'), ['sin', 1]);
 });
 
 test('** is power, right-associative, on floats and vectors', () => {
@@ -446,6 +448,11 @@ test('a name ending in a digit keeps its swizzle', () => {
     const names = { __proto__: null, uv2: 'g_1' };
     assert.equal(transform('uv2.x', { names, types: { g_1: 'vec2' } }), 'g_1.x');
     assert.equal(transform('p2.yx * 2', { types: { p2: 'vec2' } }), '(p2.yx * 2.0)');
+});
+
+test('a name goes on after a digit', () => {
+    assert.equal(transform('d3p + x1y2'), '(d3p + x1y2)');
+    assert.equal(transform('2d3p'), '(2.0 * d3p)');
 });
 
 test('#rgb and #rrggbb are vec3 literals', () => {

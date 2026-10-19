@@ -313,7 +313,7 @@ function generate(token, element, parent, root, warn) {
                 }
                 element.append(animate);
             }
-            else {
+            else if (/^[\p{L}_:][\p{L}\d_:.-]*$/u.test(token.name)) {
                 element.attr(token.name, value);
             }
             if (token.name.includes('xlink:')) {

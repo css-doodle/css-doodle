@@ -15,7 +15,8 @@ an `svg { … }` block belong to it, and `svg` blocks merge.
 `content: text` adds a text node. `style: { … }` and `style fill: red`
 add to the `style` attribute. SVG 1.1 `xlink:` and `xml:` attributes
 are supported. `viewBox` takes four numbers, one (`0 0 n n`) or two
-(`0 0 w h`), and `padding n` grows it; other counts drop it.
+(`0 0 w h`), and `padding n` grows it; other counts drop it. A name
+XML can't hold, such as `@seed`, is dropped.
 
 **Copies.** `*count` repeats an element like `@M(count, …)`, by a
 number, a grid (`2x3`) or a range (`1-3`). Inside, `@n` is the

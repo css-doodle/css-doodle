@@ -480,7 +480,7 @@ function createNoise(outline) {
                 let i2 = i * 2;
                 t += noise2d.noise(_x * frequency * i2, _y * frequency * i2) * (scale / i2);
             }
-            let fn = transform((from, to) => map2d(t, from, to, scale));
+            let fn = transform((from = 0, to = 1) => map2d(t, from, to, scale));
             return pushStack(context, 'lastRand', fn(from, to));
         };
     };
@@ -858,8 +858,7 @@ Function.raw = (cell, { rules }) => (...args) => {
     }
     if (raw.startsWith('url("data:image/svg+xml;utf8')) {
         try {
-            // each svg url and the comma after it, so @svg(…), @svg(…) is two svgs and text after one stays
-            return raw.replace(/url\("data:image\/svg\+xml;utf8,([^"]*)"\),?/g, (_, svg) => decodeURIComponent(svg));
+            return raw.replace(/url\("data:image\/svg\+xml;utf8,([^"]*)"\)(,\s*)?/g, (_, svg) => decodeURIComponent(svg));
         } catch (e) {}
     }
     return raw;

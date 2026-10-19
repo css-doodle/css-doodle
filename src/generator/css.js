@@ -60,6 +60,7 @@ function familiesOf(text) {
 }
 
 const EMPTY_EXTRA = [];
+const ARGUMENTS = Symbol();
 const SHARED_EXTRA = Object.assign([], { shared: true });
 const SCENE_EXTRA = [1, 1, 1, 1, 1, 1];
 
@@ -148,10 +149,14 @@ function compileFunc(node) {
             compiled = (frame, extra) => {
                 let vars = frame.contextVariable;
                 if (!name || !vars) return { value: '' };
-                let key = '--' + name(frame, extra);
-                if (!value.length) return { value: vars[key] ?? '' };
-                vars[key] = value.map(arg => arg(frame, extra)).join(',');
-                return { value: '' };
+                let id = name(frame, extra), key = '--' + id, argument = /^\d/.test(id);
+                if (argument) vars = vars[ARGUMENTS] ??= {};
+                if (value.length) {
+                    vars[key] = value.map(arg => arg(frame, extra)).join(',');
+                    return { value: '' };
+                }
+                if (argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
+                return { value: vars[key] ?? '' };
             };
         } else if (typeof fn !== 'function') {
             let literal = { value: node.name };
@@ -681,7 +686,7 @@ class Rules {
             this.bgSized.add(cell);
         }
 
-        let rule = `${prop}:${value};`
+        let rule = /^--\d/.test(prop) ? '' : `${prop}:${value};`;
 
         // a tile turns and scales about its own point
         if (composed.origin && prop === 'clip-path') {
@@ -1030,11 +1035,12 @@ class Rules {
 
                 case 'pseudo': {
                     // host and container rules compose once
-                    if (token.selectors.every(isSpecialSelector)) {
-                        if (this.skips.has(token)) break;
-                        this.skips.add(token);
+                    let selectors = token.selectors;
+                    if (selectors.some(isSpecialSelector)) {
+                        if (this.skips.has(token)) selectors = selectors.filter(s => !isSpecialSelector(s));
+                        else this.skips.add(token);
                     }
-                    this.compose(cell, env, token.styles, token.selectors);
+                    if (selectors.length) this.compose(cell, env, token.styles, selectors);
                     break;
                 }
 
