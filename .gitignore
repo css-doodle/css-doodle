@@ -12,3 +12,4 @@ css-doodle.min.js
 css-doodle.js
 test/perf
 test/local
+test/browser/golden

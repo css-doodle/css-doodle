@@ -5,6 +5,8 @@
   "scripts": {
     "test": "node --test --test-reporter dot 'test/{core,parser,generator,component,lib,fuzz}/*.js'",
     "test:dev": "node --test 'test/{core,parser,generator,component,lib,fuzz}/*.js'",
+    "test:browser": "node --test --test-reporter dot test/browser/render.js test/browser/component.js",
+    "test:pixel": "node test/browser/pixel.js",
     "build": "node ./build/index.js"
   },
   "repository": {
@@ -18,7 +20,8 @@
   "devDependencies": {
     "@swc/core": "^1.16.1",
     "acorn": "^8.15.0",
-    "esbuild": "^0.25.4"
+    "esbuild": "^0.25.4",
+    "playwright-core": "^1.64.1"
   },
   "files": [
     "css-doodle*.js",

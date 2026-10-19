@@ -16,5 +16,14 @@ Each test file covers the source file of the same path:
   generates valid doodles from the productions of `docs/grammar.md`.
   `FUZZ_TEMPLATE_SEED`/`FUZZ_TEMPLATE_ROUNDS` and
   `FUZZ_GRAMMAR_SEED`/`FUZZ_GRAMMAR_ROUNDS` tune those two.
-- `perf/`, `local/` — benchmarks and the golden/pixel harness. Both are
-  gitignored and run by hand, for example `node test/perf/generate-bench.js 40`.
+- `browser/` — `npm run test:browser` draws the source tree in the
+  installed Chrome: each case in `cases.js` must draw, warn and look as
+  its entry says, `prerender()` and `image()` must paint the same pixels
+  as the element, and `component.js` drives updates, pause/resume,
+  resizing and `export()`. macOS draws on the GPU, anywhere else on
+  SwiftShader (`CSSD_GPU=swiftshader` forces it, `CHROME_PATH` picks a
+  binary). `npm run test:pixel` compares the cases with goldens of this
+  machine in the gitignored `browser/golden/`.
+- `perf/`, `local/` — benchmarks and the AST/output golden harness. Both
+  are gitignored and run by hand, for example
+  `node test/perf/generate-bench.js 40`.

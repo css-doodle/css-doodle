@@ -1,0 +1,195 @@
+import { test, describe, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { launch, mount, settle, decode, colorAt, hex, near, painted, within } from './chrome.js';
+
+let chrome;
+before(async () => chrome = await launch());
+after(() => chrome?.close());
+
+async function shot(page, el) {
+    let { png } = await settle(page, el);
+    return { png, image: await decode(page, png) };
+}
+
+function assertColor(image, x, y, color) {
+    let actual = colorAt(image, x, y);
+    assert.ok(near(actual, hex(color)), `${x},${y} is rgb(${actual}), not ${color}`);
+}
+
+const next = (el, name) => el.evaluate((el, name) => {
+    el.next = new Promise(resolve => el.addEventListener(name, resolve, { once: true }));
+}, name);
+
+const arrived = el => within(el.evaluate(el => el.next.then(() => {})), 10000, 'no event');
+
+// two screenshots some frames apart
+async function moving(page, el) {
+    let a = await el.screenshot();
+    await page.waitForTimeout(300);
+    return !a.equals(await el.screenshot());
+}
+
+describe('component', { concurrency: 4 }, () => {
+    test('a new seed redraws, and the old one draws the same picture again', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 6 / 120px; background: @p(red, gold, teal, #333);', { seed: 1 });
+        let first = await shot(page, el);
+        await next(el, 'update');
+        await el.evaluate(el => el.seed = 2);
+        await arrived(el);
+        let second = await shot(page, el);
+        assert.ok(!first.png.equals(second.png), 'seed 2 drew the seed 1 picture');
+        await next(el, 'update');
+        await el.evaluate(el => el.seed = 1);
+        await arrived(el);
+        assert.ok(first.png.equals((await shot(page, el)).png), 'seed 1 drew a different picture');
+    }));
+
+    test('the grid attribute rebuilds the grid', () => chrome.withPage(async page => {
+        let el = await mount(page, '@size: 10px; background: #09f;', { grid: 5 });
+        assert.equal(await el.evaluate(el => el.shadowRoot.querySelectorAll('cell').length), 25);
+        await next(el, 'update');
+        await el.evaluate(el => el.grid = '3x2');
+        await arrived(el);
+        assert.equal(await el.evaluate(el => el.shadowRoot.querySelectorAll('cell').length), 6);
+    }));
+
+    test('update() swaps a @pattern without leaving the old image behind', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 2 / 120px; background: @pattern(fill: #f00);');
+        assertColor((await shot(page, el)).image, 30, 30, '#f00');
+        await next(el, 'update');
+        await el.evaluate(el => el.update('@grid: 2 / 120px; background: @pattern(fill: #00f);'));
+        await arrived(el);
+        assertColor((await shot(page, el)).image, 30, 30, '#00f');
+        await next(el, 'update');
+        await el.evaluate(el => el.update('@grid: 2 / 120px; background: #0c0;'));
+        await arrived(el);
+        assertColor((await shot(page, el)).image, 30, 30, '#0c0');
+        let left = await el.evaluate(el => [...el.style].filter(name => name.startsWith('--')));
+        assert.deepEqual(left, []);
+    }));
+
+    test('click:update draws a new picture on each click', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 6 / 120px; background: @p(red, gold, teal, #333);', { 'click:update': '' });
+        let first = await shot(page, el);
+        await next(el, 'update');
+        await el.click();
+        await arrived(el);
+        assert.ok(!first.png.equals((await shot(page, el)).png));
+    }));
+
+    test('a doodle moved in the document draws the same picture again', () => chrome.withPage(async page => {
+        let code = '@grid: 2 / 120px; background: @pn(#f00, #fc0); :after { content: ""; position: absolute; inset: 20px; background: @pattern(fill: #00f); }';
+        let el = await mount(page, code);
+        let before = await shot(page, el);
+        assertColor(before.image, 30, 30, '#00f');
+        await next(el, 'render');
+        await el.evaluate(el => {
+            el.remove();
+            document.body.append(el);
+        });
+        await arrived(el);
+        let after = await shot(page, el);
+        assert.ok(before.png.equals(after.png), 'the picture changed');
+    }));
+
+    describe('pause() and resume()', () => {
+        let code = `@grid: 2 / 160px;
+            @nth(1) { animation: spin 1s linear infinite; background: #09f; }
+            @keyframes spin { to { transform: rotate(1turn) } }
+            @nth(2) { background: @pattern(fill: vec3(fract(t))); }
+            @nth(3) { @content: @svg(viewBox: 0 0 10 10; circle { cx: 5; cy: 5; r: 3; animate { attributeName: r; from: 1; to: 4; dur: 1s; repeatCount: indefinite; } }); }
+            @nth(4) { @content: @doodle(@grid: 1; animation: spin 1s linear infinite; background: red;); }`;
+
+        // CSS animations, SMIL, nested doodles and the shader loop
+        const state = el => el.evaluate(el => ({
+            attribute: el.hasAttribute('cssd-paused'),
+            css: [...new Set(el.shadowRoot.getAnimations().map(a => a.playState))],
+            smil: [...el.shadowRoot.querySelectorAll('svg')].map(svg => svg.animationsPaused()),
+            nested: [...el.shadowRoot.querySelectorAll('css-doodle')].map(d => d.hasAttribute('cssd-paused')),
+        }));
+
+        test('stop and restart every kind of motion', () => chrome.withPage(async page => {
+            let el = await mount(page, code);
+            assert.deepEqual(await state(el), { attribute: false, css: ['running'], smil: [false], nested: [false] });
+            assert.ok(await moving(page, el), 'nothing moves before pausing');
+
+            await el.evaluate(el => el.pause());
+            assert.deepEqual(await state(el), { attribute: true, css: ['paused'], smil: [true], nested: [true] });
+            assert.ok(!(await moving(page, el)), 'still moving after pause()');
+
+            await el.evaluate(el => el.resume());
+            assert.deepEqual(await state(el), { attribute: false, css: ['running'], smil: [false], nested: [false] });
+            assert.ok(await moving(page, el), 'nothing moves after resume()');
+        }));
+
+        test('reduced motion pauses unless ignore-reduced-motion is set', () => chrome.withPage(async page => {
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            let el = await mount(page, code);
+            let kept = await mount(page, code, { seed: 1, 'ignore-reduced-motion': '' });
+            assert.equal((await state(el)).attribute, true);
+            assert.ok(!(await moving(page, el)), 'moves under reduced motion');
+            assert.equal((await state(kept)).attribute, false);
+
+            await page.emulateMedia({ reducedMotion: 'no-preference' });
+            await page.waitForFunction(el => !el.hasAttribute('cssd-paused'), el);
+            assert.ok(await moving(page, el), 'nothing moves once motion is allowed');
+        }));
+    });
+
+    test('a shader redraws at the new size when the host resizes', () => chrome.withPage(async page => {
+        // 10px stripes in device pixels: stretching the old image would widen them
+        let code = '@grid: 1 / 60px; background: @shaders(void main() { gl_FragColor = vec4(vec3(step(.5, fract(gl_FragCoord.x / 20.))), 1.); });';
+        let el = await mount(page, code);
+        let { image } = await shot(page, el);
+        assertColor(image, 5, 30, '#000');
+        assertColor(image, 15, 30, '#fff');
+        await el.evaluate(el => el.style.width = el.style.height = '120px');
+        await page.waitForFunction(el => el.getBoundingClientRect().width === 120, el);
+        await page.waitForTimeout(300);
+        ({ image } = await shot(page, el));
+        assert.equal(image.width, 120);
+        assertColor(image, 15, 60, '#fff');
+        assertColor(image, 25, 60, '#000');
+        assertColor(image, 115, 60, '#fff');
+    }));
+
+    describe('export()', () => {
+        async function exported(page, el, options) {
+            let result = await el.evaluate(async (el, options) => {
+                let { width, height, svg, blob } = await el.export(options);
+                let png = '';
+                if (blob) {
+                    let bytes = new Uint8Array(await blob.arrayBuffer());
+                    for (let i = 0; i < bytes.length; i += 0x8000) {
+                        png += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+                    }
+                }
+                return { width, height, svg, png: btoa(png) };
+            }, options);
+            return { ...result, image: result.png && await decode(page, Buffer.from(result.png, 'base64')) };
+        }
+
+        test('gives an SVG, and a PNG at the asked scale', () => chrome.withPage(async page => {
+            let el = await mount(page, '@grid: 2 / 100px; background: @pn(#f00, #00f, #00f, #f00);');
+            let { width, height, svg } = await exported(page, el);
+            assert.deepEqual([width, height], [100, 100]);
+            assert.match(svg, /^\s*<svg[\s\S]*<foreignObject/);
+
+            let { image } = await exported(page, el, { detail: true, scale: 2 });
+            assert.deepEqual([image.width, image.height], [200, 200]);
+            assertColor(image, 50, 50, '#f00');
+            assertColor(image, 150, 50, '#00f');
+            assertColor(image, 150, 150, '#f00');
+        }));
+
+        test('keeps @pattern and @scene images', () => chrome.withPage(async page => {
+            let el = await mount(page, '@grid: 2 / 120px; @nth(1) { background: @pattern(fill: #0c0); } @nth(2) { background: @scene(sphere { r: .5; fill: #09f }); }');
+            let live = (await shot(page, el)).image;
+            let { image } = await exported(page, el, { detail: true });
+            assertColor(image, 30, 30, '#0c0');
+            assert.deepEqual(colorAt(image, 90, 25), colorAt(live, 90, 25));
+            assert.ok(painted(image) >= painted(live) * .99);
+        }));
+    });
+});
