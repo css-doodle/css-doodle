@@ -401,9 +401,9 @@ Function.P = (_, { context, pick }, position) => {
         let memory = own ? (context[counter] ??= {}) : null;
         let last = own ? memory.lastPick : lastOf(context.lastPick);
         context.lastPickArgs = args;
-        let i = args.length > 1 ? args.indexOf(last) : -1;
-        if (i !== -1) {
-            args = args.filter((_, j) => j !== i);
+        let rest = args.filter(n => n !== last);
+        if (rest.length) {
+            args = rest;
         }
         let picked = pick(args);
         if (own) {

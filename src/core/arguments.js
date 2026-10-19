@@ -90,16 +90,20 @@ export function carry(a, b, end) {
     return Array.from({ length: count }, (_, i) => at(i + 1));
 }
 
+const TIMES = /^([\s\S]*\S)\s+x(\d+)\s*$/;
+
 export function expand(fn) {
     return (...args) => {
-        if (!args.some(n => Array.isArray(n) || String(n)[0] === '[' || n === '...')) {
+        if (!args.some(n => Array.isArray(n) || String(n)[0] === '[' || n === '...' || TIMES.test(n))) {
             return fn(...args);
         }
         args = args.flatMap(n => String(n).startsWith('[') ? buildRange(n) : n);
         let list = [];
         for (let i = 0; i < args.length; ++i) {
             let fill = args[i] === '...' && i + 1 < args.length && carry(list.at(-2), list.at(-1), args[i + 1]);
+            let times = !fill && TIMES.exec(args[i]);
             if (fill) list = list.concat(fill);
+            else if (times) list.push(...Array(Math.min(times[2], MAX_SEQUENCE)).fill(times[1]));
             else list.push(args[i]);
         }
         return fn(...list);

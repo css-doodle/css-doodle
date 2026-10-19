@@ -288,6 +288,10 @@ quotes does not split. Whitespace belongs to the argument, so
   custom property.
 - An argument starting with `±` expands into two, `-x` and `x`: `±1`,
   `±(a + 1)`, `±@r(10)`. Elsewhere `±` is text.
+- In a pick (`@p`, `@P`, `@pn`, `@pd`, …), an argument ending in ` xN`
+  stands for N copies: `@p(red x3, blue)` picks red three times in four,
+  `@pn(a x2, b)` plays a, a, b. `@P` never gives the last pick at that
+  call, however many times it is listed.
 - Backticks read as double quotes, so a doodle fits in a double-quoted
   HTML attribute.
 - In `@pick` and `@p`, a top-level `:` in the first argument ends an

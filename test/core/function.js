@@ -931,3 +931,14 @@ test('@palette: the ground comes first, the ink second, around an optional base 
     assert.deepEqual(Function.palette(null, { ...env('a', warns), host: undefined })(5, '#e6437d'), palette(5));
     assert.equal(warns.length, 2);
 });
+
+test('@P: never the last pick at that call, even when it is listed more than once', () => {
+    let env = { context: {}, pick: items => items[0] };
+    let P = Function.P({}, env, ':1');
+    assert.deepEqual([P('a', 'a', 'b'), P('a', 'a', 'b'), P('a', 'a', 'b')], ['a', 'b', 'a']);
+    assert.deepEqual([P('a'), P('a')], ['a', 'a']);
+    // `x2` weights are the same list, and @P() with no arguments reads it
+    let p = Function.p({}, env);
+    assert.equal(p('a x2', 'b'), 'a');
+    assert.equal(P(), 'b');
+});

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sequence, expand, getNamedArguments } from '../../src/core/arguments.js';
+import { sequence, expand, getNamedArguments, MAX_SEQUENCE } from '../../src/core/arguments.js';
 
 // --- sequence ---
 
@@ -163,4 +163,13 @@ test('named arguments fill by position, then by name', () => {
         getNamedArguments(['a=@r(100 = 3)', 'b=9'], ['a', 'b', 'x']),
         { a: '@r(100 = 3)', b: '9' }
     );
+});
+
+test('expand: `a x3` in a list stands for three copies, capped like a sequence', () => {
+    let list = expand((...args) => args);
+    assert.deepEqual(list('a x3', 'b'), ['a', 'a', 'a', 'b']);
+    assert.deepEqual(list('var(--c) x2', '10px 20px x1', 'x3', '2x'), ['var(--c)', 'var(--c)', '10px 20px', 'x3', '2x']);
+    assert.deepEqual(list('a x0', 'b'), ['b']);
+    assert.deepEqual(list('1', '3', '...', '7', '9 x2'), ['1', '3', '5', '7', '9', '9']);
+    assert.equal(list('a x99999').length, MAX_SEQUENCE);
 });
