@@ -189,7 +189,8 @@ if (typeof HTMLElement !== 'undefined') {
 
         syncMotion() {
             if (this._manual_motion) return;
-            this.reducesMotion() ? this.pause(true) : this.resume(true);
+            this.reducesMotion() || this.getRootNode().host?.hasAttribute('cssd-paused')
+                ? this.pause(true) : this.resume(true);
         }
 
         // the shader loops only draw while the host is in view

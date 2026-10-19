@@ -123,6 +123,21 @@ describe('component', { concurrency: 4 }, () => {
             assert.ok(await moving(page, el), 'nothing moves after resume()');
         }));
 
+        test('pause() before the first render holds what the render draws, nested doodles too', () => chrome.withPage(async page => {
+            let el = await page.evaluateHandle(code => {
+                let el = document.createElement('css-doodle');
+                el.textContent = code;
+                el.rendered = new Promise(resolve => el.addEventListener('render', resolve, { once: true }));
+                el.pause();
+                document.body.append(el);
+                return el;
+            }, code);
+            await within(el.evaluate(el => el.rendered), 10000, 'no render event');
+            await shot(page, el);
+            assert.deepEqual(await state(el), { attribute: true, css: ['paused'], smil: [true], nested: [true] });
+            assert.ok(!(await moving(page, el)), 'moves although paused');
+        }));
+
         test('reduced motion pauses unless ignore-reduced-motion is set', () => chrome.withPage(async page => {
             await page.emulateMedia({ reducedMotion: 'reduce' });
             let el = await mount(page, code);

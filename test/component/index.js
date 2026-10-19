@@ -376,6 +376,7 @@ test('a host parsed with a declarative shadow root renders at once, even with no
             _declared: declared,
             innerHTML: '',
             hasAttribute: name => name === 'role',
+            getRootNode: () => ({}),
             load: () => calls.push('load'),
             waitForSource: () => calls.push('wait'),
         });
