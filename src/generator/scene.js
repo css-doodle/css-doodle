@@ -616,6 +616,13 @@ export default function drawScene(code, extra, report = () => {}) {
         float g = (u.y - u.x) / 300.0, s = ((u.z - u.y) / 1600.0 - g) / 1900.0;
         return s < 0.9 ? ${fit.loose ? 'max(g_walk(e), (g - 500.0 * s) / (1.0 - s))' : '(g - 500.0 * s) / (1.0 - s)'} : 1e9;
     }
+    void g_reach6(mat3 v, inout vec3 hi, inout vec3 lo) {
+        for (int i = 0; i < 6; i++) {
+            float r = g_reach(i < 3 ? v[i] : -v[i - 3]);
+            if (i < 3) hi[i] = max(hi[i], r);
+            else lo[i - 3] = min(lo[i - 3], -r);
+        }
+    }
     ${drag.length ? glsl`
         vec3 g_corner(int k) {
             return vec3(float(k & 1), float((k >> 1) & 1), float((k >> 2) & 1));
@@ -647,12 +654,10 @@ export default function drawScene(code, extra, report = () => {}) {
         for (int i = 0; i <= ${usesTime ? 32 : 0}; i++) {
             if (i > 0) t = float(i - 1) * PI / 16.0;
             ${drag.length ? view('0.0', '0.0') : view(turn, tilt)}
-            g_vhi = max(g_vhi, vec3(g_reach(g_x), g_reach(g_y), g_reach(g_z)));
-            g_vlo = min(g_vlo, -vec3(g_reach(-g_x), g_reach(-g_y), g_reach(-g_z)));
+            g_reach6(mat3(g_x, g_y, g_z), g_vhi, g_vlo);
             ${turned ? glsl`{
                 ${view(turn, tilt)}
-                g_rhi = max(g_rhi, vec3(g_reach(g_x), g_reach(g_y), g_reach(g_z)));
-                g_rlo = min(g_rlo, -vec3(g_reach(-g_x), g_reach(-g_y), g_reach(-g_z)));
+                g_reach6(mat3(g_x, g_y, g_z), g_rhi, g_rlo);
             }` : ''}
             ${drag.length ? 'for (int k = 0; k < 8; k++) g_dhi[k] = max(g_dhi[k], g_reach(normalize(g_corner(k) * 2.0 - 1.0)));' : ''}
         }
@@ -754,8 +759,12 @@ export default function drawScene(code, extra, report = () => {}) {
             ${shadow ? glsl`
                 float g_e = (g_d > 0.0 ? g_tn * g_f : g_k) / g_px, g_s = g_b ? length(g_hi - g_lo) : g_k, g_sh = ${shadow};
             ` : ''}
-            ${lights.map(([dir, color], i) => `vec3 g_l${i} = g_v * normalize(${dir});\ng_lit += ${color} * max(dot(n, g_l${i}), 0.0)${shadow
-                ? ` * mix(1.0, g_shadow(g_h + n * g_e, g_l${i}, 2.0 * g_s, g_e), g_sh)` : ''};`).join('\n')}
+            vec3 g_ld[] = vec3[](${lights.map(l => l[0])}), g_lc[] = vec3[](${lights.map(l => l[1])});
+            for (int i = 0; i < ${lights.length}; i++) {
+                vec3 g_l = g_v * normalize(g_ld[i]);
+                float g_c = max(dot(n, g_l), 0.0);
+                if (g_c > 0.0) g_lit += g_lc[i] * g_c${shadow ? ' * mix(1.0, g_shadow(g_h + n * g_e, g_l, 2.0 * g_s, g_e), g_sh)' : ''};
+            }
             g_L = sqrt((0.7 * g_lit + ${ambient})${shadow ? ' * mix(1.0, g_open(g_h, n, g_s), g_sh)' : ''});
         ` : ''}
         ${self ? 'light = dot(g_L, vec3(1.0 / 3.0));' : ''}

@@ -214,7 +214,11 @@ test('zoom scales the fitted view', () => {
 });
 
 test('light points toward each light as normal does, white by default', () => {
-    let lights = code => [...scene(code + '; sphere').fragment.matchAll(/vec3 g_l\d = g_v \* normalize\((.+)\);\ng_lit \+= (.+?) \* max/g)].map(m => m.slice(1));
+    let lights = code => {
+        let [d, c] = scene(code + '; sphere').fragment.match(/vec3 g_ld\[\] = vec3\[\]\((.+)\), g_lc\[\] = vec3\[\]\((.+)\);/)
+            .slice(1).map(list => list.split(/,(?=vec3\()/));
+        return d.map((dir, i) => [dir, c[i]]);
+    };
     assert.deepEqual(lights(''), [['vec3(0.6, 0.8, 0.5)', 'vec3(1.0)']]);
     assert.deepEqual(lights('light: -1 1 .5'), [['vec3(-1.0, 1.0, .5)', 'vec3(1.0)']]);
     // a number sets the strength, a color tints it, and a CSS color stands after the last space
@@ -234,7 +238,8 @@ test('shadow dims the light that shapes block, and where they crowd', () => {
     let { fragment, warnings } = scene('light: 1 1 0, 0 1 1; shadow: .5; sphere');
     assert.deepEqual(warnings, []);
     assert.match(fragment, /float g_shadow\(vec3 p, vec3 l, float far, float e\)/);
-    assert.equal(fragment.match(/\* mix\(1\.0, g_shadow\(g_h \+ n \* g_e, g_l\d, 2\.0 \* g_s, g_e\), g_sh\);/g).length, 2);
+    assert.equal(fragment.match(/g_shadow\(g_h/g).length, 1);
+    assert.match(fragment, /for \(int i = 0; i < 2; i\+\+\) \{[^}]*if \(g_c > 0\.0\) g_lit \+= g_lc\[i\] \* g_c \* mix\(1\.0, g_shadow\(g_h \+ n \* g_e, g_l, 2\.0 \* g_s, g_e\), g_sh\);/);
     assert.match(fragment, /g_sh = \.5;/);
     assert.match(fragment, /\* mix\(1\.0, g_open\(g_h, n, g_s\), g_sh\)\);/);
     assert.doesNotMatch(scene('shadow: none; sphere').fragment, /g_shadow/);
@@ -271,7 +276,8 @@ test('a fill that reads light is lit already, and the others are shaded', () => 
 
 test('the model is measured once per vertex, not per pixel', () => {
     let { vertex, fragment } = scene('sphere { r: .2 }');
-    assert.match(vertex, /g_vhi = max\(g_vhi, vec3\(g_reach\(g_x\), g_reach\(g_y\), g_reach\(g_z\)\)\)/);
+    assert.match(vertex, /g_reach6\(mat3\(g_x, g_y, g_z\), g_vhi, g_vlo\);/);
+    assert.equal(vertex.match(/g_reach\(/g).length, 2);
     assert.match(fragment, /flat in vec3 g_vhi, g_vlo, g_vc;/);
     assert.doesNotMatch(fragment, /g_reach/);
 });
@@ -287,16 +293,16 @@ test('drag lets the pointer turn the view, which then fits a ball around the mod
     assert.deepEqual(warnings, []);
     assert.match(fragment, /radians\(30\.0\) \+ u_drag\.x/);
     assert.match(fragment, /radians\(20\.0\) \+ u_drag\.y/);
-    assert.match(vertex, /vec3\(0\.0, 1\.0, 0\.0\), 0\.0\);[^]*g_vhi = max\(g_vhi/);
+    assert.match(vertex, /vec3\(0\.0, 1\.0, 0\.0\), 0\.0\);[^]*g_reach6\(mat3\(g_x, g_y, g_z\), g_vhi, g_vlo\);/);
     assert.match(vertex, /vec3 a = \(g_vhi - g_vlo\) \* 0\.5, c = \(g_vhi \+ g_vlo\) \* 0\.5;[^]*g_vc = c;/);
     assert.match(vertex, /g_dhi\[k\] = max\(g_dhi\[k\], g_reach\(normalize\(g_corner\(k\) \* 2\.0 - 1\.0\)\)\);/);
     assert.match(vertex, /r = min\(1\.02 \* sqrt\(m\), r\);/);
     assert.doesNotMatch(scene('view: 30 20; sphere').vertex, /g_dhi|g_far/);
-    assert.match(vertex, /radians\(30\.0\)[^]*g_rhi = max\(g_rhi, vec3\(g_reach\(g_x\)/);
+    assert.match(vertex, /radians\(30\.0\)[^]*g_reach6\(mat3\(g_x, g_y, g_z\), g_rhi, g_rlo\);/);
     assert.match(fragment, /flat in vec3 g_rhi, g_rlo;/);
     assert.match(fragment, /g_d = min\(min\(min\(g_w\.x, g_w\.y\) \* sqrt\(g_ra \* g_ra - g_hi\.x \* g_hi\.x\) \/ max\(g_hi\.x, 1e-6\), g_d\), g_ra\);/);
     let still = scene('drag: turn tilt; sphere').vertex;
-    assert.doesNotMatch(still, /g_rhi = max/);
+    assert.doesNotMatch(still, /g_reach6\(mat3\(g_x, g_y, g_z\), g_rhi/);
     assert.match(still, /g_rhi = g_vhi;\s*g_rlo = g_vlo;\s*vec3 a = /);
     assert.doesNotMatch(scene('view: 30 20; sphere').fragment, /g_rhi/);
     // the pointer turns only the angles named, and starts from the view's tilt
