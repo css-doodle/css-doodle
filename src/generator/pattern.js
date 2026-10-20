@@ -203,8 +203,7 @@ export function colorReader(extra, miss, names = []) {
     return name => {
         if (!known.has(name)) {
             let rgba = extra.getRgbaColor(name);
-            known.set(name, rgba && channels(rgba));
-            if (!rgba) miss(name);
+            known.set(name, rgba ? channels(rgba) : (miss(name), [0]));
         }
         return known.get(name);
     };
@@ -422,8 +421,8 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let ctx = {
         extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
-        unknown: colorReader(extra, name => warn(`unknown name ${name}`
-            + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : '')), BUILTINS),
+        unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid is not a value; use X, Y' : /^(fill|shape)$/.test(name) ? `${name} is not a value`
+            : `unknown name ${name}` + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : '')), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));

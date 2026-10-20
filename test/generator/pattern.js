@@ -80,7 +80,7 @@ test('variables inside match blocks are scoped', () => {
     // and they do not leak into the outer scope
     let messages = [];
     let s = draw('match(x > 1) { c: 9.0; } match(c > 1) { fill: red }', extra, m => messages.push(m)).fragment;
-    assert.match(s, /if \(\(c > 1\.0\)\)/);
+    assert.match(s, /if \(\(0\.0 > 1\.0\)\)/);
     assert.deepEqual(messages, ['unknown name c']);
 });
 
@@ -96,6 +96,13 @@ test('a match block assigns to a variable of an enclosing scope', () => {
     let s = draw('z: 0; repeat(4) { z: z * uv } fill: z', extra, m => messages.push(m)).fragment;
     assert.doesNotMatch(s, /g_1 = \(g_1 \* uv\)/);
     assert.deepEqual(messages, ['z is a float, not a vec2']);
+});
+
+test('a name nothing knows reads 0, so the shader still compiles', () => {
+    let messages = [];
+    let s = draw('grid: 4; k: fill; fill: grid / 4, foo.xy;', extra, m => messages.push(m)).fragment;
+    assert.match(s, /float g_1 = 0\.0;\s*g_color = vec4\(vec3\(\(0\.0 \/ 4\.0\), vec2\(0\.0\)\), 1\.0\);/);
+    assert.deepEqual(messages, ['fill is not a value', 'grid is not a value; use X, Y', 'unknown name foo']);
 });
 
 test('match {} runs the first arm whose test holds', () => {
@@ -613,7 +620,7 @@ test('repeat names new to the body are loop locals, declared once where they app
     assert.match(s, /float g_3 = \(g_2 \* g_2\);\s*g_1 = \(g_1 \+ g_3\);/);
     assert.equal((s.match(/float g_3 =/g) || []).length, 1);
     // the local does not leak out
-    assert.match(main('repeat(1) { v: 1 } fill: v'), /g_color = vec4\(vec3\(v\), 1\.0\);/);
+    assert.match(main('repeat(1) { v: 1 } fill: v'), /g_color = vec4\(vec3\(0\.0\), 1\.0\);/);
 });
 
 test('repeat uses a zero-based named index and checks the stop conditions after the body', () => {

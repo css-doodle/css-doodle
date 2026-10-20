@@ -129,10 +129,10 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         const dot = val.indexOf('.');
         const head = dot > 0 ? val.slice(0, dot) : val;
         const id = names?.[head];
-        const rgba = !id && !types[head] && !GLSL_NAMES.has(head) && unknown?.(head);
-        const n = rgba
-            ? { type: 'Call', val: `vec${rgba.length}`, args: rgba.map(v => ({ type: 'Lit', val: String(v) })) }
-            : { type: 'Var', val: id || head };
+        const v = !id && !types[head] && !GLSL_NAMES.has(head) && unknown?.(head);
+        const lits = v && v.map(c => ({ type: 'Lit', val: String(c) }));
+        if (v?.length === 1) return dot > 0 ? { type: 'Call', val: swizzle(val), args: lits } : lits[0];
+        const n = v ? { type: 'Call', val: `vec${v.length}`, args: lits } : { type: 'Var', val: id || head };
         return dot > 0 ? { type: 'Member', val: val.slice(dot), left: n } : n;
     }
 

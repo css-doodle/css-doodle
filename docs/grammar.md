@@ -532,10 +532,11 @@ repeat-body   = { name ':' value ';' | match-block | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
-**Names.** `grid`, `shape`, `size` and `fill` are built in. Any other
-name is a variable, declared and typed by its first assignment:
-numbers become floats, and a color is a `vec3`, or a `vec4` with
-alpha. Undeclared, invalid and `g_…` names are reported (§11).
+**Names.** `grid`, `shape`, `size` and `fill` are built in, and only
+`size` is also a value. Any other name is a variable, declared and
+typed by its first assignment: numbers become floats, and a color is a
+`vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names
+are reported (§11).
 
 **Expressions** use GLSL syntax, not §8: `^` is bitwise xor, `**` is
 power, and the logic words are `and`, `or` and `not`; for xor, compare
@@ -678,7 +679,8 @@ once per component.
 - **Drawing patterns.** Invalid or over-limit `repeat` blocks are
   skipped. Undeclared or reserved names are reported, and so are
   statements without a colon and what an expression cannot place:
-  values side by side, `?:`, a trailing operator. Arms without a test,
+  values side by side, `?:`, a trailing operator. An undeclared name
+  reads 0, in `@scene` too. Arms without a test,
   declarations between arms and arms after `else` are skipped.
   `ramp()`, `shape()` and GLSL derivatives inside a `match` block or a
   `repeat` with stops are reported, since GLSL leaves them undefined
