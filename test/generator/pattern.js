@@ -267,6 +267,15 @@ test('px is one CSS pixel in pos units, read from u_px only when used', () => {
     assert.deepEqual(messages, []);
 });
 
+test('a later fill with alpha paints over the one before it', () => {
+    assert.equal(color('fill: red, .5'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
+    assert.doesNotMatch(shader('fill: red, .5'), /g_over/);
+    let s = shader('fill: black; match(x > 1) { fill: red, .5 }');
+    assert.match(s, /vec4 g_over\(vec4 s, vec4 d\)/);
+    assert.match(s, /g_color = g_over\(vec4\(vec3\(1\.0, 0\.0, 0\.0\), \.5\), g_color\);/);
+    assert.doesNotMatch(shader('fill: red, .5; fill: black'), /g_over/);
+});
+
 test('a list may hold vectors; its channels add up to 3 or 4', () => {
     assert.equal(color('fill: red, .5'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
     assert.match(main('c: hsl(x / X, 1, .5); fill: c, rand(i)'), /g_color = vec4\(g_1, rand\(i\)\);/);

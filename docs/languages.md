@@ -349,11 +349,12 @@ products over 65536 and invalid counts skip the block. `fill`,
 `shape`, `size` and `grid` are not allowed inside it.
 
 **Output.** `fill` is a CSS color, an expression, or a list whose
-channels add up to three or four (`x / X, y / Y, .5`, `red, .5`); the
-last one wins. After the body the cell is masked by `shape`, a distance
-from the center antialiased at half of `size`: `circle`, `square`,
-`diamond`, `none`, or an expression in `du` and `dv`. Setting only
-`size` masks with a square.
+channels add up to three or four (`x / X, y / Y, .5`, `red, .5`). A
+later `fill` paints over the earlier one, so an opaque one replaces it
+and `fill: red, .5` tints it. After the body the cell is masked by
+`shape`, a distance from the center antialiased at half of `size`:
+`circle`, `square`, `diamond`, `none`, or an expression in `du` and
+`dv`. Setting only `size` masks with a square.
 
 **Variables** are the cell variables of `@match` except `z` and `Z`,
 plus:

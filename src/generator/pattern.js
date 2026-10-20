@@ -153,6 +153,13 @@ export const HELPERS = glsl`
     }
 `;
 
+const OVER = glsl`
+    vec4 g_over(vec4 s, vec4 d) {
+        float a = mix(d.a, 1.0, s.a);
+        return d.a > 0.0 ? vec4(mix(d.rgb * d.a, s.rgb, s.a) / a, a) : s;
+    }
+`;
+
 function newScope(parent = null) {
     return { ids: { __proto__: parent ? parent.ids : null }, key: parent?.key };
 }
@@ -261,7 +268,9 @@ function generateFill(value, scope, ctx) {
     let v = compile(value, scope, ctx);
     if (!v) return '';
     let { type, code } = v;
-    if (type === 'vec4') return `g_color = ${code};\n`;
+    let over = ctx.filled;
+    ctx.filled = true;
+    if (type === 'vec4') return `g_color = ${over ? `g_over(${code}, g_color)` : code};\n`;
     if (type === 'vec3') return `g_color = vec4(${code}, 1.0);\n`;
     if (type === 'vec2') return `g_color = vec4(${code}, 0.0, 1.0);\n`;
     if (type === 'bool') code = `float(${code})`;
@@ -403,7 +412,7 @@ function generateShader({ grid, body, masked }) {
     return glsl`
     precision highp int;
     const float PI = 3.1415926535897932;
-    ${HELPERS}${usesPx ? 'uniform float u_px;' : ''}
+    ${HELPERS}${body.includes('g_over(') ? OVER : ''}${usesPx ? 'uniform float u_px;' : ''}
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
         float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;
