@@ -373,11 +373,14 @@ address every pixel. An animated pattern in `@content` draws each
 frame straight to a canvas; elsewhere it is re-encoded as an image
 every frame, several times slower.
 
-**Functions.** GLSL, plus `pick(k: …)`, `ramp`, `rand`, `noise`, `fbm`,
-`voronoi`, `hsl`, `hsv`, `rot`, `smin`, `ngon`, `box`, `segment`,
-`escape`, `spiral` and `dither`. A point is one `vec2` or two floats:
-`fbm(p)`, `ngon(p, 6)`.
+**Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`, `rand(p)`,
+`noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`, `hsv(h, s, v)`,
+`rot(p, a)`, `smin(a, b, k)`, `ngon(p, n)`, `box(p, b)`,
+`segment(p, a, b)`, `escape([z,] c)`, `spiral(p)` and `dither(p)`. A
+point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
 
+- `rot(p, a)` is the point `p` turned `a` radians counterclockwise. It
+  gives a point, not a matrix, so `rot(a) * p` does not compile.
 - GLSL's `pow` is undefined for a negative base, so whole exponents
   from 2 to 4 multiply instead.
 - `escape` runs 96 steps with a bailout radius of 16.
