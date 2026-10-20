@@ -105,6 +105,14 @@ test('a name nothing knows reads 0, so the shader still compiles', () => {
     assert.deepEqual(messages, ['fill is not a value', 'grid is not a value; use X, Y', 'unknown name foo']);
 });
 
+test('an assignment to a swizzle writes those channels', () => {
+    assert.match(main('v: vec3(1); v.xz: vec2(0, .5); fill: v'), /vec3 g_1 = vec3\(1\.0\);\s*g_1\.xz = vec2\(0\.0, \.5\);/);
+    assert.match(main('pos.x: abs(pos.x); fill: pos, 0'), /vec2 g_1 = pos;\s*g_1\.x = abs\(pos\.x\);\s*g_color = vec4\(vec3\(g_1, 0\.0\), 1\.0\);/);
+    let messages = [];
+    draw('v: vec2(1); k: 1; v.z: 1; v.xx: vec2(1); k.x: 1; v.x: vec2(1);', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['invalid name "v.z"', 'invalid name "v.xx"', 'invalid name "k.x"', 'v.x is a float, not a vec2']);
+});
+
 test('match {} runs the first arm whose test holds', () => {
     assert.match(
         main('match { x > 1 { fill: red } y > 1 { fill: red } else { fill: 0, 0, 0 } }'),

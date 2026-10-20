@@ -1373,7 +1373,8 @@ function renameLocals(text, prefix) {
         if (target) waiting.push(local);
         if (loop) declared.add(local);
         if (!call && (target || loop || declared.has(local))) {
-            out += text.slice(from, t.index) + `${prefix}_${local}`;
+            let copy = target && dot > 0 && !declared.has(local) ? `${prefix}_${local}: ${local}; ` : '';
+            out += text.slice(from, t.index) + copy + `${prefix}_${local}`;
             from = t.index + local.length;
         }
         atStart = false;

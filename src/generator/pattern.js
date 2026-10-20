@@ -222,28 +222,32 @@ function randAt(scope, ctx) {
 }
 
 function generateStatement(name, value, scope, ctx) {
-    if (!NAME.test(name)) {
-        ctx.warn(`invalid name "${name}"`);
-        return '';
-    }
-    if (name.startsWith('g_')) {
+    let [, base, part] = name.match(/^([a-zA-Z_]\w*)(?:\.(\w+))?$/) || [];
+    if (base?.startsWith('g_')) {
         ctx.warn('g_ names are reserved');
         return '';
     }
-    let id = scope.ids[name];
-    if (id) {
+    let from = part && expr(base, scope, ctx).type, size = /^vec/.test(from) && +from[3];
+    if (!base || part && !['xyzw', 'rgba', 'stpq'].some(set => [...part].every((c, k) => set.slice(0, size).includes(c) && part.indexOf(c) == k))) {
+        ctx.warn(`invalid name "${name}"`);
+        return '';
+    }
+    let id = scope.ids[base];
+    if (id || part) {
         if (ctx.readonly.has(id)) {
             ctx.warn(`${name} is read-only`);
             return '';
         }
         ctx.counts.delete(id);
-        let type = ctx.types[id];
+        let type = !part ? ctx.types[id] : part.length > 1 ? `vec${part.length}` : 'float';
         let v = compile(value, scope, ctx, type);
         if (v && /vec|mat/.test(v.type) && v.type !== type) {
             ctx.warn(`${name} is a ${type}, not a ${v.type}`);
             return '';
         }
-        return v ? `${id} = ${v.code};\n` : '';
+        if (!v) return '';
+        let copy = id ? '' : generateStatement(base, base, scope, ctx);
+        return `${copy}${scope.ids[base]}${part ? '.' + part : ''} = ${v.code};\n`;
     }
     let v = compile(value, scope, ctx);
     if (!v) return '';

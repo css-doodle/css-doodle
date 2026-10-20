@@ -521,14 +521,15 @@ are fitted to the box by their ink.
 ```
 
 ```
-pattern-body  = { name ':' value ';' | match-block | repeat-block | texture-block }
+pattern-body  = { target ':' value ';' | match-block | repeat-block | texture-block }
+target        = name [ '.' swizzle ]
 texture-block = texture-name '{' doodle '}'
 match-block   = 'match' '(' expression ')' '{' pattern-body '}'
               | 'match' '{' { expression '{' pattern-body '}' }
                             [ 'else' '{' pattern-body '}' ] '}'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
-repeat-body   = { name ':' value ';' | match-block | repeat-block }
+repeat-body   = { target ':' value ';' | match-block | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
@@ -536,7 +537,9 @@ value         = css-color | expression { ',' expression }
 `size` is also a value. Any other name is a variable, declared and
 typed by its first assignment: numbers become floats, and a color is a
 `vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names
-are reported (§11).
+are reported (§11). `v.xz: …` writes those channels of a vector, each
+named once; a name not yet assigned in the scope, such as `pos`, is
+copied first, so `pos.x: abs(pos.x)` mirrors the pattern.
 
 **Expressions** use GLSL syntax, not §8: `^` is bitwise xor, `**` is
 power, and the logic words are `and`, `or` and `not`; for xor, compare
