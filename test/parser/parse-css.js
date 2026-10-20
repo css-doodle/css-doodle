@@ -800,6 +800,21 @@ test('the last result a call runs is its value, in a block too', () => {
         'f_1_a: 1; f_1_result: f_1_a; fill: f_1_result;');
 });
 
+test('in @scene a value function\'s match block becomes values', () => {
+    assert.equal(paintOf(`--skin(q): { result: #c99; match { q.y > .2 { result: #eee; } } };
+        @content: @scene(sphere { fill: $skin(p * 2) });`), [
+        'sphere {skin_1_q: p * 2; skin_1_result: #c99; skin_1_1: match((skin_1_q.y > .2), 1, 0);',
+        'skin_1_result: match(skin_1_1 == 1, #eee, skin_1_result); fill: skin_1_result }',
+    ].join(' '));
+    assert.equal(paintOf(`--f(c): { match { a { result: 1; } else { match(b) { k: 2; $c: k; } result: 0; } } };
+        @content: @scene(w: 1; sphere { r: $f(w) });`), [
+        'w: 1; sphere {f_1_1: match((a), 1, 2); f_1_result: 1; f_1_2: match((b), 1, 0); f_1_k: 2;',
+        'w: match(f_1_1 == 2 && f_1_2 == 1, f_1_k, w); f_1_result: match(f_1_1 == 2, 0, f_1_result); r: f_1_result }',
+    ].join(' '));
+    assert.equal(paintOf(`--f(): { match(a) { result: 1; } }; @content: @pattern(fill: $f(););`),
+        'match(a) { f_1_result: 1; } fill: f_1_result;');
+});
+
 test('a value function reads the caller until it assigns a name, and writes the caller only through $p:', () => {
     assert.equal(paintOf(`--f(): { w: w + 1; result: w * 2; }; @content: @pattern(w: 1; fill: $f(););`),
         'w: 1;f_1_w: w + 1; f_1_result: f_1_w * 2; fill: f_1_result;');

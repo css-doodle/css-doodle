@@ -11,6 +11,7 @@
 import { scan, textOf, itemsOf, Token, NAME_CHAR } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
+import parsePattern from './parse-pattern.js';
 import svgSourceOf from './svg-source.js';
 import { isSpecialSelector } from '../lib/selector.js';
 import { hasEntries } from '../lib/type.js';
@@ -1099,8 +1100,11 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
                 if (close < 0) break;
                 let inner = text.slice(tokenEnd(tokens[open]), tokens[close].index);
                 if (inner.includes('$')) {
+                    let scene = ctx.scene;
+                    ctx.scene = tokens[i + 1].value === 'scene';
                     flush(tokenEnd(tokens[open]));
                     out += expandCalls(inner, defs, ctx, chain, BODY);
+                    ctx.scene = scene;
                     from = tokens[close].index;
                 }
                 i = close;
@@ -1310,7 +1314,27 @@ function valueCall(name, def, args, defs, ctx) {
             bound.push(`${ret}_${param}`);
         }
     });
-    return { text: prelude + bindParams({ params, defaults: [], body: text }, bound, defs, true), ret: ret + '_result' };
+    text = prelude + bindParams({ params, defaults: [], body: text }, bound, defs, true);
+    return { text: ctx.scene ? unblock(text, ret) : text, ret: ret + '_result' };
+}
+
+function unblock(text, prefix) {
+    if (!text.includes('{')) return text;
+    let known = new Set(), blocks = 0;
+    let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
+        if (type == 'block' && name == 'match') {
+            let id = `${prefix}_${++blocks}`;
+            arms = arms?.filter(a => a.type == 'arm') || [{ test: args, value }];
+            return `${id}: match(${arms.map(({ test }, k) => test == 'else' ? '' : `(${test}), ${k + 1}, `).join('')}${arms.findIndex(a => a.test == 'else') + 1});\n`
+                + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
+        }
+        if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;
+        if (when && (known.has(name) || !name.startsWith(prefix + '_'))) return `${name}: match(${when}, ${value}, ${name});\n`;
+        known.add(name);
+        return `${name}: ${value};\n`;
+    }).join('');
+    let out = lower(parsePattern(text), '');
+    return blocks ? out : text;
 }
 
 // Rename the names a body assigns, and the loop names of its repeats, to

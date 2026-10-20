@@ -445,7 +445,9 @@ as written where it is called, `p(…)`, assigned, or named by a
 ```
 
 Its statements run before the statement that calls it, and the call
-reads as the last `result` assigned, inside a `match` too. Its
+reads as the last `result` assigned, inside a `match` too. `@scene`
+has no blocks, so there a `match` block in such a body runs as values:
+a name its arm assigns keeps its old value where the arm does not run. Its
 parameters, the names it assigns and its `repeat` loop names are its
 own for each call, so its `i` leaves the pattern's `i` alone; a name
 reads the caller's until it is first assigned. An argument other than

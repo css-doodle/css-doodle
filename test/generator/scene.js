@@ -443,6 +443,12 @@ test('an outline reads the n of its copy', () => {
     assert.match(dist, /for \(int g_\d+ = 0; g_\d+ < 3;/);
 });
 
+test('a match block warns, since @scene has none', () => {
+    let { body, warnings } = scene('sphere { r: .3; match { p.y > 0 { fill: red } } }');
+    assert.deepEqual(warnings, ['no match { } in @scene']);
+    assert.match(body, /length\(p\) - \.3/);
+});
+
 test('an outline walks only where its box could change the parts before it', () => {
     let outline = 'points: 0 0, .2 0, .2 .4';
     let { dist, body } = scene(`box { size: .3 } lathe { ${outline} }`);

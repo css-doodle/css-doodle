@@ -104,6 +104,8 @@ function isVar(node, name) {
 }
 
 function checkAll(node, warn, unread, code, copy) {
+    if (node.children.some(c => /^match\b/.test(c.name))) warn('no match { } in @scene');
+    node.children = node.children.filter(c => !/^match\b/.test(c.name));
     if (!NAME.test(node.name)) {
         let text = node.name + (node.count ? '*' + node.count.join('x') : '');
         warn(`unexpected ${text}` + (node.name.includes('(') ? `: write ${node.name.split('(')[0]} { … }` : ''));
