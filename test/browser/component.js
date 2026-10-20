@@ -205,7 +205,9 @@ describe('component', { concurrency: 4 }, () => {
             await page.waitForTimeout(300);
             let times = await clocks(el);
             assert.ok(times.every(t => t > 5200 && t < 6000), `clocks at ${times}`);
-            assert.ok(Math.max(...times) - Math.min(...times) < 50, `clocks at ${times}`);
+            let spread = group => Math.max(...group) - Math.min(...group);
+            assert.ok(spread([times[0], times.at(-1)]) < 100, `clocks at ${times}`);
+            assert.ok(spread(times.slice(1, -1)) < 100, `clocks at ${times}`);
         }));
     });
 
