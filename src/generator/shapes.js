@@ -621,9 +621,9 @@ function unwrap(input) {
     }).join(';');
 }
 
-export function outline(polygon, warn) {
+export function outline(polygon, warn, at) {
     polygon.children.forEach(n => check(n, warn));
-    let commands = commandsOf({ rows: polygon.rows.filter(r => /^(points|text|font|path)$/.test(r.name)), children: polygon.children });
+    let commands = { ...commandsOf({ rows: polygon.rows.filter(r => /^(points|text|font|path)$/.test(r.name)), children: polygon.children }), ...at };
     let lathe = polygon.name == 'lathe' && !commands.blocks;
     let rings = lathe && commands.text ? glyphs(removeQuotes(commands.text), commands.font || '', 'start')
         : lathe && commands.path ? pathRings(removeQuotes(commands.path), true)

@@ -293,6 +293,8 @@ with `font`, or `path`, as `@shape` does. `lathe` turns the right
 half of the same outline, where `x` is 0 or more, around `y`:
 `lathe { vase }` is a vase. A path keeps its own `x = 0` as the axis,
 and text starts at it, so `lathe { text: 'abc' }` turns every letter.
+An outline reads the `n` of its own polygon's or lathe's copies, 1
+without them: `lathe*3 { circle { r: .1n } }` gives three sizes.
 
 **Camera.** At the top, `view: turn tilt` turns the camera around `y`
 and tilts it, in degrees, and `perspective: d` sets its distance, 2 by

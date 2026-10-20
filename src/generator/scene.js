@@ -103,7 +103,7 @@ function isVar(node, name) {
         && !(name === 'smooth' && (GROUPS[node.name] || node.count));
 }
 
-function checkAll(node, warn, unread, code) {
+function checkAll(node, warn, unread, code, copy) {
     if (!NAME.test(node.name)) {
         let text = node.name + (node.count ? '*' + node.count.join('x') : '');
         warn(`unexpected ${text}` + (node.name.includes('(') ? `: write ${node.name.split('(')[0]} { … }` : ''));
@@ -121,12 +121,17 @@ function checkAll(node, warn, unread, code) {
             warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
         }
     }
-    if (/^(polygon|lathe)$/.test(node.name) && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
-        node.rings = outline(node, warn).map(ring => ring.map(xy => xy.map(float)));
+    if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
+        let reads = n => n.rows.some(r => /(?<![a-zA-Z_])(n|N|nx|ny)(?!\w)/.test(textOf(r.value))) || n.children.some(reads);
+        let [X, Y] = node.count || [1, 1], own = { rows: node.rows.filter(r => SHAPES.lathe.includes(r.name)), children: node.children };
+        let at = copy != null ? [copy] : node.copies ? [] : [...Array(reads(own) ? X * Y : 1).keys()];
+        let all = at.map(i => outline(node, warn, { n: i + 1, N: X * Y, nx: i % X + 1, ny: (i / X | 0) + 1 }).map(ring => ring.map(xy => xy.map(float))));
         node.children = [];
+        if (new Set(all.map(rings => JSON.stringify(rings))).size > 1) node.copies = all.map(rings => ({ ...node, rings }));
+        node.rings = all[0];
     }
     if (SHAPES[node.name] && node.children.length) warn(`put shapes in a union, not ${node.name}`);
-    for (let c of node.copies || node.children) checkAll(c, warn, unread, code);
+    (node.copies || node.children).forEach((c, i) => checkAll(c, warn, unread, code, node.copies && i));
 }
 
 export default function drawScene(code, extra, report = () => {}) {
