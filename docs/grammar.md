@@ -544,8 +544,9 @@ copied first, so `pos.x: abs(pos.x)` mirrors the pattern.
 **Expressions** use GLSL syntax, not §8: `^` is bitwise xor, `**` is
 power, and the logic words are `and`, `or` and `not`; for xor, compare
 two conditions, `a < .5 != b < .5`. There are no units, `var()` or
-`?:`. Swizzles work on `vec2`, `vec3`, `vec4` and `mat2`. A color name
-or `#rgb` is a `vec3`, `#rgba` a `vec4`: `mix(red, #00f, du + .5)`.
+`?:`; `2px` is 2 times the variable `px`, one CSS pixel. Swizzles
+work on `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a
+`vec3`, `#rgba` a `vec4`: `mix(red, #00f, du + .5)`.
 
 A number directly followed by a name, a call or `(` multiplies (`2t`,
 `2sin(t)`, `2(t + 1)`). Other values side by side, including a number

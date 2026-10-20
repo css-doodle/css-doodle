@@ -246,14 +246,24 @@ test('a color name in an expression is a vec3 literal, a translucent one a vec4'
 
 test('a CSS unit read as a name says that patterns have no units', () => {
     let messages = [];
-    draw('fill: sin(90deg) + 2px', extra, m => messages.push(m));
+    draw('fill: sin(90deg) + 2em', extra, m => messages.push(m));
     assert.deepEqual(messages, [
         'unknown name deg; no units, angles are radians',
-        'unknown name px; no units, angles are radians',
+        'unknown name em; no units, angles are radians',
     ]);
     // a declared variable of that name is just a variable
     messages = [];
     draw('rad: 2; fill: rad', extra, m => messages.push(m));
+    assert.deepEqual(messages, []);
+});
+
+test('px is one CSS pixel in pos units, read from u_px only when used', () => {
+    let s = shader('fill: smoothstep(1.5px, .5px, length(pos) - .3)');
+    assert.match(s, /uniform float u_px;/);
+    assert.match(main('fill: smoothstep(1.5px, .5px, length(pos) - .3)'), /float px = u_px;[\s\S]*smoothstep\(\(1\.5 \* px\), \(\.5 \* px\)/);
+    assert.doesNotMatch(shader('fill: length(pos)'), /u_px/);
+    let messages = [];
+    assert.doesNotMatch(draw('px: 1 / 720; fill: 3px', extra, m => messages.push(m)).fragment, /u_px/);
     assert.deepEqual(messages, []);
 });
 

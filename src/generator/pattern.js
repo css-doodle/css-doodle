@@ -8,7 +8,7 @@ const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
 const BUILTINS = [
-    'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size',
+    'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size', 'px',
 ];
 
 export const NAME = /^[a-zA-Z_]\w*$/;
@@ -399,17 +399,18 @@ function generateBody(tokens, scope, ctx, opts = {}) {
 
 function generateShader({ grid, body, masked }) {
     let usesTime = /(?<![\w.])t\b/.test(body);
+    let usesPx = /(?<![\w.])px\b/.test(body);
     return glsl`
     precision highp int;
     const float PI = 3.1415926535897932;
-    ${HELPERS}
+    ${HELPERS}${usesPx ? 'uniform float u_px;' : ''}
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
         float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
         float i = x + (y - 1.0) * X;
-        float t = ${usesTime ? 'u_time' : '0.0'};
+        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
         float size = 1.0;
@@ -426,7 +427,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let ctx = {
         extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
         unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid is not a value; use X, Y' : /^(fill|shape)$/.test(name) ? `${name} is not a value`
-            : `unknown name ${name}` + (/^(deg|rad|turn|grad|px|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : '')), BUILTINS),
+            : `unknown name ${name}` + (/^(deg|rad|turn|grad|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : '')), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));

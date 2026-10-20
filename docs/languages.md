@@ -365,6 +365,7 @@ plus:
 | `pos`      | centered and aspect-correct, `pos.y` upward          |
 | `t`        | time in seconds; reading it animates the pattern     |
 | `size`     | the current `size`, `1` until set                    |
+| `px`       | one CSS pixel in `pos` units, so `2px` is two        |
 
 Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
 address every pixel. An animated pattern in `@content` draws each

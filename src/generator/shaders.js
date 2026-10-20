@@ -296,6 +296,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
             delta: gl.getUniformLocation(program, 'u_timeDelta'),
             mouse: gl.getUniformLocation(program, 'u_mouse'),
             drag: gl.getUniformLocation(program, 'u_drag'),
+            px: gl.getUniformLocation(program, 'u_px'),
         };
         drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta || uniforms.mouse);
         drawing.seeded = !!uniforms.seed;
@@ -338,6 +339,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
         if (uniforms.frame) gl.uniform1i(uniforms.frame, frameIndex++);
         if (uniforms.mouse) gl.uniform2f(uniforms.mouse, mouse ? mouse.x * dpr : 0, mouse ? (h - mouse.y) * dpr : 0);
         if (uniforms.drag) gl.uniform2f(uniforms.drag, ...drag);
+        if (uniforms.px) gl.uniform1f(uniforms.px, 1 / Math.min(w, h));
         if (uniforms.delta) {
             gl.uniform1f(uniforms.delta, (t - currentTime) * 0.001);
             currentTime = t;
