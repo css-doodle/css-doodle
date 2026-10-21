@@ -14,16 +14,18 @@ function endsEntity(tokens) {
 function resolveId(block) {
     // pureName has the `*times` suffix stripped so it can't leak into id/class
     let selector = block.pureName || block.name;
-    let baseName = selector.split(/[#.]/)[0];
+    let baseName = selector.split(/[#.|]/)[0];
     if (!baseName) {
         return block;
     }
-    let id = selector.match(/#([^.#]+)/);
+    let op = selector.match(/\|([^.#|]*)/);
+    if (op) block.op = op[1];
+    let id = selector.match(/#([^.#|]+)/);
     // an `id:` declaration in the body wins over the selector
     if (id && !block.value.find(n => n.type === 'statement' && n.name === 'id')) {
         block.value.push({ type: 'statement', name: 'id', value: id[1] });
     }
-    let classes = selector.match(/\.([^.#]+)/g);
+    let classes = selector.match(/\.([^.#|]+)/g);
     if (classes) {
         let names = classes.map(c => c.slice(1)).join(' ');
         let at = block.value.findIndex(n => n.type === 'statement' && n.name === 'class');
@@ -42,9 +44,10 @@ function resolveId(block) {
 function makeBlock(name, value = []) {
     let block = { type: 'block', name, value };
     if (/\*\s*[0-9@$(]/.test(name)) {
-        let at = name.indexOf('*');
-        block.times = name.slice(at + 1).trim();
-        block.pureName = name.slice(0, at).trim();
+        let at = name.indexOf('*'), end = name.search(/\|[\w-]*$/);
+        if (end < at) end = name.length;
+        block.times = name.slice(at + 1, end).trim();
+        block.pureName = (name.slice(0, at) + name.slice(end)).trim();
     }
     return block;
 }

@@ -146,7 +146,7 @@ const traced = memo((text, face, ready, axis) => {
     return fitRings(rings, axis);
 });
 
-const pathRings = memo((d, axis) => {
+export function traceRings(d) {
     let { commands, valid } = parseSvgPath(d), rings = [], ring = [], x = 0, y = 0, x0 = 0, y0 = 0, c, last;
     if (!valid) return [];
     let draw = (...p) => {
@@ -198,11 +198,12 @@ const pathRings = memo((d, axis) => {
         }
     }
     rings.push(ring);
-    return fitRings(rings, axis);
-});
+    return rings.filter(ring => ring.length > 2);
+}
+
+const pathRings = memo((d, axis) => fitRings(traceRings(d), axis));
 
 function fitRings(rings, axis) {
-    rings = rings.filter(ring => ring.length > 2);
     let [l, t, r, b] = bounds(rings.flat(2)), cx = (l + r) / 2, cy = (t + b) / 2, w = r - l;
     if (axis) cx = axis == 'start' ? l : 0, w = 2 * max(cx - l, r - cx);
     let s = 2 / max(w, b - t);

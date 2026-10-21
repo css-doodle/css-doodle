@@ -3,6 +3,9 @@ import { isNil, removeQuotes } from '../lib/type.js';
 import { NS, NSXLink, adjustName } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
+import { GROUPS } from '../parser/parse-shape-commands.js';
+import { traceRings } from './shapes.js';
+import { overlay, corners, bounds } from './tiling.js';
 
 const nextInlineId = nextId();
 
@@ -94,6 +97,63 @@ function escapeAttr(text) {
     text = String(text);
     if (text.indexOf('&') < 0 && text.indexOf('<') < 0 && text.indexOf('"') < 0) return text;
     return text.replace(RE_AMP, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function outlineOf({ name, attrs }, warn) {
+    let n = key => {
+        let value = parseFloat(attrs[key]) || 0;
+        if (/%/.test(attrs[key])) warn(`<${name}> reads ${attrs[key]} as ${value}`);
+        return value;
+    };
+    if (name === 'path') return attrs.d;
+    if (name === 'polygon' || name === 'polyline') return 'M' + attrs.points + 'Z';
+    if (name === 'circle' || name === 'ellipse') {
+        let x = n('cx'), y = n('cy'), rx = n(name === 'circle' ? 'r' : 'rx'), ry = name === 'circle' ? rx : n('ry');
+        return `M${x - rx} ${y}A${rx} ${ry} 0 1 0 ${x + rx} ${y}A${rx} ${ry} 0 1 0 ${x - rx} ${y}Z`;
+    }
+    if (name === 'rect') {
+        let x = n('x'), y = n('y'), w = n('width'), h = n('height');
+        let rx = Math.min(n(attrs.rx === undefined ? 'ry' : 'rx'), w / 2), ry = Math.min(n(attrs.ry === undefined ? 'rx' : 'ry'), h / 2);
+        let a = (x, y) => rx && ry ? `A${rx} ${ry} 0 0 1 ${x} ${y}` : '';
+        return `M${x + rx} ${y}H${x + w - rx}${a(x + w, y + ry)}V${y + h - ry}${a(x + w - rx, y + h)}H${x + rx}${a(x, y + h - ry)}V${y + ry}${a(x + rx, y)}Z`;
+    }
+}
+
+function ringsOf(tag, warn) {
+    let rings;
+    if (tag.name === 'g') {
+        for (let child of tag.body) {
+            let next = ringsOf(child, warn);
+            if (next) rings = rings ? overlay(rings, next, 'union') : next;
+        }
+    } else {
+        let d = outlineOf(tag, warn);
+        if (d) rings = Object.assign(traceRings(d), { evenodd: tag.attrs['fill-rule'] === 'evenodd' });
+    }
+    if (rings && tag.attrs.transform !== undefined) warn(`<${tag.name}> transform is ignored`);
+    return rings;
+}
+
+function combine(group, op, warn) {
+    let { smooth, ...attrs } = group.attrs, path = new Tag('path'), joints = new Set(), rings = [], d = '';
+    let note = message => warn(`g|${op}: ${message}`);
+    group.body.forEach(tag => {
+        let next = ringsOf(tag, note);
+        if (next) rings = rings.length ? overlay(rings, next, op, joints) : next;
+        else if (/^(animate|set|title|desc)/.test(tag.name)) path.append(tag);
+        else if (tag.name) note(`<${tag.name}> has no outline`);
+    });
+    let [x0, y0, x1, y1] = bounds(rings.flat(2)), digits = Math.max(0, Math.ceil(4 - Math.log10(Math.max(x1 - x0, y1 - y0))));
+    let k = parseFloat(smooth), f = v => +v.toFixed(digits);
+    for (let ring of rings) {
+        (k > 0 ? corners(ring, joints, k) : ring).forEach(([x, y, bx, by], i) => {
+            d += (i ? bx === undefined ? 'L' : `Q${f(bx)} ${f(by)} ` : 'M') + f(x) + ' ' + f(y);
+        });
+        d += 'Z';
+    }
+    Object.assign(path.attrs, attrs);
+    path.attr('d', d);
+    return path;
 }
 
 function transformViewBox(token, warn) {
@@ -192,6 +252,11 @@ function generate(token, element, parent, root, warn) {
                 let id = generate(block, el, token, root, warn);
                 if (id) { inlineId = id }
             }
+            if (token.op !== undefined) {
+                if (token.name !== 'g') warn(`${token.name}|${token.op}: needs g`);
+                else if (!GROUPS.includes(token.op)) warn(`g|${token.op}: needs union, subtract, intersect or exclude`);
+                else el = combine(el, token.op, warn);
+            }
             let isInlineAndNotDefs = token.inline && token.name !== 'defs';
             let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
             let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
@@ -271,7 +336,7 @@ function generate(token, element, parent, root, warn) {
             }
             // `draw: 2s infinite` strokes a shape along its length
             else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
-                if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name)) {
+                if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name) && parent.op === undefined) {
                     warn(`${keyword}: <${parent.name}> has no path`);
                 } else {
                     element.attr('stroke-dasharray', 10);

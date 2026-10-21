@@ -447,7 +447,7 @@ svg-block       = selector { ',' selector } '{' svg-body '}'
 svg-match       = '@match' '(' expression ')' '{' svg-body '}'
 svg-element     = name [ ';' ]
 selector        = element { [ '>' ] element }
-element         = name [ '#' id ] { '.' class } [ '*' count ]
+element         = name [ '|' group ] [ '#' id ] { '.' class } [ '*' count ]
 count           = number | number 'x' number | number '-' number
 svg-declaration = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
                 | 'style' [ property ] ':' ( value | '{' css '}' ) [ ';' ]
@@ -463,6 +463,12 @@ custom property names. A bare name, `feMergeNode;`, is an empty
 element, except right after a declaration, where it is the next
 `;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` splits only when
 the value has as many parts as names. `style { … }` is raw CSS.
+
+`g|subtract { … }` joins its shapes (`path`, `polygon`, `polyline`,
+`circle`, `ellipse`, `rect`, and a plain `g` as their union) into one
+`path` with the g's attributes, by the groups of §9.2. Curves become
+lines, `smooth: r` rounds the corners where shapes meet, and each
+shape's own transform, paint and animations are dropped.
 
 ### 9.2 Shapes
 
@@ -678,8 +684,9 @@ once per component.
   functions emit as `@name`. Invalid cell selector modifiers match
   nothing. Bad `@svg` `viewBox` counts drop the attribute, inline
   `defs` with other than one element becomes empty, a bad `draw:`
-  drops the declaration, a missing animation duration drops `dur`, and
-  invalid timing words are dropped.
+  drops the declaration, a missing animation duration drops `dur`,
+  invalid timing words are dropped, and a `|` group on other than `g`
+  or by an unknown name leaves the element as it is.
 - **Drawing patterns.** Invalid or over-limit `repeat` blocks are
   skipped. Undeclared or reserved names are reported, and so are
   statements without a colon and what an expression cannot place:

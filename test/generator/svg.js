@@ -467,3 +467,35 @@ test('an @match block puts its body in place unless the test is 0', () => {
     // an inline defs reads the id of the element the block keeps
     assert.match(svg('rect { fill: defs { @match(1) { linearGradient {} } } }'), /<rect fill="url\(#linearGradient-\d+\)"\/>/);
 });
+
+test('g|op joins its shapes into one path', () => {
+    let squares = 'rect { width: 4; height: 4 } rect { x: 2; y: 2; width: 4; height: 4 }';
+    assert.equal(svg(`g|union { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L6 2L6 6L2 6L2 4L0 4L0 0Z"/></svg>`);
+    assert.equal(svg(`g|subtract { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L2 2L2 4L0 4L0 0Z"/></svg>`);
+    assert.equal(svg(`g|intersect { ${squares} }`), `<svg ${NS}><path d="M2 4L2 2L4 2L4 4Z"/></svg>`);
+    assert.equal(svg(`g|exclude { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L2 2L2 4L0 4L0 0ZM4 4L4 2L6 2L6 6L2 6L2 4Z"/></svg>`);
+    assert.equal(svg(`g|union { fill: red; smooth: .5; title { content: t } animate opacity: 0; 1 / 1s; ${squares} }`), markup(`
+        <svg ${NS}>
+            <path fill="red" d="M4 1.5Q4 2 4.5 2L6 2L6 6L2 6L2 4.5Q2 4 1.5 4L0 4L0 0L4 0Z">
+                <title>t</title>
+                <animate attributeName="opacity" values="0;1" dur="1s"/>
+            </path>
+        </svg>
+    `));
+    assert.equal(svg(`g|subtract { g { ${squares} } rect { x: 1; y: 1; width: 1; height: 1 } }`),
+        `<svg ${NS}><path d="M0 4L0 0L4 0L4 2L6 2L6 6L2 6L2 4ZM1 1L1 2L2 2L2 1Z"/></svg>`);
+    assert.match(svg('g|subtract { circle { cx: .5; cy: .5; r: .5 } circle { cx: .5; cy: .5; r: .25 } }'), /d="M0 0\.5L0\.0036 0\.4397L/);
+});
+
+test('g|op warns about what it cannot join', () => {
+    let warnings = [];
+    let out = generateSvg(parseSvg('rect|union {} g|xor {} g|union { text {} rect { width: 50%; height: 1; transform: rotate(9) } }'), m => warnings.push(m));
+    assert.equal(out, `<svg ${NS}><rect/><g/><path d="M0 0L50 0L50 1L0 1L0 0Z"/></svg>`);
+    assert.deepEqual(warnings, [
+        'rect|union: needs g',
+        'g|xor: needs union, subtract, intersect or exclude',
+        'g|union: <text> has no outline',
+        'g|union: <rect> reads 50% as 50',
+        'g|union: <rect> transform is ignored',
+    ]);
+});

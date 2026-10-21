@@ -811,6 +811,14 @@ test('@svg problems are reported once for the whole grid', () => {
     assert.deepEqual(compiled.warnings.map(w => w.message), ['draw: <g> has no path']);
 });
 
+test('@svg g|op can be computed per cell, and draws along the joined outline', () => {
+    let images = css('background: @svg(g|@pn(union, intersect) { draw: 1s; rect { width: 4; height: 4 } rect { x: 2; y: 2; width: 4; height: 4 } });', '2')
+        .match(/utf8,[^"]+/g).map(decodeURIComponent);
+    assert.ok(images.some(n => n.includes('d="M4 0L4 2L6 2L6 6L2 6L2 4L0 4L0 0Z"')));
+    assert.ok(images.some(n => n.includes('d="M2 4L2 2L4 2L4 4Z"')));
+    assert.ok(images.every(n => n.includes('stroke-dashoffset')));
+});
+
 test('generated ids are positional and carry the instance token', () => {
     let code = `
         background: @doodle(color: red);
