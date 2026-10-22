@@ -71,6 +71,9 @@ function bridge(rings) {
 }
 
 function overlay(A, B, op, joints = new Set()) {
+    let merge = rings => Object.assign(rings.map(ring => ring.filter((p, i) =>
+        !i || dist(p, ring[i - 1]) > 1e-9 && (i < ring.length - 1 || dist(p, ring[0]) > 1e-9))), { evenodd: rings.evenodd, positive: rings.positive });
+    A = merge(A), B = merge(B);
     let test = rings => {
         let f = rings.length ? insideTest(bridge(rings), rings.evenodd) : () => 0;
         return rings.positive ? (x, y) => f(x, y) > 0 : f;

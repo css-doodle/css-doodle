@@ -487,6 +487,11 @@ test('g|op joins its shapes into one path', () => {
     assert.match(svg('g|subtract { circle { cx: .5; cy: .5; r: .5 } circle { cx: .5; cy: .5; r: .25 } }'), /d="M0 0\.5L0\.0036 0\.4397L/);
 });
 
+test('g|op keeps a corner written twice, a hair apart', () => {
+    let corner = 'L14.213975543499998 -11.5911099155L14.2139755435 -11.5911099155';
+    assert.equal(svg(`g|subtract { path { d: M0 0${corner}L30 0Z } rect { x: -1; y: -2; width: 32; height: 1 } }`), `<svg ${NS}><path d="M2.453 -2L14.214 -11.591L27.276 -2ZM28.638 -1L30 0L0 0L1.226 -1Z"/></svg>`);
+});
+
 test('g|op warns about what it cannot join', () => {
     let warnings = [];
     let out = generateSvg(parseSvg('rect|union {} g|xor {} g|union { text {} rect { width: 50%; height: 1; transform: rotate(9) } }'), m => warnings.push(m));
