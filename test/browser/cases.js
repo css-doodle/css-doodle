@@ -157,10 +157,11 @@ export default [
         blank: true,
     },
     {
+        // an unknown name reads 0, so this fills black rather than drawing nothing
         name: 'pattern-unknown-name',
         code: `@grid: 1 / 120px; background: @pattern(fill: vec3(foo));`,
         warnings: ['unknown name foo'],
-        blank: true,
+        probes: [[60, 60, '#000']],
     },
     {
         name: 'pattern-glsl-error',
