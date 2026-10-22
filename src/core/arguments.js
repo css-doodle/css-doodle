@@ -92,7 +92,7 @@ export function carry(a, b, end) {
 
 const TIMES = /^([\s\S]*\S)\s+x(\d+)\s*$/;
 
-export function expand(fn) {
+export function expand(fn, count) {
     return (...args) => {
         if (!args.some(n => Array.isArray(n) || String(n)[0] === '[' || n === '...' || TIMES.test(n))) {
             return fn(...args);
@@ -100,7 +100,11 @@ export function expand(fn) {
         args = args.flatMap(n => String(n).startsWith('[') ? buildRange(n) : n);
         let list = [];
         for (let i = 0; i < args.length; ++i) {
-            let fill = args[i] === '...' && i + 1 < args.length && carry(list.at(-2), list.at(-1), args[i + 1]);
+            let end = i + 1 < args.length;
+            let at = args[i] === '...' && !end && count && carry(list.at(-2), list.at(-1));
+            let fill = at
+                ? Array.from({ length: Math.min(count, MAX_SEQUENCE) - list.length }, (_, k) => at(k + 1))
+                : args[i] === '...' && end && carry(list.at(-2), list.at(-1), args[i + 1]);
             let times = !fill && TIMES.exec(args[i]);
             if (fill) list = list.concat(fill);
             else if (times) list.push(...Array(Math.min(times[2], MAX_SEQUENCE)).fill(times[1]));

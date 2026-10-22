@@ -137,6 +137,17 @@ test('expand: `...` fills in the gap up to the next value', () => {
     }
 });
 
+test('expand: a trailing `...` goes on to the count it is given, and stays without one', () => {
+    let fill = (count, ...list) => expand((...a) => a, count)(...list);
+    assert.deepEqual(fill(5, '1', '3', '...'), ['1', '3', '5', '7', '9']);
+    assert.deepEqual(fill(4, '0s', '.1s', '...'), ['0s', '.1s', '0.2s', '0.3s']);
+    // values written past the count all stay
+    assert.deepEqual(fill(1, '1', '2', '...'), ['1', '2']);
+    // no gap to read, or no count, stays as written
+    assert.deepEqual(fill(5, 'red', 'blue', '...'), ['red', 'blue', '...']);
+    assert.deepEqual(fill(undefined, '1', '2', '...'), ['1', '2', '...']);
+});
+
 test('expand: every argument of the wrapped function expands', () => {
     assert.deepEqual(args('[a-b]', '[1-2]'), ['a', 'b', '1', '2']);
     assert.deepEqual(args('x', '[a-c]', 'y'), ['x', 'a', 'b', 'c', 'y']);

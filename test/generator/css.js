@@ -42,6 +42,15 @@ test('@pick(k: …) picks from the list a lone item gives, and fills ..., as @pn
         ':is(cell,#_) {--e:1;}#c-1-1-1 {--c:3;\n--d:5;}#c-1-2-1 {--c:5;\n--d:10;}');
 });
 
+test('@p, @P, @pd and @pnr run a trailing ... to the cell count, or to @N in a sequence', () => {
+    for (let name of ['p', 'P', 'pd', 'PD', 'pnr', 'PNR']) {
+        assert.equal(cells(`--a: @${name}(1, 2, ...);`, '4x4'), cells(`--a: @${name}(1, 2, ..., 16);`, '4x4'), name);
+    }
+    assert.equal(cells('--a: @m5(@pnr(1, 2, ...));'), '#c-1-1-1 {--a:5,4,3,2,1;}');
+    // a shuffled stagger: every cell gets its own delay
+    assert.equal(new Set(cells('--a: @pd(0s, .1s, ...);', '4x4').match(/--a:[^;]+/g)).size, 16);
+});
+
 // --- functions cells define ---
 
 // --- depth on multi-cell grids ---

@@ -86,12 +86,13 @@ test('@reverse: arguments back to front, path data command by command', () => {
 });
 
 test('a function takes the cell, the env and the call-site position', () => {
-    let env = { context: {}, pick: list => list[0] };
+    let env = { context: {}, extra: [], pick: list => list[0] };
+    let cell = { grid: { count: 1 } };
     assert.equal(Function.id({ id: 'c-1-2-1' })(), 'c-1-2-1');
     assert.equal(Function.x({ x: 3 })(), '3');
-    assert.equal(Function.p({}, env)('a', 'b'), 'a');
+    assert.equal(Function.p(cell, env)('a', 'b'), 'a');
     // the call site keys the per-call memory in env.context
-    Function.P({}, env, ':7')('a', 'b');
+    Function.P(cell, env, ':7')('a', 'b');
     assert.ok('P-counter:7' in env.context);
 });
 
@@ -100,7 +101,7 @@ test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy n
         assert.equal(Function[legacy], Function[name], `@${legacy} -> @${name}`);
     }
     let env = { context: {}, extra: [], upextra: [], shuffle: a => a };
-    let pn = Function.pn({}, env, ':1'), pnr = Function.pnr({}, env, ':2');
+    let pn = Function.pn({}, env, ':1'), pnr = Function.pnr({ grid: { count: 1 } }, env, ':2');
     assert.deepEqual([pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c')], ['a', 'b', 'c', 'a']);
     assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
 });
@@ -933,12 +934,13 @@ test('@palette: the ground comes first, the ink second, around an optional base 
 });
 
 test('@P: never the last pick at that call, even when it is listed more than once', () => {
-    let env = { context: {}, pick: items => items[0] };
-    let P = Function.P({}, env, ':1');
+    let env = { context: {}, extra: [], pick: items => items[0] };
+    let cell = { grid: { count: 1 } };
+    let P = Function.P(cell, env, ':1');
     assert.deepEqual([P('a', 'a', 'b'), P('a', 'a', 'b'), P('a', 'a', 'b')], ['a', 'b', 'a']);
     assert.deepEqual([P('a'), P('a')], ['a', 'a']);
     // `x2` weights are the same list, and @P() with no arguments reads it
-    let p = Function.p({}, env);
+    let p = Function.p(cell, env);
     assert.equal(p('a x2', 'b'), 'a');
     assert.equal(P(), 'b');
 });

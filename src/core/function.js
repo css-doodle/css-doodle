@@ -242,6 +242,8 @@ function createMirror(even) {
     };
 }
 
+const countOf = (cell, e) => e?.[SEQ.index] ? e[SEQ.max] : cell.grid.count;
+
 function createPick(name, fn, random = false, upstream = false) {
     return (cell, { context, extra, upextra, shuffle, level }, position) => {
         let lastExtra = upstream
@@ -251,6 +253,7 @@ function createPick(name, fn, random = false, upstream = false) {
         let index = lastExtra?.[SEQ.index];
         let counter = `${name}-counter${position}:${level}`;
         let valuesKey = `${name}-values${position}:${sig}`;
+        let count = fn !== pickN && countOf(cell, lastExtra);
 
         return expand((...args) => {
             let source = random ? (context[valuesKey] ??= shuffle(args)) : args;
@@ -258,7 +261,7 @@ function createPick(name, fn, random = false, upstream = false) {
             let idx = index ?? (context[counter] = (context[counter] || 0) + 1);
             let value = fn(source, (idx - 1) % max, max, idx - 1);
             return pushStack(context, 'lastPick', value);
-        });
+        }, count);
     };
 }
 
@@ -381,17 +384,17 @@ Function.nd = seq('@nd', e => d => {
 });
 
 // @p and @P with no arguments reuse the arguments of the last pick
-Function.p = (_, { context, pick }) => {
+Function.p = (cell, { context, pick, extra }) => {
     return expand((...args) => {
         if (!args.length) {
             args = context.lastPickArgs || [];
         }
         context.lastPickArgs = args;
         return pushStack(context, 'lastPick', pick(args));
-    });
+    }, countOf(cell, last(extra)));
 };
 
-Function.P = (_, { context, pick }, position) => {
+Function.P = (cell, { context, pick, extra }, position) => {
     let counter = 'P-counter' + position;
     return expand((...args) => {
         let own = args.length > 0;
@@ -410,7 +413,7 @@ Function.P = (_, { context, pick }, position) => {
             memory.lastPick = picked;
         }
         return pushStack(context, 'lastPick', picked);
-    });
+    }, countOf(cell, last(extra)));
 };
 
 function pickN(args, pos, max, i) {
