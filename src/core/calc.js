@@ -8,16 +8,19 @@ const MATH = Object.create(null);
 for (let name of Object.getOwnPropertyNames(Math)) {
     MATH[name] = Math[name];
 }
-// the GLSL math of @pattern and @scene, so a formula reads the same in both
+const EPS = 1e-9;
+MATH.sign = x => Math.abs(x) < EPS ? 0 : Math.sign(x);
 MATH.mod = (a, b) => a - b * Math.floor(a / b);
 MATH.fract = x => x - Math.floor(x);
 MATH.clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);
 MATH.mix = (a, b, t) => a + (b - a) * t;
-MATH.step = (edge, x) => x < edge ? 0 : 1;
+MATH.step = (edge, x) => x < edge - EPS ? 0 : 1;
 MATH.smoothstep = (e0, e1, x) => {
     let t = MATH.clamp((x - e0) / (e1 - e0), 0, 1);
     return t * t * (3 - 2 * t);
 };
+MATH.radians = d => d * Math.PI / 180;
+MATH.degrees = r => r * 180 / Math.PI;
 
 export function pickIndex(k, n) {
     return ((Math.round(k) - 1) % n + n) % n;
@@ -82,6 +85,8 @@ const LOWER = {
         let t = `clamp(0,(${x} - ${e0}) / (${e1} - ${e0}),1)`;
         return `(${t} * ${t} * (3 - 2 * ${t}))`;
     },
+    radians: d => `(${d} * pi / 180)`,
+    degrees: r => `(${r} * 180 / pi)`,
 };
 for (let sym of '+-*/') {
     LOWER[sym] = (a, b) => `(${a} ${sym} ${b})`;
@@ -134,14 +139,14 @@ export const binary = {
     '%': (a, b) => a % b,
     '|': (a, b) => a | b,
     '&': (a, b) => a & b,
-    '<': (a, b) => a < b,
-    '>': (a, b) => a > b,
+    '<': (a, b) => a < b - EPS,
+    '>': (a, b) => a > b + EPS,
     '^': (a, b) => a ** b,
     '/': (a, b) => a / b,
-    '==': (a, b) => a === b ? 1 : 0,
-    '<=': (a, b) => a <= b,
-    '>=': (a, b) => a >= b,
-    '!=': (a, b) => a !== b ? 1 : 0,
+    '==': (a, b) => a === b || Math.abs(a - b) < EPS ? 1 : 0,
+    '<=': (a, b) => a <= b + EPS,
+    '>=': (a, b) => a >= b - EPS,
+    '!=': (a, b) => a === b || Math.abs(a - b) < EPS ? 0 : 1,
     '<<': (a, b) => a << b,
     '>>': (a, b) => a >> b,
 };

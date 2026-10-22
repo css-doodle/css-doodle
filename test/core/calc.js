@@ -151,6 +151,21 @@ test('comparison operators', () => {
     assert.equal(calc('3 ≠ 3'), 0);
 });
 
+test('sign, step and comparisons take a difference below 1e-9 as none', () => {
+    assert.equal(calc('sign(1e-15)'), 0);
+    assert.equal(calc('sign(-1e-15)'), 0);
+    assert.equal(calc('sign(1e-6)'), 1);
+    assert.equal(calc('step(0, -1e-15)'), 1);
+    assert.equal(calc('sin(π) > 0'), 0);
+    assert.equal(calc('.1 + .2 == .3'), 1);
+    assert.equal(calc('.1 + .2 != .3'), 0);
+    assert.equal(calc('.1 + .2 > .3'), 0);
+    assert.equal(calc('.1 + .2 <= .3'), 1);
+    assert.equal(calc('.3 >= .1 + .2'), 1);
+    assert.equal(calc('.3 < .1 + .2'), 0);
+    assert.equal(calc('1 / 0 == 1 / 0'), 1);
+});
+
 test('logical operators', () => {
     assert.equal(calc('1 && 1'), 1);
     assert.equal(calc('1 && 0'), 0);
@@ -230,7 +245,7 @@ test('multi-argument functions', () => {
     assert.equal(calc('mod(5.5, 2)'), 1.5);
 });
 
-test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep', () => {
+test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, degrees', () => {
     assert.equal(calc('fract(2.75)'), .75);
     assert.equal(calc('fract(-.25)'), .75);
     assert.equal(calc('clamp(5, 0, 1)'), 1);
@@ -244,6 +259,9 @@ test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep', () => {
     assert.equal(calc('smoothstep(0, 1, 2)'), 1);
     assert.equal(calc('smoothstep(0, 2, -1)'), 0);
     assert.equal(calc('smoothstep(0, 4, 1)'), .15625);
+    assert.equal(calc('radians(180)'), Math.PI);
+    assert.equal(calc('degrees(π / 2)'), 90);
+    assert.equal(calc('cos(radians(60))'), Math.cos(Math.PI / 3));
     // a variable of the same name shadows them, read bare
     assert.equal(calc('step * 2', { step: 3 }), 6);
 });
@@ -645,6 +663,8 @@ test('Math functions, comparisons and logic lower by name', () => {
     assert.equal(css('step(.5, var(--t))'), 'calc(1 - max(0,sign(0.5 - var(--t))))');
     assert.equal(css('smoothstep(0, 1, var(--t))'),
         'calc(clamp(0,(var(--t) - 0) / (1 - 0),1) * clamp(0,(var(--t) - 0) / (1 - 0),1) * (3 - 2 * clamp(0,(var(--t) - 0) / (1 - 0),1)))');
+    assert.equal(css('radians(var(--t))'), 'calc(var(--t) * pi / 180)');
+    assert.equal(css('degrees(var(--t))'), 'calc(var(--t) * 180 / pi)');
     // a live k writes out every item, weighted by whether k takes it
     assert.equal(css('pick(var(--k): 10, 20)'),
         'calc(10 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 0))) + 20 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 1))))');
