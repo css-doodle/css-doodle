@@ -715,6 +715,16 @@ test('a call inside $() reads its body as math, as one value', () => {
     assert.deepEqual(ast(`--h(x): x + $x; width: $h(2);`), ast(`width: x + 2;`));
 });
 
+test('the test of a @match(test) { } block reads as math, the @match() value function\'s does not', () => {
+    assert.deepEqual(
+        ast(`--far(n): pick(n: 1, 6); background: @svg(g*4 { @match($far(@n) > 2) { rect {} } });`),
+        ast(`background: @svg(g*4 { @match((pick((@n): 1, 6)) > 2) { rect {} } });`));
+    assert.deepEqual(
+        ast(`--f(n): { @match(n > 2) { color: red } } $f(@i);`),
+        ast(`@match((@i) > 2) { color: red }`));
+    assert.deepEqual(ast(`--f(n): @match(n > 2, red, n); color: $f(1);`), ast(`color: @match(n > 2, red, n);`));
+});
+
 test('@pick and @p split an index off their first argument at a colon', () => {
     let pick = code => {
         let [func] = parseCss(`a: ${code};`)[0].value[0];

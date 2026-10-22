@@ -1411,16 +1411,17 @@ function renameLocals(text, prefix) {
 function mathOpen(tokens, i, defs) {
     let j = i - 1;
     while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
-    return !!tokens[j]?.isSymbol('$') && adjacent(tokens[j], tokens[j + 1]) && !defs[textOf(tokens.slice(j + 1, i))];
+    if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return false;
+    let name = textOf(tokens.slice(j + 1, i));
+    if (tokens[j].isSymbol('$')) return !defs[name];
+    if (!tokens[j].isSymbol('@') || name !== 'match') return false;
+    let close = closing(tokens, i);
+    return close > 0 && !!solidAt(tokens, close + 1)?.isSymbol('{');
 }
 
 function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0;
-    // per open paren, whether a bare parameter binds inside it; in @pattern
-    // and @scene one binds anywhere but in the CSS of a texture block, as
-    // the name a statement assigns or a repeat's loop name: per open block,
-    // whether it is a texture, and where the statement read starts
     let parens = math ? [true] : [], blocks = [], head = 0;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];

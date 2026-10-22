@@ -116,8 +116,9 @@ and the ones it defines stay inside it.
 A call is replaced by its body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`
 copies. In the body, `$p` is the argument for `p`, and so is a bare `p`
-inside `$()` or `$px()`, in the arguments of calls there too. A call
-made inside `$()` reads its whole body that way, as one value: with
+inside `$()`, `$px()` or the test of a `@match(test) { }` block, in the
+arguments of calls there too. A call made there reads its whole body
+that way, as one value: with
 `--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. Inside `$()` an argument is
 parenthesized; outside, a call's arguments are pasted as written, so
 pass `$p` there. Missing arguments take their defaults.
