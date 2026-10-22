@@ -994,16 +994,16 @@ function nameEnd(tokens, i, dash) {
     return i;
 }
 
-function expandFunctions(source, ctx) {
+function expandFunctions(source, ctx, svg = false, chain = []) {
     let defs = ctx.defs = Object.create(ctx.defs ?? null);
     let tokens = /\)\s*:/.test(source) ? tokensOf(source) : [];
     let rest = '', from = 0;
     for (let i = 0, depth = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.status === 'open') i = quoteEnd(tokens, i);
-        else if (t.isSymbol('(', '{')) depth++;
-        else if (t.isSymbol(')', '}')) depth--;
-        else if (!depth && t.isSymbol('-') && (!prev || prev.isSymbol(';', '}'))) {
+        else if (t.isSymbol('(') || !svg && t.isSymbol('{')) depth++;
+        else if (t.isSymbol(')') || !svg && t.isSymbol('}')) depth--;
+        else if (!depth && t.isSymbol('-') && (!prev || prev.isSymbol(';', '{', '}'))) {
             let dash = tokens[i + 1], word = tokens[i + 2];
             if (!dash?.isSymbol('-') || !isNameStart(word) || !adjacent(t, dash) || !adjacent(dash, word)) {
                 continue;
@@ -1046,17 +1046,13 @@ function expandFunctions(source, ctx) {
             }
         }
     }
-    if (!hasEntries(defs)) return source;
-    return expandCalls(rest + source.slice(from), defs, ctx, []);
+    let text = rest + source.slice(from);
+    if (!hasEntries(defs) && !(tokens.length && /@svg\(/i.test(text))) return source;
+    return expandCalls(text, defs, ctx, chain);
 }
 
 const MAX_EXPANSION = 1e6;
 
-// Calls expand as text, read in one of three places: CSS, the statements
-// of a @pattern or @scene body, or an expression inside one. In the last
-// two, arguments are values, and a function whose body assigns result,
-// as in a CSS @function, runs its statements before the statement that
-// calls it, with names of its own (grammar §2)
 const CSS = 0, BODY = 1, EXPR = 2;
 const INCLUDE = 'include', VALUE = 'value', EXPRESSION = 'expression';
 const RE_PAINT_HEAD = /^(pattern|scene)[\dxX.]*$/;
@@ -1067,16 +1063,14 @@ const RE_VARYING = /@(r|ri|R|rn|rand|p|pick|P|pn|PN|pnr|PNR|pl|pr|PL|PR|pd|PD|pi
 const RE_COUNTER = /@(n|nx|ny|N|nN|Nn|nd)(?![\w-])/;
 const RE_LOOP = /@(m|M|rep|repeat|multiple|ms)\d*\(|\w\*[^{};]*\{|\brepeat\s*\(/;
 const RE_LINE_COMMENT = /\/\/[^\n]*/g;
-// a name, a swizzle, an unsigned number or a hex color reads the same in parentheses or not
 const RE_SIMPLE_ARG = /^(#[\da-f]+|[a-z_][\w.]*|(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)$/i;
 
-// the index of the `(` after `@pattern…` or `@scene` at tokens[i], or -1
-function paintBodyAt(tokens, i) {
+function paintBodyAt(tokens, i, re = RE_PAINT_HEAD) {
     let t = tokens[i], j = i + 1;
     if (!t.isSymbol('@') || !tokens[j] || !adjacent(t, tokens[j])) return -1;
     while (tokens[j + 1] && adjacent(tokens[j], tokens[j + 1]) && !tokens[j + 1].isSymbol('(')) j++;
     let head = textOf(tokens.slice(i + 1, j + 1));
-    return RE_PAINT_HEAD.test(head) && tokens[j + 1]?.isSymbol('(') && adjacent(tokens[j], tokens[j + 1]) ? j + 1 : -1;
+    return re.test(head) && tokens[j + 1]?.isSymbol('(') && adjacent(tokens[j], tokens[j + 1]) ? j + 1 : -1;
 }
 
 function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
@@ -1107,6 +1101,19 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
                     ctx.scene = scene;
                     from = tokens[close].index;
                 }
+                i = close;
+                continue;
+            }
+            open = paintBodyAt(tokens, i, /^svg$/i);
+            if (open > 0) {
+                let close = closing(tokens, open);
+                if (close < 0) break;
+                let outer = ctx.defs;
+                ctx.defs = defs;
+                flush(tokenEnd(tokens[open]));
+                out += expandFunctions(text.slice(from, tokens[close].index), ctx, true, chain);
+                ctx.defs = outer;
+                from = tokens[close].index;
                 i = close;
                 continue;
             }

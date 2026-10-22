@@ -111,7 +111,9 @@ name.
 `$name(args)` calls it anywhere but inside quotes. Without parentheses
 `$name` still reads `--name`, and `$name(` with no such function is
 still a unit (§6). Text inserted by `@use` calls the sheet's functions,
-and the ones it defines stay inside it.
+and the ones it defines stay inside it. Inside `@svg()` a definition
+can start any statement, in a block too, and is seen in that `@svg()`
+only, where it hides a sheet function of the same name.
 
 A call is replaced by its body before parsing, so the body works
 wherever its text would: as a value, as `@svg` elements, with `*N`

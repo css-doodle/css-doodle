@@ -656,6 +656,16 @@ test('only a top-level --name(params): { } is a user function definition', () =>
     assert.equal(ast(`f(x): { color: red }`)[0].selector, 'f(x):');
 });
 
+test('an @svg() body defines user functions of its own, at any statement', () => {
+    assert.deepEqual(
+        ast(`a: @svg(svg { --d(r): circle { r: $r } $d(1) g { --c(): blue; $d($c()) } });`),
+        ast(`a: @svg(svg { circle { r: 1 } g { circle { r: blue } } });`));
+    // seen in that @svg only, where it hides a sheet function and calls the others
+    assert.deepEqual(
+        ast(`--c(): red; --k(): 2; a: @svg(rect { fill: $c() }); b: @svg(--c(): blue; rect { fill: $c(); x: $k() });`),
+        ast(`a: @svg(rect { fill: red }); b: @svg(rect { fill: blue; x: 2 });`));
+});
+
 test('a user function body without braces is one statement', () => {
     // up to its `;`, or through the block it opens
     assert.deepEqual(
