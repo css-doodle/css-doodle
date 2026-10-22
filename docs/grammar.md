@@ -119,7 +119,9 @@ copies. In the body, `$p` is the argument for `p`, and so is a bare `p`
 inside `$()`, `$px()` or the test of a `@match(test) { }` block, in the
 arguments of calls there too. A call made there reads its whole body
 that way, as one value: with
-`--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. Inside `$()` an argument is
+`--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. There a bare `inc(3)` calls
+it too, unless a built-in (§8) has its name, and the longest defined
+name wins: `a-inc(3)` is `a - inc(3)`. Inside `$()` an argument is
 parenthesized; outside, a call's arguments are pasted as written, so
 pass `$p` there. Missing arguments take their defaults.
 An argument or default that would change from one use to the next is

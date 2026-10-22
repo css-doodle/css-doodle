@@ -587,7 +587,7 @@ test('a user function call parses as its body written inline', () => {
     assert.deepEqual(ast('--f(): { red } content: `$f()`;'), ast('content: `$f()`;'));
 });
 
-test('a user function is called with parens, and only with $', () => {
+test('a user function is called with parens, and with $ outside math', () => {
     // without parens $f reads the variable --f, and @f is a built-in call
     assert.deepEqual(ast(`--f(): red; --f: 1; a: $f; b: $f(); c: @f();`), ast(`--f: 1; a: $f; b: red; c: @f();`));
     // a name that isn't defined stays a unit
@@ -713,6 +713,29 @@ test('a call inside $() reads its body as math, as one value', () => {
         ast(`width: $(((((@y)) + 1) * 2));`));
     assert.deepEqual(ast(`--n(): foo; width: $($n());`), ast(`width: $(foo);`));
     assert.deepEqual(ast(`--h(x): x + $x; width: $h(2);`), ast(`width: x + 2;`));
+});
+
+test('a bare name( calls the user function where a bare parameter binds, unless a built-in has its name', () => {
+    assert.deepEqual(
+        ast(`--h(x): x + 1; a: $(2 * h(3)); b: $px(h(1)); @match(h(i) > 2) { color: red }`),
+        ast(`a: $(2 * ((3) + 1)); b: $px(((1) + 1)); @match(((i) + 1) > 2) { color: red }`));
+    // in a body called there, and for a function passed by name
+    assert.deepEqual(
+        ast(`--h(x): x + 1; --g(x): h(x) * 2; --lit(f): $($f(1) - $f(2)); a: $($g(@y)); b: $lit(h);`),
+        ast(`a: $(((((@y)) + 1) * 2)); b: $(((1) + 1) - ((2) + 1));`));
+    // elsewhere it is text, @pattern and @scene included
+    assert.deepEqual(ast(`--h(x): x + 1; a: h(3); b: @match(h(1), 1, 2);`), ast(`a: h(3); b: @match(h(1), 1, 2);`));
+    assert.deepEqual(
+        ast(`--h(x): x + 1; @content: @pattern(fill: h(1) + $h(2););`),
+        ast(`@content: @pattern(fill: h(1) + (2 + 1););`));
+    // a built-in wins, and $ still calls the definition
+    assert.deepEqual(
+        ast(`--sin(x): 0; --pick(x): 1; a: $(sin(1) + $sin(1) + pick(2: 3, 4));`),
+        ast(`a: $(sin(1) + 0 + pick(2: 3, 4));`));
+    // the longest defined name wins, as in calc: b-h(1) is b - h(1)
+    assert.deepEqual(
+        ast(`--h(x): [x]; --a-h(x): <x>; a: $(b-h(1) + a-h(2) + @h(3) + $h + x2h(4) + 2h(5));`),
+        ast(`a: $(b-([(1)]) + (<(2)>) + @h(3) + $h + x2h(4) + 2([(5)]));`));
 });
 
 test('the test of a @match(test) { } block reads as math, the @match() value function\'s does not', () => {

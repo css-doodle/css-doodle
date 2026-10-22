@@ -15,10 +15,10 @@ import parsePattern from './parse-pattern.js';
 import svgSourceOf from './svg-source.js';
 import { isSpecialSelector } from '../lib/selector.js';
 import { hasEntries } from '../lib/type.js';
+import { defaultContext } from '../core/calc.js';
 
 const PI = String(Math.PI);
 const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
-// @pick and @p, whose first argument may start with an index and a colon
 const RE_PICK = /^@(p|pick)$/;
 const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
 const RE_NAME = new RegExp(`^${NAME_CHAR}*`);
@@ -1133,12 +1133,18 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
                 continue;
             }
         }
-        if (!t.isSymbol('$') || !isNameStart(tokens[i + 1]) || !adjacent(t, tokens[i + 1])) continue;
-        let end = nameEnd(tokens, i + 1, true);
-        let name = textOf(tokens.slice(i + 1, end + 1));
-        let def = defs[name];
+        let bare = !t.isSymbol('$', '@'), at = bare ? i : i + 1;
+        if (!isNameStart(tokens[at]) || (bare ? paint || !(maths.at(-1) ?? math) : !adjacent(t, tokens[at]))) continue;
+        let end = nameEnd(tokens, at, true);
+        let name = textOf(tokens.slice(at, end + 1));
+        if (bare && !defs[name]) name = textOf(tokens.slice(at, (end = nameEnd(tokens, at)) + 1));
+        let builtin = t.isSymbol('@') || bare && (name in defaultContext || name === 'pick');
+        let def = !builtin && defs[name];
         let paren = tokens[end + 1];
-        if (!def || !paren?.isSymbol('(') || !adjacent(tokens[end], paren)) continue;
+        if (!def || !paren?.isSymbol('(') || !adjacent(tokens[end], paren)) {
+            i = end;
+            continue;
+        }
         let first = end + 2;
         end = closing(tokens, end + 1);
         if (end < 0) break;
