@@ -952,6 +952,14 @@ test('nested blocks in rule-only positions are ignored, not a crash', () => {
     assert.doesNotThrow(() => compile('@media (min-width: 100px) { :{ :after { content: "m"; } color: red; }'));
 });
 
+test('a cell selector takes a pseudo after it, and a list matches a cell once', () => {
+    assert.equal(css('@nth(1)::after { content: "x" }', '2'), '#c-1-1-1::after {content:"x";}');
+    assert.equal(css('@odd:hover { color: red }', '2'), '#c-1-1-1:hover,#c-2-2-1:hover {color:red;}');
+    assert.equal(css('@at(1, 1), @at(2, 2)::before { color: red }', '2'), '#c-1-1-1 {color:red;}#c-2-2-1::before {color:red;}');
+    assert.equal(css('@nth(1), @nth(1) { --v: @r(10) }', '2', 1), css('@nth(1) { --v: @r(10) }', '2', 1));
+    assert.equal(css('@nth(1):hover { span { color: red } }', '2'), '#c-1-1-1:hover span {color:red;}');
+});
+
 test('selectors nest against the enclosing one', () => {
     // a leading pseudo compounds with the cell, & stands for it, and
     // anything else is a descendant

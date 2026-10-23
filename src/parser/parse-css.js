@@ -2,7 +2,8 @@
 //   rule       { type: 'rule', property, value: Group[] } + rawValue(); Group[] carries hasFunc
 //   at-rule    { type: 'at-rule', property: '', value: string }  a statement: @import ...;
 //   pseudo     { type: 'pseudo', selector, selectors, styles }  selectors resolved, '&' is the cell
-//   cond       { type: 'cond', name, segments, position, styles } + raw(); segments { keyword } | { arguments }, spaced
+//   cond       { type: 'cond', name, segments, position, styles, alts } + raw(); segments { keyword } | { arguments }, spaced;
+//              alts [{ name, segments, pseudo, styles? }], more than one in a cell selector list
 //   keyframes  { type: 'keyframes', name, steps: [{ type: 'step', name: Group[], styles }] }
 //   func       { type: 'func', name, arguments: [{ values, cluster }], position, index, unit?, size? }
 //   text       { type: 'text', value }
@@ -833,20 +834,31 @@ function splitSelectors(input) {
 function parseCond(cur, brace) {
     let source = cur.source;
     let start = cur.headIndex();
+    let ctx = cur.ctx, outer = ctx.selectors;
     let cond = { type: 'cond', ...parseCondSelector(cur, brace) };
+    let nest = pseudo => nestSelectors(splitSelectors(pseudo), outer);
+    let first = cond.alts.find(a => a.pseudo);
+    if (first) ctx.selectors = nest(first.pseudo);
     cur.i = brace;
     cur.next(); // '{'
     cond.styles = parseBlockBody(cur);
+    ctx.selectors = outer;
+    cond.alts.forEach(a => {
+        if (a.pseudo) a.styles = [{ type: 'pseudo', selector: a.pseudo, selectors: nest(a.pseudo), styles: cond.styles }];
+    });
     let end = tokenEnd(cur.tokens[cur.i - 1]);
     cond.raw = () => source.slice(start, end);
     return cond;
 }
+
+const RE_CELL_SELECTOR = /^@(nth|at|row|col|depth|even|odd|random|match|cell|x|y|z)$/;
 
 function parseCondSelector(cur, brace) {
     let name = '';
     let keyword = '';
     let spaced = false;
     let segments = [];
+    let alts = [], from = -1, depth = 0;
 
     const flush = () => {
         if (keyword.length) {
@@ -860,9 +872,27 @@ function parseCondSelector(cur, brace) {
         }
     };
 
+    const end = at => {
+        flush();
+        alts.push({ name, segments, pseudo: from < 0 ? '' : cur.source.slice(from, at).trim() });
+        name = '';
+        segments = [];
+        from = -1;
+    };
+
     while (cur.i < brace) {
         let tok = cur.next();
-        if (tok.isSymbol('(')) {
+        let cell = RE_CELL_SELECTOR.test(name || keyword);
+        if (from >= 0 || cell && tok.isSymbol(':')) {
+            if (from < 0) {
+                flush();
+                from = tok.index;
+            }
+            depth += tok.isSymbol('(') - tok.isSymbol(')');
+            if (!depth && tok.isSymbol(',')) end(tok.index);
+        } else if (cell && tok.isSymbol(',')) {
+            end(tok.index);
+        } else if (tok.isSymbol('(')) {
             flush();
             let args = parseArguments(cur).args;
             segments.push({ arguments: args, spaced });
@@ -874,8 +904,8 @@ function parseCondSelector(cur, brace) {
             keyword += tok.value;
         }
     }
-    flush();
-    return { name, segments, position: cur.position() };
+    end(cur.tokens[brace].index);
+    return { name: alts[0].name, segments: alts[0].segments, alts, position: cur.position() };
 }
 
 function parseKeyframes(cur, brace) {

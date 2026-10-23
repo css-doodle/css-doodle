@@ -860,11 +860,14 @@ class Rules {
         if (!info) {
             let name = token.name.slice(1);
             let fn = Selector[name];
-            let args = token.segments.find(n => n.arguments);
             info = {
                 fn,
-                args: args ? args.arguments : [],
-                not: token.segments[0]?.keyword === 'not',
+                alts: token.alts.map(a => ({
+                    fn: Selector[a.name.slice(1)],
+                    args: a.segments.find(n => n.arguments)?.arguments || [],
+                    not: a.segments[0]?.keyword === 'not',
+                    styles: a.styles || token.styles,
+                })),
                 raw: !fn && !isGroupAtRule(token.name),
                 text: null,
             };
@@ -1046,7 +1049,7 @@ class Rules {
                 }
 
                 case 'cond': {
-                    let { fn, args, not, raw } = this.condInfo(token);
+                    let { fn, alts, raw } = this.condInfo(token);
                     if (raw) {
                         this.addRaw(token.raw());
                         break;
@@ -1055,14 +1058,18 @@ class Rules {
                         this.composeGroup(token, cell, env, selectors);
                         break;
                     }
-                    let input = [];
-                    for (let arg of args) {
-                        let { composed, cluster } = compileArgument(arg);
-                        pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
-                    }
-                    let matched = this.callFunc(fn, { cell, env }, token.position, removeEmptyValues(input));
-                    if (not ? !matched : matched) {
-                        this.compose(cell, env, token.styles, selectors);
+                    for (let { fn, args, not, styles } of alts) {
+                        if (!fn) continue;
+                        let input = [];
+                        for (let arg of args) {
+                            let { composed, cluster } = compileArgument(arg);
+                            pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
+                        }
+                        let matched = this.callFunc(fn, { cell, env }, token.position, removeEmptyValues(input));
+                        if (not ? !matched : matched) {
+                            this.compose(cell, env, styles, selectors);
+                            break;
+                        }
                     }
                     break;
                 }
