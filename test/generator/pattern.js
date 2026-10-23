@@ -939,3 +939,13 @@ test('box() and segment() are floats a fill or shape can read', () => {
     assert.match(out, /float segment\(vec2 p, vec2 a, vec2 b\)/);
 });
 
+test('arc() takes a point as a vec2 or two floats', () => {
+    let warned = [];
+    let { fragment: out } = draw('d: arc(pos, .3, 0, PI); fill: hsl(d + arc(du, dv, .2, 0, 1), .5, .5);', extra, m => warned.push(m));
+    assert.deepEqual(warned, []);
+    assert.match(out, /float g_1 = arc\(pos, \.3, 0\.0, PI\);/);
+    assert.match(out, /arc\(vec2\(du, dv\), vec2\(\.2, 0\.0\), 1\.0\)/);
+    assert.match(out, /float arc\(vec2 p, float r, float a, float b\)/);
+    assert.match(out, /float arc\(vec2 p, vec2 ra, float b\)/);
+});
+

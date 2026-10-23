@@ -38,7 +38,7 @@ const VEC_COMPARE = {
 
 const CALL_TYPES = { __proto__: null };
 for (const [type, names] of Object.entries({
-    float: 'rand noise fbm voronoi ngon box segment shape escape spiral dither length distance dot determinant',
+    float: 'rand noise fbm voronoi ngon box segment arc shape escape spiral dither length distance dot determinant',
     vec2: 'rot',
     vec3: 'hsl hsv',
     vec4: 'texture',
@@ -48,7 +48,7 @@ for (const [type, names] of Object.entries({
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
-const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment'.split(' '));
+const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment arc'.split(' '));
 
 const RANK = [
     'bool', 'int', 'float', 'mat2', 'mat3', 'mat4', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'

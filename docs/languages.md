@@ -378,7 +378,8 @@ every frame, several times slower.
 **Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`, `rand(p)`,
 `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`, `hsv(h, s, v)`,
 `rot(p, a)`, `smin(a, b, k)`, `ngon(p, n)`, `box(p, b)`,
-`segment(p, a, b)`, `escape([z,] c)`, `spiral(p)` and `dither(p)`. A
+`segment(p, a, b)`, `arc(p, r, a, b)`, `escape([z,] c)`, `spiral(p)`
+and `dither(p)`. A
 point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
 
 - `rot(p, a)` is the point `p` turned `a` radians counterclockwise. It
@@ -389,6 +390,10 @@ point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
 - `box(p, b)` is the signed distance to a box of half size `b`, a
   `vec2` or one float; `segment(p, a, b)` is the distance to the
   segment from `a` to `b`.
+- `arc(p, r, a, b)` is the distance to the arc of radius `r` about the
+  origin between the angles `a` and `b`, in radians counterclockwise;
+  a span of 2π or more is the whole circle. `shape(arc(p, r, a, b), w)`
+  is a stroke of width `w` with round ends.
 - `shape(d, size)` is the mask that `shape: d; size: size` would
   apply, 1 inside and 0 outside, for layering:
   `fill: mix(bg, red, shape(d, .6))`. `shape(abs(d), w)` is a stroke

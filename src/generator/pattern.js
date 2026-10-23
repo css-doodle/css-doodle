@@ -151,6 +151,15 @@ export const HELPERS = glsl`
         float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
         return length(pa - ba * h);
     }
+    float arc(vec2 p, float r, float a, float b) {
+        float h = abs(b - a) * 0.5;
+        p = rot(p, -(a + b) * 0.5);
+        float t = clamp(atan(p.y, p.x), -h, h);
+        return length(p - r * vec2(cos(t), sin(t)));
+    }
+    float arc(vec2 p, vec2 ra, float b) {
+        return arc(p, ra.x, ra.y, b);
+    }
 `;
 
 const OVER = glsl`
