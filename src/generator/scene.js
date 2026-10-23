@@ -257,7 +257,7 @@ export default function drawScene(code, extra, report = () => {}) {
             };
             out += `${T} ${r} = ${none};\n`;
             if (node.copies) {
-                node.copies.forEach((c, i) => copy(c, float(i + 1), float(i % X + 1), float((i / X | 0) + 1)));
+                node.copies.slice(0, X * Y).forEach((c, i) => copy(c, float(i + 1), float(i % X + 1), float((i / X | 0) + 1)));
             } else {
                 let [i, n, nx, ny] = [next(), next(), next(), next()], head = out;
                 out = '';

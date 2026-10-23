@@ -512,6 +512,7 @@ test('a copy block adds to the rows and shapes around it', () => {
     assert.equal(body.match(/g_box\(g_\d+, vec3\(\.3\)/g).length, 2);
     assert.match(body, /p - vec3\(1\.0, 0\.0, 0\.0\)[^]*p \/ g_\d+;\nvec3 g_\d+ = g_\d+ - vec3\(2\.0, 0\.0, 0\.0\)/);
     assert.equal(scene('union*2 { sphere { r: .1 } { move: .5 0 0 } { move: -.5 0 0 } }').body.match(/length\(g_\d+\) - \.1/g).length, 2);
+    assert.equal(scene('box*2 { size: .3; { fill: red } { fill: white } { fill: red } }').body.match(/g_box\(/g).length, 2);
 });
 
 test('r is read only where a shape takes it', () => {
