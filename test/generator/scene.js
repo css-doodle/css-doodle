@@ -111,6 +111,10 @@ test('a space before ( ends a value, as after a number', () => {
     assert.deepEqual(warnings, []);
 });
 
+test('a sign right before a value starts a new part, as in @shape', () => {
+    assert.match(scene('k: .2; sphere { r: .1; move: k*2 -k 0 }').body, /p - vec3\(\(g_\d+ \* 2\.0\), -g_\d+, 0\.0\)/);
+});
+
 test('fill reads the surface normal as the camera sees it', () => {
     let { body, fragment, warnings } = scene('sphere { fill: mix(red, white, normal.z) }');
     assert.match(body, /mix\(vec3\([^)]*\), vec3\([^)]*\), normal\.z\)/);

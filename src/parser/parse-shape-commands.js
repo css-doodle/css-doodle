@@ -44,6 +44,11 @@ function spaced(input) {
     return parts;
 }
 
+function partsOf(input) {
+    let parts = parseValueGroup(input, { noSpace: true });
+    return parts.length > 1 ? parts : spaced(input);
+}
+
 // an angle's own units are degrees, `90deg` is 90 and `.25turn` 90; inside calls like `sin(…)` they keep their math values
 function degrees(text) {
     let calls = [];
@@ -171,5 +176,5 @@ function parse(input) {
     return commandsOf(root);
 }
 
-export { readShapes, commandsOf, spaced, degrees, GROUPS };
+export { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS };
 export default parse;

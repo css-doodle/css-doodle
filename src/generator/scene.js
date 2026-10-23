@@ -1,4 +1,4 @@
-import { readShapes, degrees } from '../parser/parse-shape-commands.js';
+import { readShapes, degrees, partsOf } from '../parser/parse-shape-commands.js';
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
@@ -170,17 +170,8 @@ export default function drawScene(code, extra, report = () => {}) {
         });
         // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']; an angle in degrees
         let numbers = (tokens, p, angle) => {
-            let text = textOf(tokens), code = compile(`g_(${angle ? degrees(text) : text})`, p).code();
-            let items = [], depth = 0, last = 3;
-            for (let i = 3; i < code.length; i++) {
-                if (code[i] === '(') depth++;
-                else if (code[i] === ')' && depth) depth--;
-                else if (code[i] === ',' && !depth || code[i] === ')') {
-                    items.push(code.slice(last, i).trim());
-                    last = i + 1;
-                }
-            }
-            return items.filter(Boolean);
+            let text = textOf(tokens);
+            return partsOf(angle ? degrees(text) : text).map(v => compile(v, p).code());
         };
         let vec3 = (items, fill = '0.0') => `vec3(${items.length > 1 ? [0, 1, 2].map(i => items[i] || fill).join(', ') : items[0] || fill})`;
         let color = (value, p) => {

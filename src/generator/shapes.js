@@ -1,7 +1,7 @@
 import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
-import parseShapeCommands, { readShapes, commandsOf, spaced, degrees, GROUPS } from '../parser/parse-shape-commands.js';
+import parseShapeCommands, { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS } from '../parser/parse-shape-commands.js';
 import parseSvgPath, { ARITY } from '../parser/parse-svg-path.js';
 import { scan } from '../parser/tokenizer.js';
 
@@ -231,8 +231,7 @@ function faces3(pieces) {
 }
 
 function parsePair(input, fallback, context) {
-    let parts = parseValueGroup(input, { noSpace: true });
-    let [a, b = a] = parts.length > 1 ? parts : spaced(input);
+    let [a, b = a] = partsOf(input);
     return [a, b].map(v => v === undefined ? fallback : evaluate(v, context) || fallback);
 }
 
