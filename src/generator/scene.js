@@ -125,7 +125,7 @@ function checkAll(node, warn, unread, code, copy) {
             }
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
-            warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
+            if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
@@ -187,7 +187,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let color = (text, p) => {
             let { type, code } = value(text, p);
             if (!/^vec[34]$/.test(type)) {
-                warn(`fill needs a color, not ${text.trim()}`);
+                warn(`fill needs a color, not ${text.trim().replace(/(\w+)_\d+_result/g, '$$$1()')}`);
                 return null;
             }
             return type === 'vec4' ? `${code}.rgb` : code;

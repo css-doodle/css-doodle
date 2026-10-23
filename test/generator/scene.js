@@ -135,6 +135,11 @@ test('fill and variables read values as @pattern does', () => {
     assert.doesNotMatch(empty.body, /= ;/);
 });
 
+test('a value function\'s own names stay out of the warnings', () => {
+    assert.deepEqual(scene('sphere { f_1_k: 1; f_1_result: .3; r: f_1_result }').warnings, []);
+    assert.deepEqual(scene('sphere { g_1_result: .3; fill: g_1_result }').warnings, ['fill needs a color, not $g()']);
+});
+
 test('p is the point and cannot be assigned', () => {
     assert.deepEqual(scene('p: 1; sphere { r: .3 }').warnings, ['p is read-only']);
     assert.deepEqual(scene('sphere { p: p * 2; r: .2 }').warnings, ['p is read-only']);
