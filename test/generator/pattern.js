@@ -324,8 +324,14 @@ test('invalid channel counts and empty fills are dropped', () => {
     assert.equal(color('fill: x/X, y/Y, 0.5, 1, 0.2'), '');
     assert.equal(color('fill: ;'), '');
     // a channel that does not parse to anything drops the fill rather than emit `vec3()`
-    assert.equal(color('fill: (;'), '');
+    assert.equal(color('fill: ('), '');
     assert.equal(color('fill: 1, (, 1;'), '');
+});
+
+test('an empty value ends at the closing brace of its block', () => {
+    let warnings = [];
+    draw('match(x > .5) { fill: } fill: red', extra, m => warnings.push(m));
+    assert.deepEqual(warnings, []);
 });
 
 test('a variable is declared once, typed by its value, and read by name', () => {

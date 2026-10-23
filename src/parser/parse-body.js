@@ -91,21 +91,21 @@ function readRaw(iter) {
     return tokens;
 }
 
-// A declaration value: to the ';' or the end of the block.
+// A declaration value: to the ';' or the end of the block; a `;` inside
+// parentheses or quotes stays: `seq(1; 2)`, `text: 'a;b'`
 function readValue(iter) {
-    let tokens = [];
-    while (iter.next()) {
+    let value = [], depth = 0, quote = false;
+    while (iter.curr(1) && (quote || !iter.curr(1).isSymbol('}')) && iter.next()) {
         let curr = iter.curr();
-        let next = iter.curr(1);
-        if (curr.isSymbol(';')) {
-            break;
+        if (curr.status) quote = curr.status === 'open';
+        else if (!quote) {
+            if (curr.isSymbol('(')) depth++;
+            else if (curr.isSymbol(')') && depth) depth--;
+            else if (curr.isSymbol(';') && !depth) break;
         }
-        tokens.push(curr);
-        if (!next || next.isSymbol('}')) {
-            break;
-        }
+        value.push(curr);
     }
-    return tokens;
+    return value;
 }
 
 export { parseBody, readRaw, readValue };
