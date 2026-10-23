@@ -347,8 +347,9 @@ the value after the first test that holds.
 counting from zero. `n` is a whole number, or a name declared as one
 and never changed: `n: 72; repeat(n as i) { y: i / n; }`. The loop
 ends early once every stop expression holds. Counts over 1024, nested
-products over 65536 and invalid counts skip the block. `fill`,
-`shape`, `size` and `grid` are not allowed inside it.
+products over 65536 and invalid counts skip the block. `shape`,
+`size` and `grid` are not allowed inside it, and a `fill` inside it
+paints over the one from the step before.
 
 **Output.** `fill` is a CSS color, an expression, or a list whose
 channels add up to three or four (`x / X, y / Y, .5`, `red, .5`). A
@@ -375,7 +376,7 @@ address every pixel. An animated pattern in `@content` draws each
 frame straight to a canvas; elsewhere it is re-encoded as an image
 every frame, several times slower.
 
-**Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`, `rand(p)`,
+**Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`, `rand(p [, k])`,
 `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`, `hsv(h, s, v)`,
 `rot(p, a)`, `smin(a, b, k)`, `ngon(p, n)`, `box(p, b)`,
 `segment(p, a, b)`, `arc(p, r, a, b)`, `escape([z,] c)`, `spiral(p)`
@@ -396,11 +397,17 @@ point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
   is a stroke of width `w` with round ends.
 - `shape(d, size)` is the mask that `shape: d; size: size` would
   apply, 1 inside and 0 outside, for layering:
-  `fill: mix(bg, red, shape(d, .6))`. `shape(abs(d), w)` is a stroke
-  of width `w` along `d = 0`.
+  `fill: mix(bg, red, shape(d, .6))`. `shape(d, 0)` is the inside of
+  a distance field, where `d < 0`, antialiased over a pixel:
+  `fill: red, shape(d, 0)`. `shape(abs(d), w)` is a stroke of width `w`
+  along `d = 0`.
 - `rand()` without arguments is a number from 0 to 1 that holds for the
   cell and the `repeat` step and differs at each place it is written:
   `w: mix(.3, .5, rand())`.
+- `rand(p, k)` is another number for the point `p` at each `k`:
+  `rand(id, 1)`, `rand(id, 2)`. Adding to the point instead reads
+  another point's number: `rand(id + 1)` is the `rand(id)` of the cell
+  one step along both axes.
 - `rand`, `noise`, `fbm` and `voronoi` follow the doodle's seed, so
   another seed gives another pattern.
 - `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient,

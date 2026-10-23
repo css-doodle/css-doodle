@@ -56,6 +56,9 @@ export const HELPERS = glsl`
     float rand(float n) {
         return rand(vec2(n));
     }
+    float rand(vec2 p, float k) {
+        return rand(p + k * vec2(0.7548, 0.5698));
+    }
     float noise(vec2 p) {
         vec2 ip = floor(p) + u_seed.x * 71.0;
         vec2 u = fract(p);
@@ -238,7 +241,7 @@ function expr(code, scope, ctx) {
 }
 
 function randAt(scope, ctx) {
-    return `rand(vec2(i, ${scope.key || '0.0'}) + ${float(++ctx.sites)} * vec2(0.7548, 0.5698))`;
+    return `rand(vec2(i, ${scope.key || '0.0'}), ${float(++ctx.sites)})`;
 }
 
 function generateStatement(name, value, scope, ctx) {
@@ -277,11 +280,11 @@ function generateStatement(name, value, scope, ctx) {
     return `${v.type} ${id} = ${v.code};\n`;
 }
 
-function generateFill(value, scope, ctx) {
+function generateFill(value, scope, ctx, opts) {
     let v = compile(value, scope, ctx);
     if (!v) return '';
     let { type, code } = v;
-    let over = ctx.filled;
+    let over = ctx.filled || opts.loop;
     ctx.filled = true;
     if (type === 'vec4') return `g_color = ${over ? `g_over(${code}, g_color)` : code};\n`;
     if (type === 'vec3') return `g_color = vec4(${code}, 1.0);\n`;
@@ -392,10 +395,10 @@ function generateBody(tokens, scope, ctx, opts = {}) {
                 if (!top) ctx.warn('grid goes top-level');
             } else if (!OUTPUT_GENERATORS[t.name]) {
                 out += generateStatement(t.name, t.value, scope, ctx);
-            } else if (loop) {
+            } else if (loop && t.name !== 'fill') {
                 ctx.warn(`${t.name} in repeat()`);
             } else {
-                out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx);
+                out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx, opts);
             }
         } else if (t.type === 'text') {
             ctx.warn(`"${t.value}" needs :`);

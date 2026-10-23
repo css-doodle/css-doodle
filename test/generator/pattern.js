@@ -557,6 +557,7 @@ test('rand/noise/hsl built-ins are declared in the prelude', () => {
     for (let sig of [
         'float rand(vec2 p)',
         'float rand(float n)',
+        'float rand(vec2 p, float k)',
         'float noise(vec2 p)',
         'float noise(float n)',
         'vec3 hsl(float h, float s, float l)',
@@ -726,15 +727,21 @@ test('variables may take the names of the shader internals', () => {
 
 test('repeat reports pattern outputs and allows match blocks in its body', () => {
     let messages = [];
-    let s = draw('x: 0; repeat(2) { fill: #000; size: .5; match(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m)).fragment;
+    let s = draw('x: 0; repeat(2) { shape: circle; size: .5; match(x < 1) { x: x + 1 } } fill: x', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, [
-        'fill in repeat()',
+        'shape in repeat()',
         'size in repeat()',
     ]);
     assert.match(s.slice(s.indexOf('void main()')), /for \(float g_2[^}]*if \(\(g_1 < 1\.0\)\) \{\s*g_1 = \(g_1 \+ 1\.0\);\s*\}/);
-    messages = [];
-    draw('repeat(2) { match(x < 1) { fill: red } }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['fill in repeat()']);
+});
+
+test('a fill in repeat paints over the one from the step before', () => {
+    let messages = [];
+    let s = draw('repeat(3 as k) { fill: red, shape(length(pos) - .1k, 0) } fill: red, .5', extra, m => messages.push(m)).fragment;
+    assert.deepEqual(messages, []);
+    assert.match(s.slice(s.indexOf('void main()')), /for \(float g_1[^}]*g_color = g_over\(vec4\(vec3\(1\.0, 0\.0, 0\.0\), g_shape\([^}]*\}\s*g_color = g_over\(/);
+    s = main('repeat(2) { match(x < 1) { fill: red } }');
+    assert.match(s, /if \(\(x < 1\.0\)\) \{\s*g_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);/);
 });
 
 test('repeat enforces count and nested work limits', () => {
@@ -763,12 +770,17 @@ test('repeat takes its count from a name set once to a whole number', () => {
 
 test('rand() without arguments holds for the cell and the repeat step, and differs per call', () => {
     let s = main('a: rand(); repeat(3 as i) { b: rand(); repeat(2) { c: rand() } }');
-    assert.match(s, /float g_1 = rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
-    assert.match(s, /float g_3 = rand\(vec2\(i, g_2\) \+ 2\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    assert.match(s, /float g_1 = rand\(vec2\(i, 0\.0\), 1\.0\);/);
+    assert.match(s, /float g_3 = rand\(vec2\(i, g_2\), 2\.0\);/);
     // nested steps get one key each: outer * count + inner
-    assert.match(s, /float g_5 = rand\(vec2\(i, \(g_2 \* 2\.0 \+ g_4\)\) \+ 3\.0 \* vec2\(0\.7548, 0\.5698\)\);/);
+    assert.match(s, /float g_5 = rand\(vec2\(i, \(g_2 \* 2\.0 \+ g_4\)\), 3\.0\);/);
     // the GLSL i is the cell index even where `as i` names the step
-    assert.match(main('fill: rand() + rand(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\) \+ 1\.0 \* vec2\(0\.7548, 0\.5698\)\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
+    assert.match(main('fill: rand() + rand(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\), 1\.0\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
+});
+
+test('rand(p, k) is another number for the point p at each k', () => {
+    assert.match(main('id: floor(pos * 8); fill: rand(id, 1), rand(id, 2), 0'), /vec3\(rand\(g_1, 1\.0\), rand\(g_1, 2\.0\), 0\.0\)/);
+    assert.match(main('fill: rand(x, y, 3)'), /rand\(vec2\(x, y\), 3\.0\)/);
 });
 
 test('derivatives where only some pixels run the code are reported once per outer block', () => {
