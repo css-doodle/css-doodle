@@ -1162,7 +1162,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
             if (!hoists) {
                 warn(ctx, `$${name}() runs statements; use it as one`);
             } else {
-                let call = valueCall(name, def, args, defs, ctx);
+                let call = valueCall(name, def, args, defs, ctx, chain);
                 ctx.expanded += call.text.length;
                 pending.push(expandCalls(call.text, defs, ctx, [...chain, name], BODY));
                 body = call.ret;
@@ -1293,7 +1293,7 @@ function resultOf(body) {
 
 // The statements of one call of a value function: its arguments bound to
 // names and its names made its own, result among them, which is its value
-function valueCall(name, def, args, defs, ctx) {
+function valueCall(name, def, args, defs, ctx, chain) {
     let { params, defaults } = def;
     let ret = `${name.replace(/\W/g, '_')}_${++ctx.calls}`;
     let source = def.body.replace(RE_LINE_COMMENT, '').trim();
@@ -1311,6 +1311,7 @@ function valueCall(name, def, args, defs, ctx) {
     });
     text = prelude + bindParams({ params, defaults: [], body: text }, bound, defs, true);
     if (ctx.scene && text.includes('{')) {
+        text = expandCalls(text, defs, ctx, [...chain, name], BODY);
         let known = new Set(), blocks = 0;
         let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
             if (type == 'block' && name == 'match') {
@@ -1320,7 +1321,7 @@ function valueCall(name, def, args, defs, ctx) {
                     + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
             }
             if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;
-            if (when && (known.has(name) || !name.startsWith(ret + '_'))) return `${name}: match(${when}, ${value}, ${name});\n`;
+            if (when && (known.has(name) || !/^\w+_\d+_/.test(name))) return `${name}: match(${when}, ${value}, ${name});\n`;
             known.add(name);
             return `${name}: ${value};\n`;
         }).join('');

@@ -864,6 +864,11 @@ test('in @scene a value function\'s match block becomes values', () => {
     ].join(' '));
     assert.equal(paintOf(`--f(): { match(a) { result: 1; } }; @content: @pattern(fill: $f(););`),
         'match(a) { f_1_result: 1; } fill: f_1_result;');
+    assert.equal(paintOf(`--g(c): { $c: 9; result: 1 }; --f(c): { result: .3; match { $c > 5 { k: $g($c); } } };
+        @content: @scene(w: 1; sphere { r: $f(w) * w });`), [
+        'w: 1; sphere {f_1_result: .3; f_1_1: match((w > 5), 1, 0); w: match(f_1_1 == 1, 9, w);',
+        'g_2_result: 1; f_1_k: g_2_result; r: f_1_result * w }',
+    ].join(' '));
 });
 
 test('a value function reads the caller until it assigns a name, and writes the caller only through $p:', () => {
