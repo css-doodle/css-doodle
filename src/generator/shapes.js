@@ -323,8 +323,9 @@ function createShapePoints(props, lo, hi, raw) {
     if (vertices) props = { ...props, points: String(vertices.length) };
     let lists = {}, count = 1, contours = [], index = [];
     for (let k of ['points', 't', 'r', 'x', 'y', 'rotate', 'grow']) {
-        if (String(props[k]).includes(',')) {
-            lists[k] = parseValueGroup(props[k], { noSpace: true });
+        let v = props.steps?.find(([s, t]) => s == k && t.includes(','))?.[1] ?? props[k];
+        if (String(v).includes(',')) {
+            lists[k] = parseValueGroup(v, { noSpace: true });
             count = max(count, lists[k].length);
         }
     }

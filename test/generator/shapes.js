@@ -289,6 +289,7 @@ test('a list in points, r, t, x, y, rotate or grow draws one contour per item', 
     // rotate turns each contour by its own item
     let star = generateShape('points: 3; rotate: 0, 180').points.map(String);
     assert.deepEqual(star.slice(3), generateShape('points: 3; rotate: 180').points.map(String));
+    assert.deepEqual(generateShape('points: 3; rotate: 0, 180; rotate: 10').points.map(String), generateShape('points: 3; rotate: 10, 190').points.map(String));
     // `t` and `i` start over in each contour
     assert.equal(String(generateShape('points: 4, 3; r: 1, .5; t: t + i').points[4]), String(generateShape('points: 3; r: .5; t: t + i').points[0]));
     // grow waves each contour by its own item: a wavy rim around a round hole
