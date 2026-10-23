@@ -777,6 +777,11 @@ function parsePseudo(cur, brace) {
         warn(ctx, 'selector too large', open.pos);
         selectors = [];
     }
+    let call = selector.match(/:\s*(@[\w-]+)$/);
+    if (call) {
+        warn(ctx, `${call[1]} needs ( ), not { }`, open.pos);
+        selectors = [];
+    }
     ctx.selectors = selectors;
     let styles = parseBlockBody(cur);
     ctx.selectors = outer;

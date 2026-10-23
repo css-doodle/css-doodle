@@ -545,6 +545,13 @@ test('a statement without a colon warns instead of passing through as an at-rule
     assert.deepEqual(parsed.warnings, [{ message: 'missing ":" in "color red"', pos: [0, 0] }]);
 });
 
+test('a block after a property and a function name warns and is dropped', () => {
+    let parsed = parseCss(`background: @doodle { @grid: 2; } color: blue;`);
+    assert.deepEqual(parsed.map(r => r.property || r.type), ['pseudo', 'color']);
+    assert.deepEqual(parsed[0].selectors, []);
+    assert.deepEqual(parsed.warnings.map(w => w.message), ['@doodle needs ( ), not { }']);
+});
+
 test('a comment inside a selector list is not a selector', () => {
     let [pseudo] = parseCss(`:before, /* :after, */ :hover { x: y }`);
     assert.deepEqual(pseudo.selectors, ['&:before', '&:hover']);
