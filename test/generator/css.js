@@ -1322,6 +1322,12 @@ test('texture doodles see the variables, and their own declarations win', () => 
         'texture_0 {:doodle {--c: red;} background: @p(--c); } fill: texture(texture_0, uv)');
 });
 
+test('a texture reads its own variables with $name', () => {
+    let { patterns, warnings } = compile('@content: @pattern(texture_0 { --a: red; background: $a; } fill: texture(texture_0, uv));');
+    assert.deepEqual(warnings, []);
+    assert.match(Object.values(patterns)[0].source, /--a: red; background: \$a;/);
+});
+
 test('an unknown $name skips the shader with a warning instead of reaching GLSL', () => {
     for (let body of ['fragment { $missing }', 'fragment { void main() {} } texture0 { $missing }']) {
         let { shaders, warnings, styles } = compile(`background: @shaders(${body})`);

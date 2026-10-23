@@ -554,6 +554,7 @@ class Rules {
                 }
                 let key = '--' + name;
                 if (group[key] === undefined) {
+                    if (new RegExp(`--${full}\\s*:`).test(source)) return m;
                     missing ??= full;
                     return '';
                 }
