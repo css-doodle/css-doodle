@@ -177,7 +177,7 @@ test('round curves the corners of every polygon tile', () => {
 test('cracked cells stay inside the shape', () => {
     let cells = generateShape('heart', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 200, crack: '10' })).points;
     let outline = generateShape('heart', { min: 1, max: 65536 }, r => r).points.map(p => String(p).match(/-?[\d.]+/g).map(Number)).filter(p => p.length == 2);
-    let inside = insideTest(outline, false);
+    let inside = insideTest([outline], false);
     assert.equal(cells.length, 200);
     assert.ok(cells.every(p => inside(...p.origin.match(/-?[\d.]+/g).map(Number))));
 });
@@ -319,7 +319,7 @@ test('union, subtract, intersect and exclude join whole shapes, first to last', 
     // filled where the winding of the rings is not 0, in percent of the box
     let fill = s => {
         let rings = generateShape(s).points.rings.map(ring => ring.map(p => String(p).split(' ').map(parseFloat)));
-        return (x, y) => rings.reduce((n, ring) => n + insideTest(ring)(x, y), 0) != 0;
+        return (x, y) => insideTest(rings)(x, y) != 0;
     };
     // a crescent: the cut leaves no sliver where it reaches past the circle, as evenodd would
     let crescent = fill('subtract { circle; circle { scale: .9; move: .45 -.135 } }');
@@ -491,7 +491,7 @@ test('move, rotate, scale, grow and frame run in the order written', () => {
 test('mirror: keeps the shape and its reflections as one region, as in @scene', () => {
     let fill = s => {
         let rings = generateShape(s).points.rings.map(ring => ring.map(p => String(p).split(' ').map(parseFloat)));
-        return (x, y) => rings.reduce((n, ring) => n + insideTest(ring)(x, y), 0) != 0;
+        return (x, y) => insideTest(rings)(x, y) != 0;
     };
     let grid = f => Array.from({ length: 400 }, (_, i) => f(i % 20 * 5 + 2.5, (i / 20 | 0) * 5 + 2.5));
     // a curve leaning right, folded: the same as reading it at the mirrored angle

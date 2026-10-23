@@ -146,7 +146,7 @@ const traced = memo((text, face, ready, axis) => {
     return fitRings(rings, axis);
 });
 
-export function traceRings(d) {
+export function traceRings(d, perRadian = 8) {
     let { commands, valid } = parseSvgPath(d), rings = [], ring = [], x = 0, y = 0, x0 = 0, y0 = 0, c, last;
     if (!valid) return [];
     let draw = (...p) => {
@@ -171,7 +171,7 @@ export function traceRings(d) {
         if (sweep && da < 0) da += 2 * PI;
         if (!sweep && da > 0) da -= 2 * PI;
         let mx = (x + ex) / 2 + cs * ux - sn * uy, my = (y + ey) / 2 + sn * ux + cs * uy;
-        for (let j = 1, n = ceil(abs(da) * 8); j <= n; ++j) {
+        for (let j = 1, n = ceil(abs(da) * perRadian); j <= n; ++j) {
             let t = a + da * j / n;
             ring.push([mx + cs * rx * cos(t) - sn * ry * sin(t), my + sn * rx * cos(t) + cs * ry * sin(t)]);
         }
@@ -307,7 +307,7 @@ function combine(props, lo, hi) {
 }
 
 // [x0, y0, x1, y1, …] → [[x0, y0], [x1, y1], …]
-function toPairs(flat) {
+export function toPairs(flat) {
     let out = [];
     for (let i = 0; i < flat.length; i += 2) out.push([flat[i], flat[i + 1]]);
     return out;
@@ -506,7 +506,7 @@ function createShapePoints(props, lo, hi, raw) {
             fmt = (x, y) => format(x / sx, y / sy);
             box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
         }
-        let outline = bridge(rings), screen = outline.map(toScreen), inside = insideTest(screen, evenodd);
+        let outline = bridge(rings), screen = outline.map(toScreen), inside = insideTest([screen], evenodd);
         let name = props.tile, count = Math.trunc(props.scatter), seed = Number(props.seed) || 0;
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0, props);

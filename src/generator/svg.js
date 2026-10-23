@@ -4,8 +4,10 @@ import { NS, NSXLink, adjustName } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
-import { traceRings } from './shapes.js';
-import { overlay, corners, bounds } from './tiling.js';
+import { traceRings, toPairs } from './shapes.js';
+import { overlay, corners, bounds, offset, flatten, thin } from './tiling.js';
+
+const { atan2, ceil, abs, max, hypot, PI } = Math;
 
 const nextInlineId = nextId();
 
@@ -128,32 +130,72 @@ function ringsOf(tag, warn) {
         }
     } else {
         let d = outlineOf(tag, warn);
-        if (d) rings = Object.assign(traceRings(d), { evenodd: tag.attrs['fill-rule'] === 'evenodd' });
+        if (d) rings = Object.assign(traceRings(d, 32), { evenodd: tag.attrs['fill-rule'] === 'evenodd' });
     }
     if (rings && tag.attrs.transform !== undefined) warn(`<${tag.name}> transform is ignored`);
     return rings;
 }
 
 function combine(group, op, warn) {
-    let { smooth, ...attrs } = group.attrs, path = new Tag('path'), joints = new Set(), rings = [], d = '';
+    let { smooth, grow, ...attrs } = group.attrs, path = new Tag('path'), joints = new Set(), rings, scale = 0, d = '';
     let note = message => warn(`g|${op}: ${message}`);
     group.body.forEach(tag => {
-        let next = ringsOf(tag, note);
-        if (next) rings = rings.length ? overlay(rings, next, op, joints) : next;
+        let next = ringsOf(tag, note), [x0, y0, x1, y1] = bounds((next || []).flat(2));
+        if (next) rings = rings ? overlay(rings, next, op, joints) : next, scale = max(scale, x1 - x0, y1 - y0);
         else if (/^(animate|set|title|desc)/.test(tag.name)) path.append(tag);
         else if (tag.name) note(`<${tag.name}> has no outline`);
     });
-    let [x0, y0, x1, y1] = bounds(rings.flat(2)), digits = Math.max(0, Math.ceil(4 - Math.log10(Math.max(x1 - x0, y1 - y0))));
-    let k = parseFloat(smooth), f = v => +v.toFixed(digits);
+    rings ??= [];
+    let k = parseFloat(smooth), g = parseFloat(grow), tol = 2e-5 * (scale + abs(g || 0));
+    if (g) {
+        rings = offset(k > 0 ? rings.map(ring => toPairs(flatten(corners(ring, joints, k), tol))) : rings, g, rings.evenodd, tol);
+        k = 0;
+    }
+    let [x0, y0, x1, y1] = bounds(rings.flat(2)), size = max(x1 - x0, y1 - y0), digits = max(0, ceil(4 - Math.log10(size)));
+    let f = v => +v.toFixed(digits), xy = ([x, y]) => f(x) + ' ' + f(y);
     for (let ring of rings) {
-        (k > 0 ? corners(ring, joints, k) : ring).forEach(([x, y, bx, by], i) => {
-            d += (i ? bx === undefined ? 'L' : `Q${f(bx)} ${f(by)} ` : 'M') + f(x) + ' ' + f(y);
-        });
+        ring = thin(ring, tol / 200);
+        let ps = k > 0 ? corners(ring, joints, k) : ring;
+        d += 'M' + xy(ps[0]);
+        for (let i = 0; i < ps.length;) {
+            let [j, r, large, sweep] = arcRun(ps, i, 5 * tol), [, , bx, by] = ps[j % ps.length];
+            if (r) d += `A${f(r)} ${f(r)} 0 ${large} ${sweep} ` + xy(ps[j % ps.length]);
+            else if (j < ps.length) d += (bx === undefined ? 'L' : `Q${f(bx)} ${f(by)} `) + xy(ps[j]);
+            i = j;
+        }
         d += 'Z';
     }
     Object.assign(path.attrs, attrs);
     path.attr('d', d);
     return path;
+}
+
+function arcRun(ps, i, tol) {
+    let n = ps.length, P = j => ps[j % n], run = [i + 1], lo = i + 1, hi = n + 1;
+    let fit = j => {
+        let [ax, ay] = P(i), [bx, by] = P(i + j >> 1), [cx, cy] = P(j), den = 2 * ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
+        if (abs(den) < 1e-12) return;
+        let b2 = (bx - ax) ** 2 + (by - ay) ** 2, c2 = (cx - ax) ** 2 + (cy - ay) ** 2;
+        let ox = ax + ((cy - ay) * b2 - (by - ay) * c2) / den, oy = ay + ((bx - ax) * c2 - (cx - ax) * b2) / den, r = hypot(ax - ox, ay - oy), turn = 0;
+        for (let m = i + 1; m <= j; ++m) {
+            let [px, py] = P(m - 1), [qx, qy, curve] = P(m), ux = px - ox, uy = py - oy, vx = qx - ox, vy = qy - oy;
+            let a = atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+            if (curve !== undefined || abs(hypot(vx, vy) - r) > tol || r - hypot((px + qx) / 2 - ox, (py + qy) / 2 - oy) > tol || a * turn < 0) return;
+            turn += a;
+        }
+        if (abs(turn) < 1.99 * PI) return [j, r, +(abs(turn) > PI), +(turn > 0)];
+    };
+    for (let step = 1, f; lo < hi - 1; step *= 2) {
+        let j = Math.min(i + 1 + step, n);
+        if (!(f = fit(j))) { hi = j; break; }
+        run = f, lo = j;
+        if (j == n) break;
+    }
+    while (hi - lo > 1) {
+        let m = lo + hi >> 1, f = fit(m);
+        f ? (run = f, lo = m) : hi = m;
+    }
+    return run;
 }
 
 function transformViewBox(token, warn) {

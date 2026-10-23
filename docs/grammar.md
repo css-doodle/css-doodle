@@ -476,9 +476,11 @@ the value has as many parts as names. `style { … }` is raw CSS.
 
 `g|subtract { … }` joins its shapes (`path`, `polygon`, `polyline`,
 `circle`, `ellipse`, `rect`, and a plain `g` as their union) into one
-`path` with the g's attributes, by the groups of §9.2. Curves become
-lines, `smooth: r` rounds the corners where shapes meet, and each
-shape's own transform, paint and animations are dropped.
+`path` with the g's attributes, by the groups of §9.2. `smooth: r`
+rounds the corners where shapes meet, then `grow: d` moves the outline
+out by `d`, or in when negative. Curves come back as arcs where they
+keep to a circle, and each shape's own transform, paint and animations
+are dropped.
 
 ### 9.2 Shapes
 

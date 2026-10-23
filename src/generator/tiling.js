@@ -42,12 +42,12 @@ function noiseOf(props) {
     };
 }
 
-function insideTest(outline, evenodd) {
-    let [, y0, , y1] = bounds(outline.flat()), h = y1 - y0;
+function insideTest(rings, evenodd) {
+    let [, y0, , y1] = bounds(rings.flat(2)), h = y1 - y0;
     let bands = lists(SCATTER_BANDS);
     let band = y => min(SCATTER_BANDS - 1, (y - y0) / h * SCATTER_BANDS | 0);
-    for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
-        let [ax, ay] = outline[j], [bx, by] = outline[i];
+    for (let ring of rings) for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        let [ax, ay] = ring[j], [bx, by] = ring[i];
         for (let r = band(min(ay, by)); r <= band(max(ay, by)); ++r) {
             bands[r].push(ax, ay, bx, by);
         }
@@ -75,7 +75,7 @@ function overlay(A, B, op, joints = new Set()) {
         !i || dist(p, ring[i - 1]) > 1e-9 && (i < ring.length - 1 || dist(p, ring[0]) > 1e-9))), { evenodd: rings.evenodd, positive: rings.positive });
     A = merge(A), B = merge(B);
     let test = rings => {
-        let f = rings.length ? insideTest(bridge(rings), rings.evenodd) : () => 0;
+        let f = rings.length ? insideTest(rings, rings.evenodd) : () => 0;
         return rings.positive ? (x, y) => f(x, y) > 0 : f;
     };
     let a = test(A), b = test(B), T = 1e-9, sides = [], from = new Map(), rings = [];
@@ -144,13 +144,13 @@ function overlay(A, B, op, joints = new Set()) {
 }
 
 // the region pushed out by d, or in when d < 0, round where it bends away, as rings filled on their left
-function offset(rings, d, evenodd) {
+function offset(rings, d, evenodd, tol = .002) {
     rings = overlay(Object.assign([...rings], { evenodd }), [], 'union');
     let [x0, y0, x1, y1] = bounds(rings.flat(2));
     // nothing is that far inside
     if (d < 0 && -2 * d >= min(x1 - x0, y1 - y0)) return [];
     if (!d) return rings;
-    let tol = .002, raw = rings.map(ring => {
+    let raw = rings.map(ring => {
         let out = [];
         ring.forEach((p, i) => {
             let a = ring.at(i - 1), b = ring[(i + 1) % ring.length], ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - p[0], vy = b[1] - p[1];
@@ -268,7 +268,7 @@ function recount(rings, n) {
 
 function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS) {
     let [x0, y0, x1, y1] = bounds(outline.flat()), w = x1 - x0, h = y1 - y0;
-    let inside = insideTest(outline, evenodd);
+    let inside = insideTest([outline], evenodd);
     let total = max(1024, SCATTER_SAMPLES * count);
     let sx = new Float64Array(total), sy = new Float64Array(total), n = 0, tried = 0;
     let rnd = seedrandom('density:' + seed), peak = 0;
