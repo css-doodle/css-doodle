@@ -267,6 +267,13 @@ test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, d
     assert.equal(calc('step * 2', { step: 3 }), 6);
 });
 
+test('deg and turn on a number inside a call are radians', () => {
+    assert.equal(calc('cos(60deg)'), Math.cos(Math.PI / 3));
+    assert.equal(calc('sin(.25turn)'), 1);
+    assert.equal(calc('1 / max(90deg, 1)'), 2 / Math.PI);
+    assert.equal(calc('60deg'), 0);
+});
+
 test('pick(k: a, b, …) takes item k from 1, wrapping, and evaluates only that one', () => {
     assert.equal(calc('pick(1: 10, 20, 30)'), 10);
     assert.equal(calc('pick(3: 10, 20, 30)'), 30);

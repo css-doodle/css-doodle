@@ -366,9 +366,9 @@ name       = letter or '_', then letters, digits or '_'
 - **Names** are looked up in the context, then among `π`, `random`,
   `gcd`, `match` and the GLSL functions `mod`, `fract`, `clamp`, `mix`,
   `step`, `smoothstep`, `radians` and `degrees`, then in JavaScript's
-  `Math` (`PI`, `sin`, `hypot`, …). Any other name is `0`, so a unit
-  in the math is too: `cos(60deg)` is `cos(0)`, write
-  `cos(radians(60))`. The GLSL ones read as in
+  `Math` (`PI`, `sin`, `hypot`, …). Any other name is `0`, and so is
+  a unit, except `deg` and `turn` on a number inside a call:
+  `cos(60deg)` is `cos(radians(60))`. The GLSL ones read as in
   `@pattern`: `mod(a, b)` takes the sign of `b`, so `mod(-1, 4)` is
   `3`, and `step(edge, x)` is `1` from the edge on.
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only

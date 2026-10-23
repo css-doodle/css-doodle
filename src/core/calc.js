@@ -181,6 +181,8 @@ function isUnary(prev) {
 // Push a value, resolving adjacency with the previous token:
 // "2x" → 2*x, "2sin(1)" → 2*sin(1); after a space there is no
 // product, so "2 x" leaves two values and reads as 2
+const ANGLES = { deg: String(Math.PI / 180), turn: String(2 * Math.PI) };
+
 function pushValue(tokens, value, spaced) {
     const prev = last(tokens);
     if (!spaced && prev && (prev.type === VALUE || prev.value === ')')) {
@@ -209,11 +211,13 @@ function transformTokens(input, spans) {
         spaced = false;
     }
 
-    const tokens = [];
+    const tokens = [], calls = [];
 
     for (let i = 0; i < raw.length; i++) {
         const { type, value, index, spaced } = raw[i];
         const next = raw[i + 1];
+        if (value === '(') calls.push(raw[i - 1]?.type === 'Word' && !spaced);
+        else if (value === ')') calls.pop();
 
         if (type === 'Number') {
             let number = value;
@@ -226,6 +230,10 @@ function transformTokens(input, spans) {
         }
 
         if (type === 'Word') {
+            if (ANGLES[value] && raw[i - 1]?.type === 'Number' && !spaced && calls.includes(true)) {
+                pushValue(tokens, ANGLES[value], false);
+                continue;
+            }
             // ÷ ∧ ∨ are not scanner symbols, so they arrive as words
             if (isOperator(value)) {
                 tokens.push(op(value));
