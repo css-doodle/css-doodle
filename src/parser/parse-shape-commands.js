@@ -73,7 +73,16 @@ function readShapes(input, warn = () => {}, options) {
             return [...parts.map(bare), node];
         },
         readStatement(iter, head) {
-            return [last = { name: textOf(head).trim(), value: readValue(iter) }];
+            let name = textOf(head).trim(), value = readValue(iter), depth = 0, quote = false;
+            for (let t of value) {
+                if (t.status) quote = t.status == 'open';
+                else if (!quote) depth += t.isSymbol('(') - t.isSymbol(')');
+                if (!quote && !depth && t.isSymbol(':', '{')) {
+                    warn(`missing ; after ${name}`);
+                    break;
+                }
+            }
+            return [last = { name, value }];
         },
         // a bare name is a shape, anything else belongs to the row before it
         readTail(head) {
