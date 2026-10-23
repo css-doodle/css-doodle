@@ -71,14 +71,8 @@ function readsShape(name) {
     return /^@(shape|plot|tile|svg-polygon)\b/i.test(name);
 }
 
-const isDigit = c => c >= '0' && c <= '9';
-
-function substitutePi(input, prev, next) {
-    return input.replace(/π/g, (c, i) => {
-        let p = i > 0 ? input[i - 1] : prev;
-        let n = i < input.length - 1 ? input[i + 1] : next;
-        return isDigit(p) || isDigit(n) ? c : PI;
-    });
+function substitutePi(source, from, to) {
+    return source.slice(from, to).replace(/π/g, (c, i) => /\d/.test(source[from + i - 1]) || /\d/.test(source[from + i + 1]) ? c : PI);
 }
 
 function separateFuncName(name) {
@@ -187,7 +181,7 @@ function parseValue(cur, breakOn, custom) {
                 else if (v === '}') brace--;
             }
             cur.next();
-            buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1], cur.source[tok.index + 1]) : v;
+            buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index, tok.index + 1) : v;
             continue;
         }
 
@@ -375,8 +369,7 @@ function findCompositionDot(name, cur, end) {
 function readVarName(cur) {
     let dash = cur.peek(1);
     let head = cur.peek(2);
-    if (!dash || !head || !dash.isSymbol('-') || !adjacent(cur.peek(), dash)
-            || !adjacent(dash, head) || !(head.isWord() || head.isSymbol('_'))) {
+    if (!dash?.isSymbol('-') || !isNameStart(head) || !adjacent(cur.peek(), dash) || !adjacent(dash, head)) {
         return '';
     }
     let name = '--';
@@ -508,7 +501,7 @@ function parseArguments(cur, copying, whole, indexed) {
         }
         if (tok.status) quote = tok.status === 'open';
         cur.next();
-        buf += (v === 'π' && !quote) ? substitutePi(v, cur.source[tok.index - 1], cur.source[tok.index + 1]) : v;
+        buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index, tok.index + 1) : v;
         last = tok;
     }
     warn(cur.ctx, 'unclosed (', head && head.pos);
@@ -582,7 +575,7 @@ function parseDoodleBody(cur, start, name) {
     let head = cur.peek();
     let values = [], blocks = [], from = start, mark = start;
     const cut = to => {
-        values.push(Node.text(substitutePi(cur.source.slice(from, to), cur.source[from - 1], cur.source[to])));
+        values.push(Node.text(substitutePi(cur.source, from, to)));
         from = to;
     };
     while (!cur.end()) {
@@ -633,7 +626,7 @@ function parseDoodleBody(cur, start, name) {
     }
     let body = cur.source.slice(start, end);
     // a nested doodle is parsed again, and that parse leaves the π in quotes alone
-    if (!name.startsWith('@doodle')) body = substitutePi(body, cur.source[start - 1], cur.source[end]);
+    if (!name.startsWith('@doodle')) body = substitutePi(cur.source, start, end);
     return [normalizeArgument([Node.text(body.trim() || body)])];
 }
 
@@ -994,7 +987,7 @@ function nameEnd(tokens, i, dash) {
     return i;
 }
 
-function expandFunctions(source, ctx, svg = false, chain = []) {
+function expandFunctions(source, ctx, svg, chain = []) {
     let defs = ctx.defs = Object.create(ctx.defs ?? null);
     let tokens = /\)\s*:/.test(source) ? tokensOf(source) : [];
     let rest = '', from = 0;
@@ -1065,15 +1058,15 @@ const RE_LOOP = /@(m|M|rep|repeat|multiple|ms)\d*\(|\w\*[^{};]*\{|\brepeat\s*\(/
 const RE_LINE_COMMENT = /\/\/[^\n]*/g;
 const RE_SIMPLE_ARG = /^(#[\da-f]+|[a-z_][\w.]*|(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)$/i;
 
-function paintBodyAt(tokens, i, re = RE_PAINT_HEAD) {
+function paintBodyAt(tokens, i) {
     let t = tokens[i], j = i + 1;
     if (!t.isSymbol('@') || !tokens[j] || !adjacent(t, tokens[j])) return -1;
     while (tokens[j + 1] && adjacent(tokens[j], tokens[j + 1]) && !tokens[j + 1].isSymbol('(')) j++;
     let head = textOf(tokens.slice(i + 1, j + 1));
-    return re.test(head) && tokens[j + 1]?.isSymbol('(') && adjacent(tokens[j], tokens[j + 1]) ? j + 1 : -1;
+    return (RE_PAINT_HEAD.test(head) || /^svg$/i.test(head)) && tokens[j + 1]?.isSymbol('(') && adjacent(tokens[j], tokens[j + 1]) ? j + 1 : -1;
 }
 
-function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
+function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
     let paint = mode !== CSS, tokens = tokensOf(text, paint);
     let out = '', from = 0, quote = false, maths = [];
     let start = 0, head = 0, pending = mode === BODY ? [] : hoist, depth = 0, blocks = [];
@@ -1093,27 +1086,16 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math = false) {
                 let close = closing(tokens, open);
                 if (close < 0) break;
                 let inner = text.slice(tokenEnd(tokens[open]), tokens[close].index);
-                if (inner.includes('$')) {
+                let svg = /^svg$/i.test(tokens[i + 1].value);
+                if (svg || inner.includes('$')) {
                     let scene = ctx.scene;
                     ctx.scene = tokens[i + 1].value === 'scene';
                     flush(tokenEnd(tokens[open]));
-                    out += expandCalls(inner, defs, ctx, chain, BODY);
+                    out += svg ? expandFunctions(inner, ctx, true, chain) : expandCalls(inner, defs, ctx, chain, BODY);
                     ctx.scene = scene;
+                    ctx.defs = defs;
                     from = tokens[close].index;
                 }
-                i = close;
-                continue;
-            }
-            open = paintBodyAt(tokens, i, /^svg$/i);
-            if (open > 0) {
-                let close = closing(tokens, open);
-                if (close < 0) break;
-                let outer = ctx.defs;
-                ctx.defs = defs;
-                flush(tokenEnd(tokens[open]));
-                out += expandFunctions(text.slice(from, tokens[close].index), ctx, true, chain);
-                ctx.defs = outer;
-                from = tokens[close].index;
                 i = close;
                 continue;
             }
@@ -1328,26 +1310,24 @@ function valueCall(name, def, args, defs, ctx) {
         }
     });
     text = prelude + bindParams({ params, defaults: [], body: text }, bound, defs, true);
-    return { text: ctx.scene ? unblock(text, ret) : text, ret: ret + '_result' };
-}
-
-function unblock(text, prefix) {
-    if (!text.includes('{')) return text;
-    let known = new Set(), blocks = 0;
-    let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
-        if (type == 'block' && name == 'match') {
-            let id = `${prefix}_${++blocks}`;
-            arms = arms?.filter(a => a.type == 'arm') || [{ test: args, value }];
-            return `${id}: match(${arms.map(({ test }, k) => test == 'else' ? '' : `(${test}), ${k + 1}, `).join('')}${arms.findIndex(a => a.test == 'else') + 1});\n`
-                + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
-        }
-        if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;
-        if (when && (known.has(name) || !name.startsWith(prefix + '_'))) return `${name}: match(${when}, ${value}, ${name});\n`;
-        known.add(name);
-        return `${name}: ${value};\n`;
-    }).join('');
-    let out = lower(parsePattern(text), '');
-    return blocks ? out : text;
+    if (ctx.scene && text.includes('{')) {
+        let known = new Set(), blocks = 0;
+        let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
+            if (type == 'block' && name == 'match') {
+                let id = `${ret}_${++blocks}`;
+                arms = arms?.filter(a => a.type == 'arm') || [{ test: args, value }];
+                return `${id}: match(${arms.map(({ test }, k) => test == 'else' ? '' : `(${test}), ${k + 1}, `).join('')}${arms.findIndex(a => a.test == 'else') + 1});\n`
+                    + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
+            }
+            if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;
+            if (when && (known.has(name) || !name.startsWith(ret + '_'))) return `${name}: match(${when}, ${value}, ${name});\n`;
+            known.add(name);
+            return `${name}: ${value};\n`;
+        }).join('');
+        let out = lower(parsePattern(text), '');
+        if (blocks) text = out;
+    }
+    return { text, ret: ret + '_result' };
 }
 
 // Rename the names a body assigns, and the loop names of its repeats, to
@@ -1456,7 +1436,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
             i = hexEnd(tokens, i);
             continue;
         }
-        if (!t.isWord() && !t.isSymbol('_')) continue;
+        if (!isNameStart(t)) continue;
         let dollar = prev?.isSymbol('$') && adjacent(prev, t);
         let end = nameEnd(tokens, i, dollar);
         let name = textOf(tokens.slice(i, end + 1));
