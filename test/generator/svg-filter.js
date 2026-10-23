@@ -166,9 +166,9 @@ test('commands that depend on frequency warn and are omitted without it', () => 
     let { root, warnings } = expand('scale: 20; octave: 3; seed: 7; channels {}');
     assert.deepEqual(root.value.filter(token => token.type === 'block').map(token => token.name), ['channels']);
     assert.deepEqual(warnings, [
-        'svg-filter scale: needs frequency',
-        'svg-filter octave: needs frequency',
-        'svg-filter seed: needs frequency',
+        'scale needs frequency',
+        'octave needs frequency',
+        'seed needs frequency',
     ]);
 });
 
@@ -195,7 +195,7 @@ test('numOctaves is a positive integer', () => {
 
     ({ root, warnings } = expand('frequency: .1; octave: high;'));
     assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, undefined);
-    assert.deepEqual(warnings, ['numOctaves needs an integer']);
+    assert.deepEqual(warnings, ['numOctaves needs integer']);
 
     ({ root, warnings } = expand('feTurbulence { numOctaves: 2.2; seed: 1 }'));
     assert.equal(attrs(child(root, 'feTurbulence')).numOctaves, '2');

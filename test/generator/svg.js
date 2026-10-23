@@ -369,24 +369,24 @@ test('problems are reported through the warn callback', () => {
     };
     assert.deepEqual(warned('viewBox: 0 0 10; circle {}'), {
         output: '<svg><circle/></svg>',
-        warnings: ['viewBox needs 1, 2 or 4 numbers, got "0 0 10"'],
+        warnings: ['invalid viewBox "0 0 10"'],
     });
     assert.deepEqual(warned('g { draw: 2s }'), {
         output: '<svg><g/></svg>',
-        warnings: ['draw: <g> has no path'],
+        warnings: ['<g> lacks path'],
     });
     assert.deepEqual(warned('circle { animate r: 1; 5 }'), {
         output: '<svg><circle><animate attributeName="r" values="1;5"/></circle></svg>',
-        warnings: ['animate r: needs a duration after /'],
+        warnings: ['r needs duration'],
     });
     assert.deepEqual(warned('circle { filter: defs { circle {} rect {} } }').warnings,
-        ['filter: inline defs needs one element']);
+        ['defs: one element']);
     assert.deepEqual(warned('path { draw: 2s; animate r: 1 / 1s }').warnings, []);
     assert.deepEqual(warned('circle { animate r: 1; 5 / 2s bounce }'), {
         output: '<svg><circle><animate attributeName="r" values="1;5" dur="2s"/></circle></svg>',
-        warnings: ['animate r: unknown timing word "bounce"'],
+        warnings: ['unknown timing bounce'],
     });
-    assert.deepEqual(warned('path { draw: 2s steps(4) }').warnings, ['draw: unknown timing word "steps(4)"']);
+    assert.deepEqual(warned('path { draw: 2s steps(4) }').warnings, ['unknown timing steps(4)']);
     assert.deepEqual(warned('g { @seed: 7; circle { r: 5 } }'), { output: '<svg><g><circle r="5"/></g></svg>', warnings: [] });
 });
 
@@ -516,10 +516,10 @@ test('g|op warns about what it cannot join', () => {
     let out = generateSvg(parseSvg('rect|union {} g|xor {} g|union { text {} rect { width: 50%; height: 1; transform: rotate(9) } }'), m => warnings.push(m));
     assert.equal(out, `<svg ${NS}><rect/><g/><path d="M0 0L50 0L50 1L0 1Z"/></svg>`);
     assert.deepEqual(warnings, [
-        'rect|union: needs g',
-        'g|xor: needs union, subtract, intersect or exclude',
-        'g|union: <text> has no outline',
-        'g|union: <rect> reads 50% as 50',
-        'g|union: <rect> transform is ignored',
+        'rect|union needs g',
+        'unknown g|xor',
+        '<text> lacks outline',
+        '<rect> ignores %',
+        '<rect> transform ignored',
     ]);
 });

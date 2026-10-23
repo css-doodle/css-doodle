@@ -34,8 +34,8 @@ test('invalid channel declarations warn and keep identity; later duplicates win'
     assert.equal(root.value[0].value.at(-1).value,
         '0 1 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0');
     assert.deepEqual(warnings, [
-        'channels g: invalid "r * b"',
-        'channels b: invalid ""',
+        'invalid channel g',
+        'invalid channel b',
     ]);
 });
 

@@ -34,7 +34,7 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
     if (g.blur) el('feGaussianBlur', [['stdDeviation', g.blur]]);
     if (!g.frequency) {
         for (let name of ['scale', 'octave', 'seed']) {
-            if (g[name]) warn(`svg-filter ${name}: needs frequency`);
+            if (g[name]) warn(`${name} needs frequency`);
         }
         return;
     }
@@ -125,7 +125,7 @@ export function expandFilterShorthands(root, seed, warn, { chainInput = true } =
                 t.value = String(Math.max(1, n));
                 return true;
             }
-            warn('numOctaves needs an integer');
+            warn('numOctaves needs integer');
         });
     }
     return root;

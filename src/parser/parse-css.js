@@ -676,8 +676,7 @@ function parseRule(cur) {
     } else {
         // `color red;`, or a head that runs to the end: `@nth(1 { … }`
         if (tok && tok.isSymbol(';')) cur.next();
-        let what = tok || !/[("'`]/.test(head) ? 'missing ":"' : 'unbalanced ( or quote';
-        warn(cur.ctx, `${what} in "${head.slice(0, 40)}"`, pos);
+        warn(cur.ctx, tok || !/[("'`]/.test(head) ? 'missing ":"' : 'unbalanced paren/quote', pos);
     }
 
     rule.rawValue = colon < 0
@@ -780,7 +779,7 @@ function parsePseudo(cur, brace) {
     }
     let call = selector.match(/:\s*(@[\w-]+)$/);
     if (call) {
-        warn(ctx, `${call[1]} needs ( ), not { }`, open.pos);
+        warn(ctx, `${call[1]} needs ()`, open.pos);
         selectors = [];
     }
     ctx.selectors = selectors;
@@ -1058,7 +1057,7 @@ function expandFunctions(source, ctx, svg, chain = []) {
                     defaults.push(textOf(item.slice(at + 1)).trim());
                 }
                 if (!params.every(p => RE_PARAM.test(p))) {
-                    warn(ctx, `invalid parameters in --${name}()`, t.pos);
+                    warn(ctx, `invalid --${name}() params`, t.pos);
                 }
                 let body = braced ? source.slice(tokens[open].index + 1, last.index)
                     : source.slice(tokens[open].index, last.isSymbol(';') ? last.index : tokenEnd(last));
@@ -1066,7 +1065,7 @@ function expandFunctions(source, ctx, svg, chain = []) {
                 let after = source.slice(tokenEnd(last), tokenEnd(tokens[statementEnd(tokens, end + 1)] ?? last)).replace(/\/\*[\s\S]*?\*\//g, '');
                 let unset = params.filter(p => !source.includes(`--${p}:`));
                 if (!braced && !/^\s*--[\w-]+\(/.test(after) && bindParams({ params: unset, defaults, body: after }, unset.map(() => '\0'), defs).includes('\0')) {
-                    warn(ctx, `--${name}(): body needs { }`, t.pos);
+                    warn(ctx, `--${name}() needs {}`, t.pos);
                 }
                 rest += source.slice(from, t.index);
                 from = tokenEnd(last);
@@ -1179,9 +1178,9 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         while (given && !args[given - 1]) given--;
         let missing = params.filter((p, k) => k >= given && !defaults[k]);
         if (given > params.length) {
-            warn(ctx, `$${name}(${params}): too many args`);
+            warn(ctx, `$${name}() extra args`);
         } else if (missing.length) {
-            warn(ctx, `$${name}() is missing ${missing.join(', ')}`);
+            warn(ctx, `$${name}() needs ${missing.join(',')}`);
         }
         let body = '';
         let kind = paint ? kindOf(def, defs) : INCLUDE;
@@ -1191,11 +1190,11 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         if (chain.includes(name)) {
             warn(ctx, `$${name}() calls itself`);
         } else if (ctx.expanded > MAX_EXPANSION) {
-            if (ctx.expanded < Infinity) warn(ctx, 'user functions expand too large');
+            if (ctx.expanded < Infinity) warn(ctx, 'expansion too large');
             ctx.expanded = Infinity;
         } else if (kind === VALUE) {
             if (!hoists) {
-                warn(ctx, `$${name}() runs statements; use it as one`);
+                warn(ctx, `$${name}() runs statements`);
             } else {
                 let call = valueCall(name, def, args, defs, ctx, chain);
                 ctx.expanded += call.text.length;

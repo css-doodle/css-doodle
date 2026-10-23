@@ -104,17 +104,17 @@ function isVar(node, name) {
 }
 
 function checkAll(node, warn, unread, code, copy) {
-    if (node.children.some(c => /^match\b/.test(c.name))) warn('no match { } in @scene');
+    if (node.children.some(c => /^match\b/.test(c.name))) warn('no match blocks');
     node.children = node.children.filter(c => !/^match\b/.test(c.name));
     if (!NAME.test(node.name)) {
         let text = node.name + (node.count ? '*' + node.count.join('x') : '');
-        warn(`unexpected ${text}` + (node.name.includes('(') ? `: write ${node.name.split('(')[0]} { … }` : ''));
+        warn(`unexpected ${text}`);
     }
     if (SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
                 let m = !/^(fill|text|font|path)$/.test(r.name) && textOf(r.value).match(/\b(normal|light)\b/);
-                if (m) warn(`${r.name} cannot read ${m[1]}`);
+                if (m) warn(`${m[1]} is fill-only`);
                 continue;
             }
             let valid = NAME.test(r.name);
@@ -125,7 +125,7 @@ function checkAll(node, warn, unread, code, copy) {
             }
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
-            if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
+            if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name}: unknown ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
@@ -133,7 +133,7 @@ function checkAll(node, warn, unread, code, copy) {
         let [X, Y] = node.count || [1, 1], own = { rows: node.rows.filter(r => SHAPES.lathe.includes(r.name)), children: node.children };
         let at = copy != null ? [copy] : node.copies ? [] : [...Array(reads(own) ? X * Y : 1).keys()];
         if (at.length > 32) {
-            warn(`${node.name} traces one outline past 32 copies`);
+            warn('outline traced once');
             at = [0];
         }
         let all = at.map(i => outline(node, warn, { n: i + 1, N: X * Y, nx: i % X + 1, ny: (i / X | 0) + 1 }).map(ring => ring.map(xy => xy.map(float))));
@@ -141,7 +141,7 @@ function checkAll(node, warn, unread, code, copy) {
         if (new Set(all.map(rings => JSON.stringify(rings))).size > 1) node.copies = all.map(rings => ({ ...node, rings }));
         node.rings = all[0];
     }
-    if (SHAPES[node.name] && node.children.length) warn(`put shapes in a union, not ${node.name}`);
+    if (SHAPES[node.name] && node.children.length) warn('wrap in union');
     (node.copies || node.children).forEach((c, i) => checkAll(c, warn, unread, code, node.copies && i));
 }
 
@@ -154,12 +154,12 @@ export default function drawScene(code, extra, report = () => {}) {
         else root.rows.push(r);
     }
     let drag = textOf(camera.drag || []).split(/[\s,]+/).filter(w => w && w !== 'none');
-    for (let w of drag) if (!/^(turn|tilt)$/.test(w)) warn(`drag takes turn or tilt, not ${w}`);
+    for (let w of drag) if (!/^(turn|tilt)$/.test(w)) warn(`invalid drag ${w}`);
     let unread = new Set();
     for (let node of [root, ...tree.unused]) checkAll(node, warn, unread, code);
     let vars = node => node.rows.filter(r => isVar(node, r.name) && !unread.has(r));
-    if (!root.children.length) warn('@scene has no shapes');
-    if (/\bcalc\(/.test(code)) warn('no calc() in @scene; use ( )');
+    if (!root.children.length) warn('@scene needs shapes');
+    if (/\bcalc\(/.test(code)) warn('no calc()');
 
     // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
     let arrays = new Map();
@@ -187,7 +187,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let color = (text, p) => {
             let { type, code } = value(text, p);
             if (!/^vec[34]$/.test(type)) {
-                warn(`fill needs a color, not ${text.trim().replace(/(\w+)_\d+_result/g, '$$$1()')}`);
+                warn('fill needs color');
                 return null;
             }
             return type === 'vec4' ? `${code}.rgb` : code;
@@ -316,7 +316,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 for (let t of m.value.filter(t => !t.isSpace() && !t.isSymbol(','))) {
                     // a repeated axis mirrors nothing new, and each axis doubles the code
                     if (AXES[t.value]) axes.includes(t.value) || axes.push(t.value);
-                    else warn(`mirror takes x, y or z, not ${t.value}`);
+                    else warn(`invalid mirror ${t.value}`);
                 }
                 let start = ctx.sites, end = start;
                 r = next();
@@ -346,7 +346,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 out += `vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -radians(${a}) * ${p}.y);\n`;
             } else if (m.name === 'repeat') {
                 let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
-                if (n) warn('repeat takes no count; write box*5x5');
+                if (n) warn('repeat: no count');
                 let [on, base, dir, id, k, key] = [next(), next(), next(), next(), next(), ctx.key];
                 r = next();
                 out += glsl`
@@ -442,7 +442,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 // in the xy plane, `depth` thick along z, or a lathe's outline turned around y
                 let rings = node.rings || [itemsOf(row(node, 'points')).map(g => numbers(g, p))], lathe = name === 'lathe';
                 if (!rings.length || rings.some(ring => ring.length < 3)) {
-                    warn(`${name} needs points: x y, …`);
+                    warn(`${name} needs points`);
                     d = '1e5';
                 } else {
                     let all = rings.flatMap(ring => [...ring, ring[0]]).map(([x = '0.0', y = '0.0']) => [x, y]), n = all.length, at = 0, v;

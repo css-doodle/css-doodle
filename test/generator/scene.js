@@ -24,7 +24,7 @@ test('elements at the top level are joined', () => {
 });
 
 test('a scene without shapes draws nothing', () => {
-    assert.deepEqual(scene('fill: red;').warnings, ['@scene has no shapes']);
+    assert.deepEqual(scene('fill: red;').warnings, ['@scene needs shapes']);
 });
 
 test('sizes are attributes', () => {
@@ -36,7 +36,7 @@ test('sizes are attributes', () => {
 });
 
 test('shapes take no parentheses', () => {
-    assert.deepEqual(scene('sphere(.2);').warnings, ['unexpected sphere(.2): write sphere { … }', 'unknown shape sphere(.2)']);
+    assert.deepEqual(scene('sphere(.2);').warnings, ['unexpected sphere(.2)', 'unknown shape sphere(.2)']);
 });
 
 test('groups join their shapes with smooth', () => {
@@ -81,10 +81,10 @@ test('round and frame keep the outer size, grow inflates', () => {
 });
 
 test('attributes a shape does not take are reported', () => {
-    assert.deepEqual(scene('sphere { r: .2; round: .02; colr: red }').warnings, ['sphere has no round', 'sphere has no colr']);
-    assert.deepEqual(scene('sphere { smooth: .1 }').warnings, ['sphere has no smooth']);
-    assert.deepEqual(scene('box { sphere { r: .1 } }').warnings, ['put shapes in a union, not box']);
-    assert.deepEqual(scene('box#leg; #leg { sphere { r: .1 } }').warnings, ['put shapes in a union, not box']);
+    assert.deepEqual(scene('sphere { r: .2; round: .02; colr: red }').warnings, ['sphere: unknown round', 'sphere: unknown colr']);
+    assert.deepEqual(scene('sphere { smooth: .1 }').warnings, ['sphere: unknown smooth']);
+    assert.deepEqual(scene('box { sphere { r: .1 } }').warnings, ['wrap in union']);
+    assert.deepEqual(scene('box#leg; #leg { sphere { r: .1 } }').warnings, ['wrap in union']);
 });
 
 test('PI is a known name, other unknown names are reported', () => {
@@ -120,7 +120,7 @@ test('fill reads the surface normal as the camera sees it', () => {
     assert.match(body, /mix\(vec3\([^)]*\), vec3\([^)]*\), normal\.z\)/);
     assert.match(fragment, /normal = n \* g_v;/);
     assert.deepEqual(warnings, []);
-    assert.deepEqual(scene('sphere { r: .3 + .1 * normal.z }').warnings, ['r cannot read normal']);
+    assert.deepEqual(scene('sphere { r: .3 + .1 * normal.z }').warnings, ['normal is fill-only']);
 });
 
 test('fill and variables read values as @pattern does', () => {
@@ -137,7 +137,7 @@ test('fill and variables read values as @pattern does', () => {
 
 test('a value function\'s own names stay out of the warnings', () => {
     assert.deepEqual(scene('sphere { f_1_k: 1; f_1_result: .3; r: f_1_result }').warnings, []);
-    assert.deepEqual(scene('sphere { g_1_result: .3; fill: g_1_result }').warnings, ['fill needs a color, not $g()']);
+    assert.deepEqual(scene('sphere { g_1_result: .3; fill: g_1_result }').warnings, ['fill needs color']);
 });
 
 test('p is the point and cannot be assigned', () => {
@@ -158,7 +158,7 @@ test('*N and *XxY make copies with n, N, nx and ny', () => {
 
 test('repeat takes a spacing only', () => {
     assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2 }').warnings, []);
-    assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2, 5 1 5 }').warnings, ['repeat takes no count; write box*5x5']);
+    assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2, 5 1 5 }').warnings, ['repeat: no count']);
 });
 
 test('polygon takes points and a depth', () => {
@@ -168,7 +168,7 @@ test('polygon takes points and a depth', () => {
     assert.match(body, /for \(int i = 0; i < 3; i\+\+\) \{\s*vec2 a = g_c0\[i\]/);
     assert.match(scene('polygon { k: .4; points: 0 0, 0 k, .2 0 }').body, /vec2 g_\d+\[4\] = vec2\[4\]\(vec2\(0\.0, 0\.0\), vec2\(0\.0, g_\d+\)/);
     assert.match(body, /abs\(p\.z\) - \.1 \* 0\.5/);
-    assert.deepEqual(scene('polygon { points: 0 0, 1 1 }').warnings, ['polygon needs points: x y, …']);
+    assert.deepEqual(scene('polygon { points: 0 0, 1 1 }').warnings, ['polygon needs points']);
     // a point with one coordinate reads y as 0, in the culling box and the runs too
     let ring = Array.from({ length: 70 }, (_, i) => i == 5 ? '.3' : `${Math.cos(i / 11).toFixed(3)} ${Math.sin(i / 11).toFixed(3)}`);
     for (let code of ['box { size: .3 } lathe { points: 0 0, .2, .2 .4 }', `polygon { points: ${ring} }`]) {
@@ -178,7 +178,7 @@ test('polygon takes points and a depth', () => {
 
 test('sdf takes a distance in d', () => {
     assert.match(scene('sdf { d: length(p) - .3 }').body, /length\(p\) - \.3/);
-    assert.deepEqual(scene('sdf { r: .3 }').warnings, ['sdf has no r', 'sdf needs d']);
+    assert.deepEqual(scene('sdf { r: .3 }').warnings, ['sdf: unknown r', 'sdf needs d']);
 });
 
 test('mirror evaluates every reflection', () => {
@@ -198,7 +198,7 @@ test('a copy block of bodies writes each copy out and draws what the loop draws'
     let { body, warnings } = scene('sphere*2 { { r: .1; colr: red } { r: .2; colr: red } }');
     assert.doesNotMatch(body, /for \(/);
     assert.match(body, /length\(p\) - \.1[^]*length\(p\) - \.2/);
-    assert.deepEqual(warnings, ['sphere has no colr']);
+    assert.deepEqual(warnings, ['sphere: unknown colr']);
 });
 
 test('outside copies the scene is one copy', () => {
@@ -211,7 +211,7 @@ test('#id names a shape instead of drawing it, #id draws it with more rows', () 
     assert.deepEqual(scene('capsule#leg2 { from: 0 0 0; to: 0 .2 0; r: .02 } #leg2 { move: .1 0 0 }').warnings, []);
     assert.deepEqual(scene('union#cap { sphere { r: .2 } box { size: .1 } } #cap;').warnings, []);
     assert.deepEqual(scene('union#a { #a { scale: 2 } } #a;').warnings, ['#a uses itself']);
-    assert.deepEqual(scene('#nope;').warnings, ['unknown shape #nope', '@scene has no shapes']);
+    assert.deepEqual(scene('#nope;').warnings, ['unknown shape #nope', '@scene needs shapes']);
     // an attribute given at #id replaces the shape's own
     let { body, warnings } = scene('capsule#leg { r: .1 } #leg { r: .2 }');
     assert.deepEqual(warnings, []);
@@ -221,7 +221,7 @@ test('#id names a shape instead of drawing it, #id draws it with more rows', () 
 
 test('named shapes nothing draws are still checked', () => {
     assert.deepEqual(scene('sphere#a { r: .1 } sphere#b { r: .2 } #a;').warnings, []);
-    assert.deepEqual(scene('sphere#a { colr: red } sphere { r: .2 }').warnings, ['sphere has no colr']);
+    assert.deepEqual(scene('sphere#a { colr: red } sphere { r: .2 }').warnings, ['sphere: unknown colr']);
 });
 
 test('perspective sets the camera distance, none makes it parallel', () => {
@@ -297,7 +297,7 @@ test('a fill that reads light is lit already, and the others are shaded', () => 
     assert.match(body, /vec3 g_\d+ = vec3\(1\.0, 0\.0, 0\.0\) \* g_L;/);
     assert.match(body, /vec3 g_\d+ = \(vec3\(1\.0, 0\.0, 0\.0\) \* g_\d+\) \* g_L;/);
     assert.match(fragment, /light = dot\(g_L, vec3\(1\.0 \/ 3\.0\)\);\n\s*FragColor = vec4\(g_scene\(g_h\)\.rgb,/);
-    assert.deepEqual(scene('sphere { move: light 0 0 }').warnings, ['move cannot read light']);
+    assert.deepEqual(scene('sphere { move: light 0 0 }').warnings, ['light is fill-only']);
 });
 
 test('the model is measured once per vertex, not per pixel', () => {
@@ -336,7 +336,7 @@ test('drag lets the pointer turn the view, which then fits a ball around the mod
     assert.deepEqual(draw('view: 30 20; drag: turn; sphere', extra).drag, [20 * Math.PI / 180]);
     assert.equal(draw('drag: none; sphere', extra).drag, 0);
     assert.doesNotMatch(scene('sphere').fragment, /u_drag\.x/);
-    assert.deepEqual(scene('drag: orbit; sphere').warnings, ['drag takes turn or tilt, not orbit']);
+    assert.deepEqual(scene('drag: orbit; sphere').warnings, ['invalid drag orbit']);
 });
 
 test('the fit reads a scaled shape at its full size', () => {
@@ -421,7 +421,7 @@ test('a polygon takes a @shape body as its outline, holes and all', () => {
     let own = scene(`polygon { path: ${path} }`);
     assert.deepEqual(own.warnings, []);
     assert.equal(own.fragment, scene(`polygon { shape { path: ${path} } }`).fragment);
-    assert.deepEqual(scene('polygon { text: light; font: normal serif }').warnings, ['polygon needs points: x y, …']);
+    assert.deepEqual(scene('polygon { text: light; font: normal serif }').warnings, ['polygon needs points']);
 });
 
 test('a lathe turns an outline around y', () => {
@@ -431,7 +431,7 @@ test('a lathe turns an outline around y', () => {
     assert.doesNotMatch(dist, /abs\(p\.z\)/);
     assert.match(scene('lathe { points: 0 -1, .5 -1, .3 0, .6 1, 0 1 }').dist, /length\(p\.xz\)/);
     assert.deepEqual(scene('lathe { cirle }').warnings, ['unknown shape cirle']);
-    assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points: x y, …']);
+    assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points']);
     let xs = code => {
         let x = [...scene(code).fragment.match(/g_c0\[\] = (.*)/)[1].matchAll(/vec2\((-?[\d.]+),/g)].map(m => +m[1]);
         return [Math.min(...x), Math.max(...x)];
@@ -474,13 +474,13 @@ test('an outline reads the n of its copy', () => {
     assert.deepEqual(radii('lathe*3 { move: n 0 0; circle { r: .1 } }'), [.1]);
     assert.match(dist, /for \(int g_\d+ = 0; g_\d+ < 3;/);
     let many = scene('lathe*30x30 { circle { r: .0005n } }');
-    assert.deepEqual(many.warnings, ['lathe traces one outline past 32 copies']);
+    assert.deepEqual(many.warnings, ['outline traced once']);
     assert.deepEqual(radii('lathe*30x30 { circle { r: .0005n } }'), [.001]);
 });
 
 test('a match block warns, since @scene has none', () => {
     let { body, warnings } = scene('sphere { r: .3; match { p.y > 0 { fill: red } } }');
-    assert.deepEqual(warnings, ['no match { } in @scene']);
+    assert.deepEqual(warnings, ['no match blocks']);
     assert.match(body, /length\(p\) - \.3/);
 });
 
@@ -522,7 +522,7 @@ test('a copy block adds to the rows and shapes around it', () => {
 
 test('r is read only where a shape takes it', () => {
     let { body, warnings } = scene('box { r: rand() } sphere { r: rand() } ellipsoid { r: rand() .2 .1 }');
-    assert.deepEqual(warnings, ['box has no r']);
+    assert.deepEqual(warnings, ['box: unknown r']);
     assert.match(body, /length\(p\) - rand\(vec2\(0\.0, 1\.0\)/);
     assert.match(body, /g_ellipsoid\(p, vec3\(rand\(vec2\(0\.0, 2\.0\)[^;]*, \.2, \.1\)\)/);
     assert.equal(body.match(/rand\(/g).length, 2);

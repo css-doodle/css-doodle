@@ -576,15 +576,15 @@ test('unknown shapes are reported', () => {
 });
 
 test('a row that runs into the next row or shape is reported', () => {
-    assert.deepEqual(shapeWarnings('points: 4\n r: .5'), ['missing ; after points']);
-    assert.deepEqual(shapeWarnings('union { k: .1 circle { r: .2 } star { r: .3 } }'), ['missing ; after k']);
+    assert.deepEqual(shapeWarnings('points: 4\n r: .5'), ['points needs ;']);
+    assert.deepEqual(shapeWarnings('union { k: .1 circle { r: .2 } star { r: .3 } }'), ['k needs ;']);
     assert.deepEqual(shapeWarnings('text: "a: b"; move: max(.1, .2) 0'), []);
 });
 
 test('a group merges its first 32 shapes and reports the rest', () => {
     let group = 'union { circle*40 { scale: .02; move: (n * .045 - .9) 0 } }';
     assert.equal(generateShape(group).points.rings.length, 32);
-    assert.deepEqual(shapeWarnings(group), ['union merges 32 of 40 shapes']);
+    assert.deepEqual(shapeWarnings(group), ['max 32 shapes']);
     assert.deepEqual(shapeWarnings('union { circle*4x8 { scale: .1 } }'), []);
 });
 

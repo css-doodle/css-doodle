@@ -202,7 +202,7 @@ export function compileValue(value, named, expr, extra, warn, expect = null) {
     });
     let n = parts.reduce((sum, p) => sum + p.width, 0);
     if (n !== 3 && n !== 4) {
-        warn(`a list needs 3 or 4 channels, not ${n}`);
+        warn('needs 3-4 channels');
         return null;
     }
     return parts.every(p => p.code) ? vector(n, parts.map(p => p.code)) : null;
@@ -244,7 +244,7 @@ function randAt(scope, ctx) {
 function generateStatement(name, value, scope, ctx) {
     let [, base, part] = name.match(/^([a-zA-Z_]\w*)(?:\.(\w+))?$/) || [];
     if (base?.startsWith('g_')) {
-        ctx.warn('g_ names are reserved');
+        ctx.warn('g_ names reserved');
         return '';
     }
     let from = part && expr(base, scope, ctx).type, size = /^vec/.test(from) && +from[3];
@@ -262,7 +262,7 @@ function generateStatement(name, value, scope, ctx) {
         let type = !part ? ctx.types[id] : part.length > 1 ? `vec${part.length}` : 'float';
         let v = compile(value, scope, ctx, type);
         if (v && /vec|mat/.test(v.type) && v.type !== type) {
-            ctx.warn(`${name} is a ${type}, not a ${v.type}`);
+            ctx.warn(`${name} is ${type}`);
             return '';
         }
         if (!v) return '';
@@ -288,7 +288,7 @@ function generateFill(value, scope, ctx) {
     if (type === 'vec2') return `g_color = vec4(${code}, 0.0, 1.0);\n`;
     if (type === 'bool') code = `float(${code})`;
     else if (type !== 'float') {
-        ctx.warn(`fill cannot take a ${type}`);
+        ctx.warn(`invalid ${type} fill`);
         return '';
     }
     return `g_color = vec4(vec3(${code}), 1.0);\n`;
@@ -297,7 +297,7 @@ function generateFill(value, scope, ctx) {
 function asFloat(value, scope, ctx, what) {
     let { type, code } = expr(value, scope, ctx);
     if (type !== 'float' && type !== 'int' && type !== 'bool') {
-        ctx.warn(`${what} needs a number`);
+        ctx.warn(`${what} needs number`);
         return '';
     }
     return code('float');
@@ -327,10 +327,10 @@ function generateRepeat(token, scope, ctx, opts) {
     let m = head.match(/^(\w+)(?:\s+as\s+(\S+))?$/);
     let times = m && (/^\d+$/.test(m[1]) ? Number(m[1]) : ctx.counts.get(scope.ids[m[1]]));
     let work = (opts.work || 1) * times;
-    let error = !m ? 'repeat() needs a count'
-        : times === undefined ? `repeat() count ${m[1]} must be a fixed whole number`
-        : times > MAX_REPEAT ? `repeat() count exceeds ${MAX_REPEAT}`
-        : work > MAX_REPEAT_WORK ? `nested repeat() exceeds ${MAX_REPEAT_WORK} steps`
+    let error = !m ? 'repeat() needs count'
+        : times === undefined ? 'repeat() needs integer'
+        : times > MAX_REPEAT ? `repeat() over ${MAX_REPEAT}`
+        : work > MAX_REPEAT_WORK ? 'too many steps'
         : m[2] && !NAME.test(m[2]) ? `invalid name "${m[2]}"`
         : '';
     if (error) {
@@ -358,8 +358,8 @@ function generateMatch(arms, scope, ctx, opts) {
     let out = '';
     for (let [k, { type, test, value }] of arms.entries()) {
         let isElse = test === 'else';
-        if (type !== 'arm' || !test) ctx.warn('match arms need a test');
-        else if (isElse && k < arms.length - 1) ctx.warn('else must be last');
+        if (type !== 'arm' || !test) ctx.warn('arm needs test');
+        else if (isElse && k < arms.length - 1) ctx.warn('else goes last');
         else if (isElse || (test = expr(test, scope, ctx).code('bool'))) {
             let body = generateBody(value, newScope(scope), ctx, { ...opts, branched: true });
             out += (out ? ' else ' : '') + (isElse ? '' : `if (${test}) `) + `{\n${body}}`;
@@ -374,7 +374,7 @@ export const DERIVATIVES = /\b(fwidth|dFdx|dFdy|g_shape)\(/;
 
 function checkDerivatives(code, where, ctx, opts) {
     if (!opts.branched && DERIVATIVES.test(code)) {
-        ctx.warn(`compute ramp(), shape() and fwidth() before ${where}`);
+        ctx.warn(`derivative inside ${where}`);
     }
 }
 
@@ -389,18 +389,18 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     for (let t of tokens) {
         if (t.type === 'statement') {
             if (t.name === 'grid') {
-                if (!top) ctx.warn('grid must be top level');
+                if (!top) ctx.warn('grid goes top-level');
             } else if (!OUTPUT_GENERATORS[t.name]) {
                 out += generateStatement(t.name, t.value, scope, ctx);
             } else if (loop) {
-                ctx.warn(`no ${t.name} in repeat()`);
+                ctx.warn(`${t.name} in repeat()`);
             } else {
                 out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx);
             }
         } else if (t.type === 'text') {
-            ctx.warn(`write "${t.value}" as name: value`);
+            ctx.warn(`"${t.value}" needs :`);
         } else if (t.type === 'texture') {
-            if (!top) ctx.warn('texture must be top level');
+            if (!top) ctx.warn('texture goes top-level');
         } else if (t.name === 'repeat') {
             out += generateRepeat(t, scope, ctx, opts);
         } else if (t.arms) {
@@ -410,10 +410,10 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             if (args.length === 1) {
                 out += generateMatch([{ type: 'arm', test: `(${args[0]})`, value: t.value }], scope, ctx, opts);
             } else {
-                ctx.warn('match() needs one expression');
+                ctx.warn('match() needs expression');
             }
         } else {
-            ctx.warn(t.name === 'else' ? 'else goes in match { }' : `unknown block ${t.name}`);
+            ctx.warn(t.name === 'else' ? 'else needs match' : `unknown block ${t.name}`);
         }
     }
     return out;
@@ -448,8 +448,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let ctx = {
         extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
-        unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid is not a value; use X, Y' : /^(fill|shape)$/.test(name) ? `${name} is not a value`
-            : `unknown name ${name}` + (/^(deg|rad|turn|grad|em|rem|vw|vh|vmin|vmax|ms)$/.test(name) ? '; no units, angles are radians' : '')), BUILTINS),
+        unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown name ${name}`), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));

@@ -288,7 +288,7 @@ function check(node, warn) {
     let name = node.name.split(' ')[0];
     if (name && !(name in presetShapes) && !GROUPS.includes(name) && !/^(shape|polygon)$|^\(/.test(name)) warn(`unknown shape ${node.name}`);
     let members = node.children.reduce((n, c) => n + (c.count ? c.count[0] * c.count[1] : 1), 0);
-    if (members > MAX_MEMBERS) warn(`${node.name || 'a group'} merges ${MAX_MEMBERS} of ${members} shapes`);
+    if (members > MAX_MEMBERS) warn(`max ${MAX_MEMBERS} shapes`);
     [...node.copies || node.children, ...node.unused || []].forEach(n => check(n, warn));
 }
 

@@ -690,8 +690,8 @@ test('@svg-filter channels warnings keep invalid rows at identity', () => {
     ), filter);
     assert.ok(filter.includes('opacity=".5"'), filter);
     assert.deepEqual(compiled.warnings.map(w => w.message), [
-        'channels r: invalid "r * g"',
-        'channels b: invalid "sin(b)"',
+        'invalid channel r',
+        'invalid channel b',
     ]);
 });
 
@@ -810,14 +810,14 @@ test('a seed attribute and @seed give the same cells', () => {
 test('@svg problems are reported once for the whole grid', () => {
     let compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '2');
     assert.deepEqual(compiled.warnings.map(w => w.message), [
-        'viewBox needs 1, 2 or 4 numbers, got "0 0 100"',
-        'animate r: needs a duration after /',
+        'invalid viewBox "0 0 100"',
+        'r needs duration',
     ]);
     // the same source is memoized: a second compile still reports
     compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '1');
     assert.equal(compiled.warnings.length, 2);
     compiled = compile('filter: @svg-filter(g { draw: 1s });');
-    assert.deepEqual(compiled.warnings.map(w => w.message), ['draw: <g> has no path']);
+    assert.deepEqual(compiled.warnings.map(w => w.message), ['<g> lacks path']);
 });
 
 test('@svg g|op can be computed per cell, and draws along the joined outline', () => {
@@ -1341,7 +1341,7 @@ test('an unknown $name skips the shader with a warning instead of reaching GLSL'
         let { shaders, warnings, styles } = compile(`background: @shaders(${body})`);
         assert.deepEqual(Object.keys(shaders), []);
         assert.equal(styles.all.includes('$missing'), false);
-        assert.deepEqual(warnings.map(w => w.message), ['unknown variable $missing in @shaders()']);
+        assert.deepEqual(warnings.map(w => w.message), ['unknown variable $missing']);
     }
     // a body that reads nothing is stored as written
     let [plain] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { @grid: 2 })').shaders);
@@ -1370,7 +1370,7 @@ test('$name in a pattern body reads the cell variable, texture blocks included',
     for (let [code, name] of [['fill: $nope, 0, 0', 'nope'], ['fill: $ring-count', 'ring-count']]) {
         let missing = compile(`background: @pattern(${code})`);
         assert.deepEqual(Object.keys(missing.patterns), []);
-        assert.deepEqual(missing.warnings.map(w => w.message), [`unknown variable $${name} in @pattern()`]);
+        assert.deepEqual(missing.warnings.map(w => w.message), [`unknown variable $${name}`]);
     }
 });
 

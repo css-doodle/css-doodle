@@ -135,7 +135,7 @@ loops over. So `$dot(@r(5))` gives one radius to each `$r`, and
 `@n`. Any other argument is pasted as written, as is every argument
 of a body holding a `@doodle`, `@pattern` or `@scene`.
 A body without braces ends at its first `;`; a statement right after it
-reading one of its parameters warns `--f(): body needs { }`.
+reading one of its parameters warns `--f() needs {}`.
 
 A body of `result` declarations alone gives the last one's value, as a
 CSS `@function` does: with `--double(x): { result: $(x * 2); }`,

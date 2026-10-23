@@ -116,7 +116,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
     const consume = () => tokens[pos++];
 
     function report(message) {
-        if (warn) warn(`"${code.trim()}": ${message}`);
+        if (warn) warn(message);
         warn = null;
     }
 
@@ -209,7 +209,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             const arg = parse();
             // in ramp() a stop's position follows its value after a space: #f80 .5
             if (name === 'ramp' && !comma && args.length > 1) {
-                if (args[args.length - 1].type === 'Stop') report('a ramp() stop takes one position');
+                if (args[args.length - 1].type === 'Stop') report('extra stop position');
                 else args.push({ type: 'Stop', left: args.pop(), right: arg });
             } else {
                 args.push(arg);
@@ -304,7 +304,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         if (!stops.length) return gen(ZERO, type);
         const at = stops.map(s => {
             if (s.type !== 'Stop') return NaN;
-            if (s.right.type !== 'Lit') report('ramp() positions must be numbers');
+            if (s.right.type !== 'Lit') report('ramp() needs numbers');
             return +s.right.val;
         });
         const n = at.length - 1;

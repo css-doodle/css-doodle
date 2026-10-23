@@ -564,7 +564,7 @@ class Rules {
                 return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
             });
             if (missing !== null) {
-                this.warn(`unknown variable $${missing} in @${fname}()`, node);
+                this.warn(`unknown variable $${missing}`, node);
                 return;
             }
         }

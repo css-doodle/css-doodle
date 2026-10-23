@@ -90,14 +90,14 @@ test('what the grammar cannot place is reported once', () => {
         const messages = [];
         return [transform(code, { warn: m => messages.push(m) }), messages];
     };
-    assert.deepEqual(report('x > 1 ? 1 : 0'), ['(x > 1.0)', ['"x > 1 ? 1 : 0": unexpected ?']]);
-    assert.deepEqual(report('2 t'), ['2.0', ['"2 t": unexpected t']]);
-    assert.deepEqual(report('50%'), ['50.0', ['"50%": nothing after %']]);
-    assert.deepEqual(report('x and'), ['x', ['"x and": nothing after &&']]);
-    assert.deepEqual(report('x * * 2'), ['(x * 0.0)', ['"x * * 2": unexpected *']]);
-    assert.deepEqual(report('a : b'), ['a', ['"a : b": unexpected :']]);
-    assert.deepEqual(report('x ! y'), ['x', ['"x ! y": unexpected !']]);
-    assert.deepEqual(report('x) * 2'), ['x', ['"x) * 2": unexpected )']]);
+    assert.deepEqual(report('x > 1 ? 1 : 0'), ['(x > 1.0)', ['unexpected ?']]);
+    assert.deepEqual(report('2 t'), ['2.0', ['unexpected t']]);
+    assert.deepEqual(report('50%'), ['50.0', ['nothing after %']]);
+    assert.deepEqual(report('x and'), ['x', ['nothing after &&']]);
+    assert.deepEqual(report('x * * 2'), ['(x * 0.0)', ['unexpected *']]);
+    assert.deepEqual(report('a : b'), ['a', ['unexpected :']]);
+    assert.deepEqual(report('x ! y'), ['x', ['unexpected !']]);
+    assert.deepEqual(report('x) * 2'), ['x', ['unexpected )']]);
     // nothing to report
     assert.deepEqual(report('max(x, 1) * (y + 2)'), ['(max(x, 1.0) * (y + 2.0))', []]);
 });
@@ -105,7 +105,7 @@ test('what the grammar cannot place is reported once', () => {
 test('xor is not an operator; != between two conditions is', () => {
     const messages = [];
     assert.equal(transform('x < .5 xor y < .5', { warn: m => messages.push(m) }), '(x < .5)');
-    assert.deepEqual(messages, ['"x < .5 xor y < .5": unexpected xor']);
+    assert.deepEqual(messages, ['unexpected xor']);
     assert.equal(transform('x < .5 != y < .5'), '(float((x < .5)) != float((y < .5)))');
 });
 
@@ -396,10 +396,10 @@ test('ramp() reports positions that are not one number, and leaves them out', ()
     };
     let [out, messages] = run('ramp(x, 0, 1 p, 0)');
     assert.match(out, /^mix\(mix\(0\.0, 1\.0, .*\(x - 0\.5\) \/ max\(1\.0 - 0\.5, /);
-    assert.deepEqual(messages, ['"ramp(x, 0, 1 p, 0)": ramp() positions must be numbers']);
+    assert.deepEqual(messages, ['ramp() needs numbers']);
     [out, messages] = run('ramp(x, 0 .2 .5, 1)');
     assert.match(out, /\(x - 0\.2\) \/ max\(1\.0 - 0\.2, /);
-    assert.deepEqual(messages, ['"ramp(x, 0 .2 .5, 1)": a ramp() stop takes one position']);
+    assert.deepEqual(messages, ['extra stop position']);
     // elsewhere a space still separates arguments
     assert.equal(transform('hsl(h .75 .65)'), 'hsl(h, .75, .65)');
 });

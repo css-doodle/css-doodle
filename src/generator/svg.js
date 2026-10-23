@@ -105,7 +105,7 @@ function ringsOf(tag, warn) {
     let { name, attrs } = tag, rings, d;
     let n = key => {
         let value = parseFloat(attrs[key]) || 0;
-        if (/%/.test(attrs[key])) warn(`<${name}> reads ${attrs[key]} as ${value}`);
+        if (/%/.test(attrs[key])) warn(`<${name}> ignores %`);
         return value;
     };
     if (name === 'g') {
@@ -127,18 +127,17 @@ function ringsOf(tag, warn) {
         d = `M${x + rx} ${y}H${x + w - rx}${a(x + w, y + ry)}V${y + h - ry}${a(x + w - rx, y + h)}H${x + rx}${a(x, y + h - ry)}V${y + ry}${a(x + rx, y)}Z`;
     }
     if (d) rings = Object.assign(traceRings(d, 32), { evenodd: attrs['fill-rule'] === 'evenodd' });
-    if (rings && attrs.transform !== undefined) warn(`<${name}> transform is ignored`);
+    if (rings && attrs.transform !== undefined) warn(`<${name}> transform ignored`);
     return rings;
 }
 
 function combine(group, op, warn) {
     let { smooth, grow, ...attrs } = group.attrs, path = new Tag('path'), joints = new Set(), rings, scale = 0, d = '';
-    let note = message => warn(`g|${op}: ${message}`);
     group.body.forEach(tag => {
-        let next = ringsOf(tag, note), [x0, y0, x1, y1] = bounds((next || []).flat(2));
+        let next = ringsOf(tag, warn), [x0, y0, x1, y1] = bounds((next || []).flat(2));
         if (next) rings = rings ? overlay(rings, next, op, joints) : next, scale = max(scale, x1 - x0, y1 - y0);
         else if (/^(animate|set|title|desc)/.test(tag.name)) path.append(tag);
-        else if (tag.name) note(`<${tag.name}> has no outline`);
+        else if (tag.name) warn(`<${tag.name}> lacks outline`);
     });
     rings ??= [];
     let k = parseFloat(smooth), g = parseFloat(grow), tol = 2e-5 * (scale + abs(g || 0));
@@ -204,7 +203,7 @@ function transformViewBox(token, warn) {
         viewBox = [0, 0, viewBox[0], viewBox[1]];
     }
     if (viewBox.length !== 4) {
-        warn(`viewBox needs 1, 2 or 4 numbers, got "${token.value}"`);
+        warn(`invalid viewBox "${token.value}"`);
         return '';
     }
     let [x, y, w, h] = viewBox;
@@ -230,7 +229,7 @@ function timing(animate, value, label, warn) {
             if (points) {
                 spline = points.join(' ');
             } else {
-                warn(`${label}: unknown timing word "${word}"`);
+                warn(`unknown timing ${word}`);
             }
         }
     }
@@ -291,8 +290,8 @@ function generate(token, element, parent, root, warn) {
                 if (id) { inlineId = id }
             }
             if (token.op !== undefined) {
-                if (token.name !== 'g') warn(`${token.name}|${token.op}: needs g`);
-                else if (!GROUPS.includes(token.op)) warn(`g|${token.op}: needs union, subtract, intersect or exclude`);
+                if (token.name !== 'g') warn(`${token.name}|${token.op} needs g`);
+                else if (!GROUPS.includes(token.op)) warn(`unknown g|${token.op}`);
                 else el = combine(el, token.op, warn);
             }
             let isInlineAndNotDefs = token.inline && token.name !== 'defs';
@@ -357,7 +356,7 @@ function generate(token, element, parent, root, warn) {
             if (value?.type === 'block') {
                 let id = generate(token.value, root, token, root, warn);
                 if (isNil(id)) {
-                    warn(`${token.name}: inline defs needs one element`);
+                    warn('defs: one element');
                     value = '';
                 } else {
                     value = `url(#${id})`;
@@ -375,7 +374,7 @@ function generate(token, element, parent, root, warn) {
             // `draw: 2s infinite` strokes a shape along its length
             else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
                 if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name) && parent.op === undefined) {
-                    warn(`${keyword}: <${parent.name}> has no path`);
+                    warn(`<${parent.name}> lacks path`);
                 } else {
                     element.attr('stroke-dasharray', 10);
                     element.attr('pathLength', 10);
@@ -384,7 +383,7 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('from', 10);
                     animate.attr('to', 0);
                     if (!timing(animate, value, keyword, warn)) {
-                        warn(`${keyword}: needs a duration`);
+                        warn(`${keyword} needs duration`);
                     }
                     element.append(animate);
                 }
@@ -412,7 +411,7 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('values', values.join(';'));
                 }
                 if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), `animate ${name}`, warn)) {
-                    warn(`animate ${name}: needs a duration after /`);
+                    warn(`${name} needs duration`);
                 }
                 element.append(animate);
             }

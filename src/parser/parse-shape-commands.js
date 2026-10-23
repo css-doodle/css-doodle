@@ -78,7 +78,7 @@ function readShapes(input, warn = () => {}, options) {
                 if (t.status) quote = t.status == 'open';
                 else if (!quote) depth += t.isSymbol('(') - t.isSymbol(')');
                 if (!quote && !depth && t.isSymbol(':', '{')) {
-                    warn(`missing ; after ${name}`);
+                    warn(`${name} needs ;`);
                     break;
                 }
             }
