@@ -33,12 +33,7 @@ function noiseOf(props) {
     let perlin;
     return (t, x, y, octave = 1, scale = 1, from = 0, to = 1, r = 1) => {
         perlin ??= perlinOf(props.seed ?? '');
-        let px = x + r * cos(t), py = y + r * sin(t), v = 0;
-        for (let i = 0; i < octave; ++i) {
-            let m = i ? 2 * i : 1;
-            v += perlin.noise(px * m, py * m) * scale / m;
-        }
-        return map2d(v, from, to, scale);
+        return map2d(perlin.fbm(x + r * cos(t), y + r * sin(t), octave, scale), from, to, scale);
     };
 }
 

@@ -477,12 +477,7 @@ function createNoise(outline) {
             let _x = offsetX + u;
             let _y = offsetY + v;
 
-            let t = noise2d.noise(_x * frequency, _y * frequency) * scale;
-
-            for (let i = 1; i < octave; ++i) {
-                let i2 = i * 2;
-                t += noise2d.noise(_x * frequency * i2, _y * frequency * i2) * (scale / i2);
-            }
+            let t = noise2d.fbm(_x * frequency, _y * frequency, octave, scale);
             let fn = transform((from = 0, to = 1) => map2d(t, from, to, scale));
             return pushStack(context, 'lastRand', fn(from, to));
         };

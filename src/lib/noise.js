@@ -29,6 +29,15 @@ export default class Perlin {
         this.p = [].concat(shuffled, shuffled);
     }
 
+    fbm(x, y, octave, scale) {
+        let v = 0;
+        for (let i = 0; i < octave; ++i) {
+            let m = i ? 2 * i : 1;
+            v += this.noise(x * m, y * m) * scale / m;
+        }
+        return v;
+    }
+
     noise(x, y) {
         let { p } = this;
         let fx = Math.floor(x), fy = Math.floor(y);
