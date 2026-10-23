@@ -135,6 +135,11 @@ test('fill and variables read values as @pattern does', () => {
     assert.doesNotMatch(empty.body, /= ;/);
 });
 
+test('p is the point and cannot be assigned', () => {
+    assert.deepEqual(scene('p: 1; sphere { r: .3 }').warnings, ['p is read-only']);
+    assert.deepEqual(scene('sphere { p: p * 2; r: .2 }').warnings, ['p is read-only']);
+});
+
 test('*N and *XxY make copies with n, N, nx and ny', () => {
     let { body, warnings } = scene('box*5x3 { size: .05; move: nx * .1, ny * .1, n / N }');
     assert.deepEqual(warnings, []);

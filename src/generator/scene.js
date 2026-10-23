@@ -118,6 +118,11 @@ function checkAll(node, warn, unread, code, copy) {
                 continue;
             }
             let valid = NAME.test(r.name);
+            if (r.name == 'p') {
+                unread.add(r);
+                warn('p is read-only');
+                continue;
+            }
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
             warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name} has no ${r.name}`);
