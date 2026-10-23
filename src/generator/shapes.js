@@ -276,6 +276,11 @@ function createPointFunction(props, split) {
         context['t'] = context['θ'] = t;
         return Number(calc(text, context)) || 0;
     };
+    point.reads = text => {
+        let read = false, angle = { get: () => (read = true, 1) };
+        calc(text, Object.create(context, { t: angle, θ: angle }));
+        return read;
+    };
     return point;
 }
 
@@ -337,7 +342,7 @@ function createShapePoints(props, lo, hi, raw) {
         }
         // a curve in t, also through a variable, gets as many points as a circle
         let f = createPointFunction(p, 3), n = !isEmpty(p.points || p.split) ? Math.trunc(calc(p.points ? 'points' : 'split', p))
-            : [p.r, p.x, p.y].some(v => !isEmpty(v) && (v = f.formula(v), v(1) != v(2))) ? 180 : NaN;
+            : [p.r, p.x, p.y].some(v => !isEmpty(v) && (f.reads(v) || (v = f.formula(v), v(1) != v(2)))) ? 180 : NaN;
         if (c && n === 0) continue;
         let { unit, value } = parseCompoundValue(isEmpty(p.r) ? '' : p.r);
         if (unit && !p[unit] && !/^[tθi]$/.test(unit)) {

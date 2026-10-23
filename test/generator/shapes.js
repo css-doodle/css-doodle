@@ -596,6 +596,8 @@ test('a curve in t gets as many points as a circle unless points says otherwise;
     // also through a variable, or as θ
     assert.equal(generateShape('k: sin(3t); r: 1 + .2 * k').points.length, 180);
     assert.equal(generateShape('r: (1 + .1 * cos(3θ))').points.length, 180);
+    assert.equal(generateShape('u: abs(t - π); r: max(0, cos(u) - sin(u))').points.length, 180);
+    assert.equal(generateShape('u: acos(sin(t)); r: match(u < .9, .95, 0)').points.length, 180);
     assert.equal(generateShape('r: seq(1, .5)').points.length, 3);
     let corners = 'points: 0 1, 1 -1, -1 -1';
     assert.equal(String(generateShape(corners).points), String(generateShape(`polygon { ${corners} }`).points));
