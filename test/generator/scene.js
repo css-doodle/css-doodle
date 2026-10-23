@@ -123,6 +123,18 @@ test('fill reads the surface normal as the camera sees it', () => {
     assert.deepEqual(scene('sphere { r: .3 + .1 * normal.z }').warnings, ['r cannot read normal']);
 });
 
+test('fill and variables read values as @pattern does', () => {
+    let list = scene('sphere { fill: .2, .4, .6 }');
+    assert.deepEqual(list.warnings, []);
+    assert.match(list.body, /vec3 g_\d+ = vec3\(\.2, \.4, \.6\);/);
+    let color = scene('k: rgb(0 0 255); sphere { fill: k }');
+    assert.deepEqual(color.warnings, []);
+    assert.match(color.body, /vec3 g_\d+ = vec3\(1\.0, 0\.0, 0\.0\);/);
+    let empty = scene('k: ; sphere { r: k }');
+    assert.deepEqual(empty.warnings, ['unknown name k']);
+    assert.doesNotMatch(empty.body, /= ;/);
+});
+
 test('*N and *XxY make copies with n, N, nx and ny', () => {
     let { body, warnings } = scene('box*5x3 { size: .05; move: nx * .1, ny * .1, n / N }');
     assert.deepEqual(warnings, []);

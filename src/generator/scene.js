@@ -2,7 +2,7 @@ import { readShapes, degrees, partsOf } from '../parser/parse-shape-commands.js'
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
-import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader } from './pattern.js';
+import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue } from './pattern.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const SHAPES = {
@@ -174,15 +174,14 @@ export default function drawScene(code, extra, report = () => {}) {
             return partsOf(angle ? degrees(text) : text).map(v => compile(v, p).code());
         };
         let vec3 = (items, fill = '0.0') => `vec3(${items.length > 1 ? [0, 1, 2].map(i => items[i] || fill).join(', ') : items[0] || fill})`;
-        let color = (value, p) => {
-            let rgba = !ctx.names[value.trim()] && cssColor(extra, value.trim());
-            if (rgba) return `vec3(${rgba.slice(0, 3).map(float).join(', ')})`;
-            let { type, code } = compile(value, p);
+        let value = (text, p) => compileValue(text = text.trim(), ctx.names[text], v => compile(v, p), extra, warn) || {};
+        let color = (text, p) => {
+            let { type, code } = value(text, p);
             if (!/^vec[34]$/.test(type)) {
-                warn(`fill needs a color, not ${value}`);
+                warn(`fill needs a color, not ${text.trim()}`);
                 return null;
             }
-            return type === 'vec4' ? `${code()}.rgb` : code();
+            return type === 'vec4' ? `${code}.rgb` : code;
         };
 
         let out = '';
@@ -193,9 +192,9 @@ export default function drawScene(code, extra, report = () => {}) {
             if (!again) scoped.set(node, { p, sites: end });
             else if (first.p === p) return;
             else ctx.sites = first.sites;
-            for (let { name, value } of vars(node)) {
-                let { type, code } = compile(textOf(value), p);
-                let t = type === 'int' ? 'float' : type, c = code(t);
+            for (let { name, value: text } of vars(node)) {
+                let { type: t, code: c } = value(textOf(text), p);
+                if (!c) continue;
                 if (again && !new RegExp(`\\b(${moved.join('|')})\\b`).test(c)) continue;
                 let id = next();
                 ctx.types[id] = t;

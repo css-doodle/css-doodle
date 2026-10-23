@@ -174,7 +174,11 @@ function newScope(parent = null) {
 }
 
 function compile(value, scope, ctx, expect = null) {
-    let rgba = scope.ids[value] ? null : cssColor(ctx.extra, value);
+    return compileValue(value, scope.ids[value], v => expr(v, scope, ctx), ctx.extra, ctx.warn, expect);
+}
+
+export function compileValue(value, named, expr, extra, warn, expect = null) {
+    let rgba = !named && cssColor(extra, value);
     if (rgba) {
         rgba = channels(rgba);
         return vector(rgba.length, rgba.map(float));
@@ -182,23 +186,23 @@ function compile(value, scope, ctx, expect = null) {
     let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim());
     if (!items.length) return null;
     if (items.some(v => !v)) {
-        ctx.warn('empty list item');
+        warn('empty list item');
         return null;
     }
     if (items.length === 1) {
-        let e = expr(items[0], scope, ctx);
+        let e = expr(items[0]);
         let type = e.type === 'int' ? 'float' : e.type;
         let code = e.code(expect || type);
         return code ? { type, code } : null;
     }
     let parts = items.map(v => {
-        let { type, code } = expr(v, scope, ctx);
+        let { type, code } = expr(v);
         let width = /^vec\d$/.test(type) ? Number(type[3]) : 1;
         return { width, code: code(width > 1 ? type : 'float') };
     });
     let n = parts.reduce((sum, p) => sum + p.width, 0);
     if (n !== 3 && n !== 4) {
-        ctx.warn(`a list needs 3 or 4 channels, not ${n}`);
+        warn(`a list needs 3 or 4 channels, not ${n}`);
         return null;
     }
     return parts.every(p => p.code) ? vector(n, parts.map(p => p.code)) : null;
