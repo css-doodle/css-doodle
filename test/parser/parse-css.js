@@ -573,12 +573,13 @@ test('π inside a quoted string stays as written', () => {
     assert.deepEqual(p.value[0][0].arguments.map(a => a.values[0].value), ['π', String(Math.PI)]);
 });
 
-test('π touching a digit stays for the expression to multiply', () => {
-    assert.deepEqual(ast(`--a: π2; --b: 2π; --c: π x;`), [rule('--a', text('π2')), rule('--b', text('2π')), rule('--c', text(String(Math.PI) + ' x'))]);
+test('π touching a digit or after a name stays for the expression to multiply', () => {
+    assert.deepEqual(ast(`--a: π2; --b: 2π; --c: π x; --d: kπ;`), [rule('--a', text('π2')), rule('--b', text('2π')), rule('--c', text(String(Math.PI) + ' x')), rule('--d', text('kπ'))]);
     let [p] = parseCss(`content: @p(π2, π);`);
     assert.deepEqual(p.value[0][0].arguments.map(a => a.values[0].value), ['π2', String(Math.PI)]);
     let [q] = parseCss(`background: @pattern(a: π2; b: π;);`);
     assert.equal(q.value[0][0].arguments[0].values[0].value, `a: π2; b: ${Math.PI};`);
+    assert.equal(paintOf(`--k: 3; @content: @pattern(fill: $kπ);`), 'fill: $kπ');
 });
 
 test('a < in a value is text unless a tag follows', () => {

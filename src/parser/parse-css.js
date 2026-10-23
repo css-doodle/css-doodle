@@ -72,7 +72,7 @@ function readsShape(name) {
 }
 
 function substitutePi(source, from, to) {
-    return source.slice(from, to).replace(/π/g, (c, i) => /\d/.test(source[from + i - 1]) || /\d/.test(source[from + i + 1]) ? c : PI);
+    return source.slice(from, to).replace(/π/g, (c, i) => /\w/.test(source[from + i - 1]) || /\d/.test(source[from + i + 1]) ? c : PI);
 }
 
 function separateFuncName(name) {
