@@ -178,7 +178,7 @@ function compileFunc(node) {
             let composable = COMPOSABLE.has(fname);
             let args = node.arguments.map(arg => compileArgument(arg, node));
             let isDollar = fname === '$';
-            let shared = fname === 'tile';
+            let shared = fname === 'tile' || fname === 'plot' || fname === 'Plot';
             let unit = node.unit || '';
             let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
             let isMath = fn === MathFunc[fname];

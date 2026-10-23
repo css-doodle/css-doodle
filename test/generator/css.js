@@ -185,6 +185,15 @@ test('@R.t in a tile edge reads no cell, so every cell cuts from one tiling, eac
     assert.ok(shapes.size > polys.length / 2, `${shapes.size} shapes in ${polys.length} tiles`);
 });
 
+test('@R.t in @plot reads no cell, so every cell takes its point from one closed loop', () => {
+    let points = cells('--v: @plot(r: @R.t(.3, 1));', '120x1', 'b').match(/--v:[^;]+/g)
+        .map(v => v.slice(4).split(' ').map(parseFloat));
+    let steps = points.map(([x, y], i) => Math.hypot(x - points.at(i - 1)[0], y - points.at(i - 1)[1]));
+    let median = steps.toSorted((a, b) => a - b)[60];
+    // each cell used to read its own loop, so the last point jumped 10 steps back to the first
+    assert.ok(Math.max(...steps) < 3 * median, `${Math.max(...steps)} against ${median}`);
+});
+
 test('grid line names keep the spaces around them', () => {
     assertContains('grid-template-columns: [a] 1fr [b] 2fr;', 'grid-template-columns:[a] 1fr [b] 2fr;');
 });
