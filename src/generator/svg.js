@@ -161,6 +161,7 @@ function combine(group, op, warn) {
         d += 'Z';
     }
     Object.assign(path.attrs, attrs);
+    if (rings.evenodd) path.attrs['fill-rule'] = 'evenodd';
     path.attr('d', d);
     return path;
 }

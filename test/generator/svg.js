@@ -488,6 +488,8 @@ test('g|op joins its shapes into one path', () => {
         `<svg ${NS}><path d="M0 0.5A0.5 0.5 0 1 1 0.001 0.5311A0.5 0.5 0 0 1 0 0.5ZM0.2501 0.5078A0.25 0.25 0 1 0 0.2501 0.4922A0.25 0.25 0 0 0 0.2501 0.5078Z"/></svg>`);
     assert.equal(svg('g|union { polygon { points: 1 0, .5 .866, -.5 .866, -1 0, -.5 -.866, .5 -.866 } }'),
         `<svg ${NS}><path d="M1 0L0.5 0.866L-0.5 0.866L-1 0L-0.5 -0.866L0.5 -0.866Z"/></svg>`);
+    assert.equal(svg('g|union { path { d: M0 0H10V10H0Z M3 3H7V7H3Z; fill-rule: evenodd } }'),
+        `<svg ${NS}><path fill-rule="evenodd" d="M0 0L10 0L10 10L0 10ZM3 3L7 3L7 7L3 7Z"/></svg>`);
 });
 
 
