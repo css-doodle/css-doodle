@@ -238,6 +238,7 @@ test('multi-argument functions', () => {
     assert.equal(calc('min(5, 2, 8)'), 2);
     assert.equal(calc('pow(2, 3)'), 8);
     assert.equal(calc('gcd(12, 8)'), 4);
+    assert.equal(calc('gcd(4, -6)'), 2);
     assert.equal(calc('hypot(3, 4)'), 5);
     assert.equal(calc('mod(7, 4)'), 3);
     assert.equal(calc('mod(-1, 4)'), 3);

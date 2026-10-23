@@ -41,7 +41,7 @@ export const defaultContext = {
     random: () => draw(),
     gcd(a, b) {
         while (b) [a, b] = [b, a % b];
-        return a;
+        return Math.abs(a);
     },
     match(...args) {
         for (let i = 0; i + 1 < args.length; i += 2) {
