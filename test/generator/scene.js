@@ -468,6 +468,9 @@ test('an outline reads the n of its copy', () => {
     let { dist } = scene('lathe*3 { move: n 0 0; circle { r: .1 } }');
     assert.deepEqual(radii('lathe*3 { move: n 0 0; circle { r: .1 } }'), [.1]);
     assert.match(dist, /for \(int g_\d+ = 0; g_\d+ < 3;/);
+    let many = scene('lathe*30x30 { circle { r: .0005n } }');
+    assert.deepEqual(many.warnings, ['lathe traces one outline past 32 copies']);
+    assert.deepEqual(radii('lathe*30x30 { circle { r: .0005n } }'), [.001]);
 });
 
 test('a match block warns, since @scene has none', () => {

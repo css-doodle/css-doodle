@@ -132,6 +132,10 @@ function checkAll(node, warn, unread, code, copy) {
         let reads = n => n.rows.some(r => /(?<![a-zA-Z_])(n|N|nx|ny)(?!\w)/.test(textOf(r.value))) || n.children.some(reads);
         let [X, Y] = node.count || [1, 1], own = { rows: node.rows.filter(r => SHAPES.lathe.includes(r.name)), children: node.children };
         let at = copy != null ? [copy] : node.copies ? [] : [...Array(reads(own) ? X * Y : 1).keys()];
+        if (at.length > 32) {
+            warn(`${node.name} traces one outline past 32 copies`);
+            at = [0];
+        }
         let all = at.map(i => outline(node, warn, { n: i + 1, N: X * Y, nx: i % X + 1, ny: (i / X | 0) + 1 }).map(ring => ring.map(xy => xy.map(float))));
         node.children = [];
         if (new Set(all.map(rings => JSON.stringify(rings))).size > 1) node.copies = all.map(rings => ({ ...node, rings }));
