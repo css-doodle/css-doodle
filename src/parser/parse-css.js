@@ -936,7 +936,7 @@ function parseSource(input, ctx) {
 
 // `paint` for text inside a @pattern or @scene body, where // starts a comment
 function tokensOf(text, paint) {
-    let tokens = scan(text, { lineCommentsIn: /^(shaders|pattern|scene)/, ignoreInlineComment: paint });
+    let tokens = scan(text, { lineCommentsIn: /^(shaders|pattern|scene|shape|plot|tile)/i, ignoreInlineComment: paint });
     return text.includes('$') ? splitDollars(tokens) : tokens;
 }
 
