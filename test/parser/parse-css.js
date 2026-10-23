@@ -548,6 +548,8 @@ test('a statement without a colon warns instead of passing through as an at-rule
 test('a comment inside a selector list is not a selector', () => {
     let [pseudo] = parseCss(`:before, /* :after, */ :hover { x: y }`);
     assert.deepEqual(pseudo.selectors, ['&:before', '&:hover']);
+    let [quoted] = parseCss(`[title="a /* b */ c"] { x: y }`);
+    assert.deepEqual(quoted.selectors, ['& [title="a /* b */ c"]']);
 });
 
 test('unbalanced parens, quotes and braces warn instead of silently dropping the rest', () => {

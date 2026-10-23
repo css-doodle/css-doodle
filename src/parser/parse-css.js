@@ -766,7 +766,7 @@ function parseBlockBody(cur, top) {
 function parsePseudo(cur, brace) {
     let start = cur.headIndex();
     cur.i = brace;
-    let selector = cur.source.slice(start, cur.headIndex()).replace(/\/\*[\s\S]*?\*\//g, ' ').trim();
+    let selector = cur.source.slice(start, cur.headIndex()).replace(/("[^"]*"|'[^']*')|\/\*[\s\S]*?\*\//g, (m, q) => q || ' ').trim();
     let open = cur.next(); // '{'
 
     let ctx = cur.ctx;
