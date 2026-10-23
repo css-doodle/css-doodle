@@ -138,6 +138,12 @@ test('a large seed still spreads the scatter samples', () => {
     for (let seed of [1e15, 1e20]) assert.equal(new Set(scatter(seed)).size, 5, String(seed));
 });
 
+test('scatter, seed and jitter read math, as round does', () => {
+    let points = rules => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, rules)).points.map(String);
+    assert.deepEqual(points({ scatter: '2 * 3', seed: '1 + 1' }), points({ scatter: 6, seed: 2 }));
+    assert.deepEqual(points({ tile: 'hex', scatter: 12, seed: 1, jitter: '.1 * 2' }), points({ tile: 'hex', scatter: 12, seed: 1, jitter: '.2' }));
+});
+
 test('a density that is nowhere positive scatters uniformly', () => {
     let scatter = density => generateShape('square', { min: 1, max: 65536 }, rules => Object.assign(rules, { scatter: 6, seed: 1, density })).points.map(String);
     assert.equal(scatter('-1').length, 6);

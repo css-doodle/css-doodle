@@ -349,7 +349,8 @@ function createShapePoints(props, lo, hi, raw) {
     }
     let fns = contours.map(p => createPointFunction(p, p.split));
 
-    let turn = isEmpty(props.turn) ? 1 : evaluate(props.turn, props) || 1;
+    let num = (k, d = 0) => isEmpty(props[k]) ? d : evaluate(props[k], props) || d;
+    let turn = num('turn', 1);
     let fill = props['fill-rule'] ?? props.fill;
     let evenodd = fill == 'evenodd';
     let [gap = 0, fine = gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
@@ -368,7 +369,8 @@ function createShapePoints(props, lo, hi, raw) {
     let [fx, fy] = place.reduce(([x, y], [k, a, b]) => k == 'move' ? [x, y] : [x * a, y * b], [1, 1]);
     let percent = props.unit === undefined || props.unit === '%';
     let suffix = percent ? '%' : (props.unit === 'none' ? '' : props.unit);
-    let staticAngle = props.scatter >= 1 && !dir ? 0
+    let many = Math.trunc(num('scatter'));
+    let staticAngle = many >= 1 && !dir ? 0
         : direction.direction ? null : 90 + direction.angle;
 
     let points = [];
@@ -410,7 +412,7 @@ function createShapePoints(props, lo, hi, raw) {
         }
         return `shape(${rule ? rule + ' ' : ''}${out.join(',')})`;
     };
-    let radius = isEmpty(props.round) ? 0 : max(0, evaluate(props.round, props) || 0);
+    let radius = max(0, num('round'));
     let tile = ([poly, [x, y], kind = 1, extra]) => {
         let at = fmt(x, y), inner = room(poly, x, y);
         inner = inner < Infinity ? tidyNumber(inner) + suffix : '';
@@ -495,10 +497,9 @@ function createShapePoints(props, lo, hi, raw) {
         return Object.assign(run(rings).rings.map(ring => ring.map(view)), { evenodd });
     }
 
-    if (props.scatter >= 1) {
+    if (many >= 1) {
         rings = run(rings, 0).rings;
-        let [w, h = 1] = isEmpty(props.aspect) ? [] : String(props.aspect).split('/').map(Number);
-        let aspect = w / h > 0 && w / h < Infinity ? clamp(w / h, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
+        let a = num('aspect', 1), aspect = a > 0 && a < Infinity ? clamp(a, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
             let [screenOf, format] = [toScreen, fmt];
             toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };
@@ -506,7 +507,7 @@ function createShapePoints(props, lo, hi, raw) {
             box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
         }
         let outline = bridge(rings), screen = outline.map(toScreen), inside = insideTest([screen], evenodd);
-        let name = props.tile, count = Math.trunc(props.scatter), seed = Number(props.seed) || 0;
+        let name = props.tile, count = many, seed = num('seed');
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0, props);
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
@@ -522,7 +523,7 @@ function createShapePoints(props, lo, hi, raw) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && !derive && !cube && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
-            let jitter = Number(props.jitter) || 0;
+            let jitter = num('jitter');
             let grow = (edge ? 1 + 2 * tan(PI / sides) * bulge : 1) * (1 + 2 * abs(jitter));
             let pieces = tiles(make, box, screen, inside, cube ? max(1, count / 3 | 0) : count, grow, derive, sides, props.dots);
             if (cube) pieces = faces3(pieces);
@@ -554,10 +555,10 @@ function createShapePoints(props, lo, hi, raw) {
         }
         context.random = seedrandom('random:density:' + seed);
         let density = formula(props.density);
-        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, (Number(props.spread) || 0) * PI / 180, onScreen(density)).map(tile);
-        let relax = isEmpty(props.relax) ? undefined : clamp(props.relax, 0, 50);
+        if (name == 'slice') return slice(screen, box, inside, count, seed, gap, num('spread') * PI / 180, onScreen(density)).map(tile);
+        let relax = isEmpty(props.relax) ? undefined : clamp(num('relax'), 0, 50);
         let [ratio, angle] = isEmpty(props.stretch) ? [] : parseValueGroup(String(props.stretch)).map(parseFloat);
-        let crack = Number(props.crack) || 0;
+        let crack = num('crack');
         if (name == 'voronoi' && (ratio > 0 || crack > 1)) {
             return mosaic(screen, box, count, evenodd, seed, onScreen(density), relax,
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
