@@ -395,12 +395,11 @@ point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
   origin between the angles `a` and `b`, in radians counterclockwise;
   a span of 2π or more is the whole circle. `shape(arc(p, r, a, b), w)`
   is a stroke of width `w` with round ends.
-- `shape(d, size)` is the mask that `shape: d; size: size` would
-  apply, 1 inside and 0 outside, for layering:
-  `fill: mix(bg, red, shape(d, .6))`. `shape(d, 0)` is the inside of
-  a distance field, where `d < 0`, antialiased over a pixel:
-  `fill: red, shape(d, 0)`. `shape(abs(d), w)` is a stroke of width `w`
-  along `d = 0`.
+- `shape(d)` is the inside of a distance field, where `d < 0`,
+  antialiased over a pixel: `fill: red, shape(length(pos) - .3)`.
+  `shape(d, size)` is the mask that `shape: d; size: size` would
+  apply, for layering: `fill: mix(bg, red, shape(d, .6))`.
+  `shape(abs(d), w)` is a stroke of width `w` along `d = 0`.
 - `rand()` without arguments is a number from 0 to 1 that holds for the
   cell and the `repeat` step and differs at each place it is written:
   `w: mix(.3, .5, rand())`.

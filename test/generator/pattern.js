@@ -737,7 +737,7 @@ test('repeat reports pattern outputs and allows match blocks in its body', () =>
 
 test('a fill in repeat paints over the one from the step before', () => {
     let messages = [];
-    let s = draw('repeat(3 as k) { fill: red, shape(length(pos) - .1k, 0) } fill: red, .5', extra, m => messages.push(m)).fragment;
+    let s = draw('repeat(3 as k) { fill: red, shape(length(pos) - .1k) } fill: red, .5', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, []);
     assert.match(s.slice(s.indexOf('void main()')), /for \(float g_1[^}]*g_color = g_over\(vec4\(vec3\(1\.0, 0\.0, 0\.0\), g_shape\([^}]*\}\s*g_color = g_over\(/);
     s = main('repeat(2) { match(x < 1) { fill: red } }');

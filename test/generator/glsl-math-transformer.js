@@ -481,9 +481,9 @@ test('unknown may answer with a color, which is a vec3 or vec4 literal', () => {
     assert.equal(transform('red', { unknown, names: { __proto__: null, red: 'g_1' } }), 'g_1');
 });
 
-test('shape(d, size) is the mask of the shape and size statements', () => {
+test('shape(d, size) is the mask of the shape and size statements, shape(d) the inside of d = 0', () => {
     assert.equal(transform('shape(d, .5)'), 'g_shape(d, .5)');
-    assert.equal(transform('shape(length(uv))'), 'g_shape(length(uv), 1.0)');
+    assert.equal(transform('shape(length(uv) - .3)'), 'g_shape((length(uv) - .3), 0.0)');
     assert.equal(transform('mix(a, b, shape(d, .5))', { types: { a: 'vec3', b: 'vec3' } }), 'mix(a, b, g_shape(d, .5))');
     assert.equal(transform('shape(d, .5)', { type: true }), 'float');
 });
