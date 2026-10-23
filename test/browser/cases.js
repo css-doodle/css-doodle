@@ -166,13 +166,13 @@ export default [
     {
         name: 'pattern-glsl-error',
         code: `@grid: 1 / 120px; background: @pattern(fill: vec3(nosie(uv)));`,
-        warnings: ["@pattern: no matching overloaded function found at 'nosie'"],
+        warnings: ['@pattern: invalid nosie'],
         blank: true,
     },
     {
         name: 'shaders-glsl-error',
         code: `@grid: 1 / 120px; background: @shaders(void main() { gl_FragColor = vec4(foo); });`,
-        warnings: [`@shaders: undeclared identifier at 'foo' in "gl_FragColor = vec4(foo)"`],
+        warnings: ['@shaders: invalid foo'],
         blank: true,
     },
 ];

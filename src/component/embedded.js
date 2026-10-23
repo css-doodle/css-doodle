@@ -246,10 +246,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
                 host.report([{ message: 'WebGL context lost' }]);
             }));
         } catch (err) {
-            if (name) {
-                let line = name == '@shaders' && err.line;
-                host.report([{ message: `${name}: ${err.message}` + (line ? ` in "${line}"` : '') }]);
-            }
+            if (name) host.report([{ message: `${name}: ${err.message}` }]);
             host.shaderRenders.set(id, { dispose() {} });
         }
     }

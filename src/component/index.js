@@ -349,7 +349,7 @@ if (typeof HTMLElement !== 'undefined') {
                     let lines = source.slice(0, index).split('\n');
                     pos = [lines.at(-1).length, lines.length - 1];
                 }
-                let where = pos ? ` (at line ${pos[1] + 1}, column ${pos[0] + 1})` : '';
+                let where = pos ? ` (${pos[1] + 1}:${pos[0] + 1})` : '';
                 console.warn(message + where, this);
             }
         }

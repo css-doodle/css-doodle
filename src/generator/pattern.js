@@ -410,7 +410,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             if (args.length === 1) {
                 out += generateMatch([{ type: 'arm', test: `(${args[0]})`, value: t.value }], scope, ctx, opts);
             } else {
-                ctx.warn('match() needs expression');
+                ctx.warn('match() needs expr');
             }
         } else {
             ctx.warn(t.name === 'else' ? 'else needs match' : `unknown block ${t.name}`);

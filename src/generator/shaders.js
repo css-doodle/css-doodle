@@ -31,25 +31,21 @@ function createProgram(gl, vss, fss) {
     gl.linkProgram(prog);
 
     const linked = gl.getProgramParameter(prog, gl.LINK_STATUS);
-    const [log, source] = linked ? [] : [[gl.getShaderInfoLog(fs), fss], [gl.getShaderInfoLog(vs), vss]]
-        .find(([log]) => /ERROR/.test(log)) || [gl.getProgramInfoLog(prog) || '', ''];
+    const log = linked ? '' : [gl.getShaderInfoLog(fs), gl.getShaderInfoLog(vs)].find(log => /ERROR/.test(log)) || gl.getProgramInfoLog(prog) || '';
 
     gl.deleteShader(vs);
     gl.deleteShader(fs);
 
     if (!linked) {
         gl.deleteProgram(prog);
-        throw shaderError(log, source);
+        throw shaderError(log);
     }
     return prog;
 }
 
-export function shaderError(log, source) {
-    let [, n, reason = log.trim().split('\n')[0] || 'link failed'] = log.match(/ERROR:\s*\d+:(\d+):\s*(.+)/) || [];
-    let [, token, rest] = reason.match(/^'(.+?)'\s*:\s*(.+)/) || [];
-    let err = new Error(token ? `${rest} at '${token}'` : reason);
-    err.line = token && source.split('\n')[n - 1]?.split(/[;{}]/).find(part => part.includes(token))?.trim();
-    return err;
+export function shaderError(log) {
+    let token = log.match(/ERROR:\s*\d+:\d+:\s*'(.+?)'/)?.[1];
+    return new Error(token ? `invalid ${token}` : 'shader failed');
 }
 
 export function generateFragment(fragment, textures) {
@@ -173,7 +169,7 @@ function createSurface(width, height) {
     });
 
     if (!gl) {
-        throw new Error('WebGL2 is not available');
+        throw new Error('no WebGL2');
     }
 
     const surface = { canvas, gl, width, height, users: new Set(), programs: new Map(), disposed: false };

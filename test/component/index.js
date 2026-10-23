@@ -290,8 +290,8 @@ test('a generator warning reports the line and column of its offset', () => {
         console.warn = warn;
     }
     assert.deepEqual(printed, [
-        'unknown function @nope() (at line 2, column 10)',
-        'parser (at line 3, column 5)',
+        'unknown function @nope() (2:10)',
+        'parser (3:5)',
         'plain',
     ]);
 });

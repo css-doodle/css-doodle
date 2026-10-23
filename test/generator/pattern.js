@@ -39,7 +39,7 @@ test('match takes one expression', () => {
     let messages = [];
     assert.equal(condition('match(x>y, 2*x-y == 0) { fill: red }'), '');
     draw('match(x>y, 2*x-y == 0) { fill: red }', extra, message => messages.push(message));
-    assert.deepEqual(messages, ['match() needs expression']);
+    assert.deepEqual(messages, ['match() needs expr']);
 });
 
 test('match with no arguments emits no if block', () => {
