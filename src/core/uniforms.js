@@ -11,6 +11,8 @@ const delay = new Date().setHours(0, 0, 0, 0) - Date.now();
 const u = 'cssd-u-ani';
 export const U = 'cssd-U-ani';
 
+export const timeProperties = [utime, UTime].map(name => `@property ${name}{syntax:"<integer>";initial-value:0;inherits:true}`);
+
 export const timeKeyframes =
     `@keyframes ${u} {from {${utime}:0} to {${utime}:${ticks}}}` +
     `@keyframes ${U} {from {${UTime}:0} to {${UTime}:${ticks}}}`;

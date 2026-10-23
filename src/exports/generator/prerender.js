@@ -4,7 +4,7 @@ import generateCss from '../../generator/css.js';
 import { FilterHolderStyle } from '../../lib/svg.js';
 import { removeParens } from '../../lib/type.js';
 import { hash } from '../../lib/math.js';
-import { utime, UTime } from '../../core/uniforms.js';
+import { UTime } from '../../core/uniforms.js';
 
 import parseCss from '../../parser/parse-css.js';
 import { createReplacer, svgUrl, frameSvg } from '../../component/doodle-image.js';
@@ -120,9 +120,8 @@ export default async function prerender(code = '', options = {}) {
     }
 
     let before = '';
-    if (uniforms.time) {
-        before += `<style>@property ${utime}{syntax:"<integer>";initial-value:0;inherits:true}`
-            + `@property ${UTime}{syntax:"<integer>";initial-value:0;inherits:true}</style>`;
+    if (styles.property.length) {
+        before += `<style>${styles.property.join('')}</style>`;
     }
     if (styles.gf.length) {
         before += `<link rel="stylesheet" href="${escapeAttr(getGoogleFontLink(styles.gf))}">`;

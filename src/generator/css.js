@@ -7,7 +7,7 @@ import { NAME_CHAR } from '../parser/tokenizer.js';
 
 import createRandom from '../core/random.js';
 import seedrandom from '../lib/seedrandom.js';
-import { timePrefix, timeKeyframes } from '../core/uniforms.js';
+import { timePrefix, timeKeyframes, timeProperties } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
 import { cellId, isTreeGrid } from '../lib/cell.js';
@@ -1102,7 +1102,7 @@ class Rules {
 
         let { host, container, cells, backdrop } = styles;
         let main = keyframes + container + host;
-        let raw = [...this.rawRules];
+        let raw = [...this.rawRules, ...(this.uniforms.time ? timeProperties : [])];
         let top = join(raw);
         let gf = [...this.fonts];
         let property = raw.filter(rule => /^@property\b/i.test(rule));

@@ -1,9 +1,6 @@
-import { utime, UTime, U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
+import { U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
 
-export function bindUniforms(host, { time, mousex, mousey, mouse, width, height }) {
-    if (time) {
-        regUtime();
-    }
+export function bindUniforms(host, { mousex, mousey, mouse, width, height }) {
     if (mousex || mousey || mouse) {
         regUmouse(host, mousex, mousey, mouse);
     } else {
@@ -29,20 +26,6 @@ export function syncUTime(host) {
 export function unbindUniforms(host) {
     offUmouse(host);
     offUsize(host);
-}
-
-// registered per document, not per host
-let isUtimeSet = false;
-
-function regUtime() {
-    if (!isUtimeSet) {
-        for (let name of [utime, UTime]) {
-            try {
-                CSS.registerProperty({ name, syntax: '<integer>', initialValue: 0, inherits: true });
-            } catch (e) {}
-        }
-        isUtimeSet = true;
-    }
 }
 
 function regUmouse(host, mousex, mousey, mouse) {

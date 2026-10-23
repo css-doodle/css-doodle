@@ -3,7 +3,6 @@ import parseCss from '../parser/parse-css.js';
 import generateCss from '../generator/css.js';
 
 import { NS, NSXHtml, FilterHolderStyle, escapeSvg, cdata } from '../lib/svg.js';
-import { utime, UTime } from '../core/uniforms.js';
 import { RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { css } from '../lib/tagged-template.js';
 import { loadGoogleFontEmbed } from './google-font.js';
@@ -102,10 +101,7 @@ export async function doodleToImage(host, code, options) {
 
     try {
         let fonts = await loadGoogleFontEmbed(styles.gf);
-        let sheet = stampSheet(host, fonts + styles.top + css`
-            @property ${utime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-            @property ${UTime} { syntax: "<integer>"; initial-value: 0; inherits: true; }
-        ` + getBasicStyles(grid) + styles.all).replace(/\n\s+/g, ' ') + TRANSITION_NONE;
+        let sheet = stampSheet(host, fonts + styles.top + getBasicStyles(grid) + styles.all).replace(/\n\s+/g, ' ') + TRANSITION_NONE;
         let markup = stampSmil(host, createGrid(grid, compiled).replace(VOID_TAGS, '<$1$2/>') + filterDefs);
         let svg = await createReplacer(host, compiled, { width: parseFloat(width), height: parseFloat(height), grid })(css`
             <svg ${size} ${NS} preserveAspectRatio="none" ${viewBox}>

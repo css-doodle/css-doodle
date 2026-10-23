@@ -139,6 +139,11 @@ test('the time uniform is registered in the document', async () => {
     assert.ok(plain.html.startsWith('<css-doodle '));
 });
 
+test('a doodle @property is registered in the document', async () => {
+    let { html } = await prerender('@property --a { syntax: "<length>"; inherits: false; initial-value: 0px; } color: red;', { seed: 1 });
+    assert.match(html, /^<style>@property --a \{[^}]+\}<\/style><css-doodle /);
+});
+
 test('google fonts are linked before the element', async () => {
     let { html } = await prerender('font-family: @google-font(Lato);', { seed: 1 });
     assert.match(html, /^<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css\?display=swap&amp;family=Lato"><css-doodle /);
