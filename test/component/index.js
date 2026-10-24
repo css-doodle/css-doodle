@@ -604,6 +604,20 @@ test('use() gives a value addon the seed, colors, and a state kept per call for 
     assert.equal(compose(), cells);
 });
 
+test('use() gives a value addon a stream of its own: kept apart from @r, the same in its variants, new for each seed and key', () => {
+    CSSDoodle.use('addon-stream', { value: ([key], { stream }) => stream(key)() });
+    CSSDoodle.use('addon-stream.kind', { value: ([key], { stream }) => stream(key)() });
+    let draw = (code, seed = 42) => Object.fromEntries([...generateCss(parseCss(code), parseGrid('1'), seed, 64).styles.cells
+        .matchAll(/--(\w+):([^;]+);/g)].map(m => m.slice(1)));
+    let code = '--a: @addon-stream(); --r: @r(1); --b: @addon-stream.kind(); --c: @addon-stream(x);';
+    let one = draw(code);
+    assert.equal(one.r, draw('--r: @r(1);').r);
+    assert.equal(one.a, one.b);
+    assert.notEqual(one.a, one.c);
+    assert.deepEqual(draw(code), one);
+    assert.notEqual(draw(code, 'learn').a, draw(code, 'other').a);
+});
+
 test('use() adds a shader addon as an image under its own name', () => {
     CSSDoodle.use('addon-image', { shader: code => `void main() { FragColor = vec4(${code}); }` });
     let { patterns } = generateCss(parseCss('background: @addon-image(1, 0, 0, 1);'), parseGrid('1'), 42, 64);

@@ -3,6 +3,7 @@ import parseCss from '../parser/parse-css.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
 import Func, { MathFunc } from '../core/function.js';
+import createRandom from '../core/random.js';
 import generateCss from '../generator/css.js';
 import generatePng from '../generator/svg-to-png.js';
 
@@ -163,6 +164,7 @@ if (typeof HTMLElement !== 'undefined') {
                 let warn = message => rules.warn(message);
                 return guard(() => value(args, {
                     i: count, x, y, I: grid.count, X: grid.x, Y: grid.y, random: rand, seed,
+                    stream: key => createRandom([base, seed, key]).rand,
                     color: (value, space) => host?.getRgbaColor?.(value, space) ?? null,
                     state: context['use:' + name + position] ??= {},
                     wait: promise => host?.wait?.(promise),
