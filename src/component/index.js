@@ -105,7 +105,8 @@ const ADDON_HOSTS = [
 const loadScript = src => new Promise(resolve => {
     let script = document.createElement('script');
     script.src = src;
-    script.onload = script.onerror = resolve;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
     setTimeout(resolve, 5000);
     document.head.append(script);
 });
@@ -115,7 +116,7 @@ function loadAddon(name) {
         addons.set(name, (async () => {
             await new Promise(resolve => setTimeout(resolve));
             for (let host of [CSSDoodle.addonBase, ...ADDON_HOSTS]) {
-                if (!added.has(name) && host) await loadScript(`${host}${name}.js`);
+                if (!added.has(name) && host && await loadScript(`${host}${name}.js`)) added.add(name);
             }
         })().then(() => addons.set(name, true)));
     }

@@ -34,7 +34,7 @@ async function serveAddons(page, { down = [], hung = [] } = {}) {
         let [, host, name] = route.request().url().match(/\/\/([^/]+).*addons@1\/([^/]+)\.js$/);
         asked.push(`${host}/${name}`);
         if (hung.includes(host)) return;
-        return name == 'sweep' && !down.includes(host)
+        return ['sweep', 'sweeps'].includes(name) && !down.includes(host)
             ? route.fulfill({ body: sweep, contentType: 'text/javascript' })
             : route.fulfill({ status: 404 });
     });
@@ -155,6 +155,16 @@ describe('component', { concurrency: 4 }, () => {
             assertColor(image, 115, 60, '#00f');
         }
         assert.deepEqual(asked, ['unpkg.com/sweep']);
+    }));
+
+    test('@use: name loads a file whose functions have other names, once and without a warning', () => chrome.withPage(async page => {
+        let asked = await serveAddons(page);
+        let code = '@grid: 1 / 120px; @use: sweeps; background: @sweep(#f00, #00f);';
+        for (let el of [await mount(page, code), await mount(page, code)]) {
+            assert.deepEqual(await el.evaluate(el => el.warnings), []);
+            assertColor((await shot(page, el)).image, 4, 60, '#f00');
+        }
+        assert.deepEqual(asked, ['unpkg.com/sweeps']);
     }));
 
     test('update() to code with an addon still draws with a new seed', () => chrome.withPage(async page => {
