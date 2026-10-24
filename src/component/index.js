@@ -111,9 +111,9 @@ const loadScript = src => new Promise(resolve => {
 function loadAddon(name) {
     if (!addons.has(name)) {
         addons.set(name, (async () => {
-            let ok = !!document.querySelector(`script[src*="/${name}/index"]`);
+            let ok = !!document.querySelector(`script[src*="/${name}.js"]`);
             for (let host of [CSSDoodle.addonBase, ...ADDON_HOSTS]) {
-                if (!ok && host) ok = await loadScript(`${host}${name}/index.min.js`);
+                if (!ok && host) ok = await loadScript(`${host}${name}.js`);
             }
             return ok;
         })().then(ok => addons.set(name, ok)));

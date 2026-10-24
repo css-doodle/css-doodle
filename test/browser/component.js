@@ -30,8 +30,8 @@ const sweep = `customElements.whenDefined('css-doodle').then(() => {
 
 async function serveAddons(page, { down = [] } = {}) {
     let asked = [];
-    await page.route(/\/@css-doodle\/addons@1\/.+\/index\.min\.js$/, route => {
-        let [, host, name] = route.request().url().match(/\/\/([^/]+).*addons@1\/(.+)\/index\.min\.js$/);
+    await page.route(/\/@css-doodle\/addons@1\/[^/]+\.js$/, route => {
+        let [, host, name] = route.request().url().match(/\/\/([^/]+).*addons@1\/([^/]+)\.js$/);
         asked.push(`${host}/${name}`);
         return name == 'sweep' && !down.includes(host)
             ? route.fulfill({ body: sweep, contentType: 'text/javascript' })
@@ -187,7 +187,7 @@ describe('component', { concurrency: 4 }, () => {
 
     test('CSSDoodle.addonBase is tried first, and a script tag already on the page is not fetched again', () => chrome.withPage(async page => {
         let asked = await serveAddons(page);
-        await page.route('https://mirror.test/sweep/index.min.js', route => {
+        await page.route('https://mirror.test/sweep.js', route => {
             asked.push('mirror.test/sweep');
             return route.fulfill({ body: sweep, contentType: 'text/javascript' });
         });
@@ -198,7 +198,7 @@ describe('component', { concurrency: 4 }, () => {
 
         await page.evaluate(() => {
             let tag = document.createElement('script');
-            tag.src = 'https://mirror.test/other/index.min.js';
+            tag.src = 'https://mirror.test/other.js';
             document.head.append(tag);
         });
         asked.length = 0;
