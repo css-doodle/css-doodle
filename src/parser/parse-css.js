@@ -694,6 +694,10 @@ function parseUse(cur) {
     let statements = [];
     for (let [node] of parseValue(cur)) {
         if (!node || node.type !== 'text') continue;
+        if (/^[a-z][\w-]*$/i.test(node.value)) {
+            ctx.addons.push(node.value);
+            continue;
+        }
         for (let p of parseVar(node.value)) {
             let name = p.name;
             let rule = read(name);
@@ -1510,8 +1514,9 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
 }
 
 export default function parse(input, extra) {
-    let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [], expanded: 0, calls: 0 };
+    let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [], expanded: 0, calls: 0, addons: [] };
     let result = parseSource(expandFunctions(String(input ?? ''), ctx), ctx);
     result.warnings = ctx.warnings;
+    result.addons = ctx.addons;
     return result;
 }

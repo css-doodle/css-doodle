@@ -3,7 +3,7 @@ import parseCss from '../parser/parse-css.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 
 import Func, { MathFunc } from '../core/function.js';
-import generateCss, { COMPOSABLE } from '../generator/css.js';
+import generateCss from '../generator/css.js';
 import generatePng from '../generator/svg-to-png.js';
 
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
@@ -19,7 +19,7 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 import { bindUniforms, unbindUniforms, syncUTime } from './uniforms.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
 import { createReplacer } from './doodle-image.js';
-import { draw, GENERATORS } from './embedded.js';
+import { draw } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 const propertyRules = new Map();
@@ -92,16 +92,44 @@ const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)'
 
 const live = new Set();
 const arrived = new Set();
+const added = new Set();
+
+const addons = new Map();
+
+const ADDON_HOSTS = [
+    'https://unpkg.com/@css-doodle/addons@1/',
+    'https://cdn.jsdelivr.net/npm/@css-doodle/addons@1/',
+];
+
+const loadScript = src => new Promise(resolve => {
+    let script = document.createElement('script');
+    script.src = src;
+    script.onload = script.onerror = e => resolve(e.type == 'load');
+    document.head.append(script);
+});
+
+function loadAddon(name) {
+    if (!addons.has(name)) {
+        addons.set(name, (async () => {
+            let ok = !!document.querySelector(`script[src*="/${name}/index"]`);
+            for (let host of [CSSDoodle.addonBase, ...ADDON_HOSTS]) {
+                if (!ok && host) ok = await loadScript(`${host}${name}/index.min.js`);
+            }
+            return ok;
+        })().then(ok => addons.set(name, ok)));
+    }
+    return addons.get(name);
+}
 
 const split = text => [...parseValueGroup(text, { noSpace: true })];
 const words = text => [...parseValueGroup(text)];
 
-function guard(fn, warn, fallback) {
+function guard(fn, warn) {
     try {
         return fn();
     } catch (err) {
         warn(err.message);
-        return fallback;
+        return '';
     }
 }
 
@@ -122,31 +150,31 @@ if (typeof HTMLElement !== 'undefined') {
         ];
 
         static use(name, { shader, value } = {}) {
+            if (added.has(name)) return;
             if (Func[name] || MathFunc[name]) return console.warn(`@${name} already exists`);
             if (!(shader || value)) return console.warn(`invalid addon @${name}`);
-            if (shader) {
-                COMPOSABLE.add(name);
-                GENERATORS[name] = (code, extra, warn) => guard(() => shader(code, {
+            Func[name] = shader ? Object.assign(() => {}, {
+                shader: (code, extra, warn) => guard(() => shader(code, {
                     color: extra.getRgbaColor, split, words, warn,
-                }), warn, '');
-            }
-            Func[name] = shader ? () => {} : ({ count, x, y, grid }, { rand, rules }) => (...args) => {
+                }), warn),
+            }) : ({ count, x, y, grid }, { rand, rules }) => (...args) => {
                 let warn = message => rules.warn(message);
                 return guard(() => value(args, {
                     i: count, x, y, I: grid.count, X: grid.x, Y: grid.y, random: rand, split, words, warn,
-                }), warn, '');
+                }), warn);
             };
             if (!arrived.size) queueMicrotask(() => {
                 let names = [...arrived];
                 arrived.clear();
                 for (let el of [...live]) {
-                    if (!el.isConnected || !el.compiled) continue;
+                    if (!el.isConnected || !el.compiled || el._waiting) continue;
                     let source = el.getUse() + el._code;
                     if (source.includes('@use')) source += getAllVariables(el);
                     if (names.some(name => source.includes('@' + name))) el.render(el._code, el.compiled.seed);
                 }
             });
             arrived.add(name);
+            added.add(name);
         }
 
         constructor() {
@@ -372,16 +400,17 @@ if (typeof HTMLElement !== 'undefined') {
             this.removeAttribute('data-interval');
         }
 
-        generate(code, seed) {
+        generate(source, parsed, seed) {
             seed = this.getAttribute('seed') || seed;
             if (isNil(seed)) {
                 seed = Date.now();
             }
-            let source = this.getUse() + code;
-            let parsed = parseCss(source, this.extra);
             let compiled = this.compiled = generateCss(
                 parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance, this.extra
             );
+            for (let name of parsed.addons) {
+                if (!addons.get(name)) compiled.warnings.push({ message: `unknown addon ${name}` });
+            }
             this.report(compiled.warnings, source);
             return compiled;
         }
@@ -435,9 +464,22 @@ if (typeof HTMLElement !== 'undefined') {
         render(code, seed, tries = 2) {
             this.cleanup();
             this._code = code;
+            let source = this.getUse() + code;
+            let parsed = parseCss(source, this.extra);
+            let loading = parsed.addons.map(loadAddon).filter(status => status.then);
+            this._waiting = loading.length > 0;
+            if (this._waiting) {
+                let generation = this._generation;
+                this._styleReady = Promise.all(loading).then(() => {
+                    if (generation !== this._generation) return;
+                    this.render(code, seed, tries);
+                    return this._styleReady;
+                });
+                return;
+            }
             if (tries > 1) this._warned?.clear();
             let old = this.compiled;
-            let compiled = this.generate(code, seed);
+            let compiled = this.generate(source, parsed, seed);
             for (let id in { ...old?.shaders, ...old?.patterns }) {
                 if (!compiled.shaders[id] && !compiled.patterns[id]) {
                     this.style.removeProperty('--' + id);
@@ -451,7 +493,6 @@ if (typeof HTMLElement !== 'undefined') {
             } else {
                 this.patch(compiled);
             }
-            let source = this.getUse() + code;
             if (/\btext\s*:/.test(source.includes('@use') ? source + getAllVariables(this) : source)) {
                 let linked = loadGoogleFontLink(compiled.styles.gf), generation = this._generation;
                 if (linked) fontsLoading.add(linked);

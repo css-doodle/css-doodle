@@ -84,6 +84,11 @@ included, are emitted as CSS.
 statements stored in custom properties. Fallbacks and nested `@use`
 work; a variable already being inserted is skipped and reported.
 
+A bare name in the list, starting with a letter, loads that addon from
+`@css-doodle/addons` before the doodle is generated: `@use: gradient-2d,
+var(--rule)`. A name that does not load is reported. It belongs to the
+outer doodle: inside a nested `@doodle` it does nothing.
+
 ### Function definitions
 
 ```css

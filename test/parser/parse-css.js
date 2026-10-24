@@ -982,3 +982,10 @@ test('text pulled in by @use calls the user functions around it and keeps its ow
     assert.equal(top.value[0][0].unit, 'half');
     assert.equal(left.value[0][0].unit, 'half');
 });
+
+test('@use takes addon names next to variables, not from comments or strings', () => {
+    let extra = { getVariable: name => ({ '--rule': '@use: d; color: red;' }[name] || '') };
+    let parsed = parseCss('/* @use: x; */ @use: a, var(--rule), b; content: "@use: y"; :doodle { @use: c; } @use: --rule, 2d;', extra);
+    assert.deepEqual(parsed.addons, ['a', 'd', 'b', 'c']);
+    assert.deepEqual(parsed.map(s => s.property ?? s.selector), ['color', 'content', ':doodle']);
+});

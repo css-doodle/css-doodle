@@ -32,7 +32,7 @@ function hasShorthandSize(value) {
 }
 
 const NO_SPACE = { noSpace: true };
-export const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern', 'scene']);
+const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern', 'scene']);
 const CELL = ['&'];
 const SHARED_CELL = prefix => `:is(cell,${prefix}_)`;
 
@@ -175,7 +175,7 @@ function compileFunc(node) {
             compiled = frame => ({ value: read(frame) });
             compiled.seqRead = read;
         } else {
-            let composable = COMPOSABLE.has(fname);
+            let composable = COMPOSABLE.has(fname) || !!fn.shader;
             let args = node.arguments.map(arg => compileArgument(arg, node));
             let isDollar = fname === '$';
             let shared = fname === 'tile' || fname === 'plot' || fname === 'Plot';

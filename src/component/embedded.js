@@ -4,6 +4,7 @@ import parseShaders from '../parser/parse-shaders.js';
 import generateShaders from '../generator/shaders.js';
 import generatePattern from '../generator/pattern.js';
 import generateScene from '../generator/scene.js';
+import Func from '../core/function.js';
 
 import createAnimation from './animation.js';
 import { cacheImage, isSafari } from '../lib/browser.js';
@@ -23,8 +24,6 @@ function safariImage(svg, width, height) {
     cacheImage(url);
     return url;
 }
-
-export const GENERATORS = { scene: generateScene };
 
 const stills = new WeakMap();
 
@@ -50,7 +49,8 @@ function canvasUrl(canvas, fit) {
 
 function patternToImage(host, pattern) {
     let name = '@' + (pattern.fname || 'pattern');
-    let source = (GENERATORS[pattern.fname] || generatePattern)(pattern.source, host.extra, message => {
+    let generate = pattern.fname === 'scene' ? generateScene : Func[pattern.fname]?.shader || generatePattern;
+    let source = generate(pattern.source, host.extra, message => {
         name = '';
         host.report([{ message }]);
     });

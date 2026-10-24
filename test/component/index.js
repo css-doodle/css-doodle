@@ -590,12 +590,15 @@ test('use() adds a shader addon as an image under its own name', () => {
     assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-image', '1,0,0,1']]);
 });
 
-test('use() keeps taken names, and a throwing addon only warns', t => {
+test('use() keeps taken names, a second copy of an addon is left out quietly, and a throwing addon only warns', t => {
     let warn = t.mock.method(console, 'warn', () => {});
     CSSDoodle.use('r', { value: () => 'taken' });
     CSSDoodle.use('sin', { value: () => 'taken' });
     CSSDoodle.use('addon-none', () => 'no kind');
+    CSSDoodle.use('addon-twice', { value: () => 'first' });
+    CSSDoodle.use('addon-twice', { value: () => 'second' });
     assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['@r already exists', '@sin already exists', 'invalid addon @addon-none']);
+    assert.match(generateCss(parseCss('--t: @addon-twice();'), parseGrid('1'), 42, 64).styles.cells, /--t:first;/);
     CSSDoodle.use('addon-throws', { value: () => { throw new Error('bad input'); } });
     let { styles, warnings } = generateCss(parseCss('--a: @r(1, 1); --b: @sin(0); --c: @addon-throws(1);'), parseGrid('1'), 42, 64);
     assert.match(styles.cells, /--a:1;\s*--b:0;\s*--c:;/);
