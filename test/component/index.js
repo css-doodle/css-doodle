@@ -610,6 +610,20 @@ test('use() adds a shader addon as an image under its own name', () => {
     assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-image', '1,0,0,1']]);
 });
 
+test('use() adds @name.variant() under an addon\'s own name only', t => {
+    let warn = t.mock.method(console, 'warn', () => {});
+    CSSDoodle.use('addon-kind', { value: () => 'base' });
+    CSSDoodle.use('addon-kind.one', { value: ([v]) => 'one ' + v });
+    CSSDoodle.use('addon-kind.two', { shader: code => `void main() { FragColor = vec4(${code}); }` });
+    CSSDoodle.use('addon-kind.one', { value: () => 'again' });
+    CSSDoodle.use('plot.mine', { value: () => 'built-in' });
+    CSSDoodle.use('addon-kind.name', { value: () => 'own key' });
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['invalid addon @plot.mine', '@addon-kind.name already exists']);
+    let { styles, patterns } = generateCss(parseCss('--a: @addon-kind(); --b: @addon-kind.one(x); --c: @addon-kind.r(1, 1); background: @addon-kind.two(1, 0, 0, 1);'), parseGrid('1'), 42, 64);
+    assert.match(styles.cells, /--a:base;\s*--b:one x;\s*--c:base;/);
+    assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-kind.two', '1,0,0,1']]);
+});
+
 test('use() keeps taken names, a second copy of an addon is left out quietly, and a throwing addon only warns', t => {
     let warn = t.mock.method(console, 'warn', () => {});
     CSSDoodle.use('r', { value: () => 'taken' });

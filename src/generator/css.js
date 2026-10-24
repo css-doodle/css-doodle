@@ -138,9 +138,10 @@ function compileFunc(node) {
             ? node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt
             : Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
         let inner = node.arguments[0]?.values[0];
-        let name = inner?.dotted && inner.name.slice(1);
+        let name = inner?.dotted && inner.name.slice(1), variant = '';
         if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
             fn = fn[name];
+            variant = '.' + name;
             node = { ...inner, name: node.name };
         }
         if (fname === '--') {
@@ -213,7 +214,7 @@ function compileFunc(node) {
                     rules.uniforms[key] = true;
                 }
                 if (composable) {
-                    let composed = rules.composeComposable(fname, node, cell, env, frame.selector, frame.property);
+                    let composed = rules.composeComposable(fname + variant, node, cell, env, frame.selector, frame.property);
                     return { value: composed ?? '' };
                 }
                 let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;

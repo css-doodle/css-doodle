@@ -151,9 +151,11 @@ if (typeof HTMLElement !== 'undefined') {
 
         static use(name, { shader, value } = {}) {
             if (added.has(name)) return;
-            if (Func[name] || MathFunc[name]) return console.warn(`@${name} already exists`);
-            if (!(shader || value)) return console.warn(`invalid addon @${name}`);
-            Func[name] = shader ? Object.assign(() => {}, {
+            let [, base, variant] = /^([^.]+)(?:\.([^.]+))?$/.exec(name) || [];
+            let owner = base && (variant ? added.has(base) && Func[base] : Func), key = variant || name;
+            if (owner && (key in owner || MathFunc[name])) return console.warn(`@${name} already exists`);
+            if (!owner || !(shader || value)) return console.warn(`invalid addon @${name}`);
+            owner[key] = shader ? Object.assign(() => {}, {
                 shader: (code, extra, warn) => guard(() => shader(code, {
                     color: extra.getRgbaColor, split, words, warn,
                 }), warn),

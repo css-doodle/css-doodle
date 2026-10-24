@@ -132,6 +132,16 @@ describe('component', { concurrency: 4 }, () => {
         assert.deepEqual(await el.evaluate(el => [el.seed, el.compiled.styles.cells.match(/--r:[^;]+/)[0]]), before);
     }));
 
+    test('a shader variant draws with its own shader', () => chrome.withPage(async page => {
+        await page.evaluate(() => {
+            let CSSDoodle = customElements.get('css-doodle');
+            CSSDoodle.use('addon-tint', { shader: () => 'void main() { FragColor = vec4(1, 0, 0, 1); }' });
+            CSSDoodle.use('addon-tint.blue', { shader: () => 'void main() { FragColor = vec4(0, 0, 1, 1); }' });
+        });
+        let el = await mount(page, '@grid: 1 / 120px; background: @addon-tint.blue(1);');
+        assertColor((await shot(page, el)).image, 60, 60, '#00f');
+    }));
+
     test('@use: name loads an addon once, before the first render', () => chrome.withPage(async page => {
         let asked = await serveAddons(page);
         let code = '@grid: 1 / 120px; @use: sweep; background: @sweep(#f00, #00f);';

@@ -49,7 +49,8 @@ function canvasUrl(canvas, fit) {
 
 function patternToImage(host, pattern) {
     let name = '@' + (pattern.fname || 'pattern');
-    let generate = pattern.fname === 'scene' ? generateScene : Func[pattern.fname]?.shader || generatePattern;
+    let addon = pattern.fname?.split('.').reduce((fn, key) => fn?.[key], Func);
+    let generate = pattern.fname === 'scene' ? generateScene : addon?.shader || generatePattern;
     let source = generate(pattern.source, host.extra, message => {
         name = '';
         host.report([{ message }]);
