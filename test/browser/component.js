@@ -185,7 +185,7 @@ describe('component', { concurrency: 4 }, () => {
         assert.deepEqual(page.errors.splice(0), ['Failed to load resource: the server responded with a status of 404 (Not Found)']);
     }));
 
-    test('CSSDoodle.addonBase is tried first, and a script tag already on the page is not fetched again', () => chrome.withPage(async page => {
+    test('CSSDoodle.addonBase is tried first', () => chrome.withPage(async page => {
         let asked = await serveAddons(page);
         await page.route('https://mirror.test/sweep.js', route => {
             asked.push('mirror.test/sweep');
@@ -195,15 +195,40 @@ describe('component', { concurrency: 4 }, () => {
         let el = await mount(page, '@grid: 1 / 120px; @use: sweep; background: @sweep(#f00, #00f);');
         assertColor((await shot(page, el)).image, 4, 60, '#f00');
         assert.deepEqual(asked, ['mirror.test/sweep']);
+    }));
 
-        await page.evaluate(() => {
-            let tag = document.createElement('script');
-            tag.src = 'https://mirror.test/other.js';
-            document.head.append(tag);
+    test('@use does not fetch an addon that registers right after the first draw, as one imported after css-doodle does', () => chrome.withPage(async page => {
+        let asked = await serveAddons(page);
+        let el = await page.evaluateHandle(() => {
+            let el = document.createElement('css-doodle');
+            el.warnings = [];
+            el.addEventListener('warn', e => el.warnings.push(e.detail.message));
+            el.rendered = new Promise(resolve => el.addEventListener('render', resolve, { once: true }));
+            el.textContent = '@grid: 1 / 120px; @use: bundled; background: @bundled(#f00);';
+            document.body.append(el);
+            customElements.whenDefined('css-doodle').then(() => {
+                customElements.get('css-doodle').use('bundled', { value: ([color]) => color });
+            });
+            return el;
         });
-        asked.length = 0;
-        await mount(page, '@grid: 1 / 120px; @use: other; background: #0c0;');
+        await within(el.evaluate(el => el.rendered), 10000, 'no render event');
+        assertColor((await shot(page, el)).image, 60, 60, '#f00');
+        assert.deepEqual(await el.evaluate(el => el.warnings), []);
         assert.deepEqual(asked, []);
+    }));
+
+    test('@use still loads an addon when a page script only shares its file name', () => chrome.withPage(async page => {
+        let asked = await serveAddons(page);
+        await page.route('https://site.test/js/sweep.js', route => route.fulfill({ body: '', contentType: 'text/javascript' }));
+        await page.evaluate(() => new Promise(resolve => {
+            let tag = document.createElement('script');
+            tag.src = 'https://site.test/js/sweep.js';
+            tag.onload = resolve;
+            document.head.append(tag);
+        }));
+        let el = await mount(page, '@grid: 1 / 120px; @use: sweep; background: @sweep(#f00, #00f);');
+        assertColor((await shot(page, el)).image, 4, 60, '#f00');
+        assert.deepEqual(asked, ['unpkg.com/sweep']);
     }));
 
     test('click:update draws a new picture on each click', () => chrome.withPage(async page => {

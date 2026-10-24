@@ -105,21 +105,20 @@ const ADDON_HOSTS = [
 const loadScript = src => new Promise(resolve => {
     let script = document.createElement('script');
     script.src = src;
-    script.onload = script.onerror = e => resolve(e.type == 'load');
+    script.onload = script.onerror = resolve;
     document.head.append(script);
 });
 
 function loadAddon(name) {
-    if (!addons.has(name)) {
+    if (!added.has(name) && !addons.has(name)) {
         addons.set(name, (async () => {
-            let ok = !!document.querySelector(`script[src*="/${name}.js"]`);
+            await new Promise(resolve => setTimeout(resolve));
             for (let host of [CSSDoodle.addonBase, ...ADDON_HOSTS]) {
-                if (!ok && host) ok = await loadScript(`${host}${name}.js`);
+                if (!added.has(name) && host) await loadScript(`${host}${name}.js`);
             }
-            return ok;
-        })().then(ok => addons.set(name, ok)));
+        })().then(() => addons.set(name, true)));
     }
-    return addons.get(name);
+    return added.has(name) || addons.get(name);
 }
 
 const split = text => [...parseValueGroup(text, { noSpace: true })];
@@ -418,7 +417,7 @@ if (typeof HTMLElement !== 'undefined') {
                 parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance, this.extra
             );
             for (let name of parsed.addons) {
-                if (!addons.get(name)) compiled.warnings.push({ message: `unknown addon ${name}` });
+                if (!added.has(name)) compiled.warnings.push({ message: `unknown addon ${name}` });
             }
             this.report(compiled.warnings, source);
             return compiled;
