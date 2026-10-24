@@ -106,6 +106,7 @@ const loadScript = src => new Promise(resolve => {
     let script = document.createElement('script');
     script.src = src;
     script.onload = script.onerror = resolve;
+    setTimeout(resolve, 5000);
     document.head.append(script);
 });
 

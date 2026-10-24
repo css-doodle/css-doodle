@@ -28,11 +28,12 @@ const sweep = `customElements.whenDefined('css-doodle').then(() => {
     });
 });`;
 
-async function serveAddons(page, { down = [] } = {}) {
+async function serveAddons(page, { down = [], hung = [] } = {}) {
     let asked = [];
     await page.route(/\/@css-doodle\/addons@1\/[^/]+\.js$/, route => {
         let [, host, name] = route.request().url().match(/\/\/([^/]+).*addons@1\/([^/]+)\.js$/);
         asked.push(`${host}/${name}`);
+        if (hung.includes(host)) return;
         return name == 'sweep' && !down.includes(host)
             ? route.fulfill({ body: sweep, contentType: 'text/javascript' })
             : route.fulfill({ status: 404 });
@@ -183,6 +184,14 @@ describe('component', { concurrency: 4 }, () => {
         assertColor((await shot(page, el)).image, 4, 60, '#f00');
         assert.deepEqual(asked, ['unpkg.com/sweep', 'cdn.jsdelivr.net/sweep']);
         assert.deepEqual(page.errors.splice(0), ['Failed to load resource: the server responded with a status of 404 (Not Found)']);
+    }));
+
+    test('@use passes over a host that hangs', () => chrome.withPage(async page => {
+        let asked = await serveAddons(page, { hung: ['unpkg.com'] });
+        let el = await mount(page, '@grid: 1 / 120px; @use: sweep; background: @sweep(#f00, #00f);');
+        assert.deepEqual(await el.evaluate(el => el.warnings), []);
+        assertColor((await shot(page, el)).image, 4, 60, '#f00');
+        assert.deepEqual(asked, ['unpkg.com/sweep', 'cdn.jsdelivr.net/sweep']);
     }));
 
     test('CSSDoodle.addonBase is tried first', () => chrome.withPage(async page => {
