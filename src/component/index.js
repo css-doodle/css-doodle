@@ -157,10 +157,13 @@ if (typeof HTMLElement !== 'undefined') {
                 shader: (code, extra, warn) => guard(() => shader(code, {
                     color: extra.getRgbaColor, split, words, warn,
                 }), warn),
-            }) : ({ count, x, y, grid }, { rand, rules }) => (...args) => {
+            }) : ({ count, x, y, grid }, { rand, rules, seed, host, context }, position) => (...args) => {
                 let warn = message => rules.warn(message);
                 return guard(() => value(args, {
-                    i: count, x, y, I: grid.count, X: grid.x, Y: grid.y, random: rand, split, words, warn,
+                    i: count, x, y, I: grid.count, X: grid.x, Y: grid.y, random: rand, seed,
+                    color: (value, space) => host?.getRgbaColor?.(value, space) ?? null,
+                    state: context['use:' + name + position] ??= {},
+                    split, words, warn,
                 }), warn);
             };
             if (!arrived.size) queueMicrotask(() => {

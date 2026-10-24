@@ -584,6 +584,26 @@ test('use() adds a value addon that reads the cell and the seeded random', () =>
     assert.equal(compose(), cells);
 });
 
+test('use() gives a value addon the seed, colors, and a state kept per call for one draw', () => {
+    CSSDoodle.use('addon-state', {
+        value: ([tag], { i, seed, color, state, random }) => {
+            state.first ??= tag + i + ':' + random();
+            return [i, seed, color('red'), state.first].join('|');
+        },
+    });
+    let host = { getRgbaColor: value => value == 'red' ? [255, 0, 0, 1] : null };
+    let compose = () => generateCss(parseCss('@grid: 2x1; --a: @addon-state(a); --b: @addon-state(b);'), parseGrid('1'), 42, 64, null, [], '', host).styles.cells;
+    let cells = compose();
+    let a = [...cells.matchAll(/--a:([^;]+);/g)].map(m => m[1].split('|'));
+    let b = [...cells.matchAll(/--b:([^;]+);/g)].map(m => m[1].split('|'));
+    assert.deepEqual(a.map(v => v.slice(0, 3)), [['1', '42', '255,0,0,1'], ['2', '42', '255,0,0,1']]);
+    assert.match(a[0][3], /^a1:0\.\d+$/);
+    assert.equal(a[1][3], a[0][3]);
+    assert.match(b[0][3], /^b1:/);
+    assert.equal(b[1][3], b[0][3]);
+    assert.equal(compose(), cells);
+});
+
 test('use() adds a shader addon as an image under its own name', () => {
     CSSDoodle.use('addon-image', { shader: code => `void main() { FragColor = vec4(${code}); }` });
     let { patterns } = generateCss(parseCss('background: @addon-image(1, 0, 0, 1);'), parseGrid('1'), 42, 64);
