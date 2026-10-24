@@ -194,7 +194,7 @@ function scan(source, options = {}) {
         else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
             let end = i + 3;
             while (isHexCode(input.charCodeAt(end))) end++;
-            tokens.push(new Token('Number', '0x' + input.slice(i + 2, end), pos, index));
+            tokens.push(new Token('Number', input.slice(i, end), pos, index));
             i = end;
         }
         else if (isDigitCode(curr) || (

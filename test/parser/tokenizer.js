@@ -195,6 +195,7 @@ test('numbers: decimals, exponents, hex', () => {
     assert.deepEqual(tokens('0x'), [['Number', '0'], ['Word', 'x']]);
     assert.deepEqual(tokens('0x12af'), [['Number', '0x12af']]);
     assert.deepEqual(tokens('0x12afga'), [['Number', '0x12af'], ['Word', 'ga']]);
+    assert.deepEqual(tokens('0X1F'), [['Number', '0X1F']]);
 });
 
 test('a minus is a sign after a space or an operator, a symbol after a value', () => {
