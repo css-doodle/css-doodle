@@ -115,6 +115,23 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 90, 60, '#00f');
     }));
 
+    test('a value addon that waits draws again, with the same seed, when the promise settles', () => chrome.withPage(async page => {
+        await page.evaluate(() => {
+            let color, ready = new Promise(resolve => window.finish = resolve);
+            ready.then(value => color = value);
+            customElements.get('css-doodle').use('addon-wait', {
+                value: (args, { wait }) => color ?? (wait(ready), '#00f'),
+            });
+        });
+        let el = await mount(page, '@grid: 1 / 120px; background: @addon-wait(); --r: @r(1);');
+        assertColor((await shot(page, el)).image, 60, 60, '#00f');
+        let before = await el.evaluate(el => [el.seed, el.compiled.styles.cells.match(/--r:[^;]+/)[0]]);
+        await page.evaluate(() => window.finish('#0c0'));
+        await page.waitForFunction(el => el.compiled.styles.cells.includes('#0c0'), el);
+        assertColor((await shot(page, el)).image, 60, 60, '#0c0');
+        assert.deepEqual(await el.evaluate(el => [el.seed, el.compiled.styles.cells.match(/--r:[^;]+/)[0]]), before);
+    }));
+
     test('@use: name loads an addon once, before the first render', () => chrome.withPage(async page => {
         let asked = await serveAddons(page);
         let code = '@grid: 1 / 120px; @use: sweep; background: @sweep(#f00, #00f);';

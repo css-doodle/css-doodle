@@ -163,6 +163,7 @@ if (typeof HTMLElement !== 'undefined') {
                     i: count, x, y, I: grid.count, X: grid.x, Y: grid.y, random: rand, seed,
                     color: (value, space) => host?.getRgbaColor?.(value, space) ?? null,
                     state: context['use:' + name + position] ??= {},
+                    wait: promise => host?.wait?.(promise),
                     split, words, warn,
                 }), warn);
             };
@@ -198,6 +199,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.extra = {
                 getVariable: name => getVariable(this, name),
                 getRgbaColor: (value, space) => getRgbaColor(this.shadowRoot, value, space),
+                wait: promise => this._waits?.add(promise),
             };
             this.draw = draw;
         }
@@ -482,6 +484,7 @@ if (typeof HTMLElement !== 'undefined') {
             }
             if (tries > 1) this._warned?.clear();
             let old = this.compiled;
+            let waits = this._waits = new Set();
             let compiled = this.generate(source, parsed, seed);
             for (let id in { ...old?.shaders, ...old?.patterns }) {
                 if (!compiled.shaders[id] && !compiled.patterns[id]) {
@@ -496,15 +499,16 @@ if (typeof HTMLElement !== 'undefined') {
             } else {
                 this.patch(compiled);
             }
+            let wait = [...waits], generation = this._generation;
             if (/\btext\s*:/.test(source.includes('@use') ? source + getAllVariables(this) : source)) {
-                let linked = loadGoogleFontLink(compiled.styles.gf), generation = this._generation;
+                let linked = loadGoogleFontLink(compiled.styles.gf);
                 if (linked) fontsLoading.add(linked);
-                let wait = [...fontsLoading];
-                if (wait.length && tries) Promise.allSettled(wait).then(() => {
-                    if (wait.map(p => fontsLoading.delete(p)).includes(true)) clearMemos();
-                    if (generation === this._generation) this.render(this._code, this.compiled.seed, tries - 1);
-                });
+                wait.push(...fontsLoading);
             }
+            if (wait.length && tries) Promise.allSettled(wait).then(() => {
+                if (wait.map(p => fontsLoading.delete(p)).includes(true)) clearMemos();
+                if (generation === this._generation) this.render(this._code, this.compiled.seed, tries - 1);
+            });
         }
 
         shouldRebuild(compiled, old, grid) {
