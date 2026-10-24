@@ -1,7 +1,9 @@
 import parseGrid from '../parser/parse-grid.js';
 import parseCss from '../parser/parse-css.js';
+import parseValueGroup from '../parser/parse-value-group.js';
 
-import generateCss from '../generator/css.js';
+import Func, { MathFunc } from '../core/function.js';
+import generateCss, { COMPOSABLE } from '../generator/css.js';
 import generatePng from '../generator/svg-to-png.js';
 
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
@@ -17,7 +19,7 @@ import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 import { bindUniforms, unbindUniforms, syncUTime } from './uniforms.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
 import { createReplacer } from './doodle-image.js';
-import { draw } from './embedded.js';
+import { draw, GENERATORS } from './embedded.js';
 import { getBasicStyles, createGrid } from './markup.js';
 
 const propertyRules = new Map();
@@ -88,6 +90,21 @@ function parseInterval(value) {
 
 const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
 
+const live = new Set();
+const arrived = new Set();
+
+const split = text => [...parseValueGroup(text, { noSpace: true })];
+const words = text => [...parseValueGroup(text)];
+
+function guard(fn, warn, fallback) {
+    try {
+        return fn();
+    } catch (err) {
+        warn(err.message);
+        return fallback;
+    }
+}
+
 let CSSDoodle = class {};
 
 export function define(name, element) {
@@ -103,6 +120,34 @@ if (typeof HTMLElement !== 'undefined') {
             'click-to-update', 'click:update',
             'auto:update', 'ignore-reduced-motion',
         ];
+
+        static use(name, { shader, value } = {}) {
+            if (Func[name] || MathFunc[name]) return console.warn(`@${name} already exists`);
+            if (!(shader || value)) return console.warn(`invalid addon @${name}`);
+            if (shader) {
+                COMPOSABLE.add(name);
+                GENERATORS[name] = (code, extra, warn) => guard(() => shader(code, {
+                    color: extra.getRgbaColor, split, words, warn,
+                }), warn, '');
+            }
+            Func[name] = shader ? () => {} : ({ count, x, y, grid }, { rand, rules }) => (...args) => {
+                let warn = message => rules.warn(message);
+                return guard(() => value(args, {
+                    i: count, x, y, I: grid.count, X: grid.x, Y: grid.y, random: rand, split, words, warn,
+                }), warn, '');
+            };
+            if (!arrived.size) queueMicrotask(() => {
+                let names = [...arrived];
+                arrived.clear();
+                for (let el of [...live]) {
+                    if (!el.isConnected || !el.compiled) continue;
+                    let source = el.getUse() + el._code;
+                    if (source.includes('@use')) source += getAllVariables(el);
+                    if (names.some(name => source.includes('@' + name))) el.render(el._code, el.compiled.seed);
+                }
+            });
+            arrived.add(name);
+        }
 
         constructor() {
             super();
@@ -127,6 +172,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         connectedCallback() {
+            live.add(this);
             if (!this.hasAttribute('role')) {
                 this.setAttribute('role', 'img');
             }
@@ -169,6 +215,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         disconnectedCallback() {
+            live.delete(this);
             this.cleanup();
             for (let id in { ...this.compiled?.shaders, ...this.compiled?.patterns }) {
                 this.style.removeProperty('--' + id);

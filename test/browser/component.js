@@ -69,6 +69,33 @@ describe('component', { concurrency: 4 }, () => {
         assert.deepEqual(left, []);
     }));
 
+    test('an addon that loads late redraws the doodles that call it, with the same seed', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 1 / 120px; background: @addon-split(1, 0, 0);', {});
+        let other = await mount(page, '@grid: 1 / 120px; background: #0c0;');
+        let seed = await el.evaluate(el => el.seed);
+        await other.evaluate(el => el.before = el.compiled);
+        assert.deepEqual(await el.evaluate(el => el.warnings), ['unknown function @addon-split()']);
+        await page.evaluate(() => customElements.get('css-doodle').use('addon-split', {
+            shader: code => `void main() { FragColor = gl_FragCoord.x < u_resolution.x / 2.0 ? vec4(${code}, 1) : vec4(0, 0, 1, 1); }`,
+        }));
+        let { image } = await shot(page, el);
+        assertColor(image, 30, 60, '#f00');
+        assertColor(image, 90, 60, '#00f');
+        assert.equal(await el.evaluate(el => el.seed), seed);
+        assert.ok(await other.evaluate(el => el.before === el.compiled), 'an unrelated doodle redrew');
+    }));
+
+    test('a value addon registered first draws without a warning', () => chrome.withPage(async page => {
+        await page.evaluate(() => customElements.get('css-doodle').use('addon-fill', {
+            value: ([color], { i }) => i == 1 ? color : '#00f',
+        }));
+        let el = await mount(page, '@grid: 2x1 / 120px; background: @addon-fill(#0c0);');
+        assert.deepEqual(await el.evaluate(el => el.warnings), []);
+        let { image } = await shot(page, el);
+        assertColor(image, 30, 60, '#0c0');
+        assertColor(image, 90, 60, '#00f');
+    }));
+
     test('click:update draws a new picture on each click', () => chrome.withPage(async page => {
         let el = await mount(page, '@grid: 6 / 120px; background: @p(red, gold, teal, #333);', { 'click:update': '' });
         let first = await shot(page, el);

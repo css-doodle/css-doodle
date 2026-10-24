@@ -32,7 +32,7 @@ function hasShorthandSize(value) {
 }
 
 const NO_SPACE = { noSpace: true };
-const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern', 'scene']);
+export const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern', 'scene']);
 const CELL = ['&'];
 const SHARED_CELL = prefix => `:is(cell,${prefix}_)`;
 
@@ -580,7 +580,7 @@ class Rules {
             arg: node.size,
             id: '--' + id,
             cell: cell.id,
-            ...(fname === 'scene' && { fname }),
+            ...(kind === 'pattern' && fname !== 'pattern' && { fname }),
         };
         return placeholder(id);
     }

@@ -571,3 +571,33 @@ test('the click that ends a drag neither updates the doodle nor clicks a cell', 
     assert.equal(updates, 1);
     assert.deepEqual(events, ['click:cell']);
 });
+
+test('use() adds a value addon that reads the cell and the seeded random', () => {
+    CSSDoodle.use('addon-tag', {
+        value: (args, { i, x, y, I, X, Y, random, words }) =>
+            [args.join('|'), `${i}/${I}`, `${x},${y}/${X},${Y}`, words('a (b c)').join('_'), random()].join(':'),
+    });
+    let compose = () => generateCss(parseCss('@grid: 2x1; --v: @addon-tag(a, b c);'), parseGrid('1'), 42, 64).styles.cells;
+    let cells = compose();
+    assert.match(cells, /#c-1-1-1 \{--v:a\|b c:1\/2:1,1\/2,1:a_\(b c\):0\.\d+;/);
+    assert.match(cells, /#c-2-1-1 \{--v:a\|b c:2\/2:2,1\/2,1:a_\(b c\):0\.\d+;/);
+    assert.equal(compose(), cells);
+});
+
+test('use() adds a shader addon as an image under its own name', () => {
+    CSSDoodle.use('addon-image', { shader: code => `void main() { FragColor = vec4(${code}); }` });
+    let { patterns } = generateCss(parseCss('background: @addon-image(1, 0, 0, 1);'), parseGrid('1'), 42, 64);
+    assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-image', '1,0,0,1']]);
+});
+
+test('use() keeps taken names, and a throwing addon only warns', t => {
+    let warn = t.mock.method(console, 'warn', () => {});
+    CSSDoodle.use('r', { value: () => 'taken' });
+    CSSDoodle.use('sin', { value: () => 'taken' });
+    CSSDoodle.use('addon-none', () => 'no kind');
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['@r already exists', '@sin already exists', 'invalid addon @addon-none']);
+    CSSDoodle.use('addon-throws', { value: () => { throw new Error('bad input'); } });
+    let { styles, warnings } = generateCss(parseCss('--a: @r(1, 1); --b: @sin(0); --c: @addon-throws(1);'), parseGrid('1'), 42, 64);
+    assert.match(styles.cells, /--a:1;\s*--b:0;\s*--c:;/);
+    assert.deepEqual(warnings.map(w => w.message), ['bad input']);
+});

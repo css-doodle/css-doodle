@@ -24,6 +24,8 @@ function safariImage(svg, width, height) {
     return url;
 }
 
+export const GENERATORS = { scene: generateScene };
+
 const stills = new WeakMap();
 
 const MAX_URL = 2 ** 21;
@@ -48,7 +50,7 @@ function canvasUrl(canvas, fit) {
 
 function patternToImage(host, pattern) {
     let name = '@' + (pattern.fname || 'pattern');
-    let source = (pattern.fname === 'scene' ? generateScene : generatePattern)(pattern.source, host.extra, message => {
+    let source = (GENERATORS[pattern.fname] || generatePattern)(pattern.source, host.extra, message => {
         name = '';
         host.report([{ message }]);
     });
