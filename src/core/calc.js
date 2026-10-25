@@ -21,6 +21,7 @@ MATH.smoothstep = (e0, e1, x) => {
 };
 MATH.radians = d => d * Math.PI / 180;
 MATH.degrees = r => r * 180 / Math.PI;
+MATH.atan = (y, x) => x === undefined ? Math.atan(y) : Math.atan2(y, x);
 
 export function pickIndex(k, n) {
     return ((Math.round(k) - 1) % n + n) % n;
@@ -87,11 +88,12 @@ const LOWER = {
     },
     radians: d => `(${d} * pi / 180)`,
     degrees: r => `(${r} * 180 / pi)`,
+    atan: (y, x) => x === undefined ? `atan(${y})` : `atan2(${y},${x})`,
 };
 for (let sym of '+-*/') {
     LOWER[sym] = (a, b) => `(${a} ${sym} ${b})`;
 }
-for (let name of 'sin cos tan asin acos atan atan2 sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
+for (let name of 'sin cos tan asin acos atan2 sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
     LOWER[name] = (...args) => `${name}(${args})`;
 }
 

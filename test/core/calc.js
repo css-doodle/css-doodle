@@ -246,7 +246,7 @@ test('multi-argument functions', () => {
     assert.equal(calc('mod(5.5, 2)'), 1.5);
 });
 
-test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, degrees', () => {
+test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, degrees, atan', () => {
     assert.equal(calc('fract(2.75)'), .75);
     assert.equal(calc('fract(-.25)'), .75);
     assert.equal(calc('clamp(5, 0, 1)'), 1);
@@ -263,6 +263,10 @@ test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, d
     assert.equal(calc('radians(180)'), Math.PI);
     assert.equal(calc('degrees(π / 2)'), 90);
     assert.equal(calc('cos(radians(60))'), Math.cos(Math.PI / 3));
+    // atan(y, x) is the angle of the point (x, y), atan(v) the usual one
+    assert.equal(calc('atan(1, -1)'), Math.PI * .75);
+    assert.equal(calc('atan(-1, 0)'), -Math.PI / 2);
+    assert.equal(calc('atan(1)'), Math.PI / 4);
     // a variable of the same name shadows them, read bare
     assert.equal(calc('step * 2', { step: 3 }), 6);
 });
@@ -693,6 +697,8 @@ test('Math functions, comparisons and logic lower by name', () => {
         'calc(clamp(0,(var(--t) - 0) / (1 - 0),1) * clamp(0,(var(--t) - 0) / (1 - 0),1) * (3 - 2 * clamp(0,(var(--t) - 0) / (1 - 0),1)))');
     assert.equal(css('radians(var(--t))'), 'calc(var(--t) * pi / 180)');
     assert.equal(css('degrees(var(--t))'), 'calc(var(--t) * 180 / pi)');
+    assert.equal(css('atan(var(--t), 2)'), 'calc(atan2(var(--t),2))');
+    assert.equal(css('atan(var(--t))'), 'calc(atan(var(--t)))');
     // a live k writes out every item, weighted by whether k takes it
     assert.equal(css('pick(var(--k): 10, 20)'),
         'calc(10 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 0))) + 20 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 1))))');

@@ -370,12 +370,13 @@ name       = letter or '_', then letters, digits or '_'
   else `a - b`; the longest defined name wins.
 - **Names** are looked up in the context, then among `π`, `random`,
   `gcd`, `match` and the GLSL functions `mod`, `fract`, `clamp`, `mix`,
-  `step`, `smoothstep`, `radians` and `degrees`, then in JavaScript's
-  `Math` (`PI`, `sin`, `hypot`, …). Any other name is `0`, and so is
-  a unit, except `deg` and `turn` on a number inside a call:
+  `step`, `smoothstep`, `radians`, `degrees` and `atan`, then in
+  JavaScript's `Math` (`PI`, `sin`, `hypot`, …). Any other name is `0`,
+  and so is a unit, except `deg` and `turn` on a number inside a call:
   `cos(60deg)` is `cos(radians(60))`. The GLSL ones read as in
   `@pattern`: `mod(a, b)` takes the sign of `b`, so `mod(-1, 4)` is
-  `3`, and `step(edge, x)` is `1` from the edge on.
+  `3`, `step(edge, x)` is `1` from the edge on, and `atan(y, x)` is the
+  angle of the point `(x, y)`, `atan(1, -1)` being `.75π`.
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
   item `k`: `pick(4: a, b, c)` is `a`. Without the index it reads as
   `0`.
@@ -393,12 +394,13 @@ name       = letter or '_', then letters, digits or '_'
   become `0`/`1` arithmetic through `sign()`, both sides written out.
   `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `exp` `log`
   `abs` `sign` `pow` `hypot` `min` `max` `mod` keep their names,
-  `round`, `floor`, `ceil` and `trunc` become `round()`, and `fract`,
-  `clamp`, `mix`, `step`, `smoothstep`, `radians`, `degrees` and
-  `pick(k: …)` are written out in those. A `calc()` reads as a group,
-  so results compose. Shifts, bitwise operators, `gcd` and other
-  functions read as `0`, and a live value where a number is required
-  is dropped: `@r(@t)` is `@r()`, `@nth(@t)` matches nothing.
+  `atan(y, x)` becomes `atan2()`, `round`, `floor`, `ceil` and `trunc`
+  become `round()`, and `fract`, `clamp`, `mix`, `step`, `smoothstep`,
+  `radians`, `degrees` and `pick(k: …)` are written out in those. A
+  `calc()` reads as a group, so results compose. Shifts, bitwise
+  operators, `gcd` and other functions read as `0`, and a live value
+  where a number is required is dropped: `@r(@t)` is `@r()`,
+  `@nth(@t)` matches nothing.
 
 Each caller provides its own context:
 
