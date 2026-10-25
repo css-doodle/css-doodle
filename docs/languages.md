@@ -20,7 +20,8 @@ XML can't hold, such as `@seed`, is dropped.
 
 **Copies.** `*count` repeats an element like `@M(count, …)`, by a
 number, a grid (`2x3`) or a range (`1-3`). Inside, `@n` is the
-sequence value, plus `@nx` and `@ny` for a grid.
+sequence value, plus `@nx` and `@ny` for a grid, and `$(…)` reads
+them bare, as in `@shape`: `circle*3 { r: $(n * 2) }`.
 
 **Variables.** `--name: value` sets a variable where it stands, once
 per copy inside a `*count`: a read after it sees the value, one before
@@ -30,7 +31,7 @@ it the doodle's own. Blocks don't scope it, and the latest value wins:
 **`@match(test) { … }`** keeps its body only where the test holds: its
 elements go where the block stands, and its declarations set the
 attributes of the element around it. The test reads like `$(…)`, so it
-sees the custom properties and the `@n` of an enclosing `*count`. A
+sees the custom properties and the `n` of an enclosing `*count`. A
 body left out still evaluates its functions and `--name` declarations,
 so the random values after it are the same either way. As a value,
 `fill: @match(t, a, b)` is still the function.

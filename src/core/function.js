@@ -40,7 +40,7 @@ const SCATTER_OUTLINE = 360;
 const NO_TILE = 'polygon(0 0)';
 
 // layout of the sequence tuples pushed onto `extra` (see arguments.js)
-const SEQ = {
+export const SEQ = {
     n: 0,     // current value            → @n
     x: 1,     // column, for 2x3 forms    → @nx
     y: 2,     // row, for 2x3 forms       → @ny

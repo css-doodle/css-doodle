@@ -629,6 +629,18 @@ test('@match(test) in @svg reads the cell variables and the @n around it', () =>
     assert.equal(svgImage('background: @svg(g { fill: @match(1 > 0, red, blue) })'), '<svg><g fill="red"/></svg>');
 });
 
+test('$() inside a copy reads n, nx, ny and N as @n, @nx, @ny and @N', () => {
+    assert.equal(svgImage('background: @svg(circle*3 { r: $(n * 2) })'),
+        '<svg><circle r="2"/><circle r="4"/><circle r="6"/></svg>');
+    assert.equal(svgImage('background: @svg(circle*3 { @match(n > 2) { r: 1 } })'),
+        '<svg><circle/><circle/><circle r="1"/></svg>');
+    assert.equal(svgImage('background: @svg(rect*2x2 { x: $(nx); y: $(ny * N) })'),
+        '<svg><rect x="1" y="4"/><rect x="2" y="4"/><rect x="1" y="8"/><rect x="2" y="8"/></svg>');
+    assertContains('@grid: 1; --l: @M3($(n * 10)); --m: @M2(@M2($(n)));', '--l:10 20 30;', '--m:1 2 1 2;');
+    assertContains('@grid: 1; --n: 5; --l: @M2($(n)); --o: $(n + N);', '--l:5 5;', '--o:5;');
+    assertContains('@grid: 1; --o: $(N + 1);', '--o:1;');
+});
+
 test('an @svg body is not split at its commas, so unquoted content keeps its spaces', () => {
     assert.equal(svgImage('background: @svg(text { content: one, two: three; } polyline { points: 0 0, 1 1 })'),
         '<svg><text>one, two: three</text><polyline points="0 0,1 1"/></svg>');

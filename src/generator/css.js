@@ -1,4 +1,4 @@
-import Func, { MathFunc, pickAt, pickAtList } from '../core/function.js';
+import Func, { MathFunc, SEQ, pickAt, pickAtList } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
 import Selector, { calcContext } from '../core/selector.js';
@@ -72,9 +72,8 @@ function pushInput(input, value, whole) {
     }
 }
 
-const SEQ_READERS = new Map([
-    [Func.n, 0], [Func.nx, 1], [Func.ny, 2], [Func.N, 3],
-]);
+const SEQ_INDEX = { n: SEQ.n, nx: SEQ.x, ny: SEQ.y, N: SEQ.max };
+const SEQ_READERS = new Map(Object.entries(SEQ_INDEX).map(([name, index]) => [Func[name], index]));
 
 const UNIFORM_KEYS = {
     __proto__: null,
@@ -225,7 +224,7 @@ function compileFunc(node) {
                         output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
                     } else if (isDollar) {
                         if (hasEntries(rules.scopedVars(cell.uid)) || hasEntries(frame.contextVariable)) {
-                            context = Object.assign(rules.calcContext(cell, frame.contextVariable), context);
+                            context = Object.assign(rules.calcContext(cell, frame.contextVariable, env.extra), context);
                         }
                         output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
                     } else {
@@ -311,16 +310,24 @@ function compileArgument(argument, parent) {
 }
 
 const CELL_REF = Symbol();
+const EXTRA_REF = Symbol();
 const cellVars = Object.create(defaultContext);
-for (let name of 'x y z X Y Z i I dx dy dr dc dm da db'.split(' ')) {
+function cellVar(name, get) {
     Object.defineProperty(cellVars, name, {
-        get() { return (this[CELL_REF].vars ??= calcContext(this[CELL_REF], {}))[name]; },
+        get,
         set(value) { Object.defineProperty(this, name, { value, writable: true, enumerable: true, configurable: true }); }
     });
 }
-function cellContext(cell) {
+for (let name of 'x y z X Y Z i I dx dy dr dc dm da db'.split(' ')) {
+    cellVar(name, function () { return (this[CELL_REF].vars ??= calcContext(this[CELL_REF], {}))[name]; });
+}
+for (let [name, index] of Object.entries(SEQ_INDEX)) {
+    cellVar(name, function () { return last(this[EXTRA_REF])?.[index]; });
+}
+function cellContext(cell, extra) {
     let context = Object.create(cellVars);
     context[CELL_REF] = cell;
+    context[EXTRA_REF] = extra;
     return context;
 }
 
@@ -332,7 +339,7 @@ function evalTemplateHoles({ holes, names, signSensitive }, frame, extra) {
         values[i] = holes[i](frame, extra);
     }
     frame.env.extra.pop();
-    let context = cellContext(frame.cell);
+    let context = cellContext(frame.cell, frame.env.extra);
     for (let i = 0; i < n; i++) {
         let num = toPlainNumber(values[i]);
         if (num === null || (signSensitive[i] && isSignLeading(values[i]))) {
@@ -488,9 +495,9 @@ class Rules {
         return this.vars[count] || this.vars.container;
     }
 
-    calcContext(cell, contextVariable, plain) {
+    calcContext(cell, contextVariable, extra) {
         let group = this.scopedVars(cell.uid);
-        let context = plain ? Object.create(defaultContext) : cellContext(cell);
+        let context = extra ? cellContext(cell, extra) : Object.create(defaultContext);
         for (let name in group) context[name.slice(2)] = group[name];
         for (let name in contextVariable) context[name.slice(2)] = contextVariable[name];
         return context;
@@ -500,7 +507,7 @@ class Rules {
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
             if (fname === '$') {
-                let context = this.calcContext(cell, contextVariable);
+                let context = this.calcContext(cell, contextVariable, env.extra);
                 if (!unit && input.length === 1) {
                     let value = deref(input[0], context);
                     if (value !== undefined) {
@@ -510,7 +517,7 @@ class Rules {
                 return withUnit(_fn(input, context), unit);
             }
             if (fn.vars) {
-                return _fn(this.calcContext(cell, contextVariable, true), ...input);
+                return _fn(this.calcContext(cell, contextVariable), ...input);
             }
             return _fn(...input);
         }
