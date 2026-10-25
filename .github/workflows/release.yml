@@ -1,0 +1,43 @@
+name: Release
+
+# write changelog/<version>.md, then `npm version minor && git push --follow-tags`
+# tests, publishes, and makes the GitHub release from the changelog
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # the GitHub release
+  id-token: write # npm trusted publishing, which also signs provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Node 24 comes with npm 11, which trusted publishing needs
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Check the tag is the package version
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+
+      # no lockfile is tracked, so npm ci is not an option
+      - run: npm install --no-audit --no-fund
+
+      - run: npm test
+
+      # the runner's Google Chrome, drawing WebGL on SwiftShader
+      - run: npm run test:browser
+
+      - run: npm run build
+
+      - run: npm publish
+
+      - name: Make the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sed 1d "changelog/${GITHUB_REF_NAME#v}.md" | gh release create "$GITHUB_REF_NAME" --notes-file -

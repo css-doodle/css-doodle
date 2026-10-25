@@ -7,7 +7,8 @@
     "test:dev": "node --test 'test/{core,parser,generator,component,lib,fuzz}/*.js'",
     "test:browser": "node --test --test-reporter dot test/browser/render.js test/browser/component.js",
     "test:pixel": "node test/browser/pixel.js",
-    "build": "node ./build/index.js"
+    "build": "node ./build/index.js",
+    "version": "git add changelog"
   },
   "repository": {
     "type": "git",
