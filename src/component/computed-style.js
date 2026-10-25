@@ -22,7 +22,7 @@ export function getRgbaColor(root, value, space = 'srgb') {
     let element = root.querySelector('style') || root.appendChild(document.createElement('style'));
     if (/var\(/i.test(value)) {
         element.style.setProperty('--cssd-color', value);
-        value = getComputedStyle(element).getPropertyValue('--cssd-color').trim();
+        value = getVariable(element, '--cssd-color');
     }
     if (!CSS.supports('color', value)) {
         return null;
