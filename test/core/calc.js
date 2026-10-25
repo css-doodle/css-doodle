@@ -512,6 +512,26 @@ test('deref: a lone variable name acts as a generation-time var()', () => {
     assert.equal(deref('x', ctx), undefined);
 });
 
+test('deref: an angle stays an angle unless sin, cos, tan or degrees() take it', () => {
+    const ctx = {
+        a: 'clamp(0deg, 45deg, 360deg)', b: 'max(.1turn, 20deg)', c: 'clamp(0, 45deg, 360)',
+        s: 'sin(30deg)', t: 'clamp(0, cos(.5turn), 1)', d: 'degrees(.5turn)',
+        m: 'max(sin(30deg), 10deg)', n: 'clamp(1, 8, 20)',
+    };
+    // read as radians these lost their unit: rotate: $a was 0.785…
+    assert.equal(deref('a', ctx), 'clamp(0deg, 45deg, 360deg)');
+    assert.equal(deref('b', ctx), 'max(.1turn, 20deg)');
+    assert.equal(deref('c', ctx), 'clamp(0, 45deg, 360)');
+    assert.equal(deref('m', ctx), 'max(sin(30deg), 10deg)');
+    // a function that takes the angle leaves a number
+    assert.ok(Math.abs(deref('s', ctx) - .5) < 1e-9);
+    assert.equal(deref('t', ctx), 0);
+    assert.equal(deref('d', ctx), 180);
+    assert.equal(deref('n', ctx), 8);
+    // the math itself still reads them as radians
+    assert.equal(calc('1 / max(90deg, 1)'), 2 / Math.PI);
+});
+
 test('subtraction between coefficient terms', () => {
     // 'x-9.01' used to tokenize as x followed by the number -9.01
     let ctx = { x: 2, t: 0.5 };

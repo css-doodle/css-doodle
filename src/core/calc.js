@@ -182,6 +182,7 @@ function isUnary(prev) {
 // "2x" → 2*x, "2sin(1)" → 2*sin(1); after a space there is no
 // product, so "2 x" leaves two values and reads as 2
 const ANGLES = { deg: String(Math.PI / 180), turn: String(2 * Math.PI) };
+const ANGLE_TAKERS = new Set(['sin', 'cos', 'tan', 'degrees']);
 
 function pushValue(tokens, value, spaced) {
     const prev = last(tokens);
@@ -216,7 +217,7 @@ function transformTokens(input, spans) {
     for (let i = 0; i < raw.length; i++) {
         const { type, value, index, spaced } = raw[i];
         const next = raw[i + 1];
-        if (value === '(') calls.push(raw[i - 1]?.type === 'Word' && !spaced);
+        if (value === '(') calls.push(raw[i - 1]?.type === 'Word' && !spaced && raw[i - 1].value);
         else if (value === ')') calls.pop();
 
         if (type === 'Number') {
@@ -230,7 +231,8 @@ function transformTokens(input, spans) {
         }
 
         if (type === 'Word') {
-            if (ANGLES[value] && raw[i - 1]?.type === 'Number' && !spaced && calls.includes(true)) {
+            if (ANGLES[value] && raw[i - 1]?.type === 'Number' && !spaced && calls.some(Boolean)) {
+                if (!calls.some(name => ANGLE_TAKERS.has(name))) tokens.angle = true;
                 pushValue(tokens, ANGLES[value], false);
                 continue;
             }
@@ -624,7 +626,10 @@ function dashedCandidates(input) {
 }
 
 function compileWith(input, spans) {
-    return compile(toPostfix(transformTokens(input, spans)));
+    const tokens = transformTokens(input, spans);
+    const compiled = compile(toPostfix(tokens));
+    compiled.angle = tokens.angle === true;
+    return compiled;
 }
 
 const compiledCache = new Map();
@@ -694,8 +699,10 @@ export function deref(input, context) {
     if (readDimension(value, vars) !== undefined) {
         return value;
     }
+    const compiled = compileInput(value, vars);
+    if (compiled.angle) return value;
     const history = [value];
-    const result = compileInput(value, vars)(vars, history);
+    const result = compiled(vars, history);
     return history.misses ? value : result;
 }
 

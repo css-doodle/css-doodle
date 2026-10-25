@@ -410,7 +410,10 @@ Each caller provides its own context:
   unit suffix is appended. A lone name, `$w` or `$(w)`, is a
   generation-time `var()`: arithmetic over the custom properties is
   evaluated, anything else passes through, so with `--c: tomato`, `$c`
-  is `tomato`, and with `--s: y`, `$s` is `y`.
+  is `tomato`, and with `--s: y`, `$s` is `y`. An angle passes through
+  unless `sin`, `cos`, `tan` or `degrees` take it: with
+  `--a: clamp(0deg, 45deg, 90deg)`, `$a` is that `clamp()`, and with
+  `--b: sin(30deg)`, `$b` is `.5`.
 - **`@match`, `@cell` and `@random`** see the cell variables below and
   the custom properties without `--`, a cell variable winning a shared
   name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
