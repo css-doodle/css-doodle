@@ -18,6 +18,8 @@ import { RE_PLACEHOLDER, hasPlaceholder } from '../lib/placeholder.js';
 import { loadGoogleFontEmbed, loadGoogleFontLink } from './google-font.js';
 
 import { bindUniforms, unbindUniforms, syncUTime } from './uniforms.js';
+import { utime, UTime } from '../core/uniforms.js';
+import { compile } from '../generator/glsl-math-transformer.js';
 import { stampSvgImages, hasImageClock, TRANSITION_NONE } from './clock.js';
 import { createReplacer } from './doodle-image.js';
 import { draw } from './embedded.js';
@@ -126,6 +128,19 @@ function loadAddon(name) {
 const split = text => [...parseValueGroup(text, { noSpace: true })];
 const words = text => [...parseValueGroup(text)];
 
+const UNIT = /(?<![\w.])((?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?)(%|deg|turn|rad)(?![\w.(])/gi;
+const DEGREES = { '%': 1, deg: 1, turn: 360, rad: 180 / Math.PI };
+
+function expr(text, warn) {
+    let failed = false;
+    let fail = message => (failed = true, warn(message));
+    if ([utime, UTime].some(name => String(text).includes(name))) return fail('@t is CSS time, use t'), null;
+    let names = { __proto__: null, t: 'u_time' };
+    let math = String(text).replace(UNIT, (_, n, unit) => +n * DEGREES[unit.toLowerCase()]);
+    let code = compile(math, { names, warn: fail, unknown: name => (fail(`unknown name ${name}`), [0]) }).code('float');
+    return failed || !code ? null : code.replace(/\bPI\b/g, '3.1415926535897932');
+}
+
 function guard(fn, warn) {
     try {
         return fn();
@@ -159,7 +174,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (!owner || !(shader || value)) return console.warn(`invalid addon @${name}`);
             owner[key] = shader ? Object.assign(() => {}, {
                 shader: (code, extra, warn) => guard(() => shader(code, {
-                    color: extra.getRgbaColor, split, words, warn,
+                    color: extra.getRgbaColor, expr: text => expr(text, warn), split, words, warn,
                 }), warn),
             }) : ({ count, x, y, grid }, { rand, rules, seed, host, context }, position) => (...args) => {
                 let warn = message => rules.warn(message);

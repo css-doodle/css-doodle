@@ -5,6 +5,7 @@ import parseCss from '../../src/parser/parse-css.js';
 import parseGrid from '../../src/parser/parse-grid.js';
 import generateCss from '../../src/generator/css.js';
 import createRandom from '../../src/core/random.js';
+import Func from '../../src/core/function.js';
 import { doodleToImage } from '../../src/component/doodle-image.js';
 import { stampSheet } from '../../src/component/clock.js';
 
@@ -622,6 +623,16 @@ test('use() adds a shader addon as an image under its own name', () => {
     CSSDoodle.use('addon-image', { shader: code => `void main() { FragColor = vec4(${code}); }` });
     let { patterns } = generateCss(parseCss('background: @addon-image(1, 0, 0, 1);'), parseGrid('1'), 42, 64);
     assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-image', '1,0,0,1']]);
+});
+
+test('use() gives a shader addon expr(): the math of @pattern as GLSL, with t the time in seconds and units read', () => {
+    CSSDoodle.use('addon-expr', { shader: (code, { expr }) => JSON.stringify(code.split(';').map(expr)) });
+    let warnings = [];
+    let out = Func['addon-expr'].shader('9 + 2 * sin(t);t % 2;π / 2;9% + .25turn - 90deg;9%2;nope;1 +;var(--cssd-utime)', {}, message => warnings.push(message));
+    assert.deepEqual(JSON.parse(out), [
+        '(9.0 + (2.0 * sin(u_time)))', 'mod(u_time, 2.0)', '(3.1415926535897932 / 2.0)', '((9.0 + 90.0) - 90.0)', 'mod(9.0, 2.0)', null, null, null,
+    ]);
+    assert.deepEqual(warnings, ['unknown name nope', 'nothing after +', '@t is CSS time, use t']);
 });
 
 test('use() adds @name.variant() under an addon\'s own name only', t => {
