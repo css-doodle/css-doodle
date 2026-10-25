@@ -116,6 +116,17 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 90, 60, '#00f');
     }));
 
+    test('a value addon reads a var() the page sets, and warns about one it cannot see', () => chrome.withPage(async page => {
+        await page.addStyleTag({ content: 'css-doodle { --brand: #0c0 }' });
+        await page.evaluate(() => customElements.get('css-doodle').use('addon-rgb', {
+            value: ([name], { color, warn }) => color(name)?.slice(0, 3).join(' ') ?? (warn(`invalid color ${name}`), ''),
+        }));
+        let el = await mount(page, '@grid: 1 / 120px; --a: #0c0; --b: @addon-rgb(var(--brand)); --c: @addon-rgb(var(--a));');
+        assert.deepEqual(await el.evaluate(el => el.warnings), ['invalid color var(--a)']);
+        let b = await el.evaluate(el => getComputedStyle(el.shadowRoot.querySelector('cell')).getPropertyValue('--b').trim());
+        assert.equal(b, '0 0.8 0');
+    }));
+
     test('a value addon that waits draws again, with the same seed, when the promise settles', () => chrome.withPage(async page => {
         await page.evaluate(() => {
             let color, ready = new Promise(resolve => window.finish = resolve);

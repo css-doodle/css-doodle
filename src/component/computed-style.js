@@ -19,10 +19,14 @@ export function getAllVariables(element) {
 }
 
 export function getRgbaColor(root, value, space = 'srgb') {
+    let element = root.querySelector('style') || root.appendChild(document.createElement('style'));
+    if (/var\(/i.test(value)) {
+        element.style.setProperty('--cssd-color', value);
+        value = getComputedStyle(element).getPropertyValue('--cssd-color').trim();
+    }
     if (!CSS.supports('color', value)) {
         return null;
     }
-    let element = root.querySelector('style') || root.appendChild(document.createElement('style'));
     element.style.color = `color-mix(in ${space}, ${value} 100%, transparent)`;
     let rgba = getComputedStyle(element).color.match(/-?[\d.]+(e-?\d+)?/gi);
     if (!rgba) return null;
