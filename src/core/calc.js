@@ -1,5 +1,4 @@
 import { isInvalidNumber, removeParens } from '../lib/type.js';
-import { last } from '../lib/list.js';
 import { tidyNumber } from '../lib/math.js';
 import { scan, NAME_CHAR } from '../parser/tokenizer.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
@@ -187,7 +186,7 @@ const ANGLES = { deg: String(Math.PI / 180), turn: String(2 * Math.PI) };
 const ANGLE_TAKERS = new Set(['sin', 'cos', 'tan', 'degrees']);
 
 function pushValue(tokens, value, spaced) {
-    const prev = last(tokens);
+    const prev = tokens.at(-1);
     if (!spaced && prev && (prev.type === VALUE || prev.value === ')')) {
         tokens.push(tk(OPERATOR, '·'));
     }
@@ -225,7 +224,7 @@ function transformTokens(input, spans) {
         if (type === 'Number') {
             let number = value;
             if (number[0] === '-') {
-                tokens.push(tk(OPERATOR, isUnary(last(tokens)) ? '-u' : '-'));
+                tokens.push(tk(OPERATOR, isUnary(tokens.at(-1)) ? '-u' : '-'));
                 number = number.slice(1);
             }
             pushValue(tokens, number, spaced);
@@ -253,7 +252,7 @@ function transformTokens(input, spans) {
                 }
                 let css = input.slice(value === 'var' ? index : next.index, raw[j] && raw[j].index + 1);
                 pushValue(tokens, css, spaced);
-                last(tokens).live = true;
+                tokens.at(-1).live = true;
                 i = j;
                 continue;
             }
@@ -287,7 +286,7 @@ function transformTokens(input, spans) {
         }
 
         if (value === '+' || value === '-') {
-            if (isUnary(last(tokens))) {
+            if (isUnary(tokens.at(-1))) {
                 // a run of unary signs is one prefix operator
                 let negative = value === '-';
                 while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
@@ -300,7 +299,7 @@ function transformTokens(input, spans) {
 
         if (value === '(') {
             // "2(3+4)" → "2*(3+4)", "(1+2)(3+4)" → "(1+2)*(3+4)", but not "fn("
-            const prev = last(tokens);
+            const prev = tokens.at(-1);
             if (prev && !spaced && (prev.value === ')' || (prev.type === VALUE && RE_NUMBER.test(prev.value)))) {
                 tokens.push(tk(OPERATOR, '·'));
             }
@@ -346,7 +345,7 @@ function toPostfix(tokens) {
             if (value === '(') {
                 opStack.push(value);
             } else if (value === ')') {
-                while (opStack.length && last(opStack) !== '(') {
+                while (opStack.length && opStack.at(-1) !== '(') {
                     pop();
                 }
                 opStack.pop();
@@ -360,7 +359,7 @@ function toPostfix(tokens) {
                 // text that grows with its length, not exponentially
                 const rightAssoc = ['^', '&&', '||'].includes(value);
                 while (opStack.length) {
-                    const topPrec = PREC[last(opStack)];
+                    const topPrec = PREC[opStack.at(-1)];
                     if (rightAssoc ? topPrec > prec : topPrec >= prec) {
                         pop();
                     } else {

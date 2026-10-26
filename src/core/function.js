@@ -26,7 +26,6 @@ import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
 import { placeholderId } from '../lib/placeholder.js';
 import { lerp, clamp, tidyNumber, map2d } from '../lib/math.js';
-import { last } from '../lib/list.js';
 import { getEasingFunction } from './easing.js';
 import { css } from '../lib/tagged-template.js';
 
@@ -128,7 +127,7 @@ let seqUid = 0;
 function makeSequence(c) {
     return lazy((cell, env, position, input, ...actions) => {
         if (!input || !actions.length) return '';
-        let count = getValue(input(...(last(env.extra) || [])));
+        let count = getValue(input(...(env.extra.at(-1) || [])));
         let evaluated = count;
         let signature = ++seqUid;
         let run = actions.length === 1
@@ -157,7 +156,7 @@ function makeSequence(c) {
 
 function seq(token, make) {
     return (cell, { extra }) => {
-        let e = last(extra);
+        let e = extra.at(-1);
         return (e && e.length) ? make(e) : token;
     };
 }
@@ -212,7 +211,7 @@ function createPlot(unit, kind, pieces) {
         return shape;
     });
     return (cell, { extra, seed, rules }) => {
-        let e = last(extra) || [];
+        let e = extra.at(-1) || [];
         return (...args) => {
             let [idx, max] = e[SEQ.index] ? [e[SEQ.n], e[SEQ.max]] : [cell.count, cell.grid.count];
             let input = args.join(',');
@@ -247,8 +246,8 @@ const countOf = (cell, e) => e?.[SEQ.index] ? e[SEQ.max] : cell.grid.count;
 function createPick(name, fn, random = false, upstream = false) {
     return (cell, { context, extra, upextra, shuffle, level }, position) => {
         let lastExtra = upstream
-            ? last(upextra.length ? upextra : extra)
-            : last(extra);
+            ? (upextra.length ? upextra : extra).at(-1)
+            : extra.at(-1);
         let sig = lastExtra?.[SEQ.sig] ?? '';
         let index = lastExtra?.[SEQ.index];
         let counter = `${name}-counter${position}:${level}`;
@@ -391,7 +390,7 @@ Function.p = (cell, { context, pick, extra }) => {
         }
         context.lastPickArgs = args;
         return pushStack(context, 'lastPick', pick(args));
-    }, countOf(cell, last(extra)));
+    }, countOf(cell, extra.at(-1)));
 };
 
 Function.P = (cell, { context, pick, extra }, position) => {
@@ -413,7 +412,7 @@ Function.P = (cell, { context, pick, extra }, position) => {
             memory.lastPick = picked;
         }
         return pushStack(context, 'lastPick', picked);
-    }, countOf(cell, last(extra)));
+    }, countOf(cell, extra.at(-1)));
 };
 
 function pickN(args, pos, max, i) {
@@ -446,7 +445,7 @@ Function.ri = (cell, env) => Function.r(cell, { ...env, rand: (...range) => Math
 function createNoise(outline) {
     return ({ x, y, grid }, { context, extra, random }, position) => {
         let counter = (outline ? 'noise-t' : 'noise-2d') + position;
-        let e = last(extra) || [];
+        let e = extra.at(-1) || [];
         let [cx, cy, X, Y] = (e[SEQ.index] && e[SEQ.n]) ? [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
         let u = X <= 1 ? .5 : (cx - 1) / X;
         let v = Y <= 1 ? .5 : (cy - 1) / Y;
@@ -504,7 +503,7 @@ Function.match = lazy((cell, { extra }, position, vars, ...args) => {
     if (args.length <= 1) {
         return '';
     }
-    let e = last(extra) || [];
+    let e = extra.at(-1) || [];
     let variables = sequenceContext(cell, e, vars);
     let value = i => getValue(args[i](...e));
     for (let i = 0; i < args.length; i += 2) {
@@ -521,13 +520,13 @@ export const pickAt = lazy((cell, { context, extra }, position, vars, ...args) =
     if (args.length <= 1) {
         return '';
     }
-    let e = last(extra) || [];
+    let e = extra.at(-1) || [];
     let k = calc(getValue(args[0](...e)), sequenceContext(cell, e, vars));
     return Number.isFinite(k) ? pushStack(context, 'lastPick', getValue(args[1 + pickIndex(k, args.length - 1)](...e))) : '';
 });
 
 export const pickAtList = (cell, { context, extra }) => (vars, k, ...items) => {
-    k = calc(k, sequenceContext(cell, last(extra) || [], vars));
+    k = calc(k, sequenceContext(cell, extra.at(-1) || [], vars));
     return Number.isFinite(k) && items.length ? expand((...list) => pushStack(context, 'lastPick',
         pickN(list, pickIndex(k, list.length), list.length, Math.max(Math.round(k) - 1, 0))))(...items) : '';
 };

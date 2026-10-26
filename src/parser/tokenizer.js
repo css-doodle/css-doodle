@@ -1,5 +1,3 @@
-import { last } from '../lib/list.js';
-
 const symbols = ':;,()[]{}π±+-*/%"\'`@=^ß_<>&|!?~≤≥≠∆';
 const dropSpaceAfter = new Set(':;,{}([');
 const dropSpaceBefore = new Set(';,{})]');
@@ -170,7 +168,7 @@ function scan(source, options = {}) {
         // Offset of the token's first raw char in the input
         let index = i;
         let next = input.charCodeAt(i + 1);
-        let lastToken = last(tokens);
+        let lastToken = tokens.at(-1);
 
         if (!quote && curr === 47 && next === 42 /* slash-star */) {
             let found = input.indexOf('*/', i + 2);
@@ -285,7 +283,7 @@ function scan(source, options = {}) {
     }
 
     // Remove last space token
-    let lastToken = last(tokens);
+    let lastToken = tokens.at(-1);
     if (lastToken && lastToken.isSpace()) {
         tokens.pop();
     }

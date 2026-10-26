@@ -14,7 +14,7 @@ import { cellId, isTreeGrid } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
 import { isNil, getValue, removeQuotes, removeParens, hasEntries } from '../lib/type.js';
-import { join, last, removeEmptyValues } from '../lib/list.js';
+import { join, removeEmptyValues } from '../lib/list.js';
 import { nextId } from '../lib/fn.js';
 import {
     isHostSelector, isParentSelector, isSpecialSelector, isPseudoSelector, isGroupAtRule
@@ -169,7 +169,7 @@ function compileFunc(node) {
         } else if (SEQ_READERS.has(fn) && !node.arguments.length) {
             let index = SEQ_READERS.get(fn);
             let read = frame => {
-                let e = last(frame.env.extra);
+                let e = frame.env.extra.at(-1);
                 return (e && e.length) ? e[index] : node.name;
             };
             compiled = frame => ({ value: read(frame) });
@@ -322,7 +322,7 @@ for (let name of 'x y z X Y Z i I dx dy dr dc dm da db'.split(' ')) {
     cellVar(name, function () { return (this[CELL_REF].vars ??= calcContext(this[CELL_REF], {}))[name]; });
 }
 for (let [name, index] of Object.entries(SEQ_INDEX)) {
-    cellVar(name, function () { return last(this[EXTRA_REF])?.[index]; });
+    cellVar(name, function () { return this[EXTRA_REF].at(-1)?.[index]; });
 }
 function cellContext(cell, extra) {
     let context = Object.create(cellVars);
