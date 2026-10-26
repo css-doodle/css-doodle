@@ -88,7 +88,6 @@ test('@reverse: arguments back to front, path data command by command', () => {
 test('a function takes the cell, the env and the call-site position', () => {
     let env = { context: {}, extra: [], pick: list => list[0] };
     let cell = { grid: { count: 1 } };
-    assert.equal(Function.id({ id: 'c-1-2-1' })(), 'c-1-2-1');
     assert.equal(Function.x({ x: 3 })(), '3');
     assert.equal(Function.p(cell, env)('a', 'b'), 'a');
     // the call site keys the per-call memory in env.context

@@ -82,7 +82,6 @@ export default [
     { name: 'func-match', code: `background: @match(x > 2, red, blue); --v: @m6(@match(n > 3, big, small));` },
     { name: 'func-nd', code: `--v: @m3(@nd(1)); --w: @m3(@nd);` },
     { name: 'func-n-in-argument', code: `--u: @pick(@n, @nx);` },
-    { name: 'func-id', code: `--id: @id;` },
     { name: 'func-svg-polygon', code: `background: @svg-polygon(circle);` },
     { name: 'func-gradient', code: `background: @linearGradient(red, blue); border-image-source: @radialGradient(red, blue);` },
     { name: 'func-var', code: `--c: 10px; width: @var(--c);` },

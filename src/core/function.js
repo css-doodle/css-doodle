@@ -845,8 +845,6 @@ Function['google-font'] = (cell, { rules }) => (name = '') => {
     return name && `"${name.split(':')[0]}"`;
 };
 
-Function.id = ({ id }) => () => id;
-
 // @x and @X: the cell's column and the grid's; @xX and @Xx: the way along from either end, eased
 for (let [k, v] of [['i', 'count'], ['x', 'x'], ['y', 'y'], ['z', 'z']]) {
     let K = k.toUpperCase();
