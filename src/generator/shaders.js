@@ -75,7 +75,6 @@ export function shaderError(log) {
 export function generateFragment(fragment, textures) {
     fragment = fragment.replace(/^\s*#version[^\n]*/, '');
 
-    const isShadertoy = fragment.includes('void mainImage');
     const precisionMatch = fragment.match(/precision\s+(highp|mediump|lowp)\s+float\s*;/);
     const outputMatch = fragment.match(/\bout\s+vec4\s+(\w+)/);
     const output = outputMatch ? outputMatch[1] : 'FragColor';
@@ -107,17 +106,6 @@ export function generateFragment(fragment, textures) {
         push(`uniform sampler2D ${t.name};`);
     });
 
-    if (isShadertoy) {
-        push('#define iResolution vec3(u_resolution, 0)');
-        push('#define iTime u_time');
-        push('#define iTimeDelta u_timeDelta');
-        push('#define iFrame u_frameIndex');
-        push('#define iMouse vec4(u_mouse, 0, 0)');
-        textures.forEach((n, i) => {
-            push(`#define iChannel${i} ${n.name}`);
-        });
-    }
-
     if (has_glFragColor) {
         push(`#define gl_FragColor ${output}`);
     }
@@ -131,10 +119,6 @@ export function generateFragment(fragment, textures) {
     }
 
     snippets.push(fragment);
-
-    if (isShadertoy) {
-        snippets.push(`void main() { mainImage(${output}, gl_FragCoord.xy); }`);
-    }
 
     return snippets.join('\n');
 }
