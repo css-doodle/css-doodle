@@ -523,11 +523,6 @@ Function.match.vars = pickAt.vars = pickAtList.vars = true;
 
 Function.calc = () => (value = '', context) => tidyNumber(calc(value, typeof context === 'object' ? context : undefined, 1));
 
-Function.hex = () => (value = '') => {
-    let n = parseInt(value);
-    return Number.isNaN(n) ? value : n.toString(16);
-};
-
 Function.var = () => (value = '') => `var(${value})`;
 
 Function.stripe = () => (...input) => {

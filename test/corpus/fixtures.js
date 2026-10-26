@@ -63,7 +63,6 @@ export default [
     { name: 'func-cycle', code: `--v: @p(@cycle(red, blue, green));` },
     { name: 'func-mirror', code: `--v: @p(@mirror(a, b, c)); --w: @p(@Mirror(a, b, c));` },
     { name: 'func-code', code: `:after { content: @code(9728); }` },
-    { name: 'func-hex', code: `--h: @hex(255); --g: @hex(abc);` },
     { name: 'func-once', code: `--o: @once(@i);` },
     { name: 'func-path-invert', code: `--p: @invert(M 0 0 L 5 5 v 2 h 3);` },
     { name: 'func-path-flip', code: `--a: @flipH(M 0 0 h 5 v 5); --b: @flipV(M 0 0 h 5 v 5); --c: @flip(M 0 0 h 5 v 5); --d: @reverse(M 0 0 h 5 v 5);` },
