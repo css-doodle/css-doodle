@@ -22,25 +22,52 @@ function createShader(gl, type, source) {
 }
 
 function createProgram(gl, vss, fss) {
-    const vs = createShader(gl, gl.VERTEX_SHADER, vss);
-    const fs = createShader(gl, gl.FRAGMENT_SHADER, fss);
-    const prog = gl.createProgram();
+    const program = gl.createProgram();
+    const shaders = [[gl.VERTEX_SHADER, vss], [gl.FRAGMENT_SHADER, fss]].map(([type, source]) => {
+        const shader = createShader(gl, type, source);
+        gl.attachShader(program, shader);
+        return shader;
+    });
+    gl.linkProgram(program);
+    return { program, shaders, users: 0 };
+}
 
-    gl.attachShader(prog, vs);
-    gl.attachShader(prog, fs);
-    gl.linkProgram(prog);
-
-    const linked = gl.getProgramParameter(prog, gl.LINK_STATUS);
-    const log = linked ? '' : [gl.getShaderInfoLog(fs), gl.getShaderInfoLog(vs)].find(log => /ERROR/.test(log)) || gl.getProgramInfoLog(prog) || '';
-
-    gl.deleteShader(vs);
-    gl.deleteShader(fs);
-
-    if (!linked) {
-        gl.deleteProgram(prog);
-        throw shaderError(log);
+function checkProgram(gl, entry) {
+    if (entry.shaders) {
+        const [vs, fs] = entry.shaders;
+        const linked = gl.getProgramParameter(entry.program, gl.LINK_STATUS);
+        const log = linked ? '' : [gl.getShaderInfoLog(fs), gl.getShaderInfoLog(vs)].find(log => /ERROR/.test(log)) || gl.getProgramInfoLog(entry.program) || '';
+        entry.shaders.forEach(shader => gl.deleteShader(shader));
+        entry.shaders = null;
+        if (!linked) entry.error = shaderError(log);
     }
-    return prog;
+    if (entry.error) throw entry.error;
+}
+
+const later = () => new Promise(resolve => setTimeout(resolve, 16));
+
+async function settle(surface, entry) {
+    const { gl, parallel } = surface;
+    while (parallel && !surface.disposed && !gl.getProgramParameter(entry.program, parallel.COMPLETION_STATUS_KHR)) {
+        await later();
+    }
+    if (surface.disposed) return;
+    checkProgram(gl, entry);
+    const position = gl.getAttribLocation(entry.program, 'position');
+    gl.useProgram(entry.program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(0, 0, 1, 1);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.disable(gl.SCISSOR_TEST);
+    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl.flush();
+    while (!surface.disposed && gl.getSyncParameter(sync, gl.SYNC_STATUS) !== gl.SIGNALED) {
+        await later();
+    }
+    gl.deleteSync(sync);
 }
 
 export function shaderError(log) {
@@ -172,7 +199,8 @@ function createSurface(width, height) {
         throw new Error('no WebGL2');
     }
 
-    const surface = { canvas, gl, width, height, users: new Set(), programs: new Map(), disposed: false };
+    const parallel = gl.getExtension('KHR_parallel_shader_compile');
+    const surface = { canvas, gl, width, height, parallel, users: new Set(), programs: new Map(), disposed: false };
     surface.buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
@@ -211,6 +239,7 @@ function sweep() {
         for (const [source, entry] of surface.programs) {
             if (!entry.users) {
                 surface.programs.delete(source);
+                entry.shaders?.forEach(shader => surface.gl.deleteShader(shader));
                 surface.gl.deleteProgram(entry.program);
             }
         }
@@ -221,7 +250,7 @@ function acquireProgram(surface, vertex, fragment) {
     const source = vertex + fragment;
     let entry = surface.programs.get(source);
     if (!entry) {
-        entry = { program: createProgram(surface.gl, vertex, fragment), users: 0 };
+        entry = createProgram(surface.gl, vertex, fragment);
         surface.programs.set(source, entry);
     }
     entry.users++;
@@ -267,21 +296,25 @@ export default function drawShader(shaders, seed, cell, onLost) {
     function setup(width, height) {
         surface = acquireSurface(width, height, drawing);
         gl = surface.gl;
-        try {
-            entry = acquireProgram(surface, vertex, fragment);
-        } catch (e) {
-            releaseSurface(surface, drawing);
-            surface = null;
-            throw e;
-        }
+        entry = acquireProgram(surface, vertex, fragment);
         program = entry.program;
         drawing.canvas = surface.canvas;
-        position = gl.getAttribLocation(program, 'position');
         textureList = uploaded.map((image, i) => loadTexture(gl, image, i));
+        uniforms = null;
+    }
+
+    function bind() {
+        try {
+            checkProgram(gl, entry);
+        } catch (e) {
+            dispose();
+            throw e;
+        }
+        position = gl.getAttribLocation(program, 'position');
 
         // uniforms live in the program, so these are set once
         gl.useProgram(program);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), width, height);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), surface.width, surface.height);
         textures.forEach((n, i) => {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
@@ -313,6 +346,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
             teardown();
             setup(width, height);
         }
+        if (!uniforms) bind();
 
         gl.useProgram(program);
         gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
@@ -350,5 +384,10 @@ export default function drawShader(shaders, seed, cell, onLost) {
     }
 
     setup(raster(shaders.width), raster(shaders.height));
+    entry.ready ||= settle(surface, entry);
+    drawing.ready = entry.ready.then(() => surface && !surface.disposed && !uniforms && bind(), e => {
+        dispose();
+        throw e;
+    });
     return drawing;
 }

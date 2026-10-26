@@ -96,6 +96,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         let drawing;
         try {
             drawing = generateShaders({ ...parsed, textures, width, height }, compiled.seed, seedCell);
+            await drawing.ready;
             drawing.draw(0, width, height, 0, textures, [0, 0]);
             return canvasUrl(drawing.canvas, { scale: 1 });
         } catch (err) {
@@ -245,9 +246,12 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             textures = result;
         }
         try {
-            tick(generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell, () => {
+            let drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell, () => {
                 host.report([{ message: 'WebGL context lost' }]);
-            }));
+            });
+            await drawing.ready;
+            if (isStale(token) || (initial && host.shaderRenders.has(id))) return drawing.dispose();
+            tick(drawing);
         } catch (err) {
             if (name) host.report([{ message: `${name}: ${err.message}` }]);
             host.shaderRenders.set(id, { dispose() {} });
