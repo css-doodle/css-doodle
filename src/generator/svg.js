@@ -213,7 +213,7 @@ function transformViewBox(token, warn) {
     return `${x} ${y} ${w} ${h}`;
 }
 
-function timing(animate, value, label, warn) {
+function timing(animate, value, warn) {
     let times = [], repeatCount, fill, calcMode, spline;
     for (let word of parseValueGroup(value)) {
         if (word === 'infinite' || word === 'indefinite') {
@@ -382,7 +382,7 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('attributeName', 'stroke-dashoffset');
                     animate.attr('from', 10);
                     animate.attr('to', 0);
-                    if (!timing(animate, value, keyword, warn)) {
+                    if (!timing(animate, value, warn)) {
                         warn(`${keyword} needs duration`);
                     }
                     element.append(animate);
@@ -410,7 +410,7 @@ function generate(token, element, parent, root, warn) {
                 } else {
                     animate.attr('values', values.join(';'));
                 }
-                if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), `animate ${name}`, warn)) {
+                if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), warn)) {
                     warn(`${name} needs duration`);
                 }
                 element.append(animate);

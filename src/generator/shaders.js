@@ -28,6 +28,7 @@ function createProgram(gl, vss, fss) {
         gl.attachShader(program, shader);
         return shader;
     });
+    gl.bindAttribLocation(program, 0, 'position');
     gl.linkProgram(program);
     return { program, shaders, users: 0 };
 }
@@ -53,11 +54,7 @@ async function settle(surface, entry) {
     }
     if (surface.disposed) return;
     checkProgram(gl, entry);
-    const position = gl.getAttribLocation(entry.program, 'position');
     gl.useProgram(entry.program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
-    gl.enableVertexAttribArray(position);
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(0, 0, 1, 1);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -204,6 +201,8 @@ function createSurface(width, height) {
     surface.buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0, 0, 0, 0);
@@ -287,7 +286,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
     const seeds = [hash(seed) / 1e16, hash(seed + cell, 1) / 1e16];
 
-    let surface, gl, entry, program, position, textureList, uniforms;
+    let surface, gl, entry, program, textureList, uniforms;
     let frameIndex = 0;
     let currentTime = 0;
 
@@ -310,8 +309,6 @@ export default function drawShader(shaders, seed, cell, onLost) {
             dispose();
             throw e;
         }
-        position = gl.getAttribLocation(program, 'position');
-
         // uniforms live in the program, so these are set once
         gl.useProgram(program);
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), surface.width, surface.height);
@@ -349,9 +346,6 @@ export default function drawShader(shaders, seed, cell, onLost) {
         if (!uniforms) bind();
 
         gl.useProgram(program);
-        gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
-        gl.enableVertexAttribArray(position);
-        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
         // the caller swaps in freshly rendered images after a resize
         images.forEach((n, i) => {

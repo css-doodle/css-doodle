@@ -60,7 +60,8 @@ function patternToImage(host, pattern) {
 
 async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders', inside }) {
     let fixed = arg ? parseGrid(arg, Infinity) : null;
-    let parsed, width = fixed?.x, height = fixed?.y, textures = [];
+    let parsed = typeof source === 'string' ? parseShaders(source) : source;
+    let width = fixed?.x, height = fixed?.y, textures = [];
     const loadTextures = () => {
         let dpr = devicePixelRatio || 1;
         return Promise.all(parsed.textures.map(({ name, value }) => {
@@ -91,7 +92,6 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
                 height /= inside.grid.y;
             }
         }
-        parsed = typeof source === 'string' ? parseShaders(source) : source;
         textures = await loadTextures();
         let drawing;
         try {
@@ -134,7 +134,6 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         if (host._generation !== generation || host.shaderRenders.has(id)) return;
     }
     if (!fixed) ({ width, height } = measure());
-    parsed = typeof source === 'string' ? parseShaders(source) : source;
     let turned = [0, 0], redraw;
 
     const tick = drawing => {

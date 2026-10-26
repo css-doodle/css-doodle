@@ -241,11 +241,11 @@ function getSelectors(tokens) {
             continue;
         }
         // a word right after a number continues it: `*2x3`, `*2x$(n)`, `*2x@p(3)`
-        let glued = prev && prev.isNumber();
+        let glued = prev?.isNumber();
         if (curr.isWord() && !hasSymbol && !glued || !result.length) {
             result.push(curr.value.trim());
         } else {
-            result[result.length - 1] = (result[result.length - 1] + curr.value).trim();
+            result.push((result.pop() + curr.value).trim());
         }
         if (curr.isSymbol()) {
             hasSymbol = true;

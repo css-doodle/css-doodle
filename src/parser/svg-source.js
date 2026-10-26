@@ -30,7 +30,7 @@ function generate(token, last, repeat) {
         let skip = (token.origin && last === token.origin);
         let name = token.origin ? token.origin.name.join(',') : token.name;
         if (!skip) {
-            if (value && value.type) {
+            if (value?.type) {
                 result += name + ':' + generate(value, null, repeat);
             } else if (token.raw) {
                 result += name + ':{' + value + '};';

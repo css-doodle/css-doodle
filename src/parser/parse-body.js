@@ -18,7 +18,7 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
     let depth = 0;
 
     const appendTail = () => {
-        if (textOf(head).trim()) rules.push(...readTail(head, rules[rules.length - 1]));
+        if (textOf(head).trim()) rules.push(...readTail(head, rules.at(-1)));
         head = [];
     };
 

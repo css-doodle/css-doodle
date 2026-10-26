@@ -57,7 +57,7 @@ function parseSimple(input, noSpace) {
     input = input.trim();
     if (!input) return group;
     let pieces = input.split(',');
-    if (pieces.length > 1 && pieces[pieces.length - 1].trim() === '') {
+    if (pieces.length > 1 && pieces.at(-1).trim() === '') {
         pieces.pop();
     }
     for (let piece of pieces) {

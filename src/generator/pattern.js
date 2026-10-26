@@ -439,9 +439,9 @@ function generateShader({ grid, body, masked }) {
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
         float size = 1.0;
-        ${masked ? 'float g_dist = 0.0;\nbool g_masked = false;' : ''}
+        ${masked ? glsl`float g_dist = 0.0;\nbool g_masked = false;` : ''}
         ${body}
-        ${masked ? 'float g_mask = g_shape(g_dist, size);\nif (g_masked) g_color.a *= g_mask;' : ''}
+        ${masked ? glsl`float g_mask = g_shape(g_dist, size);\nif (g_masked) g_color.a *= g_mask;` : ''}
         FragColor = g_color;
     }
   `;

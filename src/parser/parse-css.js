@@ -72,7 +72,7 @@ function readsShape(name) {
     return /^@(shape|plot|tile|svg-polygon)\b/i.test(name);
 }
 
-function substitutePi(source, from, to) {
+function substitutePi(source, from, to = from + 1) {
     return source.slice(from, to).replace(/π/g, (c, i) => /\w/.test(source[from + i - 1]) || /\d/.test(source[from + i + 1]) ? c : PI);
 }
 
@@ -182,7 +182,7 @@ function parseValue(cur, breakOn, custom) {
                 else if (v === '}') brace--;
             }
             cur.next();
-            buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index, tok.index + 1) : v;
+            buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index) : v;
             continue;
         }
 
@@ -192,10 +192,10 @@ function parseValue(cur, breakOn, custom) {
 
     flush();
     if (paren > 0) {
-        warn(cur.ctx, 'unclosed (', head && head.pos);
+        warn(cur.ctx, 'unclosed (', head?.pos);
     }
     if (quote) {
-        warn(cur.ctx, 'unclosed quote', head && head.pos);
+        warn(cur.ctx, 'unclosed quote', head?.pos);
     }
     groups.hasFunc = hasFunc;
     return groups;
@@ -288,8 +288,7 @@ function parseFunc(cur) {
 }
 
 function finishFunc(cur, name, end, isCalc, index, shaped) {
-    let func = { type: 'func', name: '', arguments: [] };
-    func.index = index;
+    let func = { type: 'func', name: '', arguments: [], index };
     let hasArguments = false;
 
     let dot = findCompositionDot(name, cur, end);
@@ -307,7 +306,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped) {
     }
     else {
         let paren = cur.peek();
-        if (paren && paren.index === end && paren.isSymbol('(')) {
+        if (paren?.index === end && paren.isSymbol('(')) {
             cur.next();
             if (composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
@@ -354,7 +353,7 @@ function findCompositionDot(name, cur, end) {
             let next = name[i + 1];
             if (next === undefined) {
                 let t = cur.peek();
-                if (t && t.index === end && t.isSymbol('@', '$')) {
+                if (t?.index === end && t.isSymbol('@', '$')) {
                     return i;
                 }
                 return -1;
@@ -390,8 +389,8 @@ function readVarName(cur) {
 
 function declaresVar(cur) {
     let t = cur.peek();
-    if (t && t.isSpace()) t = cur.peek(1);
-    return !!t && t.isSymbol(':');
+    if (t?.isSpace()) t = cur.peek(1);
+    return !!t?.isSymbol(':');
 }
 
 // `indexed` for @pick, where a colon in the first argument ends its index
@@ -413,12 +412,8 @@ function parseArguments(cur, copying, whole, indexed) {
         last = null;
         if (!text.length) return;
         if (values.length === 0) {
-            if (atFunc) {
-                text = text.trimStart();
-                if (text.length) values.push(Node.text(text));
-            } else if (/\S/.test(text)) {
-                values.push(Node.text(text.trim()));
-            }
+            text = atFunc ? text.trimStart() : text.trim();
+            if (text.length) values.push(Node.text(text));
         } else if (atFunc || /\S/.test(text)) {
             values.push(Node.text(text));
         }
@@ -427,7 +422,7 @@ function parseArguments(cur, copying, whole, indexed) {
     const pushArgument = () => {
         // ±x expands into -x and x: ±1, ±(a + 1), ±@r(10)
         let head = values[0];
-        if (head && head.type === 'text' && head.value.startsWith('±')) {
+        if (head?.type === 'text' && head.value.startsWith('±')) {
             let rest = head.value.slice(1).trimStart();
             let cloned = structuredClone(values);
             cloned[0].value = '-' + rest;
@@ -502,10 +497,10 @@ function parseArguments(cur, copying, whole, indexed) {
         }
         if (tok.status) quote = tok.status === 'open';
         cur.next();
-        buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index, tok.index + 1) : v;
+        buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index) : v;
         last = tok;
     }
-    warn(cur.ctx, 'unclosed (', head && head.pos);
+    warn(cur.ctx, 'unclosed (', head?.pos);
     return { args, end };
 }
 
@@ -517,13 +512,13 @@ function normalizeArgument(values) {
     }
     let cluster = false;
     let ft = values[0];
-    let ed = values[values.length - 1];
-    if (ft && ft.type === 'text' && ed.type === 'text') {
+    let ed = values.at(-1);
+    if (ft?.type === 'text' && ed.type === 'text') {
         let cf = ft.value[0];
-        let ce = ed.value[ed.value.length - 1];
+        let ce = ed.value.at(-1);
         if (PAIRS[cf] === ce && (cf === '(' ? parensWrapWhole(values) : quotesWrapWhole(values, cf))) {
             ft.value = ft.value.slice(1);
-            ed.value = ed.value.slice(0, ed.value.length - 1);
+            ed.value = ed.value.slice(0, -1);
             cluster = true;
             // (--name) reads like a bare --name
             let name = /^--[\w-]+/.exec(ft.value);
@@ -618,7 +613,7 @@ function parseDoodleBody(cur, start, name) {
         cur.next();
     }
     if (end === cur.source.length) {
-        warn(cur.ctx, 'unclosed (', head && head.pos);
+        warn(cur.ctx, 'unclosed (', head?.pos);
     }
     if (expand) {
         cut(end);
@@ -660,7 +655,7 @@ function parseRule(cur) {
     let head = textOf(cur.tokens.slice(cur.i, stop)).trim();
     cur.i = stop;
 
-    if (tok && tok.isSymbol(':')) {
+    if (tok?.isSymbol(':')) {
         rule.property = head;
         colon = tok.index;
         cur.next();
@@ -669,13 +664,13 @@ function parseRule(cur) {
         if (cur.peek()?.isSymbol(';')) {
             cur.next();
         }
-    } else if (tok && tok.isSymbol(';') && head.startsWith('@')) {
+    } else if (tok?.isSymbol(';') && head.startsWith('@')) {
         cur.next();
         rule.type = 'at-rule';
         rule.value = head + ';';
     } else {
         // `color red;`, or a head that runs to the end: `@nth(1 { … }`
-        if (tok && tok.isSymbol(';')) cur.next();
+        if (tok?.isSymbol(';')) cur.next();
         warn(cur.ctx, tok || !/[("'`]/.test(head) ? 'missing ":"' : 'unbalanced paren/quote', pos);
     }
 
@@ -687,10 +682,10 @@ function parseRule(cur) {
 
 function parseUse(cur) {
     let head = cur.peek();
-    let pos = head && head.pos;
+    let pos = head?.pos;
     let ctx = cur.ctx;
     let extra = ctx.extra;
-    let read = name => (extra && extra.getVariable) ? extra.getVariable(name) : '';
+    let read = name => extra?.getVariable ? extra.getVariable(name) : '';
     let statements = [];
     for (let [node] of parseValue(cur)) {
         if (!node || node.type !== 'text') continue;
@@ -775,7 +770,7 @@ function parsePseudo(cur, brace) {
 
     let ctx = cur.ctx;
     let outer = ctx.selectors;
-    let selectors = nestSelectors(splitSelectors(selector), outer);
+    let selectors = nestSelectors(selector, outer);
     // nested lists multiply: a block past this is dropped
     if (selectors.length > 1000 || selectors.some(s => s.length > 1e4)) {
         warn(ctx, 'selector too large', open.pos);
@@ -792,9 +787,9 @@ function parsePseudo(cur, brace) {
     return { type: 'pseudo', selector, selectors, styles };
 }
 
-function nestSelectors(list, parents) {
+function nestSelectors(selector, parents) {
     let result = [];
-    for (let s of list) {
+    for (let s of splitSelectors(selector)) {
         s = s.replace(/^:+doodle/, ':host')
             .replace(/^:container\(((?:[^()]|\([^()]*\))*)\)/, ':container$1');
         let nested = isSpecialSelector(s) ? [s]
@@ -839,15 +834,13 @@ function parseCond(cur, brace) {
     let start = cur.headIndex();
     let ctx = cur.ctx, outer = ctx.selectors;
     let cond = { type: 'cond', ...parseCondSelector(cur, brace) };
-    let nest = pseudo => nestSelectors(splitSelectors(pseudo), outer);
     let first = cond.alts.find(a => a.pseudo);
-    if (first) ctx.selectors = nest(first.pseudo);
-    cur.i = brace;
-    cur.next(); // '{'
+    if (first) ctx.selectors = nestSelectors(first.pseudo, outer);
+    cur.i = brace + 1;
     cond.styles = parseBlockBody(cur);
     ctx.selectors = outer;
     cond.alts.forEach(a => {
-        if (a.pseudo) a.styles = [{ type: 'pseudo', selector: a.pseudo, selectors: nest(a.pseudo), styles: cond.styles }];
+        if (a.pseudo) a.styles = [{ type: 'pseudo', selector: a.pseudo, selectors: nestSelectors(a.pseudo, outer), styles: cond.styles }];
     });
     let end = tokenEnd(cur.tokens[cur.i - 1]);
     cond.raw = () => source.slice(start, end);
@@ -930,8 +923,7 @@ function parseKeyframes(cur, brace) {
     if (!keyframes.name.length) {
         warn(cur.ctx, 'missing keyframes name', start.pos);
     }
-    cur.i = brace;
-    cur.next(); // '{'
+    cur.i = brace + 1;
 
     while (!cur.end()) {
         if (cur.peek().isSymbol('}')) {
@@ -1085,7 +1077,7 @@ function expandFunctions(source, ctx, svg, chain = []) {
 const MAX_EXPANSION = 1e6;
 
 const CSS = 0, BODY = 1, EXPR = 2;
-const INCLUDE = 'include', VALUE = 'value', EXPRESSION = 'expression';
+const INCLUDE = 1, VALUE = 2, EXPRESSION = 3;
 const RE_PAINT_HEAD = /^(pattern|scene)[\dxX.]*$/;
 const RE_TEXTURE_HEAD = /^texture\w*$/;
 const RE_REPEAT_HEAD = /^repeat\s*\(/;
@@ -1177,7 +1169,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         if (end < 0) break;
         let inMath = !paint && (maths.at(-1) ?? math);
         let args = itemsOf(tokens.slice(first, end), true).map(item => !item.length ? '' : expandCalls(
-            text.slice(item[0].index, tokenEnd(item[item.length - 1])).trim(), defs, ctx, chain, paint ? EXPR : CSS, pending, inMath));
+            text.slice(item[0].index, tokenEnd(item.at(-1))).trim(), defs, ctx, chain, paint ? EXPR : CSS, pending, inMath));
         let given = args.length, { params, defaults } = def;
         while (given && !args[given - 1]) given--;
         let missing = params.filter((p, k) => k >= given && !defaults[k]);
@@ -1286,7 +1278,7 @@ function kindOf(def, defs) {
         let t = tokens[i];
         if (t.status) quote = t.status === 'open';
         if (quote || t.isSpace()) continue;
-        if (start && !parens && t.isWord() && t.value === 'result' && solidAt(tokens, i + 1)?.isSymbol(':')) {
+        if (start && !parens && t.value === 'result' && solidAt(tokens, i + 1)?.isSymbol(':')) {
             return def.kind = VALUE;
         }
         start = !parens && t.isSymbol(';', '{', '}');
@@ -1377,6 +1369,7 @@ function renameLocals(text, prefix) {
     let tokens = tokensOf(text, true);
     let declared = new Set(), waiting = [], targets = new Set();
     let out = '', from = 0, depth = 0, atStart = true, quote = false, prev = null;
+    let named = t => t.isWord() && t.value[0] !== '.' || t.isSymbol('_');
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], before = prev;
         if (t.status) {
@@ -1408,15 +1401,14 @@ function renameLocals(text, prefix) {
             atStart = false;
             continue;
         }
-        let isName = t.isWord() && t.value[0] !== '.' || t.isSymbol('_');
-        if (!isName) {
+        if (!named(t)) {
             atStart = false;
             continue;
         }
         // digits and underscores glue on; a dot starts a swizzle
         let end = i;
         while (!tokens[end].value.includes('.') && tokens[end + 1] && adjacent(tokens[end], tokens[end + 1])
-                && (tokens[end + 1].isNumber() || tokens[end + 1].isSymbol('_') || tokens[end + 1].isWord() && tokens[end + 1].value[0] !== '.')) {
+                && (tokens[end + 1].isNumber() || named(tokens[end + 1]))) {
             end++;
         }
         let whole = textOf(tokens.slice(i, end + 1));

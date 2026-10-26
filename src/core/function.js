@@ -167,7 +167,7 @@ function createPlot(unit, kind, pieces) {
         let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: pieces && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
             if (kind) {
-                let count = Math.trunc(calc('points', Object.assign(Object.create(defaultContext), rules)));
+                let count = Math.trunc(calc('points', rules));
                 rules.split = rules.split || SCATTER_OUTLINE;
                 delete rules.points;
                 if (isEmpty(rules.seed)) {

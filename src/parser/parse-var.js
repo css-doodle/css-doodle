@@ -10,7 +10,7 @@ function readList(iter, nested) {
     while (iter.next()) {
         let curr = iter.curr();
         let next = iter.curr(1);
-        if (curr.value === 'var' && next && next.isSymbol('(')) {
+        if (curr.value === 'var' && next?.isSymbol('(')) {
             iter.next();
             let rule = readVar(iter);
             // `--` and a name that does not start with another dash
