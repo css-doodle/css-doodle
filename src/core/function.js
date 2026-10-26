@@ -345,18 +345,6 @@ const composeSvgPolygonUrl = memo((commands, seed) => {
     return createSvgUrl(generateSvg(parsed));
 });
 
-const composeSvgPatternUrl = memo(value => {
-    let parsed = parseSvg(css`
-    viewBox: 0 0 1 1;
-    preserveAspectRatio: xMidYMid slice;
-    rect {
-      width, height: 100%;
-      fill: defs pattern { ${ value } }
-    }
-  `);
-    return createSvgUrl(generateSvg(parsed));
-});
-
 const Function = Object.create(null);
 
 Function.m = makeSequence(',');
@@ -827,11 +815,6 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
         rules.filterIds.set(markup, id);
     }
     return `url(#${ id })`;
-});
-
-Function['svg-pattern'] = lazy((_, env, position, ...args) => {
-    let value = args.map(input => getValue(input())).join(',');
-    return composeSvgPatternUrl(value);
 });
 
 Function['svg-polygon'] = shaped(composeSvgPolygonUrl);
