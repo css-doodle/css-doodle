@@ -161,7 +161,7 @@ const NUMBER = 'number';
 const VARIABLE = 'variable';
 const FUNCTION = 'function';
 
-const RE_NUMBER = /^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?|0x[\da-f]+)$/i;
+const RE_NUMBER = /^([+-]?(\d+(?:\.\d*)?|\.\d+)(e[+-]?\d+)?|0x[\da-f]+)$/i;
 
 function tk(type, value) {
     return { type, value };

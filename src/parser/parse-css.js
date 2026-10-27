@@ -77,7 +77,7 @@ function substitutePi(source, from, to = from + 1) {
 }
 
 function separateFuncName(name) {
-    if ((/\D$/.test(name) && !/\d+[x-]\d+/.test(name)) || Math[name.slice(1)]) {
+    if ((/\D$/.test(name) && !/\d[x-]\d/.test(name)) || Math[name.slice(1)]) {
         return { fname: name, extra: '' };
     }
     let [, fname, extra] = /^(.*?)((?:[\d.]|(?<=\d)[x-](?=\d))*)$/.exec(name);
@@ -1084,9 +1084,9 @@ const RE_REPEAT_HEAD = /^repeat\s*\(/;
 const RE_NESTED_DOODLE = /@(doodle|pattern|scene|shaders)/;
 const RE_VARYING = /@(r|ri|R|rn|rand|p|pick|P|pn|PN|pnr|PNR|pl|pr|PL|PR|pd|PD|pick-n|pick-d|lp|lr)(?![\w-])/;
 const RE_COUNTER = /@(n|nx|ny|N|nN|Nn|nd)(?![\w-])/;
-const RE_LOOP = /@(m|M|rep|repeat|multiple|ms)\d*\(|\w\*[^{};]*\{|\brepeat\s*\(/;
+const RE_LOOP = /@(m|M|rep|repeat|multiple|ms)\d*\(|\{(?<=\w\*[^{};]*\{)|\brepeat\s*\(/;
 const RE_LINE_COMMENT = /\/\/[^\n]*/g;
-const RE_SIMPLE_ARG = /^(#[\da-f]+|[a-z_][\w.]*|(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)$/i;
+const RE_SIMPLE_ARG = /^(#[\da-f]+|[a-z_][\w.]*|(\d+(?:\.\d*)?|\.\d+)(e[+-]?\d+)?)$/i;
 
 function paintBodyAt(tokens, i) {
     let t = tokens[i], j = i + 1;
