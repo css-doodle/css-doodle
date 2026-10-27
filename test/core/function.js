@@ -464,6 +464,14 @@ test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as ma
     assert.deepEqual(tiles(Function.tile.hex, 'heart', 30, 'z').map(String), tiles(Function.tile.hex, 'heart', 30).map(String));
 });
 
+test('a lattice keeps a piece on the center, unless centering it on an edge fits half a row more', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let origins = (fn, n) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), env)('square').origin);
+    for (let n = 28; n <= 34; ++n) assert.ok(origins(Function.tile.hex, n).includes('50% 50%'), n);
+    let grid = origins(Function.tile.grid, 64);
+    assert.ok(grid.every(Boolean) && !grid.includes('50% 50%'));
+});
+
 test('@tile.delaunay: triangles between points scattered inside the shape and spaced along its outline', () => {
     let env = seed => ({ context: {}, extra: [], seed });
     let names = p => String(p).slice(8, -1).split(', ');

@@ -754,7 +754,7 @@ function tiles(make, box, screen, inside, count, grow, derive, half, dots) {
     };
     if (!derive) {
         let best = fit(reaching, hi), other = half && fit(s => reaching(s, 1), hi), fill = p => p.cut || p.length > count ? 0 : p.length;
-        return other && fill(other) > fill(best) ? other : best;
+        return other && fill(other) - fill(best) >= min(sqrt(count) / 2, count / 20) ? other : best;
     }
     let o = centre(box), [cx, cy] = o, { rim, fn } = derive, d = (rim + 3) * hi;
     let near = ps => ps.filter(([, [x, y]]) => abs(x - cx) < 2 * hi && abs(y - cy) < 2 * hi).length;
