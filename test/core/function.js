@@ -246,6 +246,10 @@ let xy = p => String(p).split(' ').map(parseFloat);
 let verts = p => String(p).slice(8, -1).split(', ').map(xy);
 let area = vs => Math.abs(vs.reduce((s, [x, y], i) => s + x * vs[(i + 1) % vs.length][1] - vs[(i + 1) % vs.length][0] * y, 0)) / 2;
 let exact = shape => /\bgap\b/.test(shape) ? shape : shape + '; gap: 0';
+let distinct = (outlines, tol = .05) => outlines.reduce((kept, s) => {
+    let close = (a, b) => a.every(p => b.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < tol));
+    return kept.some(k => close(k, s) && close(s, k)) ? kept : [...kept, s];
+}, []).length;
 let inside = (vs, [x, y]) => {
     let n = 0;
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
@@ -326,7 +330,7 @@ test('@plot: scatter spreads one point per cell inside the shape', () => {
 test('@plot.hex, @plot.grid, @plot.penrose: lattice points inside the shape, as many as the grid allows', () => {
     let env = { context: {}, extra: [] };
     // the step is bisected, so to a few millionths
-    let near = (a, b) => Math.abs(a - b) < 1e-4;
+    let near = (a, b) => Math.abs(a - b) < 2e-3;
     let all = (fn, shape, n) => Array.from({ length: n }, (_, i) => String(fn(cell(n, i + 1), env)(shape)));
     let dots = (fn, shape, n) => all(fn, shape, n).filter(Boolean).map(xy);
     // a k×k grid in a square sits on the cell centres, as @grid does
@@ -356,7 +360,7 @@ test('@plot.hex, @plot.grid, @plot.penrose: lattice points inside the shape, as 
     assert.equal(dots(Function.plot.hex, 'circle; op: d', 4).length, 4);
     // penrose: rhombs' centres, five-fold in a circle as no lattice can be, inside the shape
     let turned = ([x, y]) => [50 + (x - 50) * Math.cos(.4 * Math.PI) - (y - 50) * Math.sin(.4 * Math.PI), 50 + (x - 50) * Math.sin(.4 * Math.PI) + (y - 50) * Math.cos(.4 * Math.PI)];
-    let fivefold = list => list.every(p => list.some(q => Math.hypot(q[0] - turned(p)[0], q[1] - turned(p)[1]) < 1e-3));
+    let fivefold = list => list.every(p => list.some(q => Math.hypot(q[0] - turned(p)[0], q[1] - turned(p)[1]) < 3e-3));
     assert.ok(fivefold(dots(Function.plot.penrose, 'circle', 100)) && !fivefold(dots(Function.plot.hex, 'circle', 100)));
     let penrose = dots(Function.plot.penrose, 'heart', 100);
     assert.ok(penrose.length > 90 && penrose.every(p => inside(outline, p)), penrose.length);
@@ -409,7 +413,7 @@ test('@tile.voronoi: the box tiled around points scattered inside the shape, pre
     let [a, b] = pair.map(t => xy(t.origin));
     let half = ([x, y]) => Math.abs((b[0] - a[0]) * (x - (a[0] + b[0]) / 2) + (b[1] - a[1]) * (y - (a[1] + b[1]) / 2)) / Math.hypot(b[0] - a[0], b[1] - a[1]);
     let cuts = verts(pair[0]).filter(([x, y]) => !((x == 0 || x == 100) && (y == 0 || y == 100)));
-    assert.ok(cuts.length == 2 && cuts.every(v => Math.abs(half(v) - 5) < 1e-6), JSON.stringify(cuts));
+    assert.ok(cuts.length == 2 && cuts.every(v => Math.abs(half(v) - 5) < .01), JSON.stringify(cuts));
     let gapped = regions('heart; gap: 2', 30, 'a');
     assert.ok(gapped.every((t, i) => area(verts(t)) > 0 && area(verts(t)) < area(verts(heart[i]))) && covered(gapped) < 10000);
     // a filled preset follows the doodle seed, `seed: n` pins one, @plot.scatter too
@@ -424,14 +428,14 @@ test('@tile.voronoi: the box tiled around points scattered inside the shape, pre
 });
 
 test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as many as the grid allows', () => {
-    let round = v => Math.round(v * 1e6) / 1e6;
     let tiles = (fn, shape, n, seed) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
-    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let near = (a, b) => Math.abs(a - b) < 2e-3;
+    let equal = list => Math.max(...list) - Math.min(...list) < .05;
     // hexagons over the box: equal, pointy-top, symmetric about both axes, no more than the grid count
     let hex = tiles(Function.tile.hex, 'square', 64);
     assert.ok(hex.length > 40 && hex.length <= 64, hex.length);
     let whole = hex.filter(t => verts(t).length == 6 && verts(t).every(([x, y]) => x > 0 && x < 100 && y > 0 && y < 100));
-    assert.ok(whole.length > 10 && new Set(whole.map(t => round(area(verts(t))))).size == 1);
+    assert.ok(whole.length > 10 && equal(whole.map(t => area(verts(t)))));
     let [h0] = whole.map(verts);
     assert.ok(h0.some(([x], i) => near(x, h0[(i + 1) % 6][0])));
     let origins = hex.map(t => xy(t.origin));
@@ -442,7 +446,7 @@ test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as ma
     let tri = tiles(Function.tile.triangle, 'circle', 100);
     assert.ok(tri.length > 60 && tri.length <= 100, tri.length);
     let full = tri.filter(t => verts(t).length == 3);
-    assert.ok(full.length > 40 && new Set(full.map(t => round(area(verts(t))))).size == 1);
+    assert.ok(full.length > 40 && equal(full.map(t => area(verts(t)))));
     for (let t of full) {
         let vs = verts(t), [ox, oy] = xy(t.origin);
         assert.ok(near(ox, (vs[0][0] + vs[1][0] + vs[2][0]) / 3) && near(oy, (vs[0][1] + vs[1][1] + vs[2][1]) / 3));
@@ -489,7 +493,7 @@ test('@tile.delaunay: triangles between points scattered inside the shape and sp
     // the origin is the centroid, and no triangle holds another's centroid
     for (let t of tris) {
         let vs = verts(t), [ox, oy] = xy(t.origin);
-        assert.ok(Math.abs(ox - (vs[0][0] + vs[1][0] + vs[2][0]) / 3) < 1e-6 && Math.abs(oy - (vs[0][1] + vs[1][1] + vs[2][1]) / 3) < 1e-6);
+        assert.ok(Math.abs(ox - (vs[0][0] + vs[1][0] + vs[2][0]) / 3) < 2e-3 && Math.abs(oy - (vs[0][1] + vs[1][1] + vs[2][1]) / 3) < 2e-3);
         assert.ok(!tris.some(u => u !== t && inside(vs, xy(u.origin))));
     }
     // a concave shape keeps no triangle across its notch, where the heart outline starts
@@ -515,8 +519,8 @@ test('@tile.circle: circles packed inside the shape, one per cell, largest first
     for (let [i, [r, ry, x, y]] of heart.entries()) {
         assert.ok(r > 0 && r == ry && inside(outline, [x, y]));
         // inside the outline (to its sampled points) and apart from the others
-        assert.ok(outline.every(([u, v]) => Math.hypot(u - x, v - y) > r - 1e-6));
-        assert.ok(heart.every(([s, , u, v], j) => i == j || Math.hypot(u - x, v - y) > r + s - 1e-6));
+        assert.ok(outline.every(([u, v]) => Math.hypot(u - x, v - y) > r - 2e-3));
+        assert.ok(heart.every(([s, , u, v], j) => i == j || Math.hypot(u - x, v - y) > r + s - 2e-3));
         assert.ok(!i || heart[i - 1][0] >= r);
     }
     // the biggest is capped, so a circle is not one big circle
@@ -525,7 +529,7 @@ test('@tile.circle: circles packed inside the shape, one per cell, largest first
     // the origin is the centre; `gap` shrinks the radius by half; `points` caps the count
     let [t] = tiles('heart', 100);
     assert.equal(t.origin, String(t).split(' at ')[1].slice(0, -1));
-    assert.ok(tiles('heart; gap: 2', 100).every((t, i) => Math.abs(circle(t)[0] - Math.max(0, heart[i][0] - 1)) < 1e-6));
+    assert.ok(tiles('heart; gap: 2', 100).every((t, i) => Math.abs(circle(t)[0] - Math.max(0, heart[i][0] - 1)) < 2e-3));
     assert.equal(tiles('heart; points: 10', 100).filter(t => String(t) != 'polygon(0 0)').length, 10);
     // the doodle seed moves them, `seed: n` pins them
     assert.notEqual(String(tiles('heart', 20, 'b')[0]), String(tiles('heart', 20)[0]));
@@ -549,7 +553,7 @@ test('@tile.circle: circles packed inside the shape, one per cell, largest first
 
 test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
     let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.slice(cell(n, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
-    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let near = (a, b, e = 2e-3) => Math.abs(a - b) < e;
     let sum = list => list.reduce((s, t) => s + area(verts(t)), 0);
     // the box in as many pieces as cells, cut across by default
     let square = tiles('square', 50);
@@ -559,7 +563,7 @@ test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
     assert.ok(square.every(straight));
     // `spread` turns the cuts, in degrees
     let tilted = tiles('square; spread: 90', 50);
-    assert.ok(near(sum(tilted), 10000) && !tilted.every(straight));
+    assert.ok(near(sum(tilted), 10000, .1) && !tilted.every(straight));
     // a shape keeps the pieces that reach into it
     let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
     let heart = tiles('heart', 80);
@@ -584,7 +588,7 @@ test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
 
 test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as the grid allows', () => {
     let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed: 'a' })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
-    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let near = (a, b, e = 3e-3) => Math.abs(a - b) < e;
     let side = ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     let covered = list => {
         let vs = list.map(verts);
@@ -600,7 +604,7 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
     for (let i = 0; i < cube.length; i += 3) {
         let [top, left, right] = cube.slice(i, i + 3).map(verts);
         assert.deepEqual(top[0], left[0]);
-        assert.ok(near(area(top), area(left)) && near(area(top), area(right)));
+        assert.ok(near(area(top), area(left), .05) && near(area(top), area(right), .05));
         assert.ok(top[2][1] < top[0][1] && left[2][0] < left[0][0] && right[2][0] > right[0][0]);
     }
     // penrose: two kinds of rhombs with one side length, the box covered once
@@ -609,8 +613,8 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
     assert.ok(covered(pen));
     let s = side(verts(pen[0]));
     assert.ok(pen.every(t => verts(t).every((v, i, vs) => near(side([v, vs[(i + 1) % 4]]), s))));
-    let kinds = new Set(pen.map(t => (area(verts(t)) / s / s).toFixed(4)));
-    assert.deepEqual([...kinds].sort(), [Math.sin(Math.PI / 5).toFixed(4), Math.sin(2 * Math.PI / 5).toFixed(4)]);
+    let kinds = new Set(pen.map(t => (area(verts(t)) / s / s).toFixed(2)));
+    assert.deepEqual([...kinds].sort(), [Math.sin(Math.PI / 5).toFixed(2), Math.sin(2 * Math.PI / 5).toFixed(2)]);
     // a heart keeps the rhombs reaching into it; `gap` shrinks every rhomb about its centre
     let outline = String(Function.shape()('heart')).slice(8, -1).split(',').map(xy);
     assert.ok(tiles(Function.tile.penrose, 'heart', 100).every(t => [xy(t.origin), ...verts(t)].some(p => inside(outline, p))));
@@ -627,14 +631,14 @@ test('@tile.grid with shift: every other row, or column, moved by part of a cell
         }
         return true;
     };
-    let near = (a, b) => Math.abs(a - b) < 1e-6;
+    let near = (a, b, e = 3e-3) => Math.abs(a - b) < e;
     let rows = (list, i) => [...new Set(list.map(t => xy(t.origin)[i].toFixed(6)))].map(Number).sort((a, b) => a - b);
     let plain = tiles('square');
     assert.equal(plain.length, 64);
     // `.5`: bricks, the top and bottom edges split where the next row's squares meet
     let brick = tiles('square; shift: .5'), s = Math.sqrt(area(verts(brick[0])));
     assert.ok(covered(brick));
-    assert.ok(brick.every(t => verts(t).length == 6 && near(area(verts(t)), s * s)));
+    assert.ok(brick.every(t => verts(t).length == 6 && near(area(verts(t)), s * s, .05)));
     let phase = rows(brick, 1).map(y => brick.filter(t => near(xy(t.origin)[1], y)).map(t => ((xy(t.origin)[0] - 50) / s % 1 + 1) % 1));
     assert.ok(phase.every((xs, j) => xs.every(x => near(Math.abs(x - phase[0][0]) % 1, j % 2 / 2))));
     // `0 .3`: columns, the left and right edges split
@@ -687,7 +691,7 @@ test('edge: bends every lattice edge with a formula, and neighbours still fit', 
         return true;
     };
     // distinct outlines, each moved to its origin
-    let shapes = list => new Set(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => (x - ox).toFixed(1) + ' ' + (y - oy).toFixed(1)).join(); })).size;
+    let shapes = list => distinct(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => [x - ox, y - oy]); }));
     for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle]) {
         // the same curve on every edge: the box is covered once and the tiles stay congruent
         let bent = tiles(fn, 'square; edge: .15 * sin(t)');
@@ -702,7 +706,7 @@ test('edge: bends every lattice edge with a formula, and neighbours still fit', 
     let s = Math.sqrt(area(verts(tiles(Function.tile.grid, 'square; edge: (e - 1) * .1 * sin(t)')[0])));
     for (let t of tiles(Function.tile.grid, 'square; edge: (e - 1) * .1 * sin(t)')) {
         let xs = verts(t).map(v => v[0]), ys = verts(t).map(v => v[1]);
-        assert.ok(Math.abs(Math.max(...ys) - Math.min(...ys) - s) < 1e-6 && Math.max(...xs) - Math.min(...xs) > s + 1);
+        assert.ok(Math.abs(Math.max(...ys) - Math.min(...ys) - s) < 3e-3 && Math.max(...xs) - Math.min(...xs) > s + 1);
     }
     // x, y and random read through a variable vary the edges just the same
     assert.deepEqual(tiles(Function.tile.hex, 'square; a: .1 * x; edge: a * sin(2t)').map(String), tiles(Function.tile.hex, 'square; edge: .1 * x * sin(2t)').map(String));
@@ -723,7 +727,7 @@ test('edge: understands noise(), the formula @R.t compiles to', () => {
         }
         return true;
     };
-    let shapes = list => new Set(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => (x - ox).toFixed(1) + ' ' + (y - oy).toFixed(1)).join(); })).size;
+    let shapes = list => distinct(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => [x - ox, y - oy]); }));
     let noiseEdge = 'square; edge: noise(t, x, y, 1, 1, -.1, .1, 1)';
     for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle]) {
         let bent = tiles(fn, noiseEdge);
@@ -748,10 +752,10 @@ test('pair: turn and slide: edges paired by turns about the corners, and bent al
         return true;
     };
     // whole tiles turned back by their kind, then moved to their origin
-    let shapes = (list, step) => new Set(list.filter(t => verts(t).every(([x, y]) => x > 0 && x < 100 && y > 0 && y < 100)).map(t => {
-        let [ox, oy] = xy(t.origin), a = -(t.k - 1) * step * Math.PI / 180, r = v => Math.round(v * 10) / 10;
-        return verts(t).map(([x, y]) => [x - ox, y - oy]).map(([x, y]) => r(x * Math.cos(a) - y * Math.sin(a)) + ' ' + r(x * Math.sin(a) + y * Math.cos(a))).sort().join();
-    })).size;
+    let shapes = (list, step) => distinct(list.filter(t => verts(t).every(([x, y]) => x > 0 && x < 100 && y > 0 && y < 100)).map(t => {
+        let [ox, oy] = xy(t.origin), a = -(t.k - 1) * step * Math.PI / 180;
+        return verts(t).map(([x, y]) => [x - ox, y - oy]).map(([x, y]) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]);
+    }));
     for (let [fn, kinds, step] of [[Function.tile.hex, 3, 120], [Function.tile.grid, 4, 90]]) {
         for (let shape of ['edge: .3 * sin(t/2)^2 * (e - 2) + .1 * sin(t)', 'edge: .3 * sin(t/2)^2 * (e - 2) + .1 * sin(t); slide: .4 * sin(t/2)^4 * (e - 2)']) {
             let turned = tiles(fn, `square; pair: turn; ${shape}`);
@@ -785,7 +789,7 @@ test('@tile.r: the radius of the largest circle about the tile\'s center that fi
             let u = Math.max(0, Math.min(1, ((ox - ax) * dx + (oy - ay) * dy) / (dx * dx + dy * dy)));
             return Math.hypot(ox - ax - dx * u, oy - ay - dy * u);
         });
-        assert.ok(r > 0 && Math.abs(r - Math.min(...sides)) < 1e-6, r);
+        assert.ok(r > 0 && Math.abs(r - Math.min(...sides)) < 2e-3, r);
         assert.match(Function.tile.r(c)(), /%$/);
     }
 });
@@ -856,14 +860,14 @@ test('@tile op: and star: derive a tiling from a tiling', () => {
         let list = tiles(fn, `square; op: ${op}`, 100);
         assert.ok(list.length > 70 && list.length <= 100, `${op} ${list.length}`);
         assert.ok(covered(list), op);
-        assert.ok(spread(list) < 1 + 1e-6, `${op} ${spread(list)}`);
+        assert.ok(spread(list) < 1 + 1e-3, `${op} ${spread(list)}`);
         assert.deepEqual(corners(list), ns, op);
     }
     // right to left: g is the dual of the snub, the Cairo pentagons, four long sides to a short one of (√3 - 1)
     let cairo = tiles(Function.tile.grid, 'square; op: g', 100);
     assert.ok(covered(cairo));
     assert.deepEqual(corners(cairo), [5]);
-    assert.ok(Math.abs(spread(cairo) - (1 + Math.sqrt(3)) / 2) < 1e-6);
+    assert.ok(Math.abs(spread(cairo) - (1 + Math.sqrt(3)) / 2) < 1e-3);
     assert.equal(tiles(Function.tile.grid, 'square; op: ds', 100).join(), cairo.join());
     // letters outside the operator set are skipped, so the seed letter of Wikipedia's `tQ` does no harm
     assert.equal(tiles(Function.tile.grid, 'square; op: tQ', 100).join(), tiles(Function.tile.grid, 'square; op: t', 100).join());

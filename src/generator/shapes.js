@@ -16,7 +16,7 @@ import {
     shake, bend, inset, shrink, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
 } from './tiling.js';
 
-const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, ceil, PI } = Math;
+const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, ceil, round, PI } = Math;
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);
@@ -388,7 +388,8 @@ function createShapePoints(props, lo, hi, raw) {
     };
     let origin = [0, 0];
     let box = percent ? [0, 0, 100, 100] : [-1, -1, 1, 1];
-    let fmt = (x, y) => tidyNumber(x) + suffix + ' ' + tidyNumber(y) + suffix;
+    let number = tidyNumber;
+    let fmt = (x, y) => number(x) + suffix + ' ' + number(y) + suffix;
 
     let add = ([x, y]) => {
         let angle = staticAngle;
@@ -421,7 +422,7 @@ function createShapePoints(props, lo, hi, raw) {
     let radius = max(0, num('round'));
     let tile = ([poly, [x, y], kind = 1, extra]) => {
         let at = fmt(x, y), inner = room(poly, x, y);
-        inner = inner < Infinity ? tidyNumber(inner) + suffix : '';
+        inner = inner < Infinity ? number(inner) + suffix : '';
         if (radius) {
             let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
             let path = corners(toPairs(poly), null, r);
@@ -505,6 +506,7 @@ function createShapePoints(props, lo, hi, raw) {
 
     if (many >= 1) {
         rings = run(rings, 0).rings;
+        if (percent) number = v => tidyNumber(round(v * 1e3) / 1e3);
         let a = num('aspect', 1), aspect = a > 0 && a < Infinity ? clamp(a, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
             let [screenOf, format] = [toScreen, fmt];
@@ -555,7 +557,7 @@ function createShapePoints(props, lo, hi, raw) {
             context.random = seedrandom('size:' + seed);
             size = onScreen(size) || (count < 2 ? () => 1 : () => min(1.5, sqrt(count) / 2) + min(count / 100, sqrt(count) / 5) * context.random() ** 24);
             return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, size).map(([x, y, r]) => {
-                let at = fmt(x, y), [rx, ry, rr] = [sx, sy, 1].map(s => tidyNumber(max(0, r - gap / 2) / s) + suffix);
+                let at = fmt(x, y), [rx, ry, rr] = [sx, sy, 1].map(s => number(max(0, r - gap / 2) / s) + suffix);
                 return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1, rr);
             });
         }

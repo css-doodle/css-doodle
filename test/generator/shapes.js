@@ -168,7 +168,7 @@ test('stretched and cracked voronoi cells cover the box', () => {
         let tiles = more => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60, gap: '0' }, rules, more)).points;
         let cells = tiles();
         assert.equal(cells.length, 60);
-        assert.ok(Math.abs(cells.reduce((sum, p) => sum + area(p), 0) - 1e4) < 1e-3, JSON.stringify(rules));
+        assert.ok(Math.abs(cells.reduce((sum, p) => sum + area(p), 0) - 1e4) < .1, JSON.stringify(rules));
         let grown = tiles({ gap: '-.4' });
         assert.ok(grown.every((p, i) => area(p) > area(cells[i])) && grown.reduce((sum, p) => sum + area(p), 0) > 1e4 + 100, JSON.stringify(rules));
     }
@@ -221,7 +221,7 @@ test('aspect tiles in the element proportions', () => {
     let circles = aspect => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'circle', seed: 1, scatter: 20, aspect })).points.map(String);
     for (let c of circles('2')) {
         let [rx, ry] = c.match(/ellipse\(([\d.]+)% ([\d.]+)%/).slice(1).map(Number);
-        assert.ok(Math.abs(rx * 2 - ry) < 1e-6, c);
+        assert.ok(Math.abs(rx * 2 - ry) < 2e-3, c);
     }
     assert.deepEqual(circles('300 / 150'), circles('2'));
     assert.deepEqual(circles('1'), circles(undefined));
