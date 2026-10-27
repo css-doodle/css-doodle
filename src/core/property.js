@@ -164,7 +164,11 @@ Property.grid = (value, options) => {
                 break;
             }
             case '/':
-                if (result.size === undefined) result.size = Property.size(value, options);
+                if (result.size === undefined) {
+                    result.size = Property.size(value, options);
+                    let [w, h = w] = parseValueGroup(value).map(v => /^([\d.]+)([a-z]+)$/i.exec(v));
+                    if (w && h && w[2] === h[2]) result.aspect = w[1] / h[1];
+                }
                 else result.fill = value;
                 break;
             case 'ß': result.border = formatBorder(value); break;

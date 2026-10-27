@@ -162,7 +162,7 @@ function seq(token, make) {
 }
 
 function createPlot(unit, kind, pieces) {
-    let plot = memo((commands, max, seed) => {
+    let plot = memo((commands, max, seed, aspect) => {
         let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: pieces && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
             if (kind) {
@@ -173,6 +173,7 @@ function createPlot(unit, kind, pieces) {
                     rules.seed = Math.floor(seedrandom('scatter:' + seed)() * 1e4);
                 }
                 rules.tile = kind;
+                if (aspect && isEmpty(rules.aspect)) rules.aspect = aspect;
                 rules.dots = !pieces;
                 rules.hasPoints = count > 0 && !pieces;
                 let points = kind == 'delaunay' ? Math.ceil(max / 2 + Math.sqrt(max)) : max;
@@ -216,7 +217,7 @@ function createPlot(unit, kind, pieces) {
             let [idx, max] = e[SEQ.index] ? [e[SEQ.n], e[SEQ.max]] : [cell.count, cell.grid.count];
             let input = args.join(',');
             shapeWarnings(input).forEach(m => rules?.warn(m));
-            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''));
+            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''), pieces && rules?.aspect || '');
             if (hasPoints) return points;
             if (!pieces) return points[idx - 1] ?? '';
             let point = points[idx - 1] ?? NO_TILE;

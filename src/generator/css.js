@@ -458,9 +458,11 @@ class Rules {
         this.scanTokens(this.tokens);
         if (this.hasTile) {
             let isSet = re => tokens.some(token => token.type === 'rule' && re.test(token.property));
+            let size = tokens.find(token => token.type === 'rule' && token.property === '@size');
             let extra = [];
             if (!isSet(RE_PLACE)) extra.push(defaultRule('@place', 'center'));
-            if (!isSet(/^@size$/)) extra.push(defaultRule('@size', '100%'));
+            if (!size) extra.push(defaultRule('@size', '100%'));
+            this.cover = !size || size.rawValue() === '100%';
             if (extra.length) {
                 this.hasPlace = true;
                 this.tokens = extra.concat(this.tokens);
@@ -833,7 +835,7 @@ class Rules {
             if (!isVar && prop !== '@grid') continue;
             let value = this.getComposedValue(token.value, cell, env, {}, selector).value;
             if (isVar) this.composeVars(cell.uid, selector, prop, value);
-            else this.grid = Property.grid(value, { maxGrid: env.maxGrid }).grid;
+            else ({ grid: this.grid, aspect: this.aspect } = Property.grid(value, { maxGrid: env.maxGrid }));
         }
     }
 
@@ -1180,6 +1182,7 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
         useMathStream(R.random, seed);
         let tree = isTreeGrid(gridSize);
         let rules = new Rules(tokens, instance);
+        rules.aspect = rules.cover && pre.aspect;
         rules.seed = seed;
         rules.random = R.random;
         rules.cellPrefix = tree ? '.' : '#';

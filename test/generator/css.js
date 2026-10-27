@@ -156,6 +156,19 @@ test('@tile in clip-path brings its own transform-origin', () => {
     tiles.forEach((t, i) => assert.ok(t.endsWith(`transform-origin:${seeds[i]};`), t));
 });
 
+test('@tile takes its aspect from the size @grid gives the doodle, when the cells cover it', () => {
+    let tiles = code => cells(code, '30x1').match(/clip-path:[^;]+/g).join();
+    let wide = tiles('@grid: 30x1 / 900px 600px; clip-path: @tile.hex();');
+    assert.equal(wide, tiles('@grid: 30x1 / 900px 600px; clip-path: @tile.hex(aspect: 1.5);'));
+    assert.equal(tiles('@grid: 30x1 / 12rem 6rem; @size: 100%; clip-path: @tile();'), tiles('@grid: 30x1 / 12rem 6rem; clip-path: @tile(aspect: 2);'));
+    let square = tiles('@grid: 30x1; clip-path: @tile.hex();');
+    assert.notEqual(wide, square);
+    for (let code of ['@grid: 30x1 / 900px 600px; clip-path: @tile.hex(aspect: 1);', '@grid: 30x1 / 90vw 600px; clip-path: @tile.hex();',
+        '@grid: 30x1 / 100% 50%; clip-path: @tile.hex();', '@grid: 30x1 / 900px 600px; @size: 80px; clip-path: @tile.hex();']) {
+        assert.equal(tiles(code), square, code);
+    }
+});
+
 test('rules that read the tile wait for the rule that makes it, wherever they are written', () => {
     let after = cells('clip-path: @tile.cube(); --k: @tile.k; ::after { left: @tile.x; --o: @tile.xy; --r: @tile.r }', '1x6');
     let before = cells('--k: @tile.k; ::after { left: @tile.x; --o: @tile.xy; --r: @tile.r } clip-path: @tile.cube();', '1x6');

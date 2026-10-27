@@ -11,11 +11,13 @@ const one = { count: 1, ratio: 1, x: 1, y: 1, z: 1 };
 const base = { clip: true, p3d: false, grid: one };
 
 test('grid: dimensions, size and fill', () => {
-    assert.deepEqual(grid('1/ 100px'), { ...base, size: 'width:100px;height:100px;' });
+    assert.deepEqual(grid('1/ 100px'), { ...base, size: 'width:100px;height:100px;', aspect: 1 });
     assert.deepEqual(grid('1 / 100%'), { ...base, size: 'width:100%;height:100%;' });
     assert.deepEqual(grid('1 / 100% / #fff'), { ...base, size: 'width:100%;height:100%;', fill: '#fff' });
     assert.deepEqual(grid('1/100%/#fff'), { ...base, size: 'width:100%;height:100%;', fill: '#fff' });
     assert.deepEqual(grid('32/100px').grid, { x: 32, y: 32, z: 1, count: 1024, ratio: 1 });
+    assert.equal(grid('1 / 900px 600px').aspect, 1.5);
+    assert.equal(grid('1 / 90vw 600px').aspect, undefined);
 });
 
 test('grid: aspect ratio in the size', () => {
