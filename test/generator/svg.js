@@ -269,6 +269,8 @@ test('text and attribute values are escaped, markup and entities pass through', 
     assert.equal(svg('text { content: <tspan>a</tspan> b &amp; }'),
         `<svg ${NS}><text><tspan>a</tspan> b &amp;</text></svg>`);
     assert.equal(svg('style { a > b { fill: red } }'), `<svg ${NS}><style>a > b{fill:red}</style></svg>`);
+    assert.equal(svg('text { content: "a]]>b" }'), `<svg ${NS}><text>a]]&gt;b</text></svg>`);
+    assert.equal(svg('text { content: "<![CDATA[a<b]]>" }'), `<svg ${NS}><text><![CDATA[a<b]]></text></svg>`);
 });
 
 test('script tags, event handlers and javascript: links are dropped', () => {

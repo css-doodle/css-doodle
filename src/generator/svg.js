@@ -82,8 +82,9 @@ const RE_LT_TEXT = /<(?![a-zA-Z\/!?])/g;
 
 function escapeText(text) {
     text = String(text);
-    if (text.indexOf('&') < 0 && text.indexOf('<') < 0) return text;
-    return text.replace(RE_AMP, '&amp;').replace(RE_LT_TEXT, '&lt;');
+    if (text.indexOf('&') < 0 && text.indexOf('<') < 0 && text.indexOf(']]>') < 0) return text;
+    text = text.replace(RE_AMP, '&amp;').replace(RE_LT_TEXT, '&lt;');
+    return text.includes('<![CDATA[') ? text : text.replaceAll(']]>', ']]&gt;');
 }
 
 function plain(text) {
