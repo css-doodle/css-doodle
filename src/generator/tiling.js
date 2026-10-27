@@ -417,7 +417,7 @@ function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle,
     let cells = voronoi(px, py, ...qbox, 0), kinds = colors(cells);
     let cut = (p, d, outer) => {
         p = back(p);
-        return clip(d ? clip(p, p, d) : p, outer);
+        return clip(d ? shrink(p, d) : p, outer);
     };
     if (m == n) return cells.map(([q], k) => [cut(q, gap / 2, corners), warp(px[k], py[k]), kinds[k]]);
     let groups = cells.map(() => []);
@@ -452,6 +452,13 @@ function clip(p, outer, d = 0) {
         p = halfplane(p, nx, ny, outer[i] - nx * d, outer[i + 1] - ny * d, [])[0];
     }
     return p;
+}
+
+function shrink(p, d) {
+    if (d > 0 || !p.length) return clip(p, p, d);
+    let [l, t, r, b] = bounds(p), m = r - l + b - t, q = [];
+    for (let i = 0; i < p.length; i += 2) if (hypot(p[i] - p.at(i - 2), p[i + 1] - p.at(i - 1)) > m * 1e-7) q.push(p[i], p[i + 1]);
+    return clip([l - m, t - m, r + m, t - m, r + m, b + m, l - m, b + m], q, d);
 }
 
 function flatten(path, tol) {

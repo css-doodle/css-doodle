@@ -165,9 +165,12 @@ test('stretched and cracked voronoi cells cover the box', () => {
         return Math.abs(a / 2);
     };
     for (let rules of [{ stretch: '3 30' }, { crack: '8' }, { crack: '6', stretch: '2 90', relax: '0' }]) {
-        let cells = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60 }, rules)).points;
+        let tiles = more => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60 }, rules, more)).points;
+        let cells = tiles();
         assert.equal(cells.length, 60);
         assert.ok(Math.abs(cells.reduce((sum, p) => sum + area(p), 0) - 1e4) < 1e-3, JSON.stringify(rules));
+        let grown = tiles({ gap: '-.4' });
+        assert.ok(grown.every((p, i) => area(p) > area(cells[i])) && grown.reduce((sum, p) => sum + area(p), 0) > 1e4 + 100, JSON.stringify(rules));
     }
 });
 

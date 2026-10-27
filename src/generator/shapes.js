@@ -359,7 +359,7 @@ function createShapePoints(props, lo, hi, raw) {
     let turn = num('turn', 1);
     let fill = props['fill-rule'] ?? props.fill;
     let evenodd = fill == 'evenodd';
-    let [gap = 0, fine = gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
+    let [gap = 0, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
     let steps = (props.steps || []).filter(([k]) => props[k] !== undefined);
