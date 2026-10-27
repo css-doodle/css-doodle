@@ -4,7 +4,7 @@ function generate(token, last, repeat) {
         let times = repeat ? token.times : null;
         if (times) result += '@M(' + times + ',';
         if (token.test === undefined) {
-            result += token.name + (token.op === undefined ? '' : '|' + token.op) + '{';
+            result += token.name + '{';
         } else {
             result += '@ match(' + (repeat ? '$(' + token.test + ')' : token.test) + '){';
         }

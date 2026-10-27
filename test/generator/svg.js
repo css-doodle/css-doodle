@@ -468,13 +468,13 @@ test('an @match block puts its body in place unless the test is 0', () => {
     assert.match(svg('rect { fill: defs { @match(1) { linearGradient {} } } }'), /<rect fill="url\(#linearGradient-\d+\)"\/>/);
 });
 
-test('g|op joins its shapes into one path', () => {
+test('union, subtract, intersect and exclude join their shapes into one path', () => {
     let squares = 'rect { width: 4; height: 4 } rect { x: 2; y: 2; width: 4; height: 4 }';
-    assert.equal(svg(`g|union { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L6 2L6 6L2 6L2 4L0 4L0 0Z"/></svg>`);
-    assert.equal(svg(`g|subtract { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L2 2L2 4L0 4L0 0Z"/></svg>`);
-    assert.equal(svg(`g|intersect { ${squares} }`), `<svg ${NS}><path d="M2 4L2 2L4 2L4 4Z"/></svg>`);
-    assert.equal(svg(`g|exclude { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L2 2L2 4L0 4L0 0ZM4 4L4 2L6 2L6 6L2 6L2 4Z"/></svg>`);
-    assert.equal(svg(`g|union { fill: red; smooth: .5; title { content: t } animate opacity: 0; 1 / 1s; ${squares} }`), markup(`
+    assert.equal(svg(`union { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L6 2L6 6L2 6L2 4L0 4L0 0Z"/></svg>`);
+    assert.equal(svg(`subtract { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L2 2L2 4L0 4L0 0Z"/></svg>`);
+    assert.equal(svg(`intersect { ${squares} }`), `<svg ${NS}><path d="M2 4L2 2L4 2L4 4Z"/></svg>`);
+    assert.equal(svg(`exclude { ${squares} }`), `<svg ${NS}><path d="M4 0L4 2L2 2L2 4L0 4L0 0ZM4 4L4 2L6 2L6 6L2 6L2 4Z"/></svg>`);
+    assert.equal(svg(`union { fill: red; smooth: .5; title { content: t } animate opacity: 0; 1 / 1s; ${squares} }`), markup(`
         <svg ${NS}>
             <path fill="red" d="M4 1.5Q4 2 4.5 2L6 2L6 6L2 6L2 4.5Q2 4 1.5 4L0 4L0 0L4 0Z">
                 <title>t</title>
@@ -482,42 +482,40 @@ test('g|op joins its shapes into one path', () => {
             </path>
         </svg>
     `));
-    assert.equal(svg(`g|subtract { g { ${squares} } rect { x: 1; y: 1; width: 1; height: 1 } }`),
+    assert.equal(svg(`subtract { g { ${squares} } rect { x: 1; y: 1; width: 1; height: 1 } }`),
         `<svg ${NS}><path d="M0 4L0 0L4 0L4 2L6 2L6 6L2 6L2 4ZM1 1L1 2L2 2L2 1Z"/></svg>`);
-    assert.equal(svg('g|subtract { circle { cx: .5; cy: .5; r: .5 } circle { cx: .5; cy: .5; r: .25 } }'),
+    assert.equal(svg('subtract { circle { cx: .5; cy: .5; r: .5 } circle { cx: .5; cy: .5; r: .25 } }'),
         `<svg ${NS}><path d="M0 0.5A0.5 0.5 0 1 1 0.001 0.5311A0.5 0.5 0 0 1 0 0.5ZM0.2501 0.5078A0.25 0.25 0 1 0 0.2501 0.4922A0.25 0.25 0 0 0 0.2501 0.5078Z"/></svg>`);
-    assert.equal(svg('g|union { polygon { points: 1 0, .5 .866, -.5 .866, -1 0, -.5 -.866, .5 -.866 } }'),
+    assert.equal(svg('union { polygon { points: 1 0, .5 .866, -.5 .866, -1 0, -.5 -.866, .5 -.866 } }'),
         `<svg ${NS}><path d="M1 0L0.5 0.866L-0.5 0.866L-1 0L-0.5 -0.866L0.5 -0.866Z"/></svg>`);
-    assert.equal(svg('g|union { path { d: M0 0H10V10H0Z M3 3H7V7H3Z; fill-rule: evenodd } }'),
+    assert.equal(svg('union { path { d: M0 0H10V10H0Z M3 3H7V7H3Z; fill-rule: evenodd } }'),
         `<svg ${NS}><path fill-rule="evenodd" d="M0 0L10 0L10 10L0 10ZM3 3L7 3L7 7L3 7Z"/></svg>`);
 });
 
 
-test('g|op grows or shrinks the joined outline by grow', () => {
-    assert.equal(svg('g|union { grow: 1; rect { width: 4; height: 4 } }'),
+test('a joining block grows or shrinks the joined outline by grow', () => {
+    assert.equal(svg('union { grow: 1; rect { width: 4; height: 4 } }'),
         `<svg ${NS}><path d="M-1 4L-1 0A1 1 0 0 1 0 -1L4 -1A1 1 0 0 1 5 0L5 4A1 1 0 0 1 4 5L0 5A1 1 0 0 1 -1 4Z"/></svg>`);
-    assert.equal(svg('g|union { grow: -1; rect { width: 4; height: 4 } }'), `<svg ${NS}><path d="M1 3L1 1L3 1L3 3Z"/></svg>`);
+    assert.equal(svg('union { grow: -1; rect { width: 4; height: 4 } }'), `<svg ${NS}><path d="M1 3L1 1L3 1L3 3Z"/></svg>`);
 });
 
-test('g|op keeps a corner written twice, a hair apart', () => {
+test('a joining block keeps a corner written twice, a hair apart', () => {
     let corner = 'L14.213975543499998 -11.5911099155L14.2139755435 -11.5911099155';
-    assert.equal(svg(`g|subtract { path { d: M0 0${corner}L30 0Z } rect { x: -1; y: -2; width: 32; height: 1 } }`), `<svg ${NS}><path d="M2.453 -2L14.214 -11.591L27.276 -2ZM28.638 -1L30 0L0 0L1.226 -1Z"/></svg>`);
+    assert.equal(svg(`subtract { path { d: M0 0${corner}L30 0Z } rect { x: -1; y: -2; width: 32; height: 1 } }`), `<svg ${NS}><path d="M2.453 -2L14.214 -11.591L27.276 -2ZM28.638 -1L30 0L0 0L1.226 -1Z"/></svg>`);
 });
 
-test('g|op cuts from the first shape even when it has no area', () => {
+test('a joining block cuts from the first shape even when it has no area', () => {
     let line = 'path { d: M0 0L4 4 }', square = 'rect { width: 4; height: 4 }';
-    assert.equal(svg(`g|subtract { ${line} ${square} }`), `<svg ${NS}><path d=""/></svg>`);
-    assert.equal(svg(`g|intersect { ${line} ${square} }`), `<svg ${NS}><path d=""/></svg>`);
-    assert.equal(svg(`g|union { ${line} ${square} }`), `<svg ${NS}><path d="M4 0L4 4L0 4L0 0Z"/></svg>`);
+    assert.equal(svg(`subtract { ${line} ${square} }`), `<svg ${NS}><path d=""/></svg>`);
+    assert.equal(svg(`intersect { ${line} ${square} }`), `<svg ${NS}><path d=""/></svg>`);
+    assert.equal(svg(`union { ${line} ${square} }`), `<svg ${NS}><path d="M4 0L4 4L0 4L0 0Z"/></svg>`);
 });
 
-test('g|op warns about what it cannot join', () => {
+test('a joining block warns about what it cannot join', () => {
     let warnings = [];
-    let out = generateSvg(parseSvg('rect|union {} g|xor {} g|union { text {} rect { width: 50%; height: 1; transform: rotate(9) } }'), m => warnings.push(m));
-    assert.equal(out, `<svg ${NS}><rect/><g/><path d="M0 0L50 0L50 1L0 1Z"/></svg>`);
+    let out = generateSvg(parseSvg('union { text {} rect { width: 50%; height: 1; transform: rotate(9) } }'), m => warnings.push(m));
+    assert.equal(out, `<svg ${NS}><path d="M0 0L50 0L50 1L0 1Z"/></svg>`);
     assert.deepEqual(warnings, [
-        'rect|union needs g',
-        'unknown g|xor',
         '<text> lacks outline',
         '<rect> ignores %',
         '<rect> transform ignored',

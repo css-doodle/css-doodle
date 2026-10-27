@@ -106,14 +106,6 @@ test('#id and .class expand into statements', () => {
     assert.deepEqual(parseSvg('#abc {}'), svg(block('#abc')));
 });
 
-test('g|op keeps the operation beside #id and .class', () => {
-    assert.deepEqual(parseSvg('g|subtract {}'), svg(block('g', [], { op: 'subtract' })));
-    assert.deepEqual(parseSvg('g | union#a.b {} g#a.b|intersect {}'), svg(
-        block('g', [statement('id', 'a'), statement('class', 'b')], { op: 'union' }),
-        block('g', [statement('id', 'a'), statement('class', 'b')], { op: 'intersect' })
-    ));
-});
-
 test('trailing semicolons after a block are dropped', () => {
     assert.deepEqual(parseSvg('path {};'), svg(block('path')));
 });

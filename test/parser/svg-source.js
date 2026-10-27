@@ -19,12 +19,6 @@ test('times syntax becomes an @M call', () => {
     );
 });
 
-test('g|op stays on its block', () => {
-    assert.equal(source('g|subtract { circle*2 {} }'), 'svg{g|subtract{@M(2,circle{})}}');
-    assert.equal(source('g*2|union {} g|union*2 {}'), 'svg{@M(2,g|union{})@M(2,g|union{})}');
-    assert.equal(source('circle*$(a || 2) {}'), 'svg{@M($(a||2),circle{})}');
-});
-
 test('an @match test is wrapped in $(), and left alone without repeat', () => {
     assert.equal(source('@match(k == 2) { circle*2 {} }'), 'svg{@ match($(k == 2)){@M(2,circle{})}}');
     assert.equal(sourceOf(parseSvg('@match(1) { circle {} }'), { repeat: false }), 'svg{@ match(1){circle{}}}');

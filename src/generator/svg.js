@@ -289,11 +289,7 @@ function generate(token, element, parent, root, warn) {
                 let id = generate(block, el, token, root, warn);
                 if (id) { inlineId = id }
             }
-            if (token.op !== undefined) {
-                if (token.name !== 'g') warn(`${token.name}|${token.op} needs g`);
-                else if (!GROUPS.includes(token.op)) warn(`unknown g|${token.op}`);
-                else el = combine(el, token.op, warn);
-            }
+            if (GROUPS.includes(token.name)) el = combine(el, token.name, warn);
             let isInlineAndNotDefs = token.inline && token.name !== 'defs';
             let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
             let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
@@ -373,7 +369,7 @@ function generate(token, element, parent, root, warn) {
             }
             // `draw: 2s infinite` strokes a shape along its length
             else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
-                if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name) && parent.op === undefined) {
+                if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name) && !GROUPS.includes(parent.name)) {
                     warn(`<${parent.name}> lacks path`);
                 } else {
                     element.attr('stroke-dasharray', 10);

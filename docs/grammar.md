@@ -471,7 +471,7 @@ svg-block       = selector { ',' selector } '{' svg-body '}'
 svg-match       = '@match' '(' expression ')' '{' svg-body '}'
 svg-element     = name [ ';' ]
 selector        = element { [ '>' ] element }
-element         = name [ '|' group ] [ '#' id ] { '.' class } [ '*' count ]
+element         = name [ '#' id ] { '.' class } [ '*' count ]
 count           = number | number 'x' number | number '-' number
 svg-declaration = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
                 | 'style' [ property ] ':' ( value | '{' css '}' ) [ ';' ]
@@ -488,9 +488,9 @@ element, except right after a declaration, where it is the next
 `;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` splits only when
 the value has as many parts as names. `style { … }` is raw CSS.
 
-`g|subtract { … }` joins its shapes (`path`, `polygon`, `polyline`,
-`circle`, `ellipse`, `rect`, and a plain `g` as their union) into one
-`path` with the g's attributes, by the groups of §9.2. `smooth: r`
+A block named by a group of §9.2, such as `subtract { … }`, joins its
+shapes (`path`, `polygon`, `polyline`, `circle`, `ellipse`, `rect`, and
+a `g` as their union) into one `path` with its attributes. `smooth: r`
 rounds the corners where shapes meet, then `grow: d` moves the outline
 out by `d`, or in when negative. Curves come back as arcs where they
 keep to a circle, and each shape's own transform, paint and animations
