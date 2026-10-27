@@ -245,6 +245,7 @@ let cell = (count, n = 1) => ({ x: n, y: 1, z: 1, count: n, grid: { x: count, y:
 let xy = p => String(p).split(' ').map(parseFloat);
 let verts = p => String(p).slice(8, -1).split(', ').map(xy);
 let area = vs => Math.abs(vs.reduce((s, [x, y], i) => s + x * vs[(i + 1) % vs.length][1] - vs[(i + 1) % vs.length][0] * y, 0)) / 2;
+let exact = shape => /\bgap\b/.test(shape) ? shape : shape + '; gap: 0';
 let inside = (vs, [x, y]) => {
     let n = 0;
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
@@ -372,7 +373,7 @@ test('@plot.hex, @plot.grid, @plot.penrose: lattice points inside the shape, as 
 
 test('@tile.voronoi: the box tiled around points scattered inside the shape, preset or formula', () => {
     let env = { context: {}, extra: [] };
-    let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), { context: {}, extra: [], seed })(shape));
+    let regions = (shape, n, seed) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), { context: {}, extra: [], seed })(exact(shape)));
     let covered = list => list.reduce((s, t) => s + (String(t) == 'polygon(0 0)' ? 0 : area(verts(t))), 0);
     // a formula is an outline like a preset: four points scattered inside a circle give four tiles covering the box
     let list = regions('r: .5', 4, 'a');
@@ -466,7 +467,7 @@ test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as ma
 test('@tile.delaunay: triangles between points scattered inside the shape and spaced along its outline', () => {
     let env = seed => ({ context: {}, extra: [], seed });
     let names = p => String(p).slice(8, -1).split(', ');
-    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.delaunay(cell(n, i + 1), env(seed))(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.delaunay(cell(n, i + 1), env(seed))(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let tris = tiles('circle', 60);
     assert.ok(tris.length > 48 && tris.length <= 60, tris.length);
     let radii = tris.flatMap(verts).map(([x, y]) => Math.hypot(x - 50, y - 50));
@@ -539,7 +540,7 @@ test('@tile.circle: circles packed inside the shape, one per cell, largest first
 });
 
 test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
-    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.slice(cell(n, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = (shape, n, seed = 'a') => Array.from({ length: n }, (_, i) => Function.tile.slice(cell(n, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let near = (a, b) => Math.abs(a - b) < 1e-6;
     let sum = list => list.reduce((s, t) => s + area(verts(t)), 0);
     // the box in as many pieces as cells, cut across by default
@@ -574,7 +575,7 @@ test('@tile.slice: the shape cut by random lines, a piece per cell', () => {
 });
 
 test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as the grid allows', () => {
-    let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed: 'a' })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed: 'a' })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let near = (a, b) => Math.abs(a - b) < 1e-6;
     let side = ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     let covered = list => {
@@ -610,7 +611,7 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
 });
 
 test('@tile.grid with shift: every other row, or column, moved by part of a cell', () => {
-    let tiles = shape => Array.from({ length: 64 }, (_, i) => Function.tile.grid(cell(64, i + 1), { context: {}, extra: [], seed: 'a' })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = shape => Array.from({ length: 64 }, (_, i) => Function.tile.grid(cell(64, i + 1), { context: {}, extra: [], seed: 'a' })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
         let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
@@ -637,8 +638,19 @@ test('@tile.grid with shift: every other row, or column, moved by part of a cell
     assert.ok(covered(tiles('square; shift: .5; edge: .15 * sin(t)')));
 });
 
+test('with no gap, pieces overlap a hair, so the background never shows where their edges meet', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let tiles = (fn, shape) => Array.from({ length: 30 }, (_, i) => fn(cell(30, i + 1), env)(shape)).filter(t => String(t) != 'polygon(0 0)');
+    for (let fn of [Function.tile, Function.tile.voronoi, Function.tile.delaunay, Function.tile.hex, Function.tile.penrose]) {
+        let [plain, exactly] = [tiles(fn, 'square'), tiles(fn, 'square; gap: 0')];
+        assert.ok(plain.every((t, i) => area(verts(t)) > area(verts(exactly[i])) && t.origin == exactly[i].origin));
+        assert.deepEqual(plain.map(String), tiles(fn, 'square; gap: -.3').map(String));
+    }
+    assert.deepEqual(tiles(Function.tile.circle, 'square').map(String), tiles(Function.tile.circle, 'square; gap: 0').map(String));
+});
+
 test('jitter: lattice corners move by a seeded offset, the same in every piece sharing one', () => {
-    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
         let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
@@ -658,7 +670,7 @@ test('jitter: lattice corners move by a seeded offset, the same in every piece s
 });
 
 test('edge: bends every lattice edge with a formula, and neighbours still fit', () => {
-    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
         let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
@@ -695,7 +707,7 @@ test('edge: bends every lattice edge with a formula, and neighbours still fit', 
 });
 
 test('edge: understands noise(), the formula @R.t compiles to', () => {
-    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
+    let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {
         let vs = list.map(verts);
         for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
@@ -717,7 +729,7 @@ test('edge: understands noise(), the formula @R.t compiles to', () => {
 test('pair: turn and slide: edges paired by turns about the corners, and bent along themselves', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let tiles = (fn, shape) => Array.from({ length: 64 }, (_, i) => {
-        let c = cell(64, i + 1), t = fn(c, env)(shape);
+        let c = cell(64, i + 1), t = fn(c, env)(exact(shape));
         return String(t) == 'polygon(0 0)' ? null : Object.assign(t, { k: Number(Function.tile.k(c)()) });
     }).filter(Boolean);
     let covered = list => {
@@ -814,7 +826,7 @@ test('@tile.k: which kind of piece the cell\'s tile is', () => {
 test('@tile op: and star: derive a tiling from a tiling', () => {
     let env = { context: {}, extra: [], seed: 'a' };
     let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => {
-        let c = cell(n, i + 1), t = fn(c, env)(shape);
+        let c = cell(n, i + 1), t = fn(c, env)(exact(shape));
         return Object.assign(Object(t), { k: Function.tile.k(c)() });
     }).filter(t => String(t) != 'polygon(0 0)');
     let covered = list => {

@@ -165,7 +165,7 @@ test('stretched and cracked voronoi cells cover the box', () => {
         return Math.abs(a / 2);
     };
     for (let rules of [{ stretch: '3 30' }, { crack: '8' }, { crack: '6', stretch: '2 90', relax: '0' }]) {
-        let tiles = more => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60 }, rules, more)).points;
+        let tiles = more => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60, gap: '0' }, rules, more)).points;
         let cells = tiles();
         assert.equal(cells.length, 60);
         assert.ok(Math.abs(cells.reduce((sum, p) => sum + area(p), 0) - 1e4) < 1e-3, JSON.stringify(rules));
@@ -193,7 +193,7 @@ test('cracked cells stay inside the shape', () => {
 
 test('delaunay leaves no holes inside, even with random seeds', () => {
     for (let [max, seed] of [[150, 11], [500, 11], [50, 9]]) {
-        let tris = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'delaunay', seed, relax: '0', scatter: Math.ceil(max / 2 + Math.sqrt(max)), count: max })).points;
+        let tris = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'delaunay', seed, relax: '0', gap: '0', scatter: Math.ceil(max / 2 + Math.sqrt(max)), count: max })).points;
         let uses = new Map();
         for (let t of tris) {
             let v = String(t).slice(8, -1).split(', ');

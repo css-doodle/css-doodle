@@ -164,7 +164,7 @@ test('rules that read the tile wait for the rule that makes it, wherever they ar
 });
 
 test('@R.t in a tile edge reads no cell, so every cell cuts from one tiling, each edge bent its own way', () => {
-    let polys = cells('clip-path: @tile.grid(square; edge: @R.t(-.1, .1));', '6').match(/polygon\([^)]+\)/g)
+    let polys = cells('clip-path: @tile.grid(square; gap: 0; edge: @R.t(-.1, .1));', '6').match(/polygon\([^)]+\)/g)
         .filter(t => t != 'polygon(0 0)').map(t => t.slice(8, -1).split(', ').map(p => p.split(' ').map(parseFloat)));
     let inside = (vs, [x, y]) => {
         let n = 0;

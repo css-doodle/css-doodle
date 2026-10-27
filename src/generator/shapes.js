@@ -13,7 +13,7 @@ import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
+    shake, bend, inset, shrink, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, ceil, PI } = Math;
@@ -359,7 +359,7 @@ function createShapePoints(props, lo, hi, raw) {
     let turn = num('turn', 1);
     let fill = props['fill-rule'] ?? props.fill;
     let evenodd = fill == 'evenodd';
-    let [gap = 0, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
+    let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
     let steps = (props.steps || []).filter(([k]) => props[k] !== undefined);
@@ -591,8 +591,8 @@ function createShapePoints(props, lo, hi, raw) {
         }
         sow(count).forEach(add);
         if (name == 'voronoi') {
-            let cells = voronoi(px, py, ...box, gap), kinds = colors(cells);
-            return cells.map(([poly], k) => tile([poly, [px[k], py[k]], kinds[k], points[k].extra]));
+            let cells = voronoi(px, py, ...box, max(0, gap)), kinds = colors(cells);
+            return cells.map(([poly], k) => tile([gap < 0 ? shrink(poly, gap / 2) : poly, [px[k], py[k]], kinds[k], points[k].extra]));
         }
         return points;
     }

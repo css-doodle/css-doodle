@@ -928,7 +928,7 @@ function slice(screen, box, inside, count, seed, gap, spread, density) {
         let [l, t, r, b] = bounds(p);
         let a = (r - l > b - t ? 0 : PI / 2) + (rnd() - .5) * spread;
         let nx = cos(a), ny = sin(a), shift = (rnd() - .5) * .5 * sqrt(area(p));
-        let mx = cx + nx * shift, my = cy + ny * shift, g = gap / 2;
+        let mx = cx + nx * shift, my = cy + ny * shift, g = max(0, gap) / 2;
         let parts = [1, -1].map(d => halfplane(p, d * nx, d * ny, mx - d * nx * g, my - d * ny * g, [])[0])
             .filter(p => p.length && reaches(p, centre(p), inside, screen));
         if (!parts.length) continue;
@@ -937,7 +937,7 @@ function slice(screen, box, inside, count, seed, gap, spread, density) {
         pieces.splice(k, 1, ...parts);
         weights.splice(k, 1, ...sizes);
     }
-    return pieces.map(p => [p, centre(p)]).sort((a, b) => a[1][1] - b[1][1] || a[1][0] - b[1][0]);
+    return pieces.map(p => [gap < 0 ? shrink(p, gap / 2) : p, centre(p)]).sort((a, b) => a[1][1] - b[1][1] || a[1][0] - b[1][0]);
 }
 
 // twice the signed area: negative when the polygon runs clockwise
@@ -1013,5 +1013,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
+    shake, bend, inset, shrink, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
 };
