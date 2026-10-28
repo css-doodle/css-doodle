@@ -57,12 +57,11 @@ class Tag {
         return this.attrs[name] = value;
     }
     toString() {
-        // a drawing runs no script: no script tags, handlers or javascript: links
-        if (/^script$/i.test(this.name)) return '';
+        if (UNSAFE_TAG.test(this.name)) return '';
         let open = '<' + this.name;
         for (let name in this.attrs) {
             let value = unquote(this.attrs[name]);
-            if (/^on/i.test(name) || /^javascript:/i.test(plain(value))) continue;
+            if (unsafeAttr(name, value)) continue;
             open += ' ' + name + '="' + escapeAttr(value) + '"';
         }
         let content = '';
@@ -76,14 +75,36 @@ class Tag {
     }
 }
 
+const UNSAFE_TAG = /^(script|meta|base|link|iframe|frame|frameset|object|embed|applet|portal|form|noscript)$/i;
+
+function unsafeAttr(name, value) {
+    return /^on/i.test(name) || /javascript:/i.test(plain(value));
+}
+
 // leaves XML's own references and raw markup inside `content:` alone
 const RE_AMP = /&(?!(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos);)/g;
 const RE_LT_TEXT = /<(?![a-zA-Z\/!?])/g;
+
+const RE_RAW = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<(\/?)([a-zA-Z][\w:.-]*)((?:\s+[^\s"'>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*)\s*(\/?)>|<(?=[a-zA-Z\/])/g;
+const RE_RAW_ATTR = /([^\s"'>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
+
+function safeMarkup(text) {
+    return text.replace(RE_RAW, (match, close, name, attrs, selfClose) => {
+        if (name === undefined) return match === '<' ? '&lt;' : match;
+        if (UNSAFE_TAG.test(name) || /^svg$/i.test(name)) return '&lt;' + match.slice(1);
+        let kept = '';
+        for (let [attr, key, value = ''] of attrs.matchAll(RE_RAW_ATTR)) {
+            if (!unsafeAttr(key, value.replace(/^(["'])([\s\S]*)\1$/, '$2'))) kept += ' ' + attr;
+        }
+        return '<' + close + name + kept + selfClose + '>';
+    });
+}
 
 function escapeText(text) {
     text = String(text);
     if (text.indexOf('&') < 0 && text.indexOf('<') < 0 && text.indexOf(']]>') < 0) return text;
     text = text.replace(RE_AMP, '&amp;').replace(RE_LT_TEXT, '&lt;');
+    if (text.includes('<')) text = safeMarkup(text);
     return text.includes('<![CDATA[') ? text : text.replaceAll(']]>', ']]&gt;');
 }
 
