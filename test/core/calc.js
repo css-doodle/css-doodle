@@ -697,8 +697,12 @@ test('Math functions, comparisons and logic lower by name', () => {
         'calc(clamp(0,(var(--t) - 0) / (1 - 0),1) * clamp(0,(var(--t) - 0) / (1 - 0),1) * (3 - 2 * clamp(0,(var(--t) - 0) / (1 - 0),1)))');
     assert.equal(css('radians(var(--t))'), 'calc(var(--t) * pi / 180)');
     assert.equal(css('degrees(var(--t))'), 'calc(var(--t) * 180 / pi)');
-    assert.equal(css('atan(var(--t), 2)'), 'calc(atan2(var(--t),2))');
-    assert.equal(css('atan(var(--t))'), 'calc(atan(var(--t)))');
+    // inverse trig gives an angle in CSS, so it divides back to radians
+    assert.equal(css('atan(var(--t), 2)'), 'calc(atan2(var(--t),2) / 1rad)');
+    assert.equal(css('atan(var(--t))'), 'calc(atan(var(--t)) / 1rad)');
+    assert.equal(css('atan2(var(--t), 2)'), 'calc(atan2(var(--t),2) / 1rad)');
+    assert.equal(css('asin(var(--t))'), 'calc(asin(var(--t)) / 1rad)');
+    assert.equal(css('degrees(acos(var(--t)))'), 'calc((acos(var(--t)) / 1rad) * 180 / pi)');
     // a live k writes out every item, weighted by whether k takes it
     assert.equal(css('pick(var(--k): 10, 20)'),
         'calc(10 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 0))) + 20 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 1))))');

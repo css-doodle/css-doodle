@@ -51,16 +51,13 @@ export const defaultContext = {
     }
 };
 
-// A live value is CSS text: a var() such as time or the pointer, or a
-// calc() already lowered. It has no number at generation time, so the
-// math around it lowers to CSS math for the browser to evaluate
 const live = v => typeof v === 'string';
 const text = v => live(v) ? v : tidyNumber(+v || 0);
 const neg = v => live(v) ? `(${v} * -1)` : -v;
 const not = v => `(1 - ${v})`;
-// 0 or 1 for a value's truthiness
 const truthy = v => `abs(sign(${v}))`;
 const gt = (a, b) => `max(0,sign(${a} - ${b}))`;
+const angle = (name, args) => `(${name}(${args}) / 1rad)`;
 
 const LOWER = {
     __proto__: null,
@@ -77,7 +74,6 @@ const LOWER = {
     ceil: a => `round(up,${a},1)`,
     trunc: a => `round(to-zero,${a},1)`,
     fract: a => `mod(${a},1)`,
-    // CSS takes the bounds around the value
     clamp: (x, lo, hi) => `clamp(${lo},${x},${hi})`,
     mix: (a, b, t) => `(${a} + (${b} - ${a}) * ${t})`,
     step: (edge, x) => not(gt(edge, x)),
@@ -87,17 +83,18 @@ const LOWER = {
     },
     radians: d => `(${d} * pi / 180)`,
     degrees: r => `(${r} * 180 / pi)`,
-    atan: (y, x) => x === undefined ? `atan(${y})` : `atan2(${y},${x})`,
+    atan: (...args) => angle(args.length > 1 ? 'atan2' : 'atan', args),
 };
 for (let sym of '+-*/') {
     LOWER[sym] = (a, b) => `(${a} ${sym} ${b})`;
 }
-for (let name of 'sin cos tan asin acos atan2 sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
+for (let name of 'sin cos tan sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
     LOWER[name] = (...args) => `${name}(${args})`;
 }
+for (let name of 'asin acos atan2'.split(' ')) {
+    LOWER[name] = (...args) => angle(name, args);
+}
 
-// Operators, and the built-in functions the context doesn't shadow,
-// lower by name; the rest have no CSS form and miss
 function lower(name, args, history, fn) {
     let to = LOWER[name];
     return to && fn === defaultContext[name] ? to(...args.map(text)) : miss(history);
