@@ -285,6 +285,21 @@ describe('component', { concurrency: 4 }, () => {
         assert.ok(before.png.equals(after.png), 'the picture changed');
     }));
 
+    test('a nested doodle keeps its render event to itself', () => chrome.withPage(async page => {
+        let events = await page.evaluate(code => new Promise(resolve => {
+            let el = document.createElement('css-doodle');
+            let events = [];
+            el.addEventListener('render', e => {
+                let own = e.composedPath()[0] === el;
+                events.push(own ? 'host' : 'nested');
+                if (own) resolve(events);
+            });
+            el.textContent = code;
+            document.body.append(el);
+        }), '@grid: 2 / 120px; @content: @doodle(@grid: 1; background: red;);');
+        assert.deepEqual(events, ['host']);
+    }));
+
     describe('pause() and resume()', () => {
         let code = `@grid: 2 / 160px;
             @nth(1) { animation: spin 1s linear infinite; background: #09f; }

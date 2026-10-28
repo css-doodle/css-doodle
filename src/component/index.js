@@ -205,6 +205,9 @@ if (typeof HTMLElement !== 'undefined') {
             super();
             this._declared = !!this.shadowRoot;
             this.attachShadow({ mode: 'open' });
+            for (let name of ['render', 'update', 'beforeUpdate']) {
+                this.shadowRoot.addEventListener(name, e => e.stopPropagation());
+            }
             this.addEventListener('click', this.dispatchCellClick);
             this.animations = [];
             this.observers = new Map();
