@@ -230,10 +230,13 @@ function getSelectors(tokens) {
     let result = [];
     let it = iterator(tokens);
     let hasSymbol;
+    let depth = 0;
     while (it.next()) {
         let curr = it.curr();
         let prev = it.curr(-1);
-        if (curr.isSymbol('>')) {
+        if (curr.isSymbol('(')) depth++;
+        else if (curr.isSymbol(')') && depth) depth--;
+        if (curr.isSymbol('>') && !depth) {
             hasSymbol = false;
             continue;
         }

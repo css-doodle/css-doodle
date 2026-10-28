@@ -182,6 +182,10 @@ test('times syntax records the count and the pure name', () => {
     assert.deepEqual(parseSvg('path*2x@p(3) {}'), svg(
         block('path', [], { pureName: 'path', times: '2x@p(3)' })
     ));
+    // `>` inside the count is a comparison, not a child combinator
+    assert.deepEqual(parseSvg('g > path*$(k > 0) {}'), svg(
+        block('g', [block('path', [], { pureName: 'path', times: '$(k>0)' })])
+    ));
 });
 
 test('letters after a digit stay in the name', () => {
