@@ -189,6 +189,15 @@ describe('component', { concurrency: 4 }, () => {
         assert.notEqual(await el.evaluate(el => el.seed), seed);
     }));
 
+    test('code that overflows the stack warns instead of throwing, and update() keeps the old picture', () => chrome.withPage(async page => {
+        let deep = await mount(page, `@grid: 1 / 120px; width: ${'@r('.repeat(50000)}1${')'.repeat(50000)};`);
+        assert.equal((await deep.evaluate(el => el.warnings)).length, 1);
+        let el = await mount(page, '@grid: 1 / 120px; background: #00f;');
+        await el.evaluate(el => el.update(`@grid: 1 / 120px; background: #0c0; width: $(${Array(200000).fill(1).join('+')})px;`));
+        assert.equal((await el.evaluate(el => el.warnings)).length, 1);
+        assertColor((await shot(page, el)).image, 60, 60, '#00f');
+    }));
+
     test('@use loads addons by name only, and warns about one it cannot load', () => chrome.withPage(async page => {
         let asked = await serveAddons(page);
         let el = await mount(page, '@grid: 1 / 120px; @use: gradient2d, ../x; background: #0c0;');

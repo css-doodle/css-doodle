@@ -214,6 +214,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.shaderRenders = new Map();
             this._instance = Math.random().toString(32).slice(2);
             this._generation = 0;
+            this._styleReady = Promise.resolve();
             this._clock = { base: 0, since: 0 };
             this._offscreen = false;
             this._manual_motion = false;
@@ -493,7 +494,9 @@ if (typeof HTMLElement !== 'undefined') {
             this.cleanup();
             this._code = code;
             let source = this.getUse() + code;
-            let parsed = parseCss(source, this.extra);
+            let warn = message => this.report([{ message }]);
+            let parsed = guard(() => parseCss(source, this.extra), warn);
+            if (!parsed) return;
             let loading = parsed.addons.map(loadAddon).filter(status => status.then);
             this._waiting = loading.length > 0;
             if (this._waiting) {
@@ -508,7 +511,8 @@ if (typeof HTMLElement !== 'undefined') {
             if (tries > 1) this._warned?.clear();
             let old = this.compiled;
             let waits = this._waits = new Set();
-            let compiled = this.generate(source, parsed, seed);
+            let compiled = guard(() => this.generate(source, parsed, seed), warn);
+            if (!compiled) return;
             for (let id in { ...old?.shaders, ...old?.patterns }) {
                 if (!compiled.shaders[id] && !compiled.patterns[id]) {
                     this.style.removeProperty('--' + id);
