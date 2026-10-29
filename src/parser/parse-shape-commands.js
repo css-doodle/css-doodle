@@ -52,9 +52,10 @@ function partsOf(input) {
 // an angle's own units are degrees, `90deg` is 90 and `.25turn` 90; inside calls like `sin(…)` they keep their math values
 function degrees(text) {
     let calls = [];
-    return text.replace(/([a-zA-Z_]\w*)?\(|\)|(\d)(deg|turn)\b/g, (m, name, d, unit) =>
-        m.endsWith('(') ? (calls.push(!!name), m) : m == ')' ? (calls.pop(), m)
-        : calls.includes(true) ? m : unit == 'deg' ? d : d + '*360');
+    return text.replace(/\w+\(?|[()]/g, m =>
+        m == ')' ? (calls.pop(), m)
+        : m.endsWith('(') ? (calls.push(/[a-zA-Z_]/.test(m)), m)
+        : calls.includes(true) ? m : m.replace(/(\d)(deg|turn)$/, (_, d, unit) => unit == 'deg' ? d : d + '*360'));
 }
 
 // a space before `#` starts another shape: `#a #b { … }`
