@@ -128,7 +128,7 @@ function loadAddon(name) {
 const split = text => [...parseValueGroup(text, { noSpace: true })];
 const words = text => [...parseValueGroup(text)];
 
-const UNIT = /(?<![\w.])((?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?)(%|deg|turn|rad)(?![\w.(])/gi;
+const UNIT = /(?<![\w.])((?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)(%|deg|turn|rad)(?![\w.(])/gi;
 const DEGREES = { '%': 1, deg: 1, turn: 360, rad: 180 / Math.PI };
 
 function expr(text, warn) {
