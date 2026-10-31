@@ -1031,5 +1031,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, nearest, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
+    shake, bend, inset, shrink, room, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
 };

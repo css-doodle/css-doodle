@@ -237,6 +237,7 @@ body copied from `@shape` leaves it out.
 | `spread`        | `slice`                                 | how far a cut may tilt, in degrees                             |
 | `crack`         | `voronoi`                               | groups the regions, about this many each; a second `gap` value is the space inside a group |
 | `stretch`       | `voronoi`                               | `ratio [angle]`, regions that many times longer, up to 1000    |
+| `bound`         | `voronoi` without `crack`, `stretch`, `op` or `star` | `box` lets the pieces fill the box, the default; `shape` cuts them at the region's outline, holes included, before `gap` and `round` |
 | `round`         | all but `circle` and scatter            | corner radius, in the units where the box is 2 across          |
 | `jitter`        | `grid`, `hex`, `triangle`, `cube`, `penrose` | moves each corner by up to that part of a piece           |
 | `shift`         | `grid`                                  | `a [b]`, slides every other row by `a`, or column by `b`       |

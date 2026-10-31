@@ -427,6 +427,22 @@ test('@tile.voronoi: the box tiled around points scattered inside the shape, pre
     assert.notDeepEqual(o('r: .5', 'a'), o('r: .5', 'b'));
 });
 
+test('@tile.voronoi bound: shape cuts the pieces at the outline, holes included, before gap and round', () => {
+    let regions = (shape, n = 60) => Array.from({ length: n }, (_, i) => Function.tile.voronoi(cell(n, i + 1), { context: {}, extra: [], seed: 'a' })(shape));
+    let radii = list => list.flatMap(verts).map(([x, y]) => Math.hypot(x - 50, y - 50));
+    let ring = 'subtract { circle { } circle { r: .5 } }';
+    // box, the default, fills the box as before
+    assert.deepEqual(regions(ring + ' bound: box').map(String), regions(ring).map(String));
+    // shape keeps every piece in the ring, each round its own point, and together they cover it
+    let cut = regions(ring + ' bound: shape; gap: 0');
+    assert.ok(radii(cut).every(r => r > 25 - .01 && r < 50 + .01));
+    assert.ok(cut.every(t => inside(verts(t), xy(t.origin))));
+    assert.ok(Math.abs(cut.reduce((s, t) => s + area(verts(t)), 0) - Math.PI * (50 ** 2 - 25 ** 2)) < 5);
+    // gap keeps half of itself from the outline too, and round rounds the cut corners
+    assert.ok(radii(regions(ring + ' bound: shape; gap: 2')).every(r => r > 26 - .01 && r < 49 + .01));
+    assert.ok(regions(ring + ' bound: shape; gap: 2; round: .05').every(t => String(t).startsWith('shape(')));
+});
+
 test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as many as the grid allows', () => {
     let tiles = (fn, shape, n, seed) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed })(shape)).filter(t => String(t) != 'polygon(0 0)');
     let near = (a, b) => Math.abs(a - b) < 2e-3;

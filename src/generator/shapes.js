@@ -13,7 +13,7 @@ import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, nearest, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
+    shake, bend, inset, shrink, room, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, ceil, round, PI } = Math;
@@ -598,7 +598,14 @@ function createShapePoints(props, lo, hi, raw) {
         sow(count).forEach(add);
         if (name == 'voronoi') {
             let cells = voronoi(px, py, ...box, max(0, gap)), kinds = colors(cells);
-            return cells.map(([poly], k) => tile([gap < 0 ? shrink(poly, gap / 2) : poly, [px[k], py[k]], kinds[k], points[k].extra]));
+            let bound = props.bound == 'shape' && offset(rings.map(ring => ring.map(toScreen)), -gap / 2, evenodd), within = bound && insideTest(bound);
+            let cut = (poly, x, y) => {
+                if (!bound || toPairs(poly).every(p => within(...p)) && !bound.some(ring => ring.some(([u, v]) => contains(poly, u, v)))) return poly;
+                let parts = overlay([toPairs(poly)], bound, 'intersect');
+                let part = parts.find(ring => insideTest([ring])(x, y)) ?? parts.sort((a, b) => area(b.flat()) - area(a.flat()))[0];
+                return part?.flat() || [];
+            };
+            return cells.map(([poly], k) => tile([cut(gap < 0 ? shrink(poly, gap / 2) : poly, px[k], py[k]), [px[k], py[k]], kinds[k], points[k].extra]));
         }
         return points;
     }
