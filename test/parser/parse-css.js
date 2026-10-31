@@ -520,6 +520,19 @@ test('a glued value is the size of a composable and an argument otherwise', () =
     assert.deepEqual(m.arguments[0], argument([text('2x3')]));
 });
 
+test('a variant of @doodle reads its body as doodle code and keeps its own digits', () => {
+    const funcOf = input => parseCss(input)[0].value[0][0];
+    let doodle = funcOf(`a: @doodle200.wrap(@grid: 2; background: @p(red, blue));`);
+    assert.equal(doodle.name, '@doodle');
+    assert.equal(doodle.size, '200');
+    let inner = doodle.arguments[0].values[0];
+    assert.equal(inner.name, '@wrap');
+    assert.deepEqual(inner.arguments, [argument([text('@grid: 2; background: @p(red, blue)')])]);
+    // a name that ends in digits stays whole instead of giving them as an argument
+    assert.equal(funcOf(`a: @doodle.p3m1(x);`).arguments[0].values[0].name, '@p3m1');
+    assert.equal(funcOf(`a: @plot.scatter3(x);`).arguments[0].values[0].name, '@scatter');
+});
+
 test('a . after a function name with no call after it is text', () => {
     const values = input => parseCss(input)[0].value[0].map(v => v.type === 'func' ? v.name : v.value);
     assert.deepEqual(values(`content: "x @i. y";`), ['"x ', '@i', '. y"']);

@@ -882,6 +882,21 @@ test('generated ids are positional and carry the instance token', () => {
     assert.ok(c.filters['filter-k3j-2'].includes('id="filter-k3j-2"'));
 });
 
+test('@doodle.wrap makes a tile that repeats at its own size, from the code as written', () => {
+    let { styles, doodles } = compile('background: #000 @doodle120.wrap(@grid: 3; background: @p(red, blue));');
+    assert.equal(styles.cells, '#c-1-1-1 {background:#000 ${doodle-1};background-size:auto;}');
+    let { doodle, arg, tile } = doodles['doodle-1'];
+    assert.equal(arg, '120');
+    assert.equal(tile, true);
+    // the code is folded, not evaluated: the inner doodle draws it, cells and fill apart
+    assert.match(doodle, /^@grid:1\/100%;--b:@doodle\(@grid: 3; background: @p\(red, blue\);:doodle\{position:absolute;inset:25%;/);
+    assert.match(doodle, /--b:@doodle\(.*background:none\}\);/);
+    assert.match(doodle, /--f:@doodle\(@grid: 3; background: @p\(red, blue\);.*:container\{visibility:hidden\}\)/);
+    assert.match(doodle, /background:(var\(--b\) -?50% -?50%\/200% 200%,){4}var\(--f\) 50% 50%\/200% 200%$/);
+    // a doodle that is not a tile still covers its box
+    assert.equal(compile('background: @doodle120(@grid: 3);').styles.cells, '#c-1-1-1 {background:${doodle-1};background-size:cover;}');
+});
+
 test('composed image backgrounds default to cover after the shorthand', () => {
     let shader = '@shaders(void main() {})';
     const sheet = code => css(code).replace(/\$\{shader-\d+\}/g, 'S');

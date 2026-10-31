@@ -819,7 +819,14 @@ Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGrad
 
 Function.radialGradient = lazy((cell, env, position, ...args) => generateSvgGradient('radialGradient', args));
 
-Function.doodle = Function.shaders = Function.pattern = Function.scene = () => {};
+Function.shaders = Function.pattern = Function.scene = () => {};
+
+const wrapped = (code, extra) => `@doodle(${code};:doodle{position:absolute;inset:25%;width:auto;height:auto;contain:none${extra}})`;
+
+Function.doodle = () => {};
+
+Function.doodle.wrap = code => `@grid:1/100%;--b:${wrapped(code, ';background:none')};--f:${wrapped(code, ';inset:calc(25% - 1px)}:container{visibility:hidden')};background:`
+    + ['50% 50%', '-50% 50%', '50% -50%', '-50% -50%'].map(p => `var(--b) ${p}/200% 200%,`).join('') + 'var(--f) 50% 50%/200% 200%';
 
 Function.once = lazy((cell, { context }, position, ...args) => {
     let counter = 'once-counter' + position;

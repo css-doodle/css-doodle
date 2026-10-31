@@ -287,7 +287,7 @@ function parseFunc(cur) {
     return finishFunc(cur, name, end, isCalc, tok.index);
 }
 
-function finishFunc(cur, name, end, isCalc, index, shaped) {
+function finishFunc(cur, name, end, isCalc, index, shaped, body) {
     let func = { type: 'func', name: '', arguments: [], index };
     let hasArguments = false;
 
@@ -295,7 +295,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped) {
     if (dot > 0) {
         let inner;
         if (dot < name.length - 1) {
-            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, index + dot + 1, readsShape(name));
+            inner = finishFunc(cur, '@' + name.slice(dot + 1), end, false, index + dot + 1, readsShape(name), composable(name));
             inner.dotted = true;
         } else {
             inner = parseFunc(cur);
@@ -308,7 +308,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped) {
         let paren = cur.peek();
         if (paren?.index === end && paren.isSymbol('(')) {
             cur.next();
-            if (composable(name)) {
+            if (body || composable(name)) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
                 let svg = /^@svg$/i.test(name), raw = name === '@raw';
@@ -332,7 +332,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped) {
             else func.arguments.push(Node.argument([Node.text(suffix)]));
         }
     } else {
-        let { fname, extra: extraArgs } = separateFuncName(name);
+        let { fname, extra: extraArgs } = body ? { fname: name, extra: '' } : separateFuncName(name);
         func.name = fname;
         if (extraArgs.length) {
             if (composable(fname)) {

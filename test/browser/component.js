@@ -105,6 +105,15 @@ describe('component', { concurrency: 4 }, () => {
         assert.ok(await other.evaluate(el => el.before === el.compiled), 'an unrelated doodle redrew');
     }));
 
+    test('@doodle.wrap brings back what crosses the edge of its tile, over its own fill', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 1 / 240px 120px; background: @doodle120.wrap(@grid: 1 / 100% / #fff; @place: 100% 50%; @size: 60px; background: #000; border-radius: 50%);');
+        let { image } = await shot(page, el);
+        // the dot sits on the right edge of each 120px tile, so half of it shows at the left
+        for (let x of [4, 116, 124, 236]) assertColor(image, x, 60, '#000');
+        assertColor(image, 60, 60, '#fff');
+        assertColor(image, 180, 60, '#fff');
+    }));
+
     test('a value addon registered first draws without a warning', () => chrome.withPage(async page => {
         await page.evaluate(() => customElements.get('css-doodle').use('addon-fill', {
             value: ([color], { i }) => i == 1 ? color : '#00f',

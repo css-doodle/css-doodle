@@ -317,7 +317,12 @@ quotes does not split. Whitespace belongs to the argument, so
 
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
-for each cell, and once per copy in a `*N` block. `@svg` reads an SVG
+for each cell, and once per copy in a `*N` block. A variant of `@doodle`
+takes one too and keeps the digits of its name.
+`@doodle.wrap(…)` is a tile that repeats without seams: whatever crosses
+one edge comes back at the opposite one, under the doodle's own
+background. It keeps its own size, `@doodle200.wrap(…)` repeating every
+200px, or takes `background-size`. `@svg` reads an SVG
 body (§9.1), where `element*count` expands before the body is split
 into arguments. `@raw` keeps its text as written, commas and spaces
 too, with its functions run.

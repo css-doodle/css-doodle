@@ -11,7 +11,7 @@ import { timePrefix, timeKeyframes, timeProperties } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
 import { cellId, isTreeGrid } from '../lib/cell.js';
-import { placeholder, hasPlaceholder, placeholderId } from '../lib/placeholder.js';
+import { placeholder, hasPlaceholder, placeholderId, RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
 import { isNil, getValue, removeQuotes, removeParens, hasEntries } from '../lib/type.js';
 import { join, removeEmptyValues } from '../lib/list.js';
@@ -141,7 +141,7 @@ function compileFunc(node) {
         if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
             fn = fn[name];
             variant = '.' + name;
-            node = { ...inner, name: node.name };
+            node = { ...inner, name: node.name, size: node.size };
         }
         if (fname === '--') {
             // @--(name, value) sets a variable, @--(name) reads it back as set
@@ -542,10 +542,12 @@ class Rules {
         let extra = fname === 'scene' ? SCENE_EXTRA : EMPTY_EXTRA;
         let value = node.arguments.map(a => this.composeArgument(a, cell, env, extra)).join(',');
         if (!value) return;
-        if (fname === 'doodle') {
+        if (fname === 'doodle' || fname.startsWith('doodle.')) {
+            let tile = Func.doodle[fname.slice(7)];
+            if (tile) value = tile(value);
             let id = this.nextId('doodle');
             this.doodles[id] = {
-                doodle: this.injectVariables(value, cell.uid), arg: node.size,
+                doodle: this.injectVariables(value, cell.uid), arg: node.size, tile: !!tile,
                 upextra: env.extra.length ? structuredClone(env.extra) : undefined,
             };
             return placeholder(id);
@@ -711,7 +713,7 @@ class Rules {
 
         if (flags.bgImage && hasPlaceholder(value) && !this.bgSized.has(cell) && !hasShorthandSize(value)) {
             let sizes = parseValueGroup(value, NO_SPACE)
-                .map(v => hasPlaceholder(v) ? 'cover' : 'auto')
+                .map(v => [...v.matchAll(RE_PLACEHOLDER)].some(([, id]) => !this.doodles[id]?.tile) ? 'cover' : 'auto')
                 .join(',');
             rule += `background-size:${sizes};`;
         }
