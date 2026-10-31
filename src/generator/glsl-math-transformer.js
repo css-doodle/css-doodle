@@ -29,6 +29,7 @@ const ALIAS = {
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const GLSL_NAMES = new Set(['PI', 'true', 'false']);
+const COLOR_CALL = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)$/i;
 const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
 const VEC_COMPARE = {
     __proto__: null,
@@ -88,10 +89,10 @@ function joinsName(last, t) {
     return last.value === '_' && (t.isWord() || t.isNumber());
 }
 
-function lex(code) {
+function lex(source) {
     const tokens = [];
     let touching = false;
-    for (const t of scan(hexColors(code))) {
+    for (const t of scan(source)) {
         const last = tokens[tokens.length - 1];
         if (t.isSpace()) {
             touching = false;
@@ -109,7 +110,8 @@ function lex(code) {
 }
 
 export function compile(code, { types = { __proto__: null }, names = null, unknown = null, warn = null, rand = null } = {}) {
-    const tokens = lex(code);
+    const source = hexColors(code);
+    const tokens = lex(source);
 
     let pos = 0;
     const peek = () => tokens[pos];
@@ -152,7 +154,7 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
         } else if (t.value === 'π') {
             n = { type: 'Var', val: 'PI' };
         } else if (t.isWord()) {
-            n = peek()?.value === '(' && !peek().spaced ? call(t.value) : variable(t.value);
+            n = peek()?.value === '(' && !peek().spaced ? color(t) || call(t.value) : variable(t.value);
         } else {
             report(`unexpected ${t.value}`);
             n = ZERO;
@@ -199,6 +201,16 @@ export function compile(code, { types = { __proto__: null }, names = null, unkno
             n = { type: 'Bin', val: op, left: n, right };
         }
         return n;
+    }
+
+    function color(t) {
+        if (!COLOR_CALL.test(t.value)) return null;
+        let end = pos, depth = 0;
+        while (end < tokens.length && (tokens[end].value === '(' ? ++depth : tokens[end].value !== ')' || --depth)) end++;
+        const v = end < tokens.length && unknown?.(source.slice(t.index, tokens[end].index + 1));
+        if (!v) return null;
+        pos = end + 1;
+        return { type: 'Call', val: `vec${v.length}`, args: v.map(c => ({ type: 'Lit', val: String(c) })) };
     }
 
     function call(name) {

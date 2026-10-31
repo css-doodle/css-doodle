@@ -220,13 +220,12 @@ export function cssColor(extra, value) {
     return /^hsl\([^%]*\)$/i.test(value) ? null : extra.getRgbaColor(value);
 }
 
-// the channels of a color named in an expression, read once; the names given are no colors
 export function colorReader(extra, miss, names = []) {
     let known = new Map(names.map(name => [name, null]));
     return name => {
         if (!known.has(name)) {
-            let rgba = extra.getRgbaColor(name);
-            known.set(name, rgba ? channels(rgba) : (miss(name), [0]));
+            let rgba = cssColor(extra, name);
+            known.set(name, rgba ? channels(rgba) : name.includes('(') ? null : (miss(name), [0]));
         }
         return known.get(name);
     };

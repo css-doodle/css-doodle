@@ -10,7 +10,7 @@ import { generateFragment } from '../../src/generator/shaders.js';
 function isCssColor(v) {
     if (/^#[0-9a-f]{3,8}$/i.test(v)) return true;
     if (/^(red|black|white|tan|transparent)$/i.test(v)) return true;
-    if (/^(rgb|rgba|hsl|hsla)\(\s*[\d.,%\s/]+\)$/i.test(v)) return true;
+    if (/^(rgb|rgba|hsl|hsla|oklch)\(\s*[\d.,%\s/]+\)$/i.test(v)) return true;
     return false;
 }
 const extra = {
@@ -242,6 +242,17 @@ test('a color name in an expression is a vec3 literal, a translucent one a vec4'
     messages = [];
     draw('fill: foo + foo', extra, m => messages.push(m));
     assert.deepEqual(messages, ['unknown name foo']);
+});
+
+test('a CSS color function in an expression is a color literal', () => {
+    let messages = [];
+    let s = draw('fill: mix(oklch(.7 .1 30), rgb(10 20 30), x)', extra, m => messages.push(m)).fragment;
+    assert.match(s, /g_color = vec4\(mix\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(1\.0, 0\.0, 0\.0\), x\), 1\.0\);/);
+    assert.deepEqual(messages, []);
+    assert.equal(color('fill: ramp(x, oklch(.7 .1 30), red).r'), color('fill: ramp(x, red, red).r'));
+    // the shader hsl() stays a call
+    assert.equal(color('fill: mix(hsl(.5, .75, .65), red, x)'), 'g_color = vec4(mix(hsl(.5, .75, .65), vec3(1.0, 0.0, 0.0), x), 1.0);');
+    assert.equal(color('fill: mix(hsl(210 70% 60%), red, x)'), 'g_color = vec4(mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), x), 1.0);');
 });
 
 test('a CSS unit read as a name says that patterns have no units', () => {
