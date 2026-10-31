@@ -288,6 +288,25 @@ test('a // comment is dropped from a @shape, @plot or @tile body', () => {
     }
 });
 
+test('a // line outside those bodies is reported, since it eats the next statement', () => {
+    for (let code of [
+        '// helper\n--f(a): a * 2;\ncolor: red;',
+        '// header\n@grid: 3;',
+        'width: 1px; // note\nheight: 1px;',
+        ':doodle {\n  // gap\n  gap: 1px;\n}',
+    ]) {
+        assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['use /* */'], code);
+    }
+    for (let code of [
+        'background: url(//a.b/c.png);',
+        '@content: "//";',
+        'background: @pattern(\n  // fill\n  fill: red;\n);',
+        '/* note */ color: red;',
+    ]) {
+        assert.deepEqual(parseCss(code).warnings, [], code);
+    }
+});
+
 test('empty statements are dropped', () => {
     let rules = parseCss(`color: red;; width: 1px; @keyframes x { from { ; opacity: 0 } }`);
     assert.deepEqual(rules.map(r => r.property || r.type), ['color', 'width', 'keyframes']);

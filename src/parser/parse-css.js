@@ -736,6 +736,9 @@ function parseBlockBody(cur, top) {
             skipTag(cur);
             continue;
         }
+        if (tok.isSymbol('/') && cur.peek(1)?.isSymbol('/')) {
+            warn(cur.ctx, 'use /* */', tok.pos);
+        }
         let name = tok.isSymbol('@') ? atRuleName(cur) : '';
         let brace = probe(cur, '{', ';', '}');
         let opensBlock = brace >= 0 && cur.tokens[brace].isSymbol('{');
