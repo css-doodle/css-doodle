@@ -13,7 +13,7 @@ import gridStyleRules from './grid-style.js';
 import { cellId, isTreeGrid } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId, RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
-import { isNil, getValue, removeQuotes, removeParens, hasEntries } from '../lib/type.js';
+import { isNil, getValue, removeQuotes, removeParens } from '../lib/type.js';
 import { join, removeEmptyValues } from '../lib/list.js';
 import { nextId } from '../lib/fn.js';
 import {
@@ -153,6 +153,7 @@ function compileFunc(node) {
                 if (argument) vars = vars[ARGUMENTS] ??= {};
                 if (value.length) {
                     vars[key] = value.map(arg => arg(frame, extra)).join(',');
+                    if (!argument && frame.calcContext) frame.calcContext[id] = vars[key];
                     return { value: '' };
                 }
                 if (argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
@@ -219,13 +220,10 @@ function compileFunc(node) {
                 let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                 let output;
                 if (calcTemplate) {
-                    let { context, values } = evalTemplateHoles(calcTemplate, frame, e);
+                    let { context, values } = evalTemplateHoles(calcTemplate, frame, e, isDollar && rules.frameContext(frame));
                     if (!context) {
                         output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
                     } else if (isDollar) {
-                        if (hasEntries(rules.scopedVars(cell.uid)) || hasEntries(frame.contextVariable)) {
-                            context = Object.assign(rules.calcContext(cell, frame.contextVariable, env.extra), context);
-                        }
                         output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
                     } else {
                         output = rules.callFunc(fn, frame, node.position, [calcTemplate.template, context], fname);
@@ -331,7 +329,7 @@ function cellContext(cell, extra) {
     return context;
 }
 
-function evalTemplateHoles({ holes, names, signSensitive }, frame, extra) {
+function evalTemplateHoles({ holes, names, signSensitive }, frame, extra, target) {
     let n = holes.length;
     let values = new Array(n);
     frame.env.extra.push(extra);
@@ -339,7 +337,7 @@ function evalTemplateHoles({ holes, names, signSensitive }, frame, extra) {
         values[i] = holes[i](frame, extra);
     }
     frame.env.extra.pop();
-    let context = cellContext(frame.cell, frame.env.extra);
+    let context = target || cellContext(frame.cell, frame.env.extra);
     for (let i = 0; i < n; i++) {
         let num = toPlainNumber(values[i]);
         if (num === null || (signSensitive[i] && isSignLeading(values[i]))) {
@@ -505,11 +503,16 @@ class Rules {
         return context;
     }
 
-    callFunc(fn, { cell, env, contextVariable }, position, input, fname, unit) {
+    frameContext(frame) {
+        return frame.calcContext ??= this.calcContext(frame.cell, frame.contextVariable, frame.env.extra);
+    }
+
+    callFunc(fn, frame, position, input, fname, unit) {
+        let { cell, env, contextVariable } = frame;
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
             if (fname === '$') {
-                let context = this.calcContext(cell, contextVariable, env.extra);
+                let context = this.frameContext(frame);
                 if (!unit && input.length === 1) {
                     let value = deref(input[0], context);
                     if (value !== undefined) {
