@@ -896,6 +896,14 @@ test('scatter density: a formula in x and y (shape coordinates, y up) sets how m
     assert.deepEqual(graded.map(t => t.origin), Array.from({ length: 200 }, (_, i) => String(Function.plot.scatter(cell(200, i + 1), env('a'))('square; density: 1 - y'))));
     assert.deepEqual(tiles('square; density: 1').map(String), tiles('square').map(String));
     assert.deepEqual(tiles('heart; density: 2').map(String), tiles('heart').map(String));
+    // x and y span the box after a closing scale or move, square's included, as in slice and on a wide element
+    let left = (fn, shape) => Math.min(...Array.from({ length: 200 }, (_, i) => { let t = fn(cell(200, i + 1), env('a'))(shape); return xy(t.origin ?? t)[0]; }));
+    for (let fn of [Function.tile.voronoi, Function.plot.scatter]) {
+        for (let shape of ['square; density: x > .5', 'square; aspect: 2; density: x > .5', 'circle; scale: .5; move: .25 0; density: x > .5']) {
+            let x = left(fn, shape);
+            assert.ok(x > 75 && x < 78, `${shape}: ${x}`);
+        }
+    }
 });
 
 test('@palette: seeded distinct colors, or now and then a gradient', () => {

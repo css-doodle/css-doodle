@@ -571,7 +571,7 @@ function createShapePoints(props, lo, hi, raw) {
             return mosaic(screen, box, count, evenodd, seed, onScreen(density), relax,
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
-        let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density, relax)
+        let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density && ((x, y) => density(...view([x, y]))), relax)
             : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(back);
         if (name == 'voronoi' && derive) {
             let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0, fits = reacher(box, inside, 1, 1), pieces = [];
