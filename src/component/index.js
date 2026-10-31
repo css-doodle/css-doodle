@@ -166,13 +166,16 @@ if (typeof HTMLElement !== 'undefined') {
             'auto:update', 'ignore-reduced-motion',
         ];
 
-        static use(name, { shader, value } = {}) {
+        static use(name, { shader, value, doodle } = {}) {
             if (added.has(name)) return;
             let [, base, variant] = /^([^.]+)(?:\.([^.]+))?$/.exec(name) || [];
-            let owner = base && (variant ? added.has(base) && Func[base] : Func), key = variant || name;
+            let owner = base && !doodle && Func, key = variant || name;
+            if (variant) owner = (doodle ? base == 'doodle' : added.has(base)) && Func[base];
             if (owner && (key in owner || MathFunc[name])) return console.warn(`@${name} already exists`);
-            if (!owner || !(shader || value)) return console.warn(`invalid addon @${name}`);
-            owner[key] = shader ? Object.assign(() => {}, {
+            if (!owner || !(shader || value || doodle)) return console.warn(`invalid addon @${name}`);
+            owner[key] = doodle ? (code, api) => guard(() => doodle(code, {
+                ...api, stream: key => createRandom([name, api.seed, key]).rand, split, words,
+            }), api.warn) : shader ? Object.assign(() => {}, {
                 shader: (code, extra, warn) => guard(() => shader(code, {
                     color: extra.getRgbaColor, expr: text => expr(text, warn), split, words, warn,
                 }), warn),
@@ -194,7 +197,7 @@ if (typeof HTMLElement !== 'undefined') {
                     if (!el.isConnected || !el.compiled || el._waiting) continue;
                     let source = el.getUse() + el._code;
                     if (source.includes('@use')) source += getAllVariables(el);
-                    if (names.some(name => source.includes('@' + name))) el.render(el._code, el.compiled.seed);
+                    if (names.some(name => source.includes(('@' + name).replace('@doodle.', '.')))) el.render(el._code, el.compiled.seed);
                 }
             });
             arrived.add(name);

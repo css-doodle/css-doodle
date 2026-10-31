@@ -318,7 +318,8 @@ quotes does not split. Whitespace belongs to the argument, so
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
 for each cell, and once per copy in a `*N` block. A variant of `@doodle`
-takes one too and keeps the digits of its name.
+takes one too and keeps the digits of its name; addons add variants
+of their own (`@use: wallpaper` gives `@doodle60.p4m(…)`).
 `@doodle.wrap(…)` is a tile that repeats without seams: whatever crosses
 one edge comes back at the opposite one, under the doodle's own
 background. It keeps its own size, `@doodle200.wrap(…)` repeating every

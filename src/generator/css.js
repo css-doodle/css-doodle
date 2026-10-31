@@ -543,11 +543,16 @@ class Rules {
         let value = node.arguments.map(a => this.composeArgument(a, cell, env, extra)).join(',');
         if (!value) return;
         if (fname === 'doodle' || fname.startsWith('doodle.')) {
-            let tile = Func.doodle[fname.slice(7)];
-            if (tile) value = tile(value);
+            let size = node.size, tile = Func.doodle[fname.slice(7)];
+            if (tile) {
+                let out = tile(value, { size: size ?? '', seed: this.seed, warn: message => this.warn(message, node) });
+                if (!out) return;
+                value = out.code ?? out;
+                size = out.size ?? size;
+            }
             let id = this.nextId('doodle');
             this.doodles[id] = {
-                doodle: this.injectVariables(value, cell.uid), arg: node.size, tile: !!tile,
+                doodle: this.injectVariables(value, cell.uid), arg: size, tile: !!tile,
                 upextra: env.extra.length ? structuredClone(env.extra) : undefined,
             };
             return placeholder(id);

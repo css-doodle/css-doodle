@@ -649,6 +649,34 @@ test('use() adds @name.variant() under an addon\'s own name only', t => {
     assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-kind.two', '1,0,0,1']]);
 });
 
+test('use() adds a doodle addon as a variant of @doodle: the body as written, back as the code of a tile', t => {
+    let warn = t.mock.method(console, 'warn', () => {});
+    let seen = [];
+    CSSDoodle.use('doodle.addon-tile', {
+        doodle: (code, { size, seed, stream, words }) => {
+            seen.push([code, size, seed, stream('k')() == stream('k')(), words('a (b c)').length]);
+            return { code: '@grid: 2; background: red;', size: '60x40' };
+        },
+    });
+    CSSDoodle.use('doodle.addon-text', { doodle: code => code + 'color: red;' });
+    CSSDoodle.use('doodle.addon-throws', { doodle: () => { throw new Error('bad tile'); } });
+    CSSDoodle.use('doodle.wrap', { doodle: code => code });
+    CSSDoodle.use('addon-alone', { doodle: code => code });
+    CSSDoodle.use('doodle.addon-value', { value: () => 'x' });
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), [
+        '@doodle.wrap already exists', 'invalid addon @addon-alone', 'invalid addon @doodle.addon-value',
+    ]);
+    let compose = code => generateCss(parseCss(code), parseGrid('1'), 42, 64);
+    let { styles, doodles } = compose('background: @doodle30.addon-tile(@p(a, b)), @doodle.addon-text(x: y;);');
+    assert.deepEqual(seen, [['@p(a, b)', '30', '42', true, 2]]);
+    assert.deepEqual(Object.values(doodles).map(d => [d.doodle, d.arg, d.tile]), [
+        ['@grid: 2; background: red;', '60x40', true],
+        ['x: y;color: red;', undefined, true],
+    ]);
+    assert.match(styles.cells, /background-size:auto,auto;/);
+    assert.deepEqual(compose('background: @doodle.addon-throws(z);').warnings.map(w => w.message), ['bad tile']);
+});
+
 test('use() keeps taken names, a second copy of an addon is left out quietly, and a throwing addon only warns', t => {
     let warn = t.mock.method(console, 'warn', () => {});
     CSSDoodle.use('r', { value: () => 'taken' });

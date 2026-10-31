@@ -114,6 +114,17 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 180, 60, '#fff');
     }));
 
+    test('a doodle addon that loads late redraws the doodles that call it with a size', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 1 / 120px; background: @doodle60.addon-tile(@grid: 1 / 100%; background: #f00;);');
+        await page.evaluate(() => customElements.get('css-doodle').use('doodle.addon-tile', {
+            doodle: (code, { size }) => ({ code: code + ':doodle { background: #00f; } @size: 50%;', size: size + 'x' + size }),
+        }));
+        let { image } = await shot(page, el);
+        // the 60px tile it gave, repeated: a red cell in the corner of each, on blue
+        for (let [x, y] of [[15, 15], [75, 15], [75, 75]]) assertColor(image, x, y, '#f00');
+        for (let [x, y] of [[45, 45], [105, 45], [105, 105]]) assertColor(image, x, y, '#00f');
+    }));
+
     test('a value addon registered first draws without a warning', () => chrome.withPage(async page => {
         await page.evaluate(() => customElements.get('css-doodle').use('addon-fill', {
             value: ([color], { i }) => i == 1 ? color : '#00f',
