@@ -1345,9 +1345,9 @@ test('$name in a shaders body reads the variable at generation time', () => {
     assert.equal(source.fragment.replace(/\s/g, ''), 'voidmain(){FragColor=vec4(1.);}');
     assert.equal(source.vertex, 'void main(){gl_Position = vec4(2);}');
     // a bound doodle comes as stored; any other texture sees the variables
-    // like @doodle() does, and $name is read there like anywhere else
+    // like @doodle() does, all but the image, and $name is read there like anywhere else
     assert.equal(source.textures[0].value, '@grid:8;background:@p(red,blue);');
-    assert.match(source.textures[1].value.replace(/\s/g, ''), /^:doodle\{--texture:.*--speed:2;\}@grid:2;--d:2;background:red;$/);
+    assert.equal(source.textures[1].value.replace(/\s/g, ''), ':doodle{--speed:2;}@grid:2;--d:2;background:red;');
     assert.deepEqual(warnings, []);
 });
 
@@ -1560,6 +1560,13 @@ test('user functions that double on every call stop at an expansion limit', () =
     for (let i = 1; i < 30; i++) defs += ` --a${i}(x): $a${i - 1}(x) $a${i - 1}(x);`;
     let { warnings } = compile(`${defs} @grid: 1; --v: $a29(1);`);
     assert.ok(warnings.some(w => /too large/.test(w.message)), JSON.stringify(warnings));
+});
+
+test('a nested doodle inherits the variables, but not one holding an image of its parent', () => {
+    let { doodles } = compile('--c: red; --a: image-set(@doodle(@grid: 1;) 1x); background: var(--a), @doodle(@grid: 1; background: var(--c););');
+    let [, nested] = Object.values(doodles).map(d => d.doodle);
+    assert.equal(nested, ':doodle {--c: red;}@grid: 1; background: var(--c);');
+    assert.deepEqual(compile(nested).warnings, []);
 });
 
 test('a texture section does not inherit a variable holding GLSL statements', () => {

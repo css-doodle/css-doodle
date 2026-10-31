@@ -603,7 +603,8 @@ class Rules {
         let variables = '';
         let group = this.scopedVars(count);
         for (let name in group) {
-            let bare = String(group[name]).replace(/"[^"]*"|'[^']*'|\$\{[\w-]+\}/g, '');
+            let bare = String(group[name]).replace(/"[^"]*"|'[^']*'/g, '');
+            if (hasPlaceholder(bare)) continue;
             while (bare !== (bare = bare.replace(/\([^()]*\)/g, '')));
             if (!/[;{}]/.test(bare)) variables += `${name}: ${group[name]};`;
         }
