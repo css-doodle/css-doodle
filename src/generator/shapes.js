@@ -13,7 +13,7 @@ import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
+    shake, bend, inset, shrink, room, nearest, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, mix, PHI,
 } from './tiling.js';
 
 const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, ceil, round, PI } = Math;
@@ -545,13 +545,17 @@ function createShapePoints(props, lo, hi, raw) {
             let tol = (box[2] - box[0]) * 5e-4 / len;
             return pieces.map(([p, c, kind, marks]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape, marks) : p), c, kind]));
         }
-        let context = Object.assign(Object.create(defaultContext), props);
+        let context = Object.assign(Object.create(defaultContext), props), near, seen;
+        if (!Object.hasOwn(props, 'd')) Object.defineProperty(context, 'd', { get() {
+            near ||= nearest(rings.map(ring => ring.map(toScreen)));
+            return near(...seen) / (percent ? 50 : 1);
+        } });
         let formula = text => isEmpty(text) ? null : (x, y) => {
             context.x = x;
             context.y = y;
             return Number(calc(text, context)) || 0;
         };
-        let onScreen = f => f && ((x, y) => f(...toShape(x, y)));
+        let onScreen = f => f && ((x, y) => (seen = [x, y], f(...toShape(x, y))));
         if (name == 'circle') {
             let size = formula(props.size);
             context.random = seedrandom('size:' + seed);
@@ -571,7 +575,7 @@ function createShapePoints(props, lo, hi, raw) {
             return mosaic(screen, box, count, evenodd, seed, onScreen(density), relax,
                 ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
         }
-        let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density && ((x, y) => density(...view([x, y]))), relax)
+        let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density && ((x, y) => (seen = toScreen([x, y]), density(...view([x, y])))), relax)
             : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(back);
         if (name == 'voronoi' && derive) {
             let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0, fits = reacher(box, inside, 1, 1), pieces = [];

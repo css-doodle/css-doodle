@@ -822,6 +822,24 @@ function room(p, x, y) {
     return r;
 }
 
+function nearest(rings) {
+    let segs = [];
+    for (let ring of rings) ring.forEach(([bx, by], i) => {
+        let [ax, ay] = ring.at(i - 1), dx = bx - ax, dy = by - ay;
+        segs.push(ax, ay, dx, dy, 1 / (dx * dx + dy * dy || Infinity));
+    });
+    return (x, y) => {
+        let d = Infinity;
+        for (let i = 0; i < segs.length; i += 5) {
+            let ax = x - segs[i], ay = y - segs[i + 1], dx = segs[i + 2], dy = segs[i + 3];
+            let t = (ax * dx + ay * dy) * segs[i + 4];
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            d = min(d, (ax - dx * t) ** 2 + (ay - dy * t) ** 2);
+        }
+        return sqrt(d);
+    };
+}
+
 function scale(p, o, f) {
     return p.map((v, i) => o[i & 1] + (v - o[i & 1]) * f);
 }
@@ -1013,5 +1031,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
+    shake, bend, inset, shrink, room, nearest, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
 };

@@ -906,6 +906,29 @@ test('scatter density: a formula in x and y (shape coordinates, y up) sets how m
     }
 });
 
+test('d: size and density read how far x y is from the outline, holes included', () => {
+    let env = { context: {}, extra: [], seed: 'a' };
+    let points = (shape, n = 200) => Array.from({ length: n }, (_, i) => xy(Function.plot.scatter(cell(n, i + 1), env)(shape)));
+    // in a square, d > .5 is the middle square; on a wide element d counts in the shorter side, so it reaches further across
+    assert.ok(points('square; density: d > .5').every(([x, y]) => x > 25 && x < 75 && y > 25 && y < 75));
+    let wide = points('square; aspect: 2; density: d > .5');
+    assert.ok(wide.every(([x, y]) => x > 12.5 && x < 87.5 && y > 25 && y < 75) && wide.some(([x]) => x < 20));
+    // a hole's rim counts as much as the outline: d < .1 keeps to the border and round the hole
+    let rim = points('subtract { square { } circle { r: .4 } } density: d < .1');
+    assert.ok(rim.every(([x, y]) => {
+        let u = x / 50 - 1, v = 1 - y / 50;
+        return Math.min(1 - Math.max(Math.abs(u), Math.abs(v)), Math.abs(Math.hypot(u, v) - .4)) < .1 + 2e-3;
+    }));
+    // circles grow away from the outline
+    let circles = Array.from({ length: 300 }, (_, i) => String(Function.tile.circle(cell(300, i + 1), env)('square; size: .2 + d * 4')).match(/[\d.]+/g).map(Number));
+    let mean = list => list.reduce((s, [r]) => s + r, 0) / list.length;
+    let far = circles.filter(([, , x, y]) => Math.max(Math.abs(x - 50), Math.abs(y - 50)) < 20);
+    let near = circles.filter(([, , x, y]) => Math.max(Math.abs(x - 50), Math.abs(y - 50)) > 40);
+    assert.ok(far.length && near.length && mean(far) > mean(near) * 2);
+    // a variable named d is the variable
+    assert.deepEqual(points('square; d: 0; density: d > .5').map(String), points('square').map(String));
+});
+
 test('@palette: seeded distinct colors, or now and then a gradient', () => {
     let env = seed => ({ context: {}, seed });
     let palette = Function.palette(null, env('a'));

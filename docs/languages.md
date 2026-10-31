@@ -232,7 +232,7 @@ body copied from `@shape` leaves it out.
 | `seed`          | all                                     | the seed, the doodle's by default                              |
 | `aspect`        | all                                     | the element's width over its height, `2` or `16 / 9`, kept between 0.001 and 1000 |
 | `gap`           | all but scatter                         | space between pieces, in percent of the element                |
-| `density`       | `slice`, `voronoi`, `delaunay`, scatter | where pieces are smaller, an expression in `x` and `y`         |
+| `density`       | `slice`, `voronoi`, `delaunay`, scatter | where pieces are smaller, an expression in `x`, `y` and `d`    |
 | `relax`         | `voronoi`, `delaunay`, scatter          | rounds that even out the points, 0 to 50, default 10           |
 | `spread`        | `slice`                                 | how far a cut may tilt, in degrees                             |
 | `crack`         | `voronoi`                               | groups the regions, about this many each; a second `gap` value is the space inside a group |
@@ -244,7 +244,12 @@ body copied from `@shape` leaves it out.
 | `pair`          | `grid` without `shift`, `hex`           | `turn` pairs edges by a turn about a corner, so every piece is one shape turned by its kind |
 | `op`            | `grid`, `hex`, `triangle`, `cube`, `penrose`, `voronoi` without `crack` or `stretch` | Conway's operators, one letter per step, right to left: `d a t k e b s`, and `g j m o` for `ds da kda de`; other letters and steps past the fifth are skipped |
 | `star`          | the same as `op`                        | after `op`, turns every piece into a Hankin star: lines leave each side's middle at this angle, 0 to 90 degrees |
-| `size`          | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x` and `y`; by default 1.5 with a rare few larger |
+| `size`          | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x`, `y` and `d`; by default 1.5 with a rare few larger |
+
+In `density` and `size`, `d` is how far the point is from the region's
+outline, holes included, where 1 is half the element's shorter side, so
+`size: .2 + d * 6` packs small circles against the outline and larger
+ones away from it. A variable named `d` in the body takes its place.
 
 The kinds, chosen as a variant like `@tile.hex(…)`, are `slice` (the
 default), `voronoi`, `delaunay`, `grid`, `hex`, `triangle`, `cube`,
