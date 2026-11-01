@@ -605,6 +605,27 @@ describe('component', { concurrency: 4 }, () => {
         await page.waitForTimeout(100);
         let d = await read('--d');
         assert.equal(d[4].replace(/\s/g, ''), 'calc(30-30)calc(100-100)', d[4]);
+
+        await page.evaluate(() => document.getElementById('p').style.width = '180px');
+        await page.waitForFunction(() => getComputedStyle(document.querySelectorAll('i')[2]).getPropertyValue('--at') === '3 1 3 3');
+    }));
+
+    test('cells: rows come from the layout the doodle\'s own styles make, and a layout that keeps moving is let be', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML = '<style>i, b { width: 50px; height: 20px }</style>' +
+            '<div id="a" style="display:flex;flex-wrap:wrap;width:180px">' + '<i></i>'.repeat(4) + '</div>' +
+            '<div id="b" style="display:flex;flex-wrap:wrap;width:120px">' + '<b></b>'.repeat(2) + '</div>');
+        await mount(page, 'width: 80px; --at: @x @y', { seed: 1, cells: '#a i' });
+        await page.waitForFunction(() => getComputedStyle(document.querySelectorAll('i')[2]).getPropertyValue('--at') === '1 2');
+
+        let el = await mount(page, '@match(y == 1) { width: 70px }', { seed: 1, cells: '#b b' });
+        await page.waitForTimeout(300);
+        await el.evaluate(el => {
+            el.renders = 0;
+            let render = el.render;
+            el.render = (...args) => (el.renders++, render.apply(el, args));
+        });
+        await page.waitForTimeout(400);
+        assert.equal(await el.evaluate(el => el.renders), 0);
     }));
 
     test('cells: a resize that keeps rows and columns draws again only for @udx', () => chrome.withPage(async page => {

@@ -290,6 +290,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.shaderRenders = new Map();
             this._instance = Math.random().toString(32).slice(2);
             this._generation = 0;
+            this._moved = 0;
             this._styleReady = Promise.resolve();
             this._clock = { base: 0, since: 0 };
             this._offscreen = false;
@@ -617,14 +618,12 @@ if (typeof HTMLElement !== 'undefined') {
             this._cells?.forEach(el => el.removeAttribute(mark));
             cells?.forEach((el, i) => el.setAttribute(mark, i + 1));
             this._cells = cells;
+            let aims = /@ud[xy]\b/.test(source);
+            let sign = (at = layout(cells, this.frame)) => JSON.stringify(at.map(p => [p.x, p.y, aims && p.center]));
             if (cells) {
-                let aims = /@ud[xy]\b/.test(source);
-                let sign = at => JSON.stringify(at.map(p => [p.x, p.y, aims && p.center]));
-                let at = this._at = layout(cells, this.frame), now = sign(at);
-                if (now !== this._layout) [this._layoutBefore, this._layout] = [this._layout, now];
+                this._layout = sign(this._at = layout(cells, this.frame));
                 let resize = new ResizeObserver(() => {
-                    let next = sign(layout(cells, this.frame));
-                    if (next !== this._layout && next !== this._layoutBefore) this.render(this._code, this.compiled?.seed);
+                    if (sign() !== this._layout) this._moved = 0, this.render(this._code, this.compiled?.seed);
                 });
                 for (let el of new Set([this.frame, ...cells.map(el => el.parentElement)])) el && resize.observe(el);
                 this.observers.set('resize', resize);
@@ -677,6 +676,13 @@ if (typeof HTMLElement !== 'undefined') {
                 this.patch(compiled);
             }
             let wait = [...waits], generation = this._generation;
+            if (cells) this._styleReady.then(() => {
+                if (generation !== this._generation) return;
+                let now = sign();
+                if (now === this._layout) this._moved = 0;
+                else if (this._moved++ < 2) this.render(this._code, this.compiled?.seed);
+                else this._layout = now;
+            });
             if (/\btext\s*:/.test(source.includes('@use') ? source + getAllVariables(this) : source)) {
                 let linked = loadGoogleFontLink(compiled.styles.gf);
                 if (linked) fontsLoading.add(linked);
