@@ -588,6 +588,40 @@ describe('component', { concurrency: 4 }, () => {
         assert.equal(got.hidden, 'true');
     }));
 
+    test('cells: rows and columns come from the page, follow a resize, and @udx measures from each element', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML =
+            '<div id="p" style="display:flex;flex-wrap:wrap;width:180px">' + '<i style="width:60px;height:40px"></i>'.repeat(7) + '</div>');
+        await mount(page, '--at: @x @y @X @Y; --r: @r(1000); --d: $(@udx) $(@udy);', { seed: 1, cells: 'i' });
+        let read = name => page.evaluate(name => [...document.querySelectorAll('i')].map(i => getComputedStyle(i).getPropertyValue(name)), name);
+        assert.deepEqual(await read('--at'), ['1 1 3 3', '2 1 3 3', '3 1 3 3', '1 2 3 3', '2 2 3 3', '3 2 3 3', '1 3 3 3']);
+        let rolls = await read('--r');
+
+        await page.evaluate(() => document.getElementById('p').style.width = '120px');
+        await page.waitForFunction(() => getComputedStyle(document.querySelectorAll('i')[2]).getPropertyValue('--at') === '1 2 2 4');
+        assert.deepEqual(await read('--r'), rolls);
+
+        let box = await page.evaluate(() => { let r = document.querySelectorAll('i')[4].getBoundingClientRect(); return [r.x + 30, r.y + 20]; });
+        await page.mouse.move(box[0], box[1]);
+        await page.waitForTimeout(100);
+        let d = await read('--d');
+        assert.equal(d[4].replace(/\s/g, ''), 'calc(30-30)calc(100-100)', d[4]);
+    }));
+
+    test('cells: a resize that keeps rows and columns draws again only for @udx', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML =
+            '<div id="p" style="display:flex;justify-content:center;width:300px">' + '<i style="width:60px;height:40px"></i>'.repeat(3) + '</div>');
+        let plain = await mount(page, '--r: @r(1000)', { seed: 1, cells: 'i' });
+        await mount(page, '--d: @udx', { seed: 1, cells: 'i' });
+        await plain.evaluate(el => {
+            el.renders = 0;
+            let render = el.render;
+            el.render = (...args) => (el.renders++, render.apply(el, args));
+        });
+        await page.evaluate(() => document.getElementById('p').style.width = '240px');
+        await page.waitForFunction(() => getComputedStyle(document.querySelector('i')).getPropertyValue('--d').includes('60'));
+        assert.equal(await plain.evaluate(el => el.renders), 0);
+    }));
+
     test('cells: splitting leaves the text nodes of the page in place, so a framework can still change or remove them', () => chrome.withPage(async page => {
         await page.evaluate(() => {
             document.body.innerHTML = '<h1>Hello world</h1>';

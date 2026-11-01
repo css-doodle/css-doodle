@@ -874,8 +874,8 @@ for (let [name, u] of Object.entries({ t: utime, T: UTime, uw: uwidth, uh: uheig
 Function.ts = () => calcWith(`calc(var(${utime}) / 1000)`);
 Function.TS = () => calcWith(`calc(var(${UTime}) / 1000)`);
 
-Function.udx = ({ x, grid }) => calcWith(`calc(${tidyNumber((x - .5) / grid.x)} * var(${uwidth}) - var(${umousex}))`);
-Function.udy = ({ y, grid }) => calcWith(`calc(${tidyNumber((y - .5) / grid.y)} * var(${uheight}) - var(${umousey}))`);
+Function.udx = ({ x, grid, center }) => calcWith(`calc(${center ? tidyNumber(center[0]) : `${tidyNumber((x - .5) / grid.x)} * var(${uwidth})`} - var(${umousex}))`);
+Function.udy = ({ y, grid, center }) => calcWith(`calc(${center ? tidyNumber(center[1]) : `${tidyNumber((y - .5) / grid.y)} * var(${uheight})`} - var(${umousey}))`);
 
 /**
  * expose JS Math functions with css-doodle calc/value semantics

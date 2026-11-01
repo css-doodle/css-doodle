@@ -1607,3 +1607,11 @@ test('with page elements as cells, the count is theirs, @grid gives the columns,
     assert.match(styles.all, /#c-2-1-1 \{[^}]*animation:k-2-K 1s;/);
     assert.equal(page(':doodle { @grid: 10 }', 4).grid.x, 4);
 });
+
+test('page elements as cells keep their order, and take rows, columns and centers from the page', () => {
+    let at = [{ x: 2, y: 1, center: [40, 10] }, { x: 1, y: 1, center: [10, 10] }, { x: 1, y: 2, center: [10, 40.5] }];
+    let { grid, styles } = generateCss(parseCss('--p: @i @x @y @X @Y; --d: @udx @udy;'), { cells: 3, at }, 1, 64, null, [], 'K');
+    assert.deepEqual([grid.x, grid.y, grid.count], [2, 2, 3]);
+    assert.match(styles.all, /#c-1-1-1 \{--p:1 2 1 2 2;\s*--d:calc\(40 - var\(--cssd-umousex\)\) calc\(10 - var\(--cssd-umousey\)\);/);
+    assert.match(styles.all, /#c-3-1-1 \{--p:3 1 2 2 2;\s*--d:calc\(10 - var\(--cssd-umousex\)\) calc\(40.5 - var\(--cssd-umousey\)\);/);
+});

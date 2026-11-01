@@ -1179,19 +1179,20 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
             rand, pick, shuffle, random: R.random, updateRandom,
             seed, maxGrid,
         });
-        let { cells } = gridSize, at;
+        let { cells, at } = gridSize;
         let cellAt = (x, y, z, count, uid, grid) => ({ x, y, z, count, uid, grid, id: cellId(x, y, z) });
 
         let pre = new Rules(tokens, instance);
         pre.preCompose(cellAt(1, 1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
 
         if (cells) {
-            let cols = pre.grid ? Math.min(pre.grid.x, cells) : cells;
+            let cols = pre.grid && Math.min(pre.grid.x, cells), page = at || [];
             at = [];
             for (let k = 0; k < cells; k++) {
-                at.push({ x: k % cols + 1, y: (k / cols | 0) + 1 });
+                at.push(cols ? { ...page[k], x: k % cols + 1, y: (k / cols | 0) + 1 } : page[k] || { x: k + 1, y: 1 });
             }
-            gridSize = { x: cols, y: Math.ceil(cells / cols), z: 1, count: cells, cells, at };
+            let max = key => Math.max(...at.map(p => p[key]));
+            gridSize = { x: max('x'), y: max('y'), z: 1, count: cells, cells, at };
         } else {
             gridSize = pre.grid || gridSize;
         }
@@ -1215,8 +1216,9 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
         let cellGrid = tree ? { ...gridSize, count: gridSize.x * gridSize.y } : gridSize;
         let uid = 0;
         let count = 0;
-        if (cells) for (let { x, y } of at) {
-            rules.compose({ ...cellAt(x, y, 1, ++count, ++uid, cellGrid), id: cellId(count, 1, 1) }, env);
+        // ids by order: two elements may share a row and a column
+        if (cells) for (let { x, y, center } of at) {
+            rules.compose({ ...cellAt(x, y, 1, ++count, ++uid, cellGrid), id: cellId(count, 1, 1), center }, env);
         }
         else for (let z = 1; z <= gridSize.z; ++z) {
             if (tree) {

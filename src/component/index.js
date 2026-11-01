@@ -196,6 +196,33 @@ function splitText(el, unit) {
     return [...el.querySelectorAll(`[${SPLIT}=${unit.slice(0, -1)}]`)];
 }
 
+function layout(els, frame) {
+    let offset = el => {
+        let x = 0, y = 0;
+        for (; el; el = el.offsetParent) x += el.offsetLeft, y += el.offsetTop;
+        return [x, y];
+    };
+    let [fx, fy] = offset(frame);
+    let boxes = els.map(el => {
+        let [x, y] = offset(el);
+        return { x: x - fx, y: y - fy, w: el.offsetWidth, h: el.offsetHeight };
+    });
+    let lines = (p, s) => {
+        let out = [], n = 0, first;
+        for (let k of boxes.map((_, k) => k).sort((a, b) => boxes[a][p] - boxes[b][p])) {
+            let b = boxes[k];
+            if (!first || Math.min(b[p] + b[s], first[p] + first[s]) - Math.max(b[p], first[p]) < Math.min(b[s], first[s]) / 2) {
+                first = b;
+                n++;
+            }
+            out[k] = n;
+        }
+        return out;
+    };
+    let xs = lines('x', 'w'), ys = lines('y', 'h');
+    return boxes.map(({ x, y, w, h }, k) => ({ x: xs[k], y: ys[k], center: [x + w / 2, y + h / 2] }));
+}
+
 let CSSDoodle = class {};
 
 export function define(name, element) {
@@ -420,7 +447,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         getGrid() {
-            return this._cells ? { cells: Math.max(this._cells.length, 1) } : parseGrid(this.getAttribute('grid'), this.getMaxGrid());
+            return this._cells ? { cells: Math.max(this._cells.length, 1), at: this._at } : parseGrid(this.getAttribute('grid'), this.getMaxGrid());
         }
 
         get frame() {
@@ -591,6 +618,16 @@ if (typeof HTMLElement !== 'undefined') {
             cells?.forEach((el, i) => el.setAttribute(mark, i + 1));
             this._cells = cells;
             if (cells) {
+                let aims = /@ud[xy]\b/.test(source);
+                let sign = at => JSON.stringify(at.map(p => [p.x, p.y, aims && p.center]));
+                let at = this._at = layout(cells, this.frame), now = sign(at);
+                if (now !== this._layout) [this._layoutBefore, this._layout] = [this._layout, now];
+                let resize = new ResizeObserver(() => {
+                    let next = sign(layout(cells, this.frame));
+                    if (next !== this._layout && next !== this._layoutBefore) this.render(this._code, this.compiled?.seed);
+                });
+                for (let el of new Set([this.frame, ...cells.map(el => el.parentElement)])) el && resize.observe(el);
+                this.observers.set('resize', resize);
                 let pending, observer = new MutationObserver(records => {
                     if (pending || records.every(r => this.contains(r.target))) return;
                     pending = requestAnimationFrame(() => {
