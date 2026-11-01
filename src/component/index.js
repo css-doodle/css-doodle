@@ -150,6 +150,52 @@ function guard(fn, warn) {
     }
 }
 
+const SPLIT = 'cssd-split';
+const segmenters = {};
+const segments = (text, granularity) =>
+    (segmenters[granularity] ??= new Intl.Segmenter(undefined, { granularity })).segment(text);
+
+function span(kind, text = '') {
+    let el = document.createElement('span');
+    el.setAttribute(SPLIT, kind);
+    el.textContent = text;
+    return el;
+}
+
+function splitText(el, unit) {
+    for (let copy of el.querySelectorAll(`[${SPLIT}=text]`)) {
+        if (copy.previousSibling !== copy.source || copy.source.data) copy.nextSibling?.remove(), copy.remove();
+    }
+    let walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, node =>
+        node.hasAttribute?.(SPLIT) ? NodeFilter.FILTER_REJECT : node.data?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+    ), nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (let node of nodes) {
+        let copy = span('text', node.data), run = span('run'), word, wordLike;
+        copy.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;user-select:none';
+        copy.source = node;
+        run.setAttribute('aria-hidden', true);
+        for (let { segment, isWordLike } of segments(node.data, 'word')) {
+            if (!segment.trim()) {
+                run.append(segment);
+                word = null;
+                continue;
+            }
+            if (!word || (isWordLike && wordLike)) {
+                run.append(word = span('word'));
+                word.style.whiteSpace = 'nowrap';
+                wordLike = false;
+            }
+            for (let { segment: letter } of segments(segment, 'grapheme')) word.append(span('letter', letter));
+            wordLike ||= isWordLike;
+        }
+        // emptied, not removed: a framework may still hold the node
+        node.after(copy, run);
+        node.data = '';
+    }
+    return [...el.querySelectorAll(`[${SPLIT}=${unit.slice(0, -1)}]`)];
+}
+
 let CSSDoodle = class {};
 
 export function define(name, element) {
@@ -378,7 +424,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         get frame() {
-            return this._cells?.[0]?.parentElement || this;
+            return this._cells && this._frame || this;
         }
 
         cellRules() {
@@ -534,7 +580,12 @@ if (typeof HTMLElement !== 'undefined') {
             }
             if (tries > 1) this._warned?.clear();
             let select = this.getAttribute('cells'), root = select && this.getRootNode(), mark = 'cssd-' + this._instance;
-            let query = () => [...root.querySelectorAll(select)].filter(el => !this.contains(el));
+            let unit, base = select?.replace(/::(letters|words)(?=\s*(,|$))/g, (_, name) => (unit = name, ''));
+            let query = () => {
+                let found = [...root.querySelectorAll(base)].filter(el => !this.contains(el));
+                this._frame = unit ? found[0] : found[0]?.parentElement;
+                return unit ? found.flatMap(el => splitText(el, unit)) : found;
+            };
             let cells = select ? guard(query, warn) || [] : null;
             this._cells?.forEach(el => el.removeAttribute(mark));
             cells?.forEach((el, i) => el.setAttribute(mark, i + 1));
@@ -551,7 +602,7 @@ if (typeof HTMLElement !== 'undefined') {
                         }
                     });
                 });
-                observer.observe(root, { childList: true, subtree: true });
+                observer.observe(root, { childList: true, subtree: true, characterData: true });
                 this.observers.set('cells', observer);
                 let click = e => {
                     let el = e.composedPath().find(el => el.hasAttribute?.(mark));

@@ -559,4 +559,51 @@ describe('component', { concurrency: 4 }, () => {
         await page.click('i:nth-child(5)');
         assert.deepEqual(await el.evaluate(el => el.clicked), [2, 2]);
     }));
+
+    test('cells: ::letters and ::words split the text once, keep its markup, and read whole to screen readers', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML = '<h1>Hi, <em>new</em> café 👩‍👩‍👧</h1><p>我们喜欢生成艺术，也喜欢写代码。</p>');
+        await mount(page, 'display: inline-block; --i: @i', { seed: 1, cells: 'h1::letters' });
+        await mount(page, '--n: @I', { seed: 1, cells: 'h1::words, p::words' });
+        let got = await page.evaluate(() => {
+            let words = el => [...el.querySelectorAll('[cssd-split=word]')].map(w => w.textContent);
+            let letters = [...document.querySelectorAll('h1 [cssd-split=letter]')];
+            return {
+                h1: words(document.querySelector('h1')),
+                p: words(document.querySelector('p')),
+                letters: letters.length,
+                last: getComputedStyle(letters.at(-1)).getPropertyValue('--i'),
+                n: getComputedStyle(document.querySelector('[cssd-split=word]')).getPropertyValue('--n'),
+                em: document.querySelector('em [cssd-split=word]').textContent,
+                read: [...document.querySelectorAll('h1 [cssd-split=text]')].map(t => t.textContent).join(''),
+                hidden: document.querySelector('[cssd-split=run]').getAttribute('aria-hidden'),
+            };
+        });
+        assert.deepEqual(got.h1, ['Hi,', 'new', 'café', '👩‍👩‍👧']);
+        assert.ok(got.p.includes('艺术，') && got.p.includes('也'), got.p.join('|'));
+        assert.equal(got.letters, 11);
+        assert.equal(got.last, '11');
+        assert.equal(got.n, String(got.h1.length + got.p.length));
+        assert.equal(got.em, 'new');
+        assert.equal(got.read, 'Hi, new café 👩‍👩‍👧');
+        assert.equal(got.hidden, 'true');
+    }));
+
+    test('cells: splitting leaves the text nodes of the page in place, so a framework can still change or remove them', () => chrome.withPage(async page => {
+        await page.evaluate(() => {
+            document.body.innerHTML = '<h1>Hello world</h1>';
+            window.text = document.querySelector('h1').firstChild;
+        });
+        await mount(page, '--i: @i', { seed: 1, cells: 'h1::letters' });
+        let letters = () => page.evaluate(() => [...document.querySelectorAll('h1 [cssd-split=letter]')].map(l => l.textContent).join(''));
+        assert.equal(await letters(), 'Helloworld');
+        assert.deepEqual(await page.evaluate(() => [text.parentNode === document.querySelector('h1'), text.data]), [true, '']);
+
+        await page.evaluate(() => text.data = 'Hi there');
+        await page.waitForFunction(() => document.querySelectorAll('h1 [cssd-split=letter]').length === 7);
+        assert.equal(await letters(), 'Hithere');
+        assert.equal(await page.evaluate(() => getComputedStyle(document.querySelectorAll('h1 [cssd-split=letter]')[6]).getPropertyValue('--i')), '7');
+
+        await page.evaluate(() => text.remove());
+        await page.waitForFunction(() => !document.querySelector('h1 [cssd-split]'));
+    }));
 });
