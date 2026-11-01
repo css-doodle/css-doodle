@@ -1593,3 +1593,17 @@ test('a texture section does not inherit a variable holding GLSL statements', ()
     assert.ok(!parseShaders(shader.source).textures[0].value.includes('--fragment'), shader.source);
     assert.deepEqual(warnings, []);
 });
+
+test('with page elements as cells, the count is theirs, @grid gives the columns, and keyframes are named apart', () => {
+    let page = (code, n) => generateCss(parseCss(code), { cells: n }, 42, 64, null, [], 'K');
+    let { x, y, count } = page('--v: @x', 7).grid;
+    assert.deepEqual([x, y, count], [7, 1, 7]);
+    let { grid, styles } = page(`@grid: 3 / 400px; --v: @x @y; --n: @I;
+        animation: k 1s; @keyframes k { to { translate: @r(10px) } }`, 7);
+    assert.deepEqual([grid.x, grid.y, grid.count], [3, 3, 7]);
+    assert.match(styles.all, /#c-7-1-1 \{--v:1 3;/);
+    assert.match(styles.all, /:is\(cell,#_\) \{--n:7;\}/);
+    assert.match(styles.all, /@keyframes k-K \{/);
+    assert.match(styles.all, /#c-2-1-1 \{[^}]*animation:k-2-K 1s;/);
+    assert.equal(page(':doodle { @grid: 10 }', 4).grid.x, 4);
+});

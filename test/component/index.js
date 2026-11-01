@@ -215,6 +215,7 @@ test('the host clock freezes while paused', async () => {
         removeAttribute: name => attrs.delete(name),
         restamp: () => restamped++,
         syncSvgAnimations: () => {},
+        pauseCells: () => {},
         clockNow: CSSDoodle.prototype.clockNow,
         pause: CSSDoodle.prototype.pause,
         resume: CSSDoodle.prototype.resume,
@@ -539,11 +540,12 @@ test('a redraw keeps the host variables of the images it draws again', () => {
     let next = { shaders: { 's-1': {} }, patterns: {} };
     let host = {
         compiled: { shaders: { 's-1': {}, 's-2': {} }, patterns: { 'p-1': {} } },
-        style: { removeProperty: name => removed.push(name) },
+        vars: { removeProperty: name => removed.push(name) },
         cleanup() {},
         generate() { return this.compiled = next; },
         getGrid() {},
         getUse: () => '',
+        getAttribute: () => null,
         shouldRebuild: () => false,
         patch() {},
         render: CSSDoodle.prototype.render,

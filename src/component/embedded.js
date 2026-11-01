@@ -108,15 +108,18 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
     }
     if (host.shaderRenders.has(id)) return;
     let elements;
-    if (target.selector === ':host') {
-        elements = [host];
+    if (target.selector === ':host' || (target.selector === ':container' && host._cells)) {
+        elements = [host.frame];
     } else if (target.selector === ':container') {
         elements = [host.shadowRoot.querySelector('grid')];
+    } else if (host._cells) {
+        elements = [host._cells[cell.split('-')[1] - 1]];
     } else {
         let byId = host.shadowRoot.getElementById(cell);
         elements = byId ? [byId] : [...host.shadowRoot.querySelectorAll('.' + cell)];
     }
     let element = elements[0];
+    if (!element) return;
 
     const measure = () => {
         if (target.pseudo) {
@@ -164,7 +167,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             present = () => {
                 let url = urls.get(key) || canvasUrl(drawing.canvas, fit);
                 if (key) urls.set(key, url);
-                host.style.setProperty(id, url);
+                host.vars.setProperty(id, url);
             }
         }
 

@@ -1,6 +1,10 @@
 import { U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
 
 export function bindUniforms(host, { mousex, mousey, mouse, width, height }) {
+    if (host._uframe !== host.frame) {
+        unbindUniforms(host);
+        host._uframe = host.frame;
+    }
     if (mousex || mousey || mouse) {
         regUmouse(host, mousex, mousey, mouse);
     } else {
@@ -34,15 +38,17 @@ function regUmouse(host, mousex, mousey, mouse) {
     if (init) {
         host._umouse_fn = e => {
             let { mousex, mousey, mouse } = host._umouse_flags;
+            let box = host._cells && e.currentTarget?.getBoundingClientRect();
+            let x = box ? e.clientX - box.left : e.offsetX, y = box ? e.clientY - box.top : e.offsetY;
             if (mouse) {
-                host._umouse = { x: e.offsetX, y: e.offsetY };
+                host._umouse = { x, y };
             }
             if (mousex || mousey) {
-                host.style.setProperty(umousex, e.offsetX);
-                host.style.setProperty(umousey, e.offsetY);
+                host.vars.setProperty(umousex, x);
+                host.vars.setProperty(umousey, y);
             }
         }
-        host.addEventListener('pointermove', host._umouse_fn);
+        host._uframe.addEventListener('pointermove', host._umouse_fn);
     }
     if (init || (mouse && !host._umouse)) {
         host._umouse_fn({ offsetX: 0, offsetY: 0 });
@@ -51,9 +57,9 @@ function regUmouse(host, mousex, mousey, mouse) {
 
 function offUmouse(host) {
     if (host._umouse_fn) {
-        host.style.removeProperty(umousex);
-        host.style.removeProperty(umousey);
-        host.removeEventListener('pointermove', host._umouse_fn);
+        host.vars.removeProperty(umousex);
+        host.vars.removeProperty(umousey);
+        host._uframe.removeEventListener('pointermove', host._umouse_fn);
         host._umouse_fn = null;
         host._umouse_flags = null;
         delete host._umouse;
@@ -63,19 +69,19 @@ function offUmouse(host) {
 function regUsize(host) {
     if (!host._usize_observer) {
         host._usize_observer = new ResizeObserver(() => {
-            let box = host.getBoundingClientRect();
-            host.style.setProperty(uwidth, box.width);
-            host.style.setProperty(uheight, box.height);
+            let box = host._uframe.getBoundingClientRect();
+            host.vars.setProperty(uwidth, box.width);
+            host.vars.setProperty(uheight, box.height);
         });
-        host._usize_observer.observe(host);
+        host._usize_observer.observe(host._uframe);
     }
 }
 
 function offUsize(host) {
     if (host._usize_observer) {
-        host.style.removeProperty(uwidth);
-        host.style.removeProperty(uheight);
-        host._usize_observer.unobserve(host);
+        host.vars.removeProperty(uwidth);
+        host.vars.removeProperty(uheight);
+        host._usize_observer.disconnect();
         host._usize_observer = null;
     }
 }

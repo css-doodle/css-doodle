@@ -161,7 +161,7 @@ export function define(name, element) {
 if (typeof HTMLElement !== 'undefined') {
     CSSDoodle = class extends HTMLElement {
         static observedAttributes = [
-            'grid', 'seed', 'use', 'experimental',
+            'grid', 'seed', 'use', 'cells', 'experimental',
             'click-to-update', 'click:update',
             'auto:update', 'ignore-reduced-motion',
         ];
@@ -233,7 +233,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         connectedCallback() {
             live.add(this);
-            if (!this.hasAttribute('role')) {
+            if (!this.hasAttribute('role') && !this.hasAttribute('cells')) {
                 this.setAttribute('role', 'img');
             }
             this.watchViewport();
@@ -278,8 +278,9 @@ if (typeof HTMLElement !== 'undefined') {
             live.delete(this);
             this.cleanup();
             for (let id in { ...this.compiled?.shaders, ...this.compiled?.patterns }) {
-                this.style.removeProperty('--' + id);
+                this.vars.removeProperty('--' + id);
             }
+            this._cells?.forEach(el => el.removeAttribute('cssd-' + this._instance));
             unbindUniforms(this);
             hoistProperties(this);
             clearInterval(this._auto_update_timer);
@@ -373,7 +374,27 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         getGrid() {
-            return parseGrid(this.getAttribute('grid'), this.getMaxGrid());
+            return this._cells ? { cells: Math.max(this._cells.length, 1) } : parseGrid(this.getAttribute('grid'), this.getMaxGrid());
+        }
+
+        get frame() {
+            return this._cells?.[0]?.parentElement || this;
+        }
+
+        cellRules() {
+            let m = `[cssd-${this._instance}]`;
+            if (!this._vars) (this._vars = document.createElement('style')).textContent = `:has(>${m}){}:is(${m},:has(>${m})),${m}::before,${m}::after{}`;
+            if (this._vars.parentNode !== this) this.appendChild(this._vars);
+            return this._vars.sheet;
+        }
+
+        get vars() {
+            return this._cells && this.isConnected ? this.cellRules().cssRules[0].style : this.style;
+        }
+
+        pauseCells() {
+            if (!this._cells || !this.isConnected) return;
+            this.cellRules().cssRules[1].style.setProperty('animation-play-state', this.hasAttribute('cssd-paused') ? 'paused' : '', 'important');
         }
 
         getUse() {
@@ -512,19 +533,57 @@ if (typeof HTMLElement !== 'undefined') {
                 return;
             }
             if (tries > 1) this._warned?.clear();
+            let select = this.getAttribute('cells'), root = select && this.getRootNode(), mark = 'cssd-' + this._instance;
+            let query = () => [...root.querySelectorAll(select)].filter(el => !this.contains(el));
+            let cells = select ? guard(query, warn) || [] : null;
+            this._cells?.forEach(el => el.removeAttribute(mark));
+            cells?.forEach((el, i) => el.setAttribute(mark, i + 1));
+            this._cells = cells;
+            if (cells) {
+                let pending, observer = new MutationObserver(records => {
+                    if (pending || records.every(r => this.contains(r.target))) return;
+                    pending = requestAnimationFrame(() => {
+                        pending = 0;
+                        if (this.observers.get('cells') !== observer) return;
+                        let now = guard(query, warn) || [];
+                        if (now.length !== cells.length || now.some((el, i) => el !== cells[i])) {
+                            this.render(this._code, this.compiled?.seed);
+                        }
+                    });
+                });
+                observer.observe(root, { childList: true, subtree: true });
+                this.observers.set('cells', observer);
+                let click = e => {
+                    let el = e.composedPath().find(el => el.hasAttribute?.(mark));
+                    if (!el || this._dragged) return;
+                    let { x, y } = this.gridSize.at[el.getAttribute(mark) - 1];
+                    this.triggerEvent('click:cell', { x, y, z: 1, element: el, originalEvent: e });
+                    if (this.hasAttribute('click-to-update') || this.hasAttribute('click:update')) this.update();
+                };
+                root.addEventListener('click', click);
+                this.observers.set('click', { disconnect: () => root.removeEventListener('click', click) });
+            } else {
+                this._sheet?.remove();
+                this._vars?.remove();
+            }
             let old = this.compiled;
             let waits = this._waits = new Set();
             let compiled = guard(() => this.generate(source, parsed, seed), warn);
             if (!compiled) return;
             for (let id in { ...old?.shaders, ...old?.patterns }) {
                 if (!compiled.shaders[id] && !compiled.patterns[id]) {
-                    this.style.removeProperty('--' + id);
+                    this.vars.removeProperty('--' + id);
                 }
             }
             let grid = compiled.grid || this.getGrid();
             let rebuild = this.shouldRebuild(compiled, old, grid);
             this.gridSize = grid;
-            if (rebuild) {
+            if (cells) {
+                this.shadowRoot.replaceChildren();
+                if (Object.keys(compiled.content).length) warn('@content unsupported');
+                this.mount(compiled);
+                this.pauseCells();
+            } else if (rebuild) {
                 this.buildGrid(compiled, grid);
             } else {
                 this.patch(compiled);
@@ -600,11 +659,13 @@ if (typeof HTMLElement !== 'undefined') {
 
         // the main sheet with its nested doodle and paint images resolved
         applyStyles(compiled) {
-            let replace = createReplacer(this, compiled);
-            this.setStyle(replace(
-                compiled.styles.top +
-                getBasicStyles(this.gridSize) +
-                compiled.styles.all
+            let replace = createReplacer(this, compiled), { top, all } = compiled.styles;
+            let mark = `cssd-${this._instance}`, parent = `:is(:has(>[${mark}]),#_)`;
+            this.setStyle(replace(this._cells
+                // cells to the marked elements, :host and grid to their parents
+                ? (top + all).replace(/#c-(\d+)-1-1\b|:is\(cell,#_\)|:host\(((?:[^()]|\([^()]*\))*)\)|:host,\.host|(?<=^|[{}\s])grid(?=\s*[{:.,[])/g,
+                    (s, i, host = '') => i ? `:is([${mark}="${i}"],#_)` : s[1] === 'i' ? `:is([${mark}],#_)` : parent + host)
+                : top + getBasicStyles(this.gridSize) + all
             ).then(sheet => {
                 // the clock runs from the moment the sheet and its images land
                 if (!this._clock.since && !this.hasAttribute('cssd-paused')) {
@@ -681,7 +742,9 @@ if (typeof HTMLElement !== 'undefined') {
             let generation = this._generation;
             this._styleReady = input.then(sheet => {
                 if (this._generation === generation) {
-                    this.shadowRoot.querySelector('style').textContent = sheet.replace(/\n\s+/g, ' ');
+                    let style = this._cells ? (this._sheet ??= document.createElement('style')) : this.shadowRoot.querySelector('style');
+                    if (this._cells && style.parentNode !== this) this.appendChild(style);
+                    style.textContent = sheet.replace(/\n\s+/g, ' ');
                     this._landed = true;
                     syncUTime(this);
                     if (!isNil(this._seek)) {
@@ -717,6 +780,7 @@ if (typeof HTMLElement !== 'undefined') {
             if (this.hasAttribute('cssd-paused')) return;
             this._clock = { base: this.clockNow(), since: 0 };
             this.setAttribute('cssd-paused', true);
+            this.pauseCells();
             for (let am of this.animations) {
                 am.pause();
             }
@@ -731,6 +795,7 @@ if (typeof HTMLElement !== 'undefined') {
             this._manual_motion ||= !auto;
             if (!this.hasAttribute('cssd-paused')) return;
             this.removeAttribute('cssd-paused');
+            this.pauseCells();
             this._clock.since = performance.now();
             syncUTime(this);
             if (!this._offscreen) {

@@ -502,4 +502,61 @@ describe('component', { concurrency: 4 }, () => {
             assert.ok(painted(image) >= painted(live) * .99);
         }));
     });
+    test('cells: the elements it selects are its cells, and follow the list', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML = '<ul>' + '<li>x</li>'.repeat(4) + '</ul>');
+        let el = await mount(page, `
+            @grid: 5;
+            :doodle { --c: @p(#f00) }
+            rotate: @r(-9deg, 9deg);
+            @nth(2) { color: var(--c) }
+            ::after { content: "@i/@I" }
+        `, { seed: 1, cells: 'li' });
+        let read = () => page.evaluate(() => [...document.querySelectorAll('li')].map(li => [
+            getComputedStyle(li).rotate, getComputedStyle(li).color, getComputedStyle(li, '::after').content,
+        ]));
+        let first = await read();
+        assert.equal(new Set(first.map(([rotate]) => rotate)).size, 4);
+        assert.equal(first[1][1], 'rgb(255, 0, 0)');
+        assert.deepEqual(first.map(([, , after]) => after), ['"1/4"', '"2/4"', '"3/4"', '"4/4"']);
+        assert.equal(await el.evaluate(el => el.getAttribute('role')), null);
+        assert.equal(await page.evaluate(() => getComputedStyle(document.body).boxSizing), 'content-box');
+
+        // a longer list draws again with the same seed
+        await page.evaluate(() => document.querySelector('ul').append(document.createElement('li')));
+        await page.waitForFunction(() => getComputedStyle(document.querySelector('li:last-child'), '::after').content == '"5/5"');
+        let second = await read();
+        assert.deepEqual(second.slice(0, 4).map(([rotate]) => rotate), first.map(([rotate]) => rotate));
+
+        // without the attribute it is a doodle of its own again
+        await next(el, 'update');
+        await el.evaluate(el => el.removeAttribute('cells'));
+        await arrived(el);
+        assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('li')].map(li => getComputedStyle(li).rotate)), Array(5).fill('none'));
+        assert.equal(await el.evaluate(el => [el.shadowRoot.querySelectorAll('cell').length, el.children.length].join()), '25,0');
+    }));
+
+    test('cells: @grid gives the columns, :doodle is their parent, and images, clicks and pause reach them', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML =
+            '<div id="p" style="display:grid;grid-template-columns:repeat(3,40px)">' + '<i style="height:40px"></i>'.repeat(6) + '</div>');
+        let el = await mount(page, `
+            @grid: 3;
+            :doodle { --c: #0c0; outline: 2px solid }
+            @row(1) { background: var(--c) }
+            @row(2) { background: @pattern(fill: #00f) }
+            animation: k 1s infinite; @keyframes k { to { opacity: .5 } }
+        `, { seed: 1, cells: 'i' });
+        await page.waitForFunction(() => getComputedStyle(document.querySelectorAll('i')[4]).backgroundImage.startsWith('url("data:image/png'));
+        assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('p')).outlineStyle), 'solid');
+        assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('i')].map(i => getComputedStyle(i).backgroundColor).slice(0, 3)), Array(3).fill('rgb(0, 204, 0)'));
+        assert.match(await page.evaluate(() => getComputedStyle(document.querySelector('i')).animationName), /^k-\w+$/);
+
+        await el.evaluate(el => el.pause());
+        assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('i')).animationPlayState), 'paused');
+        await el.evaluate(el => el.resume());
+        assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('i')).animationPlayState), 'running');
+
+        await el.evaluate(el => el.addEventListener('click:cell', e => el.clicked = [e.detail.x, e.detail.y]));
+        await page.click('i:nth-child(5)');
+        assert.deepEqual(await el.evaluate(el => el.clicked), [2, 2]);
+    }));
 });

@@ -429,6 +429,7 @@ class Rules {
         this.fonts = new Set();
         this.props = {};
         this.keyframes = new Map();
+        this.suffix = '';
         this.grid = null;
         this.seed = null;
         this.cellPrefix = '#';
@@ -674,9 +675,10 @@ class Rules {
             if (prop === 'animation' || prop === 'animation-name') {
                 value = composed.group.map(n => n.split(/\s+/).map(name => {
                     let keyframes = this.keyframes.get(name);
-                    if (!keyframes || keyframes.static || uid <= 1) return name;
+                    if (!keyframes) return name;
+                    if (keyframes.static || uid <= 1) return name + this.suffix;
                     keyframes.used.add(uid);
-                    return `${name}-${uid}`;
+                    return `${name}-${uid}${this.suffix}`;
                 }).join(' ')).join(',');
             }
             if (isHostSelector(selector)) {
@@ -1110,8 +1112,8 @@ class Rules {
             let cells = frames.static ? this.cells.slice(0, 1) : this.cells;
             for (let cell of cells) {
                 let body = frames.compose(cell, env);
-                if (cell.uid <= 1) keyframes += `@keyframes ${name} {${body}}`;
-                else if (frames.used.has(cell.uid)) keyframes += `@keyframes ${name}-${cell.uid} {${body}}`;
+                if (cell.uid <= 1) keyframes += `@keyframes ${name}${this.suffix} {${body}}`;
+                else if (frames.used.has(cell.uid)) keyframes += `@keyframes ${name}-${cell.uid}${this.suffix} {${body}}`;
             }
         }
 
@@ -1177,12 +1179,22 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
             rand, pick, shuffle, random: R.random, updateRandom,
             seed, maxGrid,
         });
+        let { cells } = gridSize, at;
         let cellAt = (x, y, z, count, uid, grid) => ({ x, y, z, count, uid, grid, id: cellId(x, y, z) });
 
         let pre = new Rules(tokens, instance);
         pre.preCompose(cellAt(1, 1, 1, 1, 1, { x: 1, y: 1, z: 1, count: 1 }), envAt(pre));
 
-        gridSize = pre.grid || gridSize;
+        if (cells) {
+            let cols = pre.grid ? Math.min(pre.grid.x, cells) : cells;
+            at = [];
+            for (let k = 0; k < cells; k++) {
+                at.push({ x: k % cols + 1, y: (k / cols | 0) + 1 });
+            }
+            gridSize = { x: cols, y: Math.ceil(cells / cols), z: 1, count: cells, cells, at };
+        } else {
+            gridSize = pre.grid || gridSize;
+        }
         let seed = pre.seed || seedValue;
         if (isNil(seed)) seed = Date.now();
         seed = String(seed);
@@ -1197,12 +1209,16 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
         rules.seed = seed;
         rules.random = R.random;
         rules.cellPrefix = tree ? '.' : '#';
+        if (cells) rules.suffix = '-' + instance;
 
         let env = envAt(rules, seed);
         let cellGrid = tree ? { ...gridSize, count: gridSize.x * gridSize.y } : gridSize;
         let uid = 0;
         let count = 0;
-        for (let z = 1; z <= gridSize.z; ++z) {
+        if (cells) for (let { x, y } of at) {
+            rules.compose({ ...cellAt(x, y, 1, ++count, ++uid, cellGrid), id: cellId(count, 1, 1) }, env);
+        }
+        else for (let z = 1; z <= gridSize.z; ++z) {
             if (tree) {
                 count = 0;
                 env.level = z;
@@ -1214,7 +1230,7 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
             }
         }
         let output = rules.output(env);
-        if (tree && output.grid) output.grid = gridSize;
+        if (cells || (tree && output.grid)) output.grid = gridSize;
         return output;
     } finally {
         useRandom(restore);
