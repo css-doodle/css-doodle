@@ -207,20 +207,19 @@ function layout(els, frame) {
         let [x, y] = offset(el);
         return { x: x - fx, y: y - fy, w: el.offsetWidth, h: el.offsetHeight };
     });
-    let lines = (p, s) => {
-        let out = [], n = 0, first;
-        for (let k of boxes.map((_, k) => k).sort((a, b) => boxes[a][p] - boxes[b][p])) {
-            let b = boxes[k];
-            if (!first || Math.min(b[p] + b[s], first[p] + first[s]) - Math.max(b[p], first[p]) < Math.min(b[s], first[s]) / 2) {
-                first = b;
-                n++;
-            }
-            out[k] = n;
+    let order = boxes.map((_, k) => k), rows = [], cols = [], count = [], n = 0, first;
+    for (let k of order.sort((a, b) => boxes[a].y - boxes[b].y)) {
+        let b = boxes[k];
+        if (!first || Math.min(b.y + b.h, first.y + first.h) - Math.max(b.y, first.y) < Math.min(b.h, first.h) / 2) {
+            first = b;
+            n++;
         }
-        return out;
-    };
-    let xs = lines('x', 'w'), ys = lines('y', 'h');
-    return boxes.map(({ x, y, w, h }, k) => ({ x: xs[k], y: ys[k], center: [x + w / 2, y + h / 2] }));
+        rows[k] = n;
+    }
+    for (let k of order.sort((a, b) => boxes[a].x - boxes[b].x)) {
+        cols[k] = count[rows[k]] = (count[rows[k]] || 0) + 1;
+    }
+    return boxes.map(({ x, y, w, h }, k) => ({ x: cols[k], y: rows[k], center: [x + w / 2, y + h / 2] }));
 }
 
 let CSSDoodle = class {};

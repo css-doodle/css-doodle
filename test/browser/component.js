@@ -610,6 +610,13 @@ describe('component', { concurrency: 4 }, () => {
         await page.waitForFunction(() => getComputedStyle(document.querySelectorAll('i')[2]).getPropertyValue('--at') === '3 1 3 3');
     }));
 
+    test('cells: @x is the place in the row, so short words under a wide one still count from the left', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML = '<p style="font:16px/2 monospace;width:12ch;margin:0">Typography is a big deal</p>');
+        await mount(page, '--at: @x @y', { seed: 1, cells: 'p::words' });
+        let at = await page.evaluate(() => [...document.querySelectorAll('[cssd-split=word]')].map(w => w.textContent + ' ' + getComputedStyle(w).getPropertyValue('--at')));
+        assert.deepEqual(at, ['Typography 1 1', 'is 1 2', 'a 2 2', 'big 3 2', 'deal 1 3']);
+    }));
+
     test('cells: rows come from the layout the doodle\'s own styles make, and a layout that keeps moving is let be', () => chrome.withPage(async page => {
         await page.evaluate(() => document.body.innerHTML = '<style>i, b { width: 50px; height: 20px }</style>' +
             '<div id="a" style="display:flex;flex-wrap:wrap;width:180px">' + '<i></i>'.repeat(4) + '</div>' +
