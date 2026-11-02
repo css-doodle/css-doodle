@@ -268,7 +268,7 @@ function compileArgument(argument, parent) {
                 } else {
                     holes.push((parent && parent.name === '@var')
                         ? () => v.name
-                        : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable, frame.property !== undefined));
+                        : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable, frame.byRef));
                 }
             }
             if (values.length === 1) {
@@ -504,19 +504,29 @@ class Rules {
     }
 
     isRef(name, value) {
-        return this.declared.get(name) === 1 && isLiveCall(value);
+        return this.declared.get(name) === 1 && isLiveCall(value)
+            && !(name in this.vars.container && /var\((?!--cssd-u(time|mousex|mousey|width|height)\))/i.test(value));
+    }
+
+    expand(value, group, depth = 8) {
+        return depth && typeof value == 'string' && value.includes('var(--')
+            ? value.replace(/var\((--[\w-]+)\)/g, (m, name) => this.isRef(name, group[name]) ? this.expand(group[name], group, depth - 1) : m)
+            : value;
     }
 
     calcContext(cell, contextVariable, extra, css) {
         let group = this.scopedVars(cell.uid);
         let context = extra ? cellContext(cell, extra) : Object.create(defaultContext);
-        for (let name in group) context[name.slice(2)] = css && this.isRef(name, group[name]) ? `var(${name})` : group[name];
+        for (let name in group) {
+            let value = group[name];
+            context[name.slice(2)] = !css ? this.expand(value, group) : this.isRef(name, value) ? `var(${name})` : value;
+        }
         for (let name in contextVariable) context[name.slice(2)] = contextVariable[name];
         return context;
     }
 
     frameContext(frame) {
-        return frame.calcContext ??= this.calcContext(frame.cell, frame.contextVariable, frame.env.extra, frame.property !== undefined);
+        return frame.calcContext ??= this.calcContext(frame.cell, frame.contextVariable, frame.env.extra, frame.byRef);
     }
 
     callFunc(fn, frame, position, input, fname, unit) {
@@ -549,8 +559,9 @@ class Rules {
     readVar(name, count, contextVariable, css) {
         let value = contextVariable && contextVariable[name];
         if (value === undefined) {
-            value = this.scopedVars(count)[name];
-            if (css && this.isRef(name, value)) return `var(${name})`;
+            let group = this.scopedVars(count);
+            if (css && this.isRef(name, group[name])) return `var(${name})`;
+            value = css ? group[name] : this.expand(group[name], group);
         }
         if (value === undefined) return name;
         return removeParens(String(value).trim()).replace(/;+$/g, '');
@@ -640,7 +651,8 @@ class Rules {
     getComposedValue(value, cell, env, context, selector, property) {
         let extra, origin;
         let group = [];
-        let frame = { cell, env, contextVariable: context || {}, selector, property };
+        let byRef = property !== undefined && property !== 'content' && !isSpecialSelector(selector);
+        let frame = { cell, env, contextVariable: context || {}, selector, property, byRef };
         for (let v of value) {
             let composed = compileValue(v)(frame);
             if (composed.value) group.push(composed.value);
@@ -655,7 +667,6 @@ class Rules {
     composeRule(token, cell, env, selector) {
         let info = this.ruleMemo.get(token);
         if (!info) {
-            // static rules compose once per selector
             info = {
                 flags: ruleFlags(token.property),
                 cache: isStaticRule(token) ? new Map() : null,

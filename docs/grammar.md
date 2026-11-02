@@ -405,9 +405,11 @@ name       = letter or '_', then letters, digits or '_'
   `radians`, `degrees` and `pick(k: …)` are written out in those. A
   `calc()` reads as a group, so results compose. A variable declared
   once on the cell, `:doodle` or `:container`, whose value is one live
-  call, is read in a property as `var()`: `--a: $(@t / 1000);
-  rotate: $rad(a * 2)` is `rotate: calc((var(--a) * 2) * 1rad)`, the
-  same rule in every cell. Shifts, bitwise
+  call (with no `var()` but uniforms on `:doodle` and `:container`), is
+  read in a cell's property other than `content` as `var()`:
+  `--a: $(@t / 1000); rotate: $rad(a * 2)` is
+  `rotate: calc((var(--a) * 2) * 1rad)`, the same rule in every cell.
+  Shifts, bitwise
   operators, `gcd` and other functions read as `0`, and a live value
   where a number is required is dropped: `@r(@t)` is `@r()`,
   `@nth(@t)` matches nothing.

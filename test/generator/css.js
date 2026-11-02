@@ -421,6 +421,14 @@ test('a live variable declared once on the cell, host or container is read as va
     assertContains('@media (min-width: 1px) { --m: $(@t); } left: $px(m);', 'left:calc((var(--cssd-utime)) * 1px);');
     // a value that is not one call would group differently through var()
     assertContains('--d: @t / 2; width: $(1 / d);', 'width:calc(1 / (var(--cssd-utime) / 2));');
+    // :doodle and :container can't see a cell's variable, content counts the value itself,
+    // and another var() would resolve on the declaring element instead of the cell
+    assertContains('--a: @t; :doodle { --b: $a; } :container { --c: $a; }', ':host,.host {--b:var(--cssd-utime);}', 'grid {--c:var(--cssd-utime);}');
+    assertContains('--a: @t; content: $a;', 'content:counter(time);');
+    assertContains(':doodle { --a: calc(var(--color) * @t); } --color: 2; width: $px(a);', 'width:calc((var(--color) * var(--cssd-utime)) * 1px);');
+    assertContains(':doodle { --a: calc(var(--cssd-user) * @t); } width: $px(a);', 'width:calc((var(--cssd-user) * var(--cssd-utime)) * 1px);');
+    // nor through a variable that reads one
+    assertContains('--a: @t; --b: $a; content: $b; :container { width: $px(b); }', 'content:counter(time);', 'grid {width:calc((var(--cssd-utime)) * 1px);}');
 });
 
 // --- functions, properties and diagnostics ---
