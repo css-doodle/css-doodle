@@ -244,69 +244,7 @@ function createShapePoints(props, lo, hi, raw) {
     let many = Math.trunc(num('scatter'));
     let staticAngle = many >= 1 && !dir ? 0
         : direction.direction ? null : 90 + direction.angle;
-    let aspect = many >= 1 ? num('aspect', 1) : 1;
-    aspect = aspect > 0 && aspect < Infinity ? clamp(aspect, 1e-3, 1e3) : 1;
-    let sx = max(aspect, 1), sy = max(1 / aspect, 1);
-
-    let points = [];
-    let px = [], py = [];
-
-    let toScreen = p => {
-        let [x, y] = view(p);
-        return percent ? [(x + 1) * 50 * sx, (1 - y) * 50 * sy] : [x * sx, -y * sy];
-    };
-    let box = percent ? [0, 0, 100 * sx, 100 * sy] : [-sx, -sy, sx, sy];
-    let number = many >= 1 && percent ? v => tidyNumber(round(v * 1e3) / 1e3) : tidyNumber;
-    let fmt = (x, y) => number(x / sx) + suffix + ' ' + number(y / sy) + suffix;
-
-    let add = ([x, y], origin = [0, 0]) => {
-        let angle = staticAngle;
-        if (angle === null) {
-            angle = atan2((origin[1] - y) * fy, (x - origin[0]) * fx) * 180 / PI;
-            if (direction.direction === 'reverse') angle -= 180;
-            angle = tidyNumber(angle + direction.angle);
-        }
-        [x, y] = toScreen([x, y]);
-        points.push(new Point(fmt(x, y), angle));
-        px.push(x);
-        py.push(y);
-    };
-
-    let curved = path => suffix && path && path.some(e => e[2] !== undefined);
-    let toPath = (paths, map = p => p, rule) => {
-        let out = [];
-        for (let path of paths) {
-            let last, start = out.length, head = start ? 'move to ' : 'from ';
-            for (let [x, y, bx, by] of path) {
-                let at = fmt(...map([x, y]));
-                if (bx !== undefined) out.push(`curve to ${at} with ${fmt(...map([bx, by]))}`);
-                else if (at != last) out.push((out.length > start ? 'line to ' : head) + at);
-                last = at;
-            }
-            out.push('close');
-        }
-        return `shape(${rule ? rule + ' ' : ''}${out.join(',')})`;
-    };
     let radius = max(0, num('round'));
-    let tile = ([poly, [x, y], kind = 1, extra]) => {
-        let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
-        let at = fmt(x, y), inner = min(...rings.map(ring => room(ring.flat(), x, y)));
-        inner = inner < Infinity ? number(inner) + suffix : '';
-        if (radius) {
-            let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
-            let paths = rings.map(ring => corners(ring, null, r));
-            if (paths.some(curved)) return new Point(toPath(paths, undefined, rule), extra, at, kind, inner);
-            rings = paths.map(path => toPairs(flatten(path, tol)));
-        }
-        let vs = [];
-        for (let [x, y] of bridge(rings)) {
-            let v = fmt(x, y);
-            if (v !== vs.at(-1)) vs.push(v);
-        }
-        if (vs.length > 1 && vs[0] === vs.at(-1)) vs.pop();
-        return new Point(`polygon(${rule && rule + ', '}${vs.join(', ') || '0 0'})`, extra, at, kind, inner);
-    };
-
     let trace = ({ split }, c) => {
         let step = PI * 2 * turn / split;
         return Array.from({ length: split }, (_, i) => fns[c](step * i, i));
@@ -373,10 +311,89 @@ function createShapePoints(props, lo, hi, raw) {
         return Object.assign(run(rings).rings.map(ring => ring.map(view)), { evenodd });
     }
 
-    if (many >= 1) {
-        rings = run(rings, 0).rings;
+    let { rings: drawn, paths, os } = run(rings, many >= 1 ? 0 : radius);
+    let aspect = many >= 1 ? num('aspect', 1) : 1;
+    aspect = aspect > 0 && aspect < Infinity ? clamp(aspect, 1e-3, 1e3) : 1;
+    let sx = max(aspect, 1), sy = max(1 / aspect, 1);
+
+    let points = [];
+    let px = [], py = [];
+
+    let toScreen = p => {
+        let [x, y] = view(p);
+        return percent ? [(x + 1) * 50 * sx, (1 - y) * 50 * sy] : [x * sx, -y * sy];
+    };
+    let box = percent ? [0, 0, 100 * sx, 100 * sy] : [-sx, -sy, sx, sy];
+    let number = many >= 1 && percent ? v => tidyNumber(round(v * 1e3) / 1e3) : tidyNumber;
+    let fmt = (x, y) => number(x / sx) + suffix + ' ' + number(y / sy) + suffix;
+
+    let add = ([x, y], origin = [0, 0]) => {
+        let angle = staticAngle;
+        if (angle === null) {
+            angle = atan2((origin[1] - y) * fy, (x - origin[0]) * fx) * 180 / PI;
+            if (direction.direction === 'reverse') angle -= 180;
+            angle = tidyNumber(angle + direction.angle);
+        }
+        [x, y] = toScreen([x, y]);
+        points.push(new Point(fmt(x, y), angle));
+        px.push(x);
+        py.push(y);
+    };
+
+    let curved = path => suffix && path && path.some(e => e[2] !== undefined);
+    let toPath = (paths, map = p => p, rule) => {
+        let out = [];
+        for (let path of paths) {
+            let last, start = out.length, head = start ? 'move to ' : 'from ';
+            for (let [x, y, bx, by] of path) {
+                let at = fmt(...map([x, y]));
+                if (bx !== undefined) out.push(`curve to ${at} with ${fmt(...map([bx, by]))}`);
+                else if (at != last) out.push((out.length > start ? 'line to ' : head) + at);
+                last = at;
+            }
+            out.push('close');
+        }
+        return `shape(${rule ? rule + ' ' : ''}${out.join(',')})`;
+    };
+    if (many >= 1) return tilePoints();
+
+    let rule = (fill == 'nonzero' || fill == 'evenodd') && fill;
+    if (rule) points.push(new Point(rule, ''));
+
+    rings = drawn.map((ring, c) => {
+        let at = points.length;
+        for (let p of ring) add(p, os[c]);
+        return points.slice(at);
+    });
+
+    points.rings = rings;
+    points.clip = !changed && paths.some(curved)
+        ? toPath(paths, toScreen, rule)
+        : `polygon(${rule ? rule + ',' : ''}${bridge(rings).join(',')})`;
+    return points;
+
+    function tilePoints() {
         let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
-        let outline = bridge(rings), screen = outline.map(toScreen), shown = rings.map(ring => ring.map(toScreen)), inside = insideTest([screen], evenodd);
+        let tile = ([poly, [x, y], kind = 1, extra]) => {
+            let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
+            let at = fmt(x, y), inner = min(...rings.map(ring => room(ring.flat(), x, y)));
+            inner = inner < Infinity ? number(inner) + suffix : '';
+            if (radius) {
+                let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
+                let paths = rings.map(ring => corners(ring, null, r));
+                if (paths.some(curved)) return new Point(toPath(paths, undefined, rule), extra, at, kind, inner);
+                rings = paths.map(path => toPairs(flatten(path, tol)));
+            }
+            let vs = [];
+            for (let [x, y] of bridge(rings)) {
+                let v = fmt(x, y);
+                if (v !== vs.at(-1)) vs.push(v);
+            }
+            if (vs.length > 1 && vs[0] === vs.at(-1)) vs.pop();
+            return new Point(`polygon(${rule && rule + ', '}${vs.join(', ') || '0 0'})`, extra, at, kind, inner);
+        };
+
+        let outline = bridge(drawn), screen = outline.map(toScreen), shown = drawn.map(ring => ring.map(toScreen)), inside = insideTest([screen], evenodd);
         let name = props.tile, count = many, seed = num('seed');
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0, props);
@@ -467,22 +484,6 @@ function createShapePoints(props, lo, hi, raw) {
         }
         return points;
     }
-
-    let rule = (fill == 'nonzero' || fill == 'evenodd') && fill;
-    if (rule) points.push(new Point(rule, ''));
-
-    let { rings: out, paths, os } = run(rings);
-    rings = out.map((ring, c) => {
-        let at = points.length;
-        for (let p of ring) add(p, os[c]);
-        return points.slice(at);
-    });
-
-    points.rings = rings;
-    points.clip = !changed && paths.some(curved)
-        ? toPath(paths, toScreen, rule)
-        : `polygon(${rule ? rule + ',' : ''}${bridge(rings).join(',')})`;
-    return points;
 }
 
 function unwrap(input) {
