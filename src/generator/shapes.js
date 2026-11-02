@@ -359,7 +359,6 @@ function createShapePoints(props, lo, hi, raw) {
     let turn = num('turn', 1);
     let fill = props['fill-rule'] ?? props.fill;
     let evenodd = fill == 'evenodd';
-    let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
     let steps = (props.steps || []).filter(([k]) => props[k] !== undefined);
@@ -377,20 +376,22 @@ function createShapePoints(props, lo, hi, raw) {
     let many = Math.trunc(num('scatter'));
     let staticAngle = many >= 1 && !dir ? 0
         : direction.direction ? null : 90 + direction.angle;
+    let aspect = many >= 1 ? num('aspect', 1) : 1;
+    aspect = aspect > 0 && aspect < Infinity ? clamp(aspect, 1e-3, 1e3) : 1;
+    let sx = max(aspect, 1), sy = max(1 / aspect, 1);
 
     let points = [];
     let px = [], py = [];
 
     let toScreen = p => {
         let [x, y] = view(p);
-        return percent ? [(x + 1) * 50, (1 - y) * 50] : [x, -y];
+        return percent ? [(x + 1) * 50 * sx, (1 - y) * 50 * sy] : [x * sx, -y * sy];
     };
-    let origin = [0, 0];
-    let box = percent ? [0, 0, 100, 100] : [-1, -1, 1, 1];
-    let number = tidyNumber;
-    let fmt = (x, y) => number(x) + suffix + ' ' + number(y) + suffix;
+    let box = percent ? [0, 0, 100 * sx, 100 * sy] : [-sx, -sy, sx, sy];
+    let number = many >= 1 && percent ? v => tidyNumber(round(v * 1e3) / 1e3) : tidyNumber;
+    let fmt = (x, y) => number(x / sx) + suffix + ' ' + number(y / sy) + suffix;
 
-    let add = ([x, y]) => {
+    let add = ([x, y], origin = [0, 0]) => {
         let angle = staticAngle;
         if (angle === null) {
             angle = atan2((origin[1] - y) * fy, (x - origin[0]) * fx) * 180 / PI;
@@ -506,14 +507,7 @@ function createShapePoints(props, lo, hi, raw) {
 
     if (many >= 1) {
         rings = run(rings, 0).rings;
-        if (percent) number = v => tidyNumber(round(v * 1e3) / 1e3);
-        let a = num('aspect', 1), aspect = a > 0 && a < Infinity ? clamp(a, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
-        if (aspect != 1) {
-            let screenOf = toScreen, format = fmt;
-            toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };
-            fmt = (x, y) => format(x / sx, y / sy);
-            box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
-        }
+        let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
         let outline = bridge(rings), screen = outline.map(toScreen), shown = rings.map(ring => ring.map(toScreen)), inside = insideTest([screen], evenodd);
         let name = props.tile, count = many, seed = num('seed');
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
@@ -524,8 +518,8 @@ function createShapePoints(props, lo, hi, raw) {
             for (let [k, a, b] of place.toReversed()) k == 'move' ? (u -= a, v -= b) : (u /= a, v /= b);
             return [u, v];
         };
-        let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
-        let make = sides ? (box, bounds, s, half) => lattice(sides, box, bounds, s, shift, turn, half) : name == 'penrose' && penrose;
+        let pair = props.pair == 'turn' && (sides == 4 || name == 'hex');
+        let make = sides ? (box, bounds, s, half) => lattice(sides, box, bounds, s, shift, pair, half) : name == 'penrose' && penrose;
         let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3), cube = name == 'cube' && !derive;
         if (make) {
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && !derive && !cube && edges(props, sides == 3, seed);
@@ -591,11 +585,11 @@ function createShapePoints(props, lo, hi, raw) {
         }
         if (name == 'delaunay') {
             let rim = border(shown, count);
-            sow(count - rim.length).forEach(add);
+            for (let p of sow(count - rim.length)) add(p);
             for (let [x, y] of rim) px.push(x), py.push(y);
             return delaunay(px, py, box, inside, props.count, gap).map(tile);
         }
-        sow(count).forEach(add);
+        for (let p of sow(count)) add(p);
         if (name == 'voronoi') {
             let cells = voronoi(px, py, ...box, max(0, gap)), kinds = colors(cells);
             let bound = props.bound == 'shape' && offset(shown, -gap / 2, evenodd), within = bound && insideTest(bound);
@@ -612,8 +606,7 @@ function createShapePoints(props, lo, hi, raw) {
     let { rings: out, paths, os } = run(rings);
     rings = out.map((ring, c) => {
         let at = points.length;
-        origin = os[c];
-        ring.forEach(add);
+        for (let p of ring) add(p, os[c]);
         return points.slice(at);
     });
 
