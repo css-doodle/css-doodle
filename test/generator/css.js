@@ -390,14 +390,14 @@ test('function results that are not plain strings reach calc functions safely', 
 
 test('math around time and pointer uniforms lowers to CSS', () => {
     // a lone read stays a var(); math on it used to collapse to 0
-    assertContains('--t: @t; --a: $t;', '--t:var(--cssd-utime);', '--a:var(--cssd-utime);');
+    assertContains('--t: @t; --a: $t;', '--t:var(--cssd-utime);', '--a:var(--t);');
     assertContains('opacity: @calc(@t / 1000);', 'opacity:calc(var(--cssd-utime) / 1000);');
     assertContains('scale: @sin(@ts);', 'scale:calc(sin((var(--cssd-utime) / 1000)));');
     assertContains('--z: @max(@t, 3);', '--z:calc(max(var(--cssd-utime),3));');
     assertContains('--d: @calc(@ux - @uw / 2);', '--d:calc(var(--cssd-umousex) - (var(--cssd-uwidth) / 2));');
     assertContains('--on: $(@t > 5);', '--on:calc(max(0,sign(var(--cssd-utime) - 5)));');
-    // through a variable
-    assertContains('--t: @t; width: $(t / 50)px;', 'width:calc((var(--cssd-utime) / 50) * 1px);');
+    // through a variable, read back as var()
+    assertContains('--t: @t; width: $(t / 50)px;', 'width:calc((var(--t) / 50) * 1px);');
     // a unit after the lowered math multiplies in, glued or as a $ suffix
     assertContains('rotate: $(@t / 10)deg;', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
     assertContains('rotate: @calc(@t / 10)deg;', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
@@ -409,6 +409,18 @@ test('math around time and pointer uniforms lowers to CSS', () => {
     assertContains('--y: $(@i * 2 + 1)px; --x: @sin(1);', '--y:3px;', '--x:0.841470984808;');
     // a stored var() or calc() reads as a live value too
     assertContains('--s: calc(100px + 10em); width: $(s * 2);', 'width:calc((100px + 10em) * 2);');
+});
+
+test('a live variable declared once on the cell, host or container is read as var()', () => {
+    assertContains(':doodle { --h: $(@t / 1000); } :container { --c: @t; } --a: $(@t); width: $px(h + c + a); opacity: $a;',
+        'width:calc(((var(--h) + var(--c)) + var(--a)) * 1px);', 'opacity:var(--a);');
+    assertContains('--a: $(@t / 3000); rotate: $rad(a * 2);', 'rotate:calc((var(--a) * 2) * 1rad);');
+    // a pseudo-element's own, a twice-declared and an @media variable keep their value pasted in
+    assertContains('::after { --b: $(@t); rotate: $rad(b); }', 'rotate:calc((var(--cssd-utime)) * 1rad);');
+    assertContains('--n: $(@t); --n: $(@t * 2); left: $px(n);', 'left:calc((var(--cssd-utime) * 2) * 1px);');
+    assertContains('@media (min-width: 1px) { --m: $(@t); } left: $px(m);', 'left:calc((var(--cssd-utime)) * 1px);');
+    // a value that is not one call would group differently through var()
+    assertContains('--d: @t / 2; width: $(1 / d);', 'width:calc(1 / (var(--cssd-utime) / 2));');
 });
 
 // --- functions, properties and diagnostics ---

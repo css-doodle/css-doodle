@@ -403,7 +403,11 @@ name       = letter or '_', then letters, digits or '_'
   `atan(y, x)` becomes `atan2()`, `round`, `floor`, `ceil` and `trunc`
   become `round()`, and `fract`, `clamp`, `mix`, `step`, `smoothstep`,
   `radians`, `degrees` and `pick(k: …)` are written out in those. A
-  `calc()` reads as a group, so results compose. Shifts, bitwise
+  `calc()` reads as a group, so results compose. A variable declared
+  once on the cell, `:doodle` or `:container`, whose value is one live
+  call, is read in a property as `var()`: `--a: $(@t / 1000);
+  rotate: $rad(a * 2)` is `rotate: calc((var(--a) * 2) * 1rad)`, the
+  same rule in every cell. Shifts, bitwise
   operators, `gcd` and other functions read as `0`, and a live value
   where a number is required is dropped: `@r(@t)` is `@r()`,
   `@nth(@t)` matches nothing.

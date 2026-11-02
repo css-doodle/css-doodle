@@ -268,7 +268,7 @@ function compileArgument(argument, parent) {
                 } else {
                     holes.push((parent && parent.name === '@var')
                         ? () => v.name
-                        : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable));
+                        : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable, frame.property !== undefined));
                 }
             }
             if (values.length === 1) {
@@ -367,6 +367,13 @@ function isStaticRule({ property, value }) {
     return value?.hasFunc === false && property !== 'background-size' && !/^(@(?!shape$)|--|animation)/.test(property);
 }
 
+function isLiveCall(value) {
+    let text = String(value).trim(), open = text.indexOf('(');
+    if (!text.includes('var(') || !/^[\w-]+$/.test(text.slice(0, open))) return false;
+    let group = text.slice(open);
+    return removeParens(group) !== group;
+}
+
 function ruleFlags(prop) {
     return {
         animation: /^animation(-[a-z]+)*$/.test(prop),
@@ -454,6 +461,7 @@ class Rules {
         this.content = {};
         this.vars = { host: Object.create(null) };
         this.vars.container = Object.create(this.vars.host);
+        this.declared = new Map();
         this.scanTokens(this.tokens);
         if (this.hasTile) {
             let size = tokens.find(token => token.type === 'rule' && token.property === '@size');
@@ -495,16 +503,20 @@ class Rules {
         return this.vars[count] || this.vars.container;
     }
 
-    calcContext(cell, contextVariable, extra) {
+    isRef(name, value) {
+        return this.declared.get(name) === 1 && isLiveCall(value);
+    }
+
+    calcContext(cell, contextVariable, extra, css) {
         let group = this.scopedVars(cell.uid);
         let context = extra ? cellContext(cell, extra) : Object.create(defaultContext);
-        for (let name in group) context[name.slice(2)] = group[name];
+        for (let name in group) context[name.slice(2)] = css && this.isRef(name, group[name]) ? `var(${name})` : group[name];
         for (let name in contextVariable) context[name.slice(2)] = contextVariable[name];
         return context;
     }
 
     frameContext(frame) {
-        return frame.calcContext ??= this.calcContext(frame.cell, frame.contextVariable, frame.env.extra);
+        return frame.calcContext ??= this.calcContext(frame.cell, frame.contextVariable, frame.env.extra, frame.property !== undefined);
     }
 
     callFunc(fn, frame, position, input, fname, unit) {
@@ -534,9 +546,12 @@ class Rules {
         return selector.replaceAll('&', this.cellPrefix + cell.id);
     }
 
-    readVar(name, count, contextVariable) {
+    readVar(name, count, contextVariable, css) {
         let value = contextVariable && contextVariable[name];
-        if (value === undefined) value = this.scopedVars(count)[name];
+        if (value === undefined) {
+            value = this.scopedVars(count)[name];
+            if (css && this.isRef(name, value)) return `var(${name})`;
+        }
         if (value === undefined) return name;
         return removeParens(String(value).trim()).replace(/;+$/g, '');
     }
@@ -851,9 +866,15 @@ class Rules {
         }
     }
 
-    scanTokens(tokens) {
+    scanTokens(tokens, own = true) {
+        let declare = (rule, own) => {
+            if (rule.property?.startsWith('--')) {
+                this.declared.set(rule.property, (this.declared.get(rule.property) || 0) + (own ? 1 : 2));
+            }
+        };
         for (let token of tokens) {
             if (token.type === 'keyframes') {
+                for (let step of token.steps) step.styles?.forEach(rule => declare(rule, false));
                 if (this.keyframes.has(token.name)) continue;
                 this.keyframes.set(token.name, {
                     static: token.steps.every(step =>
@@ -868,11 +889,14 @@ class Rules {
                     used: new Set(),
                 });
             } else if (token.type === 'rule') {
+                declare(token, own);
                 this.ruleOrder.push(token);
                 if (RE_PLACE.test(token.property)) this.hasPlace = true;
                 this.hasTile ||= token.value.some(v => usesTile(v));
-            } else if (token.type === 'cond' || token.type === 'pseudo') {
-                this.scanTokens(token.styles);
+            } else if (token.type === 'cond') {
+                this.scanTokens(token.styles, own && !!Selector[token.name.slice(1)] && !token.alts.some(a => a.pseudo));
+            } else if (token.type === 'pseudo') {
+                this.scanTokens(token.styles, own && token.selectors.every(s => s === ':host' || s === ':container'));
             }
         }
     }
