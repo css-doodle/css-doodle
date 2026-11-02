@@ -622,7 +622,9 @@ if (typeof HTMLElement !== 'undefined') {
             if (cells) {
                 this._layout = sign(this._at = layout(cells, this.frame));
                 let resize = new ResizeObserver(() => {
-                    if (sign() !== this._layout) this._moved = 0, this.render(this._code, this.compiled?.seed);
+                    if (sign() !== this._layout) this._moved = 0, requestAnimationFrame(() => {
+                        if (this.observers.get('resize') === resize) this.render(this._code, this.compiled?.seed);
+                    });
                 });
                 for (let el of new Set([this.frame, ...cells.map(el => el.parentElement)])) el && resize.observe(el);
                 this.observers.set('resize', resize);
