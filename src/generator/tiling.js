@@ -819,16 +819,6 @@ function inset(p, x, y, d, q = p) {
     return f > 0 ? scale(q, [x, y], f) : [];
 }
 
-function room(p, x, y) {
-    let r = Infinity;
-    for (let i = 0; i < p.length; i += 2) {
-        let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay;
-        let t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
-        r = min(r, hypot(x - ax - dx * t, y - ay - dy * t));
-    }
-    return r;
-}
-
 function nearest(rings) {
     let segs = [];
     for (let ring of rings) ring.forEach(([bx, by], i) => {
@@ -1038,5 +1028,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, toPairs, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
+    shake, bend, inset, shrink, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, toPairs, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
 };

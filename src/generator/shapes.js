@@ -12,7 +12,7 @@ import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, toPairs, PHI,
+    shake, bend, inset, shrink, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, toPairs, PHI,
 } from './tiling.js';
 import { glyphs, pathRings } from './trace.js';
 
@@ -376,7 +376,7 @@ function createShapePoints(props, lo, hi, raw) {
         let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
         let tile = ([poly, [x, y], kind = 1, extra]) => {
             let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
-            let at = fmt(x, y), inner = min(...rings.map(ring => room(ring.flat(), x, y)));
+            let at = fmt(x, y), inner = nearest(rings)(x, y);
             inner = inner < Infinity ? number(inner) + suffix : '';
             if (radius) {
                 let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
