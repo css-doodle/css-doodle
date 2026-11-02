@@ -441,6 +441,11 @@ test('@tile.voronoi bound: shape cuts the pieces at the outline, holes included,
     // gap keeps half of itself from the outline too, and round rounds the cut corners
     assert.ok(radii(regions(ring + ' bound: shape; gap: 2')).every(r => r > 26 - .01 && r < 49 + .01));
     assert.ok(regions(ring + ' bound: shape; gap: 2; round: .05').every(t => String(t).startsWith('shape(')));
+    // a piece keeps a hole inside it and parts of the region apart, as one evenodd polygon
+    let one = shape => String(regions(shape + ' bound: shape; gap: 0', 1)[0]);
+    let holed = one('subtract { square { } circle { r: .4 } }'), apart = one('union { circle { r: .2; move: -.5 0 } circle { r: .2; move: .5 0 } }');
+    assert.ok(holed.startsWith('polygon(evenodd, ') && radii([holed.replace('evenodd, ', '')]).some(r => Math.abs(r - 20) < .01));
+    assert.ok(apart.startsWith('polygon(evenodd, ') && [25, 75].every(c => verts(apart.replace('evenodd, ', '')).some(([x]) => Math.abs(x - c) > 9 && Math.abs(x - c) < 10.01)));
 });
 
 test('@tile.hex and @tile.triangle: lattice tiles reaching into the shape, as many as the grid allows', () => {

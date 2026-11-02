@@ -421,21 +421,22 @@ function createShapePoints(props, lo, hi, raw) {
     };
     let radius = max(0, num('round'));
     let tile = ([poly, [x, y], kind = 1, extra]) => {
-        let at = fmt(x, y), inner = room(poly, x, y);
+        let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
+        let at = fmt(x, y), inner = min(...rings.map(ring => room(ring.flat(), x, y)));
         inner = inner < Infinity ? number(inner) + suffix : '';
         if (radius) {
             let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
-            let path = corners(toPairs(poly), null, r);
-            if (curved(path)) return new Point(toPath([path]), extra, at, kind, inner);
-            poly = flatten(path, tol);
+            let paths = rings.map(ring => corners(ring, null, r));
+            if (paths.some(curved)) return new Point(toPath(paths, undefined, rule), extra, at, kind, inner);
+            rings = paths.map(path => toPairs(flatten(path, tol)));
         }
         let vs = [];
-        for (let [x, y] of toPairs(poly)) {
+        for (let [x, y] of bridge(rings)) {
             let v = fmt(x, y);
             if (v !== vs.at(-1)) vs.push(v);
         }
         if (vs.length > 1 && vs[0] === vs.at(-1)) vs.pop();
-        return new Point(`polygon(${vs.join(', ') || '0 0'})`, extra, at, kind, inner);
+        return new Point(`polygon(${rule && rule + ', '}${vs.join(', ') || '0 0'})`, extra, at, kind, inner);
     };
 
     let trace = ({ split }, c) => {
@@ -599,13 +600,9 @@ function createShapePoints(props, lo, hi, raw) {
         if (name == 'voronoi') {
             let cells = voronoi(px, py, ...box, max(0, gap)), kinds = colors(cells);
             let bound = props.bound == 'shape' && offset(shown, -gap / 2, evenodd), within = bound && insideTest(bound);
-            let cut = (poly, x, y) => {
-                if (!bound || toPairs(poly).every(p => within(...p)) && !bound.some(ring => ring.some(([u, v]) => contains(poly, u, v)))) return poly;
-                let parts = overlay([toPairs(poly)], bound, 'intersect');
-                let part = parts.find(ring => insideTest([ring])(x, y)) ?? parts.sort((a, b) => area(b.flat()) - area(a.flat()))[0];
-                return part?.flat() || [];
-            };
-            return cells.map(([poly], k) => tile([cut(gap < 0 ? shrink(poly, gap / 2) : poly, px[k], py[k]), [px[k], py[k]], kinds[k], points[k].extra]));
+            let cut = poly => !bound || toPairs(poly).every(p => within(...p)) && !bound.some(ring => ring.some(([u, v]) => contains(poly, u, v)))
+                ? poly : overlay([toPairs(poly)], bound, 'intersect');
+            return cells.map(([poly], k) => tile([cut(gap < 0 ? shrink(poly, gap / 2) : poly), [px[k], py[k]], kinds[k], points[k].extra]));
         }
         return points;
     }
