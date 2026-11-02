@@ -4,8 +4,8 @@ import { NS, NSXLink, adjustName } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
-import { traceRings, toPairs } from './shapes.js';
-import { overlay, corners, bounds, offset, flatten, thin } from './tiling.js';
+import { traceRings } from './trace.js';
+import { overlay, corners, bounds, offset, flatten, thin, toPairs } from './tiling.js';
 
 const { atan2, ceil, abs, max, hypot, PI } = Math;
 

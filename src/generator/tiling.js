@@ -60,6 +60,13 @@ function insideTest(rings, evenodd) {
     };
 }
 
+// [x0, y0, x1, y1, …] → [[x0, y0], [x1, y1], …]
+function toPairs(flat) {
+    let out = [];
+    for (let i = 0; i < flat.length; i += 2) out.push([flat[i], flat[i + 1]]);
+    return out;
+}
+
 function bridge(rings) {
     return rings.length < 2 ? rings[0]
         : [...rings[0], ...rings.slice(1).flatMap(ring => [rings[0][0], ...ring, ring[0]]), rings[0][0]];
@@ -1031,5 +1038,5 @@ function simplify({ f, g, n }, tol) {
 
 export {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, room, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
+    shake, bend, inset, shrink, room, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, toPairs, overlay, offset, recount, resample, thin, area, signed, mix, PHI,
 };

@@ -11,7 +11,7 @@ import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js'
 import { NS, NSXHtml, FilterHolderStyle, cdata } from '../lib/svg.js';
 import { isNil } from '../lib/type.js';
 import { clearMemos } from '../lib/cache.js';
-import { fontsLoading } from '../generator/shapes.js';
+import { fontsLoading } from '../generator/trace.js';
 import { isSafari } from '../lib/browser.js';
 import { css } from '../lib/tagged-template.js';
 import { RE_PLACEHOLDER, hasPlaceholder } from '../lib/placeholder.js';
