@@ -355,6 +355,7 @@ if (typeof HTMLElement !== 'undefined') {
                 this.vars.removeProperty('--' + id);
             }
             this._cells?.forEach(el => el.removeAttribute('cssd-' + this._instance));
+            this._hosts?.forEach(el => el.removeAttribute(`cssd-${this._instance}-host`));
             unbindUniforms(this);
             hoistProperties(this);
             clearInterval(this._auto_update_timer);
@@ -452,12 +453,12 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         get frame() {
-            return this._cells && this._frame || this;
+            return this._cells && this._hosts[0] || this;
         }
 
         cellRules() {
-            let m = `[cssd-${this._instance}]`;
-            if (!this._vars) (this._vars = document.createElement('style')).textContent = `:has(>${m}){}:is(${m},:has(>${m})),${m}::before,${m}::after{}`;
+            let m = `[cssd-${this._instance}]`, h = `[cssd-${this._instance}-host]`;
+            if (!this._vars) (this._vars = document.createElement('style')).textContent = `${h}{}:is(${m},${h}),${m}::before,${m}::after{}`;
             if (this._vars.parentNode !== this) this.appendChild(this._vars);
             return this._vars.sheet;
         }
@@ -608,16 +609,19 @@ if (typeof HTMLElement !== 'undefined') {
             }
             if (tries > 1) this._warned?.clear();
             let select = this.getAttribute('cells'), root = select && this.getRootNode(), mark = 'cssd-' + this._instance;
-            let unit, base = select?.replace(/::(letters|words)(?=\s*(,|$))/g, (_, name) => (unit = name, ''));
+            let unit, hosts = [], base = select?.replace(/::(letters|words)(?=\s*(,|$))/g, (_, name) => (unit = name, ''));
             let query = () => {
                 let found = [...root.querySelectorAll(base)].filter(el => !this.contains(el));
-                this._frame = unit ? found[0] : found[0]?.parentElement;
+                hosts = unit ? found : [...new Set(found.map(el => el.parentElement).filter(Boolean))];
                 return unit ? found.flatMap(el => splitText(el, unit)) : found;
             };
             let cells = select ? guard(query, warn) || [] : null;
             this._cells?.forEach(el => el.removeAttribute(mark));
+            this._hosts?.forEach(el => el.removeAttribute(mark + '-host'));
             cells?.forEach((el, i) => el.setAttribute(mark, i + 1));
+            hosts.forEach(el => el.setAttribute(mark + '-host', ''));
             this._cells = cells;
+            this._hosts = hosts;
             let aims = /@ud[xy]\b/.test(source);
             let sign = (at = layout(cells, this.frame)) => JSON.stringify(at.map(p => [p.x, p.y, aims && p.center]));
             if (cells) {
@@ -756,9 +760,9 @@ if (typeof HTMLElement !== 'undefined') {
         // the main sheet with its nested doodle and paint images resolved
         applyStyles(compiled) {
             let replace = createReplacer(this, compiled), { top, all } = compiled.styles;
-            let mark = `cssd-${this._instance}`, parent = `:is(:has(>[${mark}]),#_)`;
+            let mark = `cssd-${this._instance}`, parent = `:is([${mark}-host],#_)`;
             this.setStyle(replace(this._cells
-                // cells to the marked elements, :host and grid to their parents
+                // cells to the marked elements, :host and grid to their hosts
                 ? (top + all).replace(/#c-(\d+)-1-1\b|:is\(cell,#_\)|:host\(((?:[^()]|\([^()]*\))*)\)|:host,\.host|(?<=^|[{}\s])grid(?=\s*[{:.,[])/g,
                     (s, i, host = '') => i ? `:is([${mark}="${i}"],#_)` : s[1] === 'i' ? `:is([${mark}],#_)` : parent + host)
                 : top + getBasicStyles(this.gridSize) + all

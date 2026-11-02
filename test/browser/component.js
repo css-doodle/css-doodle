@@ -588,7 +588,20 @@ describe('component', { concurrency: 4 }, () => {
         assert.equal(got.hidden, 'true');
     }));
 
-    test('cells: rows and columns come from the page, follow a resize, and @udx measures from each element', () => chrome.withPage(async page => {
+    test('cells: with ::letters and ::words, :doodle is the element they split', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML = '<h1>Hi <em>new</em> café</h1><p>One two</p>');
+        let el = await mount(page, ':doodle { outline: 2px solid; animation: k 1s infinite } @keyframes k { to { opacity: .5 } }', { seed: 1, cells: 'h1::letters' });
+        await mount(page, ':doodle { outline: 2px dotted }', { seed: 1, cells: 'p::words' });
+        let outlines = () => page.evaluate(() => [...document.querySelectorAll('h1, h1 *, p, p *')]
+            .filter(el => getComputedStyle(el).outlineStyle !== 'none').map(el => el.localName));
+        assert.deepEqual(await outlines(), ['h1', 'p']);
+        await el.evaluate(el => el.pause());
+        assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('h1')).animationPlayState), 'paused');
+        await el.evaluate(el => el.removeAttribute('cells'));
+        assert.deepEqual(await outlines(), ['p']);
+    }));
+
+    test('cells: rows and columns come from the page, follow a resize, and @udx measures from each element',() => chrome.withPage(async page => {
         await page.evaluate(() => document.body.innerHTML =
             '<div id="p" style="display:flex;flex-wrap:wrap;width:180px">' + '<i style="width:60px;height:40px"></i>'.repeat(7) + '</div>');
         await mount(page, '--at: @x @y @X @Y; --r: @r(1000); --d: $(@udx) $(@udy);', { seed: 1, cells: 'i' });
