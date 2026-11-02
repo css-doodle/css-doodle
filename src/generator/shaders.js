@@ -14,17 +14,12 @@ const SCREEN_QUAD_VERTICES = new Float32Array([
 
 const MAX_TEXTURE_SIZE = 4096;
 
-function createShader(gl, type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    return shader;
-}
-
 function createProgram(gl, vss, fss) {
     const program = gl.createProgram();
     const shaders = [[gl.VERTEX_SHADER, vss], [gl.FRAGMENT_SHADER, fss]].map(([type, source]) => {
-        const shader = createShader(gl, type, source);
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
         gl.attachShader(program, shader);
         return shader;
     });
@@ -202,22 +197,15 @@ function createSurface(width, height) {
     return surface;
 }
 
-function disposeSurface(surface) {
-    surface.disposed = true;
-    surface.gl.deleteBuffer(surface.buffer);
-    const ext = surface.gl.getExtension('WEBGL_lose_context');
-    if (ext) {
-        ext.loseContext();
-    }
-}
-
 function sweep() {
     clearTimeout(sweeper);
     sweeper = null;
     for (const [key, surface] of surfaces) {
         if (!surface.users.size) {
             surfaces.delete(key);
-            disposeSurface(surface);
+            surface.disposed = true;
+            surface.gl.deleteBuffer(surface.buffer);
+            surface.gl.getExtension('WEBGL_lose_context')?.loseContext();
         }
         for (const [source, entry] of surface.programs) {
             if (!entry.users) {

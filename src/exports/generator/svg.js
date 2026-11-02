@@ -1,5 +1,5 @@
 import generateCss from '../../generator/css.js';
-import parseCss from './../../parser/parse-css.js';
+import parseCss from '../../parser/parse-css.js';
 
 export default function svg(rules, options = {}) {
     let result = generateCss(

@@ -66,7 +66,7 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
     }
 }
 
-export function expandFilterShorthands(root, seed, warn, { chainInput = true } = {}) {
+export function expandFilterShorthands(root, seed, warn, chainInput = true) {
     let used = new Set(root.value.filter(isPrimitive).flatMap(token => {
         let result = findStatement(token.value, 'result');
         return result ? [removeQuotes(result.value)] : [];
@@ -131,8 +131,8 @@ export function expandFilterShorthands(root, seed, warn, { chainInput = true } =
     return root;
 }
 
-export function expandFilter(root, seed, warn, options) {
-    expandFilterShorthands(root, seed, warn, options);
+export function expandFilter(root, seed, warn, chainInput) {
+    expandFilterShorthands(root, seed, warn, chainInput);
     expandColorMatrices(root, warn);
     return root;
 }

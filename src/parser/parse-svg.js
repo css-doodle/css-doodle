@@ -79,7 +79,7 @@ function readStatement(iter, token) {
     let quote = 0;
     let paren = 0;
     // `name: }`: nothing to read, the '}' is the block's
-    let empty = iter.curr(1) && iter.curr(1).isSymbol('}');
+    let empty = iter.curr(1)?.isSymbol('}');
     let text = token.name === 'content';
     while (!empty && iter.next()) {
         let curr = iter.curr();

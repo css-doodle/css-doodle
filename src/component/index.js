@@ -134,9 +134,10 @@ const DEGREES = { '%': 1, deg: 1, turn: 360, rad: 180 / Math.PI };
 function expr(text, warn) {
     let failed = false;
     let fail = message => (failed = true, warn(message));
-    if ([utime, UTime].some(name => String(text).includes(name))) return fail('@t is CSS time, use t'), null;
+    text = String(text);
+    if ([utime, UTime].some(name => text.includes(name))) return fail('@t is CSS time, use t'), null;
     let names = { __proto__: null, t: 'u_time' };
-    let math = String(text).replace(UNIT, (_, n, unit) => +n * DEGREES[unit.toLowerCase()]);
+    let math = text.replace(UNIT, (_, n, unit) => +n * DEGREES[unit.toLowerCase()]);
     let code = compile(math, { names, warn: fail, unknown: name => (fail(`unknown name ${name}`), [0]) }).code('float');
     return failed || !code ? null : code.replace(/\bPI\b/g, '3.1415926535897932');
 }

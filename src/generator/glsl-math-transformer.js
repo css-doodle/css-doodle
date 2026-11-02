@@ -109,7 +109,7 @@ function lex(source) {
     return tokens;
 }
 
-export function compile(code, { types = { __proto__: null }, names = null, unknown = null, warn = null, rand = null } = {}) {
+export function compile(code, { types = { __proto__: null }, names, unknown, warn, rand } = {}) {
     const source = hexColors(code);
     const tokens = lex(source);
 

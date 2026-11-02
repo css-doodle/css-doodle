@@ -7,9 +7,7 @@ export function addAlias(obj, names) {
 
 // a lazy function receives its arguments unevaluated, as thunks
 export function lazy(fn) {
-    let wrap = (cell, env, position) => {
-        return (...args) => fn(cell, env, position, ...args);
-    }
+    let wrap = (cell, env, position) => (...args) => fn(cell, env, position, ...args);
     wrap.lazy = true;
     return wrap;
 }

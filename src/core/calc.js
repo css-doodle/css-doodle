@@ -282,16 +282,14 @@ function transformTokens(input, spans) {
             continue;
         }
 
-        if (value === '+' || value === '-') {
-            if (isUnary(tokens.at(-1))) {
-                // a run of unary signs is one prefix operator
-                let negative = value === '-';
-                while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
-                    if (raw[++i].value === '-') negative = !negative;
-                }
-                if (negative) tokens.push(tk(OPERATOR, '-u'));
-                continue;
+        if ((value === '+' || value === '-') && isUnary(tokens.at(-1))) {
+            // a run of unary signs is one prefix operator
+            let negative = value === '-';
+            while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
+                if (raw[++i].value === '-') negative = !negative;
             }
+            if (negative) tokens.push(tk(OPERATOR, '-u'));
+            continue;
         }
 
         if (value === '(') {
@@ -570,10 +568,8 @@ function compile(expr) {
                     return live(a) ? not(truthy(a)) : Number(a) ? 0 : 1;
                 });
         } else {
-            const right = stack.pop();
-            const left = stack.pop();
-            const l = left || (() => NaN);
-            const r = right || (() => NaN);
+            const r = stack.pop() || (() => NaN);
+            const l = stack.pop() || (() => NaN);
             if (value === '&&') {
                 // short-circuit: the right side only runs when needed. A live
                 // a writes out both sides; a falsy a is 0, so it isn't repeated

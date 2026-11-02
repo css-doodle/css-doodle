@@ -509,12 +509,12 @@ function createShapePoints(props, lo, hi, raw) {
         if (percent) number = v => tidyNumber(round(v * 1e3) / 1e3);
         let a = num('aspect', 1), aspect = a > 0 && a < Infinity ? clamp(a, 1e-3, 1e3) : 1, sx = max(aspect, 1), sy = max(1 / aspect, 1);
         if (aspect != 1) {
-            let [screenOf, format] = [toScreen, fmt];
+            let screenOf = toScreen, format = fmt;
             toScreen = p => { let [x, y] = screenOf(p); return [x * sx, y * sy]; };
             fmt = (x, y) => format(x / sx, y / sy);
             box = [box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy];
         }
-        let outline = bridge(rings), screen = outline.map(toScreen), inside = insideTest([screen], evenodd);
+        let outline = bridge(rings), screen = outline.map(toScreen), shown = rings.map(ring => ring.map(toScreen)), inside = insideTest([screen], evenodd);
         let name = props.tile, count = many, seed = num('seed');
         let sides = { hex: 6, triangle: 3, cube: 6, grid: 4 }[name];
         let shift = parsePair(props.shift, 0, props);
@@ -547,7 +547,7 @@ function createShapePoints(props, lo, hi, raw) {
         }
         let context = Object.assign(Object.create(defaultContext), props), near, seen;
         if (!Object.hasOwn(props, 'd')) Object.defineProperty(context, 'd', { get() {
-            near ||= nearest(rings.map(ring => ring.map(toScreen)));
+            near ||= nearest(shown);
             return near(...seen) / (percent ? 50 : 1);
         } });
         let formula = text => isEmpty(text) ? null : (x, y) => {
@@ -560,7 +560,7 @@ function createShapePoints(props, lo, hi, raw) {
             let size = formula(props.size);
             context.random = seedrandom('size:' + seed);
             size = onScreen(size) || (count < 2 ? () => 1 : () => min(1.5, sqrt(count) / 2) + min(count / 100, sqrt(count) / 5) * context.random() ** 24);
-            return pack(rings.map(ring => ring.map(toScreen)), box, inside, count, seed, size).map(([x, y, r]) => {
+            return pack(shown, box, inside, count, seed, size).map(([x, y, r]) => {
                 let at = fmt(x, y), [rx, ry, rr] = [sx, sy, 1].map(s => number(max(0, r - gap / 2) / s) + suffix);
                 return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1, rr);
             });
@@ -590,7 +590,7 @@ function createShapePoints(props, lo, hi, raw) {
             return pieces.map(([p, c, kind]) => tile([inset(p, ...c, gap / 2), c, kind]));
         }
         if (name == 'delaunay') {
-            let rim = border(rings.map(ring => ring.map(toScreen)), count);
+            let rim = border(shown, count);
             sow(count - rim.length).forEach(add);
             for (let [x, y] of rim) px.push(x), py.push(y);
             return delaunay(px, py, box, inside, props.count, gap).map(tile);
@@ -598,7 +598,7 @@ function createShapePoints(props, lo, hi, raw) {
         sow(count).forEach(add);
         if (name == 'voronoi') {
             let cells = voronoi(px, py, ...box, max(0, gap)), kinds = colors(cells);
-            let bound = props.bound == 'shape' && offset(rings.map(ring => ring.map(toScreen)), -gap / 2, evenodd), within = bound && insideTest(bound);
+            let bound = props.bound == 'shape' && offset(shown, -gap / 2, evenodd), within = bound && insideTest(bound);
             let cut = (poly, x, y) => {
                 if (!bound || toPairs(poly).every(p => within(...p)) && !bound.some(ring => ring.some(([u, v]) => contains(poly, u, v)))) return poly;
                 let parts = overlay([toPairs(poly)], bound, 'intersect');

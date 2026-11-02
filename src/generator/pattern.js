@@ -176,11 +176,11 @@ function newScope(parent = null) {
     return { ids: { __proto__: parent ? parent.ids : null }, key: parent?.key };
 }
 
-function compile(value, scope, ctx, expect = null) {
+function compile(value, scope, ctx, expect) {
     return compileValue(value, scope.ids[value], v => expr(v, scope, ctx), ctx.extra, ctx.warn, expect);
 }
 
-export function compileValue(value, named, expr, extra, warn, expect = null) {
+export function compileValue(value, named, expr, extra, warn, expect) {
     let rgba = !named && cssColor(extra, value);
     if (rgba) {
         rgba = channels(rgba);
@@ -236,11 +236,7 @@ function vector(n, items) {
 }
 
 function expr(code, scope, ctx) {
-    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn, rand: () => randAt(scope, ctx) });
-}
-
-function randAt(scope, ctx) {
-    return `rand(vec2(i, ${scope.key || '0.0'}), ${float(++ctx.sites)})`;
+    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn, rand: () => `rand(vec2(i, ${scope.key || '0.0'}), ${float(++ctx.sites)})` });
 }
 
 function generateStatement(name, value, scope, ctx) {

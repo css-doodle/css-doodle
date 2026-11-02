@@ -456,10 +456,9 @@ class Rules {
         this.vars.container = Object.create(this.vars.host);
         this.scanTokens(this.tokens);
         if (this.hasTile) {
-            let isSet = re => tokens.some(token => token.type === 'rule' && re.test(token.property));
             let size = tokens.find(token => token.type === 'rule' && token.property === '@size');
             let extra = [];
-            if (!isSet(RE_PLACE)) extra.push(defaultRule('@place', 'center'));
+            if (!tokens.some(token => token.type === 'rule' && RE_PLACE.test(token.property))) extra.push(defaultRule('@place', 'center'));
             if (!size) extra.push(defaultRule('@size', '100%'));
             this.cover = !size || size.rawValue() === '100%';
             if (extra.length) {

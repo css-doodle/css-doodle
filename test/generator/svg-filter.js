@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import parseSvg from '../../src/parser/parse-svg.js';
 import { expandFilterShorthands } from '../../src/generator/svg-filter.js';
 
-const expand = (input, seed = 42, options) => {
+const expand = (input, seed = 42, chainInput) => {
     let warnings = [];
     let root = parseSvg(input, { type: 'block', name: 'filter' });
-    expandFilterShorthands(root, seed, message => warnings.push(message), options);
+    expandFilterShorthands(root, seed, message => warnings.push(message), chainInput);
     return { root, warnings };
 };
 const child = (root, name) => root.value.find(token => token.type === 'block' && token.name === name);
@@ -88,7 +88,7 @@ test('legacy mode keeps displacement on SourceGraphic', () => {
         frequency: .03;
         scale: 20;
         blur: 2;
-    `, 42, { chainInput: false });
+    `, 42, false);
     assert.equal(attrs(child(root, 'feGaussianBlur')).result, undefined);
     assert.deepEqual(attrs(child(root, 'feDisplacementMap')), {
         in: 'SourceGraphic', scale: '20',

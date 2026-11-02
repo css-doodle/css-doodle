@@ -282,11 +282,7 @@ function scan(source, options = {}) {
         }
     }
 
-    // Remove last space token
-    let lastToken = tokens.at(-1);
-    if (lastToken && lastToken.isSpace()) {
-        tokens.pop();
-    }
+    if (tokens.at(-1)?.isSpace()) tokens.pop();
     return tokens;
 }
 

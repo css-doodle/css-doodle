@@ -794,9 +794,7 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
             type: 'block',
             name: 'filter'
         });
-        let expanded = expandFilter(parsed, env.seed, warn, {
-            chainInput: !shorthand
-        });
+        let expanded = expandFilter(parsed, env.seed, warn, !shorthand);
         if (env.svg) {
             return svgSourceOf(expanded, { repeat: false });
         }

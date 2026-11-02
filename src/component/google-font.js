@@ -1,4 +1,3 @@
-
 let embedFonts = new Map();
 let linkFonts = new Set();
 
