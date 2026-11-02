@@ -66,13 +66,7 @@ function extractFonts(css) {
 async function toBase64(url) {
     let res = await fetch(url);
     if (!res.ok) throw new Error(`font fetch ${res.status}`);
-    let blob = await res.blob();
-    return new Promise((resolve, reject) => {
-        let reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+    return (await res.bytes()).toBase64();
 }
 
 async function embedFont(link) {
