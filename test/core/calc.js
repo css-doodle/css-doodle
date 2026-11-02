@@ -392,6 +392,10 @@ test('implicit multiplication', () => {
     assert.equal(calc('x1', { x1: 99 }), 99);
     assert.equal(calc('y2', { y2: 88 }), 88);
     assert.equal(calc('x1', { x: 5 }), 0);
+    // so is a name with underscores, as in CSS
+    assert.equal(calc('a_b * 2', { a_b: 3 }), 6);
+    assert.equal(calc('_c + x1_y2', { _c: 4, x1_y2: 5 }), 9);
+    assert.equal(calc('x1y', { x1: 2, y: 3 }), 6);
 
     assert.equal(calc('xπ', { x: 2 }), 2 * Math.PI);
     assert.equal(calc('πx', { x: 2 }), Math.PI * 2);

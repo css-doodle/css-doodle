@@ -228,7 +228,7 @@ function transformTokens(input, spans) {
             continue;
         }
 
-        if (type === 'Word') {
+        if (type === 'Word' || value === '_') {
             if (ANGLES[value] && raw[i - 1]?.type === 'Number' && !spaced && calls.some(Boolean)) {
                 if (!calls.some(name => ANGLE_TAKERS.has(name))) tokens.angle = true;
                 pushValue(tokens, ANGLES[value], false);
@@ -253,13 +253,14 @@ function transformTokens(input, spans) {
                 i = j;
                 continue;
             }
-            // "x1" is one name, not x*1
-            if (next && next.type === 'Number' && next.index === index + value.length) {
-                pushValue(tokens, value + next.value, spaced);
-                i++;
-            } else {
-                pushValue(tokens, value, spaced);
+            let name = value;
+            for (let t; (t = raw[i + 1]) && t.index === index + name.length; i++) {
+                let last = raw[i];
+                if (!(t.value === '_' || last.value === '_' && t.type === 'Word'
+                        || last.type !== 'Number' && t.type === 'Number')) break;
+                name += t.value;
             }
+            pushValue(tokens, name, spaced);
             continue;
         }
 
