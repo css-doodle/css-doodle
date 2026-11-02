@@ -364,8 +364,7 @@ function createShapePoints(props, lo, hi, raw) {
     let direction = parseDirection(dir);
     let steps = (props.steps || []).filter(([k]) => props[k] !== undefined);
     let changed = steps.some(([k]) => k == 'grow' || k == 'frame');
-    let last = steps.length;
-    while (last && /^(move|scale)$/.test(steps[last - 1][0])) last--;
+    let last = steps.findLastIndex(([k]) => !/^(move|scale)$/.test(k)) + 1;
     let place = steps.slice(last).map(([k, v]) => [k, ...parsePair(v, k == 'move' ? 0 : 1, props)]);
     steps = steps.slice(0, last);
     let view = ([x, y]) => {
@@ -466,8 +465,8 @@ function createShapePoints(props, lo, hi, raw) {
             // constant means the same at 64 angles round the whole turn
             if (frame || name == 'grow' && !text.includes(',') && Array.from({ length: 64 }, (_, i) => f(i * PI / 32)).every(v => v == f(0))) {
                 let d = frame ? -(evaluate(text, props) || .002) : f(0), next = [], ids = [];
-                for (let u of new Set(units)) {
-                    let own = rings.filter((_, c) => units[c] == u), region = own.flat(2).every(isFinite) && offset(own, 0, evenodd);
+                for (let [u, own] of Map.groupBy(rings, (_, c) => units[c])) {
+                    let region = own.flat(2).every(isFinite) && offset(own, 0, evenodd);
                     // an outline with no area stays put; a frame's inner rings take as many points as its outline, so frames morph
                     if (region.length) own = frame ? [...region, ...recount(offset(region, d), region.flat().length).map(ring => ring.reverse())] : offset(region, d);
                     own.forEach(ring => next.push(ring) && ids.push(u));
@@ -522,7 +521,7 @@ function createShapePoints(props, lo, hi, raw) {
         let toShape = (x, y) => percent ? [x / sx / 50 - 1, 1 - y / sy / 50] : [x / sx, -y / sy];
         let back = ([x, y]) => {
             let [u, v] = toShape(x, y);
-            for (let [k, a, b] of [...place].reverse()) k == 'move' ? (u -= a, v -= b) : (u /= a, v /= b);
+            for (let [k, a, b] of place.toReversed()) k == 'move' ? (u -= a, v -= b) : (u /= a, v /= b);
             return [u, v];
         };
         let turn = props.pair == 'turn' && (sides == 4 || name == 'hex');
