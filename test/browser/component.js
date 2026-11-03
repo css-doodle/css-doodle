@@ -535,6 +535,17 @@ describe('component', { concurrency: 4 }, () => {
         assert.equal(await el.evaluate(el => [el.shadowRoot.querySelectorAll('cell').length, el.children.length].join()), '25,0');
     }));
 
+    test('cells: its rules weigh one id against the page\'s own styles', () => chrome.withPage(async page => {
+        await page.evaluate(() => document.body.innerHTML =
+            '<style>ul li.k.k { color: blue } #u li { background-color: blue }</style><ul id="u"><li class="k">x</li><li class="k">x</li></ul>');
+        await mount(page, 'color: red; background-color: red; @nth(2) { color: lime; background-color: lime }', { seed: 1, cells: 'li' });
+        assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('li')].map(li =>
+            [getComputedStyle(li).color, getComputedStyle(li).backgroundColor])), [
+            ['rgb(255, 0, 0)', 'rgb(0, 0, 255)'],
+            ['rgb(0, 255, 0)', 'rgb(0, 0, 255)'],
+        ]);
+    }));
+
     test('cells: @grid gives the columns, :doodle is their parent, and images, clicks and pause reach them', () => chrome.withPage(async page => {
         await page.evaluate(() => document.body.innerHTML =
             '<div id="p" style="display:grid;grid-template-columns:repeat(3,40px)">' + '<i style="height:40px"></i>'.repeat(6) + '</div>');

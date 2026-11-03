@@ -760,11 +760,10 @@ if (typeof HTMLElement !== 'undefined') {
         // the main sheet with its nested doodle and paint images resolved
         applyStyles(compiled) {
             let replace = createReplacer(this, compiled), { top, all } = compiled.styles;
-            let mark = `cssd-${this._instance}`, parent = `:is([${mark}-host],#_)`;
+            let mark = `cssd-${this._instance}`, parent = `:where([${mark}-host]):not(#_)`;
             this.setStyle(replace(this._cells
-                // cells to the marked elements, :host and grid to their hosts
                 ? (top + all).replace(/#c-(\d+)-1-1\b|:is\(cell,#_\)|:host\(((?:[^()]|\([^()]*\))*)\)|:host,\.host|(?<=^|[{}\s])grid(?=\s*[{:.,[])/g,
-                    (s, i, host = '') => i ? `:is([${mark}="${i}"],#_)` : s[1] === 'i' ? `:is([${mark}],#_)` : parent + host)
+                    (s, i, host = '') => i ? `:where([${mark}="${i}"]):not(#_)` : s[1] === 'i' ? `:where([${mark}]):not(#_)` : parent + host)
                 : top + getBasicStyles(this.gridSize) + all
             ).then(sheet => {
                 // the clock runs from the moment the sheet and its images land
