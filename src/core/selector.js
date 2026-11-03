@@ -100,7 +100,8 @@ Selector.match = (cell, { random }) => (vars, expr) => !!calc(expr, calcContext(
 
 // @cell(…): an argument is an an+b rule on the index, even/odd on the
 // checkerboard, `random [n]`, or an expression; any one matching
-// selects the cell.
+// selects the cell. Every argument runs, so a random one draws the
+// same whatever matched before it.
 Selector.cell = (cell, env, position) => (vars, ...args) => {
     if (!args.length) return true;
     return args.map((arg, i) => {

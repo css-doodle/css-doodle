@@ -1546,6 +1546,13 @@ test('random() in a selector expression draws from the doodle stream, as @random
     assert.equal(cells('--r: @r(10); @cell(random() < .3) { color: red }', '4', 7), random);
 });
 
+test('@cell runs every argument, so the order of a random one does not move the stream', () => {
+    // seeded art depends on it: a matching `odd` does not skip the draw of `random .5`
+    assert.equal(
+        cells('@cell(odd, random .5) { color: red }', '6', 7),
+        cells('@cell(random .5, odd) { color: red }', '6', 7));
+});
+
 test('random() in a scatter density leaves the doodle stream alone, so a second render matches the first', () => {
     let code = 'clip-path: @tile.voronoi(density: random() + y); --v: $(random());';
     assert.equal(cells(code, '3', 7), cells(code, '3', 7));
