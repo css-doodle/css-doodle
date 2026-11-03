@@ -217,7 +217,8 @@ function scan(source, options = {}) {
             if (word.length === end - start) {
                 tokens.push(new Token('Word', input.slice(i, end), pos, index));
             } else if (word.length) {
-                tokens.push(new Token('Word', word, pos, end - word.length));
+                let at = end - word.length;
+                tokens.push(new Token('Word', word, [at - lineStart, row], at));
             }
             i = end;
         }
