@@ -13,6 +13,8 @@ const nextInlineId = nextId();
 
 const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
 
+const NAME = /^[\p{L}_:][\p{L}\d_:.-]*$/u;
+
 // a quoted value as text, its escapes read: "a\"b" is a"b
 function unquote(value) {
     let text = removeQuotes(value);
@@ -278,6 +280,9 @@ function generate(token, element, parent, root, warn) {
                 }
             }
         }
+        else if (!NAME.test(token.name)) {
+            warn(`invalid tag ${token.name}`);
+        }
         else {
             let el = new Tag(token.name);
             let fresh = false;
@@ -412,7 +417,7 @@ function generate(token, element, parent, root, warn) {
                 }
                 element.append(animate);
             }
-            else if (/^[\p{L}_:][\p{L}\d_:.-]*$/u.test(token.name)) {
+            else if (NAME.test(token.name)) {
                 element.attr(token.name, value);
             }
             if (token.name.includes('xlink:')) {
