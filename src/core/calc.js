@@ -744,13 +744,8 @@ export function compileTemplate(segments) {
         if (after === '' ? i < n - 1 : !RE_SAFE_AFTER.test(after)) return null;
         if (/%$/.test(segments[i]) || segments[i + 1][0] === '%') return null;
         let sensitive = false;
-        if (before === '') {
-            if (i > 0) return null;
-        } else {
+        if (before !== '') {
             let run = before.match(/[+-]*$/)[0].length;
-            if (run >= 2) {
-                return null;
-            }
             if (run === 1) {
                 if (/[0-9.][eE][+-]$/.test(before)) return null;
                 sensitive = true;
