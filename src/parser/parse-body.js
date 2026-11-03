@@ -34,7 +34,6 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
             if (!curr.isSymbol('}', ';')) {
                 head.push(curr);
             }
-            appendTail();
             break;
         }
         else if (curr.isSymbol('{') && !depth) {
