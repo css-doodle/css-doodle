@@ -6,6 +6,7 @@ import parseGrid from '../../src/parser/parse-grid.js';
 import parseShaders from '../../src/parser/parse-shaders.js';
 import generateCss from '../../src/generator/css.js';
 import createRandom from '../../src/core/random.js';
+import calc, { useRandom } from '../../src/core/calc.js';
 
 // maxGrid 64 mirrors the component's getMaxGrid()
 const compile = (code, grid = '1', seed = 42, extra) =>
@@ -49,6 +50,47 @@ test('@p, @P, @pd and @pnr run a trailing ... to the cell count, or to @N in a s
     assert.equal(cells('--a: @m5(@pnr(1, 2, ...));'), '#c-1-1-1 {--a:5,4,3,2,1;}');
     // a shuffled stagger: every cell gets its own delay
     assert.equal(new Set(cells('--a: @pd(0s, .1s, ...);', '4x4').match(/--a:[^;]+/g)).size, 16);
+});
+
+// --- sequence and position values ---
+
+test('@N, @nN, @Nn and @nd read the step of a sequence', () => {
+    assert.equal(cells('--a: @m4(@N);'), '#c-1-1-1 {--a:4,4,4,4;}');
+    assert.equal(cells('--a: @m4(@nN);'), '#c-1-1-1 {--a:0.25,0.5,0.75,1;}');
+    assert.equal(cells('--a: @m4(@Nn);'), '#c-1-1-1 {--a:1,0.75,0.5,0.25;}');
+    // @nd is the offset from the middle, less its argument
+    assert.equal(cells('--a: @m4(@nd);'), '#c-1-1-1 {--a:-1.5,-0.5,0.5,1.5;}');
+    assert.equal(cells('--a: @m4(@nd(1));'), '#c-1-1-1 {--a:-2.5,-1.5,-0.5,0.5;}');
+    // outside a sequence it stays as written
+    assert.equal(cells('--a: @N;'), '#c-1-1-1 {--a:@N;}');
+    // @match in a sequence reads n, nx and N
+    assert.equal(cells('--a: @m2(@match(n == 2, two, other)); --b: @m2(@match(N == 2, @nx));'), '#c-1-1-1 {--a:other,two;\n--b:1,2;}');
+});
+
+test('@xX, @Xx, @iI and @Ii run from either end, eased like @nN', () => {
+    let values = (code, name) => [...cells(code, '4x1').matchAll(new RegExp(`${name}:([^;]+)`, 'g'))].map(m => m[1]);
+    assert.deepEqual(values('--a: @xX;', '--a'), ['0.25', '0.5', '0.75', '1']);
+    assert.deepEqual(values('--a: @Xx;', '--a'), ['1', '0.75', '0.5', '0.25']);
+    assert.deepEqual(values('--a: @iI;', '--a'), ['0.25', '0.5', '0.75', '1']);
+    assert.deepEqual(values('--a: @Ii(ease-in);', '--a'), values('--a: @m4(@nN(ease-in));', '--a')[0].split(',').reverse());
+    assert.deepEqual(values('--a: @dx;', '--a'), ['-1.5', '-0.5', '0.5', '1.5']);
+});
+
+test('@rep repeats with no separator, @once evaluates once per site, @lr repeats the last value, @p() the last list', () => {
+    assert.equal(cells('--a: @rep(3, ab);'), '#c-1-1-1 {--a:ababab;}');
+    let [first, ...rest] = cells('--a: @m3(@once(@r(100)));').match(/--a:([^;]+)/)[1].split(',');
+    assert.deepEqual(rest, [first, first]);
+    let [r, lr] = cells('--a: @r(100) @lr;').match(/--a:([^;]+)/)[1].split(' ');
+    assert.equal(lr, r);
+    assert.equal(cells('--a: @p(a, b, c) @p();'), cells('--a: @p(a, b, c) @p(a, b, c);'));
+});
+
+test('@linearGradient and @radialGradient in @svg define a gradient and fill with it', () => {
+    let image = svgImage('background: @svg(rect { fill: @linearGradient(red, blue) } circle { fill: @radialGradient(45, gold, teal) })');
+    assert.match(image, /<linearGradient id="([\w-]+)"><stop offset="0%" stop-color="red"\/><stop offset="100%" stop-color="blue"\/><\/linearGradient>/);
+    assert.match(image, /<radialGradient gradientTransform="rotate\(45\)" id="([\w-]+)"><stop offset="0%" stop-color="gold"\/>/);
+    let [, linear] = image.match(/<linearGradient id="([\w-]+)"/), [, radial] = image.match(/<radialGradient [^>]*id="([\w-]+)"/);
+    assert.ok(image.includes(`<rect fill="url(#${linear})"/><circle fill="url(#${radial})"/>`), image);
 });
 
 // --- functions cells define ---
@@ -1450,6 +1492,58 @@ test('random() in expressions follows the seed on a stream of its own', () => {
     // @r draws the same values with or without random() next to it
     let r = sheet => sheet.match(/--r:[\d.]+/g).join();
     assert.equal(r(cells('--r: @r(10);', '3')), r(cells('--a: $(random()); --r: @r(10);', '3')));
+});
+
+test('@grid sizes the host, at the top or in :doodle, and its commands apply there too', () => {
+    assert.equal(css('@grid: 2 / 100px;'), ':host,.host {width:100px;height:100px;}');
+    assert.equal(css(':doodle { @grid: 2 / 100px; }'), ':host,.host {width:100px;height:100px;}');
+    assertContains(':doodle { @grid: 2 / 100px * 30; }', 'grid {rotate:30deg;}');
+});
+
+test('the first @gap wins', () => {
+    let sheet = css('@gap: 2px; @gap: 4px;');
+    assert.ok(sheet.includes('gap:2px;') && !sheet.includes('4px'), sheet);
+});
+
+test('a width or height on a placed cell is handed to the rule placed cells share', () => {
+    assert.ok(cells('@place: center; width: 30px;').includes('width:30px;--_cell-width:30px;'));
+});
+
+test('@t runs the host through keyframes of its own', () => {
+    assertContains('width: calc(@t * 1px);',
+        '@keyframes cssd-u-ani {from {--cssd-utime:0} to {--cssd-utime:86400000}}',
+        ':host,.host {animation:86400000ms steps(10368000) 0ms infinite cssd-u-ani,',
+        '#c-1-1-1 {width:calc(var(--cssd-utime) * 1px);}');
+});
+
+test('@seed decides the random() stream, and the stream goes back once the doodle is done', () => {
+    let code = '@seed: 5; --a: $(random());';
+    assert.equal(cells(code, '1', 1), cells(code, '1', 2));
+    let prev = useRandom(() => .5);
+    compile('--a: $(random());');
+    assert.equal(calc('random()'), .5);
+    useRandom(prev);
+});
+
+test('the output hands on the doodle stream, where the cells stopped, for a nested doodle to continue', () => {
+    let random = createRandom('7').random;
+    random();
+    assert.equal(compile('--a: @r(1);', '1', 7).random(), random());
+});
+
+test('a doodle with @tile centers its cells and sizes them to the doodle unless @size says', () => {
+    let tiled = css('clip-path: @tile.grid(square);', '2');
+    assert.ok(tiled.includes('left:50%;right:calc(100% - 50%);top:50%;bottom:calc(100% - 50%);'), tiled);
+    assert.ok(tiled.includes('width:100%;height:100%;'), tiled);
+    let sized = css('@size: 40%; clip-path: @tile.grid(square);', '2');
+    assert.ok(!sized.includes('width:100%;height:100%;') && sized.includes('width:40%;height:40%;'), sized);
+});
+
+test('random() in a selector expression draws from the doodle stream, as @random does', () => {
+    // seeded art depends on it: one draw per cell, the same one @random(.3) makes
+    let random = cells('--r: @r(10); @random(.3) { color: red }', '4', 7);
+    assert.equal(cells('--r: @r(10); @match(random() < .3) { color: red }', '4', 7), random);
+    assert.equal(cells('--r: @r(10); @cell(random() < .3) { color: red }', '4', 7), random);
 });
 
 test('random() in a scatter density leaves the doodle stream alone, so a second render matches the first', () => {

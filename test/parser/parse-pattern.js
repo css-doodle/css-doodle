@@ -9,6 +9,8 @@ const statement = (name, value) => ({ type: 'statement', name, value });
 test('statements', () => {
     assert.deepEqual(parsePattern('color: red'), [statement('color', 'red')]);
     assert.deepEqual(parsePattern('color: red;'), [statement('color', 'red')]);
+    // a ; inside parentheses stays in the value
+    assert.deepEqual(parsePattern('fill: f(a; b); color: red;'), [statement('fill', 'f(a;b)'), statement('color', 'red')]);
 });
 
 test('blocks with argument lists', () => {

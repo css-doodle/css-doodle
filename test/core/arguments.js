@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sequence, expand, getNamedArguments, MAX_SEQUENCE } from '../../src/core/arguments.js';
+import { sequence, expand, byUnit, getNamedArguments, MAX_SEQUENCE } from '../../src/core/arguments.js';
 
 // --- sequence ---
 
@@ -15,6 +15,10 @@ test('sequence: plain counts', () => {
     assert.deepEqual(indices(3.8), [1, 2, 3, 4]);
     assert.deepEqual(indices(0.5), [1]);
     assert.deepEqual(indices(0), []);
+    // a count that is not a number is one, zero rows are none
+    assert.deepEqual(indices('abc'), [1]);
+    assert.deepEqual(indices('3xabc'), [1, 2, 3]);
+    assert.deepEqual(indices('3x0'), []);
 });
 
 test('sequence: grid counts walk rows first', () => {
@@ -33,6 +37,10 @@ test('sequence: ranges run in either direction', () => {
     let range = indices('100-1000');
     assert.equal(range.length, 901);
     assert.deepEqual([range[0], range.at(-1)], [100, 1000]);
+    // a range is one row: (n, x, y, N, X, Y, index)
+    assert.deepEqual(sequence('2-4', (...a) => a), [[2, 2, 1, 3, 3, 1, 1], [3, 3, 1, 3, 3, 1, 2], [4, 4, 1, 3, 3, 1, 3]]);
+    // a nested range stops at the limit it is given
+    assert.deepEqual(sequence('1-10', i => i, 4), [1, 2, 3, 4]);
 });
 
 test('sequence: negative counts produce nothing', () => {
@@ -141,10 +149,13 @@ test('expand: a trailing `...` goes on to the count it is given, and stays witho
     let fill = (count, ...list) => expand((...a) => a, count)(...list);
     assert.deepEqual(fill(5, '1', '3', '...'), ['1', '3', '5', '7', '9']);
     assert.deepEqual(fill(4, '0s', '.1s', '...'), ['0s', '.1s', '0.2s', '0.3s']);
+    // the step comes from the last two values
+    assert.deepEqual(fill(5, '1', '2', '4', '...'), ['1', '2', '4', '6', '8']);
     // values written past the count all stay
     assert.deepEqual(fill(1, '1', '2', '...'), ['1', '2']);
     // no gap to read, or no count, stays as written
     assert.deepEqual(fill(5, 'red', 'blue', '...'), ['red', 'blue', '...']);
+    assert.deepEqual(fill(4, 'ab', '2', '...'), ['ab', '2', '...']);
     assert.deepEqual(fill(undefined, '1', '2', '...'), ['1', '2', '...']);
 });
 
@@ -155,6 +166,14 @@ test('expand: every argument of the wrapped function expands', () => {
     let joined = expand((...values) => values.join('-'));
     assert.equal(joined('[a-c]'), 'a-b-c');
     assert.equal(joined('[1-3]'), '1-2-3');
+});
+
+// --- byUnit ---
+
+test('byUnit: the numbers go through, the first unit comes back', () => {
+    assert.equal(byUnit(Math.max)('1px', '3px'), '3px');
+    assert.equal(byUnit(Math.max)('1', '3em'), '3em');
+    assert.equal(byUnit(Math.min)('2deg', '5'), '2deg');
 });
 
 // --- getNamedArguments ---

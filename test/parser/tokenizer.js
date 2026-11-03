@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { scan } from '../../src/parser/tokenizer.js';
+import { scan, itemsOf, textOf } from '../../src/parser/tokenizer.js';
 
 // [type, value] per token, with the open/close status of quotes
 const tokens = (input, options) => scan(input, options).map(t =>
@@ -371,6 +371,18 @@ test('pos is [column, line]', () => {
     assert.deepEqual(padded[2].pos, [0, 2]);
 });
 
+test('pos counts the lines a comment or a run of spaces spans', () => {
+    let at = (source, value, options) => scan(source, options).find(t => t.value === value).pos;
+    assert.deepEqual(at('a /* x\ny\nz */ b\nc', 'b'), [5, 2]);
+    assert.deepEqual(at('a /* x\ny\nz */ b\nc', 'c'), [0, 3]);
+    assert.deepEqual(at('a // x\nb\nc', 'c', { ignoreInlineComment: true }), [0, 2]);
+    assert.deepEqual(at('a  \n  \n b\nc', 'b'), [1, 2]);
+    assert.deepEqual(at('a  \n  \n b\nc', 'c'), [0, 3]);
+    // an escaped line break inside a string
+    assert.deepEqual(at('"a\\\nb c"', 'b'), [0, 1]);
+    assert.deepEqual(at('"a\\\nb c"', 'c'), [2, 1]);
+});
+
 test('index points at the first char of the token in the untrimmed source', () => {
     for (let source of [
         'color: red;',
@@ -410,6 +422,32 @@ test('index points at the first char of the token in the untrimmed source', () =
         assert.ok(t.index > prev, `indexes not increasing at ${t.value}`);
         prev = t.index;
     }
+});
+
+test('the spaces are those of /\\s/, the non-ASCII ones too', () => {
+    for (let c = 0x80; c <= 0xffff; c++) {
+        let ch = String.fromCharCode(c);
+        if (!/\s/.test(ch)) continue;
+        assert.deepEqual(tokens(`a${ch}b`), [['Word', 'a'], ['Space', ' '], ['Word', 'b']], c.toString(16));
+    }
+    // a zero-width space is not one of them
+    assert.deepEqual(tokens('a\u200bb'), [['Word', 'a\u200bb']]);
+});
+
+test('a leading-dot number takes its minus sign', () => {
+    assert.deepEqual(tokens('-.5'), [['Number', '-.5']]);
+    assert.deepEqual(tokens('a -.5'), [['Word', 'a'], ['Space', ' '], ['Number', '-.5']]);
+});
+
+test('itemsOf drops empty items unless asked to keep them', () => {
+    let items = (source, keepEmpty) => itemsOf(scan(source), keepEmpty).map(textOf);
+    assert.deepEqual(items('a, b,'), ['a', 'b']);
+    assert.deepEqual(items(',a'), ['a']);
+    assert.deepEqual(items('a, b,', true), ['a', 'b', '']);
+    assert.deepEqual(items('a,,b', true), ['a', '', 'b']);
+    assert.deepEqual(items('', true), []);
+    // commas inside parentheses and quotes stay
+    assert.deepEqual(items('f(a, b), "c, d"'), ['f(a,b)', '"c, d"']);
 });
 
 test('a comment does not close on the star that opens it', () => {

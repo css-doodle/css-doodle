@@ -63,3 +63,10 @@ test('a third value on a stop is its opacity', () => {
     assert.equal(radial('red', 'blue 50% 0.8', 'green'),
         'radialGradient {  stop { offset: 0%; stop-color: red } stop { offset: 50%; stop-color: blue; stop-opacity: 0.8 } stop { offset: 100%; stop-color: green } }');
 });
+
+test('one argument that holds a comma list spreads into the stops', () => {
+    assert.equal(linear('red, blue'), linear('red', 'blue'));
+    assert.equal(linear('45, red 0%, blue 100%'), linear('45', 'red 0%', 'blue 100%'));
+    // a comma inside a color function is not a separator
+    assert.equal(linear('rgb(1, 2, 3)'), 'linearGradient {  stop { offset: 0%; stop-color: rgb(1,2,3) } }');
+});

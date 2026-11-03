@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import calc, { defaultContext, deref, withUnit } from '../../src/core/calc.js';
+import calc, { defaultContext, deref, withUnit, compileTemplate, isSignLeading } from '../../src/core/calc.js';
 
 test('basic operations', () => {
     assert.equal(calc('2 + 2'), 4);
@@ -260,6 +260,7 @@ test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, d
     assert.equal(calc('smoothstep(0, 1, 2)'), 1);
     assert.equal(calc('smoothstep(0, 2, -1)'), 0);
     assert.equal(calc('smoothstep(0, 4, 1)'), .15625);
+    assert.equal(calc('smoothstep(2, 4, 3)'), .5);
     assert.equal(calc('radians(180)'), Math.PI);
     assert.equal(calc('degrees(π / 2)'), 90);
     assert.equal(calc('cos(radians(60))'), Math.cos(Math.PI / 3));
@@ -716,4 +717,28 @@ test('Math functions, comparisons and logic lower by name', () => {
     assert.equal(withUnit('calc(var(--t))', 'deg'), 'calc((var(--t)) * 1deg)');
     assert.equal(withUnit(2, 'deg'), '2deg');
     assert.equal(withUnit('calc(var(--t))', ''), 'calc(var(--t))');
+});
+
+test('an unknown name in a chain reads 0 and the chain goes on', () => {
+    assert.equal(calc('abs.nope(-3)'), 0);
+    assert.equal(calc('nope.abs(-3)'), 0);
+});
+
+test('deref trims the value it reads', () => {
+    assert.equal(deref('a', { a: ' 5px ' }), '5px');
+    assert.equal(deref('a', { a: ' red ' }), 'red');
+});
+
+test('compileTemplate takes 1 to 26 holes and refuses those it cannot keep apart', () => {
+    assert.equal(compileTemplate(['1 + 2']), null);
+    assert.equal(compileTemplate(Array(28).fill(' + ')), null);
+    assert.equal(compileTemplate(Array(27).fill(' + ')).names.length, 26);
+    // two holes side by side, or after a double sign, splice instead
+    assert.equal(compileTemplate(['', '', '']), null);
+    assert.equal(compileTemplate(['1 --', '']), null);
+    assert.deepEqual(compileTemplate(['1 -', '']), { template: '1 -·a', names: ['·a'], signSensitive: [true] });
+    // a value that leads with a sign can't fill a sign-sensitive hole: 1 - -5 is not 1 --5
+    assert.equal(isSignLeading(0), false);
+    assert.equal(isSignLeading(-1), true);
+    assert.equal(isSignLeading(' -x'), true);
 });

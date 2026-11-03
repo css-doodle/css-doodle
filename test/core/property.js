@@ -118,6 +118,8 @@ test('grid: _ gap command with a rule', () => {
         ['1 _4px solid red 2px', '4px', 'solid red 2px'],
         ['1 _4px solid red 2', '4px', 'solid red 2px'],
         ['1 _4px red var(--w)', '4px', 'red var(--w) solid'],
+        // the gap takes two lengths at most, a third is the rule width
+        ['1 _4px 8px 2px red', '4px 8px', '2px red solid'],
         // a missing gap takes the rule width
         ['1 _red', '1px', 'red solid 1px'],
         ['1 _thick red', '5px', 'thick red solid'],
@@ -151,6 +153,11 @@ test('size: prototype names are not presets', () => {
     assert.equal(size('hasOwnProperty'), 'width:hasOwnProperty;height:hasOwnProperty;');
 });
 
+test('size: a placed cell hands its size to the rule every placed cell shares', () => {
+    assert.equal(property.size('40px 20px', { place: true }), 'width:40px;height:20px;--_cell-width:40px;--_cell-height:20px;');
+    assert.equal(size('40px'), 'width:40px;height:40px;');
+});
+
 test('size: auto takes the grid aspect ratio on special selectors', () => {
     assert.equal(size('auto'), 'width:auto;height:auto;aspect-ratio: 1;');
 });
@@ -170,6 +177,13 @@ test('place: safe drops the unsafe overflow keyword', () => {
     assert.equal(property.place('safe center', {}), placed('50%', '50%', 'center'));
     assert.equal(property.place('safe 50% 30%', {}), placed('50%', '30%', 'center'));
     assert.equal(property.place('safe left', {}), placed('0%', '50%', 'center'));
+});
+
+test('place: edge keywords fix their own axis and the rest fill the other', () => {
+    assert.equal(property.place('right bottom', {}), placed('100%', '100%'));
+    assert.equal(property.place('top 30%', {}), placed('30%', '0%'));
+    assert.equal(property.place('center 20%', {}), placed('50%', '20%'));
+    assert.equal(property.place('unsafe 30% 40%', {}), placed('30%', '40%'));
 });
 
 test('place: no point hides the cell', () => {

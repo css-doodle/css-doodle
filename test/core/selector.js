@@ -2,11 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import selector from '../../src/core/selector.js';
+import seedrandom from '../../src/lib/seedrandom.js';
 
 // a cell at (x, y) with 1-based index `count` in a 4x4 grid
 const cell = (x, y, count) => ({ x, y, count, grid: { count: 16, x: 4, y: 4 } });
 // the environment of the pass: a random stream and the per-call-site memo
 const env = { random: Math.random, context: {} };
+
+// the indices of the 16 cells `select` picks in one seeded pass
+function picked(select, seed = 'a') {
+    let env = { random: seedrandom(seed), context: {} };
+    let list = [];
+    for (let i = 1; i <= 16; ++i) {
+        if (select(cell((i - 1) % 4 + 1, Math.ceil(i / 4), i), env)) list.push(i);
+    }
+    return list;
+}
 
 test('at matches the exact coordinates', () => {
     let at = selector.at(cell(2, 3, 10));
@@ -28,6 +39,12 @@ test('nth matches the cell index against an+b expressions', () => {
     assert.equal(nth('odd'), true);
     assert.equal(nth('n + 1'), true);
     assert.equal(nth('3n'), true);
+});
+
+test('nth counts n from 0, so b itself matches, and a negative a takes the first b', () => {
+    let nth = (count, expr) => selector.nth(cell(1, 1, count))(expr);
+    assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map(i => nth(i, '3n + 1')), [true, false, false, true, false, false, true]);
+    assert.deepEqual([1, 2, 3, 4, 5].map(i => nth(i, '-n + 3')), [true, true, true, false, false]);
 });
 
 test('x and y match the column and row', () => {
@@ -92,6 +109,40 @@ test('cell accepts comma lists, keywords and index checks', () => {
     assert.equal(match('x > 3'), false);
     assert.equal(match('i = 10'), true);
     assert.equal(match(), true);
+});
+
+test('cell(even) and cell(odd) follow the checkerboard, not the index', () => {
+    // (1, 2) is the 5th cell of a 4-column grid: odd by index, even on the board
+    let a = cell(1, 2, 5);
+    assert.equal(selector.cell(a, env, 0)({}, 'even'), true);
+    assert.equal(selector.cell(a, env, 0)({}, 'odd'), false);
+    assert.equal(selector.nth(a)('even'), false);
+});
+
+test('random(n) picks exactly n distinct cells from n = 1, below 1 it is a chance per cell', () => {
+    let random = n => picked((c, env) => selector.random(c, env, 0)({}, n));
+    for (let n of [1, 3, 15, 16]) assert.equal(random(n).length, n);
+    assert.equal(random(40).length, 16);
+    assert.equal(random(0).length, 0);
+    assert.equal(random(-1).length, 0);
+    let half = random(.5).length;
+    assert.ok(half > 3 && half < 13, half);
+    // the seed decides which cells
+    let sets = ['a', 'b', 'c', 'd'].map(seed => picked((c, env) => selector.random(c, env, 0)({}, 3), seed).join());
+    assert.ok(new Set(sets).size > 1, sets);
+});
+
+test('cell(random n) picks n cells', () => {
+    assert.equal(picked((c, env) => selector.cell(c, env, 0)({}, 'random 3')).length, 3);
+});
+
+test('random() in a selector expression draws from the stream of the pass', () => {
+    // 2 is out of reach of Math.random: only the pass stream gives it
+    let env = { random: () => 2, context: {} };
+    let a = cell(2, 3, 10);
+    assert.equal(selector.match(a, env)({}, 'random() > 1'), true);
+    assert.equal(selector.cell(a, env, 0)({}, 'random() > 1'), true);
+    assert.equal(selector.random(a, env, 0)({}, 'random() * 8'), true);
 });
 
 test('each random argument of cell picks its own cells', () => {

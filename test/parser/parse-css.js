@@ -880,6 +880,22 @@ test('a function that assigns result runs its statements before the statement ca
     ].join(' '));
 });
 
+test('a call inside a larger value is grouped when its function gives an expression', () => {
+    assert.equal(paintOf('--sq(x): $x * $x; @content: @pattern(fill: 2 * $sq(uv.x););'), 'fill: 2 * (uv.x * uv.x);');
+    // a lone call gives what the function it calls gives
+    assert.equal(paintOf('--sq(x): $x * $x; --q(x): $sq($x); @content: @pattern(fill: 2 * $q(uv.x););'), 'fill: 2 * (uv.x * uv.x);');
+    // a body that declares is statements, pasted as written
+    assert.equal(paintOf('--d(x): x: $x; @content: @pattern(fill: 2 * $d(uv.x););'), 'fill: 2 * x: uv.x;');
+});
+
+test('a value function renames its own names once assigned, colors stay', () => {
+    assert.equal(paintOf('--f(): { b: .5; result: mix(#a1b2c3, #fff, b); }; @content: @pattern(fill: $f(););'),
+        'f_1_b: .5; f_1_result: mix(#a1b2c3, #fff, f_1_b); fill: f_1_result;');
+    // a swizzle written before the name is its own copies the caller's first
+    assert.equal(paintOf('--f(): { p.x: 1; result: p; }; @content: @pattern(p: uv; fill: $f(););'),
+        'p: uv;f_1_p: p; f_1_p.x: 1; f_1_result: f_1_p; fill: f_1_result;');
+});
+
 test('the last result a call runs is its value, in a block too', () => {
     assert.equal(paintOf(`--f(): { a: 1; result: a; result: a + 1; }; @content: @pattern(fill: $f(););`),
         'f_1_a: 1; f_1_result: f_1_a; f_1_result: f_1_a + 1; fill: f_1_result;');

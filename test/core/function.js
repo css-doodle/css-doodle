@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import Function, { pickAt } from '../../src/core/function.js';
+import Function, { pickAt, SEQ } from '../../src/core/function.js';
 import createRandom from '../../src/core/random.js';
 
 test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
@@ -105,6 +105,21 @@ test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy n
     assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
 });
 
+test('@PN, @PNR and @PD in a nested doodle step with the sequence around it', () => {
+    // a doodle inside @m4(@doodle(…)), drawn the third time round
+    let around = [];
+    around[SEQ.index] = 3;
+    around[SEQ.sig] = 's';
+    let env = { context: {}, extra: [], upextra: [around], shuffle: a => a };
+    let cell = { grid: { count: 1 } };
+    assert.equal(Function.PN(cell, env, ':1')('a', 'b', 'c', 'd'), 'c');
+    assert.equal(Function.PNR(cell, env, ':2')('a', 'b', 'c', 'd'), 'b');
+    assert.equal(Function.PD(cell, env, ':3')('a', 'b', 'c', 'd'), 'c');
+    // the lowercase picks count on their own
+    assert.equal(Function.pn(cell, env, ':4')('a', 'b', 'c', 'd'), 'a');
+    assert.equal(Function.pnr(cell, env, ':5')('a', 'b', 'c', 'd'), 'd');
+});
+
 test('@pn with a trailing `...` carries the list on', () => {
     let env = { context: {}, extra: [], upextra: [], shuffle: a => a };
     let run = (site, ...list) => {
@@ -189,6 +204,30 @@ test('@R: a single bound is the maximum, also next to named arguments', () => {
     assert.deepEqual(values([]), values(['1']));
     assert.deepEqual(values(['abc']), values([]));
     assert.deepEqual(values(['var(--cssd-utime)']), values([]));
+});
+
+test('@R: the seed draws the same noise field, so seeded art keeps its values', () => {
+    let grid = { x: 4, y: 1, z: 1, count: 4 };
+    let values = (...args) => [1, 2, 3, 4].map(x =>
+        Function.R({ x, y: 1, grid }, { context: {}, extra: [], random: createRandom('1').random }, 1)(...args));
+    assert.deepEqual(values('10'), [7.42420629838, 7.51914414918, 6.82699963856, 6.63465359523]);
+    assert.deepEqual(values('10', 'frequency=3'), [5.01208346217, 2.96683390078, 3.65913583102, 2.30099750547]);
+    assert.deepEqual(values('10', 'octave=3'), [8.39556882278, 7.61375784642, 6.53815145475, 5.63397799023]);
+    // scale multiplies the result, bounds included
+    assert.deepEqual(values('10', 'scale=2'), values('10').map(v => +(v * 2).toFixed(10)));
+});
+
+test('@R: inside a sequence the step position is sampled, as the cell position is outside one', () => {
+    let grid = { x: 4, y: 1, z: 1, count: 4 };
+    let cells = [1, 2, 3, 4].map(x =>
+        Function.R({ x, y: 1, grid }, { context: {}, extra: [], random: createRandom('1').random }, 1)('10'));
+    let steps = [1, 2, 3, 4].map(n => {
+        let step = [];
+        Object.assign(step, { [SEQ.n]: n, [SEQ.x]: n, [SEQ.y]: 1, [SEQ.max]: 4, [SEQ.X]: 4, [SEQ.Y]: 1, [SEQ.index]: n, [SEQ.sig]: 's' });
+        let one = { x: 1, y: 1, z: 1, count: 1 };
+        return Function.R({ x: 1, y: 1, grid: one }, { context: {}, extra: [step], random: createRandom('1').random }, 1)('10');
+    });
+    assert.deepEqual(steps, cells);
 });
 
 test('@R.t: @R written out for a shape, one site per call, inside the bounds', () => {
@@ -962,6 +1001,8 @@ test('@palette: seeded distinct colors, or now and then a gradient', () => {
     assert.deepEqual(palette(3), five.slice(0, 3));
     assert.deepEqual(palette(9).slice(0, 5), five);
     // a gradient seed gives the same colors as v0.56; every count shares the ends, odd counts the middle
+    // the seed decides the colors: a change here re-rolls seeded art
+    assert.deepEqual(five, ['oklch(0.813 0.112 124.2)', 'oklch(0.96 0.023 73.9)', 'oklch(0.875 0.129 89.4)', 'oklch(0.851 0.075 14.2)', 'oklch(0.908 0.211 128.9)']);
     let ramp = Function.palette(null, env('b'));
     assert.deepEqual(ramp(5), ['oklch(0.8 0.075 86.1)', 'oklch(0.792 0.093 35.8)', 'oklch(0.734 0.094 12.6)', 'oklch(0.626 0.061 334.9)', 'oklch(0.466 0.092 248.5)']);
     assert.deepEqual(ramp(3), [ramp(5)[0], ramp(5)[2], ramp(5)[4]]);
@@ -1018,4 +1059,21 @@ test('@P: never the last pick at that call, even when it is listed more than onc
     let p = Function.p(cell, env);
     assert.equal(p('a x2', 'b'), 'a');
     assert.equal(P(), 'b');
+});
+
+test('@cycle rotates a list, @mirror and @Mirror reflect it, @code reads char codes', () => {
+    assert.deepEqual(Function.cycle()('a', 'b', 'c'), ['a,b,c', 'b,c,a', 'c,a,b']);
+    // one argument is a space-separated list
+    assert.deepEqual(Function.cycle()('a b c'), ['a b c', 'b c a', 'c a b']);
+    assert.deepEqual(Function.mirror()('a', 'b', 'c'), ['a', 'b', 'c', 'c', 'b', 'a']);
+    assert.deepEqual(Function.Mirror()('a', 'b', 'c'), ['a', 'b', 'c', 'b', 'a']);
+    assert.deepEqual(Function.code()('65', '66'), ['A', 'B']);
+});
+
+test('@stripe splits 100% evenly, or shares what the sized stripes leave', () => {
+    assert.equal(Function.stripe()('red', 'blue'), 'red 0 50%,blue 0 100%');
+    assert.equal(Function.stripe()('red', 'blue', 'gold'), 'red 0 33.3333333333%,blue 0 66.6666666667%,gold 0 100%');
+    assert.equal(Function.stripe()('red 10px', 'blue', 'gold'),
+        'red 0 calc(10px),blue 0 calc(10px + (100% - 10px) / 2),gold 0 calc(10px + (100% - 10px) / 2 + (100% - 10px) / 2)');
+    assert.equal(Function.stripe()(), '');
 });

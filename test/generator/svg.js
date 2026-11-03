@@ -398,6 +398,11 @@ test('problems are reported through the warn callback', () => {
     });
     assert.deepEqual(warned('path { draw: 2s steps(4) }').warnings, ['unknown timing steps(4)']);
     assert.deepEqual(warned('g { @seed: 7; circle { r: 5 } }'), { output: '<svg><g><circle r="5"/></g></svg>', warnings: [] });
+    // a tag the XML parser rejects is dropped with what it holds, not the whole image
+    assert.deepEqual(warned('a[x] > b {} circle {}'), {
+        output: '<svg><circle/></svg>',
+        warnings: ['invalid tag a[x]'],
+    });
 });
 
 test('timing takes a delay after the duration, like the css animation shorthand', () => {
@@ -530,4 +535,31 @@ test('a joining block warns about what it cannot join', () => {
         '<rect> ignores %',
         '<rect> transform ignored',
     ]);
+});
+
+test('a value that starts with a character to escape is escaped too', () => {
+    assert.equal(svg('text { content: "<3" }'), `<svg ${NS}><text>&lt;3</text></svg>`);
+    assert.equal(svg('text { content: &x }'), `<svg ${NS}><text>&amp;x</text></svg>`);
+    assert.equal(svg(`text { title: '"q' }`), `<svg ${NS}><text title="&quot;q"/></svg>`);
+    assert.equal(svg('text { title: "<b" }'), `<svg ${NS}><text title="&lt;b"/></svg>`);
+    assert.equal(svg('a { title: &x }'), `<svg ${NS}><a title="&amp;x"/></svg>`);
+});
+
+test('an xlink: attribute declares the xlink namespace', () => {
+    assert.equal(svg('use { xlink:href: #a }'), `<svg ${NS} xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href="#a"/></svg>`);
+});
+
+test('a rounded rect joins a group with its corners, rx and ry standing in for each other', () => {
+    let rounded = `<svg ${NS}><path d="M3 2L9 2A2 2 0 0 1 11 4L11 6A2 2 0 0 1 9 8L3 8A2 2 0 0 1 1 6L1 4A2 2 0 0 1 3 2Z"/></svg>`;
+    for (let r of ['rx: 2', 'ry: 2', 'rx: 2; ry: 2']) {
+        assert.equal(svg(`union { rect { x: 1; y: 2; width: 10; height: 6; ${r} } }`), rounded, r);
+    }
+    // a radius stops at half the side
+    assert.equal(svg('union { rect { width: 10; height: 6; rx: 9 } }'), svg('union { rect { width: 10; height: 6; rx: 5; ry: 3 } }'));
+});
+
+test('a draw with no duration warns', () => {
+    let warnings = [];
+    generateSvg(parseSvg('path { draw: infinite }'), m => warnings.push(m));
+    assert.deepEqual(warnings, ['draw needs duration']);
 });
