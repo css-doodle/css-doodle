@@ -196,7 +196,7 @@ function scan(source, options = {}) {
             i = end;
         }
         else if (isDigitCode(curr) || (
-            curr === 46 && isDigitCode(next) && input.charCodeAt(i - 1) !== 46) || (
+            curr === 46 && isDigitCode(next)) || (
             curr === 45 && (isDigitCode(next) || next === 46 && isDigitCode(input.charCodeAt(i + 2)))
             && !(lastToken && (lastToken.isNumber() || lastToken.isWord() || lastToken.isSymbol(')', ']'))))) {
             let end = readNumber(input, i);
