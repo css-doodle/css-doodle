@@ -541,7 +541,7 @@ Function.stripe = () => (...input) => {
         return [color, size];
     });
     if (!customSizes.length) {
-        return colors.map((color, i) => `${color} 0 ${100 / max * (i + 1)}%`).join(',');
+        return colors.map((color, i) => `${color} 0 ${tidyNumber(100 / max * (i + 1))}%`).join(',');
     }
     let defaultSize = `(100% - ${customSizes.join(' - ')}) / ${defaultCount}`;
     let end = '';
