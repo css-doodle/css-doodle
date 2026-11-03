@@ -472,6 +472,15 @@ if (typeof HTMLElement !== 'undefined') {
             this.cellRules().cssRules[1].style.setProperty('animation-play-state', this.hasAttribute('cssd-paused') ? 'paused' : '', 'important');
         }
 
+        finishAnimations() {
+            if (!this.reducesMotion()) return;
+            for (let target of this._cells ? this._hosts : [this, this.shadowRoot]) {
+                for (let animation of target.getAnimations({ subtree: true })) {
+                    if (animation.playState === 'paused' && animation.effect.getTiming().iterations !== Infinity) animation.finish();
+                }
+            }
+        }
+
         getUse() {
             let use = String(this.getAttribute('use') || '').trim();
             if (/^var\(/.test(use)) {
@@ -846,6 +855,7 @@ if (typeof HTMLElement !== 'undefined') {
                     style.textContent = sheet.replace(/\n\s+/g, ' ');
                     this._landed = true;
                     syncUTime(this);
+                    this.finishAnimations();
                     if (!isNil(this._seek)) {
                         let ms = this._seek;
                         this._seek = null;
@@ -880,6 +890,7 @@ if (typeof HTMLElement !== 'undefined') {
             this._clock = { base: this.clockNow(), since: 0 };
             this.setAttribute('cssd-paused', true);
             this.pauseCells();
+            this.finishAnimations();
             for (let am of this.animations) {
                 am.pause();
             }

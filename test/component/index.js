@@ -216,6 +216,7 @@ test('the host clock freezes while paused', async () => {
         restamp: () => restamped++,
         syncSvgAnimations: () => {},
         pauseCells: () => {},
+        finishAnimations: () => {},
         clockNow: CSSDoodle.prototype.clockNow,
         pause: CSSDoodle.prototype.pause,
         resume: CSSDoodle.prototype.resume,
