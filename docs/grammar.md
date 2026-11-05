@@ -367,7 +367,8 @@ name       = letter or '_', then letters, digits or '_'
   difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`,
   `sign(sin(π))` is `0`.
 - **Adjacent values multiply**: `2x`, `2(3)`, `2π`. A space ends the
-  product (`2 x` is `2`), and a name before `(` is a call, `x (2)`
+  product and makes a list, which reads as its first value: `2 x` is
+  `2`, and `2 * 3 4` is `6`. A name before `(` is a call, `x (2)`
   too.
   The power binds first, then the product, then a sign: `-2^2` is
   `-4`, `2x^2` is `2(x^2)`, `1/2π` is `1/(2π)`. A value keeps its own

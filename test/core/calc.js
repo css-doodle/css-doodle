@@ -447,6 +447,13 @@ test('a space ends a product: only adjacent values multiply', () => {
     // '-1' after a space is still a subtraction
     assert.equal(calc('k -1', { k: 3 }), 2);
     assert.equal(calc('2 -1'), 1);
+    // the first value keeps the operators written before the next one
+    assert.equal(calc('2 * 3 4'), 6);
+    assert.equal(calc('1 + 2 3 + 4'), 3);
+    assert.equal(calc('2^3 4'), 8);
+    assert.equal(calc('-1 2'), -1);
+    assert.equal(calc('!0 5'), 1);
+    assert.equal(calc('3 * (2) (5)'), 6);
 });
 
 test('unary minus in arguments', () => {

@@ -328,6 +328,14 @@ function toPostfix(tokens) {
     for (let i = 0; i < tokens.length; i++) {
         const { type, value } = tokens[i];
 
+        const prev = tokens[i - 1];
+        if (prev && (prev.type === VALUE || prev.value === ')')
+                && (type === VALUE || value === '(' || value === '-u' || value === '!')) {
+            while (opStack.length && opStack.at(-1) !== '(') {
+                pop();
+            }
+        }
+
         if (type === VALUE) {
             const next = tokens[i + 1];
             if (tokens[i].live) {
