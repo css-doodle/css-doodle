@@ -1193,13 +1193,15 @@ class Rules {
 const mathStreams = new WeakMap();
 
 function useMathStream(random, seed) {
-    return useRandom(() => {
+    let draw = () => {
         let stream = mathStreams.get(random);
         if (!stream) {
             mathStreams.set(random, stream = seedrandom('random:' + seed));
         }
         return stream();
-    });
+    };
+    draw.key = 'random:' + seed;
+    return useRandom(draw);
 }
 
 export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '', host) {

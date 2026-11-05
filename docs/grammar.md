@@ -386,6 +386,12 @@ name       = letter or '_', then letters, digits or '_'
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
   item `k`: `pick(4: a, b, c)` is `a`. Without the index it reads as
   `0`.
+- **`random()`** is the next draw in `[0, 1)` from the doodle's seed.
+  With arguments, `random(a, b, …)` is the draw those arguments get:
+  the same wherever it is asked, in `$(…)`, `@match` or a shape body,
+  and another under another seed. So a copy reads its neighbour's
+  draw as `random(n + 1)`, and `random(n)` and `random(n, 2)` are two
+  draws of one copy.
 - **Calls chain** right to left: `tan.cos.sin(x)` is
   `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the
   value after the first test that holds, else the last odd argument

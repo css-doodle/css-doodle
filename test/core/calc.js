@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import calc, { defaultContext, deref, withUnit, compileTemplate, isSignLeading } from '../../src/core/calc.js';
+import calc, { defaultContext, deref, withUnit, compileTemplate, isSignLeading, useRandom } from '../../src/core/calc.js';
 
 test('basic operations', () => {
     assert.equal(calc('2 + 2'), 4);
@@ -611,6 +611,39 @@ test('a bare reference to a zero-argument function calls it', () => {
     assert.equal(calc('abs'), 0);
     assert.equal(calc('sin + 1'), 1);
     assert.equal(calc('-fn', { fn: x => x }), 0);
+});
+
+test('random(a, b, …) is the draw its arguments get under the key of the random source', () => {
+    let draw = () => .5;
+    draw.key = 'a';
+    let restore = useRandom(draw);
+    try {
+        let one = calc('random(1)');
+        assert.ok(one >= 0 && one < 1);
+        // the same arguments, the same draw, also written another way
+        assert.equal(calc('random(1)'), one);
+        assert.equal(calc('random(3 - 2)'), one);
+        assert.equal(calc('random(.1 + .2)'), calc('random(.3)'));
+        // other arguments, another draw; without arguments the stream
+        assert.notEqual(calc('random(2)'), one);
+        assert.notEqual(calc('random(1, 2)'), one);
+        assert.notEqual(calc('random(1, 2)'), calc('random(2, 1)'));
+        assert.equal(calc('random()'), .5);
+        // another key, another draw
+        draw.key = 'b';
+        assert.notEqual(calc('random(1)'), one);
+    } finally {
+        useRandom(restore);
+    }
+    // spread evenly
+    let sum = 0, bins = [0, 0, 0, 0];
+    for (let i = 0; i < 4000; i++) {
+        let v = calc(`random(${i})`);
+        sum += v;
+        bins[Math.floor(v * 4)]++;
+    }
+    assert.ok(Math.abs(sum / 4000 - .5) < .02, String(sum / 4000));
+    assert.ok(bins.every(n => n > 900 && n < 1100), String(bins));
 });
 
 test('dashed names the context defines read as one variable', () => {

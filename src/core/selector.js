@@ -1,4 +1,4 @@
-import calc from './calc.js';
+import calc, { randomOf } from './calc.js';
 import parseLinearExpr from '../parser/parse-linear-expr.js';
 import { addAlias } from '../lib/fn.js';
 import { cellMetrics } from '../lib/cell.js';
@@ -38,7 +38,7 @@ export function calcContext({ x, y, z, count, grid }, context, random) {
         cellMetrics(x, y, grid)
     );
     if (random) {
-        context.random = random;
+        context.random = (...args) => args.length ? randomOf(args) : random();
     }
     return context;
 }

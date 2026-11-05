@@ -117,6 +117,23 @@ test('@shape, @plot and @tile in @svg give plain numbers where the box is 2 acro
     assert.match(css('clip-path: @shape(star);'), /clip-path:polygon\(97\.5528258148% 34\.5491502813%/);
 });
 
+test('random(a, b, …) gives one draw for its arguments across the doodle, under its seed', () => {
+    let draws = (code, seed = 's') => compile(code, '1', seed).content['#c-1-1-1'].match(/"M?[\d.]+[" ]/g).map(v => parseFloat(v.replace(/^"M?/, '')));
+    let [x1, y1, next1, k1, x2] = draws('@content: @svg(circle*2 { cx: $(random(n)); cy: $(random(n)); data-next: $(random(n + 1)); data-k: $(random(n, 2)); })');
+    assert.equal(x1, y1);
+    assert.equal(next1, x2);
+    assert.notEqual(k1, x1);
+    // cells, @match and shape bodies ask the same draws
+    let sheet = cells('--a: $(random(i));', '2', 's');
+    assert.ok(sheet.includes(`#c-1-1-1 {--a:${x1};}`) && sheet.includes(`#c-2-1-1 {--a:${x2};}`), sheet);
+    assert.equal(cells('@match(random(i) == random(1)) { --hit: 1; }', '2', 's'), '#c-1-1-1 {--hit:1;}');
+    let [r] = draws('@content: @svg(path { d: @shape(points: 3; r: random(1)) })');
+    assert.equal(r, x1);
+    // another seed, other draws; the stream of random() is as it was
+    assert.notEqual(draws('@content: @svg(circle { cx: $(random(1)) })', 't')[0], x1);
+    assert.equal(cells('--a: $(random());', '2', 's'), cells('--a: $(random());', '2', 's'));
+});
+
 // --- functions cells define ---
 
 // --- depth on multi-cell grids ---

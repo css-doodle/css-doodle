@@ -539,7 +539,9 @@ export default function generateShape(input, range = {}, modifier) {
         rules = parseShapeCommands(preset + ';' + input);
     }
     let seed = isEmpty(rules.seed) ? range.seed : rules.seed;
-    let restore = useRandom(seedrandom('random:' + (seed ?? 0)));
+    let draw = seedrandom('random:' + (seed ?? 0));
+    draw.key = 'random:' + (seed ?? 0);
+    let restore = useRandom(draw);
     try {
         if (modifier) {
             rules = modifier(rules, preset !== undefined);

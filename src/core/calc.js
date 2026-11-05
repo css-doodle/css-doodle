@@ -1,5 +1,5 @@
 import { isInvalidNumber, removeParens } from '../lib/type.js';
-import { tidyNumber } from '../lib/math.js';
+import { tidyNumber, hash } from '../lib/math.js';
 import { scan, NAME_CHAR } from '../parser/tokenizer.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 
@@ -34,11 +34,15 @@ export function useRandom(fn) {
     return prev;
 }
 
+export function randomOf(args) {
+    return hash(args.map(v => tidyNumber(Number(v) || 0)).join(','), hash(draw.key ?? '')) / 2 ** 53;
+}
+
 export const defaultContext = {
     __proto__: MATH,
 
     'π': Math.PI,
-    random: () => draw(),
+    random: (...args) => args.length ? randomOf(args) : draw(),
     gcd(a, b) {
         while (b) [a, b] = [b, a % b];
         return Math.abs(a);
