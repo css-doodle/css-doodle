@@ -523,6 +523,14 @@ test('deref: a lone variable name acts as a generation-time var()', () => {
     // values that read as math evaluate, once
     assert.equal(deref('n', ctx), 3);
     assert.equal(deref('e', ctx), 5);
+    // a list of numbers is a list, as in CSS: a point keeps a negative y
+    assert.equal(deref('p', { p: '3 -2' }), '3 -2');
+    assert.equal(deref('p', { p: '-0.5 -1e-3 .2' }), '-0.5 -1e-3 .2');
+    assert.equal(deref('p', { p: '3 - 2' }), 1);
+    assert.equal(deref('p', { p: '3 -x', x: 2 }), 1);
+    assert.equal(deref('p', { p: '-1 -2' }), '-1 -2');
+    // in an expression `3 -2` is still a subtraction
+    assert.equal(calc('3 -2'), 1);
     // operations and unknown names are not references
     assert.equal(deref('n + 2', ctx), undefined);
     assert.equal(deref('x', ctx), undefined);

@@ -194,10 +194,7 @@ function pushValue(tokens, value, spaced) {
     tokens.push(tk(VALUE, value));
 }
 
-// Rewrite scanner tokens into calc tokens: values (numbers and names),
-// operators and commas. `spans` maps the source index of a dashed name
-// the context defines to that name, so its tokens collapse into one word
-function transformTokens(input, spans) {
+function transformTokens(input, spans, lists) {
     const raw = [];
     let end = 0, spaced = false;
     for (const token of scan(input)) {
@@ -225,7 +222,8 @@ function transformTokens(input, spans) {
         if (type === 'Number') {
             let number = value;
             if (number[0] === '-') {
-                tokens.push(tk(OPERATOR, isUnary(tokens.at(-1)) ? '-u' : '-'));
+                let list = lists && spaced && !isUnary(tokens.at(-1));
+                tokens.push(tk(OPERATOR, list || isUnary(tokens.at(-1)) ? '-u' : '-'));
                 number = number.slice(1);
             }
             pushValue(tokens, number, spaced);
@@ -632,8 +630,8 @@ function dashedCandidates(input) {
     return candidates;
 }
 
-function compileWith(input, spans) {
-    const tokens = transformTokens(input, spans);
+function compileWith(input, spans, lists) {
+    const tokens = transformTokens(input, spans, lists);
     const compiled = compile(toPostfix(tokens));
     compiled.angle = tokens.angle === true;
     return compiled;
@@ -641,21 +639,21 @@ function compileWith(input, spans) {
 
 const compiledCache = new Map();
 
-function compileInput(input, ctx) {
+function compileInput(input, ctx, lists = false) {
     input = String(input);
-    let entry = compiledCache.get(input);
+    let cacheKey = lists ? '\0' + input : input;
+    let entry = compiledCache.get(cacheKey);
     if (entry === undefined) {
         if (compiledCache.size >= 512) {
             compiledCache.clear();
         }
         let candidates = dashedCandidates(input);
-        entry = candidates ? { candidates, variants: new Map() } : compileWith(input, null);
-        compiledCache.set(input, entry);
+        entry = candidates ? { candidates, variants: new Map() } : compileWith(input, null, lists);
+        compiledCache.set(cacheKey, entry);
     }
     if (typeof entry === 'function') {
         return entry;
     }
-    // the dashed names this context defines select the variant
     let key = '';
     for (let { names } of entry.candidates) {
         key += (names.find(name => ctx[name] !== undefined) || '') + ',';
@@ -669,7 +667,7 @@ function compileInput(input, ctx) {
                 (spans ??= new Map()).set(index, chosen[i]);
             }
         });
-        compiled = compileWith(input, spans);
+        compiled = compileWith(input, spans, lists);
         entry.variants.set(key, compiled);
     }
     return compiled;
@@ -706,7 +704,7 @@ export function deref(input, context) {
     if (readDimension(value, vars) !== undefined) {
         return value;
     }
-    const compiled = compileInput(value, vars);
+    const compiled = compileInput(value, vars, true);
     if (compiled.angle) return value;
     const history = [value];
     const result = compiled(vars, history);

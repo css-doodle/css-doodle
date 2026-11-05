@@ -147,6 +147,12 @@ CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
 `$double(2)` is `4`. A body with any other statement is pasted as
 written, so an `@svg-filter` element keeps its `result` attribute.
 
+A body can give a point, both numbers from one set of arguments, where
+two functions for `x` and `y` would each be called:
+with `--at(a): $(cos(a)) $(sin(a))`, `points: @m(6, $at($(n * π / 3)))`
+is a hexagon and `transform: translate($at(1))` places an element.
+Kept in a variable, a point stays two numbers (§8).
+
 In `@pattern` and `@scene` bodies a call passes values, a parameter
 reads bare, and a body that assigns `result` returns a value: see
 [Patterns](languages.md#3-patterns).
@@ -433,9 +439,12 @@ Each caller provides its own context:
   `$w` or `$(w)`, is a generation-time `var()`: arithmetic over the
   custom properties is evaluated, anything else passes through, so
   with `--c: tomato`, `$c` is `tomato`, and with `--s: y`, `$s` is
-  `y`. An angle passes through unless `sin`, `cos`, `tan` or
-  `degrees` take it: with `--a: clamp(0deg, 45deg, 90deg)`, `$a` is
-  that `clamp()`, and with `--b: sin(30deg)`, `$b` is `.5`.
+  `y`. The value is read as CSS, where a sign stuck to a number after a
+  space starts the next value: with `--p: 3 -2`, `$p` is the point
+  `3 -2`, though `$(3 -2)` is `1`. An angle passes through unless
+  `sin`, `cos`, `tan` or `degrees` take it: with
+  `--a: clamp(0deg, 45deg, 90deg)`, `$a` is that `clamp()`, and with
+  `--b: sin(30deg)`, `$b` is `.5`.
 - **`@match`, `@cell` and `@random`** see the cell variables below and
   the custom properties without `--`, a cell variable winning a shared
   name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
