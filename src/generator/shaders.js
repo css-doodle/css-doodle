@@ -176,14 +176,13 @@ function createSurface(width, height) {
     }
 
     const parallel = gl.getExtension('KHR_parallel_shader_compile');
-    const surface = { canvas, gl, width, height, parallel, users: new Set(), programs: new Map(), disposed: false };
+    const surface = { canvas, gl, parallel, users: new Set(), programs: new Map(), disposed: false };
     surface.buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0, 0, 0, 0);
 
     canvas.addEventListener('webglcontextlost', () => {
@@ -244,13 +243,6 @@ function acquireSurface(width, height, drawing) {
     }
     surface.users.add(drawing);
     return surface;
-}
-
-function fitSurface(surface, width, height) {
-    if (surface.width === width && surface.height === height) return;
-    surface.canvas.width = surface.width = width;
-    surface.canvas.height = surface.height = height;
-    surface.gl.viewport(0, 0, surface.gl.drawingBufferWidth, surface.gl.drawingBufferHeight);
 }
 
 function releaseSurface(surface, drawing) {
@@ -329,7 +321,12 @@ export default function drawShader(shaders, seed, cell, onLost) {
         }
         if (!uniforms) bind();
 
-        fitSurface(surface, width, height);
+        const { canvas } = surface;
+        if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        }
         gl.useProgram(program);
         gl.uniform2f(uniforms.resolution, width, height);
 
