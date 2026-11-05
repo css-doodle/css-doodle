@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import generateShape, { shapeWarnings } from '../../src/generator/shapes.js';
-import { insideTest, signed } from '../../src/generator/tiling.js';
+import { insideTest, signed } from '../../src/generator/polygon.js';
 import { useRandom } from '../../src/core/calc.js';
 
 test('preset shapes', () => {

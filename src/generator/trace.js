@@ -1,6 +1,6 @@
 import parseSvgPath, { ARITY } from '../parser/parse-svg-path.js';
 import { memo } from '../lib/cache.js';
-import { bounds, thin, area, mix, toPairs } from './tiling.js';
+import { bounds, thin, area, mix, toPairs } from './polygon.js';
 
 const { cos, sin, atan2, sqrt, abs, min, max, ceil, PI } = Math;
 

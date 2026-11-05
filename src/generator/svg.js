@@ -5,7 +5,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
 import { traceRings } from './trace.js';
-import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge } from './tiling.js';
+import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge } from './polygon.js';
 
 const { atan2, ceil, abs, max, hypot, PI } = Math;
 

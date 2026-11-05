@@ -11,8 +11,10 @@ import { memo } from '../lib/cache.js';
 import calc, { defaultContext, evaluate, useRandom, randomOf } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
-    conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
-    shake, bend, inset, shrink, nearest, contains, bounds, pack, slice, centre, edges, noiseOf, flatten, bridge, overlay, offset, recount, resample, toPairs, PHI,
+    insideTest, corners, wave, bounds, flatten, bridge, overlay, offset, recount, resample, toPairs,
+} from './polygon.js';
+import {
+    conway, reacher, scatter, voronoi, colors, mosaic, lattice, penrose, delaunay, border, tiles, shake, bend, inset, shrink, nearest, contains, pack, slice, centre, edges, noiseOf, PHI,
 } from './tiling.js';
 import { glyphs, pathRings } from './trace.js';
 
