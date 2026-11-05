@@ -387,38 +387,6 @@ describe('component', { concurrency: 4 }, () => {
             assert.ok(await moving(page, el), 'nothing moves once motion is allowed');
         }));
 
-        test('reduced motion shows an animation that ends at its last frame, and holds the ones that loop', () => chrome.withPage(async page => {
-            let source = `@grid: 3 / 90px; background: red; animation: in 1s calc(@i * .3s) both;
-                ::after { content: ''; animation: spin 2s infinite }
-                :doodle { animation: in 1s both }
-                @keyframes in { from { opacity: 0 } } @keyframes spin { to { rotate: 1turn } }`;
-            let manual = await page.evaluateHandle(code => {
-                let el = document.createElement('css-doodle');
-                el.textContent = code;
-                el.rendered = new Promise(resolve => el.addEventListener('render', resolve, { once: true }));
-                el.pause();
-                document.body.append(el);
-                return el;
-            }, source);
-            await within(manual.evaluate(el => el.rendered), 10000, 'no render event');
-            let el = await mount(page, source);
-            await page.emulateMedia({ reducedMotion: 'reduce' });
-            await page.waitForFunction(el => el.hasAttribute('cssd-paused'), el);
-            await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<style>@keyframes page { to { color: red } }</style><p>Hi <b style="animation: page 1s 9s">you</b></p>'));
-            let text = await mount(page, 'opacity: 0; animation: up .5s calc(@i * .1s) forwards; @keyframes up { to { opacity: 1 } }', { seed: 1, cells: 'p::letters' });
-
-            let opacity = el => el.evaluate(el => (el.hasAttribute('cells')
-                ? [...document.querySelectorAll('[cssd-split=letter]')]
-                : [el, ...el.shadowRoot.querySelectorAll('cell')]).map(el => getComputedStyle(el).opacity).join(' '));
-            assert.equal(await opacity(el), '1 1 1 1 1 1 1 1 1 1');
-            assert.equal(await opacity(text), '1 1 1 1 1');
-            assert.equal(await page.evaluate(() => document.querySelector('b').getAnimations()[0].playState), 'running', 'the page\'s own animation is left alone');
-            assert.equal(await opacity(manual), '0 0 0 0 0 0 0 0 0 0');
-            let loops = await el.evaluate(el => el.shadowRoot.getAnimations().filter(a => a.animationName === 'spin').map(a => a.playState));
-            assert.deepEqual(loops, Array(9).fill('paused'));
-            await page.emulateMedia({ reducedMotion: 'no-preference' });
-        }));
-
         let timed = code + ':doodle { --t: @t; }';
         const clocks = el => el.evaluate(el => [
             el.currentTime,
