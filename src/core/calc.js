@@ -793,11 +793,11 @@ export function evaluate(value, context) {
     return evaluateValue(value, scope(context), []);
 }
 
-const RE_CALC_HEAD = /^calc\(/;
+const RE_LIVE_HEAD = /^(calc|var)\(/;
 
 // A unit after lowered math multiplies in: calc(…) + deg → calc((…) * 1deg)
 export function withUnit(value, unit) {
-    return unit && RE_CALC_HEAD.test(value) ? `calc(${value.slice(4)} * 1${unit})` : value + unit;
+    return unit && RE_LIVE_HEAD.test(value) ? `calc(${value.replace(/^calc/, '')} * 1${unit})` : value + unit;
 }
 
 // A number; with `css`, CSS math for an expression that reads a live

@@ -516,6 +516,7 @@ test('a live variable declared once on the cell, host or container is read as va
     assertContains(':doodle { --a: calc(var(--cssd-user) * @t); } width: $px(a);', 'width:calc((var(--cssd-user) * var(--cssd-utime)) * 1px);');
     // nor through a variable that reads one
     assertContains('--a: @t; --b: $a; content: $b; :container { width: $px(b); }', 'content:counter(time);', 'grid {width:calc((var(--cssd-utime)) * 1px);}');
+    assertContains('--a: $(@t); width: $(a)px;', 'width:calc(var(--a) * 1px);');
 });
 
 // --- functions, properties and diagnostics ---

@@ -770,6 +770,7 @@ test('Math functions, comparisons and logic lower by name', () => {
     assert.equal(withUnit('calc(var(--t))', 'deg'), 'calc((var(--t)) * 1deg)');
     assert.equal(withUnit(2, 'deg'), '2deg');
     assert.equal(withUnit('calc(var(--t))', ''), 'calc(var(--t))');
+    assert.equal(withUnit('var(--t)', 'px'), 'calc(var(--t) * 1px)');
 });
 
 test('an unknown name in a chain reads 0 and the chain goes on', () => {
