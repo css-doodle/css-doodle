@@ -124,7 +124,7 @@ export const operators = {
     '(': 0, ')': 0,
 };
 
-const PREC = { __proto__: operators, '-u': 8.5, '·': 8.75 };
+const PREC = { __proto__: operators, '-u': 8.5, '·': 8.75, ' ': .5 };
 
 // spellings that share an implementation
 const spelling = {
@@ -332,6 +332,7 @@ function toPostfix(tokens) {
             while (opStack.length && opStack.at(-1) !== '(') {
                 pop();
             }
+            opStack.push(' ');
         }
 
         if (type === VALUE) {
@@ -570,6 +571,10 @@ function compile(expr) {
             stack.push(compileVariable(value));
         } else if (type === FUNCTION) {
             stack.push(compileFunction(node));
+        } else if (value === ' ') {
+            stack.pop();
+            const first = stack.pop() || (() => NaN);
+            stack.push((ctx, history) => (miss(history), Number(first(ctx, history)) || 0));
         } else if (value === '!' || value === '-u') {
             const operand = stack.pop() || (() => NaN);
             stack.push(value === '-u'
