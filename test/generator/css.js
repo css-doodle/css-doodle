@@ -517,6 +517,7 @@ test('a live variable declared once on the cell, host or container is read as va
     // nor through a variable that reads one
     assertContains('--a: @t; --b: $a; content: $b; :container { width: $px(b); }', 'content:counter(time);', 'grid {width:calc((var(--cssd-utime)) * 1px);}');
     assertContains('--a: $(@t); width: $(a)px;', 'width:calc(var(--a) * 1px);');
+    assertContains('--a: $(@t); @grid: 2 / $(a)px; @gap: $(a)px;', ':host,.host {width:calc((var(--cssd-utime)) * 1px);', 'grid {gap:calc((var(--cssd-utime)) * 1px);}');
 });
 
 // --- functions, properties and diagnostics ---

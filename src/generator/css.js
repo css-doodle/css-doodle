@@ -651,7 +651,7 @@ class Rules {
     getComposedValue(value, cell, env, context, selector, property) {
         let extra, origin;
         let group = [];
-        let byRef = property !== undefined && property !== 'content' && !isSpecialSelector(selector);
+        let byRef = property !== undefined && !/^(content|@grid|@gap)$/.test(property) && !isSpecialSelector(selector);
         let frame = { cell, env, contextVariable: context || {}, selector, property, byRef };
         for (let v of value) {
             let composed = compileValue(v)(frame);
