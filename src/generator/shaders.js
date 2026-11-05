@@ -191,7 +191,7 @@ function createSurface(width, height) {
         if (surface.disposed) return;
         surface.disposed = true;
         surfaces.delete(width + 'x' + height);
-        surface.users.forEach(drawing => drawing.onLost());
+        surface.users.forEach(drawing => drawing.onLost?.());
     });
 
     return surface;
