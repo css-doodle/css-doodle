@@ -235,11 +235,22 @@ function acquireSurface(width, height, drawing) {
         if (surfaces.size >= MAX_SURFACES) {
             sweep();
         }
-        surface = createSurface(width, height);
-        surfaces.set(key, surface);
+        if (surfaces.size >= MAX_SURFACES) {
+            surface = [...surfaces.values()].reduce((a, b) => b.users.size < a.users.size ? b : a);
+        } else {
+            surface = createSurface(width, height);
+            surfaces.set(key, surface);
+        }
     }
     surface.users.add(drawing);
     return surface;
+}
+
+function fitSurface(surface, width, height) {
+    if (surface.width === width && surface.height === height) return;
+    surface.canvas.width = surface.width = width;
+    surface.canvas.height = surface.height = height;
+    surface.gl.viewport(0, 0, surface.gl.drawingBufferWidth, surface.gl.drawingBufferHeight);
 }
 
 function releaseSurface(surface, drawing) {
@@ -258,13 +269,14 @@ export default function drawShader(shaders, seed, cell, onLost) {
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
     const seeds = [hash(seed) / 1e16, hash(seed + cell, 1) / 1e16];
 
-    let surface, gl, entry, program, textureList, uniforms;
+    let surface, gl, entry, program, textureList, uniforms, size;
     let frameIndex = 0;
     let currentTime = 0;
 
     const drawing = { canvas: null, animated: false, onLost, draw, dispose };
 
     function setup(width, height) {
+        size = { width, height };
         surface = acquireSurface(width, height, drawing);
         gl = surface.gl;
         entry = acquireProgram(surface, vertex, fragment);
@@ -283,11 +295,11 @@ export default function drawShader(shaders, seed, cell, onLost) {
         }
         // uniforms live in the program, so these are set once
         gl.useProgram(program);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), surface.width, surface.height);
         textures.forEach((n, i) => {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
         uniforms = {
+            resolution: gl.getUniformLocation(program, 'u_resolution'),
             seed: gl.getUniformLocation(program, 'u_seed'),
             time: gl.getUniformLocation(program, 'u_time'),
             frame: gl.getUniformLocation(program, 'u_frameIndex'),
@@ -311,13 +323,15 @@ export default function drawShader(shaders, seed, cell, onLost) {
         if (!surface) return;
         const width = raster(w);
         const height = raster(h);
-        if (surface.disposed || width !== surface.width || height !== surface.height) {
+        if (surface.disposed || width !== size.width || height !== size.height) {
             teardown();
             setup(width, height);
         }
         if (!uniforms) bind();
 
+        fitSurface(surface, width, height);
         gl.useProgram(program);
+        gl.uniform2f(uniforms.resolution, width, height);
 
         // the caller swaps in freshly rendered images after a resize
         images.forEach((n, i) => {

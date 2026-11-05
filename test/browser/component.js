@@ -496,6 +496,24 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 115, 60, '#fff');
     }));
 
+    test('animated shaders of more sizes than the browser has contexts share surfaces, and none is lost', () => chrome.withPage(async page => {
+        // u_time keeps each one animated, so it holds on to its surface
+        let shader = 'void main() { gl_FragColor = vec4(vec3(step(.5, fract(gl_FragCoord.x / 20.))), min(1., u_time + 2.)); }';
+        let els = [];
+        for (let k = 0; k < 20; k++) {
+            els.push(await mount(page, `@grid: 1 / ${40 + k}px; background: @shaders(${shader});`));
+        }
+        await page.waitForTimeout(500);
+        for (let el of els) {
+            assert.deepEqual(await el.evaluate(el => el.warnings || []), []);
+        }
+        for (let el of [els[0], els.at(-1)]) {
+            let { image } = await shot(page, el);
+            assertColor(image, 5, 20, '#000');
+            assertColor(image, 15, 20, '#fff');
+        }
+    }));
+
     describe('export()', () => {
         async function exported(page, el, options) {
             let result = await el.evaluate(async (el, options) => {
