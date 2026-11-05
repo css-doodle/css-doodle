@@ -762,8 +762,8 @@ if (typeof HTMLElement !== 'undefined') {
             let replace = createReplacer(this, compiled), { top, all } = compiled.styles;
             let mark = `cssd-${this._instance}`, parent = `:where([${mark}-host]):not(#_)`;
             this.setStyle(replace(this._cells
-                ? (top + all).replace(/#c-(\d+)-1-1\b|:is\(cell,#_\)|:host\(((?:[^()]|\([^()]*\))*)\)|:host,\.host|(?<=^|[{}\s])grid(?=\s*[{:.,[])/g,
-                    (s, i, host = '') => i ? `:where([${mark}="${i}"]):not(#_)` : s[1] === 'i' ? `:where([${mark}]):not(#_)` : parent + host)
+                ? (top + all).replace(/#c-(\d+)-1-1\b|:is\(cell,#_\)|:host\(((?:[^()]|\([^()]*\))*)\)|:host(::[\w-]+)?,\.host\3|(?<=^|[{}\s])grid(?=\s*[{:.,[])/g,
+                    (s, i, host = '', pseudo = '') => i ? `:where([${mark}="${i}"]):not(#_)` : s[1] === 'i' ? `:where([${mark}]):not(#_)` : parent + host + pseudo)
                 : top + getBasicStyles(this.gridSize) + all
             ).then(sheet => {
                 // the clock runs from the moment the sheet and its images land
