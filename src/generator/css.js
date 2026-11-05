@@ -1193,14 +1193,15 @@ class Rules {
 const mathStreams = new WeakMap();
 
 function useMathStream(random, seed) {
+    let key = 'random:' + seed;
     let draw = () => {
         let stream = mathStreams.get(random);
         if (!stream) {
-            mathStreams.set(random, stream = seedrandom('random:' + seed));
+            mathStreams.set(random, stream = seedrandom(key));
         }
         return stream();
     };
-    draw.key = 'random:' + seed;
+    draw.key = key;
     return useRandom(draw);
 }
 
