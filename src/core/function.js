@@ -220,7 +220,7 @@ function createPlot(unit, kind, pieces) {
             let input = args.join(',');
             shapeWarnings(input).forEach(m => rules?.warn(m));
             let aspect = pieces && !svg && rules?.aspect || '';
-            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''), aspect, !!svg);
+            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''), aspect, pieces && !!svg);
             if (hasPoints) return points;
             if (!pieces) return points[idx - 1] ?? '';
             let point = points[idx - 1] ?? NO_TILE;

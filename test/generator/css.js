@@ -93,7 +93,7 @@ test('@linearGradient and @radialGradient in @svg define a gradient and fill wit
     assert.ok(image.includes(`<rect fill="url(#${linear})"/><circle fill="url(#${radial})"/>`), image);
 });
 
-test('@shape, @plot and @tile in @svg give plain numbers where the box is 2 across, y down', () => {
+test('@shape and @tile in @svg give plain numbers where the box is 2 across, y down', () => {
     // path data, the same outline as the clip-path one
     let star = svgImage('background: @svg(path { d: @shape(star) })');
     assert.match(star, /<path d="M0\.951056516295 -0\.309016994375L[^"]*L0 -1L[^"]*Z"\/>/);
@@ -106,7 +106,8 @@ test('@shape, @plot and @tile in @svg give plain numbers where the box is 2 acro
     // a unit in the body has no say inside @svg
     assert.equal(svgImage('background: @svg(path { d: @shape(star; unit: px) })'), star);
     // @plot: one point per copy
-    assert.match(svgImage('background: @svg(circle*4 { transform: translate(@plot(r: .8)) })'),
+    assert.match(svgImage('background: @svg(viewBox: 0 0 10 10; circle { cx, cy: @plot(r: .5) })'), /cx="75%" cy="50%"/);
+    assert.match(svgImage('background: @svg(circle*4 { transform: translate(@Plot(r: .8)) })'),
         /translate\(0\.8 0\)"\/><circle transform="translate\(0 -0\.8\)"\/><circle transform="translate\(-0\.8 0\)"\/><circle transform="translate\(0 0\.8\)"/);
     // @tile: one piece per copy as path data, the gap still in percent of the box
     // (45% and 4.795% in CSS), and @tile.xy its center
