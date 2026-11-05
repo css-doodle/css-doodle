@@ -317,6 +317,15 @@ test('a leading lineto in d becomes the moveto, so @arc data chains', () => {
         `<svg ${NS}><path><animate attributeName="d" values="M 1 0 A 1 1 0 0 1 0 1;M 2 0 A 2 2 0 0 1 0 2" dur="1s"/></path></svg>`);
 });
 
+test('points take path data of straight lines, its outlines bridged into one', () => {
+    assert.equal(svg('polygon { points: M0 0L1 0L1 1Z }'), `<svg ${NS}><polygon points="0 0,1 0,1 1"/></svg>`);
+    assert.equal(svg('polyline { points: M 0 0 L 2 0 Z M .5 .5 L 1 .5 L 1 1 Z }'),
+        `<svg ${NS}><polyline points="0 0,2 0,0 0,.5 .5,1 .5,1 1,.5 .5,0 0"/></svg>`);
+    // curves and relative commands are left as written
+    assert.equal(svg('polygon { points: M0 0Q1 1 2 0Z }'), `<svg ${NS}><polygon points="M0 0Q1 1 2 0Z"/></svg>`);
+    assert.equal(svg('polygon { points: 0 0, 1 0, 1 1 }'), `<svg ${NS}><polygon points="0 0,1 0,1 1"/></svg>`);
+});
+
 test('a bare name is an empty element', () => {
     assert.equal(svg('feMerge { feMergeNode; feMergeNode { in: SourceGraphic } }'),
         `<svg ${NS}><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></svg>`);

@@ -100,9 +100,9 @@ a ring segment.
 
 ## 2. Shapes
 
-`@shape` draws 2D outlines for `clip-path`, and `@plot`, `@tile` and
-`@svg-polygon` read the same body. `@scene` draws a 3D model as an
-image.
+`@shape` draws 2D outlines for `clip-path` or `@svg`, and `@plot`,
+`@tile` and `@svg-polygon` read the same body. `@scene` draws a 3D
+model as an image.
 
 |            | `@shape`                                                                 | `@scene`                                                                 |
 |------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
@@ -214,6 +214,17 @@ over the contours by length, and reads only the points, ignoring
 `fill-rule`, `frame`, `round` and `grow`. `@tile`, `@plot.scatter`,
 `@plot.hex`, `@plot.grid` and `@plot.penrose` fill the region, holes
 included.
+
+**Inside `@svg`** the three give plain numbers in the shape's own
+units, the box 2 across with `0 0` at its center, but `y` down as in
+SVG, so the outline looks as it does in `clip-path`; `unit` and the
+doodle's aspect are ignored. `@shape` gives path data, one subpath per
+outline (`fill-rule: evenodd` on the element cuts the holes), which
+`points:` also takes, its outlines bridged into one. A copy of an
+element gets the next point of `@plot`, `x y`, or the next piece of
+`@tile` as path data, with `@tile.xy` its center. Place them with
+`viewBox: -1 -1 2 2` or a `transform`:
+`g { transform: translate(75 50) scale(40); path { d: @shape(heart) } }`.
 
 **Noise.** `@R.t(from, to)` writes a closed noise curve in `t` for one
 cell, as in `r: @R.t(.8, 1)` or `grow: @R.t(-.05, .05)`, following the

@@ -5,13 +5,18 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
 import { traceRings } from './trace.js';
-import { overlay, corners, bounds, offset, flatten, thin, toPairs } from './tiling.js';
+import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge } from './tiling.js';
 
 const { atan2, ceil, abs, max, hypot, PI } = Math;
 
 const nextInlineId = nextId();
 
 const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
+
+const RE_LINES = /^\s*M[\d\s.,eE+-]*(?:[MLZ][\d\s.,eE+-]*)*$/;
+const linesToPoints = value => bridge(String(value).split('M').slice(1).map(ring =>
+    ring.split(/[LZ]/).map(p => p.trim()).filter(Boolean)
+).filter(ring => ring.length)).join(',');
 
 const NAME = /^[\p{L}_:][\p{L}\d_:.-]*$/u;
 
@@ -55,6 +60,9 @@ class Tag {
         }
         if (name === 'd') {
             value = startPath(value);
+        }
+        if (name === 'points' && RE_LINES.test(value)) {
+            value = linesToPoints(value);
         }
         return this.attrs[name] = value;
     }

@@ -93,6 +93,30 @@ test('@linearGradient and @radialGradient in @svg define a gradient and fill wit
     assert.ok(image.includes(`<rect fill="url(#${linear})"/><circle fill="url(#${radial})"/>`), image);
 });
 
+test('@shape, @plot and @tile in @svg give plain numbers where the box is 2 across, y down', () => {
+    // path data, the same outline as the clip-path one
+    let star = svgImage('background: @svg(path { d: @shape(star) })');
+    assert.match(star, /<path d="M0\.951056516295 -0\.309016994375L[^"]*L0 -1L[^"]*Z"\/>/);
+    let clip = css('clip-path: @shape(star);').match(/polygon\(([^)]+)\)/)[1].split(',').map(p => p.trim().split(' ').map(parseFloat));
+    let path = star.match(/d="M([^"]+)Z"/)[1].split('L').map(p => p.split(' ').map(Number));
+    assert.deepEqual(path.map(([x, y]) => [x, y].map(v => +((v + 1) * 50).toFixed(6))), clip.map(p => p.map(v => +v.toFixed(6))));
+    // every outline is a subpath; in points: they are bridged into one, as polygon() does
+    assert.match(svgImage('background: @svg(path { d: @shape(points: 4, 4; r: 1, .5) })'), /d="M1 0L0 -1L-1 0L0 1ZM0\.5 0L0 -0\.5L-0\.5 0L0 0\.5Z"/);
+    assert.match(svgImage('background: @svg(polygon { points: @shape(points: 4, 4; r: 1, .5) })'), /points="1 0,0 -1,-1 0,0 1,1 0,0\.5 0,0 -0\.5,-0\.5 0,0 0\.5,0\.5 0,1 0"/);
+    // a unit in the body has no say inside @svg
+    assert.equal(svgImage('background: @svg(path { d: @shape(star; unit: px) })'), star);
+    // @plot: one point per copy
+    assert.match(svgImage('background: @svg(circle*4 { transform: translate(@plot(r: .8)) })'),
+        /translate\(0\.8 0\)"\/><circle transform="translate\(0 -0\.8\)"\/><circle transform="translate\(-0\.8 0\)"\/><circle transform="translate\(0 0\.8\)"/);
+    // @tile: one piece per copy as path data, the gap still in percent of the box
+    // (45% and 4.795% in CSS), and @tile.xy its center
+    let tiles = svgImage('background: @svg(path*4 { d: @tile.grid(points: 4; gap: 10); data-c: @tile.xy })');
+    assert.match(tiles, /^<svg><path d="M-0\.1 -0\.1L-0\.904092167922 -0\.1L-0\.904092167922 -0\.904092167922L-0\.1 -0\.904092167922Z" data-c="-0\.502046083961 -0\.502046083961"\/>/);
+    assert.equal(tiles.match(/<path /g).length, 4);
+    // outside @svg nothing changes
+    assert.match(css('clip-path: @shape(star);'), /clip-path:polygon\(97\.5528258148% 34\.5491502813%/);
+});
+
 // --- functions cells define ---
 
 // --- depth on multi-cell grids ---

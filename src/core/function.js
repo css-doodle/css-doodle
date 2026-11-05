@@ -162,7 +162,7 @@ function seq(token, make) {
 }
 
 function createPlot(unit, kind, pieces) {
-    let plot = memo((commands, max, seed, aspect) => {
+    let plot = memo((commands, max, seed, aspect, svg) => {
         let make = count => generateShape(commands, {min: 1, max: MAX_SEQUENCE, preset: pieces && 'square', seed}, (rules, preset) => {
             delete rules['frame'];
             if (kind) {
@@ -190,7 +190,9 @@ function createPlot(unit, kind, pieces) {
                     rules.points = count;
                 }
             }
-            if (unit) {
+            if (svg) {
+                rules.unit = 'none';
+            } else if (unit) {
                 rules.unit = rules.unit || 'none';
             }
             return rules;
@@ -211,22 +213,24 @@ function createPlot(unit, kind, pieces) {
         }
         return shape;
     });
-    return (cell, { extra, seed, rules }) => {
+    return (cell, { extra, seed, rules, svg }) => {
         let e = extra.at(-1) || [];
         return (...args) => {
             let [idx, max] = e[SEQ.index] ? [e[SEQ.n], e[SEQ.max]] : [cell.count, cell.grid.count];
             let input = args.join(',');
             shapeWarnings(input).forEach(m => rules?.warn(m));
-            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''), pieces && rules?.aspect || '');
+            let aspect = pieces && !svg && rules?.aspect || '';
+            let { points, rules: { hasPoints } } = plot(input, max, String(seed ?? ''), aspect, !!svg);
             if (hasPoints) return points;
             if (!pieces) return points[idx - 1] ?? '';
             let point = points[idx - 1] ?? NO_TILE;
             cellTiles.set(cell, point);
-            return point;
+            return svg ? piecePath(point) : point;
         };
     };
 }
 
+const piecePath = piece => 'M' + String(piece).replace(/^polygon\((evenodd,\s*)?|\)$/g, '').split(/\s*,\s*/).join('L') + 'Z';
 const cellTiles = new WeakMap();
 const tileAxis = i => cell => () => cellTiles.get(cell)?.origin?.split(' ')[i] ?? '';
 
@@ -323,6 +327,8 @@ const composeSvgUrl = memo(value => {
     return { url: createSvgUrl(normalizeSvg(value)), warnings };
 });
 
+const ringsToPath = rings => rings.map(ring => 'M' + ring.join('L') + 'Z').join('');
+
 const composeSvgPolygonUrl = memo((commands, seed) => {
     let { rules, points } = generateShape(commands, {min: 3, max: MAX_SEQUENCE, seed}, rules => {
         delete rules.frame;
@@ -340,7 +346,7 @@ const composeSvgPolygonUrl = memo((commands, seed) => {
         }
     }
     let { rings } = points, shape = rings?.length > 1
-        ? `path { ${props} d: ${rings.map(ring => 'M' + ring.join('L') + 'Z').join('')}; }`
+        ? `path { ${props} d: ${ringsToPath(rings)}; }`
         : `polygon { ${props} points: ${rings?.[0] || points}; }`;
     let parsed = parseSvg(css`viewBox: -1 -1 2 2 p ${p}; ${shape}`);
     return createSvgUrl(generateSvg(parsed));
@@ -690,15 +696,18 @@ Function.Mirror = createMirror(false);
 
 Function.code = () => (...args) => args.map(code => String.fromCharCode(code));
 
-const shapePolygon = memo((input, seed) => {
+const shapePolygon = memo((input, seed, svg) => {
+    if (svg) {
+        return ringsToPath(generateShape(input, { seed }, rules => (rules.unit = 'none', rules)).points.rings);
+    }
     if (input.trim() == 'circle') return 'ellipse(50% 50%)';
     return generateShape(input, { seed }).clip;
 });
 
-const shaped = compose => (_, { seed, rules } = {}) => (...args) => {
+const shaped = compose => (_, { seed, rules, svg } = {}) => (...args) => {
     let input = args.join(',');
     shapeWarnings(input).forEach(m => rules?.warn(m));
-    return compose(input, seed);
+    return compose(input, seed, svg);
 };
 
 Function.shape = shaped(shapePolygon);

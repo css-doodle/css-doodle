@@ -374,6 +374,8 @@ function createShapePoints(props, lo, hi, raw) {
 
     function tilePoints() {
         let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
+        // the gap is in percent of the element, which is 2 across without a unit
+        if (!percent) [gap, fine] = [gap / 50, fine / 50];
         let tile = ([poly, [x, y], kind = 1, extra]) => {
             let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
             let at = fmt(x, y), inner = nearest(rings)(x, y);
