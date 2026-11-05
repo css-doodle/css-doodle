@@ -129,6 +129,10 @@ test('random(a, b, …) gives one draw for its arguments across the doodle, unde
     assert.equal(cells('@match(random(i) == random(1)) { --hit: 1; }', '2', 's'), '#c-1-1-1 {--hit:1;}');
     let [r] = draws('@content: @svg(path { d: @shape(points: 3; r: random(1)) })');
     assert.equal(r, x1);
+    for (let tile of ['circle(size: random(x$))', 'voronoi(density: random(x$))', 'grid(square; gap: 0; edge: .2random(t$))']) {
+        let sheet = n => cells(`clip-path: @tile.${tile.replace('$', n)};`, '6', 's');
+        assert.notEqual(sheet(''), sheet(', 1'), tile);
+    }
     // another seed, other draws; the stream of random() is as it was
     assert.notEqual(draws('@content: @svg(circle { cx: $(random(1)) })', 't')[0], x1);
     assert.equal(cells('--a: $(random());', '2', 's'), cells('--a: $(random());', '2', 's'));

@@ -8,7 +8,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { clamp, tidyNumber } from '../lib/math.js';
 import { isEmpty, removeParens, removeQuotes } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
-import calc, { defaultContext, evaluate, useRandom } from '../core/calc.js';
+import calc, { defaultContext, evaluate, useRandom, randomOf } from '../core/calc.js';
 import { css } from '../lib/tagged-template.js';
 import {
     conway, reacher, insideTest, scatter, voronoi, colors, mosaic, corners, wave, lattice, penrose, delaunay, border, tiles,
@@ -439,14 +439,14 @@ function createShapePoints(props, lo, hi, raw) {
         let onScreen = f => f && ((x, y) => (seen = [x, y], f(...toShape(x, y))));
         if (name == 'circle') {
             let size = formula(props.size);
-            context.random = seedrandom('size:' + seed);
+            context.random = randomOf(seedrandom('size:' + seed));
             size = onScreen(size) || (count < 2 ? () => 1 : () => min(1.5, sqrt(count) / 2) + min(count / 100, sqrt(count) / 5) * context.random() ** 24);
             return pack(shown, box, inside, count, seed, size).map(([x, y, r]) => {
                 let at = fmt(x, y), [rx, ry, rr] = [sx, sy, 1].map(s => number(max(0, r - gap / 2) / s) + suffix);
                 return new Point(`ellipse(${rx} ${ry} at ${at})`, undefined, at, 1, rr);
             });
         }
-        context.random = seedrandom('random:density:' + seed);
+        context.random = randomOf(seedrandom('random:density:' + seed));
         let density = formula(props.density);
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, num('spread') * PI / 180, onScreen(density)).map(tile);
         let relax = isEmpty(props.relax) ? undefined : clamp(num('relax'), 0, 50);

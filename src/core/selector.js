@@ -38,7 +38,7 @@ export function calcContext({ x, y, z, count, grid }, context, random) {
         cellMetrics(x, y, grid)
     );
     if (random) {
-        context.random = (...args) => args.length ? randomOf(args) : random();
+        context.random = randomOf(random);
     }
     return context;
 }

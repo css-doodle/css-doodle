@@ -34,15 +34,17 @@ export function useRandom(fn) {
     return prev;
 }
 
-export function randomOf(args) {
-    return hash(args.map(v => tidyNumber(Number(v) || 0)).join(','), hash(draw.key ?? '')) / 2 ** 53;
+export function randomOf(next) {
+    return (...args) => args.length
+        ? hash(args.map(v => tidyNumber(Number(v) || 0)).join(','), hash(draw.key ?? '')) / 2 ** 53
+        : next();
 }
 
 export const defaultContext = {
     __proto__: MATH,
 
     'π': Math.PI,
-    random: (...args) => args.length ? randomOf(args) : draw(),
+    random: randomOf(() => draw()),
     gcd(a, b) {
         while (b) [a, b] = [b, a % b];
         return Math.abs(a);

@@ -2,7 +2,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { clamp, map2d } from '../lib/math.js';
 import Perlin from '../lib/noise.js';
 import { memo } from '../lib/cache.js';
-import calc, { defaultContext } from '../core/calc.js';
+import calc, { defaultContext, randomOf } from '../core/calc.js';
 
 const { cos, sin, tan, asin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;
 
@@ -1003,7 +1003,7 @@ function edges(props, odd, seed, n = 256) {
         let key = local ? e + ',' + x.toFixed(4) + ',' + y.toFixed(4) : e;
         if (cache[key]) return cache[key];
         let rnd = seedrandom('edge:' + seed + ':' + key), draws = [], k;
-        Object.assign(context, { e, x, y, random: () => draws[k++] ??= rnd() });
+        Object.assign(context, { e, x, y, random: randomOf(() => draws[k++] ??= rnd()) });
         let table = text => {
             let f = [];
             for (let j = 0; j <= n; ++j) {
