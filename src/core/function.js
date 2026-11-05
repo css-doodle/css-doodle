@@ -230,7 +230,12 @@ function createPlot(unit, kind, pieces) {
     };
 }
 
-const piecePath = piece => 'M' + String(piece).replace(/^polygon\((evenodd,\s*)?|\)$/g, '').split(/\s*,\s*/).join('L') + 'Z';
+const piecePath = piece => {
+    let [, rx, ry, x, y] = /^ellipse\((\S+) (\S+) at (\S+) (\S+)\)$/.exec(piece) || [];
+    if (rx) return `M${tidyNumber(x - rx)} ${y}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+    let points = String(piece).replace(/^polygon\((evenodd,\s*)?|\)$/g, '').split(/\s*,\s*/);
+    return 'M' + points.join('L').replaceAll('L' + points[0] + 'L', 'ZM') + 'Z';
+};
 const cellTiles = new WeakMap();
 const tileAxis = i => cell => () => cellTiles.get(cell)?.origin?.split(' ')[i] ?? '';
 
@@ -698,7 +703,7 @@ Function.code = () => (...args) => args.map(code => String.fromCharCode(code));
 
 const shapePolygon = memo((input, seed, svg) => {
     if (svg) {
-        return ringsToPath(generateShape(input, { seed }, rules => (rules.unit = 'none', rules)).points.rings);
+        return ringsToPath(generateShape(input, { seed }, rules => (rules.unit = 'none', rules)).points.rings || []);
     }
     if (input.trim() == 'circle') return 'ellipse(50% 50%)';
     return generateShape(input, { seed }).clip;

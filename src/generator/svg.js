@@ -14,9 +14,9 @@ const nextInlineId = nextId();
 const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
 
 const RE_LINES = /^\s*M[\d\s.,eE+-]*(?:[MLZ][\d\s.,eE+-]*)*$/;
-const linesToPoints = value => bridge(String(value).split('M').slice(1).map(ring =>
+const linesToPoints = value => (bridge(String(value).split('M').slice(1).map(ring =>
     ring.split(/[LZ]/).map(p => p.trim()).filter(Boolean)
-).filter(ring => ring.length)).join(',');
+).filter(ring => ring.length)) || []).join(',');
 
 const NAME = /^[\p{L}_:][\p{L}\d_:.-]*$/u;
 

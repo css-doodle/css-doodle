@@ -114,6 +114,10 @@ test('@shape and @tile in @svg give plain numbers where the box is 2 across, y d
     let tiles = svgImage('background: @svg(path*4 { d: @tile.grid(points: 4; gap: 10); data-c: @tile.xy })');
     assert.match(tiles, /^<svg><path d="M-0\.1 -0\.1L-0\.904092167922 -0\.1L-0\.904092167922 -0\.904092167922L-0\.1 -0\.904092167922Z" data-c="-0\.502046083961 -0\.502046083961"\/>/);
     assert.equal(tiles.match(/<path /g).length, 4);
+    assert.match(svgImage('background: @svg(path { d: @tile.circle(points: 3) } circle { r: 1 })'), /^<svg><path d="M[\d. -]+a[\d. -]+a[\d. -]+Z"\/><circle r="1"\/><\/svg>$/);
+    assert.equal(svgImage('background: @svg(path { d: @tile.voronoi(union { circle { r: .2; move: -.5 0 } circle { r: .2; move: .5 0 } } bound: shape; gap: 0) })').match(/M/g).length, 2);
+    assert.equal(svgImage('background: @svg(path { d: @shape(scatter: 10) })'), '<svg><path d=""/></svg>');
+    assert.equal(svgImage('background: @svg(polygon { points: MZ })'), '<svg><polygon points=""/></svg>');
     // outside @svg nothing changes
     assert.match(css('clip-path: @shape(star);'), /clip-path:polygon\(97\.5528258148% 34\.5491502813%/);
 });
