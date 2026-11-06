@@ -313,11 +313,30 @@ if (typeof HTMLElement !== 'undefined') {
             this.watchViewport();
             reducedMotion?.addEventListener('change', this._on_motion);
             this.syncMotion();
+            if (this.getAttribute('loading') === 'lazy' && !this.compiled && !this.hasAttribute('cells') && typeof IntersectionObserver !== 'undefined') {
+                this.waitForViewport();
+            } else {
+                this.start();
+            }
+        }
+
+        start() {
             if (this.compiled || this.innerHTML || this._declared) {
                 this.load();
             } else {
                 this.waitForSource();
             }
+        }
+
+        waitForViewport() {
+            if (!this.shadowRoot.childNodes.length) this.shadowRoot.innerHTML = '<style>:host{display:block}</style>';
+            let observer = this._lazy = new IntersectionObserver(entries => {
+                if (!entries[entries.length - 1].isIntersecting) return;
+                observer.disconnect();
+                this._lazy = null;
+                if (this.isConnected && !this.compiled) this.start();
+            }, { rootMargin: '100%' });
+            observer.observe(this);
         }
 
         waitForSource() {
@@ -558,13 +577,17 @@ if (typeof HTMLElement !== 'undefined') {
             }
         }
 
-        load() {
-            if (!this._code) {
-                for (let el of this.querySelectorAll(':scope>template[shadowrootmode],:scope>ft')) {
-                    el.remove();
-                }
+        source() {
+            for (let el of this.querySelectorAll(':scope>template[shadowrootmode],:scope>ft')) {
+                el.remove();
             }
-            let code = this._code || unEntity(this.innerHTML);
+            let code = unEntity(this.innerHTML);
+            this.innerHTML = '';
+            return code;
+        }
+
+        load() {
+            let code = this._code || this.source();
             this.innerHTML = '';
             this.render(code, this.compiled?.seed);
             if (this.hasAttribute('auto:update') || this._auto_update_timer) {
@@ -579,7 +602,7 @@ if (typeof HTMLElement !== 'undefined') {
                 options = styles;
                 styles = '';
             }
-            this.render(styles || this._code);
+            this.render(styles || this._code || this.source());
             if (!options.auto && (this.hasAttribute('auto:update') || this._auto_update_timer)) {
                 this.autoUpdate();
             }
@@ -870,6 +893,8 @@ if (typeof HTMLElement !== 'undefined') {
             this.observers.clear();
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
+            this._lazy?.disconnect();
+            this._lazy = null;
             this._clock = { base: 0, since: 0 };
             this._landed = false;
         }

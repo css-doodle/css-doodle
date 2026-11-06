@@ -314,6 +314,41 @@ describe('component', { concurrency: 4 }, () => {
         assert.ok(before.png.equals(after.png), 'the picture changed');
     }));
 
+    test('loading="lazy" holds its place and draws once it comes within a screen of the viewport', () => chrome.withPage(async page => {
+        await page.setViewportSize({ width: 400, height: 400 });
+        const place = top => page.evaluateHandle(top => {
+            let el = document.createElement('css-doodle');
+            el.setAttribute('loading', 'lazy');
+            el.setAttribute('seed', 1);
+            el.style.cssText = `position:absolute;top:${top}px;left:0;width:100px;height:100px`;
+            el.renders = 0;
+            el.addEventListener('render', () => el.renders++);
+            el.textContent = '@grid: 1 / 100px; background: #09f;';
+            document.body.append(el);
+            return el;
+        }, top);
+        let near = await place(100), ahead = await place(700), far = await place(3000), asked = await place(3000);
+        const drawn = el => within(el.evaluate(el => new Promise(resolve => {
+            (function check() { el.renders ? resolve() : setTimeout(check, 20); })();
+        })), 10000, 'no render event');
+        // in view, and within one screen below it
+        await drawn(near);
+        await drawn(ahead);
+        await page.waitForTimeout(300);
+        // out of reach: not drawn, but a block of the page's size
+        assert.deepEqual(await far.evaluate(el => [el.renders, !!el.compiled, getComputedStyle(el).display, el.offsetHeight]), [0, false, 'block', 100]);
+        // update() before the first draw reads the source
+        await asked.evaluate(el => el.update());
+        await drawn(asked);
+        assertColor((await shot(page, asked)).image, 50, 50, '#09f');
+        await page.evaluate(() => window.scrollTo(0, 2500));
+        await drawn(far);
+        assertColor((await shot(page, far)).image, 50, 50, '#09f');
+        await page.waitForTimeout(300);
+        // nothing draws twice
+        assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('css-doodle')].map(el => el.renders)), [1, 1, 1, 1]);
+    }));
+
     test('a nested doodle keeps its render event to itself', () => chrome.withPage(async page => {
         let events = await page.evaluate(code => new Promise(resolve => {
             let el = document.createElement('css-doodle');

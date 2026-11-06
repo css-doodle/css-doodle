@@ -378,12 +378,40 @@ test('a host parsed with a declarative shadow root renders at once, even with no
             _declared: declared,
             innerHTML: '',
             hasAttribute: name => name === 'role',
+            getAttribute: () => null,
             getRootNode: () => ({}),
             load: () => calls.push('load'),
             waitForSource: () => calls.push('wait'),
         });
         host.connectedCallback();
         assert.deepEqual(calls, [expected]);
+    }
+});
+
+test('loading="lazy" waits for the viewport, unless there is no observer, the doodle has drawn, or it has cells', () => {
+    let run = (over = {}, lazy = true) => {
+        let calls = [];
+        let host = Object.assign(Object.create(CSSDoodle.prototype), {
+            innerHTML: 'color: red;',
+            hasAttribute: name => name === 'role',
+            getAttribute: name => name === 'loading' && lazy ? 'lazy' : null,
+            getRootNode: () => ({}),
+            load: () => calls.push('load'),
+            waitForViewport: () => calls.push('viewport'),
+            ...over,
+        });
+        host.connectedCallback();
+        return calls;
+    };
+    assert.deepEqual(run(), ['load']);
+    globalThis.IntersectionObserver = class { observe() {} disconnect() {} };
+    try {
+        assert.deepEqual(run(), ['viewport']);
+        assert.deepEqual(run({}, false), ['load']);
+        assert.deepEqual(run({ compiled: {} }), ['load']);
+        assert.deepEqual(run({ hasAttribute: name => name === 'cells' }), ['load']);
+    } finally {
+        delete globalThis.IntersectionObserver;
     }
 });
 
