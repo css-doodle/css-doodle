@@ -535,6 +535,34 @@ test('a joining block cuts from the first shape even when it has no area', () =>
     assert.equal(svg(`union { ${line} ${square} }`), `<svg ${NS}><path d="M4 0L4 4L0 4L0 0Z"/></svg>`);
 });
 
+test('a joining block reads its shapes as the browser draws them', () => {
+    let square = `<svg ${NS}><path d="M0 0L10 0L10 10L0 10Z"/></svg>`;
+    let rounded = `<svg ${NS}><path d="M2 0L8 0A2 2 0 0 1 10 2L10 8A2 2 0 0 1 8 10L2 10A2 2 0 0 1 0 8L0 2A2 2 0 0 1 2 0Z"/></svg>`;
+    // a missing or negative radius takes the other one; a zero one rounds nothing
+    assert.equal(svg('union { rect { width: 10; height: 10; ry: 2 } }'), rounded);
+    assert.equal(svg('union { rect { width: 10; height: 10; rx: -1; ry: 2 } }'), rounded);
+    assert.equal(svg('union { rect { width: 10; height: 10; rx: 0; ry: 2 } }'), square);
+    assert.equal(svg('union { ellipse { rx: 2 } }'), svg('union { circle { r: 2 } }'));
+    // no size draws nothing, so it cuts nothing and leaves nothing to intersect
+    let tile = 'rect { width: 10; height: 10 }', whole = `<svg ${NS}><path d="M10 0L10 10L0 10L0 0Z"/></svg>`;
+    for (let none of ['circle { r: -4 }', 'circle {}', 'ellipse { rx: 0; ry: 2 }', 'rect { width: -5; height: 10 }']) {
+        assert.equal(svg(`subtract { ${tile} ${none} }`), whole, none);
+        assert.equal(svg(`intersect { ${tile} ${none} }`), `<svg ${NS}><path d=""/></svg>`, none);
+    }
+    // quoted values, unquoted in the markup
+    assert.equal(svg('union { path { d: "M0 0 H10 V10 H0 Z" } }'), square);
+    assert.equal(svg('union { circle { r: "2" } }'), svg('union { circle { r: 2 } }'));
+});
+
+test('a joining block draws a path up to its first error', () => {
+    let square = `<svg ${NS}><path d="M0 0L10 0L10 10L0 10Z"/></svg>`;
+    for (let error of ['L 5', 'L 5 5 5', 'M 20 0 a 2 2 0 2 1 4 0', 'X 5 5 M 20 20 h 5 v 5 z', '5 5 M 20 20 h 5 v 5 z', 'M', 'L 5 a']) {
+        assert.equal(svg(`union { path { d: M0 0 H10 V10 H0 Z ${error} } }`), square, error);
+    }
+    assert.equal(svg('union { polygon { points: 0 0 10 0 10 10 0 10 5 } }'), square);
+    assert.equal(svg('union { path { d: 5 M0 0 H10 V10 H0 Z } }'), `<svg ${NS}><path d=""/></svg>`);
+});
+
 test('a joining block warns about what it cannot join', () => {
     let warnings = [];
     let out = generateSvg(parseSvg('union { text {} rect { width: 50%; height: 1; transform: rotate(9) } }'), m => warnings.push(m));

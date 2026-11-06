@@ -66,8 +66,8 @@ const traced = memo((text, face, ready, axis) => {
 });
 
 export function traceRings(d, perRadian = 8) {
-    let { commands, valid } = parseSvgPath(d), rings = [], ring = [], x = 0, y = 0, x0 = 0, y0 = 0, c, last;
-    if (!valid) return [];
+    let { commands } = parseSvgPath(d), rings = [], ring = [], x = 0, y = 0, x0 = 0, y0 = 0, c, last;
+    if (!/^\s*[a-z]/i.test(d)) return [];
     let draw = (...p) => {
         let ps = [[x, y], ...toPairs(p)], n = ps.length > 2 ? 32 : 1;
         for (let j = 1; j <= n; ++j) {
@@ -97,10 +97,13 @@ export function traceRings(d, perRadian = 8) {
         x = ex, y = ey;
     };
     for (let { name, value } of commands) {
-        if (!ARITY[name.toLowerCase()]) name = 'M', value = [x0, y0];
-        let N = name.toUpperCase(), n = ARITY[name.toLowerCase()], rel = name != N;
-        for (let i = 0; i < value.length; i += n) {
+        let n = ARITY[name.toLowerCase()], i = 0;
+        if (n === undefined || (n ? !value.length : value.length)) break;
+        if (!n) name = 'M', value = [x0, y0], n = 2;
+        let N = name.toUpperCase(), rel = name != N;
+        for (; i + n <= value.length; i += n) {
             let v = value.slice(i, i + n), ox = rel ? x : 0, oy = rel ? y : 0;
+            if (v.some(k => typeof k != 'number') || N == 'A' && [v[3], v[4]].some(f => f !== 0 && f !== 1)) break;
             if (N == 'H') v = [v[0] + ox, y];
             else if (N == 'V') v = [x, v[0] + oy];
             else if (N == 'A') v[5] += ox, v[6] += oy;
@@ -115,6 +118,7 @@ export function traceRings(d, perRadian = 8) {
             else draw(...v);
             last = N;
         }
+        if (i < value.length) break;
     }
     rings.push(ring);
     return rings.filter(ring => ring.length > 2);

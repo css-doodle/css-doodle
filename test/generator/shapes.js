@@ -691,6 +691,8 @@ test('path: SVG path data as the outline, fitted to the box, y up', () => {
     assert.notEqual(generateShape(star).clip, generateShape(star + '; fill: evenodd').clip);
     assert.equal(generateShape('path: hello').clip, 'polygon(50% 50%)');
     assert.equal(generateShape('path: M0 0 L10 0').clip, 'polygon(50% 50%)');
+    // drawn up to the first error, as in SVG
+    assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z L 5'), rings('path: M0 0 H10 V10 H0 Z'));
     assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z; scale: .5'), [[[-.5, .5], [.5, .5], [.5, -.5], [-.5, -.5]]]);
 });
 

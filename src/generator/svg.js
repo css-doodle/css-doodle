@@ -115,29 +115,30 @@ function escapeAttr(text) {
 function ringsOf(tag, warn) {
     let { name, attrs } = tag, rings, d;
     let n = key => {
-        let value = parseFloat(attrs[key]) || 0;
         if (/%/.test(attrs[key])) warn(`<${name}> ignores %`);
-        return value;
+        return parseFloat(unquote(attrs[key] ?? ''));
     };
+    let radii = (rx, ry) => [rx >= 0 ? rx : ry, ry >= 0 ? ry : rx];
     if (name === 'g') {
         for (let child of tag.body) {
             let next = ringsOf(child, warn);
             if (next) rings = rings ? overlay(rings, next, 'union') : next;
         }
     } else if (name === 'path') {
-        d = attrs.d;
+        d = attrs.d && unquote(attrs.d);
     } else if (name === 'polygon' || name === 'polyline') {
-        d = 'M' + attrs.points + 'Z';
+        d = 'M' + unquote(attrs.points ?? '') + 'Z';
     } else if (name === 'circle' || name === 'ellipse') {
-        let x = n('cx'), y = n('cy'), rx = n(name === 'circle' ? 'r' : 'rx'), ry = name === 'circle' ? rx : n('ry');
-        d = `M${x - rx} ${y}A${rx} ${ry} 0 1 0 ${x + rx} ${y}A${rx} ${ry} 0 1 0 ${x - rx} ${y}Z`;
+        let x = n('cx') || 0, y = n('cy') || 0, r = n('r'), [rx, ry] = name === 'circle' ? [r, r] : radii(n('rx'), n('ry'));
+        d = rx > 0 && ry > 0 ? `M${x - rx} ${y}A${rx} ${ry} 0 1 0 ${x + rx} ${y}A${rx} ${ry} 0 1 0 ${x - rx} ${y}Z` : '';
     } else if (name === 'rect') {
-        let x = n('x'), y = n('y'), w = n('width'), h = n('height');
-        let rx = Math.min(n(attrs.rx === undefined ? 'ry' : 'rx'), w / 2), ry = Math.min(n(attrs.ry === undefined ? 'rx' : 'ry'), h / 2);
-        let a = (x, y) => rx && ry ? `A${rx} ${ry} 0 0 1 ${x} ${y}` : '';
-        d = `M${x + rx} ${y}H${x + w - rx}${a(x + w, y + ry)}V${y + h - ry}${a(x + w - rx, y + h)}H${x + rx}${a(x, y + h - ry)}V${y + ry}${a(x + rx, y)}Z`;
+        let x = n('x') || 0, y = n('y') || 0, w = n('width'), h = n('height'), [rx, ry] = radii(n('rx'), n('ry'));
+        if (!(rx > 0 && ry > 0)) rx = ry = 0;
+        rx = Math.min(rx, w / 2), ry = Math.min(ry, h / 2);
+        let a = (x, y) => rx ? `A${rx} ${ry} 0 0 1 ${x} ${y}` : '';
+        d = w > 0 && h > 0 ? `M${x + rx} ${y}H${x + w - rx}${a(x + w, y + ry)}V${y + h - ry}${a(x + w - rx, y + h)}H${x + rx}${a(x, y + h - ry)}V${y + ry}${a(x + rx, y)}Z` : '';
     }
-    if (d) rings = Object.assign(traceRings(d, 32), { evenodd: attrs['fill-rule'] === 'evenodd' });
+    if (d !== undefined) rings = Object.assign(traceRings(d, 32), { evenodd: attrs['fill-rule'] === 'evenodd' });
     if (rings && attrs.transform !== undefined) warn(`<${name}> transform ignored`);
     return rings;
 }
