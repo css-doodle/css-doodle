@@ -8,7 +8,7 @@ export const uheight = '--cssd-uheight';
 const ticks = 1000 * 60 * 60 * 24;
 const steps = `steps(${ticks / (1000 / 120)})`;
 const delay = new Date().setHours(0, 0, 0, 0) - Date.now();
-const u = 'cssd-u-ani';
+export const u = 'cssd-u-ani';
 export const U = 'cssd-U-ani';
 
 export const timeProperties = [utime, UTime].map(name => `@property ${name}{syntax:"<integer>";initial-value:0;inherits:true}`);

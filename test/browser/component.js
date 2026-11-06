@@ -435,6 +435,23 @@ describe('component', { concurrency: 4 }, () => {
             assertColor(a.image, 120, 40, '#404040');
         }));
 
+        test('update() starts @t over with the rest of the motion, while @T keeps the time of day', () => chrome.withPage(async page => {
+            let el = await mount(page, timed);
+            await page.waitForTimeout(600);
+            let before = await clocks(el);
+            assert.ok(before.every(t => t >= 500), `clocks at ${before} before update()`);
+            await next(el, 'update');
+            await el.evaluate(el => el.update());
+            await arrived(el);
+            let times = await clocks(el);
+            assert.ok(times.every(t => t < 400), `clocks at ${times} after update()`);
+            let [T, day] = await el.evaluate(el => [
+                el.getAnimations().find(a => a.animationName === 'cssd-U-ani').currentTime,
+                Date.now() - new Date().setHours(0, 0, 0, 0),
+            ]);
+            assert.ok(Math.abs(T - day) < 1000, `@T at ${T}, the day at ${day}`);
+        }));
+
         test('currentTime set while running runs on from there', () => chrome.withPage(async page => {
             let el = await mount(page, timed);
             await el.evaluate(el => el.currentTime = 5000);

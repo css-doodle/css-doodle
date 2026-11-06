@@ -1,4 +1,4 @@
-import { U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
+import { u, U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
 
 export function bindUniforms(host, { mousex, mousey, mouse, width, height }) {
     if (host._uframe !== host.frame) {
@@ -23,6 +23,8 @@ export function syncUTime(host) {
         if (animation.animationName === U) {
             animation.effect.updateTiming({ delay: 0 });
             animation.currentTime = Date.now() - new Date().setHours(0, 0, 0, 0);
+        } else if (animation.animationName === u) {
+            animation.currentTime = host.clockNow();
         }
     }
 }
