@@ -16,8 +16,11 @@ test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     assert.equal(arc('r: 40'), 'L 40 0 A 40 40 0 1 1 -40 0 A 40 40 0 1 1 40 0');
     assert.equal(arc('r: 40; from: 0; to: 400'), arc('r: 40'));
     // two radii, a center, angle units, tidy numbers
-    assert.equal(arc('r: 40 20; from: 0; to: 180; move: 50 50'), 'L 90 50 A 40 20 0 0 1 10 50');
+    assert.equal(arc('r: 40 20; from: 0; to: 180; at: 50 50'), 'L 90 50 A 40 20 0 0 1 10 50');
     assert.equal(arc('r: 40; to: .25turn'), arc('r: 40; to: 90'));
+    // `move` is the older name of `at`, which wins when both are given
+    assert.equal(arc('r: 40 20; from: 0; to: 180; move: 50 50'), arc('r: 40 20; from: 0; to: 180; at: 50 50'));
+    assert.equal(arc('r: 1; to: 90; at: 5; move: 9'), arc('r: 1; to: 90; at: 5'));
     assert.equal(arc('r: 40; from: 30deg; to: -30'), 'L 34.6410161514 20 A 40 40 0 0 0 34.6410161514 -20');
     assert.equal(arc('r: 10; from: 0; to: 120'), 'L 10 0 A 10 10 0 0 1 -5 8.66025403784');
     // a var() reads as 0, as an unknown name does
@@ -32,6 +35,24 @@ test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     // the path helpers anchor on the leading lineto like on a moveto
     assert.equal(Function.flipH()(arc('r: 10; from: 0; to: 90')), 'L10 0 A10 10 0 0 0 20 10');
     assert.equal(Function.reverse()('L 1 2 A 3 3 0 0 1 4 5 L 6 7 Z'), 'L1 2 L6 7 A3 3 0 0 1 4 5 Z');
+    // and read a bare M before an arc as the moveto it becomes
+    assert.equal(Function.flipH()(arc('r: 10; to: 90') + ' M ' + arc('r: 10; to: 90; at: 20')),
+        'L10 0 A10 10 0 0 0 20 10 M-10 20 A10 10 0 0 0 0 30');
+});
+
+test('@arc short form: the radii and an `at` center, then `from to to`', () => {
+    const arc = Function.arc();
+    assert.equal(arc('40 20 at 50 50', '0 to 180'), arc('r: 40 20; from: 0; to: 180; at: 50 50'));
+    assert.equal(arc('.5 at 1', '180 to 270'), 'L 0.5 1 A 0.5 0.5 0 0 1 1 0.5');
+    // the parts in either order; `to` alone starts at 0, no angles is a full circle
+    assert.equal(arc('180 to 270', '.5 at 1'), arc('.5 at 1', '180 to 270'));
+    assert.equal(arc('40', 'to 90'), arc('r: 40; to: 90'));
+    assert.equal(arc('40'), arc('r: 40'));
+    assert.equal(arc('40 at 5'), arc('r: 40; at: 5'));
+    // units, negative angles and arithmetic, as in the named form
+    assert.equal(arc('40', '30deg to -30'), arc('r: 40; from: 30deg; to: -30'));
+    assert.equal(arc('80/2', '135 to 135 + 270 * .7'), arc('r: 80/2; from: 135; to: 135 + 270 * .7'));
+    assert.equal(arc('40 - 20 10 at 5 + 5 2 * 3', 'to .25turn'), arc('r: 20 10; to: 90; at: 10 6'));
 });
 
 test('@flipH/@flipV/@flip/@invert: mirror path data around its start point', () => {

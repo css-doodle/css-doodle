@@ -88,15 +88,19 @@ filter: @svg-filter(
 - **Legacy forms**, `@svg-filter(.003, 80, 10)` and `blur=5px`, keep
   the old graph, where displacement always reads `SourceGraphic`.
 
-**`@arc(r: 40; from: 0; to: 120; move: 50 50)`** is the path data of
-an arc, `L x y A …`, for `d:`. `r` is one or two radii, `move` the
-center. Angles are degrees clockwise from three o'clock, as in SVG's
-`rotate()`, and accept `deg`, `rad`, `grad` and `turn`; `from`
-defaults to `0`, `to` to `360`, and a full turn or more draws the
-whole circle. The arc continues the current path; at the start of `d:`
-or `path()` its first `L` becomes an `M`. So `@arc(…) L 0 0 Z` is a
-pie slice, and `@arc(r: 50; to: 120) L -15 26 @arc(r: 30; from: 120; to: 0) Z`
-a ring segment.
+**`@arc(r: 40; from: 0; to: 120; at: 50 50)`** is the path data of
+an arc, `L x y A …`, for `d:`. `r` is one or two radii, `at` the
+center (`move` is its older name). The short form lists the same
+values, the radii and center and then the angles:
+`@arc(40 at 50 50, 0 to 120)`; `to 90` alone starts at `0`, and no
+angles at all is a full circle. Angles are degrees clockwise from
+three o'clock, as in SVG's `rotate()`, and accept `deg`, `rad`, `grad`
+and `turn`; `from` defaults to `0`, `to` to `360`, and a full turn or
+more draws the whole circle. The arc continues the current path; at
+the start of `d:` or `path()`, or after a bare `M`, its first `L`
+becomes an `M`. So `@arc(…) L 0 0 Z` is a pie slice,
+`@arc(r: 50; to: 120) L -15 26 @arc(r: 30; from: 120; to: 0) Z` a ring
+segment, and `@arc(…) M @arc(…)` two separate arcs.
 
 ## 2. Shapes
 

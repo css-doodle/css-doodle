@@ -315,6 +315,11 @@ test('a leading lineto in d becomes the moveto, so @arc data chains', () => {
     assert.equal(svg('path { d: M 0 0 L 5 5 }'), `<svg ${NS}><path d="M 0 0 L 5 5"/></svg>`);
     assert.equal(svg('path { animate d: L 1 0 A 1 1 0 0 1 0 1; L 2 0 A 2 2 0 0 1 0 2 / 1s }'),
         `<svg ${NS}><path><animate attributeName="d" values="M 1 0 A 1 1 0 0 1 0 1;M 2 0 A 2 2 0 0 1 0 2" dur="1s"/></path></svg>`);
+    // a bare M before one starts a new subpath there
+    assert.equal(svg('path { d: L 1 0 A 1 1 0 0 1 0 1 M L 2 1 A 1 1 0 0 0 1 2 }'),
+        `<svg ${NS}><path d="M 1 0 A 1 1 0 0 1 0 1 M 2 1 A 1 1 0 0 0 1 2"/></svg>`);
+    assert.equal(svg('path { animate d: L 1 0 M L 2 0; L 3 0 ML4 0 / 1s }'),
+        `<svg ${NS}><path><animate attributeName="d" values="M 1 0 M 2 0;M 3 0 M4 0" dur="1s"/></path></svg>`);
 });
 
 test('points take path data of straight lines, its outlines bridged into one', () => {

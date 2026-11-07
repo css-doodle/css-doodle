@@ -11,7 +11,7 @@ const { atan2, ceil, abs, max, hypot, PI } = Math;
 
 const nextInlineId = nextId();
 
-const startPath = value => String(value).replace(/^\s*[lL]/, 'M');
+const startPath = value => String(value).replace(/^\s*[lL]/, 'M').replace(/M\s*L(?![a-zA-Z])/g, 'M');
 
 const RE_LINES = /^\s*M[\d\s.,eE+-]*(?:[MLZ][\d\s.,eE+-]*)*$/;
 const linesToPoints = value => (bridge(String(value).split('M').slice(1).map(ring =>

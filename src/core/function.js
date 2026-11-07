@@ -735,10 +735,26 @@ Function.tile.xy = cell => () => cellTiles.get(cell)?.origin ?? '';
 Function.tile.k = cell => () => cellTiles.get(cell)?.kind ?? '';
 Function.tile.r = cell => () => cellTiles.get(cell)?.r ?? '';
 
+function arcShorthand(args) {
+    let c = {};
+    for (let part of args) {
+        let [from, to] = part.split(/(?:^|\s+)to\s+/);
+        if (to !== undefined) {
+            if (from.trim()) c.from = from;
+            c.to = to;
+        } else {
+            let [r, at] = part.split(/(?:^|\s+)at\s+/);
+            if (r.trim()) c.r = r;
+            if (at !== undefined) c.at = at;
+        }
+    }
+    return c;
+}
+
 const arcPath = memo((...args) => {
-    let c = parseShapeCommands(args.join(','));
+    let c = args.join(',').includes(':') ? parseShapeCommands(args.join(',')) : arcShorthand(args);
     let [rx, ry = rx] = spaced(c.r ?? '0').map(v => calc(v));
-    let [cx, cy = cx] = spaced(c.move ?? '0').map(v => calc(v));
+    let [cx, cy = cx] = spaced(c.at ?? c.move ?? '0').map(v => calc(v));
     let from = parseDirection(c.from ?? '0').angle;
     let sweep = parseDirection(c.to ?? '360').angle - from;
     let full = Math.abs(sweep) >= 360;

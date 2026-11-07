@@ -742,6 +742,15 @@ test('@arc continues a path: a ring segment in @svg, a moveto at the start of d 
     assertContains(`clip-path: path('@arc(r: 40; move: 50 50) L 50 50 Z'); offset-path: path("@arc(r: 20)");`,
         `clip-path:path('M 90 50 A 40 40 0 1 1 10 50 A 40 40 0 1 1 90 50 L 50 50 Z');`,
         `offset-path:path("M 20 0 A 20 20 0 1 1 -20 0 A 20 20 0 1 1 20 0");`);
+    // a bare M before @arc starts a new subpath at the arc's start
+    let tile = css(`background: @svg(path { d: @arc(r: .5; to: 90) M @arc(r: .5; from: 180; to: 270; at: 1) });`);
+    assert.ok(decodeURIComponent(tile).includes('d="M 0.5 0 A 0.5 0.5 0 0 1 0 0.5 M 0.5 1 A 0.5 0.5 0 0 1 1 0.5"'), tile);
+    assertContains(`clip-path: path('@arc(r: 10; to: 90) M @arc(r: 10; to: 90; at: 20)');`,
+        `clip-path:path('M 10 0 A 10 10 0 0 1 0 10 M 30 20 A 10 10 0 0 1 20 30');`);
+    // the short form reads the same, in @svg and in path()
+    assert.equal(css(`background: @svg(path { d: @arc(.5, to 90) M @arc(.5 at 1, 180 to 270) });`), tile);
+    assertContains(`clip-path: path('@arc(10, to 90) M @arc(10 at 20, to 90)');`,
+        `clip-path:path('M 10 0 A 10 10 0 0 1 0 10 M 30 20 A 10 10 0 0 1 20 30');`);
 });
 
 test('@match(test) in @svg reads the cell variables and the @n around it', () => {

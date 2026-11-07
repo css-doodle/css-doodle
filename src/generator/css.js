@@ -691,7 +691,8 @@ class Rules {
         let value = composed.value;
 
         if (value.includes('path(')) {
-            value = value.replace(/(path\(\s*['"]?\s*)[lL](?![a-zA-Z])/g, '$1M');
+            value = value.replace(/(path\(\s*['"]?\s*)[lL](?![a-zA-Z])/g, '$1M')
+                .replace(/path\([^)]*\)/g, path => path.replace(/M\s*L(?![a-zA-Z])/g, 'M'));
         }
 
         if (flags.animation) {
