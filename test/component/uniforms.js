@@ -17,6 +17,9 @@ test('@T runs from midnight, whenever its animation started; @t runs on the host
     // @t follows the host clock, which an update resets; other animations are left alone
     assert.equal(u.currentTime, 1234);
     assert.equal(spin.currentTime, 5);
+    let page = animation('cssd-u-ani');
+    syncUTime({ compiled: { uniforms: { time: true } }, _hosts: [{ getAnimations: () => [page] }], getAnimations: () => [], clockNow: () => 99 });
+    assert.equal(page.currentTime, 99);
     // nothing to do without the time uniform, or without the API
     U.currentTime = 5;
     syncUTime({ compiled: { uniforms: {} }, getAnimations: () => [U] });

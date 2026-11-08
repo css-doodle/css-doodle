@@ -19,7 +19,8 @@ export function bindUniforms(host, { mousex, mousey, mouse, width, height }) {
 
 export function syncUTime(host) {
     if (!host.compiled?.uniforms.time) return;
-    for (let animation of host.getAnimations?.() ?? []) {
+    let frames = host._hosts?.length ? host._hosts : [host];
+    for (let animation of frames.flatMap(el => el.getAnimations?.() ?? [])) {
         if (animation.animationName === U) {
             animation.effect.updateTiming({ delay: 0 });
             animation.currentTime = Date.now() - new Date().setHours(0, 0, 0, 0);
