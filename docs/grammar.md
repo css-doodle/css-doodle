@@ -528,18 +528,23 @@ are dropped.
 
 ```css
 clip-path: @shape(
-  polygon#tooth { points: -.11 0, .11 0, .07 .22, -.07 .22 }
   subtract {
-    union { circle { r: .72 } #tooth*12 { move: 0 .66; rotate: n * 30 } }
+    union {
+      circle { r: .72 }
+      polygon*12 {
+        points: -.11 0, .11 0, .07 .22, -.07 .22;
+        move: 0 .66;
+        rotate: n * 30;
+      }
+    }
     circle { r: .26 }
   }
   round: .03;
 );
 
 background: @scene(
-  box#leg { size: .06 .5 .06 }
   box { size: 1 .06 .7; move: 0 .28 0; round: .02 }
-  #leg*2x2 { move: nx * .84 - 1.26, 0, ny * .54 - .81 }
+  box*2x2 { size: .06 .5 .06; move: nx * .84 - 1.26, 0, ny * .54 - .81 }
   view: 35 25;
 );
 ```
@@ -558,12 +563,12 @@ copies         = '*' count [ 'x' count ]
 `@shape`, `@plot`, `@tile` and `@svg-polygon` read this body as 2D
 outlines, and `@scene` as a 3D model. A row is a command, an attribute
 of its shape, or else a variable. `kind#id` keeps a shape under a
-name, and `#id` alone draws it. The id goes right after the name,
-before or after a count; a space before `#` starts a new shape, so
-`#knob #knob { rotate: 90 }` draws two. The parts of `move` and
-`scale` split at spaces or commas, and an operator keeps its operands:
-`move: k * .5 0` and `move: .5 -.25` have two parts each, `move: k (0) 0`
-three. A `text:`
+name for use in more than one place, and `#id` alone draws it. The id
+goes right after the name, before or after a count; a space before `#`
+starts a new shape, so `#knob #knob { rotate: 90 }` draws two. The
+parts of `move` and `scale` split at spaces or commas, and an operator
+keeps its operands: `move: k * .5 0` and `move: .5 -.25` have two parts
+each, `move: k (0) 0` three. A `text:`
 row is its text traced in the browser as the outline, in the `font:`
 style, weight and family: `@plot.hex(text: A; font: 900 serif)`; a
 quoted value keeps its commas, `;` and parentheses. A `path:` row is
