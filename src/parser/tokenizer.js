@@ -184,7 +184,7 @@ function scan(source, options = {}) {
             }
             i = end;
         }
-        else if ((options.ignoreInlineComment || body) && !quote && curr === 47 && next === 47) {
+        else if ((options.ignoreInlineComment || body) && !quote && curr === 47 && next === 47 && input.charCodeAt(i - 1) !== 58) {
             // Stop before the line break so it gets tokenized as space
             let found = input.indexOf('\n', i + 1);
             i = found === -1 ? len : found;

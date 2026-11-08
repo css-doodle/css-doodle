@@ -47,6 +47,7 @@ test('a comma list of selectors is no block', () => {
 
 test('line comments are whitespace, a head without a colon is text', () => {
     assert.deepEqual(parsePattern('fill: red; // a note\n size: .5'), [statement('fill', 'red'), statement('size', '.5')]);
+    assert.deepEqual(parsePattern('texture { background: url(https://a/b.png) }'), [{ type: 'texture', name: 'texture', value: 'background:url(https://a/b.png)' }]);
     assert.deepEqual(parsePattern('fill #fff; k = 1'), [{ type: 'text', value: 'fill #fff' }, { type: 'text', value: 'k = 1' }]);
     assert.deepEqual(parsePattern('fill: red; k = 1; size: .5'), [statement('fill', 'red'), { type: 'text', value: 'k = 1' }, statement('size', '.5')]);
     assert.deepEqual(parsePattern('match(x) { fill: red; junk }'), [block('match', ['x'], [statement('fill', 'red'), { type: 'text', value: 'junk' }])]);
