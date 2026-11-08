@@ -217,6 +217,13 @@ test('delaunay leaves no holes inside, even with random seeds', () => {
     }
 });
 
+test('a tiling that cannot come down to the pieces asked for keeps its starting size', () => {
+    for (let [tile, scatter] of [['penrose', 2], ['triangle', 1]]) {
+        let points = generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile, seed: 1, scatter })).points.map(String);
+        assert.ok(points.length && points.every(p => p.match(/-?[\d.]+/g).every(v => Math.abs(v) < 1000)), points[0]);
+    }
+});
+
 test('aspect tiles in the element proportions', () => {
     let circles = aspect => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'circle', seed: 1, scatter: 20, aspect })).points.map(String);
     for (let c of circles('2')) {
