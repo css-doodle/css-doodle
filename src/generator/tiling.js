@@ -232,11 +232,18 @@ function lattice(k, box, bounds, s, [a, b], turn, half) {
     let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
     let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
     let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
+    let rims = new Map();
     let add = (x, y, angle, kind, marks) => {
-        let p = [];
-        for (let m = 0; m < k; ++m) {
-            let a = angle + m * 2 * PI / k;
-            p.push(x + r * cos(a), y + r * sin(a));
+        let rim = rims.get(angle), p = [];
+        if (!rim) {
+            rims.set(angle, rim = []);
+            for (let m = 0; m < k; ++m) {
+                let a = angle + m * 2 * PI / k;
+                rim.push(r * cos(a), r * sin(a));
+            }
+        }
+        for (let m = 0; m < rim.length; m += 2) {
+            p.push(x + rim[m], y + rim[m + 1]);
         }
         out.push([p, [x, y], kind, marks]);
     };
