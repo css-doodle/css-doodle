@@ -757,6 +757,9 @@ test('@arc continues a path: a ring segment in @svg, a moveto at the start of d 
     assert.equal(css(`background: @svg(path { d: @arc(.5, to 90) M @arc(.5 at 1, 180 to 270) });`), tile);
     assertContains(`clip-path: path('@arc(10, to 90) M @arc(10 at 20, to 90)');`,
         `clip-path:path('M 10 0 A 10 10 0 0 1 0 10 M 30 20 A 10 10 0 0 1 20 30');`);
+    // and so does a lowercase m
+    assertContains(`clip-path: path('@arc(10, to 90) m @arc(10 at 20, to 90)');`,
+        `clip-path:path('M 10 0 A 10 10 0 0 1 0 10 M 30 20 A 10 10 0 0 1 20 30');`);
 });
 
 test('@match(test) in @svg reads the cell variables and the @n around it', () => {
