@@ -260,11 +260,11 @@ function createPick(name, fn, random = false, upstream = false) {
             : extra.at(-1);
         let sig = lastExtra?.[SEQ.sig] ?? '';
         let index = lastExtra?.[SEQ.index];
-        let counter = `${name}-counter${position}:${level}`;
-        let valuesKey = `${name}-values${position}:${sig}`;
+        let counter = index === undefined && `${name}-counter${position}:${level}`;
+        let valuesKey = random && `${name}-values${position}:${sig}`;
         let count = fn !== pickN && countOf(cell, lastExtra);
 
-        return expand((...args) => {
+        return expand(args => {
             let source = random ? (context[valuesKey] ??= shuffle(args)) : args;
             let max = args.length;
             let idx = index ?? (context[counter] = (context[counter] || 0) + 1);
@@ -384,7 +384,7 @@ Function.nd = seq('@nd', e => d => {
 
 // @p and @P with no arguments reuse the arguments of the last pick
 Function.p = (cell, { context, pick, extra }) => {
-    return expand((...args) => {
+    return expand(args => {
         if (!args.length) {
             args = context.lastPickArgs || [];
         }
@@ -395,7 +395,7 @@ Function.p = (cell, { context, pick, extra }) => {
 
 Function.P = (cell, { context, pick, extra }, position) => {
     let counter = 'P-counter' + position;
-    return expand((...args) => {
+    return expand(args => {
         let own = args.length > 0;
         if (!own) {
             args = context.lastPickArgs || [];
@@ -527,7 +527,7 @@ export const pickAt = lazy((cell, { context, extra }, position, vars, ...args) =
 
 export const pickAtList = (cell, { context, extra }) => (vars, k, ...items) => {
     k = calc(k, sequenceContext(cell, extra.at(-1) || [], vars));
-    return Number.isFinite(k) && items.length ? expand((...list) => pushStack(context, 'lastPick',
+    return Number.isFinite(k) && items.length ? expand(list => pushStack(context, 'lastPick',
         pickN(list, pickIndex(k, list.length), list.length, Math.max(Math.round(k) - 1, 0))))(...items) : '';
 };
 

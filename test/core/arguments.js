@@ -58,7 +58,7 @@ test('sequence: grid product is capped', () => {
 
 // --- expand ---
 
-const args = expand((...values) => values);
+const args = expand(values => values);
 
 test('expand: characters outside the BMP are one item each', () => {
     assert.deepEqual(args('[😀-😃]'), ['😀', '😁', '😂', '😃']);
@@ -146,7 +146,7 @@ test('expand: `...` fills in the gap up to the next value', () => {
 });
 
 test('expand: a trailing `...` goes on to the count it is given, and stays without one', () => {
-    let fill = (count, ...list) => expand((...a) => a, count)(...list);
+    let fill = (count, ...list) => expand(a => a, count)(...list);
     assert.deepEqual(fill(5, '1', '3', '...'), ['1', '3', '5', '7', '9']);
     assert.deepEqual(fill(4, '0s', '.1s', '...'), ['0s', '.1s', '0.2s', '0.3s']);
     // the step comes from the last two values
@@ -163,7 +163,7 @@ test('expand: every argument of the wrapped function expands', () => {
     assert.deepEqual(args('[a-b]', '[1-2]'), ['a', 'b', '1', '2']);
     assert.deepEqual(args('x', '[a-c]', 'y'), ['x', 'a', 'b', 'c', 'y']);
     assert.deepEqual(args('hello', 'world'), ['hello', 'world']);
-    let joined = expand((...values) => values.join('-'));
+    let joined = expand(values => values.join('-'));
     assert.equal(joined('[a-c]'), 'a-b-c');
     assert.equal(joined('[1-3]'), '1-2-3');
 });
@@ -195,8 +195,13 @@ test('named arguments fill by position, then by name', () => {
     );
 });
 
+test('expand: an array argument and a comma list stay apart', () => {
+    assert.deepEqual(args(['a', 'b'], '[c-d]'), ['a', 'b', 'c', 'd']);
+    assert.deepEqual(args('a,b', '[c-d]'), ['a,b', 'c', 'd']);
+});
+
 test('expand: `a x3` in a list stands for three copies, capped like a sequence', () => {
-    let list = expand((...args) => args);
+    let list = expand(args => args);
     assert.deepEqual(list('a x3', 'b'), ['a', 'a', 'a', 'b']);
     assert.deepEqual(list('var(--c) x2', '10px 20px x1', 'x3', '2x'), ['var(--c)', 'var(--c)', '10px 20px', 'x3', '2x']);
     assert.deepEqual(list('a x0', 'b'), ['b']);

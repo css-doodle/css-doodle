@@ -75,7 +75,7 @@ function unitOf(u, v) {
     if (u === '' && v || v === '' && u) return u || v;
 }
 
-export function carry(a, b, end) {
+export const carry = memo((a, b, end) => {
     let [x, ux] = stepOf(a), [y, uy] = stepOf(b), [z, uz] = end === undefined ? [] : stepOf(end);
     let unit = unitOf(ux, uy);
     if (end !== undefined) unit = unitOf(unit, uz);
@@ -88,29 +88,36 @@ export function carry(a, b, end) {
     if (z === undefined) return;
     let count = gap ? clamp(Math.ceil((z - y) / gap - 1e-9) - 1, 0, MAX_SEQUENCE) : 0;
     return Array.from({ length: count }, (_, i) => at(i + 1));
-}
+});
 
 const TIMES = /^([\s\S]*\S)\s+x(\d+)\s*$/;
+const LITERAL = /^\[|^\.\.\.$|\sx\d+\s*$/;
+
+function fill(args, count) {
+    args = args.flatMap(n => String(n).startsWith('[') ? buildRange(n) : n);
+    let list = [];
+    for (let i = 0; i < args.length; ++i) {
+        let end = i + 1 < args.length;
+        let at = args[i] === '...' && !end && count && carry(list.at(-2), list.at(-1));
+        let fill = at
+            ? Array.from({ length: Math.min(count, MAX_SEQUENCE) - list.length }, (_, k) => at(k + 1))
+            : args[i] === '...' && end && carry(list.at(-2), list.at(-1), args[i + 1]);
+        let times = !fill && TIMES.exec(args[i]);
+        if (fill) list = list.concat(fill);
+        else if (times) list.push(...Array(Math.min(times[2], MAX_SEQUENCE)).fill(times[1]));
+        else list.push(args[i]);
+    }
+    return list;
+}
+
+const fillOnce = memo((count, ...args) => fill(args, count));
 
 export function expand(fn, count) {
     return (...args) => {
-        if (!args.some(n => Array.isArray(n) || String(n)[0] === '[' || n === '...' || TIMES.test(n))) {
-            return fn(...args);
+        if (!args.some(n => Array.isArray(n) || LITERAL.test(n))) {
+            return fn(args);
         }
-        args = args.flatMap(n => String(n).startsWith('[') ? buildRange(n) : n);
-        let list = [];
-        for (let i = 0; i < args.length; ++i) {
-            let end = i + 1 < args.length;
-            let at = args[i] === '...' && !end && count && carry(list.at(-2), list.at(-1));
-            let fill = at
-                ? Array.from({ length: Math.min(count, MAX_SEQUENCE) - list.length }, (_, k) => at(k + 1))
-                : args[i] === '...' && end && carry(list.at(-2), list.at(-1), args[i + 1]);
-            let times = !fill && TIMES.exec(args[i]);
-            if (fill) list = list.concat(fill);
-            else if (times) list.push(...Array(Math.min(times[2], MAX_SEQUENCE)).fill(times[1]));
-            else list.push(args[i]);
-        }
-        return fn(...list);
+        return fn(args.some(Array.isArray) ? fill(args, count) : fillOnce(count, ...args));
     };
 }
 

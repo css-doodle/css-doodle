@@ -23,7 +23,7 @@ export function memo(fn) {
             }
             value = fn(...args);
             cache.set(key, value);
-            size += key.length + (typeof value === 'string' ? value.length : 0);
+            size += key.length + (typeof value === 'string' || Array.isArray(value) ? value.length : 0);
         }
         return value;
     }
