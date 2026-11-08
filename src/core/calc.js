@@ -651,6 +651,10 @@ function compileInput(input, ctx, lists = false) {
     let cacheKey = lists ? '\0' + input : input;
     let entry = compiledCache.get(cacheKey);
     if (entry === undefined) {
+        let plain = toPlainNumber(input);
+        if (plain !== null) {
+            return () => plain || 0;
+        }
         if (compiledCache.size >= 512) {
             compiledCache.clear();
         }
