@@ -54,7 +54,7 @@ function parse(input, names) {
 
 export const parseLinear = memo(parse);
 
-export default function parseLinearExpr(input) {
-    let { coefficients: [a], constant: b, error } = parseLinear(input, ['n']);
+export default memo(input => {
+    let { coefficients: [a], constant: b, error } = parse(input, ['n']);
     return error ? { a, b, error } : { a, b };
-}
+});
