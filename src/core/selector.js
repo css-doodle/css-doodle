@@ -46,8 +46,8 @@ export function calcContext({ x, y, z, count, grid }, context, random) {
 function randomCell({ count, grid }, { context, random }, position, n) {
     if (n >= 1) {
         let key = 'random-cells' + position;
-        let cells = context[key] ??= randomN(grid.count, n, random);
-        return cells.includes(count);
+        let cells = context[key] ??= new Set(randomN(grid.count, n, random));
+        return cells.has(count);
     }
     return random() < n;
 }
