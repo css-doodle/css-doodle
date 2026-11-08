@@ -1613,6 +1613,11 @@ test('random() in a selector expression draws from the doodle stream, as @random
     assert.equal(cells('--r: @r(10); @cell(random() < .3) { color: red }', '4', 7), random);
 });
 
+test('each alternative of a selector list draws its own random cells', () => {
+    assert.equal(cells('@random(1), @random(1) { color: red }', '4x1', 2), '#c-2-1-1,#c-3-1-1 {color:red;}');
+    assert.equal(cells('@cell(random 1), @cell(random 1) { color: red }', '4x1', 2), '#c-2-1-1,#c-3-1-1 {color:red;}');
+});
+
 test('@cell runs every argument, so the order of a random one does not move the stream', () => {
     // seeded art depends on it: a matching `odd` does not skip the draw of `random .5`
     assert.equal(

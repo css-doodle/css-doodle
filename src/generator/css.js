@@ -1116,14 +1116,14 @@ class Rules {
                         this.composeGroup(token, cell, env, selectors);
                         break;
                     }
-                    for (let { fn, args, not, styles } of alts) {
+                    for (let [i, { fn, args, not, styles }] of alts.entries()) {
                         if (!fn) continue;
                         let input = [];
                         for (let arg of args) {
                             let { composed, cluster } = compileArgument(arg);
                             pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
                         }
-                        let matched = this.callFunc(fn, { cell, env }, token.position, removeEmptyValues(input));
+                        let matched = this.callFunc(fn, { cell, env }, token.position + '.' + i, removeEmptyValues(input));
                         if (not ? !matched : matched) {
                             this.compose(cell, env, styles, selectors);
                             break;
