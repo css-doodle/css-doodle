@@ -748,12 +748,11 @@ Function.tile.k = cell => () => cellTiles.get(cell)?.kind ?? '';
 Function.tile.r = cell => () => cellTiles.get(cell)?.r ?? '';
 
 function arcShorthand(args) {
-    let c = {};
+    let c = { ranges: [] };
     for (let part of args) {
         let [from, to] = part.split(/(?:^|\s+)to\s+/);
         if (to !== undefined) {
-            if (from.trim()) c.from = from;
-            c.to = to;
+            c.ranges.push([from, to]);
         } else {
             let [r, at] = part.split(/(?:^|\s+)at\s+/);
             if (r.trim()) c.r = r;
@@ -764,25 +763,27 @@ function arcShorthand(args) {
 }
 
 const arcPath = memo((...args) => {
-    let c = args.join(',').includes(':') ? parseShapeCommands(args.join(',')) : arcShorthand(args);
+    let named = args.join(',').includes(':');
+    let c = named ? parseShapeCommands(args.join(',')) : arcShorthand(args);
     let [rx, ry = rx] = spaced(c.r ?? '0').map(v => calc(v));
     let [cx, cy = cx] = spaced(c.at ?? c.move ?? '0').map(v => calc(v));
-    let from = parseDirection(c.from ?? '0').angle;
-    let sweep = parseDirection(c.to ?? '360').angle - from;
-    let full = Math.abs(sweep) >= 360;
-    if (full) {
-        sweep = sweep < 0 ? -360 : 360;
-    }
     let point = a => {
         let t = a * Math.PI / 180;
         return tidyNumber(cx + rx * Math.cos(t)) + ' ' + tidyNumber(cy + ry * Math.sin(t));
     };
     let arc = `A ${tidyNumber(rx)} ${tidyNumber(ry)} 0`;
-    let dir = sweep > 0 ? 1 : 0;
-    if (full) {
-        return `L ${point(from)} ${arc} 1 ${dir} ${point(from + sweep / 2)} ${arc} 1 ${dir} ${point(from)}`;
-    }
-    return `L ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + sweep)}`;
+    let ranges = named || !c.ranges[0] ? [[c.from, c.to]] : c.ranges;
+    return ranges.map(([a, b = '360'], i) => {
+        let from = parseDirection(a).angle;
+        let sweep = parseDirection(b).angle - from;
+        let full = Math.abs(sweep) >= 360;
+        if (full) {
+            sweep = sweep < 0 ? -360 : 360;
+        }
+        let dir = sweep > 0 ? 1 : 0;
+        let piece = `${i ? 'M' : 'L'} ${point(from)} ${arc} ${Math.abs(sweep) > 180 ? 1 : 0} ${dir} ${point(from + (full ? sweep / 2 : sweep))}`;
+        return full ? `${piece} ${arc} 1 ${dir} ${point(from)}` : piece;
+    }).join(' ');
 });
 
 Function.arc = () => arcPath;

@@ -53,6 +53,10 @@ test('@arc short form: the radii and an `at` center, then `from to to`', () => {
     assert.equal(arc('40', '30deg to -30'), arc('r: 40; from: 30deg; to: -30'));
     assert.equal(arc('80/2', '135 to 135 + 270 * .7'), arc('r: 80/2; from: 135; to: 135 + 270 * .7'));
     assert.equal(arc('40 - 20 10 at 5 + 5 2 * 3', 'to .25turn'), arc('r: 20 10; to: 90; at: 10 6'));
+    // several ranges are pieces of the same circle: the first continues the path, the others start their own
+    assert.equal(arc('10', '0 to 90', '180 to 270'), 'L 10 0 A 10 10 0 0 1 0 10 M -10 0 A 10 10 0 0 1 0 -10');
+    assert.equal(arc('10 at 5', 'to 90', '180 to 360 + 180'),
+        arc('10 at 5', 'to 90') + ' M' + arc('10 at 5', '180 to 540').slice(1));
 });
 
 test('@flipH/@flipV/@flip/@invert: mirror path data around its start point', () => {
