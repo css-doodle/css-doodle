@@ -714,6 +714,9 @@ test('an @svg() body defines user functions of its own, at any statement', () =>
     assert.deepEqual(
         ast(`--c(): red; --k(): 2; a: @svg(rect { fill: $c() }); b: @svg(--c(): blue; rect { fill: $c(); x: $k() });`),
         ast(`a: @svg(rect { fill: red }); b: @svg(rect { fill: blue; x: 2 });`));
+    assert.deepEqual(
+        ast(`a: @svg(circle { --f(x): $x * 2 } rect { x: $f(1) });`),
+        ast(`a: @svg(circle { } rect { x: 1 * 2 });`));
 });
 
 test('a user function body without braces is one statement', () => {
@@ -733,6 +736,7 @@ test('a statement reading the parameters of the body without braces before it wa
     assert.deepEqual(warnings(`--f(x): width: $x; /* next */ --g(x): height: $x;`), []);
     assert.deepEqual(warnings(`--c: red; --f(c): fill: $c; background: $c;`), []);
     assert.deepEqual(warnings(`--f(x): { width: $x } height: $x;`), []);
+    assert.deepEqual(warnings(`a: @svg(circle { --f(x): $x; } rect { width: $x })`), []);
 });
 
 test('a user function name is read whole', () => {

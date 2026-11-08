@@ -999,7 +999,7 @@ function statementEnd(tokens, i) {
         if (t.status === 'open') i = quoteEnd(tokens, i);
         else if (t.isSymbol('(', '{')) depth++;
         else if (t.isSymbol(')')) depth--;
-        else if (t.isSymbol('}') && !--depth) return i;
+        else if (t.isSymbol('}') && --depth <= 0) return depth ? i - 1 : i;
         else if (t.isSymbol(';') && !depth) return i;
     }
     return tokens.length - 1;
