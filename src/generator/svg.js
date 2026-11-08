@@ -58,7 +58,7 @@ class Tag {
         if (name === 'repeatCount' && value === 'infinite') {
             value = 'indefinite';
         }
-        if (name === 'd') {
+        if (name === 'd' || name === 'path') {
             value = startPath(value);
         }
         if (name === 'points' && RE_LINES.test(value)) {
