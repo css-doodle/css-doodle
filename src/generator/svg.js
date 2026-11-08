@@ -397,6 +397,14 @@ function generate(token, element, parent, root, warn) {
                         warn(`${keyword} needs duration`);
                     }
                     element.append(animate);
+                    if (animate.attr('fill')) {
+                        let solid = new Tag('set'), id = nextInlineId(keyword).replace('-', '');
+                        animate.attr('id', id);
+                        solid.attr('attributeName', 'stroke-dasharray');
+                        solid.attr('to', 0);
+                        solid.attr('begin', id + '.end');
+                        element.append(solid);
+                    }
                 }
             }
             // `animate r: 1; 5; 1 / 2s ease infinite`, `animate transform: rotate 0; 360 / 4s`

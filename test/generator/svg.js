@@ -453,6 +453,25 @@ test('timing takes the css easing and fill words', () => {
     assert.equal(svg('path { draw: 2s ease-out forwards }').includes('dur="2s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0 0 0.58 1"'), true);
 });
 
+test('a draw that stays ends as a solid stroke', () => {
+    // the dash would end in caps where a closed shape starts, cutting that corner
+    let out = svg('path { draw: 2s forwards }');
+    let id = out.match(/<animate [^>]*id="([^"]+)"/)?.[1];
+    // `begin` reads a `-` in the id as an offset and never starts
+    assert.match(id, /^draw\d+$/);
+    assert.equal(out, markup(`
+        <svg ${NS}>
+            <path stroke-dasharray="10" pathLength="10">
+                <animate attributeName="stroke-dashoffset" from="10" to="0" dur="2s" fill="freeze" id="${id}"/>
+                <set attributeName="stroke-dasharray" to="0" begin="${id}.end"/>
+            </path>
+        </svg>
+    `));
+    assert.equal(svg('path { draw: 3 2s forwards }').includes('<set'), true);
+    // one that lets go keeps its dashes
+    assert.equal(svg('path { draw: 2s }').includes('<set'), false);
+});
+
 test('a definition used as a value goes into defs without the keyword', () => {
     assert.equal(svg('rect { fill: linearGradient#lg { stop { offset: 0 } } }'), markup(`
         <svg ${NS}>
