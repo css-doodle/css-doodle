@@ -332,6 +332,13 @@ const composeSvgUrl = memo(value => {
     return { url: createSvgUrl(normalizeSvg(value)), warnings };
 });
 
+const composeFilter = memo((value, seed, chain, svg) => {
+    let warnings = [], warn = message => warnings.push(message);
+    let parsed = parseSvg(value, { type: 'block', name: 'filter' });
+    let expanded = expandFilter(parsed, seed, warn, chain);
+    return { value: svg ? svgSourceOf(expanded, { repeat: false }) : generateSvg(expanded, warn), warnings };
+});
+
 const ringsToPath = rings => rings.map(ring => 'M' + ring.join('L') + 'Z').join('');
 
 const composeSvgPolygonUrl = memo((commands, seed) => {
@@ -824,16 +831,14 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
             .join('');
     }
     if (!value.startsWith('<')) {
-        let warn = message => env.rules.warn(message);
-        let parsed = parseSvg(value, {
-            type: 'block',
-            name: 'filter'
-        });
-        let expanded = expandFilter(parsed, env.seed, warn, !shorthand);
-        if (env.svg) {
-            return svgSourceOf(expanded, { repeat: false });
+        let filter = composeFilter(value, String(env.seed), !shorthand, !!env.svg);
+        for (let message of filter.warnings) {
+            env.rules.warn(message);
         }
-        value = generateSvg(expanded, warn);
+        if (env.svg) {
+            return filter.value;
+        }
+        value = filter.value;
     }
     let markup = normalizeSvg(value);
     let rules = env.rules;

@@ -622,6 +622,12 @@ test('@svg-filter shares one element between identical filters', () => {
     assert.equal(Object.keys(random.filters).length, 16);
 });
 
+test('@svg-filter warns every time the same filter is composed', () => {
+    for (let code of ['filter: @svg-filter(scale: 5);', 'filter: @svg-filter(scale: 5);', 'background: @svg(rect { filter: @svg-filter(scale: 5); });']) {
+        assert.deepEqual(compile(code).warnings, [{ message: 'scale needs frequency' }], code);
+    }
+});
+
 test('@svg-filter supports symmetric region expansion', () => {
     let compiled = compile('filter: @svg-filter(region: 20%; channels { b: 2b; });');
     let [filter] = Object.values(compiled.filters);
