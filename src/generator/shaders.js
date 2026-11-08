@@ -72,18 +72,9 @@ export function generateFragment(fragment, textures) {
 
     const precisionMatch = fragment.match(/precision\s+(highp|mediump|lowp)\s+float\s*;/);
     const outputMatch = fragment.match(/\bout\s+vec4\s+(\w+)/);
-    const output = outputMatch ? outputMatch[1] : 'FragColor';
-    const has_glFragColor = /gl_FragColor\s*=/.test(fragment);
-    const hasTexture2d = /texture2D\s*\(/.test(fragment);
-    const hasPos = /\bpos\b/.test(fragment);
-    const declaresPos = /\b(?:[biu]?vec[234]|float|int|bool|mat[234])\s+pos\b/.test(fragment);
     const snippets = ['#version 300 es'];
 
-    const push = (line) => {
-        if (!fragment.includes(line)) {
-            snippets.push(line);
-        }
-    }
+    const push = line => fragment.includes(line) || snippets.push(line);
     if (precisionMatch) {
         fragment = fragment.replace(precisionMatch[0], '');
     }
@@ -101,15 +92,15 @@ export function generateFragment(fragment, textures) {
         push(`uniform sampler2D ${t.name};`);
     });
 
-    if (has_glFragColor) {
-        push(`#define gl_FragColor ${output}`);
+    if (/gl_FragColor\s*=/.test(fragment)) {
+        push(`#define gl_FragColor ${outputMatch ? outputMatch[1] : 'FragColor'}`);
     }
 
-    if (hasTexture2d) {
+    if (/texture2D\s*\(/.test(fragment)) {
         push('#define texture2D texture');
     }
 
-    if (hasPos && !declaresPos) {
+    if (/\bpos\b/.test(fragment) && !/\b(?:[biu]?vec[234]|float|int|bool|mat[234])\s+pos\b/.test(fragment)) {
         push('#define pos ((gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y))');
     }
 
