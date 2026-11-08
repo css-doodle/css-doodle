@@ -1071,11 +1071,13 @@ test('@palette: the ground comes first, the ink second, around an optional base 
 });
 
 test('@P: never the last pick at that call, even when it is listed more than once', () => {
-    let env = { context: {}, extra: [], pick: items => items[0] };
+    let env = { context: {}, extra: [], pick: items => items[0], rand: () => 0 };
     let cell = { grid: { count: 1 } };
     let P = Function.P(cell, env, ':1');
     assert.deepEqual([P('a', 'a', 'b'), P('a', 'a', 'b'), P('a', 'a', 'b')], ['a', 'b', 'a']);
     assert.deepEqual([P('a'), P('a')], ['a', 'a']);
+    let top = Function.P(cell, { context: {}, extra: [], pick: items => items.at(-1), rand: n => n - .5 }, ':2');
+    assert.deepEqual([top('a', 'b', 'c'), top('a', 'b', 'c'), top('a', 'b', 'c')], ['c', 'b', 'c']);
     // `x2` weights are the same list, and @P() with no arguments reads it
     let p = Function.p(cell, env);
     assert.equal(p('a x2', 'b'), 'a');

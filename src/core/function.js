@@ -393,7 +393,7 @@ Function.p = (cell, { context, pick, extra }) => {
     }, countOf(cell, extra.at(-1)));
 };
 
-Function.P = (cell, { context, pick, extra }, position) => {
+Function.P = (cell, { context, pick, rand, extra }, position) => {
     let counter = 'P-counter' + position;
     return expand(args => {
         let own = args.length > 0;
@@ -403,11 +403,16 @@ Function.P = (cell, { context, pick, extra }, position) => {
         let memory = own ? (context[counter] ??= {}) : null;
         let last = own ? memory.lastPick : lastOf(context.lastPick);
         context.lastPickArgs = args;
-        let rest = args.filter(n => n !== last);
-        if (rest.length) {
-            args = rest;
+        let i = args.indexOf(last), picked;
+        if (i < 0 || args.length < 2) {
+            picked = pick(args);
+        } else if (args.indexOf(last, i + 1) < 0) {
+            let k = ~~rand(args.length - 1);
+            picked = args[k < i ? k : k + 1];
+        } else {
+            let rest = args.filter(n => n !== last);
+            picked = pick(rest.length ? rest : args);
         }
-        let picked = pick(args);
         if (own) {
             memory.lastPick = picked;
         }
