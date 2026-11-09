@@ -35,8 +35,10 @@ test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     // the path helpers anchor on the leading lineto like on a moveto
     assert.equal(Function.flipH()(arc('r: 10; from: 0; to: 90')), 'L10 0 A10 10 0 0 0 20 10');
     assert.equal(Function.reverse()('L 1 2 A 3 3 0 0 1 4 5 L 6 7 Z'), 'L1 2 L6 7 A3 3 0 0 1 4 5 Z');
-    // and read a bare M before an arc as the moveto it becomes
+    // and read a bare M or m before an arc as the moveto it becomes
     assert.equal(Function.flipH()(arc('r: 10; to: 90') + ' M ' + arc('r: 10; to: 90; at: 20')),
+        'L10 0 A10 10 0 0 0 20 10 M-10 20 A10 10 0 0 0 0 30');
+    assert.equal(Function.flipH()(arc('r: 10; to: 90') + ' m ' + arc('r: 10; to: 90; at: 20')),
         'L10 0 A10 10 0 0 0 20 10 M-10 20 A10 10 0 0 0 0 30');
 });
 

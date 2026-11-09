@@ -35,7 +35,9 @@ function parse(input) {
         if (curr.isWord()) {
             let known = RE_COMMANDS.test(curr.value);
             for (let name of known ? curr.value : [curr.value]) {
-                if (name === 'L' && temp.name === 'M' && !temp.value.length) {
+                if (name === 'L' && /^[Mm]$/.test(temp.name) && !temp.value.length) {
+                    temp.name = 'M';
+                    temp.type = 'absolute';
                     continue;
                 }
                 if (temp.name) {

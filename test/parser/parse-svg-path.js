@@ -101,7 +101,14 @@ test('a bare M takes the point of the lineto after it', () => {
         { name: 'M', type: 'absolute', value: [2, 1] },
         { name: 'A', type: 'absolute', value: [1, 1, 0, 0, 0, 1, 2] },
     ]);
+    assert.deepEqual(parseSvgPath('L 1 0 A 1 1 0 0 1 0 1 m L 2 1 A 1 1 0 0 0 1 2').commands, [
+        { name: 'L', type: 'absolute', value: [1, 0] },
+        { name: 'A', type: 'absolute', value: [1, 1, 0, 0, 1, 0, 1] },
+        { name: 'M', type: 'absolute', value: [2, 1] },
+        { name: 'A', type: 'absolute', value: [1, 1, 0, 0, 0, 1, 2] },
+    ]);
     assert.equal(parseSvgPath('ML2 1').valid, true);
+    assert.equal(parseSvgPath('mL2 1').valid, true);
     // only an absolute lineto, and only after a bare M
     assert.equal(parseSvgPath('M l 2 1').valid, false);
     assert.equal(parseSvgPath('M 0 0 L 2 1').commands.length, 2);
