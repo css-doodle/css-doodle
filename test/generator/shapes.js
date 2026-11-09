@@ -701,6 +701,8 @@ test('path: SVG path data as the outline, fitted to the box, y up', () => {
     // drawn up to the first error, as in SVG
     assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z L 5'), rings('path: M0 0 H10 V10 H0 Z'));
     assert.deepEqual(rings('path: M0 0 H10 V10 H0 Z; scale: .5'), [[[-.5, .5], [.5, .5], [.5, -.5], [-.5, -.5]]]);
+    // an initial relative m starts at its own point, so later relative subpaths move from there
+    assert.deepEqual(rings('path: m10 10 h10 v10 h-10 z m2 2 v6 h6 v-6 z'), rings('path: M10 10 h10 v10 h-10 z m2 2 v6 h6 v-6 z'));
 });
 
 test('scatter below 1 draws the shape, a fraction counts whole points', () => {
