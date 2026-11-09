@@ -23,4 +23,8 @@ test('clearMemos starts the count over', () => {
     calls = 0;
     big('fresh');
     assert.equal(calls, 0);
+    let undef = memo(() => (calls++, undefined));
+    undef('x');
+    undef('x');
+    assert.equal(calls, 1);
 });
