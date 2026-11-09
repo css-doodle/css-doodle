@@ -1609,6 +1609,9 @@ test('a doodle with @tile centers its cells and sizes them to the doodle unless 
     assert.ok(tiled.includes('width:100%;height:100%;'), tiled);
     let sized = css('@size: 40%; clip-path: @tile.grid(square);', '2');
     assert.ok(!sized.includes('width:100%;height:100%;') && sized.includes('width:40%;height:40%;'), sized);
+    let placed = css('@nth(1) { @place: 20% } clip-path: @tile.grid(square);', '2');
+    // an @place under a selector moves its own cells, the rest stay centered
+    assert.ok(placed.includes('left:50%') && placed.includes('left:20%'), placed);
 });
 
 test('random() in a selector expression draws from the doodle stream, as @random does', () => {
