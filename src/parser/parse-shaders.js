@@ -61,12 +61,8 @@ function withLineBreaks(tokens) {
 }
 
 function removeParens(tokens) {
-    let head = tokens[0];
-    let last = tokens[tokens.length - 1];
-    while (head && head.isSymbol('(') && last && last.isSymbol(')')) {
-        tokens = tokens.slice(1, tokens.length - 1);
-        head = tokens[0];
-        last = tokens[tokens.length - 1];
+    while (tokens[0]?.isSymbol('(') && tokens.at(-1)?.isSymbol(')')) {
+        tokens = tokens.slice(1, -1);
     }
     return tokens;
 }

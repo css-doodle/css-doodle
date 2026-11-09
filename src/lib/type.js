@@ -22,8 +22,8 @@ export function isLetter(c) {
 export function removeQuotes(text) {
     text = String(text);
     let q = text[0];
-    if ((q === '"' || q === "'") && text.endsWith(q)) {
-        return text.substring(1, text.length - 1);
+    if (text.length > 1 && (q === '"' || q === "'") && text.endsWith(q)) {
+        return text.slice(1, -1);
     }
     return text;
 }

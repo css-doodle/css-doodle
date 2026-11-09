@@ -11,11 +11,9 @@ export function sequence(count, fn, limit = MAX_SEQUENCE) {
     let [x, y = 1] = String(count).split(/[x-]/);
     // a leading dash is a negative count, not a range
     if (x === '') return [];
-    let [cx, cy] = [Math.ceil(x), Math.ceil(y)];
-    if (Number.isNaN(cx)) cx = 1;
-    if (Number.isNaN(cy)) cy = 1;
-    x = clamp(cx, 0, MAX_SEQUENCE);
-    y = clamp(cy, 0, MAX_SEQUENCE);
+    let cx = Math.ceil(x), cy = Math.ceil(y);
+    x = clamp(Number.isNaN(cx) ? 1 : cx, 0, MAX_SEQUENCE);
+    y = clamp(Number.isNaN(cy) ? 1 : cy, 0, MAX_SEQUENCE);
     let ret = [];
     let index = 1;
     if (/x/.test(count) || !/-/.test(count)) {

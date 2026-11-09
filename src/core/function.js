@@ -144,12 +144,14 @@ function makeSequence(c) {
             evaluated = Math.ceil(evaluated);
         }
         let seen = new Set();
-        let outer = env.extra.reduce((n, e) => {
+        let outer = 1;
+        for (let e of env.extra) {
             let key = e?.[SEQ.sig] ?? e;
-            if (seen.has(key)) return n;
-            seen.add(key);
-            return n * (Number(e?.[SEQ.max]) || 1);
-        }, 1);
+            if (!seen.has(key)) {
+                seen.add(key);
+                outer *= Number(e?.[SEQ.max]) || 1;
+            }
+        }
         return sequence(evaluated, run, Math.max(1, Math.floor(MAX_SEQUENCE / outer))).join(c);
     });
 }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getValue, removeParens } from '../../src/lib/type.js';
+import { getValue, removeParens, removeQuotes } from '../../src/lib/type.js';
 
 test('getValue handles nil and reads one level of `value`', () => {
     // typeof null is 'object': the `'value' in v` check used to throw
@@ -23,4 +23,7 @@ test('removeParens unwraps one outer pair only', () => {
     assert.equal(removeParens('(red), (blue)'), '(red), (blue)');
     assert.equal(removeParens('background: rgb(0, 0, 255)'), 'background: rgb(0, 0, 255)');
     assert.equal(removeParens(''), '');
+    assert.equal(removeQuotes('"hello"'), 'hello');
+    assert.equal(removeQuotes('"'), '"');
+    assert.equal(removeQuotes("'"), "'");
 });
