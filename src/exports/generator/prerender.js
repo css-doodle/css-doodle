@@ -2,7 +2,7 @@ import parseGrid from '../../parser/parse-grid.js';
 import generateCss from '../../generator/css.js';
 
 import { FilterHolderStyle } from '../../lib/svg.js';
-import { removeParens } from '../../lib/type.js';
+import { removeParens, hasEntries } from '../../lib/type.js';
 import { hash } from '../../lib/math.js';
 import { UTime } from '../../core/uniforms.js';
 
@@ -92,7 +92,7 @@ export default async function prerender(code = '', options = {}) {
     warnings.unshift(...compiled.warnings);
 
     let { styles, content, filters, uniforms, shaders, patterns, props } = compiled;
-    if (Object.keys(shaders).length || Object.keys(patterns).length) needs.add('shader');
+    if (hasEntries(shaders) || hasEntries(patterns)) needs.add('shader');
     if (uniforms.mousex || uniforms.mousey) needs.add('mouse');
     if (uniforms.width || uniforms.height) needs.add('size');
     if ('click:update' in attributes || 'click-to-update' in attributes || 'auto:update' in attributes) {
@@ -109,7 +109,7 @@ export default async function prerender(code = '', options = {}) {
     }
 
     let shadow = `<style>${sheet.replace(/\n\s+/g, ' ').replace(/<\/(style)/gi, '<\\/$1')}</style>`;
-    if (styles.cells || styles.container || Object.keys(content).length) {
+    if (styles.cells || styles.container || hasEntries(content)) {
         shadow += dropStrayTemplateEnds(createGrid(grid, compiled));
     }
     let defs = Object.values(filters).join('');

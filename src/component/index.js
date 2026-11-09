@@ -9,7 +9,7 @@ import generatePng from '../generator/svg-to-png.js';
 
 import { getRgbaColor, getVariable, getAllVariables } from './computed-style.js';
 import { NS, NSXHtml, FilterHolderStyle, cdata } from '../lib/svg.js';
-import { isNil } from '../lib/type.js';
+import { isNil, hasEntries } from '../lib/type.js';
 import { clearMemos } from '../lib/cache.js';
 import { fontsLoading } from '../generator/trace.js';
 import { isSafari } from '../lib/browser.js';
@@ -696,7 +696,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.gridSize = grid;
             if (cells) {
                 this.shadowRoot.replaceChildren();
-                if (Object.keys(compiled.content).length) warn('@content unsupported');
+                if (hasEntries(compiled.content)) warn('@content unsupported');
                 this.mount(compiled);
                 this.pauseCells();
             } else if (rebuild) {
@@ -746,7 +746,7 @@ if (typeof HTMLElement !== 'undefined') {
         buildGrid(compiled, grid) {
             let { hasTransition } = compiled.props;
             let { content, styles } = compiled;
-            let hasContent = Object.keys(content).length;
+            let hasContent = hasEntries(content);
             let sheet = hasTransition || !hasPlaceholder(styles.all)
                 ? getBasicStyles(grid) + styles.main
                 : (styles.top + getBasicStyles(grid) + styles.all).replace(RE_PLACEHOLDER, '');
@@ -807,7 +807,7 @@ if (typeof HTMLElement !== 'undefined') {
             let compiled = this.compiled;
             if (!compiled) return;
             let { styles, doodles } = compiled;
-            if (Object.keys(doodles).length || hasImageClock(styles.top + styles.all)) {
+            if (hasEntries(doodles) || hasImageClock(styles.top + styles.all)) {
                 this.applyStyles(compiled);
             }
         }
