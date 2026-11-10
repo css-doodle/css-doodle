@@ -38,6 +38,9 @@ test('preprocessor lines keep their line breaks', () => {
     // a directive at the very end of the source has no following line
     assert.deepEqual(parseShaders('#endif'), shader('\n#endif'));
     assert.deepEqual(parseShaders('void main(){}\n#endif'), shader('void main(){}\n#endif'));
+    // a directive that is the last word of its line, before a closing brace
+    assert.deepEqual(parseShaders('void main() {\n#ifdef X\n  a = 1.;\n#endif\n}'),
+        shader('void main(){\n#ifdef X\n\na = 1.;\n#endif\n}'));
 });
 
 test('a # inside a texture section is a color, not a directive', () => {

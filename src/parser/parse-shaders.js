@@ -46,14 +46,13 @@ function withLineBreaks(tokens) {
     let line = null;
     for (let i = 0; i < tokens.length; ++i) {
         let curr = tokens[i];
-        let next = tokens[i + 1];
         if (line !== null && line != curr.pos[1]) {
             result.push(new Token('LineBreak', '\n'));
             line = null;
         }
         if (curr.isWord() && curr.value.startsWith('#')) {
             result.push(new Token('LineBreak', '\n'));
-            line = (next || curr).pos[1];
+            line = curr.pos[1];
         }
         result.push(curr);
     }
