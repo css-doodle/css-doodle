@@ -798,11 +798,9 @@ class Rules {
                 }
                 case 'content': {
                     rule = '';
-                    let key = this.composeSelector(cell);
                     if (!isPseudoSelector(selector) && !isSpecialSelector(selector)) {
-                        this.content[key] = removeQuotes(transformed);
+                        this.content[this.composeSelector(cell)] = Func.raw(cell, env)(removeQuotes(transformed));
                     }
-                    this.content[key] = Func.raw(cell, env)(this.content[key] || '');
                     break;
                 }
                 case 'place-cell': case 'place': {

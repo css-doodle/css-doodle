@@ -686,6 +686,12 @@ test('@content takes each @svg as markup and keeps the text around them', () => 
     assert.equal(content('@content: @svg(svg {}) hi;'), `${svg}</svg> hi`);
 });
 
+test('@content under a pseudo element or the host leaves no content entry', () => {
+    assert.deepEqual(compile(':after { @content: x } color: red', '2x1').content, {});
+    assert.deepEqual(compile(':doodle { @content: x }').content, {});
+    assert.deepEqual(compile('@content: hi; :after { @content: no }').content, { '#c-1-1-1': 'hi' });
+});
+
 test('@raw passes its text on as written', () => {
     let content = code => compile(code).content['#c-1-1-1'];
     assert.equal(content('@content: @raw(A, B);'), 'A, B');
