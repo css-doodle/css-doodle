@@ -422,13 +422,13 @@ if (typeof HTMLElement !== 'undefined') {
                 }
             } else if (name === 'auto:update') {
                 if (newValue !== null) {
-                    if (this.compiled) this.autoUpdate();
+                    if (this.compiled && this.isConnected) this.autoUpdate();
                 } else {
                     this.cancelAutoUpdate();
                 }
             } else if (name === 'ignore-reduced-motion') {
                 this.syncMotion();
-            } else if (this.compiled) {
+            } else if (this.compiled && this.isConnected) {
                 this.update();
             }
         }

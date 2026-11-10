@@ -453,6 +453,23 @@ test('the source of a cells doodle leaves its own sheets out', () => {
     }
 });
 
+test('an attribute change on a detached doodle waits for the next load', () => {
+    let calls = [];
+    let host = Object.assign(Object.create(CSSDoodle.prototype), {
+        compiled: {},
+        isConnected: false,
+        update() { calls.push('update'); },
+        autoUpdate() { calls.push('autoUpdate'); },
+    });
+    host.attributeChangedCallback('seed', '1', '2');
+    host.attributeChangedCallback('auto:update', null, '500');
+    assert.deepEqual(calls, []);
+    Object.defineProperty(host, 'isConnected', { value: true });
+    host.attributeChangedCallback('seed', '2', '3');
+    host.attributeChangedCallback('auto:update', '500', '900');
+    assert.deepEqual(calls, ['update', 'autoUpdate']);
+});
+
 test('load keeps a plain template wrapper around the source', () => {
     // <css-doodle><template>code</template></css-doodle> is how the CLI and
     // other embedders pass source, only prerendered templates are dropped
