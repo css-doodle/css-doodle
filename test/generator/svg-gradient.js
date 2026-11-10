@@ -8,6 +8,13 @@ const gradient = (type, ...values) => generateSvgGradient(type, values.map(v => 
 const linear = (...values) => gradient('linearGradient', ...values);
 const radial = (...values) => gradient('radialGradient', ...values);
 
+test('a comma list spreads into stops next to other arguments too', () => {
+    let stops = 'stop { offset: 0%; stop-color: red } stop { offset: 50%; stop-color: gold } stop { offset: 100%; stop-color: blue }';
+    assert.equal(linear('red, gold, blue'), `linearGradient {  ${stops} }`);
+    assert.equal(linear('45', 'red, gold, blue'), `linearGradient { gradientTransform: rotate(45); ${stops} }`);
+    assert.equal(linear('red, gold', 'blue'), `linearGradient {  ${stops} }`);
+});
+
 test('a transform followed by color stops', () => {
     assert.equal(linear('rotate(30)', 'deeppink 50%', 'yellow 100%'),
         'linearGradient { gradientTransform: rotate(30); stop { offset: 50%; stop-color: deeppink } stop { offset: 100%; stop-color: yellow } }');

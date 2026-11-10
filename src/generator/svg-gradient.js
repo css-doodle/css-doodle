@@ -7,12 +7,10 @@ export default function createSvgGradient(type, args) {
     let transform = '';
     let colorStops = [];
 
-    if (values.length == 1 && typeof values[0] === 'string' && values[0].indexOf(',') > -1) {
-        let groups = parseValueGroup(values[0], { noSpace: true });
-        if (groups.length > 1) {
-            values = groups;
-        }
-    }
+    values = values.flatMap(value => {
+        let groups = typeof value === 'string' ? parseValueGroup(value, { noSpace: true }) : [];
+        return groups.length > 1 ? groups : value;
+    });
 
     let first = values[0];
     if (/^-?[\d.]/.test(first)) {
