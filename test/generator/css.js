@@ -1171,6 +1171,9 @@ test('selectors nest against the enclosing one', () => {
     assert.equal(css(':doodle { :not(:is(.a, .b)):focus { color: red } :before { color: blue } }'),
         ':host(:not(:is(.a, .b)):focus) {color:red;}:host:before,.host:before {color:blue;}');
     assert.equal(css(':host-context(.dark) { color: red }'), ':host-context(.dark) {color:red;}');
+    // a host selector with & is about the cells, so it runs for each of them
+    assert.equal(css(':doodle(:hover) & { order: @i }', '2x1'),
+        ':host(:hover) #c-1-1-1 {order:1;}:host(:hover) #c-2-1-1 {order:2;}');
     assert.equal(css(':container { :hover { color: red } }'), 'grid:hover {color:red;}');
     assert.equal(css(':container(.x) .y { color: red }'), 'grid.x .y {color:red;}');
     // selector lists cross with the enclosing list

@@ -1,5 +1,5 @@
 export function isHostSelector(s) {
-    return typeof s === 'string' && s.startsWith(':host');
+    return typeof s === 'string' && s.startsWith(':host') && !s.includes('&');
 }
 
 export function isParentSelector(s) {
