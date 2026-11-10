@@ -437,6 +437,22 @@ test('load leaves a prerendered template and filter holder out of the source', (
     assert.equal(rendered, source);
 });
 
+test('the source of a cells doodle leaves its own sheets out', () => {
+    let host = Object.assign(Object.create(CSSDoodle.prototype), {
+        innerHTML: '<style>a{}</style><style>b{}</style>',
+        querySelectorAll: () => [],
+    });
+    let sheet = text => ({ remove() { host.innerHTML = host.innerHTML.replace(text, ''); } });
+    host._sheet = sheet('<style>a{}</style>');
+    host._vars = sheet('<style>b{}</style>');
+    globalThis.document = { createElement: () => ({ set innerHTML(v) { this.value = v; } }) };
+    try {
+        assert.equal(host.source(), '');
+    } finally {
+        delete globalThis.document;
+    }
+});
+
 test('load keeps a plain template wrapper around the source', () => {
     // <css-doodle><template>code</template></css-doodle> is how the CLI and
     // other embedders pass source, only prerendered templates are dropped

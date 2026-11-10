@@ -422,7 +422,6 @@ if (typeof HTMLElement !== 'undefined') {
                 }
             } else if (name === 'auto:update') {
                 if (newValue !== null) {
-                    // before the first load, load() starts the timer
                     if (this.compiled) this.autoUpdate();
                 } else {
                     this.cancelAutoUpdate();
@@ -430,7 +429,6 @@ if (typeof HTMLElement !== 'undefined') {
             } else if (name === 'ignore-reduced-motion') {
                 this.syncMotion();
             } else if (this.compiled) {
-                // before the first load the attribute is read by that load
                 this.update();
             }
         }
@@ -581,6 +579,8 @@ if (typeof HTMLElement !== 'undefined') {
             for (let el of this.querySelectorAll(':scope>template[shadowrootmode],:scope>ft')) {
                 el.remove();
             }
+            this._sheet?.remove();
+            this._vars?.remove();
             let code = unEntity(this.innerHTML);
             this.innerHTML = '';
             return code;
