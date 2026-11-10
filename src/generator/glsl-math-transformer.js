@@ -260,11 +260,12 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         if (n.type === 'Call') {
             const a = n.args;
             if (n.val === 'match') {
-                let out = gen(a.length % 2 ? a[a.length - 1] : ZERO, exp);
+                const res = infer(n), type = isVector(res) ? res : exp;
+                let out = gen(a.length % 2 ? a[a.length - 1] : ZERO, type);
                 for (let i = a.length - 2 - a.length % 2; i >= 0; i -= 2) {
-                    out = `(${gen(a[i], 'bool')} ? ${gen(a[i + 1], exp)} : ${out})`;
+                    out = `(${gen(a[i], 'bool')} ? ${gen(a[i + 1], type)} : ${out})`;
                 }
-                return out;
+                return cast(out, type, exp);
             }
             const res = infer(n);
             if (n.at) {

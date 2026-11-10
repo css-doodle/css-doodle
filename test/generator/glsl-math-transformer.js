@@ -355,6 +355,9 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
     assert.equal(transform('match(x > 1, 5)', { expect: 'float' }), '((x > 1.0) ? 5.0 : 0.0)');
     assert.equal(transform('match(7)', { expect: 'float' }), '7.0');
     assert.equal(transform('match()', { expect: 'float' }), '0.0');
+    // a vector arm makes every arm that vector, whatever the caller expects
+    assert.equal(transform('match(x > 2, vec3(1), 0) * 2', { expect: 'vec3' }),
+        '(((x > 2.0) ? vec3(1.0) : vec3(0.0)) * 2.0)');
     // the values take the type the caller expects, the tests are always bool
     assert.equal(transform('match(x, 1, 0)', { expect: 'bool' }), '(bool(x) ? bool(1.0) : bool(0.0))');
     assert.equal(transform('match(x > 1, 2, 3) + 1', { expect: 'float' }), '(((x > 1.0) ? 2.0 : 3.0) + 1.0)');
