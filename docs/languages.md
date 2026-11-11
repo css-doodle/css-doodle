@@ -251,15 +251,13 @@ body copied from `@shape` leaves it out.
 | `density`       | `slice`, `voronoi`, `delaunay`, scatter | where pieces are smaller, an expression in `x`, `y` and `d`    |
 | `relax`         | `voronoi`, `delaunay`, scatter          | rounds that even out the points, 0 to 50, default 10           |
 | `spread`        | `slice`                                 | how far a cut may tilt, in degrees                             |
-| `crack`         | `voronoi`                               | groups the regions, about this many each; a second `gap` value is the space inside a group |
-| `stretch`       | `voronoi`                               | `ratio [angle]`, regions that many times longer, up to 1000    |
-| `bound`         | `voronoi` without `crack`, `stretch`, `op` or `star` | `box` lets the pieces fill the box, the default; `shape` cuts them at the region's outline, holes included, before `gap` and `round` |
+| `bound`         | `voronoi` without `op` or `star`        | `box` lets the pieces fill the box, the default; `shape` cuts them at the region's outline, holes included, before `gap` and `round` |
 | `round`         | all but `circle` and scatter            | corner radius, in the units where the box is 2 across          |
 | `jitter`        | `grid`, `hex`, `triangle`, `cube`, `penrose` | moves each corner by up to that part of a piece           |
 | `shift`         | `grid`                                  | `a [b]`, slides every other row by `a`, or column by `b`       |
 | `edge`, `slide` | `grid`, `hex`, `triangle`               | bend each edge across and along itself, expressions in `t`, `e`, `x`, `y` and `random()`; `edge` is ignored with `op` or `star` |
 | `pair`          | `grid` without `shift`, `hex`           | `turn` pairs edges by a turn about a corner, so every piece is one shape turned by its kind |
-| `op`            | `grid`, `hex`, `triangle`, `cube`, `penrose`, `voronoi` without `crack` or `stretch` | Conway's operators, one letter per step, right to left: `d a t k e b s`, and `g j m o` for `ds da kda de`; other letters and steps past the fifth are skipped |
+| `op`            | `grid`, `hex`, `triangle`, `cube`, `penrose`, `voronoi` | Conway's operators, one letter per step, right to left: `d a t k e b s`, and `g j m o` for `ds da kda de`; other letters and steps past the fifth are skipped |
 | `star`          | the same as `op`                        | after `op`, turns every piece into a Hankin star: lines leave each side's middle at this angle, 0 to 90 degrees |
 | `size`          | `circle`                                | the largest radius where a circle is centered, in average radii, an expression in `x`, `y` and `d`; by default 1.5 with a rare few larger |
 

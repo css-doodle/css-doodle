@@ -151,55 +151,6 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
     });
 }
 
-function mosaic(screen, box, count, evenodd, seed, density, relax, ratio, angle, crack, gap, fine) {
-    let [x0, y0, x1, y1] = box, ox = (x0 + x1) / 2, oy = (y0 + y1) / 2;
-    let c = cos(angle), s = sin(angle), a = sqrt(ratio);
-    let warp = (x, y, k = a) => {
-        let u = ((x - ox) * c + (y - oy) * s) * k, v = ((y - oy) * c - (x - ox) * s) / k;
-        return [ox + u * c - v * s, oy + u * s + v * c];
-    };
-    let back = (p, k) => {
-        let q = [];
-        for (let i = 0; i < p.length; i += 2) q.push(...warp(p[i], p[i + 1], k));
-        return q;
-    };
-    let corners = [x0, y0, x1, y0, x1, y1, x0, y1];
-    let [l, t, r, b] = bounds(back(corners, 1 / a));
-    let pad = (r - l + b - t) / 4, qbox = [l - pad, t - pad, r + pad, b + pad];
-    let seeds = scatter(screen.map(p => warp(...p, 1 / a)), count, evenodd, seed, density && ((x, y) => density(...warp(x, y))), relax);
-    let n = seeds.length, m = crack > 1 ? max(1, round(n / crack)) : n;
-    let rnd = seedrandom('crack:' + seed), order = seeds.map((_, i) => i), parents = [];
-    for (let i = 0; i < n; ++i) {
-        let j = i + (rnd() * (n - i) | 0);
-        [order[i], order[j]] = [order[j], order[i]];
-    }
-    let reach = relax === 0 || m == n ? 0 : .7 * sqrt(area(screen.flat()) / m);
-    if (!reach) parents = order.slice(0, m);
-    for (let pass = 0; pass < 2 && parents.length < m; ++pass) for (let i of order) {
-        if (parents.length < m && !parents.includes(i) && (pass || parents.every(j => dist(seeds[i], seeds[j]) >= reach))) parents.push(i);
-    }
-    let px = parents.map(i => seeds[i][0]), py = parents.map(i => seeds[i][1]);
-    let cells = voronoi(px, py, ...qbox, 0), kinds = colors(cells);
-    let cut = (p, d, outer) => {
-        p = back(p);
-        return clip(d ? shrink(p, d) : p, outer);
-    };
-    if (m == n) return cells.map(([q], k) => [cut(q, gap / 2, corners), warp(px[k], py[k]), kinds[k]]);
-    let groups = cells.map(() => []);
-    seeds.forEach(([x, y]) => {
-        let near = 0, best = Infinity;
-        for (let k = 0; k < m; ++k) {
-            let d = (x - px[k]) ** 2 + (y - py[k]) ** 2;
-            if (d < best) best = d, near = k;
-        }
-        groups[near].push([x, y]);
-    });
-    return cells.flatMap(([q], i) => {
-        let outer = cut(q, gap / 2, corners), g = groups[i];
-        return voronoi(g.map(p => p[0]), g.map(p => p[1]), ...bounds(q), 0).map(([p], k) => [cut(clip(p, q), fine / 2, outer), warp(...g[k]), kinds[i]]);
-    });
-}
-
 function colors(cells) {
     let kinds = [];
     cells.forEach(([, ids], k) => {
@@ -710,6 +661,6 @@ function simplify({ f, g, n }, tol) {
 }
 
 export {
-    scatter, voronoi, mosaic, colors, shrink, lattice, penrose, conway, delaunay, border, reacher, tiles, shake, bend,
+    scatter, voronoi, colors, shrink, lattice, penrose, conway, delaunay, border, reacher, tiles, shake, bend,
     inset, nearest, pack, slice, centre, contains, edges, noiseOf, PHI,
 };

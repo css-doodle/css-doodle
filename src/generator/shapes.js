@@ -14,7 +14,7 @@ import {
     insideTest, corners, wave, bounds, flatten, bridge, overlay, offset, recount, resample, toPairs,
 } from './polygon.js';
 import {
-    conway, reacher, scatter, voronoi, colors, mosaic, lattice, penrose, delaunay, border, tiles, shake, bend, inset, shrink, nearest, contains, pack, slice, centre, edges, noiseOf, PHI,
+    conway, reacher, scatter, voronoi, colors, lattice, penrose, delaunay, border, tiles, shake, bend, inset, shrink, nearest, contains, pack, slice, centre, edges, noiseOf, PHI,
 } from './tiling.js';
 import { glyphs, pathRings } from './trace.js';
 
@@ -375,9 +375,9 @@ function createShapePoints(props, lo, hi, raw) {
     return points;
 
     function tilePoints() {
-        let [gap = props.tile == 'circle' ? 0 : -.3, fine = gap < 0 ? gap : gap / 4] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
+        let [gap = props.tile == 'circle' ? 0 : -.3] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
         // the gap is in percent of the element, which is 2 across without a unit
-        if (!percent) [gap, fine] = [gap / 50, fine / 50];
+        if (!percent) gap /= 50;
         let tile = ([poly, [x, y], kind = 1, extra]) => {
             let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
             let at = fmt(x, y), inner = nearest(rings)(x, y);
@@ -452,12 +452,6 @@ function createShapePoints(props, lo, hi, raw) {
         let density = formula(props.density);
         if (name == 'slice') return slice(screen, box, inside, count, seed, gap, num('spread') * PI / 180, onScreen(density)).map(tile);
         let relax = isEmpty(props.relax) ? undefined : clamp(num('relax'), 0, 50);
-        let [ratio, angle] = isEmpty(props.stretch) ? [] : parseValueGroup(String(props.stretch)).map(parseFloat);
-        let crack = num('crack');
-        if (name == 'voronoi' && (ratio > 0 || crack > 1)) {
-            return mosaic(screen, box, count, evenodd, seed, onScreen(density), relax,
-                ratio > 0 ? clamp(ratio, 1e-3, 1e3) : 1, (angle || 0) * PI / 180, crack, gap, fine).map(tile);
-        }
         let sow = n => aspect == 1 ? scatter(outline, n, evenodd, seed, density && ((x, y) => (seen = toScreen([x, y]), density(...view([x, y])))), relax)
             : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(back);
         if (name == 'voronoi' && derive) {

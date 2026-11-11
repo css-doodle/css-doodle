@@ -158,13 +158,13 @@ test('relax sets the scatter rounds, 0 picks random seeds', () => {
     assert.deepEqual(scatter('1e9'), scatter('50'));
 });
 
-test('stretched and cracked voronoi cells cover the box', () => {
+test('voronoi cells cover the box', () => {
     let area = p => {
         let v = String(p).match(/-?[\d.e-]+(?=%)/g).map(Number), a = 0;
         for (let i = 0; i < v.length; i += 2) a += v[i] * v[(i + 3) % v.length] - v[(i + 2) % v.length] * v[i + 1];
         return Math.abs(a / 2);
     };
-    for (let rules of [{ stretch: '3 30' }, { crack: '8' }, { crack: '6', stretch: '2 90', relax: '0' }]) {
+    for (let rules of [{}, { relax: '0' }]) {
         let tiles = more => generateShape('square', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 60, gap: '0' }, rules, more)).points;
         let cells = tiles();
         assert.equal(cells.length, 60);
@@ -181,14 +181,6 @@ test('round curves the corners of every polygon tile', () => {
         assert.ok(round.every((p, i) => p.split(',').length > plain[i].split(',').length), tile);
         assert.deepEqual(cells('1'), cells('7'));
     }
-});
-
-test('cracked cells stay inside the shape', () => {
-    let cells = generateShape('heart', { min: 1, max: 65536 }, r => Object.assign(r, { tile: 'voronoi', seed: 2, scatter: 200, crack: '10' })).points;
-    let outline = generateShape('heart', { min: 1, max: 65536 }, r => r).points.map(p => String(p).match(/-?[\d.]+/g).map(Number)).filter(p => p.length == 2);
-    let inside = insideTest([outline], false);
-    assert.equal(cells.length, 200);
-    assert.ok(cells.every(p => inside(...p.origin.match(/-?[\d.]+/g).map(Number))));
 });
 
 test('delaunay leaves no holes inside, even with random seeds', () => {
