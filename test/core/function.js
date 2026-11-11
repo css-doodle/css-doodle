@@ -324,6 +324,17 @@ let inside = (vs, [x, y]) => {
     }
     return n & 1;
 };
+// every probe point of the 100 × 100 box in exactly one tile; a tile's bounds rule out most points before the point test
+let covered = (list, step = 4) => {
+    let tiles = list.map(t => {
+        let vs = verts(t), xs = vs.map(v => v[0]), ys = vs.map(v => v[1]);
+        return [vs, Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    });
+    for (let x = 1.37; x < 100; x += step) for (let y = 1.71; y < 100; y += step) {
+        if (tiles.filter(([vs, x0, x1, y0, y1]) => x >= x0 && x <= x1 && y >= y0 && y <= y1 && inside(vs, [x, y])).length != 1) return false;
+    }
+    return true;
+};
 
 test('@plot: the shape follows the grid count', () => {
     let env = { context: {}, extra: [] };
@@ -677,13 +688,6 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
     let tiles = (fn, shape, n) => Array.from({ length: n }, (_, i) => fn(cell(n, i + 1), { context: {}, extra: [], seed: 'a' })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
     let near = (a, b, e = 3e-3) => Math.abs(a - b) < e;
     let side = ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     // cubes: a hexagon in three equal rhombs, top, left, right, with the hexagon centre as a corner
     let cube = tiles(Function.tile.cube, 'square', 150);
     assert.ok(cube.length > 100 && cube.length <= 150 && cube.length % 3 == 0, cube.length);
@@ -711,13 +715,6 @@ test('@tile.cube and @tile.penrose: rhombs reaching into the shape, as many as t
 
 test('@tile.grid with shift: every other row, or column, moved by part of a cell', () => {
     let tiles = shape => Array.from({ length: 64 }, (_, i) => Function.tile.grid(cell(64, i + 1), { context: {}, extra: [], seed: 'a' })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     let near = (a, b, e = 3e-3) => Math.abs(a - b) < e;
     let rows = (list, i) => [...new Set(list.map(t => xy(t.origin)[i].toFixed(6)))].map(Number).sort((a, b) => a - b);
     let plain = tiles('square');
@@ -750,13 +747,6 @@ test('with no gap, pieces overlap a hair, so the background never shows where th
 
 test('jitter: lattice corners move by a seeded offset, the same in every piece sharing one', () => {
     let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle, Function.tile.cube, Function.tile.penrose]) {
         let plain = tiles(fn, 'square'), shaken = tiles(fn, 'jitter: .2');
         assert.notDeepEqual(shaken.map(String), plain.map(String));
@@ -770,23 +760,16 @@ test('jitter: lattice corners move by a seeded offset, the same in every piece s
 
 test('edge: bends every lattice edge with a formula, and neighbours still fit', () => {
     let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     // distinct outlines, each moved to its origin
     let shapes = list => distinct(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => [x - ox, y - oy]); }));
     for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle]) {
         // the same curve on every edge: the box is covered once and the tiles stay congruent
         let bent = tiles(fn, 'square; edge: .15 * sin(t)');
-        assert.ok(covered(bent) && bent.every(t => verts(t).length > 12) && shapes(bent) <= 2);
+        assert.ok(covered(bent, 2) && bent.every(t => verts(t).length > 12) && shapes(bent) <= 2);
         // random() is drawn once per edge, x and y are the edge's midpoint: every edge differs, still covered
         for (let edge of ['.2 * sin(t) * random()', '.1 * x * sin(2t)']) {
             let varied = tiles(fn, `square; edge: ${edge}`);
-            assert.ok(covered(varied) && shapes(varied) > 5, edge);
+            assert.ok(covered(varied, 2) && shapes(varied) > 5, edge);
         }
     }
     // `e` is the edge direction: on a grid 1 is horizontal, so only the vertical edges bend
@@ -807,18 +790,11 @@ test('edge: bends every lattice edge with a formula, and neighbours still fit', 
 
 test('edge: understands noise(), the formula @R.t compiles to', () => {
     let tiles = (fn, shape, seed = 'a') => Array.from({ length: 64 }, (_, i) => fn(cell(64, i + 1), { context: {}, extra: [], seed })(exact(shape))).filter(t => String(t) != 'polygon(0 0)');
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     let shapes = list => distinct(list.map(t => { let [ox, oy] = xy(t.origin); return verts(t).map(([x, y]) => [x - ox, y - oy]); }));
     let noiseEdge = 'square; edge: noise(t, x, y, 1, 1, -.1, .1, 1)';
     for (let fn of [Function.tile.grid, Function.tile.hex, Function.tile.triangle]) {
         let bent = tiles(fn, noiseEdge);
-        assert.ok(covered(bent) && shapes(bent) > 5, String(fn));
+        assert.ok(covered(bent, 2) && shapes(bent) > 5, String(fn));
     }
     // seeded like every other edge formula: same seed reproduces, a different one doesn't
     assert.deepEqual(tiles(Function.tile.grid, noiseEdge).map(String), tiles(Function.tile.grid, noiseEdge).map(String));
@@ -831,13 +807,6 @@ test('pair: turn and slide: edges paired by turns about the corners, and bent al
         let c = cell(64, i + 1), t = fn(c, env)(exact(shape));
         return String(t) == 'polygon(0 0)' ? null : Object.assign(t, { k: Number(Function.tile.k(c)()) });
     }).filter(Boolean);
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 2) for (let y = 1.71; y < 100; y += 2) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     // whole tiles turned back by their kind, then moved to their origin
     let shapes = (list, step) => distinct(list.filter(t => verts(t).every(([x, y]) => x > 0 && x < 100 && y > 0 && y < 100)).map(t => {
         let [ox, oy] = xy(t.origin), a = -(t.k - 1) * step * Math.PI / 180;
@@ -846,7 +815,7 @@ test('pair: turn and slide: edges paired by turns about the corners, and bent al
     for (let [fn, kinds, step] of [[Function.tile.hex, 3, 120], [Function.tile.grid, 4, 90]]) {
         for (let shape of ['edge: .3 * sin(t/2)^2 * (e - 2) + .1 * sin(t)', 'edge: .3 * sin(t/2)^2 * (e - 2) + .1 * sin(t); slide: .4 * sin(t/2)^4 * (e - 2)']) {
             let turned = tiles(fn, `square; pair: turn; ${shape}`);
-            assert.ok(covered(turned), shape);
+            assert.ok(covered(turned, 2), shape);
             assert.equal(new Set(turned.map(t => t.k)).size, kinds);
             assert.equal(shapes(turned, step), 1, shape);
         }
@@ -928,13 +897,6 @@ test('@tile op: and star: derive a tiling from a tiling', () => {
         let c = cell(n, i + 1), t = fn(c, env)(exact(shape));
         return Object.assign(Object(t), { k: Function.tile.k(c)() });
     }).filter(t => String(t) != 'polygon(0 0)');
-    let covered = list => {
-        let vs = list.map(verts);
-        for (let x = 1.37; x < 100; x += 4) for (let y = 1.71; y < 100; y += 4) {
-            if (vs.filter(v => inside(v, [x, y])).length != 1) return false;
-        }
-        return true;
-    };
     let sides = t => verts(t).map((v, i, vs) => Math.hypot(v[0] - vs[(i + 1) % vs.length][0], v[1] - vs[(i + 1) % vs.length][1]));
     let inner = list => list.filter(t => verts(t).every(([x, y]) => x > 3 && x < 97 && y > 3 && y < 97));
     let spread = list => { let ls = inner(list).flatMap(sides); return Math.max(...ls) / Math.min(...ls); };
@@ -959,7 +921,7 @@ test('@tile op: and star: derive a tiling from a tiling', () => {
     // letters outside the operator set are skipped, so the seed letter of Wikipedia's `tQ` does no harm
     assert.equal(tiles(Function.tile.grid, 'square; op: tQ', 100).join(), tiles(Function.tile.grid, 'square; op: t', 100).join());
     // five steps at most, the rightmost first
-    assert.equal(tiles(Function.tile.hex, 'square; op: tkkkkk', 20).join(), tiles(Function.tile.hex, 'square; op: kkkkk', 20).join());
+    assert.equal(tiles(Function.tile.hex, 'square; op: tddddd', 20).join(), tiles(Function.tile.hex, 'square; op: ddddd', 20).join());
     // faces keep their kind, then the corner pieces: octagons 1, squares 2
     for (let t of inner(tiles(Function.tile.grid, 'square; op: t', 100))) assert.equal(t.k, verts(t).length == 8 ? 1 : 2);
     // stars on octagons and squares, then the pieces round each corner; on penrose and voronoi too
