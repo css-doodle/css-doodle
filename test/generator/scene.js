@@ -271,6 +271,15 @@ test('shadow dims the light that shapes block, and where they crowd', () => {
     assert.doesNotMatch(scene('shadow: none; sphere').fragment, /g_shadow/);
 });
 
+test('a second shadow value is how wide the light is, in degrees', () => {
+    assert.match(scene('shadow: 1; sphere').fragment, /s = min\(s, 10\.0 \* d \/ t\);/);
+    let { fragment, warnings } = scene('shadow: 1 .5; sphere');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /g_sh = 1\.0;/);
+    // a light with no width leaves hard edges
+    assert.match(fragment, /s = min\(s, \(1\.0 \/ max\(tan\(radians\(\.5\)\), 1e-4\)\) \* d \/ t\);/);
+});
+
 test('ambient is the light from all around, sky above and ground below', () => {
     let ambient = code => scene(code + '; sphere').fragment.match(/g_L = sqrt\(\(0\.7 \* g_lit \+ (.+)\)\);/)[1];
     assert.equal(ambient(''), '0.3 * (0.6 + 0.4 * n.y)');

@@ -340,7 +340,9 @@ of a white one: `light: -1 1 .5 #ffe2b8`. A list adds lights, as in
 `light: -1 1 .5, 1 0 -1 #5a7cff * .5`, and `light: none` leaves `fill`
 as the final color. `shadow: s`, from 0 to 1, darkens the light that
 shapes block, with soft edges, and the places where shapes crowd each
-other.
+other. A second value is how wide the light is, in degrees, 5.7 by
+default: `shadow: 1 .5` is the sun, whose shadows stay sharp far from
+what casts them, and `0` leaves hard edges.
 
 `ambient: sky ground` is the light from all around, which fills the
 shade: a surface facing up in the scene gets `sky`, one facing down

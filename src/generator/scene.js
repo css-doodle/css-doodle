@@ -76,13 +76,13 @@ const SCENE_HELPERS = glsl`
 
 const LIGHT = 'vec3(0.6, 0.8, 0.5)', SHADE = ' * g_L';
 
-const SHADOWS = glsl`
+const shadows = narrow => glsl`
     // soft: how near the way to the light passes a shape, for how far along it
     float g_shadow(vec3 p, vec3 l, float far, float e) {
         float s = 1.0, t = e;
         for (int k = 0; k < 64 && t < far && s > 1e-3; k++) {
             float d = g_dist(p + l * t);
-            s = min(s, 10.0 * d / t);
+            s = min(s, ${narrow} * d / t);
             t += max(d, e);
         }
         return smoothstep(0.0, 1.0, s);
@@ -530,6 +530,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let depth = !camera.perspective ? '2.0' : off(camera.perspective) ? '0.0' : first(camera.perspective, 'p');
         let zoom = camera.zoom ? first(camera.zoom, 'p') : '1.0';
         let shadow = camera.shadow && !off(camera.shadow) && first(camera.shadow, 'p');
+        let wide = shadow && numbers(camera.shadow, 'p')[1];
         // the values of a row, and a CSS color such as rgb() standing after the last space
         let paint = g => {
             let level = 0, at = 0;
@@ -551,11 +552,11 @@ export default function drawScene(code, extra, report = () => {}) {
             sky = `vec3(${v[0]})`;
             ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * n.y)`;
         }
-        return { out, result, turn, tilt, depth, zoom, shadow, lights, ambient, self, base: +angles[1] || 0, loose };
+        return { out, result, turn, tilt, depth, zoom, shadow, wide, lights, ambient, self, base: +angles[1] || 0, loose };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
-    let { turn, tilt, depth, zoom, shadow, lights, ambient, self, base } = full;
-    let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, ambient, ...lights.flat()].join('\n'));
+    let { turn, tilt, depth, zoom, shadow, wide, lights, ambient, self, base } = full;
+    let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, wide, ambient, ...lights.flat()].join('\n'));
     let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
     let common = glsl`
     const float PI = 3.1415926535897932;
@@ -687,7 +688,7 @@ export default function drawScene(code, extra, report = () => {}) {
         ${bare.out}
         return ${bare.result};
     }
-    ${shadow ? SHADOWS : ''}
+    ${shadow ? shadows(wide ? `(1.0 / max(tan(radians(${wide})), 1e-4))` : '10.0') : ''}
     vec3 g_L = vec3(1.0);
     vec4 g_scene(vec3 p) {
         ${full.out}
