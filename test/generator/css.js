@@ -85,14 +85,6 @@ test('@rep repeats with no separator, @once evaluates once per site, @lr repeats
     assert.equal(cells('--a: @p(a, b, c) @p();'), cells('--a: @p(a, b, c) @p(a, b, c);'));
 });
 
-test('@linearGradient and @radialGradient in @svg define a gradient and fill with it', () => {
-    let image = svgImage('background: @svg(rect { fill: @linearGradient(red, blue) } circle { fill: @radialGradient(45, gold, teal) })');
-    assert.match(image, /<linearGradient id="([\w-]+)"><stop offset="0%" stop-color="red"\/><stop offset="100%" stop-color="blue"\/><\/linearGradient>/);
-    assert.match(image, /<radialGradient gradientTransform="rotate\(45\)" id="([\w-]+)"><stop offset="0%" stop-color="gold"\/>/);
-    let [, linear] = image.match(/<linearGradient id="([\w-]+)"/), [, radial] = image.match(/<radialGradient [^>]*id="([\w-]+)"/);
-    assert.ok(image.includes(`<rect fill="url(#${linear})"/><circle fill="url(#${radial})"/>`), image);
-});
-
 test('@shape and @tile in @svg give plain numbers where the box is 2 across, y down', () => {
     // path data, the same outline as the clip-path one
     let star = svgImage('background: @svg(path { d: @shape(star) })');

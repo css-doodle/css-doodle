@@ -8,7 +8,6 @@ import svgSourceOf from '../parser/svg-source.js';
 
 import generateSvg from '../generator/svg.js';
 import generateShape, { shapeWarnings } from '../generator/shapes.js';
-import generateSvgGradient from '../generator/svg-gradient.js';
 import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 
 import Noise from '../lib/noise.js';
@@ -855,10 +854,6 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
 });
 
 Function['svg-polygon'] = shaped(composeSvgPolygonUrl);
-
-Function.linearGradient = lazy((cell, env, position, ...args) => generateSvgGradient('linearGradient', args));
-
-Function.radialGradient = lazy((cell, env, position, ...args) => generateSvgGradient('radialGradient', args));
 
 Function.shaders = Function.pattern = Function.scene = () => {};
 
