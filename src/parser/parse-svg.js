@@ -11,6 +11,8 @@ function endsEntity(tokens) {
     return RE_ENTITY_TAIL.test(textOf(tokens.slice(-8)));
 }
 
+const MAX_BLOCKS = 65536;
+
 function resolveId(block) {
     // pureName has the `*times` suffix stripped so it can't leak into id/class
     let selector = block.pureName || block.name;
@@ -58,14 +60,16 @@ function wrapChain(block, selectors) {
     return block;
 }
 
-// one block per comma group, all over the same body
 function readGroupBlocks(iter, groups) {
     let first = groups[0];
+    let start = iter.blocks = (iter.blocks || 0) + 1;
     let inner = parseBody(iter, makeBlock(first.pop()), svg);
+    let size = iter.blocks - start + 1;
     // snapshot before resolveId adds the first group's id/class
     let body = groups.length > 1 ? inner.value.slice() : null;
     let blocks = [wrapChain(resolveId(inner), first)];
-    for (let i = 1; i < groups.length; ++i) {
+    for (let i = 1; i < groups.length && iter.blocks < MAX_BLOCKS; ++i) {
+        iter.blocks += size;
         let selectors = groups[i];
         let block = makeBlock(selectors.pop(), structuredClone(body));
         blocks.push(wrapChain(resolveId(block), selectors));

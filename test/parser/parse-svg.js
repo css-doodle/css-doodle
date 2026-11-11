@@ -224,6 +224,16 @@ test('comma selectors share one body, each with its own id and class', () => {
     ));
 });
 
+test('nested comma selectors multiply their bodies, up to a limit of blocks', () => {
+    let count = node => node.type === 'block' ? node.value.reduce((n, v) => n + count(v), 1) : 0;
+    let nested = depth => 'a, b {'.repeat(depth) + '}'.repeat(depth);
+    assert.equal(count(parseSvg(nested(3))), 1 + 2 + 4 + 8);
+    assert.equal(count(parseSvg(nested(15))), 2 ** 16 - 1);
+    // an unclosed block repeated by a sequence nests as deep as it repeats
+    let deep = count(parseSvg('circle { r: 1; a, b '.repeat(500)));
+    assert.ok(deep > 500 && deep < 2 ** 18, String(deep));
+});
+
 test('selector classes combine with class:, an explicit id wins', () => {
     assert.deepEqual(parseSvg('circle.a { class: b }'), svg(block('circle', [statement('class', 'a b')])));
     assert.deepEqual(parseSvg('circle#a { id: b }'), svg(block('circle', [statement('id', 'b')])));
