@@ -226,12 +226,12 @@ function shrink(p, d) {
     return clip([l - m, t - m, r + m, t - m, r + m, b + m, l - m, b + m], q, d);
 }
 
-function lattice(k, box, bounds, s, [a, b], turn, half) {
+function lattice(k, box, view, s, [a, b], pair, half) {
     let [cx, cy] = centre(box);
     if (half) cx += s / 2, cy += k == 4 ? s / 2 : 0;
     let h = k == 4 ? s : s * sqrt(3) / 2, r = s / sqrt(3), out = [];
-    let i0 = floor((bounds[0] - cx) / s) - 2, i1 = ceil((bounds[2] - cx) / s) + 2;
-    let j0 = floor((bounds[1] - cy) / h) - 2, j1 = ceil((bounds[3] - cy) / h) + 2;
+    let i0 = floor((view[0] - cx) / s) - 2, i1 = ceil((view[2] - cx) / s) + 2;
+    let j0 = floor((view[1] - cy) / h) - 2, j1 = ceil((view[3] - cy) / h) + 2;
     let rims = new Map();
     let add = (x, y, angle, kind, marks) => {
         let rim = rims.get(angle), p = [];
@@ -257,13 +257,13 @@ function lattice(k, box, bounds, s, [a, b], turn, half) {
                 let m = y + (i & 1) * b * s, f = (j & 1 ? 1 - a : a) % 1 * s, g = (i & 1 ? 1 - b : b) % 1 * s;
                 let l = x - s / 2, t = m - s / 2, R = l + s, B = t + s;
                 let p = [R, B, ...f ? [l + f, B] : [], l, B, ...g ? [l, t + g] : [], l, t, ...f ? [l + f, t] : [], R, t, ...g ? [R, t + g] : []];
-                if (turn && !a && !b) {
+                if (pair && !a && !b) {
                     let mk = (u, v) => (u + v) & 1 ? 0 : (u & 1) + 1;
                     out.push([p, [x, m], 1 + (2 * (i & 1) + 3 * ((i + j) & 1)) % 4, [mk(i + 1, j + 1), mk(i, j + 1), mk(i, j), mk(i + 1, j)]]);
                 }
                 else out.push([p, [x, m], 1]);
             }
-            else if (k == 6 && turn) {
+            else if (k == 6 && pair) {
                 let c = mod(i - (j >> 1) - j, 3);
                 add(x, y, PI / 6, c + 1, [mod(c - 1, 3) + 1, 0, mod(c - 2, 3) + 1, 0, c + 1, 0]);
             }
@@ -275,9 +275,9 @@ function lattice(k, box, bounds, s, [a, b], turn, half) {
 }
 
 // P3 rhombs from Robinson triangles; a rhombus is a triangle and its mirror over BC
-function penrose(box, bounds, s, half, grow = 1) {
+function penrose(box, view, s, half, grow = 1) {
     let [cx, cy] = centre(box);
-    let far = hypot(max(cx - bounds[0], bounds[2] - cx), max(cy - bounds[1], bounds[3] - cy)) / cos(PI / 10) + 2 * s;
+    let far = hypot(max(cx - view[0], view[2] - cx), max(cy - view[1], view[3] - cy)) / cos(PI / 10) + 2 * s;
     let n = max(0, ceil(log(far / s) / log(PHI))), r = s * PHI ** n, tris = [];
     for (let i = 0; i < 10; ++i) {
         let b = (2 * i - 1) * PI / 10, c = (2 * i + 1) * PI / 10;
@@ -295,8 +295,8 @@ function penrose(box, bounds, s, half, grow = 1) {
     }).filter(([, ax, ay, bx, by, cx, cy]) => {
         // its rhombs, grown as the reach test grows them, stay within grow sides of it
         let m = grow * max(abs(bx - ax), abs(cx - ax), abs(cx - bx), abs(by - ay), abs(cy - ay), abs(cy - by));
-        return min(ax, bx, cx) - m < bounds[2] && max(ax, bx, cx) + m > bounds[0]
-            && min(ay, by, cy) - m < bounds[3] && max(ay, by, cy) + m > bounds[1];
+        return min(ax, bx, cx) - m < view[2] && max(ax, bx, cx) + m > view[0]
+            && min(ay, by, cy) - m < view[3] && max(ay, by, cy) + m > view[1];
     });
     return tris.filter(([, ax, ay, bx, by, cx, cy]) => (bx - ax) * (cy - ay) > (cx - ax) * (by - ay)).map(([t, ax, ay, bx, by, cx, cy]) => {
         let p = [ax, ay, bx, by, bx + cx - ax, by + cy - ay, cx, cy];
@@ -366,8 +366,8 @@ function derive(pieces, letter, angle) {
             }
             if (letter == 's') r = sqrt((1 + T - sqrt(3 * T)) / (1 - T + T * T)), a = asin(r * tan(b) / 2);
             else r = 1 / (1 + tan(b) * (letter == 'b' ? 1 - 2 * x : 1));
-            let turn = j => { let [px, py] = at(k, j); px -= cx, py -= cy; return [cx + (px * cos(a) - py * sin(a)) * r, cy + (px * sin(a) + py * cos(a)) * r]; };
-            return letter == 'b' ? [mix(turn(i), turn(i - 1), x), mix(turn(i), turn(i + 1), x)] : [w = turn(i), w];
+            let spin = j => { let [px, py] = at(k, j); px -= cx, py -= cy; return [cx + (px * cos(a) - py * sin(a)) * r, cy + (px * sin(a) + py * cos(a)) * r]; };
+            return letter == 'b' ? [mix(spin(i), spin(i - 1), x), mix(spin(i), spin(i + 1), x)] : [w = spin(i), w];
         };
         F.forEach(([f, , kind], k) => emit(f.map((v, i) => pair(k, i)), kind));
         rings.forEach(ring => ring && emit(ring.map(([k, i]) => pair(k, i)), top + 1));
@@ -397,15 +397,15 @@ function delaunay(px, py, box, inside, count, gap) {
     });
     let d = (p, q) => (px[p] - px[q]) ** 2 + (py[p] - py[q]) ** 2;
     let twice = (k, a, b) => (px[a] - px[k]) * (py[b] - py[k]) - (px[b] - px[k]) * (py[a] - py[k]);
-    let r2 = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
-    let sorted = tris.map(r2).sort((u, v) => u - v);
+    let circum = ([k, a, b]) => d(k, a) * d(a, b) * d(b, k) / (4 * twice(k, a, b) ** 2);
+    let sorted = tris.map(circum).sort((u, v) => u - v);
     let keep = sorted[sorted.length >> 1] * 9, edge = (p, q) => min(p, q) + ' ' + max(p, q);
     for (let drop = 1; drop;) {
         let uses = {};
         for (let [k, a, b] of tris) for (let e of [edge(k, a), edge(a, b), edge(b, k)]) uses[e] = (uses[e] || 0) + 1;
         let outer = tris.filter(([k, a, b]) => uses[edge(k, a)] < 2 || uses[edge(a, b)] < 2 || uses[edge(b, k)] < 2);
-        drop = outer.filter(t => r2(t) > keep);
-        if (!drop.length) drop = outer.sort((u, v) => r2(v) - r2(u)).slice(0, max(0, tris.length - count));
+        drop = outer.filter(t => circum(t) > keep);
+        if (!drop.length) drop = outer.sort((u, v) => circum(v) - circum(u)).slice(0, max(0, tris.length - count));
         tris = tris.filter(t => !drop.includes(t));
         drop = drop.length;
     }
@@ -432,21 +432,21 @@ function reacher(box, inside, grow, derived) {
     let crosses = p => {
         for (let i = 0; i < p.length; i += 2) {
             let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay, t0 = 0, t1 = 1;
-            let clip = (d, q) => d < 0 ? t0 = max(t0, q / d) : d > 0 ? t1 = min(t1, q / d) : q < 0 && (t1 = -1);
-            clip(-dx, ax - box[0]), clip(dx, box[2] - ax), clip(-dy, ay - box[1]), clip(dy, box[3] - ay);
+            let cut = (d, q) => d < 0 ? t0 = max(t0, q / d) : d > 0 ? t1 = min(t1, q / d) : q < 0 && (t1 = -1);
+            cut(-dx, ax - box[0]), cut(dx, box[2] - ax), cut(-dy, ay - box[1]), cut(dy, box[3] - ay);
             if (t0 < t1 && inside(ax + dx * (t0 + t1) / 2, ay + dy * (t0 + t1) / 2)) return true;
         }
     };
     return ([p, c]) => reaches(grow == 1 ? p : scale(p, c, grow), c, inside, corners) || derived && crosses(p);
 }
 
-function tiles(make, box, screen, inside, count, grow, derive, half, dots) {
-    let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), area = (x1 - x0) * (y1 - y0);
-    if (!(area > 0)) return [];
+function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
+    let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), space = (x1 - x0) * (y1 - y0);
+    if (!(space > 0)) return [];
     let clear = ([p, [x, y]]) => inside(x, y) && p.every((v, i) => i & 1 || inside((v + x) / 2, (p[i + 1] + y) / 2));
-    let keep = pieces => pieces.filter(dots ? clear : reacher(box, inside, grow, derive));
+    let keep = pieces => pieces.filter(dots ? clear : reacher(box, inside, grow, derived));
     let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half, grow));
-    let hi = sqrt(area / count), fit = (size, hi, lo) => {
+    let hi = sqrt(space / count), fit = (size, hi, lo) => {
         let start = hi;
         for (let i = 0; i < 30 && size(hi).length > count; ++i) hi *= 1.25;
         if (size(hi).length > count) hi = start;
@@ -466,11 +466,11 @@ function tiles(make, box, screen, inside, count, grow, derive, half, dots) {
         let p = size(1 / (.25 / a + .75 / lo));
         return p.length == n ? p : size(a);
     };
-    if (!derive) {
+    if (!derived) {
         let best = fit(reaching, hi), other = half && fit(s => reaching(s, 1), hi), fill = p => p.cut || p.length > count ? 0 : p.length;
         return other && fill(other) - fill(best) >= min(sqrt(count) / 2, count / 20) ? other : best;
     }
-    let o = centre(box), [cx, cy] = o, { rim, fn } = derive, d = (rim + 3) * hi;
+    let o = centre(box), [cx, cy] = o, { rim, fn } = derived, d = (rim + 3) * hi;
     let near = ps => ps.filter(([, [x, y]]) => abs(x - cx) < 2 * hi && abs(y - cy) < 2 * hi).length;
     let probe = make(box, [cx - d, cy - d, cx + d, cy + d], hi);
     let s = hi * sqrt(near(fn(probe)) / near(probe) * reaching(hi).length / count || 1) / 1.25;
