@@ -72,6 +72,12 @@ export default [
         probes: [[5, 30, '#f00'], [55, 30, '#008080']],
     },
     {
+        // a calc() with a term for every stripe before the stop is more than Chrome reads
+        name: 'gradient-stripe-sized',
+        code: `@grid: 1 / 120px; background: linear-gradient(90deg, @stripe(#00f 60px, @m119(#f00)));`,
+        probes: [[30, 60, '#00f'], [90, 60, '#f00']],
+    },
+    {
         name: 'seeded-random',
         seed: 7,
         code: `@grid: 5 / 120px; background: @pick(red, gold, teal, #333); transform: rotate(@rand(360deg)) scale(@rand(.5, 1)); @random(.4) { border-radius: 50%; }`,

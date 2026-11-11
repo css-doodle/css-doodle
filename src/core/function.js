@@ -553,25 +553,18 @@ Function.var = () => (value = '') => `var(${value})`;
 Function.stripe = () => (...input) => {
     let colors = input.flat();
     let max = colors.length;
-    if (!max) {
-        return '';
-    }
-    let defaultCount = 0;
-    let customSizes = [];
-    let pairs = colors.map(step => {
-        let [color, size] = parseValueGroup(step);
-        if (size !== undefined) customSizes.push(size);
-        else defaultCount += 1;
-        return [color, size];
-    });
-    if (!customSizes.length) {
+    let pairs = colors.map(step => parseValueGroup(step));
+    let sizes = pairs.map(pair => pair[1]).filter(size => size !== undefined);
+    if (!sizes.length) {
         return colors.map((color, i) => `${color} 0 ${tidyNumber(100 / max * (i + 1))}%`).join(',');
     }
-    let defaultSize = `(100% - ${customSizes.join(' - ')}) / ${defaultCount}`;
-    let end = '';
+    let share = `(100% - (${sizes.join(' + ')})) / ${max - sizes.length}`;
+    let sized = [], rest = 0;
     return pairs.map(([color, size]) => {
-        end += (end ? ' + ' : '') + (size ?? defaultSize);
-        return `${color} 0 calc(${end})`;
+        if (size === undefined) rest++;
+        else sized.push(size);
+        let end = sized.concat(rest > 1 ? `${share} * ${rest}` : rest ? share : []);
+        return `${color} 0 calc(${end.join(' + ')})`;
     }).join(',');
 };
 

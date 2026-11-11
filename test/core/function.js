@@ -1103,6 +1103,17 @@ test('@stripe splits 100% evenly, or shares what the sized stripes leave', () =>
     assert.equal(Function.stripe()('red', 'blue'), 'red 0 50%,blue 0 100%');
     assert.equal(Function.stripe()('red', 'blue', 'gold'), 'red 0 33.3333333333%,blue 0 66.6666666667%,gold 0 100%');
     assert.equal(Function.stripe()('red 10px', 'blue', 'gold'),
-        'red 0 calc(10px),blue 0 calc(10px + (100% - 10px) / 2),gold 0 calc(10px + (100% - 10px) / 2 + (100% - 10px) / 2)');
+        'red 0 calc(10px),blue 0 calc(10px + (100% - (10px)) / 2),gold 0 calc(10px + (100% - (10px)) / 2 * 2)');
+    assert.equal(Function.stripe()('red 10px', 'blue 20px'), 'red 0 calc(10px),blue 0 calc(10px + 20px)');
+    assert.equal(Function.stripe()('red', 'blue 5%', 'gold', 'pink 1em'),
+        'red 0 calc((100% - (5% + 1em)) / 2),blue 0 calc(5% + (100% - (5% + 1em)) / 2),'
+        + 'gold 0 calc(5% + (100% - (5% + 1em)) / 2 * 2),pink 0 calc(5% + 1em + (100% - (5% + 1em)) / 2 * 2)');
     assert.equal(Function.stripe()(), '');
+});
+
+test('@stripe writes the share of the unsized stripes once in each stop', () => {
+    // one sized stripe among many used to repeat that share for every stripe before a stop
+    let stripes = n => Function.stripe()(...Array.from({ length: n }, (_, i) => i ? 'red' : 'blue 1px'));
+    assert.ok(stripes(200).length < 200 * 50, String(stripes(200).length));
+    assert.ok(stripes(200).endsWith('red 0 calc(1px + (100% - (1px)) / 199 * 199)'));
 });
