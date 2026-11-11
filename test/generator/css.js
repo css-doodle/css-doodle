@@ -365,6 +365,29 @@ test('a leading --name in an argument reads the variable', () => {
     assertContains('--x: 3; width: @p(var(--x));', 'width:var(--x);');
 });
 
+test('$ reads the variables as they stand where it is written, in every value of a cell', () => {
+    // a variable set between two values
+    assertContains('--a: 1; width: $(a)px; --a: 2; height: $(a)px;', 'width:1px;', 'height:2px;');
+    assertContains('--a: 1; --b: $(a + 1); --c: $(b * 2); width: $(a + b + c)px;', 'width:7px;');
+    assert.equal(cells('--a: @i; width: $(a)px; --b: $(a * 10); height: $(b)px;', '2x1'),
+        '#c-1-1-1 {--a:1;\nwidth:1px;\n--b:10;\nheight:10px;}#c-2-1-1 {--a:2;\nwidth:2px;\n--b:20;\nheight:20px;}');
+    // the cell's own value stays in front of one set on the container later
+    assertContains('--a: 1; width: $(a)px; :container { --a: 2 } height: $(a)px;', 'height:1px;');
+    assertContains('width: $(1)px; :container { --a: 2 } height: $(a)px;', 'height:2px;');
+    // a variable of @-- stays in the value that sets it
+    assertContains('width: @--(k, 5)$(k)px; height: $(k + 1)px;', 'width:5px;', 'height:1px;');
+    assertContains('width: $(1 + 1)px @--(k, 5) $(k)px; height: $(k + 1)px;', 'width:2px  5px;', 'height:1px;');
+    // a live variable reads by name in a property, also when set after another value
+    assertContains('width: $(1)px; --t: @t; rotate: $(t * 2)deg; --u: 3; left: $(t * u)px;',
+        'rotate:calc((var(--t) * 2) * 1deg);', 'left:calc((var(--t) * 3) * 1px);');
+    assertContains('--t: @t; content: $(1); rotate: $(t * 2)deg;', 'rotate:calc((var(--t) * 2) * 1deg);');
+    // a variable holding a live one keeps its var() in a property, and gives it up to content
+    assertContains('--t: @t; rotate: $(t * 2)deg; --b: calc(var(--t) * 2); --b: calc(var(--t) * 3); translate: $(b)px;',
+        'translate:calc((var(--t) * 3) * 1px);');
+    assertContains('--y: @t; --b: 1; content: $(b); --b: calc(var(--y) * 2); content: $(b);',
+        'content:calc(counter(time) * 2);');
+});
+
 test('numbers print without float noise', () => {
     assertContains('width: $px(0.1+0.2);', 'width:0.3px;');
     assertContains('rotate: @calc(0.1+0.7)deg;', 'rotate:0.8deg;');

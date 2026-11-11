@@ -13,7 +13,7 @@ import gridStyleRules from './grid-style.js';
 import { cellId, isTreeGrid } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId, RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
-import { isNil, getValue, removeQuotes, removeParens } from '../lib/type.js';
+import { isNil, getValue, removeQuotes, removeParens, hasEntries } from '../lib/type.js';
 import { join, removeEmptyValues } from '../lib/list.js';
 import { nextId } from '../lib/fn.js';
 import {
@@ -153,7 +153,10 @@ function compileFunc(node) {
                 if (argument) vars = vars[ARGUMENTS] ??= {};
                 if (value.length) {
                     vars[key] = value.map(arg => arg(frame, extra)).join(',');
-                    if (!argument && frame.calcContext) frame.calcContext[id] = vars[key];
+                    if (!argument && frame.calcContext) {
+                        frame.env.rules.shared = null;
+                        frame.calcContext[id] = vars[key];
+                    }
                     return { value: '' };
                 }
                 if (argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
@@ -526,7 +529,16 @@ class Rules {
     }
 
     frameContext(frame) {
-        return frame.calcContext ??= this.calcContext(frame.cell, frame.contextVariable, frame.env.extra, frame.byRef);
+        let { cell, contextVariable, byRef, env } = frame, shared = this.shared;
+        if (!frame.calcContext) {
+            let own = hasEntries(contextVariable);
+            if (own || shared?.cell !== cell || shared.byRef !== byRef) {
+                shared = { cell, byRef, context: this.calcContext(cell, contextVariable, env.extra, byRef) };
+                if (!own) this.shared = shared;
+            }
+            frame.calcContext = shared.context;
+        }
+        return frame.calcContext;
     }
 
     callFunc(fn, frame, position, input, fname, unit) {
@@ -836,7 +848,13 @@ class Rules {
     composeVars(count, selector, prop, value) {
         let key = isHostSelector(selector) ? 'host'
             : isParentSelector(selector) ? 'container' : count;
-        (this.vars[key] ??= Object.create(this.vars.container))[prop] = value;
+        let group = this.vars[key] ??= Object.create(this.vars.container), shared = this.shared;
+        group[prop] = value;
+        if (shared?.cell.uid === key && !this.isRef(prop, value)) {
+            shared.context[prop.slice(2)] = shared.byRef ? value : this.expand(value, group);
+        } else {
+            this.shared = null;
+        }
     }
 
     // the top-level rules and the host block: the seed first, so the
