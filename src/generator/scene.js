@@ -150,7 +150,7 @@ export default function drawScene(code, extra, report = () => {}) {
     let tree = readShapes(code, warn, { ignoreInlineComment: true });
     let root = { name: 'union', top: true, rows: [], children: tree.children }, camera = {};
     for (let r of tree.rows) {
-        if (/^(view|perspective|zoom|light|shadow|ambient|drag)$/.test(r.name)) camera[r.name] = r.value;
+        if (/^(view|perspective|zoom|light|shadow|ambient|drag|eye|look)$/.test(r.name)) camera[r.name] = r.value;
         else root.rows.push(r);
     }
     let drag = textOf(camera.drag || []).split(/[\s,]+/).filter(w => w && w !== 'none');
@@ -531,6 +531,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let zoom = camera.zoom ? first(camera.zoom, 'p') : '1.0';
         let shadow = camera.shadow && !off(camera.shadow) && first(camera.shadow, 'p');
         let wide = shadow && numbers(camera.shadow, 'p')[1];
+        let eye = camera.eye && vec3(numbers(camera.eye, 'p')), look = vec3(numbers(camera.look || [], 'p'));
         // the values of a row, and a CSS color such as rgb() standing after the last space
         let paint = g => {
             let level = 0, at = 0;
@@ -552,11 +553,11 @@ export default function drawScene(code, extra, report = () => {}) {
             sky = `vec3(${v[0]})`;
             ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * n.y)`;
         }
-        return { out, result, turn, tilt, depth, zoom, shadow, wide, lights, ambient, self, base: +angles[1] || 0, loose };
+        return { out, result, turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, base: +angles[1] || 0, loose };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
-    let { turn, tilt, depth, zoom, shadow, wide, lights, ambient, self, base } = full;
-    let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, wide, ambient, ...lights.flat()].join('\n'));
+    let { turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, base } = full;
+    let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, wide, eye, look, ambient, ...lights.flat()].join('\n'));
     let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
     let common = glsl`
     const float PI = 3.1415926535897932;
@@ -707,7 +708,7 @@ export default function drawScene(code, extra, report = () => {}) {
         float g_k = max(1.0, max(g_n.x, g_n.y));
         bool g_b = g_n.x + g_n.y < 1e3;
         if (!g_b) { g_k = 1.0; g_hi = g_lo = vec3(0.0); }
-        ${drag.length ? glsl`
+        ${drag.length && !eye ? glsl`
             vec2 g_rn = (g_rhi.xy - g_rlo.xy) * 0.5 / g_w + g_rhi.z * g_f;
             if (g_b && g_d > 0.0 && g_rn.x + g_rn.y < 1e3) {
                 float g_ra = max(g_d * max(1.0, max(g_rn.x, g_rn.y)) - 0.5 * (g_rhi.z + g_rlo.z), 1.25 * g_hi.x);
@@ -719,6 +720,14 @@ export default function drawScene(code, extra, report = () => {}) {
         float g_z0 = g_d > 0.0 ? g_d * g_k : max(g_hi.z, 0.0) + g_k;
         vec3 g_o = vec3(${drag.length ? 'vec2(0.0)' : glsl`clamp(vec2(0.0), g_hi.xy - g_w, g_lo.xy + g_w)`} + (g_d > 0.0 ? vec2(0.0) : g_q * g_k), g_z0);
         vec3 g_r = normalize(vec3(g_d > 0.0 ? g_q : vec2(0.0), -(g_d > 0.0 ? g_d : 1.0)));
+        ${eye ? glsl`
+            vec3 g_ez = ${eye} - ${look}, g_ex = normalize(cross(vec3(0.0, 1.0, -1e-5), g_ez));
+            mat3 g_ev = mat3(g_ex, normalize(cross(g_ez, g_ex)), normalize(g_ez));
+            g_z0 = length(g_ez);
+            g_k = g_d > 0.0 ? g_z0 * g_f : g_z0;
+            g_o = ${eye} - g_vc + g_ev * vec3(g_d > 0.0 ? vec2(0.0) : g_q * g_k, 0.0);
+            g_r = g_ev * g_r;
+        ` : ''}
         vec3 g_a = (g_lo - 0.02 * g_k - g_o) / (g_r + 1e-9), g_c = (g_hi + 0.02 * g_k - g_o) / (g_r + 1e-9);
         vec3 g_in = min(g_a, g_c), g_out = max(g_a, g_c);
         float g_t = g_b ? max(max(max(g_in.x, g_in.y), g_in.z), 0.0) : 0.0;

@@ -333,6 +333,14 @@ so the perspective stays, and widens its view only where the model
 would not otherwise fit from every side. An animated or dragged scene
 draws best in `@content`.
 
+`eye: x y z` puts the camera at a point instead, facing `look: x y z`,
+the origin by default, so it can stand inside the model. It does not
+fit then: `perspective: d` is the lens, the drawing's shorter side
+seen from `d` times its length away, long at 2 and wide at .5, and
+`view` turns the model in front of the camera. `eye` and `look` are in
+the fitted camera's axes, as `light` and `normal` stay, so the light
+keeps its place when the eye moves.
+
 **Light.** `light: x y z` points toward the light the way `normal`
 does, so the light turns with the camera; it is `.6 .8 .5` by default.
 A color after the direction tints it, and a number sets the strength

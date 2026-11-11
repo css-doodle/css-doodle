@@ -239,6 +239,26 @@ test('zoom scales the fitted view', () => {
     assert.match(fragment, /float g_u = g_k \/ 2\.0;/);
 });
 
+test('eye places the camera, which faces look instead of fitting the model', () => {
+    assert.doesNotMatch(scene('look: 1 0 0; sphere').fragment, /g_ev/);
+    let { fragment, warnings } = scene('eye: 1 2 3; look: 0 .5 0; sphere');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /vec3 g_ez = vec3\(1\.0, 2\.0, 3\.0\) - vec3\(0\.0, \.5, 0\.0\),/);
+    assert.match(fragment, /g_o = vec3\(1\.0, 2\.0, 3\.0\) - g_vc \+ g_ev \* vec3\(/);
+    assert.match(fragment, /g_r = g_ev \* g_r;\s*vec3 g_a = /);
+    // as far from look as a fitted camera is from its model, so perspective is the lens
+    assert.match(fragment, /g_z0 = length\(g_ez\);\s*g_k = g_d > 0\.0 \? g_z0 \* g_f : g_z0;/);
+    // it faces the origin without look
+    assert.match(scene('eye: 0 0 3; sphere').fragment, /vec3 g_ez = vec3\(0\.0, 0\.0, 3\.0\) - vec3\(0\.0\),/);
+    // the view and the pointer still turn the model in front of it, and the lens stays
+    let dragged = scene('eye: 0 0 3; view: 30 0; drag: turn; sphere').fragment;
+    assert.match(dragged, /radians\(30\.0\) \+ u_drag\.x/);
+    assert.doesNotMatch(dragged, /g_ra/);
+    // a moving eye runs the clock
+    assert.match(scene('eye: 3 * sin(t), 1, 3 * cos(t); sphere').fragment, /t = u_time;/);
+    assert.match(scene('eye: 0 0 3; sphere').fragment, /t = 0\.0;/);
+});
+
 test('light points toward each light as normal does, white by default', () => {
     let lights = code => {
         let [d, c] = scene(code + '; sphere').fragment.match(/vec3 g_ld\[\] = vec3\[\]\((.+)\), g_lc\[\] = vec3\[\]\((.+)\);/)
