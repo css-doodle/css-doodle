@@ -190,8 +190,8 @@ test('mirror evaluates every reflection', () => {
 
 test('a copy block of bodies writes each copy out and draws what the loop draws', () => {
     let rands = code => scene(code).body.match(/rand\(vec2\([^)]*\)[^,]*, [\d.]+\)/g);
-    assert.deepEqual(rands('sphere*2 { r: rand() }'), ['rand(vec2((0.0 * 31.0 + g_5), 1.0)']);
-    assert.deepEqual(rands('sphere*2 { { r: rand() } { r: rand() } }'), [
+    assert.deepEqual(rands('sphere*2 { r: random() }'), ['rand(vec2((0.0 * 31.0 + g_5), 1.0)']);
+    assert.deepEqual(rands('sphere*2 { { r: random() } { r: random() } }'), [
         'rand(vec2((0.0 * 31.0 + 1.0), 1.0)',
         'rand(vec2((0.0 * 31.0 + 2.0), 1.0)',
     ]);
@@ -377,7 +377,7 @@ test('the fit reads a scaled shape at its full size', () => {
 
 test('the fit reads an sdf at full strength, except inside an intersect', () => {
     let fit = code => scene(code).vertex.match(/float g_fit[^]*?return/)[0];
-    let union = fit('sdf { d: (length(p) - .2 - .1 * rand()) * .5 } box { size: .2 }');
+    let union = fit('sdf { d: (length(p) - .2 - .1 * random()) * .5 } box { size: .2 }');
     assert.equal(union.match(/rand\(vec2\(0\.0, 1\.0\)/g).length, 2);
     assert.match(union, /= g_\d+ > 0\.1 \? g_\d+ \/ g_\d+ : g_\d+;/);
     assert.doesNotMatch(fit('intersect { box { size: .2 } sdf { d: p.y * .7 } }'), /\? /);
@@ -396,8 +396,8 @@ test('a part\'s variables read p after its own commands, which read them before'
     assert.match(body, /vec3 (g_\d+) = p - vec3\((g_\d+), 0\.0, 0\.0\);\nvec3 (g_\d+) = \1;\n[^]*length\(\3\) - \2/);
     // a group's variables read the point its children see
     assert.match(scene('union { k: p.x; move: .4 0 0; sphere { r: .2 + k } }').body, /vec3 (g_\d+) = p - vec3\(\.4[^;]*;\nfloat (g_\d+) = \1\.x;\n[^]*length\(\1\) - \(\.2 \+ \2\)/);
-    // read again, rand() takes the same values
-    let { body: random } = scene('sdf { q: p + rand(); d: length(q) - .2; move: .1 0 0 } sphere { r: rand() }');
+    // read again, random() takes the same values
+    let { body: random } = scene('sdf { q: p + random(); d: length(q) - .2; move: .1 0 0 } sphere { r: random() }');
     assert.equal(random.match(/rand\(vec2\(0\.0, 1\.0\)/g).length, 2);
     assert.match(random, /rand\(vec2\(0\.0, 2\.0\)/);
 });
@@ -420,7 +420,7 @@ test('copies that read none of n, nx and ny and do not blend are drawn once', ()
     assert.deepEqual(loops('polygon*10 { bud 3; depth: .2; rotate: y 100t }'), ['< 1; g_4++']);
     assert.deepEqual(loops('polygon*10 { bud 3; depth: .2; rotate: y (100t + n * 18) }'), ['< 10; g_4++']);
     assert.deepEqual(loops('sphere*3x2 { r: .1; move: 0 ny 0 }'), ['< 6; g_4++']);
-    assert.deepEqual(loops('sphere*5 { r: .1; move: rand() 0 0 }'), ['< 5; g_4++']);
+    assert.deepEqual(loops('sphere*5 { r: .1; move: random() 0 0 }'), ['< 5; g_4++']);
     assert.deepEqual(loops('sphere*5 { r: .1; smooth: .1 }'), ['< 5; g_4++']);
 });
 
@@ -550,7 +550,7 @@ test('a copy block adds to the rows and shapes around it', () => {
 });
 
 test('r is read only where a shape takes it', () => {
-    let { body, warnings } = scene('box { r: rand() } sphere { r: rand() } ellipsoid { r: rand() .2 .1 }');
+    let { body, warnings } = scene('box { r: random() } sphere { r: random() } ellipsoid { r: random() .2 .1 }');
     assert.deepEqual(warnings, ['box: unknown r']);
     assert.match(body, /length\(p\) - rand\(vec2\(0\.0, 1\.0\)/);
     assert.match(body, /g_ellipsoid\(p, vec3\(rand\(vec2\(0\.0, 2\.0\)[^;]*, \.2, \.1\)\)/);

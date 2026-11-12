@@ -291,7 +291,7 @@ middle and unevenly spaced, so they read best with a few hundred cells.
 
 The model is raymarched in WebGL into an image, like `@pattern`, and
 its values use the same math: `p` is the point in the shape's own
-space, `t` the time in seconds, and `rand()` differs from copy to
+space, `t` the time in seconds, and `random()` differs from copy to
 copy.
 
 **Fill** is a color, or an expression in `p` that gives one. Shapes in
@@ -407,7 +407,7 @@ address every pixel. An animated pattern in `@content` draws each
 frame straight to a canvas; elsewhere it is re-encoded as an image
 every frame, several times slower.
 
-**Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`, `rand(p [, k])`,
+**Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`, `random(p [, k])`,
 `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`, `hsv(h, s, v)`,
 `rot(p, a)`, `smin(a, b, k)`, `ngon(p, n)`, `box(p, b)`,
 `segment(p, a, b)`, `arc(p, r, a, b)`, `escape([z,] c)`, `spiral(p)`
@@ -431,14 +431,14 @@ point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
   `shape(d, size)` is the mask that `shape: d; size: size` would
   apply, for layering: `fill: mix(bg, red, shape(d, .6))`.
   `shape(abs(d), w)` is a stroke of width `w` along `d = 0`.
-- `rand()` without arguments is a number from 0 to 1 that holds for the
+- `random()` without arguments is a number from 0 to 1 that holds for the
   cell and the `repeat` step and differs at each place it is written:
-  `w: mix(.3, .5, rand())`.
-- `rand(p, k)` is another number for the point `p` at each `k`:
-  `rand(id, 1)`, `rand(id, 2)`. Adding to the point instead reads
-  another point's number: `rand(id + 1)` is the `rand(id)` of the cell
+  `w: mix(.3, .5, random())`.
+- `random(p, k)` is another number for the point `p` at each `k`:
+  `random(id, 1)`, `random(id, 2)`. Adding to the point instead reads
+  another point's number: `random(id + 1)` is the `random(id)` of the cell
   one step along both axes.
-- `rand`, `noise`, `fbm` and `voronoi` follow the doodle's seed, so
+- `random`, `noise`, `fbm` and `voronoi` follow the doodle's seed, so
   another seed gives another pattern.
 - `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient,
   a color or number, then an optional number position after a space
@@ -481,7 +481,7 @@ as written where it is called, `p(…)`, assigned, or named by a
 --noise2(p): {
   i: floor(p);
   f: fract(p);
-  result: mix(rand(i), rand(i + vec2(1, 0)), f.x);
+  result: mix(random(i), random(i + vec2(1, 0)), f.x);
 };
 @content: @pattern(fill: $noise2(uv * 8) * $noise2(uv * 3););
 ```

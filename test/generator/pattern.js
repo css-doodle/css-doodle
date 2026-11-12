@@ -289,7 +289,7 @@ test('a later fill with alpha paints over the one before it', () => {
 
 test('a list may hold vectors; its channels add up to 3 or 4', () => {
     assert.equal(color('fill: red, .5'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), .5);');
-    assert.match(main('c: hsl(x / X, 1, .5); fill: c, rand(i)'), /g_color = vec4\(g_1, rand\(i\)\);/);
+    assert.match(main('c: hsl(x / X, 1, .5); fill: c, random(i)'), /g_color = vec4\(g_1, rand\(i\)\);/);
     assert.equal(color('fill: vec2(du, dv), 0, 1'), 'g_color = vec4(vec2(du, dv), 0.0, 1.0);');
     let messages = [];
     draw('fill: red, 0, 0', extra, m => messages.push(m));
@@ -477,7 +477,7 @@ test('size scales the mask radius per cell', () => {
 });
 
 test('size without an explicit shape uses a square mask', () => {
-    assert.match(main('size: rand(i); fill: #000'), /g_dist = max\(abs\(du\), abs\(dv\)\);\s*g_masked = true;\s*size = rand\(i\);/);
+    assert.match(main('size: random(i); fill: #000'), /g_dist = max\(abs\(du\), abs\(dv\)\);\s*g_masked = true;\s*size = rand\(i\);/);
 });
 
 test('size expressions coerce to float', () => {
@@ -779,19 +779,20 @@ test('repeat takes its count from a name set once to a whole number', () => {
     assert.deepEqual(messages, ['repeat() over 1024']);
 });
 
-test('rand() without arguments holds for the cell and the repeat step, and differs per call', () => {
-    let s = main('a: rand(); repeat(3 as i) { b: rand(); repeat(2) { c: rand() } }');
+test('random() without arguments holds for the cell and the repeat step, and differs per call', () => {
+    let s = main('a: random(); repeat(3 as i) { b: random(); repeat(2) { c: random() } }');
     assert.match(s, /float g_1 = rand\(vec2\(i, 0\.0\), 1\.0\);/);
     assert.match(s, /float g_3 = rand\(vec2\(i, g_2\), 2\.0\);/);
     // nested steps get one key each: outer * count + inner
     assert.match(s, /float g_5 = rand\(vec2\(i, \(g_2 \* 2\.0 \+ g_4\)\), 3\.0\);/);
     // the GLSL i is the cell index even where `as i` names the step
-    assert.match(main('fill: rand() + rand(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\), 1\.0\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
+    assert.match(main('fill: random() + random(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\), 1\.0\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
 });
 
-test('rand(p, k) is another number for the point p at each k', () => {
-    assert.match(main('id: floor(pos * 8); fill: rand(id, 1), rand(id, 2), 0'), /vec3\(rand\(g_1, 1\.0\), rand\(g_1, 2\.0\), 0\.0\)/);
-    assert.match(main('fill: rand(x, y, 3)'), /rand\(vec2\(x, y\), 3\.0\)/);
+test('random(p, k) is another number for the point p at each k, and rand() is its older name', () => {
+    assert.match(main('id: floor(pos * 8); fill: random(id, 1), random(id, 2), 0'), /vec3\(rand\(g_1, 1\.0\), rand\(g_1, 2\.0\), 0\.0\)/);
+    assert.match(main('fill: random(x, y, 3)'), /rand\(vec2\(x, y\), 3\.0\)/);
+    assert.equal(main('a: rand(); fill: rand(id, 1)'), main('a: random(); fill: random(id, 1)'));
 });
 
 test('derivatives where only some pixels run the code are reported once per outer block', () => {

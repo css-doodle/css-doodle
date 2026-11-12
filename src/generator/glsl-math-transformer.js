@@ -214,6 +214,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
     }
 
     function call(name) {
+        if (name === 'random') name = 'rand';
         consume();
         const args = [];
         let comma = true, at = false;

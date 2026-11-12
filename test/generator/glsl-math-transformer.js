@@ -431,7 +431,7 @@ test('float() of a vector is not stripped', () => {
 test('names map to GLSL identifiers, swizzles and calls left alone', () => {
     const names = { __proto__: null, p: 'g_1', rand: 'g_2' };
     assert.equal(transform('p.x + p', { names, types: { g_1: 'vec2' } }), '(g_1.x + g_1)');
-    assert.equal(transform('rand(p)', { names }), 'rand(g_1)');
+    assert.equal(transform('random(p)', { names }), 'rand(g_1)');
     assert.equal(transform('p', { names, type: true, types: { g_1: 'vec2' } }), 'vec2');
     // a #hex color is never a name
     assert.equal(transform('#abc', { names: { __proto__: null, abc: 'g_1' } }), 'vec3(0.6666666666666666, 0.7333333333333333, 0.8)');
