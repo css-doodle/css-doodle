@@ -123,8 +123,8 @@ test('a function takes the cell, the env and the call-site position', () => {
     assert.ok('P-counter:7' in env.context);
 });
 
-test('@pn/@pnr are the canonical ordered picks, @pl/@pr and @pick-n the legacy names', () => {
-    for (let [legacy, name] of [['pl', 'pn'], ['pr', 'pnr'], ['PL', 'PN'], ['PR', 'PNR'], ['pick-n', 'pn']]) {
+test('@pn/@pnr are the canonical ordered picks, @pl/@pr the legacy names', () => {
+    for (let [legacy, name] of [['pl', 'pn'], ['pr', 'pnr']]) {
         assert.equal(Function[legacy], Function[name], `@${legacy} -> @${name}`);
     }
     let env = { context: {}, extra: [], upextra: [], shuffle: a => a };

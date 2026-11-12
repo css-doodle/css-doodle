@@ -943,11 +943,7 @@ export const alias = {
     'ms': 'M',
     'size': 'I',
     'pl': 'pn',
-    'pr': 'pnr',
-    'PL': 'PN',
-    'PR': 'PNR',
-    'pick-n': 'pn',
-    'pick-d': 'pd'
+    'pr': 'pnr'
 };
 
 export default addAlias(Function, alias);
