@@ -39,7 +39,7 @@ const VAR_NAMES = ['a', 'b', 'k', 't', 'x1', 'foo'];
 const FN_NAMES = ['sin', 'cos', 'abs', 'sqrt', 'max', 'pow', 'gcd'];
 const OPS = [
     '+', '-', '*', '/', '%', '^', '**', '==', '!=', '<=', '>=',
-    '&&', '||', '<', '>', '&', '|', '÷', '∧', '∨', '≤', '≥', '≠',
+    '&&', '||', '<', '>', '&', '|', '≤', '≥', '≠',
 ];
 
 // a writer that records fixed text and hole values as they interleave

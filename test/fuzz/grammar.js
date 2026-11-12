@@ -57,12 +57,12 @@ const block = (head, body) => ({ text: `${head}${_}{${__}${body}${__}}`, block: 
 
 // binary levels loosest first, then sign, adjacent product, power and not
 const BINARY = [
-    ['||', '∨'], ['&&', '∧'], ['<', '>', '<=', '>=', '≤', '≥', '=', '==', '!=', '≠'],
-    ['|'], ['&'], ['<<', '>>'], ['+', '-'], ['*', '/', '÷', '%'],
+    ['||'], ['&&'], ['<', '>', '<=', '>=', '≤', '≥', '=', '==', '!=', '≠'],
+    ['|'], ['&'], ['<<', '>>'], ['+', '-'], ['*', '/', '%'],
 ];
 const RIGHT = [true, true];
 const SIGN = 8, PRODUCT = 9, POWER = 10, NOT = 11, ATOM = 12;
-const CANON = { '∨': '||', '∧': '&&', '≤': '<=', '≥': '>=', '=': '==', '≠': '!=', '÷': '/', '**': '^' };
+const CANON = { '≤': '<=', '≥': '>=', '=': '==', '≠': '!=', '**': '^' };
 const CONTEXT = { x: 3, y: 5, i: 2, X: 8 };
 
 // `min` has the fewest parentheses, `full` one around every operand

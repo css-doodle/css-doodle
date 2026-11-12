@@ -111,7 +111,7 @@ export const operators = {
 
     '!': 10,
     '^': 9, '**': 9,
-    '*': 8, '/': 8, '÷': 8, '%': 8,
+    '*': 8, '/': 8, '%': 8,
     '+': 7, '-': 7,
     '<<': 6, '>>': 6,
     '&': 5,
@@ -121,8 +121,9 @@ export const operators = {
     '≤': 3, '<=': 3,
     '≥': 3, '>=': 3,
     '≠': 3, '!=': 3,
-    '∧': 2, '&&': 2,
-    '∨': 1, '||': 1,
+    'not': 2.5,
+    '&&': 2, 'and': 2,
+    '||': 1, 'or': 1,
     '(': 0, ')': 0,
 };
 
@@ -131,8 +132,11 @@ const PREC = { __proto__: operators, '-u': 8.5, '·': 8.75, ' ': .5 };
 // spellings that share an implementation
 const spelling = {
     __proto__: null,
-    '**': '^', '÷': '/', '=': '==', '≤': '<=', '≥': '>=', '≠': '!=', '∧': '&&', '∨': '||',
+    '**': '^', '=': '==', '≤': '<=', '≥': '>=', '≠': '!=', 'and': '&&', 'or': '||',
 };
+
+const PREFIX = new Set(['!', 'not', '-u']);
+const RELATIONAL = new Set(['<', '>', '<=', '>=']);
 
 export const binary = {
     __proto__: null,
@@ -238,12 +242,6 @@ function transformTokens(input, spans, lists) {
                 pushValue(tokens, ANGLES[value], false);
                 continue;
             }
-            // ÷ ∧ ∨ are not scanner symbols, so they arrive as words
-            if (isOperator(value)) {
-                tokens.push(op(value));
-                continue;
-            }
-            // var(…) is live, kept as CSS text; calc(…) reads as a group
             if ((value === 'var' || value === 'calc') && next && next.value === '(') {
                 let depth = 0;
                 let j = i + 1;
@@ -263,6 +261,10 @@ function transformTokens(input, spans, lists) {
                 if (!(t.value === '_' || last.value === '_' && t.type === 'Word'
                         || last.type !== 'Number' && t.type === 'Number')) break;
                 name += t.value;
+            }
+            if (isOperator(name)) {
+                tokens.push(op(name));
+                continue;
             }
             pushValue(tokens, name, spaced);
             continue;
@@ -330,7 +332,7 @@ function toPostfix(tokens) {
 
         const prev = tokens[i - 1];
         if (prev && (prev.type === VALUE || prev.value === ')')
-                && (type === VALUE || value === '(' || value === '-u' || value === '!')) {
+                && (type === VALUE || value === '(' || PREFIX.has(value))) {
             while (opStack.length && opStack.at(-1) !== '(') {
                 pop();
             }
@@ -358,7 +360,7 @@ function toPostfix(tokens) {
                     pop();
                 }
                 opStack.pop();
-            } else if (value === '!' || value === '-u') {
+            } else if (PREFIX.has(value)) {
                 opStack.push(value);
             } else {
                 const prev = tokens[i - 1], next = tokens[i + 1];
@@ -558,6 +560,22 @@ function compileFunction(node) {
     };
 }
 
+function compare(ops, terms) {
+    const fn = (ctx, history) => {
+        let a = terms[0](ctx, history), out = 1;
+        for (let k = 0; k < ops.length; k++) {
+            const b = terms[k + 1](ctx, history);
+            const c = live(a) || live(b) ? lower(ops[k], [a, b], history) : binary[ops[k]](Number(a), Number(b));
+            if (live(c)) out = out === 1 ? c : `(${out} * ${c})`;
+            else if (!c) return 0;
+            a = b;
+        }
+        return out;
+    };
+    fn.chain = [ops, terms];
+    return fn;
+}
+
 // Compile a postfix expression into a closure of (context, history)
 function compile(expr) {
     const stack = [];
@@ -577,7 +595,7 @@ function compile(expr) {
             stack.pop();
             const first = stack.pop() || (() => NaN);
             stack.push((ctx, history) => (miss(history), Number(first(ctx, history)) || 0));
-        } else if (value === '!' || value === '-u') {
+        } else if (PREFIX.has(value)) {
             const operand = stack.pop() || (() => NaN);
             stack.push(value === '-u'
                 ? (ctx, history) => neg(operand(ctx, history))
@@ -588,9 +606,11 @@ function compile(expr) {
         } else {
             const r = stack.pop() || (() => NaN);
             const l = stack.pop() || (() => NaN);
-            if (value === '&&') {
-                // short-circuit: the right side only runs when needed. A live
-                // a writes out both sides; a falsy a is 0, so it isn't repeated
+            if (RELATIONAL.has(value)) {
+                // a < b < c reads as a < b && b < c
+                const [ops, terms] = l.chain || [[], [l]];
+                stack.push(compare([...ops, value], [...terms, r]));
+            } else if (value === '&&') {
                 stack.push((ctx, history) => {
                     const a = l(ctx, history);
                     return live(a) ? `(${truthy(a)} * ${text(r(ctx, history))})` : +a && r(ctx, history);

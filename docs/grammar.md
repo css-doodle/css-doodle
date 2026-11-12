@@ -343,7 +343,7 @@ the index of `@pick(k: …)`, `@cell(…)`, `@random(ratio)` and the
 
 ```
 expression = operand { operator operand }
-operand    = [ '+' | '-' | '!' ] ( number | name | call | '(' expression ')' )
+operand    = [ '+' | '-' | '!' | 'not' ] ( number | name | call | '(' expression ')' )
 call       = name { '.' name } '(' [ expression { ',' expression } ] ')'
 name       = letter or '_', then letters, digits or '_'
 ```
@@ -354,21 +354,22 @@ name       = letter or '_', then letters, digits or '_'
 | `^` `**`                                    | power                       | right         |
 | adjacent values, `2x`                       | multiply                    | left          |
 | `-` `+`                                     | sign (prefix)               | right         |
-| `*` `/` `÷` `%`                             | multiply, divide, remainder | left          |
+| `*` `/` `%`                                 | multiply, divide, remainder | left          |
 | `+` `-`                                     | add, subtract               | left          |
 | `<<` `>>`                                   | shift                       | left          |
 | `&`                                         | bitwise and                 | left          |
 | `\|`                                        | bitwise or                  | left          |
 | `<` `>` `<=` `>=` `≤` `≥` `=` `==` `!=` `≠` | compare, gives `1` or `0`   | left          |
-| `&&` `∧`                                    | and, short-circuit          | right         |
-| `\|\|` `∨`                                  | or, short-circuit           | right         |
+| `not`                                       | not (prefix)                | right         |
+| `&&` `and`                                  | and, short-circuit          | right         |
+| `\|\|` `or`                                 | or, short-circuit           | right         |
 
 - **Everything is a number.** Units drop: with `--w: 10px`, `$(w * 2)`
   is `20`. `&&` and `||` return the deciding operand; `%` takes the
-  sign of the left operand. Right after a number `%` is a percent
-  sign, dropped unless an unsigned number, a name or `(` follows:
-  `25% > 10` is `1`, so `@tile.y > 50` works; `25%-5` is `20`; `7%3`
-  is `1`.
+  sign of the left operand; `0 < x < 1` is `0 < x && x < 1`. Right
+  after a number `%` is a percent sign, dropped unless an unsigned
+  number, a name or `(` follows: `25% > 10` is `1`, so `@tile.y > 50`
+  works; `25%-5` is `20`; `7%3` is `1`.
 - **Rounding noise is none.** Comparisons, `sign` and `step` take a
   difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`,
   `sign(sin(π))` is `0`.

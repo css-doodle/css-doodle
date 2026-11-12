@@ -26,6 +26,7 @@ test('precedence', () => {
 });
 
 test('Math functions and constants', () => {
+    assert.equal(calc('π'), Math.PI);
     assert.equal(calc('π * 2'), Math.PI * 2);
     assert.equal(calc('cos(2)'), Math.cos(2));
     assert.equal(calc('sin(π) * cos(2)'), Math.sin(Math.PI) * Math.cos(2));
@@ -171,8 +172,25 @@ test('logical operators', () => {
     assert.equal(calc('1 && 0'), 0);
     assert.equal(calc('0 || 1'), 1);
     assert.equal(calc('0 || 0'), 0);
-    assert.equal(calc('1 ∧ 1'), 1);
-    assert.equal(calc('0 ∨ 1'), 1);
+});
+
+test('and, or and not, as in @pattern; not binds looser than a comparison', () => {
+    assert.equal(calc('1 and 0'), 0);
+    assert.equal(calc('0 or 4'), 4);
+    assert.equal(calc('not 0'), 1);
+    assert.equal(calc('not 3 > 2'), 0);
+    assert.equal(calc('not 0 and 0'), 0);
+    // a longer name is still a name
+    assert.equal(calc('not_done + and2', { not_done: 1, and2: 2 }), 3);
+});
+
+test('a < b < c reads as a < b && b < c, as in @pattern', () => {
+    assert.equal(calc('0 < .5 < 1'), 1);
+    assert.equal(calc('1 < 3 < 2'), 0);
+    assert.equal(calc('3 > 2 > 1'), 1);
+    assert.equal(calc('1 < 2 <= 2 < 3'), 1);
+    assert.equal(calc('1 < 2 == 1'), 1);
+    assert.equal(calc('0 < var(--a) < 1', {}, 1), 'calc(max(0,sign(var(--a) - 0)) * max(0,sign(1 - var(--a))))');
 });
 
 test('bitwise operators', () => {
@@ -369,11 +387,6 @@ test('context functions', () => {
     assert.equal(calc('double(5)', { double: x => x * 2 }), 10);
     assert.equal(calc('add(2, 3)', { add: (a, b) => a + b }), 5);
     assert.equal(calc('triple(double(2))', { double: x => x * 2, triple: x => x * 3 }), 12);
-});
-
-test('unicode operators', () => {
-    assert.equal(calc('6 ÷ 2'), 3);
-    assert.equal(calc('π'), Math.PI);
 });
 
 test('expressions held in context variables', () => {
@@ -705,7 +718,7 @@ test('a live var() or calc() lowers the math around it to CSS', () => {
     assert.equal(css('-var(--t)'), 'calc(var(--t) * -1)');
     assert.equal(css('(var(--t) + 1) * (var(--t) - 1)'), 'calc((var(--t) + 1) * (var(--t) - 1))');
     assert.equal(css('var(--t) % 3'), 'calc(rem(var(--t),3))');
-    assert.equal(css('2 ** var(--t) ÷ 4'), 'calc(pow(2,var(--t)) / 4)');
+    assert.equal(css('2 ** var(--t) / 4'), 'calc(pow(2,var(--t)) / 4)');
     assert.equal(css('var(--x, 10px) - -3'), 'calc(var(--x, 10px) - -3)');
     // numbers fold, dashed names inside var() are not variables
     assert.equal(css('var(--t) + 2 * 3'), 'calc(var(--t) + 6)');
