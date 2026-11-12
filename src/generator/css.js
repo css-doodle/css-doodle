@@ -133,9 +133,10 @@ function compileFunc(node) {
     let compiled = compiledFuncs.get(key);
     if (compiled === undefined) {
         let fname = node.name.slice(1);
+        if (fname === '$') fname = 'calc';
         let fn = node.at
             ? node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt
-            : Func[fname === '$' ? 'calc' : fname] || MathFunc[fname];
+            : Func[fname] || MathFunc[fname];
         let inner = node.arguments[0]?.values[0];
         let name = inner?.dotted && inner.name.slice(1), variant = '';
         if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
@@ -181,12 +182,11 @@ function compileFunc(node) {
         } else {
             let composable = COMPOSABLE.has(fname) || !!fn.shader;
             let args = node.arguments.map(arg => compileArgument(arg, node));
-            let isDollar = fname === '$';
             let shared = fname === 'tile' || fname === 'plot' || fname === 'Plot';
             let unit = node.unit || '';
             let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
             let isMath = fn === MathFunc[fname];
-            let calcTemplate = (isDollar || fname === 'calc') && args.length === 1 && args[0].calcTemplate;
+            let calcTemplate = fname === 'calc' && args.length === 1 && args[0].calcTemplate;
             let collect = (frame, e) => {
                 let input = [];
                 for (let arg of args) {
@@ -223,13 +223,11 @@ function compileFunc(node) {
                 let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
                 let output;
                 if (calcTemplate) {
-                    let { context, values } = evalTemplateHoles(calcTemplate, frame, e, isDollar && rules.frameContext(frame));
+                    let { context, values } = evalTemplateHoles(calcTemplate, frame, e, rules.frameContext(frame));
                     if (!context) {
                         output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
-                    } else if (isDollar) {
-                        output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
                     } else {
-                        output = rules.callFunc(fn, frame, node.position, [calcTemplate.template, context], fname);
+                        output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
                     }
                 } else {
                     let input = constantInput ?? (fn.lazy ? args.map(arg => (...lazy) => arg(frame, lazy)) : collect(frame, e));
@@ -545,7 +543,7 @@ class Rules {
         let { cell, env, contextVariable } = frame;
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
-            if (fname === '$') {
+            if (fname === 'calc') {
                 let context = this.frameContext(frame);
                 if (!unit && input.length === 1) {
                     let value = deref(input[0], context);

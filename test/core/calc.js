@@ -184,6 +184,12 @@ test('and, or and not, as in @pattern; not binds looser than a comparison', () =
     assert.equal(calc('not_done + and2', { not_done: 1, and2: 2 }), 3);
 });
 
+test('a comma outside a call ends the value, as a space does', () => {
+    assert.equal(calc('1 + 1, 2'), 2);
+    assert.equal(calc('2 * 3, 4'), 6);
+    assert.equal(calc('max(1, 2) + 1'), 3);
+});
+
 test('a < b < c reads as a < b && b < c, as in @pattern', () => {
     assert.equal(calc('0 < .5 < 1'), 1);
     assert.equal(calc('1 < 3 < 2'), 0);

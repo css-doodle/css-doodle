@@ -1775,6 +1775,11 @@ test('@calc ignores extra arguments instead of reading them as its context', () 
     assertContains('@grid: 1; --v: @calc(1+1, 2);', '--v:2;');
 });
 
+test('@calc is $(), reading the cell variables and custom properties', () => {
+    assert.equal(cells('--a: @calc(x * 2); --b: $(x * 2); --c: @calc(k + 1); --k: 2;', '3x1'), cells('--a: $(x * 2); --b: $(x * 2); --c: $(k + 1); --k: 2;', '3x1'));
+    assertContains('@grid: 1; --k: 4; --v: @calc(k / 2);', '--v:2;');
+});
+
 test('a skipped call argument takes its default and later ones keep their place', () => {
     assertContains('@grid: 1; --f(a = 1, b = 2): $(a - b); --v: $f(, 9);', '--v:-8;');
 });

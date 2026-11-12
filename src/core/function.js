@@ -545,7 +545,7 @@ export const pickAtList = (cell, { context, extra }) => (vars, k, ...items) => {
 
 Function.match.vars = pickAt.vars = pickAtList.vars = true;
 
-Function.calc = () => (value = '', context) => tidyNumber(calc(value, typeof context === 'object' ? context : undefined, 1));
+Function.calc = () => (value, context) => tidyNumber(calc(value, context, 1));
 
 Function.var = () => (value = '') => `var(${value})`;
 

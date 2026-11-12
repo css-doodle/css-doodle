@@ -331,7 +331,7 @@ function toPostfix(tokens) {
         const { type, value } = tokens[i];
 
         const prev = tokens[i - 1];
-        if (prev && (prev.type === VALUE || prev.value === ')')
+        if (value === ',' || prev && (prev.type === VALUE || prev.value === ')')
                 && (type === VALUE || value === '(' || PREFIX.has(value))) {
             while (opStack.length && opStack.at(-1) !== '(') {
                 pop();
