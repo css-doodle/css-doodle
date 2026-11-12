@@ -374,9 +374,10 @@ holds, or a last `else { … }` arm when none does. Blocks nest, each
 with its own scope. In a value, `match(t1, v1, t2, v2, …, else)` gives
 the value after the first test that holds.
 
-**`repeat(n [as i] [, stop …])`** runs its body `n` times, with `i`
-counting from zero. `n` is a whole number, or a name declared as one
-and never changed: `n: 72; repeat(n as i) { y: i / n; }`. The loop
+**`repeat(n [as k] [, stop …])`** runs its body `n` times, with `k`
+counting from zero, unlike `i` and `n` elsewhere, which count from 1.
+`n` is a whole number, or a name declared as one and never changed:
+`n: 72; repeat(n as k) { y: k / n; }`. The loop
 ends early once every stop expression holds. Counts over 1024, nested
 products over 65536 and invalid counts skip the block. `shape`,
 `size` and `grid` are not allowed inside it, and a `fill` inside it
@@ -414,6 +415,9 @@ every frame, several times slower.
 and `dither(p)`. A
 point is one `vec2` or two floats: `fbm(p)`, `ngon(p, 6)`.
 
+- `hsl(h, s, l)` and `hsv(h, s, v)` take every channel from 0 to 1, the
+  hue in turns: `hsl(.5, 1, .5)` is cyan. With `%`, as in
+  `hsl(180 100% 50%)`, it is the CSS color, the hue in degrees.
 - `rot(p, a)` is the point `p` turned `a` radians counterclockwise. It
   gives a point, not a matrix, so `rot(a) * p` does not compile.
 - GLSL's `pow` is undefined for a negative base, so whole exponents
