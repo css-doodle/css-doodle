@@ -607,21 +607,21 @@ are reported (§11). `v.xz: …` writes those channels of a vector, each
 named once; a name not yet assigned in the scope, such as `pos`, is
 copied first, so `pos.x: abs(pos.x)` mirrors the pattern.
 
-**Expressions** use GLSL syntax, not §8: `^` is bitwise xor, `**` is
-power, and the logic words are `and`, `or` and `not`; for xor, compare
+**Expressions** use GLSL syntax. As in §8, `^` and `**` are power, and
+`%`, `a < b < c` and the logic words read the same; for xor, compare
 two conditions, `a < .5 != b < .5`. There are no units, `var()` or
-`?:`; `2px` is 2 times the variable `px`, one CSS pixel. Swizzles
-work on `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a
+`?:`; `2px` is 2 times the variable `px`, one CSS pixel. Swizzles work
+on `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a
 `vec3`, `#rgba` a `vec4`: `mix(red, #00f, du + .5)`.
 
 A number directly followed by a name, a call or `(` multiplies (`2t`,
 `2sin(t)`, `2(t + 1)`). Other values side by side, including a number
 and a value with a space between, do not multiply and are reported:
-`2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. As in §8, `**` binds before the
-product and a sign: `-x ** 2` is `-(x ** 2)`, `2x ** 2` is
-`2 * x ** 2`. Inside call parentheses a space separates arguments like
-a comma (`hsl(h .75 .65)`), except in `ramp()` stops. A name directly
-before `(` is a call; with a space between, `k (0)` is two values.
+`2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. As in §8, the power binds before
+the product and a sign: `-x^2` is `-(x^2)`, `2x^2` is `2 * x^2`. Inside
+call parentheses a space separates arguments like a comma
+(`hsl(h .75 .65)`), except in `ramp()` stops. A name directly before
+`(` is a call; with a space between, `k (0)` is two values.
 
 **`$name`** inserts the text of the cell's custom property `--name`
 anywhere in the body but its comments, when the pattern is generated:

@@ -693,7 +693,7 @@ test('use() gives a shader addon expr(): the math of @pattern as GLSL, with t th
     let warnings = [];
     let out = Func['addon-expr'].shader('9 + 2 * sin(t);t % 2;π / 2;9% + .25turn - 90deg;9%2;nope;1 +;var(--cssd-utime)', {}, message => warnings.push(message));
     assert.deepEqual(JSON.parse(out), [
-        '(9.0 + (2.0 * sin(u_time)))', 'mod(u_time, 2.0)', '(3.1415926535897932 / 2.0)', '((9.0 + 90.0) - 90.0)', 'mod(9.0, 2.0)', null, null, null,
+        '(9.0 + (2.0 * sin(u_time)))', '(u_time - 2.0 * trunc(u_time / 2.0))', '(3.1415926535897932 / 2.0)', '((9.0 + 90.0) - 90.0)', '(9.0 - 2.0 * trunc(9.0 / 2.0))', null, null, null,
     ]);
     assert.deepEqual(warnings, ['unknown name nope', 'nothing after +', '@t is CSS time, use t']);
 });

@@ -180,8 +180,8 @@ test('db: distance to the grid boundary', () => {
     assert.equal(condition('match(db == 0) { fill: red }'), 'if ((db == 0.0)) {');
     assert.equal(condition('match(db < 2) { fill: red }'), 'if ((db < 2.0)) {');
     assert.equal(
-        condition('match(int(db) % 2 == 0) { fill: red }'),
-        'if ((mod(float(int(db)), 2.0) == 0.0)) {'
+        condition('match(mod(db, 2) == 0) { fill: red }'),
+        'if ((mod(db, 2.0) == 0.0)) {'
     );
 });
 

@@ -9,7 +9,6 @@ const PREC = {
     '<': 11, '<=': 11, '>': 11, '>=': 11,
     '==': 10, '!=': 10,
     '&': 9,
-    '^': 8,
     '|': 7,
     '&&': 6,
     '||': 5
@@ -21,16 +20,17 @@ const PREFIX = {
     'not': PREC['&&'] + 1
 };
 
+// `^` is power, as in $()
 const ALIAS = {
     __proto__: null,
-    '=': '==', '≤': '<=', '≥': '>=', '≠': '!=',
+    '^': '**', '=': '==', '≤': '<=', '≥': '>=', '≠': '!=',
     'and': '&&', 'or': '||', 'not': 'not'
 };
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const GLSL_NAMES = new Set(['PI', 'true', 'false']);
 const COLOR_CALL = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)$/i;
-const INT_OPS = new Set(['&', '^', '|', '<<', '>>']);
+const INT_OPS = new Set(['&', '|', '<<', '>>']);
 const VEC_COMPARE = {
     __proto__: null,
     '<': 'lessThan', '<=': 'lessThanEqual', '>': 'greaterThan', '>=': 'greaterThanEqual',
@@ -310,7 +310,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         const l = gen(n.left, arg);
         const r = gen(n.right, arg);
         if (vec) return cast(`${op === '!=' ? 'any' : 'all'}(${VEC_COMPARE[op]}(${l}, ${r}))`, 'bool', exp);
-        return cast(op === '%' ? `mod(${l}, ${r})` : `(${l} ${op} ${r})`, res, exp);
+        return cast(op === '%' ? `(${l} - ${r} * trunc(${l} / ${r}))` : `(${l} ${op} ${r})`, res, exp);
     }
 
     function ramp([t, ...stops], type) {

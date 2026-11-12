@@ -82,7 +82,10 @@ test('** is power, right-associative, on floats and vectors', () => {
     assert.equal(transform('2 ** -x'), 'pow(2.0, -x)');
     assert.equal(transform('1 / 2π'), '(1.0 / (2.0 * PI))');
     assert.equal(transform('x ** 2', { type: true }), 'float');
-    assert.equal(transform('x ^ 2'), '(int(x) ^ 2)');
+    // ^ is power, as in $()
+    assert.equal(transform('x ^ 2'), '(x * x)');
+    assert.equal(transform('-2x^2'), '(-2.0 * (x * x))');
+    assert.equal(transform('2 ^ 3 ^ .5'), 'pow(2.0, pow(3.0, .5))');
 });
 
 test('what the grammar cannot place is reported once', () => {
@@ -117,9 +120,10 @@ test('a unary minus covers the whole implicit product', () => {
     assert.equal(transform('cos(- 2πt)'), 'cos(-((2.0 * PI) * t))');
 });
 
-test('modulo becomes mod()', () => {
-    assert.equal(transform('x % 10'), 'mod(x, 10.0)');
-    assert.equal(transform('(x + 1) % y'), 'mod((x + 1.0), y)');
+test('% takes the sign of the left operand, as in $(); mod() is floored', () => {
+    assert.equal(transform('x % 10'), '(x - 10.0 * trunc(x / 10.0))');
+    assert.equal(transform('(x + 1) % y'), '((x + 1.0) - y * trunc((x + 1.0) / y))');
+    assert.equal(transform('mod(x, 10)'), 'mod(x, 10.0)');
 });
 
 test('bitwise operands are cast to int, results back to float when mixed', () => {
@@ -127,12 +131,11 @@ test('bitwise operands are cast to int, results back to float when mixed', () =>
     assert.equal(transform('x >> y'), '(int(x) >> int(y))');
     assert.equal(transform('x & 255'), '(int(x) & 255)');
     assert.equal(transform('x | y'), '(int(x) | int(y))');
-    assert.equal(transform('x ^ y'), '(int(x) ^ int(y))');
     assert.equal(transform('(x & 1) * 0.5'), '(float((int(x) & 1)) * 0.5)');
     assert.equal(transform('x | y & z'), '(int(x) | (int(y) & int(z)))');
     assert.equal(transform('x & y == z'), '(int(x) & int((y == z)))');
     // function calls as operands too
-    assert.equal(transform('mod(x, 4) ^ mod(y, 4)'), '(int(mod(x, 4.0)) ^ int(mod(y, 4.0)))');
+    assert.equal(transform('mod(x, 4) & mod(y, 4)'), '(int(mod(x, 4.0)) & int(mod(y, 4.0)))');
     assert.equal(transform('floor(x) & 1'), '(int(floor(x)) & 1)');
     assert.equal(transform('float(x) >> 1'), '(int(x) >> 1)');
 });
@@ -150,9 +153,8 @@ test('comparisons, a single = reads as ==', () => {
     assert.equal(transform('x == y'), '(x == y)');
     assert.equal(transform('(x > y) & 1'), '(int((x > y)) & 1)');
     assert.equal(transform('x = y'), '(x == y)');
-    assert.equal(transform('x % 2 = 0'), '(mod(x, 2.0) == 0.0)');
-    assert.equal(transform('x % y = 0'), '(mod(x, y) == 0.0)');
-    assert.equal(transform('(x + 1) % 3 = 0'), '(mod((x + 1.0), 3.0) == 0.0)');
+    assert.equal(transform('x % 2 = 0'), '((x - 2.0 * trunc(x / 2.0)) == 0.0)');
+    assert.equal(transform('mod(x, y) = 0'), '(mod(x, y) == 0.0)');
 });
 
 test('unicode comparison operators', () => {
@@ -265,12 +267,12 @@ test('empty input and lone numbers', () => {
 
 test('deeply nested real-world expressions', () => {
     assert.equal(
-        transform('((x*10) ^ (y*10)) % 3 == 0'),
-        '(mod(float((int((x * 10.0)) ^ int((y * 10.0)))), 3.0) == 0.0)'
+        transform('((x*10) | (y*10)) % 3 == 0'),
+        '((float((int((x * 10.0)) | int((y * 10.0)))) - 3.0 * trunc(float((int((x * 10.0)) | int((y * 10.0)))) / 3.0)) == 0.0)'
     );
     assert.equal(
         transform('((x + 1) * 2) >> (y % 3)'),
-        '(int(((x + 1.0) * 2.0)) >> int(mod(y, 3.0)))'
+        '(int(((x + 1.0) * 2.0)) >> int((y - 3.0 * trunc(y / 3.0))))'
     );
     assert.equal(transform('(x > 0.5) * y'), '(float((x > 0.5)) * y)');
     assert.equal(
@@ -279,7 +281,7 @@ test('deeply nested real-world expressions', () => {
     );
     assert.equal(
         transform('y > (4 * ((2 * (x & 1)) % 4))', { expect: 'bool' }),
-        '(y > (4.0 * mod((2.0 * float((int(x) & 1))), 4.0)))'
+        '(y > (4.0 * ((2.0 * float((int(x) & 1))) - 4.0 * trunc((2.0 * float((int(x) & 1))) / 4.0))))'
     );
 });
 
