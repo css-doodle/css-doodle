@@ -445,13 +445,22 @@ Function.PD = createPick('PD', (args, pos) => args[pos], true, true);
 
 Function.lp = (_, { context }) => (n = 1) => lastOf(context.lastPick, n);
 
-Function.r = (_, { context, rand }) => (...args) => {
-    let transform = (args.length && args.every(isLetter)) ? byCharcode : byUnit;
-    return pushStack(context, 'lastRand', transform(rand)(...args));
+const whole = rand => (a = 1, b = 0) => {
+    let lo = Math.ceil(Math.min(a, b)), hi = Math.floor(Math.max(a, b));
+    return Math.floor(rand(lo, hi + 1));
 };
 
-// @r drawing whole numbers
-Function.ri = (cell, env) => Function.r(cell, { ...env, rand: (...range) => Math.round(env.rand(...range)) });
+function createRand(integer) {
+    return (_, { context, rand }) => (...args) => {
+        let letters = args.length && args.every(isLetter);
+        let draw = letters || integer ? whole(rand) : rand;
+        return pushStack(context, 'lastRand', (letters ? byCharcode : byUnit)(draw)(...args));
+    };
+}
+
+Function.r = createRand();
+
+Function.ri = createRand(true);
 
 function createNoise(outline) {
     return ({ x, y, grid }, { context, extra, random }, position) => {

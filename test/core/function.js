@@ -208,6 +208,26 @@ test('@ri: both bounds can come up', () => {
     assert.deepEqual([...seen].sort(), ['a', 'b', 'c']);
 });
 
+test('@ri gives each whole number as often, the ends too, and a letter range of @r both ends', () => {
+    let { rand } = createRandom('1');
+    let count = (fn, ...args) => {
+        let n = {};
+        for (let i = 0; i < 6000; i++) {
+            let v = fn(...args);
+            n[v] = (n[v] || 0) + 1;
+        }
+        return n;
+    };
+    // rounding a drawn number gave the ends half the share: 1 and 6 one time in ten
+    let faces = count(Function.ri({}, { context: {}, rand }), 1, 6);
+    assert.deepEqual(Object.keys(faces), ['1', '2', '3', '4', '5', '6']);
+    assert.ok(Object.values(faces).every(v => v > 850 && v < 1150), JSON.stringify(faces));
+    // cutting the fraction off a drawn char code never reached the last letter
+    let letters = count(Function.r({}, { context: {}, rand }), 'a', 'c');
+    assert.deepEqual(Object.keys(letters).sort(), ['a', 'b', 'c']);
+    assert.ok(Object.values(letters).every(v => v > 1700 && v < 2300), JSON.stringify(letters));
+});
+
 test('@pn inside an argument keeps a counter per call site', () => {
     // argument composition pushes an empty tuple, which used to turn the key into NaN
     let env = { context: {}, extra: [[]], upextra: [], shuffle: a => a };
