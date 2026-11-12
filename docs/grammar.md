@@ -3,8 +3,7 @@
 css-doodle is CSS for drawing on a grid: you style one cell, and
 css-doodle evaluates that style for every cell and emits plain CSS.
 This page is the grammar: what the parser accepts and how it reads each
-form. What the embedded languages draw, their shapes, commands and
-functions, is in [languages.md](languages.md).
+form. What the embedded languages draw is in [languages.md](languages.md).
 
 ```css
 @grid: 8 / 200px;
@@ -37,15 +36,14 @@ word   = run of characters that are not whitespace, digits or symbols
 
 - A `-` before a digit is a sign unless a number, word, `)` or `]`
   precedes it: `a -1` is two tokens, `a-1` three.
-- A digit ends a word (`h1` → `h` `1`), and so does a `.` before a
-  digit (`a.5` → `a` `.5`); a number ends where it cannot continue
-  (`10px` → `10` `px`). `#` is not a symbol, so `#fff` is one word.
+- A digit ends a word (`h1` → `h` `1`), as does a `.` before a digit
+  (`a.5` → `a` `.5`); a number ends where it cannot continue (`10px` →
+  `10` `px`). `#fff` is one word.
 - Quotes, `"`, `'` and `` ` ``, keep whitespace as written; calls inside
-  them are still recognized.
+  them still run.
 - Whitespace collapses to one space. It is dropped around `;` `,` `{`
   `}`, after `:` `(` `[` and before `)` `]`, but kept before `:` `(`
-  `[` and after `)` `]`: `a (b)` and `a(b)` differ, as do `a :hover`
-  and `a:hover`.
+  `[` and after `)` `]`, so `a (b)` and `a(b)` differ.
 - `/* … */` is whitespace. `//` comments exist only in `@pattern`,
   `@scene`, `@shaders`, `@shape`, `@plot` and `@tile` bodies.
 
@@ -64,12 +62,6 @@ Markup tags (`<…>`) between statements outside blocks are skipped.
 
 ### Declarations
 
-```css
-background: @p(red, blue);
---size: 10px;
-@grid: 8 / 200px;
-```
-
 ```
 declaration = property ':' value [ ';' ]
 ```
@@ -81,13 +73,13 @@ starting with `@` is a directive: `@grid`, `@size`, `@place`, `@gap`,
 included, are emitted as CSS.
 
 `@use: var(--rule), var(--other, var(--fallback))` inserts the
-statements stored in custom properties. Fallbacks and nested `@use`
-work; a variable already being inserted is skipped and reported.
-
-A bare name in the list, starting with a letter, loads that addon from
-`@css-doodle/addons` before the doodle is generated: `@use: gradient-2d,
-var(--rule)`. A name that does not load is reported. It belongs to the
-outer doodle: inside a nested `@doodle` it does nothing.
+statements stored in custom properties, fallbacks and nested `@use`
+included; a variable already being inserted is skipped and reported. A
+name starting with a letter, `@use: gradient-2d`, loads that addon from
+`@css-doodle/addons` first, and one that does not load is reported.
+Inside a nested `@doodle`, `@use` of a name does nothing. Inserted
+text calls the sheet's functions, and the ones it defines stay inside
+it.
 
 ### Function definitions
 
@@ -109,52 +101,36 @@ body       = '{' text '}' | statement
 A top-level `--name(params):` defines a function and emits nothing. The
 body is the text in braces, or else one statement, up to its `;` or
 through the block it opens. The name is letters, digits, `_`, and `-`
-between words, and a call reads it whole: `$rand-int()` does not call
-`rand`. A parameter is an expression name (§8): `x1` and `a_b` are one
-name.
+between words, read whole: `$rand-int()` does not call `rand`.
+Parameters are expression names (§8). Inside `@svg()` a definition may
+start any statement and is seen in that `@svg()` only, where it hides
+a sheet function of the same name.
 
-`$name(args)` calls it anywhere but inside quotes. Without parentheses
-`$name` still reads `--name`, and `$name(` with no such function is
-still a unit (§6). Text inserted by `@use` calls the sheet's functions,
-and the ones it defines stay inside it. Inside `@svg()` a definition
-can start any statement, in a block too, and is seen in that `@svg()`
-only, where it hides a sheet function of the same name.
+`$name(args)`, anywhere but inside quotes, is replaced by its body
+before parsing, so the body works wherever its text would: as a value,
+as `@svg` elements, with `*N` copies. In the body `$p` is the argument
+for `p`. Missing arguments take their defaults. Arguments are pasted as
+written, except:
 
-A call is replaced by its body before parsing, so the body works
-wherever its text would: as a value, as `@svg` elements, with `*N`
-copies. In the body, `$p` is the argument for `p`, and so is a bare `p`
-inside `$()`, `$px()` or the test of a `@match(test) { }` block, in the
-arguments of calls there too. A call made there reads its whole body
-that way, as one value: with
-`--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. There a bare `inc(3)` calls
-it too, unless a built-in (§8) has its name, and the longest defined
-name wins: `a-inc(3)` is `a - inc(3)`. Inside `$()` an argument is
-parenthesized; outside, a call's arguments are pasted as written, so
-pass `$p` there. Missing arguments take their defaults.
-An argument or default that would change from one use to the next is
-worked out once, where the call is: a random or picking function
-(`@r`, `@p`, `@pn`, …) the body uses more than once, or one the body
-loops over with `@m`, `@M` or `*N`, and an `@n` of the caller the body
-loops over. So `$dot(@r(5))` gives one radius to each `$r`, and
-`--turn(k): @M(2, $k @n)` called as `$turn(@n)` reads the caller's
-`@n`. Any other argument is pasted as written, as is every argument
-of a body holding a `@doodle`, `@pattern` or `@scene`.
-A body without braces ends at its first `;`; a statement right after it
-reading one of its parameters warns `--f() needs {}`.
+- Inside `$()`, `$px()` or the test of a `@match(test) { }` block, a
+  bare `p` is the argument too, each argument is parenthesized, and a
+  call reads as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is
+  `8`. There a bare `inc(3)` calls it too, unless a built-in has the
+  name.
+- An argument or default with a random or picking call (`@r`, `@p`,
+  `@pn`, …) that the body uses more than once, or loops over with `@m`,
+  `@M` or `*N`, is worked out once, where the call is, as is an `@n` of
+  the caller that the body loops over: `$dot(@r(5))` gives one radius
+  to each `$r`. A body holding a `@doodle`, `@pattern`, `@scene` or
+  `@shaders` takes every argument as written.
 
 A body of `result` declarations alone gives the last one's value, as a
 CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
-`$double(2)` is `4`. A body with any other statement is pasted as
-written, so an `@svg-filter` element keeps its `result` attribute.
+`$double(2)` is `4`. Any other body is pasted as written. A body may
+give a point: with `--at(a): $(cos(a)) $(sin(a))`,
+`points: @m(6, $at($(n * π / 3)))` is a hexagon.
 
-A body can give a point, both numbers from one set of arguments, where
-two functions for `x` and `y` would each be called:
-with `--at(a): $(cos(a)) $(sin(a))`, `points: @m(6, $at($(n * π / 3)))`
-is a hexagon and `transform: translate($at(1))` places an element.
-Kept in a variable, a point stays two numbers (§8).
-
-In `@pattern` and `@scene` bodies a call passes values, a parameter
-reads bare, and a body that assigns `result` returns a value: see
+In `@pattern` and `@scene` a call passes values instead: see
 [Patterns](languages.md#3-patterns).
 
 ### At-statements
@@ -200,9 +176,9 @@ the outer selector.
 `:doodle` (the component) and `:container` (the grid container) are
 not nested under the cell. `:doodle(<compound>)` and
 `:container(<compound>)` match only when the element matches the
-compound; `:doodle.dark:hover` is short for `:doodle(.dark:hover)`. A
-rule whose selectors are all `:doodle` or `:container` is generated
-once, not per cell.
+compound, and `:doodle.dark:hover` is short for `:doodle(.dark:hover)`.
+A rule whose selectors are all `:doodle` or `:container` is
+generated once, not per cell.
 
 ## 4. Conditional blocks
 
@@ -224,13 +200,11 @@ A block whose head starts with `@` is treated by its name:
 - **Cell selectors** apply to the cells they match: `@at(x, y)`,
   `@nth(an+b)`, `@row(an+b)`, `@col(an+b)`, `@depth(an+b)`, `@even`,
   `@odd`, `@random(ratio)`, `@match(expression)`, `@cell(…)`. A `not`
-  before the arguments inverts the test: `@cell not (x = y)`. A pseudo
-  right after one applies to the cell, `@nth(1)::after`, and a comma
-  lists several, `@at(1, 1), @at(2, 2)`: a cell takes the first that
-  matches. `@odd`
-  and `@even` are checkerboard parity counted from the first cell:
-  `@odd` matches where `x + y` is even and `@even` where it is odd,
-  unlike the `even` and `odd` arguments of `@nth`, `@row` and `@col`.
+  before the arguments inverts the test, `@cell not (x = y)`; a pseudo
+  right after one applies to the cell, `@nth(1)::after`; and a comma
+  lists several, of which a cell takes the first that matches. `@odd`
+  and `@even` are a checkerboard: `@odd` matches where `x + y` is even,
+  unlike the `odd` of `@nth`, `@row` and `@col`.
 - **CSS group rules**, `@media`, `@supports`, `@container`, `@layer`,
   `@scope`, `@starting-style`, `@document` and their vendor-prefixed
   forms, wrap their statements as in CSS.
@@ -247,9 +221,8 @@ group = { text | function-call }
 ```
 
 A value is a comma-separated list of groups of CSS text and function
-calls. Text is emitted as written, except that a `π` becomes pi unless a
-digit touches it; `2π` and `π2` stay, and only expressions (§8)
-multiply them.
+calls. Text is emitted as written, except that a `π` no digit touches
+becomes pi; `2π` stays, and only expressions (§8) multiply it.
 
 ## 6. Functions
 
@@ -267,27 +240,21 @@ name-character = letter | digit | '_' | '.' | '%' | '-'
 ```
 
 `@` or `$` starts a call only when a name or `(` is adjacent to it,
-and is text otherwise; the name and its `(` must be adjacent too. `@(`
-and `$(` are calls with an empty name.
+and is text otherwise; the name and its `(` must be adjacent too.
 
 - **Digits in a name** split off as the first argument: `@m3(a)` is
-  `@m(3, a)`, `@n1.5(a)` is `@n(1.5, a)`, `@p1-2(a)` is `@p(1-2, a)`.
-  `Math` names keep them (`@log2(8)`), and `@doodle`, `@shaders`,
-  `@pattern` and `@scene` read them as a size: `@doodle100x50(…)`
-  renders at 100 by 50, and one number is square.
-- **A `.` before a letter** ends the name and composes calls, rightmost
-  first: `@a.b(x)` and `@a.@b(x)` are `@a(@b(x))`, `@a.b.c(x)` is
-  `@a(@b(@c(x)))`. Before a digit it stays in the name: `@a.5(x)` is
-  `@a(.5, x)`. When `a` has a variant `b`, `@a.b(x)` calls the variant
-  instead (`@plot.scatter(star)`); `.@b` and `@a(@b(x))` always
-  compose.
+  `@m(3, a)`, `@p1-2(a)` is `@p(1-2, a)`. `Math` names keep them
+  (`@log2(8)`), and `@doodle`, `@shaders`, `@pattern` and `@scene` read
+  them as a size: `@doodle100x50(…)`, or `@doodle100(…)` for a square.
+- **A `.` before a letter** composes calls, rightmost first: `@a.b(x)`
+  and `@a.@b(x)` are `@a(@b(x))`. Before a digit it stays in the name:
+  `@a.5(x)` is `@a(.5, x)`. When `a` has a variant `b`, `@a.b(x)` calls
+  the variant instead (`@plot.scatter(star)`).
 - **`$` is the calc function.** `$(expr)` evaluates an expression
-  (§8). `$unit(expr)` appends `unit` verbatim: `$px(1+1)` is `2px`,
-  `$4(1+1)` is `24`, unless a function `--unit()` is defined (§2).
-  `$name`, without parentheses, reads the variable `name` (§8) or a
-  number. The name ends where a CSS name does, at anything but letters,
-  digits, `_`, `-` and non-ASCII, so with `--s: 50`, `$s%` is `50%`
-  and `$s.x` is `50.x`.
+  (§8), and `$unit(expr)` appends `unit`: `$px(1+1)` is `2px`, unless a
+  function `--px()` is defined (§2). `$name` without parentheses reads
+  the variable `name` (§8); the name ends where a CSS name does, so with
+  `--s: 50`, `$s%` is `50%`.
 
 ## 7. Arguments
 
@@ -296,59 +263,42 @@ arguments = [ argument { ',' argument } ]
 argument  = { text | function-call | variable }
 ```
 
-Arguments split at top-level commas: parentheses nest, and a comma in
-quotes does not split. Whitespace belongs to the argument, so
-`@p(a b, c)` has two.
+Arguments split at top-level commas. Whitespace belongs to the
+argument, so `@p(a b, c)` has two.
 
 - `(…)`, `"…"` or `'…'` around a whole argument is removed and the
-  content passed as one unit; around part of it, it stays: `"a" "b"`
-  is two strings.
+  content passed as one unit; around part of it, it stays.
 - An argument starting with `--x`, `(--x)` or `"--x"` refers to that
   custom property.
 - An argument starting with `±` expands into two, `-x` and `x`: `±1`,
   `±(a + 1)`, `±@r(10)`. Elsewhere `±` is text.
-- In a pick (`@p`, `@P`, `@pn`, `@pd`, …), an argument ending in ` xN`
-  stands for N copies: `@p(red x3, blue)` picks red three times in four,
-  `@pn(a x2, b)` plays a, a, b. `@P` never gives the last pick at that
-  call, however many times it is listed.
+- In a pick (`@p`, `@P`, `@pn`, …), an argument ending in ` xN` stands
+  for N copies: `@p(red x3, blue)` picks red three times in four.
 - Backticks read as double quotes, so a doodle fits in a double-quoted
   HTML attribute.
 - In `@pick` and `@p`, a top-level `:` in the first argument ends an
-  index: `@pick(k: a, b, …)` gives item `k`, an expression (§8)
-  counted from 1, rounded and wrapping around as `@pn` does. Only that
-  item is composed, so `@pick(@i: red, blue)` alternates, and a
-  function's list counts as one item. A lone item, as in
-  `@pick(@i: @palette(5))`, or a list with `...` is composed whole and
-  picked from as `@pn` does. A quoted colon is text.
+  index: `@pick(k: a, b, …)` gives item `k`, an expression (§8) counted
+  from 1 and wrapping around. Only that item is composed, so
+  `@pick(@i: red, blue)` alternates; a lone item, as in
+  `@pick(@i: @palette(5))`, is composed and picked from.
 - In `@r` and `@ri`, a top-level `:` in the first argument ends a key:
-  `@r(k: a, b)` is the draw that key `k`, an expression (§8), gets,
-  over the range `@r(a, b)` would draw from. Unlike the index of
-  `@pick`, a key does not count: the same `k` gives the same draw, and
-  the next `k` another one. It holds wherever it is asked and takes
-  nothing from the seed's stream, so `@r(@i: 10, 50)` is one number
-  per cell that every property reads alike, `@r(@i + 1: 10, 50)` is
-  the next cell's, `@ri(@i: 1, 6)` casts one die per cell, and
-  `@r(@n: 1)` gives one number per step of `@m`.
+  `@r(k: a, b)` draws over the range of `@r(a, b)` by key `k`, an
+  expression. The same key gives the same draw and takes nothing from
+  the seed's stream, so `@r(@i: 10, 50)` is one number per cell that
+  every property reads alike.
 
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
-the matching `)`, respecting quotes; `@scene` runs its `@` functions
-for each cell, and once per copy in a `*N` block. A variant of `@doodle`
-takes one too and keeps the digits of its name; addons add variants
-of their own (`@use: wallpaper` gives `@doodle60.p4m(…)`).
-`@doodle.wrap(…)` is a tile that repeats without seams: whatever crosses
-one edge comes back at the opposite one, under the doodle's own
-background. It keeps its own size, `@doodle200.wrap(…)` repeating every
-200px, or takes `background-size`. `@svg` reads an SVG
-body (§9.1), where `element*count` expands before the body is split
-into arguments. `@raw` keeps its text as written, commas and spaces
-too, with its functions run.
+the matching `)`, respecting quotes, as do `@doodle` variants such as
+`@doodle.wrap(…)`, a tile that repeats without seams. `@svg` reads an
+SVG body (§9.1), where `element*count` expands before the body is split
+into arguments. `@raw` keeps its text as written, with its functions
+run.
 
 ## 8. Expressions
 
-One language serves `$(…)`, `@match(…)` (function and cell selector),
-the index of `@pick(k: …)`, the key of `@r(k: …)`, `@cell(…)`,
-`@random(ratio)` and the `@shape` commands. `@pattern` and `@scene` use a GLSL-oriented one
-(§9.3).
+One language serves `$(…)`, `@match(…)`, `@cell(…)`, `@random(ratio)`,
+the index of `@pick(k: …)`, the key of `@r(k: …)` and the `@shape`
+commands. `@pattern` and `@scene` use a GLSL-oriented one (§9.3).
 
 ```
 expression = operand { operator operand }
@@ -374,95 +324,75 @@ name       = letter or '_', then letters, digits or '_'
 | `\|\|` `or`                                 | or, short-circuit           | right         |
 
 - **Everything is a number.** Units drop: with `--w: 10px`, `$(w * 2)`
-  is `20`. `&&` and `||` return the deciding operand; `%` takes the
-  sign of the left operand; `0 < x < 1` is `0 < x && x < 1`, and
-  parentheses end the chain: `(5 > 3) < 2` is `1`. Right
-  after a number `%` is a percent sign, dropped unless an unsigned
-  number, a name or `(` follows: `25% > 10` is `1`, so `@tile.y > 50`
-  works; `25%-5` is `20`; `7%3` is `1`.
+  is `20`. `&&` and `||` return the deciding operand, `%` takes the
+  sign of the left operand, and `0 < x < 1` is `0 < x && x < 1` until
+  parentheses end the chain. Right after a number `%` is a percent
+  sign, dropped, unless an unsigned number, a name or `(` follows:
+  `25% > 10` is `1`, `25%-5` is `20`, `7%3` is `1`.
 - **Rounding noise is none.** Comparisons, `sign` and `step` take a
-  difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`,
-  `sign(sin(π))` is `0`.
+  difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`.
 - **Adjacent values multiply**: `2x`, `2(3)`, `2π`. A space ends the
   product and makes a list, which reads as its first value: `2 x` is
-  `2`, and `2 * 3 4` is `6`. A name before `(` is a call, `x (2)`
-  too.
-  The power binds first, then the product, then a sign: `-2^2` is
-  `-4`, `2x^2` is `2(x^2)`, `1/2π` is `1/(2π)`. A value keeps its own
-  sign: with `--k: -2`, `$k^2` and `@r(-2, -2)^2` are `4`.
+  `2`. A name before `(` is a call, `x (2)` too. The power binds first,
+  then the product, then a sign: `-2^2` is `-4`, `2x^2` is `2(x^2)`,
+  `1/2π` is `1/(2π)`. A value keeps its own sign: with `--k: -2`,
+  `$k^2` is `4`.
 - **Dashed names.** `a-b` is one variable if the context defines it,
   else `a - b`; the longest defined name wins.
 - **Names** are looked up in the context, then among `π`, `random`,
   `gcd`, `match` and the GLSL functions `mod`, `fract`, `clamp`, `mix`,
   `step`, `smoothstep`, `radians`, `degrees` and `atan`, then in
-  JavaScript's `Math` (`PI`, `sin`, `hypot`, …). Any other name is `0`,
-  and so is a unit, except `deg` and `turn` on a number inside a call:
-  `cos(60deg)` is `cos(radians(60))`. The GLSL ones read as in
-  `@pattern`: `mod(a, b)` takes the sign of `b`, so `mod(-1, 4)` is
-  `3`, `step(edge, x)` is `1` from the edge on, and `atan(y, x)` is the
-  angle of the point `(x, y)`, `atan(1, -1)` being `.75π`.
+  JavaScript's `Math`. Any other name is `0`, and so is a unit, except
+  `deg` and `turn` on a number inside a call: `cos(60deg)` is
+  `cos(radians(60))`. The GLSL ones read as in `@pattern`:
+  `mod(-1, 4)` is `3`.
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
-  item `k`: `pick(4: a, b, c)` is `a`. Without the index it reads as
-  `0`.
+  item `k`: `pick(4: a, b, c)` is `a`.
 - **`random()`** is a number in `[0, 1)` from the doodle's seed, drawn
-  each time the formula runs: at every point of a shape, along every
-  edge in `edge` and `slide` (§9.2). For a random value anywhere else,
-  write `@r`, which runs first: `$(@r() * 2)`, or `@r(k: …)` (§7) for
-  one that holds. In a selector, `random()` is the draw `@random`
-  makes, so `@match(random() < .3)` picks the cells `@random(.3)`
-  does.
+  each time the formula runs, as at every point of a shape. Elsewhere
+  write `@r`, which runs first: `$(@r() * 2)`. In a selector it is the
+  draw `@random` makes: `@match(random() < .3)` picks the cells
+  `@random(.3)` does.
 - **Calls chain** right to left: `tan.cos.sin(x)` is
-  `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the
-  value after the first test that holds, else the last odd argument
-  or `0`, and evaluates only the branch it returns.
+  `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the value
+  after the first test that holds, else the last odd argument or `0`,
+  and evaluates only that branch.
 - **No errors.** Unknown names, cycles and missing operands read as
   `0`; division by zero gives `Infinity`.
-- **Live values.** A `var()`, such as `@t`, `@ux` and the other
-  uniforms give, has no number at generation time, so the math around
-  it is written out as CSS math: `$(@t / 10)deg` is
-  `calc((var(--cssd-utime) / 10) * 1deg)`. Operators become `calc()`,
-  `rem()` and `pow()`, and comparisons, `!`, `&&`, `||` and `match`
-  become `0`/`1` arithmetic through `sign()`, both sides written out.
-  `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sqrt` `exp` `log`
-  `abs` `sign` `pow` `hypot` `min` `max` `mod` keep their names,
-  `atan(y, x)` becomes `atan2()`, `round`, `floor`, `ceil` and `trunc`
-  become `round()`, and `fract`, `clamp`, `mix`, `step`, `smoothstep`,
-  `radians`, `degrees` and `pick(k: …)` are written out in those. A
-  `calc()` reads as a group, so results compose. A variable declared
-  once on the cell, `:doodle` or `:container`, whose value is one live
-  call (with no `var()` but uniforms on `:doodle` and `:container`), is
-  read in a cell's property other than `content` as `var()`:
+- **Live values.** A `var()` such as `@t` has no number at generation
+  time, so the math around it is written out as CSS math:
+  `$(@t / 10)deg` is `calc((var(--cssd-utime) / 10) * 1deg)`.
+  Comparisons and logic become arithmetic through `sign()`; functions
+  CSS has keep their names, `atan(y, x)` becoming `atan2()` and
+  `floor`, `ceil` and `trunc` `round()`; `fract`, `clamp`, `mix`,
+  `step`, `smoothstep`, `radians`, `degrees` and `pick(k: …)` are
+  written out; shifts, bitwise operators and other functions read as
+  `0`. A live value where a number is required is dropped: `@r(@t)` is
+  `@r()`. A variable declared once on the cell, `:doodle` or
+  `:container`, whose value is one live call (with no `var()` but
+  uniforms on `:doodle` and `:container`), is read in a cell's
+  property other than `content` as `var()`:
   `--a: $(@t / 1000); rotate: $rad(a * 2)` is
-  `rotate: calc((var(--a) * 2) * 1rad)`, the same rule in every cell.
-  Shifts, bitwise
-  operators, `gcd` and other functions read as `0`, and a live value
-  where a number is required is dropped: `@r(@t)` is `@r()`,
-  `@nth(@t)` matches nothing.
+  `rotate: calc((var(--a) * 2) * 1rad)`.
 
 Each caller provides its own context:
 
-- **`$(…)`** sees the doodle's custom properties at host, container
-  and cell level, without `--`, and the `--name` declarations above it
-  in an enclosing `@svg`, then the cell variables below (at `:doodle`,
-  the first cell's), and inside a `*count` copy or `@m`/`@M` its `n`,
-  `nx`, `ny` and `N`, as `@n` reads them. Calls inside it run first.
-  The result is rounded to 12 significant digits, magnitudes below
-  `1e-9` become `0`, and the unit suffix is appended. A lone name,
-  `$w` or `$(w)`, is a generation-time `var()`: arithmetic over the
-  custom properties is evaluated, anything else passes through, so
-  with `--c: tomato`, `$c` is `tomato`, and with `--s: y`, `$s` is
-  `y`. The value is read as CSS, where a sign stuck to a number after a
-  space starts the next value: with `--p: 3 -2`, `$p` is the point
-  `3 -2`, though `$(3 -2)` is `1`. An angle passes through unless
-  `sin`, `cos`, `tan` or `degrees` take it: with
-  `--a: clamp(0deg, 45deg, 90deg)`, `$a` is that `clamp()`, and with
-  `--b: sin(30deg)`, `$b` is `.5`.
+- **`$(…)`** sees the doodle's custom properties without `--`, the
+  `--name` declarations above it in an enclosing `@svg`, then the cell
+  variables below, and inside a `*count` copy or `@m`/`@M` its `n`,
+  `nx`, `ny` and `N`. Calls inside it run first. The result is rounded
+  to 12 significant digits, magnitudes below `1e-9` become `0`, and the
+  unit is appended. A lone name, `$w` or `$(w)`, evaluates arithmetic
+  and passes anything else through: with `--c: tomato`, `$c` is
+  `tomato`. The value is read as CSS, where a sign stuck to a number
+  after a space starts the next value: with `--p: 3 -2`, `$p` is the
+  point `3 -2`, though `$(3 -2)` is `1`. An angle passes through unless
+  `sin`, `cos`, `tan` or `degrees` take it.
 - **`@match`, `@cell` and `@random`** see the cell variables below and
   the custom properties without `--`, a cell variable winning a shared
   name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
-  `ny` and `N`. The result is read as true or false. `@random(ratio)`
-  defaults to `.5`: below `1` it is a per-cell probability, from `1`
-  up it selects that many distinct cells, at most all of them.
+  `ny` and `N`. `@random(ratio)` defaults to `.5`; below `1` it is a
+  per-cell probability, from `1` up a count of distinct cells.
 - **`@shape`** sees the shape commands, unrounded.
 
 | Name             | Value                                                       |
@@ -488,10 +418,8 @@ block       = head '{' ( body | raw ) '}'
 
 Each defines its heads and values, and which block bodies stay raw
 text (`style { … }` in SVG, every shader section). At the doodle level
-`a: b { … }` is a selector block, since a head may contain a colon
-(`a:hover { }`); inside `@svg` it is a declaration with a block value.
-What each language's commands, shapes and functions do is in
-[languages.md](languages.md).
+`a: b { … }` is a selector block (`a:hover { }`); inside `@svg` it is a
+declaration with a block value.
 
 ### 9.1 SVG
 
@@ -528,14 +456,6 @@ element, except right after a declaration, where it is the next
 `;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` splits only when
 the value has as many parts as names. `style { … }` is raw CSS.
 
-A block named by a group of §9.2, such as `subtract { … }`, joins its
-shapes (`path`, `polygon`, `polyline`, `circle`, `ellipse`, `rect`, and
-a `g` as their union) into one `path` with its attributes. `smooth: r`
-rounds the corners where shapes meet, then `grow: d` moves the outline
-out by `d`, or in when negative. Curves come back as arcs where they
-keep to a circle, and each shape's own transform, paint and animations
-are dropped.
-
 ### 9.2 Shapes
 
 ```css
@@ -553,12 +473,6 @@ clip-path: @shape(
   }
   round: .03;
 );
-
-background: @scene(
-  box { size: 1 .06 .7; move: 0 .28 0; round: .02 }
-  box*2x2 { size: .06 .5 .06; move: nx * .84 - 1.26, 0, ny * .54 - .81 }
-  view: 35 25;
-);
 ```
 
 ```
@@ -574,18 +488,13 @@ copies         = '*' count [ 'x' count ]
 
 `@shape`, `@plot`, `@tile` and `@svg-polygon` read this body as 2D
 outlines, and `@scene` as a 3D model. A row is a command, an attribute
-of its shape, or else a variable. `kind#id` keeps a shape under a
-name for use in more than one place, and `#id` alone draws it. The id
-goes right after the name, before or after a count; a space before `#`
-starts a new shape, so `#knob #knob { rotate: 90 }` draws two. The
-parts of `move` and `scale` split at spaces or commas, and an operator
-keeps its operands: `move: k * .5 0` and `move: .5 -.25` have two parts
-each, `move: k (0) 0` three. A `text:`
-row is its text traced in the browser as the outline, in the `font:`
-style, weight and family: `@plot.hex(text: A; font: 900 serif)`; a
-quoted value keeps its commas, `;` and parentheses. A `path:` row is
-SVG path data as the outline, `@shape(path: M12 2 L22 22 H2 Z)`. Both
-are fitted to the box by their ink.
+of its shape, or else a variable. `kind#id` keeps a shape under a name
+and `#id` alone draws it. The id goes right after the name, before or
+after a count; a space before `#` starts a new shape. The parts of
+`move` and `scale` split at spaces or commas, and an operator keeps its
+operands: `move: k * .5 0` and `move: .5 -.25` have two parts each,
+`move: k (0) 0` three. A quoted `text:` value keeps
+its commas, `;` and parentheses.
 
 ### 9.3 Patterns
 
@@ -613,32 +522,29 @@ value         = css-color | expression { ',' expression }
 **Names.** `grid`, `shape`, `size` and `fill` are built in, and only
 `size` is also a value. Any other name is a variable, declared and
 typed by its first assignment: numbers become floats, and a color is a
-`vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names
-are reported (§11). `v.xz: …` writes those channels of a vector, each
-named once; a name not yet assigned in the scope, such as `pos`, is
-copied first, so `pos.x: abs(pos.x)` mirrors the pattern.
+`vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names are
+reported (§11). `v.xz: …` writes those channels of a vector; a name not
+yet assigned in the scope, such as `pos`, is copied first, so
+`pos.x: abs(pos.x)` mirrors the pattern.
 
 **Expressions** use GLSL syntax. As in §8, `^` and `**` are power, and
-`%`, `a < b < c` and the logic words read the same; for xor, compare
-two conditions, `a < .5 != b < .5`. There are no units, `var()` or
-`?:`; `2px` is 2 times the variable `px`, one CSS pixel. Swizzles work
-on `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a
-`vec3`, `#rgba` a `vec4`: `mix(red, #00f, du + .5)`.
+`%`, `a < b < c` and the logic words read the same. There are no units,
+`var()` or `?:`; `2px` is 2 times the variable `px`. Swizzles work on
+`vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a `vec3`, `#rgba` a `vec4`:
+`mix(red, #00f, du + .5)`.
 
 A number directly followed by a name, a call or `(` multiplies (`2t`,
-`2sin(t)`, `2(t + 1)`). Other values side by side, including a number
-and a value with a space between, do not multiply and are reported:
-`2 t`, `t r`, `r 9`, `r -2`, `(a)(b)`. As in §8, the power binds before
-the product and a sign: `-x^2` is `-(x^2)`, `2x^2` is `2 * x^2`. Inside
-call parentheses a space separates arguments like a comma
-(`hsl(h .75 .65)`), except in `ramp()` stops. A name directly before
-`(` is a call; with a space between, `k (0)` is two values.
+`2sin(t)`, `2(t + 1)`). Other values side by side, `2 t`, `r -2` or
+`(a)(b)`, do not multiply and are reported. The power binds before the product
+and a sign, as in §8. Inside call parentheses a space separates
+arguments like a comma (`hsl(h .75 .65)`), except in `ramp()` stops.
+A name directly before `(` is a call; `k (0)` is two values.
 
 **`$name`** inserts the text of the cell's custom property `--name`
 anywhere in the body but its comments, when the pattern is generated:
-`--k: @i` gives each cell its own value, and `--n: 72` can be a
-`repeat` count. `$a-b` reads `--a-b` if it is defined and subtracts
-otherwise. An undefined name skips the pattern and is reported (§11).
+`--k: @i` gives each cell its own value. `$a-b` reads `--a-b` if it is
+defined and subtracts otherwise. An undefined name skips the pattern
+and is reported.
 
 ### 9.4 Shaders
 
@@ -661,9 +567,8 @@ texture-name = 'texture' { ASCII-letter | digit | '_' }
 
 The body is plain GLSL fragment source or a list of named sections.
 `//` comments are removed, and `#define` lines stay on their own line.
-`$name` works as in `@pattern`, an undefined name skipping the shader.
-Text stored in a variable is one line, so keep `//` comments and `#`
-directives in the section itself.
+`$name` works as in `@pattern`. Text stored in a variable is one line,
+so keep `//` comments and `#` directives in the section itself.
 
 ## 10. Directive values
 
@@ -690,8 +595,8 @@ modifier   = '/' size [ '/' fill ]                  @size, then a fill
            | 'ß' value                              border
 ```
 
-The element's `grid` attribute and the `grid:` of a `@pattern` read
-the dimensions alone. A modifier's value runs to the next modifier symbol,
+The element's `grid` attribute and the `grid:` of a `@pattern` read the
+dimensions alone. A modifier's value runs to the next modifier symbol,
 spaces included. Flags are whole words, case-insensitive, allowed
 anywhere; `border` is shorthand for `ß 1px solid`, and `border:red`
 sets the color. The dimensions are the first item that is not a flag,
@@ -707,22 +612,20 @@ orientation = 'portrait' | 'landscape'
 ```
 
 Height defaults to width; the aspect ratio applies only when the width
-or height is `auto`. Paper presets are landscape unless an orientation
-is given.
+or height is `auto`. Paper presets are landscape by default.
 
 ### @gap, @place
 
 `@gap` takes one or two lengths, then optionally a rule drawn inside
-the gap, written like a border shorthand: a bare number gets `px`, a
-missing style is `solid`, a rule with no width fills its gap, and with
-no gap given the gap takes the rule's width. `@grid`'s `ß` modifier
-completes a border the same way, and also gives a lone color a `1px`
-width.
+the gap, written like a border shorthand: a bare number gets `px` and
+a missing style is `solid`. A rule with no width fills its gap, and
+with no gap given the gap takes the rule's width. `@grid`'s `ß`
+completes a border the same way, and gives a lone color a `1px` width.
 
 `@place` reads `left`, `right`, `top` and `bottom` as `0%` or `100%`
 on their axis and `center` as `50%`; the remaining values fill x, then
-y, both `50%` by default. Overflow is `unsafe` by default; a `safe`
-keyword sets `place-self` to `center`.
+y, both `50%` by default. A `safe` keyword sets `place-self` to
+`center`; overflow is `unsafe` otherwise.
 
 ### Others
 
@@ -732,10 +635,10 @@ direction = [ 'auto' | 'reverse' ] [ expression [ 'deg' | 'rad' | 'grad' | 'turn
 dimension = number [ unit ]
 ```
 
-`@nth`, `@row` and `@col` take one or more `an-plus-b` expressions and
-match a cell that satisfies any. `direction` is used by `@shape`,
-gradients and `@arc`; its angle is an arithmetic expression, so
-`30 + 15` reads as `45` degrees.
+`@nth`, `@row` and `@col` take one or more `an-plus-b` and match a cell
+that satisfies any. `direction` is used by `@shape`, gradients and
+`@arc`; its angle is an arithmetic expression, so `30 + 15` is `45`
+degrees.
 
 ## 11. Error recovery
 
@@ -748,22 +651,21 @@ once per component.
   arguments before the last top-level `,`; an unclosed raw body
   (`@doodle`, `@shaders`, `@pattern`) runs there too, unreported.
   `@keyframes` without a name produces nothing. A function that calls
-  itself, directly or through another, is reported and the call
-  expands to nothing.
-- **Generating.** `@use` cycles skip the variable (§2), and an
-  undefined `$name` skips its `@shaders` or `@pattern`. Unknown
-  functions emit as `@name`. Invalid cell selector modifiers match
-  nothing. Bad `@svg` `viewBox` counts drop the attribute, inline
-  `defs` with other than one element becomes empty, a bad `draw:`
-  drops the declaration, a missing animation duration drops `dur`,
-  invalid timing words are dropped, and a `|` group on other than `g`
-  or by an unknown name leaves the element as it is.
+  itself, even through another, is reported and expands to nothing, and a braceless body
+  followed by a statement that reads its parameters warns
+  `--f() needs {}`.
+- **Generating.** `@use` cycles skip the variable, and an undefined
+  `$name` skips its `@shaders` or `@pattern`. Unknown functions emit as
+  `@name`. Invalid cell selector modifiers match nothing. In `@svg`, a
+  bad `viewBox` count drops the attribute, inline `defs` with other than
+  one element becomes empty, a bad `draw:` drops the declaration, a
+  missing animation duration drops `dur`, and invalid timing words are
+  dropped.
 - **Drawing patterns.** Invalid or over-limit `repeat` blocks are
   skipped. Undeclared or reserved names are reported, and so are
   statements without a colon and what an expression cannot place:
   values side by side, `?:`, a trailing operator. An undeclared name
-  reads 0, in `@scene` too. Arms without a test,
-  declarations between arms and arms after `else` are skipped.
-  `ramp()`, `shape()` and GLSL derivatives inside a `match` block or a
-  `repeat` with stops are reported, since GLSL leaves them undefined
-  where only some pixels run the code.
+  reads 0, in `@scene` too. Arms without a test, declarations between
+  arms and arms after `else` are skipped. `ramp()`, `shape()` and GLSL
+  derivatives inside a `match` block or a `repeat` with stops are
+  reported.
