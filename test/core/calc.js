@@ -525,6 +525,9 @@ test('a % glued to a number is a percent sign unless an operand follows', () => 
     assert.equal(calc('7%x', { x: 3 }), 1);
     assert.equal(calc('7 % -3'), 1);
     assert.equal(calc('x% 3', { x: 7 }), 1);
+    assert.equal(calc('7%not_done', { not_done: 3 }), 1);
+    assert.equal(calc('7% not_done', { not_done: 3 }), 1);
+    assert.equal(calc('7%_x', { _x: 3 }), 1);
 });
 
 test('deref: a lone variable name acts as a generation-time var()', () => {

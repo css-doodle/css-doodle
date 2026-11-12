@@ -200,6 +200,17 @@ function pushValue(tokens, value, spaced) {
     tokens.push(tk(VALUE, value));
 }
 
+function readName(raw, i) {
+    let { value: name, index } = raw[i];
+    for (let t; (t = raw[i + 1]) && t.index === index + name.length; i++) {
+        let last = raw[i];
+        if (!(t.value === '_' || last.value === '_' && t.type === 'Word'
+                || last.type !== 'Number' && t.type === 'Number')) break;
+        name += t.value;
+    }
+    return [name, i];
+}
+
 function transformTokens(input, spans, lists) {
     const raw = [];
     let end = 0, spaced = false;
@@ -255,13 +266,8 @@ function transformTokens(input, spans, lists) {
                 i = j;
                 continue;
             }
-            let name = value;
-            for (let t; (t = raw[i + 1]) && t.index === index + name.length; i++) {
-                let last = raw[i];
-                if (!(t.value === '_' || last.value === '_' && t.type === 'Word'
-                        || last.type !== 'Number' && t.type === 'Number')) break;
-                name += t.value;
-            }
+            let name;
+            [name, i] = readName(raw, i);
             if (isOperator(name)) {
                 tokens.push(op(name));
                 continue;
@@ -278,7 +284,7 @@ function transformTokens(input, spans, lists) {
 
         if (value === '%' && !spaced && raw[i - 1]?.type === 'Number'
                 && !(next && (next.type === 'Number' ? next.value[0] !== '-'
-                    : next.type === 'Word' ? !isOperator(next.value)
+                    : next.type === 'Word' || next.value === '_' ? !isOperator(readName(raw, i + 1)[0])
                     : next.value === '(' || next.value === 'π'))) {
             continue;
         }
