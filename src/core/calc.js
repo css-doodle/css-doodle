@@ -366,6 +366,7 @@ function toPostfix(tokens) {
                     pop();
                 }
                 opStack.pop();
+                if (expr.length) expr.at(-1).group = true;
             } else if (PREFIX.has(value)) {
                 opStack.push(value);
             } else {
@@ -566,7 +567,7 @@ function compileFunction(node) {
     };
 }
 
-function compare(ops, terms) {
+function compare(ops, terms, group) {
     const fn = (ctx, history) => {
         let a = terms[0](ctx, history), out = 1;
         for (let k = 0; k < ops.length; k++) {
@@ -578,7 +579,7 @@ function compare(ops, terms) {
         }
         return out;
     };
-    fn.chain = [ops, terms];
+    if (!group) fn.chain = [ops, terms];
     return fn;
 }
 
@@ -615,7 +616,7 @@ function compile(expr) {
             if (RELATIONAL.has(value)) {
                 // a < b < c reads as a < b && b < c
                 const [ops, terms] = l.chain || [[], [l]];
-                stack.push(compare([...ops, value], [...terms, r]));
+                stack.push(compare([...ops, value], [...terms, r], node.group));
             } else if (value === '&&') {
                 stack.push((ctx, history) => {
                     const a = l(ctx, history);

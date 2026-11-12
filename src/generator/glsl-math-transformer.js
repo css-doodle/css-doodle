@@ -147,6 +147,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             n = { type: 'Lit', val: t.value };
         } else if (t.value === '(') {
             n = parse();
+            if (n?.type === 'Bin') n.group = true;
             stray(')');
             consume();
         } else if (PREFIX[t.value]) {
@@ -293,7 +294,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         const op = n.val;
 
         // a < b < c reads as a < b && b < c
-        if (RELATIONAL_OPS.has(op) && n.left.type === 'Bin' && RELATIONAL_OPS.has(n.left.val)) {
+        if (RELATIONAL_OPS.has(op) && n.left.type === 'Bin' && !n.left.group && RELATIONAL_OPS.has(n.left.val)) {
             const second = { type: 'Bin', val: op, left: n.left.right, right: n.right };
             return cast(`(${gen(n.left, 'bool')} && ${gen(second, 'bool')})`, 'bool', exp);
         }

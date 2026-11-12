@@ -63,10 +63,11 @@ const BINARY = [
 const RIGHT = [true, true];
 const SIGN = 8, PRODUCT = 9, POWER = 10, NOT = 11, ATOM = 12;
 const CANON = { '≤': '<=', '≥': '>=', '=': '==', '≠': '!=', '**': '^' };
+const RELATIONAL = ['<', '>', '<=', '>=', '≤', '≥'];
 const CONTEXT = { x: 3, y: 5, i: 2, X: 8 };
 
 // `min` has the fewest parentheses, `full` one around every operand
-const node = (p, min, full) => ({ p, min, full });
+const node = (p, min, full, op) => ({ p, min, full, op });
 const operand = (e, p) => e.p < p ? `(${e.min})` : e.min;
 
 function expression(depth = 3) {
@@ -76,7 +77,9 @@ function expression(depth = 3) {
         case 'binary': {
             let level = Math.floor(random() * BINARY.length), op = pick(BINARY[level]);
             let [l, r] = RIGHT[level] ? [level + 1, level] : [level, level + 1];
-            return node(level, `${operand(a, l)} ${op} ${operand(b, r)}`, `(${a.full}) ${CANON[op] || op} (${b.full})`);
+            // a < b < c is a chain, (a < b) < c is not
+            if (RELATIONAL.includes(op) && RELATIONAL.includes(a.op)) l++;
+            return node(level, `${operand(a, l)} ${op} ${operand(b, r)}`, `(${a.full}) ${CANON[op] || op} (${b.full})`, op);
         }
         case 'sign': {
             // a sign before a sign is wrapped, `--x` reads a custom property

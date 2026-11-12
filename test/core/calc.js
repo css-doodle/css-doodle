@@ -196,6 +196,9 @@ test('a < b < c reads as a < b && b < c, as in @pattern', () => {
     assert.equal(calc('3 > 2 > 1'), 1);
     assert.equal(calc('1 < 2 <= 2 < 3'), 1);
     assert.equal(calc('1 < 2 == 1'), 1);
+    // a group ends the chain
+    assert.equal(calc('(5 > 3) < 2'), 1);
+    assert.equal(calc('5 > (3) < 2'), 0);
     assert.equal(calc('0 < var(--a) < 1', {}, 1), 'calc(max(0,sign(var(--a) - 0)) * max(0,sign(1 - var(--a))))');
 });
 

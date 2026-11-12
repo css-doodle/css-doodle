@@ -233,6 +233,7 @@ test('chained comparisons desugar to &&', () => {
     assert.equal(transform('a < b < c < d'), '(((a < b) && (b < c)) && (c < d))');
     assert.equal(transform('x > y > 0', { expect: 'bool' }), '((x > y) && (y > 0.0))');
     assert.equal(transform('1 < x < 5', { expect: 'float' }), 'float(((1.0 < x) && (x < 5.0)))');
+    assert.equal(transform('(x > y) < 2'), '(float((x > y)) < 2.0)');
 });
 
 test('a value is cast only when its type differs from the expected one', () => {

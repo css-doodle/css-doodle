@@ -375,7 +375,8 @@ name       = letter or '_', then letters, digits or '_'
 
 - **Everything is a number.** Units drop: with `--w: 10px`, `$(w * 2)`
   is `20`. `&&` and `||` return the deciding operand; `%` takes the
-  sign of the left operand; `0 < x < 1` is `0 < x && x < 1`. Right
+  sign of the left operand; `0 < x < 1` is `0 < x && x < 1`, and
+  parentheses end the chain: `(5 > 3) < 2` is `1`. Right
   after a number `%` is a percent sign, dropped unless an unsigned
   number, a name or `(` follows: `25% > 10` is `1`, so `@tile.y > 50`
   works; `25%-5` is `20`; `7%3` is `1`.
