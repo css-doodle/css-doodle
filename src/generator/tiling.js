@@ -398,9 +398,9 @@ function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
     let keep = pieces => pieces.filter(dots ? clear : reacher(box, inside, grow, derived));
     let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half, grow));
     let hi = sqrt(space / count), fit = (size, hi, lo) => {
-        let start = hi;
-        for (let i = 0; i < 30 && size(hi).length > count; ++i) hi *= 1.25;
-        if (size(hi).length > count) hi = start;
+        let start = hi, got = size(hi).length;
+        for (let i = 0; i < 30 && got > count; ++i) got = size(hi *= 1.25).length;
+        if (got > count) hi = start;
         lo ??= hi / 8;
         for (let i = 0; i < 20; ++i) {
             let mid = (lo + hi) / 2;
