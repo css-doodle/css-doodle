@@ -20,7 +20,7 @@ import { defaultContext } from '../core/calc.js';
 
 const PI = String(Math.PI);
 const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
-const RE_PICK = /^@(p|pick)$/;
+const RE_KEYED = /^@(p|pick|r|ri|rand|random)$/;
 const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
 const RE_NAME = new RegExp(`^${NAME_CHAR}*`);
 const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?((?:[.#][\w-]+|\[[^\]]*\]|:(?!before\b|after\b|first-l)[\w-]+(?:\((?:[^()]|\([^()]*\))*\))?)+)(?=$|[\s>+~,]|::|:(?:before|after|first-l))/;
@@ -312,7 +312,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
                 let svg = /^@svg$/i.test(name), raw = name === '@raw';
-                let closed = parseArguments(cur, shaped || readsShape(name), svg || raw, RE_PICK.test(name));
+                let closed = parseArguments(cur, shaped || readsShape(name), svg || raw, RE_KEYED.test(name));
                 func.arguments = closed.args;
                 if (raw) closed.args.forEach(arg => arg.cluster = true);
                 if (closed.at) func.at = true;

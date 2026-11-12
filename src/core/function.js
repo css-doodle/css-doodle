@@ -451,11 +451,19 @@ const whole = rand => (a = 1, b = 0) => {
 };
 
 function createRand(integer) {
-    return (_, { context, rand }) => (...args) => {
+    let fn = (_, { context, rand }) => (...args) => {
         let letters = args.length && args.every(isLetter);
         let draw = letters || integer ? whole(rand) : rand;
         return pushStack(context, 'lastRand', (letters ? byCharcode : byUnit)(draw)(...args));
     };
+    fn.at = (cell, env) => (vars, k, ...range) => {
+        k = calc(k, vars());
+        if (!Number.isFinite(k)) return '';
+        let t = defaultContext.random(k);
+        return fn(cell, { ...env, rand: (a = 1, b) => b === undefined ? lerp(t, 0, a) : lerp(t, a, b) })(...range);
+    };
+    fn.at.vars = true;
+    return fn;
 }
 
 Function.r = createRand();
@@ -909,6 +917,7 @@ Function.udy = ({ y, grid, center }) => calcWith(`calc(${center ? tidyNumber(cen
 export const MathFunc = Object.create(null);
 
 for (let name of Object.getOwnPropertyNames(Math)) {
+    if (name === 'random') continue;
     let member = defaultContext[name];
     MathFunc[name] = (typeof member === 'number')
         ? () => () => tidyNumber(member)
@@ -923,6 +932,7 @@ export const alias = {
     'row': 'y',
     'depth': 'z',
     'rand': 'r',
+    'random': 'r',
     'pick': 'p',
     'rn': 'R',
 

@@ -26,6 +26,33 @@ function assertContains(code, ...fragments) {
 
 // --- @pick(k: …) ---
 
+test('@r(k: a, b) is the draw key k gets: it holds wherever it is asked, and k + 1 reads the next key', () => {
+    let values = (code, grid = '3x1', seed = 1) => [...cells(code, grid, seed).matchAll(/--\w+:([^;]+);/g)].map(m => m[1]);
+    // the same in each property that asks, and what random(k) gives
+    let [a1, b1, a2, b2] = values('--a: @r(@i: 10, 50); --b: $(10 + 40 * random(i));');
+    assert.equal(a1, b1);
+    assert.equal(a2, b2);
+    assert.notEqual(a1, a2);
+    // k + 1 reads the next cell's, n and @n key a loop step
+    let next = values('--a: @r(@i: 5); --b: @r(@i + 1: 5);');
+    assert.equal(next[1], next[2]);
+    assert.equal(cells('--a: @m3(@r(@n: 100)); --b: @m3(@r(n: 100));', '1').match(/--a:([^;]+);/)[1], cells('--b: @m3(@r(n: 100));', '1').match(/--b:([^;]+);/)[1]);
+    // units, letters and the other spellings, and another seed draws another number
+    assert.match(cells('--a: @r(@i: 10px, 50px); --b: @r(@i: a, z);', '1'), /--a:[\d.]+px;\s*--b:[a-z];/);
+    let [r] = values('--a: @r(@i: 5);', '1');
+    assert.deepEqual(values('--a: @rand(@i: 5); --b: @random(@i: 5);', '1'), [r, r]);
+    assert.notEqual(cells('--a: @r(@i: 5);', '1', 1), cells('--a: @r(@i: 5);', '1', 2));
+    // @ri takes a key too: a die cast once per cell
+    let dice = values('--a: @ri(@i: 1, 6); --b: @ri(@i: 1, 6);', '3x1', 3);
+    assert.deepEqual(dice, ['3', '3', '1', '1', '6', '6']);
+    // a keyed draw takes nothing from the stream, so @r after it is unchanged
+    assert.equal(cells('--a: @r(10, 50); --b: @r(@i: 1); --c: @r(10, 50);').replace(/--b:[^;]+;\s*/g, ''), cells('--a: @r(10, 50); --c: @r(10, 50);'));
+});
+
+test('@random(a, b) as a value is @r, the selector @random(ratio) picks cells', () => {
+    assert.equal(cells('--a: @random(10, 50); --b: @random();', '3x1', 5), cells('--a: @r(10, 50); --b: @r();', '3x1', 5));
+});
+
 test('@pick(k: …) takes item k from 1 in each cell, wrapping, and $() and @match read pick(k: …)', () => {
     let sheet = cells(`--c: @pick(@i: red, #00f, tan); --k: @i; --w: $(pick(k: 10, 20, 30));
         @match(i > 3) { --m: @p(i: a, b); }`, '1x4');

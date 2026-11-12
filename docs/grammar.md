@@ -320,6 +320,15 @@ quotes does not split. Whitespace belongs to the argument, so
   function's list counts as one item. A lone item, as in
   `@pick(@i: @palette(5))`, or a list with `...` is composed whole and
   picked from as `@pn` does. A quoted colon is text.
+- In `@r` and `@ri`, a top-level `:` in the first argument ends a key:
+  `@r(k: a, b)` is the draw that key `k`, an expression (§8), gets,
+  over the range `@r(a, b)` would draw from. Unlike the index of
+  `@pick`, a key does not count: the same `k` gives the same draw, and
+  the next `k` another one. It holds wherever it is asked and takes
+  nothing from the seed's stream, so `@r(@i: 10, 50)` is one number
+  per cell that every property reads alike, `@r(@i + 1: 10, 50)` is
+  the next cell's, `@ri(@i: 1, 6)` casts one die per cell, and
+  `@r(@n: 1)` gives one number per step of `@m`.
 
 `@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes; `@scene` runs its `@` functions
@@ -337,8 +346,8 @@ too, with its functions run.
 ## 8. Expressions
 
 One language serves `$(…)`, `@match(…)` (function and cell selector),
-the index of `@pick(k: …)`, `@cell(…)`, `@random(ratio)` and the
-`@shape` commands. `@pattern` and `@scene` use a GLSL-oriented one
+the index of `@pick(k: …)`, the key of `@r(k: …)`, `@cell(…)`,
+`@random(ratio)` and the `@shape` commands. `@pattern` and `@scene` use a GLSL-oriented one
 (§9.3).
 
 ```
@@ -394,12 +403,13 @@ name       = letter or '_', then letters, digits or '_'
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
   item `k`: `pick(4: a, b, c)` is `a`. Without the index it reads as
   `0`.
-- **`random()`** is the next draw in `[0, 1)` from the doodle's seed.
-  With arguments, `random(a, b, …)` is the draw those arguments get:
-  the same wherever it is asked, in `$(…)`, `@match` or a shape body,
-  and another under another seed. So a copy reads its neighbour's
-  draw as `random(n + 1)`, and `random(n)` and `random(n, 2)` are two
-  draws of one copy.
+- **`random()`** is a number in `[0, 1)` from the doodle's seed, drawn
+  each time the formula runs: at every point of a shape, along every
+  edge in `edge` and `slide` (§9.2). For a random value anywhere else,
+  write `@r`, which runs first: `$(@r() * 2)`, or `@r(k: …)` (§7) for
+  one that holds. In a selector, `random()` is the draw `@random`
+  makes, so `@match(random() < .3)` picks the cells `@random(.3)`
+  does.
 - **Calls chain** right to left: `tan.cos.sin(x)` is
   `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the
   value after the first test that holds, else the last odd argument
