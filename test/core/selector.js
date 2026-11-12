@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import selector from '../../src/core/selector.js';
 import seedrandom from '../../src/lib/seedrandom.js';
+import { cellVariables } from '../../src/lib/cell.js';
 
 // a cell at (x, y) with 1-based index `count` in a 4x4 grid
 const cell = (x, y, count) => ({ x, y, count, grid: { count: 16, x: 4, y: 4 } });
@@ -75,13 +76,14 @@ test('z matches the depth and depth is its alias', () => {
     assert.equal(selector.z(a)('odd'), true);
     assert.equal(selector.z(a)('2n'), false);
     assert.equal(selector.depth, selector.z);
-    // z and Z are in scope for expression selectors
-    assert.equal(selector.match(a, env)({}, 'z == 3'), true);
-    assert.equal(selector.match(a, env)({}, 'z == Z - 1'), true);
+    // z and Z are among the cell variables the generator passes
+    assert.equal(selector.match(a, env)(() => cellVariables(a), 'z == 3'), true);
+    assert.equal(selector.match(a, env)(() => cellVariables(a), 'z == Z - 1'), true);
 });
 
 test('match evaluates an expression over the cell variables', () => {
-    let match = expr => selector.match(cell(2, 3, 10), env)({}, expr);
+    let c = cell(2, 3, 10);
+    let match = expr => selector.match(c, env)(() => cellVariables(c), expr);
     assert.equal(match('x = 2'), true);
     assert.equal(match('y = 3'), true);
     assert.equal(match('x = 2 && y = 3'), true);
@@ -101,7 +103,8 @@ test('nth, row, col and depth warn about an expression that is not an+b', () => 
 });
 
 test('cell accepts comma lists, keywords and index checks', () => {
-    let match = (...args) => selector.cell(cell(2, 3, 10), env, 0)({}, ...args);
+    let c = cell(2, 3, 10);
+    let match = (...args) => selector.cell(c, env, 0)(() => cellVariables(c), ...args);
     assert.equal(match('x = 2, y = 3'), true);
     assert.equal(match('x = 2 && y = 3'), true);
     assert.equal(match('even'), true);
@@ -114,13 +117,13 @@ test('cell accepts comma lists, keywords and index checks', () => {
 test('cell(even) and cell(odd) follow the checkerboard, not the index', () => {
     // (1, 2) is the 5th cell of a 4-column grid: odd by index, even on the board
     let a = cell(1, 2, 5);
-    assert.equal(selector.cell(a, env, 0)({}, 'even'), true);
-    assert.equal(selector.cell(a, env, 0)({}, 'odd'), false);
+    assert.equal(selector.cell(a, env, 0)(() => ({}), 'even'), true);
+    assert.equal(selector.cell(a, env, 0)(() => ({}), 'odd'), false);
     assert.equal(selector.nth(a)('even'), false);
 });
 
 test('random(n) picks exactly n distinct cells from n = 1, below 1 it is a chance per cell', () => {
-    let random = n => picked((c, env) => selector.random(c, env, 0)({}, n));
+    let random = n => picked((c, env) => selector.random(c, env, 0)(() => ({}), n));
     for (let n of [1, 3, 15, 16]) assert.equal(random(n).length, n);
     assert.equal(random(40).length, 16);
     assert.equal(random(0).length, 0);
@@ -128,28 +131,28 @@ test('random(n) picks exactly n distinct cells from n = 1, below 1 it is a chanc
     let half = random(.5).length;
     assert.ok(half > 3 && half < 13, half);
     // the seed decides which cells
-    let sets = ['a', 'b', 'c', 'd'].map(seed => picked((c, env) => selector.random(c, env, 0)({}, 3), seed).join());
+    let sets = ['a', 'b', 'c', 'd'].map(seed => picked((c, env) => selector.random(c, env, 0)(() => ({}), 3), seed).join());
     assert.ok(new Set(sets).size > 1, sets);
 });
 
 test('cell(random n) picks n cells', () => {
-    assert.equal(picked((c, env) => selector.cell(c, env, 0)({}, 'random 3')).length, 3);
+    assert.equal(picked((c, env) => selector.cell(c, env, 0)(() => ({}), 'random 3')).length, 3);
 });
 
 test('random() in a selector expression draws from the stream of the pass', () => {
     // 2 is out of reach of Math.random: only the pass stream gives it
     let env = { random: () => 2, context: {} };
     let a = cell(2, 3, 10);
-    assert.equal(selector.match(a, env)({}, 'random() > 1'), true);
-    assert.equal(selector.cell(a, env, 0)({}, 'random() > 1'), true);
-    assert.equal(selector.random(a, env, 0)({}, 'random() * 8'), true);
+    assert.equal(selector.match(a, env)(() => ({}), 'random() > 1'), true);
+    assert.equal(selector.cell(a, env, 0)(() => ({}), 'random() > 1'), true);
+    assert.equal(selector.random(a, env, 0)(() => ({}), 'random() * 8'), true);
 });
 
 test('each random argument of cell picks its own cells', () => {
     let env = { random: Math.random, context: {} };
     let picked = 0;
     for (let i = 1; i <= 16; ++i) {
-        if (selector.cell(cell((i - 1) % 4 + 1, Math.ceil(i / 4), i), env, 0)({}, 'random 1', 'random 12')) picked++;
+        if (selector.cell(cell((i - 1) % 4 + 1, Math.ceil(i / 4), i), env, 0)(() => ({}), 'random 1', 'random 12')) picked++;
     }
     assert.ok(picked >= 12, picked);
 });

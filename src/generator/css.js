@@ -1,7 +1,7 @@
 import Func, { MathFunc, SEQ, pickAt, pickAtList } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
-import Selector, { calcContext } from '../core/selector.js';
+import Selector from '../core/selector.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { NAME_CHAR } from '../parser/tokenizer.js';
 
@@ -10,7 +10,7 @@ import seedrandom from '../lib/seedrandom.js';
 import { timePrefix, timeKeyframes, timeProperties } from '../core/uniforms.js';
 import gridStyleRules from './grid-style.js';
 
-import { cellId, isTreeGrid } from '../lib/cell.js';
+import { cellId, isTreeGrid, cellVariables } from '../lib/cell.js';
 import { placeholder, hasPlaceholder, placeholderId, RE_PLACEHOLDER } from '../lib/placeholder.js';
 import { tidyNumber } from '../lib/math.js';
 import { isNil, getValue, removeQuotes, removeParens, hasEntries } from '../lib/type.js';
@@ -318,7 +318,7 @@ function cellVar(name, get) {
     });
 }
 for (let name of 'x y z X Y Z i I dx dy dr dc dm da db'.split(' ')) {
-    cellVar(name, function () { return (this[CELL_REF].vars ??= calcContext(this[CELL_REF], {}))[name]; });
+    cellVar(name, function () { return (this[CELL_REF].vars ??= cellVariables(this[CELL_REF]))[name]; });
 }
 for (let [name, index] of Object.entries(SEQ_INDEX)) {
     cellVar(name, function () { return this[EXTRA_REF].at(-1)?.[index]; });
@@ -526,6 +526,18 @@ class Rules {
         return context;
     }
 
+    condContext(cell, contextVariable, extra) {
+        let context = Object.assign(this.calcContext(cell, contextVariable), cell.vars ??= cellVariables(cell));
+        let e = extra.at(-1);
+        if (e?.length) {
+            context.n = e[SEQ.n];
+            context.nx = e[SEQ.x];
+            context.ny = e[SEQ.y];
+            context.N = e[SEQ.max];
+        }
+        return context;
+    }
+
     frameContext(frame) {
         let { cell, contextVariable, byRef, env } = frame, shared = this.shared;
         if (!frame.calcContext) {
@@ -554,7 +566,7 @@ class Rules {
                 return withUnit(_fn(input, context), unit);
             }
             if (fn.vars) {
-                return _fn(this.calcContext(cell, contextVariable), ...input);
+                return _fn(() => this.condContext(cell, contextVariable, env.extra), ...input);
             }
             return _fn(...input);
         }

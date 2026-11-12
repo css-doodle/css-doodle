@@ -15,12 +15,11 @@ import seedrandom from '../lib/seedrandom.js';
 import calc, { defaultContext, binary, withUnit, pickIndex } from './calc.js';
 import { memo } from '../lib/cache.js';
 
-import { calcContext } from './selector.js';
 import { utime, UTime, umousex, umousey, uwidth, uheight } from './uniforms.js';
 
 import { createSvgUrl, normalizeSvg } from '../lib/svg.js';
 import { sequence, expand, carry, byUnit, byCharcode, getNamedArguments, MAX_SEQUENCE } from './arguments.js';
-import { cellMetrics } from '../lib/cell.js';
+import { cellVariables } from '../lib/cell.js';
 import { isLetter, isNil, isEmpty, getValue } from '../lib/type.js';
 import { addAlias, lazy } from '../lib/fn.js';
 import { placeholderId } from '../lib/placeholder.js';
@@ -500,29 +499,18 @@ Function.R.t = createNoise(true);
 
 Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
 
-function sequenceContext(cell, e, vars) {
-    let variables = calcContext(cell, vars);
-    if (e.length) {
-        variables.n = e[SEQ.n];
-        variables.nx = e[SEQ.x];
-        variables.ny = e[SEQ.y];
-        variables.N = e[SEQ.max];
-    }
-    return variables;
-}
-
 Function.match = lazy((cell, { extra }, position, vars, ...args) => {
     if (args.length <= 1) {
         return '';
     }
     let e = extra.at(-1) || [];
-    let variables = sequenceContext(cell, e, vars);
+    vars = vars();
     let value = i => getValue(args[i](...e));
     for (let i = 0; i < args.length; i += 2) {
         if (i + 1 === args.length) {
             return value(i);
         }
-        if (calc(value(i), variables)) {
+        if (calc(value(i), vars)) {
             return value(i + 1);
         }
     }
@@ -533,12 +521,13 @@ export const pickAt = lazy((cell, { context, extra }, position, vars, ...args) =
         return '';
     }
     let e = extra.at(-1) || [];
-    let k = calc(getValue(args[0](...e)), sequenceContext(cell, e, vars));
+    vars = vars();
+    let k = calc(getValue(args[0](...e)), vars);
     return Number.isFinite(k) ? pushStack(context, 'lastPick', getValue(args[1 + pickIndex(k, args.length - 1)](...e))) : '';
 });
 
-export const pickAtList = (cell, { context, extra }) => (vars, k, ...items) => {
-    k = calc(k, sequenceContext(cell, extra.at(-1) || [], vars));
+export const pickAtList = (cell, { context }) => (vars, k, ...items) => {
+    k = calc(k, vars());
     return Number.isFinite(k) && items.length ? expand(list => pushStack(context, 'lastPick',
         pickN(list, pickIndex(k, list.length), list.length, Math.max(Math.round(k) - 1, 0))))(...items) : '';
 };
@@ -892,7 +881,7 @@ for (let [k, v] of [['i', 'count'], ['x', 'x'], ['y', 'y'], ['z', 'z']]) {
 }
 
 for (let name of ['dx', 'dy', 'dr', 'dc', 'dm', 'da', 'db']) {
-    Function[name] = ({ x, y, grid }) => calcWith(cellMetrics(x, y, grid)[name]);
+    Function[name] = cell => calcWith(cellVariables(cell)[name]);
 }
 
 for (let [name, u] of Object.entries({ t: utime, T: UTime, uw: uwidth, uh: uheight, ux: umousex, uy: umousey })) {

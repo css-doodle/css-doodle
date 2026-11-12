@@ -1,7 +1,6 @@
 import calc, { randomOf } from './calc.js';
 import parseLinearExpr from '../parser/parse-linear-expr.js';
 import { addAlias } from '../lib/fn.js';
-import { cellMetrics } from '../lib/cell.js';
 
 function odd(n) {
     return n % 2 !== 0;
@@ -31,16 +30,10 @@ function matchAny(value, exprs, env) {
     });
 }
 
-// writes the cell variables into a context made by Rules.calcContext
-export function calcContext({ x, y, z, count, grid }, context, random) {
-    Object.assign(context,
-        { x, y, z, X: grid.x, Y: grid.y, Z: grid.z, i: count, I: grid.count },
-        cellMetrics(x, y, grid)
-    );
-    if (random) {
-        context.random = randomOf(random);
-    }
-    return context;
+function drawing(vars, random) {
+    vars = vars();
+    vars.random = randomOf(random);
+    return vars;
 }
 
 function randomCell({ count, grid }, { context, random }, position, n) {
@@ -89,14 +82,14 @@ Selector.odd = ({ x, y }) => _ => even(x + y);
 Selector.random = (cell, env, position) => (vars, ratio = .5) => {
     let n = Number(ratio);
     if (Number.isNaN(n)) {
-        n = calc(ratio, calcContext(cell, vars, env.random));
+        n = calc(ratio, drawing(vars, env.random));
     }
     if (n >= cell.grid.count) return true;
     if (n <= 0) return false;
     return randomCell(cell, env, position, n);
 };
 
-Selector.match = (cell, { random }) => (vars, expr) => !!calc(expr, calcContext(cell, vars, random));
+Selector.match = (cell, { random }) => (vars, expr) => !!calc(expr, drawing(vars, random));
 
 // @cell(…): an argument is an an+b rule on the index, even/odd on the
 // checkerboard, `random [n]`, or an expression; any one matching
@@ -119,7 +112,7 @@ Selector.cell = (cell, env, position) => (vars, ...args) => {
                 return randomCell(cell, env, position + ':' + i, n);
             }
         }
-        return !!calc(arg, calcContext(cell, vars, env.random));
+        return !!calc(arg, drawing(vars, env.random));
     }).some(Boolean);
 };
 

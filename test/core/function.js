@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import Function, { pickAt, SEQ } from '../../src/core/function.js';
 import createRandom from '../../src/core/random.js';
+import { cellVariables } from '../../src/lib/cell.js';
 
 test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     const arc = Function.arc();
@@ -167,7 +168,8 @@ test('@match selects the first matching value', () => {
     let cell = { x: 2, y: 1, z: 1, count: 2, grid: { x: 3, y: 1, z: 1, count: 3 } };
     let read = [];
     let args = (...values) => values.map(v => () => (read.push(v), v));
-    let match = (...values) => Function.match(cell, { extra: [] })({}, ...args(...values));
+    // the generator passes the cell variables, as css.js condContext() does
+    let match = (...values) => Function.match(cell, { extra: [] })(() => cellVariables(cell), ...args(...values));
     assert.equal(match('x < 2', 'a', 'x == 2', 'b', 'c'), 'b');
     assert.deepEqual(read, ['x < 2', 'x == 2', 'b']);
     assert.equal(match('x > 2', 'a', 'fallback'), 'fallback');
@@ -178,7 +180,7 @@ test('@pick(k: …) takes item k from 1 as written, wrapping, composes only that
     let read = [];
     let context = {};
     let args = (...values) => values.map(v => () => (read.push(v), v));
-    let pick = (...values) => pickAt(cell, { extra: [], context })({}, ...args(...values));
+    let pick = (...values) => pickAt(cell, { extra: [], context })(() => cellVariables(cell), ...args(...values));
     assert.equal(pick('x', 'red', '#00f', 'tan'), '#00f');
     assert.deepEqual(read, ['x', '#00f']);
     assert.equal(Function.lp(cell, { context })(), '#00f');
