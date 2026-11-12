@@ -181,7 +181,6 @@ function createPlot(unit, kind, pieces) {
                 rules.scatter = clamp(count > 0 && (!pieces || count < points) ? count : points, 1, MAX_SCATTER);
                 rules.count = max;
             } else {
-                delete rules['fill'];
                 delete rules['fill-rule'];
                 delete rules['round'];
                 delete rules['grow'];

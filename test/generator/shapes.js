@@ -98,8 +98,8 @@ test('point coordinates are tidied', () => {
 test('the fill rule leads the points', () => {
     let { points } = generateShape('split: 3; fill-rule: evenodd');
     assert.equal(String(points).split(',')[0], 'evenodd');
-    // the old spelling still reads
-    assert.equal(String(generateShape('split: 3; fill: evenodd').points), String(points));
+    // fill is a paint, as in @scene and @svg-polygon, not the rule
+    assert.notEqual(String(generateShape('split: 3; fill: evenodd').points), String(points));
 });
 
 test('direction angles are tidy and ignore move', () => {
@@ -687,7 +687,7 @@ test('path: SVG path data as the outline, fitted to the box, y up', () => {
     assert.deepEqual(rings('path: M0 0 Q5 10 10 0 T20 0 L20 -20 L0 -20 Z'), rings('path: M0 0 Q5 10 10 0 Q15 -10 20 0 L20 -20 L0 -20 Z'));
     assert.deepEqual(rings('path: M0 0 C0 10 10 10 10 0 Z S5 -5 0 -10 L-5 -5 Z'), rings('path: M0 0 C0 10 10 10 10 0 Z M0 0 S5 -5 0 -10 L-5 -5 Z'));
     let star = 'path: M50 0 L79 90 L2 35 H98 L21 90 Z';
-    assert.notEqual(generateShape(star).clip, generateShape(star + '; fill: evenodd').clip);
+    assert.notEqual(generateShape(star).clip, generateShape(star + '; fill-rule: evenodd').clip);
     assert.equal(generateShape('path: hello').clip, 'polygon(50% 50%)');
     assert.equal(generateShape('path: M0 0 L10 0').clip, 'polygon(50% 50%)');
     // drawn up to the first error, as in SVG

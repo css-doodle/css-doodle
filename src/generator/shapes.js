@@ -161,7 +161,7 @@ function createPointFunction(props, split) {
     return point;
 }
 
-const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill fill-rule unit smooth blocks steps text font path'.split(' '));
+const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill-rule unit smooth blocks steps text font path'.split(' '));
 
 // each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
@@ -227,7 +227,7 @@ function createShapePoints(props, lo, hi, raw) {
 
     let num = (k, d = 0) => isEmpty(props[k]) ? d : evaluate(props[k], props) || d;
     let turn = num('turn', 1);
-    let fill = props['fill-rule'] ?? props.fill;
+    let fill = props['fill-rule'];
     let evenodd = fill == 'evenodd';
     let dir = props.direction || props.dir || '';
     let direction = parseDirection(dir);
