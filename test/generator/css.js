@@ -137,6 +137,12 @@ test('@shape and @tile in @svg give plain numbers where the box is 2 across, y d
     assert.equal(svgImage('background: @svg(path { d: @tile.voronoi(union { circle { r: .2; move: -.5 0 } circle { r: .2; move: .5 0 } } bound: shape; gap: 0) })').match(/M/g).length, 2);
     assert.equal(svgImage('background: @svg(path { d: @shape(scatter: 10) })'), '<svg><path d=""/></svg>');
     assert.equal(svgImage('background: @svg(polygon { points: MZ })'), '<svg><polygon points=""/></svg>');
+    // the pieces go to the copies, so the cells are not stacked in the middle as @tile does
+    assert.doesNotMatch(css('background: @svg(path*6 { d: @tile.voronoi(points: 6) })', '3x1'), /place-self/);
+    // and @tile.x out of the svg reads the cell's own piece
+    let own = cells('clip-path: @tile.voronoi(points: 3); --x: @tile.x;', '3x1').match(/--x:[^;]*/g);
+    assert.deepEqual(cells('clip-path: @tile.voronoi(points: 3); background: @svg(path*6 { d: @tile.voronoi(points: 6) }); --x: @tile.x;', '3x1').match(/--x:[^;]*/g), own);
+    assert.match(cells('background: @svg(path { d: @tile.voronoi(points: 6) }); --x: @tile.x;'), /--x:;/);
     // outside @svg nothing changes
     assert.match(css('clip-path: @shape(star);'), /clip-path:polygon\(97\.5528258148% 34\.5491502813%/);
 });

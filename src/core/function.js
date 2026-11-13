@@ -804,11 +804,12 @@ Function.reverse = () => (...args) => {
     return [head, ...list.reverse(), tail].filter(Boolean).join(' ');
 };
 
-Function.svg = lazy((_, env, position, ...args) => {
-    let outer = env.svg;
+Function.svg = lazy((cell, env, position, ...args) => {
+    let outer = env.svg, tile = cellTiles.get(cell);
     env.svg = true;
     let value = args.map(input => getValue(input())).join(',');
     env.svg = outer;
+    tile ? cellTiles.set(cell, tile) : cellTiles.delete(cell);
     let { url, warnings } = composeSvgUrl(value);
     for (let message of warnings) {
         env.rules.warn(message);
