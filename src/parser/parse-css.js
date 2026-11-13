@@ -1435,12 +1435,18 @@ function renameLocals(text, prefix) {
     return { text: out + text.slice(from), targets };
 }
 
+function inWord(tokens, i, end) {
+    let [a, b, c, d] = [tokens[i - 2], tokens[i - 1], tokens[end + 1], tokens[end + 2]];
+    return !!(b?.isSymbol('-') && a && adjacent(a, b) && adjacent(b, tokens[i]) && (a.isWord() || a.isSymbol('-'))
+        || c?.isSymbol('-') && d?.isWord() && adjacent(tokens[end], c) && adjacent(c, d));
+}
+
 function mathOpen(tokens, i, defs) {
     let j = i - 1;
     while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
     if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return false;
     let name = textOf(tokens.slice(j + 1, i));
-    if (tokens[j].isSymbol('$')) return !defs[name];
+    if (tokens[j].isSymbol('$')) return defs[name] ? 0 : true;
     if (!tokens[j].isSymbol('@') || name !== 'match') return false;
     let close = closing(tokens, i);
     return close > 0 && !!solidAt(tokens, close + 1)?.isSymbol('{');
@@ -1453,7 +1459,8 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.isSymbol('(')) {
-            parens.push(mathOpen(tokens, i, defs) || !!parens.at(-1));
+            let up = parens.at(-1), m = mathOpen(tokens, i, defs);
+            parens.push(m === true || up === true ? true : m === 0 || up === 0 ? 0 : false);
             continue;
         }
         if (t.isSymbol(')')) {
@@ -1492,6 +1499,8 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
             wrap ||= one;
         } else if (prev?.isSymbol('@') && adjacent(prev, t)) {
             continue;
+        } else if (!paint && parens.at(-1) === 0) {
+            if (call || solidAt(tokens, end + 1)?.isSymbol(':') || inWord(tokens, i, end)) continue;
         } else if (!wrap) {
             let lead = body.slice(head, t.index);
             if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead)

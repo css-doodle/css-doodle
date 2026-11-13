@@ -765,7 +765,23 @@ test('a user function parameter binds bare inside $() with a unit, and in the ca
         ast(`width: $px((5)) $4((5) + 1) $%((5)) rgb(x);`));
     assert.deepEqual(
         ast(`--g(c): [$c]; --f(c): $g(c) $g($c) $(c + $g(c)); width: $f(red);`),
-        ast(`width: [c] [red] $((red) + ([((red))]));`));
+        ast(`width: [red] [red] $((red) + ([((red))]));`));
+});
+
+test('a user function parameter binds bare in the arguments of a call, as $p does', () => {
+    assert.deepEqual(
+        ast(`--seg(k): $(k * 10)px; --row(k): width: $seg(k) $seg(k + 1) $seg(sin(k)); $row(3);`),
+        ast(`width: $((3) * 10)px $((3 + 1) * 10)px $((sin(3)) * 10)px;`));
+    // pasted as written, so a random argument is still drawn once
+    assert.deepEqual(
+        ast(`--seg(k): $(k)px $(k)px; --f(k): margin: $seg(k); $f(@r(5));`),
+        ast(`--seg(k): $(k)px $(k)px; --f(k): margin: $seg($k); $f(@r(5));`));
+    // not as a key, and out of the call it stays a word
+    assert.deepEqual(ast(`--g(a): [$a]; --f(r): $g(r: r) $g(n) r; width: $f(2);`), ast(`width: [r: 2] [n] r;`));
+    // nor inside a dashed word, but -k and k-1 are k
+    assert.deepEqual(
+        ast(`--g(a): [$a]; --f(k, in): $g(var(--k)) $g(font-k) $g(ease-in-out) $g(-k) $g(k-1); width: $f(2, 3);`),
+        ast(`width: [var(--k)] [font-k] [ease-in-out] [-2] [2-1];`));
 });
 
 test('a call inside $() reads its body as math, as one value', () => {

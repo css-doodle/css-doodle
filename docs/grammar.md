@@ -117,6 +117,10 @@ written, except:
   call reads as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is
   `8`. There a bare `inc(3)` calls it too, unless a built-in has the
   name.
+- In the arguments of a `$name()` call a bare `p` is the argument as
+  `$p` is, unless a `:` follows it or a dash joins it to a word, as in
+  `var(--p)`: with `--seg(k): $(k * 10)px`, `--row(k): $seg(k + 1)`
+  makes `$row(3)` `40px`.
 - An argument or default with a random or picking call (`@r`, `@p`,
   `@pn`, …) that the body uses more than once, or loops over with `@m`,
   `@M` or `*N`, is worked out once, where the call is, as is an `@n` of
