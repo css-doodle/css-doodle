@@ -395,11 +395,11 @@ if (typeof HTMLElement !== 'undefined') {
                 ? this.pause(true) : this.resume(true);
         }
 
-        // the shader loops only draw while the host is in view
         watchViewport() {
             if (typeof IntersectionObserver === 'undefined') return;
             this._viewport = new IntersectionObserver(entries => {
                 this._offscreen = !entries[entries.length - 1].isIntersecting;
+                this.toggleAttribute('cssd-offscreen', this._offscreen);
                 if (this.hasAttribute('cssd-paused')) return;
                 for (let am of this.animations) {
                     this._offscreen ? am.pause() : am.resume();
@@ -771,6 +771,9 @@ if (typeof HTMLElement !== 'undefined') {
 
         mount(compiled) {
             let { styles, content, uniforms, filters } = compiled;
+            this.removeAttribute('cssd-offscreen');
+            this._viewport?.unobserve(this);
+            this._viewport?.observe(this);
             loadGoogleFontLink(styles.gf);
             hoistProperties(this, styles.property);
             let replace = this.applyStyles(compiled);

@@ -15,11 +15,15 @@ export function getBasicStyles(grid) {
         width: fit-content;
         height: fit-content;
         contain: content;
+        contain-intrinsic-size: auto none;
         ${utime}: 0;
         ${UTime}: 0
     }
     :host([hidden]),[hidden] {
         display: none
+    }
+    :host([cssd-offscreen]) {
+        content-visibility: auto
     }
     :host([cssd-paused]),
     :host([cssd-paused])::before,
