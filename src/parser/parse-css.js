@@ -1447,6 +1447,7 @@ function mathOpen(tokens, i, defs) {
     if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return false;
     let name = textOf(tokens.slice(j + 1, i));
     if (tokens[j].isSymbol('$')) return defs[name] ? 0 : true;
+    if (tokens[j].isSymbol('@') && RE_PAINT_HEAD.test(name)) return null;
     if (!tokens[j].isSymbol('@') || name !== 'match') return false;
     let close = closing(tokens, i);
     return close > 0 && !!solidAt(tokens, close + 1)?.isSymbol('{');
@@ -1460,7 +1461,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.isSymbol('(')) {
             let up = parens.at(-1), m = mathOpen(tokens, i, defs);
-            parens.push(m === true || up === true ? true : m === 0 || up === 0 ? 0 : false);
+            parens.push(m === true || up === true ? true : m === null || up === null ? null : m === 0 || up === 0 ? 0 : false);
             continue;
         }
         if (t.isSymbol(')')) {

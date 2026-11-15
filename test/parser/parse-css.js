@@ -737,6 +737,8 @@ test('a statement reading the parameters of the body without braces before it wa
     assert.deepEqual(warnings(`--c: red; --f(c): fill: $c; background: $c;`), []);
     assert.deepEqual(warnings(`--f(x): { width: $x } height: $x;`), []);
     assert.deepEqual(warnings(`a: @svg(circle { --f(x): $x; } rect { width: $x })`), []);
+    // a nested @pattern has names of its own
+    assert.deepEqual(warnings(`--g(a): $a; --f(p, k): $g(k); @content: @pattern(k: 1; o: $g(k) * p.x;);`), []);
 });
 
 test('a user function name is read whole', () => {
@@ -782,6 +784,10 @@ test('a user function parameter binds bare in the arguments of a call, as $p doe
     assert.deepEqual(
         ast(`--g(a): [$a]; --f(k, in): $g(var(--k)) $g(font-k) $g(ease-in-out) $g(-k) $g(k-1); width: $f(2, 3);`),
         ast(`width: [var(--k)] [font-k] [ease-in-out] [-2] [2-1];`));
+    // nor inside a nested @pattern, whose names are its own
+    assert.deepEqual(
+        ast(`--g(q): length(q); --f(p): background: @pattern(o: $g(p) + $g($p);); $f(5);`),
+        ast(`background: @pattern(o: (length(p)) + (length(5)););`));
 });
 
 test('a call inside $() reads its body as math, as one value', () => {
