@@ -241,8 +241,8 @@ function expr(code, scope, ctx) {
 
 function generateStatement(name, value, scope, ctx) {
     let [, base, part] = name.match(/^([a-zA-Z_]\w*)(?:\.(\w+))?$/) || [];
-    if (base?.startsWith('g_')) {
-        ctx.warn('g_ names reserved');
+    if (/^g_\d+$/.test(base)) {
+        ctx.warn(`${base} is reserved`);
         return '';
     }
     let from = part && expr(base, scope, ctx).type, size = /^vec/.test(from) && +from[3];

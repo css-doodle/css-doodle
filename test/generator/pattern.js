@@ -429,10 +429,13 @@ test('invalid and reserved names are reported', () => {
     draw('size-2: 3; g_1: 1; --c: red; repeat(2 as a-b) { } fill: red', extra, m => messages.push(m));
     assert.deepEqual(messages, [
         'invalid name "size-2"',
-        'g_ names reserved',
+        'g_1 is reserved',
         'invalid name "--c"',
         'invalid name "a-b"',
     ]);
+    // only the names the shader gives its own variables are kept, so
+    // g_1_m, a local of the first call of --g(), is a name like any other
+    assert.equal(color('g_1_m: .5; fill: g_1_m'), 'g_color = vec4(vec3(g_1), 1.0);');
 });
 
 test('variable names inside hex literals are not substituted', () => {
