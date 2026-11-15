@@ -1197,7 +1197,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
             } else {
                 let call = valueCall(name, def, args, defs, ctx, chain);
                 ctx.expanded += call.text.length;
-                pending.push(expandCalls(call.text, defs, ctx, [...chain, name], BODY));
+                pending.push(call.text);
                 body = call.ret;
             }
         } else {
@@ -1330,7 +1330,8 @@ function valueCall(name, def, args, defs, ctx, chain) {
     let { params, defaults } = def;
     let ret = `${name.replace(/\W/g, '_')}_${++ctx.calls}`;
     let source = def.body.replace(RE_LINE_COMMENT, '').trim();
-    let { text, targets } = renameLocals((/[;}]$/.test(source) ? source : source + ';') + '\n', ret);
+    source = expandCalls((/[;}]$/.test(source) ? source : source + ';') + '\n', defs, ctx, [...chain, name], BODY);
+    let { text, targets } = renameLocals(source, ret);
     let bound = [], prelude = '';
     params.forEach((param, k) => {
         let arg = (args[k] || defaults[k] || '').trim();
@@ -1344,7 +1345,6 @@ function valueCall(name, def, args, defs, ctx, chain) {
     });
     text = prelude + bindParams({ params, defaults: [], body: text }, bound, defs, true);
     if (ctx.scene && text.includes('{')) {
-        text = expandCalls(text, defs, ctx, [...chain, name], BODY);
         let known = new Set(), blocks = 0;
         let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
             if (type == 'block' && name == 'match') {
@@ -1495,19 +1495,17 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
         let wrap = parens.at(-1) && !call;
         let one = paint && !!arg && (!RE_SIMPLE_ARG.test(arg.trim())
             || /^[\d.]/.test(arg.trim()) && ahead?.isNumber() && adjacent(ahead, dollar ? prev : t));
+        let lead = body.slice(head, dollar ? prev.index : t.index);
+        let assigned = !parens.length && !lead.trim() && solidAt(tokens, end + 1)?.isSymbol(':');
         if (dollar) {
             start = prev.index;
-            wrap ||= one;
+            wrap ||= one && !assigned;
         } else if (prev?.isSymbol('@') && adjacent(prev, t)) {
             continue;
         } else if (!paint && parens.at(-1) === 0) {
             if (call || solidAt(tokens, end + 1)?.isSymbol(':') || inWord(tokens, i, end)) continue;
         } else if (!wrap) {
-            let lead = body.slice(head, t.index);
-            if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead)
-                    || !parens.length && !lead.trim() && solidAt(tokens, end + 1)?.isSymbol(':')) {
-                continue;
-            }
+            if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead) || assigned) continue;
             wrap = one;
         }
         if (uses) uses[k] = (uses[k] || 0) + 1;

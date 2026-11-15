@@ -951,7 +951,7 @@ test('in @scene a value function\'s match block becomes values', () => {
     assert.equal(paintOf(`--g(c): { $c: 9; result: 1 }; --f(c): { result: .3; match { $c > 5 { k: $g($c); } } };
         @content: @scene(w: 1; sphere { r: $f(w) * w });`), [
         'w: 1; sphere {f_1_result: .3; f_1_1: match((w > 5), 1, 0); w: match(f_1_1 == 1, 9, w);',
-        'g_2_result: 1; f_1_k: g_2_result; r: f_1_result * w }',
+        'f_1_g_2_result: 1; f_1_k: f_1_g_2_result; r: f_1_result * w }',
     ].join(' '));
 });
 
@@ -1032,6 +1032,12 @@ test('a body of statements alone still writes the caller\'s names, and comments 
         'a: 1; b: a + 1; fill: b;');
     // without result a body ending in an expression is statements too, as before
     assert.equal(paintOf(`--g(): { a: 1; a + 1 }; @content: @pattern(fill: 1; $g());`), 'fill: 1; a: 1; a + 1');
+    // called in a value function, they are its names, as written there
+    assert.equal(paintOf(`--set(i): { c: i; }; --w(): { s: 0; repeat(2 as j) { $set(j); s: s + c; } result: s; };
+        @content: @pattern(c: 5; fill: $w(), c, 0;);`),
+        'c: 5;w_1_s: 0; repeat(2 as w_1_j) { w_1_c: w_1_j;; w_1_s: w_1_s + w_1_c; } w_1_result: w_1_s; fill: w_1_result, c, 0;');
+    assert.equal(paintOf(`--g(a): a * k; --f(x): { k: 2; result: $g(x); }; @content: @pattern(k: 10; fill: $f(.1););`),
+        'k: 10;f_1_k: 2; f_1_result: .1 * f_1_k; fill: f_1_result;');
     // // starts a comment in a body, quotes and all
     assert.equal(paintOf(`--f(): { a: 1; result: a; }; @content: @pattern(// don't call $f()
         fill: $f(););`), "f_1_a: 1; f_1_result: f_1_a; // don't call $f() fill: f_1_result;");
