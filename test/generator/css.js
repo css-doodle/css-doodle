@@ -146,6 +146,8 @@ test('@shape and @tile in @svg give plain numbers where the box is 2 across, y d
     let own = cells('clip-path: @tile.voronoi(points: 3); --x: @tile.x;', '3x1').match(/--x:[^;]*/g);
     assert.deepEqual(cells('clip-path: @tile.voronoi(points: 3); background: @svg(path*6 { d: @tile.voronoi(points: 6) }); --x: @tile.x;', '3x1').match(/--x:[^;]*/g), own);
     assert.match(cells('background: @svg(path { d: @tile.voronoi(points: 6) }); --x: @tile.x;'), /--x:;/);
+    // a read of the cell's piece in the svg still waits for the @tile after it
+    assert.match(cells('background: @svg(text { content: @tile.k }); clip-path: @tile.voronoi(points: 3);', '3x1'), /%3Ctext%3E3%3C\/text%3E/);
     // outside @svg nothing changes
     assert.match(css('clip-path: @shape(star);'), /clip-path:polygon\(97\.5528258148% 34\.5491502813%/);
 });

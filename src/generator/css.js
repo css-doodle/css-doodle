@@ -392,7 +392,7 @@ const RE_TILE_READ = /^@(x|y|xy|k|r)$/;
 
 function usesTile(nodes, read = false) {
     for (let node of nodes) {
-        if (node.type !== 'func' || node.name === '@svg') continue;
+        if (node.type !== 'func' || node.name === '@svg' && !read) continue;
         let dotted = node.arguments[0]?.values[0];
         if (node.name === '@tile' && read === !!(dotted?.dotted && RE_TILE_READ.test(dotted.name))) return true;
         for (let arg of node.arguments) {
