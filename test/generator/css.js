@@ -51,6 +51,9 @@ test('@r(k: a, b) is the draw key k gets: it holds wherever it is asked, and k +
 
 test('@random(a, b) as a value is @r, the selector @random(ratio) picks cells', () => {
     assert.equal(cells('--a: @random(10, 50); --b: @random();', '3x1', 5), cells('--a: @r(10, 50); --b: @r();', '3x1', 5));
+    // and as an argument it is drawn once, as @r is
+    let twice = '--f(x): $x $x; --v: $f(@random(100));';
+    assert.equal(cells(twice, '1', 5), cells(twice.replace('@random', '@r'), '1', 5));
 });
 
 test('@pick(k: …) takes item k from 1 in each cell, wrapping, and $() and @match read pick(k: …)', () => {
