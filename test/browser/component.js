@@ -349,6 +349,16 @@ describe('component', { concurrency: 4 }, () => {
         assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('css-doodle')].map(el => el.renders)), [1, 1, 1, 1]);
     }));
 
+    test('a doodle drawn while hidden takes its size when shown out of view', () => chrome.withPage(async page => {
+        await page.setViewportSize({ width: 400, height: 400 });
+        await page.evaluate(() => document.body.innerHTML = '<div style="height:2000px"></div><div id="box" hidden></div>');
+        let el = await mount(page, '@grid: 4; width: 30px; height: 30px; background: #09f;', { seed: 1 }, '#box');
+        await page.waitForTimeout(300);
+        await page.evaluate(() => document.getElementById('box').hidden = false);
+        await page.waitForTimeout(300);
+        assert.deepEqual(await el.evaluate(el => [el.offsetWidth, el.offsetHeight]), [120, 120]);
+    }));
+
     test('a nested doodle keeps its render event to itself', () => chrome.withPage(async page => {
         let events = await page.evaluate(code => new Promise(resolve => {
             let el = document.createElement('css-doodle');

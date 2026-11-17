@@ -331,7 +331,7 @@ if (typeof HTMLElement !== 'undefined') {
         waitForViewport() {
             if (!this.shadowRoot.childNodes.length) this.shadowRoot.innerHTML = '<style>:host{display:block}</style>';
             let observer = this._lazy = new IntersectionObserver(entries => {
-                if (!entries[entries.length - 1].isIntersecting) return;
+                if (!entries.at(-1).isIntersecting) return;
                 observer.disconnect();
                 this._lazy = null;
                 if (this.isConnected && !this.compiled) this.start();
@@ -398,8 +398,8 @@ if (typeof HTMLElement !== 'undefined') {
         watchViewport() {
             if (typeof IntersectionObserver === 'undefined') return;
             this._viewport = new IntersectionObserver(entries => {
-                this._offscreen = !entries[entries.length - 1].isIntersecting;
-                this.toggleAttribute('cssd-offscreen', this._offscreen);
+                this._offscreen = !entries.at(-1).isIntersecting;
+                this.toggleAttribute('cssd-offscreen', this._offscreen && this.offsetWidth);
                 if (this.hasAttribute('cssd-paused')) return;
                 for (let am of this.animations) {
                     this._offscreen ? am.pause() : am.resume();
