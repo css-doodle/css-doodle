@@ -1437,7 +1437,8 @@ function renameLocals(text, prefix) {
 
 function inWord(tokens, i, end) {
     let [a, b, c, d] = [tokens[i - 2], tokens[i - 1], tokens[end + 1], tokens[end + 2]];
-    return !!(b?.isSymbol('-') && a && adjacent(a, b) && adjacent(b, tokens[i]) && (a.isWord() || a.isSymbol('-'))
+    return !!(b?.isNumber() && adjacent(b, tokens[i])
+        || b?.isSymbol('-') && a && adjacent(a, b) && adjacent(b, tokens[i]) && (a.isWord() || a.isSymbol('-'))
         || c?.isSymbol('-') && d?.isWord() && adjacent(tokens[end], c) && adjacent(c, d));
 }
 
@@ -1455,13 +1456,14 @@ function mathOpen(tokens, i, defs) {
 
 function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
     let tokens = tokensOf(body, paint);
-    let out = '', from = 0;
+    let out = '', from = 0, quote = false;
     let parens = math ? [true] : [], blocks = [], head = 0;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
+        if (t.status) quote = t.status === 'open';
         if (t.isSymbol('(')) {
             let up = parens.at(-1), m = mathOpen(tokens, i, defs);
-            parens.push(m === true || up === true ? true : m === null || up === null ? null : m === 0 || up === 0 ? 0 : false);
+            parens.push(m === true || up === true ? true : m === null || up === null ? null : m === 0 || up === 0 && prev?.value !== 'url' ? 0 : false);
             continue;
         }
         if (t.isSymbol(')')) {
@@ -1485,7 +1487,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
         let dot = name.indexOf('.');
         let k = params.indexOf(dot > 0 ? name.slice(0, dot) : name);
         let last = tokens[end], next = tokens[end + 1];
-        let ahead = tokens[dollar ? i - 2 : i - 1];
+        let ahead = tokens[dollar ? i - 2 : i - 1], first = i;
         i = end;
         if (k < 0) continue;
         let arg = args[k] || defaults[k];
@@ -1503,7 +1505,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
         } else if (prev?.isSymbol('@') && adjacent(prev, t)) {
             continue;
         } else if (!paint && parens.at(-1) === 0) {
-            if (call || solidAt(tokens, end + 1)?.isSymbol(':') || inWord(tokens, i, end)) continue;
+            if (call || quote || solidAt(tokens, end + 1)?.isSymbol(':') || inWord(tokens, first, end)) continue;
         } else if (!wrap) {
             if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead) || assigned) continue;
             wrap = one;

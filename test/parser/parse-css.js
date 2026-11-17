@@ -784,6 +784,10 @@ test('a user function parameter binds bare in the arguments of a call, as $p doe
     assert.deepEqual(
         ast(`--g(a): [$a]; --f(k, in): $g(var(--k)) $g(font-k) $g(ease-in-out) $g(-k) $g(k-1); width: $f(2, 3);`),
         ast(`width: [var(--k)] [font-k] [ease-in-out] [-2] [2-1];`));
+    // nor as a unit, in quotes or url(), or at the end of a longer word
+    assert.deepEqual(
+        ast(`--g(a): [$a]; --f(s, x, p_2): $g(1s .5x rotate(45s)) $g("s" url(x.png)) $g(x-p_2) $g(s); width: $f(2, 3, 4);`),
+        ast(`width: [1s .5x rotate(45s)] ["s" url(x.png)] [x-p_2] [2];`));
     // nor inside a nested @pattern, whose names are its own
     assert.deepEqual(
         ast(`--g(q): length(q); --f(p): background: @pattern(o: $g(p) + $g($p);); $f(5);`),
