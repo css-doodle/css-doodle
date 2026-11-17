@@ -937,6 +937,9 @@ test('the last result a call runs is its value, in a block too', () => {
         'f_1_x: uv.x + 1; f_1_result: f_1_x * 2; fill: f_1_result;');
     assert.equal(paintOf(`--f(): { a: 1; result: a }; @content: @pattern(fill: $f(););`),
         'f_1_a: 1; f_1_result: f_1_a; fill: f_1_result;');
+    // a default that calls a function is expanded too
+    assert.equal(paintOf(`--k(): 3; --f(x = $k()): { result: $x * 2; }; @content: @pattern(fill: $f(););`),
+        'f_1_x: 3; f_1_result: f_1_x * 2; fill: f_1_result;');
 });
 
 test('in @scene a value function\'s match block becomes values', () => {

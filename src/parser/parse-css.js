@@ -1343,7 +1343,7 @@ function valueCall(name, def, args, defs, ctx, chain) {
             bound.push(`${ret}_${param}`);
         }
     });
-    text = prelude + bindParams({ params, defaults: [], body: text }, bound, defs, true);
+    text = expandCalls(prelude, defs, ctx, [...chain, name], BODY) + bindParams({ params, defaults: [], body: text }, bound, defs, true);
     if (ctx.scene && text.includes('{')) {
         let known = new Set(), blocks = 0;
         let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
