@@ -9,6 +9,7 @@ import svgSourceOf from '../parser/svg-source.js';
 import generateSvg from '../generator/svg.js';
 import generateShape, { shapeWarnings } from '../generator/shapes.js';
 import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
+import { perimeter } from '../generator/polygon.js';
 
 import Noise from '../lib/noise.js';
 import seedrandom from '../lib/seedrandom.js';
@@ -54,39 +55,25 @@ export const SEQ = {
 const parseOperation = memo(input => {
     let v = String(input);
     let prefix = RE_OP_PREFIX.test(v);
-    let suffix = !prefix && RE_OP_SUFFIX.test(v);
-    let op = '';
-    let rest = v;
-    if (prefix || suffix) {
-        op = prefix ? v[0] : v.slice(-1);
-        rest = (prefix ? v.slice(1) : v.slice(0, -1)).trim();
-    }
+    let op = prefix ? v[0] : RE_OP_SUFFIX.test(v) ? v.slice(-1) : '';
+    let rest = op ? (prefix ? v.slice(1) : v.slice(0, -1)).trim() : v;
     let { unit = '', value } = parseCompoundValue(rest || 0);
     return op
         ? { op, prefix, value, unit }
         : { op: '+', prefix: true, value: Number(value) || 0, unit };
 });
 
-function calcValue(base, v) {
-    let { op, prefix, value, unit } = parseOperation(v);
-    // prefix op: base comes first; suffix op: base comes last
-    let [a, b] = prefix ? [base, value] : [value, base];
-    if (typeof base === 'string' && RE_LIVE.test(base)) {
-        let expr = (op === '%') ? `mod(${a}, ${b})` : `${a} ${op} ${b}`;
-        return [`calc(${expr})`, unit];
-    }
-    return [binary[op](Number(a), Number(b)), unit];
-}
-
 function calcWith(base) {
     let unit = '';
     return (...args) => {
         for (let v of args) {
-            let [output, outputUnit] = calcValue(base, v);
-            base = output;
-            if (!unit && outputUnit) {
-                unit = outputUnit;
-            }
+            let { op, prefix, value, unit: u } = parseOperation(v);
+            // prefix op: base comes first; suffix op: base comes last
+            let [a, b] = prefix ? [base, value] : [value, base];
+            base = typeof base === 'string' && RE_LIVE.test(base)
+                ? `calc(${op === '%' ? `mod(${a}, ${b})` : `${a} ${op} ${b}`})`
+                : binary[op](Number(a), Number(b));
+            unit ||= u;
         }
         return withUnit(tidyNumber(base), unit);
     }
@@ -133,7 +120,7 @@ function makeSequence(c) {
                 getValue(actions[0](n, x, y, max, X, Y, index, signature))
             : (n, x, y, max, X, Y, index) => actions.map(action =>
                     getValue(action(n, x, y, max, X, Y, index, signature))).join(',');
-        if (/\D/.test(count) && !/^\d+[x-]\d+$|^\s*\d+\s*x\s*\d+\s*$/.test(count)) {
+        if (/\D/.test(count) && !/^\d+-\d+$|^\s*\d+\s*x\s*\d+\s*$/.test(count)) {
             evaluated = calc(count);
             if (evaluated === 0) {
                 sequence(count, run);
@@ -157,7 +144,7 @@ function makeSequence(c) {
 function seq(token, make) {
     return (cell, { extra }) => {
         let e = extra.at(-1);
-        return (e && e.length) ? make(e) : token;
+        return e?.length ? make(e) : token;
     };
 }
 
@@ -198,12 +185,9 @@ function createPlot(unit, kind, pieces) {
         });
         let shape = make(max), { rings } = shape.points;
         if (!shape.rules.hasPoints && !shape.rules.blocks && rings?.length > 1) {
-            let xy = p => String(p).split(' ').map(parseFloat), total = 0, done = 0;
+            let total = 0, done = 0;
             // running totals of the lengths
-            let runs = rings.map(ring => total += ring.reduce((sum, p, i) => {
-                let [x, y] = xy(p), [a, b] = xy(ring.at(i - 1));
-                return sum + Math.hypot(x - a, y - b);
-            }, 0));
+            let runs = rings.map(ring => total += perimeter(ring.map(p => String(p).split(' ').map(parseFloat))));
             if (total) shape = make(runs.map(run => {
                 let n = Math.round(max * run / total) - done;
                 done += n;
@@ -821,15 +805,10 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
     // the positional / name=value short form
-    let shorthand = values.every(n =>
-        !/[{}<>]/.test(n) && (/^[\-\d.]/.test(n) || /^\w+=/.test(n))
-    );
+    let shorthand = values.every(n => !/[{}<>]/.test(n) && /^([\-\d.]|\w+=)/.test(n));
     if (shorthand) {
         let named = getNamedArguments(values, FILTER_COMMANDS);
-        value = FILTER_COMMANDS
-            .filter(name => !isNil(named[name]))
-            .map(name => `${name}: ${named[name]};`)
-            .join('');
+        value = FILTER_COMMANDS.map(name => isNil(named[name]) ? '' : `${name}: ${named[name]};`).join('');
     }
     if (!value.startsWith('<')) {
         let filter = composeFilter(value, String(env.seed), !shorthand, !!env.svg);

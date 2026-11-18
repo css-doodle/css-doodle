@@ -699,12 +699,8 @@ function compileInput(input, ctx, lists = false) {
     let compiled = entry.variants.get(key);
     if (compiled === undefined) {
         let chosen = key.split(',');
-        let spans = null;
-        entry.candidates.forEach(({ index }, i) => {
-            if (chosen[i]) {
-                (spans ??= new Map()).set(index, chosen[i]);
-            }
-        });
+        let spans = new Map();
+        entry.candidates.forEach(({ index }, i) => chosen[i] && spans.set(index, chosen[i]));
         compiled = compileWith(input, spans, lists);
         entry.variants.set(key, compiled);
     }
@@ -757,11 +753,7 @@ export function toPlainNumber(v) {
     if (typeof v === 'number') {
         return Number.isFinite(v) ? v : null;
     }
-    if (typeof v === 'string') {
-        let t = v.trim();
-        if (t && RE_NUMBER.test(t)) return Number(t);
-    }
-    return null;
+    return typeof v === 'string' && RE_NUMBER.test(v.trim()) ? Number(v) : null;
 }
 
 export function isSignLeading(v) {
@@ -778,10 +770,8 @@ export function operand(v, after) {
 export function compileTemplate(segments) {
     let n = segments.length - 1;
     if (n < 1 || n > 26) return null;
-    for (let s of segments) {
-        if (s.includes('·')) return null;
-    }
-    if (RE_NAME.test(segments.join('0').trim())) return null;
+    let joined = segments.join('0');
+    if (joined.includes('·') || RE_NAME.test(joined.trim())) return null;
     let despaced = segments.map(s => s.replace(/\s+/g, ''));
     let names = [];
     let signSensitive = [];
