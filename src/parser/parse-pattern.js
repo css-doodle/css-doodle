@@ -11,8 +11,7 @@ function parseSelector(tokens) {
     if (open >= 0) {
         let close = open + 1;
         for (let depth = 1; close < tokens.length && depth; ++close) {
-            if (tokens[close].isSymbol('(')) depth++;
-            else if (tokens[close].isSymbol(')')) depth--;
+            depth += tokens[close].isSymbol('(') - tokens[close].isSymbol(')');
         }
         if (tokens.slice(close).some(t => !t.isSpace() && !t.isSymbol(')'))) return null;
         let inner = tokens.slice(open + 1, tokens[close - 1].isSymbol(')') ? close - 1 : close);

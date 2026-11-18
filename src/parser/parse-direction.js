@@ -23,10 +23,8 @@ function parse(input) {
         }
     }
     if (/\d/.test(expr)) {
-        ret.angle = calc(expr);
-        if (unit === 'rad') ret.angle /= (Math.PI / 180);
-        if (unit === 'grad') ret.angle *= .9;
-        if (unit === 'turn') ret.angle *= 360;
+        ret.angle = calc(expr) * ({ grad: .9, turn: 360 }[unit] || 1);
+        if (unit === 'rad') ret.angle /= Math.PI / 180;
     } else if (!ret.direction) {
         ret.direction = 'auto';
     }

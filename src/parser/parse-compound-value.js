@@ -6,7 +6,7 @@ function parse(input) {
     let tokens = scan(input);
     let ret = {};
     let i = 0;
-    while (tokens[i] && tokens[i].isNumber()) {
+    while (tokens[i]?.isNumber()) {
         ret.value = Number(tokens[i++].value);
     }
     let unit = tokens[i];

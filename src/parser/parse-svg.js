@@ -189,7 +189,7 @@ function readSvgStatement(iter, head) {
     let rules = [];
     for (let i = 0; i < props.length; ++i) {
         let prop = props[i];
-        let item = props.length === 1 ? statement : Object.assign({}, statement);
+        let item = props.length === 1 ? statement : { ...statement };
         item.name = prop;
         if (prop.startsWith('--')) {
             item.variable = true;

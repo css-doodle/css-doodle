@@ -42,8 +42,7 @@ class Cursor {
         return this.i >= this.tokens.length;
     }
     headIndex() {
-        let t = this.tokens[this.i];
-        return t ? t.index : this.source.length;
+        return this.peek()?.index ?? this.source.length;
     }
     position() {
         return ++this.ctx.position;
@@ -347,23 +346,10 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
     return func;
 }
 
+// the first dot before a letter, or a last one right before the next @ or $
 function findCompositionDot(name, cur, end) {
-    for (let i = 1; i < name.length; ++i) {
-        if (name[i] === '.') {
-            let next = name[i + 1];
-            if (next === undefined) {
-                let t = cur.peek();
-                if (t?.index === end && t.isSymbol('@', '$')) {
-                    return i;
-                }
-                return -1;
-            }
-            if (/[a-zA-Z]/.test(next)) {
-                return i;
-            }
-        }
-    }
-    return -1;
+    let i = name.search(/\.([a-zA-Z]|$)/), t = cur.peek();
+    return i < name.length - 1 || t?.index === end && t.isSymbol('@', '$') ? i : -1;
 }
 
 function readVarName(cur) {
@@ -674,9 +660,7 @@ function parseRule(cur) {
         warn(cur.ctx, tok || !/[("'`]/.test(head) ? 'missing ":"' : 'unbalanced paren/quote', pos);
     }
 
-    rule.rawValue = colon < 0
-        ? () => ''
-        : () => source.slice(colon + 1, end).trim();
+    rule.rawValue = () => colon < 0 ? '' : source.slice(colon + 1, end).trim();
     return rule;
 }
 
@@ -1285,8 +1269,7 @@ function kindOf(def, defs) {
             return def.kind = VALUE;
         }
         start = !parens && t.isSymbol(';', '{', '}');
-        if (t.isSymbol('(')) parens++;
-        else if (t.isSymbol(')')) parens--;
+        parens += t.isSymbol('(') - t.isSymbol(')');
         if (t.isSymbol('(', '{')) depth++;
         else if (t.isSymbol(')')) depth--;
         else if (t.isSymbol('}') && !--depth) statements += 2;
@@ -1382,8 +1365,7 @@ function renameLocals(text, prefix) {
         }
         if (quote || t.isSpace()) continue;
         prev = t;
-        if (t.isSymbol('(')) depth++;
-        if (t.isSymbol(')')) depth--;
+        depth += t.isSymbol('(') - t.isSymbol(')');
         if (!depth && t.isSymbol(';', '{', '}')) {
             waiting.forEach(n => declared.add(n));
             waiting = [];

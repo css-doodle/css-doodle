@@ -20,7 +20,7 @@ function generate(token, last, repeat) {
         }
         result += times ? '})' : '}';
     } else if (token.type === 'statement') {
-        let value = token.origin ? token.origin.value : token.value;
+        let value = (token.origin || token).value;
         if (repeat && token.from) {
             value = '@--(' + token.from.slice(2) + ')';
         }
@@ -28,7 +28,7 @@ function generate(token, last, repeat) {
             return '@--(' + token.name.slice(2) + ',' + value + ')';
         }
         let skip = (token.origin && last === token.origin);
-        let name = token.origin ? token.origin.name.join(',') : token.name;
+        let name = token.origin?.name.join(',') ?? token.name;
         if (!skip) {
             if (value?.type) {
                 result += name + ':' + generate(value, null, repeat);
