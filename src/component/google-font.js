@@ -30,10 +30,7 @@ export function loadGoogleFontLink(fonts) {
 function extractFonts(css) {
     let seen = new Map();
     for (let [, content] of css.matchAll(/@font-face\s*{([^}]+)}/gi)) {
-        let getProp = prop => {
-            let res = content.match(new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i'));
-            return res ? res[1].trim() : null;
-        };
+        let getProp = prop => content.match(new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i'))?.[1].trim();
         let url = content.match(/url\(([^)]+)\)/i)?.[1].replace(/['"]/g, '');
         let family = getProp('font-family');
         if (!family || !url) continue;

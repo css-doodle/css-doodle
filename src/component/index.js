@@ -53,7 +53,7 @@ function serializeDoodle(root) {
         template.content.querySelectorAll('canvas').forEach((canvas, i) => {
             let image = document.createElement('img');
             image.setAttribute('style', 'position:absolute;width:100%;height:100%;object-fit:cover');
-            image.setAttribute('src', sources[i].toDataURL());
+            image.src = sources[i].toDataURL();
             canvas.replaceWith(image);
         });
         nodes = template.content.childNodes;
@@ -66,16 +66,14 @@ function mountFilterDefs(parent, markup, slot) {
     // `:scope >` matches nothing when the parent is a shadow root
     let holder = [...parent.children].find(el => el.localName === 'ft');
     if (!markup) {
-        if (holder) {
-            holder.remove();
-        }
+        holder?.remove();
         return null;
     }
     if (!holder) {
         holder = document.createElement('ft');
         holder.setAttribute('style', FilterHolderStyle);
         if (slot) {
-            holder.setAttribute('slot', slot);
+            holder.slot = slot;
         }
         parent.appendChild(holder);
     }
@@ -85,7 +83,7 @@ function mountFilterDefs(parent, markup, slot) {
 
 // `2s`, `1.5m` or a number of milliseconds, at least 500; 2000 when unreadable
 function parseInterval(value) {
-    let text = String(value ?? '').trim();
+    let text = (value || '').trim();
     let m = /^([\d.]+)(m|s)$/.exec(text);
     let ms = m ? parseFloat(m[1]) * (m[2] === 'm' ? 60000 : 1000) : parseFloat(text);
     return isNaN(ms) ? 2000 : Math.max(ms, 500);
@@ -293,8 +291,6 @@ if (typeof HTMLElement !== 'undefined') {
             this._moved = 0;
             this._styleReady = Promise.resolve();
             this._clock = { base: 0, since: 0 };
-            this._offscreen = false;
-            this._manual_motion = false;
             this._on_motion = () => this.syncMotion();
             this._warned = new Set();
             this.extra = {
@@ -330,13 +326,13 @@ if (typeof HTMLElement !== 'undefined') {
 
         waitForViewport() {
             if (!this.shadowRoot.childNodes.length) this.shadowRoot.innerHTML = '<style>:host{display:block}</style>';
-            let observer = this._lazy = new IntersectionObserver(entries => {
+            let observer = new IntersectionObserver(entries => {
                 if (!entries.at(-1).isIntersecting) return;
                 observer.disconnect();
-                this._lazy = null;
                 if (this.isConnected && !this.compiled) this.start();
             }, { rootMargin: '100%' });
             observer.observe(this);
+            this.observers.set('lazy', observer);
         }
 
         waitForSource() {
@@ -490,7 +486,7 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         getUse() {
-            let use = String(this.getAttribute('use') || '').trim();
+            let use = (this.getAttribute('use') || '').trim();
             if (/^var\(/.test(use)) {
                 use = `@use:${use};`;
             }
@@ -514,13 +510,8 @@ if (typeof HTMLElement !== 'undefined') {
             if (!cell) return;
             let match = /^c-(\d+)-(\d+)-(\d+)$/.exec(cell.id || cell.className);
             if (!match) return;
-            this.triggerEvent('click:cell', {
-                x: Number(match[1]),
-                y: Number(match[2]),
-                z: Number(match[3]),
-                element: cell,
-                originalEvent: event,
-            });
+            let [, x, y, z] = match.map(Number);
+            this.triggerEvent('click:cell', { x, y, z, element: cell, originalEvent: event });
         }
 
         bindClickToUpdate() {
@@ -547,9 +538,7 @@ if (typeof HTMLElement !== 'undefined') {
 
         generate(source, parsed, seed) {
             seed = this.getAttribute('seed') || seed;
-            if (isNil(seed)) {
-                seed = Date.now();
-            }
+            seed ??= Date.now();
             let compiled = this.compiled = generateCss(
                 parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance, this.extra
             );
@@ -818,13 +807,12 @@ if (typeof HTMLElement !== 'undefined') {
         mountFilters(filters) {
             let markup = Object.values(filters).join('');
             let slot = this.shadowRoot.querySelector('slot[name="ft"]');
-            if (markup && !slot) {
+            if (!markup) {
+                slot?.remove();
+            } else if (!slot) {
                 slot = document.createElement('slot');
-                slot.setAttribute('name', 'ft');
+                slot.name = 'ft';
                 this.shadowRoot.appendChild(slot);
-            }
-            if (!markup && slot) {
-                slot.remove();
             }
             let holders = [
                 mountFilterDefs(this.shadowRoot, markup),
@@ -896,8 +884,6 @@ if (typeof HTMLElement !== 'undefined') {
             this.observers.clear();
             this.shaderRenders.forEach(drawing => drawing.dispose());
             this.shaderRenders.clear();
-            this._lazy?.disconnect();
-            this._lazy = null;
             this._clock = { base: 0, since: 0 };
             this._landed = false;
         }
