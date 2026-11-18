@@ -14,6 +14,18 @@ export function map2d(value, min, max, amp = 1) {
     return lerp(normalized, min * amp, max * amp);
 }
 
+export function fillStops(at) {
+    let n = at.length - 1;
+    at[0] ||= 0;
+    if (isNaN(at[n])) at[n] = 1;
+    for (let i = 1, j = 0; i <= n; i++) {
+        for (j = Math.max(i, j); isNaN(at[j]); j++);
+        if (isNaN(at[i])) at[i] = at[i - 1] + (at[j] - at[i - 1]) / (j - i + 1);
+        at[i] = Math.max(at[i - 1], at[i]);
+    }
+    return at;
+}
+
 export function tidyNumber(n) {
     if (!Number.isFinite(n) || Number.isInteger(n)) return n;
     if (Math.abs(n) < 1e-9) return 0;

@@ -633,3 +633,34 @@ test('a draw with no duration warns', () => {
     generateSvg(parseSvg('path { draw: infinite }'), m => warnings.push(m));
     assert.deepEqual(warnings, ['draw needs duration']);
 });
+
+test('stops: is a stop for each color, placed as in ramp()', () => {
+    let stops = (...list) => list.map(([offset, color]) => `<stop offset="${offset}" stop-color="${color}"/>`).join('');
+    assert.equal(svg('linearGradient { stops: red, blue .2, green, rgb(0 0 0 / .5) }'),
+        `<svg ${NS}><linearGradient>${stops([0, 'red'], [0.2, 'blue'], [0.6, 'green'], [1, 'rgb(0 0 0 / .5)'])}</linearGradient></svg>`);
+    // never backwards, gaps rounded
+    assert.equal(svg('linearGradient { stops: red .5, blue .2, green, white, black }'),
+        `<svg ${NS}><linearGradient>${stops([0.5, 'red'], [0.5, 'blue'], [0.6667, 'green'], [0.8333, 'white'], [1, 'black'])}</linearGradient></svg>`);
+});
+
+test('stops: makes transparent the colors beside it at zero opacity', () => {
+    assert.equal(svg('linearGradient { stops: red, transparent .4, blue }'), markup(`
+        <svg ${NS}>
+            <linearGradient>
+                <stop offset="0" stop-color="red"/>
+                <stop offset="0.4" stop-color="red" stop-opacity="0"/>
+                <stop offset="0.4" stop-color="blue" stop-opacity="0"/>
+                <stop offset="1" stop-color="blue"/>
+            </linearGradient>
+        </svg>
+    `));
+    assert.equal(svg('linearGradient { stops: #fff, transparent }'),
+        `<svg ${NS}><linearGradient><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></svg>`);
+});
+
+test('stops: positions are numbers', () => {
+    let warnings = [];
+    let out = generateSvg(parseSvg('linearGradient { stops: red 30%, blue }'), m => warnings.push(m));
+    assert.deepEqual(warnings, ['stops needs numbers']);
+    assert.match(out, /<stop offset="0" stop-color="red"\/>/);
+});

@@ -449,7 +449,9 @@ svg-declaration = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
                 | 'style' [ property ] ':' ( value | '{' css '}' ) [ ';' ]
                 | 'animate' attribute ':' value { ';' value } [ '/' timing ] [ ';' ]
                 | 'draw' ':' timing [ ';' ]
+                | 'stops' ':' stop { ',' stop } [ ';' ]
 timing          = duration { delay | repeat-count | easing | fill }
+stop            = color [ number ]
 ```
 
 A block is an element and its declarations are its attributes;

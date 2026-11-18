@@ -40,6 +40,12 @@ for `href`. Gradients, `pattern`, `filter`, `clipPath`, `mask`,
 `marker` and `symbol` go into `<defs>` with or without a `defs`
 prefix.
 
+**Stops.** `stops: #dfe5d3, #f0ebd2 .22, #7f8f4c` adds a `<stop>` for
+each color, with the number after it as the offset, placed as
+[`ramp()`](#3-patterns) places its stops: `fill: linearGradient { x2: 0;
+y2: 1; stops: … }`. A `transparent` stop fades the colors beside it,
+as in CSS, not through black.
+
 **Groups.** A block named `union`, `subtract`, `intersect` or `exclude`
 joins its shapes (`path`, `polygon`, `polyline`, `circle`, `ellipse`,
 `rect`, and a `g` as their union) into one `path` with its attributes,

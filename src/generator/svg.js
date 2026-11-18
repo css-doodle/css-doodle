@@ -2,6 +2,7 @@ import { nextId } from '../lib/fn.js';
 import { isNil, removeQuotes } from '../lib/type.js';
 import { NS, NSXLink, adjustName } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
+import { fillStops } from '../lib/math.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
 import { traceRings } from './trace.js';
@@ -358,6 +359,22 @@ function generate(token, element, parent, root, warn) {
         else if (keyword === 'style') {
             let rule = prop ? `${prop}:${value};` : String(value).trim().replace(/;?$/, ';');
             element.attr('style', (element.attr('style') || '') + rule);
+        }
+        else if (keyword === 'stops') {
+            let list = parseValueGroup(value, { noSpace: true }).map(stop => parseValueGroup(stop));
+            let at = fillStops(list.map(([, offset]) => {
+                if (isNaN(offset ?? 0)) warn('stops needs numbers');
+                return +offset;
+            }));
+            list.forEach(([color], i) => {
+                for (let c of color == 'transparent' ? [list[i - 1], list[i + 1]].filter(Boolean).map(s => s[0]) : [color]) {
+                    let stop = new Tag('stop');
+                    stop.attr('offset', +at[i].toFixed(4));
+                    stop.attr('stop-color', c);
+                    if (c != color) stop.attr('stop-opacity', 0);
+                    element.append(stop);
+                }
+            });
         }
         else {
             // handle inline block value

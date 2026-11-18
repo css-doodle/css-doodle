@@ -1,4 +1,5 @@
 import { scan } from '../parser/tokenizer.js';
+import { fillStops } from '../lib/math.js';
 
 const PREC = {
     __proto__: null,
@@ -315,19 +316,12 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
 
     function ramp([t, ...stops], type) {
         if (!stops.length) return gen(ZERO, type);
-        const at = stops.map(s => {
+        const at = fillStops(stops.map(s => {
             if (s.type !== 'Stop') return NaN;
             if (s.right.type !== 'Lit') report('ramp() needs numbers');
             return +s.right.val;
-        });
+        }));
         const n = at.length - 1;
-        at[0] ||= 0;
-        if (isNaN(at[n])) at[n] = 1;
-        for (let i = 1, j = 0; i <= n; i++) {
-            for (j = Math.max(i, j); isNaN(at[j]); j++);
-            if (isNaN(at[i])) at[i] = at[i - 1] + (at[j] - at[i - 1]) / (j - i + 1);
-            at[i] = Math.max(at[i - 1], at[i]);
-        }
         const v = gen(t, 'float');
         let out = gen(valueOf(stops[0]), type);
         for (let i = 1; i <= n; i++) {
