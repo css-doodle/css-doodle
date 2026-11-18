@@ -69,7 +69,9 @@ Other timing words are dropped and reported:
 | easing keyword, `cubic-bezier` | `keySplines`; `linear` is the default   |
 | `forwards`                     | `fill="freeze"`                         |
 
-**`@svg-filter`** builds a filter from short commands.
+**`@svg-filter`** builds a filter from short commands. Inside `@svg`
+it is a block value, `filter: @svg-filter(blur: 4)`, and works in
+Safari, which ignores CSS `filter: blur(4px)` on SVG elements.
 
 ```css
 filter: @svg-filter(
