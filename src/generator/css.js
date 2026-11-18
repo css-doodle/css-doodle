@@ -1,4 +1,4 @@
-import Func, { MathFunc, SEQ, pickAt, pickAtList } from '../core/function.js';
+import Func, { MathFunc, SEQ, KEYED, pickAt, pickAtList } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
@@ -135,7 +135,7 @@ function compileFunc(node) {
         let fname = node.name.slice(1);
         if (fname === '$') fname = 'calc';
         let fn = node.at
-            ? Func[fname].at ?? (node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt)
+            ? Func[fname][KEYED] ?? (node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt)
             : Func[fname] || MathFunc[fname];
         let inner = node.arguments[0]?.values[0];
         let name = inner?.dotted && inner.name.slice(1), variant = '';

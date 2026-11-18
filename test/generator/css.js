@@ -250,6 +250,10 @@ test('a dotted name calls the variant of the function on its left', () => {
     }
     // Function.prototype methods are not variants
     assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown function @call/);
+    // nor is the keyed draw of @r(k: a, b)
+    for (let code of ['@r.at(3, 10, 50)', '@ri.at(3, 10, 50)', '@random.at(3, 10, 50)']) {
+        assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown function @at/, code);
+    }
     // @tile.voronoi fills a preset or a formula
     let regions = values('--v: @tile.voronoi(star);');
     assert.equal(new Set(regions).size, 25);

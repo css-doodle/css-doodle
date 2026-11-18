@@ -434,19 +434,21 @@ const whole = rand => (a = 1, b = 0) => {
     return Math.floor(rand(lo, hi + 1));
 };
 
+export const KEYED = Symbol();
+
 function createRand(integer) {
     let fn = (_, { context, rand }) => (...args) => {
         let letters = args.length && args.every(isLetter);
         let draw = letters || integer ? whole(rand) : rand;
         return pushStack(context, 'lastRand', (letters ? byCharcode : byUnit)(draw)(...args));
     };
-    fn.at = (cell, env) => (vars, k, ...range) => {
+    fn[KEYED] = (cell, env) => (vars, k, ...range) => {
         k = calc(k, vars());
         if (!Number.isFinite(k)) return '';
         let t = defaultContext.random(k);
         return fn(cell, { ...env, rand: (a = 1, b) => b === undefined ? lerp(t, 0, a) : lerp(t, a, b) })(...range);
     };
-    fn.at.vars = true;
+    fn[KEYED].vars = true;
     return fn;
 }
 
