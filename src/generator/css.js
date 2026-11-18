@@ -380,7 +380,7 @@ function ruleFlags(prop) {
         animation: /^animation(-[a-z]+)*$/.test(prop),
         transition: /^transition(-[a-z]+)*$/.test(prop),
         size: prop === 'width' || prop === 'height',
-        bgImage: /^background(\-image)?$/.test(prop),
+        bgImage: /^background(-image)?$/.test(prop),
         var: prop.startsWith('--'),
         at: (prop.startsWith('@') && Property[prop.slice(1)]) ? prop.slice(1) : null,
         gridLike: /^grid/.test(prop),
@@ -515,13 +515,16 @@ class Rules {
             : value;
     }
 
+    // in CSS a live var() call stays a reference, in math it expands
+    groupVar(name, group, css) {
+        let value = group[name];
+        return !css ? this.expand(value, group) : this.isRef(name, value) ? `var(${name})` : value;
+    }
+
     calcContext(cell, contextVariable, extra, css) {
         let group = this.scopedVars(cell.uid);
         let context = extra ? cellContext(cell, extra) : Object.create(defaultContext);
-        for (let name in group) {
-            let value = group[name];
-            context[name.slice(2)] = !css ? this.expand(value, group) : this.isRef(name, value) ? `var(${name})` : value;
-        }
+        for (let name in group) context[name.slice(2)] = this.groupVar(name, group, css);
         for (let name in contextVariable) context[name.slice(2)] = contextVariable[name];
         return context;
     }
@@ -530,10 +533,7 @@ class Rules {
         let context = Object.assign(this.calcContext(cell, contextVariable), cell.vars ??= cellVariables(cell));
         let e = extra.at(-1);
         if (e?.length) {
-            context.n = e[SEQ.n];
-            context.nx = e[SEQ.x];
-            context.ny = e[SEQ.y];
-            context.N = e[SEQ.max];
+            for (let name in SEQ_INDEX) context[name] = e[SEQ_INDEX[name]];
         }
         return context;
     }
@@ -580,11 +580,7 @@ class Rules {
 
     readVar(name, count, contextVariable, css) {
         let value = contextVariable && contextVariable[name];
-        if (value === undefined) {
-            let group = this.scopedVars(count);
-            if (css && this.isRef(name, group[name])) return `var(${name})`;
-            value = css ? group[name] : this.expand(group[name], group);
-        }
+        if (value === undefined) value = this.groupVar(name, this.scopedVars(count), css);
         if (value === undefined) return name;
         return removeParens(String(value).trim()).replace(/;+$/g, '');
     }
@@ -616,9 +612,9 @@ class Rules {
             source = source.replace(RE_PAINT_VAR, (m, full, at) => {
                 if (!full) return m;
                 let name = full, rest = '';
-                while (group['--' + name] === undefined && name.includes('-')) {
-                    rest = name.slice(name.lastIndexOf('-')) + rest;
-                    name = name.slice(0, name.lastIndexOf('-'));
+                for (let cut; group['--' + name] === undefined && (cut = name.lastIndexOf('-')) >= 0;) {
+                    rest = name.slice(cut) + rest;
+                    name = name.slice(0, cut);
                 }
                 let key = '--' + name;
                 if (group[key] === undefined) {
@@ -742,11 +738,11 @@ class Rules {
                 value = `'${value}'`;
             }
             let reset = new Map();
-            value = value.replace(/var\(\-\-cssd\-u(time|mousex|mousey|width|height)\)/gi, (n, v) => {
+            value = value.replace(/var\(--cssd-u(time|mousex|mousey|width|height)\)/gi, (n, v) => {
                 reset.set(v, `${v} calc(${n})`);
                 return `counter(${v})`;
             });
-            let counters = reset.size ? `counter-reset:${Array.from(reset.values()).join(' ')};` : '';
+            let counters = reset.size ? `counter-reset:${[...reset.values()].join(' ')};` : '';
             return `${counters}content:${value};`;
         }
 
@@ -794,12 +790,10 @@ class Rules {
 
             switch (name) {
                 case 'grid': {
-                    rule = '';
-                    if (isHostSelector(selector)) {
-                        rule = transformed.size || '';
-                        gridStyleRules(transformed, (s, r) => this.addRule(s, r));
-                    } else if (!this.grid) {
-                        this.addRule(':host', transformed.size);
+                    let host = isHostSelector(selector);
+                    rule = host && transformed.size || '';
+                    if (host || !this.grid) {
+                        if (!host) this.addRule(':host', transformed.size);
                         gridStyleRules(transformed, (s, r) => this.addRule(s, r));
                     }
                     this.grid = cell.grid;
@@ -1044,9 +1038,7 @@ class Rules {
                 let lists = runText.get(selector);
                 if (!lists) runText.set(selector, lists = []);
                 for (let j = 0; j < texts.length; j++) {
-                    let n = e.cells[j].uid - 1;
-                    if (lists[n]) lists[n].push(texts[j]);
-                    else lists[n] = [texts[j]];
+                    (lists[e.cells[j].uid - 1] ??= []).push(texts[j]);
                 }
             } else if (e.kind === 'shared') {
                 // consecutive shared rules under one selector print as one
@@ -1146,8 +1138,8 @@ class Rules {
                         if (!fn) continue;
                         let input = [];
                         for (let arg of args) {
-                            let { composed, cluster } = compileArgument(arg);
-                            pushInput(input, this.composeArgument(arg, cell, env), composed || cluster);
+                            let compiled = compileArgument(arg);
+                            pushInput(input, compiled({ cell, env }, EMPTY_EXTRA), compiled.composed || compiled.cluster);
                         }
                         let matched = this.callFunc(fn, { cell, env }, token.position + '.' + i, removeEmptyValues(input));
                         if (not ? !matched : matched) {
@@ -1172,9 +1164,8 @@ class Rules {
         for (let [name, frames] of this.keyframes) {
             let cells = frames.static ? this.cells.slice(0, 1) : this.cells;
             for (let cell of cells) {
-                let body = frames.compose(cell, env);
-                if (cell.uid <= 1) keyframes += `@keyframes ${name}${this.suffix} {${body}}`;
-                else if (frames.used.has(cell.uid)) keyframes += `@keyframes ${name}-${cell.uid}${this.suffix} {${body}}`;
+                let body = frames.compose(cell, env), { uid } = cell;
+                if (uid <= 1 || frames.used.has(uid)) keyframes += `@keyframes ${name}${uid > 1 ? '-' + uid : ''}${this.suffix} {${body}}`;
             }
         }
 

@@ -32,6 +32,8 @@ function resolvePlace(value) {
     return [x ?? rest.shift() ?? '50%', y ?? rest.shift() ?? '50%', safe];
 }
 
+const SPACE = { symbol: ' ' };
+
 const borderStyles = /^(solid|dotted|dashed|double|groove|ridge|inset|outset)$/;
 const lengthValue = /^([.\d]|calc\(|var\()/;
 const ruleWidths = /^(thin|medium|thick)$/;
@@ -45,7 +47,7 @@ function completeRule(values) {
 }
 
 function formatBorder(value) {
-    let values = parseValueGroup(value, { symbol: ' ' }).slice();
+    let values = parseValueGroup(value, SPACE).slice();
     let [head] = values;
     if (values.length === 1 && !/^\.?\d/.test(head) && !ruleWidths.test(head)) {
         values.push('1px');
@@ -54,7 +56,7 @@ function formatBorder(value) {
 }
 
 function formatGap(value) {
-    let values = parseValueGroup(value, { symbol: ' ' }).slice();
+    let values = parseValueGroup(value, SPACE).slice();
     let gap = [];
     while (gap.length < 2 && values.length && lengthValue.test(values[0])) {
         let head = values.shift();
@@ -123,11 +125,11 @@ Property.grid = (value, options) => {
         clip: true,
         p3d: false,
     };
-    let temp = parseValueGroup(value, { symbol: ' ' }).map(item => {
+    let temp = parseValueGroup(value, SPACE).map(item => {
         if (/^row$/i.test(item)) result.flex = 'row';
         else if (/^col$/i.test(item)) result.flex = 'column';
         else if (/^border(:|$)/i.test(item)) result.border = '1px solid ' + (item.split(':')[1] || '');
-        else if (/^no\-*clip$/i.test(item)) result.clip = false;
+        else if (/^no-*clip$/i.test(item)) result.clip = false;
         else if (/^p3d$/i.test(item)) result.p3d = true;
         else {
             result.grid ??= parseGrid(item, options.maxGrid);
@@ -155,10 +157,10 @@ Property.grid = (value, options) => {
                 break;
             }
             case '|': result.backdropFilter = value; break;
-            case '^': result.enlarge = parseValueGroup(value, { symbol: ' ' }); break;
-            case '∆': result.persp = parseValueGroup(value, { symbol: ' ' }); break;
+            case '^': result.enlarge = parseValueGroup(value, SPACE); break;
+            case '∆': result.persp = parseValueGroup(value, SPACE); break;
             case '*': {
-                let [head, ...rest] = parseValueGroup(value, { symbol: ' ' });
+                let [head, ...rest] = parseValueGroup(value, SPACE);
                 if (head === 'h') result.hueRotate = rest.join(' ');
                 else result.rotate = value;
                 break;

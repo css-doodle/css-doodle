@@ -49,8 +49,7 @@ export default function gridStyleRules({
     }
     if (enlarge) {
         let [sx, sy = sx] = enlarge;
-        let width = isBareNumber(sx) ? `calc(${sx} * 100%)` : `calc(${sx} + 100%)`;
-        let height = isBareNumber(sy) ? `calc(${sy} * 100%)` : `calc(${sy} + 100%)`;
+        let [width, height] = [sx, sy].map(v => `calc(${v} ${isBareNumber(v) ? '*' : '+'} 100%)`);
         add(':container', css`
             width: ${width};
             height: ${height};
