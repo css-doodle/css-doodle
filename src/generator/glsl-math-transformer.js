@@ -51,9 +51,7 @@ for (const [type, names] of Object.entries({
 
 const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment arc'.split(' '));
 
-const RANK = [
-    'bool', 'int', 'float', 'mat2', 'mat3', 'mat4', 'bvec2', 'bvec3', 'bvec4', 'vec2', 'vec3', 'vec4'
-];
+const RANK = 'bool int float mat2 mat3 mat4 bvec2 bvec3 bvec4 vec2 vec3 vec4'.split(' ');
 
 const ZERO = { type: 'Lit', val: '0' };
 

@@ -23,7 +23,7 @@ const SHAPES = {
 const GROUPS = { __proto__: null, union: '1.0, 1.0', subtract: '-1.0, 1.0', intersect: '-1.0, -1.0' };
 
 const COMMANDS = new Set(['move', 'rotate', 'scale', 'mirror', 'repeat', 'twist', 'grow', 'frame']);
-const AXES = { __proto__: null, x: '1.0, 0.0, 0.0', y: '0.0, 1.0, 0.0', z: '0.0, 0.0, 1.0' };
+const AXES = { __proto__: null, x: glsl`1.0, 0.0, 0.0`, y: glsl`0.0, 1.0, 0.0`, z: glsl`0.0, 0.0, 1.0` };
 
 const SCENE_HELPERS = glsl`
     vec4 g_op(vec4 a, vec4 b, float k, float sa, float sb) {
@@ -74,7 +74,7 @@ const SCENE_HELPERS = glsl`
     }
 `;
 
-const LIGHT = 'vec3(0.6, 0.8, 0.5)', SHADE = ' * g_L';
+const LIGHT = glsl`vec3(0.6, 0.8, 0.5)`, SHADE = ' * g_L';
 
 const shadows = narrow => glsl`
     // soft: how near the way to the light passes a shape, for how far along it
@@ -104,8 +104,9 @@ function isVar(node, name) {
 }
 
 function checkAll(node, warn, unread, code, copy) {
-    if (node.children.some(c => /^match\b/.test(c.name))) warn('no match blocks');
-    node.children = node.children.filter(c => !/^match\b/.test(c.name));
+    let shapes = node.children.filter(c => !/^match\b/.test(c.name));
+    if (shapes.length < node.children.length) warn('no match blocks');
+    node.children = shapes;
     if (!NAME.test(node.name)) {
         let text = node.name + (node.count ? '*' + node.count.join('x') : '');
         warn(`unexpected ${text}`);
@@ -167,7 +168,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let counter = 0, sites = 0, key = '0.0', cap, fill, cut, loose, self;
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
         // outside copies the scene is one copy
-        let names = { __proto__: null, t: 't', deg: '(PI / 180.0)', turn: '(2.0 * PI)', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
+        let names = { __proto__: null, t: 't', deg: glsl`(PI / 180.0)`, turn: glsl`(2.0 * PI)`, n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
         let unknown = colorReader(extra, name => warn(`unknown name ${name}`));
         let next = () => `g_${++counter}`;
         let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
@@ -214,6 +215,7 @@ export default function drawScene(code, extra, report = () => {}) {
         };
         let base = fill = next(), none = dist ? '1e5' : `vec4(${base}, 1e5)`;
         let T = dist ? 'float' : 'vec4', W = dist ? '' : '.w';
+        let declare = (r, v = none) => out += `${T} ${r} = ${v};\n`;
         if (!dist) out += `vec3 ${base} = vec3(0.9)${SHADE};\n`;
         // a hard join is min for union, max against -b for subtract, max for intersect
         let join = (a, b, k, signs = '1.0, 1.0') => `${a} = ${dist && k === '0.0'
@@ -253,7 +255,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 end = Math.max(end, sites);
                 return k;
             };
-            out += `${T} ${r} = ${none};\n`;
+            declare(r);
             if (node.copies) {
                 node.copies.slice(0, X * Y).forEach((c, i) => copy(c, float(i + 1), float(i % X + 1), float((i / X | 0) + 1)));
             } else {
@@ -317,8 +319,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     else warn(`invalid mirror ${t.value}`);
                 }
                 let start = sites, end = start;
-                r = next();
-                out += `${T} ${r} = ${none};\n`;
+                declare(r = next());
                 for (let k = 0; k < 1 << axes.length; k++) {
                     let c = next();
                     types[c] = 'vec3';
@@ -336,7 +337,8 @@ export default function drawScene(code, extra, report = () => {}) {
                 if (fit) {
                     let k = next();
                     r = next();
-                    out += `${T} ${r} = ${none};\nfor (int ${k} = 0; ${k} < 16; ${k}++) {\nvec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, float(${k}) * PI / 8.0);\n`;
+                    declare(r);
+                    out += `for (int ${k} = 0; ${k} < 16; ${k}++) {\nvec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, float(${k}) * PI / 8.0);\n`;
                     let c = chain(node, inner, q);
                     out += join(r, c, '0.0') + '}\n';
                     return r;
@@ -400,12 +402,12 @@ export default function drawScene(code, extra, report = () => {}) {
                     a ??= b;
                 }
                 cut = outerCut;
-                out += `${T} ${r} = ${a || none};\n`;
+                declare(r, a);
                 return r;
             }
             if (!SHAPES[node.name]) {
                 warn(`unknown shape ${node.name}`);
-                out += `${T} ${r} = ${none};\n`;
+                declare(r);
                 return r;
             }
             // round keeps the outer size: shrink by r, then grow by r
@@ -510,7 +512,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     }
                 }
             }
-            out += `${T} ${r} = ${dist ? d : `vec4(${fill}, ${d})`};\n`;
+            declare(r, dist ? d : `vec4(${fill}, ${d})`);
             return r;
         }
 
@@ -544,14 +546,14 @@ export default function drawScene(code, extra, report = () => {}) {
             let [v, c] = paint(g);
             return [v.length ? vec3(v.slice(0, 3)) : LIGHT, c || `vec3(${v[3] || '1.0'})`];
         });
-        if (!camera.light) lights.push([LIGHT, 'vec3(1.0)']);
+        if (!camera.light) lights.push([LIGHT, glsl`vec3(1.0)`]);
         // `sky ground`, the light from all around: a surface facing up gets sky, one facing down ground, a fifth of sky unless given
         let ambient = glsl`0.3 * (0.6 + 0.4 * n.y)`;
         if (camera.ambient) {
             let [v, c] = off(camera.ambient) ? [['0.0']] : paint(camera.ambient), sky;
             if (c) v.push(c);
             sky = `vec3(${v[0]})`;
-            ambient = `mix(${v[1] ? `vec3(${v[1]})` : `${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * n.y)`;
+            ambient = glsl`mix(${v[1] ? `vec3(${v[1]})` : glsl`${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * n.y)`;
         }
         return { out, result, turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, base: +angles[1] || 0, loose };
     };
@@ -689,7 +691,7 @@ export default function drawScene(code, extra, report = () => {}) {
         ${bare.out}
         return ${bare.result};
     }
-    ${shadow ? shadows(wide ? `(1.0 / max(tan(radians(${wide})), 1e-4))` : '10.0') : ''}
+    ${shadow ? shadows(wide ? glsl`(1.0 / max(tan(radians(${wide})), 1e-4))` : '10.0') : ''}
     vec3 g_L = vec3(1.0);
     vec4 g_scene(vec3 p) {
         ${full.out}

@@ -281,17 +281,11 @@ export default function drawShader(shaders, seed, cell, onLost) {
         textures.forEach((n, i) => {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
-        uniforms = {
-            resolution: gl.getUniformLocation(program, 'u_resolution'),
-            seed: gl.getUniformLocation(program, 'u_seed'),
-            time: gl.getUniformLocation(program, 'u_time'),
-            frame: gl.getUniformLocation(program, 'u_frameIndex'),
-            delta: gl.getUniformLocation(program, 'u_timeDelta'),
-            mouse: gl.getUniformLocation(program, 'u_mouse'),
-            drag: gl.getUniformLocation(program, 'u_drag'),
-            px: gl.getUniformLocation(program, 'u_px'),
-        };
-        drawing.animated = !!(uniforms.time || uniforms.frame || uniforms.delta || uniforms.mouse);
+        uniforms = {};
+        for (const name of ['resolution', 'seed', 'time', 'frameIndex', 'timeDelta', 'mouse', 'drag', 'px']) {
+            uniforms[name] = gl.getUniformLocation(program, 'u_' + name);
+        }
+        drawing.animated = !!(uniforms.time || uniforms.frameIndex || uniforms.timeDelta || uniforms.mouse);
         drawing.seeded = !!uniforms.seed;
     }
 
@@ -334,12 +328,12 @@ export default function drawShader(shaders, seed, cell, onLost) {
         gl.clear(gl.COLOR_BUFFER_BIT);
         if (uniforms.seed) gl.uniform2f(uniforms.seed, seeds[0], seeds[1]);
         if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
-        if (uniforms.frame) gl.uniform1i(uniforms.frame, frameIndex++);
+        if (uniforms.frameIndex) gl.uniform1i(uniforms.frameIndex, frameIndex++);
         if (uniforms.mouse) gl.uniform2f(uniforms.mouse, mouse ? mouse.x * dpr : 0, mouse ? (h - mouse.y) * dpr : 0);
         if (uniforms.drag) gl.uniform2f(uniforms.drag, ...drag);
         if (uniforms.px) gl.uniform1f(uniforms.px, 1 / Math.min(w, h));
-        if (uniforms.delta) {
-            gl.uniform1f(uniforms.delta, (t - currentTime) * 0.001);
+        if (uniforms.timeDelta) {
+            gl.uniform1f(uniforms.timeDelta, (t - currentTime) * 0.001);
             currentTime = t;
         }
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

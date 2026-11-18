@@ -7,17 +7,15 @@ import { glsl } from '../lib/tagged-template.js';
 const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
-const BUILTINS = [
-    'x', 'y', 'i', 'X', 'Y', 'I', 'dx', 'dy', 'du', 'dv', 'dr', 'dc', 'dm', 'da', 'db', 'uv', 'pos', 't', 'size', 'px',
-];
+const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px'.split(' ');
 
 export const NAME = /^[a-zA-Z_]\w*$/;
 
 const MASKS = {
     __proto__: null,
-    circle: 'length(vec2(du, dv))',
-    square: 'max(abs(du), abs(dv))',
-    diamond: 'abs(du) + abs(dv)',
+    circle: glsl`length(vec2(du, dv))`,
+    square: glsl`max(abs(du), abs(dv))`,
+    diamond: glsl`abs(du) + abs(dv)`,
 };
 
 const CELL_INDEX = glsl`
