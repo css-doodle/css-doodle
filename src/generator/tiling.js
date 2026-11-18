@@ -485,14 +485,17 @@ function nearest(rings) {
     });
     return (x, y) => {
         let d = Infinity;
-        for (let i = 0; i < segs.length; i += 5) {
-            let ax = x - segs[i], ay = y - segs[i + 1], dx = segs[i + 2], dy = segs[i + 3];
-            let t = (ax * dx + ay * dy) * segs[i + 4];
-            t = t < 0 ? 0 : t > 1 ? 1 : t;
-            d = min(d, (ax - dx * t) ** 2 + (ay - dy * t) ** 2);
-        }
+        for (let i = 0; i < segs.length; i += 5) d = min(d, away(segs, i, x, y));
         return sqrt(d);
     };
+}
+
+// the squared distance from (x, y) to the side at a in segs, kept as ax, ay, dx, dy, 1 / length²
+function away(segs, a, x, y) {
+    let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
+    let t = (ax * dx + ay * dy) * segs[a + 4];
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return (ax - dx * t) ** 2 + (ay - dy * t) ** 2;
 }
 
 function bbox(screen, box) {
@@ -533,12 +536,7 @@ function pack(rings, box, inside, count, seed, size) {
         let x = xs[i], y = ys[i], r = edge[i];
         if (r === undefined) {
             r = max(0, min(caps[i], x - box[0], box[2] - x, y - box[1], box[3] - y)) ** 2;
-            for (let a of sides[cell(x, x0) + cols * cell(y, y0)]) {
-                let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
-                let t = (ax * dx + ay * dy) * segs[a + 4];
-                t = t < 0 ? 0 : t > 1 ? 1 : t;
-                r = min(r, (ax - dx * t) ** 2 + (ay - dy * t) ** 2);
-            }
+            for (let a of sides[cell(x, x0) + cols * cell(y, y0)]) r = min(r, away(segs, a, x, y));
             r = edge[i] = sqrt(r);
         }
         under(x, y, r, circles => {

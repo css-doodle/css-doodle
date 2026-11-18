@@ -26,12 +26,12 @@ function isPrimitive(token) {
 function expandGroup(g, output, seed, warn, nextResult, chainInput) {
     let el = (name, attrs) => output.push({
         type: 'block', name,
-        value: attrs.map(([n, v]) => statement(n, v)),
+        value: Object.entries(attrs).map(([n, v]) => statement(n, v)),
     });
     for (let operator of ['dilate', 'erode']) {
-        if (g[operator]) el('feMorphology', [['operator', operator], ['radius', g[operator]]]);
+        if (g[operator]) el('feMorphology', { operator, radius: g[operator] });
     }
-    if (g.blur) el('feGaussianBlur', [['stdDeviation', g.blur]]);
+    if (g.blur) el('feGaussianBlur', { stdDeviation: g.blur });
     if (!g.frequency) {
         for (let name of ['scale', 'octave', 'seed']) {
             if (g[name]) warn(`${name} needs frequency`);
@@ -39,12 +39,8 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
         return;
     }
     let [x, y = x] = parseValueGroup(g.frequency);
-    let turbulence = [
-        ['type', 'fractalNoise'],
-        ['baseFrequency', `${x} ${y}`],
-        ['seed', g.seed ?? seed],
-    ];
-    if (g.octave) turbulence.push(['numOctaves', g.octave]);
+    let turbulence = { type: 'fractalNoise', baseFrequency: `${x} ${y}`, seed: g.seed ?? seed };
+    if (g.octave) turbulence.numOctaves = g.octave;
     let input = 'SourceGraphic', noise;
     if (g.scale && chainInput) {
         let last = output.findLast(isPrimitive);
@@ -56,13 +52,11 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
             input = removeQuotes(result.value);
         }
         noise = nextResult('noise');
-        turbulence.push(['result', noise]);
+        turbulence.result = noise;
     }
     el('feTurbulence', turbulence);
     if (g.scale) {
-        el('feDisplacementMap', noise
-            ? [['in', input], ['in2', noise], ['scale', g.scale]]
-            : [['in', input], ['scale', g.scale]]);
+        el('feDisplacementMap', noise ? { in: input, in2: noise, scale: g.scale } : { in: input, scale: g.scale });
     }
 }
 

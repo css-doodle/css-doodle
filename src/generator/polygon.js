@@ -7,10 +7,12 @@ const lists = n => Array.from({ length: n }, () => []);
 const sum = list => list.reduce((a, b) => a + b, 0);
 const perimeter = ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1))));
 
+// the signed angle from (ux, uy) to (vx, vy)
+const angle = (ux, uy, vx, vy) => atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+
 const turn = (ring, i) => {
     let [ax, ay] = ring.at(i - 1), [px, py] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
-    let ux = px - ax, uy = py - ay, vx = bx - px, vy = by - py;
-    return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy));
+    return abs(angle(px - ax, py - ay, bx - px, by - py));
 };
 
 function insideTest(rings, evenodd) {
@@ -112,7 +114,7 @@ function overlay(A, B, op, joints = new Set()) {
             ring.push(q);
             if (kq == start) break;
             for (let s of from.get(kq) || []) {
-                let ex = s[1][0] - s[0][0], ey = s[1][1] - s[0][1], turn = atan2(dx * ey - dy * ex, dx * ex + dy * ey);
+                let turn = angle(dx, dy, s[1][0] - s[0][0], s[1][1] - s[0][1]);
                 if (!s.used && turn > best) best = turn, cur = s;
             }
         }
@@ -133,7 +135,7 @@ function offset(rings, d, evenodd, tol = .002) {
         ring.forEach((p, i) => {
             let a = ring.at(i - 1), b = ring[(i + 1) % ring.length], ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - p[0], vy = b[1] - p[1];
             let lu = hypot(ux, uy), lv = hypot(vx, vy), n = [uy / lu, -ux / lu], m = [vy / lv, -vx / lv];
-            let turn = atan2(ux * vy - uy * vx, ux * vx + uy * vy), at = ([x, y]) => [p[0] + d * x, p[1] + d * y];
+            let turn = angle(ux, uy, vx, vy), at = ([x, y]) => [p[0] + d * x, p[1] + d * y];
             if (turn * d > 0) {
                 // an arc around the corner, as a disk rolled along the outline leaves
                 let from = atan2(n[1], n[0]), k = min(64, ceil(abs(turn) / sqrt(8 * tol / abs(d))));
@@ -188,8 +190,7 @@ function corners(ring, joints, r) {
         // the radius a cut of d gives, exact at once on straight sides
         let curve = d => {
             let [px, py] = at(s[j] - d), [qx, qy] = at(s[j] + d);
-            let ux = px - bx, uy = py - by, vx = qx - bx, vy = qy - by;
-            return d * tan(abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy)) / 2);
+            return d * tan(abs(angle(px - bx, py - by, qx - bx, qy - by)) / 2);
         };
         let d = r * limit / curve(limit);
         if (!(d < limit)) return limit;
@@ -329,6 +330,6 @@ function area(p) {
 }
 
 export {
-    mix, dist, lists, sum, perimeter, turn, insideTest, toPairs, bridge, overlay, offset, corners,
+    mix, dist, angle, lists, sum, perimeter, turn, insideTest, toPairs, bridge, overlay, offset, corners,
     resample, recount, flatten, keepers, thin, wave, scale, bounds, signed, area,
 };

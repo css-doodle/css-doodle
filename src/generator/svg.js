@@ -5,9 +5,9 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
 import { traceRings } from './trace.js';
-import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge } from './polygon.js';
+import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge, angle } from './polygon.js';
 
-const { atan2, ceil, abs, max, hypot, PI } = Math;
+const { ceil, abs, max, hypot, PI } = Math;
 
 const nextInlineId = nextId();
 
@@ -186,7 +186,7 @@ function arcRun(ps, i, tol) {
         let ox = ax + ((cy - ay) * b2 - (by - ay) * c2) / den, oy = ay + ((bx - ax) * c2 - (cx - ax) * b2) / den, r = hypot(ax - ox, ay - oy), turn = 0;
         for (let m = i + 1; m <= j; ++m) {
             let [px, py] = P(m - 1), [qx, qy, curve] = P(m), ux = px - ox, uy = py - oy, vx = qx - ox, vy = qy - oy;
-            let a = atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+            let a = angle(ux, uy, vx, vy);
             if (curve !== undefined || abs(hypot(vx, vy) - r) > tol || r - hypot((px + qx) / 2 - ox, (py + qy) / 2 - oy) > tol || a * turn < 0) return;
             turn += a;
         }
@@ -209,10 +209,8 @@ function transformViewBox(token, warn) {
     let viewBox = token.detail.value;
     let p = token.detail.padding || token.detail.p;
     // `viewBox: 10` is `0 0 10 10`, `viewBox: 10 5` is `0 0 10 5`
-    if (viewBox.length === 1) {
-        viewBox = [0, 0, viewBox[0], viewBox[0]];
-    } else if (viewBox.length === 2) {
-        viewBox = [0, 0, viewBox[0], viewBox[1]];
+    if (viewBox.length == 1 || viewBox.length == 2) {
+        viewBox = [0, 0, viewBox[0], viewBox.at(-1)];
     }
     if (viewBox.length !== 4) {
         warn(`invalid viewBox "${token.value}"`);
@@ -220,7 +218,7 @@ function transformViewBox(token, warn) {
     }
     let [x, y, w, h] = viewBox;
     if (p) {
-        [x, y, w, h] = [x-p, y-p, w+p*2, h+p*2];
+        x -= p, y -= p, w += p * 2, h += p * 2;
     }
     return `${x} ${y} ${w} ${h}`;
 }
@@ -270,57 +268,57 @@ function timing(animate, value, warn) {
 }
 
 function generate(token, element, parent, root, warn) {
-    let inlineId;
+    let { name, value } = token, inlineId;
     if (!element) {
         element = new Tag('root');
     }
     if (token.type === 'block') {
         // style tag
-        if (token.name === 'style') {
+        if (name === 'style') {
             let el = new Tag('style');
-            el.append(token.value);
+            el.append(value);
             element.append(el);
         }
         else if (token.test !== undefined) {
             if (Number(token.test)) {
-                for (let block of token.value) {
+                for (let block of value) {
                     let id = generate(block, element, parent, root, warn);
                     if (id) { inlineId = id }
                 }
             }
         }
-        else if (!NAME.test(token.name)) {
-            warn(`invalid tag ${token.name}`);
+        else if (!NAME.test(name)) {
+            warn(`invalid tag ${name}`);
         }
         else {
-            let el = new Tag(token.name);
+            let el = new Tag(name);
             let fresh = false;
             if (!root) {
                 root = el;
                 root.attr('xmlns', NS.split('=')[1]);
             }
-            if (token.name === 'defs') el = root.findSpareDefs() || el;
-            for (let block of token.value) {
+            if (name === 'defs') el = root.findSpareDefs() || el;
+            for (let block of value) {
                 let id = generate(block, el, token, root, warn);
                 if (id) { inlineId = id }
             }
-            if (GROUPS.includes(token.name)) el = combine(el, token.name, warn);
-            let isInlineAndNotDefs = token.inline && token.name !== 'defs';
+            if (GROUPS.includes(name)) el = combine(el, name, warn);
+            let isInlineAndNotDefs = token.inline && name !== 'defs';
             let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
             let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
 
             if (isInlineAndNotDefs || isParentInlineDefs) {
                 // generate id for inline block if no id is found
-                let found = token.value.find(n => n.type === 'statement' && n.name === 'id');
+                let found = value.find(n => n.type === 'statement' && n.name === 'id');
                 if (found) {
                     inlineId = found.value;
                 } else if (isSingleDefChild || isInlineAndNotDefs) {
-                    inlineId = nextInlineId(token.name);
+                    inlineId = nextInlineId(name);
                     el.attr('id', inlineId);
                     fresh = true;
                 }
             }
-            if (token.inline && /^(linearGradient|radialGradient|pattern|filter|clipPath|mask|marker|symbol)$/.test(token.name)) {
+            if (token.inline && /^(linearGradient|radialGradient|pattern|filter|clipPath|mask|marker|symbol)$/.test(name)) {
                 element = root.findSpareDefs();
                 if (!element) {
                     root.append(element = new Tag('defs'));
@@ -332,7 +330,7 @@ function generate(token, element, parent, root, warn) {
                     existedTag.merge(el);
                 }
             } else {
-                if (token.name === 'defs') {
+                if (name === 'defs') {
                     // append only when there's no defs and spare defs
                     let defsElement = root.findSpareDefs();
                     if (defsElement && !el.attrs.id) {
@@ -349,29 +347,28 @@ function generate(token, element, parent, root, warn) {
         }
     }
     if (token.type === 'statement' && !token.variable) {
-        let value = token.value;
         // `style fill: red`, `animate r: …`: a keyword and the attribute it applies to
-        let space = token.name.indexOf(' ');
-        let keyword = space < 0 ? token.name : token.name.slice(0, space);
-        let name = space < 0 ? '' : token.name.slice(space + 1).trim();
+        let space = name.indexOf(' ');
+        let keyword = space < 0 ? name : name.slice(0, space);
+        let prop = space < 0 ? '' : name.slice(space + 1).trim();
         if (keyword === 'content') {
             element.append(unquote(value));
         }
         // inline style, `style fill: red` or `style: { fill: red }`
         else if (keyword === 'style') {
-            let rule = name ? `${name}:${value};` : String(value).trim().replace(/;?$/, ';');
+            let rule = prop ? `${prop}:${value};` : String(value).trim().replace(/;?$/, ';');
             element.attr('style', (element.attr('style') || '') + rule);
         }
         else {
             // handle inline block value
             if (value?.type === 'block') {
-                let id = generate(token.value, root, token, root, warn);
+                let id = generate(value, root, token, root, warn);
                 if (isNil(id)) {
                     warn('defs: one element');
                     value = '';
                 } else {
                     value = `url(#${id})`;
-                    if (token.name === 'xlink:href' || token.name === 'href') {
+                    if (name === 'xlink:href' || name === 'href') {
                         value = `#${id}`;
                     }
                 }
@@ -379,11 +376,11 @@ function generate(token, element, parent, root, warn) {
             if (keyword === 'viewBox') {
                 value = transformViewBox(token, warn);
                 if (value) {
-                    element.attr(token.name, value);
+                    element.attr(name, value);
                 }
             }
             // `draw: 2s infinite` strokes a shape along its length
-            else if (keyword === 'draw' || (keyword === 'animate' && !name)) {
+            else if (keyword === 'draw' || (keyword === 'animate' && !prop)) {
                 if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name) && !GROUPS.includes(parent.name)) {
                     warn(`<${parent.name}> lacks path`);
                 } else {
@@ -409,17 +406,17 @@ function generate(token, element, parent, root, warn) {
             }
             // `animate r: 1; 5; 1 / 2s ease infinite`, `animate transform: rotate 0; 360 / 4s`
             else if (keyword === 'animate') {
-                name = adjustName(name);
+                prop = adjustName(prop);
                 let text = String(value);
                 let slash = text.lastIndexOf('/');
                 let values = parseValueGroup(slash < 0 ? text : text.slice(0, slash), { symbol: ';', noSpace: true })
                     .filter(v => v.length);
-                if (name === 'd') {
+                if (prop === 'd') {
                     values = values.map(startPath);
                 }
-                let animate = new Tag(name === 'transform' ? 'animateTransform' : 'animate');
-                animate.attr('attributeName', name);
-                if (name === 'transform' && values.length) {
+                let animate = new Tag(prop === 'transform' ? 'animateTransform' : 'animate');
+                animate.attr('attributeName', prop);
+                if (prop === 'transform' && values.length) {
                     let [type, ...rest] = values[0].split(/\s+/);
                     animate.attr('type', type);
                     values[0] = rest.join(' ');
@@ -430,14 +427,14 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('values', values.join(';'));
                 }
                 if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), warn)) {
-                    warn(`${name} needs duration`);
+                    warn(`${prop} needs duration`);
                 }
                 element.append(animate);
             }
-            else if (NAME.test(token.name)) {
-                element.attr(token.name, value);
+            else if (NAME.test(name)) {
+                element.attr(name, value);
             }
-            if (token.name.includes('xlink:')) {
+            if (name.includes('xlink:')) {
                 root.attr('xmlns:xlink', NSXLink.split('=')[1]);
             }
         }

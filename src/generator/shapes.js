@@ -301,7 +301,7 @@ function createShapePoints(props, lo, hi, raw) {
                     let [a, b] = parsePair(value, name == 'move' ? 0 : 1, p);
                     fn = ([x, y]) => name == 'move' ? [x + a, y + b] : [x * a, y * b];
                 }
-                paths[c] = paths[c] && paths[c].map(([x, y, bx, by]) => bx === undefined ? fn([x, y]) : [...fn([x, y]), ...fn([bx, by])]);
+                paths[c] &&= paths[c].map(([x, y, bx, by]) => bx === undefined ? fn([x, y]) : [...fn([x, y]), ...fn([bx, by])]);
                 os[c] = fn(os[c]);
                 return ring.map(fn);
             });
