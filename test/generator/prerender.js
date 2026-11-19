@@ -119,6 +119,15 @@ test('needs lists what only the runtime can do', async () => {
     assert.deepEqual(await needs('@content: @doodle(@grid: 2; background: red);'), ['doodle']);
     assert.deepEqual(await needs('color: red; transition: color 1s;'), []);
     assert.deepEqual(await needs('', { attributes: { use: 'var(--rule)' } }), ['variables']);
+    assert.deepEqual(await needs('background: @palette(2, tomato);'), ['color']);
+    assert.deepEqual(await needs('background: @doodle(background: @palette(2, tomato));'), ['color']);
+});
+
+test('@palette leaves out a color it cannot read, without a warning', async () => {
+    let { html, warnings } = await prerender('background: @palette(2, tomato);', { seed: 1 });
+    let plain = await prerender('background: @palette(2);', { seed: 1 });
+    assert.deepEqual(warnings, []);
+    assert.equal(html.split('<template')[1], plain.html.split('<template')[1]);
 });
 
 test('use reads variables from options', async () => {

@@ -7,7 +7,8 @@ import { doodleToImage, svgUrl } from '../../component/doodle-image.js';
  *
  * `width` and `height` are in pixels and give the image its size and viewBox;
  * without them it takes the size it is drawn at.
- * `needs` has 'shader' when @shaders and @pattern images are left out.
+ * `needs` has 'shader' when @shaders and @pattern images are left out,
+ * and 'color' when @palette() leaves out its color.
  */
 export default async function image(code = '', options = {}) {
     let { width, height } = options;
@@ -17,7 +18,7 @@ export default async function image(code = '', options = {}) {
     let skip = () => (needs.add('shader'), Promise.resolve());
     let svg = '';
     let host = {
-        extra: { getVariable: () => '' },
+        extra: { getVariable: () => '', getRgbaColor: () => void needs.add('color') },
         getMaxGrid: () => 64,
         report: list => warnings.push(...list),
         hasAttribute: () => false,

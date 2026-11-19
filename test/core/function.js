@@ -1053,11 +1053,12 @@ test('@palette: the ground comes first, the ink second, around an optional base 
     // any color the browser reads; a gradient seed builds distinct colors around it
     assert.equal(Function.palette(null, env('b'))(5, 'tomato')[1], 'tomato');
     assert.notDeepEqual(Function.palette(null, env('b'))(5, '#e6437d').slice(2), Function.palette(null, env('b'))(5).slice(2));
-    // a color it can't read, or no browser to read it, warns and is left out
+    // a color the browser can't read warns and is left out; with no browser it is left out quietly
     let warns = [];
     assert.deepEqual(Function.palette(null, env('a', warns))(5, 'nope'), palette(5));
+    assert.deepEqual(warns, ['unknown nope']);
     assert.deepEqual(Function.palette(null, { ...env('a', warns), host: undefined })(5, '#e6437d'), palette(5));
-    assert.equal(warns.length, 2);
+    assert.equal(warns.length, 1);
 });
 
 test('@P: never the last pick at that call, even when it is listed more than once', () => {

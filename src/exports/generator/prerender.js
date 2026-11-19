@@ -41,6 +41,7 @@ function dropStrayTemplateEnds(html) {
  *   doodle      a @doodle in @content stays its source text
  *   safari      an animated sized @doodle is drawn unscaled in Safari
  *   variables   a var() in `use` has no value in `options.variables`
+ *   color       @palette() leaves out its color, which only a browser reads
  *
  * Without a seed the source picks one, so a build renders the same picture
  * each time; the element itself picks a new one on every load.
@@ -70,6 +71,7 @@ export default async function prerender(code = '', options = {}) {
                 if (value === undefined) needs.add('variables');
                 return removeParens(String(value ?? '').trim());
             },
+            getRgbaColor: () => void needs.add('color'),
         },
         getMaxGrid: () => maxGrid,
         report: list => warnings.push(...list),

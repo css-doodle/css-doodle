@@ -677,10 +677,14 @@ Function.palette = (_, { seed, rules, host }) => (...args) => {
     if (color) {
         let read = rules.colors ??= new Map();
         if (!read.has(color)) {
-            read.set(color, host?.getRgbaColor?.(color, 'oklab')?.slice(0, 3).map(v => v.toFixed(2)).join(' ') || '');
+            let rgba = host?.getRgbaColor?.(color, 'oklab');
+            read.set(color, rgba && rgba.slice(0, 3).map(v => v.toFixed(2)).join(' '));
         }
         lab = read.get(color);
-        if (!lab) rules.warn(`unknown color ${color}`), color = '';
+        if (!lab) {
+            if (lab === null) rules.warn(`unknown ${color}`);
+            color = lab = '';
+        }
     }
     return [...palette('palette:' + seed, ~~clamp(calc(n), 1, 256), color, lab)];
 };

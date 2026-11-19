@@ -44,3 +44,9 @@ test('shader images are left out', async () => {
     assert.ok(svg.startsWith('<svg'));
     assert.deepEqual(needs, ['shader']);
 });
+
+test('a @palette color is left out for the runtime', async () => {
+    let { needs, warnings } = await image('background: @palette(2, tomato);');
+    assert.deepEqual(needs, ['color']);
+    assert.deepEqual(warnings, []);
+});
