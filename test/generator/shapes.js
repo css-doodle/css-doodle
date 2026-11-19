@@ -571,7 +571,7 @@ test('round: curves leave the outline along it, also between curved sides', () =
 test('unknown shapes are reported', () => {
     assert.deepEqual(shapeWarnings('cirle'), ['unknown shape cirle']);
     assert.deepEqual(shapeWarnings('subtract { circle; cirle { scale: .5 } }'), ['unknown shape cirle']);
-    assert.deepEqual(shapeWarnings('union { #nope }'), ['unknown shape #nope']);
+    assert.deepEqual(shapeWarnings('union { #nope }'), ['unknown #nope']);
     for (let s of ['star 6 .3; scale: .5', 'polygon { points: 0 1, 1 -1, -1 -1 }', 'shape { r: .5 }', '(points: 8; r: .5)', 'circle#a { scale: .2 } union { #a }', 'r: cos(3t)']) {
         assert.deepEqual(shapeWarnings(s), [], s);
     }

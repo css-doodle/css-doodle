@@ -94,7 +94,7 @@ describe('component', { concurrency: 4 }, () => {
         let other = await mount(page, '@grid: 1 / 120px; background: #0c0;');
         let seed = await el.evaluate(el => el.seed);
         await other.evaluate(el => el.before = el.compiled);
-        assert.deepEqual(await el.evaluate(el => el.warnings), ['unknown function @addon-split()']);
+        assert.deepEqual(await el.evaluate(el => el.warnings), ['unknown @addon-split()']);
         await page.evaluate(() => customElements.get('css-doodle').use('addon-split', {
             shader: code => `void main() { FragColor = gl_FragCoord.x < u_resolution.x / 2.0 ? vec4(${code}, 1) : vec4(0, 0, 1, 1); }`,
         }));

@@ -90,7 +90,7 @@ export function expandFilterShorthands(root, seed, warn, chainInput = true) {
             found = true;
             let parsed = parseFilterRegion(token.value);
             if (parsed) region = parsed;
-            else warn('invalid svg-filter region');
+            else warn('invalid region');
             continue;
         }
         if (name && FILTER_COMMANDS.includes(name)) {

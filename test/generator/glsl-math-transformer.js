@@ -405,7 +405,7 @@ test('ramp() reports positions that are not one number, and leaves them out', ()
     assert.deepEqual(messages, ['ramp() needs numbers']);
     [out, messages] = run('ramp(x, 0 .2 .5, 1)');
     assert.match(out, /\(x - 0\.2\) \/ max\(1\.0 - 0\.2, /);
-    assert.deepEqual(messages, ['extra stop position']);
+    assert.deepEqual(messages, ['extra position']);
     // elsewhere a space still separates arguments
     assert.equal(transform('hsl(h .75 .65)'), 'hsl(h, .75, .65)');
 });

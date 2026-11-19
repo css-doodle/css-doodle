@@ -133,10 +133,10 @@ function expr(text, warn) {
     let failed = false;
     let fail = message => (failed = true, warn(message));
     text = String(text);
-    if ([utime, UTime].some(name => text.includes(name))) return fail('@t is CSS time, use t'), null;
+    if ([utime, UTime].some(name => text.includes(name))) return fail('@t: use t'), null;
     let names = { __proto__: null, t: 'u_time' };
     let math = text.replace(UNIT, (_, n, unit) => +n * DEGREES[unit.toLowerCase()]);
-    let code = compile(math, { names, warn: fail, unknown: name => (fail(`unknown name ${name}`), [0]) }).code('float');
+    let code = compile(math, { names, warn: fail, unknown: name => (fail(`unknown ${name}`), [0]) }).code('float');
     return failed || !code ? null : code.replace(/\bPI\b/g, '3.1415926535897932');
 }
 
@@ -242,7 +242,7 @@ if (typeof HTMLElement !== 'undefined') {
             let [, base, variant] = /^([^.]+)(?:\.([^.]+))?$/.exec(name) || [];
             let owner = base && !doodle && Func, key = variant || name;
             if (variant) owner = (doodle ? base == 'doodle' : added.has(base)) && Func[base];
-            if (owner && (key in owner || MathFunc[name])) return console.warn(`@${name} already exists`);
+            if (owner && (key in owner || MathFunc[name])) return console.warn(`@${name} exists`);
             if (!owner || !(shader || value || doodle)) return console.warn(`invalid addon @${name}`);
             owner[key] = doodle ? (code, api) => guard(() => doodle(code, {
                 ...api, stream: key => createRandom([name, api.seed, key]).rand, split, words,

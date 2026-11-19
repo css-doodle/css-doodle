@@ -908,7 +908,7 @@ function parseKeyframes(cur, brace) {
     }
     keyframes.name = cur.source.slice(start.index, end);
     if (!keyframes.name.length) {
-        warn(cur.ctx, 'missing keyframes name', start.pos);
+        warn(cur.ctx, 'unnamed @keyframes', start.pos);
     }
     cur.i = brace + 1;
 
@@ -1171,7 +1171,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         let hoists = pending && !(blocks.at(-1) && !depth) && !RE_REPEAT_HEAD.test(lead);
         let next = solidAt(tokens, end + 1);
         if (chain.includes(name)) {
-            warn(ctx, `$${name}() calls itself`);
+            warn(ctx, `recursive $${name}()`);
         } else if (ctx.expanded > MAX_EXPANSION) {
             if (ctx.expanded < Infinity) warn(ctx, 'expansion too large');
             ctx.expanded = Infinity;

@@ -240,7 +240,7 @@ test('a dotted name calls the variant of the function on its left', () => {
     assert.deepEqual(values('--v: @p.plot.scatter(star);'), scatter);
     // `.@name` and explicit nesting always compose
     for (let code of ['@plot.@scatter(star)', '@plot(@scatter(star))', '@scatter(star)', '@shape.scatter(star)']) {
-        assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown function @scatter/, code);
+        assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown @scatter/, code);
     }
     let corners = values('--v: @plot(points: -.5 .6, .5 .6, .9 .15, 0 -.85, -.9 .15);');
     assert.equal(new Set(corners).size, 25);
@@ -249,10 +249,10 @@ test('a dotted name calls the variant of the function on its left', () => {
         assert.equal(compile(`${code};`).warnings[0]?.message, 'unknown shape cirle', code);
     }
     // Function.prototype methods are not variants
-    assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown function @call/);
+    assert.match(compile('--v: @plot.call(star);').warnings[0].message, /unknown @call/);
     // nor is the keyed draw of @r(k: a, b)
     for (let code of ['@r.at(3, 10, 50)', '@ri.at(3, 10, 50)', '@random.at(3, 10, 50)']) {
-        assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown function @at/, code);
+        assert.match(compile(`--v: ${code};`).warnings[0]?.message, /unknown @at/, code);
     }
     // @tile.voronoi fills a preset or a formula
     let regions = values('--v: @tile.voronoi(star);');
@@ -267,7 +267,7 @@ test('a dotted name calls the variant of the function on its left', () => {
     let wedges = values('--v: @tile.voronoi(r: .5; gap: 2);');
     assert.equal(new Set(wedges).size, 25);
     assert.notDeepEqual(wedges, regions);
-    assert.match(compile('--v: @plot.voronoi(star);').warnings[0]?.message, /unknown function @voronoi/);
+    assert.match(compile('--v: @plot.voronoi(star);').warnings[0]?.message, /unknown @voronoi/);
 });
 
 test('@tile in clip-path brings its own transform-origin', () => {
@@ -950,7 +950,7 @@ test('@svg-filter no longer expands matrix blocks as color matrices', () => {
 test('warnings collect on the compiled result', () => {
     let compiled = compile('width: @pik(1, 2);');
     assert.equal(compiled.warnings.length, 1);
-    assert.match(compiled.warnings[0].message, /unknown function @pik/);
+    assert.match(compiled.warnings[0].message, /unknown @pik/);
     assert.equal(compiled.warnings[0].index, 7);
     // parse-level warnings ride along too
     compiled = compile('width: @p(1, 2;');
@@ -1338,7 +1338,7 @@ test('declaration-body at-rules are emitted once verbatim at the top', () => {
 test('@ blocks that are neither selectors nor groups pass through as written', () => {
     // a selector function with a modifier it does not have warns
     let compiled = compile('@cell.random { color: red }', '2');
-    assert.ok(compiled.warnings.some(w => w.message === 'unknown selector @cell.random'));
+    assert.ok(compiled.warnings.some(w => w.message === 'unknown @cell.random'));
     assert.equal(compiled.styles.top, '@cell.random { color: red }');
     assert.equal(compiled.styles.all, '');
     // anything else is CSS for the browser to judge, once
@@ -1590,7 +1590,7 @@ test('an unknown $name skips the shader with a warning instead of reaching GLSL'
         let { shaders, warnings, styles } = compile(`background: @shaders(${body})`);
         assert.deepEqual(Object.keys(shaders), []);
         assert.equal(styles.all.includes('$missing'), false);
-        assert.deepEqual(warnings.map(w => w.message), ['unknown variable $missing']);
+        assert.deepEqual(warnings.map(w => w.message), ['unknown $missing']);
     }
     // a body that reads nothing is stored as written
     let [plain] = Object.values(compile('background: @shaders(fragment { void main() {} } texture0 { @grid: 2 })').shaders);
@@ -1619,7 +1619,7 @@ test('$name in a pattern body reads the cell variable, texture blocks included',
     for (let [code, name] of [['fill: $nope, 0, 0', 'nope'], ['fill: $ring-count', 'ring-count']]) {
         let missing = compile(`background: @pattern(${code})`);
         assert.deepEqual(Object.keys(missing.patterns), []);
-        assert.deepEqual(missing.warnings.map(w => w.message), [`unknown variable $${name}`]);
+        assert.deepEqual(missing.warnings.map(w => w.message), [`unknown $${name}`]);
     }
 });
 

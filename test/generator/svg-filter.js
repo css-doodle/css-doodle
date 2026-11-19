@@ -151,7 +151,7 @@ test('region shorthand works without filter commands', () => {
 test('malformed regions warn and are dropped; the last valid one wins', () => {
     let { root, warnings } = expand('region: 20px; channels {}');
     assert.equal(root.value.some(token => token.type === 'statement' && token.name === 'region'), false);
-    assert.deepEqual(warnings, ['invalid svg-filter region']);
+    assert.deepEqual(warnings, ['invalid region']);
 
     ({ root, warnings } = expand('region: 10%; region: 20%; channels {}'));
     assert.deepEqual(root.value.slice(0, 4).map(token => token.value), ['-20%', '-20%', '140%', '140%']);
@@ -159,7 +159,7 @@ test('malformed regions warn and are dropped; the last valid one wins', () => {
 
     ({ root, warnings } = expand('region: 10%; region: nope; channels {}'));
     assert.deepEqual(root.value.slice(0, 4).map(token => token.value), ['-10%', '-10%', '120%', '120%']);
-    assert.deepEqual(warnings, ['invalid svg-filter region']);
+    assert.deepEqual(warnings, ['invalid region']);
 });
 
 test('commands that depend on frequency warn and are omitted without it', () => {

@@ -222,7 +222,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             const arg = parse();
             // in ramp() a stop's position follows its value after a space: #f80 .5
             if (name === 'ramp' && !comma && args.length > 1) {
-                if (args[args.length - 1].type === 'Stop') report('extra stop position');
+                if (args[args.length - 1].type === 'Stop') report('extra position');
                 else args.push({ type: 'Stop', left: args.pop(), right: arg });
             } else {
                 args.push(arg);

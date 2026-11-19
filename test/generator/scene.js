@@ -89,7 +89,7 @@ test('attributes a shape does not take are reported', () => {
 
 test('PI is a known name, other unknown names are reported', () => {
     assert.deepEqual(scene('sphere { r: .2 + sin(PI) * .1; rotate: PI / 4 }').warnings, []);
-    assert.deepEqual(scene('sphere { r: .2 + nope }').warnings, ['unknown name nope']);
+    assert.deepEqual(scene('sphere { r: .2 + nope }').warnings, ['unknown nope']);
 });
 
 test('fill colors a group and the shapes in it without their own', () => {
@@ -131,7 +131,7 @@ test('fill and variables read values as @pattern does', () => {
     assert.deepEqual(color.warnings, []);
     assert.match(color.body, /vec3 g_\d+ = vec3\(1\.0, 0\.0, 0\.0\);/);
     let empty = scene('k: ; sphere { r: k }');
-    assert.deepEqual(empty.warnings, ['unknown name k']);
+    assert.deepEqual(empty.warnings, ['unknown k']);
     assert.doesNotMatch(empty.body, /= ;/);
 });
 
@@ -141,8 +141,8 @@ test('a value function\'s own names stay out of the warnings', () => {
 });
 
 test('p is the point and cannot be assigned', () => {
-    assert.deepEqual(scene('p: 1; sphere { r: .3 }').warnings, ['p is read-only']);
-    assert.deepEqual(scene('sphere { p: p * 2; r: .2 }').warnings, ['p is read-only']);
+    assert.deepEqual(scene('p: 1; sphere { r: .3 }').warnings, ['read-only p']);
+    assert.deepEqual(scene('sphere { p: p * 2; r: .2 }').warnings, ['read-only p']);
 });
 
 test('*N and *XxY make copies with n, N, nx and ny', () => {
@@ -210,8 +210,8 @@ test('outside copies the scene is one copy', () => {
 test('#id names a shape instead of drawing it, #id draws it with more rows', () => {
     assert.deepEqual(scene('capsule#leg2 { from: 0 0 0; to: 0 .2 0; r: .02 } #leg2 { move: .1 0 0 }').warnings, []);
     assert.deepEqual(scene('union#cap { sphere { r: .2 } box { size: .1 } } #cap;').warnings, []);
-    assert.deepEqual(scene('union#a { #a { scale: 2 } } #a;').warnings, ['#a uses itself']);
-    assert.deepEqual(scene('#nope;').warnings, ['unknown shape #nope', '@scene needs shapes']);
+    assert.deepEqual(scene('union#a { #a { scale: 2 } } #a;').warnings, ['recursive #a']);
+    assert.deepEqual(scene('#nope;').warnings, ['unknown #nope', '@scene needs shapes']);
     // an attribute given at #id replaces the shape's own
     let { body, warnings } = scene('capsule#leg { r: .1 } #leg { r: .2 }');
     assert.deepEqual(warnings, []);
@@ -571,7 +571,7 @@ test('any other name is a variable, seen by the rows and shapes of its block', (
     // per copy, with n
     assert.match(scene('sphere*3 { k: n * .1; r: k }').body, /for \([^]*float (g_\d+) = \(g_\d+ \* \.1\);[^]*length\(p\) - \1/);
     // a variable nothing reads is reported, as is an attribute where it does not belong
-    assert.deepEqual(scene('k: 3; sphere;').warnings, ['nothing reads k']);
+    assert.deepEqual(scene('k: 3; sphere;').warnings, ['unused k']);
     assert.deepEqual(scene('sphere { d: .1; r: d * 2 }').warnings, []);
     // `2k` reads k, and `2t` reads the time
     assert.match(scene('k: .1; sphere { r: 2k }').body, /float (g_\d+) = \.1;[^]*\(2\.0 \* \1\)/);

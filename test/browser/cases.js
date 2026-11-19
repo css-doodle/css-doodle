@@ -159,14 +159,14 @@ export default [
     {
         name: 'nested-warning',
         code: `@grid: 1 / 120px; background: @doodle(@grid: 1 / 100%; background: @pikc(red););`,
-        warnings: ['unknown function @pikc()'],
+        warnings: ['unknown @pikc()'],
         blank: true,
     },
     {
         // an unknown name reads 0, so this fills black rather than drawing nothing
         name: 'pattern-unknown-name',
         code: `@grid: 1 / 120px; background: @pattern(fill: vec3(foo));`,
-        warnings: ['unknown name foo'],
+        warnings: ['unknown foo'],
         probes: [[60, 60, '#000']],
     },
     {

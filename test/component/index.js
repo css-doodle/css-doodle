@@ -271,7 +271,7 @@ test('the redraw after a font stylesheet lands does not print the warnings again
         host.render('font-family: @google-font(Warn Once); clip-path: @shape(text: A); width: @nope(1);');
         links[0].onload();
         await new Promise(resolve => setTimeout(resolve, 10));
-        assert.deepEqual(printed.map(m => m.split(' (')[0]), ['unknown function @nope()']);
+        assert.deepEqual(printed.map(m => m.split(' (')[0]), ['unknown @nope()']);
     } finally {
         console.warn = warn;
         globalThis.document = doc;
@@ -292,7 +292,7 @@ test('a generator warning reports the line and column of its offset', () => {
         console.warn = warn;
     }
     assert.deepEqual(printed, [
-        'unknown function @nope() (2:10)',
+        'unknown @nope() (2:10)',
         'parser (3:5)',
         'plain',
     ]);
@@ -695,7 +695,7 @@ test('use() gives a shader addon expr(): the math of @pattern as GLSL, with t th
     assert.deepEqual(JSON.parse(out), [
         '(9.0 + (2.0 * sin(u_time)))', '(u_time - 2.0 * trunc(u_time / 2.0))', '(3.1415926535897932 / 2.0)', '((9.0 + 90.0) - 90.0)', '(9.0 - 2.0 * trunc(9.0 / 2.0))', null, null, null,
     ]);
-    assert.deepEqual(warnings, ['unknown name nope', 'nothing after +', '@t is CSS time, use t']);
+    assert.deepEqual(warnings, ['unknown nope', 'nothing after +', '@t: use t']);
 });
 
 test('use() adds @name.variant() under an addon\'s own name only', t => {
@@ -706,7 +706,7 @@ test('use() adds @name.variant() under an addon\'s own name only', t => {
     CSSDoodle.use('addon-kind.one', { value: () => 'again' });
     CSSDoodle.use('plot.mine', { value: () => 'built-in' });
     CSSDoodle.use('addon-kind.name', { value: () => 'own key' });
-    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['invalid addon @plot.mine', '@addon-kind.name already exists']);
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['invalid addon @plot.mine', '@addon-kind.name exists']);
     let { styles, patterns } = generateCss(parseCss('--a: @addon-kind(); --b: @addon-kind.one(x); --c: @addon-kind.r(1, 1); background: @addon-kind.two(1, 0, 0, 1);'), parseGrid('1'), 42, 64);
     assert.match(styles.cells, /--a:base;\s*--b:one x;\s*--c:base;/);
     assert.deepEqual(Object.values(patterns).map(p => [p.fname, p.source]), [['addon-kind.two', '1,0,0,1']]);
@@ -727,7 +727,7 @@ test('use() adds a doodle addon as a variant of @doodle: the body as written, ba
     CSSDoodle.use('addon-alone', { doodle: code => code });
     CSSDoodle.use('doodle.addon-value', { value: () => 'x' });
     assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), [
-        '@doodle.wrap already exists', 'invalid addon @addon-alone', 'invalid addon @doodle.addon-value',
+        '@doodle.wrap exists', 'invalid addon @addon-alone', 'invalid addon @doodle.addon-value',
     ]);
     let compose = code => generateCss(parseCss(code), parseGrid('1'), 42, 64);
     let { styles, doodles } = compose('background: @doodle30.addon-tile(@p(a, b)), @doodle.addon-text(x: y;);');
@@ -747,7 +747,7 @@ test('use() keeps taken names, a second copy of an addon is left out quietly, an
     CSSDoodle.use('addon-none', () => 'no kind');
     CSSDoodle.use('addon-twice', { value: () => 'first' });
     CSSDoodle.use('addon-twice', { value: () => 'second' });
-    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['@r already exists', '@sin already exists', 'invalid addon @addon-none']);
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['@r exists', '@sin exists', 'invalid addon @addon-none']);
     assert.match(generateCss(parseCss('--t: @addon-twice();'), parseGrid('1'), 42, 64).styles.cells, /--t:first;/);
     CSSDoodle.use('addon-throws', { value: () => { throw new Error('bad input'); } });
     let { styles, warnings } = generateCss(parseCss('--a: @r(1, 1); --b: @sin(0); --c: @addon-throws(1);'), parseGrid('1'), 42, 64);

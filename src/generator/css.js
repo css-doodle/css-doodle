@@ -167,7 +167,7 @@ function compileFunc(node) {
             let literal = { value: node.name };
             compiled = frame => {
                 if (node.arguments.length) {
-                    frame.env.rules.warn(`unknown function ${node.name}()`, node);
+                    frame.env.rules.warn(`unknown ${node.name}()`, node);
                 }
                 return literal;
             };
@@ -628,7 +628,7 @@ class Rules {
                 return ((id && this.doodles[id]) ? this.doodles[id].doodle : value) + rest;
             });
             if (missing !== null) {
-                this.warn(`unknown variable $${missing}`, node);
+                this.warn(`unknown $${missing}`, node);
                 return;
             }
         }
@@ -955,7 +955,7 @@ class Rules {
             };
             // @cell.random: a selector function with a modifier it does not have
             if (info.raw && Selector[name.split('.')[0]]) {
-                this.warn(`unknown selector ${token.name}`);
+                this.warn(`unknown ${token.name}`);
             }
             this.condMemo.set(token, info);
         }

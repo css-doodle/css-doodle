@@ -160,7 +160,7 @@ test('google fonts are linked before the element', async () => {
 
 test('warnings are returned', async () => {
     let { warnings } = await prerender('color: @nope(1);', { seed: 1 });
-    assert.match(warnings[0].message, /unknown function @nope/);
+    assert.match(warnings[0].message, /unknown @nope/);
 });
 
 test('shader and pattern images are left as unset variables', async () => {

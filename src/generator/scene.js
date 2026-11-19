@@ -121,12 +121,12 @@ function checkAll(node, warn, unread, code, copy) {
             let valid = NAME.test(r.name);
             if (r.name == 'p') {
                 unread.add(r);
-                warn('p is read-only');
+                warn('read-only p');
                 continue;
             }
             if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
             unread.add(r);
-            if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `nothing reads ${r.name}` : `${node.name}: unknown ${r.name}`);
+            if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `unused ${r.name}` : `${node.name}: unknown ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
@@ -169,7 +169,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
         // outside copies the scene is one copy
         let names = { __proto__: null, t: 't', deg: glsl`(PI / 180.0)`, turn: glsl`(2.0 * PI)`, n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
-        let unknown = colorReader(extra, name => warn(`unknown name ${name}`));
+        let unknown = colorReader(extra, name => warn(`unknown ${name}`));
         let next = () => `g_${++counter}`;
         let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
             types, warn, unknown,

@@ -56,7 +56,7 @@ function extractFonts(css) {
         }
     }
 
-    if (!seen.size) throw new Error('no fonts found');
+    if (!seen.size) throw new Error('no fonts');
     return [...seen.values()];
 }
 

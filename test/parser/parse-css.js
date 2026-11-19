@@ -691,7 +691,7 @@ test('a user function call with too many or too few arguments warns', () => {
 
 test('a user function calling itself warns and expands to nothing', () => {
     let code = `--f(x): { [$g($x)] } --g(x): { $f($x) } width: $f(1);`;
-    assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['$f() calls itself']);
+    assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['recursive $f()']);
     assert.deepEqual(ast(code), ast(`width: [];`));
 });
 

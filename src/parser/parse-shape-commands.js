@@ -117,7 +117,7 @@ function readShapes(input, warn = () => {}, options) {
         if (n.name || !n.id) return [visit(n, using)];
         let def = defs[n.id];
         if (!def || using.includes(n.id)) {
-            warn(def ? `#${n.id} uses itself` : `unknown shape #${n.id}`);
+            warn(def ? `recursive #${n.id}` : `unknown #${n.id}`);
             return [];
         }
         used.add(n.id);

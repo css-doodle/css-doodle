@@ -289,7 +289,7 @@ function generate(token, element, parent, root, warn) {
             }
         }
         else if (!NAME.test(name)) {
-            warn(`invalid tag ${name}`);
+            warn(`invalid <${name}>`);
         }
         else {
             let el = new Tag(name);

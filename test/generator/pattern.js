@@ -81,7 +81,7 @@ test('variables inside match blocks are scoped', () => {
     let messages = [];
     let s = draw('match(x > 1) { c: 9.0; } match(c > 1) { fill: red }', extra, m => messages.push(m)).fragment;
     assert.match(s, /if \(\(0\.0 > 1\.0\)\)/);
-    assert.deepEqual(messages, ['unknown name c']);
+    assert.deepEqual(messages, ['unknown c']);
 });
 
 test('a match block assigns to a variable of an enclosing scope', () => {
@@ -102,7 +102,7 @@ test('a name nothing knows reads 0, so the shader still compiles', () => {
     let messages = [];
     let s = draw('grid: 4; k: fill; fill: grid / 4, foo.xy;', extra, m => messages.push(m)).fragment;
     assert.match(s, /float g_1 = 0\.0;\s*g_color = vec4\(vec3\(\(0\.0 \/ 4\.0\), vec2\(0\.0\)\), 1\.0\);/);
-    assert.deepEqual(messages, ['invalid value fill', 'grid: use X,Y', 'unknown name foo']);
+    assert.deepEqual(messages, ['invalid value fill', 'grid: use X,Y', 'unknown foo']);
 });
 
 test('an assignment to a swizzle writes those channels', () => {
@@ -241,7 +241,7 @@ test('a color name in an expression is a vec3 literal, a translucent one a vec4'
     // unknown names are still reported, once
     messages = [];
     draw('fill: foo + foo', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['unknown name foo']);
+    assert.deepEqual(messages, ['unknown foo']);
 });
 
 test('a CSS color function in an expression is a color literal', () => {
@@ -259,8 +259,8 @@ test('a CSS unit read as a name says that patterns have no units', () => {
     let messages = [];
     draw('fill: sin(90deg) + 2em', extra, m => messages.push(m));
     assert.deepEqual(messages, [
-        'unknown name deg',
-        'unknown name em',
+        'unknown deg',
+        'unknown em',
     ]);
     // a declared variable of that name is just a variable
     messages = [];
@@ -357,7 +357,7 @@ test('a variable is declared once, typed by its value, and read by name', () => 
 test('declarations are read in source order', () => {
     let messages = [];
     draw('fill: c; c: hsv(i/I, 1, 1)', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['unknown name c']);
+    assert.deepEqual(messages, ['unknown c']);
     // a second declaration of a name assigns to it
     assert.match(main('a: 1; fill: a; a: 2; fill: a'), /float g_1 = 1\.0;\s*g_color = vec4\(vec3\(g_1\), 1\.0\);\s*g_1 = 2\.0;/);
 });
@@ -367,7 +367,7 @@ test('a head without a colon is reported, not glued to the statement before it',
     let s = main('fill: red; k = 1; size: k');
     assert.match(s, /g_color = vec4\(vec3\(1\.0, 0\.0, 0\.0\), 1\.0\);/);
     draw('fill: red; k = 1; size: k', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['"k = 1" needs :', 'unknown name k']);
+    assert.deepEqual(messages, ['"k = 1" needs :', 'unknown k']);
     messages = [];
     draw('fill #fff', extra, m => messages.push(m));
     assert.deepEqual(messages, ['"fill #fff" needs :']);
@@ -385,7 +385,7 @@ test('a head without a colon is reported, not glued to the statement before it',
 test('a list with an empty item is reported, not shifted', () => {
     let messages = [];
     let s = draw('fill: 1,,0,0', extra, m => messages.push(m)).fragment;
-    assert.deepEqual(messages, ['empty list item']);
+    assert.deepEqual(messages, ['empty item']);
     assert.doesNotMatch(s, /g_color = vec4\(vec/);
 });
 
@@ -413,7 +413,7 @@ test('values side by side are reported once', () => {
 test('unknown names are reported once each', () => {
     let messages = [];
     draw('fill: hsl(foo, bar, foo); size: baz', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['unknown name foo', 'unknown name bar', 'unknown name baz']);
+    assert.deepEqual(messages, ['unknown foo', 'unknown bar', 'unknown baz']);
     // built-ins, swizzles and GLSL constants are known
     messages = [];
     draw('p: uv.yx; fill: p.x + PI + t + size + pos.x, dr, float(true)', extra, m => messages.push(m));
@@ -421,7 +421,7 @@ test('unknown names are reported once each', () => {
     // shader uniforms are not part of the language: t, pos and uv cover them
     messages = [];
     draw('fill: u_mouse.x, u_time, gl_FragCoord.x', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['unknown name u_mouse', 'unknown name u_time', 'unknown name gl_FragCoord']);
+    assert.deepEqual(messages, ['unknown u_mouse', 'unknown u_time', 'unknown gl_FragCoord']);
 });
 
 test('invalid and reserved names are reported', () => {
@@ -429,7 +429,7 @@ test('invalid and reserved names are reported', () => {
     draw('size-2: 3; g_1: 1; --c: red; repeat(2 as a-b) { } fill: red', extra, m => messages.push(m));
     assert.deepEqual(messages, [
         'invalid name "size-2"',
-        'g_1 is reserved',
+        'reserved g_1',
         'invalid name "--c"',
         'invalid name "a-b"',
     ]);
@@ -521,7 +521,7 @@ test('a shape may be a name, a variable or a distance expression', () => {
     // an unknown word is reported like any unknown name
     let messages = [];
     draw('shape: blob; size: .5; fill: red', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['unknown name blob']);
+    assert.deepEqual(messages, ['unknown blob']);
 });
 
 test('shape inside a match block applies the matching mask', () => {
@@ -715,7 +715,7 @@ test('repeat inside match updates the outer state where the match holds', () => 
     // a name new to the block stays inside it
     let messages = [];
     draw('match(x > 1) { repeat(2) { n: 1 } } fill: n', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['unknown name n']);
+    assert.deepEqual(messages, ['unknown n']);
 });
 
 test('repeat blocks may nest and read both named indices', () => {
@@ -729,7 +729,7 @@ test('a repeat index shadows an outer variable without mutating it, and is read-
     assert.match(s, /g_color = vec4\(vec3\(g_1, g_2, 0\.0\), 1\.0\);/);
     let messages = [];
     draw('repeat(2 as k) { k: 1 }', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['k is read-only']);
+    assert.deepEqual(messages, ['read-only k']);
 });
 
 test('variables may take the names of the shader internals', () => {

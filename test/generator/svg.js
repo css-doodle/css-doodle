@@ -424,7 +424,7 @@ test('problems are reported through the warn callback', () => {
     // a tag the XML parser rejects is dropped with what it holds, not the whole image
     assert.deepEqual(warned('a[x] > b {} circle {}'), {
         output: '<svg><circle/></svg>',
-        warnings: ['invalid tag a[x]'],
+        warnings: ['invalid <a[x]>'],
     });
 });
 

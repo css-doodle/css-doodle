@@ -187,7 +187,7 @@ export function compileValue(value, named, expr, extra, warn, expect) {
     let items = parseValueGroup(value, { symbol: ',', noSpace: true }).map(v => v.trim());
     if (!items.length) return null;
     if (items.some(v => !v)) {
-        warn('empty list item');
+        warn('empty item');
         return null;
     }
     if (items.length === 1) {
@@ -240,7 +240,7 @@ function expr(code, scope, ctx) {
 function generateStatement(name, value, scope, ctx) {
     let [, base, part] = name.match(/^([a-zA-Z_]\w*)(?:\.(\w+))?$/) || [];
     if (/^g_\d+$/.test(base)) {
-        ctx.warn(`${base} is reserved`);
+        ctx.warn(`reserved ${base}`);
         return '';
     }
     let from = part && expr(base, scope, ctx).type, size = /^vec/.test(from) && +from[3];
@@ -251,7 +251,7 @@ function generateStatement(name, value, scope, ctx) {
     let id = scope.ids[base];
     if (id || part) {
         if (ctx.readonly.has(id)) {
-            ctx.warn(`${name} is read-only`);
+            ctx.warn(`read-only ${name}`);
             return '';
         }
         ctx.counts.delete(id);
@@ -444,7 +444,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let ctx = {
         extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
-        unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown name ${name}`), BUILTINS),
+        unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown ${name}`), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
