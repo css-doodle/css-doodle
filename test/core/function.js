@@ -34,12 +34,12 @@ test('@arc: path data of an arc, degrees clockwise from 3 o\'clock', () => {
     assert.equal(arc('r: 40 - 20 10; to: 90; move: 5 + 5 2 * 3'), arc('r: 20 10; to: 90; move: 10 6'));
     assert.equal(arc('r: 10 -2; to: 90'), 'L 10 0 A 10 -2 0 0 1 0 -2');
     // the path helpers anchor on the leading lineto like on a moveto
-    assert.equal(Function.flipH()(arc('r: 10; from: 0; to: 90')), 'L10 0 A10 10 0 0 0 20 10');
+    assert.equal(Function.flip.x()(arc('r: 10; from: 0; to: 90')), 'L10 0 A10 10 0 0 0 20 10');
     assert.equal(Function.reverse()('L 1 2 A 3 3 0 0 1 4 5 L 6 7 Z'), 'L1 2 L6 7 A3 3 0 0 1 4 5 Z');
     // and read a bare M or m before an arc as the moveto it becomes
-    assert.equal(Function.flipH()(arc('r: 10; to: 90') + ' M ' + arc('r: 10; to: 90; at: 20')),
+    assert.equal(Function.flip.x()(arc('r: 10; to: 90') + ' M ' + arc('r: 10; to: 90; at: 20')),
         'L10 0 A10 10 0 0 0 20 10 M-10 20 A10 10 0 0 0 0 30');
-    assert.equal(Function.flipH()(arc('r: 10; to: 90') + ' m ' + arc('r: 10; to: 90; at: 20')),
+    assert.equal(Function.flip.x()(arc('r: 10; to: 90') + ' m ' + arc('r: 10; to: 90; at: 20')),
         'L10 0 A10 10 0 0 0 20 10 M-10 20 A10 10 0 0 0 0 30');
 });
 
@@ -62,41 +62,41 @@ test('@arc short form: the radii and an `at` center, then `from to to`', () => {
         arc('10 at 5', 'to 90') + ' M' + arc('10 at 5', '180 to 540').slice(1));
 });
 
-test('@flipH/@flipV/@flip/@invert: mirror path data around its start point', () => {
-    const flipH = Function.flipH(), flipV = Function.flipV();
+test('@flip.x/@flip.y/@flip/@invert: mirror path data around its start point', () => {
+    const flipX = Function.flip.x(), flipY = Function.flip.y();
     const flip = Function.flip(), invert = Function.invert();
     // relative h and v
-    assert.equal(flipH('M 0 0 h 5 v 5'), 'M0 0 h-5 v5');
-    assert.equal(flipV('M 0 0 h 5 v 5'), 'M0 0 h5 v-5');
+    assert.equal(flipX('M 0 0 h 5 v 5'), 'M0 0 h-5 v5');
+    assert.equal(flipY('M 0 0 h 5 v 5'), 'M0 0 h5 v-5');
     assert.equal(flip('M 0 0 h 5 v 5'), 'M0 0 h-5 v-5');
     assert.equal(invert('M 0 0 h 5 v 5'), 'M0 0 v5 h5');
     // commas split the arguments, every one of them is part of the path
-    assert.equal(flipH('M 0', '0 h 5', '5'), 'M0 0 h-5 -5');
-    assert.equal(flipH('h1 v1', 'h2 v2'), 'h-1 v1 h-2 v2');
+    assert.equal(flipX('M 0', '0 h 5', '5'), 'M0 0 h-5 -5');
+    assert.equal(flipX('h1 v1', 'h2 v2'), 'h-1 v1 h-2 v2');
     // lines, curves and arcs
-    assert.equal(flipH('M 10 10 l 5 5 c 5 -5 10 5 15 0'), 'M10 10 l-5 5 c-5 -5 -10 5 -15 0');
-    assert.equal(flipV('M 0 0 q 5 -5 10 0 t 10 0'), 'M0 0 q5 5 10 0 t10 0');
+    assert.equal(flipX('M 10 10 l 5 5 c 5 -5 10 5 15 0'), 'M10 10 l-5 5 c-5 -5 -10 5 -15 0');
+    assert.equal(flipY('M 0 0 q 5 -5 10 0 t 10 0'), 'M0 0 q5 5 10 0 t10 0');
     assert.equal(invert('M 0 0 c 1 2 3 4 5 6'), 'M0 0 c2 1 4 3 6 5');
     // a reflection negates the arc rotation and toggles the sweep flag,
     // a swap exchanges the radii, a half turn keeps them all
-    assert.equal(flipH('M 0 0 a 5 3 30 0 1 10 0'), 'M0 0 a5 3 -30 0 0 -10 0');
+    assert.equal(flipX('M 0 0 a 5 3 30 0 1 10 0'), 'M0 0 a5 3 -30 0 0 -10 0');
     assert.equal(invert('M 0 0 a 5 3 30 0 1 10 0'), 'M0 0 a3 5 -30 0 0 0 10');
     assert.equal(flip('M 0 0 a 5 3 30 0 1 10 0'), 'M0 0 a5 3 30 0 1 -10 0');
     // absolute commands mirror around the start point, which stays put
-    assert.equal(flipH('M 10 10 L 15 20 H 30 V 0'), 'M10 10 L5 20 H-10 V0');
+    assert.equal(flipX('M 10 10 L 15 20 H 30 V 0'), 'M10 10 L5 20 H-10 V0');
     assert.equal(invert('M 10 20 L 15 30 H 30 V 0'), 'M10 20 L20 25 V40 H-10');
     assert.equal(flip('M 10 10 L 15 20 Z'), 'M10 10 L5 0 Z');
-    assert.equal(flipH('M 10 10 h 5 M 20 10 h 5'), 'M10 10 h-5 M0 10 h-5');
-    assert.equal(flipH('m 1 -2 h -3 v -4 z'), 'm1 -2 h3 v-4 z');
-    assert.equal(flipH('M .1 0 L .3 0'), 'M0.1 0 L-0.1 0');
-    // flipH then flipV is flip, twice is the identity
+    assert.equal(flipX('M 10 10 h 5 M 20 10 h 5'), 'M10 10 h-5 M0 10 h-5');
+    assert.equal(flipX('m 1 -2 h -3 v -4 z'), 'm1 -2 h3 v-4 z');
+    assert.equal(flipX('M .1 0 L .3 0'), 'M0.1 0 L-0.1 0');
+    // flip.x then flip.y is flip, twice is the identity
     let path = 'M 2 3 l 1 2 c 1 2 3 4 5 6 a 5 3 30 0 1 10 0 H 9 V 1 z';
-    assert.equal(flipV(flipH(path)), flip(path));
+    assert.equal(flipY(flipX(path)), flip(path));
     assert.equal(invert(invert(path)), 'M2 3 l1 2 c1 2 3 4 5 6 a5 3 30 0 1 10 0 H9 V1 z');
-    assert.equal(flipH('M 0 0 a5 5 0 0110 0'), 'M0 0 a5 5 0 0 0 -10 0');
+    assert.equal(flipX('M 0 0 a5 5 0 0110 0'), 'M0 0 a5 5 0 0 0 -10 0');
     // anything that is not path data passes through
-    assert.equal(flipH('#000', '#fff'), '#000,#fff');
-    assert.equal(flipH(''), '');
+    assert.equal(flipX('#000', '#fff'), '#000,#fff');
+    assert.equal(flipX(''), '');
 });
 
 test('@reverse: arguments back to front, path data command by command', () => {

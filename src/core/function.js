@@ -775,11 +775,11 @@ Function.arc = () => arcPath;
 
 Function.invert = () => transformPath(0, 1, 1, 0);
 
-Function.flipH = () => transformPath(-1, 0, 0, 1);
-
-Function.flipV = () => transformPath(1, 0, 0, -1);
-
 Function.flip = () => transformPath(-1, 0, 0, -1);
+
+Function.flip.x = () => transformPath(-1, 0, 0, 1);
+
+Function.flip.y = () => transformPath(1, 0, 0, -1);
 
 Function.reverse = () => (...args) => {
     let { valid, commands } = parseSvgPath(args.join(','));
