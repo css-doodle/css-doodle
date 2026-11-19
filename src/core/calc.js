@@ -486,7 +486,7 @@ function compileVariable(name) {
 }
 
 function compileFunction(node) {
-    const name = node.name;
+    const name = node.name == 'rand' ? 'random' : node.name;
     const chain = name.split('.');
     const argFns = node.value.map(compile);
 

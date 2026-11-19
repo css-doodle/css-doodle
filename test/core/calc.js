@@ -674,6 +674,9 @@ test('random(a, b, …) is the draw its arguments get under the key of the rando
         assert.notEqual(calc('random(1, 2)'), one);
         assert.notEqual(calc('random(1, 2)'), calc('random(2, 1)'));
         assert.equal(calc('random()'), .5);
+        // rand() is the old name, as in shaders
+        assert.equal(calc('rand(1)'), one);
+        assert.equal(calc('rand()'), .5);
         // another key, another draw
         draw.key = 'b';
         assert.notEqual(calc('random(1)'), one);
