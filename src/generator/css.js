@@ -708,6 +708,10 @@ class Rules {
         let extra = composed.extra;
         let value = composed.value;
 
+        if (RE_PLACE.test(prop) && /^(polygon|ellipse)\(/.test(value)) {
+            value = composed.origin ?? '';
+        }
+
         if (value.includes('path(')) {
             value = value.replace(/(path\(\s*['"]?\s*)[lL](?![a-zA-Z])/g, '$1M')
                 .replace(/path\([^)]*\)/g, path => path.replace(/(?<![a-yA-Y])[mM]\s*L(?![a-zA-Z])/g, 'M'));
