@@ -232,8 +232,10 @@ and the doodle's aspect are ignored. `@shape` gives path data, one
 subpath per outline (`fill-rule: evenodd` cuts the holes), which
 `points:` also takes. A copy of an element gets the next piece of
 `@tile` as path data, with `@tile.xy` its center. `@plot` keeps its
-percent; `@Plot` gives the next point as plain `x y` in the same box.
-Place them with `viewBox: -1 -1 2 2` or a `transform`.
+percent; `@Plot` gives the next point as plain `x y` in the same box,
+as in `circle*3 { cx, cy: @Plot(r: .5) }`, but with `points:` every
+copy gets the whole list. Place them with `viewBox: -1 -1 2 2` or a
+`transform`.
 
 **Noise.** `@R.t(from, to)` writes a closed noise curve in `t` for one
 cell, as in `r: @R.t(.8, 1)`, following the doodle's seed or the
@@ -276,7 +278,8 @@ default), `voronoi`, `delaunay`, `grid`, `hex`, `triangle`, `cube`,
 `@tile.k`, and as `@tile.r` the radius of the largest circle about the
 center that fits in the piece, in percent of the element's shorter
 side. At the top level a rule may read these before the rule that
-makes the piece. A piece that `op` or `star` makes from a piece keeps
+makes the piece. `@place: @tile.circle(…)` makes the piece and places
+the cell at its center, hiding a cell without one. A piece that `op` or `star` makes from a piece keeps
 its kind; pieces made at the corners take the next kind up, and those
 made along the sides by `e`, `b` and `s` the one after. `d` makes
 every piece kind 1.

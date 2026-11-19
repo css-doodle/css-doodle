@@ -459,8 +459,9 @@ A block is an element and its declarations are its attributes;
 emitted in SVG spelling (`lineargradient` → `linearGradient`), except
 custom property names. A bare name, `feMergeNode;`, is an empty
 element, except right after a declaration, where it is the next
-`;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` splits only when
-the value has as many parts as names. `style { … }` is raw CSS.
+`;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` or `x, y: 1 2`
+splits, after its functions run, only when the value has as many parts
+as names. `style { … }` is raw CSS.
 
 ### 9.2 Shapes
 
@@ -630,8 +631,9 @@ completes a border the same way, and gives a lone color a `1px` width.
 
 `@place` reads `left`, `right`, `top` and `bottom` as `0%` or `100%`
 on their axis and `center` as `50%`; the remaining values fill x, then
-y, both `50%` by default. A `safe` keyword sets `place-self` to
-`center`; overflow is `unsafe` otherwise.
+y, both `50%` by default. A `@tile` piece is read as its center. A
+`safe` keyword sets `place-self` to `center`; overflow is `unsafe`
+otherwise.
 
 ### Others
 
