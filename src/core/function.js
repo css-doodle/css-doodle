@@ -920,9 +920,7 @@ export const alias = {
 
     // legacy names, keep them before 1.0
     'filter': 'svg-filter',
-    'multiple': 'm',
     'repeat': 'rep',
-    'ms': 'M',
     'size': 'I',
     'pl': 'pn',
     'pr': 'pnr'
