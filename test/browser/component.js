@@ -499,13 +499,19 @@ describe('component', { concurrency: 4 }, () => {
 
         test('currentTime set while running runs on from there', () => chrome.withPage(async page => {
             let el = await mount(page, timed);
-            await el.evaluate(el => el.currentTime = 5000);
+            // clocks stamped before and after the seek's shader draw drift
+            // apart by its length, which passes 100 ms on a loaded CI runner
+            let took = await el.evaluate(el => {
+                let start = performance.now();
+                el.currentTime = 5000;
+                return performance.now() - start;
+            });
             await page.waitForTimeout(300);
             let times = await clocks(el);
             assert.ok(times.every(t => t > 5200 && t < 6000), `clocks at ${times}`);
             let spread = group => Math.max(...group) - Math.min(...group);
-            assert.ok(spread([times[0], times.at(-1)]) < 100, `clocks at ${times}`);
-            assert.ok(spread(times.slice(1, -1)) < 100, `clocks at ${times}`);
+            assert.ok(spread([times[0], times.at(-1)]) < 100 + took, `clocks at ${times}, seek took ${took} ms`);
+            assert.ok(spread(times.slice(1, -1)) < 100 + took, `clocks at ${times}, seek took ${took} ms`);
         }));
     });
 
