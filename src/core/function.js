@@ -589,6 +589,7 @@ const PALETTE_HUES = [
 ];
 
 const PALETTE_LIGHTNESS = [.2, .37, .48, .58, .65, .72, .78, .84, .89, .94, .98];
+const PALETTE_CHROMA = [.35, .2, .15, .3, .9, 1.6, .75, .4, .35, 1, 2.5, 1.6];
 const TAU = Math.PI * 2;
 const hueTurn = (a, b) => ((b - a) % TAU + TAU + Math.PI) % TAU - Math.PI;
 
@@ -603,8 +604,9 @@ function paletteAnchor(r, hues = [], e = 1, x = r()) {
         h = ((j + r()) * 30) * Math.PI / 180;
     }
     let H = h + hueTurn(h, (L > .6 ? 70 : 250) * Math.PI / 180) * .875 * Math.abs(L - .6);
-    let z = r() ** e;
-    let C = maxChroma(L, H) * (z < .15 ? z / 3 : .05 + .95 * ((z - .15) / .85) ** .5);
+    let z = r() ** e, k = (H / TAU * 12 % 12 + 12) % 12, j = ~~k;
+    let p = lerp(k - j, PALETTE_CHROMA[j], PALETTE_CHROMA[(j + 1) % 12]);
+    let C = maxChroma(L, H) * (z < .15 ? z / 3 : .05 + .95 * ((z - .15) / .85) ** p);
     return [L, C * Math.cos(H), C * Math.sin(H), h];
 }
 

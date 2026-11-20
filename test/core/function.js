@@ -1012,7 +1012,7 @@ test('@palette: seeded distinct colors', () => {
     assert.deepEqual(palette(3), five.slice(0, 3));
     assert.deepEqual(palette(9).slice(0, 5), five);
     // the seed decides the colors: a change here re-rolls seeded art
-    assert.deepEqual(five, ['oklch(0.813 0.112 124.2)', 'oklch(0.96 0.023 73.9)', 'oklch(0.875 0.129 89.4)', 'oklch(0.851 0.075 14.2)', 'oklch(0.908 0.211 128.9)']);
+    assert.deepEqual(five, ['oklch(0.813 0.103 124.2)', 'oklch(0.96 0.028 73.9)', 'oklch(0.875 0.14 89.4)', 'oklch(0.851 0.078 14.2)', 'oklch(0.908 0.18 128.9)']);
     // a seed that once gave a gradient follows the same rules
     let b = Function.palette(null, env('b'));
     assert.deepEqual(b(3), b(5).slice(0, 3));
