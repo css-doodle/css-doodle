@@ -44,6 +44,7 @@ const later = () => new Promise(resolve => setTimeout(resolve, 16));
 
 async function settle(surface, entry) {
     const { gl, parallel } = surface;
+    gl.flush();
     while (parallel && !surface.disposed && !gl.getProgramParameter(entry.program, parallel.COMPLETION_STATUS_KHR)) {
         await later();
     }
