@@ -299,9 +299,10 @@ test('the GLSL math of @pattern: fract, clamp, mix, step, smoothstep, radians, d
     assert.equal(calc('step * 2', { step: 3 }), 6);
 });
 
-test('deg and turn on a number inside a call are radians', () => {
+test('deg, turn and rad on a number inside a call are radians', () => {
     assert.equal(calc('cos(60deg)'), Math.cos(Math.PI / 3));
     assert.equal(calc('sin(.25turn)'), 1);
+    assert.equal(calc('sin(1rad)'), Math.sin(1));
     assert.equal(calc('1 / max(90deg, 1)'), 2 / Math.PI);
     assert.equal(calc('60deg'), 0);
 });
@@ -744,6 +745,20 @@ test('a live var() or calc() lowers the math around it to CSS', () => {
     assert.equal(css('calc(var(--t) / 1000) * 2'), 'calc((var(--t) / 1000) * 2)');
     // no live value, a number
     assert.equal(css('sin(0) + 2'), 2);
+});
+
+test('a unit on a number is written out as CSS math', () => {
+    const css = (input, context) => calc(input, context, true);
+    assert.equal(css('(1 - 4.5) * 12deg'), 'calc(-3.5 * 12deg)');
+    assert.equal(css('3 * -.1s'), 'calc(3 * (0.1s * -1))');
+    assert.equal(css('var(--t) / 10 * 1deg'), 'calc((var(--t) / 10) * 1deg)');
+    assert.equal(css('var(--t)2deg'), 'calc((var(--t) * 2) * 1deg)');
+    // a word the context defines is a product
+    assert.equal(css('3s', { s: 2 }), 6);
+    assert.equal(css('2x ^ 2', { x: 3 }), 18);
+    // where only a number fits, a miss
+    assert.equal(calc('10px * 2'), 0);
+    assert.equal(calc('2 + 60deg'), 2);
 });
 
 test('Math functions, comparisons and logic lower by name', () => {

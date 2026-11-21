@@ -189,7 +189,7 @@ function isUnary(prev) {
 // Push a value, resolving adjacency with the previous token:
 // "2x" → 2*x, "2sin(1)" → 2*sin(1); after a space there is no
 // product, so "2 x" leaves two values and reads as 2
-const ANGLES = { deg: String(Math.PI / 180), turn: String(2 * Math.PI) };
+const ANGLES = { deg: String(Math.PI / 180), turn: String(2 * Math.PI), rad: '1' };
 const ANGLE_TAKERS = new Set(['sin', 'cos', 'tan', 'degrees']);
 
 function pushValue(tokens, value, spaced) {
@@ -266,13 +266,14 @@ function transformTokens(input, spans, lists) {
                 i = j;
                 continue;
             }
-            let name;
+            let name, glued = raw[i - 1]?.type === 'Number' && !spaced;
             [name, i] = readName(raw, i);
             if (isOperator(name)) {
                 tokens.push(op(name));
                 continue;
             }
             pushValue(tokens, name, spaced);
+            if (glued && raw[i + 1]?.value !== '(') tokens.at(-1).unit = true;
             continue;
         }
 
@@ -356,7 +357,7 @@ function toPostfix(tokens) {
                 expr.push({ type: FUNCTION, name: value, value: args, at });
                 i = endIndex;
             } else {
-                expr.push(tk(VARIABLE, value));
+                expr.push({ ...tk(VARIABLE, value), unit: tokens[i].unit });
             }
         } else if (type === OPERATOR) {
             if (value === '(') {
@@ -595,7 +596,9 @@ function compile(expr) {
             // a live value is kept as CSS text only where CSS math is wanted
             stack.push(live(value) ? (ctx, history) => history.css ? value : miss(history) : () => value);
         } else if (type === VARIABLE) {
-            stack.push(compileVariable(value));
+            const read = compileVariable(value);
+            if (node.unit) read.unit = value;
+            stack.push(read);
         } else if (type === FUNCTION) {
             stack.push(compileFunction(node));
         } else if (value === ' ') {
@@ -629,8 +632,12 @@ function compile(expr) {
                 });
             } else {
                 const op = binary[value] || (() => 0);
+                const { unit } = r;
                 stack.push((ctx, history) => {
                     const a = l(ctx, history);
+                    if (unit && ctx[unit] === undefined) {
+                        return !history.css ? miss(history) : live(a) ? `(${a} * 1${unit})` : tidyNumber(a) + unit;
+                    }
                     const b = r(ctx, history);
                     return live(a) || live(b) ? lower(value, [a, b], history) : op(Number(a), Number(b));
                 });

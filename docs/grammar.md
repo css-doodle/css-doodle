@@ -347,9 +347,11 @@ name       = letter or '_', then letters, digits or '_'
 - **Names** are looked up in the context, then among `π`, `random`,
   `gcd`, `match` and the GLSL functions `mod`, `fract`, `clamp`, `mix`,
   `step`, `smoothstep`, `radians`, `degrees` and `atan`, then in
-  JavaScript's `Math`. Any other name is `0`, and so is a unit, except
-  `deg` and `turn` on a number inside a call: `cos(60deg)` is
-  `cos(radians(60))`. The GLSL ones read as in `@pattern`:
+  JavaScript's `Math`. Any other name is `0`. A unit on a number is
+  written out as CSS math, as a live value is: `$((@i - 4.5) * 12deg)`
+  is `calc(-3.5 * 12deg)` in cell 1, and `0` where only a number fits.
+  Inside a call `deg`, `turn` and `rad` are radians instead:
+  `cos(60deg)` is `cos(radians(60))`. The GLSL ones read as in `@pattern`:
   `mod(-1, 4)` is `3`.
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
   item `k`: `pick(4: a, b, c)` is `a`.
