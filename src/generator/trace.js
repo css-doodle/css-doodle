@@ -21,36 +21,37 @@ export function glyphs(text, font, axis) {
 const traced = memo((text, face, ready, axis) => {
     if (!ready) fontsLoading.add(document.fonts.load(face, text));
     let n = 512, canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
-    let draw = (s, x, y) => {
-        canvas.width = canvas.height = n;
+    let draw = (w, h, s, x, y) => {
+        canvas.width = w, canvas.height = h;
         ctx.font = face;
         ctx.setTransform(s, 0, 0, s, x, y);
         ctx.fillText(text, 0, 0);
-        return ctx.getImageData(0, 0, n, n).data;
+        return ctx.getImageData(0, 0, w, h).data;
     };
     ctx.font = face;
     let { width, fontBoundingBoxAscent: a, fontBoundingBoxDescent: d } = ctx.measureText(text), s = n / 2 / max(width, a + d);
     if (!(s < Infinity)) return [];
-    let data = draw(s, n / 4, n / 2), x0 = n, y0 = n, x1 = 0, y1 = 0;
+    let data = draw(n, n, s, n / 4, n / 2), x0 = n, y0 = n, x1 = 0, y1 = 0;
     for (let i = 0; i < n * n; ++i) if (data[4 * i + 3]) {
         let x = i % n, y = i / n | 0;
         x0 = min(x0, x), x1 = max(x1, x + 1), y0 = min(y0, y), y1 = max(y1, y + 1);
     }
-    let k = (n - 16) / max(x1 - x0, y1 - y0);
-    if (!(k > 0)) return [];
-    data = draw(s * k, n / 2 + k * (n / 4 - (x0 + x1) / 2), n / 2 + k * (n / 2 - (y0 + y1) / 2));
-    let alpha = new Uint8Array(n * n), v = i => alpha[i] - 127.5, next = new Int32Array(2 * n * n).fill(-1), starts = [], rings = [];
-    for (let i = 0; i < n * n; ++i) alpha[i] = data[4 * i + 3];
-    for (let i = 0; i < n * (n - 1); ++i) {
-        let tl = alpha[i], tr = alpha[i + 1], bl = alpha[i + n], br = alpha[i + n + 1];
+    let w = x1 - x0, h = y1 - y0;
+    if (!(w > 0)) return [];
+    let k = min(max(496 / max(w, h), 3 / s), 1e3 / sqrt((w + 2) * (h + 2))), pad = ceil(k) + 8, W = ceil(w * k) + 2 * pad, H = ceil(h * k) + 2 * pad;
+    data = draw(W, H, s * k, W / 2 + k * (n / 4 - (x0 + x1) / 2), H / 2 + k * (n / 2 - (y0 + y1) / 2));
+    let alpha = new Uint8Array(W * H), v = i => alpha[i] - 127.5, next = new Int32Array(2 * W * H).fill(-1), starts = [], rings = [];
+    for (let i = 0; i < W * H; ++i) alpha[i] = data[4 * i + 3];
+    for (let i = 0; i < W * (H - 1); ++i) {
+        let tl = alpha[i], tr = alpha[i + 1], bl = alpha[i + W], br = alpha[i + W + 1];
         if (!(tl | tr | bl | br) || (tl & tr & bl & br) == 255) continue;
-        let sum = tl + tr + bl + br - 510, ins = [i, i + 1, i + n + 1, i + n].map(k => v(k) > 0), keys = [2 * i, 2 * i + 3, 2 * i + 2 * n, 2 * i + 1], list = [];
+        let sum = tl + tr + bl + br - 510, ins = [i, i + 1, i + W + 1, i + W].map(k => v(k) > 0), keys = [2 * i, 2 * i + 3, 2 * i + 2 * W, 2 * i + 1], list = [];
         for (let j = 0; j < 4; ++j) if (ins[j] != ins[(j + 1) % 4]) list.push([keys[j], ins[(j + 1) % 4]]);
         let k = list.length, step = sum > 0 ? k - 1 : 1;
         list.forEach(([key, into], m) => into && (next[key] = list[(m + step) % k][0], starts.push(key)));
     }
     let at = key => {
-        let i = key >> 1, t = v(i) / (v(i) - v(i + (key & 1 ? n : 1))), x = i % n + .5, y = (i / n | 0) + .5;
+        let i = key >> 1, t = v(i) / (v(i) - v(i + (key & 1 ? W : 1))), x = i % W + .5, y = (i / W | 0) + .5;
         key & 1 ? y += t : x += t;
         return [x, y];
     };
