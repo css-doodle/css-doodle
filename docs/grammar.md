@@ -204,8 +204,9 @@ A block whose head starts with `@` is treated by its name:
 - **Cell selectors** apply to the cells they match: `@at(x, y)`,
   `@nth(an+b)`, `@row(an+b)`, `@col(an+b)`, `@depth(an+b)`, `@even`,
   `@odd`, `@random(ratio)`, `@match(expression)`, `@cell(…)`. A `not`
-  before the arguments inverts the test, `@cell not (x = y)`; a pseudo
-  right after one applies to the cell, `@nth(1)::after`; and a comma
+  before the arguments inverts the test, `@cell not (x = y)`; selectors
+  written one after another all have to match, `@row(1) @col(2)`; a
+  pseudo right after applies to the cell, `@nth(1)::after`; and a comma
   lists several, of which a cell takes the first that matches. `@odd`
   and `@even` are a checkerboard: `@odd` matches where `x + y` is even,
   unlike the `odd` of `@nth`, `@row` and `@col`.

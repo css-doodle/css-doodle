@@ -944,12 +944,20 @@ class Rules {
             let fn = Selector[name];
             info = {
                 fn,
-                alts: token.alts.map(a => ({
-                    fn: Selector[a.name.slice(1)],
-                    args: a.segments.find(n => n.arguments)?.arguments || [],
-                    not: a.segments[0]?.keyword === 'not',
-                    styles: a.styles || token.styles,
-                })),
+                alts: token.alts.map(a => {
+                    let chain = [[a.name]];
+                    for (let n of a.segments) {
+                        n.keyword?.[0] === '@' ? chain.push([n.keyword]) : chain.at(-1).push(n);
+                    }
+                    return {
+                        chain: chain.map(([name, ...segments]) => ({
+                            fn: Selector[name.slice(1)] || (fn && this.warn(`unknown ${name}`)),
+                            args: segments.find(n => n.arguments)?.arguments || [],
+                            not: segments[0]?.keyword === 'not',
+                        })),
+                        styles: a.styles || token.styles,
+                    };
+                }),
                 raw: !fn && !isGroupAtRule(token.name),
                 text: null,
             };
@@ -1138,15 +1146,19 @@ class Rules {
                         this.composeGroup(token, cell, env, selectors);
                         break;
                     }
-                    for (let [i, { fn, args, not, styles }] of alts.entries()) {
-                        if (!fn) continue;
-                        let input = [];
-                        for (let arg of args) {
-                            let compiled = compileArgument(arg);
-                            pushInput(input, compiled({ cell, env }, EMPTY_EXTRA), compiled.composed || compiled.cluster);
+                    for (let [i, { chain, styles }] of alts.entries()) {
+                        let j = 0;
+                        for (; j < chain.length; ++j) {
+                            let { fn, args, not } = chain[j], input = [];
+                            if (!fn) break;
+                            for (let arg of args) {
+                                let compiled = compileArgument(arg);
+                                pushInput(input, compiled({ cell, env }, EMPTY_EXTRA), compiled.composed || compiled.cluster);
+                            }
+                            let hit = this.callFunc(fn, { cell, env }, token.position + '.' + i + (j ? '.' + j : ''), removeEmptyValues(input));
+                            if (not ? hit : !hit) break;
                         }
-                        let matched = this.callFunc(fn, { cell, env }, token.position + '.' + i, removeEmptyValues(input));
-                        if (not ? !matched : matched) {
+                        if (j === chain.length) {
                             this.compose(cell, env, styles, selectors);
                             break;
                         }

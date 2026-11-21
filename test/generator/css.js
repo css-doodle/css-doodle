@@ -1206,6 +1206,21 @@ test('a cell selector takes a pseudo after it, and a list matches a cell once', 
     assert.equal(css('@nth(1):hover { span { color: red } }', '2'), '#c-1-1-1:hover span {color:red;}');
 });
 
+test('cell selectors written one after another are a chain a cell has to match all of', () => {
+    assert.equal(css('@row(1) @col(2) { color: red }', '2'), '#c-2-1-1 {color:red;}');
+    assert.equal(css('@row(1)@col(2) { color: red }', '2'), '#c-2-1-1 {color:red;}');
+    assert.equal(css('@even @row(1) @match(x > 1) { color: red }', '2'), '#c-2-1-1 {color:red;}');
+    // `not` inverts the selector it follows, and a list takes whole chains
+    assert.equal(css('@row(1) @col not (2) { color: red }', '2'), '#c-1-1-1 {color:red;}');
+    assert.equal(css('@row(1) @col(1), @col(1)::after { color: red }', '2'), '#c-1-1-1 {color:red;}#c-1-2-1::after {color:red;}');
+    // a chain of plain selectors draws nothing of its own
+    assert.equal(css('@random(.5), @row(1) @col(1) { --v: @r(10) }', '4', 1), css('@random(.5), @at(1, 1) { --v: @r(10) }', '4', 1));
+    // a name that is no selector matches nothing, and is reported
+    let { styles, warnings } = compile('@row(1) @rwo(2) { color: red }', '2');
+    assert.equal(styles.all, '');
+    assert.deepEqual(warnings.map(w => w.message), ['unknown @rwo']);
+});
+
 test('selectors nest against the enclosing one', () => {
     // a leading pseudo compounds with the cell, & stands for it, and
     // anything else is a descendant
