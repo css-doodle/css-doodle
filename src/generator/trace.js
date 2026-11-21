@@ -39,21 +39,22 @@ const traced = memo((text, face, ready, axis) => {
     let k = (n - 16) / max(x1 - x0, y1 - y0);
     if (!(k > 0)) return [];
     data = draw(s * k, n / 2 + k * (n / 4 - (x0 + x1) / 2), n / 2 + k * (n / 2 - (y0 + y1) / 2));
-    let v = i => data[4 * i + 3] - 127.5, next = new Int32Array(2 * n * n).fill(-1), rings = [];
+    let alpha = new Uint8Array(n * n), v = i => alpha[i] - 127.5, next = new Int32Array(2 * n * n).fill(-1), starts = [], rings = [];
+    for (let i = 0; i < n * n; ++i) alpha[i] = data[4 * i + 3];
     for (let i = 0; i < n * (n - 1); ++i) {
-        let sum = v(i) + v(i + 1) + v(i + n) + v(i + n + 1);
-        if (abs(sum) == 510) continue;
-        let c = [i, i + 1, i + n + 1, i + n].map(k => v(k) > 0), keys = [2 * i, 2 * i + 3, 2 * i + 2 * n, 2 * i + 1], list = [];
-        for (let j = 0; j < 4; ++j) if (c[j] != c[(j + 1) % 4]) list.push([keys[j], c[(j + 1) % 4]]);
+        let tl = alpha[i], tr = alpha[i + 1], bl = alpha[i + n], br = alpha[i + n + 1];
+        if (!(tl | tr | bl | br) || (tl & tr & bl & br) == 255) continue;
+        let sum = tl + tr + bl + br - 510, ins = [i, i + 1, i + n + 1, i + n].map(k => v(k) > 0), keys = [2 * i, 2 * i + 3, 2 * i + 2 * n, 2 * i + 1], list = [];
+        for (let j = 0; j < 4; ++j) if (ins[j] != ins[(j + 1) % 4]) list.push([keys[j], ins[(j + 1) % 4]]);
         let k = list.length, step = sum > 0 ? k - 1 : 1;
-        list.forEach(([key, into], m) => into && (next[key] = list[(m + step) % k][0]));
+        list.forEach(([key, into], m) => into && (next[key] = list[(m + step) % k][0], starts.push(key)));
     }
     let at = key => {
         let i = key >> 1, t = v(i) / (v(i) - v(i + (key & 1 ? n : 1))), x = i % n + .5, y = (i / n | 0) + .5;
         key & 1 ? y += t : x += t;
         return [x, y];
     };
-    for (let k = 0; k < next.length; ++k) {
+    for (let k of starts.sort((p, q) => p - q)) {
         if (next[k] < 0) continue;
         let ring = [];
         for (let key = k, to; (to = next[key]) >= 0; key = to) {
