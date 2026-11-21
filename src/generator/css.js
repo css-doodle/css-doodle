@@ -88,7 +88,6 @@ const RE_PAINT_VAR = new RegExp(String.raw`//[^\n]*|/\*[\s\S]*?\*/|\$(${NAME_CHA
 const RE_TEXTURE_OPEN = new RegExp(String.raw`\btexture\w*\s*\{(?!\s*\$${NAME_CHAR}+\s*\})`, 'g');
 
 const compiledValues = new WeakMap();
-const compiledFuncs = new WeakMap();
 const compiledArguments = new WeakMap();
 
 // value: list of text/func nodes → env => { value, extra, origin }
@@ -129,114 +128,110 @@ function compileValue(value) {
 }
 
 function compileFunc(node) {
-    let key = node;
-    let compiled = compiledFuncs.get(key);
-    if (compiled === undefined) {
-        let fname = node.name.slice(1);
-        if (fname === '$') fname = 'calc';
-        let fn = node.at
-            ? Func[fname][KEYED] ?? (node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt)
-            : Func[fname] || MathFunc[fname];
-        let inner = node.arguments[0]?.values[0];
-        let name = inner?.dotted && inner.name.slice(1), variant = '';
-        if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
-            fn = fn[name];
-            variant = '.' + name;
-            node = { ...inner, name: node.name, size: node.size };
-        }
-        if (fname === '--') {
-            // @--(name, value) sets a variable, @--(name) reads it back as set
-            let [name, ...value] = node.arguments.map(arg => compileArgument(arg, node));
-            compiled = (frame, extra) => {
-                let vars = frame.contextVariable;
-                if (!name || !vars) return { value: '' };
-                let id = name(frame, extra), key = '--' + id, argument = /^\d/.test(id);
-                if (argument) vars = vars[ARGUMENTS] ??= {};
-                if (value.length) {
-                    vars[key] = value.map(arg => arg(frame, extra)).join(',');
-                    if (!argument && frame.calcContext) {
-                        frame.env.rules.shared = null;
-                        frame.calcContext[id] = vars[key];
-                    }
-                    return { value: '' };
+    let compiled;
+    let fname = node.name.slice(1);
+    if (fname === '$') fname = 'calc';
+    let fn = node.at
+        ? Func[fname][KEYED] ?? (node.arguments.length == 2 || node.arguments.some(arg => arg.values.length == 1 && arg.values[0].value === '...') ? pickAtList : pickAt)
+        : Func[fname] || MathFunc[fname];
+    let inner = node.arguments[0]?.values[0];
+    let name = inner?.dotted && inner.name.slice(1), variant = '';
+    if (fn && name && Object.hasOwn(fn, name) && typeof fn[name] === 'function') {
+        fn = fn[name];
+        variant = '.' + name;
+        node = { ...inner, name: node.name, size: node.size };
+    }
+    if (fname === '--') {
+        // @--(name, value) sets a variable, @--(name) reads it back as set
+        let [name, ...value] = node.arguments.map(arg => compileArgument(arg, node));
+        compiled = (frame, extra) => {
+            let vars = frame.contextVariable;
+            if (!name || !vars) return { value: '' };
+            let id = name(frame, extra), key = '--' + id, argument = /^\d/.test(id);
+            if (argument) vars = vars[ARGUMENTS] ??= {};
+            if (value.length) {
+                vars[key] = value.map(arg => arg(frame, extra)).join(',');
+                if (!argument && frame.calcContext) {
+                    frame.env.rules.shared = null;
+                    frame.calcContext[id] = vars[key];
                 }
-                if (argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
-                return { value: vars[key] ?? '' };
-            };
-        } else if (typeof fn !== 'function') {
-            let literal = { value: node.name };
-            compiled = frame => {
-                if (node.arguments.length) {
-                    frame.env.rules.warn(`unknown ${node.name}()`, node);
+                return { value: '' };
+            }
+            if (argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
+            return { value: vars[key] ?? '' };
+        };
+    } else if (typeof fn !== 'function') {
+        let literal = { value: node.name };
+        compiled = frame => {
+            if (node.arguments.length) {
+                frame.env.rules.warn(`unknown ${node.name}()`, node);
+            }
+            return literal;
+        };
+    } else if (SEQ_READERS.has(fn) && !node.arguments.length) {
+        let index = SEQ_READERS.get(fn);
+        let read = frame => {
+            let e = frame.env.extra.at(-1);
+            return (e && e.length) ? e[index] : node.name;
+        };
+        compiled = frame => ({ value: read(frame) });
+        compiled.seqRead = read;
+    } else {
+        let composable = COMPOSABLE.has(fname) || !!fn.shader;
+        let args = node.arguments.map(arg => compileArgument(arg, node));
+        let shared = fname === 'tile' || fname === 'plot' || fname === 'Plot';
+        let unit = node.unit || '';
+        let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
+        let isMath = fn === MathFunc[fname];
+        let calcTemplate = fname === 'calc' && args.length === 1 && args[0].calcTemplate;
+        let collect = (frame, e) => {
+            let input = [];
+            for (let arg of args) {
+                if (arg.split) {
+                    input.push(...arg.split);
+                    continue;
                 }
-                return literal;
-            };
-        } else if (SEQ_READERS.has(fn) && !node.arguments.length) {
-            let index = SEQ_READERS.get(fn);
-            let read = frame => {
-                let e = frame.env.extra.at(-1);
-                return (e && e.length) ? e[index] : node.name;
-            };
-            compiled = frame => ({ value: read(frame) });
-            compiled.seqRead = read;
-        } else {
-            let composable = COMPOSABLE.has(fname) || !!fn.shader;
-            let args = node.arguments.map(arg => compileArgument(arg, node));
-            let shared = fname === 'tile' || fname === 'plot' || fname === 'Plot';
-            let unit = node.unit || '';
-            let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
-            let isMath = fn === MathFunc[fname];
-            let calcTemplate = fname === 'calc' && args.length === 1 && args[0].calcTemplate;
-            let collect = (frame, e) => {
-                let input = [];
-                for (let arg of args) {
-                    if (arg.split) {
-                        input.push(...arg.split);
-                        continue;
-                    }
-                    if (isMath && arg.calcTemplate) {
-                        let t = arg.calcTemplate;
-                        let { context, values } = evalTemplateHoles(t, frame, e);
-                        if (context) {
-                            input.push(calc(t.template, context));
-                        } else {
-                            input.push(...spliceTemplateInput(t, values));
-                        }
-                        continue;
-                    }
-                    pushInput(input, arg(frame, e), arg.cluster || arg.composed);
-                }
-                return removeEmptyValues(input);
-            };
-            // all-literal argument lists are interpreted here, once
-            let constantInput = !fn.lazy && args.every(arg => arg.constant) ? collect() : null;
-            compiled = (frame, extra, inArgument) => {
-                let { cell, env } = frame;
-                let { rules } = env;
-                for (let key of uniformKeys) {
-                    rules.uniforms[key] = true;
-                }
-                if (composable) {
-                    let composed = rules.composeComposable(fname + variant, node, cell, env, frame.selector, frame.property);
-                    return { value: composed ?? '' };
-                }
-                let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
-                let output;
-                if (calcTemplate) {
-                    let { context, values } = evalTemplateHoles(calcTemplate, frame, e, rules.frameContext(frame));
-                    if (!context) {
-                        output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
+                if (isMath && arg.calcTemplate) {
+                    let t = arg.calcTemplate;
+                    let { context, values } = evalTemplateHoles(t, frame, e);
+                    if (context) {
+                        input.push(calc(t.template, context));
                     } else {
-                        output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
+                        input.push(...spliceTemplateInput(t, values));
                     }
-                } else {
-                    let input = constantInput ?? (fn.lazy ? args.map(arg => (...lazy) => arg(frame, lazy)) : collect(frame, e));
-                    output = rules.callFunc(fn, frame, node.position, input, fname, unit);
+                    continue;
                 }
-                return { value: getValue(output), extra: output?.extra, origin: output?.origin };
-            };
-        }
-        compiledFuncs.set(key, compiled);
+                pushInput(input, arg(frame, e), arg.cluster || arg.composed);
+            }
+            return removeEmptyValues(input);
+        };
+        // all-literal argument lists are interpreted here, once
+        let constantInput = !fn.lazy && args.every(arg => arg.constant) ? collect() : null;
+        compiled = (frame, extra, inArgument) => {
+            let { cell, env } = frame;
+            let { rules } = env;
+            for (let key of uniformKeys) {
+                rules.uniforms[key] = true;
+            }
+            if (composable) {
+                let composed = rules.composeComposable(fname + variant, node, cell, env, frame.selector, frame.property);
+                return { value: composed ?? '' };
+            }
+            let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
+            let output;
+            if (calcTemplate) {
+                let { context, values } = evalTemplateHoles(calcTemplate, frame, e, rules.frameContext(frame));
+                if (!context) {
+                    output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
+                } else {
+                    output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
+                }
+            } else {
+                let input = constantInput ?? (fn.lazy ? args.map(arg => (...lazy) => arg(frame, lazy)) : collect(frame, e));
+                output = rules.callFunc(fn, frame, node.position, input, fname, unit);
+            }
+            return { value: getValue(output), extra: output?.extra, origin: output?.origin };
+        };
     }
     return compiled;
 }
@@ -247,12 +242,9 @@ function compileArgument(argument, parent) {
         let { values } = argument;
         if (values.length === 1 && values[0].type === 'text') {
             let value = values[0].value;
-            let type = typeof value;
             compiled = () => value;
             compiled.constant = true;
-            if (!argument.cluster && (type === 'number' || type === 'string')) {
-                compiled.split = parseValueGroup(value, NO_SPACE);
-            }
+            if (!argument.cluster) compiled.split = parseValueGroup(value, NO_SPACE);
         } else {
             let segments = [''];
             let holes = [];
@@ -408,7 +400,6 @@ function tileFirst(tokens) {
     if (!wait.length) return tokens;
     let list = tokens.filter(t => !wait.includes(t));
     list.splice(list.indexOf(tokens[g]) + 1, 0, ...wait);
-    list.warnings = tokens.warnings;
     return list;
 }
 
@@ -429,7 +420,7 @@ function specialName(selector) {
 class Rules {
 
     constructor(tokens, instance) {
-        this.instance = instance ? '-' + instance : '';
+        this.warnings = [...tokens.warnings || []];
         this.tokens = tokens = tileFirst(tokens);
         this.root = { rules: new Map(), entries: new Map(), groups: new Map() };
         this.scope = this.root;
@@ -446,14 +437,13 @@ class Rules {
         this.skips = new WeakSet();
         this.ruleMemo = new WeakMap();
         this.condMemo = new WeakMap();
-        this.warnings = [];
         this.warned = new Set();
         this.ruleOrder = [];
         this.hasPlace = false;
         this.hasTile = false;
         this.cells = [];
         this.bgSized = new Set();
-        this.nextId = nextId(this.instance);
+        this.nextId = nextId(instance ? '-' + instance : '');
         this.doodles = {};
         this.patterns = {};
         this.shaders = {};
@@ -473,7 +463,6 @@ class Rules {
             if (extra.length) {
                 this.hasPlace = true;
                 this.tokens = extra.concat(this.tokens);
-                this.tokens.warnings = tokens.warnings;
                 this.ruleOrder = extra.concat(this.ruleOrder);
             }
         }
@@ -1218,7 +1207,7 @@ class Rules {
             filters: this.filters,
             uniforms: this.uniforms,
             content: this.content,
-            warnings: (this.tokens.warnings || []).concat(this.warnings),
+            warnings: this.warnings,
         }
     }
 
