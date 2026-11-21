@@ -180,7 +180,7 @@ function combine(props, lo, hi) {
     let members = items.slice(0, MAX_MEMBERS).map(item => typeof item == 'string'
         ? generateShape(item, { min: lo, max: hi, raw: true }, rules => ({ ...vars, ...rules })).points
         : createShapePoints({ ...vars, ...item }, lo, hi, true));
-    let rings = members.length > 1 ? overlay(members, op, joints) : members[0] || [];
+    let rings = overlay(members, op, joints) || [];
     let k = calc('smooth', props);
     return rings.map(ring => k > 0 ? toPairs(flatten(corners(ring, joints, k), .002)) : ring);
 }

@@ -122,7 +122,7 @@ function ringsOf(tag, warn) {
     let radii = (rx, ry) => [rx >= 0 ? rx : ry, ry >= 0 ? ry : rx];
     if (name === 'g') {
         let members = tag.body.map(child => ringsOf(child, warn)).filter(Boolean);
-        rings = members.length > 1 ? overlay(members, 'union') : members[0];
+        rings = overlay(members, 'union');
     } else if (name === 'path') {
         d = attrs.d && unquote(attrs.d);
     } else if (name === 'polygon' || name === 'polyline') {
@@ -150,7 +150,7 @@ function combine(group, op, warn) {
         else if (/^(animate|set|title|desc)/.test(tag.name)) path.append(tag);
         else if (tag.name) warn(`<${tag.name}> lacks outline`);
     });
-    let rings = members.length > 1 ? overlay(members, op, joints) : members[0] || [];
+    let rings = overlay(members, op, joints) || [];
     let k = parseFloat(smooth), g = parseFloat(grow), tol = 2e-5 * (scale + abs(g || 0));
     if (g) {
         rings = offset(k > 0 ? rings.map(ring => toPairs(flatten(corners(ring, joints, k), tol))) : rings, g, rings.evenodd, tol);
