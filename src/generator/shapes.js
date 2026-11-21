@@ -175,16 +175,14 @@ function check(node, warn) {
 }
 
 function combine(props, lo, hi) {
-    let { op, items } = props.blocks, joints = new Set(), vars = {}, rings;
+    let { op, items } = props.blocks, joints = new Set(), vars = {};
     for (let k in props) if (!COMMANDS.has(k)) vars[k] = props[k];
-    for (let item of items.slice(0, MAX_MEMBERS)) {
-        let next = typeof item == 'string'
-            ? generateShape(item, { min: lo, max: hi, raw: true }, rules => ({ ...vars, ...rules })).points
-            : createShapePoints({ ...vars, ...item }, lo, hi, true);
-        rings = rings ? overlay(rings, next, op, joints) : next;
-    }
+    let members = items.slice(0, MAX_MEMBERS).map(item => typeof item == 'string'
+        ? generateShape(item, { min: lo, max: hi, raw: true }, rules => ({ ...vars, ...rules })).points
+        : createShapePoints({ ...vars, ...item }, lo, hi, true));
+    let rings = members.length > 1 ? overlay(members, op, joints) : members[0] || [];
     let k = calc('smooth', props);
-    return (rings || []).map(ring => k > 0 ? toPairs(flatten(corners(ring, joints, k), .002)) : ring);
+    return rings.map(ring => k > 0 ? toPairs(flatten(corners(ring, joints, k), .002)) : ring);
 }
 
 function pairsOf(points) {
@@ -263,7 +261,7 @@ function createShapePoints(props, lo, hi, raw) {
                 for (let axis of new Set(text.split(/[\s,]+/))) {
                     let flip = { x: ([x, y]) => [-x, y], y: ([x, y]) => [x, -y] }[axis];
                     if (flip && rings.flat(2).every(isFinite)) {
-                        rings = overlay(Object.assign(rings, { evenodd }), Object.assign(rings.map(ring => ring.map(flip)), { evenodd }), 'union');
+                        rings = overlay([Object.assign(rings, { evenodd }), Object.assign(rings.map(ring => ring.map(flip)), { evenodd })], 'union');
                     }
                 }
                 [units, paths, os] = [rings.map(() => 0), [], rings.map(() => [0, 0])];
@@ -477,7 +475,7 @@ function createShapePoints(props, lo, hi, raw) {
             let cells = voronoi(px, py, ...box, max(0, gap)), kinds = colors(cells);
             let bound = props.bound == 'shape' && offset(shown, -gap / 2, evenodd), within = bound && insideTest(bound);
             let cut = poly => !bound || toPairs(poly).every(p => within(...p)) && !bound.some(ring => ring.some(([u, v]) => contains(poly, u, v)))
-                ? poly : overlay([toPairs(poly)], bound, 'intersect');
+                ? poly : overlay([[toPairs(poly)], bound], 'intersect');
             return cells.map(([poly], k) => tile([cut(gap < 0 ? shrink(poly, gap / 2) : poly), [px[k], py[k]], kinds[k], points[k].extra]));
         }
         return points;

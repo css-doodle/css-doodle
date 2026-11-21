@@ -1783,10 +1783,10 @@ test('@seed takes a computed value: functions draw from the incoming stream, $na
 });
 
 test('@shape names shapes with #id, and their copies still run @ functions per copy', () => {
-    let named = css('clip-path: @shape(circle#hole*2 { scale: .2; move: @pn(-2 0, 2 0) } subtract { circle; #hole });');
-    let inline = css('clip-path: @shape(subtract { circle; circle*2 { scale: .2; move: @pn(-2 0, 2 0) } });');
+    let named = css('clip-path: @shape(circle#hole*2 { scale: .2; move: @pn(-.5 0, .5 0) } subtract { circle; #hole });');
+    let inline = css('clip-path: @shape(subtract { circle; circle*2 { scale: .2; move: @pn(-.5 0, .5 0) } });');
     assert.equal(named, inline);
-    assert.notEqual(named, css('clip-path: @shape(subtract { circle; circle { scale: .2; move: -2 0 } });'));
+    assert.notEqual(named, css('clip-path: @shape(subtract { circle; circle { scale: .2; move: -.5 0 } });'));
 });
 
 test('@grid * takes a bare angle in degrees, also after an axis', () => {

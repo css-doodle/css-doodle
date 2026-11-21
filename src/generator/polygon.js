@@ -50,20 +50,21 @@ function bridge(rings) {
         : [...rings[0], ...rings.slice(1).flatMap(ring => [rings[0][0], ...ring, ring[0]]), rings[0][0]];
 }
 
-function overlay(A, B, op, joints = new Set()) {
+function overlay(members, op, joints = new Set()) {
     let merge = rings => Object.assign(rings.map(ring => ring.filter((p, i) =>
         !i || dist(p, ring[i - 1]) > 1e-9 && (i < ring.length - 1 || dist(p, ring[0]) > 1e-9))), { evenodd: rings.evenodd, positive: rings.positive });
-    A = merge(A), B = merge(B);
+    members = members.map(merge);
     let test = rings => {
         let f = rings.length ? insideTest(rings, rings.evenodd) : () => 0;
         return rings.positive ? (x, y) => f(x, y) > 0 : f;
     };
-    let a = test(A), b = test(B), T = 1e-9, sides = [], from = new Map(), rings = [];
+    let [a, ...rest] = members.map(test), T = 1e-9, sides = [], from = new Map(), rings = [];
     let result = (x, y) => {
-        let p = !!a(x, y), q = !!b(x, y);
-        return op == 'subtract' ? p && !q : op == 'intersect' ? p && q : op == 'exclude' ? p != q : p || q;
+        let p = !!a(x, y), hit = b => b(x, y);
+        return op == 'subtract' ? p && !rest.some(hit) : op == 'intersect' ? p && rest.every(hit)
+            : op == 'exclude' ? (p + rest.filter(hit).length) % 2 == 1 : p || rest.some(hit);
     };
-    [A, B].forEach((rings, k) => rings.forEach(ring => ring.forEach((p, i) => {
+    members.forEach((rings, k) => rings.forEach(ring => ring.forEach((p, i) => {
         let q = ring[(i + 1) % ring.length];
         if (p[0] != q[0] || p[1] != q[1]) sides.push({ a: p, b: q, x0: min(p[0], q[0]), cuts: [], k });
     })));
@@ -125,7 +126,7 @@ function overlay(A, B, op, joints = new Set()) {
 
 // the region pushed out by d, or in when d < 0, round where it bends away, as rings filled on their left
 function offset(rings, d, evenodd, tol = .002) {
-    rings = overlay(Object.assign([...rings], { evenodd }), [], 'union');
+    rings = overlay([Object.assign([...rings], { evenodd })], 'union');
     let [x0, y0, x1, y1] = bounds(rings.flat(2));
     // nothing is that far inside
     if (d < 0 && -2 * d >= min(x1 - x0, y1 - y0)) return [];
@@ -151,7 +152,7 @@ function offset(rings, d, evenodd, tol = .002) {
         });
         return out;
     });
-    return overlay(Object.assign(raw, { positive: true }), [], 'union').map(ring => thin(ring, tol / 2));
+    return overlay([Object.assign(raw, { positive: true })], 'union').map(ring => thin(ring, tol / 2));
 }
 
 // a ring with its corners (only joints when given) as curves `[x, y, bx, by]` of radius r

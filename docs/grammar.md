@@ -497,7 +497,10 @@ copies         = '*' count [ 'x' count ]
 outlines, and `@scene` as a 3D model. A row is a command, an attribute
 of its shape, or else a variable. `kind#id` keeps a shape under a name
 and `#id` alone draws it. The id goes right after the name, before or
-after a count; a space before `#` starts a new shape. The parts of
+after a count; a space before `#` starts a new shape. A call pastes
+its function's body (§2), so a function used as one shape puts it in
+parentheses, `--cross(s): (circle { … } scale: $s)`: in braces its
+rows would apply to the enclosing shape. The parts of
 `move` and `scale` split at spaces or commas, and an operator keeps its
 operands: `move: k * .5 0` and `move: .5 -.25` have two parts each,
 `move: k (0) 0` three. A quoted `text:` value keeps

@@ -549,6 +549,14 @@ test('union, subtract, intersect and exclude join their shapes into one path', (
         `<svg ${NS}><path fill-rule="evenodd" d="M0 0L10 0L10 10L0 10ZM3 3L7 3L7 7L3 7Z"/></svg>`);
 });
 
+test('a joining block counts all its shapes at once', () => {
+    // held by 1, 2, 3, 2 and 1 of them along x
+    let rects = 'rect { width: 6; height: 2 } rect { x: 2; width: 6; height: 2 } rect { x: 4; width: 6; height: 2 }';
+    assert.equal(svg(`union { ${rects} }`), `<svg ${NS}><path d="M2 0L10 0L10 2L0 2L0 0Z"/></svg>`);
+    assert.equal(svg(`subtract { ${rects} }`), `<svg ${NS}><path d="M2 0L2 2L0 2L0 0Z"/></svg>`);
+    assert.equal(svg(`intersect { ${rects} }`), `<svg ${NS}><path d="M6 0L6 2L4 2L4 0Z"/></svg>`);
+    assert.equal(svg(`exclude { ${rects} }`), `<svg ${NS}><path d="M2 0L2 2L0 2L0 0ZM6 0L6 2L4 2L4 0ZM10 0L10 2L8 2L8 0Z"/></svg>`);
+});
 
 test('a joining block grows or shrinks the joined outline by grow', () => {
     assert.equal(svg('union { grow: 1; rect { width: 4; height: 4 } }'),
