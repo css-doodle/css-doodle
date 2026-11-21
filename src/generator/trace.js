@@ -45,7 +45,7 @@ const traced = memo((text, face, ready, axis) => {
     for (let i = 0; i < W * (H - 1); ++i) {
         let tl = alpha[i], tr = alpha[i + 1], bl = alpha[i + W], br = alpha[i + W + 1];
         if (!(tl | tr | bl | br) || (tl & tr & bl & br) == 255) continue;
-        let sum = tl + tr + bl + br - 510, ins = [i, i + 1, i + W + 1, i + W].map(k => v(k) > 0), keys = [2 * i, 2 * i + 3, 2 * i + 2 * W, 2 * i + 1], list = [];
+        let sum = tl + tr + bl + br - 510, ins = [tl > 127, tr > 127, br > 127, bl > 127], keys = [2 * i, 2 * i + 3, 2 * i + 2 * W, 2 * i + 1], list = [];
         for (let j = 0; j < 4; ++j) if (ins[j] != ins[(j + 1) % 4]) list.push([keys[j], ins[(j + 1) % 4]]);
         let k = list.length, step = sum > 0 ? k - 1 : 1;
         list.forEach(([key, into], m) => into && (next[key] = list[(m + step) % k][0], starts.push(key)));
