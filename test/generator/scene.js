@@ -579,6 +579,7 @@ test('any other name is a variable, seen by the rows and shapes of its block', (
     // a variable nothing reads is reported, as is an attribute where it does not belong
     assert.deepEqual(scene('k: 3; sphere;').warnings, ['unused k']);
     assert.deepEqual(scene('sphere { d: .1; r: d * 2 }').warnings, []);
+    assert.deepEqual(scene('k: 1; sphere { r: pick(k: .1, .2) }').warnings, []);
     // `2k` reads k, and `2t` reads the time
     assert.match(scene('k: .1; sphere { r: 2k }').body, /float (g_\d+) = \.1;[^]*\(2\.0 \* \1\)/);
     assert.match(scene('sphere { r: .2 + .1 * sin(2t) }').fragment, /t = u_time;/);

@@ -11,6 +11,8 @@ const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px deg tu
 
 export const NAME = /^[a-zA-Z_]\w*$/;
 
+export const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\(\\s*${name}\\s*:`).test(code);
+
 const MASKS = {
     __proto__: null,
     circle: glsl`length(vec2(du, dv))`,
@@ -268,6 +270,7 @@ function generateStatement(name, value, scope, ctx) {
     let v = compile(value, scope, ctx);
     if (!v) return '';
     id = scope.ids[name] = `g_${++ctx.id}`;
+    ctx.declared.add(name);
     ctx.types[id] = v.type;
     if (/^\d+$/.test(value)) ctx.counts.set(id, Number(value));
     return `${v.type} ${id} = ${v.code};\n`;
@@ -443,7 +446,7 @@ function generateShader({ grid, body, masked }) {
 export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let ctx = {
-        extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), masked: false,
+        extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), declared: new Set(), masked: false,
         unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown ${name}`), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
@@ -452,6 +455,9 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let body = '';
     try { body = generateBody(tokens, newScope(), ctx, { top: true }); }
     catch (e) { warn(e.message); }
+    for (let name of ctx.declared) {
+        if (!/^\w+_\d+_/.test(name) && !reads(code, name)) warn(`unused ${name}`);
+    }
     let fragment = generateShader({
         grid: parseGrid(grid, Infinity),
         body,

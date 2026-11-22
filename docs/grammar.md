@@ -545,12 +545,12 @@ value         = css-color | expression { ',' expression }
 **Names.** `grid`, `shape`, `size` and `fill` are built in, and only
 `size` is also a value. Any other name is a variable, declared and
 typed by its first assignment: numbers become floats, and a color is a
-`vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names are
-reported (§11). `v.xz: …` writes those channels of a vector; a name not
-yet assigned in the scope, such as `pos`, is copied first, so
-`pos.x: abs(pos.x)` mirrors the pattern. Several targets take a
-value each when the counts match, and the whole value each otherwise:
-`a, b: 1, vec2(2, 3)`.
+`vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names
+are reported (§11), as is a name nothing reads, such as `fil: red`.
+`v.xz: …` writes those channels of a vector; a name not yet assigned
+in the scope, such as `pos`, is copied first, so `pos.x: abs(pos.x)`
+mirrors the pattern. Several targets take a value each when the counts
+match, and the whole value each otherwise: `a, b: 1, vec2(2, 3)`.
 
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,
 `^` and `**` are power, and `%`, `a < b < c` and the logic words read

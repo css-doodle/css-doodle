@@ -2,7 +2,7 @@ import { readShapes, degrees, partsOf } from '../parser/parse-shape-commands.js'
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
-import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue } from './pattern.js';
+import { HELPERS, DERIVATIVES, NAME, reads, cssColor, colorReader, compileValue } from './pattern.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const SHAPES = {
@@ -124,7 +124,7 @@ function checkAll(node, warn, unread, code, copy) {
                 warn('read-only p');
                 continue;
             }
-            if (valid && new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${r.name}\\b(?!\\s*:)`).test(code)) continue;
+            if (valid && reads(code, r.name)) continue;
             unread.add(r);
             if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `unused ${r.name}` : `${node.name}: unknown ${r.name}`);
         }

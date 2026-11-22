@@ -102,7 +102,7 @@ test('a name nothing knows reads 0, so the shader still compiles', () => {
     let messages = [];
     let s = draw('grid: 4; k: fill; fill: grid / 4, foo.xy;', extra, m => messages.push(m)).fragment;
     assert.match(s, /float g_1 = 0\.0;\s*g_color = vec4\(vec3\(\(0\.0 \/ 4\.0\), vec2\(0\.0\)\), 1\.0\);/);
-    assert.deepEqual(messages, ['invalid value fill', 'grid: use X,Y', 'unknown foo']);
+    assert.deepEqual(messages, ['invalid value fill', 'grid: use X,Y', 'unknown foo', 'unused k']);
 });
 
 test('an assignment to a swizzle writes those channels', () => {
@@ -431,6 +431,18 @@ test('unknown names are reported once each', () => {
     messages = [];
     draw('fill: u_mouse.x, u_time, gl_FragCoord.x', extra, m => messages.push(m));
     assert.deepEqual(messages, ['unknown u_mouse', 'unknown u_time', 'unknown gl_FragCoord']);
+});
+
+test('a name nothing reads is reported, as in @scene', () => {
+    let said = code => { let messages = []; draw(code, extra, m => messages.push(m)); return messages; };
+    assert.deepEqual(said('fil: red'), ['unused fil']);
+    assert.deepEqual(said('gird: 20; fill: red'), ['unused gird']);
+    assert.deepEqual(said('a: 1; match(a > 0) { b: 2; } fill: red'), ['unused b']);
+    // a read in a repeat head, a match test, a pick key or a swizzle counts
+    assert.deepEqual(said('n: 4; repeat(n as k) { fill: k / 4, 0, 0; }'), []);
+    assert.deepEqual(said('k: 1; m: 2; match { k > m { fill: red; } }'), []);
+    assert.deepEqual(said('k: floor(2rand(i)); fill: pick(k: .2, .8), 0, 0'), []);
+    assert.deepEqual(said('pos.x: abs(pos.x); fill: pos.x, 0, 0'), []);
 });
 
 test('invalid and reserved names are reported', () => {
@@ -811,7 +823,7 @@ test('derivatives where only some pixels run the code are reported once per oute
     const warnings = code => {
         let messages = [];
         draw(code, extra, m => messages.push(m));
-        return messages;
+        return messages.filter(m => !m.startsWith('unused'));
     };
     const unreliable = where => [`derivative inside ${where}`];
     assert.deepEqual(warnings('match(du > 0) { c: ramp(du, 0, 1) }'), unreliable('match'));
