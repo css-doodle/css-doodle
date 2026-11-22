@@ -832,9 +832,24 @@ test('@match(test) in @svg reads the cell variables and the @n around it', () =>
         '<svg><circle/></svg>');
     assert.equal(svgImage('background: @svg(circle*4 { @match(@n % 2) { r: @n } })'),
         '<svg><circle r="1"/><circle/><circle r="3"/><circle/></svg>');
-    // a body that isn't drawn still takes its random values, so later ones stay put
-    let x = test => svgImage(`background: @svg(@match(${test}) { circle { r: @r(9) } } rect { x: @r(9) })`).match(/x="[^"]+"/)[0];
-    assert.equal(x(0), x(1));
+    // a skipped body does not run its functions or --var declarations
+    assert.equal(svgImage('background: @svg(--c: red; @match(0) { --c: blue; } circle { fill: $c })'),
+        '<svg><circle fill="red"/></svg>');
+    assert.equal(svgImage('background: @svg(circle*3 { @match(n == 1) { --c: gold; } @match(n > 1) { --c: navy; } fill: $c })'),
+        '<svg><circle fill="gold"/><circle fill="navy"/><circle fill="navy"/></svg>');
+    let pickOdd = cells('content: @svg(@match(i % 2) { circle { fill: @pn(red, gold, blue) } });', '4x1');
+    assert.match(pickOdd, /#c-1-1-1[\s\S]*fill=%22red%22/);
+    assert.match(pickOdd, /#c-3-1-1[\s\S]*fill=%22gold%22/);
+    assert.equal(svgImage('background: @svg(--flag: 0; @match(0) { --flag: 1; } @match(flag) { circle {} })'),
+        '<svg></svg>');
+    let lr = svgImage('background: @svg(circle { r: @r(1, 5) } @match(0) { rect { x: @r(6, 9) } } line { x1: @lr })');
+    let [, r, x1] = /r="([^"]+)".*x1="([^"]+)"/.exec(lr) || [];
+    assert.equal(x1, r);
+    // commas, colons, nested @match and *count inside @match stay intact
+    assert.equal(svgImage('background: @svg(@match(1) { @match(1) { polyline { points: 0 0, 1 1 } } @match(0) { rect {} } text { content: one, two: three; } })'),
+        '<svg><polyline points="0 0,1 1"/><text>one, two: three</text></svg>');
+    assert.equal(svgImage('background: @svg(@match(1) { circle*2 { r: $(n) } } @match(0) { rect*2 {} })'),
+        '<svg><circle r="1"/><circle r="2"/></svg>');
     // as a value it is still the @match function
     assert.equal(svgImage('background: @svg(g { fill: @match(1 > 0, red, blue) })'), '<svg><g fill="red"/></svg>');
 });

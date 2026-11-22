@@ -31,9 +31,8 @@ it the doodle's own. Blocks don't scope it, and the latest value wins:
 **`@match(test) { … }`** keeps its body only where the test holds: its
 elements go where the block stands, and its declarations set the
 attributes of the element around it. The test reads like `$(…)`. A
-body left out still runs its functions and `--name` declarations, so
-the random values after it are the same either way. As a value,
-`fill: @match(t, a, b)` is still the function.
+body left out is skipped, so its functions and `--name` declarations
+do not run. As a value, `fill: @match(t, a, b)` is still the function.
 
 **Block values** get a generated id and read as `url(#id)`, or `#id`
 for `href`. Gradients, `pattern`, `filter`, `clipPath`, `mask`,

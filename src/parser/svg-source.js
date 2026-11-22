@@ -2,11 +2,14 @@ function generate(token, last, repeat) {
     let result = '';
     if (token.type === 'block') {
         let times = repeat ? token.times : null;
+        let lazy = repeat && token.test !== undefined;
         if (times) result += '@M(' + times + ',';
-        if (token.test === undefined) {
+        if (lazy) {
+            result += '@match(' + token.test + ',(';
+        } else if (token.test === undefined) {
             result += token.name + '{';
         } else {
-            result += '@ match(' + (repeat ? '$(' + token.test + ')' : token.test) + '){';
+            result += '@ match(' + token.test + '){';
         }
         if (token.name === 'style') {
             result += token.value;
@@ -18,7 +21,7 @@ function generate(token, last, repeat) {
                 lastGroup = t.origin || null;
             }
         }
-        result += times ? '})' : '}';
+        result += lazy ? '))' : times ? '})' : '}';
     } else if (token.type === 'statement') {
         let value = (token.origin || token).value;
         if (repeat && token.from) {

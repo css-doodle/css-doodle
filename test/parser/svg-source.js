@@ -19,8 +19,8 @@ test('times syntax becomes an @M call', () => {
     );
 });
 
-test('an @match test is wrapped in $(), and left alone without repeat', () => {
-    assert.equal(source('@match(k == 2) { circle*2 {} }'), 'svg{@ match($(k == 2)){@M(2,circle{})}}');
+test('an @match block becomes a lazy @match call, and stays @ match without repeat', () => {
+    assert.equal(source('@match(k == 2) { circle*2 {} }'), 'svg{@match(k == 2,(@M(2,circle{})))}');
     assert.equal(sourceOf(parseSvg('@match(1) { circle {} }'), { repeat: false }), 'svg{@ match(1){circle{}}}');
 });
 
