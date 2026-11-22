@@ -29,7 +29,10 @@
     "src"
   ],
   "exports": {
-    ".": "./css-doodle.min.js",
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./css-doodle.min.js"
+    },
     "./component": {
       "import": "./src/exports/component/index.js"
     },
