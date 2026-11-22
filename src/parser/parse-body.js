@@ -107,6 +107,6 @@ function readValue(iter) {
     return value;
 }
 
-const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\(\\s*${name}\\s*:`).test(code);
+const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\bpick\\(\\s*${name}\\s*:`).test(code);
 
 export { parseBody, readRaw, readValue, reads };

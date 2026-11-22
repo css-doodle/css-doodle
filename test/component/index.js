@@ -574,6 +574,10 @@ test('an unused name the doodle reads elsewhere, as in @p(a, b), is not reported
     let host = { _code: '@shape(a: 1; b: 2; r: @p(a, b); rr: .5)', _warned: new Set(), triggerEvent: () => true, report: CSSDoodle.prototype.report };
     host.report([{ message: 'unused a' }, { message: 'unused rr' }]);
     assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['unused rr']);
+    // the first row of a body is no pick key
+    host._code = '@pattern(fil: red; fill: red)';
+    host.report([{ message: 'unused fil' }]);
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['unused rr', 'unused fil']);
 });
 
 test('render and update events follow the sheet', async () => {
