@@ -128,8 +128,8 @@ model as an image.
 
 **Rows** are commands, attributes of their shape, or, for any other
 name, variables that the rows and shapes of their block read:
-`k: .3; sphere { r: k }`. Unknown shapes and `#id`s are reported;
-`@scene` also reports names nothing reads, such as a misspelled
+`k: .3; sphere { r: k }`. Unknown shapes and `#id`s are reported, and
+so are names nothing in the doodle reads, such as a misspelled
 attribute.
 
 **Steps**, `move`, `rotate`, `scale`, `mirror`, `grow` and `frame`, run

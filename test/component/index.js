@@ -569,6 +569,13 @@ test('shouldRebuild reads the first child instead of serializing the shadow root
     assert.equal(host.shouldRebuild({}, {}, {}), true);
 });
 
+test('an unused name the doodle reads elsewhere, as in @p(a, b), is not reported', t => {
+    let warn = t.mock.method(console, 'warn', () => {});
+    let host = { _code: '@shape(a: 1; b: 2; r: @p(a, b); rr: .5)', _warned: new Set(), triggerEvent: () => true, report: CSSDoodle.prototype.report };
+    host.report([{ message: 'unused a' }, { message: 'unused rr' }]);
+    assert.deepEqual(warn.mock.calls.map(call => call.arguments[0]), ['unused rr']);
+});
+
 test('render and update events follow the sheet', async () => {
     let events = [];
     let resolve;

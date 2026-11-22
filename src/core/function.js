@@ -7,7 +7,7 @@ import parseDirection from '../parser/parse-direction.js';
 import svgSourceOf from '../parser/svg-source.js';
 
 import generateSvg from '../generator/svg.js';
-import generateShape, { shapeWarnings } from '../generator/shapes.js';
+import generateShape, { shapeWarnings, PAINT } from '../generator/shapes.js';
 import { expandFilter, FILTER_COMMANDS } from '../generator/svg-filter.js';
 import { perimeter } from '../generator/polygon.js';
 
@@ -336,7 +336,7 @@ const composeSvgPolygonUrl = memo((commands, seed) => {
     let props = '';
     let p = rules.padding ?? Number(rules['stroke-width']) / 2;
     for (let name of Object.keys(rules)) {
-        if (/^(stroke|fill|clip|marker|mask|animate|draw)/.test(name)) {
+        if (PAINT.test(name)) {
             props += `${name}: ${rules[name]};`
         }
     }
@@ -684,9 +684,9 @@ const shapePolygon = memo((input, seed, svg) => {
     return generateShape(input, { seed }).clip;
 });
 
-const shaped = compose => (_, { seed, rules, svg } = {}) => (...args) => {
+const shaped = (compose, paint) => (_, { seed, rules, svg } = {}) => (...args) => {
     let input = args.join(',');
-    shapeWarnings(input).forEach(m => rules?.warn(m));
+    shapeWarnings(input, paint).forEach(m => rules?.warn(m));
     return compose(input, seed, svg);
 };
 
@@ -811,7 +811,7 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
     return `url(#${ id })`;
 });
 
-Function['svg-polygon'] = shaped(composeSvgPolygonUrl);
+Function['svg-polygon'] = shaped(composeSvgPolygonUrl, true);
 
 Function.shaders = Function.pattern = Function.scene = () => {};
 

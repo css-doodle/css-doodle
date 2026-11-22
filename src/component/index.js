@@ -1,6 +1,7 @@
 import parseGrid from '../parser/parse-grid.js';
 import parseCss from '../parser/parse-css.js';
 import parseValueGroup from '../parser/parse-value-group.js';
+import { reads } from '../parser/parse-body.js';
 
 import Func, { MathFunc } from '../core/function.js';
 import createRandom from '../core/random.js';
@@ -552,6 +553,8 @@ if (typeof HTMLElement !== 'undefined') {
         report(warnings, source) {
             for (let warning of warnings) {
                 let { message, pos, index } = warning;
+                let name = /^unused (\S+)$/.exec(message)?.[1];
+                if (name && reads(this._code || '', name)) continue;
                 if (!this.triggerEvent('warn', warning)) continue;
                 if (this._warned.has(message)) continue;
                 this._warned.add(message);

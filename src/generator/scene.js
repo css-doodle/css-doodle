@@ -2,7 +2,8 @@ import { readShapes, degrees, partsOf } from '../parser/parse-shape-commands.js'
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
-import { HELPERS, DERIVATIVES, NAME, reads, cssColor, colorReader, compileValue } from './pattern.js';
+import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue } from './pattern.js';
+import { reads } from '../parser/parse-body.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const SHAPES = {

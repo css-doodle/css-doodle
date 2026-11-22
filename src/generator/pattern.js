@@ -1,4 +1,5 @@
 import parsePattern from '../parser/parse-pattern.js';
+import { reads } from '../parser/parse-body.js';
 import parseGrid from '../parser/parse-grid.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
@@ -10,8 +11,6 @@ const MAX_REPEAT_WORK = 65536;
 const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px deg turn'.split(' ');
 
 export const NAME = /^[a-zA-Z_]\w*$/;
-
-export const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\(\\s*${name}\\s*:`).test(code);
 
 const MASKS = {
     __proto__: null,

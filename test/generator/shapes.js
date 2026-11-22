@@ -577,9 +577,23 @@ test('unknown shapes are reported', () => {
     }
 });
 
+test('a row nothing reads is reported, as in @scene and @pattern', () => {
+    assert.deepEqual(shapeWarnings('points: 5; rr: .5'), ['unused rr']);
+    assert.deepEqual(shapeWarnings('fill: evenodd; points: 120, 60; r: 1, .5'), ['unused fill']);
+    assert.deepEqual(shapeWarnings('union { circle { k: .3 } }'), ['unused k']);
+    assert.deepEqual(shapeWarnings('star; k: 6'), ['unused k']);
+    // a read in a row, a preset, a pick key or a -row counts, and commands of @plot and @tile are known
+    for (let s of ['points: 3; a, b: 2, 3; x: cos(t)*a; y: sin(t)*b', 'hypocycloid 5; k: 3', 'points: 3; m: 1; r: pick(m: 1, .5)', 'k: .1; -x: cos(t) * k', 'gap: 1; density: 1; relax: 3; op: d; star: 30']) {
+        assert.deepEqual(shapeWarnings(s), [], s);
+    }
+    // @svg-polygon also takes paint and padding
+    assert.deepEqual(shapeWarnings('stroke: red; padding: 0'), ['unused stroke', 'unused padding']);
+    assert.deepEqual(shapeWarnings('stroke: red; padding: 0', true), []);
+});
+
 test('a row that runs into the next row or shape is reported', () => {
     assert.deepEqual(shapeWarnings('points: 4\n r: .5'), ['points needs ;']);
-    assert.deepEqual(shapeWarnings('union { k: .1 circle { r: .2 } star { r: .3 } }'), ['k needs ;']);
+    assert.deepEqual(shapeWarnings('union { k: .1 circle { r: .2 } star { r: .3 } }'), ['k needs ;', 'unused k']);
     assert.deepEqual(shapeWarnings('text: "a: b"; move: max(.1, .2) 0'), []);
 });
 

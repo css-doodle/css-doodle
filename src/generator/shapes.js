@@ -2,6 +2,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands, { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS } from '../parser/parse-shape-commands.js';
+import { reads } from '../parser/parse-body.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
@@ -162,6 +163,8 @@ function createPointFunction(props, split) {
 }
 
 const COMMANDS = new Set('points split turn r t x y rotate move scale mirror round grow frame fill-rule unit smooth blocks steps text font path'.split(' '));
+export const PAINT = /^(stroke|fill|clip|marker|mask|animate|draw)/;
+const KNOWN = new Set([...COMMANDS, ...'seed direction dir aspect gap density relax spread bound jitter shift edge slide pair op star size'.split(' ')]);
 
 // each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
@@ -506,9 +509,20 @@ export function outline(polygon, warn, at) {
     return rings.flat().length > 256 ? resample(rings, [256]).filter(ring => ring.length > 2) : rings;
 }
 
-export const shapeWarnings = memo(input => {
-    let list = [], warn = message => list.push(message);
-    check(readShapes(input.includes('(') ? unwrap(input) : input, warn), warn);
+export const shapeWarnings = memo((input, paint) => {
+    let list = [], warn = message => list.push(message), names = new Set();
+    let root = readShapes(input.includes('(') ? unwrap(input) : input, warn);
+    check(root, warn);
+    let walk = node => {
+        let [name, ...args] = parseValueGroup(node.name), preset = presetShapes[name];
+        if (preset) input += ';' + (typeof preset == 'function' ? preset(...args) : preset);
+        node.rows.forEach(r => names.add(r.name.replace(/^-(?!-)/, '')));
+        [...node.copies || node.children, ...node.unused || []].forEach(walk);
+    };
+    walk(root);
+    for (let name of names) {
+        if (/^[a-zA-Z_][\w-]*$/.test(name) && !KNOWN.has(name) && !(paint && (PAINT.test(name) || name == 'padding')) && !reads(input, name)) warn(`unused ${name}`);
+    }
     return list;
 });
 
