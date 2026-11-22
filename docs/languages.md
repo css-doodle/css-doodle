@@ -481,8 +481,10 @@ block in such a body runs as values. Its parameters, assigned names
 and `repeat` loop names are its own for each call, so its `i` leaves
 the pattern's `i` alone; a name reads the caller's until it is first
 assigned. An argument other than a name, a number or a color is worked
-out once, first. `p: p * 2` changes the copy, and `$p: value` writes
-the variable passed for `p`, the way to give back more than one value.
+out once, first. `p: p * 2` changes the copy; the caller's names stay
+as they were. `result: a, b` gives two values: `c, s: $cloud(p)` sets
+`c` to the first and `s` to the second, and anywhere else the call
+reads as the first.
 Such a call cannot stand in a `repeat()` head or a `match` arm test. A
 body without `result` runs where it is called and writes the caller's
 names.

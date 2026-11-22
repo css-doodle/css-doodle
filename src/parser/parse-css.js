@@ -1180,9 +1180,15 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
                 warn(ctx, `$${name}() runs statements`);
             } else {
                 let call = valueCall(name, def, args, defs, ctx, chain);
+                let names = mode === BODY && (!next || next.isSymbol(';', '}')) && /^[\w.]+(\s*,\s*[\w.]+)+\s*:$/.test(lead) && lead.match(/[\w.]+/g);
                 ctx.expanded += call.text.length;
                 pending.push(call.text);
                 body = call.ret;
+                if (names) {
+                    if (names.length > call.count) warn(ctx, `$${name}() gives ${call.count}`);
+                    from = t.index;
+                    body = names.slice(0, call.count).map((n, k) => `${n}: ${body}${k ? '_' + (k + 1) : ''}`).join('; ');
+                }
             }
         } else {
             let value = paint ? null : resultOf(def.body);
@@ -1308,18 +1314,18 @@ function resultOf(body) {
 }
 
 // The statements of one call of a value function: its arguments bound to
-// names and its names made its own, result among them, which is its value
+// names and its names made its own, results among them, which are its values
 function valueCall(name, def, args, defs, ctx, chain) {
     let { params, defaults } = def;
     let ret = `${name.replace(/\W/g, '_')}_${++ctx.calls}`;
     let source = def.body.replace(RE_LINE_COMMENT, '').trim();
     source = expandCalls((/[;}]$/.test(source) ? source : source + ';') + '\n', defs, ctx, [...chain, name], BODY);
-    let { text, targets } = renameLocals(source, ret);
+    let { text, targets, count } = renameLocals(source, ret);
     let bound = [], prelude = '';
     params.forEach((param, k) => {
         let arg = (args[k] || defaults[k] || '').trim();
-        // a parameter the body assigns writes the caller's variable
-        if (!arg || targets.has(param) || RE_SIMPLE_ARG.test(arg)) {
+        if (targets.has(param)) warn(ctx, `read-only $${param}`);
+        if (!arg || !targets.has(param) && RE_SIMPLE_ARG.test(arg)) {
             bound.push(arg);
         } else {
             prelude += `${ret}_${param}: ${arg};\n`;
@@ -1337,24 +1343,25 @@ function valueCall(name, def, args, defs, ctx, chain) {
                     + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
             }
             if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;
-            if (when && (known.has(name) || !/^\w+_\d+_/.test(name))) return `${name}: match(${when}, ${value}, ${name});\n`;
+            if (when && known.has(name)) return `${name}: match(${when}, ${value}, ${name});\n`;
             known.add(name);
             return `${name}: ${value};\n`;
         }).join('');
         let out = lower(parsePattern(text), '');
         if (blocks) text = out;
     }
-    return { text, ret: ret + '_result' };
+    return { text, ret: ret + '_result', count };
 }
 
 // Rename the names a body assigns, and the loop names of its repeats, to
 // prefix_name: in a value function every assignment is its own, even to
 // fill or d. A name reads the caller's variable until its first assignment
-// ends; `$p:` writes a parameter, collected in targets
+// ends; the names assigned as `$p:` are collected in targets. Each item of
+// `result: a, b` is a result of its own: prefix_result, prefix_result_2, …
 function renameLocals(text, prefix) {
     let tokens = tokensOf(text, true);
     let declared = new Set(), waiting = [], targets = new Set();
-    let out = '', from = 0, depth = 0, atStart = true, quote = false, prev = null;
+    let out = '', from = 0, depth = 0, atStart = true, quote = false, prev = null, item = 0, count = 1;
     let named = t => t.isWord() && t.value[0] !== '.' || t.isSymbol('_');
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], before = prev;
@@ -1370,6 +1377,13 @@ function renameLocals(text, prefix) {
             waiting.forEach(n => declared.add(n));
             waiting = [];
             atStart = true;
+            item = 0;
+            continue;
+        }
+        if (item && !depth && t.isSymbol(',')) {
+            out += text.slice(from, t.index) + `; ${prefix}_result_${++item}:`;
+            from = tokenEnd(t);
+            if (item > count) count = item;
             continue;
         }
         if (t.isSymbol('$', '@') && tokens[i + 1] && adjacent(t, tokens[i + 1])) {
@@ -1404,6 +1418,7 @@ function renameLocals(text, prefix) {
         let loop = before?.isWord() && before.value === 'as';
         let call = after?.isSymbol('(') && adjacent(tokens[end], after);
         if (target) waiting.push(local);
+        if (target && whole === 'result') item = 1;
         if (loop) declared.add(local);
         if (!call && (target || loop || declared.has(local))) {
             let copy = target && dot > 0 && !declared.has(local) ? `${prefix}_${local}: ${local}; ` : '';
@@ -1414,7 +1429,7 @@ function renameLocals(text, prefix) {
         prev = tokens[end];
         i = end;
     }
-    return { text: out + text.slice(from), targets };
+    return { text: out + text.slice(from), targets, count };
 }
 
 function inWord(tokens, i, end) {

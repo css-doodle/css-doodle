@@ -948,29 +948,47 @@ test('in @scene a value function\'s match block becomes values', () => {
         'sphere {skin_1_q: p * 2; skin_1_result: #c99; skin_1_1: match((skin_1_q.y > .2), 1, 0);',
         'skin_1_result: match(skin_1_1 == 1, #eee, skin_1_result); fill: skin_1_result }',
     ].join(' '));
-    assert.equal(paintOf(`--f(c): { match { a { result: 1; } else { match(b) { k: 2; $c: k; } result: 0; } } };
-        @content: @scene(w: 1; sphere { r: $f(w) });`), [
-        'w: 1; sphere {f_1_1: match((a), 1, 2); f_1_result: 1; f_1_2: match((b), 1, 0); f_1_k: 2;',
-        'w: match(f_1_1 == 2 && f_1_2 == 1, f_1_k, w); f_1_result: match(f_1_1 == 2, 0, f_1_result); r: f_1_result }',
+    assert.equal(paintOf(`--f(c): { match { a { result: 1, c; } else { match(b) { k: 2; result: 0, k; } } } };
+        @content: @scene(w: 1; sphere { r, s: $f(w) });`), [
+        'w: 1; sphere {f_1_1: match((a), 1, 2); f_1_result: 1; f_1_result_2: w; f_1_2: match((b), 1, 0); f_1_k: 2;',
+        'f_1_result: match(f_1_1 == 2 && f_1_2 == 1, 0, f_1_result); f_1_result_2: match(f_1_1 == 2 && f_1_2 == 1, f_1_k, f_1_result_2);',
+        'r: f_1_result; s: f_1_result_2 }',
     ].join(' '));
     assert.equal(paintOf(`--f(): { match(a) { result: 1; } }; @content: @pattern(fill: $f(););`),
         'match(a) { f_1_result: 1; } fill: f_1_result;');
-    assert.equal(paintOf(`--g(c): { $c: 9; result: 1 }; --f(c): { result: .3; match { $c > 5 { k: $g($c); } } };
+    assert.equal(paintOf(`--g(c): { result: 1, $c + 9 }; --f(c): { result: .3; match { $c > 5 { k, m: $g($c); } } };
         @content: @scene(w: 1; sphere { r: $f(w) * w });`), [
-        'w: 1; sphere {f_1_result: .3; f_1_1: match((w > 5), 1, 0); w: match(f_1_1 == 1, 9, w);',
-        'f_1_g_2_result: 1; f_1_k: f_1_g_2_result; r: f_1_result * w }',
+        'w: 1; sphere {f_1_result: .3; f_1_1: match((w > 5), 1, 0); f_1_g_2_c: w; f_1_g_2_result: 1; f_1_g_2_result_2: f_1_g_2_c + 9;',
+        'f_1_k: f_1_g_2_result; f_1_m: f_1_g_2_result_2; r: f_1_result * w }',
     ].join(' '));
 });
 
-test('a value function reads the caller until it assigns a name, and writes the caller only through $p:', () => {
+test('a value function gives several results to as many names', () => {
+    let code = `--f(p, h): { c: p * 2; result: c, h + 1; }; @content: @pattern(col, dab: $f(uv.x, 1); fill: col * $f(.5, 2), dab, 0;);`;
+    // one name, or a call inside a larger value, takes the first
+    assert.equal(paintOf(code), [
+        'f_1_c: uv.x * 2; f_1_result: f_1_c; f_1_result_2: 1 + 1; col: f_1_result; dab: f_1_result_2;',
+        'f_2_c: .5 * 2; f_2_result: f_2_c; f_2_result_2: 2 + 1; fill: col * f_2_result, dab, 0;',
+    ].join(''));
+    // a comma inside a call is no new result; fewer names leave the rest
+    assert.equal(paintOf(`--f(): { result: pick(k: 1, 2), max(1, 2), 3; }; @content: @pattern(a, b: $f(); fill: a, b, 0;);`),
+        'f_1_result: pick(k: 1, 2); f_1_result_2: max(1, 2); f_1_result_3: 3; a: f_1_result; b: f_1_result_2; fill: a, b, 0;');
+    // more names than results set the ones there are
+    let more = `--f(): { result: 1; }; @content: @pattern(a, b: $f(); fill: a, b, 0;);`;
+    assert.equal(paintOf(more), 'f_1_result: 1; a: f_1_result; fill: a, b, 0;');
+    assert.deepEqual(parseCss(more).warnings.map(w => w.message), ['$f() gives 1']);
+});
+
+test('a value function reads the caller until it assigns a name, and never writes it', () => {
     assert.equal(paintOf(`--f(): { w: w + 1; result: w * 2; }; @content: @pattern(w: 1; fill: $f(););`),
         'w: 1;f_1_w: w + 1; f_1_result: f_1_w * 2; fill: f_1_result;');
-    // a parameter it assigns writes the variable passed for it
-    assert.equal(paintOf(`--f(out): { $out: 1; result: 2; }; @content: @pattern(n: 0; fill: $f(n) + n;);`),
-        'n: 0;n: 1; f_1_result: 2; fill: f_1_result + n;');
+    // $p: changes its copy, as p: does, and warns
+    let code = `--f(out): { $out: 1; result: 2; }; @content: @pattern(n: 0; fill: $f(n) + n;);`;
+    assert.equal(paintOf(code), 'n: 0;f_1_out: n; f_1_out: 1; f_1_result: 2; fill: f_1_result + n;');
+    assert.deepEqual(parseCss(code).warnings.map(w => w.message), ['read-only $out']);
     // the same for a parameter named over several tokens
     assert.equal(paintOf(`--f(x1): { $x1: 1; result: 2; }; @content: @pattern(n: 0; fill: $f(n) + n;);`),
-        'n: 0;n: 1; f_1_result: 2; fill: f_1_result + n;');
+        'n: 0;f_1_x1: n; f_1_x1: 1; f_1_result: 2; fill: f_1_result + n;');
     // a color's digits are no names, whatever it calls its own
     assert.equal(paintOf(`--f(): { a: 1; e: 2; result: mix(#e0402a, #fae, a / e); }; @content: @pattern(fill: $f(););`),
         'f_1_a: 1; f_1_e: 2; f_1_result: mix(#e0402a, #fae, f_1_a / f_1_e); fill: f_1_result;');
@@ -1004,11 +1022,9 @@ test('in @pattern and @scene a parameter reads bare, as a name of the function\'
         'n_1_p: uv * 4; n_1_f: fract(n_1_p); n_1_result: n_1_f.x * n_1_p.y; fill: n_1_result;');
     assert.equal(paintOf(`--sq(a): a * a; --g(mix): mix(mix, 1, .5); @content: @pattern(fill: $sq(x + 1) + $g(uv.x););`),
         'fill: ((x + 1) * (x + 1)) + (mix(uv.x, 1, .5));');
-    // assigning it changes the function's copy, $p: the caller's variable
+    // assigning it changes the function's copy
     assert.equal(paintOf(`--f(p): { p: p * 2; result: p + 1; }; @content: @pattern(n: 1; fill: $f(n) + n;);`),
         'n: 1;f_1_p: n * 2; f_1_result: f_1_p + 1; fill: f_1_result + n;');
-    assert.equal(paintOf(`--f(out): { $out: 1; result: out * 2; }; @content: @pattern(n: 0; fill: $f(n););`),
-        'n: 0;n: 1; f_1_result: n * 2; fill: f_1_result;');
     // it hides a built-in of its name, and a loop name hides it
     assert.equal(paintOf(`--f(x): x * 2; @content: @pattern(fill: $f(uv.y););`), 'fill: uv.y * 2;');
     // not as the end of a longer name
