@@ -283,7 +283,9 @@ function parseFunc(cur) {
         name = name.slice(0, -dots);
         end -= dots;
     }
-    return finishFunc(cur, name, end, isCalc, tok.index);
+    let func = finishFunc(cur, name, end, isCalc, tok.index);
+    if (func.unit) warn(cur.ctx, `use $()${func.unit}`, tok.pos);
+    return func;
 }
 
 function finishFunc(cur, name, end, isCalc, index, shaped, body) {

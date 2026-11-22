@@ -599,6 +599,15 @@ test('unbalanced parens, quotes and braces warn instead of silently dropping the
     assert.deepEqual(messages(`background: @pattern(fill: red`), ['unclosed (']);
 });
 
+test('$px() warns to write the unit after $(), unless a function --px() is defined', () => {
+    const messages = code => parseCss(code).warnings.map(w => w.message);
+    assert.deepEqual(messages(`width: $px(1+1);`), ['use $()px']);
+    assert.deepEqual(messages(`width: $%(@i*10);`), ['use $()%']);
+    assert.deepEqual(messages(`--rbox(x): $(x*3)em; width: $rbx(2);`), ['use $()rbx']);
+    assert.deepEqual(messages(`--px(x): $(x*3)em; width: $px(2);`), []);
+    assert.deepEqual(messages(`width: $(1+1)px; height: $w;`), []);
+});
+
 test('π inside a quoted string stays as written', () => {
     assert.deepEqual(ast(`content: "π"; --a: π;`), [rule('content', text('"π"')), rule('--a', text(String(Math.PI)))]);
     let [p] = parseCss(`content: @p("π", π);`);

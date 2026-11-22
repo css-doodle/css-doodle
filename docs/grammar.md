@@ -118,11 +118,10 @@ written, except:
   `--g(s): linear-gradient($s)` makes `$g((red, blue))`
   `linear-gradient(red, blue)`. Passed on to another call, the list
   keeps them. Without a comma they stay: `$f((1px + 2px))`.
-- Inside `$()`, `$px()` or the test of a `@match(test) { }` block, a
-  bare `p` is the argument too, each argument is parenthesized, and a
-  call reads as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is
-  `8`. There a bare `inc(3)` calls it too, unless a built-in has the
-  name.
+- Inside `$()` or the test of a `@match(test) { }` block, a bare `p`
+  is the argument too, each argument is parenthesized, and a call reads
+  as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. There
+  a bare `inc(3)` calls it too, unless a built-in has the name.
 - In the arguments of a `$name()` call, and in a default, a bare `p` is
   the argument as `$p` is, unless a `:` follows it or a dash joins it
   to a word, as in `var(--p)`: with `--seg(k): $(k * 10)px`,
@@ -239,7 +238,7 @@ becomes pi; `2π` stays, and only expressions (§8) multiply it.
 ```css
 background: @p(red, blue);
 rotate: @r(360deg);
-width: $px(@i * 10);
+width: $(@i * 10)px;
 ```
 
 ```
@@ -261,10 +260,10 @@ and is text otherwise; the name and its `(` must be adjacent too.
   `@a.5(x)` is `@a(.5, x)`. When `a` has a variant `b`, `@a.b(x)` calls
   the variant instead (`@plot.scatter(star)`).
 - **`$` is the calc function.** `$(expr)` evaluates an expression
-  (§8), and `$unit(expr)` appends `unit`: `$px(1+1)` is `2px`, unless a
-  function `--px()` is defined (§2). `$name` without parentheses reads
-  the variable `name` (§8); the name ends where a CSS name does, so with
-  `--s: 50`, `$s%` is `50%`.
+  (§8), and a unit right after it is appended: `$(1+1)px` is `2px`.
+  `$name()` calls the function `--name()` (§2). `$name` without
+  parentheses reads the variable `name` (§8); the name ends where a CSS
+  name does, so with `--s: 50`, `$s%` is `50%`.
 
 ## 7. Arguments
 
@@ -396,13 +395,13 @@ Each caller provides its own context:
   `--name` declarations above it in an enclosing `@svg`, then the cell
   variables below, and inside a `*count` copy or `@m`/`@M` its `n`,
   `nx`, `ny` and `N`. Calls inside it run first. The result is rounded
-  to 12 significant digits, magnitudes below `1e-9` become `0`, and the
-  unit is appended. A lone name, `$w` or `$(w)`, evaluates arithmetic
-  and passes anything else through: with `--c: tomato`, `$c` is
-  `tomato`. The value is read as CSS, where a sign stuck to a number
-  after a space starts the next value: with `--p: 3 -2`, `$p` is the
-  point `3 -2`, though `$(3 -2)` is `1`. An angle passes through unless
-  `sin`, `cos`, `tan` or `degrees` take it.
+  to 12 significant digits, magnitudes below `1e-9` become `0`. A lone
+  name, `$w` or `$(w)`, evaluates arithmetic and passes anything else
+  through: with `--c: tomato`, `$c` is `tomato`. The value is read as
+  CSS, where a sign stuck to a number after a space starts the next
+  value: with `--p: 3 -2`, `$p` is the point `3 -2`, though `$(3 -2)`
+  is `1`. An angle passes through unless `sin`, `cos`, `tan` or
+  `degrees` take it.
 - **`@match`, `@cell` and `@random`** see the cell variables below and
   the custom properties without `--`, a cell variable winning a shared
   name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
