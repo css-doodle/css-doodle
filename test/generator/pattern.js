@@ -257,9 +257,9 @@ test('a CSS color function in an expression is a color literal', () => {
 
 test('a CSS unit read as a name says that patterns have no units', () => {
     let messages = [];
-    draw('fill: sin(90deg) + 2em', extra, m => messages.push(m));
+    draw('fill: sin(9vw) + 2em', extra, m => messages.push(m));
     assert.deepEqual(messages, [
-        'unknown deg',
+        'unknown vw',
         'unknown em',
     ]);
     // a declared variable of that name is just a variable
@@ -276,6 +276,15 @@ test('px is one CSS pixel in pos units, read from u_px only when used', () => {
     let messages = [];
     assert.doesNotMatch(draw('px: 1 / 720; fill: 3px', extra, m => messages.push(m)).fragment, /u_px/);
     assert.deepEqual(messages, []);
+});
+
+test('deg and turn are angles in radians, as in @scene, declared only when read', () => {
+    let messages = [];
+    let s = draw('q: rot(pos, 45deg); fill: q.x, cos(.5turn), 0', extra, m => messages.push(m)).fragment;
+    assert.deepEqual(messages, []);
+    assert.match(s, /float deg = PI \/ 180\.0, turn = 2\.0 \* PI;[\s\S]*rot\(pos, \(45\.0 \* deg\)\)[\s\S]*cos\(\(\.5 \* turn\)\)/);
+    assert.doesNotMatch(shader('fill: length(pos)'), /float deg/);
+    assert.doesNotMatch(shader('deg: 2; fill: deg, 0, 0'), /float deg/);
 });
 
 test('a later fill with alpha paints over the one before it', () => {

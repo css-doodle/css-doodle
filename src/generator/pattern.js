@@ -7,7 +7,7 @@ import { glsl } from '../lib/tagged-template.js';
 const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
-const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px'.split(' ');
+const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px deg turn'.split(' ');
 
 export const NAME = /^[a-zA-Z_]\w*$/;
 
@@ -428,7 +428,7 @@ function generateShader({ grid, body, masked }) {
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
         float i = x + (y - 1.0) * X;
-        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}
+        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}${/(?<![\w.])(deg|turn)\b/.test(body) ? ' float deg = PI / 180.0, turn = 2.0 * PI;' : ''}
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
         float size = 1.0;

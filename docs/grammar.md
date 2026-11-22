@@ -555,7 +555,7 @@ value each when the counts match, and the whole value each otherwise:
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,
 `^` and `**` are power, and `%`, `a < b < c` and the logic words read
 the same. There are no units, `var()` or `?:`; `2px` is 2 times the
-variable `px`. Swizzles work on
+variable `px`, and `45deg` 45 times `deg`. Swizzles work on
 `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a `vec3`, `#rgba` a `vec4`:
 `mix(red, #00f, du + .5)`.
 
