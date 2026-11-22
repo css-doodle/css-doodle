@@ -686,6 +686,19 @@ test('a user function parameter can have a default', () => {
     assert.deepEqual(ast(`--k(n = $(2 = 2)): [$n]; width: $k();`), ast(`width: [$(2 = 2)];`));
 });
 
+test('a user function argument in parentheses with a comma inside is one list', () => {
+    let at = (code, want) => {
+        let rule = parseCss(code).find(r => r.property === 'a');
+        assert.equal(JSON.stringify(rule.value), JSON.stringify(parseCss(want)[0].value));
+    };
+    at(`--g(s): linear-gradient($s); a: $g((red, blue));`, `a: linear-gradient(red, blue);`);
+    // passed on, it stays one argument
+    at(`--g(s): linear-gradient($s); --h(s): $g($s); a: $h((red, blue));`, `a: linear-gradient(red, blue);`);
+    // without a comma, or around part of it, the parentheses stay
+    at(`--w(x): calc($x * 2); a: $w((1px + 2px));`, `a: calc((1px + 2px) * 2);`);
+    at(`--g(s): linear-gradient($s); a: $g((red, blue) 50%);`, `a: linear-gradient((red, blue) 50%);`);
+});
+
 test('a user function call with too many or too few arguments warns', () => {
     let warnings = code => parseCss(code).warnings.map(w => w.message);
     assert.deepEqual(warnings(`--f(k): $(k * 10); a: $f(1, 2, 3);`), ['$f() extra args']);

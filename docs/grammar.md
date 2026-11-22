@@ -113,6 +113,11 @@ for `p`. Missing arguments take their defaults, and a default may use
 the parameters before it: `--box(w, h = $w)`. Arguments are pasted as
 written, except:
 
+- Parentheses around a whole argument with a comma inside make it one
+  list and are dropped, as for built-in functions (§7):
+  `--g(s): linear-gradient($s)` makes `$g((red, blue))`
+  `linear-gradient(red, blue)`. Passed on to another call, the list
+  keeps them. Without a comma they stay: `$f((1px + 2px))`.
 - Inside `$()`, `$px()` or the test of a `@match(test) { }` block, a
   bare `p` is the argument too, each argument is parenthesized, and a
   call reads as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is

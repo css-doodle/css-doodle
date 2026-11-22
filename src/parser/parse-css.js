@@ -1507,7 +1507,9 @@ function bindParams({ params, defaults, body }, args, defs, paint, math) {
             if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead) || assigned) continue;
             wrap = one;
         }
-        if (wrap) arg = '(' + arg + ')';
+        let list = !paint && parens.at(-1) !== 0 && /^\s*\(.*,.*\)\s*$/s.test(arg) && tokensOf(arg.trim());
+        if (list && closing(list, 0) === list.length - 1 && itemsOf(list.slice(1, -1)).length > 1) arg = arg.trim().slice(1, -1);
+        else if (wrap) arg = '(' + arg + ')';
         out += body.slice(from, start) + arg;
         from = dot > 0 ? t.index + dot : tokenEnd(last);
     }
