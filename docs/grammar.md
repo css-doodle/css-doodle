@@ -323,7 +323,8 @@ name       = letter or '_', then letters, digits or '_'
 | `<<` `>>`                                   | shift                       | left          |
 | `&`                                         | bitwise and                 | left          |
 | `\|`                                        | bitwise or                  | left          |
-| `<` `>` `<=` `>=` `≤` `≥` `=` `==` `!=` `≠` | compare, gives `1` or `0`   | left          |
+| `<` `>` `<=` `>=` `≤` `≥`                   | order, gives `1` or `0`     | left          |
+| `=` `==` `!=` `≠`                           | equal, gives `1` or `0`     | left          |
 | `not`                                       | not (prefix)                | right         |
 | `&&` `and`                                  | and, short-circuit          | right         |
 | `\|\|` `or`                                 | or, short-circuit           | right         |
@@ -331,9 +332,11 @@ name       = letter or '_', then letters, digits or '_'
 - **Everything is a number.** Units drop: with `--w: 10px`, `$(w * 2)`
   is `20`. `&&` and `||` return the deciding operand, `%` takes the
   sign of the left operand, and `0 < x < 1` is `0 < x && x < 1` until
-  parentheses end the chain. Right after a number `%` is a percent
-  sign, dropped, unless an unsigned number, a name or `(` follows:
-  `25% > 10` is `1`, `25%-5` is `20`, `7%3` is `1`.
+  parentheses end the chain. An order binds before an equality, so
+  `x < .5 != y < .5` is true when just one of the two holds. Right
+  after a number `%` is a percent sign, dropped, unless an unsigned
+  number, a name or `(` follows: `25% > 10` is `1`, `25%-5` is `20`,
+  `7%3` is `1`.
 - **Rounding noise is none.** Comparisons, `sign` and `step` take a
   difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`.
 - **Adjacent values multiply**: `2x`, `2(3)`, `2π`. A space ends the
@@ -540,9 +543,10 @@ reported (§11). `v.xz: …` writes those channels of a vector; a name not
 yet assigned in the scope, such as `pos`, is copied first, so
 `pos.x: abs(pos.x)` mirrors the pattern.
 
-**Expressions** use GLSL syntax. As in §8, `^` and `**` are power, and
-`%`, `a < b < c` and the logic words read the same. There are no units,
-`var()` or `?:`; `2px` is 2 times the variable `px`. Swizzles work on
+**Expressions** use GLSL syntax. Operators bind as in the table of §8,
+`^` and `**` are power, and `%`, `a < b < c` and the logic words read
+the same. There are no units, `var()` or `?:`; `2px` is 2 times the
+variable `px`. Swizzles work on
 `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a `vec3`, `#rgba` a `vec4`:
 `mix(red, #00f, du + .5)`.
 

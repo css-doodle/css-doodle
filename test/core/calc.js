@@ -622,6 +622,15 @@ test('conventional operator precedence', () => {
     assert.equal(calc('2^3^2'), 512);
 });
 
+test('bitwise before a comparison, an order before an equality, as in @pattern', () => {
+    assert.equal(calc('6 & 3 == 2'), 1);
+    assert.equal(calc('1 | 2 == 3'), 1);
+    assert.equal(calc('0 == 2 < 1'), 1);
+    // != between two conditions is xor
+    assert.equal(calc('x < .5 != y < .5', { x: .2, y: .1 }), 0);
+    assert.equal(calc('x < .5 != y < .5', { x: .2, y: .9 }), 1);
+});
+
 test('short-circuit evaluation', () => {
     const boom = () => { throw new Error('evaluated'); };
     assert.equal(calc('x == 1 && boom(1)', { x: 0, boom }), 0);

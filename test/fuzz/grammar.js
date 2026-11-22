@@ -57,11 +57,11 @@ const block = (head, body) => ({ text: `${head}${_}{${__}${body}${__}}`, block: 
 
 // binary levels loosest first, then sign, adjacent product, power and not
 const BINARY = [
-    ['||'], ['&&'], ['<', '>', '<=', '>=', '≤', '≥', '=', '==', '!=', '≠'],
+    ['||'], ['&&'], ['=', '==', '!=', '≠'], ['<', '>', '<=', '>=', '≤', '≥'],
     ['|'], ['&'], ['<<', '>>'], ['+', '-'], ['*', '/', '%'],
 ];
 const RIGHT = [true, true];
-const SIGN = 8, PRODUCT = 9, POWER = 10, NOT = 11, ATOM = 12;
+const SIGN = 9, PRODUCT = 10, POWER = 11, NOT = 12, ATOM = 13;
 const CANON = { '≤': '<=', '≥': '>=', '=': '==', '≠': '!=', '**': '^' };
 const RELATIONAL = ['<', '>', '<=', '>=', '≤', '≥'];
 const CONTEXT = { x: 3, y: 5, i: 2, X: 8 };

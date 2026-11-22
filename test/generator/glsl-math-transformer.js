@@ -133,7 +133,8 @@ test('bitwise operands are cast to int, results back to float when mixed', () =>
     assert.equal(transform('x | y'), '(int(x) | int(y))');
     assert.equal(transform('(x & 1) * 0.5'), '(float((int(x) & 1)) * 0.5)');
     assert.equal(transform('x | y & z'), '(int(x) | (int(y) & int(z)))');
-    assert.equal(transform('x & y == z'), '(int(x) & int((y == z)))');
+    // tighter than a comparison, as in $()
+    assert.equal(transform('x & y == z'), '(float((int(x) & int(y))) == z)');
     // function calls as operands too
     assert.equal(transform('mod(x, 4) & mod(y, 4)'), '(int(mod(x, 4.0)) & int(mod(y, 4.0)))');
     assert.equal(transform('floor(x) & 1'), '(int(floor(x)) & 1)');
@@ -278,7 +279,7 @@ test('deeply nested real-world expressions', () => {
     assert.equal(transform('(x > 0.5) * y'), '(float((x > 0.5)) * y)');
     assert.equal(
         transform('((x * y * 7.) >> 4) & 2 == 2', { expect: 'bool' }),
-        'bool(((int(((x * y) * 7.)) >> 4) & int((2.0 == 2.0))))'
+        '(float(((int(((x * y) * 7.)) >> 4) & 2)) == 2.0)'
     );
     assert.equal(
         transform('y > (4 * ((2 * (x & 1)) % 4))', { expect: 'bool' }),
