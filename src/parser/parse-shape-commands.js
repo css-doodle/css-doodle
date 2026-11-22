@@ -1,4 +1,4 @@
-import { scan, iterator, textOf } from './tokenizer.js';
+import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import { parseBody, readValue } from './parse-body.js';
 import parseValueGroup from './parse-value-group.js';
 
@@ -83,7 +83,8 @@ function readShapes(input, warn = () => {}, options) {
                     break;
                 }
             }
-            return [last = { name, value }];
+            let names = itemsOf(head).map(n => textOf(n).trim()), parts = names.length > 1 && partsOf(textOf(value));
+            return names.map((name, i) => last = { name, value: parts.length == names.length ? scan(parts[i]) : value });
         },
         // a bare name is a shape, anything else belongs to the row before it
         readTail(head) {

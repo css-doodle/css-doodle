@@ -13,6 +13,13 @@ test('statements', () => {
     assert.deepEqual(parsePattern('fill: f(a; b); color: red;'), [statement('fill', 'f(a;b)'), statement('color', 'red')]);
 });
 
+test('several names take a value each, or all the whole value', () => {
+    assert.deepEqual(parsePattern('a, b: 1, vec2(2, 3)'), [statement('a', '1'), statement('b', 'vec2(2,3)')]);
+    assert.deepEqual(parsePattern('p.x, p.y: 1, 2'), [statement('p.x', '1'), statement('p.y', '2')]);
+    assert.deepEqual(parsePattern('a, b: 0'), [statement('a', '0'), statement('b', '0')]);
+    assert.deepEqual(parsePattern('a, b: 1, 2, 3'), [statement('a', '1,2,3'), statement('b', '1,2,3')]);
+});
+
 test('blocks with argument lists', () => {
     assert.deepEqual(parsePattern('match(x>y) {}'), [block('match', ['x>y'])]);
     // commas inside calls belong to the argument

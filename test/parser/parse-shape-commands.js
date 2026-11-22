@@ -45,6 +45,16 @@ test('a leading - negates the value, except for dashed names', () => {
     assert.deepEqual(parseShapeCommands('-fill-rule: evenodd'), { 'fill-rule': 'evenodd' });
 });
 
+test('several names take a part each, as move does, or all the whole value', () => {
+    assert.deepEqual(parseShapeCommands('x, y: cos(t), sin(t)'), { x: 'cos(t)', y: 'sin(t)' });
+    assert.deepEqual(parseShapeCommands('x, y: cos(t) sin(t)'), { x: 'cos(t)', y: 'sin(t)' });
+    assert.deepEqual(parseShapeCommands('a, b: k * .5 -1'), { a: 'k * .5', b: '-1' });
+    assert.deepEqual(parseShapeCommands('a, b: 1'), { a: '1', b: '1' });
+    assert.deepEqual(parseShapeCommands('a, b: 1, 2, 3'), { a: '1,2,3', b: '1,2,3' });
+    assert.deepEqual(parseShapeCommands('-x, y: 1, 2'), { x: '-1 * (1)', y: '2' });
+    assert.deepEqual(parseShapeCommands('rotate, move: 30, .5 0').steps, [['rotate', '30'], ['move', '.5 0']]);
+});
+
 test('a group block keeps its shapes as text and takes commands of its own', () => {
     assert.deepEqual(parseShapeCommands('subtract { smooth: .1; heart; circle { scale: .5 } star 5 .4 } rotate: 10'), {
         rotate: '10',

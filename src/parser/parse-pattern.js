@@ -42,7 +42,8 @@ function readMatchBlocks(iter, head) {
 }
 
 function readPatternStatement(iter, head) {
-    return [{ type: 'statement', name: textOf(head), value: textOf(readValue(iter)) }];
+    let value = readValue(iter), names = itemsOf(head).map(textOf), parts = names.length > 1 && itemsOf(value);
+    return names.map((name, i) => ({ type: 'statement', name, value: textOf(parts.length == names.length ? parts[i] : value) }));
 }
 
 function readTail(head) {

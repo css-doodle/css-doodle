@@ -495,7 +495,7 @@ clip-path: @shape(
 ```
 shape-property = preset
 body           = { row | shape }
-row            = [ '-' ] name ':' value [ ';' ]
+row            = [ '-' ] name { ',' [ '-' ] name } ':' value [ ';' ]
 shape          = head [ '{' body '}' ] [ ';' ]
 head           = kind [ '#' id ] [ copies ] | kind copies '#' id | '#' id [ copies ]
 kind           = group | shape-name [ arguments ] | '(' body ')'
@@ -513,7 +513,9 @@ parentheses, `--cross(s): (circle { … } scale: $s)`: in braces its
 rows would apply to the enclosing shape. The parts of
 `move` and `scale` split at spaces or commas, and an operator keeps its
 operands: `move: k * .5 0` and `move: .5 -.25` have two parts each,
-`move: k (0) 0` three. A quoted `text:` value keeps
+`move: k (0) 0` three. Several names split the value the same way,
+a part each when the counts match and the whole value each otherwise:
+`x, y: cos(t) sin(t)`. A quoted `text:` value keeps
 its commas, `;` and parentheses.
 
 ### 9.3 Patterns
@@ -527,7 +529,8 @@ its commas, `;` and parentheses.
 ```
 
 ```
-pattern-body  = { target ':' value ';' | match-block | repeat-block | texture-block }
+pattern-body  = { targets ':' value ';' | match-block | repeat-block | texture-block }
+targets       = target { ',' target }
 target        = name [ '.' swizzle ]
 texture-block = texture-name '{' doodle '}'
 match-block   = 'match' '(' expression ')' '{' pattern-body '}'
@@ -535,7 +538,7 @@ match-block   = 'match' '(' expression ')' '{' pattern-body '}'
                             [ 'else' '{' pattern-body '}' ] '}'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
-repeat-body   = { target ':' value ';' | match-block | repeat-block }
+repeat-body   = { targets ':' value ';' | match-block | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
@@ -545,7 +548,9 @@ typed by its first assignment: numbers become floats, and a color is a
 `vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names are
 reported (§11). `v.xz: …` writes those channels of a vector; a name not
 yet assigned in the scope, such as `pos`, is copied first, so
-`pos.x: abs(pos.x)` mirrors the pattern.
+`pos.x: abs(pos.x)` mirrors the pattern. Several targets take a
+value each when the counts match, and the whole value each otherwise:
+`a, b: 1, vec2(2, 3)`.
 
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,
 `^` and `**` are power, and `%`, `a < b < c` and the logic words read

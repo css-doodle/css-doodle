@@ -35,6 +35,12 @@ test('sizes are attributes', () => {
     assert.match(scene('torus { r: .3 .05 }').body, /length\(p\.xz\) - \.3, p\.y\)\) - \.05/);
 });
 
+test('several names set a variable each', () => {
+    let one = scene('a, b: .5, 2; sphere { k, m: .1 .2; r: a * b * k * m }');
+    assert.deepEqual(one.warnings, []);
+    assert.equal(one.body, scene('a: .5; b: 2; sphere { k: .1; m: .2; r: a * b * k * m }').body);
+});
+
 test('shapes take no parentheses', () => {
     assert.deepEqual(scene('sphere(.2);').warnings, ['unexpected sphere(.2)', 'unknown shape sphere(.2)']);
 });
