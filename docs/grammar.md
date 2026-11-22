@@ -45,7 +45,7 @@ word   = run of characters that are not whitespace, digits or symbols
   `}`, after `:` `(` `[` and before `)` `]`, but kept before `:` `(`
   `[` and after `)` `]`, so `a (b)` and `a(b)` differ.
 - `/* … */` is whitespace. `//` comments exist only in `@pattern`,
-  `@scene`, `@shaders`, `@shape`, `@plot` and `@tile` bodies.
+  `@scene`, `@shaders`, `@shape`, `@plot`, `@tile` and `@svg…` bodies.
 
 ## 2. Statements
 

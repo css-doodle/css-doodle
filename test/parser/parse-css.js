@@ -280,8 +280,8 @@ test('a quote or paren in a // comment does not end a @pattern, @shaders or @sce
     assert.equal(doodle.value[0][0].arguments[0].values[0].value, 'background: url(//a.b/c.png)');
 });
 
-test('a // comment is dropped from a @shape, @plot or @tile body', () => {
-    for (let name of ['shape', 'plot', 'Plot', 'tile']) {
+test('a // comment is dropped from a @shape, @plot, @tile or @svg body', () => {
+    for (let name of ['shape', 'plot', 'Plot', 'tile', 'svg', 'svg-filter', 'svg-polygon']) {
         let rules = parseCss(`clip-path: @${name}(\n  // don't (r: .1\n  r: .5;\n); color: red;`);
         assert.deepEqual(rules.map(r => r.property), ['clip-path', 'color'], name);
         assert.equal(rules[0].value[0][0].arguments[0].values[0].value, 'r: .5;');

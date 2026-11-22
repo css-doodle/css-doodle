@@ -237,6 +237,7 @@ function scan(source, options = {}) {
             if (options.lineCommentsIn && !quote) {
                 let k = tokens.length - 1;
                 while (curr === 40 && !body && (tokens[k]?.isNumber() || tokens[k]?.value === 'x')) k--;
+                while (curr === 40 && !body && tokens[k - 1]?.isSymbol('-') && tokens[k - 2]?.isWord()) k -= 2;
                 if (curr === 40 /* ( */ && (body || (tokens[k - 1]?.isSymbol('@')
                         && tokens[k].isWord() && options.lineCommentsIn.test(tokens[k].value)))) {
                     body++;
