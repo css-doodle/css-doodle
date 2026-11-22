@@ -1,4 +1,4 @@
-<a href="https://css-doodle.com"><img src="docs/images/hero.webp" alt="houses, drawn with css-doodle"></a>
+<a href="https://css-doodle.com"><img src="docs/images/hero.webp" alt="hollyhocks against a sunlit wall, drawn with css-doodle"></a>
 
 <h1>css-doodle</h1>
 
