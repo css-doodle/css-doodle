@@ -1877,6 +1877,15 @@ test('a user function argument that would change with each use is worked out onc
     assert.equal(bw, bh);
 });
 
+test('a block-bodied user function inside another function works its changing argument out in place', () => {
+    assert.equal(
+        cells('--f(s): square { scale: $s }; @grid: 1x40; @place: @tile.circle(subtract { square {} $f(@p(.6)) });'),
+        cells('@grid: 1x40; @place: @tile.circle(subtract { square {} square { scale: .6 } });'));
+    let pairs = cells('--f(c): a { $c|$c }; --d: @M(2, $f(@r(9)));').match(/\{ [^}]+\}/g);
+    assert.equal(pairs.length, 2);
+    assert.ok(pairs.every(p => /^\{ ([\d.]+)\|\1\}$/.test(p)), pairs);
+});
+
 test('user functions that double on every call stop at an expansion limit', () => {
     let defs = '--a0(x): x x;';
     for (let i = 1; i < 30; i++) defs += ` --a${i}(x): $a${i - 1}(x) $a${i - 1}(x);`;

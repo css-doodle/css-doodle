@@ -1211,7 +1211,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
             ctx.expanded += body.length;
             body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending, inMath);
             if (!paint && lets.length) {
-                let statements = isStatements(body);
+                let statements = !maths.length && isStatements(body);
                 body = lets.map(([id, arg]) => statements ? `--${id}: ${arg}; ` : `@--(${id}, ${arg})`).join('') + body;
             }
             let whole = (!lead || /[:(,]$/.test(lead)) && (!next || next.isSymbol(';', '{', '}') || next.isSymbol(')', ','));
