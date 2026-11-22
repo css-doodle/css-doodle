@@ -49,8 +49,9 @@ as in CSS, not through black.
 joins its shapes (`path`, `polygon`, `polyline`, `circle`, `ellipse`,
 `rect`, and a `g` as their union) into one `path` with its attributes,
 as the [groups](#2-shapes) of `@shape` do. `smooth: r` rounds the
-corners where shapes meet, then `grow: d` moves the outline out by `d`,
-or in when negative. Each shape's own transform, paint and animations
+corners where shapes meet, `round: r` then every corner, `grow: d`
+moves the outline out by `d`, or in when negative, and `frame: w`
+keeps a band `w` wide inside it. Each shape's own transform, paint and animations
 are dropped.
 
 **Animation.** `animate r: 1; 5 / 2s ease-in-out infinite` adds an

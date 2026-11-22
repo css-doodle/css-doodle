@@ -564,6 +564,15 @@ test('a joining block grows or shrinks the joined outline by grow', () => {
     assert.equal(svg('union { grow: -1; rect { width: 4; height: 4 } }'), `<svg ${NS}><path d="M1 3L1 1L3 1L3 3Z"/></svg>`);
 });
 
+test('a joining block rounds every corner by round and keeps a band inside by frame, as @shape does', () => {
+    let square = 'rect { width: 4; height: 4 }';
+    assert.equal(svg(`union { round: 1; ${square} }`), `<svg ${NS}><path d="M0 1Q0 0 1 0L3 0Q4 0 4 1L4 3Q4 4 3 4L1 4Q0 4 0 3Z"/></svg>`);
+    assert.equal(svg(`union { frame: 1; ${square} }`), `<svg ${NS}><path d="M4 0L4 4L0 4L0 0ZM1 3L3 3L3 1L1 1Z"/></svg>`);
+    // round comes first, on every corner, the one the outline starts at too
+    assert.doesNotMatch(svg(`union { round: 1; frame: 1; ${square} }`), /[ML]0 0[LAZ]/);
+    assert.doesNotMatch(svg(`union { round: 1; grow: 1; ${square} }`), /A1 1 0 0 1/);
+});
+
 test('a joining block keeps a corner written twice, a hair apart', () => {
     let corner = 'L14.213975543499998 -11.5911099155L14.2139755435 -11.5911099155';
     assert.equal(svg(`subtract { path { d: M0 0${corner}L30 0Z } rect { x: -1; y: -2; width: 32; height: 1 } }`), `<svg ${NS}><path d="M2.453 -2L14.214 -11.591L27.276 -2ZM28.638 -1L30 0L0 0L1.226 -1Z"/></svg>`);

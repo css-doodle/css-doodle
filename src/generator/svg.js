@@ -143,24 +143,29 @@ function ringsOf(tag, warn) {
 }
 
 function combine(group, op, warn) {
-    let { smooth, grow, ...attrs } = group.attrs, path = new Tag('path'), joints = new Set(), members = [], scale = 0, d = '';
+    let { smooth, grow, round, frame, ...attrs } = group.attrs, path = new Tag('path'), joints = new Set(), members = [], scale = 0, d = '';
     group.body.forEach(tag => {
         let next = ringsOf(tag, warn), [x0, y0, x1, y1] = bounds((next || []).flat(2));
         if (next) members.push(next), scale = max(scale, x1 - x0, y1 - y0);
         else if (/^(animate|set|title|desc)/.test(tag.name)) path.append(tag);
         else if (tag.name) warn(`<${tag.name}> lacks outline`);
     });
-    let rings = overlay(members, op, joints) || [];
-    let k = parseFloat(smooth), g = parseFloat(grow), tol = 2e-5 * (scale + abs(g || 0));
-    if (g) {
-        rings = offset(k > 0 ? rings.map(ring => toPairs(flatten(corners(ring, joints, k), tol))) : rings, g, rings.evenodd, tol);
-        k = 0;
+    let rings = overlay(members, op, joints) || [], at = joints;
+    let k = parseFloat(smooth), g = parseFloat(grow), r = parseFloat(round), w = parseFloat(frame), tol = 2e-5 * (scale + abs(g || 0));
+    let bend = (rings, at, k) => Object.assign(rings.map(ring => toPairs(flatten(corners(thin(ring, tol / 200), at, k), tol))), { evenodd: rings.evenodd });
+    if (k > 0 && (r > 0 || g || w > 0)) rings = bend(rings, joints, k), k = 0;
+    if (r > 0 && (g || w > 0)) rings = bend(rings, null, r);
+    else if (r > 0) k = r, at = null;
+    if (g) rings = offset(rings, g, rings.evenodd, tol);
+    if (w > 0) {
+        let region = offset(rings, 0, rings.evenodd, tol);
+        rings = [...region, ...offset(region, -w, false, tol).map(ring => ring.reverse())];
     }
     let [x0, y0, x1, y1] = bounds(rings.flat(2)), size = max(x1 - x0, y1 - y0), digits = max(0, ceil(4 - Math.log10(size)));
     let f = v => +v.toFixed(digits), xy = ([x, y]) => f(x) + ' ' + f(y);
     for (let ring of rings) {
         ring = thin(ring, tol / 200);
-        let ps = k > 0 ? corners(ring, joints, k) : ring;
+        let ps = k > 0 ? corners(ring, at, k) : ring;
         d += 'M' + xy(ps[0]);
         for (let i = 0; i < ps.length;) {
             let [j, r, large, sweep] = arcRun(ps, i, 5 * tol), [, , bx, by] = ps[j % ps.length];
