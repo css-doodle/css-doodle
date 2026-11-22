@@ -109,7 +109,8 @@ a sheet function of the same name.
 `$name(args)`, anywhere but inside quotes, is replaced by its body
 before parsing, so the body works wherever its text would: as a value,
 as `@svg` elements, with `*N` copies. In the body `$p` is the argument
-for `p`. Missing arguments take their defaults. Arguments are pasted as
+for `p`. Missing arguments take their defaults, and a default may use
+the parameters before it: `--box(w, h = $w)`. Arguments are pasted as
 written, except:
 
 - Inside `$()`, `$px()` or the test of a `@match(test) { }` block, a
@@ -117,16 +118,15 @@ written, except:
   call reads as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is
   `8`. There a bare `inc(3)` calls it too, unless a built-in has the
   name.
-- In the arguments of a `$name()` call a bare `p` is the argument as
-  `$p` is, unless a `:` follows it or a dash joins it to a word, as in
-  `var(--p)`: with `--seg(k): $(k * 10)px`, `--row(k): $seg(k + 1)`
-  makes `$row(3)` `40px`.
+- In the arguments of a `$name()` call, and in a default, a bare `p` is
+  the argument as `$p` is, unless a `:` follows it or a dash joins it
+  to a word, as in `var(--p)`: with `--seg(k): $(k * 10)px`,
+  `--row(k): $seg(k + 1)` makes `$row(3)` `40px`.
 - An argument or default with a random or picking call (`@r`, `@p`,
-  `@pn`, …) that the body uses more than once, or loops over with `@m`,
-  `@M` or `*N`, is worked out once, where the call is, as is an `@n` of
-  the caller that the body loops over: `$dot(@r(5))` gives one radius
-  to each `$r`. A body holding a `@doodle`, `@pattern`, `@scene` or
-  `@shaders` takes every argument as written.
+  `@pn`, …) is worked out once, where the call is, in order, as is an
+  `@n` of the caller: `$dot(@r(5))` gives one radius to each `$r`. A
+  body holding a `@doodle`, `@pattern`, `@scene` or `@shaders` takes
+  every argument as written.
 
 A body of `result` declarations alone gives the last one's value, as a
 CSS `@function` does: with `--double(x): { result: $(x * 2); }`,

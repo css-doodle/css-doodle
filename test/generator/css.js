@@ -1870,6 +1870,11 @@ test('a user function argument that would change with each use is worked out onc
     assertContains('--turn(k): @M(2, L $(k) $(@n)); --d: @M(3, [$turn(@n)]);', '--d:[L 1 1 L 1 2] [L 2 1 L 2 2] [L 3 1 L 3 2];');
     assertContains('--turn(k): @M(2, $k); background: @svg(viewBox: 0 0 1 1; path*2 { d: $turn(@n) });', 'd=%221 1%22', 'd=%222 2%22');
     assert.equal(cells('--f(a): [$a] @r(9); width: $f(@r(9));', '2'), cells('width: [@r(9)] @r(9);', '2'));
+    let first = body => numbers(`--f(a, b): ${body}; --d: $f(@r(9), @r(9));`)[0];
+    assert.equal(first('[$b] [$a]'), first('[$b] [$a] [$a]'));
+    assertContains('@grid: 2; --f(k): @nth($k) { width: $(k)px } $f(@p(1));', '#c-1-1-1 {width:1px;}');
+    let [bw, bh] = numbers('--box(w, h = $w): { width: $(w)px; height: $(h)px } $box(@r(9));');
+    assert.equal(bw, bh);
 });
 
 test('user functions that double on every call stop at an expansion limit', () => {

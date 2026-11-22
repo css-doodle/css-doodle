@@ -146,9 +146,9 @@ function compileFunc(node) {
         let [name, ...value] = node.arguments.map(arg => compileArgument(arg, node));
         compiled = (frame, extra) => {
             let vars = frame.contextVariable;
-            if (!name || !vars) return { value: '' };
+            if (!name || !vars && value.length) return { value: '' };
             let id = name(frame, extra), key = '--' + id, argument = /^\d/.test(id);
-            if (argument) vars = vars[ARGUMENTS] ??= {};
+            if (argument && vars) vars = vars[ARGUMENTS] ??= {};
             if (value.length) {
                 vars[key] = value.map(arg => arg(frame, extra)).join(',');
                 if (!argument && frame.calcContext) {
@@ -157,7 +157,7 @@ function compileFunc(node) {
                 }
                 return { value: '' };
             }
-            if (argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
+            if (!vars || argument && vars[key] === undefined) vars = frame.env.rules.scopedVars(frame.cell.uid);
             return { value: vars[key] ?? '' };
         };
     } else if (typeof fn !== 'function') {

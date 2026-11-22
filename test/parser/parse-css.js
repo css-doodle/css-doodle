@@ -677,7 +677,11 @@ test('a user function parameter can have a default', () => {
         ast(`--f(a, b = 2, c = $w): { $a|$b|$c } x: $f(1); y: $f(1, 3); z: $f(1, 3, 4);`),
         ast(`x: 1|2|$w; y: 1|3|$w; z: 1|3|4;`));
     // a call without arguments takes them all; inside $() a default is parenthesized
-    assert.deepEqual(ast(`--k(n = @r(2, 3)): $(n * 3); width: $k();`), ast(`width: $((@r(2, 3)) * 3);`));
+    assert.deepEqual(ast(`--k(n = 2 + 1): $(n * 3); width: $k();`), ast(`width: $((2 + 1) * 3);`));
+    // a default sees the parameters before it, $ or bare; its own name is the variable
+    assert.deepEqual(
+        ast(`--f(a, b = $a, c = a + 1, d = $d): { $a|$b|$c|$d } x: $f(1); y: $f(1, 2, 3, 4);`),
+        ast(`x: 1|1|1 + 1|$d; y: 1|2|3|4;`));
     // the `=` before a default comes first, one inside it stays
     assert.deepEqual(ast(`--k(n = $(2 = 2)): [$n]; width: $k();`), ast(`width: [$(2 = 2)];`));
 });
@@ -726,7 +730,7 @@ test('a user function body without braces is one statement', () => {
         ast(`width: $((3) * 2)px; background: @svg(circle { r: 2; fill: red });`));
     // a block inside parens does not end it
     assert.deepEqual(ast(`--pic(c): @svg(circle { fill: $c }); background: $pic(red);`), ast(`background: @svg(circle { fill: red });`));
-    assert.deepEqual(ast(`--f(a): $(a*2); width: $f(@r(9));`), ast(`width: $((@r(9))*2);`));
+    assert.deepEqual(ast(`--f(a): $(a*2); width: $f(max(9, 1));`), ast(`width: $((max(9, 1))*2);`));
 });
 
 test('a statement reading the parameters of the body without braces before it warns', () => {

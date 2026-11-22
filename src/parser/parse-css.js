@@ -1193,17 +1193,17 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         } else {
             let value = paint ? null : resultOf(def.body);
             let source = value === null ? def : { ...def, body: value };
-            let n = ctx.calls + 1, word = name.replace(/\W/g, '_'), loops = RE_LOOP.test(source.body), uses = [];
-            let vary = params.map((p, k) => {
-                let arg = args[k] || defaults[k];
-                return !!arg && (RE_VARYING.test(arg) || loops && RE_COUNTER.test(arg))
-                    && (paint ? hoists : !isStatements(arg) && !RE_NESTED_DOODLE.test(def.body));
+            let n = ctx.calls + 1, word = name.replace(/\W/g, '_'), loops = RE_LOOP.test(source.body);
+            let bound = [], lets = [];
+            params.forEach((p, k) => {
+                let arg = args[k] || defaults[k] && bindParams({ params: params.slice(0, k), defaults: [], body: defaults[k] }, bound, defs, paint, !paint && 0);
+                let id = !!arg && (RE_VARYING.test(arg) || loops && RE_COUNTER.test(arg))
+                    && (paint ? hoists : !isStatements(arg) && !RE_NESTED_DOODLE.test(def.body))
+                    && (paint ? `${word}_${n}_${p}` : `${n}${word}_${p}`);
+                if (id) lets.push([id, arg.trim()]);
+                bound.push(!id ? arg : paint ? id : `@--(${id})`);
             });
-            if (vary.includes(true)) bindParams(source, [], defs, paint, inMath, uses);
-            let ids = params.map((p, k) => vary[k] && (loops || uses[k] > 1)
-                && (paint ? `${word}_${n}_${p}` : `${n}${word}_${p}`));
-            body = bindParams(source, ids.map((id, k) => !id ? args[k] : paint ? id : `@--(${id})`), defs, paint, inMath);
-            let lets = ids.map((id, k) => id && uses[k] ? [id, (args[k] || defaults[k]).trim()] : '').filter(Boolean);
+            body = bindParams(source, bound, defs, paint, inMath);
             if (lets.length) ctx.calls++;
             if (paint && lets.length) pending.push(lets.map(([id, arg]) => `${id}: ${arg};\n`).join(''));
             ctx.expanded += body.length;
@@ -1323,7 +1323,7 @@ function valueCall(name, def, args, defs, ctx, chain) {
     let { text, targets, count } = renameLocals(source, ret);
     let bound = [], prelude = '';
     params.forEach((param, k) => {
-        let arg = (args[k] || defaults[k] || '').trim();
+        let arg = (args[k] || defaults[k] && bindParams({ params: params.slice(0, k), defaults: [], body: defaults[k] }, bound, defs, true) || '').trim();
         if (targets.has(param)) warn(ctx, `read-only $${param}`);
         if (!arg || !targets.has(param) && RE_SIMPLE_ARG.test(arg)) {
             bound.push(arg);
@@ -1451,10 +1451,10 @@ function mathOpen(tokens, i, defs) {
     return close > 0 && !!solidAt(tokens, close + 1)?.isSymbol('{');
 }
 
-function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
+function bindParams({ params, defaults, body }, args, defs, paint, math) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0, quote = false;
-    let parens = math ? [true] : [], blocks = [], head = 0;
+    let parens = math || math === 0 ? [math] : [], blocks = [], head = 0;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.status) quote = t.status === 'open';
@@ -1507,7 +1507,6 @@ function bindParams({ params, defaults, body }, args, defs, paint, math, uses) {
             if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead) || assigned) continue;
             wrap = one;
         }
-        if (uses) uses[k] = (uses[k] || 0) + 1;
         if (wrap) arg = '(' + arg + ')';
         out += body.slice(from, start) + arg;
         from = dot > 0 ? t.index + dot : tokenEnd(last);
