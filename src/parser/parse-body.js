@@ -143,7 +143,7 @@ function callOf(head) {
 function readMatch(iter, head, reader, arms = true) {
     let call = callOf(head);
     if (call?.name !== 'match' || !call.inner && !arms) return null;
-    let arm = (iter, test) => parseBody(iter, { type: 'arm', test, value: [] }, reader);
+    let arm = (iter, test) => parseBody(iter, { type: 'arm', test }, reader);
     return { type: 'block', name: 'match', arms: call.inner
         ? [arm(iter, textOf(call.inner).trim().replace(/^else$/, ''))]
         : parseBody(iter, {}, { ...reader, readBlocks: (iter, head) => [arm(iter, textOf(head).trim())] }).value };

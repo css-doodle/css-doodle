@@ -206,12 +206,10 @@ function scan(source, options = {}) {
         else if (quote && curr === 92 /* \ */) {
             let start = i + 1;
             let end = readWord(input, start, len);
-            // The escaped char may be a line break
-            for (let n = start; n < end; n++) {
-                if (input.charCodeAt(n) === 10) {
-                    row++;
-                    lineStart = n + 1;
-                }
+            // The escaped char may be a line break, the rest are no spaces
+            if (input.charCodeAt(start) === 10) {
+                row++;
+                lineStart = start + 1;
             }
             let word = input.slice(start, end).replace(/^[\r\n\f]+/, '');
             if (word.length === end - start) {

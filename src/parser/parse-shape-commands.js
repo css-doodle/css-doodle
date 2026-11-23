@@ -77,11 +77,11 @@ function readShapes(input, warn = () => {}, options) {
     let bare = head => Object.assign(shapeOf(head, []), { bare: true });
     // `match(test) { r: .2 }` becomes `r: match(test, .2, r before)`; a step not taken does nothing
     let lower = (node, m) => {
-        let valid = armsOf(m.arms, warn), id = `match_${++blocks}_`, arms = valid.map(a => [a.test, shapeOf('', a.value, lower)]);
+        let valid = armsOf(m.arms, warn), id = `match_${++blocks}_`, arms = valid.map(a => shapeOf('', a.value, lower));
         node.rows.push({ name: id, value: scan(armIndex(valid)) });
-        if (arms.some(([, a]) => a.children.length)) warn('shapes in match');
-        for (let name of new Set(arms.flatMap(([, a]) => a.rows.map(r => r.name)))) {
-            let texts = arms.map(([, a]) => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
+        if (arms.some(a => a.children.length)) warn('shapes in match');
+        for (let name of new Set(arms.flatMap(a => a.rows.map(r => r.name)))) {
+            let texts = arms.map(a => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
             let prior = node.rows.findLast(r => r.name == name), none = NONE[name];
             if (!none && !prior) {
                 warn(`set ${name} first`);
@@ -99,13 +99,8 @@ function readShapes(input, warn = () => {}, options) {
         readBlocks(iter, head) {
             // leftovers glue only to a row of their own block
             last = null;
-            let match = readMatch(iter, head, reader);
-            if (match) {
-                last = null;
-                return [match];
-            }
-            let parts = split(head), block = parts.pop();
-            let node = shapeOf(block, parseBody(iter, {}, reader).value, lower);
+            let match = readMatch(iter, head, reader), parts = match ? [] : split(head);
+            let node = match || shapeOf(parts.pop(), parseBody(iter, {}, reader).value, lower);
             last = null;
             return [...parts.map(bare), node];
         },

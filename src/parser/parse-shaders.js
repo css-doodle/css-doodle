@@ -44,8 +44,7 @@ function parse(input) {
 function withLineBreaks(tokens) {
     let result = [];
     let line = null;
-    for (let i = 0; i < tokens.length; ++i) {
-        let curr = tokens[i];
+    for (let curr of tokens) {
         if (line !== null && line != curr.pos[1]) {
             result.push(new Token('LineBreak', '\n'));
             line = null;

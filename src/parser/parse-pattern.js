@@ -13,7 +13,7 @@ function readMatchBlocks(iter, head) {
         readRaw(iter);
         return readTail([...head, { value: ' {}' }]);
     }
-    return [parseBody(iter, { type: 'block', name: call.name, args: call.inner ? itemsOf(call.inner).map(textOf) : [], value: [] }, pattern)];
+    return [parseBody(iter, { type: 'block', name: call.name, args: call.inner ? itemsOf(call.inner).map(textOf) : [] }, pattern)];
 }
 
 function readPatternStatement(iter, head) {

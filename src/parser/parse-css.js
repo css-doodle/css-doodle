@@ -76,8 +76,8 @@ function substitutePi(source, from, to = from + 1) {
     return source.slice(from, to).replace(/π/g, (c, i) => /\w/.test(source[from + i - 1]) || /\d/.test(source[from + i + 1]) ? c : PI);
 }
 
-function separateFuncName(name) {
-    if ((/\D$/.test(name) && !/\d[x-]\d/.test(name)) || Math[name.slice(1)]) {
+function separateFuncName(name, whole) {
+    if (whole || (/\D$/.test(name) && !/\d[x-]\d/.test(name)) || Math[name.slice(1)]) {
         return { fname: name, extra: '' };
     }
     let [, fname, extra] = /^(.*?)((?:[\d.]|(?<=\d)[x-](?=\d))*)$/.exec(name);
@@ -111,7 +111,7 @@ function probe(cur, a, b, c) {
         if (t.status) quote = t.status === 'open';
         if (!quote && t.isSymbol('(')) paren++;
         else if (!quote && t.isSymbol(')')) paren = Math.max(0, paren - 1);
-        else if (paren === 0 && !quote && t.isSymbol(a, b, c)) {
+        else if (!paren && !quote && t.isSymbol(a, b, c)) {
             return i;
         }
     }
@@ -120,9 +120,7 @@ function probe(cur, a, b, c) {
 
 function atRuleName(cur) {
     let name = '@';
-    for (let i = 1; ; ++i) {
-        let t = cur.peek(i);
-        if (!t || !adjacent(cur.peek(i - 1), t) || !/^[\w-]+$/.test(t.value)) break;
+    for (let i = 1, t; (t = cur.peek(i)) && adjacent(cur.peek(i - 1), t) && /^[\w-]+$/.test(t.value); ++i) {
         name += t.value;
     }
     return name;
@@ -158,10 +156,10 @@ function parseValue(cur, breakOn, custom) {
         skip = false;
 
         if (tok.isSymbol()) {
-            if (!quote && ((v === '}' && !brace) || v === breakOn || ((v === ';' || (v === '<' && isTagStart(cur))) && paren === 0))) {
+            if (!quote && ((v === '}' && !brace) || v === breakOn || ((v === ';' || (v === '<' && isTagStart(cur))) && !paren))) {
                 break;
             }
-            if (v === ',' && paren === 0 && !quote) {
+            if (v === ',' && !paren && !quote) {
                 cur.next();
                 flush();
                 group = [];
@@ -182,9 +180,7 @@ function parseValue(cur, breakOn, custom) {
                 else if (v === '{' && paren && custom) brace++;
                 else if (v === '}') brace--;
             }
-            cur.next();
-            buf += (v === 'π' && !quote) ? substitutePi(cur.source, tok.index) : v;
-            continue;
+            if (v === 'π' && !quote) v = substitutePi(cur.source, tok.index);
         }
 
         cur.next();
@@ -192,7 +188,7 @@ function parseValue(cur, breakOn, custom) {
     }
 
     flush();
-    if (paren > 0) {
+    if (paren) {
         warn(cur.ctx, 'unclosed (', head?.pos);
     }
     if (quote) {
@@ -335,7 +331,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
             else func.arguments.push(Node.argument([Node.text(suffix)]));
         }
     } else {
-        let { fname, extra: extraArgs } = body ? { fname: name, extra: '' } : separateFuncName(name);
+        let { fname, extra: extraArgs } = separateFuncName(name, body);
         func.name = fname;
         if (extraArgs.length) {
             if (composable(fname)) {
@@ -364,14 +360,8 @@ function readVarName(cur) {
     }
     let name = '--';
     let i = 2;
-    while (true) {
-        let t = cur.peek(i);
-        if (!t || !adjacent(cur.peek(i - 1), t)
-                || !(t.isWord() || t.isNumber() || t.isSymbol('-', '_'))) {
-            break;
-        }
+    for (let t; (t = cur.peek(i)) && adjacent(cur.peek(i - 1), t) && (t.isWord() || t.isNumber() || t.isSymbol('-', '_')); i++) {
         name += t.value;
-        i++;
     }
     cur.i += i;
     return name;
@@ -392,7 +382,6 @@ function parseArguments(cur, copying, whole, indexed) {
     let paren = 0;
     let quote = false;
     let at = false;
-    let end = cur.source.length;
     let head = cur.peek();
     let blocks = [];
 
@@ -401,7 +390,7 @@ function parseArguments(cur, copying, whole, indexed) {
         buf = '';
         last = null;
         if (!text.length) return;
-        if (values.length === 0) {
+        if (!values.length) {
             text = atFunc ? text.trimStart() : text.trim();
             if (text.length) values.push(Node.text(text));
         } else if (atFunc || /\S/.test(text)) {
@@ -441,7 +430,7 @@ function parseArguments(cur, copying, whole, indexed) {
         }
         if (!quote && tok.isSymbol()) {
             // `--name:` declares (inside @svg), anything else reads
-            if (v === '-' && buf === '') {
+            if (v === '-' && !buf) {
                 let at = cur.i;
                 let name = readVarName(cur);
                 if (name && !declaresVar(cur)) {
@@ -468,16 +457,15 @@ function parseArguments(cur, copying, whole, indexed) {
             if (v === '(') {
                 paren++;
             } else if (v === ')') {
-                if (paren === 0) {
+                if (!paren) {
                     flush(false);
                     if (values.length || !args.length) pushArgument();
-                    end = tok.index;
                     cur.next();
-                    return { args, end, at };
+                    return { args, end: tok.index, at };
                 }
                 paren--;
-            } else if (v === ',' && paren === 0 && !whole && !blocks.some(Boolean)
-                    || v === ':' && indexed && paren === 0 && !at && !args.length) {
+            } else if (v === ',' && !paren && !whole && !blocks.length
+                    || v === ':' && indexed && !paren && !at && !args.length) {
                 at ||= v === ':';
                 flush(false);
                 pushArgument();
@@ -491,7 +479,7 @@ function parseArguments(cur, copying, whole, indexed) {
         last = tok;
     }
     warn(cur.ctx, 'unclosed (', head?.pos);
-    return { args, end };
+    return { args, end: cur.source.length };
 }
 
 function normalizeArgument(values) {
@@ -538,10 +526,10 @@ function parensWrapWhole(values) {
         if (c === '(') depth++;
         else if (c === ')') {
             depth--;
-            if (depth === 0 && i !== str.length - 1) return false;
+            if (!depth && i !== str.length - 1) return false;
         }
     }
-    return depth === 0;
+    return !depth;
 }
 
 // "a" "b" is two strings, not one string a" "b
@@ -594,7 +582,7 @@ function parseDoodleBody(cur, start, name) {
         } else if (!quote && tok.isSymbol('(')) {
             paren++;
         } else if (!quote && tok.isSymbol(')')) {
-            if (paren === 0) {
+            if (!paren) {
                 end = tok.index;
                 cur.next();
                 break;
@@ -810,7 +798,7 @@ function splitSelectors(input) {
             paren++;
         } else if (c === ')') {
             paren--;
-        } else if (c === ',' && paren === 0) {
+        } else if (c === ',' && !paren) {
             list.push(buf);
             buf = '';
             continue;
@@ -1122,9 +1110,8 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
                 continue;
             }
         } else if (mode === BODY) {
-            if (t.isSymbol('(')) depth++;
-            else if (t.isSymbol(')')) depth--;
-            else if (!depth && t.isSymbol(';', '{', '}')) {
+            depth += t.isSymbol('(') - t.isSymbol(')');
+            if (!depth && t.isSymbol(';', '{', '}')) {
                 let lead = text.slice(head, t.index).trim();
                 if (t.isSymbol('}')) blocks.pop();
                 else if (t.isSymbol('{')) blocks.push(lead === 'match');
@@ -1209,8 +1196,10 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
                 bound.push(!id ? arg : paint ? id : `@--(${id})`);
             });
             body = bindParams(source, bound, defs, paint, inMath);
-            if (lets.length) ctx.calls++;
-            if (paint && lets.length) pending.push(lets.map(([id, arg]) => `${id}: ${arg};\n`).join(''));
+            if (lets.length) {
+                ctx.calls++;
+                if (paint) pending.push(lets.map(([id, arg]) => `${id}: ${arg};\n`).join(''));
+            }
             ctx.expanded += body.length;
             body = expandCalls(body, defs, ctx, [...chain, name], !paint ? CSS : kind === INCLUDE ? BODY : EXPR, pending, inMath);
             if (!paint && lets.length) {
@@ -1396,49 +1385,41 @@ function renameLocals(text, prefix) {
             if (t.isSymbol('$') && atStart && !depth && solidAt(tokens, end + 1)?.isSymbol(':')) {
                 targets.add(textOf(tokens.slice(i + 1, end + 1)));
             }
-            atStart = false;
             i = end;
-            continue;
-        }
-        if (t.isWord() && t.value[0] === '#') {
+        } else if (t.isWord() && t.value[0] === '#') {
             i = hexEnd(tokens, i);
-            atStart = false;
-            continue;
-        }
-        if (!named(t)) {
-            atStart = false;
-            continue;
-        }
-        // digits and underscores glue on; a dot starts a swizzle
-        let end = i;
-        while (!tokens[end].value.includes('.') && tokens[end + 1] && adjacent(tokens[end], tokens[end + 1])
-                && (tokens[end + 1].isNumber() || named(tokens[end + 1]))) {
-            end++;
-        }
-        let whole = textOf(tokens.slice(i, end + 1));
-        let dot = whole.indexOf('.');
-        let local = dot < 0 ? whole : whole.slice(0, dot);
-        let after = tokens[end + 1];
-        let target = atStart && !depth && solidAt(tokens, end + 1)?.isSymbol(':');
-        let loop = before?.isWord() && before.value === 'as';
-        let call = after?.isSymbol('(') && adjacent(tokens[end], after);
-        if (target) waiting.push(local);
-        if (target && whole === 'result') item = 1;
-        if (loop) declared.add(local);
-        if (!call && (target || loop || declared.has(local))) {
-            let copy = target && dot > 0 && !declared.has(local) ? `${prefix}_${local}: ${local}; ` : '';
-            out += text.slice(from, t.index) + copy + `${prefix}_${local}`;
-            from = t.index + local.length;
+        } else if (named(t)) {
+            // digits and underscores glue on; a dot starts a swizzle
+            let end = i;
+            while (!tokens[end].value.includes('.') && tokens[end + 1] && adjacent(tokens[end], tokens[end + 1])
+                    && (tokens[end + 1].isNumber() || named(tokens[end + 1]))) {
+                end++;
+            }
+            let whole = textOf(tokens.slice(i, end + 1));
+            let dot = whole.indexOf('.');
+            let local = dot < 0 ? whole : whole.slice(0, dot);
+            let after = tokens[end + 1];
+            let target = atStart && !depth && solidAt(tokens, end + 1)?.isSymbol(':');
+            let loop = before?.isWord() && before.value === 'as';
+            let call = after?.isSymbol('(') && adjacent(tokens[end], after);
+            if (target) waiting.push(local);
+            if (target && whole === 'result') item = 1;
+            if (loop) declared.add(local);
+            if (!call && (target || loop || declared.has(local))) {
+                let copy = target && dot > 0 && !declared.has(local) ? `${prefix}_${local}: ${local}; ` : '';
+                out += text.slice(from, t.index) + copy + `${prefix}_${local}`;
+                from = t.index + local.length;
+            }
+            prev = tokens[end];
+            i = end;
         }
         atStart = false;
-        prev = tokens[end];
-        i = end;
     }
     return { text: out + text.slice(from), targets, count };
 }
 
 function inWord(tokens, i, end) {
-    let [a, b, c, d] = [tokens[i - 2], tokens[i - 1], tokens[end + 1], tokens[end + 2]];
+    let a = tokens[i - 2], b = tokens[i - 1], c = tokens[end + 1], d = tokens[end + 2];
     return !!(b?.isNumber() && adjacent(b, tokens[i])
         || b?.isSymbol('-') && a && adjacent(a, b) && adjacent(b, tokens[i]) && (a.isWord() || a.isSymbol('-'))
         || c?.isSymbol('-') && d?.isWord() && adjacent(tokens[end], c) && adjacent(c, d));

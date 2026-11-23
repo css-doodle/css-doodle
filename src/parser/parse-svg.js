@@ -167,19 +167,19 @@ function readSvgStatement(iter, head) {
     if (prev && next && /^(xlink:(actuate|arcrole|href|role|show|title|type)|xml:(base|lang|space))$/i.test(prev.value + ':' + next.value)) {
         return null;
     }
-    let names = namesOf(head);
+    let names = namesOf(head), dashed = names.find(p => p.startsWith('--'));
     let statement = {
         type: 'statement',
         name: names[0],
         value: ''
     };
     let valueTokens = readStatement(iter, statement);
-    if (names.length > 1 && !names.some(p => p.startsWith('--'))) {
+    if (names.length > 1 && !dashed) {
         statement.origin = { name: names, value: statement.value };
     }
     let rows = rowsOf(names, statement.value, parseValueGroup);
     let shared = rows.length > 1 && rows.every(r => r.value === statement.value) && typeof statement.value === 'string'
-        && names.find(p => p.startsWith('--'));
+        && dashed;
     if (shared) {
         rows = [rows.find(r => r.name === shared), ...rows.filter(r => r.name !== shared)];
     }
