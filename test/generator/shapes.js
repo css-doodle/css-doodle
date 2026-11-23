@@ -600,6 +600,8 @@ test('a match block draws its rows where its test holds', () => {
     // arms are checked as in @pattern
     assert.deepEqual(shapeWarnings('r: 1; match { else { r: .5 } i > 1 { r: .2 } }'), ['else goes last']);
     assert.deepEqual(shapeWarnings('r: 1; match { r: .5; i > 1 { r: .2 } }'), ['arm needs test']);
+    assert.deepEqual(shapeWarnings('r: 1; match(else) { r: .5 }'), ['arm needs test']);
+    assert.equal(shape('points: 5; r: 1; match(else) { r: .5 }'), shape('points: 5; r: 1'));
 });
 
 test('a row that runs into the next row or shape is reported', () => {

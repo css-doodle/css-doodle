@@ -45,6 +45,10 @@ test('match takes one expression', () => {
 test('match with no arguments emits no if block', () => {
     assert.equal(condition('match() { fill: red }'), '');
     assert.equal(condition('match(   ) { fill: red }'), '');
+    // else alone is no test
+    let messages = [], { fragment } = draw('match(else) { size: .5 }', extra, message => messages.push(message));
+    assert.deepEqual(messages, ['arm needs test']);
+    assert.doesNotMatch(fragment, /size = 0?\.5/);
 });
 
 test('nested match blocks are emitted recursively', () => {
