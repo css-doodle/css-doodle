@@ -5,7 +5,7 @@
 //   cond       { type: 'cond', name, segments, position, styles, alts } + raw(); segments { keyword } | { arguments }, spaced;
 //              alts [{ name, segments, pseudo, styles? }], more than one in a cell selector list
 //   keyframes  { type: 'keyframes', name, steps: [{ type: 'step', name: Group[], styles }] }
-//   func       { type: 'func', name, arguments: [{ values, cluster }], position, index, unit?, size? }
+//   func       { type: 'func', name, arguments: [{ values, cluster }], position, index, size? }
 //   text       { type: 'text', value }
 //   var        { type: 'var', name }  a `--name` leading an argument, bare or wrapped
 // The list carries warnings: [{ message, pos? }], pos a token [col, row]
@@ -234,8 +234,9 @@ function parseFunc(cur) {
         end -= dots;
     }
     let func = finishFunc(cur, name, end, isCalc, tok.index);
-    if (func.unit) warn(cur.ctx, `use $()${func.unit}`, tok.pos);
-    return func;
+    if (func.name[0] !== '$') return func;
+    warn(cur.ctx, `unknown ${func.name}()`, tok.pos);
+    return Node.text(func.name);
 }
 
 function finishFunc(cur, name, end, isCalc, index, shaped, body) {
@@ -277,11 +278,8 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
 
     if (isCalc) {
         let suffix = name.slice(1);
-        func.name = '@$';
-        if (suffix.length) {
-            if (hasArguments) func.unit = suffix;
-            else func.arguments.push(Node.argument([Node.text(suffix)]));
-        }
+        func.name = suffix && hasArguments ? '$' + suffix : '@$';
+        if (suffix && !hasArguments) func.arguments.push(Node.argument([Node.text(suffix)]));
     } else {
         let { fname, extra: extraArgs } = separateFuncName(name, body);
         func.name = fname;

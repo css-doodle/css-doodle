@@ -158,7 +158,7 @@ function call(depth) {
         () => `@r(${pick(['10', '-5, 5', '360deg', '.5, 1'])})`,
         () => pick(['@i', '@x', '@y', '@I', '@X']),
         () => `$(${_}${expression().min}${_})`,
-        () => `$px(${expression().min})`,
+        () => `$(${expression().min})px`,
         () => `@pick(${expression(2).min}:${args(COLORS)})`,
         () => `@m${pick([2, 3])}(${pick(COLORS)})`,
         () => `@round.r(10)`,

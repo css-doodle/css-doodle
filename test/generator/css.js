@@ -339,14 +339,12 @@ test('grid line names keep the spaces around them', () => {
 
 // --- $ and calc ---
 
-test('$ name suffix reads as a unit appended to the calc result', () => {
-    // with an argument list the suffix is a unit, digits included;
-    // without one the suffix is the expression itself
+test('a unit goes after $(), and $name() with no --name() stays as its name', () => {
     assertContains('width: $(1+1);', 'width:2;');
-    assertContains('width: $px(1+1);', 'width:2px;');
-    assertContains('width: $%(1+1);', 'width:2%;');
-    assertContains('width: $4(1+1);', 'width:24;');
+    assertContains('width: $(1+1)px;', 'width:2px;');
+    assertContains('width: $(1+1)%;', 'width:2%;');
     assertContains('width: $123;', 'width:123;');
+    assertContains('width: $px(1+1);', 'width:$px;');
 });
 
 test('a bare $ reads one variable name or number, as far as a CSS name goes', () => {
@@ -358,8 +356,6 @@ test('a bare $ reads one variable name or number, as far as a CSS name goes', ()
     assertContains('--é: tomato; color: $é;', 'color:tomato;');
     assertContains('--a-b: 2; --c_d: 3; width: $a-b.x $c_d#;', 'width:2.x 3#;');
     assertContains('width: $1.5 $-1.5;', 'width:1.5 -1.5;');
-    // a suffix opening a call is still its unit
-    assertContains('width: $%(1+1) $px.@x $px.r(1, 1);', 'width:2% 1px 1px;');
     // user function parameters and @pattern names stop at the same place
     assertContains('--f(s): $s%|$s.x; width: $f(30);', 'width:30%|30.x;');
     let pattern = compile('--é: 3; background: @pattern(fill: $é.0 / 4);').patterns;
@@ -368,10 +364,9 @@ test('a bare $ reads one variable name or number, as far as a CSS name goes', ()
 
 test('$ reads variables holding dimensioned values as numbers', () => {
     // `--w: 10px` used to poison the whole expression to 0
-    assertContains('--w: 10px; width: $px(w * 2);', 'width:20px;');
     assertContains('--w: 10px; width: $(w * 2)px;', 'width:20px;');
-    assertContains('--gap: 4px; --w: 10px; margin: $px(w + gap);', 'margin:14px;');
-    assertContains('--angle: 45deg; transform: rotate($deg(angle * 2));', 'rotate(90deg);');
+    assertContains('--gap: 4px; --w: 10px; margin: $(w + gap)px;', 'margin:14px;');
+    assertContains('--angle: 45deg; transform: rotate($(angle * 2)deg);', 'rotate(90deg);');
     // truly non-numeric values still read as 0
     assertContains('--c: red; width: $(c + 1);', 'width:1;');
 });
@@ -385,13 +380,12 @@ test('$ with a lone variable name acts as a generation-time var()', () => {
     assertContains('--a: b; --b: tomato; color: $a;', 'color:tomato;');
     assertContains('--n: 3; width: $n;', 'width:3;');
     assertContains('--e: n + 2; --n: 3; width: $e;', 'width:5;');
-    // an explicit unit or any operation asks for the number
-    assertContains('--w: 10px; width: $px(w);', 'width:10px;');
+    // any operation asks for the number
     assertContains('--w: 10px; width: $(w * 2)px;', 'width:20px;');
 });
 
 test('$ math reads dashed variable names', () => {
-    assertContains('--font-size: 5; width: $px(font-size * 2);', 'width:10px;');
+    assertContains('--font-size: 5; width: $(font-size * 2)px;', 'width:10px;');
     assertContains('--cell-w: 4; --cell-h: 2; width: $(cell-w * cell-h)px;', 'width:8px;');
     assertContains('--cell-w: 4; width: $(cell-w * @calc(2 + 1))px;', 'width:12px;');
     assertContains('--a-b: 9; --a: 3; --b: 1; width: $(a-b) $(a - b);', 'width:9 2;');
@@ -400,7 +394,7 @@ test('$ math reads dashed variable names', () => {
 test('a leading --name in an argument reads the variable', () => {
     assertContains('--x: 3; width: @calc(--x * 2);', 'width:6;');
     assertContains('--x: 3; width: $(--x * 2);', 'width:6;');
-    assertContains('--x: 3; width: $px(--x + 1);', 'width:4px;');
+    assertContains('--x: 3; width: $(--x + 1)px;', 'width:4px;');
     assertContains('--x: 3; width: @p(--x);', 'width:3;');
     assertContains('--x: 3; width: @p(--x px);', 'width:3 px;');
     assertContains('--x: 3; width: @var(--x);', 'width:var(--x);');
@@ -431,7 +425,7 @@ test('$ reads the variables as they stand where it is written, in every value of
 });
 
 test('numbers print without float noise', () => {
-    assertContains('width: $px(0.1+0.2);', 'width:0.3px;');
+    assertContains('width: $(0.1+0.2)px;', 'width:0.3px;');
     assertContains('rotate: @calc(0.1+0.7)deg;', 'rotate:0.8deg;');
     assertContains('width: @sqrt(2)px;', 'width:1.41421356237px;');
     assertContains('width: @m3(@n(*.1));', 'width:0.1,0.2,0.3;');
@@ -456,7 +450,7 @@ test('$ with function parts evaluates through the compiled template', () => {
     assertContains('@grid: 1; margin: $(-@i)px $(2*-@i)px;', 'margin:-1px -2px;');
     // context variables still resolve next to placeholders
     assertContains('@grid: 1; --a: 4; width: $(a+@i*2)px;', 'width:6px;');
-    assertContains('@grid: 1; rotate: $deg(@i*45);', 'rotate:45deg;');
+    assertContains('@grid: 1; rotate: $(@i*45)deg;', 'rotate:45deg;');
 });
 
 test('$ falls back to splicing when a function result is not a number', () => {
@@ -547,10 +541,9 @@ test('math around time and pointer uniforms lowers to CSS', () => {
     assertContains('--on: $(@t > 5);', '--on:calc(max(0,sign(var(--cssd-utime) - 5)));');
     // through a variable, read back as var()
     assertContains('--t: @t; width: $(t / 50)px;', 'width:calc((var(--t) / 50) * 1px);');
-    // a unit after the lowered math multiplies in, glued or as a $ suffix
+    // a unit after the lowered math multiplies in
     assertContains('rotate: $(@t / 10)deg;', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
     assertContains('rotate: @calc(@t / 10)deg;', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
-    assertContains('rotate: $deg(@t / 10);', 'rotate:calc((var(--cssd-utime) / 10) * 1deg);');
     assertContains('width: @t(/1000)s;', 'width:calc((var(--cssd-utime) / 1000) * 1s);');
     assertContains('width: $(@t)px solid;', 'width:calc((var(--cssd-utime)) * 1px) solid;');
     // numbers still fold around it, and plain units stay glued
@@ -561,23 +554,23 @@ test('math around time and pointer uniforms lowers to CSS', () => {
 });
 
 test('a live variable declared once on the cell, host or container is read as var()', () => {
-    assertContains(':doodle { --h: $(@t / 1000); } :container { --c: @t; } --a: $(@t); width: $px(h + c + a); opacity: $a;',
+    assertContains(':doodle { --h: $(@t / 1000); } :container { --c: @t; } --a: $(@t); width: $(h + c + a)px; opacity: $a;',
         'width:calc(((var(--h) + var(--c)) + var(--a)) * 1px);', 'opacity:var(--a);');
-    assertContains('--a: $(@t / 3000); rotate: $rad(a * 2);', 'rotate:calc((var(--a) * 2) * 1rad);');
+    assertContains('--a: $(@t / 3000); rotate: $(a * 2)rad;', 'rotate:calc((var(--a) * 2) * 1rad);');
     // a pseudo-element's own, a twice-declared and an @media variable keep their value pasted in
-    assertContains('::after { --b: $(@t); rotate: $rad(b); }', 'rotate:calc((var(--cssd-utime)) * 1rad);');
-    assertContains('--n: $(@t); --n: $(@t * 2); left: $px(n);', 'left:calc((var(--cssd-utime) * 2) * 1px);');
-    assertContains('@media (min-width: 1px) { --m: $(@t); } left: $px(m);', 'left:calc((var(--cssd-utime)) * 1px);');
+    assertContains('::after { --b: $(@t); rotate: $(b)rad; }', 'rotate:calc((var(--cssd-utime)) * 1rad);');
+    assertContains('--n: $(@t); --n: $(@t * 2); left: $(n)px;', 'left:calc((var(--cssd-utime) * 2) * 1px);');
+    assertContains('@media (min-width: 1px) { --m: $(@t); } left: $(m)px;', 'left:calc((var(--cssd-utime)) * 1px);');
     // a value that is not one call would group differently through var()
     assertContains('--d: @t / 2; width: $(1 / d);', 'width:calc(1 / (var(--cssd-utime) / 2));');
     // :doodle and :container can't see a cell's variable, content counts the value itself,
     // and another var() would resolve on the declaring element instead of the cell
     assertContains('--a: @t; :doodle { --b: $a; } :container { --c: $a; }', ':host,.host {--b:var(--cssd-utime);}', 'grid {--c:var(--cssd-utime);}');
     assertContains('--a: @t; content: $a;', 'content:counter(time);');
-    assertContains(':doodle { --a: calc(var(--color) * @t); } --color: 2; width: $px(a);', 'width:calc((var(--color) * var(--cssd-utime)) * 1px);');
-    assertContains(':doodle { --a: calc(var(--cssd-user) * @t); } width: $px(a);', 'width:calc((var(--cssd-user) * var(--cssd-utime)) * 1px);');
+    assertContains(':doodle { --a: calc(var(--color) * @t); } --color: 2; width: $(a)px;', 'width:calc((var(--color) * var(--cssd-utime)) * 1px);');
+    assertContains(':doodle { --a: calc(var(--cssd-user) * @t); } width: $(a)px;', 'width:calc((var(--cssd-user) * var(--cssd-utime)) * 1px);');
     // nor through a variable that reads one
-    assertContains('--a: @t; --b: $a; content: $b; :container { width: $px(b); }', 'content:counter(time);', 'grid {width:calc((var(--cssd-utime)) * 1px);}');
+    assertContains('--a: @t; --b: $a; content: $b; :container { width: $(b)px; }', 'content:counter(time);', 'grid {width:calc(var(--cssd-utime) * 1px);}');
     assertContains('--a: $(@t); width: $(a)px;', 'width:calc(var(--a) * 1px);');
     assertContains('--a: $(@t); @grid: 2 / $(a)px; @gap: $(a)px;', ':host,.host {width:calc((var(--cssd-utime)) * 1px);', 'grid {gap:calc((var(--cssd-utime)) * 1px);}');
 });

@@ -493,18 +493,14 @@ test('svg variable declarations become setters where they stand', () => {
     assert.deepEqual(names, ['r', 'c']);
 });
 
-test('$ keeps its suffix as the unit', () => {
+test('$name() with no --name() is unknown and stays as its name', () => {
     const funcOf = input => parseCss(input)[0].value[0][0];
-    let px = funcOf(`a: $px(1+1);`);
-    assert.equal(px.name, '@$');
-    assert.equal(px.unit, 'px');
+    assert.deepEqual(funcOf(`a: $px(1+1);`), text('$px'));
     let bare = funcOf(`a: $(x);`);
     assert.equal(bare.name, '@$');
-    assert.equal(bare.unit, undefined);
     // without an argument list the suffix is the expression itself
     let lone = funcOf(`a: $123;`);
     assert.equal(lone.name, '@$');
-    assert.equal(lone.unit, undefined);
     assert.deepEqual(lone.arguments, [argument([text('123')])]);
 });
 
@@ -606,11 +602,11 @@ test('unbalanced parens, quotes and braces warn instead of silently dropping the
     assert.deepEqual(messages(`background: @pattern(fill: red`), ['unclosed (']);
 });
 
-test('$px() warns to write the unit after $(), unless a function --px() is defined', () => {
+test('$px() warns as unknown, unless a function --px() is defined', () => {
     const messages = code => parseCss(code).warnings.map(w => w.message);
-    assert.deepEqual(messages(`width: $px(1+1);`), ['use $()px']);
-    assert.deepEqual(messages(`width: $%(@i*10);`), ['use $()%']);
-    assert.deepEqual(messages(`--rbox(x): $(x*3)em; width: $rbx(2);`), ['use $()rbx']);
+    assert.deepEqual(messages(`width: $px(1+1);`), ['unknown $px()']);
+    assert.deepEqual(messages(`width: $%(@i*10);`), ['unknown $%()']);
+    assert.deepEqual(messages(`--rbox(x): $(x*3)em; width: $rbx(2);`), ['unknown $rbx()']);
     assert.deepEqual(messages(`--px(x): $(x*3)em; width: $px(2);`), []);
     assert.deepEqual(messages(`width: $(1+1)px; height: $w;`), []);
 });
@@ -656,7 +652,7 @@ test('a user function call parses as its body written inline', () => {
 test('a user function is called with parens, and with $ outside math', () => {
     // without parens $f reads the variable --f, and @f is a built-in call
     assert.deepEqual(ast(`--f(): red; --f: 1; a: $f; b: $f(); c: @f();`), ast(`--f: 1; a: $f; b: red; c: @f();`));
-    // a name that isn't defined stays a unit
+    // a name that isn't defined stays as it is
     assert.deepEqual(ast(`--f(x): [$x]; a: $px(1 + 1); b: $g(2);`), ast(`a: $px(1 + 1); b: $g(2);`));
 });
 
@@ -684,7 +680,7 @@ test('user function arguments', () => {
 
 test('a user function name can start with _', () => {
     assert.deepEqual(ast(`--_f(x): $(x * 2); --f_(y): { $y } w: $_f(3); v: $f_(1);`), ast(`w: $((3) * 2); v: 1;`));
-    assert.equal(parseCss(`w: $_f(3);`)[0].value[0][0].unit, '_f');
+    assert.deepEqual(parseCss(`w: $_f(3);`).warnings.map(w => w.message), ['unknown $_f()']);
 });
 
 test('a user function parameter can have a default', () => {
@@ -796,8 +792,8 @@ test('a user function parameter name is read whole', () => {
 
 test('a user function parameter binds bare inside $() with a unit, and in the calls there', () => {
     assert.deepEqual(
-        ast(`--f(x): $px(x) $4(x + 1) $%(x) rgb(x); width: $f(5);`),
-        ast(`width: $px((5)) $4((5) + 1) $%((5)) rgb(x);`));
+        ast(`--f(x): $(x)px $(x + 1)4 $(x)% rgb(x); width: $f(5);`),
+        ast(`width: $((5))px $((5) + 1)4 $((5))% rgb(x);`));
     assert.deepEqual(
         ast(`--g(c): [$c]; --f(c): $g(c) $g($c) $(c + $g(c)); width: $f(red);`),
         ast(`width: [red] [red] $((red) + ([((red))]));`));
@@ -840,8 +836,8 @@ test('a call inside $() reads its body as math, as one value', () => {
 
 test('a bare name( calls the user function where a bare parameter binds, unless a built-in has its name', () => {
     assert.deepEqual(
-        ast(`--h(x): x + 1; a: $(2 * h(3)); b: $px(h(1)); @match(h(i) > 2) { color: red }`),
-        ast(`a: $(2 * ((3) + 1)); b: $px(((1) + 1)); @match(((i) + 1) > 2) { color: red }`));
+        ast(`--h(x): x + 1; a: $(2 * h(3)); b: $(h(1))px; @match(h(i) > 2) { color: red }`),
+        ast(`a: $(2 * ((3) + 1)); b: $(((1) + 1))px; @match(((i) + 1) > 2) { color: red }`));
     // in a body called there, and for a function passed by name
     assert.deepEqual(
         ast(`--h(x): x + 1; --g(x): h(x) * 2; --lit(f): $($f(1) - $f(2)); a: $($g(@y)); b: $lit(h);`),
@@ -1114,9 +1110,8 @@ test('text pulled in by @use calls the user functions around it and keeps its ow
     // half() is seen inside --b only: not by --c nor the main sheet
     let [height, top, left] = ast(`@use: var(--b), var(--c); left: $half(1);`, extra);
     assert.deepEqual(height.value, [[{ type: 'text', value: '[4]' }]]);
-    // so they stay $ with the unit half
-    assert.equal(top.value[0][0].unit, 'half');
-    assert.equal(left.value[0][0].unit, 'half');
+    // so they are unknown there
+    assert.deepEqual([top.value, left.value], [[[text('$half')]], [[text('$half')]]]);
 });
 
 test('@use takes addon names next to variables, not from comments or strings', () => {

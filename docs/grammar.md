@@ -386,7 +386,7 @@ name       = letter or '_', then letters, digits or '_'
   `:container`, whose value is one live call (with no `var()` but
   uniforms on `:doodle` and `:container`), is read in a cell's
   property other than `content` as `var()`:
-  `--a: $(@t / 1000); rotate: $rad(a * 2)` is
+  `--a: $(@t / 1000); rotate: $(a * 2)rad` is
   `rotate: calc((var(--a) * 2) * 1rad)`.
 
 Each caller provides its own context:
@@ -692,7 +692,8 @@ once per component.
   `@keyframes` without a name produces nothing. A function that calls
   itself, even through another, is reported and expands to nothing, and a braceless body
   followed by a statement that reads its parameters warns
-  `--f() needs {}`.
+  `--f() needs {}`. A `$name()` with no `--name()` is reported and
+  emits as `$name`.
 - **Generating.** `@use` cycles skip the variable, and an undefined
   `$name` skips its `@shaders` or `@pattern`. Unknown functions emit as
   `@name`. Invalid cell selector modifiers match nothing. In `@svg`, a

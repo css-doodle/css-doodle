@@ -180,7 +180,6 @@ function compileFunc(node) {
         let composable = COMPOSABLE.has(fname) || fn.shader;
         let args = node.arguments.map(arg => compileArgument(arg, node));
         let shared = /^(tile|plot|Plot)$/.test(fname);
-        let unit = node.unit || '';
         let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
         let isMath = fn === MathFunc[fname];
         let calcTemplate = fname === 'calc' && args.length === 1 && args[0].calcTemplate;
@@ -222,13 +221,13 @@ function compileFunc(node) {
             if (calcTemplate) {
                 let { context, values } = evalTemplateHoles(calcTemplate, frame, e, rules.frameContext(frame));
                 if (!context) {
-                    output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname, unit);
+                    output = rules.callFunc(fn, frame, node.position, spliceTemplateInput(calcTemplate, values), fname);
                 } else {
-                    output = withUnit(tidyNumber(calc(calcTemplate.template, context, 1)), unit);
+                    output = String(tidyNumber(calc(calcTemplate.template, context, 1)));
                 }
             } else {
                 let input = constantInput ?? (fn.lazy ? args.map(arg => (...lazy) => arg(frame, lazy)) : collect(frame, e));
-                output = rules.callFunc(fn, frame, node.position, input, fname, unit);
+                output = rules.callFunc(fn, frame, node.position, input, fname);
             }
             return { value: getValue(output), extra: output?.extra, origin: output?.origin };
         };
@@ -540,19 +539,19 @@ class Rules {
         return frame.calcContext;
     }
 
-    callFunc(fn, frame, position, input, fname, unit) {
+    callFunc(fn, frame, position, input, fname) {
         let { cell, env, contextVariable } = frame;
         let _fn = fn(cell, env, position);
         if (typeof _fn === 'function') {
             if (fname === 'calc') {
                 let context = this.frameContext(frame);
-                if (!unit && input.length === 1) {
+                if (input.length === 1) {
                     let value = deref(input[0], context);
                     if (value !== undefined) {
                         return typeof value === 'number' ? tidyNumber(value) : value;
                     }
                 }
-                return withUnit(_fn(input, context), unit);
+                return String(_fn(input, context));
             }
             if (fn.vars) {
                 return _fn(() => this.condContext(cell, contextVariable, env.extra), ...input);
