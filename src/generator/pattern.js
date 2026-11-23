@@ -246,7 +246,7 @@ function generateStatement(name, value, scope, ctx) {
     }
     let from = part && expr(base, scope, ctx).type, size = /^vec/.test(from) && +from[3];
     if (!base || part && !['xyzw', 'rgba', 'stpq'].some(set => [...part].every((c, k) => set.slice(0, size).includes(c) && part.indexOf(c) == k))) {
-        ctx.warn(`invalid name "${name}"`);
+        ctx.warn(`invalid "${name}"`);
         return '';
     }
     let id = scope.ids[base];
@@ -329,7 +329,7 @@ function generateRepeat(token, scope, ctx, opts) {
         : times === undefined ? 'repeat() needs integer'
         : times > MAX_REPEAT ? `repeat() over ${MAX_REPEAT}`
         : work > MAX_REPEAT_WORK ? 'too many steps'
-        : m[2] && !NAME.test(m[2]) ? `invalid name "${m[2]}"`
+        : m[2] && !NAME.test(m[2]) ? `invalid "${m[2]}"`
         : '';
     if (error) {
         ctx.warn(error);
@@ -370,7 +370,7 @@ export const DERIVATIVES = /\b(fwidth|dFdx|dFdy|g_shape)\(/;
 
 function checkDerivatives(code, where, ctx, opts) {
     if (!opts.branched && DERIVATIVES.test(code)) {
-        ctx.warn(`derivative inside ${where}`);
+        ctx.warn(`derivative in ${where}`);
     }
 }
 

@@ -171,12 +171,12 @@ test('@use skips a variable that refers to itself', () => {
     let parsed = parseCss(`@use: var(--self); margin: 0;`, extra);
     assert.deepEqual(parsed.map(r => r.property), ['color', 'margin']);
     assert.equal(parsed.warnings.length, 1);
-    assert.equal(parsed.warnings[0].message, 'circular @use: --self');
+    assert.equal(parsed.warnings[0].message, 'recursive --self');
 
     // through another variable
     parsed = parseCss(`@use: var(--a);`, extra);
     assert.deepEqual(parsed.map(r => r.property), ['height', 'width']);
-    assert.equal(parsed.warnings[0].message, 'circular @use: --a');
+    assert.equal(parsed.warnings[0].message, 'recursive --a');
 
     // two references in one value used to expand exponentially
     parsed = parseCss(`@use: var(--twice);`, extra);
@@ -569,14 +569,14 @@ test('a statement without a colon warns instead of passing through as an at-rule
     // `color red;` used to be emitted verbatim, where the browser ate the rule after it
     let parsed = parseCss(`color red; width: 1px; @import url(x);`);
     assert.deepEqual(parsed.map(r => r.property || r.value), ['width', '@import url(x);']);
-    assert.deepEqual(parsed.warnings, [{ message: 'missing ":"', pos: [0, 0] }]);
+    assert.deepEqual(parsed.warnings, [{ message: 'missing :', pos: [0, 0] }]);
 });
 
 test('positions point into the source as written, past leading lines and user function definitions', () => {
-    assert.deepEqual(parseCss(`\n  @grid: 5;\n  color red;\n`).warnings, [{ message: 'missing ":"', pos: [2, 2] }]);
+    assert.deepEqual(parseCss(`\n  @grid: 5;\n  color red;\n`).warnings, [{ message: 'missing :', pos: [2, 2] }]);
     let source = `\n--dot(r): {\n  width: $(r)px;\n}\ncolor red;\nwidth: @r(5);`;
     let parsed = parseCss(source);
-    assert.deepEqual(parsed.warnings, [{ message: 'missing ":"', pos: [0, 4] }]);
+    assert.deepEqual(parsed.warnings, [{ message: 'missing :', pos: [0, 4] }]);
     assert.equal(parsed[0].value[0][0].index, source.indexOf('@r'));
 });
 

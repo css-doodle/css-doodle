@@ -929,8 +929,8 @@ test('@svg-filter channels warnings keep invalid rows at identity', () => {
     ), filter);
     assert.ok(filter.includes('opacity=".5"'), filter);
     assert.deepEqual(compiled.warnings.map(w => w.message), [
-        'invalid channel r',
-        'invalid channel b',
+        'invalid r',
+        'invalid b',
     ]);
 });
 

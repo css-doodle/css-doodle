@@ -19,36 +19,34 @@ function parse(input, names) {
         let v = t.value, i;
         if (t.isSpace()) continue;
         if (t.isSymbol('+', '-')) {
-            if (star || sign) { error = 'Unexpected ' + v; break; }
+            if (star || sign) { error = true; break; }
             endTerm();
             sign = v;
         }
         else if (t.isSymbol('*')) {
-            if (factor === null || star) { error = 'Unexpected *'; break; }
+            if (factor === null || star) { error = true; break; }
             star = true;
         }
         else if (t.isNumber()) {
             // `2n -3`: the tokenizer reads `-3` after a space as one number
             if (v[0] === '-' && seen && !sign && !star) endTerm();
-            else if ((seen && !sign) || factor !== null) { error = 'Syntax error'; break; }
+            else if ((seen && !sign) || factor !== null) { error = true; break; }
             factor = sign === '-' ? -v : +v;
             sign = null;
             seen = true;
         }
         else if (t.isWord() && (i = names.indexOf(v)) >= 0) {
-            if (factor === null && seen && !sign) { error = 'Syntax error'; break; }
+            if (factor === null && seen && !sign) { error = true; break; }
             coefficients[i] += factor ?? (sign === '-' ? -1 : 1);
             factor = null;
             star = false;
             sign = null;
             seen = true;
         }
-        else { error = 'Unexpected ' + v; break; }
+        else { error = true; break; }
     }
     endTerm();
-    if (!error && (star || sign)) error = 'Syntax error';
-    if (!error && ![...coefficients, constant].every(Number.isFinite)) error = 'Overflow';
-    if (error) return { coefficients: names.map(() => 0), constant: 0, error };
+    if (error || star || sign || ![...coefficients, constant].every(Number.isFinite)) return { coefficients: names.map(() => 0), constant: 0, error: true };
     return { coefficients, constant };
 }
 

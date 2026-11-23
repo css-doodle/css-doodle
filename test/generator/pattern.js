@@ -114,7 +114,7 @@ test('an assignment to a swizzle writes those channels', () => {
     assert.match(main('pos.x: abs(pos.x); fill: pos, 0'), /vec2 g_1 = pos;\s*g_1\.x = abs\(pos\.x\);\s*g_color = vec4\(vec3\(g_1, 0\.0\), 1\.0\);/);
     let messages = [];
     draw('v: vec2(1); k: 1; v.z: 1; v.xx: vec2(1); k.x: 1; v.x: vec2(1);', extra, m => messages.push(m));
-    assert.deepEqual(messages, ['invalid name "v.z"', 'invalid name "v.xx"', 'invalid name "k.x"', 'v.x is float']);
+    assert.deepEqual(messages, ['invalid "v.z"', 'invalid "v.xx"', 'invalid "k.x"', 'v.x is float']);
 });
 
 test('match {} runs the first arm whose test holds', () => {
@@ -452,10 +452,10 @@ test('invalid and reserved names are reported', () => {
     let messages = [];
     draw('size-2: 3; g_1: 1; --c: red; repeat(2 as a-b) { } fill: red', extra, m => messages.push(m));
     assert.deepEqual(messages, [
-        'invalid name "size-2"',
+        'invalid "size-2"',
         'reserved g_1',
-        'invalid name "--c"',
-        'invalid name "a-b"',
+        'invalid "--c"',
+        'invalid "a-b"',
     ]);
     // only the names the shader gives its own variables are kept, so
     // g_1_m, a local of the first call of --g(), is a name like any other
@@ -828,7 +828,7 @@ test('derivatives where only some pixels run the code are reported once per oute
         draw(code, extra, m => messages.push(m));
         return messages.filter(m => !m.startsWith('unused'));
     };
-    const unreliable = where => [`derivative inside ${where}`];
+    const unreliable = where => [`derivative in ${where}`];
     assert.deepEqual(warnings('match(du > 0) { c: ramp(du, 0, 1) }'), unreliable('match'));
     assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('match'));
     assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('match'));

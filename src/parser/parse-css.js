@@ -600,7 +600,7 @@ function parseRule(cur) {
     } else {
         // `color red;`, or a head that runs to the end: `@nth(1 { … }`
         if (tok?.isSymbol(';')) cur.next();
-        warn(cur.ctx, tok || !/[("'`]/.test(head) ? 'missing ":"' : 'unbalanced paren/quote', pos);
+        warn(cur.ctx, tok || !/[("'`]/.test(head) ? 'missing :' : 'unbalanced paren/quote', pos);
     }
 
     rule.rawValue = () => colon < 0 ? '' : source.slice(colon + 1, end).trim();
@@ -630,7 +630,7 @@ function parseUse(cur) {
             }
             // a variable already being inserted refers to itself: skip it
             if (ctx.using.includes(name)) {
-                warn(ctx, 'circular @use: ' + name, pos);
+                warn(ctx, 'recursive ' + name, pos);
                 continue;
             }
             ctx.using.push(name);

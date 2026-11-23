@@ -121,7 +121,7 @@ function checkAll(node, warn, unread, code, copy) {
             }
             if (valid && (reads(code, r.name) || /^match_\d+_$/.test(r.name))) continue;
             unread.add(r);
-            if (!used(code, r.name)) warn(!valid ? `invalid name "${r.name}"` : `unused ${r.name}`);
+            if (!used(code, r.name)) warn(!valid ? `invalid "${r.name}"` : `unused ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {

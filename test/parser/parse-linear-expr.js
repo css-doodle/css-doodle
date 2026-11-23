@@ -18,7 +18,7 @@ test('a negative number after a term subtracts', () => {
     assert.deepEqual(parseLinearExpr('2 -3'), { a: 0, b: -1 });
     assert.deepEqual(parseLinearExpr('n -3n'), { a: -2, b: 0 });
     assert.deepEqual(parseLinearExpr('2n - -3'), { a: 2, b: 3 });
-    assert.deepEqual(parseLinearExpr('2 * -3'), { a: 0, b: 0, error: 'Syntax error' });
+    assert.deepEqual(parseLinearExpr('2 * -3'), { a: 0, b: 0, error: true });
 });
 
 test('cached results do not mix up input and names', () => {
@@ -27,8 +27,8 @@ test('cached results do not mix up input and names', () => {
 });
 
 test('invalid input reports an error', () => {
-    assert.deepEqual(parseLinearExpr('2n 3'), { a: 0, b: 0, error: 'Syntax error' });
-    assert.deepEqual(parseLinearExpr('2n * 3'), { a: 0, b: 0, error: 'Unexpected *' });
+    assert.deepEqual(parseLinearExpr('2n 3'), { a: 0, b: 0, error: true });
+    assert.deepEqual(parseLinearExpr('2n * 3'), { a: 0, b: 0, error: true });
 });
 
 const RGBA = ['r', 'g', 'b', 'a'];
@@ -55,25 +55,12 @@ test('linear combinations of several names', () => {
 });
 
 test('linear combinations reject anything else', () => {
-    for (let [input, error] of [
-        ['r * g', 'Unexpected *'],
-        ['sin(r)', 'Unexpected sin'],
-        ['r / 2', 'Unexpected /'],
-        ['50%', 'Unexpected %'],
-        ['.5(r + g)', 'Unexpected ('],
-        ['r 2', 'Syntax error'],
-        ['r2', 'Syntax error'],
-        ['2 3', 'Syntax error'],
-        ['.5 *', 'Syntax error'],
-        ['* r', 'Unexpected *'],
-        ['r *', 'Unexpected *'],
-        ['r +', 'Syntax error'],
-        ['r + + g', 'Unexpected +'],
-        ['x + 1', 'Unexpected x'],
-        ['1e999', 'Overflow'],
+    for (let input of [
+        'r * g', 'sin(r)', 'r / 2', '50%', '.5(r + g)', 'r 2', 'r2', '2 3',
+        '.5 *', '* r', 'r *', 'r +', 'r + + g', 'x + 1', '1e999',
     ]) {
         assert.deepEqual(parseLinear(input, RGBA), {
-            coefficients: [0, 0, 0, 0], constant: 0, error,
+            coefficients: [0, 0, 0, 0], constant: 0, error: true,
         }, input);
     }
 });
