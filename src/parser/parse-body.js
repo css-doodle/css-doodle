@@ -154,7 +154,7 @@ function armsOf(arms, warn) {
     return arms.filter(({ type, test }, k) => {
         if (type !== 'arm' || !test) warn('arm needs test');
         else if (test === 'else' && k < arms.length - 1) warn('else goes last');
-        else if (itemsOf(scan(test)).length > 1) warn('match() needs expr');
+        else if (test.includes(',') && itemsOf(scan(test)).length > 1) warn('match() needs expr');
         else return true;
     });
 }
