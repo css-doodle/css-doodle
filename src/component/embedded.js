@@ -59,7 +59,7 @@ function patternToImage(host, pattern) {
 }
 
 async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders', inside }) {
-    let fixed = arg ? parseGrid(arg, Infinity) : null;
+    let fixed = arg && parseGrid(arg, Infinity);
     let parsed = typeof source === 'string' ? parseShaders(source) : source;
     let width = fixed?.x, height = fixed?.y, textures = [];
     const loadTextures = () => {
@@ -106,7 +106,8 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         }
         return;
     }
-    if (host.shaderRenders.has(id)) return;
+    let renders = host.shaderRenders;
+    if (renders.has(id)) return;
     let elements;
     if (target.selector === ':host' || (target.selector === ':container' && host._cells)) {
         elements = [host.frame];
@@ -134,7 +135,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
     let generation = host._generation;
     if (target.type === 'content' && !fixed) {
         await host._styleReady;
-        if (host._generation !== generation || host.shaderRenders.has(id)) return;
+        if (host._generation !== generation || renders.has(id)) return;
     }
     if (!fixed) ({ width, height } = measure());
     let turned = [0, 0], redraw;
@@ -190,8 +191,8 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         } else if (!parsed.drag) {
             drawing.dispose();
         }
-        host.shaderRenders.get(id)?.dispose();
-        host.shaderRenders.set(id, drawing);
+        renders.get(id)?.dispose();
+        renders.set(id, drawing);
 
         if (!fixed && !host.observers.has(id)) {
             watch();
@@ -227,7 +228,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
                 turned[0] += (e.clientX - from.clientX) * rate;
                 turned[1] = Math.min(Math.max(turned[1] + (e.clientY - from.clientY) * rate, -half - base), half - base);
                 from = e;
-                if (!host.shaderRenders.get(id).animated || host.hasAttribute('cssd-paused')) {
+                if (!renders.get(id).animated || host.hasAttribute('cssd-paused')) {
                     queued ||= requestAnimationFrame(() => {
                         queued = 0;
                         redraw();
@@ -244,7 +245,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         let token = ++latest;
         if (parsed.textures.length) {
             let result = await loadTextures();
-            if (isStale(token) || (initial && host.shaderRenders.has(id))) return;
+            if (isStale(token) || (initial && renders.has(id))) return;
             textures = result;
         }
         try {
@@ -252,11 +253,11 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
                 host.report([{ message: 'WebGL lost' }]);
             });
             await drawing.ready;
-            if (isStale(token) || (initial && host.shaderRenders.has(id))) return drawing.dispose();
+            if (isStale(token) || (initial && renders.has(id))) return drawing.dispose();
             tick(drawing);
         } catch (err) {
             if (name) host.report([{ message: `${name}: ${err.message}` }]);
-            host.shaderRenders.set(id, { dispose() {} });
+            renders.set(id, { dispose() {} });
         }
     }
 
@@ -270,7 +271,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
                 if (size.width === width && size.height === height) return;
                 width = size.width;
                 height = size.height;
-                if (host.shaderRenders.get(id).animated) {
+                if (renders.get(id).animated) {
                     let token = ++latest;
                     loadTextures().then(result => {
                         if (!isStale(token)) textures = result;

@@ -105,10 +105,7 @@ function isVar(node, name) {
 }
 
 function checkAll(node, warn, unread, code, copy) {
-    if (!NAME.test(node.name)) {
-        let text = node.name + (node.count ? '*' + node.count.join('x') : '');
-        warn(`unexpected ${text}`);
-    }
+    if (!NAME.test(node.name)) warn(`unexpected ${node.name}${node.count ? '*' + node.count.join('x') : ''}`);
     if (SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
@@ -172,7 +169,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let compile = (value, p) => parse(value.replace(/\bcalc\(/g, '('), {
             types, warn, unknown,
             names: { __proto__: names, p },
-            rand: () => `rand(vec2(${key}, ${float(++sites)}) * vec2(0.7548, 0.5698))`,
+            rand: () => glsl`rand(vec2(${key}, ${float(++sites)}) * vec2(0.7548, 0.5698))`,
         });
         // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']; an angle in degrees
         let numbers = (tokens, p, angle) => {
@@ -244,7 +241,7 @@ export default function drawScene(code, extra, report = () => {}) {
             let outerKey = key, start = sites, end = start;
             let copy = (node, n, nx, ny) => {
                 names = { __proto__: outer, n, N: float(X * Y), nx, ny };
-                key = `(${outerKey} * 31.0 + ${n})`;
+                key = glsl`(${outerKey} * 31.0 + ${n})`;
                 sites = start;
                 scope(node, p);
                 let c = within(!row(node, 'smooth').length && below(r), () => chain(node, commands(node), p));
@@ -286,14 +283,14 @@ export default function drawScene(code, extra, report = () => {}) {
                 if (fit) {
                     // far away a shape reads |p| - its reach; scaled, it reaches |S e| times the inner reach along S e
                     let w = next();
-                    out += `vec3 ${w} = ${p} * ${s};\nvec3 ${q} = normalize(${w}) * length(${p});\n`;
+                    out += glsl`vec3 ${w} = ${p} * ${s};\nvec3 ${q} = normalize(${w}) * length(${p});` + '\n';
                     r = chain(node, inner, q);
-                    out += `${r} = length(${p}) - length(${w}) + ${r} * length(${w}) / length(${p});\n`;
+                    out += glsl`${r} = length(${p}) - length(${w}) + ${r} * length(${w}) / length(${p});` + '\n';
                     return r;
                 }
                 out += `vec3 ${q} = ${p} / ${s};\n`;
                 // a negative scale mirrors
-                let f = `min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)))`;
+                let f = glsl`min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)))`;
                 r = within(cap && `${cap} / ${f}`, () => chain(node, inner, q));
                 out += `${r}${W} *= ${f};\n`;
                 return r;
@@ -336,12 +333,12 @@ export default function drawScene(code, extra, report = () => {}) {
                     let k = next();
                     r = next();
                     declare(r);
-                    out += `for (int ${k} = 0; ${k} < 16; ${k}++) {\nvec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, float(${k}) * PI / 8.0);\n`;
+                    out += glsl`for (int ${k} = 0; ${k} < 16; ${k}++) {\nvec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, float(${k}) * PI / 8.0);` + '\n';
                     let c = chain(node, inner, q);
                     out += join(r, c, '0.0') + '}\n';
                     return r;
                 }
-                out += `vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -radians(${a}) * ${p}.y);\n`;
+                out += glsl`vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -radians(${a}) * ${p}.y);` + '\n';
             } else if (m.name === 'repeat') {
                 let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
                 if (n) warn('repeat: no count');
@@ -358,7 +355,7 @@ export default function drawScene(code, extra, report = () => {}) {
                         ${id} = ${base} + ${id} * ${dir};
                         vec3 ${q} = ${p} - ${vec3(s)} * ${id};
                 ` + '\n';
-                key = `(${outerKey} + dot(${id}, vec3(1.0, 57.0, 113.0)))`;
+                key = glsl`(${outerKey} + dot(${id}, vec3(1.0, 57.0, 113.0)))`;
                 let c = within(below(r), () => chain(node, inner, q));
                 key = outerKey;
                 out += join(r, c, '0.0') + '}\n';
@@ -412,13 +409,13 @@ export default function drawScene(code, extra, report = () => {}) {
             let k = first(row(node, 'round'), p);
             let get = name => numbers(row(node, name), p), name = node.name;
             let rs = SHAPES[name].includes('r') ? get('r') : [], [r1, r2] = rs, d;
-            if (name === 'sphere') d = `length(${p}) - ${r1 || '0.3'}`;
+            if (name === 'sphere') d = glsl`length(${p}) - ${r1 || '0.3'}`;
             else if (name === 'ellipsoid') d = `g_ellipsoid(${p}, ${vec3(rs, '0.3')})`;
-            else if (name === 'box') d = `g_box(${p}, ${vec3(get('size'), '0.5')} * 0.5 - ${k}) - ${k}`;
-            else if (name === 'torus') d = `length(vec2(length(${p}.xz) - ${r1 || '0.3'}, ${p}.y)) - ${r2 || '0.08'}`;
-            else if (name === 'cylinder') d = `g_cylinder(${p}, ${r1 || '0.2'} - ${k}, ${get('height')[0] || '0.5'} * 0.5 - ${k}) - ${k}`;
-            else if (name === 'cone') d = `g_cone(${p}, ${get('height')[0] || '0.4'} * 0.5, ${r1 || '0.2'}, ${r2 || '0.0'})`;
-            else if (name === 'capsule') d = `g_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
+            else if (name === 'box') d = glsl`g_box(${p}, ${vec3(get('size'), '0.5')} * 0.5 - ${k}) - ${k}`;
+            else if (name === 'torus') d = glsl`length(vec2(length(${p}.xz) - ${r1 || '0.3'}, ${p}.y)) - ${r2 || '0.08'}`;
+            else if (name === 'cylinder') d = glsl`g_cylinder(${p}, ${r1 || '0.2'} - ${k}, ${get('height')[0] || '0.5'} * 0.5 - ${k}) - ${k}`;
+            else if (name === 'cone') d = glsl`g_cone(${p}, ${get('height')[0] || '0.4'} * 0.5, ${r1 || '0.2'}, ${r2 || '0.0'})`;
+            else if (name === 'capsule') d = glsl`g_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
             else if (name === 'plane') d = `${p}.y`;
             else if (name === 'sdf') {
                 let value = textOf(row(node, 'd')), start = sites;
@@ -433,8 +430,8 @@ export default function drawScene(code, extra, report = () => {}) {
                     out += `float ${a} = ${d};\nvec3 ${h} = ${p} * 0.5;\n`;
                     scope(node, h, true);
                     sites = start;
-                    out += `float ${c} = 2.0 * (${a} - ${compile(value, h).code('float')}) / length(${p});\n`;
-                    d = `${c} > 0.1 ? ${a} / ${c} : ${a}`;
+                    out += glsl`float ${c} = 2.0 * (${a} - ${compile(value, h).code('float')}) / length(${p});` + '\n';
+                    d = glsl`${c} > 0.1 ? ${a} / ${c} : ${a}`;
                 }
             } else {
                 // in the xy plane, `depth` thick along z, or a lathe's outline turned around y
@@ -459,7 +456,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     ` + '\n';
                     out += `vec2 ${q} = ${lathe ? `vec2(length(${p}.xz), ${p}.y)` : `${p}.xy`};\n`;
                     let mark = out.length, depth = lathe ? '' : get('depth')[0] || '0.1';
-                    out += `float ${e} = 1e30, ${s} = 1.0;\n`;
+                    out += glsl`float ${e} = 1e30, ${s} = 1.0;` + '\n';
                     if (!plain || n < 64) {
                         for (let ring of rings) {
                             out += walk(at, at + ring.length);
@@ -498,14 +495,14 @@ export default function drawScene(code, extra, report = () => {}) {
                         out += glsl`
                             vec2 ${w} = vec2(${s} * sqrt(${e}) + ${k}, abs(${p}.z) - ${depth} * 0.5 + ${k});
                         ` + '\n';
-                        d = `min(max(${w}.x, ${w}.y), 0.0) + length(max(${w}, 0.0)) - ${k}`;
+                        d = glsl`min(max(${w}.x, ${w}.y), 0.0) + length(max(${w}, 0.0)) - ${k}`;
                     }
                     // the outline's box is never farther than the outline, so the walk runs only where it may count
                     if (plain && dist && !fit && cap) {
                         let ends = [0, 1].map(i => all.map(xy => +xy[i])).map(v => [Math.max(...v), Math.min(...v)]);
                         let box = `box(${q} - vec2(${ends.map(([a, b]) => float(+((a + b) / 2).toFixed(6)))}), vec2(${ends.map(([a, b]) => float(+((a - b) / 2 + 1e-5).toFixed(6)))}))`;
                         let walk = out.slice(mark);
-                        out = out.slice(0, mark) + `float ${r} = ${lathe ? box : `max(${box}, abs(${p}.z) - ${depth} * 0.5)`};\nif (${r} < ${cap}) {\n${walk}${r} = ${d};\n}\n`;
+                        out = out.slice(0, mark) + `float ${r} = ${lathe ? box : glsl`max(${box}, abs(${p}.z) - ${depth} * 0.5)`};\nif (${r} < ${cap}) {\n${walk}${r} = ${d};\n}\n`;
                         return r;
                     }
                 }

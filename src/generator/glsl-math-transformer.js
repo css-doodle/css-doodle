@@ -1,5 +1,6 @@
 import { scan } from '../parser/tokenizer.js';
 import { fillStops } from '../lib/math.js';
+import { glsl } from '../lib/tagged-template.js';
 
 const PREC = {
     __proto__: null,
@@ -31,7 +32,7 @@ const ALIAS = {
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const GLSL_NAMES = new Set(['PI', 'true', 'false']);
 // angles in radians, unless a variable of the name hides them: `rot(p, 45deg)`
-const CONSTANTS = { __proto__: null, deg: '(PI / 180.0)', turn: '(2.0 * PI)' };
+const CONSTANTS = { __proto__: null, deg: glsl`(PI / 180.0)`, turn: glsl`(2.0 * PI)` };
 const COLOR_CALL = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)$/i;
 const INT_OPS = new Set(['&', '|', '<<', '>>']);
 const VEC_COMPARE = {
@@ -328,7 +329,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         let out = gen(valueOf(stops[0]), type);
         for (let i = 1; i <= n; i++) {
             const a = float(at[i - 1]), b = float(at[i]);
-            out = `mix(${out}, ${gen(valueOf(stops[i]), type)}, clamp((${v} - ${a}) / max(${b} - ${a}, fwidth(${v}) + 1e-5), 0.0, 1.0))`;
+            out = glsl`mix(${out}, ${gen(valueOf(stops[i]), type)}, clamp((${v} - ${a}) / max(${b} - ${a}, fwidth(${v}) + 1e-5), 0.0, 1.0))`;
         }
         return out;
     }

@@ -282,14 +282,14 @@ function generateFill(value, scope, ctx, opts) {
     let over = ctx.filled || opts.loop;
     ctx.filled = true;
     if (type === 'vec4') return `g_color = ${over ? `g_over(${code}, g_color)` : code};\n`;
-    if (type === 'vec3') return `g_color = vec4(${code}, 1.0);\n`;
-    if (type === 'vec2') return `g_color = vec4(${code}, 0.0, 1.0);\n`;
+    if (type === 'vec3') return glsl`g_color = vec4(${code}, 1.0);` + '\n';
+    if (type === 'vec2') return glsl`g_color = vec4(${code}, 0.0, 1.0);` + '\n';
     if (type === 'bool') code = `float(${code})`;
     else if (type !== 'float') {
         ctx.warn(`invalid ${type} fill`);
         return '';
     }
-    return `g_color = vec4(vec3(${code}), 1.0);\n`;
+    return glsl`g_color = vec4(vec3(${code}), 1.0);` + '\n';
 }
 
 function asFloat(value, scope, ctx, what) {
@@ -303,9 +303,9 @@ function asFloat(value, scope, ctx, what) {
 
 function generateShape(value, scope, ctx) {
     ctx.masked = true;
-    if (value === 'none') return 'g_masked = false;\n';
+    if (value === 'none') return glsl`g_masked = false;` + '\n';
     let d = MASKS[value] || asFloat(value, scope, ctx, 'shape');
-    return d ? `g_dist = ${d};\ng_masked = true;\n` : '';
+    return d ? glsl`g_dist = ${d};\ng_masked = true;` + '\n' : '';
 }
 
 function generateSize(value, scope, ctx) {
@@ -436,7 +436,7 @@ function generateShader({ grid, body, masked }) {
 export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let ctx = {
-        extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), declared: new Set(), masked: false,
+        extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), declared: new Set(),
         unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown ${name}`), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;

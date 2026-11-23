@@ -115,10 +115,7 @@ function loadTexture(gl, image, i) {
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + i);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     uploadTexture(gl, image);
     return texture;
 }
@@ -175,7 +172,6 @@ function createSurface(width, height) {
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.clearColor(0, 0, 0, 0);
 
     canvas.addEventListener('webglcontextlost', () => {
         // losing it on purpose is not news
@@ -257,7 +253,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
     let frameIndex = 0;
     let currentTime = 0;
 
-    const drawing = { canvas: null, animated: false, onLost, draw, dispose };
+    const drawing = { onLost, draw, dispose };
 
     function setup(width, height) {
         size = { width, height };
