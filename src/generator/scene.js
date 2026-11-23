@@ -1,4 +1,4 @@
-import { readShapes, copyOf, degrees, partsOf } from '../parser/parse-shape-commands.js';
+import { readShapes, degrees, partsOf } from '../parser/parse-shape-commands.js';
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
@@ -106,7 +106,7 @@ function isVar(node, name) {
 
 function checkAll(node, warn, unread, code, copy) {
     if (!NAME.test(node.name)) {
-        let [X, Y, n0] = node.count || [], text = node.name + (!X ? '' : n0 === undefined ? `*${X}x${Y}` : `*${n0}-${copyOf(node.count, X - 1).n}`);
+        let text = node.name + (node.count ? '*' + node.count.join('x') : '');
         warn(`unexpected ${text}`);
     }
     if (SHAPES[node.name] || GROUPS[node.name]) {
@@ -135,7 +135,7 @@ function checkAll(node, warn, unread, code, copy) {
             warn('outline traced once');
             at = [0];
         }
-        let all = at.map(i => outline(node, warn, copyOf(node.count || [1, 1], i)).map(ring => ring.map(xy => xy.map(float))));
+        let all = at.map(i => outline(node, warn, { n: i + 1, N: X * Y, nx: i % X + 1, ny: (i / X | 0) + 1 }).map(ring => ring.map(xy => xy.map(float))));
         node.children = [];
         if (new Set(all.map(rings => JSON.stringify(rings))).size > 1) node.copies = all.map(rings => ({ ...node, rings }));
         node.rings = all[0];
@@ -240,8 +240,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 names = outer;
                 return r;
             }
-            let [X, Y, n0 = 1, dn = 1] = node.count, r = next();
-            let nth = i => n0 == 1 && dn == 1 ? `${i} + 1` : `${i} * ${dn} + ${n0}`;
+            let [X, Y] = node.count, r = next();
             let outerKey = key, start = sites, end = start;
             let copy = (node, n, nx, ny) => {
                 names = { __proto__: outer, n, N: float(X * Y), nx, ny };
@@ -256,17 +255,14 @@ export default function drawScene(code, extra, report = () => {}) {
             };
             declare(r);
             if (node.copies) {
-                node.copies.slice(0, X * Y).forEach((c, i) => {
-                    let { n, nx, ny } = copyOf(node.count, i);
-                    copy(c, float(n), float(nx), float(ny));
-                });
+                node.copies.slice(0, X * Y).forEach((c, i) => copy(c, float(i + 1), float(i % X + 1), float((i / X | 0) + 1)));
             } else {
                 let [i, n, nx, ny] = [next(), next(), next(), next()], head = out;
                 out = '';
                 let same = copy(node, n, nx, ny) === '0.0' && !new RegExp(`\\b(${n}|${nx}|${ny})\\b`).test(out);
                 out = head + glsl`
                     for (int ${i} = 0; ${i} < ${same ? 1 : X * Y}; ${i}++) {
-                        float ${n} = float(${nth(i)}), ${nx} = float(${nth(`${i} % ${X}`)}), ${ny} = float(${i} / ${X} + 1);
+                        float ${n} = float(${i} + 1), ${nx} = float(${i} % ${X} + 1), ${ny} = float(${i} / ${X} + 1);
                 ` + '\n' + out + '}\n';
             }
             names = outer;

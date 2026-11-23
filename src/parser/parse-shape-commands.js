@@ -6,7 +6,7 @@ import parseValueGroup from './parse-value-group.js';
 //
 //   body  = { row | shape }
 //   row   = name ':' value [ ';' ]
-//   shape = [ name ] [ '#' id ] [ '*' count [ ( 'x' | '-' ) count ] ] [ '{' body '}' ]
+//   shape = [ name ] [ '#' id ] [ '*' count [ 'x' count ] ] [ '{' body '}' ]
 
 const GROUPS = ['union', 'subtract', 'intersect', 'exclude'];
 const STEPS = ['move', 'rotate', 'scale', 'grow', 'frame', 'mirror'];
@@ -14,11 +14,10 @@ const SEMICOLON = scan(';')[0];
 // what a step does when its match test fails
 const NONE = { __proto__: null, move: '0', rotate: '0', scale: '1', grow: '0', twist: '0' };
 
-// `circle#dot*2x3` or `circle*2x3#dot` → { name: 'circle', id: 'dot', count: [2, 3] };
-// a range `*2-4` counts [3, 1] from 2 by 1, as `@M(2-4, …)` does
+// `circle#dot*2x3` or `circle*2x3#dot` → { name: 'circle', id: 'dot', count: [2, 3] }
 function shapeOf(text, value, lower) {
-    let [, name, id, x, range, y = 1, after] = text.match(/^([^]*?)(?:#([\w-]+))?(?:\s*\*\s*(\d+)(?:\s*([x-])\s*(\d+))?)?(?:#([\w-]+))?$/);
-    let count = !x ? 0 : range == '-' ? [Math.abs(y - x) + 1, 1, +x, +x <= +y ? 1 : -1] : [+x, +y];
+    let [, name, id, x, y = 1, after] = text.match(/^([^]*?)(?:#([\w-]+))?(?:\s*\*\s*(\d+)(?:\s*x\s*(\d+))?)?(?:#([\w-]+))?$/);
+    let count = x ? [+x, +y] : 0;
     id ||= after;
     let node = { name, id, count, rows: [], children: [] };
     for (let r of value) {
@@ -191,9 +190,6 @@ function commandsOf(node) {
     return commands;
 }
 
-// copy i of a count: n from the first, nx and ny across the grid
-const copyOf = ([X, Y, first = 1, step = 1], i) => ({ n: first + i * step, N: X * Y, nx: first + i % X * step, ny: (i / X | 0) + 1 });
-
 function member(node) {
     let body = n => GROUPS.includes(n.name) || n.children.length
         ? commandsOf(n)
@@ -201,7 +197,7 @@ function member(node) {
     if (!node.count) return [body(node)];
     let [X, Y] = node.count, list = node.copies || Array(X * Y).fill(node);
     return list.slice(0, X * Y).map((c, i) => {
-        let v = Object.fromEntries(Object.entries(copyOf(node.count, i)).map(([k, n]) => [k, String(n)])), b = body(c);
+        let v = { n: String(i + 1), N: String(X * Y), nx: String(i % X + 1), ny: String((i / X | 0) + 1) }, b = body(c);
         return typeof b == 'string' ? b + ';' + Object.entries(v).map(e => e.join(':')).join(';') : { ...b, ...v };
     });
 }
@@ -213,5 +209,5 @@ function parse(input) {
     return commandsOf(root);
 }
 
-export { readShapes, commandsOf, copyOf, spaced, partsOf, degrees, GROUPS };
+export { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS };
 export default parse;

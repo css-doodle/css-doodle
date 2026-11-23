@@ -93,10 +93,6 @@ test('name*N repeats a shape or a group, each copy with n, N, nx and ny', () => 
     // across a grid, row by row
     assert.deepEqual(parseShapeCommands('union { circle*2x2 }').blocks.items[0].blocks.items.map(s => s.split(';').slice(1).join(' ')),
         ['n:1 N:4 nx:1 ny:1', 'n:2 N:4 nx:2 ny:1', 'n:3 N:4 nx:1 ny:2', 'n:4 N:4 nx:2 ny:2']);
-    // a range counts n from its first, either way, as @svg's `*2-4` does
-    assert.deepEqual(parseShapeCommands('union { circle*2-4 }').blocks.items[0].blocks.items.map(s => s.split(';').slice(1).join(' ')),
-        ['n:2 N:3 nx:2 ny:1', 'n:3 N:3 nx:3 ny:1', 'n:4 N:3 nx:4 ny:1']);
-    assert.deepEqual(parseShapeCommands('union { circle*3-2 }').blocks.items[0].blocks.items.map(s => s.split(';')[1]), ['n:3', 'n:2']);
     // a body of `{…}` blocks gives each copy its own, as copies holding @ functions read
     let own = parseShapeCommands('union { circle*2 {{ move: 1 0 } { move: 2 0 }} union*2 {{ circle } { star }} }').blocks.items[0].blocks.items;
     assert.deepEqual(own.slice(0, 2), ['circle;move:1 0;n:1;N:2;nx:1;ny:1', 'circle;move:2 0;n:2;N:2;nx:2;ny:1']);

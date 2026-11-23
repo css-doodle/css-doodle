@@ -96,7 +96,7 @@ const Node = {
     },
 };
 
-const COPIES = /\*\s*([1-9]\d*(?:x[1-9]\d*)?|\d+-\d+)\s*$/;
+const COPIES = /\*\s*([1-9]\d*(?:x[1-9]\d*)?)\s*$/;
 const ARMS = /(^|[;{}])\s*match\s*$/;
 
 function repeat(count, values) {
