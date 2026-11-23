@@ -13,6 +13,7 @@ import { scan, textOf, itemsOf, Token, NAME_CHAR } from './tokenizer.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
 import parsePattern from './parse-pattern.js';
+import { armsOf, armIndex } from './parse-body.js';
 import svgSourceOf from './svg-source.js';
 import { isSpecialSelector } from '../lib/selector.js';
 import { hasEntries } from '../lib/type.js';
@@ -95,7 +96,7 @@ const Node = {
     },
 };
 
-const COPIES = /\*\s*([1-9]\d*(?:x[1-9]\d*)?)\s*$/;
+const COPIES = /\*\s*([1-9]\d*(?:x[1-9]\d*)?|\d+-\d+)\s*$/;
 
 function repeat(count, values) {
     return { type: 'func', name: '@M', arguments: [Node.argument([Node.text(count)]), Node.argument(values)] };
@@ -1340,8 +1341,8 @@ function valueCall(name, def, args, defs, ctx, chain) {
         let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
             if (type == 'block' && name == 'match') {
                 let id = `${ret}_${++blocks}`;
-                arms = arms?.filter(a => a.type == 'arm') || [{ test: args, value }];
-                return `${id}: match(${arms.map(({ test }, k) => test == 'else' ? '' : `(${test}), ${k + 1}, `).join('')}${arms.findIndex(a => a.test == 'else') + 1});\n`
+                arms = armsOf(arms, message => warn(ctx, message));
+                return `${id}: ${armIndex(arms)};\n`
                     + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
             }
             if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;

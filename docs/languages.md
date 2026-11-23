@@ -165,8 +165,9 @@ attribute replacing its own and a command running after its own:
 `circle#hole { scale: .2 } subtract { circle; #hole { move: .5 0 } }`.
 A name may be used before it is given, and the last one given wins.
 
-**Copies.** `name*N` or `name*XxY` repeats a shape or group. Each copy
-sees `n` from 1, `N`, and `nx`, `ny` across the grid, and runs its `@`
+**Copies.** `name*N`, `name*XxY` or `name*A-B` repeats a shape or
+group. Each copy sees `n` from 1, or from `A` up or down to `B` as in
+`@svg`, `N`, and `nx`, `ny` across the grid, and runs its `@`
 functions anew: `circle*6 { scale: .2; move: 0 -.6; rotate: n * 60 }`
 rings the center.
 

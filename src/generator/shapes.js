@@ -2,7 +2,7 @@ import parseValueGroup from '../parser/parse-value-group.js';
 import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands, { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS } from '../parser/parse-shape-commands.js';
-import { reads } from '../parser/parse-body.js';
+import { used } from '../parser/parse-body.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
@@ -521,7 +521,7 @@ export const shapeWarnings = memo((input, paint) => {
     };
     walk(root);
     for (let name of names) {
-        if (/^[a-zA-Z_][\w-]*$/.test(name) && !/^match_\d+_$/.test(name) && !KNOWN.has(name) && !(paint && (PAINT.test(name) || name == 'padding')) && !reads(input, name)) warn(`unused ${name}`);
+        if (/^[a-zA-Z_][\w-]*$/.test(name) && !KNOWN.has(name) && !(paint && (PAINT.test(name) || name == 'padding')) && !used(input, name)) warn(`unused ${name}`);
     }
     return list;
 });

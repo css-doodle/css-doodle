@@ -278,13 +278,12 @@ test('px is one CSS pixel in pos units, read from u_px only when used', () => {
     assert.deepEqual(messages, []);
 });
 
-test('deg and turn are angles in radians, as in @scene, declared only when read', () => {
+test('deg and turn are angles in radians, as in @scene, unless a variable of the name hides them', () => {
     let messages = [];
     let s = draw('q: rot(pos, 45deg); fill: q.x, cos(.5turn), 0', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, []);
-    assert.match(s, /float deg = PI \/ 180\.0, turn = 2\.0 \* PI;[\s\S]*rot\(pos, \(45\.0 \* deg\)\)[\s\S]*cos\(\(\.5 \* turn\)\)/);
-    assert.doesNotMatch(shader('fill: length(pos)'), /float deg/);
-    assert.doesNotMatch(shader('deg: 2; fill: deg, 0, 0'), /float deg/);
+    assert.match(s, /rot\(pos, \(45\.0 \* \(PI \/ 180\.0\)\)\)[\s\S]*cos\(\(\.5 \* \(2\.0 \* PI\)\)\)/);
+    assert.match(main('deg: 2; fill: deg, 0, 0'), /float (g_\d+) = 2\.0;[\s\S]*vec3\(\1, /);
 });
 
 test('a later fill with alpha paints over the one before it', () => {

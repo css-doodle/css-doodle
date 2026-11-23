@@ -597,6 +597,9 @@ test('a match block draws its rows where its test holds', () => {
     assert.equal(shape('points: 5; r: 1; match(1 < 0) { r: .5 }'), shape('points: 5; r: 1'));
     assert.equal(shape('union { circle*2 { scale: .2; match(n > 1) { move: .5 0 } } }'), shape('union { circle { scale: .2 } circle { scale: .2; move: .5 0 } }'));
     assert.deepEqual(shapeWarnings('points: 5; match(i > 2) { r: .5 }'), ['r needs a value first']);
+    // arms are checked as in @pattern
+    assert.deepEqual(shapeWarnings('r: 1; match { else { r: .5 } i > 1 { r: .2 } }'), ['else goes last']);
+    assert.deepEqual(shapeWarnings('r: 1; match { r: .5; i > 1 { r: .2 } }'), ['arm needs test']);
 });
 
 test('a row that runs into the next row or shape is reported', () => {

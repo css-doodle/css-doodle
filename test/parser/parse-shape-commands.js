@@ -60,12 +60,14 @@ test('several names take a part each, as move does, or all the whole value', () 
 });
 
 test('a match block becomes rows that read its arm, the values before it, or a step that does nothing', () => {
-    assert.deepEqual(parseShapeCommands('r: 1; match(i > 2) { r: .5 }'), { r: 'match(match_1_ == 1,.5,1)', match_1_: 'match(((i > 2)),1,0)' });
+    assert.deepEqual(parseShapeCommands('r: 1; match(i > 2) { r: .5 }'), { r: 'match(match_1_ == 1,.5,1)', match_1_: 'match((i > 2),1,0)' });
     let steps = parseShapeCommands('match { n == 1 { move: 0 .5 } n == 2 { rotate: 30 } else { scale: 2 } }');
     assert.equal(steps.match_1_, 'match((n == 1),1,(n == 2),2,3)');
     assert.deepEqual(steps.steps, [['move', 'match(match_1_ == 1,0,0) match(match_1_ == 1,.5,0)'], ['rotate', 'match(match_1_ == 2,30,0)'], ['scale', 'match(match_1_ == 3,2,1)']]);
     // a single value fills every part of the one before it
     assert.equal(parseShapeCommands('size: 1 2; match(k) { size: 3 }').size, 'match(match_1_ == 1,3,1) match(match_1_ == 1,3,2)');
+    // an arm's head is its test whole, `*3` is no copy count there
+    assert.equal(parseShapeCommands('r: 1; match { n > 2*3 { r: .5 } }').match_1_, 'match((n > 2*3),1,0)');
 });
 
 test('a group block keeps its shapes as text and takes commands of its own', () => {
@@ -91,6 +93,10 @@ test('name*N repeats a shape or a group, each copy with n, N, nx and ny', () => 
     // across a grid, row by row
     assert.deepEqual(parseShapeCommands('union { circle*2x2 }').blocks.items[0].blocks.items.map(s => s.split(';').slice(1).join(' ')),
         ['n:1 N:4 nx:1 ny:1', 'n:2 N:4 nx:2 ny:1', 'n:3 N:4 nx:1 ny:2', 'n:4 N:4 nx:2 ny:2']);
+    // a range counts n from its first, either way, as @svg's `*2-4` does
+    assert.deepEqual(parseShapeCommands('union { circle*2-4 }').blocks.items[0].blocks.items.map(s => s.split(';').slice(1).join(' ')),
+        ['n:2 N:3 nx:2 ny:1', 'n:3 N:3 nx:3 ny:1', 'n:4 N:3 nx:4 ny:1']);
+    assert.deepEqual(parseShapeCommands('union { circle*3-2 }').blocks.items[0].blocks.items.map(s => s.split(';')[1]), ['n:3', 'n:2']);
     // a body of `{…}` blocks gives each copy its own, as copies holding @ functions read
     let own = parseShapeCommands('union { circle*2 {{ move: 1 0 } { move: 2 0 }} union*2 {{ circle } { star }} }').blocks.items[0].blocks.items;
     assert.deepEqual(own.slice(0, 2), ['circle;move:1 0;n:1;N:2;nx:1;ny:1', 'circle;move:2 0;n:2;N:2;nx:2;ny:1']);

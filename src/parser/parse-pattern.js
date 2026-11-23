@@ -1,49 +1,23 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
-import { parseBody, readRaw, readValue } from './parse-body.js';
-
-// `match(x > y)` → { name, args }: one word, then its parens; anything
-// else but stray closing parens makes it no selector
-function parseSelector(tokens) {
-    let open = tokens.findIndex(t => t.isSymbol('('));
-    let [word, ...rest] = (open < 0 ? tokens : tokens.slice(0, open)).filter(t => !t.isSpace());
-    if (!word?.isWord() || rest.length) return null;
-    let args = [];
-    if (open >= 0) {
-        let close = open + 1;
-        for (let depth = 1; close < tokens.length && depth; ++close) {
-            depth += tokens[close].isSymbol('(') - tokens[close].isSymbol(')');
-        }
-        if (tokens.slice(close).some(t => !t.isSpace() && !t.isSymbol(')'))) return null;
-        let inner = tokens.slice(open + 1, tokens[close - 1].isSymbol(')') ? close - 1 : close);
-        args = itemsOf(inner).map(textOf);
-    }
-    return { name: word.value, args };
-}
-
-function readArm(iter, head) {
-    return [parseBody(iter, { type: 'arm', test: textOf(head), value: [] }, pattern)];
-}
+import { parseBody, readRaw, readValue, namesOf, rowsOf, callOf, readMatch } from './parse-body.js';
 
 function readMatchBlocks(iter, head) {
     let name = textOf(head);
     if (/^texture\w*$/.test(name)) {
         return [{ type: 'texture', name, value: textOf(readRaw(iter)) }];
     }
-    if (head.length === 1 && head[0].value === 'match') {
-        let { value } = parseBody(iter, {}, { readBlocks: readArm, readStatement: readPatternStatement, readTail });
-        return [{ type: 'block', name: 'match', arms: value }];
-    }
-    let selector = parseSelector(head);
-    if (!selector) {
+    let match = readMatch(iter, head, pattern);
+    if (match) return [match];
+    let call = callOf(head);
+    if (!call) {
         readRaw(iter);
         return readTail([...head, { value: ' {}' }]);
     }
-    return [parseBody(iter, { type: 'block', ...selector, value: [] }, pattern)];
+    return [parseBody(iter, { type: 'block', name: call.name, args: call.inner ? itemsOf(call.inner).map(textOf) : [], value: [] }, pattern)];
 }
 
 function readPatternStatement(iter, head) {
-    let value = readValue(iter), names = itemsOf(head).map(textOf), parts = names.length > 1 && itemsOf(value);
-    return names.map((name, i) => ({ type: 'statement', name, value: textOf(parts.length == names.length ? parts[i] : value) }));
+    return rowsOf(namesOf(head), readValue(iter), itemsOf).map(({ name, value }) => ({ type: 'statement', name, value: textOf(value) }));
 }
 
 function readTail(head) {

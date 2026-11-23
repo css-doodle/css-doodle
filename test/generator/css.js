@@ -1006,6 +1006,8 @@ test('@scene copies holding @ functions repeat their body per copy, like @svg', 
     assert.equal(Object.values(patterns)[0].source,
         'box { size: 1 1 1 } sphere*2x2 {{ r: 1 1; move: n 0 0 } { r: 2 1; move: n 0 0 } ' +
         '{ r: 1 2; move: n 0 0 } { r: 2 2; move: n 0 0 }} cone*2 { r: .1 }');
+    // a range counts from its first, as @n does
+    assert.equal(Object.values(compile('background: @scene(sphere*2-4 { r: @n });').patterns)[0].source, 'sphere*2-4 {{ r: 2 } { r: 3 } { r: 4 }}');
 });
 
 test('outside its copies a @scene picks, plots and samples noise per cell, like CSS', () => {

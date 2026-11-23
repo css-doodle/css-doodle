@@ -1,6 +1,6 @@
 import { scan, iterator, textOf, itemsOf, Token } from './tokenizer.js';
 import parseValueGroup from './parse-value-group.js';
-import { parseBody, readRaw } from './parse-body.js';
+import { parseBody, readRaw, namesOf, rowsOf, readMatch } from './parse-body.js';
 import { adjustName } from '../lib/svg.js';
 
 // the ';' of `&amp;` or `&#x27;` belongs to the value, not the statement
@@ -143,11 +143,10 @@ function readStyleBlock(iter, groups) {
 
 // the head as svg selectors: `g circle, rect*3 {`, `style {`; or `@match(test) {`
 function readSvgBlocks(iter, head) {
-    let match = /^@\s*match\s*\((.*)\)$/s.exec(textOf(head).trim());
+    let match = head[0]?.isSymbol('@') && readMatch(iter, head.slice(1), svg, false);
     if (match) {
-        let block = parseBody(iter, makeBlock('match'), svg);
-        block.test = match[1].trim();
-        return [block];
+        let [{ test, value }] = match.arms;
+        return [{ ...makeBlock('match', value), test }];
     }
     // `Style {}` is the style block too
     let groups = getSelectorGroups(head).map(group => group.map(s => /^style$/i.test(s) ? 'style' : s));
@@ -168,46 +167,40 @@ function readSvgStatement(iter, head) {
     if (prev && next && /^(xlink:(actuate|arcrole|href|role|show|title|type)|xml:(base|lang|space))$/i.test(prev.value + ':' + next.value)) {
         return null;
     }
-    let props = itemsOf(head).map(t => textOf(t).trim());
+    let names = namesOf(head);
     let statement = {
         type: 'statement',
-        name: props[0],
+        name: names[0],
         value: ''
     };
     let valueTokens = readStatement(iter, statement);
-    if (props.length > 1 && !props.some(p => p.startsWith('--'))) {
-        statement.origin = { name: props, value: statement.value };
+    if (names.length > 1 && !names.some(p => p.startsWith('--'))) {
+        statement.origin = { name: names, value: statement.value };
     }
-    let groupedValue = props.length > 1 ? parseValueGroup(statement.value) : null;
-    let expand = !!groupedValue && groupedValue.length === props.length;
-    let shared = props.length > 1 && !expand && typeof statement.value === 'string'
-        && props.find(p => p.startsWith('--'));
+    let rows = rowsOf(names, statement.value, parseValueGroup);
+    let shared = rows.length > 1 && rows.every(r => r.value === statement.value) && typeof statement.value === 'string'
+        && names.find(p => p.startsWith('--'));
     if (shared) {
-        props = [shared, ...props.filter(p => p !== shared)];
+        rows = [rows.find(r => r.name === shared), ...rows.filter(r => r.name !== shared)];
     }
-
-    let rules = [];
-    for (let i = 0; i < props.length; ++i) {
-        let prop = props[i];
-        let item = props.length === 1 ? statement : { ...statement };
-        item.name = prop;
-        if (prop.startsWith('--')) {
+    return rows.map(({ name, value }, i) => {
+        let item = rows.length === 1 ? statement : { ...statement };
+        item.name = name;
+        item.value = value;
+        if (name.startsWith('--')) {
             item.variable = true;
-        } else if (!prop.includes('--')) {
+        } else if (!name.includes('--')) {
             // custom properties keep their case
-            item.name = adjustName(prop);
+            item.name = adjustName(name);
         }
-        if (expand) {
-            item.value = groupedValue[i];
-        } else if (shared && i) {
+        if (shared && i) {
             item.from = shared;
         }
         if (item.name === 'viewBox') {
             item.detail = parseViewBox(valueTokens);
         }
-        rules.push(item);
-    }
-    return rules;
+        return item;
+    });
 }
 
 function readSvgTail(head, last) {

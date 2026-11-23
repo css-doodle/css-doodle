@@ -42,6 +42,13 @@ test('a - before a name negates each part, and only the angle of a rotate, as in
     assert.match(body, /g_\d+ - vec3\(\(-1\.0 \* \.1\), \(-1\.0 \* \.2\), \(-1\.0 \* 0\.0\)\)/);
 });
 
+test('a range of copies counts n from its first, either way', () => {
+    let loop = code => scene(code).body.match(/float g_\d+ = float\(g_\d+[^\n]*/)[0];
+    assert.match(loop('sphere*2-4 { r: .05n }'), /= float\((g_\d+) \* 1 \+ 2\), g_\d+ = float\(\1 % 3 \* 1 \+ 2\), g_\d+ = float\(\1 \/ 3 \+ 1\);/);
+    assert.match(loop('sphere*4-2 { r: .05n }'), /= float\((g_\d+) \* -1 \+ 4\)/);
+    assert.match(loop('sphere*3 { r: .05n }'), /= float\((g_\d+) \+ 1\), g_\d+ = float\(\1 % 3 \+ 1\)/);
+});
+
 test('several names set a variable each', () => {
     let one = scene('a, b: .5, 2; sphere { k, m: .1 .2; r: a * b * k * m }');
     assert.deepEqual(one.warnings, []);

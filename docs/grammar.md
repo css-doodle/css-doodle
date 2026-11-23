@@ -502,7 +502,7 @@ match          = 'match' '(' expression ')' '{' { row } '}'
 head           = kind [ '#' id ] [ copies ] | kind copies '#' id | '#' id [ copies ]
 kind           = group | shape-name [ arguments ] | '(' body ')'
 group          = 'union' | 'subtract' | 'intersect' | 'exclude'
-copies         = '*' count [ 'x' count ]
+copies         = '*' count [ ( 'x' | '-' ) count ]
 ```
 
 `@shape`, `@plot`, `@tile` and `@svg-polygon` read this body as 2D

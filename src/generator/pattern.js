@@ -1,5 +1,5 @@
 import parsePattern from '../parser/parse-pattern.js';
-import { reads } from '../parser/parse-body.js';
+import { used, armsOf } from '../parser/parse-body.js';
 import parseGrid from '../parser/parse-grid.js';
 import parseValueGroup from '../parser/parse-value-group.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
@@ -8,7 +8,7 @@ import { glsl } from '../lib/tagged-template.js';
 const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
-const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px deg turn'.split(' ');
+const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos t size px'.split(' ');
 
 export const NAME = /^[a-zA-Z_]\w*$/;
 
@@ -354,11 +354,9 @@ function generateRepeat(token, scope, ctx, opts) {
 
 function generateMatch(arms, scope, ctx, opts) {
     let out = '';
-    for (let [k, { type, test, value }] of arms.entries()) {
+    for (let { test, value } of armsOf(arms, ctx.warn)) {
         let isElse = test === 'else';
-        if (type !== 'arm' || !test) ctx.warn('arm needs test');
-        else if (isElse && k < arms.length - 1) ctx.warn('else goes last');
-        else if (isElse || (test = expr(test, scope, ctx).code('bool'))) {
+        if (isElse || (test = expr(test, scope, ctx).code('bool'))) {
             let body = generateBody(value, newScope(scope), ctx, { ...opts, branched: true });
             out += (out ? ' else ' : '') + (isElse ? '' : `if (${test}) `) + `{\n${body}}`;
         }
@@ -403,13 +401,6 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             out += generateRepeat(t, scope, ctx, opts);
         } else if (t.arms) {
             out += generateMatch(t.arms, scope, ctx, opts);
-        } else if (t.name === 'match') {
-            let args = t.args.filter(Boolean);
-            if (args.length === 1) {
-                out += generateMatch([{ type: 'arm', test: `(${args[0]})`, value: t.value }], scope, ctx, opts);
-            } else {
-                ctx.warn('match() needs expr');
-            }
         } else {
             ctx.warn(t.name === 'else' ? 'else needs match' : `unknown block ${t.name}`);
         }
@@ -430,7 +421,7 @@ function generateShader({ grid, body, masked }) {
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
         float i = x + (y - 1.0) * X;
-        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}${/(?<![\w.])(deg|turn)\b/.test(body) ? ' float deg = PI / 180.0, turn = 2.0 * PI;' : ''}
+        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
         float size = 1.0;
@@ -455,7 +446,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
     try { body = generateBody(tokens, newScope(), ctx, { top: true }); }
     catch (e) { warn(e.message); }
     for (let name of ctx.declared) {
-        if (!/^\w+_\d+_/.test(name) && !reads(code, name)) warn(`unused ${name}`);
+        if (!used(code, name)) warn(`unused ${name}`);
     }
     let fragment = generateShader({
         grid: parseGrid(grid, Infinity),

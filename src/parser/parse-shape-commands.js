@@ -1,12 +1,12 @@
-import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
-import { parseBody, readValue } from './parse-body.js';
+import { scan, iterator, textOf } from './tokenizer.js';
+import { parseBody, readValue, namesOf, rowsOf, readMatch, armsOf, armIndex } from './parse-body.js';
 import parseValueGroup from './parse-value-group.js';
 
 // The language @shape and @scene share:
 //
 //   body  = { row | shape }
 //   row   = name ':' value [ ';' ]
-//   shape = [ name ] [ '#' id ] [ '*' count [ 'x' count ] ] [ '{' body '}' ]
+//   shape = [ name ] [ '#' id ] [ '*' count [ ( 'x' | '-' ) count ] ] [ '{' body '}' ]
 
 const GROUPS = ['union', 'subtract', 'intersect', 'exclude'];
 const STEPS = ['move', 'rotate', 'scale', 'grow', 'frame', 'mirror'];
@@ -14,15 +14,16 @@ const SEMICOLON = scan(';')[0];
 // what a step does when its match test fails
 const NONE = { __proto__: null, move: '0', rotate: '0', scale: '1', grow: '0', twist: '0' };
 
-// `circle#dot*2x3` or `circle*2x3#dot` → { name: 'circle', id: 'dot', count: [2, 3] }
+// `circle#dot*2x3` or `circle*2x3#dot` → { name: 'circle', id: 'dot', count: [2, 3] };
+// a range `*2-4` counts [3, 1] from 2 by 1, as `@M(2-4, …)` does
 function shapeOf(text, value, lower) {
-    let [, name, id, x, y = 1, after] = text.match(/^([^]*?)(?:#([\w-]+))?(?:\s*\*\s*(\d+)(?:\s*x\s*(\d+))?)?(?:#([\w-]+))?$/);
-    let count = x ? [+x, +y] : 0;
+    let [, name, id, x, range, y = 1, after] = text.match(/^([^]*?)(?:#([\w-]+))?(?:\s*\*\s*(\d+)(?:\s*([x-])\s*(\d+))?)?(?:#([\w-]+))?$/);
+    let count = !x ? 0 : range == '-' ? [Math.abs(y - x) + 1, 1, +x, +x <= +y ? 1 : -1] : [+x, +y];
     id ||= after;
     let node = { name, id, count, rows: [], children: [] };
     for (let r of value) {
         // copy blocks: `circle*2 {{ … } { … }}`
-        if (lower && r.rows && /^match\b/.test(r.name)) lower(node, r);
+        if (lower && r.arms) lower(node, r);
         else if (count && r.copy) (node.copies ||= []).push(r);
         else if (r.rows) node.children.push(r);
         else node.rows.push(r);
@@ -77,9 +78,8 @@ function readShapes(input, warn = () => {}, options) {
     let bare = head => Object.assign(shapeOf(head, []), { bare: true });
     // `match(test) { r: .2 }` becomes `r: match(test, .2, r before)`; a step not taken does nothing
     let lower = (node, m) => {
-        let arms = m.name == 'match' ? m.children.map(c => [c.name, c]) : [[m.name.slice(5), m]];
-        let id = `match_${++blocks}_`, other = arms.findIndex(([t]) => t == 'else') + 1;
-        node.rows.push({ name: id, value: scan(`match(${arms.map(([t], k) => t == 'else' ? '' : `(${t}), ${k + 1}, `).join('')}${other})`) });
+        let valid = armsOf(m.arms, warn), id = `match_${++blocks}_`, arms = valid.map(a => [a.test, shapeOf('', a.value, lower)]);
+        node.rows.push({ name: id, value: scan(armIndex(valid)) });
         if (arms.some(([, a]) => a.children.length)) warn('shapes in match');
         for (let name of new Set(arms.flatMap(([, a]) => a.rows.map(r => r.name)))) {
             let texts = arms.map(([, a]) => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
@@ -98,9 +98,14 @@ function readShapes(input, warn = () => {}, options) {
     };
     let reader = {
         readBlocks(iter, head) {
-            let parts = split(head), block = parts.pop();
             // leftovers glue only to a row of their own block
             last = null;
+            let match = readMatch(iter, head, reader);
+            if (match) {
+                last = null;
+                return [match];
+            }
+            let parts = split(head), block = parts.pop();
             let node = shapeOf(block, parseBody(iter, {}, reader).value, lower);
             last = null;
             return [...parts.map(bare), node];
@@ -115,14 +120,12 @@ function readShapes(input, warn = () => {}, options) {
                     break;
                 }
             }
-            let names = itemsOf(head).map(n => textOf(n).trim()), parts = names.length > 1 && partsOf(textOf(value));
-            return names.map((name, i) => {
-                let own = parts.length == names.length ? scan(parts[i]) : value;
+            return rowsOf(namesOf(head), value, v => partsOf(textOf(v)).map(p => scan(p))).map(({ name, value }) => {
                 if (/^-[^-]/.test(name)) {
                     name = name.slice(1).trim();
-                    if (textOf(own).trim() && !name.startsWith('fill')) own = scan(negate(name, textOf(own)));
+                    if (textOf(value).trim() && !name.startsWith('fill')) value = scan(negate(name, textOf(value)));
                 }
-                return last = { name, value: own };
+                return last = { name, value };
             });
         },
         // a bare name is a shape, anything else belongs to the row before it
@@ -188,6 +191,9 @@ function commandsOf(node) {
     return commands;
 }
 
+// copy i of a count: n from the first, nx and ny across the grid
+const copyOf = ([X, Y, first = 1, step = 1], i) => ({ n: first + i * step, N: X * Y, nx: first + i % X * step, ny: (i / X | 0) + 1 });
+
 function member(node) {
     let body = n => GROUPS.includes(n.name) || n.children.length
         ? commandsOf(n)
@@ -195,7 +201,7 @@ function member(node) {
     if (!node.count) return [body(node)];
     let [X, Y] = node.count, list = node.copies || Array(X * Y).fill(node);
     return list.slice(0, X * Y).map((c, i) => {
-        let v = { n: String(i + 1), N: String(X * Y), nx: String(i % X + 1), ny: String((i / X | 0) + 1) }, b = body(c);
+        let v = Object.fromEntries(Object.entries(copyOf(node.count, i)).map(([k, n]) => [k, String(n)])), b = body(c);
         return typeof b == 'string' ? b + ';' + Object.entries(v).map(e => e.join(':')).join(';') : { ...b, ...v };
     });
 }
@@ -207,5 +213,5 @@ function parse(input) {
     return commandsOf(root);
 }
 
-export { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS };
+export { readShapes, commandsOf, copyOf, spaced, partsOf, degrees, GROUPS };
 export default parse;

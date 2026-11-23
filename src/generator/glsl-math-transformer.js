@@ -30,6 +30,8 @@ const ALIAS = {
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const GLSL_NAMES = new Set(['PI', 'true', 'false']);
+// angles in radians, unless a variable of the name hides them: `rot(p, 45deg)`
+const CONSTANTS = { __proto__: null, deg: '(PI / 180.0)', turn: '(2.0 * PI)' };
 const COLOR_CALL = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)$/i;
 const INT_OPS = new Set(['&', '|', '<<', '>>']);
 const VEC_COMPARE = {
@@ -129,7 +131,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
     function variable(val) {
         const dot = val.indexOf('.');
         const head = dot > 0 ? val.slice(0, dot) : val;
-        const id = names?.[head];
+        const id = names?.[head] || CONSTANTS[head];
         const v = !id && !types[head] && !GLSL_NAMES.has(head) && unknown?.(head);
         const lits = v && v.map(c => ({ type: 'Lit', val: String(c) }));
         if (v?.length === 1) return dot > 0 ? { type: 'Call', val: swizzle(val), args: lits } : lits[0];

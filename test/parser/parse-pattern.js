@@ -5,6 +5,7 @@ import parsePattern from '../../src/parser/parse-pattern.js';
 
 const block = (name, args = [], value = []) => ({ type: 'block', name, args, value });
 const statement = (name, value) => ({ type: 'statement', name, value });
+const match = (test, value = []) => ({ type: 'block', name: 'match', arms: [{ type: 'arm', test, value }] });
 
 test('statements', () => {
     assert.deepEqual(parsePattern('color: red'), [statement('color', 'red')]);
@@ -18,12 +19,14 @@ test('several names take a value each, or all the whole value', () => {
     assert.deepEqual(parsePattern('p.x, p.y: 1, 2'), [statement('p.x', '1'), statement('p.y', '2')]);
     assert.deepEqual(parsePattern('a, b: 0'), [statement('a', '0'), statement('b', '0')]);
     assert.deepEqual(parsePattern('a, b: 1, 2, 3'), [statement('a', '1,2,3'), statement('b', '1,2,3')]);
+    // a space before the colon is no part of the name, as in the other languages
+    assert.deepEqual(parsePattern('k : 1'), [statement('k', '1')]);
 });
 
 test('blocks with argument lists', () => {
-    assert.deepEqual(parsePattern('match(x>y) {}'), [block('match', ['x>y'])]);
+    assert.deepEqual(parsePattern('match(x>y) {}'), [match('x>y')]);
     // commas inside calls belong to the argument
-    assert.deepEqual(parsePattern('match(atan(y, x) > 3) {}'), [block('match', ['atan(y,x) > 3'])]);
+    assert.deepEqual(parsePattern('match(atan(y, x) > 3) {}'), [match('atan(y,x) > 3')]);
 });
 
 test('match {} holds arms, each head is its test', () => {
@@ -39,7 +42,7 @@ test('match {} holds arms, each head is its test', () => {
     `), [
         { type: 'block', name: 'match', arms: [
             arm('x > y', [statement('color', 'red')]),
-            arm('mod(x,2) == 0', [block('match', ['y>1'])]),
+            arm('mod(x,2) == 0', [match('y>1')]),
             arm('else', [statement('color', 'blue')]),
         ] },
         statement('color', 'red'),
@@ -57,12 +60,12 @@ test('line comments are whitespace, a head without a colon is text', () => {
     assert.deepEqual(parsePattern('texture { background: url(https://a/b.png) }'), [{ type: 'texture', name: 'texture', value: 'background:url(https://a/b.png)' }]);
     assert.deepEqual(parsePattern('fill #fff; k = 1'), [{ type: 'text', value: 'fill #fff' }, { type: 'text', value: 'k = 1' }]);
     assert.deepEqual(parsePattern('fill: red; k = 1; size: .5'), [statement('fill', 'red'), { type: 'text', value: 'k = 1' }, statement('size', '.5')]);
-    assert.deepEqual(parsePattern('match(x) { fill: red; junk }'), [block('match', ['x'], [statement('fill', 'red'), { type: 'text', value: 'junk' }])]);
+    assert.deepEqual(parsePattern('match(x) { fill: red; junk }'), [match('x', [statement('fill', 'red'), { type: 'text', value: 'junk' }])]);
 });
 
 test('an extra closing paren does not break the block', () => {
-    assert.deepEqual(parsePattern('match()) {}'), [block('match')]);
-    assert.deepEqual(parsePattern('match(1)) {}'), [block('match', ['1'])]);
+    assert.deepEqual(parsePattern('match()) {}'), [match('')]);
+    assert.deepEqual(parsePattern('match(1)) {}'), [match('1')]);
 });
 
 test('statements and blocks nest', () => {
@@ -73,7 +76,7 @@ test('statements and blocks nest', () => {
         }
     `), [
         statement('color', 'red'),
-        block('match', ['x>y'], [statement('color', 'blue')]),
+        match('x>y', [statement('color', 'blue')]),
     ]);
 });
 
