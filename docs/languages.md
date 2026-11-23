@@ -141,7 +141,9 @@ center. A preset's own steps come first. Other rows are
 attributes; the last one wins. `y` points up, and `rotate` turns
 counterclockwise in degrees (`.25turn` is 90), but a call such as
 `sin(90deg)` takes radians. `mirror: x y` keeps the shape and its
-reflections across those axes as one shape.
+reflections across those axes as one shape. A `-` before a name
+negates each part of its value, and only the angle of a `rotate`:
+`-move: .5 0`, `-rotate: y 30`; not on `fill` or `fill-rule`.
 
 **Groups.** `union`, `subtract` and `intersect` join whole shapes;
 `subtract` takes the rest from the first, so
@@ -185,8 +187,7 @@ may instead list the corners as `x y` pairs:
 
 **Values.** `points`, `rotate`, `round`, `frame`, `turn` and each part
 of `move` and `scale` read like variables: a unit drops (`20px` is 20)
-and `points: 4n` is worked out, the fraction cut off. A `-` before a
-command name negates every part of its value, except on `fill-rule`.
+and `points: 4n` is worked out, the fraction cut off.
 
 **Contour lists.** A `,` in `points`, `r`, `t`, `x`, `y`, `rotate` or
 `grow` draws one contour per item, the way `background` takes layers:

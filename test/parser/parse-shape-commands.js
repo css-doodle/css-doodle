@@ -43,6 +43,10 @@ test('a leading - negates the value, except for dashed names', () => {
     assert.deepEqual(parseShapeCommands('--x: 10'), { '--x': '10' });
     assert.deepEqual(parseShapeCommands('-fill: evenodd'), { fill: 'evenodd' });
     assert.deepEqual(parseShapeCommands('-fill-rule: evenodd'), { 'fill-rule': 'evenodd' });
+    // each part, as move splits it, and of a rotate only the angle after its axis
+    assert.deepEqual(parseShapeCommands('-move: .5 0').move, '-1 * (.5) -1 * (0)');
+    assert.deepEqual(parseShapeCommands('-rotate: y 30').rotate, 'y -1 * (30)');
+    assert.deepEqual(parseShapeCommands('-rotate: 10, 20').rotate, '-1 * (10),-1 * (20)');
 });
 
 test('several names take a part each, as move does, or all the whole value', () => {

@@ -516,7 +516,7 @@ export const shapeWarnings = memo((input, paint) => {
     let walk = node => {
         let [name, ...args] = parseValueGroup(node.name), preset = presetShapes[name];
         if (preset) input += ';' + (typeof preset == 'function' ? preset(...args) : preset);
-        node.rows.forEach(r => names.add(r.name.replace(/^-(?!-)/, '')));
+        node.rows.forEach(r => names.add(r.name));
         [...node.copies || node.children, ...node.unused || []].forEach(walk);
     };
     walk(root);

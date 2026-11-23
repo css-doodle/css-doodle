@@ -44,6 +44,14 @@ function spaced(input) {
     return parts;
 }
 
+// `-x: sin(t)` negates the value, each part of `-move: .5 0`, the angle of `-rotate: y 30`; `-: 10` and dashed names like `--x` do not
+function negate(name, text) {
+    return parseValueGroup(text, { noSpace: true }).map(item => {
+        let parts = spaced(item);
+        return parts.map((v, i) => name != 'rotate' || i == parts.length - 1 ? `-1 * (${v})` : v).join(' ');
+    }).join(', ');
+}
+
 function partsOf(input) {
     let parts = parseValueGroup(input, { noSpace: true });
     return parts.length > 1 ? parts : spaced(input);
@@ -84,7 +92,14 @@ function readShapes(input, warn = () => {}, options) {
                 }
             }
             let names = itemsOf(head).map(n => textOf(n).trim()), parts = names.length > 1 && partsOf(textOf(value));
-            return names.map((name, i) => last = { name, value: parts.length == names.length ? scan(parts[i]) : value });
+            return names.map((name, i) => {
+                let own = parts.length == names.length ? scan(parts[i]) : value;
+                if (/^-[^-]/.test(name)) {
+                    name = name.slice(1).trim();
+                    if (textOf(own).trim() && !name.startsWith('fill')) own = scan(negate(name, textOf(own)));
+                }
+                return last = { name, value: own };
+            });
         },
         // a bare name is a shape, anything else belongs to the row before it
         readTail(head) {
@@ -137,15 +152,8 @@ function readShapes(input, warn = () => {}, options) {
 function commandsOf(node) {
     let commands = {};
     for (let { name, value } of node.rows) {
-        // `-x: sin(t)` negates the value, each part of `-move: .5 0`; `-: 10` and dashed names like `--x` do not
-        let negative = /^-[^-]/.test(name), text = textOf(value);
-        if (negative) name = name.slice(1).trim();
+        let text = textOf(value);
         if (name == 'steps' || name == 'blocks') continue;
-        if (negative && text && !name.startsWith('fill')) {
-            let items = parseValueGroup(text, { noSpace: true });
-            if ((name == 'move' || name == 'scale') && items.length < 2) items = spaced(text);
-            text = items.map(v => `-1 * (${v})`).join(', ');
-        }
         commands[name] = text;
         if (STEPS.includes(name)) (commands.steps ||= []).push([name, text]);
     }

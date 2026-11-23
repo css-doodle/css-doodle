@@ -35,6 +35,13 @@ test('sizes are attributes', () => {
     assert.match(scene('torus { r: .3 .05 }').body, /length\(p\.xz\) - \.3, p\.y\)\) - \.05/);
 });
 
+test('a - before a name negates each part, and only the angle of a rotate, as in @shape', () => {
+    let { body, warnings } = scene('box { size: .5; -move: .1 .2 0; -rotate: 1 1 0 30 }');
+    assert.deepEqual(warnings, []);
+    assert.match(body, /g_rotate\(p, vec3\(1\.0, 1\.0, 0\.0\), radians\(\(-1\.0 \* 30\.0\)\)\)/);
+    assert.match(body, /g_\d+ - vec3\(\(-1\.0 \* \.1\), \(-1\.0 \* \.2\), \(-1\.0 \* 0\.0\)\)/);
+});
+
 test('several names set a variable each', () => {
     let one = scene('a, b: .5, 2; sphere { k, m: .1 .2; r: a * b * k * m }');
     assert.deepEqual(one.warnings, []);
