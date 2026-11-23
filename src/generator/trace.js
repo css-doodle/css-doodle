@@ -1,8 +1,7 @@
 import parseSvgPath, { ARITY } from '../parser/parse-svg-path.js';
 import { memo } from '../lib/cache.js';
+import { cos, sin, atan2, sqrt, abs, min, max, ceil, PI } from '../lib/math.js';
 import { bounds, thin, area, mix, toPairs } from './polygon.js';
-
-const { cos, sin, atan2, sqrt, abs, min, max, ceil, PI } = Math;
 
 export const fontsLoading = new Set();
 

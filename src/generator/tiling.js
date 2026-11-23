@@ -1,11 +1,9 @@
 import seedrandom from '../lib/seedrandom.js';
-import { clamp, map2d } from '../lib/math.js';
+import { clamp, map2d, cos, sin, tan, asin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } from '../lib/math.js';
 import Perlin from '../lib/noise.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext, randomOf } from '../core/calc.js';
 import { mix, dist, lists, sum, perimeter, turn, insideTest, bridge, resample, keepers, scale, bounds, signed, area } from './polygon.js';
-
-const { cos, sin, tan, asin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;
 
 const SCATTER_SAMPLES = 16;
 const SCATTER_ROUNDS = 10;

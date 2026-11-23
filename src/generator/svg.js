@@ -2,13 +2,11 @@ import { nextId } from '../lib/fn.js';
 import { isNil, removeQuotes } from '../lib/type.js';
 import { NS, NSXLink, adjustName } from '../lib/svg.js';
 import parseValueGroup from '../parser/parse-value-group.js';
-import { fillStops } from '../lib/math.js';
+import { fillStops, ceil, abs, min, max, hypot, PI } from '../lib/math.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
 import { traceRings } from './trace.js';
 import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge, angle } from './polygon.js';
-
-const { ceil, abs, max, hypot, PI } = Math;
 
 const nextInlineId = nextId();
 
@@ -122,7 +120,7 @@ function ringsOf(tag, warn) {
     } else if (name === 'rect') {
         let x = n('x') || 0, y = n('y') || 0, w = n('width'), h = n('height'), [rx, ry] = radii(n('rx'), n('ry'));
         if (!(rx > 0 && ry > 0)) rx = ry = 0;
-        rx = Math.min(rx, w / 2), ry = Math.min(ry, h / 2);
+        rx = min(rx, w / 2), ry = min(ry, h / 2);
         let a = (x, y) => rx ? `A${rx} ${ry} 0 0 1 ${x} ${y}` : '';
         d = w > 0 && h > 0 ? `M${x + rx} ${y}H${x + w - rx}${a(x + w, y + ry)}V${y + h - ry}${a(x + w - rx, y + h)}H${x + rx}${a(x, y + h - ry)}V${y + ry}${a(x + rx, y)}Z` : '';
     }
@@ -186,7 +184,7 @@ function arcRun(ps, i, tol) {
         if (abs(turn) < 1.99 * PI) return [j, r, +(abs(turn) > PI), +(turn > 0)];
     };
     for (let step = 1, f; lo < hi - 1; step *= 2) {
-        let j = Math.min(i + 1 + step, n);
+        let j = min(i + 1 + step, n);
         if (!(f = fit(j))) { hi = j; break; }
         run = f, lo = j;
         if (j == n) break;

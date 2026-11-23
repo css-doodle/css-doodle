@@ -6,7 +6,7 @@ import { used } from '../parser/parse-body.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
-import { clamp, tidyNumber } from '../lib/math.js';
+import { clamp, tidyNumber, cos, sin, tan, atan2, sqrt, hypot, abs, min, max, round, PI } from '../lib/math.js';
 import { isEmpty, removeParens, removeQuotes } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext, evaluate, useRandom, randomOf } from '../core/calc.js';
@@ -18,8 +18,6 @@ import {
     conway, reacher, scatter, voronoi, colors, lattice, penrose, delaunay, border, tiles, shake, bend, inset, shrink, nearest, contains, pack, slice, centre, edges, noiseOf, PHI,
 } from './tiling.js';
 import { glyphs, pathRings } from './trace.js';
-
-const { cos, sin, tan, atan2, sqrt, hypot, abs, min, max, round, PI } = Math;
 
 function ngon(k, inner = cos(PI / k)) {
     let a = PI / k, x = cos(a) - inner, y = sin(a), l = sqrt(x * x + y * y);

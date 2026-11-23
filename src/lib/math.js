@@ -45,3 +45,5 @@ export function hash(str, seed = 0) {
     h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
     return 4294967296 * (2097151 & h2) + (h1>>>0);
 }
+
+export const { cos, sin, tan, asin, atan2, sqrt, hypot, log, ceil, floor, round, abs, min, max, PI } = Math;

@@ -1,4 +1,4 @@
-const { cos, sin, tan, atan2, sqrt, hypot, ceil, round, abs, min, max, PI } = Math;
+import { cos, sin, tan, atan2, sqrt, hypot, ceil, round, abs, min, max, PI } from '../lib/math.js';
 
 const BANDS = 256;
 const mix = ([ax, ay], [bx, by], t) => [ax + (bx - ax) * t, ay + (by - ay) * t];
