@@ -927,6 +927,12 @@ test('@tile op: and star: derive a tiling from a tiling', () => {
     assert.equal(tiles(Function.tile.grid, 'square; op: ds', 100).join(), cairo.join());
     // letters outside the operator set are skipped, so the seed letter of Wikipedia's `tQ` does no harm
     assert.equal(tiles(Function.tile.grid, 'square; op: tQ', 100).join(), tiles(Function.tile.grid, 'square; op: t', 100).join());
+    // the pieces each letter makes are counted, so a long derivation still fills close to its cells
+    for (let op of ['tdkt', 'bs', 'dktk']) {
+        let list = tiles(Function.tile.grid, `square; op: ${op}`, 300);
+        assert.ok(list.length > 270 && list.length <= 300, `${op} ${list.length}`);
+        assert.ok(covered(list), op);
+    }
     // five steps at most, the rightmost first
     assert.equal(tiles(Function.tile.hex, 'square; op: tddddd', 20).join(), tiles(Function.tile.hex, 'square; op: ddddd', 20).join());
     // faces keep their kind, then the corner pieces: octagons 1, squares 2
@@ -938,6 +944,8 @@ test('@tile op: and star: derive a tiling from a tiling', () => {
     assert.ok(covered(tiles(Function.tile.penrose, 'square; star: 54deg', 100)));
     assert.ok(covered(tiles(Function.tile.voronoi, 'square; op: t', 80)));
     assert.ok(covered(tiles(Function.tile.voronoi, 'square; op: d', 80)));
+    // uneven cells lose no piece
+    assert.ok(covered(tiles(Function.tile.voronoi, 'square; op: dd; density: x > .5', 200)));
 });
 
 test('scatter density: a formula in x and y (shape coordinates, y up) sets how many points land where', () => {

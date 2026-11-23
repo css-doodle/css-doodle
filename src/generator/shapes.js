@@ -6,7 +6,7 @@ import { used } from '../parser/parse-body.js';
 import { scan } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
-import { clamp, tidyNumber, cos, sin, tan, atan2, sqrt, hypot, abs, min, max, round, PI } from '../lib/math.js';
+import { clamp, tidyNumber, cos, sin, tan, atan2, sqrt, hypot, ceil, abs, min, max, round, PI } from '../lib/math.js';
 import { isEmpty, removeParens, removeQuotes } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 import calc, { defaultContext, evaluate, useRandom, randomOf } from '../core/calc.js';
@@ -416,6 +416,7 @@ function createShapePoints(props, lo, hi, raw) {
         let make = sides ? (box, bounds, s, half) => lattice(sides, box, bounds, s, shift, pair, half) : name == 'penrose' && penrose;
         let derive = (props.op || parseFloat(props.star)) && conway(props.op, props.star, name == 'cube' && faces3), cube = name == 'cube' && !derive;
         if (make) {
+            if (derive) derive.ratio = name == 'cube' ? 3 * derive.growth(4) : derive.growth(sides == 4 && (shift[0] % 1 || shift[1] % 1) ? 6 : sides || 4);
             let classes = sides == 4 ? 2 : 3, edge = !isEmpty(props.edge) && sides && !derive && !cube && edges(props, sides == 3, seed);
             let probes = [-1, -.5, 0, .5, 1], bulge = 0;
             if (edge) for (let e = 1; e <= classes; ++e) for (let x of probes) for (let y of probes) { let { f, g } = edge(e, x, y); bulge = max(bulge, ...f.map(abs), ...g.map(abs)); }
@@ -461,7 +462,7 @@ function createShapePoints(props, lo, hi, raw) {
             : scatter(screen, n, evenodd, seed, onScreen(density), relax).reverse().map(back);
         if (name == 'voronoi' && derive) {
             let [x0, y0, x1, y1] = box, w = x1 - x0, h = y1 - y0, fits = reacher(box, inside, 1, 1), pieces = [];
-            for (let n = count, i = 0; i < 5 && n >= 1; ++i) {
+            for (let n = ceil(1.1 * count / derive.growth(6)), i = 0; i < 5 && n >= 1; ++i) {
                 let at = sow(n).map(toScreen);
                 at = at.concat(...[[2 * x0, 1], [2 * x1, 1], [2 * y0, 0], [2 * y1, 0]].map(([m, a]) => at.map(([x, y]) => a ? [m - x, y] : [x, m - y])));
                 let cells = voronoi(at.map(p => p[0]), at.map(p => p[1]), x0 - w, y0 - h, x1 + w, y1 + h, 0), kinds = colors(cells);

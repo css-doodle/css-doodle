@@ -259,44 +259,80 @@ function conway(op, star, pre) {
     letters.length = min(letters.length, 5);
     star = parseFloat(star);
     if (star > 0 && star < 90) letters.push('*');
-    let fn = pieces => {
+    let fn = (pieces, box, unit) => {
         if (pre) pieces = pre(pieces);
-        for (let letter of letters) pieces = derive(pieces, letter, star * PI / 180);
+        letters.forEach((letter, j) => {
+            pieces = derive(pieces, letter, star * PI / 180);
+            if (box) pieces = pieces.filter(within(box, (letters.length - j) * unit));
+        });
         return pieces;
     };
-    return { rim: letters.length + 1, fn };
+    let growth = n => {
+        let vef = [n / 2 - 1, n / 2, 1];
+        for (let letter of letters) vef = GROWTH[letter](vef);
+        return vef[2];
+    };
+    return { rim: letters.length + 1, fn, growth };
+}
+
+const GROWTH = {
+    d: ([v, e, f]) => [f, e, v],
+    a: ([v, e, f]) => [e, 2 * e, v + f],
+    t: ([v, e, f]) => [2 * e, 3 * e, v + f],
+    k: ([v, e, f]) => [v + f, 3 * e, 2 * e],
+    e: ([v, e, f]) => [2 * e, 4 * e, v + e + f],
+    b: ([v, e, f]) => [4 * e, 6 * e, v + e + f],
+    s: ([v, e, f]) => [2 * e, 5 * e, v + 2 * e + f],
+    '*': ([v, e, f]) => [3 * e, 4 * e, v + f],
+};
+
+function within([x0, y0, x1, y1], m) {
+    return ([p]) => {
+        let [a, b, c, d] = bounds(p);
+        return a < x1 + m && c > x0 - m && b < y1 + m && d > y0 - m;
+    };
 }
 
 function derive(pieces, letter, angle) {
-    let eps = sqrt(area(pieces[0]?.[0] || [])) * 1e-7 || 1e-9, ids = new Map(), V = [], F = [], top = 0;
+    let eps = sqrt(area(pieces[0]?.[0] || [])) * 1e-7 || 1e-9, ids = new Map(), V = [], F = [], top = 0, M = 1;
     for (let [p, c, kind = 1] of pieces) {
         let f = [];
         for (let i = 0; i < p.length; i += 2) {
-            let key = round(p[i] / eps) + ' ' + round(p[i + 1] / eps), v = ids.get(key);
-            if (v === undefined) ids.set(key, v = V.length), V.push([p[i], p[i + 1]]);
-            if (v !== f.at(-1)) f.push(v);
+            let qx = round(p[i] / eps), qy = round(p[i + 1] / eps), row = ids.get(qx), v = row?.get(qy);
+            if (v === undefined) {
+                if (!row) ids.set(qx, row = new Map());
+                row.set(qy, v = V.length), V.push([p[i], p[i + 1]]);
+            }
+            if (v !== f[f.length - 1]) f.push(v);
         }
-        if (f[0] === f.at(-1)) f.pop();
-        if (f.length > 2) F.push([signed(p) < 0 ? f.reverse() : f, c, kind]), top = max(top, kind);
+        if (f[0] === f[f.length - 1]) f.pop();
+        if (f.length > 2) F.push([signed(p) < 0 ? f.reverse() : f, c, kind]), top = max(top, kind), M = max(M, f.length);
     }
     let n = V.length, half = new Map(), first = [], out = [];
     F.forEach(([f], k) => f.forEach((v, i) => {
-        half.set(v * n + f[(i + 1) % f.length], [k, i]);
-        first[v] ??= [k, i];
+        half.set(v * n + f[(i + 1) % f.length], k * M + i);
+        first[v] ??= k * M + i;
     }));
-    let id = (k, i) => F[k][0].at(i % F[k][0].length), at = (k, i) => V[id(k, i)];
-    let rings = first.map(([k, i], v) => {
-        let ring = [], k0 = k;
+    let id = (k, i) => { let f = F[k][0]; return f[(i + f.length) % f.length]; }, at = (k, i) => V[id(k, i)];
+    let rings = first.map((c, v) => {
+        let ring = [], k = c / M | 0, i = c % M, k0 = k;
         do {
-            ring.push([k, i]);
-            [k, i] = half.get(id(k, i + 1) * n + v) || [];
-            if (k === undefined) return;
-            ++i;
+            ring.push(k * M + i);
+            let e = half.get(id(k, i + 1) * n + v);
+            if (e === undefined) return;
+            k = e / M | 0, i = (e % M + 1) % F[k][0].length;
         } while (k != k0);
         return ring;
     });
-    let emit = (ps, kind) => out.push([ps.flat(2), kind]);
-    if (letter == 'd') rings.forEach(ring => ring && emit(ring.map(([k]) => F[k][1]), 1));
+    let emit = (ps, kind) => {
+        let p = [];
+        for (let q of ps) {
+            if (typeof q[0] == 'number') p.push(q[0], q[1]);
+            else for (let r of q) p.push(r[0], r[1]);
+        }
+        out.push([p, centre(p), kind]);
+    };
+    if (letter == 'd') rings.forEach(ring => ring && emit(ring.map(c => F[c / M | 0][1]), 1));
     else if (letter == 'k') F.forEach(([f, c, kind], k) => f.forEach((v, i) => emit([c, at(k, i), at(k, i + 1)], kind)));
     else {
         let pair = (k, i) => {
@@ -318,19 +354,21 @@ function derive(pieces, letter, angle) {
             let spin = j => { let [px, py] = at(k, j); px -= cx, py -= cy; return [cx + (px * cos(a) - py * sin(a)) * r, cy + (px * sin(a) + py * cos(a)) * r]; };
             return letter == 'b' ? [mix(spin(i), spin(i - 1), x), mix(spin(i), spin(i + 1), x)] : [w = spin(i), w];
         };
-        F.forEach(([f, , kind], k) => emit(f.map((v, i) => pair(k, i)), kind));
-        rings.forEach(ring => ring && emit(ring.map(([k, i]) => pair(k, i)), top + 1));
+        let pairs = F.map(([f], k) => f.map((v, i) => pair(k, i))), moved = (k, i) => pairs[k][i % pairs[k].length];
+        F.forEach(([, , kind], k) => emit(pairs[k], kind));
+        rings.forEach(ring => ring && emit(ring.map(c => pairs[c / M | 0][c % M]), top + 1));
         if ('esb'.includes(letter)) F.forEach(([f], k) => f.forEach((u, i) => {
-            let [g, j] = half.get(f[(i + 1) % f.length] * n + u) || [];
-            if (g < k) {
-                let [a, b, c, d] = [pair(k, i)[1], pair(k, i + 1)[0], pair(g, j)[1], pair(g, j + 1)[0]];
+            let e = half.get(f[(i + 1) % f.length] * n + u);
+            if (e < k * M) {
+                let g = e / M | 0, j = e % M;
+                let [a, b, c, d] = [moved(k, i)[1], moved(k, i + 1)[0], moved(g, j)[1], moved(g, j + 1)[0]];
                 if (letter != 's') emit([a, b, c, d], top + 2);
                 else if (dist(a, c) < dist(b, d)) emit([a, b, c], top + 2), emit([a, c, d], top + 2);
                 else emit([a, b, d], top + 2), emit([b, c, d], top + 2);
             }
         }));
     }
-    return out.map(([p, kind]) => [p, centre(p), kind]);
+    return out;
 }
 
 function delaunay(px, py, box, inside, count, gap) {
@@ -393,8 +431,8 @@ function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
     let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), space = (x1 - x0) * (y1 - y0);
     if (!(space > 0)) return [];
     let clear = ([p, [x, y]]) => inside(x, y) && p.every((v, i) => i & 1 || inside((v + x) / 2, (p[i + 1] + y) / 2));
-    let keep = pieces => pieces.filter(dots ? clear : reacher(box, inside, grow, derived));
-    let reaching = (s, half) => keep(make(box, [x0, y0, x1, y1], s, half, grow));
+    let test = dots ? clear : reacher(box, inside, grow, derived);
+    let reaching = (s, half) => make(box, [x0, y0, x1, y1], s, half, grow).filter(test);
     let hi = sqrt(space / count), fit = (size, hi, lo) => {
         let start = hi, got = size(hi).length;
         for (let i = 0; i < 30 && got > count; ++i) got = size(hi *= 1.25).length;
@@ -419,16 +457,22 @@ function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
         let best = fit(reaching, hi), other = half && fit(s => reaching(s, 1), hi), fill = p => p.cut || p.length > count ? 0 : p.length;
         return other && fill(other) - fill(best) >= min(sqrt(count) / 2, count / 20) ? other : best;
     }
-    let o = centre(box), [cx, cy] = o, { rim, fn } = derived, d = (rim + 3) * hi;
-    let near = ps => ps.filter(([, [x, y]]) => abs(x - cx) < 2 * hi && abs(y - cy) < 2 * hi).length;
-    let probe = make(box, [cx - d, cy - d, cx + d, cy + d], hi);
-    let s = hi * sqrt(near(fn(probe)) / near(probe) * reaching(hi).length / count || 1) / 1.25;
-    let [u0, v0, u1, v1] = [min(x0, cx), min(y0, cy), max(x1, cx), max(y1, cy)];
-    let pieces = fn(make(box, [x0 - rim * s, y0 - rim * s, x1 + rim * s, y1 + rim * s], s)).filter(([p]) => {
-        let [a, b, c, d] = bounds(p);
-        return a < u1 && c > u0 && b < v1 && d > v0;
-    });
-    return fit(t => keep(pieces.map(([p, c, kind]) => [scale(p, o, t / s), scale(c, o, t / s), kind])), s, s);
+    let o = centre(box), [cx, cy] = o, { rim, fn, ratio } = derived;
+    let s = hi * sqrt(ratio * reaching(hi).length / count || 1) / 1.25;
+    let span = [min(x0, cx), min(y0, cy), max(x1, cx), max(y1, cy)];
+    let pieces = fn(make(box, [x0 - rim * s, y0 - rim * s, x1 + rim * s, y1 + rim * s], s), span, s).filter(within(span, 0));
+    let bufs = pieces.map(([p]) => p.slice()), mids = pieces.map(() => [0, 0]);
+    let size = t => {
+        let f = t / s, kept = [];
+        for (let k = 0; k < pieces.length; ++k) {
+            let [p, c] = pieces[k], q = bufs[k], m = mids[k];
+            for (let i = 0; i < p.length; ++i) q[i] = o[i & 1] + (p[i] - o[i & 1]) * f;
+            m[0] = o[0] + (c[0] - o[0]) * f, m[1] = o[1] + (c[1] - o[1]) * f;
+            if (test([q, m])) kept.push(k);
+        }
+        return kept;
+    };
+    return fit(size, s, s).map(k => [bufs[k], mids[k], pieces[k][2]]);
 }
 
 function shake(pieces, n, seed) {
