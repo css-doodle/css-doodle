@@ -34,22 +34,11 @@ class Tag {
         this.body = [];
         this.attrs = Object.create(null);
     }
-    find(target) {
-        let id = target.attrs.id;
-        let name = target.name;
-        if (id !== undefined) {
-            return this.body.find(tag => tag.name === name && tag.attrs.id === id);
-        }
-    }
     findSpareDefs() {
         return this.body.find(n => n.name === 'defs' && !n.attrs.id);
     }
     append(tag) {
         this.body.push(tag);
-    }
-    merge(tag) {
-        Object.assign(this.attrs, tag.attrs);
-        this.body.push(...tag.body);
     }
     attr(name, value) {
         if (value === undefined) {
@@ -227,7 +216,7 @@ function transformViewBox(token, warn) {
     return `${x} ${y} ${w} ${h}`;
 }
 
-function timing(animate, value, warn) {
+function timing(animate, value, label, warn) {
     let times = [], repeatCount, fill, calcMode, spline;
     for (let word of parseValueGroup(value)) {
         if (word === 'infinite' || word === 'indefinite') {
@@ -254,6 +243,7 @@ function timing(animate, value, warn) {
     }
     let [dur, begin] = times;
     if (dur) animate.attr('dur', dur);
+    else warn(`${label} needs duration`);
     if (begin) animate.attr('begin', begin);
     if (repeatCount) animate.attr('repeatCount', repeatCount);
     if (fill) animate.attr('fill', fill);
@@ -268,10 +258,9 @@ function timing(animate, value, warn) {
     } else if (calcMode) {
         animate.attr('calcMode', calcMode);
     }
-    return dur;
 }
 
-function generate(token, element, parent, root, warn) {
+export default function generateSvg(token, warn = () => {}, element, parent, root) {
     let { name, value } = token, inlineId;
     if (!element) {
         element = new Tag('root');
@@ -286,7 +275,7 @@ function generate(token, element, parent, root, warn) {
         else if (token.test !== undefined) {
             if (Number(token.test)) {
                 for (let block of value) {
-                    let id = generate(block, element, parent, root, warn);
+                    let id = generateSvg(block, warn, element, parent, root);
                     if (id) { inlineId = id }
                 }
             }
@@ -303,7 +292,7 @@ function generate(token, element, parent, root, warn) {
             }
             if (name === 'defs') el = root.findSpareDefs() || el;
             for (let block of value) {
-                let id = generate(block, el, token, root, warn);
+                let id = generateSvg(block, warn, el, token, root);
                 if (id) { inlineId = id }
             }
             if (GROUPS.includes(name)) el = combine(el, name, warn);
@@ -328,10 +317,12 @@ function generate(token, element, parent, root, warn) {
                     root.append(element = new Tag('defs'));
                 }
             }
-            let existedTag = !fresh && element.find(el);
+            let id = el.attrs.id;
+            let existedTag = !fresh && id !== undefined && element.body.find(tag => tag.name === el.name && tag.attrs.id === id);
             if (existedTag) {
                 if (existedTag !== el) {
-                    existedTag.merge(el);
+                    Object.assign(existedTag.attrs, el.attrs);
+                    existedTag.body.push(...el.body);
                 }
             } else {
                 if (name === 'defs') {
@@ -382,7 +373,7 @@ function generate(token, element, parent, root, warn) {
         else {
             // handle inline block value
             if (value?.type === 'block') {
-                let id = generate(value, root, token, root, warn);
+                let id = generateSvg(value, warn, root, token, root);
                 if (isNil(id)) {
                     warn('defs: one element');
                     value = '';
@@ -410,9 +401,7 @@ function generate(token, element, parent, root, warn) {
                     animate.attr('attributeName', 'stroke-dashoffset');
                     animate.attr('from', 10);
                     animate.attr('to', 0);
-                    if (!timing(animate, value, warn)) {
-                        warn(`${keyword} needs duration`);
-                    }
+                    timing(animate, value, keyword, warn);
                     element.append(animate);
                     if (animate.attr('fill')) {
                         let solid = new Tag('set'), id = nextInlineId(keyword).replace('-', '');
@@ -446,9 +435,7 @@ function generate(token, element, parent, root, warn) {
                 } else {
                     animate.attr('values', values.join(';'));
                 }
-                if (!timing(animate, slash < 0 ? '' : text.slice(slash + 1), warn)) {
-                    warn(`${prop} needs duration`);
-                }
+                timing(animate, slash < 0 ? '' : text.slice(slash + 1), prop, warn);
                 element.append(animate);
             }
             else if (NAME.test(name)) {
@@ -463,8 +450,4 @@ function generate(token, element, parent, root, warn) {
         return root.toString();
     }
     return inlineId;
-}
-
-export default function generateSvg(token, warn = () => {}) {
-    return generate(token, null, null, null, warn);
 }

@@ -88,6 +88,11 @@ const presetShapes = {
     },
 };
 
+function presetOf(text) {
+    let [name, ...args] = parseValueGroup(text), preset = presetShapes[name];
+    return typeof preset == 'function' ? preset(...args) : preset;
+}
+
 class Point {
     constructor(value, angle, origin, kind, r) {
         this.value = value;
@@ -169,12 +174,13 @@ const KNOWN = new Set([...COMMANDS, ...'seed direction dir aspect gap density re
 // each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
 
-function check(node, warn) {
+function check(node, warn, visit) {
     let name = node.name.split(' ')[0];
     if (name && !(name in presetShapes) && !GROUPS.includes(name) && !/^(shape|polygon)$|^\(/.test(name)) warn(`unknown shape ${node.name}`);
     let members = node.children.reduce((n, c) => n + (c.count ? c.count[0] * c.count[1] : 1), 0);
     if (members > MAX_MEMBERS) warn(`max ${MAX_MEMBERS} shapes`);
-    [...node.copies || node.children, ...node.unused || []].forEach(n => check(n, warn));
+    visit?.(node);
+    [...node.copies || node.children, ...node.unused || []].forEach(n => check(n, warn, visit));
 }
 
 function combine(props, lo, hi) {
@@ -512,14 +518,11 @@ export function outline(polygon, warn, at) {
 export const shapeWarnings = memo((input, paint) => {
     let list = [], warn = message => list.push(message), names = new Set();
     let root = readShapes(input.includes('(') ? unwrap(input) : input, warn);
-    check(root, warn);
-    let walk = node => {
-        let [name, ...args] = parseValueGroup(node.name), preset = presetShapes[name];
-        if (preset) input += ';' + (typeof preset == 'function' ? preset(...args) : preset);
+    check(root, warn, node => {
+        let preset = presetOf(node.name);
+        if (preset) input += ';' + preset;
         node.rows.forEach(r => names.add(r.name));
-        [...node.copies || node.children, ...node.unused || []].forEach(walk);
-    };
-    walk(root);
+    });
     for (let name of names) {
         if (/^[a-zA-Z_][\w-]*$/.test(name) && !KNOWN.has(name) && !(paint && (PAINT.test(name) || name == 'padding')) && !used(input, name)) warn(`unused ${name}`);
     }
@@ -529,11 +532,7 @@ export const shapeWarnings = memo((input, paint) => {
 export default function generateShape(input, range = {}, modifier) {
     if (input.includes('(')) input = unwrap(input);
     let [head, more = ''] = input.split(/;([^]*)/);
-    let [name, ...args] = input.includes('{') ? [] : parseValueGroup(head);
-    let preset = presetShapes[name];
-    if (typeof preset === 'function') {
-        preset = preset(...args);
-    }
+    let preset = input.includes('{') ? undefined : presetOf(head);
     let rules = parseShapeCommands(preset === undefined ? input : preset + ';' + more);
     if (!rules.blocks && pairsOf(rules.points)) {
         rules.blocks = { op: 'union', items: [{ points: rules.points }] };
