@@ -91,7 +91,7 @@ function calcWithEasing(t) {
 const STACK_LIMIT = 1024;
 
 function pushStack(context, name, value) {
-    let stack = context[name] || (context[name] = []);
+    let stack = context[name] ||= [];
     stack.push(value);
     // trim in batches: a shift() per push costs O(limit) on every @r/@p
     if (stack.length >= STACK_LIMIT * 2) {
@@ -154,7 +154,7 @@ function createPlot(unit, kind, pieces) {
             delete rules['frame'];
             if (kind) {
                 let count = Math.trunc(calc('points', rules));
-                rules.split = rules.split || SCATTER_OUTLINE;
+                rules.split ||= SCATTER_OUTLINE;
                 delete rules.points;
                 if (isEmpty(rules.seed)) {
                     rules.seed = Math.floor(seedrandom('scatter:' + seed)() * 1e4);
@@ -179,7 +179,7 @@ function createPlot(unit, kind, pieces) {
             if (svg) {
                 rules.unit = 'none';
             } else if (unit) {
-                rules.unit = rules.unit || 'none';
+                rules.unit ||= 'none';
             }
             return rules;
         });
@@ -415,19 +415,16 @@ function pickN(args, pos, max, i) {
     return !at ? args[pos] : i < max - 1 ? args[i] : at(i - max + 2);
 }
 
-Function.pn = createPick('pn', pickN);
+for (let [name, fn, random] of [
+    ['pn', pickN],
+    ['pnr', (args, pos, max) => args[max - pos - 1]],
+    ['pd', (args, pos) => args[pos], true],
+]) {
+    Function[name] = createPick(name, fn, random);
+    Function[name.toUpperCase()] = createPick(name.toUpperCase(), fn, random, true);
+}
 
-Function.PN = createPick('PN', pickN, false, true);
-
-Function.pnr = createPick('pnr', (args, pos, max) => args[max - pos - 1]);
-
-Function.PNR = createPick('PNR', (args, pos, max) => args[max - pos - 1], false, true);
-
-Function.pd = createPick('pd', (args, pos) => args[pos], true);
-
-Function.PD = createPick('PD', (args, pos) => args[pos], true, true);
-
-Function.lp = (_, { context }) => (n = 1) => lastOf(context.lastPick, n);
+Function.lp = (_, { context }) => n => lastOf(context.lastPick, n);
 
 const whole = rand => (a = 1, b = 0) => {
     let lo = Math.ceil(Math.min(a, b)), hi = Math.floor(Math.max(a, b));
@@ -500,7 +497,7 @@ function createNoise(outline) {
 Function.R = createNoise();
 Function.R.t = createNoise(true);
 
-Function.lr = (_, { context }) => (n = 1) => lastOf(context.lastRand, n);
+Function.lr = (_, { context }) => n => lastOf(context.lastRand, n);
 
 Function.match = lazy((cell, { extra }, position, vars, ...args) => {
     if (args.length <= 1) {
@@ -764,7 +761,7 @@ Function.reverse = () => (...args) => {
     if (!valid) return args.reverse();
     let list = commands.map(({ name, value }) => name + value.join(' '));
     let head = /^[ml]/i.test(list[0]) ? list.shift() : '';
-    let tail = /^z$/i.test(list[list.length - 1]) ? list.pop() : '';
+    let tail = /^z$/i.test(list.at(-1)) ? list.pop() : '';
     return [head, ...list.reverse(), tail].filter(Boolean).join(' ');
 };
 

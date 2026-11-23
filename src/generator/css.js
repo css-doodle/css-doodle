@@ -23,7 +23,7 @@ import {
 
 function hasShorthandSize(value) {
     let depth = 0;
-    for (let c of String(value)) {
+    for (let c of value) {
         if (c === '(') depth++;
         else if (c === ')') depth--;
         else if (c === '/' && !depth) return true;
@@ -172,14 +172,14 @@ function compileFunc(node) {
         let index = SEQ_READERS.get(fn);
         let read = frame => {
             let e = frame.env.extra.at(-1);
-            return (e && e.length) ? e[index] : node.name;
+            return e?.length ? e[index] : node.name;
         };
         compiled = frame => ({ value: read(frame) });
         compiled.seqRead = read;
     } else {
-        let composable = COMPOSABLE.has(fname) || !!fn.shader;
+        let composable = COMPOSABLE.has(fname) || fn.shader;
         let args = node.arguments.map(arg => compileArgument(arg, node));
-        let shared = fname === 'tile' || fname === 'plot' || fname === 'Plot';
+        let shared = /^(tile|plot|Plot)$/.test(fname);
         let unit = node.unit || '';
         let uniformKeys = [].concat(UNIFORM_KEYS[fname] ?? []);
         let isMath = fn === MathFunc[fname];
@@ -259,7 +259,7 @@ function compileArgument(argument, parent) {
                     holes.push(compiledFn.seqRead
                         || ((frame, extra) => compiledFn(frame, extra, true).value));
                 } else {
-                    holes.push((parent && parent.name === '@var')
+                    holes.push(parent?.name === '@var'
                         ? () => v.name
                         : frame => frame.env.rules.readVar(v.name, frame.cell.uid, frame.contextVariable, frame.byRef));
                 }
@@ -471,7 +471,7 @@ class Rules {
     warn(message, node) {
         if (this.warned.has(message)) return;
         this.warned.add(message);
-        this.warnings.push(node && node.index >= 0 ? { message, index: node.index } : { message });
+        this.warnings.push(node?.index >= 0 ? { message, index: node.index } : { message });
     }
 
     addRule(selector, rule) {
@@ -571,7 +571,7 @@ class Rules {
         let value = contextVariable && contextVariable[name];
         if (value === undefined) value = this.groupVar(name, this.scopedVars(count), css);
         if (value === undefined) return name;
-        return removeParens(String(value).trim()).replace(/;+$/g, '');
+        return removeParens(String(value).trim()).replace(/;+$/, '');
     }
 
     composeComposable(fname, node, cell, env, selector, property) {
@@ -1045,7 +1045,7 @@ class Rules {
                 // consecutive shared rules under one selector print as one
                 pending += (pending && '\n') + texts[0];
                 let next = entries[i + 1];
-                if (next && next.kind === 'shared' && next.selector === selector && next.where === where) continue;
+                if (next?.kind === 'shared' && next.selector === selector && next.where === where) continue;
                 sections[where] += `${selector.replaceAll('&', shared)} {${pending}}`;
                 pending = '';
             } else {

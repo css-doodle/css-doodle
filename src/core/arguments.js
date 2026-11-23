@@ -41,7 +41,7 @@ export function sequence(count, fn, limit = MAX_SEQUENCE) {
 // a dash with nothing after it is literal, one with nothing before it is dropped
 const buildRange = memo(input => {
     let expr = String(input);
-    if (expr[0] !== '[' || expr[expr.length - 1] !== ']') {
+    if (expr[0] !== '[' || expr.at(-1) !== ']') {
         return [];
     }
     let list = [];

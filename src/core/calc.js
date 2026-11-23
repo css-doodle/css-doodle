@@ -217,7 +217,7 @@ function transformTokens(input, spans, lists) {
     for (const token of scan(input)) {
         if (token.type === 'Space') spaced = true;
         if (token.type === 'Space' || token.index < end) continue;
-        const name = spans && spans.get(token.index);
+        const name = spans?.get(token.index);
         if (name) {
             end = token.index + name.length;
             raw.push({ type: 'Word', value: name, index: token.index, spaced });
@@ -248,12 +248,13 @@ function transformTokens(input, spans, lists) {
         }
 
         if (type === 'Word' || value === '_') {
-            if (ANGLES[value] && raw[i - 1]?.type === 'Number' && !spaced && calls.some(Boolean)) {
+            let glued = raw[i - 1]?.type === 'Number' && !spaced;
+            if (ANGLES[value] && glued && calls.some(Boolean)) {
                 if (!calls.some(name => ANGLE_TAKERS.has(name))) tokens.angle = true;
                 pushValue(tokens, ANGLES[value], false);
                 continue;
             }
-            if ((value === 'var' || value === 'calc') && next && next.value === '(') {
+            if ((value === 'var' || value === 'calc') && next?.value === '(') {
                 let depth = 0;
                 let j = i + 1;
                 for (; j < raw.length; j++) {
@@ -266,7 +267,7 @@ function transformTokens(input, spans, lists) {
                 i = j;
                 continue;
             }
-            let name, glued = raw[i - 1]?.type === 'Number' && !spaced;
+            let name;
             [name, i] = readName(raw, i);
             if (isOperator(name)) {
                 tokens.push(op(name));
@@ -290,7 +291,7 @@ function transformTokens(input, spans, lists) {
             continue;
         }
 
-        if (next && next.type === 'Symbol' && isOperator(value + next.value)) {
+        if (next?.type === 'Symbol' && isOperator(value + next.value)) {
             tokens.push(op(value + next.value));
             i++;
             continue;
@@ -352,7 +353,7 @@ function toPostfix(tokens) {
                 expr.push(tk(NUMBER, value));
             } else if (RE_NUMBER.test(value)) {
                 expr.push(tk(NUMBER, Number(value)));
-            } else if (next && next.value === '(') {
+            } else if (next?.value === '(') {
                 const { args, endIndex, at } = parseFunctionArgs(tokens, i + 1, value === 'pick');
                 expr.push({ type: FUNCTION, name: value, value: args, at });
                 i = endIndex;
@@ -584,6 +585,8 @@ function compare(ops, terms, group) {
     return fn;
 }
 
+const nothing = () => NaN;
+
 // Compile a postfix expression into a closure of (context, history)
 function compile(expr) {
     const stack = [];
@@ -603,10 +606,10 @@ function compile(expr) {
             stack.push(compileFunction(node));
         } else if (value === ' ') {
             stack.pop();
-            const first = stack.pop() || (() => NaN);
+            const first = stack.pop() || nothing;
             stack.push((ctx, history) => (miss(history), Number(first(ctx, history)) || 0));
         } else if (PREFIX.has(value)) {
-            const operand = stack.pop() || (() => NaN);
+            const operand = stack.pop() || nothing;
             stack.push(value === '-u'
                 ? (ctx, history) => neg(operand(ctx, history))
                 : (ctx, history) => {
@@ -614,8 +617,8 @@ function compile(expr) {
                     return live(a) ? not(truthy(a)) : Number(a) ? 0 : 1;
                 });
         } else {
-            const r = stack.pop() || (() => NaN);
-            const l = stack.pop() || (() => NaN);
+            const r = stack.pop() || nothing;
+            const l = stack.pop() || nothing;
             if (RELATIONAL.has(value)) {
                 // a < b < c reads as a < b && b < c
                 const [ops, terms] = l.chain || [[], [l]];

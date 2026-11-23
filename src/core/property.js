@@ -8,11 +8,6 @@ import { addAlias } from '../lib/fn.js';
 import { isEmpty } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 
-const iw = '--_cell-width';
-const ih = '--_cell-height';
-const cw = `var(${iw}, 25%)`;
-const ch = `var(${ih}, 25%)`;
-
 // keywords resolve to edge percentages, remaining values fill x then y
 function resolvePlace(value) {
     let x, y, rest = [], safe = false;
@@ -105,12 +100,12 @@ Property.size = (value, { isSpecialSelector, place, grid }) => {
         if (ratio) styles += `aspect-ratio: ${ratio};`;
     }
     if (place && !isSpecialSelector) {
-        styles += `${iw}:${w};${ih}:${h};`;
+        styles += `--_cell-width:${w};--_cell-height:${h};`;
     }
     return styles;
 };
 
-export const placeShared = `width:${cw};height:${ch};`;
+export const placeShared = 'width:var(--_cell-width, 25%);height:var(--_cell-height, 25%);';
 
 Property.place = (value, { extra }) => {
     if (isEmpty(value)) return 'display:none;';
