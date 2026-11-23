@@ -231,11 +231,21 @@ function recount(rings, n) {
         let m = max(3, round(n * (run += lens[k]) / total) - done), at = i => ring[(i + ring.length) % ring.length];
         let side = i => dist(at(i), at(i + 1)), pick = better => ring.reduce((j, p, i) => better(side(i), side(j)) ? i : j, 0);
         done += m;
-        ring = [...ring];
-        while (ring.length < m) {
-            let i = pick((a, b) => a > b);
-            ring.splice(i + 1, 0, mix(at(i), at(i + 1), .5));
+        if (ring.length < m) {
+            let order = (a, b) => a[0] - b[0] || b[1] - a[1], sides = ring.map((p, i) => [side(i), i, 1, p, at(i + 1)]).sort(order);
+            let add = (p, q, place, width) => {
+                let e = [dist(p, q), place, width, p, q], lo = 0, hi = sides.length, c;
+                while (lo < hi) order(sides[c = lo + hi >> 1], e) < 0 ? lo = c + 1 : hi = c;
+                sides.splice(lo, 0, e);
+            };
+            while (sides.length < m) {
+                let [, place, width, p, q] = sides.pop(), o = mix(p, q, .5);
+                add(p, o, place, width /= 2);
+                add(o, q, place + width, width);
+            }
+            return sides.sort((a, b) => a[1] - b[1]).map(e => e[3]);
         }
+        ring = [...ring];
         while (ring.length > m) {
             let i = pick((a, b) => a < b), j = (i + 1) % ring.length, [a, p, q, b] = [at(i - 1), ring[i], ring[j], at(i + 2)];
             let ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - q[0], vy = b[1] - q[1];
