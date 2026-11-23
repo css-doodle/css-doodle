@@ -127,29 +127,14 @@ test('@pn/@pnr are the canonical ordered picks, @pl/@pr the legacy names', () =>
     for (let [legacy, name] of [['pl', 'pn'], ['pr', 'pnr']]) {
         assert.equal(Function[legacy], Function[name], `@${legacy} -> @${name}`);
     }
-    let env = { context: {}, extra: [], upextra: [], shuffle: a => a };
+    let env = { context: {}, extra: [], shuffle: a => a };
     let pn = Function.pn({}, env, ':1'), pnr = Function.pnr({ grid: { count: 1 } }, env, ':2');
     assert.deepEqual([pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c'), pn('a', 'b', 'c')], ['a', 'b', 'c', 'a']);
     assert.deepEqual([pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c'), pnr('a', 'b', 'c')], ['c', 'b', 'a', 'c']);
 });
 
-test('@PN, @PNR and @PD in a nested doodle step with the sequence around it', () => {
-    // a doodle inside @m4(@doodle(…)), drawn the third time round
-    let around = [];
-    around[SEQ.index] = 3;
-    around[SEQ.sig] = 's';
-    let env = { context: {}, extra: [], upextra: [around], shuffle: a => a };
-    let cell = { grid: { count: 1 } };
-    assert.equal(Function.PN(cell, env, ':1')('a', 'b', 'c', 'd'), 'c');
-    assert.equal(Function.PNR(cell, env, ':2')('a', 'b', 'c', 'd'), 'b');
-    assert.equal(Function.PD(cell, env, ':3')('a', 'b', 'c', 'd'), 'c');
-    // the lowercase picks count on their own
-    assert.equal(Function.pn(cell, env, ':4')('a', 'b', 'c', 'd'), 'a');
-    assert.equal(Function.pnr(cell, env, ':5')('a', 'b', 'c', 'd'), 'd');
-});
-
 test('@pn with a trailing `...` carries the list on', () => {
-    let env = { context: {}, extra: [], upextra: [], shuffle: a => a };
+    let env = { context: {}, extra: [], shuffle: a => a };
     let run = (site, ...list) => {
         let pn = Function.pn({}, env, site);
         return Array.from({ length: 5 }, () => pn(...list));
@@ -230,7 +215,7 @@ test('@ri gives each whole number as often, the ends too, and a letter range of 
 
 test('@pn inside an argument keeps a counter per call site', () => {
     // argument composition pushes an empty tuple, which used to turn the key into NaN
-    let env = { context: {}, extra: [[]], upextra: [], shuffle: a => a };
+    let env = { context: {}, extra: [[]], shuffle: a => a };
     let a = Function.pn({}, env, 1), b = Function.pn({}, env, 2);
     assert.deepEqual([a('x', 'y'), b('p', 'q', 'r'), a('x', 'y'), b('p', 'q', 'r')], ['x', 'p', 'y', 'q']);
     // the same site keyed inside a sequence by its invocation

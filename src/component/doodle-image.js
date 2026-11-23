@@ -75,7 +75,7 @@ export async function doodleToImage(host, code, options) {
     let compiled = cache.composed.get(key);
     if (!compiled) {
         let parsed = parseCss(code, host.extra);
-        compiled = generateCss(parsed, baseGrid, source.seed, host.getMaxGrid(), source.random, options.upextra, options.instance, host.extra);
+        compiled = generateCss(parsed, baseGrid, source.seed, host.getMaxGrid(), source.random, options.instance, host.extra);
         cache.composed.set(key, compiled);
         host.report(compiled.warnings);
     }

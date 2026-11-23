@@ -541,7 +541,7 @@ if (typeof HTMLElement !== 'undefined') {
             seed = this.getAttribute('seed') || seed;
             seed ??= Date.now();
             let compiled = this.compiled = generateCss(
-                parsed, this.getGrid(), seed, this.getMaxGrid(), null, [], this._instance, this.extra
+                parsed, this.getGrid(), seed, this.getMaxGrid(), null, this._instance, this.extra
             );
             for (let name of parsed.addons) {
                 if (!added.has(name)) compiled.warnings.push({ message: `unknown addon ${name}` });

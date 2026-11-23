@@ -667,7 +667,7 @@ test('use() gives a value addon the seed, colors, and a state kept per call for 
         },
     });
     let host = { getRgbaColor: value => value == 'red' ? [255, 0, 0, 1] : null };
-    let compose = () => generateCss(parseCss('@grid: 2x1; --a: @addon-state(a); --b: @addon-state(b);'), parseGrid('1'), 42, 64, null, [], '', host).styles.cells;
+    let compose = () => generateCss(parseCss('@grid: 2x1; --a: @addon-state(a); --b: @addon-state(b);'), parseGrid('1'), 42, 64, null, '', host).styles.cells;
     let cells = compose();
     let a = [...cells.matchAll(/--a:([^;]+);/g)].map(m => m[1].split('|'));
     let b = [...cells.matchAll(/--b:([^;]+);/g)].map(m => m[1].split('|'));

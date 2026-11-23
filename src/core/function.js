@@ -236,11 +236,9 @@ function createMirror(even) {
 
 const countOf = (cell, e) => e?.[SEQ.index] ? e[SEQ.max] : cell.grid.count;
 
-function createPick(name, fn, random = false, upstream = false) {
-    return (cell, { context, extra, upextra, shuffle, level }, position) => {
-        let lastExtra = upstream
-            ? (upextra.length ? upextra : extra).at(-1)
-            : extra.at(-1);
+function createPick(name, fn, random = false) {
+    return (cell, { context, extra, shuffle, level }, position) => {
+        let lastExtra = extra.at(-1);
         let sig = lastExtra?.[SEQ.sig] ?? '';
         let index = lastExtra?.[SEQ.index];
         let counter = index === undefined && `${name}-counter${position}:${level}`;
@@ -415,14 +413,9 @@ function pickN(args, pos, max, i) {
     return !at ? args[pos] : i < max - 1 ? args[i] : at(i - max + 2);
 }
 
-for (let [name, fn, random] of [
-    ['pn', pickN],
-    ['pnr', (args, pos, max) => args[max - pos - 1]],
-    ['pd', (args, pos) => args[pos], true],
-]) {
-    Function[name] = createPick(name, fn, random);
-    Function[name.toUpperCase()] = createPick(name.toUpperCase(), fn, random, true);
-}
+Function.pn = createPick('pn', pickN);
+Function.pnr = createPick('pnr', (args, pos, max) => args[max - pos - 1]);
+Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
 Function.lp = (_, { context }) => n => lastOf(context.lastPick, n);
 

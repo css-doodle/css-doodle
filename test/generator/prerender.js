@@ -25,7 +25,7 @@ test('renders a declarative shadow root after the source', async () => {
 test('the shadow sheet is the one the runtime writes', async () => {
     let code = '@grid: 3 / 90px; transform: rotate(@r(360deg)); :after { content: @i; }';
     let { html } = await prerender(code, { seed: 'abc' });
-    let compiled = generateCss(parseCss(code), parseGrid(null), 'abc', 64, null, [], 'x');
+    let compiled = generateCss(parseCss(code), parseGrid(null), 'abc', 64, null, 'x');
     let sheet = compiled.styles.top + getBasicStyles(compiled.grid) + compiled.styles.all;
     assert.equal(shadowStyle(html), sheet.replace(/\n\s+/g, ' '));
 });

@@ -589,7 +589,6 @@ class Rules {
             let id = this.nextId('doodle');
             this.doodles[id] = {
                 doodle: this.injectVariables(value, cell.uid), arg: size, tile: !!tile,
-                upextra: env.extra.length ? structuredClone(env.extra) : undefined,
             };
             return placeholder(id);
         }
@@ -1228,14 +1227,14 @@ function useMathStream(random, seed) {
     return useRandom(draw);
 }
 
-export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, upextra = [], instance = '', host) {
+export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, instance = '', host) {
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
     let restore = useMathStream(R.random, seedValue);
     try {
 
         let envAt = (rules, seed) => ({
-            rules, context: {}, extra: [], upextra, level: 0, host,
+            rules, context: {}, extra: [], level: 0, host,
             rand, pick, shuffle, random: R.random, updateRandom,
             seed, maxGrid,
         });

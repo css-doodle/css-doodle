@@ -74,7 +74,7 @@ test('@pick(k: …) picks from the list a lone item gives, and fills ..., as @pn
 });
 
 test('@p, @P, @pd and @pnr run a trailing ... to the cell count, or to @N in a sequence', () => {
-    for (let name of ['p', 'P', 'pd', 'PD', 'pnr', 'PNR']) {
+    for (let name of ['p', 'P', 'pd', 'pnr']) {
         assert.equal(cells(`--a: @${name}(1, 2, ...);`, '4x4'), cells(`--a: @${name}(1, 2, ..., 16);`, '4x4'), name);
     }
     assert.equal(cells('--a: @m5(@pnr(1, 2, ...));'), '#c-1-1-1 {--a:5,4,3,2,1;}');
@@ -1086,7 +1086,7 @@ test('generated ids are positional and carry the instance token', () => {
         filter: @svg-filter(.2, 5);
         @nth(1) { background: @shaders(void main() {}) }
     `;
-    let run = instance => generateCss(parseCss(code), parseGrid('2x1'), 7, 64, undefined, [], instance);
+    let run = instance => generateCss(parseCss(code), parseGrid('2x1'), 7, 64, undefined, instance);
     let a = run(), b = run();
     assert.equal(a.styles.all, b.styles.all);
     // one counter for every kind, numbered in compose order
@@ -1917,7 +1917,7 @@ test('a texture section does not inherit a variable holding GLSL statements', ()
 });
 
 test('with page elements as cells, the count is theirs, @grid gives the columns, and keyframes are named apart', () => {
-    let page = (code, n) => generateCss(parseCss(code), { cells: n }, 42, 64, null, [], 'K');
+    let page = (code, n) => generateCss(parseCss(code), { cells: n }, 42, 64, null, 'K');
     let { x, y, count } = page('--v: @x', 7).grid;
     assert.deepEqual([x, y, count], [7, 1, 7]);
     let { grid, styles } = page(`@grid: 3 / 400px; --v: @x @y; --n: @I;
@@ -1932,7 +1932,7 @@ test('with page elements as cells, the count is theirs, @grid gives the columns,
 
 test('page elements as cells keep their order, and take rows, columns and centers from the page', () => {
     let at = [{ x: 2, y: 1, center: [40, 10] }, { x: 1, y: 1, center: [10, 10] }, { x: 1, y: 2, center: [10, 40.5] }];
-    let { grid, styles } = generateCss(parseCss('--p: @i @x @y @X @Y; --d: @udx @udy;'), { cells: 3, at }, 1, 64, null, [], 'K');
+    let { grid, styles } = generateCss(parseCss('--p: @i @x @y @X @Y; --d: @udx @udy;'), { cells: 3, at }, 1, 64, null, 'K');
     assert.deepEqual([grid.x, grid.y, grid.count], [2, 2, 3]);
     assert.match(styles.all, /#c-1-1-1 \{--p:1 2 1 2 2;\s*--d:calc\(40 - var\(--cssd-umousex\)\) calc\(10 - var\(--cssd-umousey\)\);/);
     assert.match(styles.all, /#c-3-1-1 \{--p:3 1 2 2 2;\s*--d:calc\(10 - var\(--cssd-umousex\)\) calc\(40.5 - var\(--cssd-umousey\)\);/);
