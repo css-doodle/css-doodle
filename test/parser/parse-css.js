@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 import parseCss from '../../src/parser/parse-css.js';
 
-// the plain data of the AST, without the raw() accessors
-const ast = (input, extra) => JSON.parse(JSON.stringify(parseCss(input, extra)));
+// the plain data of the AST, without the raw() accessors and source offsets
+const ast = (input, extra) => JSON.parse(JSON.stringify(parseCss(input, extra), (k, v) => k === 'index' ? undefined : v));
 
 const text = value => ({ type: 'text', value });
 const rule = (property, ...values) => ({ type: 'rule', property, value: [values] });
@@ -32,7 +32,6 @@ test('quoted content keeps every character inside a pseudo', () => {
 test('quoted content inside an @svg argument', () => {
     const content = value => [rule('@content', {
         type: 'func',
-        index: 10,
         name: '@svg',
         arguments: [argument([text(`text { content: "${value}"; }`)])],
         position: 1,
@@ -575,6 +574,14 @@ test('a statement without a colon warns instead of passing through as an at-rule
     let parsed = parseCss(`color red; width: 1px; @import url(x);`);
     assert.deepEqual(parsed.map(r => r.property || r.value), ['width', '@import url(x);']);
     assert.deepEqual(parsed.warnings, [{ message: 'missing ":"', pos: [0, 0] }]);
+});
+
+test('positions point into the source as written, past leading lines and user function definitions', () => {
+    assert.deepEqual(parseCss(`\n  @grid: 5;\n  color red;\n`).warnings, [{ message: 'missing ":"', pos: [2, 2] }]);
+    let source = `\n--dot(r): {\n  width: $(r)px;\n}\ncolor red;\nwidth: @r(5);`;
+    let parsed = parseCss(source);
+    assert.deepEqual(parsed.warnings, [{ message: 'missing ":"', pos: [0, 4] }]);
+    assert.equal(parsed[0].value[0][0].index, source.indexOf('@r'));
 });
 
 test('a block after a property and a function name warns and is dropped', () => {

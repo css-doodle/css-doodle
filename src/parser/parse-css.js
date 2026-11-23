@@ -940,7 +940,7 @@ function skipTag(cur) {
 }
 
 function parseSource(input, ctx) {
-    let source = String(input ?? '').trim();
+    let source = String(input ?? '');
     return parseBlockBody(new Cursor(source, ctx), true);
 }
 
@@ -1043,7 +1043,7 @@ function expandFunctions(source, ctx, svg, chain = []) {
                 if (!braced && !/^\s*--[\w-]+\(/.test(after) && bindParams({ params: unset, defaults, body: after }, unset.map(() => '\0'), defs).includes('\0')) {
                     warn(ctx, `--${name}() needs {}`, t.pos);
                 }
-                rest += source.slice(from, t.index);
+                rest += source.slice(from, t.index) + source.slice(t.index, tokenEnd(last)).replace(/[^\n]/g, ' ');
                 from = tokenEnd(last);
                 i = end;
             }
