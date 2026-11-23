@@ -97,6 +97,7 @@ const Node = {
 };
 
 const COPIES = /\*\s*([1-9]\d*(?:x[1-9]\d*)?|\d+-\d+)\s*$/;
+const ARMS = /(^|[;{}])\s*match\s*$/;
 
 function repeat(count, values) {
     return { type: 'func', name: '@M', arguments: [Node.argument([Node.text(count)]), Node.argument(values)] };
@@ -451,15 +452,15 @@ function parseArguments(cur, copying, whole, indexed) {
             }
             if (copying) {
                 if (v === '{') {
-                    let count = COPIES.exec(buf);
+                    let count = !blocks.at(-1)?.[2] && COPIES.exec(buf);
                     if (count) flush(true);
-                    blocks.push(count && [values.length, count[1]]);
+                    blocks.push([values.length, count?.[1], ARMS.test(buf)]);
                 } else if (v === '}' && blocks.length) {
-                    let block = blocks.pop();
-                    if (block) {
+                    let [start, count] = blocks.pop();
+                    if (count) {
                         flush(true);
-                        let inner = values.splice(block[0]);
-                        if (inner.some(v => v.type === 'func')) inner = [Node.text('{'), repeat(block[1], [...inner, Node.text('}')])];
+                        let inner = values.splice(start);
+                        if (inner.some(v => v.type === 'func')) inner = [Node.text('{'), repeat(count, [...inner, Node.text('}')])];
                         values.push(...inner);
                     }
                 }
@@ -574,8 +575,9 @@ function parseDoodleBody(cur, start, name) {
             }
             if (tok.isSymbol('{')) {
                 cut(tok.index + 1);
-                let count = COPIES.exec(cur.source.slice(mark, tok.index));
-                blocks.push([values, count && count[1]]);
+                let text = cur.source.slice(mark, tok.index);
+                let count = !blocks.at(-1)?.[2] && COPIES.exec(text);
+                blocks.push([values, count?.[1], ARMS.test(text)]);
                 values = [];
             } else if (tok.isSymbol('}') && blocks.length) {
                 cut(tok.index);

@@ -1010,6 +1010,12 @@ test('@scene copies holding @ functions repeat their body per copy, like @svg', 
     assert.equal(Object.values(compile('background: @scene(sphere*2-4 { r: @n });').patterns)[0].source, 'sphere*2-4 {{ r: 2 } { r: 3 } { r: 4 }}');
 });
 
+test('an arm test that ends like a count is a test, not copies, in @scene and @shape', () => {
+    let { patterns, warnings } = compile('background: @scene(sphere*2 { match { n > 2*3 { r: @n } n > N*3-1 { r: @n } } }); clip-path: @shape(r: .5; match { t > 2*3-1 { r: @r(.1, .3) } });');
+    assert.equal(Object.values(patterns)[0].source, 'sphere*2 {{ match { n > 2*3 { r: 1 } n > N*3-1 { r: 1 } } } { match { n > 2*3 { r: 2 } n > N*3-1 { r: 2 } } }}');
+    assert.deepEqual(warnings, []);
+});
+
 test('outside its copies a @scene picks, plots and samples noise per cell, like CSS', () => {
     let scenes = body => Object.values(compile(`background: @scene(${body});`, '1x4').patterns).map(p => p.source);
     let cssCells = value => [...css(`--v: ${value};`, '1x4').matchAll(/--v:([^;]+);/g)].map(m => `sphere { r: ${m[1]} }`);
