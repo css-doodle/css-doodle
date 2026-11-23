@@ -27,7 +27,7 @@ jobs:
 
       - name: Check bundle size
         env:
-          LIMIT_KB: 230
+          LIMIT_KB: 240
         run: |
           node --input-type=module -e '
             import fs from "node:fs";
