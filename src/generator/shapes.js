@@ -521,7 +521,7 @@ export const shapeWarnings = memo((input, paint) => {
     };
     walk(root);
     for (let name of names) {
-        if (/^[a-zA-Z_][\w-]*$/.test(name) && !KNOWN.has(name) && !(paint && (PAINT.test(name) || name == 'padding')) && !reads(input, name)) warn(`unused ${name}`);
+        if (/^[a-zA-Z_][\w-]*$/.test(name) && !/^match_\d+_$/.test(name) && !KNOWN.has(name) && !(paint && (PAINT.test(name) || name == 'padding')) && !reads(input, name)) warn(`unused ${name}`);
     }
     return list;
 });

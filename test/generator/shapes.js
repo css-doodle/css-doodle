@@ -591,6 +591,14 @@ test('a row nothing reads is reported, as in @scene and @pattern', () => {
     assert.deepEqual(shapeWarnings('stroke: red; padding: 0', true), []);
 });
 
+test('a match block draws its rows where its test holds', () => {
+    let shape = s => String(generateShape(s).points);
+    assert.equal(shape('points: 5; r: 1; match(1 > 0) { r: .5 }'), shape('points: 5; r: .5'));
+    assert.equal(shape('points: 5; r: 1; match(1 < 0) { r: .5 }'), shape('points: 5; r: 1'));
+    assert.equal(shape('union { circle*2 { scale: .2; match(n > 1) { move: .5 0 } } }'), shape('union { circle { scale: .2 } circle { scale: .2; move: .5 0 } }'));
+    assert.deepEqual(shapeWarnings('points: 5; match(i > 2) { r: .5 }'), ['r needs a value first']);
+});
+
 test('a row that runs into the next row or shape is reported', () => {
     assert.deepEqual(shapeWarnings('points: 4\n r: .5'), ['points needs ;']);
     assert.deepEqual(shapeWarnings('union { k: .1 circle { r: .2 } star { r: .3 } }'), ['k needs ;', 'unused k']);

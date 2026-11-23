@@ -494,9 +494,11 @@ clip-path: @shape(
 
 ```
 shape-property = preset
-body           = { row | shape }
+body           = { row | shape | match }
 row            = [ '-' ] name { ',' [ '-' ] name } ':' value [ ';' ]
 shape          = head [ '{' body '}' ] [ ';' ]
+match          = 'match' '(' expression ')' '{' { row } '}'
+               | 'match' '{' { expression '{' { row } '}' } [ 'else' '{' { row } '}' ] '}'
 head           = kind [ '#' id ] [ copies ] | kind copies '#' id | '#' id [ copies ]
 kind           = group | shape-name [ arguments ] | '(' body ')'
 group          = 'union' | 'subtract' | 'intersect' | 'exclude'

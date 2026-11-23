@@ -11,16 +11,19 @@ import parseValueGroup from './parse-value-group.js';
 const GROUPS = ['union', 'subtract', 'intersect', 'exclude'];
 const STEPS = ['move', 'rotate', 'scale', 'grow', 'frame', 'mirror'];
 const SEMICOLON = scan(';')[0];
+// what a step does when its match test fails
+const NONE = { __proto__: null, move: '0', rotate: '0', scale: '1', grow: '0', twist: '0' };
 
 // `circle#dot*2x3` or `circle*2x3#dot` → { name: 'circle', id: 'dot', count: [2, 3] }
-function shapeOf(text, value) {
+function shapeOf(text, value, lower) {
     let [, name, id, x, y = 1, after] = text.match(/^([^]*?)(?:#([\w-]+))?(?:\s*\*\s*(\d+)(?:\s*x\s*(\d+))?)?(?:#([\w-]+))?$/);
     let count = x ? [+x, +y] : 0;
     id ||= after;
     let node = { name, id, count, rows: [], children: [] };
     for (let r of value) {
         // copy blocks: `circle*2 {{ … } { … }}`
-        if (count && r.copy) (node.copies ||= []).push(r);
+        if (lower && r.rows && /^match\b/.test(r.name)) lower(node, r);
+        else if (count && r.copy) (node.copies ||= []).push(r);
         else if (r.rows) node.children.push(r);
         else node.rows.push(r);
     }
@@ -70,14 +73,35 @@ function degrees(text) {
 let split = head => textOf(head).trim().split(/ (?=#)(?![^(]*\))/);
 
 function readShapes(input, warn = () => {}, options) {
-    let last;
+    let last, blocks = 0;
     let bare = head => Object.assign(shapeOf(head, []), { bare: true });
+    // `match(test) { r: .2 }` becomes `r: match(test, .2, r before)`; a step not taken does nothing
+    let lower = (node, m) => {
+        let arms = m.name == 'match' ? m.children.map(c => [c.name, c]) : [[m.name.slice(5), m]];
+        let id = `match_${++blocks}_`, other = arms.findIndex(([t]) => t == 'else') + 1;
+        node.rows.push({ name: id, value: scan(`match(${arms.map(([t], k) => t == 'else' ? '' : `(${t}), ${k + 1}, `).join('')}${other})`) });
+        if (arms.some(([, a]) => a.children.length)) warn('shapes in match');
+        for (let name of new Set(arms.flatMap(([, a]) => a.rows.map(r => r.name)))) {
+            let texts = arms.map(([, a]) => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
+            let prior = node.rows.findLast(r => r.name == name), none = NONE[name];
+            if (!none && !prior) {
+                warn(`${name} needs a value first`);
+                continue;
+            }
+            let text = texts.find(Boolean), parts = texts.map(t => t && partsOf(t)), base = prior && partsOf(textOf(prior.value));
+            let size = Math.max(...[...parts, base].filter(Boolean).map(p => p.length));
+            let at = (p, j) => p && (p[j] ?? (p.length == 1 ? p[0] : undefined));
+            let out = Array.from({ length: size }, (_, j) => name == 'rotate' && j < size - 1 ? at(parts.find(Boolean), j)
+                : `match(${parts.map((p, k) => at(p, j) ? `${id} == ${k + 1}, ${at(p, j)}, ` : '').join('')}${none || at(base, j)})`);
+            node.rows.push({ name, value: scan(out.join(parseValueGroup(text, { noSpace: true }).length > 1 ? ', ' : ' ')) });
+        }
+    };
     let reader = {
         readBlocks(iter, head) {
             let parts = split(head), block = parts.pop();
             // leftovers glue only to a row of their own block
             last = null;
-            let node = shapeOf(block, parseBody(iter, {}, reader).value);
+            let node = shapeOf(block, parseBody(iter, {}, reader).value, lower);
             last = null;
             return [...parts.map(bare), node];
         },
@@ -108,7 +132,7 @@ function readShapes(input, warn = () => {}, options) {
             return [];
         },
     };
-    let root = shapeOf('', parseBody(iterator(scan(input, options)), null, reader));
+    let root = shapeOf('', parseBody(iterator(scan(input, options)), null, reader), lower);
 
     let defs = {}, used = new Set();
     let define = nodes => nodes.filter(n => {

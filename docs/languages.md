@@ -145,6 +145,13 @@ reflections across those axes as one shape. A `-` before a name
 negates each part of its value, and only the angle of a `rotate`:
 `-move: .5 0`, `-rotate: y 30`; not on `fill` or `fill-rule`.
 
+**Match blocks** set rows only where a test holds, as in `@pattern`:
+`sphere*6 { r: .1; match(n > 3) { r: .2 } }`, or with arms,
+`match { n == 1 { … } else { … } }`. A row in one keeps the value it
+had before the block where the test fails, so it needs one, while a
+`move`, `rotate`, `scale`, `grow` or `twist` there does nothing. The
+test runs once for all the rows of its block, and shapes stay out.
+
 **Groups.** `union`, `subtract` and `intersect` join whole shapes;
 `subtract` takes the rest from the first, so
 `subtract { circle; circle { scale: .9; move: .45 .135 } }` is a
@@ -478,8 +485,8 @@ is called, `p(…)`, assigned, or named by a `repeat` loop, and in a
 
 Its statements run before the statement that calls it, and the call
 reads as the last `result` assigned, inside a `match` too once it has
-a value before the block. In `@scene`, which has no blocks, a `match`
-block in such a body runs as values. Its parameters, assigned names
+a value before the block. In `@scene` a `match` block in such a body
+runs as values, as one written in the scene does. Its parameters, assigned names
 and `repeat` loop names are its own for each call, so its `i` leaves
 the pattern's `i` alone; a name reads the caller's until it is first
 assigned. An argument other than a name, a number or a color is worked

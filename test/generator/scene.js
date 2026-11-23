@@ -520,10 +520,14 @@ test('an outline reads the n of its copy', () => {
     assert.deepEqual(radii('lathe*30x30 { circle { r: .0005n } }'), [.001]);
 });
 
-test('a match block warns, since @scene has none', () => {
-    let { body, warnings } = scene('sphere { r: .3; match { p.y > 0 { fill: red } } }');
-    assert.deepEqual(warnings, ['no match blocks']);
-    assert.match(body, /length\(p\) - \.3/);
+test('a match block sets its rows where its test holds, the values before it elsewhere', () => {
+    let { body, warnings } = scene('sphere*6 { r: .1; fill: white; match(n > 3) { fill: red; r: .2 } }');
+    assert.deepEqual(warnings, []);
+    // the test runs once, every row reads its arm
+    assert.match(body, /float (g_\d+) = \(\(g_\d+ > 3\.0\) \? 1\.0 : 0\.0\);\nvec3 g_\d+ = \(\(\1 == 1\.0\) \?[^\n]*\nvec4 g_\d+ = vec4\(g_\d+, length\(p\) - \(\(\1 == 1\.0\) \? \.2 : \.1\)\);/);
+    // a row needs a value before the block; shapes stay out
+    assert.deepEqual(scene('sphere { r: .3; match { p.y > 0 { fill: red } } }').warnings, ['fill needs a value first']);
+    assert.deepEqual(scene('sphere { r: .3; match(n > 1) { box { size: .1 } } }').warnings, ['shapes in match']);
 });
 
 test('an outline walks only where its box could change the parts before it', () => {

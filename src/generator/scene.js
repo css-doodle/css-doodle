@@ -105,9 +105,6 @@ function isVar(node, name) {
 }
 
 function checkAll(node, warn, unread, code, copy) {
-    let shapes = node.children.filter(c => !/^match\b/.test(c.name));
-    if (shapes.length < node.children.length) warn('no match blocks');
-    node.children = shapes;
     if (!NAME.test(node.name)) {
         let text = node.name + (node.count ? '*' + node.count.join('x') : '');
         warn(`unexpected ${text}`);
@@ -125,7 +122,7 @@ function checkAll(node, warn, unread, code, copy) {
                 warn('read-only p');
                 continue;
             }
-            if (valid && reads(code, r.name)) continue;
+            if (valid && (reads(code, r.name) || /^match_\d+_$/.test(r.name))) continue;
             unread.add(r);
             if (!/^\w+_\d+_/.test(r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `unused ${r.name}` : `${node.name}: unknown ${r.name}`);
         }

@@ -59,6 +59,15 @@ test('several names take a part each, as move does, or all the whole value', () 
     assert.deepEqual(parseShapeCommands('rotate, move: 30, .5 0').steps, [['rotate', '30'], ['move', '.5 0']]);
 });
 
+test('a match block becomes rows that read its arm, the values before it, or a step that does nothing', () => {
+    assert.deepEqual(parseShapeCommands('r: 1; match(i > 2) { r: .5 }'), { r: 'match(match_1_ == 1,.5,1)', match_1_: 'match(((i > 2)),1,0)' });
+    let steps = parseShapeCommands('match { n == 1 { move: 0 .5 } n == 2 { rotate: 30 } else { scale: 2 } }');
+    assert.equal(steps.match_1_, 'match((n == 1),1,(n == 2),2,3)');
+    assert.deepEqual(steps.steps, [['move', 'match(match_1_ == 1,0,0) match(match_1_ == 1,.5,0)'], ['rotate', 'match(match_1_ == 2,30,0)'], ['scale', 'match(match_1_ == 3,2,1)']]);
+    // a single value fills every part of the one before it
+    assert.equal(parseShapeCommands('size: 1 2; match(k) { size: 3 }').size, 'match(match_1_ == 1,3,1) match(match_1_ == 1,3,2)');
+});
+
 test('a group block keeps its shapes as text and takes commands of its own', () => {
     assert.deepEqual(parseShapeCommands('subtract { smooth: .1; heart; circle { scale: .5 } star 5 .4 } rotate: 10'), {
         rotate: '10',
