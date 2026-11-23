@@ -813,6 +813,19 @@ test('Math functions, comparisons and logic lower by name', () => {
     assert.equal(css('atan2(var(--t), 2)'), 'calc(atan2(var(--t),2) / 1rad)');
     assert.equal(css('asin(var(--t))'), 'calc(asin(var(--t)) / 1rad)');
     assert.equal(css('degrees(acos(var(--t)))'), 'calc((acos(var(--t)) / 1rad) * 180 / pi)');
+    // but stays an angle through + - * / and into sin, cos and tan, and an
+    // angle unit after it takes the 1rad back: Firefox can't divide by 1rad
+    assert.equal(css('sin(asin(var(--t)))'), 'calc(sin(asin(var(--t))))');
+    assert.equal(css('cos(-acos(var(--t)) * 2)'), 'calc(cos(((acos(var(--t)) * -1) * 2)))');
+    assert.equal(withUnit(css('π / 2 - atan2(var(--t), 1)'), 'rad'), 'calc((1.57079632679 * 1rad) - atan2(var(--t),1))');
+    assert.equal(withUnit(css('atan2(var(--t), 1) + var(--t)'), 'rad'), 'calc(atan2(var(--t),1) + (var(--t) * 1rad))');
+    assert.equal(withUnit(css('acos(var(--t)) / 2'), 'turn'), 'calc((acos(var(--t)) / 2) * 6.28318530718)');
+    assert.equal(withUnit(css('atan2(var(--t), 1)'), 'deg'), 'calc(atan2(var(--t),1) * 0.0174532925199)');
+    // a product of angles, or one under a division or a comparison, is a number
+    assert.equal(withUnit(css('atan2(var(--t), 1) * asin(var(--t))'), 'rad'),
+        'calc(((atan2(var(--t),1) / 1rad) * (asin(var(--t)) / 1rad)) * 1rad)');
+    assert.equal(withUnit(css('1 / asin(var(--t))'), 'rad'), 'calc((1 / (asin(var(--t)) / 1rad)) * 1rad)');
+    assert.equal(css('atan2(var(--t), 1) < 1'), 'calc(max(0,sign(1 - (atan2(var(--t),1) / 1rad))))');
     // a live k writes out every item, weighted by whether k takes it
     assert.equal(css('pick(var(--k): 10, 20)'),
         'calc(10 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 0))) + 20 * (1 - abs(sign(mod(round(var(--k),1) - 1,2) - 1))))');

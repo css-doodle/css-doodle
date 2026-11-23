@@ -57,13 +57,19 @@ export const defaultContext = {
     }
 };
 
-const live = v => typeof v === 'string';
+class Angle {
+    constructor(css) { this.css = css; }
+    toString() { return `(${this.css} / 1rad)`; }
+}
+const isAngle = v => v instanceof Angle;
+const rad = v => isAngle(v) ? v.css : `(${v} * 1rad)`;
+const live = v => typeof v === 'string' || isAngle(v);
 const text = v => live(v) ? v : tidyNumber(+v || 0);
-const neg = v => live(v) ? `(${v} * -1)` : -v;
+const neg = v => isAngle(v) ? new Angle(`(${v.css} * -1)`) : live(v) ? `(${v} * -1)` : -v;
 const not = v => `(1 - ${v})`;
 const truthy = v => `abs(sign(${v}))`;
 const gt = (a, b) => `max(0,sign(${a} - ${b}))`;
-const angle = (name, args) => `(${name}(${args}) / 1rad)`;
+const angle = (name, args) => new Angle(`${name}(${args})`);
 
 const LOWER = {
     __proto__: null,
@@ -92,9 +98,17 @@ const LOWER = {
     atan: (...args) => angle(args.length > 1 ? 'atan2' : 'atan', args),
 };
 for (let sym of '+-*/') {
-    LOWER[sym] = (a, b) => `(${a} ${sym} ${b})`;
+    LOWER[sym] = (a, b) => {
+        let x = isAngle(a), y = isAngle(b);
+        if ((x || y) && (sym == '+' || sym == '-')) return new Angle(`(${rad(a)} ${sym} ${rad(b)})`);
+        if (x != y && (sym == '*' || x)) return new Angle(`(${a.css ?? a} ${sym} ${b.css ?? b})`);
+        return `(${a} ${sym} ${b})`;
+    };
 }
-for (let name of 'sin cos tan sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
+for (let name of 'sin cos tan'.split(' ')) {
+    LOWER[name] = x => `${name}(${x.css ?? x})`;
+}
+for (let name of 'sqrt exp log abs sign pow hypot min max mod'.split(' ')) {
     LOWER[name] = (...args) => `${name}(${args})`;
 }
 for (let name of 'asin acos atan2'.split(' ')) {
@@ -826,9 +840,13 @@ export function evaluate(value, context) {
 
 const RE_LIVE_HEAD = /^(calc|var)\(/;
 
-// A unit after lowered math multiplies in: calc(…) + deg → calc((…) * 1deg)
+const ANGLE_UNITS = { rad: 1, deg: Math.PI / 180, grad: Math.PI / 200, turn: 2 * Math.PI };
+
 export function withUnit(value, unit) {
-    return unit && RE_LIVE_HEAD.test(value) ? `calc(${value.replace(/^calc/, '')} * 1${unit})` : value + unit;
+    if (!unit || !RE_LIVE_HEAD.test(value)) return value + unit;
+    let angle = ANGLE_UNITS[unit] && /^calc\((.+) \/ 1rad\)$/.exec(value);
+    if (angle) return unit == 'rad' ? `calc(${removeParens(angle[1])})` : `calc(${angle[1]} * ${tidyNumber(ANGLE_UNITS[unit])})`;
+    return `calc(${value.replace(/^calc/, '')} * 1${unit})`;
 }
 
 // A number; with `css`, CSS math for an expression that reads a live
@@ -842,5 +860,5 @@ export default function(input, context, css) {
     history.css = css;
     const output = compileInput(input, context)(context, history);
     // the outermost group is the calc() itself
-    return live(output) ? `calc(${removeParens(output)})` : output;
+    return live(output) ? `calc(${removeParens(String(output))})` : output;
 }
