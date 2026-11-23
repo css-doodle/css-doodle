@@ -422,18 +422,33 @@ Each caller provides its own context:
 
 ## 9. Embedded languages
 
-All embedded languages use the tokens of §1 and one structure:
+`@svg`, `@shape`, `@scene` and `@pattern` share the tokens and
+comments of §1 and one body:
 
 ```
-body        = { declaration | block | ';' }
-declaration = head ':' value [ ';' ]
-block       = head '{' ( body | raw ) '}'
+body  = { row | block | match | ';' }
+row   = name { ',' name } ':' value [ ';' ]
+block = head '{' ( body | raw ) '}'
+match = 'match' '(' expression ')' '{' body '}'
+      | 'match' '{' { expression '{' body '}' } [ 'else' '{' body '}' ] '}'
 ```
 
-Each defines its heads and values, and which block bodies stay raw
-text (`style { … }` in SVG, every shader section). At the doodle level
+Each language defines its heads, values and expressions, and which
+block bodies stay raw text (`style { … }` in SVG). At the doodle level
 `a: b { … }` is a selector block (`a:hover { }`); inside `@svg` it is a
-declaration with a block value.
+row with a block value. `@shaders` (§9.4) shares only the blocks, each
+section raw.
+
+- **Several names** take a part of the value each when it has as many
+  parts as names, and the whole value each otherwise: `x, y: 1, 2`.
+  Each language splits a value its own way.
+- **`match`** runs its body where the test holds, or of several arms
+  the first whose test holds, else `else`. An arm without a test, a
+  row between arms, an `else` before the last arm and a test with a
+  top-level comma, `match(a, b)`, are reported and skipped. `@svg`
+  writes `@match(test)`, without arms.
+- **A row nothing reads** is reported in `@shape`, `@scene` and
+  `@pattern`: `unused fil`.
 
 ### 9.1 SVG
 
@@ -448,14 +463,14 @@ declaration with a block value.
 ```
 
 ```
-svg-body        = { svg-block | svg-match | svg-element | svg-declaration }
+svg-body        = { svg-block | svg-match | svg-element | svg-row }
 svg-block       = selector { ',' selector } '{' svg-body '}'
 svg-match       = '@match' '(' expression ')' '{' svg-body '}'
 svg-element     = name [ ';' ]
 selector        = element { [ '>' ] element }
 element         = name [ '#' id ] { '.' class } [ '*' count ]
 count           = number | number 'x' number | number '-' number
-svg-declaration = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
+svg-row         = attribute { ',' attribute } ':' ( value | svg-block ) [ ';' ]
                 | 'style' [ property ] ':' ( value | '{' css '}' ) [ ';' ]
                 | 'animate' attribute ':' value { ';' value } [ '/' timing ] [ ';' ]
                 | 'draw' ':' timing [ ';' ]
@@ -464,14 +479,14 @@ timing          = duration { delay | repeat-count | easing | fill }
 stop            = color [ number ]
 ```
 
-A block is an element and its declarations are its attributes;
+A block is an element and its rows are its attributes;
 `g circle` and `g > circle` both nest. Names are case-insensitive and
 emitted in SVG spelling (`lineargradient` → `linearGradient`), except
 custom property names. A bare name, `feMergeNode;`, is an empty
-element, except right after a declaration, where it is the next
-`;`-separated value: `values: 1; 2; 3`. `x, y: 1, 2` or `x, y: 1 2`
-splits, after its functions run, only when the value has as many parts
-as names. `style { … }` is raw CSS.
+element, except right after a row, where it is the next
+`;`-separated value: `values: 1; 2; 3`. Several names split a value
+at spaces or commas after its functions run: `x, y: 1 2`.
+`style { … }` is raw CSS.
 
 ### 9.2 Shapes
 
@@ -497,8 +512,6 @@ shape-property = preset
 body           = { row | shape | match }
 row            = [ '-' ] name { ',' [ '-' ] name } ':' value [ ';' ]
 shape          = head [ '{' body '}' ] [ ';' ]
-match          = 'match' '(' expression ')' '{' { row } '}'
-               | 'match' '{' { expression '{' { row } '}' } [ 'else' '{' { row } '}' ] '}'
 head           = kind [ '#' id ] [ copies ] | kind copies '#' id | '#' id [ copies ]
 kind           = group | shape-name [ arguments ] | '(' body ')'
 group          = 'union' | 'subtract' | 'intersect' | 'exclude'
@@ -515,10 +528,10 @@ parentheses, `--cross(s): (circle { … } scale: $s)`: in braces its
 rows would apply to the enclosing shape. The parts of
 `move` and `scale` split at spaces or commas, and an operator keeps its
 operands: `move: k * .5 0` and `move: .5 -.25` have two parts each,
-`move: k (0) 0` three. Several names split the value the same way,
-a part each when the counts match and the whole value each otherwise:
-`x, y: cos(t) sin(t)`. A quoted `text:` value keeps
-its commas, `;` and parentheses.
+`move: k (0) 0` three. Several names split the value the same way:
+`x, y: cos(t) sin(t)`. A `match` body holds rows only, each for a name
+set earlier in the same body, which keeps that value where the test
+fails. A quoted `text:` value keeps its commas, `;` and parentheses.
 
 ### 9.3 Patterns
 
@@ -531,16 +544,13 @@ its commas, `;` and parentheses.
 ```
 
 ```
-pattern-body  = { targets ':' value ';' | match-block | repeat-block | texture-block }
+pattern-body  = { targets ':' value ';' | match | repeat-block | texture-block }
 targets       = target { ',' target }
 target        = name [ '.' swizzle ]
 texture-block = texture-name '{' doodle '}'
-match-block   = 'match' '(' expression ')' '{' pattern-body '}'
-              | 'match' '{' { expression '{' pattern-body '}' }
-                            [ 'else' '{' pattern-body '}' ] '}'
 repeat-block  = 'repeat' '(' integer [ 'as' name ]
                 { ',' expression } ')' '{' repeat-body '}'
-repeat-body   = { targets ':' value ';' | match-block | repeat-block }
+repeat-body   = { targets ':' value ';' | match | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
@@ -548,16 +558,16 @@ value         = css-color | expression { ',' expression }
 `size` is also a value. Any other name is a variable, declared and
 typed by its first assignment: numbers become floats, and a color is a
 `vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names
-are reported (§11), as is a name nothing reads, such as `fil: red`.
-`v.xz: …` writes those channels of a vector; a name not yet assigned
-in the scope, such as `pos`, is copied first, so `pos.x: abs(pos.x)`
-mirrors the pattern. Several targets take a value each when the counts
-match, and the whole value each otherwise: `a, b: 1, vec2(2, 3)`.
+are reported (§11). `v.xz: …` writes those channels of a vector; a
+name not yet assigned in the scope, such as `pos`, is copied first, so
+`pos.x: abs(pos.x)` mirrors the pattern. Several targets split the
+value at commas: `a, b: 1, vec2(2, 3)`.
 
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,
 `^` and `**` are power, and `%`, `a < b < c` and the logic words read
 the same. There are no units, `var()` or `?:`; `2px` is 2 times the
-variable `px`, and `45deg` 45 times `deg`. Swizzles work on
+variable `px`, and `45deg` 45 times `deg`. `deg` is π/180 and `turn`
+2π, unless a variable takes the name. Swizzles work on
 `vec2`, `vec3`, `vec4` and `mat2`. A color name or `#rgb` is a `vec3`, `#rgba` a `vec4`:
 `mix(red, #00f, du + .5)`.
 
@@ -694,7 +704,6 @@ once per component.
   skipped. Undeclared or reserved names are reported, and so are
   statements without a colon and what an expression cannot place:
   values side by side, `?:`, a trailing operator. An undeclared name
-  reads 0, in `@scene` too. Arms without a test, declarations between
-  arms and arms after `else` are skipped. `ramp()`, `shape()` and GLSL
+  reads 0, in `@scene` too. `ramp()`, `shape()` and GLSL
   derivatives inside a `match` block or a `repeat` with stops are
   reported.
