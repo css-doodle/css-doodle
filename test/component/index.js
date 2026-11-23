@@ -702,9 +702,9 @@ test('use() adds a shader addon as an image under its own name', () => {
 test('use() gives a shader addon expr(): the math of @pattern as GLSL, with t the time in seconds and units read', () => {
     CSSDoodle.use('addon-expr', { shader: (code, { expr }) => JSON.stringify(code.split(';').map(expr)) });
     let warnings = [];
-    let out = Func['addon-expr'].shader('9 + 2 * sin(t);t % 2;π / 2;9% + .25turn - 90deg;9%2;nope;1 +;var(--cssd-utime)', {}, message => warnings.push(message));
+    let out = Func['addon-expr'].shader('9 + 2 * sin(t);t % 2;π / 2;9% + .25turn - 90deg;turn / 4 - 90 * deg;9%2;nope;1 +;var(--cssd-utime)', {}, message => warnings.push(message));
     assert.deepEqual(JSON.parse(out), [
-        '(9.0 + (2.0 * sin(u_time)))', '(u_time - 2.0 * trunc(u_time / 2.0))', '(3.1415926535897932 / 2.0)', '((9.0 + 90.0) - 90.0)', '(9.0 - 2.0 * trunc(9.0 / 2.0))', null, null, null,
+        '(9.0 + (2.0 * sin(u_time)))', '(u_time - 2.0 * trunc(u_time / 2.0))', '(3.1415926535897932 / 2.0)', '((9.0 + 90.0) - 90.0)', '((360.0 / 4.0) - (90.0 * 1.0))', '(9.0 - 2.0 * trunc(9.0 / 2.0))', null, null, null,
     ]);
     assert.deepEqual(warnings, ['unknown nope', 'nothing after +', '@t: use t']);
 });

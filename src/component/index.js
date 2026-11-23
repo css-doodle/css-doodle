@@ -135,7 +135,7 @@ function expr(text, warn) {
     let fail = message => (failed = true, warn(message));
     text = String(text);
     if ([utime, UTime].some(name => text.includes(name))) return fail('@t: use t'), null;
-    let names = { __proto__: null, t: 'u_time' };
+    let names = { __proto__: null, t: 'u_time', deg: '1.0', turn: '360.0' };
     let math = text.replace(UNIT, (_, n, unit) => +n * DEGREES[unit.toLowerCase()]);
     let code = compile(math, { names, warn: fail, unknown: name => (fail(`unknown ${name}`), [0]) }).code('float');
     return failed || !code ? null : code.replace(/\bPI\b/g, '3.1415926535897932');
