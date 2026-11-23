@@ -158,6 +158,10 @@ test('fill and variables read values as @pattern does', () => {
 test('a value function\'s own names stay out of the warnings', () => {
     assert.deepEqual(scene('sphere { f_1_k: 1; f_1_result: .3; r: f_1_result }').warnings, []);
     assert.deepEqual(scene('sphere { g_1_result: .3; fill: g_1_result }').warnings, ['fill needs color']);
+    let { body, warnings } = scene('sphere { f_1_k: .2 .3; f_1_result: rand(); r: .1; move: rand() 0 0 }');
+    assert.deepEqual(warnings, []);
+    assert.equal(body.match(/rand\(/g).length, 1);
+    assert.match(body, /rand\(vec2\(0\.0, 1\.0\)/);
 });
 
 test('p is the point and cannot be assigned', () => {

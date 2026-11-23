@@ -3,7 +3,7 @@ import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
 import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue } from './pattern.js';
-import { used } from '../parser/parse-body.js';
+import { reads, used } from '../parser/parse-body.js';
 import { glsl } from '../lib/tagged-template.js';
 
 const SHAPES = {
@@ -122,9 +122,9 @@ function checkAll(node, warn, unread, code, copy) {
                 warn('read-only p');
                 continue;
             }
-            if (valid && used(code, r.name)) continue;
+            if (valid && (reads(code, r.name) || /^match_\d+_$/.test(r.name))) continue;
             unread.add(r);
-            warn(!valid ? `invalid name "${r.name}"` : node.top ? `unused ${r.name}` : `${node.name}: unknown ${r.name}`);
+            if (!used(code, r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `unused ${r.name}` : `${node.name}: unknown ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
