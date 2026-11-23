@@ -1062,7 +1062,7 @@ test('a seed attribute and @seed give the same cells', () => {
 test('@svg problems are reported once for the whole grid', () => {
     let compiled = compile('background: @svg(viewBox: 0 0 100; circle { animate r: 1; 5 });', '2');
     assert.deepEqual(compiled.warnings.map(w => w.message), [
-        'invalid viewBox "0 0 100"',
+        'invalid viewBox',
         'r needs duration',
     ]);
     // the same source is memoized: a second compile still reports

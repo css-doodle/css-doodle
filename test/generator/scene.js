@@ -24,7 +24,7 @@ test('elements at the top level are joined', () => {
 });
 
 test('a scene without shapes draws nothing', () => {
-    assert.deepEqual(scene('fill: red;').warnings, ['@scene needs shapes']);
+    assert.deepEqual(scene('fill: red;').warnings, ['no shapes']);
 });
 
 test('sizes are attributes', () => {
@@ -94,8 +94,8 @@ test('round and frame keep the outer size, grow inflates', () => {
 });
 
 test('attributes a shape does not take are reported', () => {
-    assert.deepEqual(scene('sphere { r: .2; round: .02; colr: red }').warnings, ['sphere: unknown round', 'sphere: unknown colr']);
-    assert.deepEqual(scene('sphere { smooth: .1 }').warnings, ['sphere: unknown smooth']);
+    assert.deepEqual(scene('sphere { r: .2; round: .02; colr: red }').warnings, ['unused round', 'unused colr']);
+    assert.deepEqual(scene('sphere { smooth: .1 }').warnings, ['unused smooth']);
     assert.deepEqual(scene('box { sphere { r: .1 } }').warnings, ['wrap in union']);
     assert.deepEqual(scene('box#leg; #leg { sphere { r: .1 } }').warnings, ['wrap in union']);
 });
@@ -195,7 +195,7 @@ test('polygon takes points and a depth', () => {
 
 test('sdf takes a distance in d', () => {
     assert.match(scene('sdf { d: length(p) - .3 }').body, /length\(p\) - \.3/);
-    assert.deepEqual(scene('sdf { r: .3 }').warnings, ['sdf: unknown r', 'sdf needs d']);
+    assert.deepEqual(scene('sdf { r: .3 }').warnings, ['unused r', 'sdf needs d']);
 });
 
 test('mirror evaluates every reflection', () => {
@@ -215,7 +215,7 @@ test('a copy block of bodies writes each copy out and draws what the loop draws'
     let { body, warnings } = scene('sphere*2 { { r: .1; colr: red } { r: .2; colr: red } }');
     assert.doesNotMatch(body, /for \(/);
     assert.match(body, /length\(p\) - \.1[^]*length\(p\) - \.2/);
-    assert.deepEqual(warnings, ['sphere: unknown colr']);
+    assert.deepEqual(warnings, ['unused colr']);
 });
 
 test('outside copies the scene is one copy', () => {
@@ -228,7 +228,7 @@ test('#id names a shape instead of drawing it, #id draws it with more rows', () 
     assert.deepEqual(scene('capsule#leg2 { from: 0 0 0; to: 0 .2 0; r: .02 } #leg2 { move: .1 0 0 }').warnings, []);
     assert.deepEqual(scene('union#cap { sphere { r: .2 } box { size: .1 } } #cap;').warnings, []);
     assert.deepEqual(scene('union#a { #a { scale: 2 } } #a;').warnings, ['recursive #a']);
-    assert.deepEqual(scene('#nope;').warnings, ['unknown #nope', '@scene needs shapes']);
+    assert.deepEqual(scene('#nope;').warnings, ['unknown #nope', 'no shapes']);
     // an attribute given at #id replaces the shape's own
     let { body, warnings } = scene('capsule#leg { r: .1 } #leg { r: .2 }');
     assert.deepEqual(warnings, []);
@@ -238,7 +238,7 @@ test('#id names a shape instead of drawing it, #id draws it with more rows', () 
 
 test('named shapes nothing draws are still checked', () => {
     assert.deepEqual(scene('sphere#a { r: .1 } sphere#b { r: .2 } #a;').warnings, []);
-    assert.deepEqual(scene('sphere#a { colr: red } sphere { r: .2 }').warnings, ['sphere: unknown colr']);
+    assert.deepEqual(scene('sphere#a { colr: red } sphere { r: .2 }').warnings, ['unused colr']);
 });
 
 test('perspective sets the camera distance, none makes it parallel', () => {
@@ -530,7 +530,7 @@ test('a match block sets its rows where its test holds, the values before it els
     // the test runs once, every row reads its arm
     assert.match(body, /float (g_\d+) = \(\(g_\d+ > 3\.0\) \? 1\.0 : 0\.0\);\nvec3 g_\d+ = \(\(\1 == 1\.0\) \?[^\n]*\nvec4 g_\d+ = vec4\(g_\d+, length\(p\) - \(\(\1 == 1\.0\) \? \.2 : \.1\)\);/);
     // a row needs a value before the block; shapes stay out
-    assert.deepEqual(scene('sphere { r: .3; match { p.y > 0 { fill: red } } }').warnings, ['fill needs a value first']);
+    assert.deepEqual(scene('sphere { r: .3; match { p.y > 0 { fill: red } } }').warnings, ['set fill first']);
     assert.deepEqual(scene('sphere { r: .3; match(n > 1) { box { size: .1 } } }').warnings, ['shapes in match']);
 });
 
@@ -572,7 +572,7 @@ test('a copy block adds to the rows and shapes around it', () => {
 
 test('r is read only where a shape takes it', () => {
     let { body, warnings } = scene('box { r: random() } sphere { r: random() } ellipsoid { r: random() .2 .1 }');
-    assert.deepEqual(warnings, ['box: unknown r']);
+    assert.deepEqual(warnings, ['unused r']);
     assert.match(body, /length\(p\) - rand\(vec2\(0\.0, 1\.0\)/);
     assert.match(body, /g_ellipsoid\(p, vec3\(rand\(vec2\(0\.0, 2\.0\)[^;]*, \.2, \.1\)\)/);
     assert.equal(body.match(/rand\(/g).length, 2);

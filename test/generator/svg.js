@@ -402,7 +402,7 @@ test('problems are reported through the warn callback', () => {
     };
     assert.deepEqual(warned('viewBox: 0 0 10; circle {}'), {
         output: '<svg><circle/></svg>',
-        warnings: ['invalid viewBox "0 0 10"'],
+        warnings: ['invalid viewBox'],
     });
     assert.deepEqual(warned('g { draw: 2s }'), {
         output: '<svg><g/></svg>',

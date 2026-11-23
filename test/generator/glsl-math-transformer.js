@@ -95,8 +95,8 @@ test('what the grammar cannot place is reported once', () => {
     };
     assert.deepEqual(report('x > 1 ? 1 : 0'), ['(x > 1.0)', ['unexpected ?']]);
     assert.deepEqual(report('2 t'), ['2.0', ['unexpected t']]);
-    assert.deepEqual(report('50%'), ['50.0', ['nothing after %']]);
-    assert.deepEqual(report('x and'), ['x', ['nothing after &&']]);
+    assert.deepEqual(report('50%'), ['50.0', ['trailing %']]);
+    assert.deepEqual(report('x and'), ['x', ['trailing &&']]);
     assert.deepEqual(report('x * * 2'), ['(x * 0.0)', ['unexpected *']]);
     assert.deepEqual(report('a : b'), ['a', ['unexpected :']]);
     assert.deepEqual(report('x ! y'), ['x', ['unexpected !']]);

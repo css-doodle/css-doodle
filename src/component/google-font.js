@@ -62,13 +62,13 @@ function extractFonts(css) {
 
 async function toBase64(url) {
     let res = await fetch(url);
-    if (!res.ok) throw new Error(`font fetch ${res.status}`);
+    if (!res.ok) throw new Error(`font ${res.status}`);
     return (await res.bytes()).toBase64();
 }
 
 async function embedFont(link) {
     let res = await fetch(link);
-    if (!res.ok) throw new Error(`font fetch ${res.status}`);
+    if (!res.ok) throw new Error(`font ${res.status}`);
     let fonts = extractFonts(await res.text());
     let embedded = await Promise.all(
         fonts.map(async ({ family, url, weight, style, range }) => {
@@ -86,7 +86,7 @@ export async function loadGoogleFontEmbed(names) {
     if (!embedFonts.has(link)) {
         embedFonts.set(link, embedFont(link).catch(error => {
             embedFonts.delete(link);
-            console.warn('fonts not loaded', error);
+            console.warn('fonts failed', error);
             return '';
         }));
     }

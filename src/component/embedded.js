@@ -249,7 +249,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         }
         try {
             let drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell, () => {
-                host.report([{ message: 'WebGL context lost' }]);
+                host.report([{ message: 'WebGL lost' }]);
             });
             await drawing.ready;
             if (isStale(token) || (initial && host.shaderRenders.has(id))) return drawing.dispose();

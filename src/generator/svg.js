@@ -217,7 +217,7 @@ function transformViewBox(token, warn) {
         viewBox = [0, 0, viewBox[0], viewBox.at(-1)];
     }
     if (viewBox.length !== 4) {
-        warn(`invalid viewBox "${token.value}"`);
+        warn('invalid viewBox');
         return '';
     }
     let [x, y, w, h] = viewBox;

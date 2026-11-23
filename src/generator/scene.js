@@ -124,7 +124,7 @@ function checkAll(node, warn, unread, code, copy) {
             }
             if (valid && (reads(code, r.name) || /^match_\d+_$/.test(r.name))) continue;
             unread.add(r);
-            if (!used(code, r.name)) warn(!valid ? `invalid name "${r.name}"` : node.top ? `unused ${r.name}` : `${node.name}: unknown ${r.name}`);
+            if (!used(code, r.name)) warn(!valid ? `invalid name "${r.name}"` : `unused ${r.name}`);
         }
     }
     if (/^(polygon|lathe)$/.test(node.name) && !node.rings && (node.children.length || node.rows.some(r => /^(text|path)$/.test(r.name)))) {
@@ -147,7 +147,7 @@ function checkAll(node, warn, unread, code, copy) {
 export default function drawScene(code, extra, report = () => {}) {
     let said = new Set(), warn = message => said.has(message) || (said.add(message), report(message));
     let tree = readShapes(code, warn, { ignoreInlineComment: true });
-    let root = { name: 'union', top: true, rows: [], children: tree.children }, camera = {};
+    let root = { name: 'union', rows: [], children: tree.children }, camera = {};
     for (let r of tree.rows) {
         if (/^(view|perspective|zoom|light|shadow|ambient|drag|eye|look)$/.test(r.name)) camera[r.name] = r.value;
         else root.rows.push(r);
@@ -157,7 +157,7 @@ export default function drawScene(code, extra, report = () => {}) {
     let unread = new Set();
     for (let node of [root, ...tree.unused]) checkAll(node, warn, unread, code);
     let vars = node => node.rows.filter(r => isVar(node, r.name) && !unread.has(r));
-    if (!root.children.length) warn('@scene needs shapes');
+    if (!root.children.length) warn('no shapes');
     if (/\bcalc\(/.test(code)) warn('no calc()');
 
     // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit

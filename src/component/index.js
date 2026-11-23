@@ -244,7 +244,7 @@ if (typeof HTMLElement !== 'undefined') {
             let owner = base && !doodle && Func, key = variant || name;
             if (variant) owner = (doodle ? base == 'doodle' : added.has(base)) && Func[base];
             if (owner && (key in owner || MathFunc[name])) return console.warn(`@${name} exists`);
-            if (!owner || !(shader || value || doodle)) return console.warn(`invalid addon @${name}`);
+            if (!owner || !(shader || value || doodle)) return console.warn(`invalid @${name}`);
             owner[key] = doodle ? (code, api) => guard(() => doodle(code, {
                 ...api, stream: key => createRandom([name, api.seed, key]).rand, split, words,
             }), api.warn) : shader ? Object.assign(() => {}, {

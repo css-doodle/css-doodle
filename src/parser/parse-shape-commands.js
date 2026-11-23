@@ -84,7 +84,7 @@ function readShapes(input, warn = () => {}, options) {
             let texts = arms.map(([, a]) => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
             let prior = node.rows.findLast(r => r.name == name), none = NONE[name];
             if (!none && !prior) {
-                warn(`${name} needs a value first`);
+                warn(`set ${name} first`);
                 continue;
             }
             let text = texts.find(Boolean), parts = texts.map(t => t && partsOf(t)), base = prior && partsOf(textOf(prior.value));

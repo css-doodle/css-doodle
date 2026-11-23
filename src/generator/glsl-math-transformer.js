@@ -176,7 +176,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         consume();
         const right = power(primary());
         if (!right) {
-            report('nothing after **');
+            report('trailing **');
             return n;
         }
         return { type: 'Bin', val: '**', left: n, right };
@@ -197,7 +197,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             consume();
             const right = parse(p + 1);
             if (!right) {
-                report(`nothing after ${op}`);
+                report(`trailing ${op}`);
                 break;
             }
             n = { type: 'Bin', val: op, left: n, right };
