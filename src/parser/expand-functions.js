@@ -114,6 +114,7 @@ const MAX_EXPANSION = 1e6;
 
 const CSS = 0, BODY = 1, EXPR = 2;
 const INCLUDE = 1, VALUE = 2, EXPRESSION = 3;
+const MATH = true, PAINT = null, ARGS = 0, PLAIN = false;
 const RE_PAINT_HEAD = /^(pattern|scene)[\dxX.]*$/;
 const RE_TEXTURE_HEAD = /^texture\w*$/;
 const RE_REPEAT_HEAD = /^repeat\s*\(/;
@@ -244,7 +245,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
             let n = ctx.calls + 1, word = name.replace(/\W/g, '_'), loops = RE_LOOP.test(source.body);
             let bound = [], lets = [];
             params.forEach((p, k) => {
-                let arg = args[k] || defaults[k] && bindParams({ params: params.slice(0, k), defaults: [], body: defaults[k] }, bound, defs, paint, !paint && 0);
+                let arg = args[k] || defaults[k] && bindParams({ params: params.slice(0, k), defaults: [], body: defaults[k] }, bound, defs, paint, !paint && ARGS);
                 let id = !!arg && (RE_VARYING.test(arg) || loops && RE_COUNTER.test(arg))
                     && (paint ? hoists : !isStatements(arg) && !RE_NESTED_DOODLE.test(def.body))
                     && (paint ? `${word}_${n}_${p}` : `${n}${word}_${p}`);
@@ -484,25 +485,25 @@ function inWord(tokens, i, end) {
 function mathOpen(tokens, i, defs) {
     let j = i - 1;
     while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
-    if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return false;
+    if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return PLAIN;
     let name = textOf(tokens.slice(j + 1, i));
-    if (tokens[j].isSymbol('$')) return defs[name] ? 0 : true;
-    if (tokens[j].isSymbol('@') && RE_PAINT_HEAD.test(name)) return null;
-    if (!tokens[j].isSymbol('@') || name !== 'match') return false;
+    if (tokens[j].isSymbol('$')) return defs[name] ? ARGS : MATH;
+    if (tokens[j].isSymbol('@') && RE_PAINT_HEAD.test(name)) return PAINT;
+    if (!tokens[j].isSymbol('@') || name !== 'match') return PLAIN;
     let close = closing(tokens, i);
-    return close > 0 && !!solidAt(tokens, close + 1)?.isSymbol('{');
+    return close > 0 && solidAt(tokens, close + 1)?.isSymbol('{') ? MATH : PLAIN;
 }
 
 function bindParams({ params, defaults, body }, args, defs, paint, math) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0, quote = false;
-    let parens = math || math === 0 ? [math] : [], blocks = [], head = 0;
+    let parens = math || math === ARGS ? [math] : [], blocks = [], head = 0;
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], prev = tokens[i - 1];
         if (t.status) quote = t.status === 'open';
         if (t.isSymbol('(')) {
             let up = parens.at(-1), m = mathOpen(tokens, i, defs);
-            parens.push(m === true || up === true ? true : m === null || up === null ? null : m === 0 || up === 0 && prev?.value !== 'url' ? 0 : false);
+            parens.push(m === MATH || up === MATH ? MATH : m === PAINT || up === PAINT ? PAINT : m === ARGS || up === ARGS && prev?.value !== 'url' ? ARGS : PLAIN);
             continue;
         }
         if (t.isSymbol(')')) {
@@ -533,7 +534,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math) {
         let start = t.index;
         let call = next?.isSymbol('(') && adjacent(last, next);
         if (dollar && call && defs[name]) continue;
-        let wrap = parens.at(-1) && !call;
+        let wrap = parens.at(-1) === MATH && !call;
         let one = paint && !!arg && (!RE_SIMPLE_ARG.test(arg.trim())
             || /^[\d.]/.test(arg.trim()) && ahead?.isNumber() && adjacent(ahead, dollar ? prev : t));
         let lead = body.slice(head, dollar ? prev.index : t.index);
@@ -543,13 +544,13 @@ function bindParams({ params, defaults, body }, args, defs, paint, math) {
             wrap ||= one && !assigned;
         } else if (prev?.isSymbol('@') && adjacent(prev, t)) {
             continue;
-        } else if (!paint && parens.at(-1) === 0) {
+        } else if (!paint && parens.at(-1) === ARGS) {
             if (call || quote || solidAt(tokens, end + 1)?.isSymbol(':') || inWord(tokens, first, end)) continue;
         } else if (!wrap) {
             if (!paint || call || blocks.includes(true) || /\sas\s+$/.test(lead) || assigned) continue;
             wrap = one;
         }
-        let list = !paint && parens.at(-1) !== 0 && /^\s*\(.*,.*\)\s*$/s.test(arg) && tokensOf(arg.trim());
+        let list = !paint && parens.at(-1) !== ARGS && /^\s*\(.*,.*\)\s*$/s.test(arg) && tokensOf(arg.trim());
         if (list && closing(list, 0) === list.length - 1 && itemsOf(list.slice(1, -1)).length > 1) arg = arg.trim().slice(1, -1);
         else if (wrap) arg = '(' + arg + ')';
         out += body.slice(from, start) + arg;
