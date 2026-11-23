@@ -76,7 +76,7 @@ function mountFilterDefs(parent, markup, slot) {
         if (slot) {
             holder.slot = slot;
         }
-        parent.appendChild(holder);
+        parent.append(holder);
     }
     holder.innerHTML = markup;
     return holder;
@@ -310,7 +310,7 @@ if (typeof HTMLElement !== 'undefined') {
             this.watchViewport();
             reducedMotion?.addEventListener('change', this._on_motion);
             this.syncMotion();
-            if (this.getAttribute('loading') === 'lazy' && !this.compiled && !this.hasAttribute('cells') && typeof IntersectionObserver !== 'undefined') {
+            if (this.getAttribute('loading') === 'lazy' && !this.compiled && !this.hasAttribute('cells') && this._viewport) {
                 this.waitForViewport();
             } else {
                 this.start();
@@ -473,7 +473,7 @@ if (typeof HTMLElement !== 'undefined') {
         cellRules() {
             let m = `[cssd-${this._instance}]`, h = `[cssd-${this._instance}-host]`;
             if (!this._vars) (this._vars = document.createElement('style')).textContent = `${h}{}:is(${m},${h}),${m}::before,${m}::after{}`;
-            if (this._vars.parentNode !== this) this.appendChild(this._vars);
+            if (this._vars.parentNode !== this) this.append(this._vars);
             return this._vars.sheet;
         }
 
@@ -534,7 +534,7 @@ if (typeof HTMLElement !== 'undefined') {
             clearInterval(this._auto_update_timer);
             this._auto_update_timer = null;
             this.removeAttribute('auto:update');
-            this.removeAttribute('data-interval');
+            delete this.dataset.interval;
         }
 
         generate(source, parsed, seed) {
@@ -738,13 +738,12 @@ if (typeof HTMLElement !== 'undefined') {
         buildGrid(compiled, grid) {
             let { hasTransition } = compiled.props;
             let { content, styles } = compiled;
-            let hasContent = hasEntries(content);
             let sheet = hasTransition || !hasPlaceholder(styles.all)
                 ? getBasicStyles(grid) + styles.main
                 : (styles.top + getBasicStyles(grid) + styles.all).replace(RE_PLACEHOLDER, '');
             this.shadowRoot.innerHTML = css`
                 <style>${sheet.replace(/<\/(style)/gi, '<\\/$1')}</style>
-                ${(styles.cells || styles.container || hasContent) ? createGrid(grid, compiled) : ''}
+                ${(styles.cells || styles.container || hasEntries(content)) ? createGrid(grid, compiled) : ''}
             `;
             if (hasTransition) {
                 this.reflow();
@@ -815,7 +814,7 @@ if (typeof HTMLElement !== 'undefined') {
             } else if (!slot) {
                 slot = document.createElement('slot');
                 slot.name = 'ft';
-                this.shadowRoot.appendChild(slot);
+                this.shadowRoot.append(slot);
             }
             let holders = [
                 mountFilterDefs(this.shadowRoot, markup),
@@ -859,7 +858,7 @@ if (typeof HTMLElement !== 'undefined') {
             this._styleReady = input.then(sheet => {
                 if (this._generation === generation) {
                     let style = this._cells ? (this._sheet ??= document.createElement('style')) : this.shadowRoot.querySelector('style');
-                    if (this._cells && style.parentNode !== this) this.appendChild(style);
+                    if (this._cells && style.parentNode !== this) this.append(style);
                     style.textContent = sheet.replace(/\n\s+/g, ' ');
                     this._landed = true;
                     syncUTime(this);
@@ -988,8 +987,9 @@ if (typeof HTMLElement !== 'undefined') {
                 </svg>
             `;
 
+            let result = { width: w, height: h, svg };
             if (download || detail) {
-                let { source, blob } = await generatePng(svg, w, h, scale);
+                let { blob } = Object.assign(result, await generatePng(svg, w, h, scale));
                 if (download) {
                     let a = document.createElement('a');
                     a.download = (isNil(name) ? Date.now() : String(name).replace(/\.png$/, '')) + '.png';
@@ -997,9 +997,8 @@ if (typeof HTMLElement !== 'undefined') {
                     a.click();
                     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
                 }
-                return { width: w, height: h, svg, blob, source };
             }
-            return { width: w, height: h, svg };
+            return result;
         }
     }
 }

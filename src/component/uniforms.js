@@ -1,12 +1,13 @@
 import { u, U, umousex, umousey, uwidth, uheight } from '../core/uniforms.js';
 
-export function bindUniforms(host, { mousex, mousey, mouse, width, height }) {
+export function bindUniforms(host, uniforms) {
+    let { mousex, mousey, mouse, width, height } = uniforms;
     if (host._uframe !== host.frame) {
         unbindUniforms(host);
         host._uframe = host.frame;
     }
     if (mousex || mousey || mouse) {
-        regUmouse(host, mousex, mousey, mouse);
+        regUmouse(host, uniforms);
     } else {
         offUmouse(host);
     }
@@ -35,8 +36,8 @@ export function unbindUniforms(host) {
     offUsize(host);
 }
 
-function regUmouse(host, mousex, mousey, mouse) {
-    host._umouse_flags = { mousex, mousey, mouse };
+function regUmouse(host, flags) {
+    host._umouse_flags = flags;
     let init = !host._umouse_fn;
     if (init) {
         host._umouse_fn = e => {
@@ -53,7 +54,7 @@ function regUmouse(host, mousex, mousey, mouse) {
         }
         host._uframe.addEventListener('pointermove', host._umouse_fn);
     }
-    if (init || (mouse && !host._umouse)) {
+    if (init || (flags.mouse && !host._umouse)) {
         host._umouse_fn({ offsetX: 0, offsetY: 0 });
     }
 }
@@ -64,7 +65,6 @@ function offUmouse(host) {
         host.vars.removeProperty(umousey);
         host._uframe.removeEventListener('pointermove', host._umouse_fn);
         host._umouse_fn = null;
-        host._umouse_flags = null;
         delete host._umouse;
     }
 }

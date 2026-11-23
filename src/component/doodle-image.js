@@ -28,7 +28,7 @@ export function createReplacer(host, compiled, inside) {
     const { shader = unset, pattern = unset } = host.draw ?? {};
     const paint = draw => (id, v) => draw(host, { ...v, compiled, inside }).then(url => url ?? `var(--${id})`);
     const groups = [
-        [doodles, (id, v) => doodleToImage(host, v.doodle, { arg: v.arg, upextra: v.upextra, instance: id, compiled })
+        [doodles, (id, v) => doodleToImage(host, v.doodle, { ...v, instance: id, compiled })
             .then(url => `url("${url}")`)],
         [shaders, paint(shader)],
         [patterns, paint(pattern)],

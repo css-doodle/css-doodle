@@ -30,7 +30,7 @@ export function loadGoogleFontLink(fonts) {
 function extractFonts(css) {
     let seen = new Map();
     for (let [, content] of css.matchAll(/@font-face\s*{([^}]+)}/gi)) {
-        let getProp = prop => content.match(new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)['"]?`, 'i'))?.[1].trim();
+        let getProp = prop => content.match(new RegExp(`${prop}:\\s*['"]?([^'";\\)]+)`, 'i'))?.[1].trim();
         let url = content.match(/url\(([^)]+)\)/i)?.[1].replace(/['"]/g, '');
         let family = getProp('font-family');
         if (!family || !url) continue;
@@ -50,7 +50,7 @@ function extractFonts(css) {
             let weights = (prev.weight + ' ' + font.weight).split(' ').map(Number);
             let min = Math.min(...weights);
             let max = Math.max(...weights);
-            prev.weight = (min === max) ? String(min) : `${min} ${max}`;
+            prev.weight = min === max ? min : `${min} ${max}`;
         } else {
             seen.set(key, font);
         }
@@ -60,19 +60,17 @@ function extractFonts(css) {
     return [...seen.values()];
 }
 
-async function toBase64(url) {
+async function fetchFont(url, type) {
     let res = await fetch(url);
     if (!res.ok) throw new Error(`font ${res.status}`);
-    return (await res.bytes()).toBase64();
+    return res[type]();
 }
 
 async function embedFont(link) {
-    let res = await fetch(link);
-    if (!res.ok) throw new Error(`font ${res.status}`);
-    let fonts = extractFonts(await res.text());
+    let fonts = extractFonts(await fetchFont(link, 'text'));
     let embedded = await Promise.all(
         fonts.map(async ({ family, url, weight, style, range }) => {
-            let base64 = await toBase64(url);
+            let base64 = (await fetchFont(url, 'bytes')).toBase64();
             let rangeRule = range ? `unicode-range:${range};` : '';
             return `@font-face{font-family:"${family}";font-weight:${weight};font-style:${style};${rangeRule}src:url("data:font/woff2;base64,${base64}") format("woff2");}`;
         })
