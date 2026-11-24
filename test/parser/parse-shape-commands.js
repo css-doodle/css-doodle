@@ -80,6 +80,11 @@ test('a match block in an arm reads the values before the outer block', () => {
     assert.equal(parseShapeCommands('match { a { f_1_k: 2 } else { f_1_k: 3 } }').f_1_k, 'match(match_1_ == 2,3,2)');
 });
 
+test('the rows of a match block keep the order each arm sets them in', () => {
+    assert.equal(parseShapeCommands('sphere { j: .1; k: .1; match { a { j: .3 } else { k: .2; j: k * 2 } } }').blocks.items[0],
+        'sphere;j:.1;k:.1;match_1_:match((a),1,2);k:match(match_1_ == 2,.2,.1);j:match(match_1_ == 1,.3,match_1_ == 2,k * 2,.1)');
+});
+
 test('a group block keeps its shapes as text and takes commands of its own', () => {
     assert.deepEqual(parseShapeCommands('subtract { smooth: .1; heart; circle { scale: .5 } star 5 .4 } rotate: 10'), {
         rotate: '10',

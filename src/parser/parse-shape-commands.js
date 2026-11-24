@@ -84,7 +84,14 @@ function readShapes(input, warn = () => {}, options) {
         outer.pop();
         node.rows.push({ name: id, value: scan(armIndex(valid)) });
         if (arms.some(a => a.children.length)) warn('shapes in match');
-        for (let name of new Set(arms.flatMap(a => a.rows.map(r => r.name)))) {
+        // each name once, after the names any arm sets before it, as @scene reads them in order
+        let chains = arms.map(a => [...new Set(a.rows.map(r => r.name))]), names = [];
+        for (let first; (first = chains.find(c => c.length));) {
+            let name = chains.map(c => c[0]).find(n => n && chains.every(c => c.indexOf(n) < 1)) ?? first[0];
+            names.push(name);
+            chains = chains.map(c => c.filter(n => n != name));
+        }
+        for (let name of names) {
             let texts = arms.map(a => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
             let prior = [...outer.flat(), ...node.rows].findLast(r => r.name == name), none = NONE[name];
             let text = texts.find(Boolean), made = !prior && !none && /^\w+_\d+_/.test(name);
