@@ -1141,7 +1141,8 @@ class Rules {
                             if (!fn) break;
                             for (let arg of args) {
                                 let compiled = compileArgument(arg);
-                                pushInput(input, compiled({ cell, env }, EMPTY_EXTRA), compiled.composed || compiled.cluster);
+                                if (compiled.split) input.push(...compiled.split);
+                                else pushInput(input, compiled({ cell, env }, EMPTY_EXTRA), compiled.composed || compiled.cluster);
                             }
                             let hit = this.callFunc(fn, { cell, env }, token.position + '.' + i + (j ? '.' + j : ''), removeEmptyValues(input));
                             if (not ? hit : !hit) break;
