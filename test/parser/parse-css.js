@@ -1011,24 +1011,21 @@ test('the last result a call runs is its value, in a block too', () => {
         'f_1_x: 3; f_1_result: f_1_x * 2; fill: f_1_result;');
 });
 
-test('in @scene a value function\'s match block becomes values', () => {
+test('a value function\'s match block pastes as written, in @scene as in @pattern', () => {
     assert.equal(paintOf(`--skin(q): { result: #c99; match { q.y > .2 { result: #eee; } } };
-        @content: @scene(sphere { fill: $skin(p * 2) });`), [
-        'sphere {skin_1_q: p * 2; skin_1_result: #c99; skin_1_1: match((skin_1_q.y > .2), 1, 0);',
-        'skin_1_result: match(skin_1_1 == 1, #eee, skin_1_result); fill: skin_1_result }',
-    ].join(' '));
+        @content: @scene(sphere { fill: $skin(p * 2) });`),
+        'sphere {skin_1_q: p * 2; skin_1_result: #c99; match { skin_1_q.y > .2 { skin_1_result: #eee; } } fill: skin_1_result }');
     assert.equal(paintOf(`--f(c): { match { a { result: 1, c; } else { match(b) { k: 2; result: 0, k; } } } };
         @content: @scene(w: 1; sphere { r, s: $f(w) });`), [
-        'w: 1; sphere {f_1_1: match((a), 1, 2); f_1_result: 1; f_1_result_2: w; f_1_2: match((b), 1, 0); f_1_k: 2;',
-        'f_1_result: match(f_1_1 == 2 && f_1_2 == 1, 0, f_1_result); f_1_result_2: match(f_1_1 == 2 && f_1_2 == 1, f_1_k, f_1_result_2);',
+        'w: 1; sphere {match { a { f_1_result: 1; f_1_result_2: w; } else { match(b) { f_1_k: 2; f_1_result: 0; f_1_result_2: f_1_k; } } }',
         'r: f_1_result; s: f_1_result_2 }',
     ].join(' '));
     assert.equal(paintOf(`--f(): { match(a) { result: 1; } }; @content: @pattern(fill: $f(););`),
         'match(a) { f_1_result: 1; } fill: f_1_result;');
     assert.equal(paintOf(`--g(c): { result: 1, $c + 9 }; --f(c): { result: .3; match { $c > 5 { k, m: $g($c); } } };
         @content: @scene(w: 1; sphere { r: $f(w) * w });`), [
-        'w: 1; sphere {f_1_result: .3; f_1_1: match((w > 5), 1, 0); f_1_g_2_c: w; f_1_g_2_result: 1; f_1_g_2_result_2: f_1_g_2_c + 9;',
-        'f_1_k: f_1_g_2_result; f_1_m: f_1_g_2_result_2; r: f_1_result * w }',
+        'w: 1; sphere {f_1_result: .3; match { w > 5 {f_1_g_2_c: w; f_1_g_2_result: 1; f_1_g_2_result_2: f_1_g_2_c + 9;',
+        'f_1_k: f_1_g_2_result; f_1_m: f_1_g_2_result_2; } } r: f_1_result * w }',
     ].join(' '));
 });
 

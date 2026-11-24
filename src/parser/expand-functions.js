@@ -1,8 +1,6 @@
 // `--name(params): body` definitions and `$name(args)` calls, expanded as text before parse-css.js reads it
 import { textOf, itemsOf } from './tokenizer.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, nameLength, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
-import parsePattern from './parse-pattern.js';
-import { armsOf, armIndex } from './parse-body.js';
 import { hasEntries } from '../lib/type.js';
 import { defaultContext } from '../core/calc.js';
 
@@ -173,11 +171,8 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
                 let inner = text.slice(tokenEnd(tokens[open]), tokens[close].index);
                 let svg = /^svg$/i.test(tokens[i + 1].value);
                 if (svg || inner.includes('$')) {
-                    let scene = ctx.scene;
-                    ctx.scene = tokens[i + 1].value === 'scene';
                     flush(tokenEnd(tokens[open]));
                     out += svg ? expandFunctions(inner, ctx, true, chain) : expandCalls(inner, defs, ctx, chain, BODY);
-                    ctx.scene = scene;
                     ctx.defs = defs;
                     from = tokens[close].index;
                 }
@@ -416,23 +411,6 @@ function valueCall(name, def, args, defs, ctx, chain) {
         }
     });
     text = expandCalls(prelude, defs, ctx, [...chain, name], BODY) + bindParams(text, params, bound, defs, true);
-    if (ctx.scene && text.includes('{')) {
-        let known = new Set(), blocks = 0;
-        let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
-            if (type == 'block' && name == 'match') {
-                let id = `${ret}_${++blocks}`;
-                arms = armsOf(arms, message => warn(ctx, message));
-                return `${id}: ${armIndex(arms)};\n`
-                    + arms.map((a, k) => lower(a.value, `${when && when + ' && '}${id} == ${k + 1}`)).join('');
-            }
-            if (type != 'statement') return type == 'text' ? value + ';\n' : `${name}${args?.length ? `(${args})` : ''} {}\n`;
-            if (when && known.has(name)) return `${name}: match(${when}, ${value}, ${name});\n`;
-            known.add(name);
-            return `${name}: ${value};\n`;
-        }).join('');
-        let out = lower(parsePattern(text), '');
-        if (blocks) text = out;
-    }
     return { text, ret: ret + '_result', count };
 }
 
