@@ -550,6 +550,24 @@ test('an outline walks only where its box could change the parts before it', () 
     assert.match(scene(`subtract { box; lathe { ${outline} } }`).dist, /if \(g_\d+ < -g_\d+\)/);
 });
 
+test('a group or copies whose ball lies past the parts before them are skipped', () => {
+    let guard = /float (g_\d+) = length\(p - vec3\(([^)]*)\)\) - ([\d.]+) - 1e-4;\nif \(\1 < g_\d+\) \{/;
+    let { dist, body } = scene('sphere { r: .1 } union { sphere { r: .1; move: .3 0 0 } sphere { r: .05; move: .3 .1 0 } }');
+    assert.deepEqual(dist.match(guard).slice(2), ['0.3, 0.025, 0.0', '0.125']);
+    assert.doesNotMatch(body, /1e-4/);
+    // a turn by any angle spreads the ball around its axis
+    assert.deepEqual(scene('sphere { r: .1 } box*8 { size: .3 .02 .02; rotate: y (n * 22.5); move: 0 .5 0 }').dist.match(guard).slice(2), ['0.0, 0.5, 0.0', '0.150665']);
+    assert.deepEqual(scene('sphere { r: .1 } union { sphere { r: .1; move: .3 0 0 } box { size: .1; move: .3 0 0 } rotate: y (40t) }').dist.match(guard).slice(2), ['0.0, 0.0, 0.0', '0.4']);
+    assert.deepEqual(scene('sphere { r: .1 } union { sphere { r: .1; move: .3 .1 0 } box { size: .1; move: .3 .1 0 } mirror: x }').dist.match(guard).slice(2), ['0.0, 0.1, 0.0', '0.4']);
+    // a blend reaches a quarter of its smooth past each join
+    assert.deepEqual(scene('sphere { r: .1 } sphere*3 { r: .1; smooth: .2; move: .3 0 0 }').dist.match(guard).slice(2), ['0.3, 0.0, 0.0', '0.2']);
+    assert.deepEqual(scene('sphere { r: .1 } union { smooth: .2; sphere { r: .1; move: .3 0 0 } box { size: .1; move: .3 0 0 } }').dist.match(guard).slice(2), ['0.3, 0.0, 0.0', '0.15']);
+    // sizes that aren't plain numbers, and repeats, are drawn everywhere
+    for (let code of ['sphere*3 { r: .1; move: (n * .2) 0 0 }', 'w: .2; union { box { size: w } sphere }', 'union { sphere { repeat: .3 } box }']) {
+        assert.doesNotMatch(scene(`sphere { r: .1 } ${code}`).dist, /1e-4/, code);
+    }
+});
+
 test('a miss past its edge is transparent, unless the colors read a slope', () => {
     assert.match(scene('sphere').fragment, /if \(g_near >= 1\.1\) \{\s*FragColor = vec4\(0\.0\);\s*return;/);
     assert.doesNotMatch(scene('sphere { fill: vec3(fwidth(p.x)) }').fragment, /g_near >= 1\.1/);

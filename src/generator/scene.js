@@ -2,6 +2,7 @@ import { readShapes, degrees, partsOf } from '../parser/parse-shape-commands.js'
 import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
+import { bounds } from './polygon.js';
 import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue } from './pattern.js';
 import { reads, used } from '../parser/parse-body.js';
 import { glsl } from '../lib/tagged-template.js';
@@ -99,6 +100,18 @@ const shadows = narrow => glsl`
     }
 `;
 
+const xyz = (items, pad) => [0, 1, 2].map(i => +(items[items.length > 1 ? i : 0] || pad));
+
+const around = ([x, y, z, r], k) => {
+    let d = (x * k[0] + y * k[1] + z * k[2]) / (k[0] * k[0] + k[1] * k[1] + k[2] * k[2]), c = k.map(v => v * d);
+    return [...c, r + Math.hypot(x - c[0], y - c[1], z - c[2])];
+};
+
+const enclose = (balls, k = 0, n = balls.length) => {
+    let c = [0, 1, 2].map(i => (Math.min(...balls.map(b => b[i] - b[3])) + Math.max(...balls.map(b => b[i] + b[3]))) / 2);
+    return [...c, Math.max(...balls.map(b => Math.hypot(b[0] - c[0], b[1] - c[1], b[2] - c[2]) + b[3])) + (n - 1) * k / 4];
+};
+
 function isVar(node, name) {
     return !COMMANDS.has(name) && name !== 'fill' && !SHAPES[node.name]?.includes(name)
         && !(name === 'smooth' && (GROUPS[node.name] || node.count));
@@ -160,7 +173,7 @@ export default function drawScene(code, extra, report = () => {}) {
     // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
     let arrays = new Map();
     let build = (dist, warn, fit) => {
-        let counter = 0, sites = 0, key = '0.0', cap, fill, cut, loose, self;
+        let counter = 0, sites = 0, key = '0.0', cap, fill, cut, loose, self, ball;
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
         // outside copies the scene is one copy
         let names = { __proto__: null, t: 't', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
@@ -227,6 +240,7 @@ export default function drawScene(code, extra, report = () => {}) {
             cap = saved;
             return r;
         };
+        let skip = (mark, g, near, bound, d) => (out = out.slice(0, mark) + `float ${g} = ${near};\nif (${g} < ${bound}) {\n${out.slice(mark)}${g} = ${d};\n}\n`, g);
 
         function generate(node, p) {
             let commands = node => node.rows.filter(r => COMMANDS.has(r.name));
@@ -238,14 +252,15 @@ export default function drawScene(code, extra, report = () => {}) {
                 return r;
             }
             let [X, Y] = node.count, r = next();
-            let outerKey = key, start = sites, end = start;
+            let outerKey = key, start = sites, end = start, balls = [], k;
             let copy = (node, n, nx, ny) => {
                 names = { __proto__: outer, n, N: float(X * Y), nx, ny };
                 key = glsl`(${outerKey} * 31.0 + ${n})`;
                 sites = start;
                 scope(node, p);
                 let c = within(!row(node, 'smooth').length && below(r), () => chain(node, commands(node), p));
-                let k = first(row(node, 'smooth'), p);
+                k = first(row(node, 'smooth'), p);
+                balls.push(ball);
                 out += join(r, c, k);
                 end = Math.max(end, sites);
                 return k;
@@ -265,6 +280,7 @@ export default function drawScene(code, extra, report = () => {}) {
             names = outer;
             key = outerKey;
             sites = end;
+            ball = enclose(balls, k, X * Y);
             return r;
         }
 
@@ -273,13 +289,15 @@ export default function drawScene(code, extra, report = () => {}) {
             if (!mods.length) return atom(node, p);
             let m = mods.at(-1), inner = mods.slice(0, -1);
             let args = () => numbers(m.value, p);
-            let q = next(), r;
+            let q = next(), r, moved;
             types[q] = 'vec3';
             if (m.name === 'move') {
-                out += `vec3 ${q} = ${p} - ${vec3(args())};\n`;
+                let v = args();
+                out += `vec3 ${q} = ${p} - ${vec3(v)};\n`;
+                moved = b => xyz(v, 0).map((v, i) => b[i] + v).concat(b[3]);
             } else if (m.name === 'scale') {
-                let s = next();
-                out += `vec3 ${s} = ${vec3(args(), '1.0')};\n`;
+                let s = next(), v = args(), k = xyz(v, 1);
+                out += `vec3 ${s} = ${vec3(v, '1.0')};\n`;
                 if (fit) {
                     // far away a shape reads |p| - its reach; scaled, it reaches |S e| times the inner reach along S e
                     let w = next();
@@ -293,6 +311,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 let f = glsl`min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)))`;
                 r = within(cap && `${cap} / ${f}`, () => chain(node, inner, q));
                 out += `${r}${W} *= ${f};\n`;
+                ball = k.map((v, i) => ball[i] * v).concat(ball[3] * Math.max(...k.map(Math.abs)));
                 return r;
             } else if (m.name === 'rotate') {
                 let axis = AXES.z, angle = '0.0';
@@ -305,6 +324,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     else if (v.length === 1) angle = `radians(${v[0]})`;
                 }
                 out += `vec3 ${q} = g_rotate(${p}, vec3(${axis}), ${angle});\n`;
+                moved = b => around(b, axis.split(',').map(Number));
             } else if (m.name === 'mirror') {
                 // every reflection reuses the same rand() sites
                 let axes = [];
@@ -326,6 +346,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     end = Math.max(end, sites);
                 }
                 sites = end;
+                ball = enclose([ball, ...axes.map(a => ball.map((v, i) => 'xyz'[i] == a ? -v : v))]);
                 return r;
             } else if (m.name === 'twist') {
                 let a = first(m.value, p, true);
@@ -339,6 +360,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     return r;
                 }
                 out += glsl`vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -radians(${a}) * ${p}.y);` + '\n';
+                moved = b => around(b, [0, 1, 0]);
             } else if (m.name === 'repeat') {
                 let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
                 if (n) warn('repeat: no count');
@@ -359,15 +381,21 @@ export default function drawScene(code, extra, report = () => {}) {
                 let c = within(below(r), () => chain(node, inner, q));
                 key = outerKey;
                 out += join(r, c, '0.0') + '}\n';
+                ball = [0, 0, 0, Infinity];
                 return r;
             } else {
                 // a frame only adds the inside back, while a grow subtracts a value read after the shape
                 r = within(m.name === 'frame' && cap, () => chain(node, inner, p));
                 let v = first(m.value, p);
-                out += m.name === 'grow' ? `${r}${W} -= ${v};\n` : `${r}${W} = max(${r}${W}, -${r}${W} - ${v});\n`;
+                if (m.name === 'grow') {
+                    out += `${r}${W} -= ${v};\n`;
+                    ball[3] += +v;
+                } else out += `${r}${W} = max(${r}${W}, -${r}${W} - ${v});\n`;
                 return r;
             }
-            return chain(node, inner, q);
+            r = chain(node, inner, q);
+            ball = moved(ball);
+            return r;
         }
 
         function atom(node, p) {
@@ -386,18 +414,25 @@ export default function drawScene(code, extra, report = () => {}) {
 
         function shape(node, p) {
             let r = next();
+            ball = [0, 0, 0, Infinity];
             if (GROUPS[node.name]) {
-                let k = first(row(node, 'smooth'), p), a, outerCut = cut, name = node.name;
+                let k = first(row(node, 'smooth'), p), a, outerCut = cut, name = node.name, balls = [];
                 cut ||= name === 'intersect';
                 loose ||= cut;
                 for (let child of node.children) {
-                    let bound = k !== '0.0' ? null : !a || name === 'intersect' ? cap : name === 'union' ? below(a) : `-${a}`;
+                    let bound = k !== '0.0' ? null : !a || name === 'intersect' ? cap : name === 'union' ? below(a) : `-${a}`, mark = out.length;
                     let b = within(bound, () => generate(child, p));
+                    if (dist && !fit && bound && (child.count || child.children.length > 1) && ball.every(isFinite)) {
+                        let [x, y, z, s] = ball.map(v => float(+v.toFixed(6)));
+                        b = skip(mark, next(), `length(${p} - vec3(${x}, ${y}, ${z})) - ${s} - 1e-4`, bound, b);
+                    }
+                    balls.push(ball);
                     if (a) out += join(a, b, k, GROUPS[node.name]);
                     a ??= b;
                 }
                 cut = outerCut;
                 declare(r, a);
+                ball = name === 'union' ? enclose(balls, k) : balls[0] || ball;
                 return r;
             }
             if (!SHAPES[node.name]) {
@@ -408,15 +443,33 @@ export default function drawScene(code, extra, report = () => {}) {
             // round keeps the outer size: shrink by r, then grow by r
             let k = first(row(node, 'round'), p);
             let get = name => numbers(row(node, name), p), name = node.name;
-            let rs = SHAPES[name].includes('r') ? get('r') : [], [r1, r2] = rs, d;
-            if (name === 'sphere') d = glsl`length(${p}) - ${r1 || '0.3'}`;
-            else if (name === 'ellipsoid') d = `g_ellipsoid(${p}, ${vec3(rs, '0.3')})`;
-            else if (name === 'box') d = glsl`g_box(${p}, ${vec3(get('size'), '0.5')} * 0.5 - ${k}) - ${k}`;
-            else if (name === 'torus') d = glsl`length(vec2(length(${p}.xz) - ${r1 || '0.3'}, ${p}.y)) - ${r2 || '0.08'}`;
-            else if (name === 'cylinder') d = glsl`g_cylinder(${p}, ${r1 || '0.2'} - ${k}, ${get('height')[0] || '0.5'} * 0.5 - ${k}) - ${k}`;
-            else if (name === 'cone') d = glsl`g_cone(${p}, ${get('height')[0] || '0.4'} * 0.5, ${r1 || '0.2'}, ${r2 || '0.0'})`;
-            else if (name === 'capsule') d = glsl`g_capsule(${p}, ${vec3(get('from'))}, ${vec3(get('to'))}, vec2(${r1 || '0.1'}, ${r2 || r1 || '0.1'}))`;
-            else if (name === 'plane') d = `${p}.y`;
+            let rs = SHAPES[name].includes('r') ? get('r') : [], [r1, r2] = rs, d, h, a, b;
+            if (name === 'sphere') {
+                d = glsl`length(${p}) - ${r1 ||= '0.3'}`;
+                ball = [0, 0, 0, +r1];
+            } else if (name === 'ellipsoid') {
+                d = `g_ellipsoid(${p}, ${vec3(rs, '0.3')})`;
+                ball = [0, 0, 0, Math.max(...xyz(rs, 0.3))];
+            } else if (name === 'box') {
+                a = get('size');
+                d = glsl`g_box(${p}, ${vec3(a, '0.5')} * 0.5 - ${k}) - ${k}`;
+                ball = [0, 0, 0, Math.hypot(...xyz(a, 0.5)) / 2];
+            } else if (name === 'torus') {
+                d = glsl`length(vec2(length(${p}.xz) - ${r1 ||= '0.3'}, ${p}.y)) - ${r2 ||= '0.08'}`;
+                ball = [0, 0, 0, +r1 + +r2];
+            } else if (name === 'cylinder') {
+                h = get('height')[0] || '0.5';
+                d = glsl`g_cylinder(${p}, ${r1 ||= '0.2'} - ${k}, ${h} * 0.5 - ${k}) - ${k}`;
+                ball = [0, 0, 0, Math.hypot(r1, h / 2)];
+            } else if (name === 'cone') {
+                h = get('height')[0] || '0.4';
+                d = glsl`g_cone(${p}, ${h} * 0.5, ${r1 ||= '0.2'}, ${r2 ||= '0.0'})`;
+                ball = [0, 0, 0, Math.hypot(Math.max(r1, r2), h / 2)];
+            } else if (name === 'capsule') {
+                [a, b] = [get('from'), get('to')];
+                d = glsl`g_capsule(${p}, ${vec3(a)}, ${vec3(b)}, vec2(${r1 ||= '0.1'}, ${r2 ||= r1}))`;
+                ball = enclose([[...xyz(a, 0), +r1], [...xyz(b, 0), +r2]]);
+            } else if (name === 'plane') d = `${p}.y`;
             else if (name === 'sdf') {
                 let value = textOf(row(node, 'd')), start = sites;
                 let { type, code } = compile(value || '1e5', p);
@@ -497,13 +550,12 @@ export default function drawScene(code, extra, report = () => {}) {
                         ` + '\n';
                         d = glsl`min(max(${w}.x, ${w}.y), 0.0) + length(max(${w}, 0.0)) - ${k}`;
                     }
+                    let [x0, y0, x1, y1] = bounds(all.flat()), mid = [(x1 + x0) / 2, (y1 + y0) / 2], half = [(x1 - x0) / 2, (y1 - y0) / 2];
+                    ball = lathe ? [0, mid[1], 0, Math.hypot(Math.max(x1, -x0), half[1])] : [...mid, 0, Math.hypot(...half, depth / 2)];
                     // the outline's box is never farther than the outline, so the walk runs only where it may count
                     if (plain && dist && !fit && cap) {
-                        let ends = [0, 1].map(i => all.map(xy => +xy[i])).map(v => [Math.max(...v), Math.min(...v)]);
-                        let box = `box(${q} - vec2(${ends.map(([a, b]) => float(+((a + b) / 2).toFixed(6)))}), vec2(${ends.map(([a, b]) => float(+((a - b) / 2 + 1e-5).toFixed(6)))}))`;
-                        let walk = out.slice(mark);
-                        out = out.slice(0, mark) + `float ${r} = ${lathe ? box : glsl`max(${box}, abs(${p}.z) - ${depth} * 0.5)`};\nif (${r} < ${cap}) {\n${walk}${r} = ${d};\n}\n`;
-                        return r;
+                        let box = `box(${q} - vec2(${mid.map(v => float(+v.toFixed(6)))}), vec2(${half.map(v => float(+(v + 1e-5).toFixed(6)))}))`;
+                        return skip(mark, r, lathe ? box : glsl`max(${box}, abs(${p}.z) - ${depth} * 0.5)`, cap, d);
                     }
                 }
             }
