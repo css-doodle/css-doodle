@@ -391,6 +391,12 @@ test('$ math reads dashed variable names', () => {
     assertContains('--a-b: 9; --a: 3; --b: 1; width: $(a-b) $(a - b);', 'width:9 2;');
 });
 
+test('several names set each variable as their own declarations would', () => {
+    assertContains('--a, --b: 1, 2; width: $(a + b)px;', '--a:1;\n--b:2;\nwidth:3px;');
+    assertContains('--x, --y: sin(0), cos(0); width: $(x + y)px;', 'width:1px;');
+    assertContains('--a, --b: @pn(x, y); --c: @pn(x, y);', '--a:x;\n--b:x;\n--c:x;');
+});
+
 test('a leading --name in an argument reads the variable', () => {
     assertContains('--x: 3; width: @calc(--x * 2);', 'width:6;');
     assertContains('--x: 3; width: $(--x * 2);', 'width:6;');

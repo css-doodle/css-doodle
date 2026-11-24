@@ -9,7 +9,8 @@
 //   text       { type: 'text', value }
 //   var        { type: 'var', name }  a `--name` leading an argument, bare or wrapped
 // The list carries warnings: [{ message, pos? }], pos a token [col, row]
-import { textOf, Token } from './tokenizer.js';
+import { textOf, itemsOf, Token } from './tokenizer.js';
+import { namesOf, rowsOf } from './parse-body.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
 import expandFunctions from './expand-functions.js';
 import parseVar from './parse-var.js';
@@ -23,9 +24,9 @@ const RE_FUNC_START = /[0-9a-zA-Z_\-(%]/;
 const RE_HOST_COMPOUND = /^:host(?:\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\))?((?:[.#][\w-]+|\[[^\]]*\]|:(?!before\b|after\b|first-l)[\w-]+(?:\((?:[^()]|\([^()]*\))*\))?)+)(?=$|[\s>+~,]|::|:(?:before|after|first-l))/;
 
 class Cursor {
-    constructor(source, ctx) {
+    constructor(source, ctx, tokens = tokensOf(source)) {
         this.source = source;
-        this.tokens = tokensOf(source);
+        this.tokens = tokens;
         this.ctx = ctx;
         this.i = 0;
     }
@@ -581,15 +582,27 @@ function parseRule(cur) {
     let stop = probe(cur, ':', ';', '}');
     if (stop < 0) stop = cur.tokens.length;
     let tok = cur.tokens[stop];
-    let head = textOf(cur.tokens.slice(cur.i, stop)).trim();
+    let tokens = cur.tokens.slice(cur.i, stop);
+    let head = textOf(tokens).trim();
     cur.i = stop;
 
     if (tok?.isSymbol(':')) {
         rule.property = head;
         colon = tok.index;
         cur.next();
-        rule.value = head === '@use' ? parseUse(cur) : parseValue(cur, null, head.startsWith('--'));
+        rule.value = parseRuleValue(cur, head);
         end = cur.headIndex();
+        let names = head.includes(',') ? namesOf(tokens) : [];
+        if (names.length > 1) {
+            let count = cur.ctx.warnings.length;
+            let rules = rowsOf(names, cur.tokens.slice(stop + 1, cur.i), t => itemsOf(t, true)).map(({ name, value }) => {
+                let raw = value.length ? source.slice(value[0].index, tokenEnd(value.at(-1))).trim() : '';
+                let parsed = parseRuleValue(new Cursor(source, cur.ctx, value), name);
+                return { type: 'rule', property: name, value: parsed, rawValue: () => raw };
+            });
+            cur.ctx.warnings.length = count;
+            return rules;
+        }
         if (cur.peek()?.isSymbol(';')) {
             cur.next();
         }
@@ -604,7 +617,11 @@ function parseRule(cur) {
     }
 
     rule.rawValue = () => colon < 0 ? '' : source.slice(colon + 1, end).trim();
-    return rule;
+    return [rule];
+}
+
+function parseRuleValue(cur, property) {
+    return property === '@use' ? parseUse(cur) : parseValue(cur, null, property.startsWith('--'));
 }
 
 function parseUse(cur) {
@@ -670,11 +687,12 @@ function parseBlockBody(cur, top) {
         let brace = probe(cur, '{', ';', '}');
         let opensBlock = brace >= 0 && cur.tokens[brace].isSymbol('{');
         if (!opensBlock) {
-            let rule = parseRule(cur);
-            if (rule.property === '@use') {
-                styles.push(...rule.value);
-            } else if (rule.property || (top && rule.type === 'at-rule')) {
-                styles.push(rule);
+            for (let rule of parseRule(cur)) {
+                if (rule.property === '@use') {
+                    styles.push(...rule.value);
+                } else if (rule.property || (top && rule.type === 'at-rule')) {
+                    styles.push(rule);
+                }
             }
         } else if (name === '@keyframes') {
             let keyframes = parseKeyframes(cur, brace);

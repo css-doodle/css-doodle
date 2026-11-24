@@ -63,11 +63,14 @@ Markup tags (`<…>`) between statements outside blocks are skipped.
 ### Declarations
 
 ```
-declaration = property ':' value [ ';' ]
+declaration = property { ',' property } ':' value [ ';' ]
 ```
 
 The property is everything before the first top-level `:`; the value
-runs to the next top-level `;`, `}` or `<` opening a tag. A property
+runs to the next top-level `;`, `}` or `<` opening a tag. Several
+properties take a part of the value each when it has as many
+comma-separated parts, and the whole value each otherwise, as separate
+declarations would: `--x, --y: 1, 2` is `--x: 1; --y: 2`. A property
 starting with `@` is a directive: `@grid`, `@size`, `@place`, `@gap`,
 `@shape`, `@content`, `@seed` or `@use`. All others, custom properties
 included, are emitted as CSS.

@@ -572,6 +572,20 @@ test('a statement without a colon warns instead of passing through as an at-rule
     assert.deepEqual(parsed.warnings, [{ message: 'missing :', pos: [0, 0] }]);
 });
 
+test('several names take a part of the value each, or the whole value when the counts differ', () => {
+    let parsed = parseCss(`--a, --b: 1, hsl(1, 2%, 3%); width, height: 10px; --c, --d: red, green, blue; color: red`);
+    assert.deepEqual(parsed.map(r => [r.property, r.rawValue()]), [
+        ['--a', '1'], ['--b', 'hsl(1, 2%, 3%)'], ['width', '10px'], ['height', '10px'],
+        ['--c', 'red, green, blue'], ['--d', 'red, green, blue'], ['color', 'red']
+    ]);
+    // each name reads the value as its own declaration, which warns once
+    let [a, b] = parseCss(`--a, --b: @pn(x, y)`);
+    assert.notEqual(a.value[0][0].position, b.value[0][0].position);
+    assert.deepEqual(parseCss(`--a, --b: calc(1px, 2`).warnings, [{ message: 'unclosed (', pos: [10, 0] }]);
+    let extra = { getVariable: name => ({ '--rule': 'color: red;' }[name] || '') };
+    assert.deepEqual(parseCss(`@use, --x: var(--rule), 1`, extra).map(r => [r.property, r.rawValue()]), [['color', 'red'], ['--x', '1']]);
+});
+
 test('positions point into the source as written, past leading lines and user function definitions', () => {
     assert.deepEqual(parseCss(`\n  @grid: 5;\n  color red;\n`).warnings, [{ message: 'missing :', pos: [2, 2] }]);
     let source = `\n--dot(r): {\n  width: $(r)px;\n}\ncolor red;\nwidth: @r(5);`;
