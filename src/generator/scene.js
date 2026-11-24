@@ -512,13 +512,12 @@ export default function drawScene(code, extra, report = () => {}) {
         }
 
         let result = generate(root, 'p');
+        if (dist) return { out, result, loose };
         // the named shapes nothing draws are compiled too, so their mistakes show
-        if (!dist) {
-            let used = out, size = arrays.size;
-            for (let def of tree.unused) generate(def, 'p');
-            out = used;
-            [...arrays.keys()].slice(size).forEach(k => arrays.delete(k));
-        }
+        let used = out, size = arrays.size;
+        for (let def of tree.unused) generate(def, 'p');
+        out = used;
+        [...arrays.keys()].slice(size).forEach(k => arrays.delete(k));
         if (!self) out = out.replaceAll(SHADE, '');
 
         let off = v => /^\s*none\s*$/.test(textOf(v || []));
