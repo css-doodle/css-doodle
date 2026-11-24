@@ -178,6 +178,31 @@ test('repeat takes a spacing only', () => {
     assert.deepEqual(scene('sphere { r: .05; repeat: .2 0 .2, 5 1 5 }').warnings, ['repeat: no count']);
 });
 
+test('repeat reads only its own cell when the shape is the same in each and mirrored on each repeated axis', () => {
+    let cells = code => +scene(code).dist.match(/< (\d);/)[1];
+    for (let [code, n] of [
+        ['sphere { r: .1; repeat: .5 0 .5 }', 1],
+        ['sphere { r: .1; move: 0 .3 0; repeat: .5 0 .5 }', 1],
+        ['cylinder { rotate: y 30; repeat: 0 .5 0 }', 1],
+        ['cone { repeat: .5 0 .5 }', 1],
+        ['sphere { r: .1; repeat: (.4 + t) 0 0 }', 1],
+        ['union { box { size: 1 .1 .1 } box { size: .1 1 .1 } fill: mix(red, white, random()); repeat: 1 1 1 }', 1],
+        ['polygon { points: 0 0, .2 0, 0 .2; depth: .1; mirror: x y; repeat: .5 .5 0 }', 1],
+        // else the cells one step toward p on each repeated axis
+        ['sphere { r: .1 + random() * .1; repeat: .5 0 .5 }', 4],
+        ['sphere { r: .1; move: .1 0 0; repeat: .5 0 .5 }', 4],
+        ['sphere { r: .1; move: (t * .1) 0 0; repeat: 0 .5 0 }', 2],
+        ['box { size: .2; rotate: y 30; repeat: .5 0 .5 }', 4],
+        ['box { size: .2; rotate: y (p.y * 90); repeat: 0 .5 0 }', 2],
+        ['cone { repeat: 0 .5 0 }', 2],
+        ['subtract { box { size: .4 } sphere { r: .1 + p.x * .1 } repeat: .5 0 0 }', 2],
+        ['sphere { r: .1; move: 0 .3 0; repeat: 0 (.4 + t) 0 }', 2],
+        ['capsule { from: 0 0 0; to: .2 .1 .1; repeat: .5 }', 8],
+    ]) assert.equal(cells(code), n, code);
+    // the colors of a random fill still come from the nearest cell
+    assert.match(scene('sphere { r: .1; fill: mix(red, white, random()); repeat: .5 0 .5 }').body, /< 4;/);
+});
+
 test('polygon takes points and a depth', () => {
     let { body, fragment, warnings } = scene('polygon { points: 0 0, 0 .4, .2 0; depth: .1 }');
     assert.deepEqual(warnings, []);

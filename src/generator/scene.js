@@ -23,7 +23,7 @@ const SHAPES = {
 };
 
 const GROUPS = { __proto__: null, union: '1.0, 1.0', subtract: '-1.0, 1.0', intersect: '-1.0, -1.0' };
-
+const MIRRORED = { __proto__: null, sphere: 7, ellipsoid: 7, box: 7, torus: 7, cylinder: 7, cone: 5, lathe: 5, polygon: 4 };
 const COMMANDS = new Set(['move', 'rotate', 'scale', 'mirror', 'repeat', 'twist', 'grow', 'frame']);
 const AXES = { __proto__: null, x: glsl`1.0, 0.0, 0.0`, y: glsl`0.0, 1.0, 0.0`, z: glsl`0.0, 0.0, 1.0` };
 
@@ -173,7 +173,7 @@ export default function drawScene(code, extra, report = () => {}) {
     // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
     let arrays = new Map();
     let build = (dist, warn, fit) => {
-        let counter = 0, sites = 0, key = '0.0', cap, fill, cut, loose, self, ball;
+        let counter = 0, sites = 0, key = '0.0', cap, fill, cut, loose, self, ball, sym;
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
         // outside copies the scene is one copy
         let names = { __proto__: null, t: 't', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
@@ -252,7 +252,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 return r;
             }
             let [X, Y] = node.count, r = next();
-            let outerKey = key, start = sites, end = start, balls = [], k;
+            let outerKey = key, start = sites, end = start, balls = [], k, all = 7;
             let copy = (node, n, nx, ny) => {
                 names = { __proto__: outer, n, N: float(X * Y), nx, ny };
                 key = glsl`(${outerKey} * 31.0 + ${n})`;
@@ -260,6 +260,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 scope(node, p);
                 let c = within(!row(node, 'smooth').length && below(r), () => chain(node, commands(node), p));
                 k = first(row(node, 'smooth'), p);
+                sym = all &= isFinite(+k) && sym;
                 balls.push(ball);
                 out += join(r, c, k);
                 end = Math.max(end, sites);
@@ -289,12 +290,13 @@ export default function drawScene(code, extra, report = () => {}) {
             if (!mods.length) return atom(node, p);
             let m = mods.at(-1), inner = mods.slice(0, -1);
             let args = () => numbers(m.value, p);
-            let q = next(), r, moved;
+            let q = next(), r, moved, kept = 0;
             types[q] = 'vec3';
             if (m.name === 'move') {
-                let v = args();
+                let v = args(), o = xyz(v, 0);
                 out += `vec3 ${q} = ${p} - ${vec3(v)};\n`;
-                moved = b => xyz(v, 0).map((v, i) => b[i] + v).concat(b[3]);
+                moved = b => o.map((v, i) => b[i] + v).concat(b[3]);
+                kept = o.every(isFinite) && o.reduce((m, v, i) => v ? m & ~(1 << i) : m, 7);
             } else if (m.name === 'scale') {
                 let s = next(), v = args(), k = xyz(v, 1);
                 out += `vec3 ${s} = ${vec3(v, '1.0')};\n`;
@@ -312,19 +314,21 @@ export default function drawScene(code, extra, report = () => {}) {
                 r = within(cap && `${cap} / ${f}`, () => chain(node, inner, q));
                 out += `${r}${W} *= ${f};\n`;
                 ball = k.map((v, i) => ball[i] * v).concat(ball[3] * Math.max(...k.map(Math.abs)));
+                if (!k.every(isFinite)) sym = 0;
                 return r;
             } else if (m.name === 'rotate') {
-                let axis = AXES.z, angle = '0.0';
+                let axis = AXES.z, angle = '0.0', deg = 0;
                 for (let g of itemsOf(m.value)) {
                     let named = g.find(t => t.isWord() && AXES[t.value]);
                     if (named) axis = AXES[named.value];
                     let v = numbers(g.filter(t => t !== named), p, true);
                     if (v.length === 3) axis = v.join(', ');
-                    else if (v.length === 4) [axis, angle] = [v.slice(0, 3).join(', '), `radians(${v[3]})`];
-                    else if (v.length === 1) angle = `radians(${v[0]})`;
+                    else if (v.length === 4) [axis, angle, deg] = [v.slice(0, 3).join(', '), `radians(${v[3]})`, v[3]];
+                    else if (v.length === 1) angle = `radians(${deg = v[0]})`;
                 }
                 out += `vec3 ${q} = g_rotate(${p}, vec3(${axis}), ${angle});\n`;
                 moved = b => around(b, axis.split(',').map(Number));
+                kept = isFinite(+deg) && [1, 2, 4][Object.values(AXES).indexOf(axis)];
             } else if (m.name === 'mirror') {
                 // every reflection reuses the same rand() sites
                 let axes = [];
@@ -347,6 +351,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 }
                 sites = end;
                 ball = enclose([ball, ...axes.map(a => ball.map((v, i) => 'xyz'[i] == a ? -v : v))]);
+                axes.forEach(a => sym |= 1 << 'xyz'.indexOf(a));
                 return r;
             } else if (m.name === 'twist') {
                 let a = first(m.value, p, true);
@@ -364,23 +369,26 @@ export default function drawScene(code, extra, report = () => {}) {
             } else if (m.name === 'repeat') {
                 let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
                 if (n) warn('repeat: no count');
-                let [on, base, dir, id, k, outerKey] = [next(), next(), next(), next(), next(), key];
+                let [on, base, dir, id, k, outerKey] = [next(), next(), next(), next(), next(), key], head = out;
                 r = next();
-                out += glsl`
+                out = '';
+                key = glsl`(${outerKey} + dot(${id}, vec3(1.0, 57.0, 113.0)))`;
+                let c = within(below(r), () => chain(node, inner, q));
+                key = outerKey;
+                // the same shape in each cell, mirrored on each repeated axis, is nearest in its own cell
+                let axes = xyz(s, 0).map(v => v !== 0), j = 0;
+                let one = !fit && axes.every((a, i) => !a || sym >> i & 1) && !new RegExp(`\\b${id}\\b`).test(out);
+                // else the cells one step toward p on each repeated axis
+                let bits = axes.map(a => a ? `(${k} >> ${j++}) & 1` : '0');
+                out = head + glsl`
                     vec3 ${on} = step(1e-6, ${vec3(s)});
                     vec3 ${base} = ${on} * round(${p} / max(${vec3(s)}, 1e-6));
                     vec3 ${dir} = ${on} * sign(${p} - ${vec3(s)} * ${base});
                     ${T} ${r} = ${none};
-                    for (int ${k} = 0; ${k} < 8; ${k}++) {
-                        vec3 ${id} = vec3(${k} & 1, (${k} >> 1) & 1, (${k} >> 2) & 1);
-                        if (any(greaterThan(${id}, ${on}))) continue;
-                        ${id} = ${base} + ${id} * ${dir};
+                    for (int ${k} = 0; ${k} < ${one ? 1 : 1 << j}; ${k}++) {
+                        vec3 ${id} = ${base} + vec3(${bits.join(', ')}) * ${dir};
                         vec3 ${q} = ${p} - ${vec3(s)} * ${id};
-                ` + '\n';
-                key = glsl`(${outerKey} + dot(${id}, vec3(1.0, 57.0, 113.0)))`;
-                let c = within(below(r), () => chain(node, inner, q));
-                key = outerKey;
-                out += join(r, c, '0.0') + '}\n';
+                ` + '\n' + out + join(r, c, '0.0') + '}\n';
                 ball = [0, 0, 0, Infinity];
                 return r;
             } else {
@@ -391,10 +399,12 @@ export default function drawScene(code, extra, report = () => {}) {
                     out += `${r}${W} -= ${v};\n`;
                     ball[3] += +v;
                 } else out += `${r}${W} = max(${r}${W}, -${r}${W} - ${v});\n`;
+                if (!isFinite(+v)) sym = 0;
                 return r;
             }
             r = chain(node, inner, q);
             ball = moved(ball);
+            sym &= kept;
             return r;
         }
 
@@ -407,6 +417,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 out += `vec3 ${fill} = ${c}${reads(c) ? (self = 1, '') : SHADE};\n`;
             }
             let r = shape(node, p);
+            if (!GROUPS[node.name]) sym = ball.every(isFinite) && isFinite(+textOf(row(node, 'round'))) && MIRRORED[node.name];
             fill = saved;
             names = outer;
             return r;
@@ -416,7 +427,7 @@ export default function drawScene(code, extra, report = () => {}) {
             let r = next();
             ball = [0, 0, 0, Infinity];
             if (GROUPS[node.name]) {
-                let k = first(row(node, 'smooth'), p), a, outerCut = cut, name = node.name, balls = [];
+                let k = first(row(node, 'smooth'), p), a, outerCut = cut, name = node.name, balls = [], all = isFinite(+k) && 7;
                 cut ||= name === 'intersect';
                 loose ||= cut;
                 for (let child of node.children) {
@@ -426,6 +437,7 @@ export default function drawScene(code, extra, report = () => {}) {
                         let [x, y, z, s] = ball.map(v => float(+v.toFixed(6)));
                         b = skip(mark, next(), `length(${p} - vec3(${x}, ${y}, ${z})) - ${s} - 1e-4`, bound, b);
                     }
+                    all &= sym;
                     balls.push(ball);
                     if (a) out += join(a, b, k, GROUPS[node.name]);
                     a ??= b;
@@ -433,6 +445,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 cut = outerCut;
                 declare(r, a);
                 ball = name === 'union' ? enclose(balls, k) : balls[0] || ball;
+                sym = all;
                 return r;
             }
             if (!SHAPES[node.name]) {
