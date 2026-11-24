@@ -594,13 +594,13 @@ function parseRule(cur) {
         end = cur.headIndex();
         let names = head.includes(',') ? namesOf(tokens) : [];
         if (names.length > 1) {
-            let count = cur.ctx.warnings.length;
+            let { ctx } = cur, count = ctx.warnings.length;
             let rules = rowsOf(names, cur.tokens.slice(stop + 1, cur.i), t => itemsOf(t, true)).map(({ name, value }) => {
                 let raw = value.length ? source.slice(value[0].index, tokenEnd(value.at(-1))).trim() : '';
-                let parsed = parseRuleValue(new Cursor(source, cur.ctx, value), name);
+                let parsed = parseRuleValue(new Cursor(source, ctx, value), name);
                 return { type: 'rule', property: name, value: parsed, rawValue: () => raw };
             });
-            cur.ctx.warnings.length = count;
+            ctx.warnings.length = count;
             return rules;
         }
         if (cur.peek()?.isSymbol(';')) {
