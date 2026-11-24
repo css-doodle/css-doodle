@@ -53,10 +53,19 @@ function nameEnd(tokens, i, dash) {
     return i;
 }
 
+function callEnd(tokens, i) {
+    let t;
+    while ((t = tokens[i + 1]) && adjacent(tokens[i], t) && (RE_NAME_TOKEN.test(t.value) || t.isSymbol('$', '@'))) i++;
+    return t?.isSymbol('(') && adjacent(tokens[i], t) ? i : -1;
+}
+
+function isBuiltin(name) {
+    return name in defaultContext || name === 'pick';
+}
+
 function callAt(tokens, i, defs) {
-    let end = i, t;
-    while ((t = tokens[end + 1]) && adjacent(tokens[end], t) && (RE_NAME_TOKEN.test(t.value) || t.isSymbol('$', '@'))) end++;
-    if (!t?.isSymbol('(') || !adjacent(tokens[end], t)) return null;
+    let end = callEnd(tokens, i);
+    if (end < 0) return null;
     let [, head, rest] = /^(.*?)(?:\.(?=[a-zA-Z_$@])(.*))?$/.exec(textOf(tokens.slice(i, end + 1)));
     let [, name, n] = defs[head] ? [, head] : /^(.*?)(\d*\.?\d+)?$/.exec(head);
     return defs[name] ? { name, n, rest, end } : null;
@@ -199,10 +208,21 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         }
         let bare = !t.isSymbol('$', '@'), at = bare ? i : i + 1;
         if (!isNameStart(tokens[at]) || (bare ? paint || !(maths.at(-1) ?? math) : !adjacent(t, tokens[at]))) continue;
-        let end = nameEnd(tokens, at, true);
+        let end = bare ? callEnd(tokens, at) : -1;
+        let links = end < 0 ? [] : textOf(tokens.slice(at, end + 1)).split(/\.(?=[a-zA-Z_])/);
+        if (links[1] && links.some(l => defs[l] && !isBuiltin(l))) {
+            let close = closing(tokens, end + 1);
+            if (close < 0) break;
+            flush(t.index);
+            out += expandCalls(links.reduceRight((s, l) => `${l}(${s})`, text.slice(tokenEnd(tokens[end + 1]), tokens[close].index)), defs, ctx, chain, CSS, pending, MATH);
+            from = tokenEnd(tokens[close]);
+            i = close;
+            continue;
+        }
+        end = nameEnd(tokens, at, true);
         let name = textOf(tokens.slice(at, end + 1));
         if (bare && !defs[name]) name = textOf(tokens.slice(at, (end = nameEnd(tokens, at)) + 1));
-        let builtin = t.isSymbol('@') || bare && (name in defaultContext || name === 'pick');
+        let builtin = t.isSymbol('@') || bare && isBuiltin(name);
         let short = t.isSymbol('$') && callAt(tokens, at, defs), n, rest;
         if (short) ({ name, n, rest, end } = short);
         let def = !builtin && defs[name];

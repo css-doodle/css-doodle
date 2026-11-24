@@ -124,7 +124,8 @@ written, except:
 - Inside `$()` or the test of a `@match(test) { }` block, a bare `p`
   is the argument too, each argument is parenthesized, and a call reads
   as one value: with `--inc(x): x + 1`, `$(2 * $inc(3))` is `8`. There
-  a bare `inc(3)` calls it too, unless a built-in has the name.
+  a bare `inc(3)` calls it too, unless a built-in has the name, and
+  chains as a built-in does (§8): `inc.abs(x)` is `inc(abs(x))`.
 - In the arguments of a `$name()` call, and in a default, a bare `p` is
   the argument as `$p` is, unless a `:` follows it or a dash joins it
   to a word, as in `var(--p)`: with `--seg(k): $(k * 10)px`,
