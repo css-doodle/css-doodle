@@ -421,10 +421,10 @@ Function.up = lazy((cell, env, position, ...args) => {
     let stack = env.extra, steps = stack.filter(e => e?.length);
     let sig = steps.at(-1)?.[SEQ.sig];
     let i = steps.findLastIndex(e => e[SEQ.sig] !== sig);
-    env.extra = i < 0 ? [...env.outer] : steps.slice(0, i + 1);
-    let e = env.extra.at(-1) || [];
+    let saved = stack.splice(0, Infinity, ...(i < 0 ? env.outer : steps.slice(0, i + 1)));
+    let e = stack.at(-1) || [];
     let value = args.map(arg => getValue(arg(...e))).join(',');
-    env.extra = stack;
+    stack.splice(0, Infinity, ...saved);
     return value;
 });
 
