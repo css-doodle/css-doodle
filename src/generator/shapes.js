@@ -189,7 +189,7 @@ function combine(props, lo, hi) {
         : createShapePoints({ ...vars, ...item }, lo, hi, true));
     let rings = overlay(members, op, joints) || [];
     let k = calc('smooth', props);
-    return rings.map(ring => k > 0 ? toPairs(flatten(corners(ring, joints, k), .002)) : ring);
+    return rings.map(ring => k > 0 ? flatten(corners(ring, joints, k), .002) : ring);
 }
 
 function pairsOf(points) {
@@ -262,7 +262,7 @@ function createShapePoints(props, lo, hi, raw) {
     let run = (rings, rounding = radius) => {
         let paths = rings.map(ring => rounding && corners(ring, null, rounding));
         let os = rings.map(() => [0, 0]), units = rings.map((_, c) => props.blocks ? 0 : c);
-        rings = rings.map((ring, c) => paths[c] ? toPairs(flatten(paths[c], .002)) : ring);
+        rings = rings.map((ring, c) => paths[c] ? flatten(paths[c], .002) : ring);
         for (let [name, text] of steps) {
             if (name == 'mirror') {
                 for (let axis of new Set(text.split(/[\s,]+/))) {
@@ -391,7 +391,7 @@ function createShapePoints(props, lo, hi, raw) {
                 let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
                 let paths = rings.map(ring => corners(ring, null, r));
                 if (paths.some(curved)) return new Point(toPath(paths, undefined, rule), extra, at, kind, inner);
-                rings = paths.map(path => toPairs(flatten(path, tol)));
+                rings = paths.map(path => flatten(path, tol));
             }
             let vs = [];
             for (let [x, y] of bridge(rings)) {

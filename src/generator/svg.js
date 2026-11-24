@@ -6,7 +6,7 @@ import { fillStops, ceil, abs, min, max, hypot, PI } from '../lib/math.js';
 import { getEasingPoints } from '../core/easing.js';
 import { GROUPS } from '../parser/parse-shape-commands.js';
 import { traceRings } from './trace.js';
-import { overlay, corners, bounds, offset, flatten, thin, toPairs, bridge, angle } from './polygon.js';
+import { overlay, corners, bounds, offset, flatten, thin, bridge, angle } from './polygon.js';
 
 const nextInlineId = nextId();
 
@@ -139,7 +139,7 @@ function combine(group, op, warn) {
     });
     let rings = overlay(members, op, joints) || [], at = joints;
     let k = parseFloat(smooth), g = parseFloat(grow), r = parseFloat(round), w = parseFloat(frame), tol = 2e-5 * (scale + abs(g || 0));
-    let bend = (rings, at, k) => Object.assign(rings.map(ring => toPairs(flatten(corners(thin(ring, tol / 200), at, k), tol))), { evenodd: rings.evenodd });
+    let bend = (rings, at, k) => Object.assign(rings.map(ring => flatten(corners(thin(ring, tol / 200), at, k), tol)), { evenodd: rings.evenodd });
     if (k > 0 && (r > 0 || g || w > 0)) rings = bend(rings, joints, k), k = 0;
     if (r > 0 && (g || w > 0)) rings = bend(rings, null, r);
     else if (r > 0) k = r, at = null;

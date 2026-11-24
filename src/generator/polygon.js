@@ -260,11 +260,11 @@ function recount(rings, n) {
 function flatten(path, tol) {
     let out = [];
     path.forEach(([x, y, bx, by], i) => {
-        if (bx === undefined) return out.push(x, y);
+        if (bx === undefined) return out.push([x, y]);
         let [ax, ay] = path[i - 1];
         for (let j = 1, k = min(ceil(sqrt(hypot(ax - 2 * bx + x, ay - 2 * by + y) / 4 / tol)), 64); j <= k; ++j) {
             let t = j / k, u = 1 - t;
-            out.push(u * u * ax + 2 * u * t * bx + t * t * x, u * u * ay + 2 * u * t * by + t * t * y);
+            out.push([u * u * ax + 2 * u * t * bx + t * t * x, u * u * ay + 2 * u * t * by + t * t * y]);
         }
     });
     return out;
