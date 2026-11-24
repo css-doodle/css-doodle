@@ -253,8 +253,7 @@ function transformTokens(input, spans, lists) {
         if (type === 'Number') {
             let number = value;
             if (number[0] === '-') {
-                let list = lists && spaced && !isUnary(tokens.at(-1));
-                tokens.push(tk(OPERATOR, list || isUnary(tokens.at(-1)) ? '-u' : '-'));
+                tokens.push(tk(OPERATOR, isUnary(tokens.at(-1)) || lists && spaced ? '-u' : '-'));
                 number = number.slice(1);
             }
             pushValue(tokens, number, spaced);
@@ -388,7 +387,7 @@ function toPostfix(tokens) {
             } else if (PREFIX.has(value)) {
                 opStack.push(value);
             } else {
-                const prev = tokens[i - 1], next = tokens[i + 1];
+                const next = tokens[i + 1];
                 if (!prev || prev.type === OPERATOR && prev.value !== ')') expr.push(tk(NUMBER, 0));
                 const prec = PREC[value];
                 // && and || nest to the right so a chain lowers to CSS

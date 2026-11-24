@@ -367,7 +367,7 @@ Function.Nn = seq('@Nn', e => calcWithEasing((e[SEQ.max] - e[SEQ.n] + 1) / e[SEQ
 
 Function.nd = seq('@nd', e => d => {
     d = Number(d) || 0;
-    return calcWith(e[SEQ.n] - .5 - d - e[SEQ.max] / 2)();
+    return String(tidyNumber(e[SEQ.n] - .5 - d - e[SEQ.max] / 2));
 });
 
 // @p and @P with no arguments reuse the arguments of the last pick
@@ -388,8 +388,7 @@ Function.P = (cell, { context, pick, rand, extra }, position) => {
         if (!own) {
             args = context.lastPickArgs || [];
         }
-        let memory = own ? (context[counter] ??= {}) : null;
-        let last = own ? memory.lastPick : lastOf(context.lastPick);
+        let last = own ? context[counter] : lastOf(context.lastPick);
         context.lastPickArgs = args;
         let i = args.indexOf(last), picked;
         if (i < 0 || args.length < 2) {
@@ -402,7 +401,7 @@ Function.P = (cell, { context, pick, rand, extra }, position) => {
             picked = pick(rest.length ? rest : args);
         }
         if (own) {
-            memory.lastPick = picked;
+            context[counter] = picked;
         }
         return pushStack(context, 'lastPick', picked);
     }, countOf(cell, extra.at(-1)));
