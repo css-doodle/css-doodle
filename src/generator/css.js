@@ -588,6 +588,7 @@ class Rules {
             let id = this.nextId('doodle');
             this.doodles[id] = {
                 doodle: this.injectVariables(value, cell.uid), arg: size, tile: !!tile,
+                outer: [...env.outer, ...env.extra.filter(e => e?.length)],
             };
             return placeholder(id);
         }
@@ -1226,14 +1227,14 @@ function useMathStream(random, seed) {
     return useRandom(draw);
 }
 
-export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, instance = '', host) {
+export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRandom, instance = '', host, outer = []) {
     let R = createRandom(seedRandom || String(seedValue));
     let { rand, pick, shuffle, updateRandom } = R;
     let restore = useMathStream(R.random, seedValue);
     try {
 
         let envAt = (rules, seed) => ({
-            rules, context: {}, extra: [], level: 0, host,
+            rules, context: {}, extra: [], outer, level: 0, host,
             rand, pick, shuffle, random: R.random, updateRandom,
             seed, maxGrid,
         });

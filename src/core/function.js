@@ -417,6 +417,17 @@ Function.pn = createPick('pn', pickN);
 Function.pnr = createPick('pnr', (args, pos, max) => args[max - pos - 1]);
 Function.pd = createPick('pd', (args, pos) => args[pos], true);
 
+Function.up = lazy((cell, env, position, ...args) => {
+    let stack = env.extra, steps = stack.filter(e => e?.length);
+    let sig = steps.at(-1)?.[SEQ.sig];
+    let i = steps.findLastIndex(e => e[SEQ.sig] !== sig);
+    env.extra = i < 0 ? [...env.outer] : steps.slice(0, i + 1);
+    let e = env.extra.at(-1) || [];
+    let value = args.map(arg => getValue(arg(...e))).join(',');
+    env.extra = stack;
+    return value;
+});
+
 Function.lp = (_, { context }) => n => lastOf(context.lastPick, n);
 
 const whole = rand => (a = 1, b = 0) => {

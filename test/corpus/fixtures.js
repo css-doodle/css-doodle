@@ -71,6 +71,7 @@ export default [
     { name: 'func-last-rand', code: `--r: @r(10); --l: @lr;` },
     { name: 'func-pick-by-turn', code: `--a: @m5(@pn(x, y, z)); --b: @m5(@pnr(x, y, z)); --c: @m5(@pd(x, y, z));` },
     { name: 'func-pick-turn-standalone', code: `--a: @pn(x, y, z); --b: @pd(1, 2, 3); background: @pnr(red, blue);` },
+    { name: 'func-pick-up', code: `--v: @m3(@m2(@up.pd(a, b, c))); --w: @m3(@m2(@up.pn(a, b, c))); --x: @m3(@doodle(--k: @up.n));` },
     { name: 'func-pick-legacy-names', code: `--a: @pl(x, y, z); --b: @pr(x, y, z); --c: @m3(@PL(a, b)); --d: @m3(@PR(a, b)); --e: @pick-n(1, 2);` },
     { name: 'func-pick-range', code: `--v: @m6(@p([a-f]));` },
     { name: 'func-plot', code: `--p: @plot(r 5); --q: @Plot(r 5); --s: @m4(@plot(r 5));` },

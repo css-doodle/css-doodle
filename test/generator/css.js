@@ -97,6 +97,15 @@ test('@N, @nN, @Nn and @nd read the step of a sequence', () => {
     assert.equal(cells('--a: @m2(@match(n == 2, two, other)); --b: @m2(@match(N == 2, @nx));'), '#c-1-1-1 {--a:other,two;\n--b:1,2;}');
 });
 
+test('@up reads its arguments one step out, in the sequence around this one', () => {
+    assert.equal(cells('--a: @m3(@m2(@up.n));'), '#c-1-1-1 {--a:1,1,2,2,3,3;}');
+    assert.equal(cells('--a: @m3(@m2(@up.pn(x, y, z))); --b: @m3(@m2(@up.pnr(x, y, z)));'), '#c-1-1-1 {--a:x,x,y,y,z,z;\n--b:z,z,y,y,x,x;}');
+    assert.equal(cells('--a: @m2(@m2(@m2(@n@up.n@up.up.n)));'), '#c-1-1-1 {--a:111,211,121,221,112,212,122,222;}');
+    assert.equal(cells('--a: @m2(@m3(@up(@n, @N)));'), '#c-1-1-1 {--a:1,2,1,2,1,2,2,2,2,2,2,2;}');
+    // with no step out there, as a sequence reader outside a sequence
+    assert.equal(cells('--a: @m2(@up.n);'), '#c-1-1-1 {--a:@n,@n;}');
+});
+
 test('@xX, @Xx, @iI and @Ii run from either end, eased like @nN', () => {
     let values = (code, name) => [...cells(code, '4x1').matchAll(new RegExp(`${name}:([^;]+)`, 'g'))].map(m => m[1]);
     assert.deepEqual(values('--a: @xX;', '--a'), ['0.25', '0.5', '0.75', '1']);

@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { svgUrl, frameSvg, doodleToImage } from '../../src/component/doodle-image.js';
+import parseCss from '../../src/parser/parse-css.js';
+import parseGrid from '../../src/parser/parse-grid.js';
+import generateCss from '../../src/generator/css.js';
 
 test('svgUrl escapes only what a data url needs', () => {
     assert.equal(svgUrl('<svg a="#b">50%</svg>'), 'data:image/svg+xml,%3Csvg a=%22%23b%22%3E50%25%3C/svg%3E');
@@ -51,4 +54,15 @@ test('a paint inside a doodle image is inlined as the url its drawer gives', asy
     host.draw.pattern = () => Promise.resolve();
     let left = await doodleToImage(host, 'background: @pattern(fill: blue;);', { width: 10, height: 10 });
     assert.match(decodeURIComponent(left), /var\(--pattern/);
+});
+
+test('a nested doodle reads the step of the sequence around it with @up', async () => {
+    let compiled = generateCss(parseCss('--a: @m3(@doodle(--v: @up.pn(a, b, c, d); --w: @m2(@n@up.n/@up.N)));'), parseGrid('1'), 42, 64, null, 'K');
+    let host = { extra: {}, compiled, getMaxGrid: () => 64, report: () => {}, hasAttribute: () => false, _clock: { base: 0 }, clockNow: () => 0 };
+    let sheets = [];
+    for (let [id, v] of Object.entries(compiled.doodles)) {
+        let url = await doodleToImage(host, v.doodle, { ...v, instance: id });
+        sheets.push(/--v:[^;]+;\s*--w:[^;]+/.exec(decodeURIComponent(url))[0].replace(/\s+/g, ''));
+    }
+    assert.deepEqual(sheets, ['--v:a;--w:11/3,21/3', '--v:b;--w:12/3,22/3', '--v:c;--w:13/3,23/3']);
 });
