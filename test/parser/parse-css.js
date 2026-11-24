@@ -889,10 +889,10 @@ test('a bare name( calls the user function where a bare parameter binds, unless 
 });
 
 test('in math a bare user function chains as a built-in does, rightmost first', () => {
-    let defs = `--h(x): x + 1; --sin(x): 0;`;
+    let defs = `--h(x): x + 1; --sin(x): 0; --five(x): 5;`;
     assert.deepEqual(
-        ast(`${defs} a: $(h.h(3) + abs.h(x) + h.abs(x) + k-h.sin(1) + 2h.h(1)); @match(h.h(i) > 2) { color: red }`),
-        ast(`${defs} a: $(h(h(3)) + abs(h(x)) + h(abs(x)) + k-h(sin(1)) + 2h(h(1))); @match(h(h(i)) > 2) { color: red }`));
+        ast(`${defs} a: $(h.h(3) + abs.h(x) + h.abs(x) + k-h.sin(1) + 2h.h(1) + 2five.h(1)); @match(h.h(i) > 2) { color: red }`),
+        ast(`${defs} a: $(h(h(3)) + abs(h(x)) + h(abs(x)) + k-h(sin(1)) + 2h(h(1)) + 2five(h(1))); @match(h(h(i)) > 2) { color: red }`));
     // without one, or before a number, it stays
     assert.deepEqual(ast(`${defs} a: $(cos.sin(1) + h.5(2) + h.h);`), ast(`a: $(cos.sin(1) + h.5(2) + h.h);`));
 });

@@ -213,10 +213,9 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         if (links[1] && links.some(l => defs[l] && !isBuiltin(l))) {
             let close = closing(tokens, end + 1);
             if (close < 0) break;
-            flush(t.index);
-            out += expandCalls(links.reduceRight((s, l) => `${l}(${s})`, text.slice(tokenEnd(tokens[end + 1]), tokens[close].index)), defs, ctx, chain, CSS, pending, MATH);
-            from = tokenEnd(tokens[close]);
-            i = close;
+            text = text.slice(0, t.index) + links.reduceRight((s, l) => `${l}(${s})`, text.slice(tokenEnd(tokens[end + 1]), tokens[close].index)) + text.slice(tokenEnd(tokens[close]));
+            tokens = tokensOf(text);
+            i--;
             continue;
         }
         end = nameEnd(tokens, at, true);
