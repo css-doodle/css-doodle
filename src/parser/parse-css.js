@@ -12,7 +12,7 @@
 import { textOf, itemsOf, Token } from './tokenizer.js';
 import { namesOf, rowsOf } from './parse-body.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
-import expandFunctions from './expand-functions.js';
+import expandFunctions, { warn } from './expand-functions.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
 import svgSourceOf from './svg-source.js';
@@ -45,10 +45,6 @@ class Cursor {
     position() {
         return ++this.ctx.position;
     }
-}
-
-function warn(ctx, msg, pos) {
-    ctx.warnings.push(pos ? { message: msg, pos } : { message: msg });
 }
 
 const PAIRS = { '"': '"', "'": "'", '(': ')' };
@@ -908,8 +904,7 @@ function skipTag(cur) {
 }
 
 function parseSource(input, ctx) {
-    let source = String(input ?? '');
-    return parseBlockBody(new Cursor(source, ctx), true);
+    return parseBlockBody(new Cursor(String(input ?? ''), ctx), true);
 }
 
 export default function parse(input, extra) {

@@ -6,7 +6,7 @@ import { armsOf, armIndex } from './parse-body.js';
 import { hasEntries } from '../lib/type.js';
 import { defaultContext } from '../core/calc.js';
 
-function warn(ctx, msg, pos) {
+export function warn(ctx, msg, pos) {
     ctx.warnings.push(pos ? { message: msg, pos } : { message: msg });
 }
 

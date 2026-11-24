@@ -65,7 +65,7 @@ const isAngle = v => v instanceof Angle;
 const rad = v => isAngle(v) ? v.css : `(${v} * 1rad)`;
 const live = v => typeof v === 'string' || isAngle(v);
 const text = v => live(v) ? v : tidyNumber(+v || 0);
-const neg = v => isAngle(v) ? new Angle(`(${v.css} * -1)`) : live(v) ? `(${v} * -1)` : -v;
+const neg = v => live(v) ? LOWER['*'](v, -1) : -v;
 const not = v => `(1 - ${v})`;
 const truthy = v => `abs(sign(${v}))`;
 const gt = (a, b) => `max(0,sign(${a} - ${b}))`;
