@@ -114,7 +114,7 @@ export default function expandFunctions(source, ctx, svg, chain = []) {
                 defs[name] = { params, defaults, body: body.trim() };
                 let after = source.slice(tokenEnd(last), tokenEnd(tokens[statementEnd(tokens, end + 1)] ?? last)).replace(/\/\*[\s\S]*?\*\//g, '');
                 let unset = params.filter(p => !source.includes(`--${p}:`));
-                if (!braced && !/^\s*--[\w-]+\(/.test(after) && bindParams({ params: unset, defaults, body: after }, unset.map(() => '\0'), defs).includes('\0')) {
+                if (!braced && !/^\s*--[\w-]+\(/.test(after) && bindParams(after, unset, unset.map(() => '\0'), defs).includes('\0')) {
                     warn(ctx, `--${name}() needs {}`, t.pos);
                 }
                 rest += source.slice(from, t.index) + source.slice(t.index, tokenEnd(last)).replace(/[^\n]/g, ' ');
@@ -273,18 +273,18 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
             }
         } else {
             let value = paint ? null : resultOf(def.body);
-            let source = value === null ? def : { ...def, body: value };
-            let n = ctx.calls + 1, word = name.replace(/\W/g, '_'), loops = RE_LOOP.test(source.body);
+            let source = value ?? def.body;
+            let n = ctx.calls + 1, word = name.replace(/\W/g, '_'), loops = RE_LOOP.test(source);
             let bound = [], lets = [];
             params.forEach((p, k) => {
-                let arg = args[k] || defaults[k] && bindParams({ params: params.slice(0, k), defaults: [], body: defaults[k] }, bound, defs, paint, !paint && ARGS);
+                let arg = args[k] || defaults[k] && bindParams(defaults[k], params.slice(0, k), bound, defs, paint, !paint && ARGS);
                 let id = !!arg && (RE_VARYING.test(arg) || loops && RE_COUNTER.test(arg))
                     && (paint ? hoists : !isStatements(arg) && !RE_NESTED_DOODLE.test(def.body))
                     && (paint ? `${word}_${n}_${p}` : `${n}${word}_${p}`);
                 if (id) lets.push([id, arg.trim()]);
                 bound.push(!id ? arg : paint ? id : `@--(${id})`);
             });
-            body = bindParams(source, bound, defs, paint, inMath);
+            body = bindParams(source, params, bound, defs, paint, inMath);
             if (lets.length) {
                 ctx.calls++;
                 if (paint) pending.push(lets.map(([id, arg]) => `${id}: ${arg};\n`).join(''));
@@ -406,7 +406,7 @@ function valueCall(name, def, args, defs, ctx, chain) {
     let { text, targets, count } = renameLocals(source, ret);
     let bound = [], prelude = '';
     params.forEach((param, k) => {
-        let arg = (args[k] || defaults[k] && bindParams({ params: params.slice(0, k), defaults: [], body: defaults[k] }, bound, defs, true) || '').trim();
+        let arg = (args[k] || defaults[k] && bindParams(defaults[k], params.slice(0, k), bound, defs, true) || '').trim();
         if (targets.has(param)) warn(ctx, `read-only $${param}`);
         if (!arg || !targets.has(param) && RE_SIMPLE_ARG.test(arg)) {
             bound.push(arg);
@@ -415,7 +415,7 @@ function valueCall(name, def, args, defs, ctx, chain) {
             bound.push(`${ret}_${param}`);
         }
     });
-    text = expandCalls(prelude, defs, ctx, [...chain, name], BODY) + bindParams({ params, defaults: [], body: text }, bound, defs, true);
+    text = expandCalls(prelude, defs, ctx, [...chain, name], BODY) + bindParams(text, params, bound, defs, true);
     if (ctx.scene && text.includes('{')) {
         let known = new Set(), blocks = 0;
         let lower = (rules, when) => rules.map(({ type, name, value, args, arms }) => {
@@ -526,7 +526,7 @@ function mathOpen(tokens, i, defs) {
     return close > 0 && solidAt(tokens, close + 1)?.isSymbol('{') ? MATH : PLAIN;
 }
 
-function bindParams({ params, defaults, body }, args, defs, paint, math) {
+function bindParams(body, params, args, defs, paint, math) {
     let tokens = tokensOf(body, paint);
     let out = '', from = 0, quote = false;
     let parens = math || math === ARGS ? [math] : [], blocks = [], head = 0;
@@ -562,7 +562,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math) {
         let ahead = tokens[dollar ? i - 2 : i - 1], first = i;
         i = end;
         if (k < 0) continue;
-        let arg = args[k] || defaults[k];
+        let arg = args[k] || '';
         let start = t.index;
         let call = next?.isSymbol('(') && adjacent(last, next);
         if (dollar && callAt(tokens, first, defs)) continue;

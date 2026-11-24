@@ -1871,6 +1871,10 @@ test('a skipped call argument takes its default and later ones keep their place'
     assertContains('@grid: 1; --f(a = 1, b = 2): $(a - b); --v: $f(, 9);', '--v:-8;');
 });
 
+test('a missing argument is empty in a default that reads it', () => {
+    assertContains('@grid: 1; --f(a, b = $a): [$b]; --v: $f();', '--v:[];');
+});
+
 test('a user function argument that would change with each use is worked out once', () => {
     let numbers = (code, grid) => cells(code, grid).match(/-?\d+\.\d+/g).map(Number);
     let [x0, x1] = numbers('--f(bx, w): M $(bx - w) 0 L $(bx + w) 0; --d: $f(@r(100), 1);');
