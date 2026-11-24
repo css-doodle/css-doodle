@@ -302,6 +302,8 @@ function transformTokens(input, spans, lists) {
                 && !(next && (next.type === 'Number' ? next.value[0] !== '-'
                     : next.type === 'Word' || next.value === '_' ? !isOperator(readName(raw, i + 1)[0])
                     : next.value === '(' || next.value === 'π'))) {
+            pushValue(tokens, value, false);
+            tokens.at(-1).unit = true;
             continue;
         }
 
@@ -653,7 +655,7 @@ function compile(expr) {
                 stack.push((ctx, history) => {
                     const a = l(ctx, history);
                     if (unit && ctx[unit] === undefined) {
-                        return !history.css ? miss(history) : live(a) ? `(${a} * 1${unit})` : tidyNumber(a) + unit;
+                        return !history.css ? unit == '%' ? a : miss(history) : live(a) ? `(${a} * 1${unit})` : tidyNumber(a) + unit;
                     }
                     const b = r(ctx, history);
                     return live(a) || live(b) ? lower(value, [a, b], history) : op(Number(a), Number(b));

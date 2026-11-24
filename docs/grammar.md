@@ -338,9 +338,9 @@ name       = letter or '_', then letters, digits or '_'
   sign of the left operand, and `0 < x < 1` is `0 < x && x < 1` until
   parentheses end the chain. An order binds before an equality, so
   `x < .5 != y < .5` is true when just one of the two holds. Right
-  after a number `%` is a percent sign, dropped, unless an unsigned
-  number, a name or `(` follows: `25% > 10` is `1`, `25%-5` is `20`,
-  `7%3` is `1`.
+  after a number `%` is a unit (below) unless an unsigned number, a
+  name or `(` follows: `$(100% - 10%)` is `calc(100% - 10%)`, `7%3` is
+  `1`. Where only a number fits it reads its number: `25% > 10` is `1`.
 - **Rounding noise is none.** Comparisons, `sign` and `step` take a
   difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`.
 - **Adjacent values multiply**: `2x`, `2(3)`, `2π`. A space ends the

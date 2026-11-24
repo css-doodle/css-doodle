@@ -768,6 +768,11 @@ test('a unit on a number is written out as CSS math', () => {
     // where only a number fits, a miss
     assert.equal(calc('10px * 2'), 0);
     assert.equal(calc('2 + 60deg'), 2);
+    // % too, but where only a number fits it reads its number
+    assert.equal(css('100% - 10%'), 'calc(100% - 10%)');
+    assert.equal(css('100%-10px'), 'calc(100% - 10px)');
+    assert.equal(css('7%3'), 1);
+    assert.equal(calc('100% - 10%'), 90);
 });
 
 test('Math functions, comparisons and logic lower by name', () => {
