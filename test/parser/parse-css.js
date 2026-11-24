@@ -795,6 +795,23 @@ test('a user function name is read whole', () => {
     assert.deepEqual(ast(`--rand-int(a): [$a]; --f(rand): $rand-int(1); width: $f(5);`), ast(`width: [1];`));
 });
 
+test('a number after a user function name is its first argument, and a . composes calls', () => {
+    let defs = `--m(n, x = 1): [$n|$x]; --g(a): <$a>; --m2(x): ~$x; --leaf(k): $k;`;
+    let same = (short, long) => assert.deepEqual(ast(`${defs} ${short}`), ast(`${defs} ${long}`));
+    // unless the whole name is a function
+    same(`a: $m10(2) $m10() $m1.5(2) $m.5(2) $m2(3);`, `a: $m(10, 2) $m(10) $m(1.5, 2) $m(.5, 2) ~3;`);
+    // rightmost first, a link may have its number, and @ makes it a built-in
+    same(`a: $g.m3(2) $m3.g(1) $g.g.g(1) $g.@r(5) $g.$m(4) $g.$(1 + 1);`,
+        `a: $g($m(3, 2)) $m(3, $g(1)) $g($g($g(1))) $g(@r(5)) $g($m(4)) $g($(1 + 1));`);
+    // a bare parameter binds in them, and they work in @pattern
+    same(`--row(k): $m3(k) $g.g(k); a: $row(7);`, `a: $m(3, 7) $g($g(7));`);
+    same(`a: @pattern(o: $g.m3(uv.x););`, `a: @pattern(o: $g($m(3, uv.x)););`);
+    same(`a: $g.m + $m(2);`, `a: $g.m + [2|1];`);
+    // a variable stays a variable: no parentheses, no function at the head, no number
+    assert.deepEqual(ast(`${defs} a: $leaf2 $x.g(1) $m-1(2) $m3.(1); b: @pattern(o: $v.length(););`),
+        ast(`a: $leaf2 $x.g(1) $m-1(2) $m3.(1); b: @pattern(o: $v.length(););`));
+});
+
 test('a user function parameter name is read whole', () => {
     // $x1 is not $x followed by 1
     assert.deepEqual(ast(`--f(x): [$x1|$x]; width: $f(5);`), ast(`width: [$x1|5];`));

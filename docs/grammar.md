@@ -135,6 +135,13 @@ written, except:
   body holding a `@doodle`, `@pattern`, `@scene` or `@shaders` takes
   every argument as written.
 
+As with built-ins (§6), a number right after the name is the first
+argument, unless the whole name is a function: `$m10(x)` is
+`$m(10, x)`, `$m.5()` is `$m(.5)`. A `.` before a letter composes
+calls, rightmost first: `$a.b3(x)` is `$a($b(3, x))`, `$a.@r(5)` is
+`$a(@r(5))`. Either way the parentheses are needed and `--m()` or
+`--a()` must be defined: `$m10` alone reads a variable.
+
 A body of `result` declarations alone gives the last one's value, as a
 CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
 `$double(2)` is `4`. Any other body is pasted as written. A body may

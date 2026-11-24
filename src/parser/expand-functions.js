@@ -53,6 +53,15 @@ function nameEnd(tokens, i, dash) {
     return i;
 }
 
+function callAt(tokens, i, defs) {
+    let end = i, t;
+    while ((t = tokens[end + 1]) && adjacent(tokens[end], t) && (RE_NAME_TOKEN.test(t.value) || t.isSymbol('$', '@'))) end++;
+    if (!t?.isSymbol('(') || !adjacent(tokens[end], t)) return null;
+    let [, head, rest] = /^(.*?)(?:\.(?=[a-zA-Z_$@])(.*))?$/.exec(textOf(tokens.slice(i, end + 1)));
+    let [, name, n] = defs[head] ? [, head] : /^(.*?)(\d*\.?\d+)?$/.exec(head);
+    return defs[name] ? { name, n, rest, end } : null;
+}
+
 export default function expandFunctions(source, ctx, svg, chain = []) {
     let defs = ctx.defs = Object.create(ctx.defs ?? null);
     let tokens = /\)\s*:/.test(source) ? tokensOf(source) : [];
@@ -194,6 +203,8 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         let name = textOf(tokens.slice(at, end + 1));
         if (bare && !defs[name]) name = textOf(tokens.slice(at, (end = nameEnd(tokens, at)) + 1));
         let builtin = t.isSymbol('@') || bare && (name in defaultContext || name === 'pick');
+        let short = t.isSymbol('$') && callAt(tokens, at, defs), n, rest;
+        if (short) ({ name, n, rest, end } = short);
         let def = !builtin && defs[name];
         let paren = tokens[end + 1];
         if (!def || !paren?.isSymbol('(') || !adjacent(tokens[end], paren)) {
@@ -204,8 +215,10 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         end = closing(tokens, end + 1);
         if (end < 0) break;
         let inMath = !paint && (maths.at(-1) ?? math);
-        let args = itemsOf(tokens.slice(first, end), true).map(item => !item.length ? '' : expandCalls(
-            text.slice(item[0].index, tokenEnd(item.at(-1))).trim(), defs, ctx, chain, paint ? EXPR : CSS, pending, inMath));
+        let args = rest ? [rest.replace(/^\w/, '$$$&') + text.slice(paren.index, tokenEnd(tokens[end]))]
+            : itemsOf(tokens.slice(first, end), true).map(item => item.length ? text.slice(item[0].index, tokenEnd(item.at(-1))).trim() : '');
+        args = args.map(arg => arg && expandCalls(arg, defs, ctx, chain, paint ? EXPR : CSS, pending, inMath));
+        if (n) args.unshift(n);
         let given = args.length, { params, defaults } = def;
         while (given && !args[given - 1]) given--;
         let missing = params.filter((p, k) => k >= given && !defaults[k]);
@@ -487,7 +500,7 @@ function mathOpen(tokens, i, defs) {
     while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
     if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return PLAIN;
     let name = textOf(tokens.slice(j + 1, i));
-    if (tokens[j].isSymbol('$')) return defs[name] ? ARGS : MATH;
+    if (tokens[j].isSymbol('$')) return name && callAt(tokens, j + 1, defs) ? ARGS : MATH;
     if (tokens[j].isSymbol('@') && RE_PAINT_HEAD.test(name)) return PAINT;
     if (!tokens[j].isSymbol('@') || name !== 'match') return PLAIN;
     let close = closing(tokens, i);
@@ -533,7 +546,7 @@ function bindParams({ params, defaults, body }, args, defs, paint, math) {
         let arg = args[k] || defaults[k];
         let start = t.index;
         let call = next?.isSymbol('(') && adjacent(last, next);
-        if (dollar && call && defs[name]) continue;
+        if (dollar && callAt(tokens, first, defs)) continue;
         let wrap = parens.at(-1) === MATH && !call;
         let one = paint && !!arg && (!RE_SIMPLE_ARG.test(arg.trim())
             || /^[\d.]/.test(arg.trim()) && ahead?.isNumber() && adjacent(ahead, dollar ? prev : t));
