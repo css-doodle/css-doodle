@@ -73,21 +73,27 @@ function degrees(text) {
 let split = head => textOf(head).trim().split(/ (?=#)(?![^(]*\))/);
 
 function readShapes(input, warn = () => {}, options) {
-    let last, blocks = 0;
+    let last, blocks = 0, outer = [];
     let bare = head => Object.assign(shapeOf(head, []), { bare: true });
-    // `match(test) { r: .2 }` becomes `r: match(test, .2, r before)`; a step not taken does nothing
+    // `match(test) { r: .2 }` becomes `r: match(test, .2, r before)`; a step not taken does nothing,
+    // and a name the language made, as `match_2_` or a function's `f_1_k`, holds its first arm's value
     let lower = (node, m) => {
-        let valid = armsOf(m.arms, warn), id = `match_${++blocks}_`, arms = valid.map(a => shapeOf('', a.value, lower));
+        let valid = armsOf(m.arms, warn), id = `match_${++blocks}_`;
+        outer.push(node.rows);
+        let arms = valid.map(a => shapeOf('', a.value, lower));
+        outer.pop();
         node.rows.push({ name: id, value: scan(armIndex(valid)) });
         if (arms.some(a => a.children.length)) warn('shapes in match');
         for (let name of new Set(arms.flatMap(a => a.rows.map(r => r.name)))) {
             let texts = arms.map(a => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
-            let prior = node.rows.findLast(r => r.name == name), none = NONE[name];
-            if (!none && !prior) {
+            let prior = [...outer.flat(), ...node.rows].findLast(r => r.name == name), none = NONE[name];
+            let text = texts.find(Boolean), made = !prior && !none && /^\w+_\d+_/.test(name);
+            if (!none && !prior && !made) {
                 warn(`set ${name} first`);
                 continue;
             }
-            let text = texts.find(Boolean), parts = texts.map(t => t && partsOf(t)), base = prior && partsOf(textOf(prior.value));
+            let parts = texts.map(t => t && !(made && t == text) && partsOf(t));
+            let base = made ? partsOf(text) : prior && partsOf(textOf(prior.value));
             let size = Math.max(...[...parts, base].filter(Boolean).map(p => p.length));
             let at = (p, j) => p && (p[j] ?? (p.length == 1 ? p[0] : undefined));
             let out = Array.from({ length: size }, (_, j) => name == 'rotate' && j < size - 1 ? at(parts.find(Boolean), j)

@@ -70,6 +70,16 @@ test('a match block becomes rows that read its arm, the values before it, or a s
     assert.equal(parseShapeCommands('r: 1; match { n > 2*3 { r: .5 } }').match_1_, 'match((n > 2*3),1,0)');
 });
 
+test('a match block in an arm reads the values before the outer block', () => {
+    assert.deepEqual(parseShapeCommands('r: 1; match(a) { match(b) { r: .5 } }'), {
+        r: 'match(match_1_ == 1,match(match_2_ == 1,.5,1),1)', match_1_: 'match((a),1,0)', match_2_: 'match(match((b),1,0))',
+    });
+    assert.equal(parseShapeCommands('r: 1; match { a { r: .2 } else { match(b) { r: .5 } } }').r,
+        'match(match_1_ == 1,.2,match_1_ == 2,match(match_2_ == 1,.5,1),1)');
+    // a name the language made needs no value before, until another arm sets it it holds its first arm's
+    assert.equal(parseShapeCommands('match { a { f_1_k: 2 } else { f_1_k: 3 } }').f_1_k, 'match(match_1_ == 2,3,2)');
+});
+
 test('a group block keeps its shapes as text and takes commands of its own', () => {
     assert.deepEqual(parseShapeCommands('subtract { smooth: .1; heart; circle { scale: .5 } star 5 .4 } rotate: 10'), {
         rotate: '10',
