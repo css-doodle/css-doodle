@@ -335,7 +335,7 @@ export default function drawShader(shaders, seed, onLost) {
             currentTime = t;
         }
         if (points) gl.enable(gl.BLEND);
-        gl.drawArrays(points ? gl.POINTS : gl.TRIANGLE_STRIP, 0, points || 4);
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, points || 1);
         gl.disable(gl.BLEND);
     }
 

@@ -467,9 +467,11 @@ function generateShader({ grid, body, masked, dots, textures }) {
     ${textures.map(t => `uniform sampler2D ${t.name};`).join('\n')}
     flat out vec4 g_dot;
     flat out float g_kind;
+    out vec2 g_uv;
     ${head}
     void main() {
-        float g_k = float(gl_VertexID);
+        float g_k = float(gl_InstanceID);
+        vec2 g_corner = vec2(gl_VertexID & 1, gl_VertexID >> 1) - 0.5;
         ${dims}
         float x = mod(g_k, X) + 1.0;
         float y = floor(g_k / X) + 1.0;
@@ -477,8 +479,9 @@ function generateShader({ grid, body, masked, dots, textures }) {
         vec2 pos = (uv - 0.5) * u_resolution / min(u_resolution.x, u_resolution.y);
         vec2 g_place = pos;
         ${run}
-        gl_PointSize = size * min(u_resolution.x, u_resolution.y);
-        gl_Position = vec4(2.0 * g_place * min(u_resolution.x, u_resolution.y) / u_resolution, 0.0, 1.0);
+        float g_side = max(size * min(u_resolution.x, u_resolution.y), 1.0);
+        gl_Position = vec4(2.0 * (g_place * min(u_resolution.x, u_resolution.y) + g_corner * g_side) / u_resolution, 0.0, 1.0);
+        g_uv = vec2(g_corner.x, -g_corner.y);
         g_dot = g_color;
         g_kind = ${masked ? 'g_masked ? g_dist : 0.0' : '0.0'};
     }
@@ -487,8 +490,9 @@ function generateShader({ grid, body, masked, dots, textures }) {
     ${head}
     flat in vec4 g_dot;
     flat in float g_kind;
+    in vec2 g_uv;
     void main() {
-        float du = gl_PointCoord.x - 0.5, dv = gl_PointCoord.y - 0.5, k = g_kind;
+        float du = g_uv.x, dv = g_uv.y, k = g_kind;
         float a = g_dot.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
         FragColor = vec4(g_dot.rgb * a, a);
     }

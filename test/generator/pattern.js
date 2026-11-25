@@ -1018,11 +1018,11 @@ test('arc() takes a point as a vec2 or two floats', () => {
 
 // --- grid: dots, cells drawn as dots ---
 
-test('grid: dots draws each cell as a dot, from a vertex stage, one point per cell', () => {
+test('grid: dots draws each cell as a dot, from a vertex stage, one quad per cell', () => {
     let dots = draw('grid: dots 20x10; match(x > 10) { place: pos * .5; } fill: red;', extra);
     assert.equal(dots.points, 200);
     let vertex = dots.vertex.split('\n').map(l => l.trim());
-    assert.ok(vertex.includes('float g_k = float(gl_VertexID);'));
+    assert.ok(vertex.includes('float g_k = float(gl_InstanceID);'));
     assert.ok(vertex.includes('vec2 g_place = pos;'));
     assert.ok(vertex.includes('g_place = (pos * .5);'));
     assert.doesNotMatch(dots.fragment, /g_place|g_color/);
@@ -1036,7 +1036,9 @@ test('a dot is size across in pos units, the cell side until set, with a named s
     let vertex = draw('grid: dots 8; shape: diamond; fill: red;', extra).vertex;
     assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
     assert.match(vertex, /g_dist = 3\.0;/);
-    assert.match(vertex, /gl_PointSize = size \* min\(u_resolution\.x, u_resolution\.y\);/);
+    // a quad, not a point, so no GPU caps the size; one pixel at least, as a point is
+    assert.match(vertex, /float g_side = max\(size \* min\(u_resolution\.x, u_resolution\.y\), 1\.0\);/);
+    assert.doesNotMatch(vertex, /gl_PointSize/);
     assert.doesNotMatch(draw('grid: dots 8; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
 });
 
