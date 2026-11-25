@@ -813,7 +813,7 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
 
 Function['svg-polygon'] = shaped(composeSvgPolygonUrl, true);
 
-Function.shaders = Function.pattern = Function.scene = () => {};
+Function.pattern = Function.scene = () => {};
 
 const wrapped = (code, extra) => `@doodle(${code};:doodle{position:absolute;inset:25%;width:auto;height:auto;contain:none${extra}})`;
 

@@ -5,7 +5,7 @@ languages do. How each body is written and read is in
 [grammar.md](grammar.md#9-embedded-languages).
 
 **Contents.** 1 [SVG](#1-svg) · 2 [Shapes](#2-shapes) ·
-3 [Patterns](#3-patterns) · 4 [Shaders](#4-shaders)
+3 [Patterns](#3-patterns)
 
 ## 1. SVG
 
@@ -497,15 +497,3 @@ reads as the first.
 Such a call cannot stand in a `repeat()` head or a `match` arm test. A
 body without `result` runs where it is called and writes the caller's
 names.
-
-## 4. Shaders
-
-A `texture…` section holds a doodle rendered to an image and bound as
-the sampler of that name; like `@doodle(…)`, it sees the cell's custom
-properties. The fragment is compiled with `precision highp float`
-unless it declares its own. `pos` is centered and aspect-correct: the
-canvas's short axis is −0.5 to 0.5, and `pos.y` is upward.
-
-As in `@pattern`, `$name` inserts a custom property's text:
-`--fragment: @raw(...)` can hold GLSL, and a section of only `$name`
-draws the doodle stored in `--name: @doodle(...)`.

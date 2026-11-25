@@ -45,7 +45,7 @@ word   = run of characters that are not whitespace, digits or symbols
   `}`, after `:` `(` `[` and before `)` `]`, but kept before `:` `(`
   `[` and after `)` `]`, so `a (b)` and `a(b)` differ.
 - `/* … */` is whitespace. `//` comments exist only in `@pattern`,
-  `@scene`, `@shaders`, `@shape`, `@plot`, `@tile` and `@svg…` bodies.
+  `@scene`, `@shape`, `@plot`, `@tile` and `@svg…` bodies.
 
 ## 2. Statements
 
@@ -133,7 +133,7 @@ written, except:
 - An argument or default with a random or picking call (`@r`, `@p`,
   `@pn`, …) is worked out once, where the call is, in order, as is an
   `@n` of the caller: `$dot(@r(5))` gives one radius to each `$r`. A
-  body holding a `@doodle`, `@pattern`, `@scene` or `@shaders` takes
+  body holding a `@doodle`, `@pattern` or `@scene` takes
   every argument as written.
 
 As with built-ins (§6), a number right after the name is the first
@@ -264,7 +264,7 @@ and is text otherwise; the name and its `(` must be adjacent too.
 
 - **Digits in a name** split off as the first argument: `@m3(a)` is
   `@m(3, a)`, `@p1-2(a)` is `@p(1-2, a)`. `Math` names keep them
-  (`@log2(8)`), and `@doodle`, `@shaders`, `@pattern` and `@scene` read
+  (`@log2(8)`), and `@doodle`, `@pattern` and `@scene` read
   them as a size: `@doodle100x50(…)`, or `@doodle100(…)` for a square.
 - **A `.` before a letter** composes calls, rightmost first: `@a.b(x)`
   and `@a.@b(x)` are `@a(@b(x))`. Before a digit it stays in the name:
@@ -307,7 +307,7 @@ argument, so `@p(a b, c)` has two.
   the seed's stream, so `@r(@i: 10, 50)` is one number per cell that
   every property reads alike.
 
-`@doodle`, `@shaders`, `@pattern` and `@scene` take a raw body up to
+`@doodle`, `@pattern` and `@scene` take a raw body up to
 the matching `)`, respecting quotes, as do `@doodle` variants such as
 `@doodle.wrap(…)`, a tile that repeats without seams. `@svg` reads an
 SVG body (§9.1), where `element*count` expands before the body is split
@@ -449,8 +449,7 @@ match = 'match' '(' expression ')' '{' body '}'
 Each language defines its heads, values and expressions, and which
 block bodies stay raw text (`style { … }` in SVG). At the doodle level
 `a: b { … }` is a selector block (`a:hover { }`); inside `@svg` it is a
-row with a block value. `@shaders` (§9.4) shares only the blocks, each
-section raw.
+row with a block value.
 
 - **Several names** take a part of the value each when it has as many
   parts as names, and the whole value each otherwise: `x, y: 1, 2`.
@@ -597,30 +596,6 @@ anywhere in the body but its comments, when the pattern is generated:
 defined and subtracts otherwise. An undefined name skips the pattern
 and is reported.
 
-### 9.4 Shaders
-
-```css
-@shaders(
-  fragment {
-    void main() {
-      FragColor = vec4(1.0);
-    }
-  }
-)
-```
-
-```
-shaders-body = { section } | fragment-source
-section      = ( 'fragment' | 'vertex' ) '{' glsl '}'
-             | texture-name '{' ( doodle | '$' name ) '}'
-texture-name = 'texture' { ASCII-letter | digit | '_' }
-```
-
-The body is plain GLSL fragment source or a list of named sections.
-`//` comments are removed, and `#define` lines stay on their own line.
-`$name` works as in `@pattern`. Text stored in a variable is one line,
-so keep `//` comments and `#` directives in the section itself.
-
 ## 10. Directive values
 
 ### @grid
@@ -701,14 +676,14 @@ once per component.
 - **Parsing.** An unclosed `(` in a value runs to the next `}` or `<`.
   An unclosed argument list runs to the end of the source, keeping the
   arguments before the last top-level `,`; an unclosed raw body
-  (`@doodle`, `@shaders`, `@pattern`) runs there too, unreported.
+  (`@doodle`, `@pattern`, `@scene`) runs there too, unreported.
   `@keyframes` without a name produces nothing. A function that calls
   itself, even through another, is reported and expands to nothing, and a braceless body
   followed by a statement that reads its parameters warns
   `--f() needs {}`. A `$name()` with no `--name()` is reported and
   emits as `$name`.
 - **Generating.** `@use` cycles skip the variable, and an undefined
-  `$name` skips its `@shaders` or `@pattern`. Unknown functions emit as
+  `$name` skips its `@pattern`. Unknown functions emit as
   `@name`. Invalid cell selector modifiers match nothing. In `@svg`, a
   bad `viewBox` count drops the attribute, inline `defs` with other than
   one element becomes empty, a bad `draw:` drops the declaration, a

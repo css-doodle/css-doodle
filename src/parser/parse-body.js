@@ -1,6 +1,6 @@
 import { scan, textOf, itemsOf } from './tokenizer.js';
 
-// The body grammar @svg, @pattern, @shape and @shaders sections share:
+// The body grammar @svg, @pattern and @shape share:
 //
 //   body        = { declaration | block | ';' }
 //   declaration = head ':' value [ ';' ]
@@ -68,7 +68,7 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
     return rules;
 }
 
-// A block body kept as text (`style { … }`, a shader section): from the
+// A block body kept as text (`style { … }`, a texture section): from the
 // '{' the iterator stands on to the matching '}', skipping quoted ones.
 function readRaw(iter) {
     let tokens = [];

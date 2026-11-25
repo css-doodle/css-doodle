@@ -268,8 +268,8 @@ test('@pattern bodies are kept verbatim like @doodle', () => {
     assert.equal(arg.values[0].value, 'grid: 2; fill: @p(red, blue);');
 });
 
-test('a quote or paren in a // comment does not end a @pattern, @shaders or @scene body', () => {
-    for (let name of ['pattern', 'shaders', 'scene', 'shaders400', 'pattern2x3']) {
+test('a quote or paren in a // comment does not end a @pattern or @scene body', () => {
+    for (let name of ['pattern', 'scene', 'scene400', 'pattern2x3']) {
         let rules = parseCss(`background: @${name}(\n  // don't (fill\n  fill: #fff;\n); color: red;`);
         assert.deepEqual(rules.map(r => r.property), ['background', 'color'], name);
         assert.equal(rules[0].value[0][0].arguments[0].values[0].value, "// don't (fill\n  fill: #fff;");

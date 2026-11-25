@@ -137,10 +137,6 @@ export default [
         code: `background: @doodle(\n  @grid: 2 / 100%;\n  background: @p(red, blue);\n);`
     },
     {
-        name: 'shaders-glsl',
-        code: `background: @shaders(\n  // it is a comment\n  vec3 color = vec3(0.0);\n  void main() {\n    gl_FragColor = vec4(color, 1.0); /* block */\n  }\n);`
-    },
-    {
         name: 'pattern-lines',
         code: `background: @pattern(\n  // grid lines\n  grid: 10;\n  match(gx % 2 == 0) {\n    fill: #000;\n  }\n);`
     },

@@ -134,7 +134,7 @@ const MATH = true, PAINT = null, ARGS = 0, PLAIN = false;
 const RE_PAINT_HEAD = /^(pattern|scene)[\dxX.]*$/;
 const RE_TEXTURE_HEAD = /^texture\w*$/;
 const RE_REPEAT_HEAD = /^repeat\s*\(/;
-const RE_NESTED_DOODLE = /@(doodle|pattern|scene|shaders)/;
+const RE_NESTED_DOODLE = /@(doodle|pattern|scene)/;
 const RE_VARYING = /@(r|ri|R|rn|rand|random|p|pick|P|pn|pnr|pl|pr|pd|lp|lr)(?![\w-])/;
 const RE_COUNTER = /@(n|nx|ny|N|nN|Nn|nd)(?![\w-])/;
 const RE_LOOP = /@(m|M|rep|repeat)\d*\(|\{(?<=\w\*[^{};]*\{)|\brepeat\s*\(/;

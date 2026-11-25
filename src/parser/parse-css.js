@@ -50,7 +50,7 @@ class Cursor {
 const PAIRS = { '"': '"', "'": "'", '(': ')' };
 
 function composable(name) {
-    return /^@(shaders|doodle|pattern|scene)/.test(name);
+    return /^@(doodle|pattern|scene)/.test(name);
 }
 
 function readsShape(name) {

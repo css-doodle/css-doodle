@@ -367,7 +367,7 @@ if (typeof HTMLElement !== 'undefined') {
         disconnectedCallback() {
             live.delete(this);
             this.cleanup();
-            for (let id in { ...this.compiled?.shaders, ...this.compiled?.patterns }) {
+            for (let id in this.compiled?.patterns) {
                 this.vars.removeProperty('--' + id);
             }
             this._cells?.forEach(el => el.removeAttribute('cssd-' + this._instance));
@@ -678,8 +678,8 @@ if (typeof HTMLElement !== 'undefined') {
             let waits = this._waits = new Set();
             let compiled = guard(() => this.generate(source, parsed, seed), warn);
             if (!compiled) return;
-            for (let id in { ...old?.shaders, ...old?.patterns }) {
-                if (!compiled.shaders[id] && !compiled.patterns[id]) {
+            for (let id in old?.patterns) {
+                if (!compiled.patterns[id]) {
                     this.vars.removeProperty('--' + id);
                 }
             }

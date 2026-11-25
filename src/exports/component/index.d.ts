@@ -94,7 +94,7 @@ export interface DoodleApi extends AddonHelpers {
 export interface Addon {
     /** `@name(…)` as a value: the evaluated arguments in, CSS text out. */
     value?(args: string[], api: ValueApi): string | number;
-    /** `@name(…)` as a WebGL image: the argument text in, `@shaders` code out. */
+    /** `@name(…)` as a WebGL image: the argument text in, a fragment shader out. */
     shader?(text: string, api: ShaderApi): string;
     /** `@doodle.name(…)` as a tile: the body in, doodle code out; `size` is `WxH`. */
     doodle?(code: string, api: DoodleApi): string | { code: string; size?: string } | null | undefined;

@@ -23,14 +23,13 @@ export function frameSvg(svg, width, height) {
 }
 
 export function createReplacer(host, compiled, inside) {
-    const { doodles, shaders, patterns } = compiled;
+    const { doodles, patterns } = compiled;
     const unset = () => Promise.resolve();
-    const { shader = unset, pattern = unset } = host.draw ?? {};
+    const { pattern = unset } = host.draw ?? {};
     const paint = draw => (id, v) => draw(host, { ...v, compiled, inside }).then(url => url ?? `var(--${id})`);
     const groups = [
         [doodles, (id, v) => doodleToImage(host, v.doodle, { ...v, instance: id, compiled })
             .then(url => `url("${url}")`)],
-        [shaders, paint(shader)],
         [patterns, paint(pattern)],
     ];
     return input => {

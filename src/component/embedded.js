@@ -1,5 +1,4 @@
 import parseGrid from '../parser/parse-grid.js';
-import parseShaders from '../parser/parse-shaders.js';
 
 import generateShaders from '../generator/shaders.js';
 import generatePattern from '../generator/pattern.js';
@@ -11,7 +10,6 @@ import { cacheImage, isSafari } from '../lib/browser.js';
 import { doodleToImage, svgUrl, frameSvg } from './doodle-image.js';
 
 export const draw = {
-    shader: shaderToImage,
     pattern: patternToImage,
     url: safariImage,
 };
@@ -55,12 +53,12 @@ function patternToImage(host, pattern) {
         name = '';
         host.report([{ message }]);
     });
-    return shaderToImage(host, { ...pattern, name, source, seedCell: '' });
+    return shaderToImage(host, { ...pattern, name, source });
 }
 
-async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, target, compiled, name = '@shaders', inside }) {
+async function shaderToImage(host, { source, cell, id, arg, target, compiled, name, inside }) {
     let fixed = arg && parseGrid(arg, Infinity);
-    let parsed = typeof source === 'string' ? parseShaders(source) : source;
+    let parsed = typeof source === 'string' ? { fragment: source, textures: [] } : source;
     let width = fixed?.x, height = fixed?.y, textures = [];
     const loadTextures = () => {
         let dpr = devicePixelRatio || 1;
@@ -95,9 +93,9 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         textures = await loadTextures();
         let drawing;
         try {
-            drawing = generateShaders({ ...parsed, textures, width, height }, compiled.seed, seedCell);
+            drawing = generateShaders({ ...parsed, textures, width, height }, compiled.seed);
             await drawing.ready;
-            drawing.draw(0, width, height, 0, textures, [0, 0]);
+            drawing.draw(0, width, height, textures, [0, 0]);
             return canvasUrl(drawing.canvas, { scale: 1 });
         } catch (err) {
             if (name) host.report([{ message: `${name}: ${err.message}` }]);
@@ -163,7 +161,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         } else {
             let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
             let key = !drawing.animated && !textures.length && !parsed.drag
-                && [parsed.vertex, parsed.fragment, width, height, drawing.seeded && seedCell].join('\n');
+                && [parsed.vertex, parsed.fragment, width, height].join('\n');
             let fit = { scale: 1 };
             present = () => {
                 let url = urls.get(key) || canvasUrl(drawing.canvas, fit);
@@ -175,7 +173,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
         let now = host.clockNow();
         const frame = t => {
             if (!width || !height) return;
-            drawing.draw(now = t, width, height, host._umouse, textures, turned);
+            drawing.draw(now = t, width, height, textures, turned);
             present();
         };
 
@@ -249,7 +247,7 @@ async function shaderToImage(host, { source, cell, seedCell = cell, id, arg, tar
             textures = result;
         }
         try {
-            let drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, seedCell, () => {
+            let drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, () => {
                 host.report([{ message: 'WebGL lost' }]);
             });
             await drawing.ready;

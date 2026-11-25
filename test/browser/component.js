@@ -41,6 +41,11 @@ async function serveAddons(page, { down = [], hung = [] } = {}) {
     return asked;
 }
 
+// raw GLSL reaches a doodle through a shader addon: @stripes(alpha), 10px stripes at dpr 2
+const stripes = page => page.evaluate(() => customElements.whenDefined('css-doodle').then(CSSDoodle => CSSDoodle.use('stripes', {
+    shader: alpha => `void main() { FragColor = vec4(vec3(step(.5, fract(gl_FragCoord.x / 20.))), ${alpha}); }`,
+})));
+
 const arrived = el => within(el.evaluate(el => el.next.then(() => {})), 10000, 'no event');
 
 // two screenshots some frames apart
@@ -516,9 +521,9 @@ describe('component', { concurrency: 4 }, () => {
     });
 
     test('a shader redraws at the new size when the host resizes', () => chrome.withPage(async page => {
-        // 10px stripes in device pixels: stretching the old image would widen them
-        let code = '@grid: 1 / 60px; background: @shaders(void main() { gl_FragColor = vec4(vec3(step(.5, fract(gl_FragCoord.x / 20.))), 1.); });';
-        let el = await mount(page, code);
+        // stripes in device pixels: stretching the old image would widen them
+        await stripes(page);
+        let el = await mount(page, '@grid: 1 / 60px; background: @stripes(1.);');
         let { image } = await shot(page, el);
         assertColor(image, 5, 30, '#000');
         assertColor(image, 15, 30, '#fff');
@@ -534,10 +539,10 @@ describe('component', { concurrency: 4 }, () => {
 
     test('animated shaders of more sizes than the browser has contexts share surfaces, and none is lost', () => chrome.withPage(async page => {
         // u_time keeps each one animated, so it holds on to its surface
-        let shader = 'void main() { gl_FragColor = vec4(vec3(step(.5, fract(gl_FragCoord.x / 20.))), min(1., u_time + 2.)); }';
+        await stripes(page);
         let els = [];
         for (let k = 0; k < 20; k++) {
-            els.push(await mount(page, `@grid: 1 / ${40 + k}px; background: @shaders(${shader});`));
+            els.push(await mount(page, `@grid: 1 / ${40 + k}px; background: @stripes(min(1., u_time + 2.));`));
         }
         await page.waitForTimeout(500);
         for (let el of els) {

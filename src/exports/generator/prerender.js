@@ -34,7 +34,7 @@ function dropStrayTemplateEnds(html) {
  * rendered, so a runtime loaded later draws the same picture from it.
  *
  * `needs` lists what only the runtime can do:
- *   shader      @shaders and @pattern images are left out
+ *   shader      @pattern and @scene images are left out
  *   mouse, size the pointer and size uniforms stay at 0
  *   clock       @T/@TS count from the build time, not the visit
  *   update      click:update / auto:update
@@ -78,7 +78,7 @@ export default async function prerender(code = '', options = {}) {
         hasAttribute: name => name in attributes,
         clockNow: () => 0,
         _clock: { base: 0 },
-        draw: { shader: skip, pattern: skip, url },
+        draw: { pattern: skip, url },
     };
 
     let use = String(attributes.use ?? '').trim();
@@ -93,8 +93,8 @@ export default async function prerender(code = '', options = {}) {
     );
     warnings.unshift(...compiled.warnings);
 
-    let { styles, content, filters, uniforms, shaders, patterns, props } = compiled;
-    if (hasEntries(shaders) || hasEntries(patterns)) needs.add('shader');
+    let { styles, content, filters, uniforms, patterns, props } = compiled;
+    if (hasEntries(patterns)) needs.add('shader');
     if (uniforms.mousex || uniforms.mousey) needs.add('mouse');
     if (uniforms.width || uniforms.height) needs.add('size');
     if ('click:update' in attributes || 'click-to-update' in attributes || 'auto:update' in attributes) {

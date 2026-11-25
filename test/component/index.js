@@ -246,13 +246,13 @@ test('a warning is dispatched each time, and printed once', () => {
     console.warn = message => printed.push(message);
     try {
         let host = { _warned: new Set(), triggerEvent: (name, detail) => (events.push(detail.message), true) };
-        CSSDoodle.prototype.report.call(host, [{ message: '@shaders: syntax error' }]);
-        CSSDoodle.prototype.report.call(host, [{ message: '@shaders: syntax error' }]);
+        CSSDoodle.prototype.report.call(host, [{ message: '@pattern: syntax error' }]);
+        CSSDoodle.prototype.report.call(host, [{ message: '@pattern: syntax error' }]);
     } finally {
         console.warn = warn;
     }
-    assert.deepEqual(events, ['@shaders: syntax error', '@shaders: syntax error']);
-    assert.deepEqual(printed, ['@shaders: syntax error']);
+    assert.deepEqual(events, ['@pattern: syntax error', '@pattern: syntax error']);
+    assert.deepEqual(printed, ['@pattern: syntax error']);
 });
 
 test('the redraw after a font stylesheet lands does not print the warnings again', async () => {
@@ -609,9 +609,9 @@ test('render and update events follow the sheet', async () => {
 
 test('a redraw keeps the host variables of the images it draws again', () => {
     let removed = [];
-    let next = { shaders: { 's-1': {} }, patterns: {} };
+    let next = { patterns: { 'p-1': {} } };
     let host = {
-        compiled: { shaders: { 's-1': {}, 's-2': {} }, patterns: { 'p-1': {} } },
+        compiled: { patterns: { 'p-1': {}, 'p-2': {} } },
         vars: { removeProperty: name => removed.push(name) },
         cleanup() {},
         generate() { return this.compiled = next; },
@@ -624,10 +624,10 @@ test('a redraw keeps the host variables of the images it draws again', () => {
         disconnectedCallback: CSSDoodle.prototype.disconnectedCallback,
     };
     host.render('code');
-    assert.deepEqual(removed.sort(), ['--p-1', '--s-2']);
+    assert.deepEqual(removed, ['--p-2']);
     removed = [];
     host.disconnectedCallback();
-    assert.deepEqual(removed, ['--s-1']);
+    assert.deepEqual(removed, ['--p-1']);
 });
 
 test('the click that ends a drag neither updates the doodle nor clicks a cell', () => {

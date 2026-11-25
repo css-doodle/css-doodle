@@ -7,7 +7,7 @@ import { doodleToImage, svgUrl } from '../../component/doodle-image.js';
  *
  * `width` and `height` are in pixels and give the image its size and viewBox;
  * without them it takes the size it is drawn at.
- * `needs` has 'shader' when @shaders and @pattern images are left out,
+ * `needs` has 'shader' when @pattern and @scene images are left out,
  * and 'color' when @palette() leaves out its color.
  */
 export default async function image(code = '', options = {}) {
@@ -25,7 +25,7 @@ export default async function image(code = '', options = {}) {
         clockNow: () => 0,
         _clock: { base: 0 },
         // nested images resolve first, so the last one drawn is the outer image
-        draw: { shader: skip, pattern: skip, url: text => (svg = text, svgUrl(text)) },
+        draw: { pattern: skip, url: text => (svg = text, svgUrl(text)) },
     };
     let url = await doodleToImage(host, code, {
         arg: (width && height) ? `${parseFloat(width)}x${parseFloat(height)}` : '',

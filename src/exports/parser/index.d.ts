@@ -28,7 +28,6 @@ export interface ValueGroupOptions {
 export function parseCss(input: string, extra?: { getVariable?(name: string): string }): Node[] & { warnings: Warning[]; addons: string[] };
 export function parseSvg(source: string): Node;
 export function parsePattern(source: string): Node[];
-export function parseShaders(source: string): { textures: { name: string; value: string }[]; fragment: string; vertex?: string };
 export function parseShapeCommands(input: string): Record<string, unknown>;
 export function parseSvgPath(input: string): { commands: { name: string; value: number[]; type: 'absolute' | 'relative' }[]; valid: boolean };
 export function parseGrid(size: string | number, max?: number): Grid;

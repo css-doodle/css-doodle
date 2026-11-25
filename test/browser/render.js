@@ -41,7 +41,7 @@ describe('cases', { concurrency: 4 }, () => {
 });
 
 // prerender() and image() leave shaders out, so only the other cases
-const drawable = cases.filter(c => !c.blank && !/@(shaders|pattern|scene)/.test(c.code));
+const drawable = cases.filter(c => !c.blank && !/@(pattern|scene)/.test(c.code));
 
 describe('prerender() paints what the element paints', { concurrency: 4 }, () => {
     for (let c of drawable) {

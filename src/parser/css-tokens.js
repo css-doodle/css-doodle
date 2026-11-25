@@ -54,6 +54,6 @@ function splitDollars(tokens) {
 
 // `paint` for text inside a @pattern or @scene body, where // starts a comment
 export function tokensOf(text, paint) {
-    let tokens = scan(text, { lineCommentsIn: /^(shaders|pattern|scene|shape|plot|tile|svg)/i, ignoreInlineComment: paint });
+    let tokens = scan(text, { lineCommentsIn: /^(pattern|scene|shape|plot|tile|svg)/i, ignoreInlineComment: paint });
     return text.includes('$') ? splitDollars(tokens) : tokens;
 }

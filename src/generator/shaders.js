@@ -85,7 +85,7 @@ export function generateFragment(fragment, textures) {
         push('out vec4 FragColor;');
     }
 
-    for (const u of ['vec2 u_resolution', 'float u_time', 'float u_timeDelta', 'int u_frameIndex', 'vec2 u_seed', 'vec2 u_mouse']) {
+    for (const u of ['vec2 u_resolution', 'float u_time', 'float u_timeDelta', 'int u_frameIndex', 'vec2 u_seed']) {
         push(`uniform ${u};`);
     }
 
@@ -240,14 +240,14 @@ function releaseSurface(surface, drawing) {
     }
 }
 
-export default function drawShader(shaders, seed, cell, onLost) {
+export default function drawShader(shaders, seed, onLost) {
     const dpr = devicePixelRatio || 1;
     const { textures } = shaders;
     const vertex = shaders.vertex?.trim() || DEFAULT_VERTEX_SHADER;
     const fragment = generateFragment(shaders.fragment, textures);
     const uploaded = textures.map(t => t.value);
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
-    const seeds = [hash(seed) / 1e16, hash(seed + cell, 1) / 1e16];
+    const seeds = [hash(seed) / 1e16, hash(seed, 1) / 1e16];
 
     let surface, gl, entry, program, textureList, uniforms, size;
     let frameIndex = 0;
@@ -279,11 +279,10 @@ export default function drawShader(shaders, seed, cell, onLost) {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
         uniforms = {};
-        for (const name of ['resolution', 'seed', 'time', 'frameIndex', 'timeDelta', 'mouse', 'drag', 'px']) {
+        for (const name of ['resolution', 'seed', 'time', 'frameIndex', 'timeDelta', 'drag', 'px']) {
             uniforms[name] = gl.getUniformLocation(program, 'u_' + name);
         }
-        drawing.animated = !!(uniforms.time || uniforms.frameIndex || uniforms.timeDelta || uniforms.mouse);
-        drawing.seeded = !!uniforms.seed;
+        drawing.animated = !!(uniforms.time || uniforms.frameIndex || uniforms.timeDelta);
     }
 
     function teardown() {
@@ -293,7 +292,7 @@ export default function drawShader(shaders, seed, cell, onLost) {
         surface = null;
     }
 
-    function draw(t, w, h, mouse, images, drag) {
+    function draw(t, w, h, images, drag) {
         if (!surface) return;
         const width = raster(w);
         const height = raster(h);
@@ -326,7 +325,6 @@ export default function drawShader(shaders, seed, cell, onLost) {
         if (uniforms.seed) gl.uniform2f(uniforms.seed, seeds[0], seeds[1]);
         if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
         if (uniforms.frameIndex) gl.uniform1i(uniforms.frameIndex, frameIndex++);
-        if (uniforms.mouse) gl.uniform2f(uniforms.mouse, mouse ? mouse.x * dpr : 0, mouse ? (h - mouse.y) * dpr : 0);
         if (uniforms.drag) gl.uniform2f(uniforms.drag, ...drag);
         if (uniforms.px) gl.uniform1f(uniforms.px, 1 / Math.min(w, h));
         if (uniforms.timeDelta) {

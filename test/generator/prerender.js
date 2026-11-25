@@ -106,9 +106,8 @@ test('filter defs go in the shadow root and a slotted light child', async () => 
 
 test('needs lists what only the runtime can do', async () => {
     let needs = async (code, options = {}) => (await prerender(code, { seed: 1, ...options })).needs;
-    assert.deepEqual(await needs('background: @shaders(void main() {});'), ['shader']);
     assert.deepEqual(await needs('background: @pattern(grid: 2; fill: 1;);'), ['shader']);
-    assert.deepEqual(await needs('background: @doodle(background: @shaders(void main() {}));'), ['shader']);
+    assert.deepEqual(await needs('background: @doodle(background: @pattern(fill: 1));'), ['shader']);
     assert.deepEqual(await needs('left: @ux;'), ['mouse']);
     assert.deepEqual(await needs('width: @uw;'), ['size']);
     assert.deepEqual(await needs('rotate: @TS(*6deg);'), ['clock']);
@@ -163,16 +162,15 @@ test('warnings are returned', async () => {
     assert.match(warnings[0].message, /unknown @nope/);
 });
 
-test('shader and pattern images are left as unset variables', async () => {
+test('pattern images are left as unset variables', async () => {
     for (let code of [
-        '@grid: 2; background: @shaders(void main() {});',
         '@grid: 2; background: @pattern(grid: 2; fill: 1;);',
-        '@grid: 2; background: @doodle(background: @shaders(void main() {}));',
+        '@grid: 2; background: @doodle(background: @pattern(fill: 1));',
     ]) {
         let style = shadowStyle((await prerender(code, { seed: 1 })).html);
         assert.doesNotMatch(style, /\$\{/, code);
     }
-    let style = shadowStyle((await prerender('@grid: 1; background: @shaders(void main() {});', { seed: 1 })).html);
+    let style = shadowStyle((await prerender('@grid: 1; background: @pattern(fill: 1);', { seed: 1 })).html);
     assert.match(style, /background:var\(--[\w-]+\)/);
 });
 

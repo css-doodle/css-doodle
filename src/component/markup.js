@@ -78,7 +78,7 @@ function treeStyles({ x, y }) {
     `;
 }
 
-const EMBEDDED_CONTENT = /^\$\{(shader|pattern)/;
+const EMBEDDED_CONTENT = /^\$\{pattern/;
 
 export function createGrid(gridObj, compiled) {
     let { x, y, z } = gridObj;

@@ -32,7 +32,7 @@ function hasShorthandSize(value) {
 }
 
 const NO_SPACE = { noSpace: true };
-const COMPOSABLE = new Set(['doodle', 'shaders', 'pattern', 'scene']);
+const COMPOSABLE = new Set(['doodle', 'pattern', 'scene']);
 const CELL = ['&'];
 const SHARED_CELL = prefix => `:is(cell,${prefix}_)`;
 
@@ -80,7 +80,6 @@ const UNIFORM_KEYS = {
     t: 'time', T: 'time', ts: 'time', TS: 'time',
     ux: 'mousex', uy: 'mousey', uw: 'width', uh: 'height',
     udx: ['mousex', 'width'], udy: ['mousey', 'height'],
-    shaders: 'mouse',
 };
 
 const RE_UNIT_HEAD = /^([a-z]+|%)/i;
@@ -446,7 +445,6 @@ class Rules {
         this.nextId = nextId(instance ? '-' + instance : '');
         this.doodles = {};
         this.patterns = {};
-        this.shaders = {};
         this.filters = {};
         this.filterIds = new Map();
         this.content = {};
@@ -593,7 +591,6 @@ class Rules {
             };
             return placeholder(id);
         }
-        let kind = fname === 'shaders' ? 'shader' : 'pattern';
         let source = value.replace(RE_TEXTURE_OPEN, m => m + this.injectVariables('', cell.uid));
         if (source.includes('$')) {
             let group = this.scopedVars(cell.uid);
@@ -621,9 +618,9 @@ class Rules {
                 return;
             }
         }
-        let id = this.nextId(kind);
+        let id = this.nextId('pattern');
         let special = isSpecialSelector(selector);
-        this[kind + 's'][id] = {
+        this.patterns[id] = {
             source,
             target: {
                 selector: special ? (isHostSelector(selector) ? ':host' : ':container') : (property === '@grid') ? ':host' : cell.id,
@@ -633,7 +630,7 @@ class Rules {
             arg: node.size,
             id: '--' + id,
             cell: cell.id,
-            ...(kind === 'pattern' && fname !== 'pattern' && { fname }),
+            ...(fname !== 'pattern' && { fname }),
         };
         return placeholder(id);
     }
@@ -1203,7 +1200,6 @@ class Rules {
             seed: this.seed,
             random: this.random,
             doodles: this.doodles,
-            shaders: this.shaders,
             patterns: this.patterns,
             filters: this.filters,
             uniforms: this.uniforms,

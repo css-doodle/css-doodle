@@ -84,12 +84,12 @@ export default [
     },
     {
         name: 'shader-static',
-        code: `@grid: 2 / 120px; background: @shaders(void main() { vec2 p = gl_FragCoord.xy / u_resolution; gl_FragColor = vec4(p.x, p.y, .5, 1.0); });`,
+        code: `@grid: 2 / 120px; background: @pattern(fill: uv.x, uv.y, .5);`,
         probes: [[5, 55, '#0a0a80'], [55, 5, '#f5f580']],
     },
     {
         name: 'shader-content',
-        code: `@grid: 2 / 120px; @content: @shaders(void main() { vec2 p = gl_FragCoord.xy / u_resolution; gl_FragColor = vec4(p.y, p.x, .2, 1.0); });`,
+        code: `@grid: 2 / 120px; @content: @pattern(fill: uv.y, uv.x, .2);`,
         probes: [[5, 5, '#f50a33'], [55, 55, '#0af533']],
     },
     {
@@ -173,12 +173,6 @@ export default [
         name: 'pattern-glsl-error',
         code: `@grid: 1 / 120px; background: @pattern(fill: vec3(nosie(uv)));`,
         warnings: ['@pattern: invalid nosie'],
-        blank: true,
-    },
-    {
-        name: 'shaders-glsl-error',
-        code: `@grid: 1 / 120px; background: @shaders(void main() { gl_FragColor = vec4(foo); });`,
-        warnings: ['@shaders: invalid foo'],
         blank: true,
     },
 ];
