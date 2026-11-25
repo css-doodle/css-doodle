@@ -32,6 +32,13 @@ const CELL_INDEX = glsl`
     float db = min(min(x - 1.0, X - x), min(y - 1.0, Y - y));
 `;
 
+const SHAPE = glsl`
+    float g_shape(float d, float size) {
+        float r = 0.5 * size;
+        return 1.0 - smoothstep(r - max(fwidth(d), 1e-5), r, d);
+    }
+`;
+
 // Built-ins of the pattern language (grammar §9.3)
 export const HELPERS = glsl`
     float g_hash(vec2 p) {
@@ -45,10 +52,7 @@ export const HELPERS = glsl`
     vec3 g_hue(float h) {
         return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
     }
-    float g_shape(float d, float size) {
-        float r = 0.5 * size;
-        return 1.0 - smoothstep(r - max(fwidth(d), 1e-5), r, d);
-    }
+    ${SHAPE}
 
     float rand(vec2 p) {
         return g_hash(p + u_seed.x * 71.0);
@@ -249,7 +253,7 @@ function generateStatement(name, value, scope, ctx) {
         return '';
     }
     let from = part && expr(base, scope, ctx).type, size = /^vec/.test(from) && +from[3];
-    if (!base || part && !['xyzw', 'rgba', 'stpq'].some(set => [...part].every((c, k) => set.slice(0, size).includes(c) && part.indexOf(c) == k))) {
+    if (!base || part && (/(.).*\1/.test(part) || !['xyzw', 'rgba', 'stpq'].some(set => [...part].every(c => set.slice(0, size).includes(c))))) {
         ctx.warn(`invalid "${name}"`);
         return '';
     }
@@ -260,7 +264,7 @@ function generateStatement(name, value, scope, ctx) {
             return '';
         }
         ctx.counts.delete(id);
-        let type = !part ? ctx.types[id] || expr(id, scope, ctx).type : part.length > 1 ? `vec${part.length}` : 'float';
+        let type = !part ? ctx.types[id] || 'float' : part.length > 1 ? `vec${part.length}` : 'float';
         let v = compile(value, scope, ctx, type);
         if (v && /vec|mat/.test(v.type) && v.type !== type) {
             ctx.warn(`${name} is ${type}`);
@@ -286,14 +290,12 @@ function generateFill(value, scope, ctx, opts) {
     let over = ctx.filled || opts.loop;
     ctx.filled = true;
     if (type === 'vec4') return `g_color = ${over ? `g_over(${code}, g_color)` : code};\n`;
-    if (type === 'vec3') return glsl`g_color = vec4(${code}, 1.0);` + '\n';
-    if (type === 'vec2') return glsl`g_color = vec4(${code}, 0.0, 1.0);` + '\n';
-    if (type === 'bool') code = `float(${code})`;
-    else if (type !== 'float') {
+    let rgb = { vec3: code, vec2: `${code}, 0.0`, float: `vec3(${code})`, bool: `vec3(float(${code}))` }[type];
+    if (!rgb) {
         ctx.warn(`invalid ${type} fill`);
         return '';
     }
-    return glsl`g_color = vec4(vec3(${code}), 1.0);` + '\n';
+    return `g_color = vec4(${rgb}, 1.0);\n`;
 }
 
 function asFloat(value, scope, ctx, what) {
@@ -306,15 +308,11 @@ function asFloat(value, scope, ctx, what) {
 }
 
 function generateShape(value, scope, ctx) {
-    ctx.masked = true;
-    if (value === 'none') return glsl`g_masked = false;` + '\n';
-    if (ctx.marks) {
-        let kind = Object.keys(MASKS).indexOf(value) + 1;
-        if (!kind) ctx.warn('named shapes only');
-        return kind ? `g_dist = ${float(kind)};\ng_masked = true;\n` : '';
-    }
-    let d = MASKS[value] || asFloat(value, scope, ctx, 'shape');
-    return d ? glsl`g_dist = ${d};\ng_masked = true;` + '\n' : '';
+    if (value === 'none') return 'g_masked = false;\n';
+    let kind = Object.keys(MASKS).indexOf(value) + 1;
+    if (ctx.marks && !kind) ctx.warn('named shapes only');
+    let d = ctx.marks ? kind && float(kind) : MASKS[value] || asFloat(value, scope, ctx, 'shape');
+    return d ? `g_dist = ${d};\ng_masked = true;\n` : '';
 }
 
 function generateSize(value, scope, ctx) {
@@ -328,7 +326,6 @@ function generatePoint(value, scope, ctx, opts, name) {
         ctx.warn(`${name} needs vec2`);
         return '';
     }
-    if (name === 'to') ctx.line = true;
     return `g_${name} = ${code('vec2')};\n${name === 'to' ? 'g_line = true;\n' : ''}`;
 }
 
@@ -337,6 +334,8 @@ const OUTPUT_GENERATORS = {
     fill: generateFill,
     shape: generateShape,
     size: generateSize,
+    place: generatePoint,
+    to: generatePoint,
 };
 
 function generateRepeat(token, scope, ctx, opts) {
@@ -403,7 +402,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     opts = { ...opts, top: false, shaped: opts.shaped || hasShape };
     for (let t of tokens) {
         if (t.type === 'statement') {
-            let output = OUTPUT_GENERATORS[t.name] || ctx.marks && /^(place|to)$/.test(t.name) && generatePoint;
+            let output = OUTPUT_GENERATORS[t.name];
             if (t.name === 'grid') {
                 if (!top) ctx.warn('grid goes top-level');
             } else if (!output) {
@@ -428,31 +427,33 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     return out;
 }
 
-function generateShader({ grid, body, masked, marks, line, textures }) {
+function generateShader({ grid, body, marks, textures }) {
     let usesTime = /(?<![\w.])t\b/.test(body);
     let usesPx = /(?<![\w.])px\b/.test(body);
     let usesMouse = /(?<![\w.])mouse\b/.test(body);
+    let masked = body.includes('g_masked');
+    let line = body.includes('g_line');
     let head = glsl`
     precision highp int;
     const float PI = 3.1415926535897932;
     ${HELPERS}${body.includes('g_over(') ? OVER : ''}${usesPx ? 'uniform float u_px;' : ''}${usesMouse ? 'uniform vec2 u_mouse;' : ''}
     `;
-    let dims = `float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;`;
+    let dims = `float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y, g_res = min(u_resolution.x, u_resolution.y);`;
     let run = glsl`
         float g_i = x + (y - 1.0) * X, i = g_i;
-        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}${usesMouse ? ' vec2 mouse = (u_mouse - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);' : ''}
+        float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}${usesMouse ? ' vec2 mouse = (u_mouse - 0.5 * u_resolution) / g_res;' : ''}
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
-        float size = ${marks ? 'min(u_resolution.x / X, u_resolution.y / Y) / min(u_resolution.x, u_resolution.y)' : '1.0'};
+        float size = ${marks ? 'min(u_resolution.x / X, u_resolution.y / Y) / g_res' : '1.0'};
         ${masked ? glsl`float g_dist = 0.0;\nbool g_masked = false;` : ''}
         ${body}
     `;
     if (!marks) return { fragment: glsl`
     ${head}
     void main() {
-        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-        vec2 pos = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
         ${dims}
+        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        vec2 pos = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / g_res;
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
         ${run}
@@ -469,7 +470,7 @@ function generateShader({ grid, body, masked, marks, line, textures }) {
     uniform float u_time;
     uniform vec2 u_seed;
     ${textures.map(t => `uniform sampler2D ${t.name};`).join('\n')}
-    flat out vec4 g_dot;
+    flat out vec4 g_mark;
     flat out vec2 g_kind;
     out vec2 g_uv;
     ${head}
@@ -480,32 +481,32 @@ function generateShader({ grid, body, masked, marks, line, textures }) {
         float x = mod(g_k, X) + 1.0;
         float y = floor(g_k / X) + 1.0;
         vec2 uv = vec2((x - 0.5) / X, 1.0 - (y - 0.5) / Y);
-        vec2 pos = (uv - 0.5) * u_resolution / min(u_resolution.x, u_resolution.y);
+        vec2 pos = (uv - 0.5) * u_resolution / g_res;
         vec2 g_place = pos;
         ${line ? 'vec2 g_to = pos;\nbool g_line = false;' : ''}
         ${run}
         ${line ? 'if (!g_line) g_to = g_place;' : 'vec2 g_to = g_place;'}
-        float g_res = min(u_resolution.x, u_resolution.y);
         float g_side = max(size * g_res, 1.0);
         vec2 g_axis = (g_to - g_place) * g_res;
         float g_len = length(g_axis);
         vec2 g_dir = g_len > 0.0 ? g_axis / g_len : vec2(1.0, 0.0);
         float g_along = (g_corner.x + 0.5) * (g_len + g_side) - 0.5 * g_side;
         gl_Position = vec4(2.0 * (g_place * g_res + g_dir * g_along + vec2(-g_dir.y, g_dir.x) * g_corner.y * g_side) / u_resolution, 0.0, 1.0);
+        if (g_color.a <= 0.0) gl_Position = vec4(0.0);
         g_uv = vec2((g_along - 0.5 * g_len) / g_side, -g_corner.y);
-        g_dot = g_color;
+        g_mark = g_color;
         g_kind = vec2(${masked ? 'g_masked ? g_dist : 0.0' : '0.0'}, 0.5 * g_len / g_side);
     }
   `;
     let fragment = glsl`
-    ${head}
-    flat in vec4 g_dot;
+    ${SHAPE}
+    flat in vec4 g_mark;
     flat in vec2 g_kind;
     in vec2 g_uv;
     void main() {
         float du = max(abs(g_uv.x) - g_kind.y, 0.0), dv = g_uv.y, k = g_kind.x;
-        float a = g_dot.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
-        FragColor = vec4(g_dot.rgb * a, a);
+        float a = g_mark.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
+        FragColor = vec4(g_mark.rgb * a, a);
     }
   `;
     return { vertex, fragment, points: grid.x * grid.y };
@@ -518,12 +519,12 @@ function drawsMarks(tokens) {
 export default function drawPattern(code, extra, warn = () => {}) {
     let tokens = parsePattern(code);
     let ctx = {
-        extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), declared: new Set(),
+        extra, warn, id: 0, sites: 0, types: { __proto__: null, uv: 'vec2', pos: 'vec2', mouse: 'vec2' }, counts: new Map(), readonly: new Set(), declared: new Set(),
         unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown ${name}`), BUILTINS),
     };
     let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value || '';
     let parts = grid.split(/\s+/);
-    let words = parts.filter(w => /^[a-z]+$/i.test(w) && !/^x$/i.test(w));
+    let words = parts.filter(w => /^(?!x$)[a-z]+$/i.test(w));
     words.forEach(w => warn(`unknown ${w}`));
     ctx.marks = drawsMarks(tokens);
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
@@ -539,13 +540,6 @@ export default function drawPattern(code, extra, warn = () => {}) {
         if (!used(code, name)) warn(`unused ${name}`);
     }
     let list = [...textures].map(([name, value]) => ({ name, value }));
-    let shader = generateShader({
-        grid: parseGrid(parts.filter(w => !words.includes(w)).join('x'), Infinity),
-        body,
-        masked: ctx.masked,
-        marks: ctx.marks,
-        line: ctx.line,
-        textures: list,
-    });
-    return { ...shader, textures: list };
+    let dims = parseGrid(parts.filter(w => !words.includes(w)).join('x'), Infinity);
+    return { ...generateShader({ grid: dims, body, marks: ctx.marks, textures: list }), textures: list };
 }

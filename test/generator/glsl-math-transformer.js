@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 import { compile } from '../../src/generator/glsl-math-transformer.js';
 
-const transform = (code, { expect = null, type = false, ...opts } = {}) => {
-    const e = compile(code, opts);
+const transform = (code, { expect = null, type = false, types, ...opts } = {}) => {
+    const e = compile(code, { types: { __proto__: null, uv: 'vec2', pos: 'vec2', ...types }, ...opts });
     return type ? e.type : e.code(expect);
 };
 

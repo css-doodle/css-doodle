@@ -192,7 +192,8 @@ test('db: distance to the grid boundary', () => {
 test('pos: centered, aspect-correct canvas position', () => {
     assert.equal(color('fill: length(pos)'), 'g_color = vec4(vec3(length(pos)), 1.0);');
     assert.equal(color('fill: pos.x + .5'), 'g_color = vec4(vec3((pos.x + .5)), 1.0);');
-    assert.match(main('fill: length(pos)'), /vec2 pos = \(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
+    assert.match(main('fill: length(pos)'), /vec2 pos = \(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ g_res;/);
+    assert.match(main('fill: length(pos)'), /g_res = min\(u_resolution\.x, u_resolution\.y\);/);
     assert.doesNotMatch(generateFragment(shader('fill: length(pos)'), []), /#define pos/);
     assert.match(main('pos: uv; fill: pos.x'), /pos = uv;\s*g_color = vec4\(vec3\(pos\.x\), 1\.0\);/);
 });
@@ -1036,7 +1037,7 @@ test('a body that sets place draws each cell as a mark, from a vertex stage, one
 
 test('a mark is size across in pos units, the cell side until set, with a named shape', () => {
     let vertex = draw('grid: 8; place: pos; shape: diamond; fill: red;', extra).vertex;
-    assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
+    assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ g_res;/);
     assert.match(vertex, /g_dist = 3\.0;/);
     // a quad, not a point, so no GPU caps the size; one pixel at least, as a point is
     assert.match(vertex, /float g_side = max\(size \* g_res, 1\.0\);/);
