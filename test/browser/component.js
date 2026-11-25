@@ -553,19 +553,27 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 90, 30, '#000');
     }));
 
-    test('grid: dots draws cells as dots, placed, painted in the order of i, and size across', () => chrome.withPage(async page => {
+    test('a pattern that sets place draws cells as marks, painted in the order of i, size across, and to makes one a stroke', () => chrome.withPage(async page => {
         // four 36px dots pulled halfway to the center: the last, blue, covers its red neighbor
-        let el = await mount(page, '@grid: 1 / 120px; background: #000; @content: @pattern(grid: dots 2; place: pos * .5; size: 36px; fill: #f00; match(i == I) { fill: #00f; });');
+        let el = await mount(page, '@grid: 1 / 120px; background: #000; @content: @pattern(grid: 2; place: pos * .5; size: 36px; fill: #f00; match(i == I) { fill: #00f; });');
         let { image } = await shot(page, el);
         assertColor(image, 15, 15, '#000');
         assertColor(image, 40, 40, '#f00');
         assertColor(image, 40, 80, '#f00');
         assertColor(image, 60, 80, '#00f');
         // sixteen dots at the center, as one 90px square, in a background
-        el = await mount(page, '@grid: 1 / 120px; background: @pattern(grid: dots 4; place: vec2(0); size: .75; fill: #0f0;) #000;');
+        el = await mount(page, '@grid: 1 / 120px; background: @pattern(grid: 4; place: vec2(0); size: .75; fill: #0f0;) #000;');
         ({ image } = await shot(page, el));
         assertColor(image, 20, 60, '#0f0');
         assertColor(image, 8, 60, '#000');
+        assert.deepEqual(await el.evaluate(el => el.warnings), []);
+        // one 12px stroke across the middle, from 24px to 96px, square ends reaching 6px past them
+        el = await mount(page, '@grid: 1 / 120px; background: #000; @content: @pattern(place: vec2(-.3, 0); to: vec2(.3, 0); size: 12px; shape: square; fill: #f00;);');
+        ({ image } = await shot(page, el));
+        assertColor(image, 60, 60, '#f00');
+        assertColor(image, 20, 60, '#f00');
+        assertColor(image, 12, 60, '#000');
+        assertColor(image, 60, 50, '#000');
         assert.deepEqual(await el.evaluate(el => el.warnings), []);
     }));
 

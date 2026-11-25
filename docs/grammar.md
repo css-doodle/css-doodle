@@ -566,8 +566,9 @@ repeat-body   = { targets ':' value ';' | match | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
-**Names.** `grid`, `shape`, `size` and `fill` are built in, and so is
-`place` with `grid: dots …`; only `size` is also a value. Any other
+**Names.** `grid`, `shape`, `size` and `fill` are built in, and so are
+`place` and `to`, which draw each cell as a mark; only `size` and
+`place` are also values. Any other
 name is a variable, declared and typed by its first assignment:
 numbers become floats, and a color is a `vec3`, or a `vec4` with
 alpha. Undeclared, invalid and `g_…` names are reported (§11).
@@ -624,8 +625,7 @@ modifier   = '/' size [ '/' fill ]                  @size, then a fill
 ```
 
 The element's `grid` attribute reads the dimensions alone, and so does
-the `grid:` of a `@pattern`, where a space also separates them and the
-one flag is `dots`. A modifier's value runs to the next modifier symbol,
+the `grid:` of a `@pattern`, where a space also separates them. A modifier's value runs to the next modifier symbol,
 spaces included. Flags are whole words, case-insensitive, allowed
 anywhere; `border` is shorthand for `ß 1px solid`, and `border:red`
 sets the color. The dimensions are the first item that is not a flag,

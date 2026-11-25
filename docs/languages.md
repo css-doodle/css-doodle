@@ -391,18 +391,19 @@ center antialiased at half of `size`: `circle`, `square`, `diamond`,
 `none`, or an expression in `du` and `dv`. Setting only `size` masks
 with a square.
 
-**Dots.** `grid: dots 100x100` draws each cell as a dot instead of in
-its square: the body runs once per cell, at its center (`du` and `dv`
-are 0), rather than once per pixel, so a loop that finds a point stays
-cheap. `place` puts the dot at a point in `pos` units, the cell's
-center until set. `size` is the dot's width in `pos` units, the cell's
-shorter side until set, so `2px` is two pixels. Each dot has one color
+**Marks.** A body that sets `place` or `to` draws each cell as a mark
+instead of in its square: the body runs once per cell, at its center
+(`du` and `dv` are 0), rather than once per pixel, so a loop that
+finds a point stays cheap. `place` puts the mark at a point in `pos`
+units and reads as one, the cell's center until set: `place: pos`
+leaves it there. `size` is the mark's width in `pos` units, the cell's
+shorter side until set, so `2px` is two pixels. Each mark has one color
 and `shape` is `circle`, `square` or `diamond`. Later cells paint over
 earlier ones, in the order of `i`.
 
 ```css
 @pattern(
-  grid: dots 320;
+  grid: 320;
   c: y - 1;
   u, v, w: 0, 0, 0;
   repeat(320 as k, k >= x - 1) {
@@ -415,6 +416,12 @@ earlier ones, in the order of `i`.
   fill: vec3(c, x - 1, 320 - (c + x - 1) / 2) / 255;
 )
 ```
+
+`to` draws the mark as a stroke from `place` to another point, `size`
+wide, with `shape` for its ends: `to: place + .02vec2(cos(a), sin(a))`.
+A curve is strokes end to end, a cell each: in `grid: 6x900` a row is
+a blade of grass, its six cells the blade's pieces from `(x - 1) / X`
+to `x / X` along it.
 
 **Variables** are the cell variables of `@match` except `z` and `Z`,
 plus:

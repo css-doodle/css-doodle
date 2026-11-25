@@ -1015,43 +1015,59 @@ test('arc() takes a point as a vec2 or two floats', () => {
 });
 
 
-// --- grid: dots, cells drawn as dots ---
+// --- marks: cells drawn once each, anywhere ---
 
-test('grid: dots draws each cell as a dot, from a vertex stage, one quad per cell', () => {
-    let dots = draw('grid: dots 20x10; match(x > 10) { place: pos * .5; } fill: red;', extra);
-    assert.equal(dots.points, 200);
-    let vertex = dots.vertex.split('\n').map(l => l.trim());
+test('a body that sets place draws each cell as a mark, from a vertex stage, one quad per cell', () => {
+    let marks = draw('grid: 20x10; match(x > 10) { place: pos * .5; } fill: red;', extra);
+    assert.equal(marks.points, 200);
+    let vertex = marks.vertex.split('\n').map(l => l.trim());
     assert.ok(vertex.includes('float g_k = float(gl_InstanceID);'));
     assert.ok(vertex.includes('vec2 g_place = pos;'));
     assert.ok(vertex.includes('g_place = (pos * .5);'));
-    assert.doesNotMatch(dots.fragment, /g_place|g_color/);
+    assert.doesNotMatch(marks.fragment, /g_place|g_color/);
+    // to does too, and so does either in a match arm or after a block
+    assert.equal(draw('grid: 4; to: pos + .1;', extra).points, 16);
+    assert.equal(draw('grid: 4; match { x > 1 { a: 1; } else { to: pos; } }', extra).points, 16);
 
-    let plain = draw('grid: 20x10; place: pos * .5; fill: red;', extra);
+    let plain = draw('grid: 20x10; fill: red;', extra);
     assert.equal(plain.vertex, undefined);
     assert.equal(plain.points, undefined);
 });
 
-test('a dot is size across in pos units, the cell side until set, with a named shape', () => {
-    let vertex = draw('grid: dots 8; shape: diamond; fill: red;', extra).vertex;
+test('a mark is size across in pos units, the cell side until set, with a named shape', () => {
+    let vertex = draw('grid: 8; place: pos; shape: diamond; fill: red;', extra).vertex;
     assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
     assert.match(vertex, /g_dist = 3\.0;/);
     // a quad, not a point, so no GPU caps the size; one pixel at least, as a point is
-    assert.match(vertex, /float g_side = max\(size \* min\(u_resolution\.x, u_resolution\.y\), 1\.0\);/);
+    assert.match(vertex, /float g_side = max\(size \* g_res, 1\.0\);/);
     assert.doesNotMatch(vertex, /gl_PointSize/);
-    assert.doesNotMatch(draw('grid: dots 8; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
+    assert.doesNotMatch(draw('grid: 8; place: pos; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
 });
 
-test('the grid of a pattern reads words as flags and a space as a separator', () => {
+test('to: draws the mark as a stroke from place, its shape the ends', () => {
+    let vertex = draw('grid: 8; to: place + vec2(.1, 0); size: 2px; shape: circle; fill: red;', extra).vertex;
+    assert.match(vertex, /g_to = \(g_place \+ vec2\(\.1, 0\.0\)\);\s*g_line = true;/);
+    assert.match(vertex, /if \(!g_line\) g_to = g_place;/);
+    // without to the stroke has no length: a dot
+    let dot = draw('grid: 8; place: pos; fill: red;', extra).vertex;
+    assert.match(dot, /vec2 g_to = g_place;/);
+    assert.doesNotMatch(dot, /g_line/);
+    let messages = [];
+    draw('grid: 4; to: 1;', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['to needs vec2']);
+});
+
+test('the grid of a pattern takes a space as a separator and no words', () => {
     const warnings = code => {
         let messages = [];
         draw(code, extra, m => messages.push(m));
         return messages;
     };
     assert.match(shader('grid: 12 9; fill: red;'), /float X = 12\.0, Y = 9\.0/);
-    assert.equal(draw('grid: 100x100 dots; fill: red;', extra).points, 10000);
-    assert.deepEqual(warnings('grid: dot 10; fill: red;'), ['unknown dot']);
-    assert.deepEqual(warnings('grid: dots 4; place: 1;'), ['place needs vec2']);
-    assert.deepEqual(warnings('grid: dots 4; place: pos; shape: abs(du) - .3;'), ['named shapes only']);
-    assert.deepEqual(warnings('grid: dots 4; repeat(3) { place: pos; }'), ['place in repeat()']);
-    assert.deepEqual(warnings('grid: dots 4; place: pos; shape: circle; size: 2px;'), []);
+    assert.equal(draw('grid: 100x100; place: pos; fill: red;', extra).points, 10000);
+    assert.deepEqual(warnings('grid: dots 10; fill: red;'), ['unknown dots']);
+    assert.deepEqual(warnings('grid: 4; place: 1;'), ['place needs vec2']);
+    assert.deepEqual(warnings('grid: 4; place: pos; shape: abs(du) - .3;'), ['named shapes only']);
+    assert.deepEqual(warnings('grid: 4; repeat(3) { place: pos; }'), ['place in repeat()']);
+    assert.deepEqual(warnings('grid: 4; place: pos; shape: circle; size: 2px;'), []);
 });
