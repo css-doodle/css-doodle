@@ -352,6 +352,8 @@ name       = letter or '_', then letters, digits or '_'
   after a number `%` is a unit (below) unless an unsigned number, a
   name or `(` follows: `$(100% - 10%)` is `calc(100% - 10%)`, `7%3` is
   `1`. Where only a number fits it reads its number: `25% > 10` is `1`.
+  A function's result reads its number too: `$(@tile.x / 100)` is
+  `0.5` where `@tile.x` is `50%`.
 - **Rounding noise is none.** Comparisons, `sign` and `step` take a
   difference below `1e-9` as `0`: `.1 + .2 == .3` is `1`.
 - **Adjacent values multiply**: `2x`, `2(3)`, `2π`. A space ends the

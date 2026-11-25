@@ -476,6 +476,11 @@ test('$ falls back to splicing when a function result is not a number', () => {
     assertContains('@grid: 1; --c: 7; width: $(@p(c)*2+@i)px;', 'width:15px;');
 });
 
+test('a function result in % reads its number in $(), where a written % is a unit', () => {
+    assertContains('@grid: 1; --u: $(@p(61.5%) / 100); --r: $(@p(-20%)); --s: $(1 - @p(-20%) / 100); --w: $(100% - 10%);',
+        '--u:0.615;', '--r:-20;', '--s:1.2;', '--w:calc(100% - 10%);');
+});
+
 test('a negative function result or variable before a power is one operand', () => {
     assertContains('@grid: 1; --v: @m4($(@nd^2));', '--v:2.25,0.25,0.25,2.25;');
     assertContains('@grid: 1; --k: 2; --v: @m2($(1 + @nd ** 2 * k));', '--v:1.5,1.5;');

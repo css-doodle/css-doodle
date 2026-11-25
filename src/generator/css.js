@@ -326,7 +326,8 @@ function evalTemplateHoles({ holes, names, signSensitive }, frame, extra, target
     let values = new Array(n);
     frame.env.extra.push(extra);
     for (let i = 0; i < n; i++) {
-        values[i] = holes[i](frame, extra);
+        let v = holes[i](frame, extra);
+        values[i] = (/%$/.test(v) ? toPlainNumber(v.slice(0, -1)) : null) ?? v;
     }
     frame.env.extra.pop();
     let context = target || cellContext(frame.cell, frame.env.extra);
