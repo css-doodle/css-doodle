@@ -8,7 +8,8 @@ import { glsl } from '../lib/tagged-template.js';
 const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
-const BUILTINS = 'x y i X Y I dx dy du dv dr dc dm da db uv pos mouse t size px'.split(' ');
+const CELL = 'x y i X Y I dx dy du dv dr dc dm da db uv pos'.split(' ');
+const BUILTINS = [...CELL, 'mouse', 't', 'size', 'px'];
 
 export const NAME = /^[a-zA-Z_]\w*$/;
 
@@ -235,7 +236,7 @@ function vector(n, items) {
 }
 
 function expr(code, scope, ctx) {
-    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn, rand: () => `rand(vec2(i, ${scope.key || '0.0'}), ${float(++ctx.sites)})` });
+    return parse(code, { types: ctx.types, names: scope.ids, unknown: ctx.unknown, warn: ctx.warn, rand: () => `rand(vec2(g_i, ${scope.key || '0.0'}), ${float(++ctx.sites)})` });
 }
 
 function generateStatement(name, value, scope, ctx) {
@@ -249,14 +250,14 @@ function generateStatement(name, value, scope, ctx) {
         ctx.warn(`invalid "${name}"`);
         return '';
     }
-    let id = scope.ids[base];
+    let id = scope.ids[base] || CELL.includes(base) && base;
     if (id || part) {
         if (ctx.readonly.has(id)) {
             ctx.warn(`read-only ${name}`);
             return '';
         }
         ctx.counts.delete(id);
-        let type = !part ? ctx.types[id] : part.length > 1 ? `vec${part.length}` : 'float';
+        let type = !part ? ctx.types[id] || expr(id, scope, ctx).type : part.length > 1 ? `vec${part.length}` : 'float';
         let v = compile(value, scope, ctx, type);
         if (v && /vec|mat/.test(v.type) && v.type !== type) {
             ctx.warn(`${name} is ${type}`);
@@ -264,7 +265,7 @@ function generateStatement(name, value, scope, ctx) {
         }
         if (!v) return '';
         let copy = id ? '' : generateStatement(base, base, scope, ctx);
-        return `${copy}${scope.ids[base]}${part ? '.' + part : ''} = ${v.code};\n`;
+        return `${copy}${id || scope.ids[base]}${part ? '.' + part : ''} = ${v.code};\n`;
     }
     let v = compile(value, scope, ctx);
     if (!v) return '';
@@ -434,7 +435,7 @@ function generateShader({ grid, body, masked, dots, textures }) {
     `;
     let dims = `float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;`;
     let run = glsl`
-        float i = x + (y - 1.0) * X;
+        float g_i = x + (y - 1.0) * X, i = g_i;
         float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}${usesMouse ? ' vec2 mouse = (u_mouse - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);' : ''}
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
@@ -446,6 +447,7 @@ function generateShader({ grid, body, masked, dots, textures }) {
     ${head}
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        vec2 pos = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
         ${dims}
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;

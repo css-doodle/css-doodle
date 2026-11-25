@@ -571,9 +571,10 @@ value         = css-color | expression { ',' expression }
 name is a variable, declared and typed by its first assignment:
 numbers become floats, and a color is a `vec3`, or a `vec4` with
 alpha. Undeclared, invalid and `g_…` names are reported (§11).
-`v.xz: …` writes those channels of a vector; a
-name not yet assigned in the scope, such as `pos`, is copied first, so
-`pos.x: abs(pos.x)` mirrors the pattern. Several targets split the
+`v.xz: …` writes those channels of a vector. The
+cell variables, `pos` and `du` among them, are written in place, inside
+a block too: `pos.x: abs(pos.x)` mirrors the pattern, and
+`match(random() < .5) { du: -du; }` flips half the cells. Several targets split the
 value at commas: `a, b: 1, vec2(2, 3)`.
 
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,

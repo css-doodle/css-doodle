@@ -111,7 +111,7 @@ test('a name nothing knows reads 0, so the shader still compiles', () => {
 
 test('an assignment to a swizzle writes those channels', () => {
     assert.match(main('v: vec3(1); v.xz: vec2(0, .5); fill: v'), /vec3 g_1 = vec3\(1\.0\);\s*g_1\.xz = vec2\(0\.0, \.5\);/);
-    assert.match(main('pos.x: abs(pos.x); fill: pos, 0'), /vec2 g_1 = pos;\s*g_1\.x = abs\(pos\.x\);\s*g_color = vec4\(vec3\(g_1, 0\.0\), 1\.0\);/);
+    assert.match(main('pos.x: abs(pos.x); fill: pos, 0'), /pos\.x = abs\(pos\.x\);\s*g_color = vec4\(vec3\(pos, 0\.0\), 1\.0\);/);
     let messages = [];
     draw('v: vec2(1); k: 1; v.z: 1; v.xx: vec2(1); k.x: 1; v.x: vec2(1);', extra, m => messages.push(m));
     assert.deepEqual(messages, ['invalid "v.z"', 'invalid "v.xx"', 'invalid "k.x"', 'v.x is float']);
@@ -192,11 +192,18 @@ test('db: distance to the grid boundary', () => {
 test('pos: centered, aspect-correct canvas position', () => {
     assert.equal(color('fill: length(pos)'), 'g_color = vec4(vec3(length(pos)), 1.0);');
     assert.equal(color('fill: pos.x + .5'), 'g_color = vec4(vec3((pos.x + .5)), 1.0);');
-    // the shader wrapper defines pos
-    assert.match(generateFragment(shader('fill: length(pos)'), []), /#define pos \(\(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\)\)/);
-    // a user pos shadows the built-in; the wrapper then sees no `pos` to define
-    assert.match(main('pos: uv; fill: pos.x'), /vec2 g_1 = uv;\s*g_color = vec4\(vec3\(g_1\.x\), 1\.0\);/);
-    assert.doesNotMatch(main('pos: uv; fill: pos.x'), /\bpos\b/);
+    assert.match(main('fill: length(pos)'), /vec2 pos = \(gl_FragCoord\.xy - 0\.5 \* u_resolution\.xy\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
+    assert.doesNotMatch(generateFragment(shader('fill: length(pos)'), []), /#define pos/);
+    assert.match(main('pos: uv; fill: pos.x'), /pos = uv;\s*g_color = vec4\(vec3\(pos\.x\), 1\.0\);/);
+});
+
+test('a cell variable is written in place, so a block keeps what it writes', () => {
+    assert.match(main('grid: 8; match(random() < .5) { du: -du; } fill: du'), /if \(\(rand\(vec2\(g_i, 0\.0\), 1\.0\) < \.5\)\) \{\s*du = -du;\s*\}\s*g_color = vec4\(vec3\(du\), 1\.0\);/);
+    assert.match(main('grid: 6; du: du * 2; shape: circle; fill: red'), /du = \(du \* 2\.0\);\s*g_dist = length\(vec2\(du, dv\)\);/);
+    assert.match(main('i: 1; fill: random()'), /i = 1\.0;\s*g_color = vec4\(vec3\(rand\(vec2\(g_i, 0\.0\), 1\.0\)\), 1\.0\);/);
+    let messages = [];
+    draw('x: 1; uv.x: 0; fill: x, uv', extra, m => messages.push(m));
+    assert.deepEqual(messages, []);
 });
 
 test('du and dv: coordinates inside the cell', () => {
@@ -757,10 +764,11 @@ test('a repeat index shadows an outer variable without mutating it, and is read-
     assert.deepEqual(messages, ['read-only k']);
 });
 
-test('variables may take the names of the shader internals', () => {
+test('t is a variable of its own once assigned, and the cell variables are written in place', () => {
     let s = main('x: 0; t: 1; repeat(1) { x: x + 1; t: t*2 } fill: x, t, 0');
-    assert.match(s, /float g_1 = 0\.0;\s*float g_2 = 1\.0;/);
-    assert.match(s, /g_color = vec4\(vec3\(g_1, g_2, 0\.0\), 1\.0\);/);
+    assert.match(s, /x = 0\.0;\s*float g_1 = 1\.0;/);
+    assert.match(s, /x = \(x \+ 1\.0\);\s*g_1 = \(g_1 \* 2\.0\);/);
+    assert.match(s, /g_color = vec4\(vec3\(x, g_1, 0\.0\), 1\.0\);/);
     assert.match(s, /float t = 0\.0;/);
 });
 
@@ -771,7 +779,7 @@ test('repeat reports pattern outputs and allows match blocks in its body', () =>
         'shape in repeat()',
         'size in repeat()',
     ]);
-    assert.match(s.slice(s.indexOf('void main()')), /for \(float g_2[^}]*if \(\(g_1 < 1\.0\)\) \{\s*g_1 = \(g_1 \+ 1\.0\);\s*\}/);
+    assert.match(s.slice(s.indexOf('void main()')), /for \(float g_1[^}]*if \(\(x < 1\.0\)\) \{\s*x = \(x \+ 1\.0\);\s*\}/);
 });
 
 test('a fill in repeat paints over the one from the step before', () => {
@@ -809,12 +817,12 @@ test('repeat takes its count from a name set once to a whole number', () => {
 
 test('random() without arguments holds for the cell and the repeat step, and differs per call', () => {
     let s = main('a: random(); repeat(3 as i) { b: random(); repeat(2) { c: random() } }');
-    assert.match(s, /float g_1 = rand\(vec2\(i, 0\.0\), 1\.0\);/);
-    assert.match(s, /float g_3 = rand\(vec2\(i, g_2\), 2\.0\);/);
+    assert.match(s, /float g_1 = rand\(vec2\(g_i, 0\.0\), 1\.0\);/);
+    assert.match(s, /float g_3 = rand\(vec2\(g_i, g_2\), 2\.0\);/);
     // nested steps get one key each: outer * count + inner
-    assert.match(s, /float g_5 = rand\(vec2\(i, \(g_2 \* 2\.0 \+ g_4\)\), 3\.0\);/);
-    // the GLSL i is the cell index even where `as i` names the step
-    assert.match(main('fill: random() + random(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(i, 0\.0\), 1\.0\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
+    assert.match(s, /float g_5 = rand\(vec2\(g_i, \(g_2 \* 2\.0 \+ g_4\)\), 3\.0\);/);
+    // the cell index keys it even where `as i` names the step
+    assert.match(main('fill: random() + random(x, y)'), /g_color = vec4\(vec3\(\(rand\(vec2\(g_i, 0\.0\), 1\.0\) \+ rand\(vec2\(x, y\)\)\)\), 1\.0\);/);
 });
 
 test('random(p, k) is another number for the point p at each k, and rand() is its older name', () => {
