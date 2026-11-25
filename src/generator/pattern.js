@@ -304,6 +304,11 @@ function asFloat(value, scope, ctx, what) {
 function generateShape(value, scope, ctx) {
     ctx.masked = true;
     if (value === 'none') return glsl`g_masked = false;` + '\n';
+    if (ctx.dots) {
+        let kind = Object.keys(MASKS).indexOf(value) + 1;
+        if (!kind) ctx.warn('named shapes only');
+        return kind ? `g_dist = ${float(kind)};\ng_masked = true;\n` : '';
+    }
     let d = MASKS[value] || asFloat(value, scope, ctx, 'shape');
     return d ? glsl`g_dist = ${d};\ng_masked = true;` + '\n' : '';
 }
@@ -311,6 +316,15 @@ function generateShape(value, scope, ctx) {
 function generateSize(value, scope, ctx) {
     let size = asFloat(value, scope, ctx, 'size');
     return size ? `size = ${size};\n` : '';
+}
+
+function generatePlace(value, scope, ctx) {
+    let { type, code } = expr(value, scope, ctx);
+    if (type !== 'vec2') {
+        ctx.warn('place needs vec2');
+        return '';
+    }
+    return `g_place = ${code('vec2')};\n`;
 }
 
 const OUTPUT_GENERATORS = {
@@ -380,18 +394,19 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     let { loop, top } = opts;
     let has = name => tokens.some(t => t.type === 'statement' && t.name === name);
     let hasShape = has('shape');
-    if (!loop && !hasShape && !opts.shaped && has('size')) out += generateShape('square', scope, ctx);
+    if (!loop && !hasShape && !opts.shaped && !ctx.dots && has('size')) out += generateShape('square', scope, ctx);
     opts = { ...opts, top: false, shaped: opts.shaped || hasShape };
     for (let t of tokens) {
         if (t.type === 'statement') {
+            let output = OUTPUT_GENERATORS[t.name] || ctx.dots && t.name === 'place' && generatePlace;
             if (t.name === 'grid') {
                 if (!top) ctx.warn('grid goes top-level');
-            } else if (!OUTPUT_GENERATORS[t.name]) {
+            } else if (!output) {
                 out += generateStatement(t.name, t.value, scope, ctx);
             } else if (loop && t.name !== 'fill') {
                 ctx.warn(`${t.name} in repeat()`);
             } else {
-                out += OUTPUT_GENERATORS[t.name](t.value, scope, ctx, opts);
+                out += output(t.value, scope, ctx, opts);
             }
         } else if (t.type === 'text') {
             ctx.warn(`"${t.value}" needs :`);
@@ -408,30 +423,75 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     return out;
 }
 
-function generateShader({ grid, body, masked }) {
+function generateShader({ grid, body, masked, dots, textures }) {
     let usesTime = /(?<![\w.])t\b/.test(body);
     let usesPx = /(?<![\w.])px\b/.test(body);
     let usesMouse = /(?<![\w.])mouse\b/.test(body);
-    return glsl`
+    let head = glsl`
     precision highp int;
     const float PI = 3.1415926535897932;
     ${HELPERS}${body.includes('g_over(') ? OVER : ''}${usesPx ? 'uniform float u_px;' : ''}${usesMouse ? 'uniform vec2 u_mouse;' : ''}
-    void main() {
-        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-        float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;
-        float x = floor(uv.x * X) + 1.0;
-        float y = floor((1.0 - uv.y) * Y) + 1.0;
+    `;
+    let dims = `float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y;`;
+    let run = glsl`
         float i = x + (y - 1.0) * X;
         float t = ${usesTime ? 'u_time' : '0.0'};${usesPx ? ' float px = u_px;' : ''}${usesMouse ? ' vec2 mouse = (u_mouse - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);' : ''}
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
-        float size = 1.0;
+        float size = ${dots ? 'min(u_resolution.x / X, u_resolution.y / Y) / min(u_resolution.x, u_resolution.y)' : '1.0'};
         ${masked ? glsl`float g_dist = 0.0;\nbool g_masked = false;` : ''}
         ${body}
+    `;
+    if (!dots) return { fragment: glsl`
+    ${head}
+    void main() {
+        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        ${dims}
+        float x = floor(uv.x * X) + 1.0;
+        float y = floor((1.0 - uv.y) * Y) + 1.0;
+        ${run}
         ${masked ? glsl`float g_mask = g_shape(g_dist, size);\nif (g_masked) g_color.a *= g_mask;` : ''}
         FragColor = g_color;
     }
+  ` };
+    let vertex = glsl`#version 300 es
+    precision highp float;
+    #define fwidth(x) (0.0 * (x))
+    #define dFdx(x) (0.0 * (x))
+    #define dFdy(x) (0.0 * (x))
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform vec2 u_seed;
+    ${textures.map(t => `uniform sampler2D ${t.name};`).join('\n')}
+    flat out vec4 g_dot;
+    flat out float g_kind;
+    ${head}
+    void main() {
+        float g_k = float(gl_VertexID);
+        ${dims}
+        float x = mod(g_k, X) + 1.0;
+        float y = floor(g_k / X) + 1.0;
+        vec2 uv = vec2((x - 0.5) / X, 1.0 - (y - 0.5) / Y);
+        vec2 pos = (uv - 0.5) * u_resolution / min(u_resolution.x, u_resolution.y);
+        vec2 g_place = pos;
+        ${run}
+        gl_PointSize = size * min(u_resolution.x, u_resolution.y);
+        gl_Position = vec4(2.0 * g_place * min(u_resolution.x, u_resolution.y) / u_resolution, 0.0, 1.0);
+        g_dot = g_color;
+        g_kind = ${masked ? 'g_masked ? g_dist : 0.0' : '0.0'};
+    }
   `;
+    let fragment = glsl`
+    ${head}
+    flat in vec4 g_dot;
+    flat in float g_kind;
+    void main() {
+        float du = gl_PointCoord.x - 0.5, dv = gl_PointCoord.y - 0.5, k = g_kind;
+        float a = g_dot.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
+        FragColor = vec4(g_dot.rgb * a, a);
+    }
+  `;
+    return { vertex, fragment, points: grid.x * grid.y };
 }
 
 export default function drawPattern(code, extra, warn = () => {}) {
@@ -440,7 +500,11 @@ export default function drawPattern(code, extra, warn = () => {}) {
         extra, warn, id: 0, sites: 0, types: { __proto__: null }, counts: new Map(), readonly: new Set(), declared: new Set(),
         unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown ${name}`), BUILTINS),
     };
-    let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value;
+    let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value || '';
+    let parts = grid.split(/\s+/);
+    let flags = parts.filter(w => /^[a-z]+$/i.test(w) && !/^x$/i.test(w));
+    flags.filter(w => w !== 'dots').forEach(w => warn(`unknown ${w}`));
+    ctx.dots = flags.includes('dots');
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
     for (let name of textures.keys()) ctx.types[name] = 'sampler2D';
     let body = '';
@@ -449,10 +513,13 @@ export default function drawPattern(code, extra, warn = () => {}) {
     for (let name of ctx.declared) {
         if (!used(code, name)) warn(`unused ${name}`);
     }
-    let fragment = generateShader({
-        grid: parseGrid(grid, Infinity),
+    let list = [...textures].map(([name, value]) => ({ name, value }));
+    let shader = generateShader({
+        grid: parseGrid(parts.filter(w => !flags.includes(w)).join('x'), Infinity),
         body,
         masked: ctx.masked,
+        dots: ctx.dots,
+        textures: list,
     });
-    return { fragment, textures: [...textures].map(([name, value]) => ({ name, value })) };
+    return { ...shader, textures: list };
 }

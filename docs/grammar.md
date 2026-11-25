@@ -566,11 +566,12 @@ repeat-body   = { targets ':' value ';' | match | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
-**Names.** `grid`, `shape`, `size` and `fill` are built in, and only
-`size` is also a value. Any other name is a variable, declared and
-typed by its first assignment: numbers become floats, and a color is a
-`vec3`, or a `vec4` with alpha. Undeclared, invalid and `g_…` names
-are reported (§11). `v.xz: …` writes those channels of a vector; a
+**Names.** `grid`, `shape`, `size` and `fill` are built in, and so is
+`place` with `grid: dots …`; only `size` is also a value. Any other
+name is a variable, declared and typed by its first assignment:
+numbers become floats, and a color is a `vec3`, or a `vec4` with
+alpha. Undeclared, invalid and `g_…` names are reported (§11).
+`v.xz: …` writes those channels of a vector; a
 name not yet assigned in the scope, such as `pos`, is copied first, so
 `pos.x: abs(pos.x)` mirrors the pattern. Several targets split the
 value at commas: `a, b: 1, vec2(2, 3)`.
@@ -621,8 +622,9 @@ modifier   = '/' size [ '/' fill ]                  @size, then a fill
            | 'ß' value                              border
 ```
 
-The element's `grid` attribute and the `grid:` of a `@pattern` read the
-dimensions alone. A modifier's value runs to the next modifier symbol,
+The element's `grid` attribute reads the dimensions alone, and so does
+the `grid:` of a `@pattern`, where a space also separates them and the
+one flag is `dots`. A modifier's value runs to the next modifier symbol,
 spaces included. Flags are whole words, case-insensitive, allowed
 anywhere; `border` is shorthand for `ß 1px solid`, and `border:red`
 sets the color. The dimensions are the first item that is not a flag,

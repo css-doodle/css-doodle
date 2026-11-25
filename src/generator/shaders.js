@@ -147,7 +147,7 @@ const MAX_SURFACES = 8;
 const surfaces = new Map();
 let sweeper = null;
 
-function createSurface(width, height) {
+function createSurface(key, width, height, premultiplied) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -155,7 +155,7 @@ function createSurface(width, height) {
     const gl = canvas.getContext('webgl2', {
         powerPreference: 'high-performance',
         antialias: false,
-        premultipliedAlpha: false,
+        premultipliedAlpha: premultiplied,
         failIfMajorPerformanceCaveat: true,
         preserveDrawingBuffer: true
     });
@@ -172,12 +172,13 @@ function createSurface(width, height) {
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     canvas.addEventListener('webglcontextlost', () => {
         // losing it on purpose is not news
         if (surface.disposed) return;
         surface.disposed = true;
-        surfaces.delete(width + 'x' + height);
+        surfaces.delete(key);
         surface.users.forEach(drawing => drawing.onLost?.());
     });
 
@@ -215,8 +216,8 @@ function acquireProgram(surface, vertex, fragment) {
     return entry;
 }
 
-function acquireSurface(width, height, drawing) {
-    const key = width + 'x' + height;
+function acquireSurface(width, height, drawing, premultiplied) {
+    const key = width + 'x' + height + (premultiplied ? 'p' : '');
     let surface = surfaces.get(key);
     if (!surface) {
         if (surfaces.size >= MAX_SURFACES) {
@@ -225,7 +226,7 @@ function acquireSurface(width, height, drawing) {
         if (surfaces.size >= MAX_SURFACES) {
             surface = [...surfaces.values()].reduce((a, b) => b.users.size < a.users.size ? b : a);
         } else {
-            surface = createSurface(width, height);
+            surface = createSurface(key, width, height, premultiplied);
             surfaces.set(key, surface);
         }
     }
@@ -242,7 +243,7 @@ function releaseSurface(surface, drawing) {
 
 export default function drawShader(shaders, seed, onLost) {
     const dpr = devicePixelRatio || 1;
-    const { textures } = shaders;
+    const { textures, points } = shaders;
     const vertex = shaders.vertex?.trim() || DEFAULT_VERTEX_SHADER;
     const fragment = generateFragment(shaders.fragment, textures);
     const uploaded = textures.map(t => t.value);
@@ -257,7 +258,7 @@ export default function drawShader(shaders, seed, onLost) {
 
     function setup(width, height) {
         size = { width, height };
-        surface = acquireSurface(width, height, drawing);
+        surface = acquireSurface(width, height, drawing, !!points);
         gl = surface.gl;
         entry = acquireProgram(surface, vertex, fragment);
         program = entry.program;
@@ -333,7 +334,9 @@ export default function drawShader(shaders, seed, onLost) {
             gl.uniform1f(uniforms.timeDelta, (t - currentTime) * 0.001);
             currentTime = t;
         }
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        if (points) gl.enable(gl.BLEND);
+        gl.drawArrays(points ? gl.POINTS : gl.TRIANGLE_STRIP, 0, points || 4);
+        gl.disable(gl.BLEND);
     }
 
     function dispose() {

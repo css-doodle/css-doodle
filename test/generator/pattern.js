@@ -1007,3 +1007,42 @@ test('arc() takes a point as a vec2 or two floats', () => {
     assert.match(out, /float arc\(vec2 p, vec2 ra, float b\)/);
 });
 
+
+// --- grid: dots, cells drawn as dots ---
+
+test('grid: dots draws each cell as a dot, from a vertex stage, one point per cell', () => {
+    let dots = draw('grid: dots 20x10; match(x > 10) { place: pos * .5; } fill: red;', extra);
+    assert.equal(dots.points, 200);
+    let vertex = dots.vertex.split('\n').map(l => l.trim());
+    assert.ok(vertex.includes('float g_k = float(gl_VertexID);'));
+    assert.ok(vertex.includes('vec2 g_place = pos;'));
+    assert.ok(vertex.includes('g_place = (pos * .5);'));
+    assert.doesNotMatch(dots.fragment, /g_place|g_color/);
+
+    let plain = draw('grid: 20x10; place: pos * .5; fill: red;', extra);
+    assert.equal(plain.vertex, undefined);
+    assert.equal(plain.points, undefined);
+});
+
+test('a dot is size across in pos units, the cell side until set, with a named shape', () => {
+    let vertex = draw('grid: dots 8; shape: diamond; fill: red;', extra).vertex;
+    assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ min\(u_resolution\.x, u_resolution\.y\);/);
+    assert.match(vertex, /g_dist = 3\.0;/);
+    assert.match(vertex, /gl_PointSize = size \* min\(u_resolution\.x, u_resolution\.y\);/);
+    assert.doesNotMatch(draw('grid: dots 8; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
+});
+
+test('the grid of a pattern reads words as flags and a space as a separator', () => {
+    const warnings = code => {
+        let messages = [];
+        draw(code, extra, m => messages.push(m));
+        return messages;
+    };
+    assert.match(shader('grid: 12 9; fill: red;'), /float X = 12\.0, Y = 9\.0/);
+    assert.equal(draw('grid: 100x100 dots; fill: red;', extra).points, 10000);
+    assert.deepEqual(warnings('grid: dot 10; fill: red;'), ['unknown dot']);
+    assert.deepEqual(warnings('grid: dots 4; place: 1;'), ['place needs vec2']);
+    assert.deepEqual(warnings('grid: dots 4; place: pos; shape: abs(du) - .3;'), ['named shapes only']);
+    assert.deepEqual(warnings('grid: dots 4; repeat(3) { place: pos; }'), ['place in repeat()']);
+    assert.deepEqual(warnings('grid: dots 4; place: pos; shape: circle; size: 2px;'), []);
+});

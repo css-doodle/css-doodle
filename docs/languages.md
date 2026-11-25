@@ -391,6 +391,31 @@ center antialiased at half of `size`: `circle`, `square`, `diamond`,
 `none`, or an expression in `du` and `dv`. Setting only `size` masks
 with a square.
 
+**Dots.** `grid: dots 100x100` draws each cell as a dot instead of in
+its square: the body runs once per cell, at its center (`du` and `dv`
+are 0), rather than once per pixel, so a loop that finds a point stays
+cheap. `place` puts the dot at a point in `pos` units, the cell's
+center until set. `size` is the dot's width in `pos` units, the cell's
+shorter side until set, so `2px` is two pixels. Each dot has one color
+and `shape` is `circle`, `square` or `diamond`. Later cells paint over
+earlier ones, in the order of `i`.
+
+```css
+@pattern(
+  grid: dots 320;
+  c: y - 1;
+  u, v, w: 0, 0, 0;
+  repeat(320 as k, k >= x - 1) {
+    u: sin(c + v) + sin(c * turn / 235 + w);
+    v: cos(c + v) + cos(c * turn / 235 + w);
+    w: u + .47t;
+  }
+  place: .22vec2(u, -v);
+  size: 2px;
+  fill: vec3(c, x - 1, 320 - (c + x - 1) / 2) / 255;
+)
+```
+
 **Variables** are the cell variables of `@match` except `z` and `Z`,
 plus:
 
