@@ -123,7 +123,7 @@ model as an image.
 |------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `lathe { points }` or `lathe { body }`, `plane`, `sdf { d }` |
 | Steps      | `move: x y`, `rotate`, `scale: x [y]`, `mirror`, `grow`, `frame`         | the same in 3D, `rotate: [axis] angle`, and `repeat`, `twist`            |
-| Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`      | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`             |
+| Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`      | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`, `shine`    |
 | Groups     | `union`, `subtract`, `intersect`, `exclude`                              | `union`, `subtract`, `intersect`                                         |
 | Space      | lengths in units where the box is 2 across, `0 0` at its center         | the camera fits the model, so only its proportions matter               |
 
@@ -347,11 +347,14 @@ the fitted camera's axes, as `light` and `normal` are.
 does, so the light turns with the camera; it is `.6 .8 .5` by default.
 A color after the direction tints it, and a number sets the strength
 of a white one: `light: -1 1 .5 #ffe2b8`. A list adds lights, and
-`light: none` leaves `fill` as the final color. `shadow: s`, from 0 to
-1, darkens the light that shapes block, with soft edges, and the
-places where shapes crowd each other. A second value is how wide the
-light is, in degrees, 5.7 by default: `shadow: 1 .5` is the sun, and
-`0` leaves hard edges.
+`light: none` leaves `fill` as the final color. `shine: s` adds each
+light's highlight on top of the lit fill, in its color and gone where
+a shape blocks it: `.3` is a broad sheen, `1` a small sharp polish.
+Like `fill`, shapes in a group take its shine unless they have their
+own. `shadow: s`, from 0 to 1, darkens the light that shapes block,
+with soft edges, and the places where shapes crowd each other. A
+second value is how wide the light is, in degrees, 5.7 by default:
+`shadow: 1 .5` is the sun, and `0` leaves hard edges.
 
 `ambient: sky ground` is the light from all around: a surface facing
 up gets `sky`, one facing down `ground`, so unlike `light` it stays

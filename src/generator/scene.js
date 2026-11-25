@@ -113,7 +113,7 @@ const enclose = (balls, k = 0, n = balls.length) => {
 };
 
 function isVar(node, name) {
-    return !COMMANDS.has(name) && name !== 'fill' && !SHAPES[node.name]?.includes(name)
+    return !COMMANDS.has(name) && name !== 'fill' && name !== 'shine' && !SHAPES[node.name]?.includes(name)
         && !(name === 'smooth' && (GROUPS[node.name] || node.count));
 }
 
@@ -122,7 +122,7 @@ function checkAll(node, warn, unread, code, copy) {
     if (SHAPES[node.name] || GROUPS[node.name]) {
         for (let r of node.rows) {
             if (!isVar(node, r.name)) {
-                let m = !/^(fill|text|font|path)$/.test(r.name) && textOf(r.value).match(/\b(normal|light)\b/);
+                let m = !/^(fill|shine|text|font|path)$/.test(r.name) && textOf(r.value).match(/\b(normal|light)\b/);
                 if (m) warn(`${m[1]} is fill-only`);
                 continue;
             }
@@ -173,7 +173,7 @@ export default function drawScene(code, extra, report = () => {}) {
     // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
     let arrays = new Map();
     let build = (dist, warn, fit) => {
-        let counter = 0, sites = 0, key = '0.0', cap, fill, cut, loose, self, ball, sym;
+        let counter = 0, sites = 0, key = '0.0', cap, fill, gloss, cut, loose, self, shiny, ball, sym;
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
         // outside copies the scene is one copy
         let names = { __proto__: null, t: 't', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
@@ -409,16 +409,18 @@ export default function drawScene(code, extra, report = () => {}) {
         }
 
         function atom(node, p) {
-            let saved = fill, outer = names, f = row(node, 'fill');
+            let saved = [fill, gloss], outer = names, f = row(node, 'fill'), g = row(node, 'shine');
             scope(node, p, true);
             let c = f.length && color(textOf(f), p);
             if (c && !dist) {
                 fill = next();
                 out += `vec3 ${fill} = ${c}${reads(c) ? (self = 1, '') : SHADE};\n`;
             }
+            let k = g.length && first(g, p);
+            if (k && !dist) out += `vec3 ${gloss = shiny = next()} = g_shine(${k});\n`;
             let r = shape(node, p);
             if (!GROUPS[node.name]) sym = ball.every(isFinite) && isFinite(+textOf(row(node, 'round'))) && MIRRORED[node.name];
-            fill = saved;
+            [fill, gloss] = saved;
             names = outer;
             return r;
         }
@@ -572,7 +574,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     }
                 }
             }
-            declare(r, dist ? d : `vec4(${fill}, ${d})`);
+            declare(r, dist ? d : `vec4(${fill}${gloss ? ` + ${gloss}` : ''}, ${d})`);
             return r;
         }
 
@@ -583,7 +585,7 @@ export default function drawScene(code, extra, report = () => {}) {
         for (let def of tree.unused) generate(def, 'p');
         out = used;
         [...arrays.keys()].slice(size).forEach(k => arrays.delete(k));
-        if (!self) out = out.replaceAll(SHADE, '');
+        if (!self && !shiny) out = out.replaceAll(SHADE, '');
 
         let off = v => /^\s*none\s*$/.test(textOf(v || []));
         let angles = numbers(camera.view || [], 'p', true);
@@ -614,10 +616,10 @@ export default function drawScene(code, extra, report = () => {}) {
             sky = `vec3(${v[0]})`;
             ambient = glsl`mix(${v[1] ? `vec3(${v[1]})` : glsl`${sky} * 0.2`}, ${sky}, 0.5 + 0.5 * n.y)`;
         }
-        return { out, result, turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, base: +angles[1] || 0, loose };
+        return { out, result, turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, shiny, base: +angles[1] || 0, loose };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
-    let { turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, base } = full;
+    let { turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, shiny, base } = full;
     let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, wide, eye, look, ambient, ...lights.flat()].join('\n'));
     let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
     let common = glsl`
@@ -740,6 +742,7 @@ export default function drawScene(code, extra, report = () => {}) {
         ` : ''}
     }
     `;
+    let blocked = shadow ? ' * mix(1.0, g_shadow(g_h + n * g_e, g_l, 2.0 * g_s, g_e), g_sh)' : '';
     let fragment = glsl`
     precision highp int;
     uniform vec2 u_drag;
@@ -751,7 +754,15 @@ export default function drawScene(code, extra, report = () => {}) {
         return ${bare.result};
     }
     ${shadow ? shadows(wide ? glsl`(1.0 / max(tan(radians(${wide})), 1e-4))` : '10.0') : ''}
-    vec3 g_L = vec3(1.0);
+    vec3 g_L = vec3(1.0);${shiny ? glsl`
+        vec3 g_hc[${Math.max(lights.length, 1)}];
+        float g_hd[${Math.max(lights.length, 1)}];
+        vec3 g_shine(float s) {
+            vec3 c = vec3(0.0);
+            for (int i = 0; i < ${lights.length}; i++) c += g_hc[i] * pow(g_hd[i], exp2(3.0 + 4.0 * s));
+            return s * c;
+        }
+    ` : ''}
     vec4 g_scene(vec3 p) {
         ${full.out}
         return ${full.result};
@@ -831,12 +842,16 @@ export default function drawScene(code, extra, report = () => {}) {
             for (int i = 0; i < ${lights.length}; i++) {
                 vec3 g_l = g_v * normalize(g_ld[i]);
                 float g_c = max(dot(n, g_l), 0.0);
-                if (g_c > 0.0) g_lit += g_lc[i] * g_c${shadow ? ' * mix(1.0, g_shadow(g_h + n * g_e, g_l, 2.0 * g_s, g_e), g_sh)' : ''};
+                ${shiny ? glsl`
+                    g_hc[i] = g_c > 0.0 ? g_lc[i]${blocked} : vec3(0.0);
+                    g_hd[i] = max(dot(n, normalize(g_l - g_rd)), 0.0);
+                    g_lit += g_hc[i] * g_c;
+                ` : glsl`if (g_c > 0.0) g_lit += g_lc[i] * g_c${blocked};`}
             }
             g_L = sqrt((0.7 * g_lit + ${ambient})${shadow ? ' * mix(1.0, g_open(g_h, n, g_s), g_sh)' : ''});
         ` : ''}
         ${self ? glsl`light = dot(g_L, vec3(1.0 / 3.0));` : ''}
-        FragColor = vec4(g_scene(g_h).rgb${self ? '' : SHADE}, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
+        FragColor = vec4(g_scene(g_h).rgb${self || shiny ? '' : SHADE}, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
     }
   `;
     return { vertex, fragment, textures: [], drag: drag.length && [base * Math.PI / 180] };

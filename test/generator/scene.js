@@ -371,6 +371,25 @@ test('a fill that reads light is lit already, and the others are shaded', () => 
     assert.deepEqual(scene('sphere { move: light 0 0 }').warnings, ['light is fill-only']);
 });
 
+test('shine adds the lights\' highlight on top of the lit fill, shapes taking their group\'s', () => {
+    let { body, fragment, warnings } = scene('shadow: 1; union { shine: .8; sphere { r: .3 } box { size: .2; move: .4 0 0; shine: .2; fill: red } }');
+    assert.deepEqual(warnings, []);
+    assert.match(body, /vec3 (g_\d+) = g_shine\(\.8\);\nvec4 g_\d+ = vec4\(g_1 \+ \1, length\(p\) - \.3\);/);
+    assert.match(body, /vec3 (g_\d+) = g_shine\(\.2\);\nvec4 g_\d+ = vec4\(g_\d+ \+ \1, g_box/);
+    // shaded per fill, so the highlight is not dimmed, and gone where the light is blocked
+    assert.match(body, /vec3 g_1 = vec3\(0\.9\) \* g_L;/);
+    assert.match(fragment, /FragColor = vec4\(g_scene\(g_h\)\.rgb, /);
+    assert.match(fragment, /g_hc\[i\] = g_c > 0\.0 \? g_lc\[i\] \* mix\(1\.0, g_shadow/);
+    assert.match(fragment, /pow\(g_hd\[i\], exp2\(3\.0 \+ 4\.0 \* s\)\)/);
+    assert.match(scene('light: none; shine: 1; sphere').fragment, /i < 0; i\+\+\) c \+= /);
+    assert.doesNotMatch(scene('sphere').fragment, /g_shine|g_hc/);
+    assert.deepEqual(scene('sphere { shine: 1 - normal.z }').warnings, []);
+    // the distance pass reads a random shine too, so the size reads the same random number in both
+    let random = scene('sphere { shine: random(); r: .1 + .1 * random() }');
+    let site = code => code.match(/length\(p\) - \(\.1 \+ \(\.1 \* rand\(([^)]*\)[^)]*)\)/)[1];
+    assert.equal(site(random.dist), site(random.body));
+});
+
 test('the model is measured once per vertex, not per pixel', () => {
     let { vertex, fragment } = scene('sphere { r: .2 }');
     assert.match(vertex, /g_reach6\(mat3\(g_x, g_y, g_z\), g_vhi, g_vlo\);/);
