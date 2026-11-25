@@ -342,7 +342,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         if (n.type === 'Lit') return 'float';
         if (n.type === 'Var') {
             if (n.val === 'true' || n.val === 'false') return 'bool';
-            return types[n.val] || (n.val === 'uv' || n.val === 'pos' ? 'vec2' : 'float');
+            return types[n.val] || (/^(uv|pos|mouse)$/.test(n.val) ? 'vec2' : 'float');
         }
         if (n.type === 'Member') return swizzle(n.val);
         if (n.type === 'Pre') {

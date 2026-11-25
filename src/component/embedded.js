@@ -136,7 +136,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
         if (host._generation !== generation || renders.has(id)) return;
     }
     if (!fixed) ({ width, height } = measure());
-    let turned = [0, 0], redraw;
+    let turned = [0, 0], pointer, queued, redraw;
 
     const tick = drawing => {
         let present;
@@ -160,7 +160,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             }
         } else {
             let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
-            let key = !drawing.animated && !textures.length && !parsed.drag
+            let key = !drawing.animated && !textures.length && !parsed.drag && !drawing.mouse
                 && [parsed.vertex, parsed.fragment, width, height].join('\n');
             let fit = { scale: 1 };
             present = () => {
@@ -173,7 +173,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
         let now = host.clockNow();
         const frame = t => {
             if (!width || !height) return;
-            drawing.draw(now = t, width, height, textures, turned);
+            drawing.draw(now = t, width, height, textures, turned, pointer);
             present();
         };
 
@@ -186,7 +186,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 animation.pause();
             }
             host.animations.push(animation);
-        } else if (!parsed.drag) {
+        } else if (!parsed.drag && !drawing.mouse) {
             drawing.dispose();
         }
         renders.get(id)?.dispose();
@@ -198,10 +198,34 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
         if (parsed.drag && !host.observers.has(id + '-drag')) {
             grab();
         }
+        if (drawing.mouse && !host.observers.has(id + '-mouse')) {
+            follow();
+        }
+    }
+
+    const queue = () => {
+        if (!renders.get(id).animated || host.hasAttribute('cssd-paused')) {
+            queued ||= requestAnimationFrame(() => {
+                queued = 0;
+                redraw();
+            });
+        }
+    }
+
+    const follow = () => {
+        let controller = new AbortController(), { signal } = controller;
+        host.observers.set(id + '-mouse', { disconnect: () => controller.abort() });
+        const point = e => {
+            let box = element.getBoundingClientRect();
+            pointer = [e.clientX - box.left, e.clientY - box.top];
+            queue();
+        };
+        host.frame.addEventListener('pointermove', point, { signal });
+        host.frame.addEventListener('pointerdown', point, { signal });
     }
 
     const grab = () => {
-        let [base] = parsed.drag, controller = new AbortController(), { signal } = controller, queued;
+        let [base] = parsed.drag, controller = new AbortController(), { signal } = controller;
         host.observers.set(id + '-drag', {
             disconnect() {
                 controller.abort();
@@ -226,12 +250,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 turned[0] += (e.clientX - from.clientX) * rate;
                 turned[1] = Math.min(Math.max(turned[1] + (e.clientY - from.clientY) * rate, -half - base), half - base);
                 from = e;
-                if (!renders.get(id).animated || host.hasAttribute('cssd-paused')) {
-                    queued ||= requestAnimationFrame(() => {
-                        queued = 0;
-                        redraw();
-                    });
-                }
+                queue();
             }, { signal });
         }
     }

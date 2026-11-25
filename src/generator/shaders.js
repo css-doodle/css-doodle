@@ -279,10 +279,11 @@ export default function drawShader(shaders, seed, onLost) {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
         });
         uniforms = {};
-        for (const name of ['resolution', 'seed', 'time', 'frameIndex', 'timeDelta', 'drag', 'px']) {
+        for (const name of ['resolution', 'seed', 'time', 'frameIndex', 'timeDelta', 'drag', 'px', 'mouse']) {
             uniforms[name] = gl.getUniformLocation(program, 'u_' + name);
         }
         drawing.animated = !!(uniforms.time || uniforms.frameIndex || uniforms.timeDelta);
+        drawing.mouse = !!uniforms.mouse;
     }
 
     function teardown() {
@@ -292,7 +293,7 @@ export default function drawShader(shaders, seed, onLost) {
         surface = null;
     }
 
-    function draw(t, w, h, images, drag) {
+    function draw(t, w, h, images, drag, [x = w / 2, y = h / 2] = []) {
         if (!surface) return;
         const width = raster(w);
         const height = raster(h);
@@ -326,6 +327,7 @@ export default function drawShader(shaders, seed, onLost) {
         if (uniforms.time) gl.uniform1f(uniforms.time, t * 0.001);
         if (uniforms.frameIndex) gl.uniform1i(uniforms.frameIndex, frameIndex++);
         if (uniforms.drag) gl.uniform2f(uniforms.drag, ...drag);
+        if (uniforms.mouse) gl.uniform2f(uniforms.mouse, x / w * width, (1 - y / h) * height);
         if (uniforms.px) gl.uniform1f(uniforms.px, 1 / Math.min(w, h));
         if (uniforms.timeDelta) {
             gl.uniform1f(uniforms.timeDelta, (t - currentTime) * 0.001);

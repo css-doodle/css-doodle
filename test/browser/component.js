@@ -537,6 +537,22 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 115, 60, '#fff');
     }));
 
+    test('a still pattern reads the pointer over the doodle as mouse, from each cell, and from the center until it moves', () => chrome.withPage(async page => {
+        // red within 10px of mouse, green while mouse is right of the cell
+        let el = await mount(page, '@grid: 2x1 / 120px 60px; background: @pattern(fill: 1 - step(10px, length(pos - mouse)), step(.5, mouse.x), 0);');
+        let { image } = await shot(page, el);
+        assertColor(image, 30, 30, '#f00');
+        assertColor(image, 90, 30, '#f00');
+        assertColor(image, 10, 10, '#000');
+        let box = await el.boundingBox();
+        await page.mouse.move(box.x + 70, box.y + 10);
+        ({ image } = await shot(page, el));
+        assertColor(image, 10, 10, '#0f0');
+        assertColor(image, 30, 30, '#0f0');
+        assertColor(image, 70, 10, '#f00');
+        assertColor(image, 90, 30, '#000');
+    }));
+
     test('animated shaders of more sizes than the browser has contexts share surfaces, and none is lost', () => chrome.withPage(async page => {
         // u_time keeps each one animated, so it holds on to its surface
         await stripes(page);

@@ -399,6 +399,7 @@ plus:
 | `du`, `dv` | position inside the cell, −0.5 to 0.5, `dv` downward |
 | `uv`       | position in the whole pattern, 0 to 1, `uv.y` upward |
 | `pos`      | centered and aspect-correct, `pos.y` upward          |
+| `mouse`    | the pointer over the doodle, in `pos` units          |
 | `t`        | time in seconds; reading it animates the pattern     |
 | `size`     | the current `size`, `1` until set                    |
 | `px`       | one CSS pixel in `pos` units, so `2px` is two        |
@@ -408,6 +409,11 @@ Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
 address every pixel. An animated pattern in `@content` draws each
 frame straight to a canvas; elsewhere it is re-encoded as an image
 every frame, several times slower.
+
+`mouse` is measured from the cell's own center, so a cell can point at
+the pointer from anywhere: `length(pos - mouse)` is the distance to it.
+It is `0` until the pointer moves over the doodle, and stays where it
+was last. A pattern that reads it draws again as the pointer moves.
 
 **Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`,
 `random(p [, k])`, `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`,
