@@ -445,6 +445,7 @@ test('a name nothing reads is reported, as in @scene', () => {
     assert.deepEqual(said('n: 4; repeat(n as k) { fill: k / 4, 0, 0; }'), []);
     assert.deepEqual(said('k: 1; m: 2; match { k > m { fill: red; } }'), []);
     assert.deepEqual(said('k: floor(2rand(i)); fill: pick(k: .2, .8), 0, 0'), []);
+    assert.deepEqual(said('k: 1; b: 2; fill: pick(k + b: .2, .8), 0, 0'), []);
     assert.deepEqual(said('pos.x: abs(pos.x); fill: pos.x, 0, 0'), []);
 });
 
