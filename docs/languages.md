@@ -435,8 +435,9 @@ address every pixel. An animated pattern in `@content` draws each
 frame straight to a canvas; elsewhere it is re-encoded as an image
 every frame, several times slower.
 
-`mouse` is measured from the cell's own center, so a cell can point at
-the pointer from anywhere: `length(pos - mouse)` is the distance to it.
+`mouse` is measured from the center of the element the pattern is drawn
+on, so a pattern in each of the doodle's cells sees the pointer from
+where it is: `length(pos - mouse)` is the distance to it.
 It is `0` until the pointer moves over the doodle, and stays where it
 was last. A pattern that reads it draws again as the pointer moves.
 
