@@ -51,8 +51,10 @@ function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS
     let cols = ceil(w / size) || 1, rows = ceil(h / size) || 1;
     let col = x => min(cols - 1, (x - x0) / size | 0);
     let row = y => min(rows - 1, (y - y0) / size | 0);
-    let head = new Int32Array(cols * rows), next = new Int32Array(m);
+    let cells = cols * rows, head = new Int32Array(cells), next = new Int32Array(m);
     let sums = new Float64Array(m * 3);
+    let at = new Int32Array(n), from = new Int32Array(cells + 1), ids = new Int32Array(9 * m), lx = new Float64Array(9 * m), ly = new Float64Array(9 * m);
+    for (let s = 0; s < n; ++s) at[s] = col(sx[s]) + cols * row(sy[s]);
     for (let r = 0; r < rounds; ++r) {
         head.fill(-1);
         sums.fill(0);
@@ -61,10 +63,24 @@ function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS
             next[k] = head[c];
             head[c] = k;
         }
+        for (let c = 0, len = 0; c < cells; ++c) {
+            let cx = c % cols, cy = c / cols | 0;
+            from[c] = len;
+            for (let j = max(0, cy - 1); j <= min(rows - 1, cy + 1); ++j) {
+                for (let i = max(0, cx - 1); i <= min(cols - 1, cx + 1); ++i) {
+                    for (let k = head[i + cols * j]; k >= 0; k = next[k]) ids[len] = k, lx[len] = px[k], ly[len++] = py[k];
+                }
+            }
+            from[c + 1] = len;
+        }
         for (let s = 0; s < n; ++s) {
-            let x = sx[s], y = sy[s];
-            let cx = col(x), cy = row(y), near = -1, best = Infinity;
-            for (let ring = 1; near < 0; ++ring) {
+            let x = sx[s], y = sy[s], c = at[s], near = -1, best = Infinity;
+            for (let a = from[c], b = from[c + 1]; a < b; ++a) {
+                let d = (x - lx[a]) ** 2 + (y - ly[a]) ** 2;
+                if (d < best) best = d, near = ids[a];
+            }
+            let cx = c % cols, cy = c / cols | 0;
+            for (let ring = 2; near < 0; ++ring) {
                 for (let j = max(0, cy - ring); j <= min(rows - 1, cy + ring); ++j) {
                     for (let i = max(0, cx - ring); i <= min(cols - 1, cx + ring); ++i) {
                         for (let k = head[i + cols * j]; k >= 0; k = next[k]) {
@@ -133,8 +149,9 @@ function voronoi(px, py, x0, y0, x1, y1, gap) {
             let reach = (ring - 1) * size - gap;
             if (!poly.length || reach > 0 && reach * reach / 4 > limit) break;
             for (let j = max(0, cy - ring); j <= min(rows - 1, cy + ring); ++j) {
-                for (let i = max(0, cx - ring); i <= min(cols - 1, cx + ring); ++i) {
-                    if (max(abs(i - cx), abs(j - cy)) != ring) continue;
+                let edge = abs(j - cy) == ring;
+                for (let i = edge ? max(0, cx - ring) : cx - ring; i <= min(cols - 1, cx + ring); i += edge ? 1 : 2 * ring) {
+                    if (i < 0) continue;
                     for (let q = head[i + cols * j]; q >= 0; q = next[q]) {
                         let ax = px[q] - x, ay = py[q] - y, d = sqrt(ax * ax + ay * ay);
                         if (q == k || d > gap && (d - gap) ** 2 / 4 > limit) continue;

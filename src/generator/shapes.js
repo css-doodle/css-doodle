@@ -331,7 +331,7 @@ function createShapePoints(props, lo, hi, raw) {
         return percent ? [(x + 1) * 50 * sx, (1 - y) * 50 * sy] : [x * sx, -y * sy];
     };
     let box = percent ? [0, 0, 100 * sx, 100 * sy] : [-sx, -sy, sx, sy];
-    let number = many >= 1 && percent ? v => tidyNumber(round(v * 1e3) / 1e3) : tidyNumber;
+    let number = many >= 1 && percent ? v => round(v * 1e3) / 1e3 : tidyNumber;
     let fmt = (x, y) => number(x / sx) + suffix + ' ' + number(y / sy) + suffix;
 
     let add = ([x, y], origin = [0, 0]) => {
