@@ -470,6 +470,8 @@ was last. A pattern that reads it draws again as the pointer moves.
   `repeat` step and differs at each place it is written. `random(p, k)`
   is another number for the point `p` at each `k`, and `random(id + 1)`
   is the `random(id)` of the cell one step along both axes.
+- `noise(p)` is smooth gradient noise from 0 to 1, and `fbm(p)` six
+  octaves of it.
 - `random`, `noise`, `fbm` and `voronoi` follow the doodle's seed.
 - `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient,
   a color or number, then an optional number position after a space

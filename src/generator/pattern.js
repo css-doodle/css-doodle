@@ -59,16 +59,19 @@ export const HELPERS = glsl`
     float rand(vec2 p, float k) {
         return rand(p + k * vec2(0.7548, 0.5698));
     }
+    float g_grad(vec2 ip, vec2 f) {
+        float a = 6.2831853 * g_hash(ip);
+        return dot(vec2(cos(a), sin(a)), f);
+    }
     float noise(vec2 p) {
-        vec2 ip = floor(p) + u_seed.x * 71.0;
-        vec2 u = fract(p);
-        u = u * u * (3.0 - 2.0 * u);
-        float r0 = mix(g_hash(ip), g_hash(ip + vec2(1.0, 0.0)), u.x);
-        float r1 = mix(g_hash(ip + vec2(0.0, 1.0)), g_hash(ip + vec2(1.0, 1.0)), u.x);
-        return mix(r0, r1, u.y);
+        vec2 ip = floor(p) + u_seed.x * 71.0, fp = fract(p);
+        vec2 u = fp * fp * fp * (fp * (fp * 6.0 - 15.0) + 10.0);
+        float r0 = mix(g_grad(ip, fp), g_grad(ip + vec2(1.0, 0.0), fp - vec2(1.0, 0.0)), u.x);
+        float r1 = mix(g_grad(ip + vec2(0.0, 1.0), fp - vec2(0.0, 1.0)), g_grad(ip + 1.0, fp - 1.0), u.x);
+        return 0.5 + 0.7071 * mix(r0, r1, u.y);
     }
     float noise(float n) {
-        return noise(vec2(n, 0.0));
+        return noise(vec2(n, 0.5));
     }
     float fbm(vec2 p) {
         float s = 0.0, a = 0.5;

@@ -625,8 +625,7 @@ test('fbm() and voronoi() built-ins are available', () => {
 
 test('noise() and voronoi() lattices are offset by the seed like rand', () => {
     let s = shader('fill: noise(x, y)');
-    assert.ok(s.includes('vec2 ip = floor(p) + u_seed.x * 71.0;'), 'noise() lattice is not seed-offset');
-    assert.ok(s.includes('ip = floor(p) + u_seed.x * 71.0, fp = fract(p);'), 'voronoi() lattice is not seed-offset');
+    assert.equal(s.split('ip = floor(p) + u_seed.x * 71.0, fp = fract(p);').length, 3, 'noise() and voronoi() lattices are not seed-offset');
 });
 
 test('escape() and the math/geometry built-ins are available', () => {
