@@ -454,7 +454,8 @@ was last. A pattern that reads it draws again as the pointer moves.
 - `rot(p, a)` is the point `p` turned `a` radians counterclockwise, a
   point, not a matrix.
 - GLSL's `pow` is undefined for a negative base, so whole exponents
-  from 2 to 4 multiply instead.
+  from 2 to 4 multiply instead, and any other power, `pow()` too, reads
+  a base below 0 as 0: on the GPU `1 - y / Y` can land a hair below it.
 - `escape` runs 96 steps with a bailout radius of 16.
 - `box(p, b)` is the signed distance to a box of half size `b`, a
   `vec2` or one float; `segment(p, a, b)` is the distance to the

@@ -61,12 +61,18 @@ test('only a number or π touching a value starts a product; other values side b
 });
 
 test('** is power, right-associative, on floats and vectors', () => {
-    assert.equal(transform('x ** y'), 'pow(x, y)');
-    assert.equal(transform('x ** 5'), 'pow(x, 5.0)');
-    assert.equal(transform('1 + x ** .5'), '(1.0 + pow(x, .5))');
+    // pow() is undefined below 0, where a base a hair under it lands, as 1 - y / Y can on the GPU
+    assert.equal(transform('x ** y'), 'pow(max(x, 0.0), y)');
+    assert.equal(transform('x ** 5'), 'pow(max(x, 0.0), 5.0)');
+    assert.equal(transform('1 + x ** .5'), '(1.0 + pow(max(x, 0.0), .5))');
     assert.equal(transform('2 ** 3 ** 2'), 'pow(2.0, (3.0 * 3.0))');
-    assert.equal(transform('uv ** y'), 'pow(uv, vec2(y))');
-    // pow() is undefined for a negative base, so a whole exponent from 2 to 4 multiplies
+    assert.equal(transform('uv ** y'), 'pow(max(uv, 0.0), vec2(y))');
+    // so is pow(), the same power
+    assert.equal(transform('pow(x, 1.6)'), 'pow(max(x, 0.0), 1.6)');
+    assert.equal(transform('pow(x, 2)'), '(x * x)');
+    assert.equal(transform('pow(uv, vec2(1.6))'), 'pow(max(uv, 0.0), vec2(1.6))');
+    assert.equal(transform('2pow(x, 3)'), '(2.0 * (x * x * x))');
+    // a whole exponent from 2 to 4 multiplies, right below 0 too
     assert.equal(transform('x ** 2'), '(x * x)');
     assert.equal(transform('du ** 2 + dv ** 2'), '((du * du) + (dv * dv))');
     assert.equal(transform('x ** 4 * 3'), '((x * x * x * x) * 3.0)');
@@ -86,6 +92,7 @@ test('** is power, right-associative, on floats and vectors', () => {
     assert.equal(transform('x ^ 2'), '(x * x)');
     assert.equal(transform('-2x^2'), '(-2.0 * (x * x))');
     assert.equal(transform('2 ^ 3 ^ .5'), 'pow(2.0, pow(3.0, .5))');
+    assert.equal(transform('(-2) ^ .5'), 'pow(max(-2.0, 0.0), .5)');
 });
 
 test('what the grammar cannot place is reported once', () => {

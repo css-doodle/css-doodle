@@ -238,6 +238,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         }
         consume();
         if (name === 'rand' && !args.length && rand) return { type: 'Var', val: rand() };
+        if (name === 'pow' && args.length === 2) return { type: 'Bin', val: '**', left: args[0], right: args[1], group: true };
         return { type: 'Call', val: name, args, at };
     }
 
@@ -306,7 +307,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             const arg = isVector(res) ? res : 'float';
             const l = gen(n.left, arg);
             const k = n.right.type === 'Lit' ? Number(n.right.val) : 0;
-            return cast(Number.isInteger(k) && k > 1 && k < 5 && l.length * k < 200 ? `(${Array(k).fill(l).join(' * ')})` : `pow(${l}, ${gen(n.right, arg)})`, res, exp);
+            return cast(Number.isInteger(k) && k > 1 && k < 5 && l.length * k < 200 ? `(${Array(k).fill(l).join(' * ')})` : `pow(${n.left.type === 'Lit' && n.left.val[0] !== '-' ? l : `max(${l}, 0.0)`}, ${gen(n.right, arg)})`, res, exp);
         }
         const lt = infer(n.left), rt = infer(n.right);
         const vec = VEC_COMPARE[op] && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');
