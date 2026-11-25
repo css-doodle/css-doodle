@@ -333,9 +333,9 @@ default or `none` for a parallel view. The camera fits the model, a
 moving one over its first 2π seconds, so it holds still while the
 model or view moves: `view: 30t` spins it in place. `zoom: k` then
 scales the view about its center. `drag: turn tilt` lets the pointer
-turn the view too, half a turn across the drawing's shorter side;
-`drag: turn` only turns it. An animated or dragged scene draws best in
-`@content`.
+turn the view too, half a turn across the drawing's shorter side, and
+tilt it over the top; `drag: turn` only turns it. An animated or
+dragged scene draws best in `@content`.
 
 `eye: x y z` puts the camera at a point instead, facing `look: x y z`,
 the origin by default, so it can stand inside the model. It does not

@@ -421,9 +421,10 @@ test('drag lets the pointer turn the view, which then fits a ball around the mod
     assert.doesNotMatch(still, /g_reach6\(mat3\(g_x, g_y, g_z\), g_rhi/);
     assert.match(still, /g_rhi = g_vhi;\s*g_rlo = g_vlo;\s*vec3 a = /);
     assert.doesNotMatch(scene('view: 30 20; sphere').fragment, /g_rhi/);
-    // the pointer turns only the angles named, and starts from the view's tilt
+    // the pointer turns only the angles named, and the view's tilt says when the model is upside down
     assert.doesNotMatch(scene('drag: turn; sphere').fragment, /u_drag\.y/);
-    assert.deepEqual(draw('view: 30 20; drag: turn; sphere', extra).drag, [20 * Math.PI / 180]);
+    assert.deepEqual(draw('view: 30 20; drag: turn; sphere', extra).drag, [20 * Math.PI / 180, false]);
+    assert.deepEqual(draw('drag: turn tilt; sphere', extra).drag, [0, true]);
     assert.equal(draw('drag: none; sphere', extra).drag, 0);
     assert.doesNotMatch(scene('sphere').fragment, /u_drag\.x/);
     assert.deepEqual(scene('drag: orbit; sphere').warnings, ['invalid drag orbit']);

@@ -225,7 +225,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
     }
 
     const grab = () => {
-        let [base] = parsed.drag, controller = new AbortController(), { signal } = controller;
+        let [base, tilts] = parsed.drag, controller = new AbortController(), { signal } = controller;
         host.observers.set(id + '-drag', {
             disconnect() {
                 controller.abort();
@@ -246,9 +246,9 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             el.addEventListener('pointermove', e => {
                 if (!el.hasPointerCapture(e.pointerId)) return;
                 if (Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) > 3) host._dragged = true;
-                let rate = Math.PI / Math.min(width, height), half = Math.PI / 2;
-                turned[0] += (e.clientX - from.clientX) * rate;
-                turned[1] = Math.min(Math.max(turned[1] + (e.clientY - from.clientY) * rate, -half - base), half - base);
+                let rate = Math.PI / Math.min(width, height);
+                turned[0] += (e.clientX - from.clientX) * rate * (Math.cos(turned[1] + base) < 0 ? -1 : 1);
+                if (tilts) turned[1] += (e.clientY - from.clientY) * rate;
                 from = e;
                 queue();
             }, { signal });

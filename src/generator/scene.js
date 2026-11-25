@@ -854,5 +854,5 @@ export default function drawScene(code, extra, report = () => {}) {
         FragColor = vec4(g_scene(g_h).rgb${self || shiny ? '' : SHADE}, 1.0 - clamp(g_near - 0.1, 0.0, 1.0));
     }
   `;
-    return { vertex, fragment, textures: [], drag: drag.length && [base * Math.PI / 180] };
+    return { vertex, fragment, textures: [], drag: drag.length && [base * Math.PI / 180, drag.includes('tilt')] };
 }
