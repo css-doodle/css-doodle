@@ -232,7 +232,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let row = (node, name) => node.rows.findLast(r => r.name === name)?.value || [];
         let first = (tokens, p, angle) => numbers(tokens, p, angle)[0] || '0.0';
         // a part reading cap or more changes nothing, so a costly shape may stop at a bound that reaches it
-        let below = a => cap ? `min(${cap}, ${a})` : a;
+        let below = a => cap ? `min(${cap}, ${a}${W})` : a + W;
         let within = (bound, f) => {
             let saved = cap;
             cap = bound;
@@ -240,7 +240,7 @@ export default function drawScene(code, extra, report = () => {}) {
             cap = saved;
             return r;
         };
-        let skip = (mark, g, near, bound, d) => (out = out.slice(0, mark) + `float ${g} = ${near};\nif (${g} < ${bound}) {\n${out.slice(mark)}${g} = ${d};\n}\n`, g);
+        let skip = (mark, g, near, bound, d) => (out = out.slice(0, mark) + `${T} ${g} = ${dist ? near : none};\nif (${dist ? g : near} < ${bound}) {\n${out.slice(mark)}${g} = ${d};\n}\n`, g);
 
         function generate(node, p) {
             let commands = node => node.rows.filter(r => COMMANDS.has(r.name));
@@ -431,9 +431,9 @@ export default function drawScene(code, extra, report = () => {}) {
                 cut ||= name === 'intersect';
                 loose ||= cut;
                 for (let child of node.children) {
-                    let bound = k !== '0.0' ? null : !a || name === 'intersect' ? cap : name === 'union' ? below(a) : `-${a}`, mark = out.length;
+                    let bound = k !== '0.0' ? null : !a || name === 'intersect' ? cap : name === 'union' ? below(a) : `-${a}${W}`, mark = out.length;
                     let b = within(bound, () => generate(child, p));
-                    if (dist && !fit && bound && (child.count || child.children.length > 1) && ball.every(isFinite)) {
+                    if (!fit && bound && (child.count || child.children.length > 1) && ball.every(isFinite) && !DERIVATIVES.test(out.slice(mark))) {
                         let [x, y, z, s] = ball.map(v => float(+v.toFixed(6)));
                         b = skip(mark, next(), `length(${p} - vec3(${x}, ${y}, ${z})) - ${s} - 1e-4`, bound, b);
                     }

@@ -579,7 +579,8 @@ test('a group or copies whose ball lies past the parts before them are skipped',
     let guard = /float (g_\d+) = length\(p - vec3\(([^)]*)\)\) - ([\d.]+) - 1e-4;\nif \(\1 < g_\d+\) \{/;
     let { dist, body } = scene('sphere { r: .1 } union { sphere { r: .1; move: .3 0 0 } sphere { r: .05; move: .3 .1 0 } }');
     assert.deepEqual(dist.match(guard).slice(2), ['0.3, 0.025, 0.0', '0.125']);
-    assert.doesNotMatch(body, /1e-4/);
+    assert.match(body, /vec4 (g_\d+) = vec4\(g_1, 1e5\);\nif \(length\(p - vec3\(0\.3, 0\.025, 0\.0\)\) - 0\.125 - 1e-4 < g_\d+\.w\) \{/);
+    assert.doesNotMatch(scene('sphere { r: .1 } union { sphere { r: .1; move: .3 0 0; fill: vec3(fwidth(p.x)) } sphere { r: .05; move: .3 .1 0 } }').body, /1e-4/);
     // a turn by any angle spreads the ball around its axis
     assert.deepEqual(scene('sphere { r: .1 } box*8 { size: .3 .02 .02; rotate: y (n * 22.5); move: 0 .5 0 }').dist.match(guard).slice(2), ['0.0, 0.5, 0.0', '0.150665']);
     assert.deepEqual(scene('sphere { r: .1 } union { sphere { r: .1; move: .3 0 0 } box { size: .1; move: .3 0 0 } rotate: y (40t) }').dist.match(guard).slice(2), ['0.0, 0.0, 0.0', '0.4']);
