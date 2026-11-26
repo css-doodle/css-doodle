@@ -495,7 +495,7 @@ was last. A pattern that reads it draws again as the pointer moves.
   last. The first position defaults to 0 and the last to 1, missing
   ones spread evenly, and a position never goes back; a repeated
   position is a hard edge, antialiased over a pixel:
-  `fill: ramp(dr, #f99a53 .28, #006b50 .28, #00055f .83)`.
+  `fill: ramp(uv.y, #f99a53 .28, #006b50 .28, #00055f .83)`.
 
 **Textures.** A top-level `texture…` block holds a doodle rendered at
 the pattern's size. It sees the cell's custom properties, its own

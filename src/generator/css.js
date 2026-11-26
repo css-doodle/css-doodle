@@ -306,7 +306,7 @@ function cellVar(name, get) {
         set(value) { Object.defineProperty(this, name, { value, writable: true, enumerable: true, configurable: true }); }
     });
 }
-for (let name of 'x y z X Y Z i I dx dy dr dc dm da db'.split(' ')) {
+for (let name of 'x y z X Y Z i I dx dy'.split(' ')) {
     cellVar(name, function () { return (this[CELL_REF].vars ??= cellVariables(this[CELL_REF]))[name]; });
 }
 for (let [name, index] of Object.entries(SEQ_INDEX)) {

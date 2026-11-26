@@ -422,16 +422,13 @@ Each caller provides its own context:
   per-cell probability, from `1` up a count of distinct cells.
 - **`@shape`** sees the shape commands, unrounded.
 
-| Name             | Value                                                       |
-| ---------------- | ----------------------------------------------------------- |
-| `x`, `y`         | column and row, from 1                                      |
-| `X`, `Y`         | number of columns and rows                                  |
-| `z`, `Z`         | depth from 1, number of depth levels                        |
-| `i`, `I`         | cell index from 1, cell count                               |
-| `dx`, `dy`       | offset from the grid center                                 |
-| `dr`, `dc`, `dm` | Euclidean, Chebyshev and Manhattan distance from the center |
-| `da`             | angle from the center                                       |
-| `db`             | distance to the edge                                        |
+| Name       | Value                                |
+| ---------- | ------------------------------------ |
+| `x`, `y`   | column and row, from 1               |
+| `X`, `Y`   | number of columns and rows           |
+| `z`, `Z`   | depth from 1, number of depth levels |
+| `i`, `I`   | cell index from 1, cell count        |
+| `dx`, `dy` | offset from the grid center          |
 
 ## 9. Embedded languages
 
@@ -551,7 +548,7 @@ fails. A quoted `text:` value keeps its commas, `;` and parentheses.
 @pattern(
   grid: 20;
   fill: #000;
-  match(dr < .5) { fill: #fff; }
+  match(x == y) { fill: #fff; }
 )
 ```
 

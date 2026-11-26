@@ -8,7 +8,7 @@ import { glsl } from '../lib/tagged-template.js';
 const MAX_REPEAT = 1024;
 const MAX_REPEAT_WORK = 65536;
 
-const CELL = 'x y i X Y I dx dy du dv dr dc dm da db uv pos'.split(' ');
+const CELL = 'x y i X Y I dx dy du dv uv pos'.split(' ');
 const BUILTINS = [...CELL, 'mouse', 't', 'size', 'px'];
 
 export const NAME = /^[a-zA-Z_]\w*$/;
@@ -25,11 +25,6 @@ const CELL_INDEX = glsl`
     float dy = y - (Y + 1.0) * 0.5;
     float du = fract(uv.x * X) - 0.5;
     float dv = fract((1.0 - uv.y) * Y) - 0.5;
-    float dr = length(vec2(dx, dy));
-    float dc = max(abs(dx), abs(dy));
-    float dm = abs(dx) + abs(dy);
-    float da = atan(dy, dx);
-    float db = min(min(x - 1.0, X - x), min(y - 1.0, Y - y));
 `;
 
 const SHAPE = glsl`

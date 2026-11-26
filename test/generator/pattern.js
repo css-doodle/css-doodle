@@ -166,38 +166,6 @@ test('a comma list of selectors is reported, not run', () => {
 
 // --- built-in variables ---
 
-test('dr and da: distance and angle from the grid center', () => {
-    let s = shader('match(dr < 3) { fill: red }');
-    assert.match(s, /float dr = length\(vec2\(dx, dy\)\);/);
-    assert.match(s, /float da = atan\(dy, dx\);/);
-    assert.match(s, /const float PI = 3\.14159/);
-    assert.equal(condition('match(dr < 3) { fill: red }'), 'if ((dr < 3.0)) {');
-    assert.equal(condition('match(da > 0) { fill: red }'), 'if ((da > 0.0)) {');
-    assert.equal(
-        condition('match(da > -PI/4 && da < PI/4) { fill: red }'),
-        'if (((da > (-PI / 4.0)) && (da < (PI / 4.0)))) {'
-    );
-});
-
-test('dc and dm: chebyshev and manhattan distance', () => {
-    let s = shader('match(dc < 2) { fill: red }');
-    assert.match(s, /float dc = max\(abs\(dx\), abs\(dy\)\);/);
-    assert.match(s, /float dm = abs\(dx\) \+ abs\(dy\);/);
-    assert.equal(condition('match(dc < 2) { fill: red }'), 'if ((dc < 2.0)) {');
-    assert.equal(condition('match(dm < 3) { fill: red }'), 'if ((dm < 3.0)) {');
-});
-
-test('db: distance to the grid boundary', () => {
-    let s = shader('match(db == 0) { fill: red }');
-    assert.match(s, /float db = min\(min\(x - 1\.0, X - x\), min\(y - 1\.0, Y - y\)\);/);
-    assert.equal(condition('match(db == 0) { fill: red }'), 'if ((db == 0.0)) {');
-    assert.equal(condition('match(db < 2) { fill: red }'), 'if ((db < 2.0)) {');
-    assert.equal(
-        condition('match(mod(db, 2) == 0) { fill: red }'),
-        'if ((mod(db, 2.0) == 0.0)) {'
-    );
-});
-
 test('pos: centered, aspect-correct canvas position', () => {
     assert.equal(color('fill: length(pos)'), 'g_color = vec4(vec3(length(pos)), 1.0);');
     assert.equal(color('fill: pos.x + .5'), 'g_color = vec4(vec3((pos.x + .5)), 1.0);');
@@ -220,6 +188,7 @@ test('du and dv: coordinates inside the cell', () => {
     let s = shader('match(du > 0) { fill: red }');
     assert.match(s, /float du = fract\(uv\.x \* X\) - 0\.5;/);
     assert.match(s, /float dv = fract\(\(1\.0 - uv\.y\) \* Y\) - 0\.5;/);
+    assert.match(s, /const float PI = 3\.14159/);
     // composes with ngon() for per-cell polygon masks
     assert.equal(condition('match(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(vec2(du, dv), 6.0) < 0.4)) {');
     // a bare `du` is not a CSS color, so it compiles as an expression
@@ -333,8 +302,8 @@ test('shape() in a value is the mask of the shape and size statements', () => {
 });
 
 test('a vec3 expression is a color, a scalar a gray', () => {
-    assert.equal(color('fill: hsl(da, 0.8, 0.5)'), 'g_color = vec4(hsl(da, 0.8, 0.5), 1.0);');
-    assert.equal(color('fill: dr/10'), 'g_color = vec4(vec3((dr / 10.0)), 1.0);');
+    assert.equal(color('fill: hsl(x, 0.8, 0.5)'), 'g_color = vec4(hsl(x, 0.8, 0.5), 1.0);');
+    assert.equal(color('fill: x/10'), 'g_color = vec4(vec3((x / 10.0)), 1.0);');
 });
 
 test('fill accepts vec2 and bool; other vector types are rejected', () => {
@@ -445,7 +414,7 @@ test('unknown names are reported once each', () => {
     assert.deepEqual(messages, ['unknown foo', 'unknown bar', 'unknown baz']);
     // built-ins, swizzles and GLSL constants are known
     messages = [];
-    draw('p: uv.yx; fill: p.x + PI + t + size + pos.x, dr, float(true)', extra, m => messages.push(m));
+    draw('p: uv.yx; fill: p.x + PI + t + size + pos.x, du, float(true)', extra, m => messages.push(m));
     assert.deepEqual(messages, []);
     // shader uniforms are not part of the language: t, pos and uv cover them
     messages = [];
@@ -531,12 +500,12 @@ test('size expressions coerce to float', () => {
 
 test('size expressions support numeric coefficients', () => {
     assert.match(
-        main('shape: circle; size: .5 + .5 * sin(dr - 2t); fill: #000'),
-        /size = \(\.5 \+ \(\.5 \* sin\(\(dr - \(2\.0 \* t\)\)\)\)\);/
+        main('shape: circle; size: .5 + .5 * sin(x - 2t); fill: #000'),
+        /size = \(\.5 \+ \(\.5 \* sin\(\(x - \(2\.0 \* t\)\)\)\)\);/
     );
     assert.match(
-        main('shape: circle; size: .5 + .5 * sin(dr - 2πt); fill: #000'),
-        /size = \(\.5 \+ \(\.5 \* sin\(\(dr - \(\(2\.0 \* PI\) \* t\)\)\)\)\);/
+        main('shape: circle; size: .5 + .5 * sin(x - 2πt); fill: #000'),
+        /size = \(\.5 \+ \(\.5 \* sin\(\(x - \(\(2\.0 \* PI\) \* t\)\)\)\)\);/
     );
     assert.match(main('shape: circle; size: tπ; fill: #000'), /size = \(t \* PI\);/);
 });
@@ -558,8 +527,6 @@ test('a shape may be a name, a variable or a distance expression', () => {
     assert.match(main('shape: diamond; fill: red'), /g_dist = abs\(du\) \+ abs\(dv\);/);
     assert.match(main('shape: ngon(du, dv, 6); size: .8; fill: red'), /g_dist = ngon\(vec2\(du, dv\), 6\.0\);\s*g_masked = true;\s*size = \.8;/);
     assert.match(main('d: length(vec2(du, dv) - .1); shape: d; fill: red'), /float g_1 = length\(\(vec2\(du, dv\) - \.1\)\);\s*g_dist = g_1;/);
-    // a built-in distance is a shape too
-    assert.match(main('shape: dm; fill: red'), /g_dist = dm;/);
     // an unknown word is reported like any unknown name
     let messages = [];
     draw('shape: blob; size: .5; fill: red', extra, m => messages.push(m));
@@ -601,7 +568,7 @@ test('in-block size keeps the enclosing shape', () => {
 
 test('u_time is only wired up when the pattern reads t', () => {
     // no `t` anywhere: t is a constant, leaving u_time unreferenced
-    assert.match(main('fill: hsl(dr/10, 0.7, 0.5)'), /float t = 0\.0;/);
+    assert.match(main('fill: hsl(x/10, 0.7, 0.5)'), /float t = 0\.0;/);
     assert.match(main('fill: hsl(i/I + t*0.1, 0.7, 0.5)'), /float t = u_time;/);
     assert.match(main('shape: circle; size: 0.5 + 0.4*sin(t); fill: #000'), /float t = u_time;/);
     // a `.t` swizzle is not the time variable
@@ -956,24 +923,24 @@ test('repeat keeps int expressions in the float pattern number model', () => {
 // --- match() as a function ---
 
 test('ramp() in a fill maps a number to colors', () => {
-    assert.match(color('fill: ramp(dr, #000, #fff)'),
-        /^g_color = vec4\(mix\(vec3\(0\.0, 0\.0, 0\.0\), vec3\(1\.0, 1\.0, 1\.0\), clamp\(\(dr - 0\.0\) \/ max\(1\.0 - 0\.0, fwidth\(dr\) \+ 1e-5\), 0\.0, 1\.0\)\), 1\.0\);$/);
+    assert.match(color('fill: ramp(x, #000, #fff)'),
+        /^g_color = vec4\(mix\(vec3\(0\.0, 0\.0, 0\.0\), vec3\(1\.0, 1\.0, 1\.0\), clamp\(\(x - 0\.0\) \/ max\(1\.0 - 0\.0, fwidth\(x\) \+ 1e-5\), 0\.0, 1\.0\)\), 1\.0\);$/);
     // a ramp of numbers is a float variable
     assert.match(main('k: ramp(x, 0, 1, 0); fill: k'), /float g_1 = mix\(mix\(0\.0, 1\.0, /);
 });
 
 test('match() in a value chooses between expressions, colors included', () => {
-    assert.equal(color('fill: match(dr < 2, #fff, #000)'),
-        'g_color = vec4(((dr < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0)), 1.0);');
-    let s = main('c: match(db = 0, 1, dr < 3, .5, 0); fill: hsl(c, .8, .5)');
-    assert.match(s, /float g_1 = \(\(db == 0\.0\) \? 1\.0 : \(\(dr < 3\.0\) \? \.5 : 0\.0\)\);/);
+    assert.equal(color('fill: match(x < 2, #fff, #000)'),
+        'g_color = vec4(((x < 2.0) ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0)), 1.0);');
+    let s = main('c: match(y = 1, 1, x < 3, .5, 0); fill: hsl(c, .8, .5)');
+    assert.match(s, /float g_1 = \(\(y == 1\.0\) \? 1\.0 : \(\(x < 3\.0\) \? \.5 : 0\.0\)\);/);
     assert.match(s, /g_color = vec4\(hsl\(g_1, \.8, \.5\), 1\.0\);/);
     assert.match(shader('size: match(x > 4, .8, .3); fill: #000'), /size = \(\(x > 4\.0\) \? \.8 : \.3\);/);
     // as a block test its branches are already bool, so no outer cast
     assert.equal(condition('match(match(x > 2, y > 2, 0)) { fill: red }'),
         'if (((x > 2.0) ? (y > 2.0) : bool(0.0))) {');
     // the block form is unchanged
-    assert.equal(condition('match(dr < 2) { fill: red }'), 'if ((dr < 2.0)) {');
+    assert.equal(condition('match(x < 2) { fill: red }'), 'if ((x < 2.0)) {');
 });
 
 // --- texture blocks ---

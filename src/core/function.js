@@ -855,7 +855,7 @@ for (let [k, v] of [['i', 'count'], ['x', 'x'], ['y', 'y'], ['z', 'z']]) {
     Function[K + k] = c => calcWithEasing((c.grid[v] - c[v] + 1) / c.grid[v]);
 }
 
-for (let name of ['dx', 'dy', 'dr', 'dc', 'dm', 'da', 'db']) {
+for (let name of ['dx', 'dy']) {
     Function[name] = cell => calcWith(cellVariables(cell)[name]);
 }
 
