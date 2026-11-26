@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { stripTaggedTemplates } from '../../build/tagged-template.js';
+import { stripTaggedTemplates, mangleGlsl } from '../../build/tagged-template.js';
 
 test('glsl template substitutions keep spaces needed between tokens', () => {
     let source = stripTaggedTemplates(`
@@ -32,4 +32,20 @@ test('glsl template substitutions cannot form operators or comments', () => {
         '+y', '-y', '*y'
     );
     assert.deepEqual(output, ['x+ +y', 'x- -y', 'x/ *y']);
+});
+
+test('mangleGlsl shortens static g_* names across strings, templates and regexes, including after \\n', () => {
+    let source = mangleGlsl(`
+        const re = /\\b(fwidth|g_shape)\\(/;
+        const masked = /\\bg_masked\\b/;
+        const a = 'g_dist = 1;\\ng_masked = true;\\n';
+        const b = \`g_place = g_to; g_shape(g_dist, 1.0); \${x ? 'g_masked' : ''}\`;
+    `);
+    assert.ok(!source.includes('g_shape'));
+    assert.ok(!source.includes('g_dist'));
+    assert.ok(!source.includes('g_masked'));
+    assert.ok(source.includes('g_place = g_to'));
+    // g_masked after \n maps to the same name as standalone g_masked
+    let match = source.match(/\\n(_[a-zA-Z]+) = true/);
+    assert.ok(match && source.includes(`'${match[1]}'`));
 });

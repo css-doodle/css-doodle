@@ -6,6 +6,43 @@ export const TAG_RE = new RegExp(String.raw`\b(?:${TAGS.join('|')})\``);
 const GLSL_PUNCT = /[-+*/%<>=!&|^?:,;(){}\[\]]/;
 const GLSL_GLUE = /^(\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\^\^|[-+*/%&|^]=|\/[/*])$/;
 
+const GLSL_IDENT = /\\[nrtb]|(?<=^|[^a-zA-Z0-9_$])g_[a-zA-Z]\w+\b|(?<=\\[nrtb])g_[a-zA-Z]\w+\b/g;
+const GLSL_KEEP = new Set(['g_place', 'g_to']);
+const GLSL_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const glslNames = new Map();
+
+function mangleGlslIdent(match) {
+    if (match[0] === '\\' || GLSL_KEEP.has(match)) return match;
+    let short = glslNames.get(match);
+    if (!short) {
+        let n = glslNames.size;
+        short = '_' + GLSL_CHARS[n % 52] + (n >= 52 ? GLSL_CHARS[(n / 52 | 0) - 1] : '');
+        glslNames.set(match, short);
+    }
+    return short;
+}
+
+export function mangleGlsl(src) {
+    const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module' });
+    const edits = [];
+    const rewrite = text => text.replace(GLSL_IDENT, mangleGlslIdent);
+    walk(ast, node => {
+        if (node.type === 'Literal' && (typeof node.value === 'string' || node.regex)) {
+            const text = rewrite(node.raw);
+            if (text !== node.raw) edits.push({ start: node.start, end: node.end, text });
+        } else if (node.type === 'TemplateElement') {
+            const text = rewrite(node.value.raw);
+            if (text !== node.value.raw) edits.push({ start: node.start, end: node.end, text });
+        }
+    });
+    if (!edits.length) return src;
+    edits.sort((a, b) => b.start - a.start);
+    for (const { start, end, text } of edits) {
+        src = src.slice(0, start) + text + src.slice(end);
+    }
+    return src;
+}
+
 function cssCollapse(s) {
     return s
         .replace(/([:;><{])\s+/g, '$1')
@@ -39,7 +76,10 @@ function glslCollapse(s) {
         const directive = /^#/.test(kept[i - 1]) || /^#/.test(kept[i]);
         out += (directive ? '\n' : ' ') + kept[i];
     }
-    out = out.split('\n').map(l => /^#/.test(l) ? l : glslSqueeze(l)).join('\n');
+    out = out.split('\n').map(l => /^#define (\S+) (.+)$/.test(l)
+        ? l.replace(/^#define (\S+) (.+)$/, (_, lhs, rhs) => `#define ${lhs} ${glslSqueeze(rhs)}`)
+        : /^#/.test(l) ? l : glslSqueeze(l)
+    ).join('\n');
     if (!out) return leading === '\n' || trailing === '\n' ? '\n' : leading || trailing;
     return leading + out + trailing;
 }
