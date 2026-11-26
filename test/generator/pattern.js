@@ -686,6 +686,15 @@ test('repeat uses a zero-based named index and checks the stop conditions after 
     assert.match(main('a: 0; b: 0; repeat(3, a > 1, b > 1) { a: a + 1; b: b + 1 }'), /if \(\(g_1 > 1\.0\) && \(g_2 > 1\.0\)\) break;/);
 });
 
+test('k*a-b counts from a to b, up or down', () => {
+    assert.match(main('s: 0; k*1-1000 { s: s + k }'), /for \(float g_2 = 1\.0; g_2 < 1001\.0; g_2\+\+\)/);
+    assert.match(main('s: 0; k*1000-1 { s: s + k }'), /for \(float g_2 = 1000\.0; g_2 > 0\.0; g_2--\)/);
+    assert.match(main('n: 8; s: 0; k*n-1 { s: s + k }'), /for \(float g_3 = 8\.0; g_3 > 0\.0; g_3--\)/);
+    let messages = [];
+    draw('k*1-1025 { } k*1-a { }', extra, m => messages.push(m));
+    assert.deepEqual(messages, ['repeat() over 1024', 'repeat() needs integer']);
+});
+
 test('repeat without a stop condition never breaks early', () => {
     assert.doesNotMatch(main('zx: 0; repeat(5) { zx: zx + 1 }'), /break/);
 });

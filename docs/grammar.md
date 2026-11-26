@@ -561,8 +561,8 @@ pattern-body  = { targets ':' value ';' | match | repeat-block | texture-block }
 targets       = target { ',' target }
 target        = name [ '.' swizzle ]
 texture-block = texture-name '{' doodle '}'
-repeat-block  = 'repeat' '(' integer [ 'as' name ]
-                { ',' expression } ')' '{' repeat-body '}'
+repeat-block  = ( 'repeat' '(' integer [ 'as' name ] { ',' expression } ')'
+                | name '*' integer [ '-' integer ] ) '{' repeat-body '}'
 repeat-body   = { targets ':' value ';' | match | repeat-block }
 value         = css-color | expression { ',' expression }
 ```

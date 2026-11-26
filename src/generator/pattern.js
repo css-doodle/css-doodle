@@ -340,14 +340,16 @@ const OUTPUT_GENERATORS = {
 
 function generateRepeat(token, scope, ctx, opts) {
     let [head = '', ...stops] = token.args;
-    let m = head.match(/^(\w+)(?:\s+as\s+(\S+))?$/);
-    let times = m && (/^\d+$/.test(m[1]) ? Number(m[1]) : ctx.counts.get(scope.ids[m[1]]));
+    let m = head.match(/^(?:(\w+)-)?(\w+)(?:\s+as\s+(\S+))?$/);
+    let [a, b] = m ? [m[1] || '0', m[2]].map(v => /^\d+$/.test(v) ? Number(v) : ctx.counts.get(scope.ids[v])) : [];
+    let down = b < a;
+    let times = m && (m[1] ? Math.abs(b - a) + 1 : b);
     let work = (opts.work || 1) * times;
     let error = !m ? 'repeat() needs count'
-        : times === undefined ? 'repeat() needs integer'
+        : !(times >= 0) ? 'repeat() needs integer'
         : times > MAX_REPEAT ? `repeat() over ${MAX_REPEAT}`
         : work > MAX_REPEAT_WORK ? 'too many steps'
-        : m[2] && !NAME.test(m[2]) ? `invalid "${m[2]}"`
+        : m[3] && !NAME.test(m[3]) ? `invalid "${m[3]}"`
         : '';
     if (error) {
         ctx.warn(error);
@@ -357,13 +359,13 @@ function generateRepeat(token, scope, ctx, opts) {
     let counter = `g_${++ctx.id}`;
     ctx.types[counter] = 'float';
     ctx.readonly.add(counter);
-    if (m[2]) inner.ids[m[2]] = counter;
+    if (m[3]) inner.ids[m[3]] = counter;
     inner.key = scope.key ? `(${scope.key} * ${float(times)} + ${counter})` : counter;
     let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work, branched: opts.branched || stops.length > 0 });
     let stop = stops.map(s => expr(s, inner, ctx).code('bool')).filter(Boolean).join(' && ');
     if (stop) checkDerivatives(body, 'a repeat() that stops', ctx, opts);
     return glsl`
-        for (float ${counter} = 0.0; ${counter} < ${float(times)}; ${counter}++) {
+        for (float ${counter} = ${float(a)}; ${counter} ${down ? '>' : '<'} ${float(down ? a - times : a + times)}; ${counter}${down ? '--' : '++'}) {
           ${body}
           ${stop && `if (${stop}) break;`}
         }

@@ -97,3 +97,11 @@ test('repeat headers and nested repeats use the existing block grammar', () => {
         ]),
     ]);
 });
+
+test('k*n {} is repeat(n as k) {}, but an arm test inside match {}', () => {
+    assert.deepEqual(parsePattern('j*4 { k * n { a: j*k } }'), [
+        block('repeat', ['4 as j'], [block('repeat', ['n as k'], [statement('a', 'j*k')])]),
+    ]);
+    assert.deepEqual(parsePattern('k*1-n {} k*1000-1 {}'), [block('repeat', ['1-n as k']), block('repeat', ['1000-1 as k'])]);
+    assert.deepEqual(parsePattern('match { k*2 {} }').at(0).arms, [{ type: 'arm', test: 'k*2', value: [] }]);
+});

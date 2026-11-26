@@ -8,6 +8,8 @@ function readMatchBlocks(iter, head) {
     }
     let match = readMatch(iter, head, pattern);
     if (match) return [match];
+    let copy = name.trim().match(/^(\w+)\s*\*\s*(\w+(?:-\w+)?)$/);
+    if (copy) return [parseBody(iter, { type: 'block', name: 'repeat', args: [`${copy[2]} as ${copy[1]}`] }, pattern)];
     let call = callOf(head);
     if (!call) {
         readRaw(iter);

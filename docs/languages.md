@@ -380,7 +380,9 @@ the value after the first test that holds.
 **`repeat(n [as k] [, stop …])`** runs its body `n` times, with `k`
 counting from zero, unlike `i` and `n` elsewhere. `n` is a whole
 number, or a name declared as one and never changed:
-`n: 72; repeat(n as k) { y: k / n; }`. The loop ends early once every
+`n: 72; repeat(n as k) { y: k / n; }`. `k*n { … }` is short for
+`repeat(n as k) { … }`, and `k*1-n { … }` counts `k` from 1 to `n`,
+or down with `k*n-1`. The loop ends early once every
 stop expression holds. Counts over 1024, nested products over 65536
 and invalid counts skip the block. `shape`, `size`, `grid` and
 `marks` are not allowed inside it, and a `fill` inside it paints over
