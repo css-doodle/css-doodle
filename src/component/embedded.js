@@ -130,8 +130,8 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
         return element.getBoundingClientRect();
     };
 
-    let generation = host._generation;
-    if (target.type === 'content' && !fixed) {
+    let generation = host._generation, content = target.type === 'content';
+    if (content && !fixed) {
         await host._styleReady;
         if (host._generation !== generation || renders.has(id)) return;
     }
@@ -139,14 +139,13 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
     let turned = [0, 0], pointer, queued, redraw;
 
     const tick = drawing => {
-        let present;
-        if (target.type === 'content') {
+        let present, live = drawing.animated || parsed.drag || drawing.mouse;
+        if (content) {
             let views = elements.map(el => {
                 let view = document.createElement('canvas');
                 el.replaceChildren(view);
                 return view;
             });
-            let live = drawing.animated || parsed.drag || drawing.mouse;
             let out = live && views[0].getContext('bitmaprenderer');
             present = () => {
                 let { canvas } = drawing;
@@ -166,8 +165,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             }
         } else {
             let urls = stills.get(compiled) || stills.set(compiled, new Map()).get(compiled);
-            let key = !drawing.animated && !textures.length && !parsed.drag && !drawing.mouse
-                && [parsed.vertex, parsed.fragment, width, height].join('\n');
+            let key = !live && !textures.length && [parsed.vertex, parsed.fragment, width, height].join('\n');
             let fit = { scale: 1 };
             present = () => {
                 let url = urls.get(key) || canvasUrl(drawing.canvas, fit);
@@ -192,7 +190,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 animation.pause();
             }
             host.animations.push(animation);
-        } else if (!parsed.drag && !drawing.mouse) {
+        } else if (!live) {
             drawing.dispose();
         }
         renders.get(id)?.dispose();
@@ -226,8 +224,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             pointer = [e.clientX - box.left, e.clientY - box.top];
             queue();
         };
-        host.frame.addEventListener('pointermove', point, { signal });
-        host.frame.addEventListener('pointerdown', point, { signal });
+        for (let type of ['pointermove', 'pointerdown']) host.frame.addEventListener(type, point, { signal });
     }
 
     const grab = () => {
@@ -272,7 +269,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             textures = result;
         }
         try {
-            let drawing = generateShaders({ ...parsed, textures, width, height, transfer: target.type === 'content' }, host.seed, () => {
+            let drawing = generateShaders({ ...parsed, textures, width, height, transfer: content }, host.seed, () => {
                 host.report([{ message: 'WebGL lost' }]);
             });
             await drawing.ready;

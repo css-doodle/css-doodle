@@ -179,7 +179,7 @@ const OVER = glsl`
     }
 `;
 
-function newScope(parent = null) {
+function newScope(parent) {
     return { ids: { __proto__: parent ? parent.ids : null }, key: parent?.key };
 }
 
@@ -205,17 +205,18 @@ export function compileValue(value, named, expr, extra, warn, expect) {
         let code = e.code(expect || type);
         return code ? { type, code } : null;
     }
-    let parts = items.map(v => {
+    let n = 0, codes = [];
+    for (let v of items) {
         let { type, code } = expr(v);
         let width = /^vec\d$/.test(type) ? Number(type[3]) : 1;
-        return { width, code: code(width > 1 ? type : 'float') };
-    });
-    let n = parts.reduce((sum, p) => sum + p.width, 0);
+        n += width;
+        codes.push(code(width > 1 ? type : 'float'));
+    }
     if (n !== 3 && n !== 4) {
         warn('needs 3-4 channels');
         return null;
     }
-    return parts.every(p => p.code) ? vector(n, parts.map(p => p.code)) : null;
+    return codes.every(Boolean) ? vector(n, codes) : null;
 }
 
 function channels(rgba) {
@@ -428,7 +429,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     return out;
 }
 
-function generateShader({ grid, body, marks, textures }) {
+function generateShader(grid, body, marks, textures) {
     let usesTime = /(?<![\w.])t\b/.test(body);
     let usesPx = /(?<![\w.])px\b/.test(body);
     let usesMouse = /(?<![\w.])mouse\b/.test(body);
@@ -572,12 +573,19 @@ export default function drawPattern(code, extra, warn = () => {}) {
     let find = name => tokens.findLast(t => t.type === 'statement' && t.name === name);
     let grid = find('grid'), marks = find('marks');
     if (grid && marks) warn('grid or marks');
-    let parts = ((marks || grid)?.value || '').split(/\s+/);
-    let words = parts.filter(w => /^(?!x$)[a-z]+$/i.test(w));
-    words.forEach(w => warn(`unknown ${w}`));
+    let parts = [];
+    for (let w of ((marks || grid)?.value || '').split(/\s+/)) {
+        if (/^(?!x$)[a-z]+$/i.test(w)) warn(`unknown ${w}`);
+        else parts.push(w);
+    }
     ctx.marks = !!marks || drawsMarks(tokens);
-    let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
-    for (let name of textures.keys()) ctx.types[name] = 'sampler2D';
+    let textures = new Map();
+    for (let { type, name, value } of tokens) {
+        if (type === 'texture') {
+            textures.set(name, { name, value });
+            ctx.types[name] = 'sampler2D';
+        }
+    }
     let body = '', root = newScope();
     if (ctx.marks) {
         root.ids.place = 'g_place';
@@ -588,8 +596,8 @@ export default function drawPattern(code, extra, warn = () => {}) {
     for (let name of ctx.declared) {
         if (!used(code, name)) warn(`unused ${name}`);
     }
-    let list = [...textures].map(([name, value]) => ({ name, value }));
-    let size = parts.filter(w => !words.includes(w)).join('x');
+    let list = [...textures.values()];
+    let size = parts.join('x');
     let dims = parseGrid(marks && /^\d+$/.test(size) ? size + 'x1' : size, Infinity);
-    return { ...generateShader({ grid: dims, body, marks: ctx.marks, textures: list }), textures: list };
+    return { ...generateShader(dims, body, ctx.marks, list), textures: list };
 }

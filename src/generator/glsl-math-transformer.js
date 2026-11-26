@@ -228,9 +228,9 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
                 if (args[args.length - 1].type === 'Stop') report('extra position');
                 else args.push({ type: 'Stop', left: args.pop(), right: arg });
             } else if (at && !comma) {
-                let { items = [args.at(-1)] } = args.at(-1);
+                let last = args.pop(), { items = [last] } = last;
                 items.push(arg);
-                args[args.length - 1] = { type: 'Call', val: 'vec' + items.length, args: items, items };
+                args.push({ type: 'Call', val: 'vec' + items.length, args: items, items });
             } else {
                 args.push(arg);
             }
