@@ -278,13 +278,10 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             }
             const res = infer(n);
             if (n.at) {
-                // pick(k: a, b, …): item k from 1, wrapping around; the last one, unless k takes another
+                // pick(k: a, b, …): item k from 1, wrapping around
                 if (a.length < 2) return gen(ZERO, exp);
-                const k = gen(a[0], 'float'), count = a.length - 1;
-                let out = gen(a[count], res);
-                for (let j = count - 2; j >= 0; j--) {
-                    out = `(g_pick(${k}, ${count}) == ${j} ? ${gen(a[j + 1], res)} : ${out})`;
-                }
+                const items = a.slice(1).map(v => gen(v, res));
+                const out = items.length > 1 ? `${res}[](${items.join(', ')})[g_pick(${gen(a[0], 'float')}, ${items.length})]` : items[0];
                 return cast(out, res, exp);
             }
             if (n.val === 'ramp') return cast(ramp(a, res), res, exp);

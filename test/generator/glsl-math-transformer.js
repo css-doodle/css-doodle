@@ -361,10 +361,10 @@ test('bools and ints become floats where a number is wanted, vectors pass as the
 
 test('pick(k: …) takes item k from 1, wrapping, in the widest type of the items', () => {
     assert.equal(transform('pick(k: 1, 2, 3)', { expect: 'float' }),
-        '(g_pick(k, 3) == 0 ? 1.0 : (g_pick(k, 3) == 1 ? 2.0 : 3.0))');
+        'float[](1.0, 2.0, 3.0)[g_pick(k, 3)]');
     assert.equal(transform('pick(k: #f00, c)', { types: { c: 'vec3' }, type: true }), 'vec3');
     assert.equal(transform('pick(k + 1: #f00, c)', { types: { c: 'vec3' } }),
-        '(g_pick((k + 1.0), 2) == 0 ? vec3(1.0, 0.0, 0.0) : c)');
+        'vec3[](vec3(1.0, 0.0, 0.0), c)[g_pick((k + 1.0), 2)]');
     // one item is that item, none is 0
     assert.equal(transform('pick(k: 5)', { expect: 'float' }), '5.0');
     assert.equal(transform('pick(k:)', { expect: 'float' }), '0.0');
@@ -372,7 +372,7 @@ test('pick(k: …) takes item k from 1, wrapping, in the widest type of the item
 
 test('a pick(k: …) item of values side by side is a vector', () => {
     assert.equal(transform('pick(k: 1 2 3, 4 5 6)'),
-        '(g_pick(k, 2) == 0 ? vec3(1.0, 2.0, 3.0) : vec3(4.0, 5.0, 6.0))');
+        'vec3[](vec3(1.0, 2.0, 3.0), vec3(4.0, 5.0, 6.0))[g_pick(k, 2)]');
     assert.equal(transform('pick(k: 1 2, c)', { types: { c: 'vec2' }, type: true }), 'vec2');
 });
 
