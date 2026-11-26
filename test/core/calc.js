@@ -853,14 +853,14 @@ test('deref trims the value it reads', () => {
     assert.equal(deref('a', { a: ' red ' }), 'red');
 });
 
-test('compileTemplate takes 1 to 26 holes and refuses those it cannot keep apart', () => {
+test('compileTemplate takes any number of holes and refuses those it cannot keep apart', () => {
     assert.equal(compileTemplate(['1 + 2']), null);
-    assert.equal(compileTemplate(Array(28).fill(' + ')), null);
-    assert.equal(compileTemplate(Array(27).fill(' + ')).names.length, 26);
+    let many = compileTemplate(['', ...Array(29).fill(' + '), '']);
+    assert.equal(calc(many.template, Object.fromEntries(many.names.map((name, i) => [name, i]))), 435);
     // two holes side by side, or after a double sign, splice instead
     assert.equal(compileTemplate(['', '', '']), null);
     assert.equal(compileTemplate(['1 --', '']), null);
-    assert.deepEqual(compileTemplate(['1 -', '']), { template: '1 -·a', names: ['·a'], signSensitive: [true] });
+    assert.deepEqual(compileTemplate(['1 -', '']), { template: '1 -·0', names: ['·0'], signSensitive: [true] });
     // a value that leads with a sign can't fill a sign-sensitive hole: 1 - -5 is not 1 --5
     assert.equal(isSignLeading(0), false);
     assert.equal(isSignLeading(-1), true);

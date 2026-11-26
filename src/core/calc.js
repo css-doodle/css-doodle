@@ -498,7 +498,11 @@ function compileVariable(name) {
             // only a function that takes no arguments reads bare
             result = result.length ? miss(history) : result();
         }
-        return typeof result === 'number' ? result : evaluateValue(result, ctx, history);
+        if (typeof result === 'number') {
+            return result;
+        }
+        let plain = toPlainNumber(result);
+        return plain === null ? evaluateValue(result, ctx, history) : ctx[name] = plain;
     };
 }
 
@@ -794,7 +798,7 @@ export function operand(v, after) {
 
 export function compileTemplate(segments) {
     let n = segments.length - 1;
-    if (n < 1 || n > 26) return null;
+    if (n < 1) return null;
     let joined = segments.join('0');
     if (joined.includes('·') || RE_NAME.test(joined.trim())) return null;
     let despaced = segments.map(s => s.replace(/\s+/g, ''));
@@ -822,7 +826,7 @@ export function compileTemplate(segments) {
             }
         }
         signSensitive.push(sensitive);
-        let name = '·' + String.fromCharCode(97 + i);
+        let name = '·' + i;
         names.push(name);
         template += name + segments[i + 1];
     }
