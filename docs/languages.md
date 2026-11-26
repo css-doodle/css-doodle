@@ -396,8 +396,8 @@ with a square.
 
 **Marks.** `marks` in place of `grid` draws each cell as a mark
 instead of in its square: `marks: 1000` is one row of a thousand, and
-`marks: 320x320` is 320 rows of 320. A body that sets `place` or `to`
-draws its `grid` as marks too. The body runs once per cell, at its
+`marks: 320x320` is 320 rows of 320. A body that sets `place` draws
+its `grid` as marks too. The body runs once per cell, at its
 center (`du` and `dv` are 0), rather than once per pixel, so a loop
 that finds a point stays cheap. `place` puts the mark at a point
 in `pos` units and reads as one, the cell's center until set:
@@ -422,10 +422,11 @@ Later cells paint over earlier ones, in the order of `i`.
 )
 ```
 
-`to` draws the mark as a stroke from `place` to another point, `size`
-wide, with `shape` for its ends: `to: place + .02vec2(cos(a), sin(a))`.
-`to: next` draws it to the `place` of the next cell in the row, so a
-row is one line through its cells: the joints are mitred, nothing
+Two points draw the mark as a stroke from one to the other, `size`
+wide, with `shape` for its ends: `place: p, p + .02vec2(cos(a), sin(a))`.
+Both read `place` as it was before, and `place` reads as the first
+point after. `place: p, next` draws it to the first point of the next
+cell in the row, so a row is one line through its cells: the joints are mitred, nothing
 overlaps, and the width and color run from each cell's `size` and
 `fill` to the next one's. The row's last cell ends the line and draws
 nothing itself. In `marks: 7x900` a row is a blade of grass, its seven

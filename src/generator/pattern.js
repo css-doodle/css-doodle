@@ -316,14 +316,18 @@ function generateSize(value, scope, ctx) {
     return size ? `size = ${size};\n` : '';
 }
 
-function generatePoint(value, scope, ctx, opts, name) {
-    if (name === 'to' && value === 'next' && !scope.ids.next) return 'g_line = 2.0;\n';
-    let { type, code } = expr(value, scope, ctx);
-    if (type !== 'vec2') {
-        ctx.warn(`${name} needs vec2`);
+function generatePlace(value, scope, ctx) {
+    let [a = '', b, more] = parseValueGroup(value, { symbol: ',', noSpace: true });
+    if (more) ctx.warn('place over 2');
+    let next = b === 'next' && !scope.ids.next;
+    let [at, to] = [a, !next && b].map(v => v && expr(v, scope, ctx));
+    if (at.type !== 'vec2' || to && to.type !== 'vec2') {
+        ctx.warn('place needs vec2');
         return '';
     }
-    return `g_${name} = ${code('vec2')};\n${name === 'to' ? 'g_line = 1.0;\n' : ''}`;
+    let line = to ? `g_to = ${to.code('vec2')};\ng_line = 1.0;\n` : next ? 'g_line = 2.0;\n' : ctx.lined ? 'g_line = 0.0;\n' : '';
+    if (b) ctx.lined = true;
+    return `${line}g_place = ${at.code('vec2')};\n`;
 }
 
 const OUTPUT_GENERATORS = {
@@ -331,8 +335,7 @@ const OUTPUT_GENERATORS = {
     fill: generateFill,
     shape: generateShape,
     size: generateSize,
-    place: generatePoint,
-    to: generatePoint,
+    place: generatePlace,
 };
 
 function generateRepeat(token, scope, ctx, opts) {
@@ -556,7 +559,7 @@ const MARKS = {
 };
 
 function drawsMarks(tokens) {
-    return tokens.some(t => t.type === 'statement' ? /^(place|to)$/.test(t.name) : (t.arms || [t]).some(a => Array.isArray(a.value) && drawsMarks(a.value)));
+    return tokens.some(t => t.type === 'statement' ? t.name === 'place' : (t.arms || [t]).some(a => Array.isArray(a.value) && drawsMarks(a.value)));
 }
 
 export default function drawPattern(code, extra, warn = () => {}) {

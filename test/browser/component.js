@@ -582,7 +582,7 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 8, 60, '#000');
         assert.deepEqual(await el.evaluate(el => el.warnings), []);
         // one 12px stroke across the middle, from 24px to 96px, square ends reaching 6px past them
-        el = await mount(page, '@grid: 1 / 120px; background: #000; @content: @pattern(place: vec2(-.3, 0); to: vec2(.3, 0); size: 12px; shape: square; fill: #f00;);');
+        el = await mount(page, '@grid: 1 / 120px; background: #000; @content: @pattern(place: vec2(-.3, 0), vec2(.3, 0); size: 12px; shape: square; fill: #f00;);');
         ({ image } = await shot(page, el));
         assertColor(image, 60, 60, '#f00');
         assertColor(image, 20, 60, '#f00');
