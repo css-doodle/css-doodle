@@ -147,17 +147,17 @@ const MAX_SURFACES = 8;
 const surfaces = new Map();
 let sweeper = null;
 
-function createSurface(key, width, height, premultiplied) {
-    const canvas = document.createElement('canvas');
+function createSurface(key, width, height, kind) {
+    const canvas = kind === 't' ? new OffscreenCanvas(width, height) : document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
 
     const gl = canvas.getContext('webgl2', {
         powerPreference: 'high-performance',
         antialias: false,
-        premultipliedAlpha: premultiplied,
+        premultipliedAlpha: !!kind,
         failIfMajorPerformanceCaveat: true,
-        preserveDrawingBuffer: true
+        preserveDrawingBuffer: kind !== 't'
     });
 
     if (!gl) {
@@ -165,14 +165,15 @@ function createSurface(key, width, height, premultiplied) {
     }
 
     const parallel = gl.getExtension('KHR_parallel_shader_compile');
-    const surface = { canvas, gl, parallel, users: new Set(), programs: new Map(), disposed: false };
+    const surface = { canvas, gl, kind, parallel, users: new Set(), programs: new Map(), disposed: false };
     surface.buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, SCREEN_QUAD_VERTICES, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    if (kind) gl.enable(gl.BLEND);
 
     canvas.addEventListener('webglcontextlost', () => {
         // losing it on purpose is not news
@@ -216,17 +217,18 @@ function acquireProgram(surface, vertex, fragment) {
     return entry;
 }
 
-function acquireSurface(width, height, drawing, premultiplied) {
-    const key = width + 'x' + height + (premultiplied ? 'p' : '');
+function acquireSurface(width, height, drawing, kind) {
+    const key = width + 'x' + height + kind;
     let surface = surfaces.get(key);
     if (!surface) {
         if (surfaces.size >= MAX_SURFACES) {
             sweep();
         }
-        if (surfaces.size >= MAX_SURFACES) {
-            surface = [...surfaces.values()].reduce((a, b) => b.users.size < a.users.size ? b : a);
+        const same = [...surfaces.values()].filter(s => s.kind === kind);
+        if (surfaces.size >= MAX_SURFACES && same.length) {
+            surface = same.reduce((a, b) => b.users.size < a.users.size ? b : a);
         } else {
-            surface = createSurface(key, width, height, premultiplied);
+            surface = createSurface(key, width, height, kind);
             surfaces.set(key, surface);
         }
     }
@@ -243,7 +245,8 @@ function releaseSurface(surface, drawing) {
 
 export default function drawShader(shaders, seed, onLost) {
     const dpr = devicePixelRatio || 1;
-    const { textures, points } = shaders;
+    const { textures, points, transfer } = shaders;
+    const kind = transfer ? 't' : points ? 'p' : '';
     const vertex = shaders.vertex?.trim() || DEFAULT_VERTEX_SHADER;
     const fragment = generateFragment(shaders.fragment, textures);
     const uploaded = textures.map(t => t.value);
@@ -258,7 +261,7 @@ export default function drawShader(shaders, seed, onLost) {
 
     function setup(width, height) {
         size = { width, height };
-        surface = acquireSurface(width, height, drawing, !!points);
+        surface = acquireSurface(width, height, drawing, kind);
         gl = surface.gl;
         entry = acquireProgram(surface, vertex, fragment);
         program = entry.program;
@@ -334,9 +337,7 @@ export default function drawShader(shaders, seed, onLost) {
             gl.uniform1f(uniforms.timeDelta, (t - currentTime) * 0.001);
             currentTime = t;
         }
-        if (points) gl.enable(gl.BLEND);
         gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, points || 1);
-        gl.disable(gl.BLEND);
     }
 
     function dispose() {

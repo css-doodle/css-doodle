@@ -506,7 +506,7 @@ function generateShader({ grid, body, marks, textures }) {
     void main() {
         float du = max(abs(g_uv.x) - g_kind.y, 0.0), dv = g_uv.y, k = g_kind.x;
         float a = g_mark.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
-        FragColor = vec4(g_mark.rgb * a, a);
+        FragColor = vec4(g_mark.rgb, a);
     }
   `;
     return { vertex, fragment, points: grid.x * grid.y };

@@ -144,18 +144,24 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             let views = elements.map(el => {
                 let view = document.createElement('canvas');
                 el.replaceChildren(view);
-                return [view, view.getContext('2d')];
+                return view;
             });
+            let live = drawing.animated || parsed.drag || drawing.mouse;
+            let out = live && views[0].getContext('bitmaprenderer');
             present = () => {
                 let { canvas } = drawing;
-                for (let [view, ctx] of views) {
+                for (let view of views) {
                     if (view.width !== canvas.width || view.height !== canvas.height) {
                         view.width = canvas.width;
                         view.height = canvas.height;
                     }
+                }
+                if (out) out.transferFromImageBitmap(canvas.transferToImageBitmap());
+                for (let view of out ? views.slice(1) : views) {
+                    let ctx = view.getContext('2d');
                     // resizing resets the context, so this is set per frame
                     ctx.globalCompositeOperation = 'copy';
-                    ctx.drawImage(canvas, 0, 0);
+                    ctx.drawImage(out ? views[0] : canvas, 0, 0);
                 }
             }
         } else {
@@ -266,7 +272,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
             textures = result;
         }
         try {
-            let drawing = generateShaders({ ...parsed, textures, width, height }, host.seed, () => {
+            let drawing = generateShaders({ ...parsed, textures, width, height, transfer: target.type === 'content' }, host.seed, () => {
                 host.report([{ message: 'WebGL lost' }]);
             });
             await drawing.ready;
