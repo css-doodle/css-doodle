@@ -62,7 +62,7 @@ class Angle {
     toString() { return `(${this.css} / 1rad)`; }
 }
 const isAngle = v => v instanceof Angle;
-const rad = v => isAngle(v) ? v.css : `(${v} * 1rad)`;
+const rad = v => v.css ?? `(${v} * 1rad)`;
 const live = v => typeof v === 'string' || isAngle(v);
 const text = v => live(v) ? v : tidyNumber(+v || 0);
 const neg = v => live(v) ? LOWER['*'](v, -1) : -v;
@@ -353,7 +353,7 @@ function toPostfix(tokens) {
     for (let i = 0; i < tokens.length; i++) {
         const { type, value } = tokens[i];
 
-        const prev = tokens[i - 1];
+        const prev = tokens[i - 1], next = tokens[i + 1];
         if (value === ',' || prev && (prev.type === VALUE || prev.value === ')')
                 && (type === VALUE || value === '(' || PREFIX.has(value))) {
             while (opStack.length && opStack.at(-1) !== '(') {
@@ -363,7 +363,6 @@ function toPostfix(tokens) {
         }
 
         if (type === VALUE) {
-            const next = tokens[i + 1];
             if (tokens[i].live) {
                 expr.push(tk(NUMBER, value));
             } else if (RE_NUMBER.test(value)) {
@@ -387,7 +386,6 @@ function toPostfix(tokens) {
             } else if (PREFIX.has(value)) {
                 opStack.push(value);
             } else {
-                const next = tokens[i + 1];
                 if (!prev || prev.type === OPERATOR && prev.value !== ')') expr.push(tk(NUMBER, 0));
                 const prec = PREC[value];
                 // && and || nest to the right so a chain lowers to CSS
@@ -429,17 +427,13 @@ function parseFunctionArgs(tokens, startIndex, indexed) {
 
         if (value === '(') {
             depth++;
-            current.push(token);
-        } else if (value === ')') {
-            depth--;
-            if (depth === 0) {
-                if (current.length) {
-                    args.push(toPostfix(current));
-                }
-                break;
+        } else if (value === ')' && !--depth) {
+            if (current.length) {
+                args.push(toPostfix(current));
             }
-            current.push(token);
-        } else if (depth === 1 && (value === ',' || value === ':' && indexed && !at && !args.length)) {
+            break;
+        }
+        if (depth === 1 && (value === ',' || value === ':' && indexed && !at && !args.length)) {
             at ||= value === ':';
             if (current.length || value === ':') {
                 args.push(toPostfix(current));

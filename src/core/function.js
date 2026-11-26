@@ -49,6 +49,8 @@ export const SEQ = {
     sig: 7    // invocation signature, separates pick counters across @m calls
 };
 
+export const SEQ_INDEX = { n: SEQ.n, nx: SEQ.x, ny: SEQ.y, N: SEQ.max };
+
 // an operator argument ('*10', '%360deg', '-.5') parses once; computing
 // against a base — which runs per cell and per sequence iteration — is
 // then plain arithmetic
@@ -353,13 +355,9 @@ Function.M = makeSequence(' ');
 
 Function.rep = makeSequence('');
 
-Function.n = seq('@n', e => calcWith(e[SEQ.n]));
-
-Function.nx = seq('@nx', e => calcWith(e[SEQ.x]));
-
-Function.ny = seq('@ny', e => calcWith(e[SEQ.y]));
-
-Function.N = seq('@N', e => calcWith(e[SEQ.max]));
+for (let [name, index] of Object.entries(SEQ_INDEX)) {
+    Function[name] = seq('@' + name, e => calcWith(e[index]));
+}
 
 Function.nN = seq('@nN', e => calcWithEasing(e[SEQ.n] / e[SEQ.max]));
 
@@ -868,8 +866,9 @@ for (let [name, u] of Object.entries({ t: utime, T: UTime, uw: uwidth, uh: uheig
 Function.ts = () => calcWith(`calc(var(${utime}) / 1000)`);
 Function.TS = () => calcWith(`calc(var(${UTime}) / 1000)`);
 
-Function.udx = ({ x, grid, center }) => calcWith(`calc(${center ? tidyNumber(center[0]) : `${tidyNumber((x - .5) / grid.x)} * var(${uwidth})`} - var(${umousex}))`);
-Function.udy = ({ y, grid, center }) => calcWith(`calc(${center ? tidyNumber(center[1]) : `${tidyNumber((y - .5) / grid.y)} * var(${uheight})`} - var(${umousey}))`);
+for (let [k, i, size, mouse] of [['x', 0, uwidth, umousex], ['y', 1, uheight, umousey]]) {
+    Function['ud' + k] = cell => calcWith(`calc(${cell.center ? tidyNumber(cell.center[i]) : `${tidyNumber((cell[k] - .5) / cell.grid[k])} * var(${size})`} - var(${mouse}))`);
+}
 
 /**
  * expose JS Math functions with css-doodle calc/value semantics

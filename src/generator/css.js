@@ -1,4 +1,4 @@
-import Func, { MathFunc, SEQ, KEYED, pickAt, pickAtList } from '../core/function.js';
+import Func, { MathFunc, SEQ_INDEX, KEYED, pickAt, pickAtList } from '../core/function.js';
 import calc, { defaultContext, deref, compileTemplate, toPlainNumber, isSignLeading, operand, useRandom, withUnit } from '../core/calc.js';
 import Property, { placeShared } from '../core/property.js';
 import Selector from '../core/selector.js';
@@ -72,7 +72,6 @@ function pushInput(input, value, whole) {
     }
 }
 
-const SEQ_INDEX = { n: SEQ.n, nx: SEQ.x, ny: SEQ.y, N: SEQ.max };
 const SEQ_READERS = new Map(Object.entries(SEQ_INDEX).map(([name, index]) => [Func[name], index]));
 
 const UNIFORM_KEYS = {
@@ -566,8 +565,7 @@ class Rules {
     }
 
     readVar(name, count, contextVariable, css) {
-        let value = contextVariable && contextVariable[name];
-        if (value === undefined) value = this.groupVar(name, this.scopedVars(count), css);
+        let value = contextVariable?.[name] ?? this.groupVar(name, this.scopedVars(count), css);
         if (value === undefined) return name;
         return removeParens(String(value).trim()).replace(/;+$/, '');
     }

@@ -78,8 +78,6 @@ function treeStyles({ x, y }) {
     `;
 }
 
-const EMBEDDED_CONTENT = /^\$\{pattern/;
-
 export function createGrid(gridObj, compiled) {
     let { x, y, z } = gridObj;
     let { content, styles } = compiled;
@@ -98,7 +96,7 @@ export function createGrid(gridObj, compiled) {
                 let head = '';
                 if (lookup) {
                     head = content[key + id] ?? '';
-                    if (head && head.charCodeAt(0) === 36 && EMBEDDED_CONTENT.test(head)) {
+                    if (head.startsWith('${pattern')) {
                         head = '';
                     }
                 }

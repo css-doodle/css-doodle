@@ -64,13 +64,9 @@ const Selector = Object.create(null);
 
 Selector.at = ({ x, y }) => (x1, y1) => (x == x1 && y == y1);
 
-Selector.nth = ({ count }, env) => (...exprs) => matchAny(count, exprs, env);
-
-Selector.row = ({ y }, env) => (...exprs) => matchAny(y, exprs, env);
-
-Selector.col = ({ x }, env) => (...exprs) => matchAny(x, exprs, env);
-
-Selector.depth = ({ z }, env) => (...exprs) => matchAny(z, exprs, env);
+for (let [name, key] of [['nth', 'count'], ['row', 'y'], ['col', 'x'], ['depth', 'z']]) {
+    Selector[name] = (cell, env) => (...exprs) => matchAny(cell[key], exprs, env);
+}
 
 Selector.even = ({ x, y }) => _ => odd(x + y);
 
