@@ -136,19 +136,19 @@ function offset(rings, d, evenodd, tol = .002) {
         let out = [];
         ring.forEach((p, i) => {
             let a = ring.at(i - 1), b = ring[(i + 1) % ring.length], ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - p[0], vy = b[1] - p[1];
-            let lu = hypot(ux, uy), lv = hypot(vx, vy), n = [uy / lu, -ux / lu], m = [vy / lv, -vx / lv];
-            let turn = angle(ux, uy, vx, vy), at = ([x, y]) => [p[0] + d * x, p[1] + d * y];
+            let lu = hypot(ux, uy), lv = hypot(vx, vy), nx = uy / lu, ny = -ux / lu, mx = vy / lv, my = -vx / lv;
+            let turn = angle(ux, uy, vx, vy), at = (x, y) => [p[0] + d * x, p[1] + d * y];
             if (turn * d > 0) {
                 // an arc around the corner, as a disk rolled along the outline leaves
-                let from = atan2(n[1], n[0]), k = min(64, ceil(abs(turn) / sqrt(8 * tol / abs(d))));
-                for (let j = 0; j <= k; ++j) out.push(at([cos(from + turn * j / k), sin(from + turn * j / k)]));
+                let from = atan2(ny, nx), k = min(64, ceil(abs(turn) / sqrt(8 * tol / abs(d))));
+                for (let j = 0; j <= k; ++j) out.push(at(cos(from + turn * j / k), sin(from + turn * j / k)));
             } else if (abs(d) * tan(abs(turn) / 2) < min(lu, lv) / 2) {
                 // the moved sides overlap: they meet, and no side turns around
-                let k = 1 + n[0] * m[0] + n[1] * m[1];
-                out.push(at([(n[0] + m[0]) / k, (n[1] + m[1]) / k]));
+                let k = 1 + nx * mx + ny * my;
+                out.push(at((nx + mx) / k, (ny + my) / k));
             } else {
                 // or back through the corner, so what turns around winds the other way and is cut
-                out.push(at(n), p, at(m));
+                out.push(at(nx, ny), p, at(mx, my));
             }
         });
         return out;
@@ -179,11 +179,11 @@ function corners(ring, joints, r) {
     // bend through where the sides' tangents meet, so a curve leaves each side along it,
     // unless the curve would then reach past the corner
     let control = (j, d) => {
-        let p = at(s[j] - d), q = at(s[j] + d), [i] = index(s[j] - d), [k] = index(s[j] + d);
+        let [px, py] = at(s[j] - d), [qx, qy] = at(s[j] + d), [i] = index(s[j] - d), [k] = index(s[j] + d);
         let ux = ring[i][0] - ring[i - 1][0], uy = ring[i][1] - ring[i - 1][1];
         let vx = ring[k][0] - ring[k - 1][0], vy = ring[k][1] - ring[k - 1][1];
-        let den = ux * vy - uy * vx, t = ((q[0] - p[0]) * vy - (q[1] - p[1]) * vx) / den;
-        let c = [p[0] + t * ux, p[1] + t * uy], h = ([x, y]) => (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+        let den = ux * vy - uy * vx, t = ((qx - px) * vy - (qy - py) * vx) / den;
+        let c = [px + t * ux, py + t * uy], h = ([x, y]) => (qx - px) * (y - py) - (qy - py) * (x - px);
         let hc = h(c), hv = h(ring[j]);
         return t > 0 && dist(c, ring[j]) > 1e-9 * L && dist(c, ring[j]) < d && hc * hv > 0 && abs(hc) <= 2 * abs(hv) ? c : ring[j];
     };
@@ -229,7 +229,7 @@ function recount(rings, n) {
     let lens = rings.map(perimeter), total = sum(lens), run = 0, done = 0;
     return rings.map((ring, k) => {
         let m = max(3, round(n * (run += lens[k]) / total) - done), at = i => ring[(i + ring.length) % ring.length];
-        let side = i => dist(at(i), at(i + 1)), pick = better => ring.reduce((j, p, i) => better(side(i), side(j)) ? i : j, 0);
+        let side = i => dist(at(i), at(i + 1));
         done += m;
         if (ring.length < m) {
             let order = (a, b) => a[0] - b[0] || b[1] - a[1], sides = ring.map((p, i) => [side(i), i, 1, p, at(i + 1)]).sort(order);
@@ -247,7 +247,7 @@ function recount(rings, n) {
         }
         ring = [...ring];
         while (ring.length > m) {
-            let i = pick((a, b) => a < b), j = (i + 1) % ring.length, [a, p, q, b] = [at(i - 1), ring[i], ring[j], at(i + 2)];
+            let i = ring.reduce((j, p, i) => side(i) < side(j) ? i : j, 0), j = (i + 1) % ring.length, [a, p, q, b] = [at(i - 1), ring[i], ring[j], at(i + 2)];
             let ux = p[0] - a[0], uy = p[1] - a[1], vx = b[0] - q[0], vy = b[1] - q[1];
             let t = ((q[0] - a[0]) * vy - (q[1] - a[1]) * vx) / (ux * vy - uy * vx), x = [a[0] + t * ux, a[1] + t * uy];
             ring[i] = t >= 1 && dist(x, p) + dist(x, q) < dist(a, p) + dist(q, b) ? x : mix(p, q, .5);

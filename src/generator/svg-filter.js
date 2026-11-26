@@ -56,7 +56,7 @@ function expandGroup(g, output, seed, warn, nextResult, chainInput) {
     }
     el('feTurbulence', turbulence);
     if (g.scale) {
-        el('feDisplacementMap', noise ? { in: input, in2: noise, scale: g.scale } : { in: input, scale: g.scale });
+        el('feDisplacementMap', { in: input, ...noise && { in2: noise }, scale: g.scale });
     }
 }
 

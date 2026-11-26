@@ -273,8 +273,7 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
         else if (token.test !== undefined) {
             if (Number(token.test)) {
                 for (let block of value) {
-                    let id = generateSvg(block, warn, element, parent, root);
-                    if (id) { inlineId = id }
+                    inlineId = generateSvg(block, warn, element, parent, root) || inlineId;
                 }
             }
         }
@@ -290,8 +289,7 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
             }
             if (name === 'defs') el = root.findSpareDefs() || el;
             for (let block of value) {
-                let id = generateSvg(block, warn, el, token, root);
-                if (id) { inlineId = id }
+                inlineId = generateSvg(block, warn, el, token, root) || inlineId;
             }
             if (GROUPS.includes(name)) el = combine(el, name, warn);
             let isInlineAndNotDefs = token.inline && name !== 'defs';

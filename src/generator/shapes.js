@@ -381,7 +381,7 @@ function createShapePoints(props, lo, hi, raw) {
     return points;
 
     function tilePoints() {
-        let [gap = props.tile == 'circle' ? 0 : -.3] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
+        let wide = box[2] - box[0], [gap = props.tile == 'circle' ? 0 : -.3] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
         // the gap is in percent of the element, which is 2 across without a unit
         if (!percent) gap /= 50;
         let tile = ([poly, [x, y], kind = 1, extra]) => {
@@ -389,7 +389,7 @@ function createShapePoints(props, lo, hi, raw) {
             let at = fmt(x, y), inner = nearest(rings)(x, y);
             inner = inner < Infinity ? number(inner) + suffix : '';
             if (radius) {
-                let tol = (box[2] - box[0]) / 1e3, r = radius * (box[2] - box[0]) / 2;
+                let tol = wide / 1e3, r = radius * wide / 2;
                 let paths = rings.map(ring => corners(ring, null, r));
                 if (paths.some(curved)) return new Point(toPath(paths, undefined, rule), extra, at, kind, inner);
                 rings = paths.map(path => flatten(path, tol));
@@ -432,7 +432,7 @@ function createShapePoints(props, lo, hi, raw) {
             }
             let p = pieces[0]?.[0] || [], len = 0;
             for (let i = 0; i < p.length; i += 2) len = max(len, hypot(p[(i + 2) % p.length] - p[i], p[(i + 3) % p.length] - p[i + 1]));
-            let tol = (box[2] - box[0]) * 5e-4 / len;
+            let tol = wide * 5e-4 / len;
             return pieces.map(([p, c, kind, marks]) => tile([inset(p, ...c, gap / 2, edge ? bend(p, c, edge, classes, tol, toShape, marks) : p), c, kind]));
         }
         let context = Object.assign(Object.create(defaultContext), props), near, seen;
@@ -534,12 +534,13 @@ export default function generateShape(input, range = {}, modifier) {
     let [head, more = ''] = input.split(/;([^]*)/);
     let preset = input.includes('{') ? undefined : presetOf(head);
     let rules = parseShapeCommands(preset === undefined ? input : preset + ';' + more);
-    if (!rules.blocks && pairsOf(rules.points)) {
-        rules.blocks = { op: 'union', items: [{ points: rules.points }] };
-        delete rules.points;
-    }
-    if (!rules.blocks && (rules.text || rules.path)) {
-        rules.blocks = { op: 'union', items: [{ text: rules.text, font: rules.font, path: rules.path }] };
+    if (!rules.blocks) {
+        if (pairsOf(rules.points)) {
+            rules.blocks = { op: 'union', items: [{ points: rules.points }] };
+            delete rules.points;
+        } else if (rules.text || rules.path) {
+            rules.blocks = { op: 'union', items: [{ text: rules.text, font: rules.font, path: rules.path }] };
+        }
     }
     if (preset === undefined && range.preset && !rules.blocks && ['x', 'y', 'r'].every(k => isEmpty(rules[k]))) {
         preset = presetShapes[range.preset];

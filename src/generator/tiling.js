@@ -241,9 +241,9 @@ function lattice(k, box, view, s, [a, b], pair, half) {
 }
 
 // P3 rhombs from Robinson triangles; a rhombus is a triangle and its mirror over BC
-function penrose(box, view, s, half, grow = 1) {
+function penrose(box, [x0, y0, x1, y1], s, half, grow = 1) {
     let [cx, cy] = centre(box);
-    let far = hypot(max(cx - view[0], view[2] - cx), max(cy - view[1], view[3] - cy)) / cos(PI / 10) + 2 * s;
+    let far = hypot(max(cx - x0, x1 - cx), max(cy - y0, y1 - cy)) / cos(PI / 10) + 2 * s;
     let n = max(0, ceil(log(far / s) / log(PHI))), r = s * PHI ** n, tris = [];
     for (let i = 0; i < 10; ++i) {
         let b = (2 * i - 1) * PI / 10, c = (2 * i + 1) * PI / 10;
@@ -261,8 +261,8 @@ function penrose(box, view, s, half, grow = 1) {
     }).filter(([, ax, ay, bx, by, cx, cy]) => {
         // its rhombs, grown as the reach test grows them, stay within grow sides of it
         let m = grow * max(abs(bx - ax), abs(cx - ax), abs(cx - bx), abs(by - ay), abs(cy - ay), abs(cy - by));
-        return min(ax, bx, cx) - m < view[2] && max(ax, bx, cx) + m > view[0]
-            && min(ay, by, cy) - m < view[3] && max(ay, by, cy) + m > view[1];
+        return min(ax, bx, cx) - m < x1 && max(ax, bx, cx) + m > x0
+            && min(ay, by, cy) - m < y1 && max(ay, by, cy) + m > y0;
     });
     return tris.filter(([, ax, ay, bx, by, cx, cy]) => (bx - ax) * (cy - ay) > (cx - ax) * (by - ay)).map(([t, ax, ay, bx, by, cx, cy]) => {
         let p = [ax, ay, bx, by, bx + cx - ax, by + cy - ay, cx, cy];
@@ -431,13 +431,13 @@ function border(rings, count) {
     return rim;
 }
 
-function reacher(box, inside, grow, derived) {
-    let corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]].filter(c => inside(...c));
+function reacher([x0, y0, x1, y1], inside, grow, derived) {
+    let corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].filter(c => inside(...c));
     let crosses = p => {
         for (let i = 0; i < p.length; i += 2) {
             let ax = p[i], ay = p[i + 1], dx = p[(i + 2) % p.length] - ax, dy = p[(i + 3) % p.length] - ay, t0 = 0, t1 = 1;
             let cut = (d, q) => d < 0 ? t0 = max(t0, q / d) : d > 0 ? t1 = min(t1, q / d) : q < 0 && (t1 = -1);
-            cut(-dx, ax - box[0]), cut(dx, box[2] - ax), cut(-dy, ay - box[1]), cut(dy, box[3] - ay);
+            cut(-dx, ax - x0), cut(dx, x1 - ax), cut(-dy, ay - y0), cut(dy, y1 - ay);
             if (t0 < t1 && inside(ax + dx * (t0 + t1) / 2, ay + dy * (t0 + t1) / 2)) return true;
         }
     };
@@ -445,7 +445,7 @@ function reacher(box, inside, grow, derived) {
 }
 
 function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
-    let [x0, y0, x1, y1] = bbox(screen, [2 * box[0] - box[2], 2 * box[1] - box[3], 2 * box[2] - box[0], 2 * box[3] - box[1]]), space = (x1 - x0) * (y1 - y0);
+    let [l, t, r, b] = box, [x0, y0, x1, y1] = bbox(screen, [2 * l - r, 2 * t - b, 2 * r - l, 2 * b - t]), space = (x1 - x0) * (y1 - y0);
     if (!(space > 0)) return [];
     let clear = ([p, [x, y]]) => inside(x, y) && p.every((v, i) => i & 1 || inside((v + x) / 2, (p[i + 1] + y) / 2));
     let test = dots ? clear : reacher(box, inside, grow, derived);
@@ -484,7 +484,7 @@ function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
         for (let k = 0; k < pieces.length; ++k) {
             let [p, c] = pieces[k], q = bufs[k], m = mids[k];
             for (let i = 0; i < p.length; ++i) q[i] = o[i & 1] + (p[i] - o[i & 1]) * f;
-            m[0] = o[0] + (c[0] - o[0]) * f, m[1] = o[1] + (c[1] - o[1]) * f;
+            m[0] = cx + (c[0] - cx) * f, m[1] = cy + (c[1] - cy) * f;
             if (test([q, m])) kept.push(k);
         }
         return kept;

@@ -85,13 +85,10 @@ function readShapes(input, warn = () => {}, options) {
         node.rows.push({ name: id, value: scan(armIndex(valid)) });
         if (arms.some(a => a.children.length)) warn('shapes in match');
         // each name once, after the names any arm sets before it, as @scene reads them in order
-        let chains = arms.map(a => [...new Set(a.rows.map(r => r.name))]), names = [];
+        let chains = arms.map(a => [...new Set(a.rows.map(r => r.name))]);
         for (let first; (first = chains.find(c => c.length));) {
             let name = chains.map(c => c[0]).find(n => n && chains.every(c => c.indexOf(n) < 1)) ?? first[0];
-            names.push(name);
             chains = chains.map(c => c.filter(n => n != name));
-        }
-        for (let name of names) {
             let texts = arms.map(a => a.rows.findLast(r => r.name == name)).map(r => r && textOf(r.value));
             let prior = [...outer.flat(), ...node.rows].findLast(r => r.name == name), none = NONE[name];
             let text = texts.find(Boolean), made = !prior && !none && /^\w+_\d+_/.test(name);
@@ -191,9 +188,9 @@ function commandsOf(node) {
         commands[name] = text;
         if (STEPS.includes(name)) (commands.steps ||= []).push([name, text]);
     }
-    let items = node.children.flatMap(member);
-    if (GROUPS.includes(node.name) || items.length) {
-        commands.blocks = { op: GROUPS.includes(node.name) ? node.name : 'union', items };
+    let items = node.children.flatMap(member), group = GROUPS.includes(node.name);
+    if (group || items.length) {
+        commands.blocks = { op: group ? node.name : 'union', items };
     }
     return commands;
 }
