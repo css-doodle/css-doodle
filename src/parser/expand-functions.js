@@ -70,18 +70,17 @@ function callAt(tokens, i, defs) {
 }
 
 function dollarDot(source) {
-    let tokens = tokensOf(source);
+    let tokens = tokensOf(source), chars = source.split('');
     for (let i = 1, end, close; i < tokens.length - 1; i++) {
         let t = tokens[i];
         if (tokens[i - 1].isSymbol('$') && /^\.[a-z_]/i.test(t.value) && adjacent(tokens[i - 1], t)
                 && (end = callEnd(tokens, i)) >= 0 && !/[@$]/.test(textOf(tokens.slice(i, end + 1)))
                 && (close = closing(tokens, end + 1)) > 0) {
-            let stop = tokenEnd(tokens[close]);
-            source = source.slice(0, t.index) + '(' + source.slice(t.index + 1, stop) + ')' + source.slice(stop);
-            tokens = tokensOf(source);
+            chars[t.index] = '(';
+            chars[tokenEnd(tokens[close]) - 1] += ')';
         }
     }
-    return source;
+    return chars.join('');
 }
 
 export default function expandFunctions(source, ctx, svg, chain = []) {
