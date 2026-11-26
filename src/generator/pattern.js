@@ -321,12 +321,13 @@ function generateSize(value, scope, ctx) {
 }
 
 function generatePoint(value, scope, ctx, opts, name) {
+    if (name === 'to' && value === 'next' && !scope.ids.next) return 'g_line = 2.0;\n';
     let { type, code } = expr(value, scope, ctx);
     if (type !== 'vec2') {
         ctx.warn(`${name} needs vec2`);
         return '';
     }
-    return `g_${name} = ${code('vec2')};\n${name === 'to' ? 'g_line = true;\n' : ''}`;
+    return `g_${name} = ${code('vec2')};\n${name === 'to' ? 'g_line = 1.0;\n' : ''}`;
 }
 
 const OUTPUT_GENERATORS = {
@@ -470,47 +471,93 @@ function generateShader({ grid, body, marks, textures }) {
     uniform float u_time;
     uniform vec2 u_seed;
     ${textures.map(t => `uniform sampler2D ${t.name};`).join('\n')}
-    flat out vec4 g_mark;
-    flat out vec2 g_kind;
-    out vec2 g_uv;
+    ${MARKS.record.map(name => `out vec4 ${name};`).join('\n')}
     ${head}
     void main() {
-        float g_k = float(gl_InstanceID);
-        vec2 g_corner = vec2(gl_VertexID & 1, gl_VertexID >> 1) - 0.5;
+        float g_k = float(gl_VertexID);
         ${dims}
         float x = mod(g_k, X) + 1.0;
         float y = floor(g_k / X) + 1.0;
         vec2 uv = vec2((x - 0.5) / X, 1.0 - (y - 0.5) / Y);
         vec2 pos = (uv - 0.5) * u_resolution / g_res;
         vec2 g_place = pos;
-        ${line ? 'vec2 g_to = pos;\nbool g_line = false;' : ''}
+        ${line ? 'vec2 g_to = pos;\nfloat g_line = 0.0;' : ''}
         ${run}
-        ${line ? 'if (!g_line) g_to = g_place;' : 'vec2 g_to = g_place;'}
-        float g_side = max(size * g_res, 1.0);
-        vec2 g_axis = (g_to - g_place) * g_res;
-        float g_len = length(g_axis);
-        vec2 g_dir = g_len > 0.0 ? g_axis / g_len : vec2(1.0, 0.0);
-        float g_along = (g_corner.x + 0.5) * (g_len + g_side) - 0.5 * g_side;
-        gl_Position = vec4(2.0 * (g_place * g_res + g_dir * g_along + vec2(-g_dir.y, g_dir.x) * g_corner.y * g_side) / u_resolution, 0.0, 1.0);
-        if (g_color.a <= 0.0) gl_Position = vec4(0.0);
-        g_uv = vec2((g_along - 0.5 * g_len) / g_side, -g_corner.y);
-        g_mark = g_color;
-        g_kind = vec2(${masked ? 'g_masked ? g_dist : 0.0' : '0.0'}, 0.5 * g_len / g_side);
+        ${line ? 'if (g_line < 1.0) g_to = g_place;' : 'vec2 g_to = g_place;'}
+        g_ends = vec4(g_place, g_to);
+        g_fill = g_color;
+        g_mark = vec4(size, ${masked ? 'g_masked ? g_dist : 0.0' : '0.0'}, ${line ? 'g_line > 1.0 ? (x < X ? 1.0 : -1.0) : 0.0' : '0.0'}, 0.0);
+        gl_Position = vec4(0.0);
     }
   `;
-    let fragment = glsl`
-    ${SHAPE}
-    flat in vec4 g_mark;
-    flat in vec2 g_kind;
-    in vec2 g_uv;
-    void main() {
-        float du = max(abs(g_uv.x) - g_kind.y, 0.0), dv = g_uv.y, k = g_kind.x;
-        float a = g_mark.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
-        FragColor = vec4(g_mark.rgb, a);
-    }
-  `;
-    return { vertex, fragment, points: grid.x * grid.y };
+    return { vertex, fragment: 'void main() { FragColor = vec4(0.0); }', points: grid.x * grid.y, marks: MARKS };
 }
+
+const MARKS = {
+    record: ['g_ends', 'g_fill', 'g_mark'],
+    vertex: glsl`#version 300 es
+    precision highp float;
+    layout(location = 0) in vec4 prev;
+    layout(location = 2) in vec4 prevMark;
+    layout(location = 3) in vec4 ends;
+    layout(location = 4) in vec4 fill;
+    layout(location = 5) in vec4 mark;
+    layout(location = 6) in vec4 next;
+    layout(location = 7) in vec4 nextFill;
+    layout(location = 8) in vec4 nextMark;
+    layout(location = 9) in vec4 after;
+    uniform vec2 u_resolution;
+    out vec4 color;
+    flat out vec2 kind;
+    out vec2 uv;
+    vec2 miter(vec2 a, vec2 b) {
+        vec2 n = vec2(-b.y, b.x), m = vec2(-a.y, a.x) + n;
+        float l = length(m);
+        return l < 1e-3 ? n : m / l / max(dot(m / l, n), 0.3);
+    }
+    void main() {
+        vec2 corner = vec2(gl_VertexID & 1, gl_VertexID >> 1) - 0.5;
+        float res = min(u_resolution.x, u_resolution.y);
+        vec2 at;
+        bool hide;
+        if (mark.z > 0.0) {
+            vec2 a = ends.xy * res, b = next.xy * res, p = prev.xy * res, c = after.xy * res;
+            vec2 d = normalize(b - a);
+            vec2 d0 = prevMark.z > 0.0 && distance(a, p) > 1e-4 ? normalize(a - p) : d;
+            vec2 d2 = nextMark.z > 0.0 && distance(c, b) > 1e-4 ? normalize(c - b) : d;
+            bool end = corner.x > 0.0;
+            at = (end ? b : a) + miter(end ? d : d0, end ? d2 : d) * max((end ? nextMark.x : mark.x) * res, 1.0) * corner.y;
+            hide = distance(a, b) < 1e-4 || max(fill.a, nextFill.a) <= 0.0;
+            color = end ? nextFill : fill;
+            uv = vec2(0.0, -corner.y);
+            kind = vec2(2.0, 0.0);
+        } else {
+            float side = max(mark.x * res, 1.0);
+            vec2 axis = (ends.zw - ends.xy) * res;
+            float len = length(axis);
+            vec2 dir = len > 0.0 ? axis / len : vec2(1.0, 0.0);
+            float along = (corner.x + 0.5) * (len + side) - 0.5 * side;
+            at = ends.xy * res + dir * along + vec2(-dir.y, dir.x) * corner.y * side;
+            hide = fill.a <= 0.0 || mark.z < 0.0;
+            color = fill;
+            uv = vec2((along - 0.5 * len) / side, -corner.y);
+            kind = vec2(mark.y, 0.5 * len / side);
+        }
+        gl_Position = hide ? vec4(0.0) : vec4(2.0 * at / u_resolution, 0.0, 1.0);
+    }
+    `,
+    fragment: glsl`
+    ${SHAPE}
+    in vec4 color;
+    flat in vec2 kind;
+    in vec2 uv;
+    void main() {
+        float du = max(abs(uv.x) - kind.y, 0.0), dv = uv.y, k = kind.x;
+        float a = color.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
+        FragColor = vec4(color.rgb, a);
+    }
+    `,
+};
 
 function drawsMarks(tokens) {
     return tokens.some(t => t.type === 'statement' ? /^(place|to)$/.test(t.name) : (t.arms || [t]).some(a => Array.isArray(a.value) && drawsMarks(a.value)));

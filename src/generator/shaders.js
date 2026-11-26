@@ -14,7 +14,7 @@ const SCREEN_QUAD_VERTICES = new Float32Array([
 
 const MAX_TEXTURE_SIZE = 4096;
 
-function createProgram(gl, vss, fss) {
+function createProgram(gl, vss, fss, outputs) {
     const program = gl.createProgram();
     const shaders = [[gl.VERTEX_SHADER, vss], [gl.FRAGMENT_SHADER, fss]].map(([type, source]) => {
         const shader = gl.createShader(type);
@@ -24,6 +24,7 @@ function createProgram(gl, vss, fss) {
         return shader;
     });
     gl.bindAttribLocation(program, 0, 'position');
+    if (outputs) gl.transformFeedbackVaryings(program, outputs, gl.INTERLEAVED_ATTRIBS);
     gl.linkProgram(program);
     return { program, shaders, users: 0 };
 }
@@ -42,7 +43,7 @@ function checkProgram(gl, entry) {
 
 const later = () => new Promise(resolve => setTimeout(resolve, 16));
 
-async function settle(surface, entry) {
+async function settle(surface, entry, warm) {
     const { gl, parallel } = surface;
     gl.flush();
     while (parallel && !surface.disposed && !gl.getProgramParameter(entry.program, parallel.COMPLETION_STATUS_KHR)) {
@@ -53,7 +54,8 @@ async function settle(surface, entry) {
     gl.useProgram(entry.program);
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(0, 0, 1, 1);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    if (warm) warm();
+    else gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     gl.disable(gl.SCISSOR_TEST);
     const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
     gl.flush();
@@ -206,11 +208,11 @@ function sweep() {
     }
 }
 
-function acquireProgram(surface, vertex, fragment) {
+function acquireProgram(surface, vertex, fragment, outputs) {
     const source = vertex + fragment;
     let entry = surface.programs.get(source);
     if (!entry) {
-        entry = createProgram(surface.gl, vertex, fragment);
+        entry = createProgram(surface.gl, vertex, fragment, outputs);
         surface.programs.set(source, entry);
     }
     entry.users++;
@@ -245,15 +247,16 @@ function releaseSurface(surface, drawing) {
 
 export default function drawShader(shaders, seed, onLost) {
     const dpr = devicePixelRatio || 1;
-    const { textures, points, transfer } = shaders;
+    const { textures, points, transfer, marks } = shaders;
     const kind = transfer ? 't' : points ? 'p' : '';
     const vertex = shaders.vertex?.trim() || DEFAULT_VERTEX_SHADER;
     const fragment = generateFragment(shaders.fragment, textures);
+    const stride = marks && marks.record.length * 16;
     const uploaded = textures.map(t => t.value);
     const raster = size => Math.min(size * dpr, MAX_TEXTURE_SIZE) | 0;
     const seeds = [hash(seed) / 1e16, hash(seed, 1) / 1e16];
 
-    let surface, gl, entry, program, textureList, uniforms, size;
+    let surface, gl, entries, program, textureList, uniforms, size, records, quads, resolution;
     let frameIndex = 0;
     let currentTime = 0;
 
@@ -263,16 +266,31 @@ export default function drawShader(shaders, seed, onLost) {
         size = { width, height };
         surface = acquireSurface(width, height, drawing, kind);
         gl = surface.gl;
-        entry = acquireProgram(surface, vertex, fragment);
-        program = entry.program;
+        entries = [acquireProgram(surface, vertex, fragment, marks?.record)];
+        program = entries[0].program;
         drawing.canvas = surface.canvas;
         textureList = uploaded.map((image, i) => loadTexture(gl, image, i));
         uniforms = null;
+        if (marks) {
+            entries.push(acquireProgram(surface, marks.vertex, generateFragment(marks.fragment, [])));
+            records = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, records);
+            gl.bufferData(gl.ARRAY_BUFFER, (points + 3) * stride, gl.DYNAMIC_COPY);
+            quads = gl.createVertexArray();
+            gl.bindVertexArray(quads);
+            for (let i = 0; i < 4 * marks.record.length; i++) {
+                gl.enableVertexAttribArray(i);
+                gl.vertexAttribPointer(i, 4, gl.FLOAT, false, stride, i * 16);
+                gl.vertexAttribDivisor(i, 1);
+            }
+            gl.bindVertexArray(null);
+            gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffer);
+        }
     }
 
     function bind() {
         try {
-            checkProgram(gl, entry);
+            entries.forEach(entry => checkProgram(gl, entry));
         } catch (e) {
             dispose();
             throw e;
@@ -288,13 +306,27 @@ export default function drawShader(shaders, seed, onLost) {
         }
         drawing.animated = !!(uniforms.time || uniforms.frameIndex || uniforms.timeDelta);
         drawing.mouse = !!uniforms.mouse;
+        if (marks) resolution = gl.getUniformLocation(entries[1].program, 'u_resolution');
     }
 
     function teardown() {
         textureList.forEach(texture => gl.deleteTexture(texture));
-        entry.users--;
+        entries.forEach(entry => entry.users--);
+        gl.deleteBuffer(records);
+        gl.deleteVertexArray(quads);
         releaseSurface(surface, drawing);
         surface = null;
+    }
+
+    // the body once per cell, its record written instead of drawn
+    function capture(count) {
+        gl.enable(gl.RASTERIZER_DISCARD);
+        gl.bindBufferRange(gl.TRANSFORM_FEEDBACK_BUFFER, 0, records, stride, count * stride);
+        gl.beginTransformFeedback(gl.POINTS);
+        gl.drawArrays(gl.POINTS, 0, count);
+        gl.endTransformFeedback();
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+        gl.disable(gl.RASTERIZER_DISCARD);
     }
 
     function draw(t, w, h, images, drag, [x = w / 2, y = h / 2] = []) {
@@ -337,7 +369,16 @@ export default function drawShader(shaders, seed, onLost) {
             gl.uniform1f(uniforms.timeDelta, (t - currentTime) * 0.001);
             currentTime = t;
         }
-        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, points || 1);
+        if (!marks) {
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            return;
+        }
+        capture(points);
+        gl.useProgram(entries[1].program);
+        gl.uniform2f(resolution, width, height);
+        gl.bindVertexArray(quads);
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, points);
+        gl.bindVertexArray(null);
     }
 
     function dispose() {
@@ -347,8 +388,10 @@ export default function drawShader(shaders, seed, onLost) {
     }
 
     setup(raster(shaders.width), raster(shaders.height));
-    entry.ready ||= settle(surface, entry);
-    drawing.ready = entry.ready.then(() => surface && !surface.disposed && !uniforms && bind(), e => {
+    // the cell pass compiles for transform feedback, so it warms up as one
+    const first = surface;
+    const warm = marks && (() => surface === first && capture(1));
+    drawing.ready = Promise.all(entries.map((entry, i) => entry.ready ||= settle(surface, entry, !i && warm))).then(() => surface && !surface.disposed && !uniforms && bind(), e => {
         dispose();
         throw e;
     });

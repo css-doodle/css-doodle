@@ -422,9 +422,12 @@ earlier ones, in the order of `i`.
 
 `to` draws the mark as a stroke from `place` to another point, `size`
 wide, with `shape` for its ends: `to: place + .02vec2(cos(a), sin(a))`.
-A curve is strokes end to end, a cell each: in `grid: 6x900` a row is
-a blade of grass, its six cells the blade's pieces from `(x - 1) / X`
-to `x / X` along it.
+`to: next` draws it to the `place` of the next cell in the row, so a
+row is one line through its cells: the joints are mitred, nothing
+overlaps, and the width and color run from each cell's `size` and
+`fill` to the next one's. The row's last cell ends the line and draws
+nothing itself. In `grid: 7x900` a row is a blade of grass, its seven
+cells points along it at `(x - 1) / (X - 1)`.
 
 **Variables** are the cell variables of `@match` except `z` and `Z`,
 plus:
