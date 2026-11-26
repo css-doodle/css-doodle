@@ -454,7 +454,7 @@ plus:
 | `t`        | time in seconds; reading it animates the image       |
 | `size`     | the current `size`, `1` until set                    |
 | `px`       | one CSS pixel in `pos` units, so `2px` is two        |
-| `deg`, `turn` | one degree and one turn in radians, as in `@scene`: `rot(p, 45deg)` |
+| `deg`, `turn` | one degree and one turn in radians, as in `@scene`: `rotate(p, 45deg)` |
 
 Without `grid` the image is one cell, so `du`, `dv`, `uv` and `pos`
 address every pixel. An animated `@paint` in `@content` draws each
@@ -469,7 +469,7 @@ was last. A `@paint` that reads it draws again as the pointer moves.
 
 **Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`,
 `random(p [, k])`, `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`,
-`hsv(h, s, v)`, `rot(p, a)`, `smin(a, b, k)`, `ngon(p, n)`,
+`hsv(h, s, v)`, `rotate(p, a)`, `smin(a, b, k)`, `ngon(p, n)`,
 `box(p, b)`, `segment(p, a, b)`, `arc(p, r, a, b)`, `escape([z,] c)`,
 `spiral(p)` and `dither(p)`. A point is one `vec2` or two floats:
 `fbm(p)`, `ngon(p, 6)`.
@@ -477,7 +477,7 @@ was last. A `@paint` that reads it draws again as the pointer moves.
 - `hsl(h, s, l)` and `hsv(h, s, v)` take every channel from 0 to 1, the
   hue in turns: `hsl(.5, 1, .5)` is cyan. With `%`, as in
   `hsl(180 100% 50%)`, it is the CSS color, the hue in degrees.
-- `rot(p, a)` is the point `p` turned `a` radians counterclockwise, a
+- `rotate(p, a)` is the point `p` turned `a` radians counterclockwise, a
   point, not a matrix.
 - GLSL's `pow` is undefined for a negative base, so a whole exponent
   keeps the sign as in `$()`, `(-2)^3` is −8, and any other power,

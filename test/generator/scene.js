@@ -71,7 +71,7 @@ test('angles are degrees, and turn converts', () => {
     let { body, fragment } = scene('box { rotate: 90 } sphere { rotate: y .25turn; twist: 30 } view: 30 20');
     assert.match(body, /g_rotate\(p, vec3\(0\.0, 0\.0, 1\.0\), radians\(90\.0\)\)/);
     assert.match(body, /radians\(\(\.25 \* 360\.0\)\)/);
-    assert.match(body, /rot\(p\.xz, -radians\(30\.0\) \* p\.y\)/);
+    assert.match(body, /rotate\(p\.xz, -radians\(30\.0\) \* p\.y\)/);
     assert.match(fragment, /g_x = g_rotate\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(0\.0, 1\.0, 0\.0\), radians\(30\.0\)\)/);
 });
 
@@ -467,9 +467,9 @@ test('a part\'s variables read p after its own commands, which read them before'
 test('the fit reads a twisted shape turned all the way round y, since far probes would turn by any angle', () => {
     let { vertex, dist } = scene('box { size: .2; move: .8 0 0; twist: 10 }');
     let fit = vertex.match(/float g_fit[^]*?return/)[0];
-    assert.match(fit, /for \(int (g_\d+) = 0; \1 < 16; \1\+\+\) \{\nvec3 (g_\d+) = p;\n\2\.xz = rot\(p\.xz, float\(\1\) \* PI \/ 8\.0\);/);
+    assert.match(fit, /for \(int (g_\d+) = 0; \1 < 16; \1\+\+\) \{\nvec3 (g_\d+) = p;\n\2\.xz = rotate\(p\.xz, float\(\1\) \* PI \/ 8\.0\);/);
     assert.match(fit, /g_box\(/);
-    assert.match(dist, /\.xz = rot\(p\.xz, -radians\(10\.0\) \* p\.y\);/);
+    assert.match(dist, /\.xz = rotate\(p\.xz, -radians\(10\.0\) \* p\.y\);/);
 });
 
 test('a moving model fits over its first 2π seconds and where it is now', () => {

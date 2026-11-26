@@ -44,7 +44,7 @@ const VEC_COMPARE = {
 const CALL_TYPES = { __proto__: null };
 for (const [type, names] of Object.entries({
     float: 'rand noise fbm voronoi ngon box segment arc shape escape spiral dither length distance dot determinant',
-    vec2: 'rot',
+    vec2: 'rotate',
     vec3: 'hsl hsv',
     vec4: 'texture',
     bool: 'any all',
@@ -53,7 +53,9 @@ for (const [type, names] of Object.entries({
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
-const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment arc length'.split(' '));
+const POINTS = new Set('rand noise fbm voronoi rotate ngon escape spiral dither box segment arc length'.split(' '));
+
+const CALLS = { __proto__: null, random: 'rand', rot: 'rotate' };
 
 const RANK = 'bool int float mat2 mat3 mat4 bvec2 bvec3 bvec4 vec2 vec3 vec4'.split(' ');
 
@@ -217,7 +219,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
     }
 
     function call(name) {
-        if (name === 'random') name = 'rand';
+        name = CALLS[name] || name;
         consume();
         const args = [];
         let comma = true, at = false;

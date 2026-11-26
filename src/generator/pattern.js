@@ -100,7 +100,7 @@ export const HELPERS = glsl`
         return v * mix(vec3(1.0), g_hue(h), s);
     }
 
-    vec2 rot(vec2 p, float a) {
+    vec2 rotate(vec2 p, float a) {
         float c = cos(a), s = sin(a);
         return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
     }
@@ -158,7 +158,7 @@ export const HELPERS = glsl`
     }
     float arc(vec2 p, float r, float a, float b) {
         float h = abs(b - a) * 0.5;
-        p = rot(p, -(a + b) * 0.5);
+        p = rotate(p, -(a + b) * 0.5);
         float t = clamp(atan(p.y, p.x), -h, h);
         return length(p - r * vec2(cos(t), sin(t)));
     }

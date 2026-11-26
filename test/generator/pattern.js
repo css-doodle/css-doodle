@@ -279,9 +279,9 @@ test('px is one CSS pixel in pos units, read from u_px only when used', () => {
 
 test('deg and turn are angles in radians, as in @scene, unless a variable of the name hides them', () => {
     let messages = [];
-    let s = draw('q: rot(pos, 45deg); fill: q.x, cos(.5turn), 0', extra, m => messages.push(m)).fragment;
+    let s = draw('q: rotate(pos, 45deg); fill: q.x, cos(.5turn), 0', extra, m => messages.push(m)).fragment;
     assert.deepEqual(messages, []);
-    assert.match(s, /rot\(pos, \(45\.0 \* \(PI \/ 180\.0\)\)\)[\s\S]*cos\(\(\.5 \* \(2\.0 \* PI\)\)\)/);
+    assert.match(s, /rotate\(pos, \(45\.0 \* \(PI \/ 180\.0\)\)\)[\s\S]*cos\(\(\.5 \* \(2\.0 \* PI\)\)\)/);
     assert.match(main('deg: 2; fill: deg, 0, 0'), /float (g_\d+) = 2\.0;[\s\S]*vec3\(\1, /);
 });
 
@@ -317,7 +317,7 @@ test('a vec3 expression is a color, a scalar a gray', () => {
 
 test('fill accepts vec2 and bool; other vector types are rejected', () => {
     assert.equal(color('fill: uv'), 'g_color = vec4(uv, 0.0, 1.0);');
-    assert.equal(color('fill: rot(du, dv, 0)'), 'g_color = vec4(rot(vec2(du, dv), 0.0), 0.0, 1.0);');
+    assert.equal(color('fill: rotate(du, dv, 0)'), 'g_color = vec4(rotate(vec2(du, dv), 0.0), 0.0, 1.0);');
     assert.equal(color('fill: x > 1'), 'g_color = vec4(vec3(float((x > 1.0))), 1.0);');
     let messages = [];
     draw('fill: mat2(1)', extra, m => messages.push(m));
@@ -618,7 +618,7 @@ test('escape() and the math/geometry built-ins are available', () => {
     let s = shader('grid:1; fill: escape(0, 0, uv.x, uv.y)');
     for (let sig of [
         'float escape(vec2 z, vec2 c)',
-        'vec2 rot(vec2 p, float a)',
+        'vec2 rotate(vec2 p, float a)',
         'float smin(float a, float b, float k)',
         'float ngon(vec2 p, float n)',
         'float dither(vec2 f)',
@@ -656,10 +656,11 @@ test('a point argument may be one vec2 or two floats', () => {
         'g_color = vec4(vec3(escape(g_1, g_2)), 1.0);');
 });
 
-test('rot() returns the rotated point', () => {
-    assert.equal(color('p: rot(vec2(du, dv), t); fill: p.x + .5'),
+test('rotate() returns the rotated point, and rot() is the same', () => {
+    assert.equal(color('p: rotate(vec2(du, dv), t); fill: p.x + .5'),
         'g_color = vec4(vec3((g_1.x + .5)), 1.0);');
-    assert.equal(color('fill: rot(du, dv, PI).y'), 'g_color = vec4(vec3(rot(vec2(du, dv), PI).y), 1.0);');
+    assert.equal(color('fill: rotate(du, dv, PI).y'), 'g_color = vec4(vec3(rotate(vec2(du, dv), PI).y), 1.0);');
+    assert.equal(color('fill: rot(du, dv, PI).y'), color('fill: rotate(du, dv, PI).y'));
 });
 
 test('ints are highp so bitwise operators survive large grids', () => {
@@ -883,8 +884,8 @@ test('repeat state keeps vector and matrix types', () => {
 });
 
 test('repeat state recognizes float- and vector-returning calls', () => {
-    let s = main('s: fbm(uv); d: length(uv - .5); p: rot(uv, 1); c: hsl(0, 1, 1); repeat(2) { s: s*.5; d: d*2; p: p*2; c: c*.5 }');
-    assert.match(s, /float g_\d+ = fbm\(uv\);\s*float g_\d+ = length\(\(uv - \.5\)\);\s*vec2 g_\d+ = rot\(uv, 1\.0\);\s*vec3 g_\d+ = hsl\(0\.0, 1\.0, 1\.0\);/);
+    let s = main('s: fbm(uv); d: length(uv - .5); p: rotate(uv, 1); c: hsl(0, 1, 1); repeat(2) { s: s*.5; d: d*2; p: p*2; c: c*.5 }');
+    assert.match(s, /float g_\d+ = fbm\(uv\);\s*float g_\d+ = length\(\(uv - \.5\)\);\s*vec2 g_\d+ = rotate\(uv, 1\.0\);\s*vec3 g_\d+ = hsl\(0\.0, 1\.0, 1\.0\);/);
     assert.doesNotMatch(s, /float\(g_\d+\)/);
 });
 
@@ -895,9 +896,9 @@ test('repeat type inference uses the expression result, not any nested construct
 });
 
 test('repeat recognizes scaled vector expressions', () => {
-    let s = main('p: .5*uv; q: 2*rot(uv, 1); r: 3*vec2(1); repeat(1) { p: p + uv; q: q + uv; r: r + uv }');
+    let s = main('p: .5*uv; q: 2*rotate(uv, 1); r: 3*vec2(1); repeat(1) { p: p + uv; q: q + uv; r: r + uv }');
     assert.match(s, /vec2 g_\d+ = \(\.5 \* uv\);/);
-    assert.match(s, /vec2 g_\d+ = \(2\.0 \* rot\(uv, 1\.0\)\);/);
+    assert.match(s, /vec2 g_\d+ = \(2\.0 \* rotate\(uv, 1\.0\)\);/);
     assert.match(s, /vec2 g_\d+ = \(3\.0 \* vec2\(1\.0\)\);/);
 });
 

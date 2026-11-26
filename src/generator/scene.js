@@ -361,12 +361,12 @@ export default function drawScene(code, extra, report = () => {}) {
                     let k = next();
                     r = next();
                     declare(r);
-                    out += glsl`for (int ${k} = 0; ${k} < 16; ${k}++) {\nvec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, float(${k}) * PI / 8.0);` + '\n';
+                    out += glsl`for (int ${k} = 0; ${k} < 16; ${k}++) {\nvec3 ${q} = ${p};\n${q}.xz = rotate(${p}.xz, float(${k}) * PI / 8.0);` + '\n';
                     let c = chain(node, inner, q);
                     out += join(r, c, '0.0') + '}\n';
                     return r;
                 }
-                out += glsl`vec3 ${q} = ${p};\n${q}.xz = rot(${p}.xz, -radians(${a}) * ${p}.y);` + '\n';
+                out += glsl`vec3 ${q} = ${p};\n${q}.xz = rotate(${p}.xz, -radians(${a}) * ${p}.y);` + '\n';
                 moved = b => around(b, [0, 1, 0]);
             } else if (m.name === 'repeat') {
                 let [s = [], n] = itemsOf(m.value).map(g => numbers(g, p));
