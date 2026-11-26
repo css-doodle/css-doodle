@@ -11,3 +11,7 @@ test('shape() returns the polygon of a preset or of commands', () => {
 test('shape() reads each argument as one more command', () => {
     assert.equal(shape('points: 4', 'r: 1'), shape('points: 4; r: 1'));
 });
+
+test('shape() drops // comments, as @shape() does', () => {
+    assert.equal(shape('// a square\npoints: 4; r: 1 // round'), shape('points: 4; r: 1'));
+});

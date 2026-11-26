@@ -25,3 +25,7 @@ test('a count can be picked: the comma stays inside the call, the seed decides',
     assert.deepEqual([...new Set(counts)].sort(), [10, 20]);
     assert.deepEqual(counts, [1, 2, 3, 4].map(seed => svg('circle*@p(10, 20) {}', { seed }).split('<circle').length - 1));
 });
+
+test('a // comment on the last line keeps the picture', () => {
+    assert.equal(svg('circle { r: 5 } // dot'), svg('circle { r: 5 }'));
+});

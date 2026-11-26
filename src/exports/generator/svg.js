@@ -3,7 +3,7 @@ import parseCss from '../../parser/parse-css.js';
 
 export default function svg(rules, options = {}) {
     let result = generateCss(
-        parseCss(`@content: @svg(${rules});`),
+        parseCss(`@content: @svg(${rules}\n);`),
         { x: 1, y: 1, z: 1, count: 1, ratio: 1 },
         options.seed
     );

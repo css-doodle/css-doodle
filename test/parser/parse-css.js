@@ -285,6 +285,10 @@ test('a // comment is dropped from a @shape, @plot, @tile or @svg body', () => {
         assert.deepEqual(rules.map(r => r.property), ['clip-path', 'color'], name);
         assert.equal(rules[0].value[0][0].arguments[0].values[0].value, 'r: .5;');
     }
+    // a // right after : or url( starts a url
+    let rules = parseCss('background: @svg(a { href: //a.b/c } image { href: url(//a.b/c.png) } // note\n); color: red;');
+    assert.deepEqual(rules.map(r => r.property), ['background', 'color']);
+    assert.equal(rules[0].value[0][0].arguments[0].values[0].value, 'a { href: //a.b/c } image { href: url(//a.b/c.png) }');
 });
 
 test('a // line outside those bodies is reported, since it eats the next statement', () => {
