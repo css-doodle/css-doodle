@@ -105,3 +105,12 @@ test('k*n {} is repeat(n as k) {}, but an arm test inside match {}', () => {
     assert.deepEqual(parsePattern('k*1-n {} k*1000-1 {}'), [block('repeat', ['1-n as k']), block('repeat', ['1000-1 as k'])]);
     assert.deepEqual(parsePattern('match { k*2 {} }').at(0).arms, [{ type: 'arm', test: 'k*2', value: [] }]);
 });
+
+test('loop heads side by side nest, the first outermost', () => {
+    let nested = parsePattern('i*2 { j * n { k*5-1 { a: i } } }');
+    assert.deepEqual(parsePattern('i*2 j * n k*5-1 { a: i }'), nested);
+    assert.deepEqual(parsePattern('i*2 foo {}'), [{ type: 'text', value: 'i*2 foo {}' }]);
+    assert.deepEqual(parsePattern('i*2j*3 {}'), [{ type: 'text', value: 'i*2j*3 {}' }]);
+    assert.deepEqual(parsePattern('k*1 - 4 {}'), [{ type: 'text', value: 'k*1 - 4 {}' }]);
+    assert.deepEqual(parsePattern('match { i*2 j*3 {} }').at(0).arms, [{ type: 'arm', test: 'i*2 j*3', value: [] }]);
+});

@@ -8,8 +8,23 @@ function readMatchBlocks(iter, head) {
     }
     let match = readMatch(iter, head, pattern);
     if (match) return [match];
-    let copy = name.trim().match(/^(\w+)\s*\*\s*(\w+(?:-\w+)?)$/);
-    if (copy) return [parseBody(iter, { type: 'block', name: 'repeat', args: [`${copy[2]} as ${copy[1]}`] }, pattern)];
+    let tokens = head.filter(t => !t.isSpace()), loops = [];
+    let spaced = t => head[head.indexOf(t) - 1]?.isSpace();
+    for (let k = 0; k < tokens.length; k += 3) {
+        let [word, star, count, dash, end] = tokens.slice(k, k + 5);
+        if (k && !spaced(word) || !word.isWord() || !star?.isSymbol('*') || !(count?.isNumber() || count?.isWord())) {
+            loops = [];
+            break;
+        }
+        let range = dash?.isSymbol('-') && (end?.isNumber() || end?.isWord()) && !spaced(dash) && !spaced(end);
+        if (range) k += 2;
+        loops.push({ type: 'block', name: 'repeat', args: [`${count.value}${range ? '-' + end.value : ''} as ${word.value}`] });
+    }
+    if (loops.length) {
+        loops.reduce((a, b) => (a.value = [b], b));
+        parseBody(iter, loops.at(-1), pattern);
+        return [loops[0]];
+    }
     let call = callOf(head);
     if (!call) {
         readRaw(iter);
