@@ -310,8 +310,12 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         if (op === '**') {
             const arg = isVector(res) ? res : 'float';
             const l = gen(n.left, arg);
-            const k = n.right.type === 'Lit' ? Number(n.right.val) : 0;
-            return cast(Number.isInteger(k) && k > 1 && k < 5 && l.length * k < 200 ? `(${Array(k).fill(l).join(' * ')})` : `pow(${n.left.type === 'Lit' && n.left.val[0] !== '-' ? l : `max(${l}, 0.0)`}, ${gen(n.right, arg)})`, res, exp);
+            const k = n.right.type === 'Lit' ? Number(n.right.val) : NaN;
+            const whole = Number.isInteger(k);
+            const signed = n.left.type !== 'Lit' || n.left.val[0] === '-';
+            const power = `pow(${!signed ? l : whole ? `abs(${l})` : `max(${l}, 0.0)`}, ${gen(n.right, arg)})`;
+            return cast(whole && k > 1 && k < 5 && l.length * k < 200 ? `(${Array(k).fill(l).join(' * ')})`
+                : signed && whole && k % 2 ? `(sign(${l}) * ${power})` : power, res, exp);
         }
         const lt = infer(n.left), rt = infer(n.right);
         const vec = VEC_COMPARE[op] && (/^vec/.test(lt) ? lt : /^vec/.test(rt) ? rt : '');

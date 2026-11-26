@@ -63,8 +63,14 @@ test('only a number or π touching a value starts a product; other values side b
 test('** is power, right-associative, on floats and vectors', () => {
     // pow() is undefined below 0, where a base a hair under it lands, as 1 - y / Y can on the GPU
     assert.equal(transform('x ** y'), 'pow(max(x, 0.0), y)');
-    assert.equal(transform('x ** 5'), 'pow(max(x, 0.0), 5.0)');
     assert.equal(transform('1 + x ** .5'), '(1.0 + pow(max(x, 0.0), .5))');
+    // a whole exponent keeps the sign, as in $()
+    assert.equal(transform('x ** 6'), 'pow(abs(x), 6.0)');
+    assert.equal(transform('1 / sin(a) ** 7'), '(1.0 / (sign(sin(a)) * pow(abs(sin(a)), 7.0)))');
+    assert.equal(transform('x ** -2'), 'pow(abs(x), -2.0)');
+    assert.equal(transform('uv ** 5'), '(sign(uv) * pow(abs(uv), vec2(5.0)))');
+    assert.equal(transform('2 ** 5'), 'pow(2.0, 5.0)');
+    assert.match(transform(`(${'sin(x) + '.repeat(12)}x) ** 2`), /^pow\(abs\(/);
     assert.equal(transform('2 ** 3 ** 2'), 'pow(2.0, (3.0 * 3.0))');
     assert.equal(transform('uv ** y'), 'pow(max(uv, 0.0), vec2(y))');
     // so is pow(), the same power
