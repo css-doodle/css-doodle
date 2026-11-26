@@ -553,6 +553,18 @@ describe('component', { concurrency: 4 }, () => {
         assertColor(image, 90, 30, '#000');
     }));
 
+    test('a pointer move just before an update does not bring the old pattern back', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 1 / 60px; background: @pattern(fill: step(.5, mouse.x), 0, 0);');
+        await shot(page, el);
+        let left = await el.evaluate(el => new Promise(resolve => {
+            let box = el.getBoundingClientRect();
+            el.frame.dispatchEvent(new PointerEvent('pointermove', { clientX: box.x + 50, clientY: box.y + 10 }));
+            el.update('@grid: 1 / 60px; background: #00f;');
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve([...el.vars].filter(name => name.startsWith('--pattern')))));
+        }));
+        assert.deepEqual(left, []);
+    }));
+
     test('a pattern that sets place draws cells as marks, painted in the order of i, size across, and to makes one a stroke', () => chrome.withPage(async page => {
         // four 36px dots pulled halfway to the center: the last, blue, covers its red neighbor
         let el = await mount(page, '@grid: 1 / 120px; background: #000; @content: @pattern(grid: 2; place: pos * .5; size: 36px; fill: #f00; match(i == I) { fill: #00f; });');

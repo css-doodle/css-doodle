@@ -211,7 +211,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
         if (!renders.get(id).animated || host.hasAttribute('cssd-paused')) {
             queued ||= requestAnimationFrame(() => {
                 queued = 0;
-                redraw();
+                if (host._generation === generation) redraw();
             });
         }
     }
