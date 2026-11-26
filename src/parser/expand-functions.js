@@ -69,7 +69,23 @@ function callAt(tokens, i, defs) {
     return defs[name] ? { name, n, rest, end } : null;
 }
 
+function dollarDot(source) {
+    let tokens = tokensOf(source);
+    for (let i = 1, end, close; i < tokens.length - 1; i++) {
+        let t = tokens[i];
+        if (tokens[i - 1].isSymbol('$') && /^\.[a-z_]/i.test(t.value) && adjacent(tokens[i - 1], t)
+                && (end = callEnd(tokens, i)) >= 0 && !/[@$]/.test(textOf(tokens.slice(i, end + 1)))
+                && (close = closing(tokens, end + 1)) > 0) {
+            let stop = tokenEnd(tokens[close]);
+            source = source.slice(0, t.index) + '(' + source.slice(t.index + 1, stop) + ')' + source.slice(stop);
+            tokens = tokensOf(source);
+        }
+    }
+    return source;
+}
+
 export default function expandFunctions(source, ctx, svg, chain = []) {
+    if (source.includes('$.')) source = dollarDot(source);
     let defs = ctx.defs = Object.create(ctx.defs ?? null);
     let tokens = /\)\s*:/.test(source) ? tokensOf(source) : [];
     let rest = '', from = 0;
@@ -218,7 +234,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         let name = textOf(tokens.slice(at, end + 1));
         if (bare && !defs[name]) name = textOf(tokens.slice(at, (end = nameEnd(tokens, at)) + 1));
         let builtin = t.isSymbol('@') || bare && isBuiltin(name);
-        let short = t.isSymbol('$') && callAt(tokens, at, defs), n, rest;
+        let short = !t.isSymbol('@') && callAt(tokens, at, defs), n, rest;
         if (short) ({ name, n, rest, end } = short);
         let def = !builtin && defs[name];
         let paren = tokens[end + 1];
@@ -247,6 +263,7 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
         let lead = paint ? text.slice(head, t.index).trim() : '';
         let hoists = pending && !(blocks.at(-1) && !depth) && !RE_REPEAT_HEAD.test(lead);
         let next = solidAt(tokens, end + 1);
+        let link = !paint && from < t.index && t.isSymbol('$') && linkAt(tokens, i);
         if (chain.includes(name)) {
             warn(ctx, `recursive $${name}()`);
         } else if (ctx.expanded > MAX_EXPANSION) {
@@ -293,11 +310,11 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
             }
             let whole = (!lead || /[:(,]$/.test(lead)) && (!next || next.isSymbol(';', '{', '}') || next.isSymbol(')', ','));
             let glued = /[\d.]/.test(from < t.index ? text[t.index - 1] : out.at(-1)) && /^[\d.]/.test(body.trim());
-            if ((inMath || kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1))) && (glued || !RE_SIMPLE_ARG.test(body.trim()))) {
+            if (link || (inMath || kind === EXPRESSION && !whole && (mode === EXPR || lead || blocks.at(-1))) && (glued || !RE_SIMPLE_ARG.test(body.trim()))) {
                 body = `(${body.trim()})`;
             }
         }
-        flush(t.index);
+        flush(t.index - link);
         if (mode === BODY && pending.length) {
             let before = pending.join('');
             out = out.slice(0, start) + before + out.slice(start);
@@ -491,6 +508,13 @@ function inWord(tokens, i, end) {
     return !!(b?.isNumber() && adjacent(b, tokens[i])
         || b?.isSymbol('-') && a && adjacent(a, b) && adjacent(b, tokens[i]) && (a.isWord() || a.isSymbol('-'))
         || c?.isSymbol('-') && d?.isWord() && adjacent(tokens[end], c) && adjacent(c, d));
+}
+
+function linkAt(tokens, i) {
+    let j = i - 1;
+    if (!tokens[j]?.value.endsWith('.')) return false;
+    while (j >= 0 && RE_NAME_TOKEN.test(tokens[j].value) && adjacent(tokens[j], tokens[j + 1])) j--;
+    return !!tokens[j]?.isSymbol('@') && adjacent(tokens[j], tokens[j + 1]);
 }
 
 function mathOpen(tokens, i, defs) {

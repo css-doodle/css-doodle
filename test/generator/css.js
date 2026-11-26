@@ -1761,6 +1761,15 @@ test('$() reads the cell variables under the custom properties', () => {
     assert.ok(labels.includes('--a:y;\n--b:y;') && labels.includes('--a:x + 1;\n--b:x + 1;'), labels);
 });
 
+test('$.f(…) works out as $(f(…)), with the cell variables, and @f.$g() as @f($g())', () => {
+    let same = (short, long) => assert.equal(cells(short, '5x3'), cells(long, '5x3'));
+    same('--a: $.hypot(dx, dy);', '--a: $(hypot(dx, dy));');
+    assert.ok(cells('--a: $.hypot(dx, dy);', '5x3').includes('--a:2.2360679775;'));
+    // a name holding @ composes as before
+    same('--a: $.sin.@r(5);', '--a: $(@sin(@r(5)));');
+    same('--list(): 1, 2, 3; --a: @p.$list();', '--a: @p(1, 2, 3);');
+});
+
 test('@svg-polygon inside @m reads the sequence @n', () => {
     let all = decodeURIComponent(css('background: @m(2, @svg-polygon(split: @n(+2)))'));
     assert.ok(all.includes('points="1 0,-0.5 -0.866025403784,-0.5 0.866025403784"'));

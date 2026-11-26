@@ -817,6 +817,26 @@ test('a number after a user function name is its first argument, and a . compose
         ast(`a: $leaf2 $x.g(1) $m-1(2) $m3.(1); b: @pattern(o: $v.length(););`));
 });
 
+test('a user function called after @f. fills the parentheses of @f, a list as several arguments', () => {
+    let defs = `--list(): red, blue; --ext(): png;`;
+    let same = (short, long) => assert.deepEqual(ast(`${defs} ${short}`), ast(long));
+    same(`a: @p.$list() @pn.$list() @m2.$list() @p.cycle.$list() @svg-filter.$ext();`,
+        `a: @p(red, blue) @pn(red, blue) @m2(red, blue) @p.cycle(red, blue) @svg-filter(png);`);
+    // a dot after anything else stays
+    same(`a: url(a.$ext()) b.$ext();`, `a: url(a.png) b.png;`);
+});
+
+test('$.f(…) is $(f(…)), the call read as it would be inside $()', () => {
+    let defs = `--inc(n): n + 1; --abc(n, k = 1): $(n * 10 + k);`;
+    let same = (short, long) => assert.deepEqual(ast(`${defs} ${short}`), ast(`${defs} ${long}`));
+    same(`a: $.hypot(dx, dy) $.atan2(dy, dx)deg $.abs.sin(x);`, `a: $(hypot(dx, dy)) $(atan2(dy, dx))deg $(abs.sin(x));`);
+    // user functions, a number after the name, and calls inside
+    same(`a: $.inc(x) $.inc.abs(x - 3) $.abc3(2) $.max($.abs(dx), 1);`,
+        `a: $(inc(x)) $(inc.abs(x - 3)) $(abc3(2)) $(max($(abs(dx)), 1));`);
+    // a name holding @ composes as any other call
+    same(`a: $.@r(5);`, `a: $(@r(5));`);
+});
+
 test('a user function parameter name is read whole', () => {
     // $x1 is not $x followed by 1
     assert.deepEqual(ast(`--f(x): [$x1|$x]; width: $f(5);`), ast(`width: [$x1|5];`));
@@ -897,13 +917,17 @@ test('a bare name( calls the user function where a bare parameter binds, unless 
         ast(`a: $(b-([(1)]) + (<(2)>) + @h(3) + $h + x2h(4) + 2([(5)]));`));
 });
 
-test('in math a bare user function chains as a built-in does, rightmost first', () => {
+test('in math a bare user function chains as a built-in does, rightmost first, and takes a number as $name() does', () => {
     let defs = `--h(x): x + 1; --sin(x): 0; --five(x): 5;`;
     assert.deepEqual(
         ast(`${defs} a: $(h.h(3) + abs.h(x) + h.abs(x) + k-h.sin(1) + 2h.h(1) + 2five.h(1)); @match(h.h(i) > 2) { color: red }`),
         ast(`${defs} a: $(h(h(3)) + abs(h(x)) + h(abs(x)) + k-h(sin(1)) + 2h(h(1)) + 2five(h(1))); @match(h(h(i)) > 2) { color: red }`));
-    // without one, or before a number, it stays
-    assert.deepEqual(ast(`${defs} a: $(cos.sin(1) + h.5(2) + h.h);`), ast(`a: $(cos.sin(1) + h.5(2) + h.h);`));
+    // without one it stays
+    assert.deepEqual(ast(`${defs} a: $(cos.sin(1) + h.h);`), ast(`a: $(cos.sin(1) + h.h);`));
+    // a number after the name is its first argument, as after $h, unless a built-in has the whole name
+    let logs = `${defs} --log(n): n;`;
+    assert.deepEqual(ast(`${logs} a: $(h3() + h.5() + log2(8)); @match(h3() > 2) { color: red }`),
+        ast(`${logs} a: $($h3() + $h.5() + log2(8)); @match($h3() > 2) { color: red }`));
 });
 
 test('the test of a @match(test) { } block reads as math, the @match() value function\'s does not', () => {

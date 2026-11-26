@@ -138,10 +138,12 @@ written, except:
 
 As with built-ins (§6), a number right after the name is the first
 argument, unless the whole name is a function: `$m10(x)` is
-`$m(10, x)`, `$m.5()` is `$m(.5)`. A `.` before a letter composes
-calls, rightmost first: `$a.b3(x)` is `$a($b(3, x))`, `$a.@r(5)` is
-`$a(@r(5))`. Either way the parentheses are needed and `--m()` or
-`--a()` must be defined: `$m10` alone reads a variable.
+`$m(10, x)`, `$m.5()` is `$m(.5)`, and inside `$()` a bare `m10(x)` is
+`m(10, x)`. A `.` before a letter composes calls, rightmost first:
+`$a.b3(x)` is `$a($b(3, x))`, `$a.@r(5)` is `$a(@r(5))`. After a
+built-in, `.$` calls one of yours: with `--list(): red, blue`,
+`@p.$list()` is `@p(red, blue)`. Either way the parentheses are needed
+and `--m()` or `--a()` must be defined: `$m10` alone reads a variable.
 
 A body of `result` declarations alone gives the last one's value, as a
 CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
@@ -272,6 +274,8 @@ and is text otherwise; the name and its `(` must be adjacent too.
   the variant instead (`@plot.scatter(star)`).
 - **`$` is the calc function.** `$(expr)` evaluates an expression
   (§8), and a unit right after it is appended: `$(1+1)px` is `2px`.
+  It composes as any call, the name after the dot read as `$()` reads
+  it: `$.hypot(dx, dy)` is `$(hypot(dx, dy))`, `$.@r(5)` is `$(@r(5))`.
   `$name()` calls the function `--name()` (§2). `$name` without
   parentheses reads the variable `name` (§8); the name ends where a CSS
   name does, so with `--s: 50`, `$s%` is `50%`.
