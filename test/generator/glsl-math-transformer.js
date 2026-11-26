@@ -358,6 +358,12 @@ test('pick(k: …) takes item k from 1, wrapping, in the widest type of the item
     assert.equal(transform('pick(k:)', { expect: 'float' }), '0.0');
 });
 
+test('a pick(k: …) item of values side by side is a vector', () => {
+    assert.equal(transform('pick(k: 1 2 3, 4 5 6)'),
+        '(g_pick(k, 2) == 0 ? vec3(1.0, 2.0, 3.0) : vec3(4.0, 5.0, 6.0))');
+    assert.equal(transform('pick(k: 1 2, c)', { types: { c: 'vec2' }, type: true }), 'vec2');
+});
+
 test('match() is a ternary chain: first test that holds, trailing default, else 0', () => {
     assert.equal(transform('match(dr < 2, 1, 0)', { expect: 'float' }), '((dr < 2.0) ? 1.0 : 0.0)');
     assert.equal(transform('match(x > 4, .8, dr < 3, .5, .3)', { expect: 'float' }),
