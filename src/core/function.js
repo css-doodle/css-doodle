@@ -458,7 +458,7 @@ function createNoise(outline) {
     return ({ x, y, grid }, { context, extra, random }, position) => {
         let counter = (outline ? 'noise-t' : 'noise-2d') + position;
         let e = extra.at(-1) || [];
-        let [cx, cy, X, Y] = (e[SEQ.index] && e[SEQ.n]) ? [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]] : e.shared ? [1, 1, 1, 1] : [x, y, grid.x, grid.y];
+        let [cx, cy, X, Y] = e.shared ? [1, 1, 1, 1] : (e[SEQ.index] && e[SEQ.n]) ? [e[SEQ.x], e[SEQ.y], e[SEQ.X], e[SEQ.Y]] : [x, y, grid.x, grid.y];
         let u = X <= 1 ? .5 : (cx - 1) / X;
         let v = Y <= 1 ? .5 : (cy - 1) / Y;
         return (...args) => {

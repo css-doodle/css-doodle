@@ -140,6 +140,8 @@ test('@shape and @tile in @svg give plain numbers where the box is 2 across, y d
     assert.match(svgImage('background: @svg(viewBox: 0 0 10 10; circle { cx, cy: @plot(r: .5) })'), /cx="75%" cy="50%"/);
     assert.match(svgImage('background: @svg(circle*4 { transform: translate(@Plot(r: .8)) })'),
         /translate\(0\.8 0\)"\/><circle transform="translate\(0 -0\.8\)"\/><circle transform="translate\(-0\.8 0\)"\/><circle transform="translate\(0 0\.8\)"/);
+    // its arguments read the copy's @N
+    assert.match(svgImage('background: @svg(circle*4 { cx, cy: @Plot(r: $(2 * @N); rotate: -@N(180/)) })'), /^<svg><circle cx="5\.65685424949" cy="5\.65685424949"\/>/);
     // @tile: one piece per copy as path data, the gap still in percent of the box
     // (45% and 4.795% in CSS), and @tile.xy its center
     let tiles = svgImage('background: @svg(path*4 { d: @tile.grid(points: 4; gap: 10); data-c: @tile.xy })');
@@ -340,6 +342,11 @@ test('@R.t in @plot reads no cell, so every cell takes its point from one closed
     let median = steps.toSorted((a, b) => a - b)[60];
     // each cell used to read its own loop, so the last point jumped 10 steps back to the first
     assert.ok(Math.max(...steps) < 3 * median, `${Math.max(...steps)} against ${median}`);
+    // and each @svg copy
+    let copies = [...svgImage('background: @svg(circle*120 { cx, cy: @Plot(r: @R.t(.3, 1)) })').matchAll(/cx="([^"]+)" cy="([^"]+)"/g)]
+        .map(m => [+m[1], +m[2]]);
+    let hops = copies.map(([x, y], i) => Math.hypot(x - copies.at(i - 1)[0], y - copies.at(i - 1)[1]));
+    assert.ok(Math.max(...hops) < 3 * hops.toSorted((a, b) => a - b)[60]);
 });
 
 test('grid line names keep the spaces around them', () => {

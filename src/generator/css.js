@@ -61,7 +61,6 @@ function familiesOf(text) {
 
 const EMPTY_EXTRA = [];
 const ARGUMENTS = Symbol();
-const SHARED_EXTRA = Object.assign([], { shared: true });
 const SCENE_EXTRA = [1, 1, 1, 1, 1, 1];
 
 function pushInput(input, value, whole) {
@@ -214,7 +213,8 @@ function compileFunc(node) {
                 let composed = rules.composeComposable(fname + variant, node, cell, env, frame.selector, frame.property);
                 return { value: composed ?? '' };
             }
-            let e = shared ? SHARED_EXTRA : inArgument ? extra : EMPTY_EXTRA;
+            let e = inArgument ? extra : EMPTY_EXTRA;
+            if (shared) e = Object.assign([...e], { shared: true });
             let output;
             if (calcTemplate) {
                 let { context, values } = evalTemplateHoles(calcTemplate, frame, e, rules.frameContext(frame));
