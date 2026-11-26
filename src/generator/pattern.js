@@ -404,8 +404,8 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     for (let t of tokens) {
         if (t.type === 'statement') {
             let output = OUTPUT_GENERATORS[t.name];
-            if (t.name === 'grid') {
-                if (!top) ctx.warn('grid goes top-level');
+            if (t.name === 'grid' || t.name === 'marks') {
+                if (!top) ctx.warn(`${t.name} goes top-level`);
             } else if (!output) {
                 out += generateStatement(t.name, t.value, scope, ctx);
             } else if (loop && t.name !== 'fill') {
@@ -569,11 +569,13 @@ export default function drawPattern(code, extra, warn = () => {}) {
         extra, warn, id: 0, sites: 0, types: { __proto__: null, uv: 'vec2', pos: 'vec2', mouse: 'vec2' }, counts: new Map(), readonly: new Set(), declared: new Set(),
         unknown: colorReader(extra, name => warn(name == 'grid' ? 'grid: use X,Y' : /^(fill|shape)$/.test(name) ? `invalid value ${name}` : `unknown ${name}`), BUILTINS),
     };
-    let grid = tokens.findLast(t => t.type === 'statement' && t.name === 'grid')?.value || '';
-    let parts = grid.split(/\s+/);
+    let find = name => tokens.findLast(t => t.type === 'statement' && t.name === name);
+    let grid = find('grid'), marks = find('marks');
+    if (grid && marks) warn('grid or marks');
+    let parts = ((marks || grid)?.value || '').split(/\s+/);
     let words = parts.filter(w => /^(?!x$)[a-z]+$/i.test(w));
     words.forEach(w => warn(`unknown ${w}`));
-    ctx.marks = drawsMarks(tokens);
+    ctx.marks = !!marks || drawsMarks(tokens);
     let textures = new Map(tokens.filter(t => t.type === 'texture').map(t => [t.name, t.value]));
     for (let name of textures.keys()) ctx.types[name] = 'sampler2D';
     let body = '', root = newScope();
@@ -587,6 +589,7 @@ export default function drawPattern(code, extra, warn = () => {}) {
         if (!used(code, name)) warn(`unused ${name}`);
     }
     let list = [...textures].map(([name, value]) => ({ name, value }));
-    let dims = parseGrid(parts.filter(w => !words.includes(w)).join('x'), Infinity);
+    let size = parts.filter(w => !words.includes(w)).join('x');
+    let dims = parseGrid(marks && /^\d+$/.test(size) ? size + 'x1' : size, Infinity);
     return { ...generateShader({ grid: dims, body, marks: ctx.marks, textures: list }), textures: list };
 }

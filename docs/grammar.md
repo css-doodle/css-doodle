@@ -567,9 +567,9 @@ value         = css-color | expression { ',' expression }
 ```
 
 **Names.** `grid`, `shape`, `size` and `fill` are built in, and so are
-`place` and `to`, which draw each cell as a mark; only `size` and
-`place` are also values; `to: next` joins the mark to the next cell's
-in the row. Any other
+`marks`, `place` and `to`, which draw each cell as a mark; only `size`
+and `place` are also values; `to: next` joins the mark to the next
+cell's in the row. Any other
 name is a variable, declared and typed by its first assignment:
 numbers become floats, and a color is a `vec3`, or a `vec4` with
 alpha. Undeclared, invalid and `g_…` names are reported (§11).
@@ -625,8 +625,9 @@ modifier   = '/' size [ '/' fill ]                  @size, then a fill
            | 'ß' value                              border
 ```
 
-The element's `grid` attribute reads the dimensions alone, and so does
-the `grid:` of a `@pattern`, where a space also separates them. A modifier's value runs to the next modifier symbol,
+The element's `grid` attribute reads the dimensions alone, and so do
+the `grid:` and `marks:` of a `@pattern`, where a space also separates
+them and `marks: n` is one row. A modifier's value runs to the next modifier symbol,
 spaces included. Flags are whole words, case-insensitive, allowed
 anywhere; `border` is shorthand for `ß 1px solid`, and `border:red`
 sets the color. The dimensions are the first item that is not a flag,

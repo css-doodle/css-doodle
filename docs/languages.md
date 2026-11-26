@@ -382,9 +382,9 @@ counting from zero, unlike `i` and `n` elsewhere. `n` is a whole
 number, or a name declared as one and never changed:
 `n: 72; repeat(n as k) { y: k / n; }`. The loop ends early once every
 stop expression holds. Counts over 1024, nested products over 65536
-and invalid counts skip the block. `shape`, `size` and `grid` are not
-allowed inside it, and a `fill` inside it paints over the one from the
-step before.
+and invalid counts skip the block. `shape`, `size`, `grid` and
+`marks` are not allowed inside it, and a `fill` inside it paints over
+the one from the step before.
 
 **Output.** `fill` is a CSS color, an expression, or a list whose
 channels add up to three or four (`x / X, y / Y, .5`, `red, .5`). A
@@ -394,19 +394,21 @@ center antialiased at half of `size`: `circle`, `square`, `diamond`,
 `none`, or an expression in `du` and `dv`. Setting only `size` masks
 with a square.
 
-**Marks.** A body that sets `place` or `to` draws each cell as a mark
-instead of in its square: the body runs once per cell, at its center
-(`du` and `dv` are 0), rather than once per pixel, so a loop that
-finds a point stays cheap. `place` puts the mark at a point in `pos`
-units and reads as one, the cell's center until set: `place: pos`
-leaves it there. `size` is the mark's width in `pos` units, the cell's
-shorter side until set, so `2px` is two pixels. Each mark has one color
-and `shape` is `circle`, `square` or `diamond`. Later cells paint over
-earlier ones, in the order of `i`.
+**Marks.** `marks` in place of `grid` draws each cell as a mark
+instead of in its square: `marks: 1000` is one row of a thousand, and
+`marks: 320x320` is 320 rows of 320. A body that sets `place` or `to`
+draws its `grid` as marks too. The body runs once per cell, at its
+center (`du` and `dv` are 0), rather than once per pixel, so a loop
+that finds a point stays cheap. `place` puts the mark at a point
+in `pos` units and reads as one, the cell's center until set:
+`place: pos` leaves it there. `size` is the mark's width in `pos`
+units, the cell's shorter side until set, so `2px` is two pixels. Each
+mark has one color and `shape` is `circle`, `square` or `diamond`.
+Later cells paint over earlier ones, in the order of `i`.
 
 ```css
 @pattern(
-  grid: 320;
+  marks: 320x320;
   c: y - 1;
   u, v, w: 0, 0, 0;
   repeat(320 as k, k >= x - 1) {
@@ -426,7 +428,7 @@ wide, with `shape` for its ends: `to: place + .02vec2(cos(a), sin(a))`.
 row is one line through its cells: the joints are mitred, nothing
 overlaps, and the width and color run from each cell's `size` and
 `fill` to the next one's. The row's last cell ends the line and draws
-nothing itself. In `grid: 7x900` a row is a blade of grass, its seven
+nothing itself. In `marks: 7x900` a row is a blade of grass, its seven
 cells points along it at `(x - 1) / (X - 1)`.
 
 **Variables** are the cell variables of `@match` except `z` and `Z`,

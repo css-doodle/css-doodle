@@ -26,7 +26,7 @@ const warnings = code => {
 };
 
 // the quads every pattern that draws marks hands over with its cell pass
-const MARKS = draw('grid: 1; place: pos;', extra).marks;
+const MARKS = draw('marks: 1;', extra).marks;
 const lines = code => shader(code).split('\n').map(l => l.trim());
 
 // the `g_color = ...;` assignment inside main
@@ -1027,8 +1027,8 @@ test('arc() takes a point as a vec2 or two floats', () => {
 
 // --- marks: cells drawn once each, anywhere ---
 
-test('a body that sets place draws each cell as a mark: the body runs once per cell, then one quad per cell', () => {
-    let marks = draw('grid: 20x10; match(x > 10) { place: pos * .5; } fill: red;', extra);
+test('marks: in place of grid: draws each cell as a mark: the body runs once per cell, then one quad per cell', () => {
+    let marks = draw('marks: 20x10; match(x > 10) { place: pos * .5; } fill: red;', extra);
     assert.equal(marks.points, 200);
     let cells = marks.vertex.split('\n').map(l => l.trim());
     assert.ok(cells.includes('float g_k = float(gl_VertexID);'));
@@ -1037,12 +1037,14 @@ test('a body that sets place draws each cell as a mark: the body runs once per c
     assert.ok(cells.includes('g_ends = vec4(g_place, g_to);'));
     // the cells only write their records; the quads drawn from them are the same for every pattern
     assert.equal(marks.fragment, 'void main() { FragColor = vec4(0.0); }');
-    assert.equal(draw('grid: 4; to: pos;', extra).marks, marks.marks);
+    assert.equal(draw('marks: 4; to: pos;', extra).marks, marks.marks);
     assert.ok(cells.includes(`out vec4 ${MARKS.record[0]};`));
     assert.match(MARKS.vertex, /in vec4 ends;/);
-    // to does too, and so does either in a match arm or after a block
-    assert.equal(draw('grid: 4; to: pos + .1;', extra).points, 16);
-    assert.equal(draw('grid: 4; match { x > 1 { a: 1; } else { to: pos; } }', extra).points, 16);
+    // one number is one row of that many, each at its cell's center until placed
+    let row = draw('marks: 1000; fill: red;', extra);
+    assert.equal(row.points, 1000);
+    assert.match(row.vertex, /float X = 1000\.0, Y = 1\.0/);
+    assert.equal(draw('marks: 12 9;', extra).points, 108);
 
     let plain = draw('grid: 20x10; fill: red;', extra);
     assert.equal(plain.marks, undefined);
@@ -1051,29 +1053,29 @@ test('a body that sets place draws each cell as a mark: the body runs once per c
 });
 
 test('a mark is size across in pos units, the cell side until set, with a named shape', () => {
-    let { vertex } = draw('grid: 8; place: pos; shape: diamond; fill: red;', extra);
+    let { vertex } = draw('marks: 8x8; shape: diamond; fill: red;', extra);
     assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ g_res;/);
     assert.match(vertex, /g_dist = 3\.0;/);
     assert.match(vertex, /g_mark = vec4\(size, g_masked \? g_dist : 0\.0, /);
     // a quad, not a point, so no GPU caps the size; one pixel at least, as a point is
     assert.match(MARKS.vertex, /float side = max\(mark\.x \* res, 1\.0\);/);
     assert.doesNotMatch(MARKS.vertex, /gl_PointSize/);
-    assert.doesNotMatch(draw('grid: 8; place: pos; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
+    assert.doesNotMatch(draw('marks: 8x8; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
 });
 
 test('to: draws the mark as a stroke from place, its shape the ends', () => {
-    let { vertex } = draw('grid: 8; to: place + vec2(.1, 0); size: 2px; shape: circle; fill: red;', extra);
+    let { vertex } = draw('marks: 8x8; to: place + vec2(.1, 0); size: 2px; shape: circle; fill: red;', extra);
     assert.match(vertex, /g_to = \(g_place \+ vec2\(\.1, 0\.0\)\);\s*g_line = 1\.0;/);
     assert.match(vertex, /if \(g_line < 1\.0\) g_to = g_place;/);
     // without to the stroke has no length: a dot
-    let dot = draw('grid: 8; place: pos; fill: red;', extra).vertex;
+    let dot = draw('marks: 8x8; place: pos; fill: red;', extra).vertex;
     assert.match(dot, /vec2 g_to = g_place;/);
     assert.doesNotMatch(dot, /g_line/);
-    assert.deepEqual(warnings('grid: 4; to: 1;'), ['to needs vec2']);
+    assert.deepEqual(warnings('marks: 4; to: 1;'), ['to needs vec2']);
 });
 
 test('to: next joins a mark to the next cell of its row, which the quads read from its record', () => {
-    let code = 'grid: 9x2; place: vec2(x / X, y / Y); to: next; size: 2px;';
+    let code = 'marks: 9x2; place: vec2(x / X, y / Y); to: next; size: 2px;';
     assert.deepEqual(warnings(code), []);
     let { vertex } = draw(code, extra);
     assert.match(vertex, /g_line = 2\.0;/);
@@ -1081,16 +1083,26 @@ test('to: next joins a mark to the next cell of its row, which the quads read fr
     assert.match(vertex, /g_mark = vec4\(size, 0\.0, g_line > 1\.0 \? \(x < X \? 1\.0 : -1\.0\) : 0\.0, 0\.0\);/);
     assert.match(MARKS.vertex, /in vec4 next;/);
     // only the plain word, and only when no variable takes the name; a later to wins
-    assert.match(draw('grid: 4; next: vec2(.1); to: next;', extra).vertex, /g_to = g_\d+;\s*g_line = 1\.0;/);
-    assert.match(draw('grid: 4; to: next; to: pos;', extra).vertex, /g_line = 2\.0;[\s\S]*g_line = 1\.0;/);
+    assert.match(draw('marks: 4; next: vec2(.1); to: next;', extra).vertex, /g_to = g_\d+;\s*g_line = 1\.0;/);
+    assert.match(draw('marks: 4; to: next; to: pos;', extra).vertex, /g_line = 2\.0;[\s\S]*g_line = 1\.0;/);
 });
 
 test('the grid of a pattern takes a space as a separator and no words', () => {
     assert.match(shader('grid: 12 9; fill: red;'), /float X = 12\.0, Y = 9\.0/);
-    assert.equal(draw('grid: 100x100; place: pos; fill: red;', extra).points, 10000);
+    assert.equal(draw('marks: 100x100; place: pos; fill: red;', extra).points, 10000);
     assert.deepEqual(warnings('grid: dots 10; fill: red;'), ['unknown dots']);
-    assert.deepEqual(warnings('grid: 4; place: 1;'), ['place needs vec2']);
-    assert.deepEqual(warnings('grid: 4; place: pos; shape: abs(du) - .3;'), ['named shapes only']);
-    assert.deepEqual(warnings('grid: 4; repeat(3) { place: pos; }'), ['place in repeat()']);
-    assert.deepEqual(warnings('grid: 4; place: pos; shape: circle; size: 2px;'), []);
+    assert.deepEqual(warnings('marks: 4; place: 1;'), ['place needs vec2']);
+    assert.deepEqual(warnings('marks: 4; shape: abs(du) - .3;'), ['named shapes only']);
+    assert.deepEqual(warnings('marks: 4; repeat(3) { place: pos; }'), ['place in repeat()']);
+    assert.deepEqual(warnings('marks: 4; place: pos; shape: circle; size: 2px;'), []);
+});
+
+test('a body that sets place or to draws marks too, as many as its grid', () => {
+    assert.equal(draw('grid: 4; to: pos + .1;', extra).points, 16);
+    assert.equal(draw('grid: 4; match { x > 1 { a: 1; } else { to: pos; } }', extra).points, 16);
+    assert.equal(draw('place: pos;', extra).points, 1);
+    assert.equal(draw('grid: 4; place: pos;', extra).vertex, draw('marks: 4x4; place: pos;', extra).vertex);
+    assert.deepEqual(warnings('grid: 4; marks: 8;'), ['grid or marks']);
+    assert.equal(draw('grid: 4; marks: 8;', extra).points, 8);
+    assert.deepEqual(warnings('match(x > 1) { marks: 8; }'), ['marks goes top-level']);
 });
