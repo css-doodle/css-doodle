@@ -568,6 +568,12 @@ test('round: curves leave the outline along it, also between curved sides', () =
     assert.ok(Math.min(...ys('heart; round: 2')) >= Math.min(...heart) && Math.max(...ys('heart; round: 2')) <= Math.max(...heart));
 });
 
+test('a pick without k: is reported', () => {
+    assert.deepEqual(shapeWarnings('circle*2 { r: pick(n, .2, .3) }'), ['pick needs k:']);
+    assert.deepEqual(shapeWarnings('r: max(pick(n: .2, .3), pick(.2, .3))'), ['pick needs k:']);
+    assert.deepEqual(shapeWarnings('circle*2 { r: pick(n: .2, .3); move: pick(n: .5, -.5) (atan(1, 2)) }'), []);
+});
+
 test('unknown shapes are reported', () => {
     assert.deepEqual(shapeWarnings('cirle'), ['unknown shape cirle']);
     assert.deepEqual(shapeWarnings('subtract { circle; cirle { scale: .5 } }'), ['unknown shape cirle']);

@@ -523,6 +523,7 @@ test('a lathe turns an outline around y', () => {
     assert.match(scene('lathe { points: 0 -1, .5 -1, .3 0, .6 1, 0 1 }').dist, /length\(p\.xz\)/);
     assert.deepEqual(scene('lathe { cirle }').warnings, ['unknown shape cirle']);
     assert.deepEqual(scene('lathe { }').warnings, ['lathe needs points']);
+    assert.deepEqual(scene('lathe*2 { shape { points: 9; x: .2 * pick(n, 1, 2); y: t } }').warnings, ['pick needs k:']);
     let xs = code => {
         let x = [...scene(code).fragment.match(/g_c0\[\] = (.*)/)[1].matchAll(/vec2\((-?[\d.]+),/g)].map(m => +m[1]);
         return [Math.min(...x), Math.max(...x)];

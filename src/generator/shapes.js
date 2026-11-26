@@ -3,7 +3,7 @@ import parseDirection from '../parser/parse-direction.js';
 import parseCompoundValue from '../parser/parse-compound-value.js';
 import parseShapeCommands, { readShapes, commandsOf, spaced, partsOf, degrees, GROUPS } from '../parser/parse-shape-commands.js';
 import { used } from '../parser/parse-body.js';
-import { scan } from '../parser/tokenizer.js';
+import { scan, textOf } from '../parser/tokenizer.js';
 
 import seedrandom from '../lib/seedrandom.js';
 import { clamp, tidyNumber, cos, sin, tan, atan2, sqrt, hypot, ceil, abs, min, max, round, PI } from '../lib/math.js';
@@ -177,6 +177,7 @@ function check(node, warn, visit) {
     if (name && !(name in presetShapes) && !GROUPS.includes(name) && !/^(shape|polygon)$|^\(/.test(name)) warn(`unknown shape ${node.name}`);
     let members = node.children.reduce((n, c) => n + (c.count ? c.count[0] * c.count[1] : 1), 0);
     if (members > MAX_MEMBERS) warn(`max ${MAX_MEMBERS} shapes`);
+    if (node.rows.some(r => /(?<![\w.])pick\([^():,]*,/.test(textOf(r.value)))) warn('pick needs k:');
     visit?.(node);
     [...node.copies || node.children, ...node.unused || []].forEach(n => check(n, warn, visit));
 }
