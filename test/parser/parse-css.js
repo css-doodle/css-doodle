@@ -269,7 +269,7 @@ test('@pattern bodies are kept verbatim like @doodle', () => {
 });
 
 test('a quote or paren in a // comment does not end a @pattern or @scene body', () => {
-    for (let name of ['pattern', 'scene', 'scene400', 'pattern2x3']) {
+    for (let name of ['paint', 'pattern', 'scene', 'scene400', 'paint2x3', 'pattern2x3']) {
         let rules = parseCss(`background: @${name}(\n  // don't (fill\n  fill: #fff;\n); color: red;`);
         assert.deepEqual(rules.map(r => r.property), ['background', 'color'], name);
         assert.equal(rules[0].value[0][0].arguments[0].values[0].value, "// don't (fill\n  fill: #fff;");
@@ -873,10 +873,10 @@ test('a user function parameter binds bare in the arguments of a call, as $p doe
     assert.deepEqual(
         ast(`--g(a): [$a]; --f(s, x, p_2): $g(1s .5x rotate(45s)) $g("s" url(x.png)) $g(x-p_2) $g(s); width: $f(2, 3, 4);`),
         ast(`width: [1s .5x rotate(45s)] ["s" url(x.png)] [x-p_2] [2];`));
-    // nor inside a nested @pattern, whose names are its own
-    assert.deepEqual(
-        ast(`--g(q): length(q); --f(p): background: @pattern(o: $g(p) + $g($p);); $f(5);`),
-        ast(`background: @pattern(o: (length(p)) + (length(5)););`));
+    // nor inside a nested @paint, whose names are its own
+    for (let name of ['paint', 'pattern']) assert.deepEqual(
+        ast(`--g(q): length(q); --f(p): background: @${name}(o: $g(p) + $g($p);); $f(5);`),
+        ast(`background: @${name}(o: (length(p)) + (length(5)););`));
     // nor inside @shape, @plot or @tile
     assert.deepEqual(
         ast(`--g(a): [$a]; --f(x, t): clip-path: @tile.voronoi(density: $g(x) $g($x)) @shape(r: $g(t)) @plot(r: $g(t)); $f(5, 6);`),

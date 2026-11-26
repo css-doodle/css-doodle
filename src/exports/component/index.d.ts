@@ -80,7 +80,7 @@ export interface ValueApi extends AddonHelpers {
 
 export interface ShaderApi extends AddonHelpers {
     color(value: string, space?: string): Rgba | null;
-    /** `@pattern` math as GLSL for a float, `null` when it doesn't read. */
+    /** `@paint` math as GLSL for a float, `null` when it doesn't read. */
     expr(text: string): string | null;
 }
 

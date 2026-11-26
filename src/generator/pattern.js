@@ -34,7 +34,7 @@ const SHAPE = glsl`
     }
 `;
 
-// Built-ins of the pattern language (grammar §9.3)
+// Built-ins of the @paint language (grammar §9.3)
 export const HELPERS = glsl`
     float g_hash(vec2 p) {
         vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));

@@ -32,7 +32,7 @@ function hasShorthandSize(value) {
 }
 
 const NO_SPACE = { noSpace: true };
-const COMPOSABLE = new Set(['doodle', 'pattern', 'scene']);
+const COMPOSABLE = new Set(['doodle', 'paint', 'pattern', 'scene']);
 const CELL = ['&'];
 const SHARED_CELL = prefix => `:is(cell,${prefix}_)`;
 

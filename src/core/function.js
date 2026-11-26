@@ -811,7 +811,7 @@ Function['svg-filter'] = lazy((_, env, position, ...args) => {
 
 Function['svg-polygon'] = shaped(composeSvgPolygonUrl, true);
 
-Function.pattern = Function.scene = () => {};
+Function.paint = Function.scene = () => {};
 
 const wrapped = (code, extra) => `@doodle(${code};:doodle{position:absolute;inset:25%;width:auto;height:auto;contain:none${extra}})`;
 
@@ -900,7 +900,8 @@ export const alias = {
     'repeat': 'rep',
     'size': 'I',
     'pl': 'pn',
-    'pr': 'pnr'
+    'pr': 'pnr',
+    'pattern': 'paint'
 };
 
 export default addAlias(Function, alias);

@@ -44,7 +44,7 @@ word   = run of characters that are not whitespace, digits or symbols
 - Whitespace collapses to one space. It is dropped around `;` `,` `{`
   `}`, after `:` `(` `[` and before `)` `]`, but kept before `:` `(`
   `[` and after `)` `]`, so `a (b)` and `a(b)` differ.
-- `/* … */` is whitespace. `//` comments exist only in `@pattern`,
+- `/* … */` is whitespace. `//` comments exist only in `@paint`,
   `@scene`, `@shape`, `@plot`, `@tile` and `@svg…` bodies.
 
 ## 2. Statements
@@ -133,7 +133,7 @@ written, except:
 - An argument or default with a random or picking call (`@r`, `@p`,
   `@pn`, …) is worked out once, where the call is, in order, as is an
   `@n` of the caller: `$dot(@r(5))` gives one radius to each `$r`. A
-  body holding a `@doodle`, `@pattern` or `@scene` takes
+  body holding a `@doodle`, `@paint` or `@scene` takes
   every argument as written.
 
 As with built-ins (§6), a number right after the name is the first
@@ -151,8 +151,8 @@ CSS `@function` does: with `--double(x): { result: $(x * 2); }`,
 give a point: with `--at(a): $(cos(a)) $(sin(a))`,
 `points: @m(6, $at($(n * π / 3)))` is a hexagon.
 
-In `@pattern` and `@scene` a call passes values instead: see
-[Patterns](languages.md#3-patterns).
+In `@paint` and `@scene` a call passes values instead: see
+[Paint](languages.md#3-paint).
 
 ### At-statements
 
@@ -266,7 +266,7 @@ and is text otherwise; the name and its `(` must be adjacent too.
 
 - **Digits in a name** split off as the first argument: `@m3(a)` is
   `@m(3, a)`, `@p1-2(a)` is `@p(1-2, a)`. `Math` names keep them
-  (`@log2(8)`), and `@doodle`, `@pattern` and `@scene` read
+  (`@log2(8)`), and `@doodle`, `@paint` and `@scene` read
   them as a size: `@doodle100x50(…)`, or `@doodle100(…)` for a square.
 - **A `.` before a letter** composes calls, rightmost first: `@a.b(x)`
   and `@a.@b(x)` are `@a(@b(x))`. Before a digit it stays in the name:
@@ -311,7 +311,7 @@ argument, so `@p(a b, c)` has two.
   the seed's stream, so `@r(@i: 10, 50)` is one number per cell that
   every property reads alike.
 
-`@doodle`, `@pattern` and `@scene` take a raw body up to
+`@doodle`, `@paint` and `@scene` take a raw body up to
 the matching `)`, respecting quotes, as do `@doodle` variants such as
 `@doodle.wrap(…)`, a tile that repeats without seams. `@svg` reads an
 SVG body (§9.1), where `element*count` expands before the body is split
@@ -322,7 +322,7 @@ run.
 
 One language serves `$(…)`, `@match(…)`, `@cell(…)`, `@random(ratio)`,
 the index of `@pick(k: …)`, the key of `@r(k: …)` and the `@shape`
-commands. `@pattern` and `@scene` use a GLSL-oriented one (§9.3).
+commands. `@paint` and `@scene` use a GLSL-oriented one (§9.3).
 
 ```
 expression = operand { operator operand }
@@ -375,7 +375,7 @@ name       = letter or '_', then letters, digits or '_'
   written out as CSS math, as a live value is: `$((@i - 4.5) * 12deg)`
   is `calc(-3.5 * 12deg)` in cell 1, and `0` where only a number fits.
   Inside a call `deg`, `turn` and `rad` are radians instead:
-  `cos(60deg)` is `cos(radians(60))`. The GLSL ones read as in `@pattern`:
+  `cos(60deg)` is `cos(radians(60))`. The GLSL ones read as in `@paint`:
   `mod(-1, 4)` is `3`.
 - **`pick(k: a, b, …)`** is the indexed `@pick` (§7), evaluating only
   item `k`: `pick(4: a, b, c)` is `a`.
@@ -436,7 +436,7 @@ Each caller provides its own context:
 
 ## 9. Embedded languages
 
-`@svg`, `@shape`, `@scene` and `@pattern` share the tokens and
+`@svg`, `@shape`, `@scene` and `@paint` share the tokens and
 comments of §1 and one body:
 
 ```
@@ -461,7 +461,7 @@ row with a block value.
   top-level comma, `match(a, b)`, are reported and skipped. `@svg`
   writes `@match(test)`, without arms.
 - **A row nothing reads** is reported in `@shape`, `@scene` and
-  `@pattern`: `unused fil`.
+  `@paint`: `unused fil`.
 
 ### 9.1 SVG
 
@@ -546,10 +546,10 @@ operands: `move: k * .5 0` and `move: .5 -.25` have two parts each,
 set earlier in the same body, which keeps that value where the test
 fails. A quoted `text:` value keeps its commas, `;` and parentheses.
 
-### 9.3 Patterns
+### 9.3 Paint
 
 ```css
-@pattern(
+@paint(
   grid: 20;
   fill: #000;
   match(x == y) { fill: #fff; }
@@ -557,7 +557,7 @@ fails. A quoted `text:` value keeps its commas, `;` and parentheses.
 ```
 
 ```
-pattern-body  = { targets ':' value ';' | match | repeat-block | texture-block }
+paint-body    = { targets ':' value ';' | match | repeat-block | texture-block }
 targets       = target { ',' target }
 target        = name [ '.' swizzle ]
 texture-block = texture-name '{' doodle '}'
@@ -576,7 +576,7 @@ numbers become floats, and a color is a `vec3`, or a `vec4` with
 alpha. Undeclared, invalid and `g_…` names are reported (§11).
 `v.xz: …` writes those channels of a vector. The
 cell variables, `pos` and `du` among them, are written in place, inside
-a block too: `pos.x: abs(pos.x)` mirrors the pattern, and
+a block too: `pos.x: abs(pos.x)` mirrors the image, and
 `match(random() < .5) { du: -du; }` flips half the cells. Several targets split the
 value at commas: `a, b: 1, vec2(2, 3)`.
 
@@ -596,9 +596,9 @@ arguments like a comma (`hsl(h .75 .65)`), except in `ramp()` stops.
 A name directly before `(` is a call; `k (0)` is two values.
 
 **`$name`** inserts the text of the cell's custom property `--name`
-anywhere in the body but its comments, when the pattern is generated:
+anywhere in the body but its comments, when the `@paint` is generated:
 `--k: @i` gives each cell its own value. `$a-b` reads `--a-b` if it is
-defined and subtracts otherwise. An undefined name skips the pattern
+defined and subtracts otherwise. An undefined name skips the `@paint`
 and is reported.
 
 ## 10. Directive values
@@ -627,7 +627,7 @@ modifier   = '/' size [ '/' fill ]                  @size, then a fill
 ```
 
 The element's `grid` attribute reads the dimensions alone, and so do
-the `grid:` and `marks:` of a `@pattern`, where a space also separates
+the `grid:` and `marks:` of a `@paint`, where a space also separates
 them and `marks: n` is one row. A modifier's value runs to the next modifier symbol,
 spaces included. Flags are whole words, case-insensitive, allowed
 anywhere; `border` is shorthand for `ß 1px solid`, and `border:red`
@@ -682,20 +682,20 @@ once per component.
 - **Parsing.** An unclosed `(` in a value runs to the next `}` or `<`.
   An unclosed argument list runs to the end of the source, keeping the
   arguments before the last top-level `,`; an unclosed raw body
-  (`@doodle`, `@pattern`, `@scene`) runs there too, unreported.
+  (`@doodle`, `@paint`, `@scene`) runs there too, unreported.
   `@keyframes` without a name produces nothing. A function that calls
   itself, even through another, is reported and expands to nothing, and a braceless body
   followed by a statement that reads its parameters warns
   `--f() needs {}`. A `$name()` with no `--name()` is reported and
   emits as `$name`.
 - **Generating.** `@use` cycles skip the variable, and an undefined
-  `$name` skips its `@pattern`. Unknown functions emit as
+  `$name` skips its `@paint`. Unknown functions emit as
   `@name`. Invalid cell selector modifiers match nothing. In `@svg`, a
   bad `viewBox` count drops the attribute, inline `defs` with other than
   one element becomes empty, a bad `draw:` drops the declaration, a
   missing animation duration drops `dur`, and invalid timing words are
   dropped.
-- **Drawing patterns.** Invalid or over-limit `repeat` blocks are
+- **Drawing.** Invalid or over-limit `repeat` blocks are
   skipped. Undeclared or reserved names are reported, and so are
   statements without a colon and what an expression cannot place:
   values side by side, `?:`, a trailing operator. An undeclared name

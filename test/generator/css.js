@@ -1013,6 +1013,15 @@ test('@pattern bodies reach the pattern renderer whole', () => {
     assert.equal(pattern.source, 'grid: 2; fill: @p(red, blue);');
 });
 
+test('@pattern is @paint', () => {
+    let code = name => `--f(a): a * 2; background: @${name}(\n  // note\n  grid: 2; fill: $f(x) * @p(1););`;
+    let [paint, pattern] = ['paint', 'pattern'].map(name => Object.values(compile(code(name)).patterns)[0]);
+    assert.equal(paint.source, pattern.source);
+    assert.equal(paint.fname, 'paint');
+    let wrapped = compile('--bg(c): background: @paint(fill: $c, $c;); $bg(@p(red, #00f));').patterns;
+    assert.equal(Object.values(wrapped)[0].source, 'fill: @p(red, #00f), @p(red, #00f);');
+});
+
 test('@scene bodies evaluate their @ functions per cell, like @svg', () => {
     let { patterns } = compile('--k: 2; background: @scene(/* @r(9) */ fill: @p(#f00); box { size: @i * $k; rotate: π });', '2x1');
     assert.deepEqual(Object.values(patterns).map(p => p.source), [

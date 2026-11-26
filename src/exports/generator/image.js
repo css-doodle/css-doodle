@@ -7,7 +7,7 @@ import { doodleToImage, svgUrl } from '../../component/doodle-image.js';
  *
  * `width` and `height` are in pixels and give the image its size and viewBox;
  * without them it takes the size it is drawn at.
- * `needs` has 'shader' when @pattern and @scene images are left out,
+ * `needs` has 'shader' when @paint and @scene images are left out,
  * and 'color' when @palette() leaves out its color.
  */
 export default async function image(code = '', options = {}) {

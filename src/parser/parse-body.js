@@ -1,6 +1,6 @@
 import { scan, textOf, itemsOf } from './tokenizer.js';
 
-// The body grammar @svg, @pattern and @shape share:
+// The body grammar @svg, @paint and @shape share:
 //
 //   body        = { declaration | block | ';' }
 //   declaration = head ':' value [ ';' ]

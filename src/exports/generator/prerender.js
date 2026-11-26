@@ -34,7 +34,7 @@ function dropStrayTemplateEnds(html) {
  * rendered, so a runtime loaded later draws the same picture from it.
  *
  * `needs` lists what only the runtime can do:
- *   shader      @pattern and @scene images are left out
+ *   shader      @paint and @scene images are left out
  *   mouse, size the pointer and size uniforms stay at 0
  *   clock       @T/@TS count from the build time, not the visit
  *   update      click:update / auto:update

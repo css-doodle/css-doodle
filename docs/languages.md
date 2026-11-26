@@ -5,7 +5,7 @@ languages do. How each body is written and read is in
 [grammar.md](grammar.md#9-embedded-languages).
 
 **Contents.** 1 [SVG](#1-svg) · 2 [Shapes](#2-shapes) ·
-3 [Patterns](#3-patterns)
+3 [Paint](#3-paint)
 
 ## 1. SVG
 
@@ -41,7 +41,7 @@ prefix.
 
 **Stops.** `stops: #dfe5d3, #f0ebd2 .22, #7f8f4c` adds a `<stop>` for
 each color, with the number after it as the offset, placed as
-[`ramp()`](#3-patterns) places its stops: `fill: linearGradient { x2: 0;
+[`ramp()`](#3-paint) places its stops: `fill: linearGradient { x2: 0;
 y2: 1; stops: … }`. A `transparent` stop fades the colors beside it,
 as in CSS, not through black.
 
@@ -145,7 +145,7 @@ reflections across those axes as one shape. A `-` before a name
 negates each part of its value, and only the angle of a `rotate`:
 `-move: .5 0`, `-rotate: y 30`; not on `fill` or `fill-rule`.
 
-**Match blocks** set rows only where a test holds, as in `@pattern`:
+**Match blocks** set rows only where a test holds, as in `@paint`:
 `sphere*6 { r: .1; match(n > 3) { r: .2 } }`, or with arms,
 `match { n == 1 { … } else { … } }`. A row in one keeps the value it
 had before the block where the test fails, so it needs one, while a
@@ -185,7 +185,7 @@ body, where a bare name at the top is the preset:
 `@shape(heart; scale: .5)`.
 
 **Outlines.** `r`, `x` and `y` are expressions in the angle `t` (in
-`@scene` and `@pattern`, `t` is the time), evaluated at `points` points around the circle: by default 180 if they
+`@scene` and `@paint`, `t` is the time), evaluated at `points` points around the circle: by default 180 if they
 read `t`, else 3. They also see the point index `i` from 1,
 `seq(a, b, …)`, which cycles through its arguments point by point, and
 `range(a, b)`, which runs from `a` to `b` across the shape. `points`
@@ -303,7 +303,7 @@ with a few hundred cells.
 
 ### @scene
 
-The model is raymarched in WebGL into an image, like `@pattern`, and
+The model is raymarched in WebGL into an image, like `@paint`, and
 its values use the same math: `p` is the point in the shape's own
 space, `t` the time in seconds, and `random()` differs from copy to
 copy.
@@ -369,7 +369,7 @@ facing a white light, and the scene leaves that fill as it is.
 `fill: mix(#5e6472, #e9d8a6, floor(light * 4) / 4)` paints in four
 steps. With `light: none` it reads 1.
 
-## 3. Patterns
+## 3. Paint
 
 **Blocks.** A `match` block runs where its test holds. `match { … }`
 holds arms, each a test and a body, and runs the first whose test
@@ -411,7 +411,7 @@ color and `shape` is `circle`, `square` or `diamond`.
 Later cells paint over earlier ones, in the order of `i`.
 
 ```css
-@pattern(
+@paint(
   marks: 320x320;
   c: y - 1;
   u, v, w: 0, 0, 0;
@@ -442,24 +442,24 @@ plus:
 | Name       | Value                                                |
 | ---------- | ---------------------------------------------------- |
 | `du`, `dv` | position inside the cell, −0.5 to 0.5, `dv` downward |
-| `uv`       | position in the whole pattern, 0 to 1, `uv.y` upward |
+| `uv`       | position in the whole image, 0 to 1, `uv.y` upward   |
 | `pos`      | centered and aspect-correct, `pos.y` upward          |
 | `mouse`    | the pointer over the doodle, in `pos` units          |
-| `t`        | time in seconds; reading it animates the pattern     |
+| `t`        | time in seconds; reading it animates the image       |
 | `size`     | the current `size`, `1` until set                    |
 | `px`       | one CSS pixel in `pos` units, so `2px` is two        |
 | `deg`, `turn` | one degree and one turn in radians, as in `@scene`: `rot(p, 45deg)` |
 
-Without `grid` the pattern is one cell, so `du`, `dv`, `uv` and `pos`
-address every pixel. An animated pattern in `@content` draws each
+Without `grid` the image is one cell, so `du`, `dv`, `uv` and `pos`
+address every pixel. An animated `@paint` in `@content` draws each
 frame straight to a canvas; elsewhere it is re-encoded as an image
 every frame, several times slower.
 
-`mouse` is measured from the center of the element the pattern is drawn
-on, so a pattern in each of the doodle's cells sees the pointer from
+`mouse` is measured from the center of the element the image is drawn
+on, so a `@paint` in each of the doodle's cells sees the pointer from
 where it is: `length(pos - mouse)` is the distance to it.
 It is `0` until the pointer moves over the doodle, and stays where it
-was last. A pattern that reads it draws again as the pointer moves.
+was last. A `@paint` that reads it draws again as the pointer moves.
 
 **Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`,
 `random(p [, k])`, `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`,
@@ -504,16 +504,16 @@ was last. A pattern that reads it draws again as the pointer moves.
   `fill: ramp(uv.y, #f99a53 .28, #006b50 .28, #00055f .83)`.
 
 **Textures.** A top-level `texture…` block holds a doodle rendered at
-the pattern's size. It sees the cell's custom properties, its own
+the image's size. It sees the cell's custom properties, its own
 declarations winning, and a body of only `$name` draws the doodle
 stored in `--name: @doodle(…)`. The last block of a name wins.
 `texture(name, p)` samples it at `p` from 0 to 1 as a `vec4`, wrapping
-past the edges. The doodle may have a `@pattern` of its own as a
+past the edges. The doodle may have a `@paint` of its own as a
 background, drawn once as a still image with 8 bits a channel: a field
 worked out once and read many times.
 
 ```css
-@pattern(
+@paint(
   texture_0 { background: linear-gradient(@r(360deg), @stripe(red, gold)); }
   r: length(pos);
   s: 3atan(pos.y, pos.x) + 8log(r) - 2t;
@@ -522,7 +522,7 @@ worked out once and read many times.
 ```
 
 **User functions**, `--name(params): body`, work on values in
-`@pattern` and `@scene`. Each argument is one value, parenthesized
+`@paint` and `@scene`. Each argument is one value, parenthesized
 unless it is a name, a number or a color: with `--f(a): a * 2`,
 `$f(x + 1)` reads `(x + 1) * 2`. A body of one expression is one value
 too. A parameter reads bare, `p` as `$p`, and `p.xy` takes its
@@ -536,7 +536,7 @@ is called, `p(…)`, assigned, or named by a `repeat` loop, and in a
   f: fract(p);
   result: mix(random(i), random(i + vec2(1, 0)), f.x);
 };
-@content: @pattern(fill: $noise2(uv * 8) * $noise2(uv * 3););
+@content: @paint(fill: $noise2(uv * 8) * $noise2(uv * 3););
 ```
 
 Its statements run before the statement that calls it, and the call
@@ -544,7 +544,7 @@ reads as the last `result` assigned, inside a `match` too once it has
 a value before the block. In `@scene` a `match` block in such a body
 runs as values, as one written in the scene does. Its parameters, assigned names
 and `repeat` loop names are its own for each call, so its `i` leaves
-the pattern's `i` alone; a name reads the caller's until it is first
+the body's `i` alone; a name reads the caller's until it is first
 assigned. An argument other than a name, a number or a color is worked
 out once, first. `p: p * 2` changes the copy; the caller's names stay
 as they were. `result: a, b` gives two values: `c, s: $cloud(p)` sets
