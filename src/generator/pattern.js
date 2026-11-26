@@ -428,12 +428,12 @@ function generateShader(grid, body, marks, textures) {
     let usesTime = /(?<![\w.])t\b/.test(body);
     let usesPx = /(?<![\w.])px\b/.test(body);
     let usesMouse = /(?<![\w.])mouse\b/.test(body);
-    let masked = body.includes('g_masked');
-    let line = body.includes('g_line');
+    let masked = /\bg_masked\b/.test(body);
+    let line = /\bg_line\b/.test(body);
     let head = glsl`
     precision highp int;
     const float PI = 3.1415926535897932;
-    ${HELPERS}${body.includes('g_over(') ? OVER : ''}${usesPx ? 'uniform float u_px;' : ''}${usesMouse ? 'uniform vec2 u_mouse;' : ''}
+    ${HELPERS}${/\bg_over\(/.test(body) ? OVER : ''}${usesPx ? 'uniform float u_px;' : ''}${usesMouse ? 'uniform vec2 u_mouse;' : ''}
     `;
     let dims = `float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y, g_res = min(u_resolution.x, u_resolution.y);`;
     let run = glsl`
