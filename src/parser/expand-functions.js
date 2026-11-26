@@ -132,6 +132,7 @@ const CSS = 0, BODY = 1, EXPR = 2;
 const INCLUDE = 1, VALUE = 2, EXPRESSION = 3;
 const MATH = true, PAINT = null, ARGS = 0, PLAIN = false;
 const RE_PAINT_HEAD = /^(pattern|scene)[\dxX.]*$/;
+const RE_SCOPE_HEAD = /^(pattern|scene|shape|svg-polygon|plot|tile)[\w.]*$/i;
 const RE_TEXTURE_HEAD = /^texture\w*$/;
 const RE_REPEAT_HEAD = /^repeat\s*\(/;
 const RE_NESTED_DOODLE = /@(doodle|pattern|scene)/;
@@ -498,7 +499,7 @@ function mathOpen(tokens, i, defs) {
     if (!tokens[j] || !adjacent(tokens[j], tokens[j + 1])) return PLAIN;
     let name = textOf(tokens.slice(j + 1, i));
     if (tokens[j].isSymbol('$')) return name && callAt(tokens, j + 1, defs) ? ARGS : MATH;
-    if (tokens[j].isSymbol('@') && RE_PAINT_HEAD.test(name)) return PAINT;
+    if (tokens[j].isSymbol('@') && RE_SCOPE_HEAD.test(name)) return PAINT;
     if (!tokens[j].isSymbol('@') || name !== 'match') return PLAIN;
     let close = closing(tokens, i);
     return close > 0 && solidAt(tokens, close + 1)?.isSymbol('{') ? MATH : PLAIN;

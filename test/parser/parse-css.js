@@ -853,6 +853,10 @@ test('a user function parameter binds bare in the arguments of a call, as $p doe
     assert.deepEqual(
         ast(`--g(q): length(q); --f(p): background: @pattern(o: $g(p) + $g($p);); $f(5);`),
         ast(`background: @pattern(o: (length(p)) + (length(5)););`));
+    // nor inside @shape, @plot or @tile
+    assert.deepEqual(
+        ast(`--g(a): [$a]; --f(x, t): clip-path: @tile.voronoi(density: $g(x) $g($x)) @shape(r: $g(t)) @plot(r: $g(t)); $f(5, 6);`),
+        ast(`clip-path: @tile.voronoi(density: [x] [5]) @shape(r: [t]) @plot(r: [t]);`));
 });
 
 test('a call inside $() reads its body as math, as one value', () => {
