@@ -162,11 +162,13 @@ describe('component', { concurrency: 4 }, () => {
         });
         let el = await mount(page, '@grid: 1 / 120px; background: @addon-wait(); --r: @r(1);');
         assertColor((await shot(page, el)).image, 60, 60, '#00f');
-        let before = await el.evaluate(el => [el.seed, el.compiled.styles.cells.match(/--r:[^;]+/)[0]]);
+        let read = el => [el.seed, getComputedStyle(el.shadowRoot.querySelector('cell')).getPropertyValue('--r')];
+        let before = await el.evaluate(read);
+        assert.notEqual(before[1], '');
         await page.evaluate(() => window.finish('#0c0'));
-        await page.waitForFunction(el => el.compiled.styles.cells.includes('#0c0'), el);
+        await page.waitForFunction(el => getComputedStyle(el.shadowRoot.querySelector('cell')).backgroundColor == 'rgb(0, 204, 0)', el);
         assertColor((await shot(page, el)).image, 60, 60, '#0c0');
-        assert.deepEqual(await el.evaluate(el => [el.seed, el.compiled.styles.cells.match(/--r:[^;]+/)[0]]), before);
+        assert.deepEqual(await el.evaluate(read), before);
     }));
 
     test('a shader variant draws with its own shader', () => chrome.withPage(async page => {
