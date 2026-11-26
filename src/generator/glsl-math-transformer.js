@@ -53,7 +53,7 @@ for (const [type, names] of Object.entries({
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
-const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment arc'.split(' '));
+const POINTS = new Set('rand noise fbm voronoi rot ngon escape spiral dither box segment arc length'.split(' '));
 
 const RANK = 'bool int float mat2 mat3 mat4 bvec2 bvec3 bvec4 vec2 vec3 vec4'.split(' ');
 

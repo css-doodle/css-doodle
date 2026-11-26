@@ -156,6 +156,12 @@ test('function calls', () => {
     assert.equal(transform('vec2(x * 2, y + 1)'), 'vec2((x * 2.0), (y + 1.0))');
 });
 
+test('length() of two numbers is the length of the point', () => {
+    assert.equal(transform('length(dx, dy)'), 'length(vec2(dx, dy))');
+    assert.equal(transform('length(x)'), 'length(x)');
+    assert.equal(transform('length(uv)'), 'length(uv)');
+});
+
 test('comparisons, a single = reads as ==', () => {
     assert.equal(transform('x > y'), '(x > y)');
     assert.equal(transform('x == y'), '(x == y)');
