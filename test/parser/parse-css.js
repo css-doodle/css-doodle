@@ -782,6 +782,7 @@ test('a statement reading the parameters of the body without braces before it wa
     assert.deepEqual(warnings(`a: @svg(circle { --f(x): $x; } rect { width: $x })`), []);
     // a nested @pattern has names of its own
     assert.deepEqual(warnings(`--g(a): $a; --f(p, k): $g(k); @content: @pattern(k: 1; o: $g(k) * p.x;);`), []);
+    assert.deepEqual(warnings(`--q(x, y): hypot($x, $y); clip-path: @tile.voronoi(density: $q(x, y));`), []);
 });
 
 test('a user function name is read whole', () => {

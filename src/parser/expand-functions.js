@@ -112,7 +112,7 @@ export default function expandFunctions(source, ctx, svg, chain = []) {
                 defs[name] = { params, defaults, body: body.trim() };
                 let after = source.slice(tokenEnd(last), tokenEnd(tokens[statementEnd(tokens, end + 1)] ?? last)).replace(/\/\*[\s\S]*?\*\//g, '');
                 let unset = params.filter(p => !source.includes(`--${p}:`));
-                if (!braced && !/^\s*--[\w-]+\(/.test(after) && bindParams(after, unset, unset.map(() => '\0'), defs).includes('\0')) {
+                if (!braced && !/^\s*--[\w-]+\(/.test(after) && !after.includes(`$${name}(`) && bindParams(after, unset, unset.map(() => '\0'), defs).includes('\0')) {
                     warn(ctx, `--${name}() needs {}`, t.pos);
                 }
                 rest += source.slice(from, t.index) + source.slice(t.index, tokenEnd(last)).replace(/[^\n]/g, ' ');
