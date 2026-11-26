@@ -377,13 +377,18 @@ holds, or a last `else { … }` arm when none does. Blocks nest, each
 with its own scope. In a value, `match(t1, v1, t2, v2, …, else)` gives
 the value after the first test that holds.
 
-**`repeat(n [as k] [, stop …])`** runs its body `n` times, with `k`
-counting from zero, unlike `i` and `n` elsewhere. `n` is a whole
-number, or a name declared as one and never changed:
-`n: 72; repeat(n as k) { y: k / n; }`. `k*n { … }` is short for
-`repeat(n as k) { … }`, and `k*1-n { … }` counts `k` from 1 to `n`,
-or down with `k*n-1`. The loop ends early once every
-stop expression holds. Counts over 1024, nested products over 65536
+**`k*n { … }`** runs its body `n` times, with `k` counting from
+zero, unlike `i` and `n` elsewhere. `n` is a whole number, or a name
+declared as one and never changed: `n: 72; k*n { y: k / n; }`.
+`k*1-n { … }` counts `k` from 1 to `n`, or down with `k*n-1`.
+Heads side by side nest, the first outermost: `i*3 j*3 { … }` is
+`i*3 { j*3 { … } }`.
+`stop: test` ends the innermost loop at the line where it is written,
+once the test holds: last in the body it checks after each step, and
+inside a `match` block only where the block runs. Tests join with
+`and` and `or`: `stop: n > 30 and b > 30`. `repeat(n as k, stop …)`
+is the older form, which checks its stops after the body and ends
+once all of them hold. Counts over 1024, nested products over 65536
 and invalid counts skip the block. `shape`, `size`, `grid` and
 `marks` are not allowed inside it, and a `fill` inside it paints over
 the one from the step before.
@@ -415,10 +420,11 @@ Later cells paint over earlier ones, in the order of `i`.
   marks: 320x320;
   c: y - 1;
   u, v, w: 0, 0, 0;
-  repeat(320 as k, k >= x - 1) {
+  k*320 {
     u: sin(c + v) + sin(c * turn / 235 + w);
     v: cos(c + v) + cos(c * turn / 235 + w);
     w: u + .47t;
+    stop: k >= x - 1;
   }
   place: .22vec2(u, -v);
   size: 2px;
@@ -550,6 +556,6 @@ out once, first. `p: p * 2` changes the copy; the caller's names stay
 as they were. `result: a, b` gives two values: `c, s: $cloud(p)` sets
 `c` to the first and `s` to the second, and anywhere else the call
 reads as the first.
-Such a call cannot stand in a `repeat()` head or a `match` arm test. A
-body without `result` runs where it is called and writes the caller's
-names.
+Such a call cannot stand in a loop head or a `match` arm test, but
+works in `stop:`. A body without `result` runs where it is called and
+writes the caller's names, so a `stop` in it ends the caller's loop.

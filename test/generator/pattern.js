@@ -704,6 +704,23 @@ test('k*a-b counts from a to b, up or down', () => {
     assert.deepEqual(messages, ['repeat() over 1024', 'repeat() needs integer']);
 });
 
+test('stop ends the loop where it is written', () => {
+    // last in the body, it is the stop after the body
+    const bare = code => main(code).replace(/\s+/g, '');
+    assert.equal(
+        bare('z: 0; s: 0; n*96 { z: z * z + uv.x; s: s + 1; stop: z > 4 } fill: s'),
+        bare('z: 0; s: 0; repeat(96 as n, z > 4) { z: z * z + uv.x; s: s + 1 } fill: s'));
+    assert.match(main('n: 0; b: 0; k*100 { n: n + 1; b: b + 2; stop: n < 30 and b > 30 }'),
+        /g_2 = \(g_2 \+ 2\.0\);\s*if \(\(\(g_1 < 30\.0\) && \(g_2 > 30\.0\)\)\) break;\s*\}/);
+    // first, it checks before the step
+    assert.match(main('s: 0; k*8 { stop: s > 3; s: s + k } fill: s'), /\{\s*if \(\(g_1 > 3\.0\)\) break;\s*g_1 = \(g_1 \+ g_2\);/);
+    // in a match arm it stops only there, and in an inner loop it ends that loop
+    assert.match(main('k*4 { match(x > 1) { stop: k > 2 } fill: k / 4 }'), /if \(\(x > 1\.0\)\) \{\s*if \(\(g_1 > 2\.0\)\) break;\s*\}/);
+    assert.match(main('k*4 { j*4 { stop: j > k } stop: k > 2 }'),
+        /g_2\+\+\) \{\s*if \(\(g_2 > g_1\)\) break;\s*\}\s*if \(\(g_1 > 2\.0\)\) break;\s*\}/);
+    assert.deepEqual(warnings('s: 1; stop: s > 0; fill: s'), ['stop needs repeat']);
+});
+
 test('repeat without a stop condition never breaks early', () => {
     assert.doesNotMatch(main('zx: 0; repeat(5) { zx: zx + 1 }'), /break/);
 });
@@ -836,6 +853,7 @@ test('derivatives where only some pixels run the code are reported once per oute
     assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('match'));
     assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('match'));
     assert.deepEqual(warnings('repeat(4, du > 0) { match(dv > 0) { c: fwidth(du) } }'), unreliable('a repeat() that stops'));
+    assert.deepEqual(warnings('k*4 { c: fwidth(du); match(dv > 0) { stop: du > 0 } }'), unreliable('a repeat() that stops'));
     // before the block, in a loop that never stops early, or as the pattern's shape: fine
     assert.deepEqual(warnings('c: ramp(du, 0, 1); match(du > 0) { k: c }'), []);
     assert.deepEqual(warnings('repeat(4) { c: fwidth(du) }'), []);

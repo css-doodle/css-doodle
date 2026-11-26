@@ -343,6 +343,8 @@ const OUTPUT_GENERATORS = {
     place: generatePlace,
 };
 
+const stopsIn = tokens => tokens.some(t => t.type === 'statement' ? t.name === 'stop' : t.arms?.some(a => stopsIn(a.value)));
+
 function generateRepeat(token, scope, ctx, opts) {
     let [head = '', ...stops] = token.args;
     let m = head.match(/^(?:(\w+)-)?(\w+)(?:\s+as\s+(\S+))?$/);
@@ -366,9 +368,10 @@ function generateRepeat(token, scope, ctx, opts) {
     ctx.readonly.add(counter);
     if (m[3]) inner.ids[m[3]] = counter;
     inner.key = scope.key ? `(${scope.key} * ${float(times)} + ${counter})` : counter;
-    let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work, branched: opts.branched || stops.length > 0 });
+    let stopping = stops.length > 0 || stopsIn(token.value);
+    let body = generateBody(token.value, inner, ctx, { ...opts, loop: true, work, branched: opts.branched || stopping });
     let stop = stops.map(s => expr(s, inner, ctx).code('bool')).filter(Boolean).join(' && ');
-    if (stop) checkDerivatives(body, 'a repeat() that stops', ctx, opts);
+    if (stopping) checkDerivatives(body, 'a repeat() that stops', ctx, opts);
     return glsl`
         for (float ${counter} = ${float(a)}; ${counter} ${down ? '>' : '<'} ${float(down ? a - times : a + times)}; ${counter}${down ? '--' : '++'}) {
           ${body}
@@ -410,7 +413,10 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     for (let t of tokens) {
         if (t.type === 'statement') {
             let output = (t.name !== 'place' || ctx.marks) && OUTPUT_GENERATORS[t.name];
-            if (t.name === 'grid' || t.name === 'marks') {
+            if (t.name === 'stop') {
+                let test = loop ? expr(t.value, scope, ctx).code('bool') : ctx.warn('stop needs repeat');
+                if (test) out += `if (${test}) break;\n`;
+            } else if (t.name === 'grid' || t.name === 'marks') {
                 if (!top) ctx.warn(`${t.name} goes top-level`);
             } else if (!output) {
                 out += generateStatement(t.name, t.value, scope, ctx);

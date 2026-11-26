@@ -562,8 +562,10 @@ targets       = target { ',' target }
 target        = name [ '.' swizzle ]
 texture-block = texture-name '{' doodle '}'
 repeat-block  = ( 'repeat' '(' integer [ 'as' name ] { ',' expression } ')'
-                | name '*' integer [ '-' integer ] ) '{' repeat-body '}'
-repeat-body   = { targets ':' value ';' | match | repeat-block }
+                | name '*' integer [ '-' integer ]
+                  { name '*' integer [ '-' integer ] } ) '{' repeat-body '}'
+repeat-body   = { targets ':' value ';' | 'stop' ':' expression ';'
+                | match | repeat-block }
 value         = css-color | expression { ',' expression }
 ```
 
@@ -580,7 +582,8 @@ a block too: `pos.x: abs(pos.x)` mirrors the image, and
 `match(random() < .5) { du: -du; }` flips half the cells. A number one
 given a vector becomes a variable of the body instead: `dv: p - c`.
 A `place` only inside `repeat` is a variable too. Several targets split the
-value at commas: `a, b: 1, vec2(2, 3)`.
+value at commas: `a, b: 1, vec2(2, 3)`. `stop: test` ends the innermost
+`repeat` at its line once the test holds, inside a `match` block too.
 
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,
 `^` and `**` are power, and `%`, `a < b < c` and the logic words read
@@ -699,7 +702,8 @@ once per component.
   dropped.
 - **Drawing.** Invalid or over-limit `repeat` blocks are
   skipped. Undeclared or reserved names are reported, and so are
-  statements without a colon and what an expression cannot place:
+  statements without a colon, a `stop` outside a `repeat`, and what an
+  expression cannot place:
   values side by side, `?:`, a trailing operator. An undeclared name
   reads 0, in `@scene` too. `ramp()`, `shape()` and GLSL
   derivatives inside a `match` block or a `repeat` with stops are
