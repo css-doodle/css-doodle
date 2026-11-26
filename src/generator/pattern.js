@@ -254,6 +254,7 @@ function generateStatement(name, value, scope, ctx) {
         return '';
     }
     let id = scope.ids[base] || CELL.includes(base) && base;
+    let v;
     if (id || part) {
         if (ctx.readonly.has(id)) {
             ctx.warn(`read-only ${name}`);
@@ -261,16 +262,20 @@ function generateStatement(name, value, scope, ctx) {
         }
         ctx.counts.delete(id);
         let type = !part ? ctx.types[id] || 'float' : part.length > 1 ? `vec${part.length}` : 'float';
-        let v = compile(value, scope, ctx, type);
-        if (v && /vec|mat/.test(v.type) && v.type !== type) {
+        v = compile(value, scope, ctx, type);
+        let own = v && /vec|mat/.test(v.type) && v.type !== type;
+        if (own && (part || id !== base || type !== 'float')) {
             ctx.warn(`${name} is ${type}`);
             return '';
         }
         if (!v) return '';
-        let copy = id ? '' : generateStatement(base, base, scope, ctx);
-        return `${copy}${id || scope.ids[base]}${part ? '.' + part : ''} = ${v.code};\n`;
+        if (!own) {
+            let copy = id ? '' : generateStatement(base, base, scope, ctx);
+            return `${copy}${id || scope.ids[base]}${part ? '.' + part : ''} = ${v.code};\n`;
+        }
+    } else {
+        v = compile(value, scope, ctx);
     }
-    let v = compile(value, scope, ctx);
     if (!v) return '';
     id = scope.ids[name] = `g_${++ctx.id}`;
     ctx.declared.add(name);
@@ -404,7 +409,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
     opts = { ...opts, top: false, shaped: opts.shaped || hasShape };
     for (let t of tokens) {
         if (t.type === 'statement') {
-            let output = OUTPUT_GENERATORS[t.name];
+            let output = (t.name !== 'place' || ctx.marks) && OUTPUT_GENERATORS[t.name];
             if (t.name === 'grid' || t.name === 'marks') {
                 if (!top) ctx.warn(`${t.name} goes top-level`);
             } else if (!output) {
@@ -569,7 +574,7 @@ const MARKS = {
 };
 
 function drawsMarks(tokens) {
-    return tokens.some(t => t.type === 'statement' ? t.name === 'place' : (t.arms || [t]).some(a => Array.isArray(a.value) && drawsMarks(a.value)));
+    return tokens.some(t => t.type === 'statement' ? t.name === 'place' : t.name !== 'repeat' && (t.arms || [t]).some(a => Array.isArray(a.value) && drawsMarks(a.value)));
 }
 
 export default function drawPattern(code, extra, warn = () => {}) {

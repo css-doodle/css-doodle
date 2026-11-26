@@ -577,7 +577,9 @@ alpha. Undeclared, invalid and `g_…` names are reported (§11).
 `v.xz: …` writes those channels of a vector. The
 cell variables, `pos` and `du` among them, are written in place, inside
 a block too: `pos.x: abs(pos.x)` mirrors the image, and
-`match(random() < .5) { du: -du; }` flips half the cells. Several targets split the
+`match(random() < .5) { du: -du; }` flips half the cells. A number one
+given a vector becomes a variable of the body instead: `dv: p - c`.
+A `place` only inside `repeat` is a variable too. Several targets split the
 value at commas: `a, b: 1, vec2(2, 3)`.
 
 **Expressions** use GLSL syntax. Operators bind as in the table of §8,

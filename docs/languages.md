@@ -398,8 +398,8 @@ with a square.
 
 **Marks.** `marks` in place of `grid` draws each cell as a mark
 instead of in its square: `marks: 1000` is one row of a thousand, and
-`marks: 320x320` is 320 rows of 320. A body that sets `place` draws
-its `grid` as marks too. The body runs once per cell, at its
+`marks: 320x320` is 320 rows of 320. A body that sets `place` outside a
+`repeat` draws its `grid` as marks too. The body runs once per cell, at its
 center (`du` and `dv` are 0), rather than once per pixel, so a loop
 that finds a point stays cheap. `place` puts the mark at a point
 in `pos` units and reads as one, the cell's center until set:

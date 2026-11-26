@@ -184,6 +184,15 @@ test('a cell variable is written in place, so a block keeps what it writes', () 
     assert.deepEqual(messages, []);
 });
 
+test('a number cell variable given a vector becomes the body\'s own', () => {
+    let s = main('grid: 6; dv: vec2(du, 1); shape: circle; fill: dv, 0');
+    assert.match(s, /vec2 g_1 = vec2\(du, 1\.0\);\s*g_dist = length\(vec2\(du, dv\)\);/);
+    assert.match(s, /g_color = vec4\(vec3\(g_1, 0\.0\), 1\.0\);/);
+    assert.match(main('match(x > 1) { du: vec2(1); fill: du, 0 } fill: du'), /vec2 g_1 = vec2\(1\.0\);[^}]*\}\s*g_color = vec4\(vec3\(du\), 1\.0\);/);
+    assert.deepEqual(warnings('X: vec2(0); fill: X, 0'), []);
+    assert.deepEqual(warnings('pos: vec3(1); uv.x: vec2(1); fill: red'), ['pos is vec2', 'uv.x is float']);
+});
+
 test('du and dv: coordinates inside the cell', () => {
     let s = shader('match(du > 0) { fill: red }');
     assert.match(s, /float du = fract\(uv\.x \* X\) - 0\.5;/);
@@ -1088,4 +1097,12 @@ test('a body that sets place draws marks too, as many as its grid', () => {
     assert.deepEqual(warnings('grid: 4; marks: 8;'), ['grid or marks']);
     assert.equal(draw('grid: 4; marks: 8;', extra).points, 8);
     assert.deepEqual(warnings('match(x > 1) { marks: 8; }'), ['marks goes top-level']);
+});
+
+test('a place only inside repeat is a variable of the body', () => {
+    let d = draw('grid: 4; m: 0; repeat(3) { place: 2; m: m + place; } fill: m / 6', extra);
+    assert.equal(d.points, undefined);
+    assert.match(d.fragment, /float g_3 = 2\.0;\s*g_1 = \(g_1 \+ g_3\);/);
+    assert.deepEqual(warnings('grid: 4; repeat(3) { place: 2; } fill: place'), ['unknown place']);
+    assert.deepEqual(warnings('marks: 4; repeat(3) { place: pos; }'), ['place in repeat()']);
 });
