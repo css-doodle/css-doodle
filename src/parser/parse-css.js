@@ -12,7 +12,7 @@
 import { textOf, itemsOf, Token } from './tokenizer.js';
 import { namesOf, rowsOf } from './parse-body.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
-import expandFunctions, { warn } from './expand-functions.js';
+import expandFunctions, { warn, solidAt } from './expand-functions.js';
 import parseVar from './parse-var.js';
 import parseSvg from './parse-svg.js';
 import svgSourceOf from './svg-source.js';
@@ -42,9 +42,6 @@ class Cursor {
     headIndex() {
         return this.peek()?.index ?? this.source.length;
     }
-    position() {
-        return ++this.ctx.position;
-    }
 }
 
 const PAIRS = { '"': '"', "'": "'", '(': ')' };
@@ -63,10 +60,10 @@ function substitutePi(source, from, to = from + 1) {
 
 function separateFuncName(name, whole) {
     if (whole || (/\D$/.test(name) && !/\d[x-]\d/.test(name)) || Math[name.slice(1)]) {
-        return { fname: name, extra: '' };
+        return [name, ''];
     }
     let [, fname, extra] = /^(.*?)((?:[\d.]|(?<=\d)[x-](?=\d))*)$/.exec(name);
-    return { fname, extra };
+    return [fname, extra];
 }
 
 const Node = {
@@ -278,7 +275,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
         func.name = suffix && hasArguments ? '$' + suffix : '@$';
         if (suffix && !hasArguments) func.arguments.push(Node.argument([Node.text(suffix)]));
     } else {
-        let { fname, extra: extraArgs } = separateFuncName(name, body);
+        let [fname, extraArgs] = separateFuncName(name, body);
         func.name = fname;
         if (extraArgs.length) {
             if (composable(fname)) {
@@ -289,7 +286,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
         }
     }
 
-    func.position = cur.position();
+    func.position = ++cur.ctx.position;
     return func;
 }
 
@@ -312,12 +309,6 @@ function readVarName(cur) {
     }
     cur.i += i;
     return name;
-}
-
-function declaresVar(cur) {
-    let t = cur.peek();
-    if (t?.isSpace()) t = cur.peek(1);
-    return !!t?.isSymbol(':');
 }
 
 // `indexed` for @pick, where a colon in the first argument ends its index
@@ -380,7 +371,7 @@ function parseArguments(cur, copying, whole, indexed) {
             if (v === '-' && !buf) {
                 let at = cur.i;
                 let name = readVarName(cur);
-                if (name && !declaresVar(cur)) {
+                if (name && !solidAt(cur.tokens, cur.i)?.isSymbol(':')) {
                     values.push(Node.var(name));
                     continue;
                 }
@@ -573,7 +564,7 @@ function parseRule(cur) {
     let rule = { type: 'rule', property: '', value: [] };
     let source = cur.source;
     let colon = -1;
-    let end = source.length;
+    let end;
     let pos = cur.peek().pos;
     let stop = probe(cur, ':', ';', '}');
     if (stop < 0) stop = cur.tokens.length;
@@ -649,7 +640,7 @@ function parseUse(cur) {
             ctx.using.push(name);
             let defs = ctx.defs;
             try {
-                statements.push(...parseSource(expandFunctions(rule, ctx), ctx));
+                statements.push(...parseBlockBody(new Cursor(expandFunctions(rule, ctx), ctx), true));
             } catch (e) {}
             ctx.defs = defs;
             ctx.using.pop();
@@ -845,7 +836,7 @@ function parseCondSelector(cur, brace) {
         }
     }
     end(cur.tokens[brace].index);
-    return { name: alts[0].name, segments: alts[0].segments, alts, position: cur.position() };
+    return { name: alts[0].name, segments: alts[0].segments, alts, position: ++cur.ctx.position };
 }
 
 function parseKeyframes(cur, brace) {
@@ -903,13 +894,9 @@ function skipTag(cur) {
     cur.next();
 }
 
-function parseSource(input, ctx) {
-    return parseBlockBody(new Cursor(String(input ?? ''), ctx), true);
-}
-
 export default function parse(input, extra) {
     let ctx = { extra, position: 0, warnings: [], selectors: ['&'], using: [], expanded: 0, calls: 0, addons: [] };
-    let result = parseSource(expandFunctions(String(input ?? ''), ctx), ctx);
+    let result = parseBlockBody(new Cursor(expandFunctions(String(input ?? ''), ctx), ctx), true);
     result.warnings = ctx.warnings;
     result.addons = ctx.addons;
     return result;

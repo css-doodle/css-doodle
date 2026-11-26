@@ -22,8 +22,7 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
         head = [];
     };
 
-    while (iter.next()) {
-        let curr = iter.curr();
+    for (let curr; (curr = iter.next());) {
         let next = iter.curr(1);
         if (curr.isSymbol('(')) {
             depth++;
@@ -74,8 +73,7 @@ function readRaw(iter) {
     let tokens = [];
     let depth = 0;
     let quote = false;
-    while (iter.next()) {
-        let curr = iter.curr();
+    for (let curr; (curr = iter.next());) {
         if (curr.status) {
             quote = curr.status === 'open';
         } else if (quote) {

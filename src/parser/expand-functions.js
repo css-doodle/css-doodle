@@ -332,7 +332,7 @@ function isStatements(text) {
 }
 
 // the token at j or the first after it that is not a space
-function solidAt(tokens, j) {
+export function solidAt(tokens, j) {
     while (tokens[j]?.isSpace()) j++;
     return tokens[j];
 }

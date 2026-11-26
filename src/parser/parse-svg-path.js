@@ -27,8 +27,7 @@ function parse(input) {
         }
         temp.value.push(Number(text));
     };
-    while (iter.next()) {
-        let curr = iter.curr();
+    for (let curr; (curr = iter.next());) {
         if (curr.isSpace() || curr.isSymbol(',')) {
             continue;
         }

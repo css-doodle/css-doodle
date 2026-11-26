@@ -74,13 +74,13 @@ function parseSimple(input, noSpace) {
 }
 
 function parseCached(input, option) {
-    let symbol = option && option.symbol;
-    let plain = (symbol === undefined || symbol === ',') && !(option && option.verbose);
+    let symbol = option?.symbol;
+    let plain = (symbol === undefined || symbol === ',') && !option?.verbose;
     if (plain && typeof input === 'string' && input.length && !RE_PLAIN.test(input)) {
         return [input];
     }
     if (plain && (typeof input === 'number' || (typeof input === 'string' && input.length)) && RE_SIMPLE.test(input)) {
-        return parseSimple(String(input), option && option.noSpace);
+        return parseSimple(String(input), option?.noSpace);
     }
     let optKey = option
         ? (Array.isArray(symbol) ? symbol.join('\x01') : String(symbol))

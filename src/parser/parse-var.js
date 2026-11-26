@@ -7,8 +7,7 @@ function parse(input) {
 function readList(iter, nested) {
     let rules = [];
     let depth = 0;
-    while (iter.next()) {
-        let curr = iter.curr();
+    for (let curr; (curr = iter.next());) {
         let next = iter.curr(1);
         if (curr.value === 'var' && next?.isSymbol('(')) {
             iter.next();
@@ -31,8 +30,7 @@ function readList(iter, nested) {
 function readVar(iter) {
     let rule = {};
     let tokens = [];
-    while (iter.next()) {
-        let curr = iter.curr();
+    for (let curr; (curr = iter.next());) {
         // a `;` closes a var( that was never closed
         if (curr.isSymbol(')', ';', ',')) {
             rule.name = textOf(tokens);
