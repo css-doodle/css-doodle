@@ -1024,8 +1024,10 @@ test('a mark is size across in pos units, the cell side until set, with a named 
     assert.match(vertex, /float size = min\(u_resolution\.x \/ X, u_resolution\.y \/ Y\) \/ g_res;/);
     assert.match(vertex, /g_dist = 3\.0;/);
     assert.match(vertex, /g_mark = vec4\(size, g_masked \? g_dist : 0\.0, /);
-    // a quad, not a point, so no GPU caps the size; one pixel at least, as a point is
-    assert.match(MARKS.vertex, /float side = max\(mark\.x \* res, 1\.0\);/);
+    // a quad, not a point, so no GPU caps the size; one pixel at least, fainter when thinner,
+    // and a pixel more when masked so the antialiased edge is centred on the mark's own
+    assert.match(MARKS.vertex, /float side = max\(w, 1\.0\) \+ step\(0\.5, mark\.y\);/);
+    assert.match(MARKS.vertex, /color\.a \*= c \* \(len \+ c\) \/ \(len \+ 1\.0\);/);
     assert.doesNotMatch(MARKS.vertex, /gl_PointSize/);
     assert.doesNotMatch(draw('marks: 8x8; size: 2px; fill: red;', extra).vertex, /g_masked = true/);
 });

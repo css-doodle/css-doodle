@@ -525,13 +525,16 @@ const MARKS = {
             vec2 d0 = prevMark.z > 0.0 && distance(a, p) > 1e-4 ? normalize(a - p) : d;
             vec2 d2 = nextMark.z > 0.0 && distance(c, b) > 1e-4 ? normalize(c - b) : d;
             bool end = corner.x > 0.0;
-            at = (end ? b : a) + miter(end ? d : d0, end ? d2 : d) * max((end ? nextMark.x : mark.x) * res, 1.0) * corner.y;
+            float w = (end ? nextMark.x : mark.x) * res;
+            at = (end ? b : a) + miter(end ? d : d0, end ? d2 : d) * (max(w, 1.0) + 1.0) * corner.y;
             hide = distance(a, b) < 1e-4 || max(fill.a, nextFill.a) <= 0.0;
             color = end ? nextFill : fill;
+            color.a *= min(w, 1.0);
             uv = vec2(0.0, -corner.y);
             kind = vec2(2.0, 0.0);
         } else {
-            float side = max(mark.x * res, 1.0);
+            float w = mark.x * res, c = min(w, 1.0);
+            float side = max(w, 1.0) + step(0.5, mark.y);
             vec2 axis = (ends.zw - ends.xy) * res;
             float len = length(axis);
             vec2 dir = len > 0.0 ? axis / len : vec2(1.0, 0.0);
@@ -539,6 +542,7 @@ const MARKS = {
             at = ends.xy * res + dir * along + vec2(-dir.y, dir.x) * corner.y * side;
             hide = fill.a <= 0.0 || mark.z < 0.0;
             color = fill;
+            color.a *= c * (len + c) / (len + 1.0);
             uv = vec2((along - 0.5 * len) / side, -corner.y);
             kind = vec2(mark.y, 0.5 * len / side);
         }
@@ -546,14 +550,18 @@ const MARKS = {
     }
     `,
     fragment: glsl`
-    ${SHAPE}
     in vec4 color;
     flat in vec2 kind;
     in vec2 uv;
+    float e;
+    float g_edge(float d) {
+        return 1.0 - smoothstep(0.5 - e, 0.5, d);
+    }
     void main() {
-        float du = max(abs(uv.x) - kind.y, 0.0), dv = uv.y, k = kind.x;
-        float a = color.a * (k > 0.0 ? g_shape(k < 1.5 ? ${MASKS.circle} : k < 2.5 ? ${MASKS.square} : ${MASKS.diamond}, 1.0) : 1.0);
-        FragColor = vec4(color.rgb, a);
+        float du = max(abs(uv.x) - kind.y, 0.0), dv = abs(uv.y), k = kind.x;
+        e = length(vec2(dFdx(uv.y), dFdy(uv.y)));
+        float a = k < 0.5 ? 1.0 : k < 1.5 ? g_edge(length(vec2(du, dv))) : k < 2.5 ? g_edge(du) * g_edge(dv) : g_edge(du + dv);
+        FragColor = vec4(color.rgb, color.a * a);
     }
     `,
 };

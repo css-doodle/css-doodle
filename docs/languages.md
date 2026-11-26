@@ -402,8 +402,10 @@ center (`du` and `dv` are 0), rather than once per pixel, so a loop
 that finds a point stays cheap. `place` puts the mark at a point
 in `pos` units and reads as one, the cell's center until set:
 `place: pos` leaves it there. `size` is the mark's width in `pos`
-units, the cell's shorter side until set, so `2px` is two pixels. Each
-mark has one color and `shape` is `circle`, `square` or `diamond`.
+units, the cell's shorter side until set, so `2px` is two pixels; a
+mark thinner than a pixel is drawn a pixel wide and as much fainter,
+so `.5px` is half as dark as `1px` on every screen. Each mark has one
+color and `shape` is `circle`, `square` or `diamond`.
 Later cells paint over earlier ones, in the order of `i`.
 
 ```css
