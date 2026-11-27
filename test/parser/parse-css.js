@@ -1095,6 +1095,8 @@ test('a value function reads the caller until it assigns a name, and never write
         'f_1_a: 1; f_1_e: 2; f_1_result: mix(#e0402a, #fae, f_1_a / f_1_e); fill: f_1_result;');
     assert.equal(paintOf(`--f(q): { q.y: abs(q.y); result: q; }; @content: @pattern(fill: $f(pos), 0;);`),
         'f_1_q: pos; f_1_q.y: abs(pos.y); f_1_result: f_1_q; fill: f_1_result, 0;');
+    assert.equal(paintOf(`--f(q): { q*: 2; s+: 1; result: q * s; }; @content: @pattern(s: 1; fill: $f(pos), 0;);`),
+        's: 1;f_1_q: pos; f_1_q*: 2; f_1_s: s; f_1_s+: 1; f_1_result: f_1_q * f_1_s; fill: f_1_result, 0;');
     // a loop name and the names in a block are its own too
     assert.equal(paintOf(`--sum(n): { s: 0; repeat(4 as k) { s: s + k * $n; } result: s; }; @content: @pattern(fill: $sum(.1););`),
         'sum_1_s: 0; repeat(4 as sum_1_k) { sum_1_s: sum_1_s + sum_1_k * .1; } sum_1_result: sum_1_s; fill: sum_1_result;');

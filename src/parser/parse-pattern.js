@@ -42,7 +42,8 @@ function readMatchBlocks(iter, head) {
 }
 
 function readPatternStatement(iter, head) {
-    return rowsOf(namesOf(head), readValue(iter), itemsOf).map(({ name, value }) => ({ type: 'statement', name, value: textOf(value) }));
+    let op = head.length > 1 && /^[-+*/]$/.test(head.at(-1).value) && head.pop().value;
+    return rowsOf(namesOf(head), readValue(iter), itemsOf).map(({ name, value }) => ({ type: 'statement', name, value: op ? `${name} ${op} (${textOf(value)})` : textOf(value) }));
 }
 
 function readTail(head) {

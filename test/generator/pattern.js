@@ -720,6 +720,16 @@ test('stop ends the loop where it is written', () => {
     assert.deepEqual(warnings('s: 1; stop: s > 0; fill: s'), ['stop needs repeat']);
 });
 
+test('an operator before the colon applies the value to the name: a+: 1 is a: a + (1)', () => {
+    assert.match(main('a: 1; a-: .2 + .3; fill: a'), /g_1 = \(g_1 - \(\.2 \+ \.3\)\);/);
+    assert.match(main('c: #e46; c*: 1 + du; fill: c'), /g_1 = \(g_1 \* \(1\.0 \+ du\)\);/);
+    assert.match(main('p: pos; p.x/: 2; fill: p.x'), /g_1\.x = \(g_1\.x \/ 2\.0\);/);
+    assert.match(main('du-: .1; fill: du'), /\bdu = \(du - \.1\);/);
+    assert.match(main('s: 0; k*8 { s+: 1 / k } fill: s'), /\{\s*g_1 = \(g_1 \+ \(1\.0 \/ g_2\)\);\s*\}/);
+    assert.match(main('a, b: 1, 2; a, b *: 2, 3; fill: a + b'), /g_1 = \(g_1 \* 2\.0\);\s*g_2 = \(g_2 \* 3\.0\);/);
+    assert.deepEqual(warnings('a+: 1; fill: a'), ['unknown a']);
+});
+
 test('repeat without a stop condition never breaks early', () => {
     assert.doesNotMatch(main('zx: 0; repeat(5) { zx: zx + 1 }'), /break/);
 });

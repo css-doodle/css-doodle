@@ -359,6 +359,13 @@ export function solidAt(tokens, j) {
     return tokens[j];
 }
 
+// what a row head ending before j assigns with: ':' in `a: 1`, '+' in `a+: 1`
+function colonAt(tokens, j) {
+    while (tokens[j]?.isSpace()) j++;
+    let op = /^[-+*/]$/.test(tokens[j]?.value) && tokens[j + 1]?.isSymbol(':') && tokens[j].value;
+    return op || tokens[j]?.isSymbol(':') && ':';
+}
+
 // What a body gives: a value, when a statement assigns result, in a block
 // too, the last assignment run being the value, as in a CSS @function; an
 // expression, when it is one statement declaring nothing and not a call of
@@ -482,7 +489,7 @@ function renameLocals(text, prefix) {
         }
         if (t.isSymbol('$', '@') && tokens[i + 1] && adjacent(t, tokens[i + 1])) {
             let end = nameEnd(tokens, i + 1);
-            if (t.isSymbol('$') && atStart && !depth && solidAt(tokens, end + 1)?.isSymbol(':')) {
+            if (t.isSymbol('$') && atStart && !depth && colonAt(tokens, end + 1)) {
                 targets.add(textOf(tokens.slice(i + 1, end + 1)));
             }
             i = end;
@@ -499,14 +506,14 @@ function renameLocals(text, prefix) {
             let dot = whole.indexOf('.');
             let local = dot < 0 ? whole : whole.slice(0, dot);
             let after = tokens[end + 1];
-            let target = atStart && !depth && whole !== 'stop' && solidAt(tokens, end + 1)?.isSymbol(':');
+            let target = atStart && !depth && whole !== 'stop' && colonAt(tokens, end + 1);
             let loop = before?.isWord() && before.value === 'as';
             let call = after?.isSymbol('(') && adjacent(tokens[end], after);
             if (target) waiting.push(local);
             if (target && whole === 'result') item = 1;
             if (loop) declared.add(local);
             if (!call && (target || loop || declared.has(local))) {
-                let copy = target && dot > 0 && !declared.has(local) ? `${prefix}_${local}: ${local}; ` : '';
+                let copy = target && (dot > 0 || target !== ':') && !declared.has(local) ? `${prefix}_${local}: ${local}; ` : '';
                 out += text.slice(from, t.index) + copy + `${prefix}_${local}`;
                 from = t.index + local.length;
             }
