@@ -689,8 +689,7 @@ class Rules {
             return '';
         }
         let composed = this.getComposedValue(token.value, cell, env, {}, selector, prop);
-        let extra = composed.extra;
-        let value = composed.value;
+        let { extra, value } = composed;
 
         if (RE_PLACE.test(prop) && /^(polygon|ellipse)\(/.test(value)) {
             value = composed.origin ?? '';
@@ -1251,9 +1250,7 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
         } else {
             gridSize = pre.grid || gridSize;
         }
-        let seed = pre.seed || seedValue;
-        if (isNil(seed)) seed = Date.now();
-        seed = String(seed);
+        let seed = String((pre.seed || seedValue) ?? Date.now());
 
         if (pre.seed || !seedRandom) {
             updateRandom(seed);

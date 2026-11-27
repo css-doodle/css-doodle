@@ -61,20 +61,18 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
     let parsed = typeof source === 'string' ? { fragment: source, textures: [] } : source;
     let width = fixed?.x, height = fixed?.y, textures = [];
     const loadTextures = () => {
-        let dpr = devicePixelRatio || 1;
-        return Promise.all(parsed.textures.map(({ name, value }) => {
+        let dpr = devicePixelRatio;
+        return Promise.all(parsed.textures.map(async ({ name, value }) => {
             let options = { width, height, instance: `${id.slice(2)}-${name}`, compiled };
-            return doodleToImage(host, value, options).then(src => new Promise(resolve => {
-                if (!src) {
-                    return resolve({ name, value: null });
-                }
-                let img = new Image();
-                img.width = width * dpr;
-                img.height = height * dpr;
-                img.onload = () => resolve({ name, value: img });
-                img.onerror = () => resolve({ name, value: null });
-                img.src = src;
-            }));
+            let src = await doodleToImage(host, value, options);
+            if (!src) {
+                return { name, value: null };
+            }
+            let img = new Image();
+            img.width = width * dpr;
+            img.height = height * dpr;
+            img.src = src;
+            return { name, value: await img.decode().then(() => img, () => null) };
         }));
     };
     if (inside) {

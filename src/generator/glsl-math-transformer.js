@@ -238,7 +238,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             }
             comma = peek()?.value === ',';
             // pick(k: a, b, …): a colon ends the index
-            if (name === 'pick' && !at && args.length === 1 && peek()?.value === ':') comma = at = true;
+            if (name === 'pick' && args.length === 1 && peek()?.value === ':') comma = at = true;
             if (comma) consume();
             else if (!isValue(peek())) stray(')');
         }

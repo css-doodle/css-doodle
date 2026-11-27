@@ -493,7 +493,7 @@ function tiles(make, box, screen, inside, count, grow, derived, half, dots) {
 }
 
 function shake(pieces, n, seed) {
-    let d = n * sqrt(pieces.reduce((s, [p]) => s + area(p), 0) / pieces.length), moved = {};
+    let d = n * sqrt(sum(pieces.map(([p]) => area(p))) / pieces.length), moved = {};
     return pieces.map(([p, , kind]) => {
         let q = [];
         for (let i = 0; i < p.length; i += 2) {

@@ -260,9 +260,7 @@ function timing(animate, value, label, warn) {
 
 export default function generateSvg(token, warn = () => {}, element, parent, root) {
     let { name, value } = token, inlineId;
-    if (!element) {
-        element = new Tag('root');
-    }
+    element ??= new Tag('root');
     if (token.type === 'block') {
         // style tag
         if (name === 'style') {
@@ -293,7 +291,7 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
             }
             if (GROUPS.includes(name)) el = combine(el, name, warn);
             let isInlineAndNotDefs = token.inline && name !== 'defs';
-            let isParentInlineDefs = parent && parent.inline && parent.name === 'defs';
+            let isParentInlineDefs = parent?.inline && parent.name === 'defs';
             let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
 
             if (isInlineAndNotDefs || isParentInlineDefs) {
@@ -374,10 +372,7 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
                     warn('defs: one element');
                     value = '';
                 } else {
-                    value = `url(#${id})`;
-                    if (name === 'xlink:href' || name === 'href') {
-                        value = `#${id}`;
-                    }
+                    value = name === 'xlink:href' || name === 'href' ? `#${id}` : `url(#${id})`;
                 }
             }
             if (keyword === 'viewBox') {

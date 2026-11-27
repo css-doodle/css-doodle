@@ -126,16 +126,6 @@ const WORDS = [
 
 export const words = code => WORDS.map(([test, src]) => test.test(code) ? src : '').join('');
 
-const SHAPE = glsl`
-    float g_shape(float d, float size) {
-        float r = 0.5 * size;
-        return 1.0 - smoothstep(r - max(fwidth(d), 1e-5), r, d);
-    }
-    float g_shape(float d) {
-        return g_shape(d, 0.0);
-    }
-`;
-
 // Built-ins of the @paint language (grammar §9.3)
 export const HELPERS = glsl`
     float g_hash(vec2 p) {
@@ -149,7 +139,13 @@ export const HELPERS = glsl`
     vec3 g_hue(float h) {
         return clamp(abs(mod(h * (3.0 / PI) + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
     }
-    ${SHAPE}
+    float g_shape(float d, float size) {
+        float r = 0.5 * size;
+        return 1.0 - smoothstep(r - max(fwidth(d), 1e-5), r, d);
+    }
+    float g_shape(float d) {
+        return g_shape(d, 0.0);
+    }
 
     float rand(vec2 p) {
         return g_hash(p + u_seed.x * 71.0);
@@ -489,7 +485,7 @@ function generateBody(tokens, scope, ctx, opts = {}) {
             } else if (loop && t.name !== 'fill') {
                 ctx.warn(`${t.name} in repeat()`);
             } else {
-                out += output(t.value, scope, ctx, opts, t.name);
+                out += output(t.value, scope, ctx, opts);
             }
         } else if (t.type === 'text') {
             ctx.warn(`"${t.value}" needs :`);

@@ -238,7 +238,7 @@ function createMirror(even) {
 
 const countOf = (cell, e) => e?.[SEQ.index] ? e[SEQ.max] : cell.grid.count;
 
-function createPick(name, fn, random = false) {
+function createPick(name, fn, random) {
     return (cell, { context, extra, shuffle, level }, position) => {
         let lastExtra = extra.at(-1);
         let sig = lastExtra?.[SEQ.sig] ?? '';
@@ -335,9 +335,9 @@ const composeSvgPolygonUrl = memo((commands, seed) => {
     });
     let props = '';
     let p = rules.padding ?? Number(rules['stroke-width']) / 2;
-    for (let name of Object.keys(rules)) {
+    for (let [name, value] of Object.entries(rules)) {
         if (PAINT.test(name)) {
-            props += `${name}: ${rules[name]};`
+            props += `${name}: ${value};`
         }
     }
     let { rings } = points, shape = rings?.length > 1
@@ -485,10 +485,7 @@ function createNoise(outline) {
                 noise2d: new Noise(random), offsetX: random(), offsetY: random()
             };
             let transform = (isLetter(from) && isLetter(to)) ? byCharcode : byUnit;
-            let _x = offsetX + u;
-            let _y = offsetY + v;
-
-            let t = noise2d.fbm(_x * frequency, _y * frequency, octave, scale);
+            let t = noise2d.fbm((offsetX + u) * frequency, (offsetY + v) * frequency, octave, scale);
             let fn = transform((from = 0, to = 1) => map2d(t, from, to, scale));
             return pushStack(context, 'lastRand', fn(from, to));
         };
@@ -724,8 +721,9 @@ function arcShorthand(args) {
 }
 
 const arcPath = memo((...args) => {
-    let named = args.join(',').includes(':');
-    let c = named ? parseShapeCommands(args.join(',')) : arcShorthand(args);
+    let input = args.join(',');
+    let named = input.includes(':');
+    let c = named ? parseShapeCommands(input) : arcShorthand(args);
     let [rx, ry = rx] = spaced(c.r ?? '0').map(v => calc(v));
     let [cx, cy = cx] = spaced(c.at ?? c.move ?? '0').map(v => calc(v));
     let point = a => {

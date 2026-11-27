@@ -579,7 +579,7 @@ export default function drawScene(code, extra, report = () => {}) {
         let used = out, size = arrays.size;
         for (let def of tree.unused) generate(def, 'p');
         out = used;
-        [...arrays.keys()].slice(size).forEach(k => arrays.delete(k));
+        arrays = new Map([...arrays].slice(0, size));
         if (!self && !shiny) out = out.replaceAll(SHADE, '');
 
         let off = v => /^\s*none\s*$/.test(textOf(v || []));

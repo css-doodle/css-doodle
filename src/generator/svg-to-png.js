@@ -1,28 +1,20 @@
-export default function svgToPng(svg, width, height, scale) {
-    return new Promise((resolve, reject) => {
-        let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
-        let img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = source;
+export default async function svgToPng(svg, width, height, scale) {
+    let source = `data:image/svg+xml;utf8,${ encodeURIComponent(svg) }`;
+    let img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = source;
+    await img.decode();
 
-        img.onerror = reject;
+    let canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
 
-        img.onload = () => {
-            let canvas = document.createElement('canvas');
-            let ctx = canvas.getContext('2d');
+    // scale with devicePixelRatio only when the scale equals 1
+    let dpr = scale === 1 ? devicePixelRatio : 1;
 
-            // scale with devicePixelRatio only when the scale equals 1
-            let dpr = scale === 1 ? devicePixelRatio || 1 : 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            try {
-                canvas.toBlob(blob => resolve({ blob, source }));
-            } catch (e) {
-                reject(e);
-            }
-        }
-    });
+    let blob = await new Promise(resolve => canvas.toBlob(resolve));
+    return { blob, source };
 }

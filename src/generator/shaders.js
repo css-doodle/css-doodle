@@ -81,7 +81,7 @@ export function generateFragment(fragment, textures) {
     if (precisionMatch) {
         fragment = fragment.replace(precisionMatch[0], '');
     }
-    push(`precision ${precisionMatch ? precisionMatch[1] : 'highp'} float;`);
+    push(`precision ${precisionMatch?.[1] || 'highp'} float;`);
 
     if (!outputMatch) {
         push('out vec4 FragColor;');
@@ -96,7 +96,7 @@ export function generateFragment(fragment, textures) {
     });
 
     if (/gl_FragColor\s*=/.test(fragment)) {
-        push(`#define gl_FragColor ${outputMatch ? outputMatch[1] : 'FragColor'}`);
+        push(`#define gl_FragColor ${outputMatch?.[1] || 'FragColor'}`);
     }
 
     if (/texture2D\s*\(/.test(fragment)) {
@@ -130,13 +130,9 @@ function uploadTexture(gl, image) {
 
     let src = image;
     if (image.width > MAX_TEXTURE_SIZE || image.height > MAX_TEXTURE_SIZE) {
-        const canvas = document.createElement('canvas');
         const scale = Math.min(MAX_TEXTURE_SIZE / image.width, MAX_TEXTURE_SIZE / image.height);
-        canvas.width = image.width * scale;
-        canvas.height = image.height * scale;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        src = canvas;
+        src = new OffscreenCanvas(image.width * scale, image.height * scale);
+        src.getContext('2d').drawImage(image, 0, 0, src.width, src.height);
     }
 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
@@ -246,7 +242,7 @@ function releaseSurface(surface, drawing) {
 }
 
 export default function drawShader(shaders, seed, onLost) {
-    const dpr = devicePixelRatio || 1;
+    const dpr = devicePixelRatio;
     const { textures, points, transfer, marks } = shaders;
     const kind = transfer ? 't' : points ? 'p' : '';
     const vertex = shaders.vertex?.trim() || DEFAULT_VERTEX_SHADER;

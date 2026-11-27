@@ -369,13 +369,13 @@ function parseArguments(cur, copying, whole, indexed) {
         if (!quote && tok.isSymbol()) {
             // `--name:` declares (inside @svg), anything else reads
             if (v === '-' && !buf) {
-                let at = cur.i;
+                let mark = cur.i;
                 let name = readVarName(cur);
                 if (name && !solidAt(cur.tokens, cur.i)?.isSymbol(':')) {
                     values.push(Node.var(name));
                     continue;
                 }
-                cur.i = at;
+                cur.i = mark;
             }
             if (copying) {
                 if (v === '{') {

@@ -68,7 +68,7 @@ test('setStyle drops a promised style from a superseded render', async () => {
 test('export waits for styles and disables transitions without restamping animations', async t => {
     let serializer = globalThis.XMLSerializer;
     globalThis.XMLSerializer = class {
-        serializeToString(node) { return `<style>${node.textContent}</style>`; }
+        serializeToString(root) { return `<style>${root.childNodes[0].textContent}</style>`; }
     };
     t.after(() => {
         if (serializer === undefined) delete globalThis.XMLSerializer;

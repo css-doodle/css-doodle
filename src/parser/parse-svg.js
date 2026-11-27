@@ -62,7 +62,7 @@ function wrapChain(block, selectors) {
 
 function readGroupBlocks(iter, groups) {
     let first = groups[0];
-    let start = iter.blocks = (iter.blocks || 0) + 1;
+    let start = ++iter.blocks;
     let inner = parseBody(iter, makeBlock(first.pop()), svg);
     let size = iter.blocks - start + 1;
     // snapshot before resolveId adds the first group's id/class
@@ -283,7 +283,7 @@ function skipHeadSVG(block) {
 }
 
 function parse(source, root) {
-    let iter = Object.assign(iterator(scan(source)), { source });
+    let iter = Object.assign(iterator(scan(source)), { source, blocks: 0 });
     let tokens = parseBody(iter, root || makeBlock('svg'), svg);
     return root ? tokens : skipHeadSVG(tokens);
 }

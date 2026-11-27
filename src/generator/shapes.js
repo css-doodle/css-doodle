@@ -136,11 +136,11 @@ function createPointFunction(props, split) {
     });
     let point = (t, i) => {
         index = i;
-        context['i'] = i + 1;
-        context['t'] = context['θ'] = t;
+        context.i = i + 1;
+        context.t = context['θ'] = t;
         // a `t:` command rewrites the angle, in terms of the angle and index
         if (pt) {
-            context['t'] = context['θ'] = t = calc(pt, context);
+            context.t = context['θ'] = t = calc(pt, context);
         }
         let x, y;
         if (pr) {
@@ -154,7 +154,7 @@ function createPointFunction(props, split) {
         return [x, y];
     };
     point.formula = text => t => {
-        context['t'] = context['θ'] = t;
+        context.t = context['θ'] = t;
         return Number(calc(text, context)) || 0;
     };
     point.reads = text => {

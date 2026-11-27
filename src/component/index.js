@@ -47,7 +47,6 @@ function unEntity(code) {
 
 function serializeDoodle(root) {
     let sources = root.querySelectorAll('canvas');
-    let nodes = root.childNodes;
     if (sources.length) {
         let template = document.createElement('template');
         template.innerHTML = root.innerHTML;
@@ -57,10 +56,9 @@ function serializeDoodle(root) {
             image.src = sources[i].toDataURL();
             canvas.replaceWith(image);
         });
-        nodes = template.content.childNodes;
+        root = template.content;
     }
-    let serializer = new XMLSerializer();
-    return Array.from(nodes, node => serializer.serializeToString(node)).join('');
+    return new XMLSerializer().serializeToString(root);
 }
 
 function mountFilterDefs(parent, markup, slot) {
