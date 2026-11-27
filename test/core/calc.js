@@ -653,6 +653,14 @@ test('match() takes test and value pairs, then an optional else', () => {
         'calc(2 * abs(sign(max(0,sign(var(--t) - 1)))) + (3 * abs(sign(max(0,sign(var(--t) - 2)))) + 4 * (1 - abs(sign(max(0,sign(var(--t) - 2)))))) * (1 - abs(sign(max(0,sign(var(--t) - 1))))))');
 });
 
+test('match(t: v, …) writes a colon after each test, the same as a comma', () => {
+    assert.equal(calc('match(0: 5, 1: 7, 9)'), 7);
+    assert.equal(calc('match(0: 5, 0: 7, 9)'), 9);
+    assert.equal(calc('match(x > 2: 1, x > 1: 2, 3)', { x: 2 }), 2);
+    assert.equal(calc('match(x > 2: 1, x > 1, 2, 3)', { x: 2 }), 2);
+    assert.equal(calc('match(1: pick(2: 4, 5), 0)'), 5);
+});
+
 test('a bare reference to a zero-argument function calls it', () => {
     // the selector context passes `random` as a function; `random > .5`
     // used to read it as 0 and compile the function source

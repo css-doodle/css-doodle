@@ -258,7 +258,7 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
                 func.arguments = parseDoodleBody(cur, paren.index + 1, name);
             } else {
                 let svg = /^@svg$/i.test(name), raw = name === '@raw';
-                let closed = parseArguments(cur, shaped || readsShape(name), svg || raw, RE_KEYED.test(name));
+                let closed = parseArguments(cur, shaped || readsShape(name), svg || raw, name);
                 func.arguments = closed.args;
                 if (raw) closed.args.forEach(arg => arg.cluster = true);
                 if (closed.at) func.at = true;
@@ -311,8 +311,7 @@ function readVarName(cur) {
     return name;
 }
 
-// `indexed` for @pick, where a colon in the first argument ends its index
-function parseArguments(cur, copying, whole, indexed) {
+function parseArguments(cur, copying, whole, name) {
     let args = [];
     let values = [];
     let buf = '';
@@ -403,8 +402,8 @@ function parseArguments(cur, copying, whole, indexed) {
                 }
                 paren--;
             } else if (v === ',' && !paren && !whole && !blocks.length
-                    || v === ':' && indexed && !paren && !at && !args.length) {
-                at ||= v === ':';
+                    || v === ':' && !paren && (name === '@match' ? !(args.length % 2) : RE_KEYED.test(name) && !at && !args.length)) {
+                at ||= v === ':' && name !== '@match';
                 flush(false);
                 pushArgument();
                 cur.next();

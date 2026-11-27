@@ -368,7 +368,7 @@ function toPostfix(tokens) {
             } else if (RE_NUMBER.test(value)) {
                 expr.push(tk(NUMBER, Number(value)));
             } else if (next?.value === '(') {
-                const { args, endIndex, at } = parseFunctionArgs(tokens, i + 1, value === 'pick');
+                const { args, endIndex, at } = parseFunctionArgs(tokens, i + 1, value);
                 expr.push({ type: FUNCTION, name: value, value: args, at });
                 i = endIndex;
             } else {
@@ -413,8 +413,8 @@ function toPostfix(tokens) {
 }
 
 // Split the token stream of "(a, b, …)" into per-argument postfix lists;
-// in pick(k: a, b, …) the index ends at the colon
-function parseFunctionArgs(tokens, startIndex, indexed) {
+// in pick(k: a, b, …) the index ends at the colon, in match(t: v, …) a test does
+function parseFunctionArgs(tokens, startIndex, name) {
     const args = [];
     let current = [];
     let depth = 1;
@@ -433,9 +433,10 @@ function parseFunctionArgs(tokens, startIndex, indexed) {
             }
             break;
         }
-        if (depth === 1 && (value === ',' || value === ':' && indexed && !at && !args.length)) {
-            at ||= value === ':';
-            if (current.length || value === ':') {
+        const colon = value === ':' && (name === 'match' ? !(args.length % 2) : name === 'pick' && !at && !args.length);
+        if (depth === 1 && (value === ',' || colon)) {
+            at ||= colon && name === 'pick';
+            if (current.length || colon) {
                 args.push(toPostfix(current));
             }
             current = [];

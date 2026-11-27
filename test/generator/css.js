@@ -1455,6 +1455,13 @@ test('@match evaluates only the value it returns', () => {
     assert.equal(cells('--v: @m4(@match(@n % 2, a@n, b@n));'), '#c-1-1-1 {--v:a1,b2,a3,b4;}');
 });
 
+test('@match(t: v, …) writes a colon after each test, and a colon in a value stays', () => {
+    assert.equal(cells('color: @match(x > 2: red, x > 1: gold, blue);', '4x1'),
+        cells('color: @match(x > 2, red, x > 1, gold, blue);', '4x1'));
+    assert.equal(cells('--v: @match(x > 1: a:b, url(c:d));', '2x1'), '#c-1-1-1 {--v:url(c:d);}#c-2-1-1 {--v:a:b;}');
+    assert.equal(svgImage('background: @svg(g { fill: @match(1 > 0: red, blue) })'), '<svg><g fill="red"/></svg>');
+});
+
 test('@match() and @pick(k: …) read custom properties, under the cell names', () => {
     assert.equal(svgImage('background: @svg(circle*3 { --c: 2; display: @match(@n > c, none, inline) })'),
         '<svg><circle display="inline"/><circle display="inline"/><circle display="none"/></svg>');

@@ -32,7 +32,7 @@ it the doodle's own. Blocks don't scope it, and the latest value wins:
 elements go where the block stands, and its declarations set the
 attributes of the element around it. The test reads like `$(…)`. A
 body left out is skipped, so its functions and `--name` declarations
-do not run. As a value, `fill: @match(t, a, b)` is still the function.
+do not run. As a value, `fill: @match(t: a, b)` is still the function.
 
 **Block values** get a generated id and read as `url(#id)`, or `#id`
 for `href`. Gradients, `pattern`, `filter`, `clipPath`, `mask`,
@@ -377,7 +377,7 @@ steps. With `light: none` it reads 1.
 **Blocks.** A `match` block runs where its test holds. `match { … }`
 holds arms, each a test and a body, and runs the first whose test
 holds, or a last `else { … }` arm when none does. Blocks nest, each
-with its own scope. In a value, `match(t1, v1, t2, v2, …, else)` gives
+with its own scope. In a value, `match(t1: v1, t2: v2, …, else)` gives
 the value after the first test that holds.
 
 **`k*n { … }`** runs its body `n` times, with `k` counting from 1

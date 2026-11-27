@@ -392,6 +392,9 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
     assert.equal(transform('match(x > 1, 2, 3) + 1', { expect: 'float' }), '(((x > 1.0) ? 2.0 : 3.0) + 1.0)');
     // vector branches pass through, and a swizzle applies to the result
     assert.equal(transform('match(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
+    // a colon after a test is the same as a comma
+    assert.equal(transform('match(x > 4: .8, dr < 3: .5, .3)', { expect: 'float' }),
+        '((x > 4.0) ? .8 : ((dr < 3.0) ? .5 : .3))');
 });
 
 test('gradient() mixes its stops, each segment linear and at least a pixel wide', () => {

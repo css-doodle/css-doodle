@@ -385,9 +385,9 @@ name       = letter or '_', then letters, digits or '_'
   draw `@random` makes: `@match(random() < .3)` picks the cells
   `@random(.3)` does.
 - **Calls chain** right to left: `tan.cos.sin(x)` is
-  `tan(cos(sin(x)))`. `match(t1, v1, t2, v2, …, else)` gives the value
-  after the first test that holds, else the last odd argument or `0`,
-  and evaluates only that branch.
+  `tan(cos(sin(x)))`. `match(t1: v1, t2: v2, …, else)` gives the value
+  after the first test that holds, else the last value or `0`, and
+  evaluates only that branch.
 - **No errors.** Unknown names, cycles and missing operands read as
   `0`; division by zero gives `Infinity`.
 - **Live values.** A `var()` such as `@t` has no number at generation
