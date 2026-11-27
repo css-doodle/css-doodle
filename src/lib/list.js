@@ -4,7 +4,6 @@ export function join(arr) {
     return arr.join('\n');
 }
 
-// Fisher-Yates over a copy, drawing from the given random source
 export function shuffle(arr, random) {
     let ret = [...arr];
     let m = arr.length;

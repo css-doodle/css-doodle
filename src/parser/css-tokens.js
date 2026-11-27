@@ -1,4 +1,3 @@
-// The tokens parse-css.js and expand-functions.js read alike: `$` splits a word, names glue on
 import { scan, Token, NAME_CHAR } from './tokenizer.js';
 
 export const RE_NAME_TOKEN = /^[0-9a-zA-Z_\-.%]+$/;
@@ -52,7 +51,6 @@ function splitDollars(tokens) {
     return result;
 }
 
-// `paint` for text inside a @paint or @scene body, where // starts a comment
 export function tokensOf(text, paint) {
     let tokens = scan(text, { lineCommentsIn: /^(paint|pattern|scene|shape|plot|tile|svg)/i, ignoreInlineComment: paint });
     return text.includes('$') ? splitDollars(tokens) : tokens;

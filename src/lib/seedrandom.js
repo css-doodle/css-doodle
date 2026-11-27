@@ -1,5 +1,3 @@
-// Minimal seedrandom implementation Based on ARC4 (RC4) stream cipher.
-// Based on the work of David Bau: https://github.com/davidbau/seedrandom
 
 const WIDTH = 256;
 const MASK = WIDTH - 1;
@@ -7,7 +5,6 @@ const START_DENOM = WIDTH ** 6;
 const SIGNIFICANCE = 2 ** 52;
 const OVERFLOW = SIGNIFICANCE * 2;
 
-// seed is a string
 export default function seedrandom(seed) {
     let key = [];
     let smear = 0;
@@ -21,7 +18,6 @@ export default function seedrandom(seed) {
         key.length = WIDTH, key.fill(0, seed.length);
     }
 
-    // Key scheduling algorithm
     let s = [], i = 0, j = 0, t;
     while (i < WIDTH) s[i] = i++;
     for (i = 0; i < WIDTH; i++) {
@@ -40,7 +36,6 @@ export default function seedrandom(seed) {
         }
         return r;
     };
-    // RC4-drop[256] for unpredictability
     g(WIDTH);
 
     return () => {

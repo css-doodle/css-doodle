@@ -1,16 +1,5 @@
 import { scan, textOf, itemsOf } from './tokenizer.js';
 
-// The body grammar @svg, @paint and @shape share:
-//
-//   body        = { declaration | block | ';' }
-//   declaration = head ':' value [ ';' ]
-//   block       = head '{' ( body | raw ) '}'
-//
-// The language supplies three readers. Two get the iterator on the
-// ':' or '{' and the head tokens before it; null means the symbol is
-// no separator here: readBlocks keeps the head and skips the '{',
-// readStatement leaves the ':' in the head (xlink:href). readTail gets
-// a head that ends with neither, and the rule before it.
 
 function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
     let rules = [];
@@ -67,8 +56,6 @@ function parseBody(iter, parent, { readBlocks, readStatement, readTail }) {
     return rules;
 }
 
-// A block body kept as text (`style { … }`, a texture section): from the
-// '{' the iterator stands on to the matching '}', skipping quoted ones.
 function readRaw(iter) {
     let tokens = [];
     let depth = 0;
@@ -88,8 +75,6 @@ function readRaw(iter) {
     return tokens;
 }
 
-// A declaration value: to the ';' or the end of the block; a `;` inside
-// parentheses or quotes stays: `seq(1; 2)`, `text: 'a;b'`
 function readValue(iter) {
     let value = [], depth = 0, quote = false;
     while (iter.curr(1) && (quote || !iter.curr(1).isSymbol('}')) && iter.next()) {
@@ -107,12 +92,8 @@ function readValue(iter) {
 
 const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\bpick\\([^:;{}]*?(?<![a-zA-Z_]\\w*|\\.)${name}\\s*:`).test(code);
 
-// a name is used when the language made it, as a user function's `f_1_k`
-// or a match block's `match_1_`, or when code reads it but as its own target
 const used = (code, name) => /^\w+_\d+_/.test(name) || reads(code, name);
 
-// `a, b: 1, 2`: the names of a declaration take a part of its value
-// each when split gives as many parts as names, the whole value otherwise
 const namesOf = head => itemsOf(head).map(t => textOf(t).trim());
 
 function rowsOf(names, value, split) {
@@ -120,9 +101,6 @@ function rowsOf(names, value, split) {
     return names.map((name, i) => ({ name, value: parts.length === names.length ? parts[i] : value }));
 }
 
-// `repeat(4 as k)` → { name, inner }: one word, then the tokens inside its
-// parens, or null inner without them; anything else but stray closing
-// parens after them makes it no call
 function callOf(head) {
     let open = head.findIndex(t => t.isSymbol('('));
     let [word, ...rest] = (open < 0 ? head : head.slice(0, open)).filter(t => !t.isSpace());
@@ -136,8 +114,6 @@ function callOf(head) {
     return { name: word.value, inner: head.slice(open + 1, head[close - 1].isSymbol(')') ? close - 1 : close) };
 }
 
-// `match(test) { … }`, or `match { test { … } … else { … } }` when arms
-// are allowed: one block of arms either way, read by the language's reader
 function readMatch(iter, head, reader, arms = true) {
     let call = callOf(head);
     if (call?.name !== 'match' || !call.inner && !arms) return null;
@@ -147,7 +123,6 @@ function readMatch(iter, head, reader, arms = true) {
         : parseBody(iter, {}, { ...reader, readBlocks: (iter, head) => [arm(iter, textOf(head).trim())] }).value };
 }
 
-// the arms that can run, each with one test and else last
 function armsOf(arms, warn) {
     return arms.filter(({ type, test }, k) => {
         if (type !== 'arm' || !test) warn('arm needs test');
@@ -157,7 +132,6 @@ function armsOf(arms, warn) {
     });
 }
 
-// the number of the arm that runs, else's when no test holds, 0 without one
 const armIndex = arms => `match(${arms.map(({ test }, k) => test === 'else' ? '' : `(${test}), ${k + 1}, `).join('')}${arms.findIndex(a => a.test === 'else') + 1})`;
 
 export { parseBody, readRaw, readValue, reads, used, namesOf, rowsOf, callOf, readMatch, armsOf, armIndex };

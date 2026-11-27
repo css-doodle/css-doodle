@@ -1,7 +1,6 @@
 import { scan } from './tokenizer.js';
 import { memo } from '../lib/cache.js';
 
-// a number, then optionally one word or symbol as its unit
 function parse(input) {
     let tokens = scan(input);
     let ret = {};

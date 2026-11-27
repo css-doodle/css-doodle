@@ -17,7 +17,6 @@ export function getPreset(name, mode) {
     let size = presets[String(name).toLowerCase()];
     if (!size) return;
 
-    // Default to landscape mode
     let [h, w] = size;
 
     if (mode === 'p' || mode === 'portrait') {

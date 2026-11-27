@@ -27,7 +27,6 @@ function isSymbolCode(c) {
 
 function isSpaceCode(c) {
     if (c < 128) return (ctype[c] & SPACE) > 0;
-    // Non-ASCII part of /\s/
     return c === 0xa0 || c === 0x1680 || (c >= 0x2000 && c <= 0x200a)
             || c === 0x2028 || c === 0x2029 || c === 0x202f || c === 0x205f
             || c === 0x3000 || c === 0xfeff;
@@ -48,7 +47,6 @@ class Token {
         this.pos = pos;
         this.index = index;
     }
-    // no argument: any symbol; up to three values: one of them
     isSymbol(a, b, c) {
         if (a === undefined) return this.type == 'Symbol';
         return this.value === a || this.value === b || this.value === c;
@@ -64,15 +62,12 @@ class Token {
     }
 }
 
-// the text the tokens came from
 function textOf(tokens) {
     let text = '';
     for (let t of tokens) text += t.value;
     return text;
 }
 
-// the items of a comma list, split at the top level: `a, (b, c)` and
-// `a, "b, c"` are two
 function itemsOf(tokens, keepEmpty) {
     let items = [];
     let item = [];
@@ -108,13 +103,12 @@ function ignoreSpacingAround(prev, next) {
     return dropSpaceAfter.has(prev) || dropSpaceBefore.has(next);
 }
 
-// The read* functions return the exclusive end of the token starting at i
 
 function readWord(input, i, len) {
     let j = i + 1;
     while (j < len) {
         let c = input.charCodeAt(j);
-        if (isSymbolCode(c) || isSpaceCode(c) || isDigitCode(c) || c === 92 /* \ */) break;
+        if (isSymbolCode(c) || isSpaceCode(c) || isDigitCode(c) || c === 92) break;
         if (c === 46 && isDigitCode(input.charCodeAt(j + 1)) && input.charCodeAt(j - 1) !== 46) break;
         j++;
     }
@@ -123,17 +117,16 @@ function readWord(input, i, len) {
 
 function readNumber(input, i) {
     let j = i + 1;
-    let hasDot = input.charCodeAt(i) === 46 /* . */;
+    let hasDot = input.charCodeAt(i) === 46;
     while (true) {
         let c = input.charCodeAt(j);
         if (c === 46) {
-            // A second dot or a ".." range ends the number
             if (hasDot || input.charCodeAt(j + 1) === 46) break;
             hasDot = true;
         }
-        else if (c === 101 || c === 69 /* e E */) {
+        else if (c === 101 || c === 69) {
             let sign = input.charCodeAt(j + 1);
-            if ((sign === 43 || sign === 45 /* + - */) && isDigitCode(input.charCodeAt(j + 2))) {
+            if ((sign === 43 || sign === 45) && isDigitCode(input.charCodeAt(j + 2))) {
                 j += 3;
                 continue;
             }
@@ -155,22 +148,20 @@ function scan(source, options = {}) {
     let tokens = [];
     let quote = '';
     let i = 0, row = 0, lineStart = 0;
-    // paren depth inside a call named by options.lineCommentsIn
     let body = 0;
 
     while (i < len) {
         let curr = input.charCodeAt(i);
-        if (curr === 10 /* \n */) {
+        if (curr === 10) {
             row++;
             lineStart = i + 1;
         }
         let pos = [i - lineStart, row];
-        // Offset of the token's first raw char in the input
         let index = i;
         let next = input.charCodeAt(i + 1);
         let lastToken = tokens.at(-1);
 
-        if (!quote && curr === 47 && next === 42 /* slash-star */) {
+        if (!quote && curr === 47 && next === 42) {
             let found = input.indexOf('*/', i + 2);
             let end = found === -1 ? len : found + 2;
             for (let n = input.indexOf('\n', i + 2); n !== -1 && n < end; n = input.indexOf('\n', n + 1)) {
@@ -186,11 +177,10 @@ function scan(source, options = {}) {
         }
         else if ((options.ignoreInlineComment || body) && !quote && curr === 47 && next === 47
                 && !lastToken?.isSymbol(':') && !(lastToken?.isSymbol('(') && tokens.at(-2)?.value === 'url')) {
-            // Stop before the line break so it gets tokenized as space
             let found = input.indexOf('\n', i + 1);
             i = found === -1 ? len : found;
         }
-        else if (curr === 48 && (next === 120 || next === 88 /* x X */) && isHexCode(input.charCodeAt(i + 2))) {
+        else if (curr === 48 && (next === 120 || next === 88) && isHexCode(input.charCodeAt(i + 2))) {
             let end = i + 3;
             while (isHexCode(input.charCodeAt(end))) end++;
             tokens.push(new Token('Number', input.slice(i, end), pos, index));
@@ -204,10 +194,9 @@ function scan(source, options = {}) {
             tokens.push(new Token('Number', input.slice(i, end), pos, index));
             i = end;
         }
-        else if (quote && curr === 92 /* \ */) {
+        else if (quote && curr === 92) {
             let start = i + 1;
             let end = readWord(input, start, len);
-            // The escaped char may be a line break, the rest are no spaces
             if (input.charCodeAt(start) === 10) {
                 row++;
                 lineStart = start + 1;
@@ -224,7 +213,7 @@ function scan(source, options = {}) {
         else if (isSymbolCode(curr)) {
             let ch = input[i];
             let token = new Token('Symbol', ch, pos, index);
-            if (curr === 34 || curr === 39 || curr === 96 /* " ' ` */) {
+            if (curr === 34 || curr === 39 || curr === 96) {
                 if (quote === ch) {
                     quote = '';
                     token.status = 'close';
@@ -237,10 +226,10 @@ function scan(source, options = {}) {
                 let k = tokens.length - 1;
                 while (curr === 40 && !body && (tokens[k]?.isNumber() || tokens[k]?.value === 'x')) k--;
                 while (curr === 40 && !body && tokens[k - 1]?.isSymbol('-') && tokens[k - 2]?.isWord()) k -= 2;
-                if (curr === 40 /* ( */ && (body || (tokens[k - 1]?.isSymbol('@')
+                if (curr === 40 && (body || (tokens[k - 1]?.isSymbol('@')
                         && tokens[k].isWord() && options.lineCommentsIn.test(tokens[k].value)))) {
                     body++;
-                } else if (curr === 41 /* ) */ && body) {
+                } else if (curr === 41 && body) {
                     body--;
                 }
             }
@@ -258,7 +247,6 @@ function scan(source, options = {}) {
                 }
                 end++;
             }
-            // Leading and trailing spaces are dropped
             if (lastToken && end < len) {
                 if (quote) {
                     tokens.push(new Token('Space', input.slice(i, end), pos, index));

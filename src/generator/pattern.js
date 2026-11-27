@@ -126,7 +126,6 @@ const WORDS = [
 
 export const words = code => WORDS.map(([test, src]) => test.test(code) ? src : '').join('');
 
-// Built-ins of the @paint language (grammar §9.3)
 export const HELPERS = glsl`
     float g_hash(vec2 p) {
         vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
@@ -280,7 +279,6 @@ function channels(rgba) {
     return rgba[3] === 1 ? rgba.slice(0, 3) : rgba;
 }
 
-// `hsl(h .75 .65)` without % is the shader hsl(), not a CSS color
 export function cssColor(extra, value) {
     return /^hsl\([^%]*\)$/i.test(value) ? null : extra.getRgbaColor(value);
 }
@@ -455,7 +453,6 @@ function generateMatch(arms, scope, ctx, opts) {
     return out && out + '\n';
 }
 
-// code reading the slope between neighbouring pixels
 export const DERIVATIVES = /\b(fwidth|dFdx|dFdy|g_shape|g_stroke|g_seg)\(/;
 
 function checkDerivatives(code, where, ctx, opts) {
@@ -464,7 +461,6 @@ function checkDerivatives(code, where, ctx, opts) {
     }
 }
 
-// the statements and blocks of a body, in source order
 function generateBody(tokens, scope, ctx, opts = {}) {
     let out = '';
     let { loop, top } = opts;

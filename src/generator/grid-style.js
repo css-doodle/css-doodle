@@ -7,9 +7,6 @@ function isBareNumber(value) {
     return num !== undefined && unit === undefined;
 }
 
-/**
- * Add the static rules of the transformed @grid options.
- */
 export default function gridStyleRules({
     fill, clip, rotate, hueRotate, scale, translate, enlarge, persp,
     flex, p3d, border, gap, rowRule, columnRule, backdropFilter

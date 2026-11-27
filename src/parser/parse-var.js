@@ -12,7 +12,6 @@ function readList(iter, nested) {
         if (curr.value === 'var' && next?.isSymbol('(')) {
             iter.next();
             let rule = readVar(iter);
-            // `--` and a name that does not start with another dash
             if (/^--[^-]/.test(rule.name)) {
                 rules.push(rule);
             }
@@ -31,7 +30,6 @@ function readVar(iter) {
     let rule = {};
     let tokens = [];
     for (let curr; (curr = iter.next());) {
-        // a `;` closes a var( that was never closed
         if (curr.isSymbol(')', ';', ',')) {
             rule.name = textOf(tokens);
             if (curr.isSymbol(',')) {

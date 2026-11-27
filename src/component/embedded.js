@@ -156,7 +156,6 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 if (out) out.transferFromImageBitmap(canvas.transferToImageBitmap());
                 for (let view of out ? views.slice(1) : views) {
                     let ctx = view.getContext('2d');
-                    // resizing resets the context, so this is set per frame
                     ctx.globalCompositeOperation = 'copy';
                     ctx.drawImage(out ? views[0] : canvas, 0, 0);
                 }
@@ -279,7 +278,6 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
         }
     }
 
-    // a size change redraws; a running loop only needs its textures refreshed
     const watch = () => {
         let timer, observer = new ResizeObserver(() => {
             clearTimeout(timer);

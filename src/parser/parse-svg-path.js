@@ -62,7 +62,6 @@ function parse(input) {
             }
             push(text);
         } else {
-            // a value before the first command
             result.valid = false;
         }
     }
@@ -75,6 +74,5 @@ function parse(input) {
     return result;
 }
 
-// generated path strings vary per cell, so the memo stays bounded
 export default memo(parse);
 export { ARITY };

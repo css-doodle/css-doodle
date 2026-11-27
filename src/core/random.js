@@ -9,7 +9,6 @@ export default function createRandom(seed) {
         random = seedrandom(String(seed));
     }
 
-    // rand() → [0, 1), rand(n) → [0, n), rand(a, b) → [a, b)
     function rand(start, end) {
         if (end === undefined) {
             [start, end] = [0, start ?? 1];

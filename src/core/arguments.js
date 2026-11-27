@@ -6,10 +6,8 @@ import { clamp, tidyNumber } from '../lib/math.js';
 
 export const MAX_SEQUENCE = 65536;
 
-// limit caps the number of items, for a sequence nested in others
 export function sequence(count, fn, limit = MAX_SEQUENCE) {
     let [x, y = 1] = String(count).split(/[x-]/);
-    // a leading dash is a negative count, not a range
     if (x === '') return [];
     let cx = Math.ceil(x), cy = Math.ceil(y);
     x = clamp(Number.isNaN(cx) ? 1 : cx, 0, MAX_SEQUENCE);
@@ -37,8 +35,6 @@ export function sequence(count, fn, limit = MAX_SEQUENCE) {
     return ret;
 }
 
-// `[a-c]` expands each pair, either way round, and keeps single chars;
-// a dash with nothing after it is literal, one with nothing before it is dropped
 const buildRange = memo(input => {
     let expr = String(input);
     if (expr[0] !== '[' || expr.at(-1) !== ']') {
@@ -119,7 +115,6 @@ export function expand(fn, count) {
     };
 }
 
-// the numbers go through fn, the first unit found comes back on the result
 export function byUnit(fn) {
     return (...args) => {
         let unit, values = [];
@@ -137,7 +132,6 @@ export function byCharcode(fn) {
     return (...args) => String.fromCharCode(fn(...args.map(n => String(n).charCodeAt(0))));
 }
 
-// arguments fill by position until the first `name=value`, then only by name
 export function getNamedArguments(args, names) {
     let result = {};
     let positional = true;

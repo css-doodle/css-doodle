@@ -8,7 +8,6 @@ export default async function svgToPng(svg, width, height, scale) {
     let canvas = document.createElement('canvas');
     let ctx = canvas.getContext('2d');
 
-    // scale with devicePixelRatio only when the scale equals 1
     let dpr = scale === 1 ? devicePixelRatio : 1;
 
     canvas.width = width * dpr;

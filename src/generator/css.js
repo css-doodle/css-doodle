@@ -87,7 +87,6 @@ const RE_TEXTURE_OPEN = new RegExp(String.raw`\btexture\w*\s*\{(?!\s*\$${NAME_CH
 const compiledValues = new WeakMap();
 const compiledArguments = new WeakMap();
 
-// value: list of text/func nodes → env => { value, extra, origin }
 function compileValue(value) {
     let compiled = compiledValues.get(value);
     if (compiled === undefined) {
@@ -106,7 +105,6 @@ function compileValue(value) {
                         if (evaluated.extra) extra = evaluated.extra;
                         if (evaluated.origin) origin = evaluated.origin;
                         part = evaluated.value;
-                        // a unit glued to lowered math multiplies in: @calc(@t)deg
                         let next = parts[i + 1];
                         let unit = typeof next === 'string' && RE_UNIT_HEAD.exec(next);
                         if (unit) {
@@ -139,7 +137,6 @@ function compileFunc(node) {
         node = { ...inner, name: node.name, size: node.size };
     }
     if (fname === '--') {
-        // @--(name, value) sets a variable, @--(name) reads it back as set
         let [name, ...value] = node.arguments.map(arg => compileArgument(arg, node));
         compiled = (frame, extra) => {
             let vars = frame.contextVariable;
@@ -201,7 +198,6 @@ function compileFunc(node) {
             }
             return removeEmptyValues(input);
         };
-        // all-literal argument lists are interpreted here, once
         let constantInput = !fn.lazy && args.every(arg => arg.constant) ? collect() : null;
         compiled = (frame, extra, inArgument) => {
             let { cell, env } = frame;
@@ -275,7 +271,6 @@ function compileArgument(argument, parent) {
                     let value = segments[0];
                     for (let i = 0; i < holes.length; i++) {
                         let v = holes[i](frame, extra);
-                        // match Array#join: nil renders as nothing
                         if (v != null) value += operand(v, segments[i + 1]);
                         value += segments[i + 1];
                     }
@@ -353,7 +348,6 @@ function spliceTemplateInput({ segments, singlePart }, values) {
     return removeEmptyValues(input);
 }
 
-// @shape is a pure function of its value, the other @-properties read the grid or the cell
 function isStaticRule({ property, value }) {
     return value?.hasFunc === false && property !== 'background-size' && !/^(@(?!shape$)|--|animation)/.test(property);
 }
@@ -501,7 +495,6 @@ class Rules {
             : value;
     }
 
-    // in CSS a live var() call stays a reference, in math it expands
     groupVar(name, group, css) {
         let value = group[name];
         return !css ? this.expand(value, group) : this.isRef(name, value) ? `var(${name})` : value;
@@ -559,7 +552,6 @@ class Rules {
         return _fn;
     }
 
-    // '&' in a selector stands for the cell
     composeSelector(cell, selector = '&') {
         return selector.replaceAll('&', this.cellPrefix + cell.id);
     }
@@ -743,7 +735,6 @@ class Rules {
 
         let rule = /^--\d/.test(prop) ? '' : `${prop}:${value};`;
 
-        // a tile turns and scales about its own point
         if (composed.origin && prop === 'clip-path') {
             rule += `transform-origin:${composed.origin};`;
         }
@@ -766,7 +757,6 @@ class Rules {
         if (flags.at) {
             let name = flags.at;
             let transformed = Property[name](value, {
-                // the grid always styles the host
                 isSpecialSelector: name === 'grid' || isSpecialSelector(selector),
                 place: this.hasPlace,
                 grid: cell.grid,
@@ -848,8 +838,6 @@ class Rules {
         }
     }
 
-    // the top-level rules and the host block: the seed first, so the
-    // rest composes from the seeded stream
     preCompose(cell, env) {
         let rules = [];
         for (let token of this.tokens) {
@@ -944,7 +932,6 @@ class Rules {
                 raw: !fn && !isGroupAtRule(token.name),
                 text: null,
             };
-            // @cell.random: a selector function with a modifier it does not have
             if (info.raw && Selector[name.split('.')[0]]) {
                 this.warn(`unknown ${token.name}`);
             }
@@ -953,7 +940,6 @@ class Rules {
         return info;
     }
 
-    // the selector text of a cond as written, arguments composed for the cell
     condSelector(token, cell, env) {
         let info = this.condInfo(token);
         if (info.text !== null) return info.text;
@@ -961,7 +947,6 @@ class Rules {
         let keyword = '';
         let dynamic = false;
         for (let n of token.segments) {
-            // 'and(' reads as a function token in CSS, so the space is required
             if (n.spaced || (n.arguments && /^(and|or|not)$/i.test(keyword))) text += ' ';
             if (n.keyword) {
                 text += n.keyword;
@@ -1009,7 +994,6 @@ class Rules {
             e.families = familiesOf(texts[0]);
         }
 
-        // a rule leaves the per-cell run only past rules on other properties
         let shares = (a, b) => a.families.has('*') || b.families.has('*') || [...a.families].some(f => b.families.has(f));
         for (let i = 0; i < entries.length; i++) {
             let e = entries[i];
@@ -1023,7 +1007,7 @@ class Rules {
         }
 
         let sections = { before: '', after: '' };
-        let runText = new Map(); // selector → texts per cell index
+        let runText = new Map();
         let shared = SHARED_CELL(this.cellPrefix);
         let pending = '';
         for (let i = 0; i < entries.length; i++) {
@@ -1036,7 +1020,6 @@ class Rules {
                     (lists[e.cells[j].uid - 1] ??= []).push(texts[j]);
                 }
             } else if (e.kind === 'shared') {
-                // consecutive shared rules under one selector print as one
                 pending += (pending && '\n') + texts[0];
                 let next = entries[i + 1];
                 if (next?.kind === 'shared' && next.selector === selector && next.where === where) continue;
@@ -1098,7 +1081,6 @@ class Rules {
                     if (token.property === '@grid' && this.grid) break;
                     for (let selector of selectors) {
                         let rule = this.composeRule(token, cell, env, selector);
-                        // cell rules wait for the sheet layout of their scope
                         if (selector.includes('&') && !isSpecialSelector(selector)) {
                             this.addCellRule(token, selector, cell, rule);
                         } else {
@@ -1109,7 +1091,6 @@ class Rules {
                 }
 
                 case 'pseudo': {
-                    // host and container rules compose once
                     let selectors = token.selectors;
                     if (selectors.some(isSpecialSelector)) {
                         if (this.skips.has(token)) selectors = selectors.filter(s => !isSpecialSelector(s));
@@ -1268,7 +1249,6 @@ export default function generateCss(tokens, gridSize, seedValue, maxGrid, seedRa
         let cellGrid = tree ? { ...gridSize, count: gridSize.x * gridSize.y } : gridSize;
         let uid = 0;
         let count = 0;
-        // ids by order: two elements may share a row and a column
         if (cells) for (let { x, y, center } of at) {
             rules.compose({ ...cellAt(x, y, 1, ++count, ++uid, cellGrid), id: cellId(count, 1, 1), center }, env);
         }

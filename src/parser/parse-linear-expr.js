@@ -28,7 +28,6 @@ function parse(input, names) {
             star = true;
         }
         else if (t.isNumber()) {
-            // `2n -3`: the tokenizer reads `-3` after a space as one number
             if (v[0] === '-' && seen && !sign && !star) endTerm();
             else if ((seen && !sign) || factor !== null) return fail;
             factor = sign === '-' ? -v : +v;

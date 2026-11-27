@@ -1,7 +1,6 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import { parseBody, readRaw, readValue, namesOf, rowsOf, callOf, readMatch } from './parse-body.js';
 
-// `k*3 {`, `i*2 j*1-n {`: each loop's name and count, a name glued from words, digits and `_`
 export function loopHeads(head) {
     let parts = [], loops = [], spaced = false;
     for (let t of head) {

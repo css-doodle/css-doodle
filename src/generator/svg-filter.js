@@ -109,7 +109,6 @@ export function expandFilterShorthands(root, seed, warn, chainInput = true) {
             .map(([name, value]) => statement(name, value)));
     }
     root.value = output;
-    // numOctaves is an integer; @r() often yields floats
     for (let token of output) {
         if (token.type !== 'block' || token.name.toLowerCase() !== 'feturbulence') continue;
         token.value = token.value.filter(t => {

@@ -67,7 +67,6 @@ const presetShapes = {
         k = clamp(k, 1, 10);
         return fit(css`split: 180; k: ${k}; x: (k+1)*cos(t) - cos((k+1)*t); y: (k+1)*sin(t) - sin((k+1)*t); rotate: 90`);
     },
-    // |x|^k + |y|^k = 1
     squircle(k = 4) {
         k = clamp(k, .2, 20);
         return css`split: 180; k: ${k}; r: (abs(cos(t))^k + abs(sin(t))^k)^(-1/k)`;
@@ -138,7 +137,6 @@ function createPointFunction(props, split) {
         index = i;
         context.i = i + 1;
         context.t = context['θ'] = t;
-        // a `t:` command rewrites the angle, in terms of the angle and index
         if (pt) {
             context.t = context['θ'] = t = calc(pt, context);
         }
@@ -169,7 +167,6 @@ const COMMANDS = new Set('points split turn r t x y rotate move scale mirror rou
 export const PAINT = /^(stroke|fill|clip|marker|mask|animate|draw)/;
 const KNOWN = new Set([...COMMANDS, ...'seed direction dir aspect gap density relax spread bound jitter shift edge slide pair op star size'.split(' ')]);
 
-// each shape of a group is merged into all merged before it
 const MAX_MEMBERS = 32;
 
 function check(node, warn, visit) {
@@ -216,7 +213,6 @@ function createShapePoints(props, lo, hi, raw) {
             p = { ...props };
             for (let k in lists) p[k] = lists[k][c % lists[k].length];
         }
-        // a curve in t, also through a variable, gets as many points as a circle
         let f = createPointFunction(p, 3), n = !isEmpty(p.points || p.split) ? Math.trunc(calc(p.points ? 'points' : 'split', p))
             : [p.r, p.x, p.y].some(v => !isEmpty(v) && (f.reads(v) || (v = f.formula(v), v(1) != v(2)))) ? 180 : NaN;
         if (c && n === 0) continue;
@@ -276,13 +272,10 @@ function createShapePoints(props, lo, hi, raw) {
                 continue;
             }
             let f = fns[0].formula(text), frame = name == 'frame';
-            // a frame, or a grow by a constant, is exact: the band inside, the region moved out;
-            // constant means the same at 64 angles round the whole turn
             if (frame || name == 'grow' && !text.includes(',') && Array.from({ length: 64 }, (_, i) => f(i * PI / 32)).every(v => v == f(0))) {
                 let d = frame ? -(evaluate(text, props) || .002) : f(0), next = [], ids = [];
                 for (let [u, own] of Map.groupBy(rings, (_, c) => units[c])) {
                     let region = own.flat(2).every(isFinite) && offset(own, 0, evenodd);
-                    // an outline with no area stays put; a frame's inner rings take as many points as its outline, so frames morph
                     if (region.length) own = frame ? [...region, ...recount(offset(region, d), region.flat().length).map(ring => ring.reverse())] : offset(region, d);
                     own.forEach(ring => next.push(ring) && ids.push(u));
                 }
@@ -382,7 +375,6 @@ function createShapePoints(props, lo, hi, raw) {
 
     function tilePoints() {
         let wide = box[2] - box[0], [gap = props.tile == 'circle' ? 0 : -.3] = isEmpty(props.gap) ? [] : parseValueGroup(String(props.gap)).map(v => Number(v) || 0);
-        // the gap is in percent of the element, which is 2 across without a unit
         if (!percent) gap /= 50;
         let tile = ([poly, [x, y], kind = 1, extra]) => {
             let rings = Array.isArray(poly[0]) ? poly : [toPairs(poly)], rule = rings.length > 1 ? 'evenodd' : '';
@@ -511,7 +503,6 @@ export function outline(polygon, warn, at) {
     let rings = lathe && commands.text ? glyphs(removeQuotes(commands.text), commands.font || '', 'start')
         : lathe && commands.path ? pathRings(removeQuotes(commands.path), true)
         : createShapePoints(commands, 3, 3600, true);
-    // thinned to 256 points, a hole too small for 3 of them is left out
     return rings.flat().length > 256 ? resample(rings, [256]).filter(ring => ring.length > 2) : rings;
 }
 

@@ -3,25 +3,21 @@ import parseValueGroup from './parse-value-group.js';
 import { parseBody, readRaw, namesOf, rowsOf, readMatch } from './parse-body.js';
 import { adjustName } from '../lib/svg.js';
 
-// the ';' of `&amp;` or `&#x27;` belongs to the value, not the statement
 const RE_ENTITY_TAIL = /&(#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos)$/;
 
 function endsEntity(tokens) {
-    // `&#x1a2b3c` is 8 tokens: the lexer splits digits from letters
     return RE_ENTITY_TAIL.test(textOf(tokens.slice(-8)));
 }
 
 const MAX_BLOCKS = 65536;
 
 function resolveId(block) {
-    // pureName has the `*times` suffix stripped so it can't leak into id/class
     let selector = block.pureName || block.name;
     let baseName = selector.split(/[#.]/)[0];
     if (!baseName) {
         return block;
     }
     let id = selector.match(/#([^.#]+)/);
-    // an `id:` declaration in the body wins over the selector
     if (id && !block.value.find(n => n.type === 'statement' && n.name === 'id')) {
         block.value.push({ type: 'statement', name: 'id', value: id[1] });
     }
@@ -29,7 +25,6 @@ function resolveId(block) {
     if (classes) {
         let names = classes.map(c => c.slice(1)).join(' ');
         let at = block.value.findIndex(n => n.type === 'statement' && n.name === 'class');
-        // `.a { class: b }` has both; the statement may be shared with a comma group
         if (at >= 0) {
             block.value[at] = { ...block.value[at], value: names + ' ' + block.value[at].value };
         } else {
@@ -40,7 +35,6 @@ function resolveId(block) {
     return block;
 }
 
-// `circle*3` keeps the count and the name without it
 function makeBlock(name, value = []) {
     let block = { type: 'block', name, value };
     if (/\*\s*[0-9@$(]/.test(name)) {
@@ -51,7 +45,6 @@ function makeBlock(name, value = []) {
     return block;
 }
 
-// the outer blocks of a selector chain like `g circle`, innermost first
 function wrapChain(block, selectors) {
     let name;
     while (name = selectors.pop()) {
@@ -65,7 +58,6 @@ function readGroupBlocks(iter, groups) {
     let start = ++iter.blocks;
     let inner = parseBody(iter, makeBlock(first.pop()), svg);
     let size = iter.blocks - start + 1;
-    // snapshot before resolveId adds the first group's id/class
     let body = groups.length > 1 ? inner.value.slice() : null;
     let blocks = [wrapChain(resolveId(inner), first)];
     for (let i = 1; i < groups.length && iter.blocks < MAX_BLOCKS; ++i) {
@@ -82,7 +74,6 @@ function readStatement(iter, token) {
     let inlineBlock;
     let quote = 0;
     let paren = 0;
-    // `name: }`: nothing to read, the '}' is the block's
     let empty = iter.curr(1)?.isSymbol('}');
     let text = token.name === 'content';
     while (!empty && iter.next()) {
@@ -96,7 +87,6 @@ function readStatement(iter, token) {
         if (curr.status && curr.isSymbol("'", '"')) {
             quote += curr.status === 'open' ? 1 : -1;
         }
-        // the ';' of `&amp;` is content, any other one ends the statement
         if (!quote && !paren && curr.isSymbol(';')) {
             if (!endsEntity(fragment)) break;
             if (next && !next.isSymbol('}') && next.index > curr.index + 1) {
@@ -104,11 +94,9 @@ function readStatement(iter, token) {
                 curr = new Token('Space', ' ', next.pos, curr.index + 1);
             }
         }
-        // a closing quote right before the `}` ends the statement even inside an open paren
         let isStatementBreak = !quote && (!paren || curr.isSymbol("'", '"')) && (!next || next.isSymbol('}'));
         if (!paren && !quote && curr.isSymbol('{')) {
             let selectors = getSelectors(fragment);
-            // no selector: `style: { fill: red }` keeps the text as the value
             if (!selectors.length) {
                 token.value = textOf(readRaw(iter));
                 token.raw = true;
@@ -141,14 +129,12 @@ function readStyleBlock(iter, groups) {
     return makeBlock('style', styleContent);
 }
 
-// the head as svg selectors: `g circle, rect*3 {`, `style {`; or `@match(test) {`
 function readSvgBlocks(iter, head) {
     let match = head[0]?.isSymbol('@') && readMatch(iter, head.slice(1), svg, false);
     if (match) {
         let [{ test, value }] = match.arms;
         return [{ ...makeBlock('match', value), test }];
     }
-    // `Style {}` is the style block too
     let groups = getSelectorGroups(head).map(group => group.map(s => /^style$/i.test(s) ? 'style' : s));
     if (!groups.length) {
         return null;
@@ -159,8 +145,6 @@ function readSvgBlocks(iter, head) {
     return readGroupBlocks(iter, groups);
 }
 
-// `cx: 1`; `x, y: 1, 2` expanded; viewBox with its numbers; `--name`
-// flagged as a variable; null for the ':' of `xlink:href`
 function readSvgStatement(iter, head) {
     let prev = iter.curr(-1);
     let next = iter.curr(1);
@@ -190,7 +174,6 @@ function readSvgStatement(iter, head) {
         if (name.startsWith('--')) {
             item.variable = true;
         } else if (!name.includes('--')) {
-            // custom properties keep their case
             item.name = adjustName(name);
         }
         if (shared && i) {
@@ -218,7 +201,6 @@ const svg = {
     readTail: readSvgTail,
 };
 
-// one selector chain per comma group: `g.a > circle*3, rect`
 function getSelectorGroups(tokens) {
     return itemsOf(tokens).map(getSelectors).filter(group => group.length);
 }
@@ -237,7 +219,6 @@ function getSelectors(tokens) {
             hasSymbol = false;
             continue;
         }
-        // a word right after a number continues it: `*2x3`, `*2x$(n)`, `*2x@p(3)`
         let glued = prev?.isNumber();
         if (curr.isWord() && !hasSymbol && !glued || !result.length) {
             result.push(curr.value.trim());
@@ -271,7 +252,6 @@ function parseViewBox(tokens) {
     return viewBox;
 }
 
-// Everything beside an `svg {}` block belongs to it, in source order
 function skipHeadSVG(block) {
     const isRoot = item => item.name === 'svg' && Array.isArray(item.value);
     let headSVG = block.value.find(isRoot);

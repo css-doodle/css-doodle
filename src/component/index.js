@@ -62,7 +62,6 @@ function serializeDoodle(root) {
 }
 
 function mountFilterDefs(parent, markup, slot) {
-    // `:scope >` matches nothing when the parent is a shadow root
     let holder = [...parent.children].find(el => el.localName === 'ft');
     if (!markup) {
         holder?.remove();
@@ -80,7 +79,6 @@ function mountFilterDefs(parent, markup, slot) {
     return holder;
 }
 
-// `2s`, `1.5m` or a number of milliseconds, at least 500; 2000 when unreadable
 function parseInterval(value) {
     let text = (value || '').trim();
     let m = /^([\d.]+)(m|s)$/.exec(text);
@@ -187,7 +185,6 @@ function splitText(el, unit) {
             for (let { segment: letter } of segments(segment, 'grapheme')) word.append(span('letter', letter));
             wordLike ||= isWordLike;
         }
-        // emptied, not removed: a framework may still hold the node
         node.after(copy, run);
         node.data = '';
     }
@@ -337,8 +334,6 @@ if (typeof HTMLElement !== 'undefined') {
         waitForSource() {
             let doc = this.ownerDocument;
             let timer;
-            // while loading, the source is complete once the parser has
-            // moved past the element: a node follows it or an ancestor
             let passed = () => {
                 for (let node = this; node; node = node.parentNode) {
                     if (node.nextSibling) return true;
@@ -772,7 +767,6 @@ if (typeof HTMLElement !== 'undefined') {
             this.syncSvgAnimations();
         }
 
-        // the main sheet with its nested doodle and paint images resolved
         applyStyles(compiled) {
             let replace = createReplacer(this, compiled), { top, all } = compiled.styles;
             let mark = `cssd-${this._instance}`, parent = `:where([${mark}-host]):not(#_)`;
@@ -781,7 +775,6 @@ if (typeof HTMLElement !== 'undefined') {
                     (s, i, host = '', pseudo = '') => i ? `:where([${mark}="${i}"]):not(#_)` : s[1] === 'i' ? `:where([${mark}]):not(#_)` : parent + host + pseudo)
                 : top + getBasicStyles(this.gridSize) + all
             ).then(sheet => {
-                // the clock runs from the moment the sheet and its images land
                 if (!this._clock.since && !this.hasAttribute('cssd-paused')) {
                     this._clock.since = performance.now();
                 }
@@ -825,10 +818,6 @@ if (typeof HTMLElement !== 'undefined') {
                         return;
                     }
                     if (isSafari()) {
-                        // Safari keeps the def animations running but won't repaint
-                        // the elements referencing them until their compositing
-                        // layers get rebuilt, so flip a rendering hint for a frame
-                        // on everything that may carry a filter
                         let targets = [
                             this, ...this.shadowRoot.querySelectorAll('grid,cell')
                         ];
@@ -850,7 +839,6 @@ if (typeof HTMLElement !== 'undefined') {
             }
         }
 
-        // a render that was replaced while waiting must not write its styles
         setStyle(input) {
             let generation = this._generation;
             this._styleReady = input.then(sheet => {
@@ -948,8 +936,6 @@ if (typeof HTMLElement !== 'undefined') {
             this.restamp();
         }
 
-        // SMIL animations in inline svg (content, filter defs) ignore
-        // animation-play-state, so they follow the paused attribute here
         syncSvgAnimations(ms) {
             let paused = this.hasAttribute('cssd-paused');
             let svgs = [
@@ -963,7 +949,6 @@ if (typeof HTMLElement !== 'undefined') {
         }
 
         async export({ scale, name, download, detail } = {}) {
-            // Wait for pending styles and their embedded images before serializing.
             await this._styleReady;
             let variables = getAllVariables(this);
             let html = serializeDoodle(this.shadowRoot);

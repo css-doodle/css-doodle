@@ -17,7 +17,6 @@ export function memo(fn) {
             : args.join('\0');
         let value = cache.get(key);
         if (value === undefined && !cache.has(key)) {
-            // string results count too: a polygon can be 100k characters
             if (cache.size >= 4096 || size > 1 << 22) {
                 clear();
             }

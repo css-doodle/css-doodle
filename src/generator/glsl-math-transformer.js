@@ -22,7 +22,6 @@ const PREFIX = {
     'not': PREC['&&'] + 1
 };
 
-// `^` is power, as in $()
 const ALIAS = {
     __proto__: null,
     '^': '**', '=': '==', '≤': '<=', '≥': '>=', '≠': '!=',
@@ -31,7 +30,6 @@ const ALIAS = {
 
 const RELATIONAL_OPS = new Set(['<', '<=', '>', '>=']);
 const GLSL_NAMES = new Set(['PI', 'true', 'false']);
-// angles in radians, unless a variable of the name hides them: `rot(p, 45deg)`
 const CONSTANTS = { __proto__: null, deg: glsl`(PI / 180.0)`, turn: glsl`(2.0 * PI)` };
 const COLOR_CALL = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)$/i;
 const INT_OPS = new Set(['&', '|', '<<', '>>']);
@@ -65,11 +63,8 @@ const valueOf = stop => stop.type === 'Stop' ? stop.left : stop;
 const isVector = type => /^(vec|mat)/.test(type);
 const isFactor = t => t && !t.spaced && !PREC[t.value] && (t.isWord() || t.value === '(' || t.value === 'π');
 const isValue = t => t && !PREC[t.value] && !PREFIX[t.value] && (t.isWord() || t.isNumber() || t.value === '(' || t.value === 'π');
-// the type of a swizzle: `.xy` is a vec2, `.x` a float
 const swizzle = s => (s = s.slice(s.lastIndexOf('.'))).length > 2 ? `vec${s.length - 1}` : 'float';
 
-// wrap `out` of type `res` in a constructor when `exp` wants another type;
-// vectors and samplers pass where a float is wanted
 function cast(out, res, exp) {
     if (!exp || exp === res || exp === 'float' && /vec|mat|sampler/.test(res)) return out;
     if (exp === 'bool' && /^b?vec/.test(res)) return `any(${res[0] === 'b' ? out : `b${res}(${out})`})`;
@@ -164,7 +159,6 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             report(`unexpected ${t.value}`);
             n = ZERO;
         }
-        // a swizzle after a call or a parenthesized value: vec2(a, b).x, (z).xy
         while (peek()?.isWord() && peek().value[0] === '.') {
             n = { type: 'Member', val: consume().value, left: n };
         }
@@ -225,7 +219,6 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         let comma = true, at = false;
         while (peek() && peek().value !== ')') {
             const arg = parse();
-            // in gradient() a stop's position follows its value after a space: #f80 .5
             if (name === 'gradient' && !comma && args.length > 1) {
                 if (args[args.length - 1].type === 'Stop') report('extra position');
                 else args.push({ type: 'Stop', left: args.pop(), right: arg });
@@ -237,7 +230,6 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
                 args.push(arg);
             }
             comma = peek()?.value === ',';
-            // pick(k: a, b, …): a colon ends the index; match(t: v, …): a colon ends a test
             if (name === 'pick' && args.length === 1 && peek()?.value === ':') comma = at = true;
             if (name === 'match' && args.length % 2 && peek()?.value === ':') comma = true;
             if (comma) consume();
@@ -281,7 +273,6 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             }
             const res = infer(n);
             if (n.at) {
-                // pick(k: a, b, …): item k from 1, wrapping around
                 if (a.length < 2) return gen(ZERO, exp);
                 const items = a.slice(1).map(v => gen(v, res));
                 const out = items.length > 1 ? `${res}[](${items.join(', ')})[g_pick(${gen(a[0], 'float')}, ${items.length})]` : items[0];
@@ -299,7 +290,6 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
 
         const op = n.val;
 
-        // a < b < c reads as a < b && b < c
         if (RELATIONAL_OPS.has(op) && n.left.type === 'Bin' && !n.left.group && RELATIONAL_OPS.has(n.left.val)) {
             const second = { type: 'Bin', val: op, left: n.left.right, right: n.right };
             return cast(`(${gen(n.left, 'bool')} && ${gen(second, 'bool')})`, 'bool', exp);
@@ -344,7 +334,6 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         return lab ? `g_rgb(${out})` : out;
     }
 
-    // the GLSL type of a node, computed once
     function infer(n) {
         return n ? n.t || (n.t = inferType(n)) : 'float';
     }

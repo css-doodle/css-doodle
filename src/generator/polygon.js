@@ -7,7 +7,6 @@ const lists = n => Array.from({ length: n }, () => []);
 const sum = list => list.reduce((a, b) => a + b, 0);
 const perimeter = ring => sum(ring.map((p, i) => dist(p, ring.at(i - 1))));
 
-// the signed angle from (ux, uy) to (vx, vy)
 const angle = (ux, uy, vx, vy) => atan2(ux * vy - uy * vx, ux * vx + uy * vy);
 
 const turn = (ring, i) => {
@@ -38,7 +37,6 @@ function insideTest(rings, evenodd) {
     };
 }
 
-// [x0, y0, x1, y1, …] → [[x0, y0], [x1, y1], …]
 function toPairs(flat) {
     let out = [];
     for (let i = 0; i < flat.length; i += 2) out.push([flat[i], flat[i + 1]]);
@@ -69,7 +67,6 @@ function overlay(members, op, joints = new Set()) {
         let q = ring[(i + 1) % ring.length];
         if (p[0] != q[0] || p[1] != q[1]) sides.push({ a: p, b: q, x0: min(p[0], q[0]), cuts: [], k });
     })));
-    // swept along x: a side meets only the ones starting before it ends
     sides.sort((e, g) => e.x0 - g.x0);
     sides.forEach((e, i) => {
         let [ax, ay] = e.a, [bx, by] = e.b, rx = bx - ax, ry = by - ay, x1 = max(ax, bx), y0 = min(ay, by), y1 = max(ay, by), lr = hypot(rx, ry);
@@ -125,11 +122,9 @@ function overlay(members, op, joints = new Set()) {
     return rings;
 }
 
-// the region pushed out by d, or in when d < 0, round where it bends away, as rings filled on their left
 function offset(rings, d, evenodd, tol = .002) {
     rings = overlay([Object.assign([...rings], { evenodd }), []], 'union');
     let [x0, y0, x1, y1] = bounds(rings.flat(2));
-    // nothing is that far inside
     if (d < 0 && -2 * d >= min(x1 - x0, y1 - y0)) return [];
     if (!d) return rings;
     let raw = rings.map(ring => {
@@ -139,15 +134,12 @@ function offset(rings, d, evenodd, tol = .002) {
             let lu = hypot(ux, uy), lv = hypot(vx, vy), nx = uy / lu, ny = -ux / lu, mx = vy / lv, my = -vx / lv;
             let turn = angle(ux, uy, vx, vy), at = (x, y) => [p[0] + d * x, p[1] + d * y];
             if (turn * d > 0) {
-                // an arc around the corner, as a disk rolled along the outline leaves
                 let from = atan2(ny, nx), k = min(64, ceil(abs(turn) / sqrt(8 * tol / abs(d))));
                 for (let j = 0; j <= k; ++j) out.push(at(cos(from + turn * j / k), sin(from + turn * j / k)));
             } else if (abs(d) * tan(abs(turn) / 2) < min(lu, lv) / 2) {
-                // the moved sides overlap: they meet, and no side turns around
                 let k = 1 + nx * mx + ny * my;
                 out.push(at((nx + mx) / k, (ny + my) / k));
             } else {
-                // or back through the corner, so what turns around winds the other way and is cut
                 out.push(at(nx, ny), p, at(mx, my));
             }
         });
@@ -156,7 +148,6 @@ function offset(rings, d, evenodd, tol = .002) {
     return overlay([Object.assign(raw, { positive: true }), []], 'union').map(ring => thin(ring, tol / 2));
 }
 
-// a ring with its corners (only joints when given) as curves `[x, y, bx, by]` of radius r
 function corners(ring, joints, r) {
     let turns = new Set(ring.filter((p, i) => (!joints || joints.has(p)) && turn(ring, i) > .1));
     let j0 = ring.findIndex(p => turns.has(p));
@@ -176,8 +167,6 @@ function corners(ring, joints, r) {
         let [i, e] = index(d);
         return mix(ring[i - 1], ring[i], (e - s[i - 1]) / (s[i] - s[i - 1] || 1));
     };
-    // bend through where the sides' tangents meet, so a curve leaves each side along it,
-    // unless the curve would then reach past the corner
     let control = (j, d) => {
         let [px, py] = at(s[j] - d), [qx, qy] = at(s[j] + d), [i] = index(s[j] - d), [k] = index(s[j] + d);
         let ux = ring[i][0] - ring[i - 1][0], uy = ring[i][1] - ring[i - 1][1];
@@ -189,7 +178,6 @@ function corners(ring, joints, r) {
     };
     let cuts = js.map((j, m) => {
         let [bx, by] = ring[j], limit = min(gaps[m], gaps.at(m - 1), L / 4), lo = 0, hi = limit;
-        // the radius a cut of d gives, exact at once on straight sides
         let curve = d => {
             let [px, py] = at(s[j] - d), [qx, qy] = at(s[j] + d);
             return d * tan(abs(angle(px - bx, py - by, qx - bx, qy - by)) / 2);
@@ -223,8 +211,6 @@ function resample(rings, counts) {
     }).filter(ring => ring.length);
 }
 
-// rings with n points between them, by length, corners kept: the longest sides split, the shortest
-// folded into where the sides next to them meet, so an arc folds into the corner of its sides
 function recount(rings, n) {
     let lens = rings.map(perimeter), total = sum(lens), run = 0, done = 0;
     return rings.map((ring, k) => {
@@ -270,7 +256,6 @@ function flatten(path, tol) {
     return out;
 }
 
-// Douglas–Peucker: the indexes from 0 to n that keep every other k within tol, by error(i, j)(k)
 function keepers(n, error, tol) {
     let keep = [0], walk = (i, j) => {
         let worst = tol, at = 0, of = error(i, j);
@@ -321,7 +306,6 @@ function scale(p, o, f) {
     return p.map((v, i) => o[i & 1] + (v - o[i & 1]) * f);
 }
 
-// a loop, not min(...xs): spreading 120k points overflows the stack
 function bounds(p) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < p.length; i += 2) {
@@ -330,7 +314,6 @@ function bounds(p) {
     return [x0, y0, x1, y1];
 }
 
-// twice the signed area: negative when the polygon runs clockwise
 function signed(p) {
     let a = 0;
     for (let i = 0; i < p.length; i += 2) a += p[i] * p[(i + 3) % p.length] - p[(i + 2) % p.length] * p[i + 1];

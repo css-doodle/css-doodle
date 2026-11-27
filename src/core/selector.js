@@ -10,8 +10,6 @@ function even(n) {
     return n % 2 === 0;
 }
 
-// one nth-style expression against a value: even/odd parity or an+b
-// with n from 0; undefined when the expression does not parse
 function compare(rule, value) {
     if (rule === 'even') return even(value);
     if (rule === 'odd') return odd(value);
@@ -45,7 +43,6 @@ function randomCell({ count, grid }, { context, random }, position, n) {
     return random() < n;
 }
 
-// n distinct integers from 1..N, partial Fisher-Yates over a sparse map
 function randomN(N, n, random) {
     if (n > N) n = N;
     const map = new Map();
@@ -72,9 +69,6 @@ Selector.even = ({ x, y }) => _ => odd(x + y);
 
 Selector.odd = ({ x, y }) => _ => even(x + y);
 
-// @random(ratio): ratio < 1 is a per-cell probability (default .5),
-// ratio >= 1 a count of distinct cells; expressions are calc-ed with
-// the cell variables in scope
 Selector.random = (cell, env, position) => (vars, ratio = .5) => {
     let n = Number(ratio);
     if (Number.isNaN(n)) {
@@ -87,10 +81,6 @@ Selector.random = (cell, env, position) => (vars, ratio = .5) => {
 
 Selector.match = (cell, { random }) => (vars, expr) => !!calc(expr, drawing(vars, random));
 
-// @cell(…): an argument is an an+b rule on the index, even/odd on the
-// checkerboard, `random [n]`, or an expression; any one matching
-// selects the cell. Every argument runs, so a random one draws the
-// same whatever matched before it.
 Selector.cell = (cell, env, position) => (vars, ...args) => {
     if (!args.length) return true;
     return args.map((arg, i) => {
@@ -104,7 +94,6 @@ Selector.cell = (cell, env, position) => (vars, ...args) => {
         if (arg.startsWith('random')) {
             let n = Number(arg.slice(6).trim() || .5);
             if (!Number.isNaN(n)) {
-                // each argument picks its own cells
                 return randomCell(cell, env, position + ':' + i, n);
             }
         }

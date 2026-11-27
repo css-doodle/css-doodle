@@ -112,7 +112,6 @@ export function generateFragment(fragment, textures) {
     return snippets.join('\n');
 }
 
-// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
 function loadTexture(gl, image, i) {
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + i);
@@ -138,9 +137,6 @@ function uploadTexture(gl, image) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 }
 
-// Browsers cap the number of live WebGL contexts (Chrome evicts the oldest
-// past 16), so shaders share one context per raster size instead of holding
-// one each. A surface nobody draws on is dropped a moment later.
 const MAX_SURFACES = 8;
 const surfaces = new Map();
 let sweeper = null;
@@ -174,7 +170,6 @@ function createSurface(key, width, height, kind) {
     if (kind) gl.enable(gl.BLEND);
 
     canvas.addEventListener('webglcontextlost', () => {
-        // losing it on purpose is not news
         if (surface.disposed) return;
         surface.disposed = true;
         surfaces.delete(key);
@@ -291,7 +286,6 @@ export default function drawShader(shaders, seed, onLost) {
             dispose();
             throw e;
         }
-        // uniforms live in the program, so these are set once
         gl.useProgram(program);
         textures.forEach((n, i) => {
             gl.uniform1i(gl.getUniformLocation(program, n.name), i);
@@ -314,7 +308,6 @@ export default function drawShader(shaders, seed, onLost) {
         surface = null;
     }
 
-    // the body once per cell, its record written instead of drawn
     function capture(count) {
         gl.enable(gl.RASTERIZER_DISCARD);
         gl.bindBufferRange(gl.TRANSFORM_FEEDBACK_BUFFER, 0, records, stride, count * stride);
@@ -344,7 +337,6 @@ export default function drawShader(shaders, seed, onLost) {
         gl.useProgram(program);
         gl.uniform2f(uniforms.resolution, width, height);
 
-        // the caller swaps in freshly rendered images after a resize
         images.forEach((n, i) => {
             gl.activeTexture(gl.TEXTURE0 + i);
             gl.bindTexture(gl.TEXTURE_2D, textureList[i]);
@@ -384,7 +376,6 @@ export default function drawShader(shaders, seed, onLost) {
     }
 
     setup(raster(shaders.width), raster(shaders.height));
-    // the cell pass compiles for transform feedback, so it warms up as one
     const first = surface;
     const warm = marks && (() => surface === first && capture(1));
     drawing.ready = Promise.all(entries.map((entry, i) => entry.ready ||= settle(surface, entry, !i && warm))).then(() => surface && !surface.disposed && !uniforms && bind(), e => {

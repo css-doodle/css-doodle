@@ -8,7 +8,6 @@ import { addAlias } from '../lib/fn.js';
 import { isEmpty } from '../lib/type.js';
 import { memo } from '../lib/cache.js';
 
-// keywords resolve to edge percentages, remaining values fill x then y
 function resolvePlace(value) {
     let x, y, rest = [], safe = false;
     for (let token of parseValueGroup(value)) {
@@ -62,8 +61,6 @@ function formatGap(value) {
         completeRule(values);
         let width = values.find(v => lengthValue.test(v) || ruleWidths.test(v));
         if (width === undefined) {
-            // a rule with no width of its own fills its gap
-            // (% can't be a line width and falls back to a hairline)
             let [row = '1px', column = row] = gap.map(v => /%/.test(v) ? '1px' : v);
             rowRule = values.concat(row).join(' ');
             columnRule = values.concat(column).join(' ');
@@ -72,7 +69,6 @@ function formatGap(value) {
             rowRule = columnRule = values.join(' ');
         }
         if (!gap.length) {
-            // a missing gap takes the rule width
             gap.push(ruleWidthPx[width] || width);
         }
     }
@@ -191,7 +187,6 @@ Property.shape = (value, { rules }) => {
 };
 
 export const alias = {
-    // legacy name
     'place-cell': 'place',
 };
 

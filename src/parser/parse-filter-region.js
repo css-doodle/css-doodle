@@ -1,7 +1,5 @@
 import parseValueGroup from './parse-value-group.js';
 
-// `x [y] / width [height]`
-// or positive percenage: 20% => `-20% -20% / 140% 140%`.
 export default function parseFilterRegion(input) {
     let value = String(input).trim();
     if (!value.includes('/')) {

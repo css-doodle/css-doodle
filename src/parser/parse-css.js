@@ -1,14 +1,3 @@
-// AST:
-//   rule       { type: 'rule', property, value: Group[] } + rawValue(); Group[] carries hasFunc
-//   at-rule    { type: 'at-rule', property: '', value: string }  a statement: @import ...;
-//   pseudo     { type: 'pseudo', selector, selectors, styles }  selectors resolved, '&' is the cell
-//   cond       { type: 'cond', name, segments, position, styles, alts } + raw(); segments { keyword } | { arguments }, spaced;
-//              alts [{ name, segments, pseudo, styles? }], more than one in a cell selector list
-//   keyframes  { type: 'keyframes', name, steps: [{ type: 'step', name: Group[], styles }] }
-//   func       { type: 'func', name, arguments: [{ values, cluster }], position, index, size? }
-//   text       { type: 'text', value }
-//   var        { type: 'var', name }  a `--name` leading an argument, bare or wrapped
-// The list carries warnings: [{ message, pos? }], pos a token [col, row]
 import { textOf, itemsOf, Token } from './tokenizer.js';
 import { namesOf, rowsOf } from './parse-body.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
@@ -85,7 +74,6 @@ function repeat(count, values) {
     return { type: 'func', name: '@M', arguments: [Node.argument([Node.text(count)]), Node.argument(values)] };
 }
 
-// index of the first top-level terminator ahead, -1 if none
 function probe(cur, a, b, c) {
     let paren = 0, quote = false;
     for (let i = cur.i; i < cur.tokens.length; ++i) {
@@ -202,7 +190,7 @@ function isTagStart(cur) {
 }
 
 function parseFunc(cur) {
-    let tok = cur.next(); // '@' or '$'
+    let tok = cur.next();
     let isCalc = tok.isSymbol('$');
     let bare = isCalc && !callFollows(cur, 0);
     let name = '@';
@@ -290,7 +278,6 @@ function finishFunc(cur, name, end, isCalc, index, shaped, body) {
     return func;
 }
 
-// the first dot before a letter, or a last one right before the next @ or $
 function findCompositionDot(name, cur, end) {
     let i = name.search(/\.([a-zA-Z]|$)/), t = cur.peek();
     return i < name.length - 1 || t?.index === end && t.isSymbol('@', '$') ? i : -1;
@@ -315,7 +302,7 @@ function parseArguments(cur, copying, whole, name) {
     let args = [];
     let values = [];
     let buf = '';
-    let last = null; // the token buf ends with
+    let last = null;
     let paren = 0;
     let quote = false;
     let at = false;
@@ -336,7 +323,6 @@ function parseArguments(cur, copying, whole, name) {
     };
 
     const pushArgument = () => {
-        // ±x expands into -x and x: ±1, ±(a + 1), ±@r(10)
         let head = values[0];
         if (head?.type === 'text' && head.value.startsWith('±')) {
             let rest = head.value.slice(1).trimStart();
@@ -353,20 +339,17 @@ function parseArguments(cur, copying, whole, name) {
     while (!cur.end()) {
         let tok = cur.peek();
         let v = tok.value;
-        // a gap the tokenizer dropped, after ':' or ',', reads as a space
         if (!quote && last && !last.isSpace() && !tok.isSpace() && tok.index > tokenEnd(last)
                 && /\s/.test(cur.source.slice(tokenEnd(last), tok.index))) {
             buf += ' ';
             last = null;
         }
-        // functions fire inside quotes too
         if (tok.isSymbol('@', '$')) {
             flush(true);
             values.push(parseFunc(cur));
             continue;
         }
         if (!quote && tok.isSymbol()) {
-            // `--name:` declares (inside @svg), anything else reads
             if (v === '-' && !buf) {
                 let mark = cur.i;
                 let name = readVarName(cur);
@@ -435,7 +418,6 @@ function normalizeArgument(values) {
             ft.value = ft.value.slice(1);
             ed.value = ed.value.slice(0, -1);
             cluster = true;
-            // (--name) reads like a bare --name
             let name = /^--[\w-]+/.exec(ft.value);
             if (name) {
                 let rest = ft.value.slice(name[0].length);
@@ -469,7 +451,6 @@ function parensWrapWhole(values) {
     return !depth;
 }
 
-// "a" "b" is two strings, not one string a" "b
 function quotesWrapWhole(values, quote) {
     let str = textOfNodes(values);
     for (let i = 1; i < str.length - 1; ++i) {
@@ -537,7 +518,6 @@ function parseDoodleBody(cur, start, name) {
         if (values.some(v => v.type === 'func')) return [Node.argument(values)];
     }
     let body = cur.source.slice(start, end);
-    // a nested doodle is parsed again, and that parse leaves the π in quotes alone
     if (!name.startsWith('@doodle')) body = substitutePi(cur.source, start, end);
     return [normalizeArgument([Node.text(body.trim() || body)])];
 }
@@ -597,7 +577,6 @@ function parseRule(cur) {
         rule.type = 'at-rule';
         rule.value = head + ';';
     } else {
-        // `color red;`, or a head that runs to the end: `@nth(1 { … }`
         if (tok?.isSymbol(';')) cur.next();
         warn(cur.ctx, tok || !/[("'`]/.test(head) ? 'missing :' : 'unbalanced paren/quote', pos);
     }
@@ -631,7 +610,6 @@ function parseUse(cur) {
                 name = n.name;
                 rule = read(name);
             }
-            // a variable already being inserted refers to itself: skip it
             if (ctx.using.includes(name)) {
                 warn(ctx, 'recursive ' + name, pos);
                 continue;
@@ -700,12 +678,11 @@ function parsePseudo(cur, brace) {
     let start = cur.headIndex();
     cur.i = brace;
     let selector = cur.source.slice(start, cur.headIndex()).replace(/("[^"]*"|'[^']*')|\/\*[\s\S]*?\*\//g, (m, q) => q || ' ').trim();
-    let open = cur.next(); // '{'
+    let open = cur.next();
 
     let ctx = cur.ctx;
     let outer = ctx.selectors;
     let selectors = nestSelectors(selector, outer);
-    // nested lists multiply: a block past this is dropped
     if (selectors.length > 1000 || selectors.some(s => s.length > 1e4)) {
         warn(ctx, 'selector too large', open.pos);
         selectors = [];
@@ -731,7 +708,6 @@ function nestSelectors(selector, parents) {
                 : s.startsWith(':') ? p + s
                 : p + ' ' + s);
         for (let n of nested) {
-            // the host is featureless: :host:hover never matches, :host(:hover) does
             result.push(n.replace(RE_HOST_COMPOUND, (_, inner = '', compound) => `:host(${inner}${compound})`));
         }
     }
@@ -840,11 +816,10 @@ function parseCondSelector(cur, brace) {
 
 function parseKeyframes(cur, brace) {
     let keyframes = { type: 'keyframes', name: '', steps: [] };
-    cur.next(); // '@'
-    cur.next(); // 'keyframes'
+    cur.next();
+    cur.next();
     while (cur.peek().isSpace()) cur.next();
 
-    // the name runs to the next gap
     let start = cur.peek();
     let end = start.index;
     while (cur.i < brace) {
@@ -871,7 +846,6 @@ function parseKeyframes(cur, brace) {
 
 function parseStep(cur) {
     let step = { type: 'step', name: parseValue(cur, '{'), styles: [] };
-    // a '}' stays put so the keyframes loop closes the block
     if (cur.peek()?.isSymbol('{')) {
         cur.next();
         step.styles = parseBlockBody(cur).filter(n => n.type === 'rule');

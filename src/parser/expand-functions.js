@@ -1,4 +1,3 @@
-// `--name(params): body` definitions and `$name(args)` calls, expanded as text before parse-css.js reads it
 import { textOf, itemsOf } from './tokenizer.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, nameLength, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
 import { loopHeads } from './parse-pattern.js';
@@ -9,13 +8,11 @@ export function warn(ctx, msg, pos) {
     ctx.warnings.push(pos ? { message: msg, pos } : { message: msg });
 }
 
-// index of the quote closing the one at tokens[i]
 function quoteEnd(tokens, i) {
     while (++i < tokens.length && !tokens[i].status);
     return i;
 }
 
-// index of the bracket closing the one at tokens[i], -1 when unclosed
 function closing(tokens, i) {
     let open = tokens[i].value;
     let close = open === '(' ? ')' : '}';
@@ -27,8 +24,6 @@ function closing(tokens, i) {
     return -1;
 }
 
-// index of the last token of the statement at tokens[i]: its `;`, or the
-// `}` closing its block
 function statementEnd(tokens, i) {
     for (let depth = 0; i < tokens.length; i++) {
         let t = tokens[i];
@@ -207,7 +202,6 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
                 let lead = text.slice(head, t.index).trim();
                 if (t.isSymbol('}')) blocks.pop();
                 else if (t.isSymbol('{')) blocks.push(lead === 'match');
-                // a texture holds a doodle, read as CSS
                 if (t.isSymbol('{') && RE_TEXTURE_HEAD.test(lead)) {
                     let close = closing(tokens, i);
                     if (close < 0) break;
@@ -334,8 +328,6 @@ function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
     return out;
 }
 
-// the last token of the color at tokens[i], whose hex digits scan as
-// words and numbers: #e0402a is #e 0402 a
 function hexEnd(tokens, i) {
     while (tokens[i + 1] && adjacent(tokens[i], tokens[i + 1]) && /^[\da-f]+$/i.test(tokens[i + 1].value)) i++;
     return i;
@@ -353,23 +345,17 @@ function isStatements(text) {
     return false;
 }
 
-// the token at j or the first after it that is not a space
 export function solidAt(tokens, j) {
     while (tokens[j]?.isSpace()) j++;
     return tokens[j];
 }
 
-// what a row head ending before j assigns with: ':' in `a: 1`, '+' in `a+: 1`
 function colonAt(tokens, j) {
     while (tokens[j]?.isSpace()) j++;
     let op = /^[-+*/]$/.test(tokens[j]?.value) && tokens[j + 1]?.isSymbol(':') && tokens[j].value;
     return op || tokens[j]?.isSymbol(':') && ':';
 }
 
-// What a body gives: a value, when a statement assigns result, in a block
-// too, the last assignment run being the value, as in a CSS @function; an
-// expression, when it is one statement declaring nothing and not a call of
-// a function that runs statements; else statements, run where it is called
 function kindOf(def, defs) {
     if (def.kind) return def.kind;
     def.kind = INCLUDE;
@@ -394,7 +380,6 @@ function kindOf(def, defs) {
     if (line.at(-1)?.isSymbol(';')) line.pop();
     else if (line.length) statements++;
     if (statements !== 1 || declares) return def.kind;
-    // a lone call reads as what that function gives
     if (line[0]?.isSymbol('$') && isNameStart(line[1])) {
         let end = nameEnd(line, 1, true);
         let callee = defs[textOf(line.slice(1, end + 1))];
@@ -406,9 +391,6 @@ function kindOf(def, defs) {
     return def.kind = EXPRESSION;
 }
 
-// In CSS a body made of result declarations alone reads as the last
-// one's value, as a CSS @function does; null for any other body, so an
-// @svg-filter element's attributes, result among them, still paste
 function resultOf(body) {
     let tokens = tokensOf(body), value = null;
     for (let i = 0; i < tokens.length; i++) {
@@ -421,8 +403,6 @@ function resultOf(body) {
     return value;
 }
 
-// The statements of one call of a value function: its arguments bound to
-// names and its names made its own, results among them, which are its values
 function valueCall(name, def, args, defs, ctx, chain) {
     let { params, defaults } = def;
     let ret = `${name.replace(/\W/g, '_')}_${++ctx.calls}`;
@@ -444,11 +424,6 @@ function valueCall(name, def, args, defs, ctx, chain) {
     return { text, ret: ret + '_result', count };
 }
 
-// Rename the names a body assigns, and the loop names of its repeats, to
-// prefix_name: in a value function every assignment is its own, even to
-// fill or d. A name reads the caller's variable until its first assignment
-// ends; the names assigned as `$p:` are collected in targets. Each item of
-// `result: a, b` is a result of its own: prefix_result, prefix_result_2, …
 function renameLocals(text, prefix) {
     let tokens = tokensOf(text, true);
     let declared = new Set(), waiting = [], targets = new Set(), arms = [];
@@ -496,7 +471,6 @@ function renameLocals(text, prefix) {
         } else if (t.isWord() && t.value[0] === '#') {
             i = hexEnd(tokens, i);
         } else if (named(t)) {
-            // digits and underscores glue on; a dot starts a swizzle
             let end = i;
             while (!tokens[end].value.includes('.') && tokens[end + 1] && adjacent(tokens[end], tokens[end + 1])
                     && (tokens[end + 1].isNumber() || named(tokens[end + 1]))) {

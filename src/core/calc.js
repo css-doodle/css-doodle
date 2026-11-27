@@ -143,7 +143,6 @@ export const operators = {
 
 const PREC = { __proto__: operators, '-u': 8.5, '·': 8.75, ' ': .5 };
 
-// spellings that share an implementation
 const spelling = {
     __proto__: null,
     '**': '^', '=': '==', '≤': '<=', '≥': '>=', '≠': '!=', 'and': '&&', 'or': '||',
@@ -173,11 +172,9 @@ export const binary = {
     '>>': (a, b) => a >> b,
 };
 
-// infix token types
 const VALUE = 'value';
 const OPERATOR = 'operator';
 const COMMA = 'comma';
-// postfix node types, values split into these
 const NUMBER = 'number';
 const VARIABLE = 'variable';
 const FUNCTION = 'function';
@@ -200,9 +197,6 @@ function isUnary(prev) {
     return !prev || prev.type === COMMA || (prev.type === OPERATOR && prev.value !== ')');
 }
 
-// Push a value, resolving adjacency with the previous token:
-// "2x" → 2*x, "2sin(1)" → 2*sin(1); after a space there is no
-// product, so "2 x" leaves two values and reads as 2
 const ANGLES = { deg: String(Math.PI / 180), turn: String(2 * Math.PI), rad: '1' };
 const ANGLE_TAKERS = new Set(['sin', 'cos', 'tan', 'degrees']);
 
@@ -291,7 +285,6 @@ function transformTokens(input, spans, lists) {
             continue;
         }
 
-        // the colon of pick(k: a, b, …) separates as a comma does
         if (value === ',' || value === ':') {
             tokens.push(tk(COMMA, value));
             continue;
@@ -313,7 +306,6 @@ function transformTokens(input, spans, lists) {
         }
 
         if ((value === '+' || value === '-') && isUnary(tokens.at(-1))) {
-            // a run of unary signs is one prefix operator
             let negative = value === '-';
             while (raw[i + 1] && (raw[i + 1].value === '+' || raw[i + 1].value === '-')) {
                 if (raw[++i].value === '-') negative = !negative;
@@ -323,7 +315,6 @@ function transformTokens(input, spans, lists) {
         }
 
         if (value === '(') {
-            // "2(3+4)" → "2*(3+4)", "(1+2)(3+4)" → "(1+2)*(3+4)", but not "fn("
             const prev = tokens.at(-1);
             if (prev && !spaced && (prev.value === ')' || (prev.type === VALUE && RE_NUMBER.test(prev.value)))) {
                 tokens.push(tk(OPERATOR, '·'));
@@ -333,7 +324,6 @@ function transformTokens(input, spans, lists) {
         if (isOperator(value)) {
             tokens.push(op(value));
         } else {
-            // π, and stray symbols that read as misses
             pushValue(tokens, value, spaced);
         }
     }
@@ -341,7 +331,6 @@ function transformTokens(input, spans, lists) {
     return tokens;
 }
 
-// Convert infix tokens to postfix (RPN)
 function toPostfix(tokens) {
     const opStack = [];
     const expr = [];
@@ -388,8 +377,6 @@ function toPostfix(tokens) {
             } else {
                 if (!prev || prev.type === OPERATOR && prev.value !== ')') expr.push(tk(NUMBER, 0));
                 const prec = PREC[value];
-                // && and || nest to the right so a chain lowers to CSS
-                // text that grows with its length, not exponentially
                 const rightAssoc = ['^', '&&', '||'].includes(value);
                 while (opStack.length) {
                     const topPrec = PREC[opStack.at(-1)];
@@ -412,8 +399,6 @@ function toPostfix(tokens) {
     return expr;
 }
 
-// Split the token stream of "(a, b, …)" into per-argument postfix lists;
-// in pick(k: a, b, …) the index ends at the colon, in match(t: v, …) a test does
 function parseFunctionArgs(tokens, startIndex, name) {
     const args = [];
     let current = [];
@@ -469,7 +454,6 @@ function evaluateValue(value, ctx, history) {
     if (num !== undefined) {
         return num;
     }
-    // history holds the values being expanded; one already there refers to itself
     if (history.length > 50 || history.includes(value)) {
         return 0;
     }
@@ -479,7 +463,6 @@ function evaluateValue(value, ctx, history) {
     return result;
 }
 
-// A name reads from the context
 function compileVariable(name) {
     return (ctx, history) => {
         let result = ctx[name];
@@ -490,7 +473,6 @@ function compileVariable(name) {
             return miss(history);
         }
         if (typeof result === 'function') {
-            // only a function that takes no arguments reads bare
             result = result.length ? miss(history) : result();
         }
         if (typeof result === 'number') {
@@ -506,13 +488,10 @@ function compileFunction(node) {
     const chain = name.split('.');
     const argFns = node.value.map(compile);
 
-    // match(t1, v1, t2, v2, …, else) evaluates only the taken branch,
-    // unless a context value shadows the built-in
     if (name === 'match' && argFns.length >= 2) {
         const choose = (i, ctx, history) => {
             if (i + 1 >= argFns.length) return i < argFns.length ? argFns[i](ctx, history) : 0;
             const cond = argFns[i](ctx, history);
-            // a live condition takes both branches, weighted by its truthiness
             return live(cond)
                 ? `(${text(argFns[i + 1](ctx, history))} * ${truthy(cond)} + ${text(choose(i + 2, ctx, history))} * ${not(truthy(cond))})`
                 : cond ? argFns[i + 1](ctx, history) : choose(i + 2, ctx, history);
@@ -566,7 +545,6 @@ function compileFunction(node) {
         };
     }
 
-    // "sqrt.abs(x)" applies right to left
     return (ctx, history) => {
         let output = argFns.map(f => f(ctx, history));
         for (let i = chain.length - 1; i >= 0; i--) {
@@ -601,7 +579,6 @@ function compare(ops, terms, group) {
 
 const nothing = () => NaN;
 
-// Compile a postfix expression into a closure of (context, history)
 function compile(expr) {
     const stack = [];
 
@@ -610,7 +587,6 @@ function compile(expr) {
         const { type, value } = node;
 
         if (type === NUMBER) {
-            // a live value is kept as CSS text only where CSS math is wanted
             stack.push(live(value) ? (ctx, history) => history.css ? value : miss(history) : () => value);
         } else if (type === VARIABLE) {
             const read = compileVariable(value);
@@ -634,7 +610,6 @@ function compile(expr) {
             const r = stack.pop() || nothing;
             const l = stack.pop() || nothing;
             if (RELATIONAL.has(value)) {
-                // a < b < c reads as a < b && b < c
                 const [ops, terms] = l.chain || [[], [l]];
                 stack.push(compare([...ops, value], [...terms, r], node.group));
             } else if (value === '&&') {
@@ -663,7 +638,6 @@ function compile(expr) {
     }
 
     const root = stack[0] || (() => 0);
-    // a value left over, as in "10px solid red", makes a list, not a number
     if (stack.length > 1) return (ctx, history) => (miss(history), Number(root(ctx, history)) || 0);
     return (ctx, history) => {
         const output = root(ctx, history);
@@ -673,8 +647,6 @@ function compile(expr) {
 
 const RE_DASHED = /(^|[^\p{L}_])([\p{L}_][\p{L}\p{N}_]*(?:-[\p{L}\p{N}_]+)+)/gu;
 
-// Every dashed name in the input with the names it could be read as,
-// longest first: "a-b-c" → a-b-c, a-b
 function dashedCandidates(input) {
     let candidates = null;
     for (let m of input.matchAll(RE_DASHED)) {
@@ -733,17 +705,11 @@ function compileInput(input, ctx, lists = false) {
 
 const RE_NAME = new RegExp(`^(?![\\d-])${NAME_CHAR}+$`);
 
-// A $ expression that is just the name of a variable acts as a
-// generation-time var(): values that read as math evaluate once, here,
-// anything else — colors, transforms, dimensioned literals — passes
-// through verbatim. Returns undefined when the numeric path applies.
 export function deref(input, context) {
     let name = String(input).trim();
     if (!RE_NAME.test(name)) return;
-    // only user variables count, not the built-ins behind them
     const own = key => Object.hasOwn(context, key) ? context[key] : undefined;
     let value = own(name);
-    // Follow single-name chains: --a: b; --b: tomato
     for (let i = 0; typeof value === 'string' && i < 50; i++) {
         let next = value.trim();
         if (!RE_NAME.test(next) || next === name) break;
@@ -850,8 +816,6 @@ export function withUnit(value, unit) {
     return `calc(${value.replace(/^calc/, '')} * 1${unit})`;
 }
 
-// A number; with `css`, CSS math for an expression that reads a live
-// value, which otherwise counts as a miss
 export default function(input, context, css) {
     if (typeof input === 'number' && Number.isFinite(input)) {
         return input;
@@ -860,6 +824,5 @@ export default function(input, context, css) {
     const history = [];
     history.css = css;
     const output = compileInput(input, context)(context, history);
-    // the outermost group is the calc() itself
     return live(output) ? `calc(${removeParens(String(output))})` : output;
 }

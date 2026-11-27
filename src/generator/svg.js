@@ -19,13 +19,11 @@ const linesToPoints = value => (bridge(String(value).split('M').slice(1).map(rin
 
 const NAME = /^[\p{L}_:][\p{L}\d_:.-]*$/u;
 
-// a quoted value as text, its escapes read: "a\"b" is a"b
 function unquote(value) {
     let text = removeQuotes(value);
     return text === String(value) ? text : text.replace(/\\(.)/gs, '$1');
 }
 
-// the body holds child tags and text, text as plain strings
 class Tag {
     constructor(name) {
         this.name = name;
@@ -42,7 +40,6 @@ class Tag {
         if (value === undefined) {
             return this.attrs[name];
         }
-        // SMIL spells it indefinite
         if (name === 'repeatCount' && value === 'infinite') {
             value = 'indefinite';
         }
@@ -199,7 +196,6 @@ function arcRun(ps, i, tol) {
 function transformViewBox(token, warn) {
     let viewBox = token.detail.value;
     let p = token.detail.padding || token.detail.p;
-    // `viewBox: 10` is `0 0 10 10`, `viewBox: 10 5` is `0 0 10 5`
     if (viewBox.length == 1 || viewBox.length == 2) {
         viewBox = [0, 0, viewBox[0], viewBox.at(-1)];
     }
@@ -234,7 +230,6 @@ function timing(animate, value, label, warn) {
             }
         }
     }
-    // a bare number beside a duration is the repeat count, alone it is seconds
     let count = times.findIndex(t => /^\d+$/.test(t));
     if (count >= 0 && times.some(t => /[a-z]$/.test(t))) {
         repeatCount = times.splice(count, 1)[0];
@@ -262,7 +257,6 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
     let { name, value } = token, inlineId;
     element ??= new Tag('root');
     if (token.type === 'block') {
-        // style tag
         if (name === 'style') {
             let el = new Tag('style');
             el.append(value);
@@ -295,7 +289,6 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
             let isSingleDefChild = isParentInlineDefs && parent.value.length == 1;
 
             if (isInlineAndNotDefs || isParentInlineDefs) {
-                // generate id for inline block if no id is found
                 let found = value.find(n => n.type === 'statement' && n.name === 'id');
                 if (found) {
                     inlineId = found.value;
@@ -320,7 +313,6 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
                 }
             } else {
                 if (name === 'defs') {
-                    // append only when there's no defs and spare defs
                     let defsElement = root.findSpareDefs();
                     if (defsElement && !el.attrs.id) {
                         if (el !== defsElement) {
@@ -336,14 +328,12 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
         }
     }
     if (token.type === 'statement' && !token.variable) {
-        // `style fill: red`, `animate r: …`: a keyword and the attribute it applies to
         let space = name.indexOf(' ');
         let keyword = space < 0 ? name : name.slice(0, space);
         let prop = space < 0 ? '' : name.slice(space + 1).trim();
         if (keyword === 'content') {
             element.append(unquote(value));
         }
-        // inline style, `style fill: red` or `style: { fill: red }`
         else if (keyword === 'style') {
             let rule = prop ? `${prop}:${value};` : String(value).trim().replace(/;?$/, ';');
             element.attr('style', (element.attr('style') || '') + rule);
@@ -365,7 +355,6 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
             });
         }
         else {
-            // handle inline block value
             if (value?.type === 'block') {
                 let id = generateSvg(value, warn, root, token, root);
                 if (isNil(id)) {
@@ -381,7 +370,6 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
                     element.attr(name, value);
                 }
             }
-            // `draw: 2s infinite` strokes a shape along its length
             else if (keyword === 'draw' || (keyword === 'animate' && !prop)) {
                 if (!/^(path|line|circle|ellipse|rect|polygon|polyline)$/.test(parent.name) && !GROUPS.includes(parent.name)) {
                     warn(`<${parent.name}> lacks path`);
@@ -404,7 +392,6 @@ export default function generateSvg(token, warn = () => {}, element, parent, roo
                     }
                 }
             }
-            // `animate r: 1; 5; 1 / 2s ease infinite`, `animate transform: rotate 0; 360 / 4s`
             else if (keyword === 'animate') {
                 prop = adjustName(prop);
                 let text = String(value);

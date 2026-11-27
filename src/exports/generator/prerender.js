@@ -28,24 +28,6 @@ function dropStrayTemplateEnds(html) {
     });
 }
 
-/*
- * Renders a doodle to HTML with a declarative shadow root, so it paints
- * without the runtime. The source stays in the light DOM, which is not
- * rendered, so a runtime loaded later draws the same picture from it.
- *
- * `needs` lists what only the runtime can do:
- *   shader      @paint and @scene images are left out
- *   mouse, size the pointer and size uniforms stay at 0
- *   clock       @T/@TS count from the build time, not the visit
- *   update      click:update / auto:update
- *   doodle      a @doodle in @content stays its source text
- *   safari      an animated sized @doodle is drawn unscaled in Safari
- *   variables   a var() in `use` has no value in `options.variables`
- *   color       @palette() leaves out its color, which only a browser reads
- *
- * Without a seed the source picks one, so a build renders the same picture
- * each time; the element itself picks a new one on every load.
- */
 export default async function prerender(code = '', options = {}) {
     let attributes = { ...options.attributes };
     let variables = options.variables ?? {};

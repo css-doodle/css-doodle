@@ -37,23 +37,19 @@ const MAX_SCATTER = 8192;
 const SCATTER_OUTLINE = 360;
 const NO_TILE = 'polygon(0 0)';
 
-// layout of the sequence tuples pushed onto `extra` (see arguments.js)
 export const SEQ = {
-    n: 0,     // current value            → @n
-    x: 1,     // column, for 2x3 forms    → @nx
-    y: 2,     // row, for 2x3 forms       → @ny
-    max: 3,   // total iterations         → @N
-    X: 4,     // sequence grid columns
-    Y: 5,     // sequence grid rows
-    index: 6, // iteration index, overrides pick counters
-    sig: 7    // invocation signature, separates pick counters across @m calls
+    n: 0,
+    x: 1,
+    y: 2,
+    max: 3,
+    X: 4,
+    Y: 5,
+    index: 6,
+    sig: 7
 };
 
 export const SEQ_INDEX = { n: SEQ.n, nx: SEQ.x, ny: SEQ.y, N: SEQ.max };
 
-// an operator argument ('*10', '%360deg', '-.5') parses once; computing
-// against a base — which runs per cell and per sequence iteration — is
-// then plain arithmetic
 const parseOperation = memo(input => {
     let v = String(input);
     let prefix = RE_OP_PREFIX.test(v);
@@ -70,7 +66,6 @@ function calcWith(base) {
     return (...args) => {
         for (let v of args) {
             let { op, prefix, value, unit: u } = parseOperation(v);
-            // prefix op: base comes first; suffix op: base comes last
             let [a, b] = prefix ? [base, value] : [value, base];
             base = typeof base === 'string' && RE_LIVE.test(base)
                 ? `calc(${op === '%' ? `mod(${a}, ${b})` : `${a} ${op} ${b}`})`
@@ -95,7 +90,6 @@ const STACK_LIMIT = 1024;
 function pushStack(context, name, value) {
     let stack = context[name] ||= [];
     stack.push(value);
-    // trim in batches: a shift() per push costs O(limit) on every @r/@p
     if (stack.length >= STACK_LIMIT * 2) {
         stack.splice(0, STACK_LIMIT);
     }
@@ -104,7 +98,6 @@ function pushStack(context, name, value) {
 
 function lastOf(stack, n = 1) {
     if (stack === undefined) return '';
-    // lookback stops at the window edge, as if older values were shifted out
     let i = Math.max(stack.length - n, stack.length - STACK_LIMIT, 0);
     return stack[i];
 }
@@ -188,7 +181,6 @@ function createPlot(unit, kind, pieces) {
         let shape = make(max), { rings } = shape.points;
         if (!shape.rules.hasPoints && !shape.rules.blocks && rings?.length > 1) {
             let total = 0, done = 0;
-            // running totals of the lengths
             let runs = rings.map(ring => total += perimeter(ring.map(p => String(p).split(' ').map(parseFloat))));
             if (total) shape = make(runs.map(run => {
                 let n = Math.round(max * run / total) - done;
@@ -224,8 +216,6 @@ const piecePath = piece => {
 const cellTiles = new WeakMap();
 const tileAxis = i => cell => () => cellTiles.get(cell)?.origin?.split(' ')[i] ?? '';
 
-// appends the args in reverse; `even` repeats the turning point:
-// @mirror 1 2 3 → 1 2 3 3 2 1, @Mirror 1 2 3 → 1 2 3 2 1
 function createMirror(even) {
     let offset = even ? 1 : 2;
     return () => (...args) => {
@@ -261,7 +251,6 @@ const INVERT_COMMAND = { v: 'h', V: 'H', h: 'v', H: 'V' };
 
 function transformPath(xx, xy, yx, yy) {
     let swap = xx === 0;
-    // a reflection reverses the turning direction of the arcs
     let reflect = xx * yy - xy * yx < 0;
     return (...args) => {
         let input = args.join(',');
@@ -282,7 +271,6 @@ function transformPath(xx, xy, yx, yy) {
             let lower = name.toLowerCase();
             let out = [];
             if (lower === 'h' || lower === 'v') {
-                // one coordinate, which lands on the other axis under a swap
                 let isH = lower === 'h';
                 for (let n of value) {
                     let [px, py] = isH ? point(n, abs ? oy : 0, abs) : point(abs ? ox : 0, n, abs);
@@ -368,7 +356,6 @@ Function.nd = seq('@nd', e => d => {
     return String(tidyNumber(e[SEQ.n] - .5 - d - e[SEQ.max] / 2));
 });
 
-// @p and @P with no arguments reuse the arguments of the last pick
 Function.p = (cell, { context, pick, extra }) => {
     return expand(args => {
         if (!args.length) {
@@ -780,7 +767,6 @@ Function.svg = lazy((cell, env, position, ...args) => {
 Function['svg-filter'] = lazy((_, env, position, ...args) => {
     let values = args.map(input => getValue(input()));
     let value = values.join(',');
-    // the positional / name=value short form
     let shorthand = values.every(n => !/[{}<>]/.test(n) && /^([\-\d.]|\w+=)/.test(n));
     if (shorthand) {
         let named = getNamedArguments(values, FILTER_COMMANDS);
@@ -837,13 +823,11 @@ Function.raw = (cell, { rules }) => (...args) => {
     return raw;
 };
 
-// the component loads the collected names
 Function['google-font'] = (cell, { rules }) => (name = '') => {
     rules.addFont(name);
     return name && `"${name.split(':')[0]}"`;
 };
 
-// @x and @X: the cell's column and the grid's; @xX and @Xx: the way along from either end, eased
 for (let [k, v] of [['i', 'count'], ['x', 'x'], ['y', 'y'], ['z', 'z']]) {
     let K = k.toUpperCase();
     Function[k] = c => calcWith(c[v]);
@@ -868,9 +852,6 @@ for (let [k, i, size, mouse] of [['x', 0, uwidth, umousex], ['y', 1, uheight, um
     Function['ud' + k] = cell => calcWith(`calc(${cell.center ? tidyNumber(cell.center[i]) : `${tidyNumber((cell[k] - .5) / cell.grid[k])} * var(${size})`} - var(${mouse}))`);
 }
 
-/**
- * expose JS Math functions with css-doodle calc/value semantics
- */
 export const MathFunc = Object.create(null);
 
 for (let name of Object.getOwnPropertyNames(Math)) {
@@ -893,7 +874,6 @@ export const alias = {
     'pick': 'p',
     'rn': 'R',
 
-    // legacy names, keep them before 1.0
     'filter': 'svg-filter',
     'repeat': 'rep',
     'size': 'I',

@@ -2,7 +2,6 @@ let embedFonts = new Map();
 let linkFonts = new Set();
 
 export function getGoogleFontLink(names) {
-    // the v1 css endpoint only honors the first `family` param, so join with a pipe
     let params = names.map(encodeURIComponent).join('%7C');
     return `https://fonts.googleapis.com/css?display=swap&family=${params}`;
 }
@@ -43,7 +42,6 @@ function extractFonts(css) {
             range: getProp('unicode-range')
         };
 
-        // variable fonts reuse one file for multiple weights; merge them into a weight range
         let key = [family, font.style, font.range, url].join('|');
         let prev = seen.get(key);
         if (prev) {

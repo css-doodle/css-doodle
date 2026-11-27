@@ -35,7 +35,6 @@ function scatter(outline, count, evenodd, seed, density, rounds = SCATTER_ROUNDS
         if (inside(x, y)) peak = max(peak, density(x, y));
     }
     if (!(peak > 0)) density = null;
-    // quasi-random R2 samples over the box, kept when inside the shape
     for (; n < total && tried < (n ? total * 100 : 1e3); ++tried) {
         let [x, y] = r2(tried + seed % 1e4 * 1e4, x0, y0, w, h);
         if (!inside(x, y) || density && density(x, y) < peak * rnd()) continue;
@@ -240,7 +239,6 @@ function lattice(k, box, view, s, [a, b], pair, half) {
     return out;
 }
 
-// P3 rhombs from Robinson triangles; a rhombus is a triangle and its mirror over BC
 function penrose(box, [x0, y0, x1, y1], s, half, grow = 1) {
     let [cx, cy] = centre(box);
     let far = hypot(max(cx - x0, x1 - cx), max(cy - y0, y1 - cy)) / cos(PI / 10) + 2 * s;
@@ -259,7 +257,6 @@ function penrose(box, [x0, y0, x1, y1], s, half, grow = 1) {
         let [qx, qy] = at(bx, by, ax, ay), [rx, ry] = at(bx, by, cx, cy);
         return [[1, rx, ry, cx, cy, ax, ay], [1, qx, qy, rx, ry, bx, by], [0, rx, ry, qx, qy, ax, ay]];
     }).filter(([, ax, ay, bx, by, cx, cy]) => {
-        // its rhombs, grown as the reach test grows them, stay within grow sides of it
         let m = grow * max(abs(bx - ax), abs(cx - ax), abs(cx - bx), abs(by - ay), abs(cy - ay), abs(cy - by));
         return min(ax, bx, cx) - m < x1 && max(ax, bx, cx) + m > x0
             && min(ay, by, cy) - m < y1 && max(ay, by, cy) + m > y0;
@@ -272,7 +269,6 @@ function penrose(box, [x0, y0, x1, y1], s, half, grow = 1) {
 
 function conway(op, star, pre) {
     let letters = [...String(op ?? '').replace(/[^abdegjkmost]/g, '').replace(/[gjmo]/g, c => ({ g: 'ds', j: 'da', m: 'kda', o: 'de' })[c])].reverse();
-    // each step multiplies the pieces, so the first 5 run
     letters.length = min(letters.length, 5);
     star = parseFloat(star);
     if (star > 0 && star < 90) letters.push('*');
@@ -549,7 +545,6 @@ function nearest(rings) {
     };
 }
 
-// the squared distance from (x, y) to the side at a in segs, kept as ax, ay, dx, dy, 1 / length²
 function away(segs, a, x, y) {
     let ax = x - segs[a], ay = y - segs[a + 1], dx = segs[a + 2], dy = segs[a + 3];
     let t = (ax * dx + ay * dy) * segs[a + 4];
@@ -562,7 +557,6 @@ function bbox(screen, box) {
     return [max(box[0], x0), max(box[1], y0), min(box[2], x1), min(box[3], y1)];
 }
 
-// the circles keep clear of every contour, given apart so the bridges between them are no walls
 function pack(rings, box, inside, count, seed, size) {
     let [x0, y0, x1, y1] = bbox(rings.flat(), box), w = x1 - x0, h = y1 - y0;
     let total = max(4096, 32 * count), xs = [], ys = [], heap = [], key = [], out = [];

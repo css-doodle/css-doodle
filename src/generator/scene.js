@@ -165,12 +165,10 @@ export default function drawScene(code, extra, report = () => {}) {
     if (/\bcalc\(/.test(code)) warn('no calc()');
 
     let turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, shiny;
-    // compiled three times: distances for marching, the far field the camera fit reads, colors for the hit
     let arrays = new Map();
     let build = (dist, warn, fit) => {
         let counter = 0, sites = 0, key = '0.0', cap, fill, gloss, cut, loose, ball, sym;
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
-        // outside copies the scene is one copy
         let names = { __proto__: null, t: 't', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
         let unknown = colorReader(extra, name => warn(`unknown ${name}`));
         let next = () => `g_${++counter}`;
@@ -179,7 +177,6 @@ export default function drawScene(code, extra, report = () => {}) {
             names: { __proto__: names, p },
             rand: () => glsl`rand(vec2(${key}, ${float(++sites)}) * vec2(0.7548, 0.5698))`,
         });
-        // `.2 -.1 0` and `.2, -.1, 0` → ['.2', '-.1', '0.0']; an angle in degrees
         let numbers = (tokens, p, angle) => {
             let text = textOf(tokens);
             return partsOf(angle ? degrees(text) : text).map(v => compile(v, p).code());
@@ -220,13 +217,11 @@ export default function drawScene(code, extra, report = () => {}) {
         let T = dist ? 'float' : 'vec4', W = dist ? '' : '.w';
         let declare = (r, v = none) => out += `${T} ${r} = ${v};\n`;
         if (!dist) out += `vec3 ${base} = vec3(0.9)${SHADE};\n`;
-        // a hard join is min for union, max against -b for subtract, max for intersect
         let join = (a, b, k, signs = '1.0, 1.0') => `${a} = ${dist && k === '0.0'
             ? signs === '1.0, 1.0' ? `min(${a}, ${b})` : `max(${a}, ${signs === '-1.0, 1.0' ? '-' : ''}${b})`
             : `${dist ? 'g_smin' : 'g_op'}(${a}, ${b}, ${k}, ${signs})`};\n`;
         let row = (node, name) => node.rows.findLast(r => r.name === name)?.value || [];
         let first = (tokens, p, angle) => numbers(tokens, p, angle)[0] || '0.0';
-        // a part reading cap or more changes nothing, so a costly shape may stop at a bound that reaches it
         let below = a => cap ? `min(${cap}, ${a}${W})` : a + W;
         let within = (bound, f) => {
             let saved = cap;
@@ -280,7 +275,6 @@ export default function drawScene(code, extra, report = () => {}) {
             return r;
         }
 
-        // commands apply top to bottom to the shape, so the point meets the last one first
         function chain(node, mods, p) {
             if (!mods.length) return atom(node, p);
             let m = mods.at(-1), inner = mods.slice(0, -1);
@@ -296,7 +290,6 @@ export default function drawScene(code, extra, report = () => {}) {
                 let s = next(), v = args(), k = xyz(v, 1);
                 out += `vec3 ${s} = ${vec3(v, '1.0')};\n`;
                 if (fit) {
-                    // far away a shape reads |p| - its reach; scaled, it reaches |S e| times the inner reach along S e
                     let w = next();
                     out += glsl`vec3 ${w} = ${p} * ${s};\nvec3 ${q} = normalize(${w}) * length(${p});` + '\n';
                     r = chain(node, inner, q);
@@ -304,7 +297,6 @@ export default function drawScene(code, extra, report = () => {}) {
                     return r;
                 }
                 out += `vec3 ${q} = ${p} / ${s};\n`;
-                // a negative scale mirrors
                 let f = glsl`min(abs(${s}.x), min(abs(${s}.y), abs(${s}.z)))`;
                 r = within(cap && `${cap} / ${f}`, () => chain(node, inner, q));
                 out += `${r}${W} *= ${f};\n`;
@@ -325,10 +317,8 @@ export default function drawScene(code, extra, report = () => {}) {
                 moved = b => around(b, axis.split(',').map(Number));
                 kept = isFinite(+deg) && [1, 2, 4][Object.values(AXES).indexOf(axis)];
             } else if (m.name === 'mirror') {
-                // every reflection reuses the same rand() sites
                 let axes = [];
                 for (let t of m.value.filter(t => !t.isSpace() && !t.isSymbol(','))) {
-                    // a repeated axis mirrors nothing new, and each axis doubles the code
                     if (AXES[t.value]) axes.includes(t.value) || axes.push(t.value);
                     else warn(`invalid mirror ${t.value}`);
                 }
@@ -370,10 +360,8 @@ export default function drawScene(code, extra, report = () => {}) {
                 key = glsl`(${outerKey} + dot(${id}, vec3(1.0, 57.0, 113.0)))`;
                 let c = within(below(r), () => chain(node, inner, q));
                 key = outerKey;
-                // the same shape in each cell, mirrored on each repeated axis, is nearest in its own cell
                 let axes = xyz(s, 0).map(v => v !== 0), j = 0;
                 let one = !fit && axes.every((a, i) => !a || sym >> i & 1) && !new RegExp(`\\b${id}\\b`).test(out);
-                // else the cells one step toward p on each repeated axis
                 let bits = axes.map(a => a ? `(${k} >> ${j++}) & 1` : '0');
                 out = head + glsl`
                     vec3 ${on} = step(1e-6, ${vec3(s)});
@@ -387,7 +375,6 @@ export default function drawScene(code, extra, report = () => {}) {
                 ball = [0, 0, 0, Infinity];
                 return r;
             } else {
-                // a frame only adds the inside back, while a grow subtracts a value read after the shape
                 r = within(m.name === 'frame' && cap, () => chain(node, inner, p));
                 let v = first(m.value, p);
                 if (m.name === 'grow') {
@@ -450,7 +437,6 @@ export default function drawScene(code, extra, report = () => {}) {
                 declare(r);
                 return r;
             }
-            // round keeps the outer size: shrink by r, then grow by r
             let k = first(row(node, 'round'), p);
             let get = name => numbers(row(node, name), p), name = node.name;
             let rs = SHAPES[name].includes('r') ? get('r') : [], [r1, r2] = rs, d, h, a, b;
@@ -497,7 +483,6 @@ export default function drawScene(code, extra, report = () => {}) {
                     d = glsl`${c} > 0.1 ? ${a} / ${c} : ${a}`;
                 }
             } else {
-                // in the xy plane, `depth` thick along z, or a lathe's outline turned around y
                 let rings = node.rings || [itemsOf(row(node, 'points')).map(g => numbers(g, p))], lathe = name === 'lathe';
                 if (!rings.length || rings.some(ring => ring.length < 3)) {
                     warn(`${name} needs points`);
@@ -562,7 +547,6 @@ export default function drawScene(code, extra, report = () => {}) {
                     }
                     let [x0, y0, x1, y1] = bounds(all.flat()), mid = [(x1 + x0) / 2, (y1 + y0) / 2], half = [(x1 - x0) / 2, (y1 - y0) / 2];
                     ball = lathe ? [0, mid[1], 0, Math.hypot(Math.max(x1, -x0), half[1])] : [...mid, 0, Math.hypot(...half, depth / 2)];
-                    // the outline's box is never farther than the outline, so the walk runs only where it may count
                     if (plain && dist && !fit && cap) {
                         let box = `rect(${q} - vec2(${mid.map(v => float(+v.toFixed(6)))}), vec2(${half.map(v => float(+(2 * v + 2e-5).toFixed(6)))}))`;
                         return skip(mark, r, lathe ? box : glsl`max(${box}, abs(${p}.z) - ${depth} * 0.5)`, cap, d);
@@ -575,7 +559,6 @@ export default function drawScene(code, extra, report = () => {}) {
 
         let result = generate(root, 'p');
         if (dist) return { out, result, loose };
-        // the named shapes nothing draws are compiled too, so their mistakes show
         let used = out, size = arrays.size;
         for (let def of tree.unused) generate(def, 'p');
         out = used;
@@ -591,20 +574,17 @@ export default function drawScene(code, extra, report = () => {}) {
         wide = shadow && numbers(camera.shadow, 'p')[1];
         eye = camera.eye && vec3(numbers(camera.eye, 'p'));
         look = vec3(numbers(camera.look || [], 'p'));
-        // the values of a row, and a CSS color such as rgb() standing after the last space
         let paint = g => {
             let level = 0, at = 0;
             g.forEach((t, i) => (level += t.isSymbol('(') - t.isSymbol(')')) || !t.isSpace() || (at = i));
             let tail = textOf(g.slice(at)).trim(), rgba = cssColor(extra, tail);
             return [numbers(rgba ? g.slice(0, at) : g, 'p'), rgba && `vec3(${rgba.slice(0, 3).map(float)})`];
         };
-        // `x y z color`, toward the light as `normal` sees it
         lights = off(camera.light) ? [] : itemsOf(camera.light || []).map(g => {
             let [v, c] = paint(g);
             return [v.length ? vec3(v.slice(0, 3)) : LIGHT, c || `vec3(${v[3] || '1.0'})`];
         });
         if (!camera.light) lights.push([LIGHT, glsl`vec3(1.0)`]);
-        // `sky ground`, the light from all around: a surface facing up gets sky, one facing down ground, a fifth of sky unless given
         ambient = glsl`0.3 * (0.6 + 0.4 * n.y)`;
         if (camera.ambient) {
             let [v, c] = off(camera.ambient) ? [['0.0']] : paint(camera.ambient), sky;
