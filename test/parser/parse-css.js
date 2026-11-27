@@ -1106,6 +1106,9 @@ test('a value function reads the caller until it assigns a name, and never write
         'k*5 {f_1_s: 0; f_1_i*2 f_1_k*3 { f_1_s: f_1_s + k; } f_1_result: f_1_s; fill: f_1_result; }');
     assert.equal(paintOf(`--f(): { s: 0; match { k*2 { s: 1; } else { k*1-3 { s: s + k; } } } result: s; }; @content: @pattern(k: 1; fill: $f(););`),
         'k: 1;f_1_s: 0; match { k*2 { f_1_s: 1; } else { f_1_k*1-3 { f_1_s: f_1_s + f_1_k; } } } f_1_result: f_1_s; fill: f_1_result;');
+    // a texture block is CSS, its declarations are no names
+    assert.equal(paintOf(`--f(c): { s: 1; texture_0 { background: $c; width: s; } result: s; }; @content: @pattern(fill: $f(red););`),
+        'f_1_s: 1; texture_0 { background: red; width: s; } f_1_result: f_1_s; fill: f_1_result;');
 });
 
 test('value calls nest: in arguments, in bodies, in block heads', () => {

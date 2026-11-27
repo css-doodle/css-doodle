@@ -458,7 +458,11 @@ function renameLocals(text, prefix) {
         prev = t;
         depth += t.isSymbol('(') - t.isSymbol(')');
         if (!depth && t.isSymbol(';', '{', '}')) {
-            if (t.isSymbol('{')) arms.push(textOf(tokens.slice(head, i)).trim() === 'match');
+            if (t.isSymbol('{')) {
+                let lead = textOf(tokens.slice(head, i)).trim(), close = RE_TEXTURE_HEAD.test(lead) && closing(tokens, i);
+                arms.push(lead === 'match');
+                if (close !== false) i = close < 0 ? tokens.length : close - 1;
+            }
             if (t.isSymbol('}')) arms.pop();
             waiting.forEach(n => declared.add(n));
             waiting = [];
