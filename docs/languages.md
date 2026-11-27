@@ -471,7 +471,7 @@ where it is: `length(pos - mouse)` is the distance to it.
 It is `0` until the pointer moves over the doodle, and stays where it
 was last. A `@paint` that reads it draws again as the pointer moves.
 
-**Functions.** GLSL, plus `pick(k: …)`, `gradient(t: stop, …)`,
+**Functions.** GLSL, plus `pick(k: …)`, `gradient(t, stop, …)`,
 `random(p [, k])`, `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`,
 `hsv(h, s, v)`, `rotate(p, a)`, `angle(p)`, `circle(p, r [, n])`,
 `rect(p, size)`, `segment(p, a, b)`, `arc(p, r, a, b)`,
@@ -517,7 +517,7 @@ point is one `vec2` or two floats: `fbm(p)`, `fbm(x, y)`.
 - `noise(p)` is smooth gradient noise from 0 to 1, and `fbm(p)` six
   octaves of it.
 - `random`, `noise`, `fbm` and `voronoi` follow the doodle's seed.
-- `gradient(t: stop, …)` maps `t` onto stops written as in a CSS
+- `gradient(t, stop, …)` maps `t` onto stops written as in a CSS
   gradient, a color or number, then an optional number position after
   a space (`#f80 .5`). The value holds below the first stop and above
   the last. The first position defaults to 0 and the last to 1, missing
@@ -526,7 +526,8 @@ point is one `vec2` or two floats: `fbm(p)`, `fbm(x, y)`.
   oklab. `t` makes the kind: `uv.y` is linear, `length(pos)` radial,
   `fract(.25 - angle(pos) / turn)` conic from twelve o'clock, and a
   `fract()` repeats it:
-  `fill: gradient(uv.y: #f99a53 .28, #006b50 .28, #00055f .83)`.
+  `fill: gradient(uv.y, #f99a53 .28, #006b50 .28, #00055f .83)`.
+  `ramp()` is its older name.
 
 **Textures.** A top-level `texture…` block holds a doodle rendered at
 the image's size. It sees the cell's custom properties, its own

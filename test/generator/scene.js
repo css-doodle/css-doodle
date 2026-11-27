@@ -627,7 +627,7 @@ test('a group or copies whose ball lies past the parts before them are skipped',
 test('a miss past its edge is transparent, unless the colors read a slope', () => {
     assert.match(scene('sphere').fragment, /if \(g_near >= 1\.1\) \{\s*FragColor = vec4\(0\.0\);\s*return;/);
     assert.doesNotMatch(scene('sphere { fill: vec3(fwidth(p.x)) }').fragment, /g_near >= 1\.1/);
-    assert.doesNotMatch(scene('fill: vec3(gradient(light: #000000 .2, #ffffff .8)); sphere').fragment, /g_near >= 1\.1/);
+    assert.doesNotMatch(scene('fill: vec3(gradient(light, #000000 .2, #ffffff .8)); sphere').fragment, /g_near >= 1\.1/);
 });
 
 test('unknown shapes are reported', () => {

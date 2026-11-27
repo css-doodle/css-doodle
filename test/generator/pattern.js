@@ -249,7 +249,7 @@ test('a CSS color function in an expression is a color literal', () => {
     let s = draw('fill: mix(oklch(.7 .1 30), rgb(10 20 30), x)', extra, m => messages.push(m)).fragment;
     assert.match(s, /g_color = vec4\(mix\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(1\.0, 0\.0, 0\.0\), x\), 1\.0\);/);
     assert.deepEqual(messages, []);
-    assert.equal(color('fill: gradient(x: oklch(.7 .1 30), red).r'), color('fill: gradient(x: red, red).r'));
+    assert.equal(color('fill: gradient(x, oklch(.7 .1 30), red).r'), color('fill: gradient(x, red, red).r'));
     // the shader hsl() stays a call
     assert.equal(color('fill: mix(hsl(.5, .75, .65), red, x)'), 'g_color = vec4(mix(hsl(.5, .75, .65), vec3(1.0, 0.0, 0.0), x), 1.0);');
     assert.equal(color('fill: mix(hsl(210 70% 60%), red, x)'), 'g_color = vec4(mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), x), 1.0);');
@@ -849,13 +849,13 @@ test('derivatives where only some pixels run the code are reported once per oute
         return messages.filter(m => !m.startsWith('unused'));
     };
     const unreliable = where => [`derivative in ${where}`];
-    assert.deepEqual(warnings('match(du > 0) { c: gradient(du: 0, 1) }'), unreliable('match'));
+    assert.deepEqual(warnings('match(du > 0) { c: gradient(du, 0, 1) }'), unreliable('match'));
     assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('match'));
     assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('match'));
     assert.deepEqual(warnings('repeat(4, du > 0) { match(dv > 0) { c: fwidth(du) } }'), unreliable('a repeat() that stops'));
     assert.deepEqual(warnings('k*4 { c: fwidth(du); match(dv > 0) { stop: du > 0 } }'), unreliable('a repeat() that stops'));
     // before the block, in a loop that never stops early, or as the pattern's shape: fine
-    assert.deepEqual(warnings('c: gradient(du: 0, 1); match(du > 0) { k: c }'), []);
+    assert.deepEqual(warnings('c: gradient(du, 0, 1); match(du > 0) { k: c }'), []);
     assert.deepEqual(warnings('repeat(4) { c: fwidth(du) }'), []);
     assert.deepEqual(warnings('match(du > 0) { shape: circle; size: .5; fill: 1 }'), []);
 });
@@ -959,12 +959,12 @@ test('repeat keeps int expressions in the float pattern number model', () => {
 // --- match() as a function ---
 
 test('gradient() in a fill maps a number to colors', () => {
-    assert.match(color('fill: gradient(x: #000, #fff)'),
+    assert.match(color('fill: gradient(x, #000, #fff)'),
         /^g_color = vec4\(g_rgb\(mix\(g_lab\(vec3\(0\.0, 0\.0, 0\.0\)\), g_lab\(vec3\(1\.0, 1\.0, 1\.0\)\), g_seg\(x, 0\.0, 1\.0\)\)\), 1\.0\);$/);
     // a gradient of numbers is a float variable
-    assert.match(main('k: gradient(x: 0, 1, 0); fill: k'), /float g_1 = mix\(mix\(0\.0, 1\.0, /);
-    assert.match(shader('fill: gradient(x: #000, #fff)'), /vec3 g_lab\(vec3 c\)/);
-    assert.doesNotMatch(shader('fill: gradient(x: 0, 1)'), /g_lab/);
+    assert.match(main('k: gradient(x, 0, 1, 0); fill: k'), /float g_1 = mix\(mix\(0\.0, 1\.0, /);
+    assert.match(shader('fill: gradient(x, #000, #fff)'), /vec3 g_lab\(vec3 c\)/);
+    assert.doesNotMatch(shader('fill: gradient(x, 0, 1)'), /g_lab/);
 });
 
 test('match() in a value chooses between expressions, colors included', () => {

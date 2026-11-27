@@ -395,44 +395,45 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
 });
 
 test('gradient() mixes its stops, each segment linear and at least a pixel wide', () => {
-    assert.equal(transform('gradient(x: 0, 1)', { expect: 'float' }),
+    assert.equal(transform('gradient(x, 0, 1)', { expect: 'float' }),
         'mix(0.0, 1.0, g_seg(x, 0.0, 1.0))');
-    assert.equal(transform('gradient(x: #fff)'), 'vec3(1.0, 1.0, 1.0)');
+    assert.equal(transform('gradient(x, #fff)'), 'vec3(1.0, 1.0, 1.0)');
     assert.equal(transform('gradient(x)', { expect: 'float' }), '0.0');
     // the widest stop value is the type, and every stop takes it
-    assert.equal(transform('gradient(x: 0, 1)', { type: true }), 'float');
-    assert.equal(transform('gradient(x: #000 .5, #fff)', { type: true }), 'vec3');
-    assert.equal(transform('gradient(x: vec4(1), 0)', { type: true }), 'vec4');
-    assert.match(transform('gradient(x: vec4(1), 0)'), /^g_rgb\(mix\(g_lab\(vec4\(1\.0\)\), g_lab\(vec4\(0\.0\)\), /);
-    assert.match(transform('gradient(x: 1 - x, 0)', { expect: 'float' }), /^mix\(\(1\.0 - x\), 0\.0, /);
-    assert.match(transform('gradient(x: 2t .5, 0)', { expect: 'float' }), /^mix\(\(2\.0 \* t\), 0\.0, g_seg\(x, 0\.5, /);
+    assert.equal(transform('gradient(x, 0, 1)', { type: true }), 'float');
+    assert.equal(transform('gradient(x, #000 .5, #fff)', { type: true }), 'vec3');
+    assert.equal(transform('gradient(x, vec4(1), 0)', { type: true }), 'vec4');
+    assert.match(transform('gradient(x, vec4(1), 0)'), /^g_rgb\(mix\(g_lab\(vec4\(1\.0\)\), g_lab\(vec4\(0\.0\)\), /);
+    assert.match(transform('gradient(x, 1 - x, 0)', { expect: 'float' }), /^mix\(\(1\.0 - x\), 0\.0, /);
+    assert.match(transform('gradient(x, 2t .5, 0)', { expect: 'float' }), /^mix\(\(2\.0 \* t\), 0\.0, g_seg\(x, 0\.5, /);
 });
 
 test('gradient() places its stops as CSS does', () => {
     const segments = code => [...transform(code, { expect: 'float' }).matchAll(/g_seg\(x, ([^,\s]+), ([^,\s)]+)\)/g)]
         .map(m => m[1] + ' ' + m[2]);
     // the first defaults to 0, the last to 1, missing ones spread evenly
-    assert.deepEqual(segments('gradient(x: 0, 1, 0)'), ['0.0 0.5', '0.5 1.0']);
-    assert.deepEqual(segments('gradient(x: 0 .2, 1, 0 .9, 1)'), ['0.2 0.55', '0.55 0.9', '0.9 1.0']);
-    assert.deepEqual(segments('gradient(x: 0, 1, 0, 1)'), ['0.0 0.3333333333333333', '0.3333333333333333 0.6666666666666667', '0.6666666666666667 1.0']);
+    assert.deepEqual(segments('gradient(x, 0, 1, 0)'), ['0.0 0.5', '0.5 1.0']);
+    assert.deepEqual(segments('gradient(x, 0 .2, 1, 0 .9, 1)'), ['0.2 0.55', '0.55 0.9', '0.9 1.0']);
+    assert.deepEqual(segments('gradient(x, 0, 1, 0, 1)'), ['0.0 0.3333333333333333', '0.3333333333333333 0.6666666666666667', '0.6666666666666667 1.0']);
     // a position never goes back, and a repeated one is a hard edge
-    assert.deepEqual(segments('gradient(x: 1 .5, 0 .2)'), ['0.5 0.5']);
-    assert.deepEqual(segments('gradient(x: #f80 .28, #068 .28, #015 .83)'), ['0.28 0.28', '0.28 0.83']);
-    assert.deepEqual(segments('gradient(x: 0 -.1, 1)'), ['-0.1 1.0']);
+    assert.deepEqual(segments('gradient(x, 1 .5, 0 .2)'), ['0.5 0.5']);
+    assert.deepEqual(segments('gradient(x, #f80 .28, #068 .28, #015 .83)'), ['0.28 0.28', '0.28 0.83']);
+    assert.deepEqual(segments('gradient(x, 0 -.1, 1)'), ['-0.1 1.0']);
 });
 
-test('gradient() reports a t without a colon and positions that are not one number, and leaves them out', () => {
+test('gradient() reports positions that are not one number, and leaves them out', () => {
     const run = code => {
         const messages = [];
         return [transform(code, { expect: 'float', warn: m => messages.push(m) }), messages];
     };
-    let [out, messages] = run('gradient(x: 0, 1 p, 0)');
+    let [out, messages] = run('gradient(x, 0, 1 p, 0)');
     assert.match(out, /^mix\(mix\(0\.0, 1\.0, .*g_seg\(x, 0\.5, 1\.0\)/);
     assert.deepEqual(messages, ['gradient needs numbers']);
-    [out, messages] = run('gradient(x: 0 .2 .5, 1)');
+    [out, messages] = run('gradient(x, 0 .2 .5, 1)');
     assert.match(out, /g_seg\(x, 0\.2, 1\.0\)/);
     assert.deepEqual(messages, ['extra position']);
-    assert.deepEqual(run('gradient(x, 0, 1)')[1], ['gradient needs t:']);
+    // ramp() is its older name
+    assert.equal(transform('ramp(x, 0, 1)', { expect: 'float' }), 'mix(0.0, 1.0, g_seg(x, 0.0, 1.0))');
     // elsewhere a space still separates arguments
     assert.equal(transform('hsl(h .75 .65)'), 'hsl(h, .75, .65)');
 });

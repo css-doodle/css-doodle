@@ -55,7 +55,7 @@ for (const [type, names] of Object.entries({
 
 const POINTS = new Set('rand noise fbm voronoi rotate escape spiral dither segment arc length angle circle rect'.split(' '));
 
-const CALLS = { __proto__: null, random: 'rand', rot: 'rotate', shape: 'g_shape', stroke: 'g_stroke', smin: 'g_union', union: 'g_union', intersect: 'g_intersect', subtract: 'g_subtract' };
+const CALLS = { __proto__: null, random: 'rand', rot: 'rotate', ramp: 'gradient', shape: 'g_shape', stroke: 'g_stroke', smin: 'g_union', union: 'g_union', intersect: 'g_intersect', subtract: 'g_subtract' };
 
 const RANK = 'bool int float mat2 mat3 mat4 bvec2 bvec3 bvec4 vec2 vec3 vec4'.split(' ');
 
@@ -237,11 +237,8 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
                 args.push(arg);
             }
             comma = peek()?.value === ',';
-            // pick(k: a, b, …) and gradient(t: a, b, …): a colon ends the index
-            if (args.length === 1 && peek()?.value === ':' && (name === 'pick' || name === 'gradient')) {
-                comma = true;
-                at = name === 'pick';
-            } else if (args.length === 1 && comma && name === 'gradient') report('gradient needs t:');
+            // pick(k: a, b, …): a colon ends the index
+            if (name === 'pick' && !at && args.length === 1 && peek()?.value === ':') comma = at = true;
             if (comma) consume();
             else if (!isValue(peek())) stray(')');
         }
