@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import { stripTaggedTemplates, mangleGlsl } from '../../build/tagged-template.js';
 
@@ -48,4 +49,12 @@ test('mangleGlsl shortens static g_* names across strings, templates and regexes
     // g_masked after \n maps to the same name as standalone g_masked
     let match = source.match(/\\n(_[a-zA-Z]+) = true/);
     assert.ok(match && source.includes(`'${match[1]}'`));
+});
+
+test('mangleGlsl leaves no g_* name half-written in the GLSL sources', () => {
+    for (let file of ['pattern', 'scene', 'glsl-math-transformer']) {
+        let source = mangleGlsl(fs.readFileSync(new URL(`../../src/generator/${file}.js`, import.meta.url), 'utf8'));
+        let stray = source.match(/(?<=^|[^\w$]|\\[nrtb])g_(?![a-zA-Z](?!\w)|\$\{|\\d|place\b|to\b)\S*/g);
+        assert.equal(stray, null, file);
+    }
 });

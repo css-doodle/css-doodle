@@ -58,7 +58,7 @@ const WORDS = [
     float rect(vec2 p, float w, float h) {
         return rect(p, vec2(w, h));
     }`],
-    [/\bg_(smin|union|intersect|subtract)\(/, glsl`
+    [/\b(g_smin|g_union|g_intersect|g_subtract)\(/, glsl`
     float g_smin(float a, float b, float k, float sa, float sb) {
         a *= sa;
         b *= sb;
