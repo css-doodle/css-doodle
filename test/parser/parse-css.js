@@ -1101,6 +1101,11 @@ test('a value function reads the caller until it assigns a name, and never write
     // stop is no name, it still ends the loop
     assert.equal(paintOf(`--f(): { s: 0; repeat(9 as k) { s: s + k; stop: s > 5; } result: s; }; @content: @pattern(fill: $f(););`),
         'f_1_s: 0; repeat(9 as f_1_k) { f_1_s: f_1_s + f_1_k; stop: f_1_s > 5; } f_1_result: f_1_s; fill: f_1_result;');
+    // so are the names of k*n heads, which leave the caller's k to the argument; a match arm's test is no head
+    assert.equal(paintOf(`--f(n): { s: 0; i*2 k*3 { s: s + n; } result: s; }; @content: @pattern(k*5 { fill: $f(k); });`),
+        'k*5 {f_1_s: 0; f_1_i*2 f_1_k*3 { f_1_s: f_1_s + k; } f_1_result: f_1_s; fill: f_1_result; }');
+    assert.equal(paintOf(`--f(): { s: 0; match { k*2 { s: 1; } else { k*1-3 { s: s + k; } } } result: s; }; @content: @pattern(k: 1; fill: $f(););`),
+        'k: 1;f_1_s: 0; match { k*2 { f_1_s: 1; } else { f_1_k*1-3 { f_1_s: f_1_s + f_1_k; } } } f_1_result: f_1_s; fill: f_1_result;');
 });
 
 test('value calls nest: in arguments, in bodies, in block heads', () => {

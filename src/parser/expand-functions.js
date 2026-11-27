@@ -1,6 +1,7 @@
 // `--name(params): body` definitions and `$name(args)` calls, expanded as text before parse-css.js reads it
 import { textOf, itemsOf } from './tokenizer.js';
 import { RE_NAME_TOKEN, tokenEnd, adjacent, nameLength, isNamePart, isNameStart, tokensOf } from './css-tokens.js';
+import { loopHeads } from './parse-pattern.js';
 import { hasEntries } from '../lib/type.js';
 import { defaultContext } from '../core/calc.js';
 
@@ -443,8 +444,8 @@ function valueCall(name, def, args, defs, ctx, chain) {
 // `result: a, b` is a result of its own: prefix_result, prefix_result_2, …
 function renameLocals(text, prefix) {
     let tokens = tokensOf(text, true);
-    let declared = new Set(), waiting = [], targets = new Set();
-    let out = '', from = 0, depth = 0, atStart = true, quote = false, prev = null, item = 0, count = 1;
+    let declared = new Set(), waiting = [], targets = new Set(), arms = [];
+    let out = '', from = 0, depth = 0, atStart = true, quote = false, prev = null, item = 0, count = 1, head = 0;
     let named = t => t.isWord() && t.value[0] !== '.' || t.isSymbol('_');
     for (let i = 0; i < tokens.length; i++) {
         let t = tokens[i], before = prev;
@@ -457,11 +458,17 @@ function renameLocals(text, prefix) {
         prev = t;
         depth += t.isSymbol('(') - t.isSymbol(')');
         if (!depth && t.isSymbol(';', '{', '}')) {
+            if (t.isSymbol('{')) arms.push(textOf(tokens.slice(head, i)).trim() === 'match');
+            if (t.isSymbol('}')) arms.pop();
             waiting.forEach(n => declared.add(n));
             waiting = [];
             atStart = true;
             item = 0;
             continue;
+        }
+        if (atStart && !depth) {
+            head = i;
+            if (!arms.at(-1)) loopNames(tokens, i).forEach(n => declared.add(n));
         }
         if (item && !depth && t.isSymbol(',')) {
             out += text.slice(from, t.index) + `; ${prefix}_result_${++item}:`;
@@ -505,6 +512,15 @@ function renameLocals(text, prefix) {
         atStart = false;
     }
     return { text: out + text.slice(from), targets, count };
+}
+
+function loopNames(tokens, i) {
+    let j = i;
+    for (let depth = 0; j < tokens.length; j++) {
+        depth += tokens[j].isSymbol('(') - tokens[j].isSymbol(')');
+        if (!depth && tokens[j].isSymbol(';', '{', '}', ':')) break;
+    }
+    return tokens[j]?.isSymbol('{') ? loopHeads(tokens.slice(i, j)).map(([word]) => word) : [];
 }
 
 function inWord(tokens, i, end) {

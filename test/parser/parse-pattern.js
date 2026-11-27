@@ -112,5 +112,7 @@ test('loop heads side by side nest, the first outermost', () => {
     assert.deepEqual(parsePattern('i*2 foo {}'), [{ type: 'text', value: 'i*2 foo {}' }]);
     assert.deepEqual(parsePattern('i*2j*3 {}'), [{ type: 'text', value: 'i*2j*3 {}' }]);
     assert.deepEqual(parsePattern('k*1 - 4 {}'), [{ type: 'text', value: 'k*1 - 4 {}' }]);
+    // a name glues words, digits and `_`, as a user function's own loop names do
+    assert.deepEqual(parsePattern('f_1_k*3 k2 * n {}'), [{ type: 'block', name: 'repeat', args: ['3 as f_1_k'], value: [{ type: 'block', name: 'repeat', args: ['n as k2'], value: [] }] }]);
     assert.deepEqual(parsePattern('match { i*2 j*3 {} }').at(0).arms, [{ type: 'arm', test: 'i*2 j*3', value: [] }]);
 });

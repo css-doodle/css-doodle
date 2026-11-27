@@ -1,6 +1,25 @@
 import { scan, iterator, textOf, itemsOf } from './tokenizer.js';
 import { parseBody, readRaw, readValue, namesOf, rowsOf, callOf, readMatch } from './parse-body.js';
 
+// `k*3 {`, `i*2 j*1-n {`: each loop's name and count, a name glued from words, digits and `_`
+export function loopHeads(head) {
+    let parts = [], loops = [], spaced = false;
+    for (let t of head) {
+        let last = parts.at(-1), glue = t.isWord() || t.isNumber() || t.isSymbol('_');
+        if (t.isSpace()) spaced = true;
+        else if (glue && last?.glue && !spaced) last.value += t.value;
+        else parts.push({ value: t.value, glue, name: glue && !t.isNumber(), spaced }), spaced = false;
+    }
+    for (let k = 0; k < parts.length; k += 3) {
+        let [word, star, count, dash, end] = parts.slice(k, k + 5);
+        if (k && !word.spaced || !word.name || star?.value !== '*' || !count?.glue) return [];
+        let range = dash?.value === '-' && end?.glue && !dash.spaced && !end.spaced;
+        if (range) k += 2;
+        loops.push([word.value, `${count.value}${range ? '-' + end.value : ''}`]);
+    }
+    return loops;
+}
+
 function readMatchBlocks(iter, head) {
     let name = textOf(head);
     if (/^texture\w*$/.test(name)) {
@@ -8,18 +27,7 @@ function readMatchBlocks(iter, head) {
     }
     let match = readMatch(iter, head, pattern);
     if (match) return [match];
-    let tokens = head.filter(t => !t.isSpace()), loops = [];
-    let spaced = t => head[head.indexOf(t) - 1]?.isSpace();
-    for (let k = 0; k < tokens.length; k += 3) {
-        let [word, star, count, dash, end] = tokens.slice(k, k + 5);
-        if (k && !spaced(word) || !word.isWord() || !star?.isSymbol('*') || !(count?.isNumber() || count?.isWord())) {
-            loops = [];
-            break;
-        }
-        let range = dash?.isSymbol('-') && (end?.isNumber() || end?.isWord()) && !spaced(dash) && !spaced(end);
-        if (range) k += 2;
-        loops.push({ type: 'block', name: 'repeat', args: [`${count.value}${range ? '-' + end.value : ''} as ${word.value}`] });
-    }
+    let loops = loopHeads(head).map(([word, count]) => ({ type: 'block', name: 'repeat', args: [`${count} as ${word}`] }));
     if (loops.length) {
         loops.reduce((a, b) => (a.value = [b], b));
         parseBody(iter, loops.at(-1), pattern);
