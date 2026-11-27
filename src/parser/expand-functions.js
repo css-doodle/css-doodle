@@ -488,7 +488,7 @@ function renameLocals(text, prefix) {
             let dot = whole.indexOf('.');
             let local = dot < 0 ? whole : whole.slice(0, dot);
             let after = tokens[end + 1];
-            let target = atStart && !depth && solidAt(tokens, end + 1)?.isSymbol(':');
+            let target = atStart && !depth && whole !== 'stop' && solidAt(tokens, end + 1)?.isSymbol(':');
             let loop = before?.isWord() && before.value === 'as';
             let call = after?.isSymbol('(') && adjacent(tokens[end], after);
             if (target) waiting.push(local);

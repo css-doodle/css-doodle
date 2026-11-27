@@ -1098,6 +1098,9 @@ test('a value function reads the caller until it assigns a name, and never write
     // a loop name and the names in a block are its own too
     assert.equal(paintOf(`--sum(n): { s: 0; repeat(4 as k) { s: s + k * $n; } result: s; }; @content: @pattern(fill: $sum(.1););`),
         'sum_1_s: 0; repeat(4 as sum_1_k) { sum_1_s: sum_1_s + sum_1_k * .1; } sum_1_result: sum_1_s; fill: sum_1_result;');
+    // stop is no name, it still ends the loop
+    assert.equal(paintOf(`--f(): { s: 0; repeat(9 as k) { s: s + k; stop: s > 5; } result: s; }; @content: @pattern(fill: $f(););`),
+        'f_1_s: 0; repeat(9 as f_1_k) { f_1_s: f_1_s + f_1_k; stop: f_1_s > 5; } f_1_result: f_1_s; fill: f_1_result;');
 });
 
 test('value calls nest: in arguments, in bodies, in block heads', () => {
