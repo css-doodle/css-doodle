@@ -149,7 +149,7 @@ function checkAll(node, warn, unread, code, copy) {
 
 export default function drawScene(code, extra, report = () => {}) {
     let said = new Set(), warn = message => said.has(message) || (said.add(message), report(message));
-    let tree = readShapes(code, warn, { ignoreInlineComment: true });
+    let tree = readShapes(code, warn, { ignoreInlineComment: true, parens: true });
     let root = { name: 'union', rows: [], children: tree.children }, camera = {};
     for (let r of tree.rows) {
         if (/^(view|perspective|zoom|light|shadow|ambient|drag|eye|look)$/.test(r.name)) camera[r.name] = r.value;

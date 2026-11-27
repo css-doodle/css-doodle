@@ -23,6 +23,15 @@ test('elements at the top level are joined', () => {
     assert.match(body, /g_op\(g_\d+, g_\d+, 0\.0, 1\.0, 1\.0\)/);
 });
 
+test('a body in parentheses, as a function pastes it, is the union of its shapes', () => {
+    let { body, warnings } = scene('union { (capsule { from: 0 0 0; to: .2 0 0; r: .05 } fill: red; move: .1 0 0) (sphere { r: .1 }) }');
+    assert.deepEqual(warnings, []);
+    // the group's own rows move and fill the capsule, not the sphere beside it
+    let [, moved] = body.match(/vec3 (g_\d+) = p - vec3\(\.1, 0\.0, 0\.0\);/);
+    assert.match(body, new RegExp(`vec3\\(1\\.0, 0\\.0, 0\\.0\\)[^]*g_capsule\\(${moved},`));
+    assert.match(body, /vec4\(g_1, length\(p\) - \.1\)/);
+});
+
 test('a scene without shapes draws nothing', () => {
     assert.deepEqual(scene('fill: red;').warnings, ['no shapes']);
 });

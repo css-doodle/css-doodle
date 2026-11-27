@@ -72,6 +72,19 @@ function degrees(text) {
 // a space before `#` starts another shape: `#a #b { … }`
 let split = head => textOf(head).trim().split(/ (?=#)(?![^(]*\))/);
 
+// `(a) (b)` → ['a', 'b'], when the text is nothing but whole groups
+function groupsOf(text) {
+    let groups = [], depth = 0, from = 0;
+    for (let i = 0; i < text.length; i++) {
+        let c = text[i];
+        if (!depth && /\s/.test(c)) continue;
+        if (!depth && c != '(') return null;
+        if (c == '(' && !depth++) from = i + 1;
+        else if (c == ')' && !--depth) groups.push(text.slice(from, i));
+    }
+    return !depth && groups.length ? groups : null;
+}
+
 function readShapes(input, warn = () => {}, options) {
     let last, blocks = 0, outer = [];
     let bare = head => Object.assign(shapeOf(head, []), { bare: true });
@@ -132,8 +145,15 @@ function readShapes(input, warn = () => {}, options) {
                 return last = { name, value };
             });
         },
-        // a bare name is a shape, anything else belongs to the row before it
+        // a bare name is a shape, anything else belongs to the row before it;
+        // with `parens`, as @scene reads, `( … )` is the union of what it holds
         readTail(head) {
+            let groups = options?.parens && groupsOf(textOf(head));
+            if (groups) {
+                let nodes = groups.map(g => shapeOf('union', parseBody(iterator(scan(g, options)), null, reader), lower));
+                last = null;
+                return nodes;
+            }
             if (/^[a-z_#(]/i.test(textOf(head).trim())) return split(head).map(bare);
             last?.value.push(SEMICOLON, ...head);
             return [];
