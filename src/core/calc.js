@@ -757,6 +757,7 @@ export function deref(input, context) {
     if (plain !== null) {
         return plain;
     }
+    if (/^url\(/i.test(value)) return value;
     const vars = Object.assign(Object.create(defaultContext), context);
     if (readDimension(value, vars) !== undefined) {
         return value;
