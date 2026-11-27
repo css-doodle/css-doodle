@@ -651,7 +651,7 @@ test('a draw with no duration warns', () => {
     assert.deepEqual(warnings, ['draw needs duration']);
 });
 
-test('stops: is a stop for each color, placed as in ramp()', () => {
+test('stops: is a stop for each color, placed as in gradient()', () => {
     let stops = (...list) => list.map(([offset, color]) => `<stop offset="${offset}" stop-color="${color}"/>`).join('');
     assert.equal(svg('linearGradient { stops: red, blue .2, green, rgb(0 0 0 / .5) }'),
         `<svg ${NS}><linearGradient>${stops([0, 'red'], [0.2, 'blue'], [0.6, 'green'], [1, 'rgb(0 0 0 / .5)'])}</linearGradient></svg>`);

@@ -394,44 +394,45 @@ test('match() is a ternary chain: first test that holds, trailing default, else 
     assert.equal(transform('match(a, vec2(1), vec2(0)).x', { expect: 'float' }), '(bool(a) ? vec2(1.0) : vec2(0.0)).x');
 });
 
-test('ramp() mixes its stops, each segment linear and at least a pixel wide', () => {
-    assert.equal(transform('ramp(x, 0, 1)', { expect: 'float' }),
-        'mix(0.0, 1.0, clamp((x - 0.0) / max(1.0 - 0.0, fwidth(x) + 1e-5), 0.0, 1.0))');
-    assert.equal(transform('ramp(x, #fff)'), 'vec3(1.0, 1.0, 1.0)');
-    assert.equal(transform('ramp(x)', { expect: 'float' }), '0.0');
+test('gradient() mixes its stops, each segment linear and at least a pixel wide', () => {
+    assert.equal(transform('gradient(x: 0, 1)', { expect: 'float' }),
+        'mix(0.0, 1.0, g_seg(x, 0.0, 1.0))');
+    assert.equal(transform('gradient(x: #fff)'), 'vec3(1.0, 1.0, 1.0)');
+    assert.equal(transform('gradient(x)', { expect: 'float' }), '0.0');
     // the widest stop value is the type, and every stop takes it
-    assert.equal(transform('ramp(x, 0, 1)', { type: true }), 'float');
-    assert.equal(transform('ramp(x, #000 .5, #fff)', { type: true }), 'vec3');
-    assert.equal(transform('ramp(x, vec4(1), 0)', { type: true }), 'vec4');
-    assert.match(transform('ramp(x, vec4(1), 0)'), /^mix\(vec4\(1\.0\), vec4\(0\.0\), /);
-    assert.match(transform('ramp(x, 1 - x, 0)', { expect: 'float' }), /^mix\(\(1\.0 - x\), 0\.0, /);
-    assert.match(transform('ramp(x, 2t .5, 0)', { expect: 'float' }), /^mix\(\(2\.0 \* t\), 0\.0, clamp\(\(x - 0\.5\)/);
+    assert.equal(transform('gradient(x: 0, 1)', { type: true }), 'float');
+    assert.equal(transform('gradient(x: #000 .5, #fff)', { type: true }), 'vec3');
+    assert.equal(transform('gradient(x: vec4(1), 0)', { type: true }), 'vec4');
+    assert.match(transform('gradient(x: vec4(1), 0)'), /^g_rgb\(mix\(g_lab\(vec4\(1\.0\)\), g_lab\(vec4\(0\.0\)\), /);
+    assert.match(transform('gradient(x: 1 - x, 0)', { expect: 'float' }), /^mix\(\(1\.0 - x\), 0\.0, /);
+    assert.match(transform('gradient(x: 2t .5, 0)', { expect: 'float' }), /^mix\(\(2\.0 \* t\), 0\.0, g_seg\(x, 0\.5, /);
 });
 
-test('ramp() places its stops as CSS does', () => {
-    const segments = code => [...transform(code, { expect: 'float' }).matchAll(/\(x - (\S+)\) \/ max\((\S+) - /g)]
+test('gradient() places its stops as CSS does', () => {
+    const segments = code => [...transform(code, { expect: 'float' }).matchAll(/g_seg\(x, ([^,\s]+), ([^,\s)]+)\)/g)]
         .map(m => m[1] + ' ' + m[2]);
     // the first defaults to 0, the last to 1, missing ones spread evenly
-    assert.deepEqual(segments('ramp(x, 0, 1, 0)'), ['0.0 0.5', '0.5 1.0']);
-    assert.deepEqual(segments('ramp(x, 0 .2, 1, 0 .9, 1)'), ['0.2 0.55', '0.55 0.9', '0.9 1.0']);
-    assert.deepEqual(segments('ramp(x, 0, 1, 0, 1)'), ['0.0 0.3333333333333333', '0.3333333333333333 0.6666666666666667', '0.6666666666666667 1.0']);
+    assert.deepEqual(segments('gradient(x: 0, 1, 0)'), ['0.0 0.5', '0.5 1.0']);
+    assert.deepEqual(segments('gradient(x: 0 .2, 1, 0 .9, 1)'), ['0.2 0.55', '0.55 0.9', '0.9 1.0']);
+    assert.deepEqual(segments('gradient(x: 0, 1, 0, 1)'), ['0.0 0.3333333333333333', '0.3333333333333333 0.6666666666666667', '0.6666666666666667 1.0']);
     // a position never goes back, and a repeated one is a hard edge
-    assert.deepEqual(segments('ramp(x, 1 .5, 0 .2)'), ['0.5 0.5']);
-    assert.deepEqual(segments('ramp(x, #f80 .28, #068 .28, #015 .83)'), ['0.28 0.28', '0.28 0.83']);
-    assert.deepEqual(segments('ramp(x, 0 -.1, 1)'), ['-0.1 1.0']);
+    assert.deepEqual(segments('gradient(x: 1 .5, 0 .2)'), ['0.5 0.5']);
+    assert.deepEqual(segments('gradient(x: #f80 .28, #068 .28, #015 .83)'), ['0.28 0.28', '0.28 0.83']);
+    assert.deepEqual(segments('gradient(x: 0 -.1, 1)'), ['-0.1 1.0']);
 });
 
-test('ramp() reports positions that are not one number, and leaves them out', () => {
+test('gradient() reports a t without a colon and positions that are not one number, and leaves them out', () => {
     const run = code => {
         const messages = [];
         return [transform(code, { expect: 'float', warn: m => messages.push(m) }), messages];
     };
-    let [out, messages] = run('ramp(x, 0, 1 p, 0)');
-    assert.match(out, /^mix\(mix\(0\.0, 1\.0, .*\(x - 0\.5\) \/ max\(1\.0 - 0\.5, /);
-    assert.deepEqual(messages, ['ramp() needs numbers']);
-    [out, messages] = run('ramp(x, 0 .2 .5, 1)');
-    assert.match(out, /\(x - 0\.2\) \/ max\(1\.0 - 0\.2, /);
+    let [out, messages] = run('gradient(x: 0, 1 p, 0)');
+    assert.match(out, /^mix\(mix\(0\.0, 1\.0, .*g_seg\(x, 0\.5, 1\.0\)/);
+    assert.deepEqual(messages, ['gradient needs numbers']);
+    [out, messages] = run('gradient(x: 0 .2 .5, 1)');
+    assert.match(out, /g_seg\(x, 0\.2, 1\.0\)/);
     assert.deepEqual(messages, ['extra position']);
+    assert.deepEqual(run('gradient(x, 0, 1)')[1], ['gradient needs t:']);
     // elsewhere a space still separates arguments
     assert.equal(transform('hsl(h .75 .65)'), 'hsl(h, .75, .65)');
 });
@@ -515,7 +516,7 @@ test('unknown may answer with a color, which is a vec3 or vec4 literal', () => {
 
 test('shape(d, size) is the mask of the shape and size statements, shape(d) the inside of d = 0', () => {
     assert.equal(transform('shape(d, .5)'), 'g_shape(d, .5)');
-    assert.equal(transform('shape(length(uv) - .3)'), 'g_shape((length(uv) - .3), 0.0)');
+    assert.equal(transform('shape(length(uv) - .3)'), 'g_shape((length(uv) - .3))');
     assert.equal(transform('mix(a, b, shape(d, .5))', { types: { a: 'vec3', b: 'vec3' } }), 'mix(a, b, g_shape(d, .5))');
     assert.equal(transform('shape(d, .5)', { type: true }), 'float');
 });

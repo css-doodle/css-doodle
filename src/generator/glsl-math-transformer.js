@@ -43,7 +43,7 @@ const VEC_COMPARE = {
 
 const CALL_TYPES = { __proto__: null };
 for (const [type, names] of Object.entries({
-    float: 'rand noise fbm voronoi ngon box segment arc shape escape spiral dither length distance dot determinant',
+    float: 'rand noise fbm voronoi segment arc g_shape escape spiral dither length distance dot determinant angle circle rect g_stroke g_union g_intersect g_subtract',
     vec2: 'rotate',
     vec3: 'hsl hsv',
     vec4: 'texture',
@@ -53,9 +53,9 @@ for (const [type, names] of Object.entries({
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
-const POINTS = new Set('rand noise fbm voronoi rotate ngon escape spiral dither box segment arc length'.split(' '));
+const POINTS = new Set('rand noise fbm voronoi rotate escape spiral dither segment arc length angle circle rect'.split(' '));
 
-const CALLS = { __proto__: null, random: 'rand', rot: 'rotate' };
+const CALLS = { __proto__: null, random: 'rand', rot: 'rotate', shape: 'g_shape', stroke: 'g_stroke', smin: 'g_union', union: 'g_union', intersect: 'g_intersect', subtract: 'g_subtract' };
 
 const RANK = 'bool int float mat2 mat3 mat4 bvec2 bvec3 bvec4 vec2 vec3 vec4'.split(' ');
 
@@ -225,8 +225,8 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         let comma = true, at = false;
         while (peek() && peek().value !== ')') {
             const arg = parse();
-            // in ramp() a stop's position follows its value after a space: #f80 .5
-            if (name === 'ramp' && !comma && args.length > 1) {
+            // in gradient() a stop's position follows its value after a space: #f80 .5
+            if (name === 'gradient' && !comma && args.length > 1) {
                 if (args[args.length - 1].type === 'Stop') report('extra position');
                 else args.push({ type: 'Stop', left: args.pop(), right: arg });
             } else if (at && !comma) {
@@ -237,8 +237,11 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
                 args.push(arg);
             }
             comma = peek()?.value === ',';
-            // pick(k: a, b, …): a colon ends the index
-            if (name === 'pick' && !at && args.length === 1 && peek()?.value === ':') comma = at = true;
+            // pick(k: a, b, …) and gradient(t: a, b, …): a colon ends the index
+            if (args.length === 1 && peek()?.value === ':' && (name === 'pick' || name === 'gradient')) {
+                comma = true;
+                at = name === 'pick';
+            } else if (args.length === 1 && comma && name === 'gradient') report('gradient needs t:');
             if (comma) consume();
             else if (!isValue(peek())) stray(')');
         }
@@ -286,14 +289,13 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
                 const out = items.length > 1 ? `${res}[](${items.join(', ')})[g_pick(${gen(a[0], 'float')}, ${items.length})]` : items[0];
                 return cast(out, res, exp);
             }
-            if (n.val === 'ramp') return cast(ramp(a, res), res, exp);
+            if (n.val === 'gradient') return cast(gradient(a, res), res, exp);
             let args = a.map(v => gen(v, res[0] === 'b' ? null : 'float'));
             if (POINTS.has(n.val) && a.length > 1 && !isVector(infer(a[0]))) {
                 args = args.flatMap((v, i) => i % 2 ? [] : i + 1 < args.length ? `vec2(${v}, ${args[i + 1]})` : v);
             }
             args = args.join(', ');
             if (n.val === 'float' && a.length === 1 && !isVector(infer(a[0]))) return cast(args, 'float', exp);
-            if (n.val === 'shape') return cast(`g_shape(${args}${a.length === 1 ? ', 0.0' : ''})`, res, exp);
             return cast(`${n.val}(${args})`, res, exp);
         }
 
@@ -325,21 +327,23 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
         return cast(op === '%' ? `(${l} - ${r} * trunc(${l} / ${r}))` : `(${l} ${op} ${r})`, res, exp);
     }
 
-    function ramp([t, ...stops], type) {
+    function gradient([t, ...stops], type) {
         if (!stops.length) return gen(ZERO, type);
         const at = fillStops(stops.map(s => {
             if (s.type !== 'Stop') return NaN;
-            if (s.right.type !== 'Lit') report('ramp() needs numbers');
+            if (s.right.type !== 'Lit') report('gradient needs numbers');
             return +s.right.val;
         }));
         const n = at.length - 1;
         const v = gen(t, 'float');
-        let out = gen(valueOf(stops[0]), type);
+        const lab = n > 0 && /^vec[34]$/.test(type);
+        const stop = i => lab ? `g_lab(${gen(valueOf(stops[i]), type)})` : gen(valueOf(stops[i]), type);
+        let out = stop(0);
         for (let i = 1; i <= n; i++) {
             const a = float(at[i - 1]), b = float(at[i]);
-            out = glsl`mix(${out}, ${gen(valueOf(stops[i]), type)}, clamp((${v} - ${a}) / max(${b} - ${a}, fwidth(${v}) + 1e-5), 0.0, 1.0))`;
+            out = glsl`mix(${out}, ${stop(i)}, g_seg(${v}, ${a}, ${b}))`;
         }
-        return out;
+        return lab ? `g_rgb(${out})` : out;
     }
 
     // the GLSL type of a node, computed once
@@ -366,7 +370,7 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
             if (/^(b?vec[234]|mat[234]|float|int|bool)$/.test(n.val)) return n.val;
             if (n.val === 'match') return widest(n.args.filter((_, i) => i % 2 || i === n.args.length - 1).map(infer));
             if (n.at) return widest(n.args.slice(1).map(infer));
-            if (n.val === 'ramp') return widest(n.args.slice(1).map(a => infer(valueOf(a))), true);
+            if (n.val === 'gradient') return widest(n.args.slice(1).map(a => infer(valueOf(a))), true);
             return widest(n.args.map(infer), true);
         }
         if (VEC_COMPARE[n.val] || n.val === '&&' || n.val === '||') return 'bool';

@@ -41,7 +41,7 @@ prefix.
 
 **Stops.** `stops: #dfe5d3, #f0ebd2 .22, #7f8f4c` adds a `<stop>` for
 each color, with the number after it as the offset, placed as
-[`ramp()`](#3-paint) places its stops: `fill: linearGradient { x2: 0;
+[`gradient()`](#3-paint) places its stops: `fill: linearGradient { x2: 0;
 y2: 1; stops: … }`. A `transparent` stop fades the colors beside it,
 as in CSS, not through black.
 
@@ -396,9 +396,9 @@ the one from the step before.
 **Output.** `fill` is a CSS color, an expression, or a list whose
 channels add up to three or four (`x / X, y / Y, .5`, `red, .5`). A
 later `fill` paints over the earlier one, so `fill: red, .5` tints it.
-After the body the cell is masked by `shape`, a distance from the
-center antialiased at half of `size`: `circle`, `square`, `diamond`,
-`none`, or an expression in `du` and `dv`. Setting only `size` masks
+After the body the cell is masked by `shape`: `circle`, `square` or
+`diamond`, each `size` wide, `none`, or a signed distance, below 0
+inside: `shape: circle(du, dv, .4, 6)`. Setting only `size` masks
 with a square.
 
 **Marks.** `marks` in place of `grid` draws each cell as a mark
@@ -443,13 +443,14 @@ nothing itself. In `marks: 7x900` a row is a blade of grass, its seven
 cells points along it at `(x - 1) / (X - 1)`.
 
 **Variables** are the cell variables of `@match` except `z` and `Z`,
-plus:
+plus the ones below. Points go up: `dy`, `dv`, `uv.y` and `pos.y` grow
+upward, while `y` counts rows down from the top.
 
 | Name       | Value                                                |
 | ---------- | ---------------------------------------------------- |
-| `du`, `dv` | position inside the cell, −0.5 to 0.5, `dv` downward |
-| `uv`       | position in the whole image, 0 to 1, `uv.y` upward   |
-| `pos`      | centered and aspect-correct, `pos.y` upward          |
+| `du`, `dv` | position inside the cell, −0.5 to 0.5                |
+| `uv`       | position in the whole image, 0 to 1                  |
+| `pos`      | centered and aspect-correct                          |
 | `mouse`    | the pointer over the doodle, in `pos` units          |
 | `t`        | time in seconds; reading it animates the image       |
 | `size`     | the current `size`, `1` until set                    |
@@ -467,33 +468,45 @@ where it is: `length(pos - mouse)` is the distance to it.
 It is `0` until the pointer moves over the doodle, and stays where it
 was last. A `@paint` that reads it draws again as the pointer moves.
 
-**Functions.** GLSL, plus `pick(k: …)`, `ramp(t, stop, …)`,
+**Functions.** GLSL, plus `pick(k: …)`, `gradient(t: stop, …)`,
 `random(p [, k])`, `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`,
-`hsv(h, s, v)`, `rotate(p, a)`, `smin(a, b, k)`, `ngon(p, n)`,
-`box(p, b)`, `segment(p, a, b)`, `arc(p, r, a, b)`, `escape([z,] c)`,
-`spiral(p)` and `dither(p)`. A point is one `vec2` or two floats:
-`fbm(p)`, `ngon(p, 6)`.
+`hsv(h, s, v)`, `rotate(p, a)`, `angle(p)`, `circle(p, r [, n])`,
+`rect(p, size)`, `segment(p, a, b)`, `arc(p, r, a, b)`,
+`union(a, b [, k])`, `intersect(a, b [, k])`, `subtract(a, b [, k])`,
+`stroke(d [, w])`, `escape([z,] c)`, `spiral(p)` and `dither(p)`. A
+point is one `vec2` or two floats: `fbm(p)`, `fbm(x, y)`.
 
-- `hsl(h, s, l)` and `hsv(h, s, v)` take every channel from 0 to 1, the
-  hue in turns: `hsl(.5, 1, .5)` is cyan. With `%`, as in
-  `hsl(180 100% 50%)`, it is the CSS color, the hue in degrees.
+- `hsl(h, s, l)` and `hsv(h, s, v)` take saturation and lightness from
+  0 to 1 and the hue as an angle, in radians or with `deg` and `turn`:
+  `hsl(180deg, 1, .5)` is cyan. With `%`, as in `hsl(180 100% 50%)`, it
+  is the CSS color.
 - `rotate(p, a)` is the point `p` turned `a` radians counterclockwise, a
-  point, not a matrix.
+  point, not a matrix. `angle(p)` is the angle of `p` from the x axis,
+  from −π to π.
 - GLSL's `pow` is undefined for a negative base, so a whole exponent
   keeps the sign as in `$()`, `(-2)^3` is −8, and any other power,
   `pow()` too, reads a base below 0 as 0: on the GPU `1 - y / Y` can
   land a hair below it.
 - `escape` runs 96 steps with a bailout radius of 16.
-- `box(p, b)` is the signed distance to a box of half size `b`, a
-  `vec2` or one float; `segment(p, a, b)` is the distance to the
-  segment from `a` to `b`.
+- `circle(p, r)` and `rect(p, size)` are signed distances, below 0
+  inside. With `n`, `circle(p, r, n)` is the regular polygon of `n`
+  sides inside that circle, a corner up. `size` is the full width, a
+  `vec2` or one float, or two numbers: `rect(p, w, h)`.
+  `segment(p, a, b)` is the distance to the segment from `a` to `b`.
 - `arc(p, r, a, b)` is the distance to the arc of radius `r` about the
   origin between the angles `a` and `b`, in radians counterclockwise;
   a span of 2π or more is the whole circle.
+- `union(a, b)`, `intersect(a, b)` and `subtract(a, b)` join two
+  distances as the groups of `@scene` do, `subtract` taking `b` out of
+  `a`. A third number rounds where they meet, as `smooth` does there.
 - `shape(d)` is the inside of a distance field, where `d < 0`,
-  antialiased over a pixel: `fill: red, shape(length(pos) - .3)`.
-  `shape(d, size)` is the mask that `shape: d; size: size` would
-  apply, and `shape(abs(d), w)` is a stroke of width `w` along `d = 0`.
+  antialiased over a pixel: `fill: red, shape(circle(pos, .3))`.
+  `shape(d, size)` puts the edge at half of `size`, where the named
+  shapes have it.
+- `stroke(d, w)` is a line `w` wide along `d = 0`, measured on the
+  screen wherever `d` is stretched, so `stroke(sin(30noise(4pos)), 1px)`
+  draws even contour lines. Without `w` it is one pixel wide. `@scene`
+  has no `stroke()`.
 - `random()` is a number from 0 to 1 that holds for the cell and the
   `repeat` step and differs at each place it is written. `random(p, k)`
   is another number for the point `p` at each `k`, and `random(id + 1)`
@@ -501,13 +514,16 @@ was last. A `@paint` that reads it draws again as the pointer moves.
 - `noise(p)` is smooth gradient noise from 0 to 1, and `fbm(p)` six
   octaves of it.
 - `random`, `noise`, `fbm` and `voronoi` follow the doodle's seed.
-- `ramp(t, stop, …)` maps `t` onto stops written as in a CSS gradient,
-  a color or number, then an optional number position after a space
-  (`#f80 .5`). The value holds below the first stop and above the
-  last. The first position defaults to 0 and the last to 1, missing
+- `gradient(t: stop, …)` maps `t` onto stops written as in a CSS
+  gradient, a color or number, then an optional number position after
+  a space (`#f80 .5`). The value holds below the first stop and above
+  the last. The first position defaults to 0 and the last to 1, missing
   ones spread evenly, and a position never goes back; a repeated
-  position is a hard edge, antialiased over a pixel:
-  `fill: ramp(uv.y, #f99a53 .28, #006b50 .28, #00055f .83)`.
+  position is a hard edge, antialiased over a pixel. Colors mix in
+  oklab. `t` makes the kind: `uv.y` is linear, `length(pos)` radial,
+  `fract(.25 - angle(pos) / turn)` conic from twelve o'clock, and a
+  `fract()` repeats it:
+  `fill: gradient(uv.y: #f99a53 .28, #006b50 .28, #00055f .83)`.
 
 **Textures.** A top-level `texture…` block holds a doodle rendered at
 the image's size. It sees the cell's custom properties, its own

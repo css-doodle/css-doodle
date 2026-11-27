@@ -196,10 +196,10 @@ test('a number cell variable given a vector becomes the body\'s own', () => {
 test('du and dv: coordinates inside the cell', () => {
     let s = shader('match(du > 0) { fill: red }');
     assert.match(s, /float du = fract\(uv\.x \* X\) - 0\.5;/);
-    assert.match(s, /float dv = fract\(\(1\.0 - uv\.y\) \* Y\) - 0\.5;/);
+    assert.match(s, /float dv = 0\.5 - fract\(\(1\.0 - uv\.y\) \* Y\);/);
     assert.match(s, /const float PI = 3\.14159/);
-    // composes with ngon() for per-cell polygon masks
-    assert.equal(condition('match(ngon(du, dv, 6) < 0.4) { fill: red }'), 'if ((ngon(vec2(du, dv), 6.0) < 0.4)) {');
+    // composes with circle() for per-cell polygon masks
+    assert.equal(condition('match(circle(du, dv, .4, 6) < 0) { fill: red }'), 'if ((circle(vec2(du, dv), vec2(.4, 6.0)) < 0.0)) {');
     // a bare `du` is not a CSS color, so it compiles as an expression
     assert.equal(color('fill: du'), 'g_color = vec4(vec3(du), 1.0);');
 });
@@ -207,7 +207,8 @@ test('du and dv: coordinates inside the cell', () => {
 test('dx and dy: cell index centered on the grid', () => {
     let s = shader('match(dx > 0) { fill: red }');
     assert.match(s, /float dx = x - \(X \+ 1\.0\) \* 0\.5;/);
-    assert.match(s, /float dy = y - \(Y \+ 1\.0\) \* 0\.5;/);
+    assert.match(s, /float dy = \(Y \+ 1\.0\) \* 0\.5 - y;/);
+    assert.match(s, /float y = floor\(\(1\.0 - uv\.y\) \* Y\) \+ 1\.0;/);
     assert.equal(
         condition('match(dx*dx + dy*dy < 4) { fill: red }'),
         'if ((((dx * dx) + (dy * dy)) < 4.0)) {'
@@ -248,7 +249,7 @@ test('a CSS color function in an expression is a color literal', () => {
     let s = draw('fill: mix(oklch(.7 .1 30), rgb(10 20 30), x)', extra, m => messages.push(m)).fragment;
     assert.match(s, /g_color = vec4\(mix\(vec3\(1\.0, 0\.0, 0\.0\), vec3\(1\.0, 0\.0, 0\.0\), x\), 1\.0\);/);
     assert.deepEqual(messages, []);
-    assert.equal(color('fill: ramp(x, oklch(.7 .1 30), red).r'), color('fill: ramp(x, red, red).r'));
+    assert.equal(color('fill: gradient(x: oklch(.7 .1 30), red).r'), color('fill: gradient(x: red, red).r'));
     // the shader hsl() stays a call
     assert.equal(color('fill: mix(hsl(.5, .75, .65), red, x)'), 'g_color = vec4(mix(hsl(.5, .75, .65), vec3(1.0, 0.0, 0.0), x), 1.0);');
     assert.equal(color('fill: mix(hsl(210 70% 60%), red, x)'), 'g_color = vec4(mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), x), 1.0);');
@@ -303,11 +304,11 @@ test('a list may hold vectors; its channels add up to 3 or 4', () => {
     assert.deepEqual(messages, ['needs 3-4 channels']);
 });
 
-test('shape() in a value is the mask of the shape and size statements', () => {
+test('shape(d, size) in a value puts the edge at half of size, as the named shapes do', () => {
     assert.equal(color('fill: mix(#000, red, shape(length(vec2(du, dv)), .6))'),
         'g_color = vec4(mix(vec3(0.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), g_shape(length(vec2(du, dv)), .6)), 1.0);');
     // a stroke: the mask of |d| at the line width
-    assert.match(main('d: box(du, dv, .3); fill: shape(abs(d), .05)'), /g_color = vec4\(vec3\(g_shape\(abs\(g_1\), \.05\)\), 1\.0\);/);
+    assert.match(main('d: rect(du, dv, .6); fill: shape(abs(d), .05)'), /g_color = vec4\(vec3\(g_shape\(abs\(g_1\), \.05\)\), 1\.0\);/);
 });
 
 test('a vec3 expression is a color, a scalar a gray', () => {
@@ -490,17 +491,17 @@ test('CSS color functions stay static; unitless hsl()/hsv() mean the shader help
 // --- shape and size ---
 
 // shape and size are state; the mask is computed from them once, at the end
-const MASK = /float g_mask = g_shape\(g_dist, size\);\s*if \(g_masked\) g_color\.a \*= g_mask;/;
+const MASK = /float g_mask = g_shape\(g_dist, g_sized \? size : 0\.0\);\s*if \(g_masked\) g_color\.a \*= g_mask;/;
 
 test('size scales the mask radius per cell', () => {
     let s = main('shape: circle; size: x/X; fill: #000');
-    assert.match(s, /g_dist = length\(vec2\(du, dv\)\);\s*g_masked = true;\s*size = \(x \/ X\);/);
+    assert.match(s, /g_dist = length\(vec2\(du, dv\)\);\s*g_masked = true;\s*g_sized = true;\s*size = \(x \/ X\);/);
     assert.match(s, MASK);
     assert.equal((s.match(/g_shape\(/g) || []).length, 1);
 });
 
 test('size without an explicit shape uses a square mask', () => {
-    assert.match(main('size: random(i); fill: #000'), /g_dist = max\(abs\(du\), abs\(dv\)\);\s*g_masked = true;\s*size = rand\(i\);/);
+    assert.match(main('size: random(i); fill: #000'), /g_dist = max\(abs\(du\), abs\(dv\)\);\s*g_masked = true;\s*g_sized = true;\s*size = rand\(i\);/);
 });
 
 test('size expressions coerce to float', () => {
@@ -532,10 +533,10 @@ test('shape: none turns the mask off', () => {
     assert.match(main('shape: circle; match(x > 2) { shape: none; fill: red }'), /if \(\(x > 2\.0\)\) \{\s*g_masked = false;/);
 });
 
-test('a shape may be a name, a variable or a distance expression', () => {
+test('a shape may be a name sized by size, or a signed distance masked at 0', () => {
     assert.match(main('shape: diamond; fill: red'), /g_dist = abs\(du\) \+ abs\(dv\);/);
-    assert.match(main('shape: ngon(du, dv, 6); size: .8; fill: red'), /g_dist = ngon\(vec2\(du, dv\), 6\.0\);\s*g_masked = true;\s*size = \.8;/);
     assert.match(main('d: length(vec2(du, dv) - .1); shape: d; fill: red'), /float g_1 = length\(\(vec2\(du, dv\) - \.1\)\);\s*g_dist = g_1;/);
+    assert.match(main('shape: du; match(x > 2) { shape: circle } fill: red'), /g_sized = false;\s*if \(\(x > 2\.0\)\) \{\s*g_dist = length\(vec2\(du, dv\)\);\s*g_masked = true;\s*g_sized = true;/);
     // an unknown word is reported like any unknown name
     let messages = [];
     draw('shape: blob; size: .5; fill: red', extra, m => messages.push(m));
@@ -597,6 +598,7 @@ test('rand/noise/hsl built-ins are declared in the prelude', () => {
     ]) {
         assert.ok(s.includes(sig), 'missing prelude helper: ' + sig);
     }
+    assert.match(s, /mod\(h \* \(3\.0 \/ PI\) \+ vec3/);
     // GLSL ES reserves identifiers containing consecutive underscores
     assert.doesNotMatch(s, /__/);
 });
@@ -619,8 +621,6 @@ test('escape() and the math/geometry built-ins are available', () => {
     for (let sig of [
         'float escape(vec2 z, vec2 c)',
         'vec2 rotate(vec2 p, float a)',
-        'float smin(float a, float b, float k)',
-        'float ngon(vec2 p, float n)',
         'float dither(vec2 f)',
         'float spiral(vec2 d)',
     ]) {
@@ -635,7 +635,6 @@ test('a point argument may be one vec2 or two floats', () => {
         'float noise(vec2 p)',
         'float fbm(vec2 p)',
         'float voronoi(vec2 p)',
-        'float ngon(vec2 p, float n)',
         'float escape(vec2 z, vec2 c)',
         'float escape(vec2 c)',
         'float spiral(vec2 d)',
@@ -850,13 +849,13 @@ test('derivatives where only some pixels run the code are reported once per oute
         return messages.filter(m => !m.startsWith('unused'));
     };
     const unreliable = where => [`derivative in ${where}`];
-    assert.deepEqual(warnings('match(du > 0) { c: ramp(du, 0, 1) }'), unreliable('match'));
+    assert.deepEqual(warnings('match(du > 0) { c: gradient(du: 0, 1) }'), unreliable('match'));
     assert.deepEqual(warnings('match(du > 0) { match(dv > 0) { c: shape(du, .5) } }'), unreliable('match'));
     assert.deepEqual(warnings('match { du > 0 { c: dFdx(du) } else { c: 1 } }'), unreliable('match'));
     assert.deepEqual(warnings('repeat(4, du > 0) { match(dv > 0) { c: fwidth(du) } }'), unreliable('a repeat() that stops'));
     assert.deepEqual(warnings('k*4 { c: fwidth(du); match(dv > 0) { stop: du > 0 } }'), unreliable('a repeat() that stops'));
     // before the block, in a loop that never stops early, or as the pattern's shape: fine
-    assert.deepEqual(warnings('c: ramp(du, 0, 1); match(du > 0) { k: c }'), []);
+    assert.deepEqual(warnings('c: gradient(du: 0, 1); match(du > 0) { k: c }'), []);
     assert.deepEqual(warnings('repeat(4) { c: fwidth(du) }'), []);
     assert.deepEqual(warnings('match(du > 0) { shape: circle; size: .5; fill: 1 }'), []);
 });
@@ -959,11 +958,13 @@ test('repeat keeps int expressions in the float pattern number model', () => {
 
 // --- match() as a function ---
 
-test('ramp() in a fill maps a number to colors', () => {
-    assert.match(color('fill: ramp(x, #000, #fff)'),
-        /^g_color = vec4\(mix\(vec3\(0\.0, 0\.0, 0\.0\), vec3\(1\.0, 1\.0, 1\.0\), clamp\(\(x - 0\.0\) \/ max\(1\.0 - 0\.0, fwidth\(x\) \+ 1e-5\), 0\.0, 1\.0\)\), 1\.0\);$/);
-    // a ramp of numbers is a float variable
-    assert.match(main('k: ramp(x, 0, 1, 0); fill: k'), /float g_1 = mix\(mix\(0\.0, 1\.0, /);
+test('gradient() in a fill maps a number to colors', () => {
+    assert.match(color('fill: gradient(x: #000, #fff)'),
+        /^g_color = vec4\(g_rgb\(mix\(g_lab\(vec3\(0\.0, 0\.0, 0\.0\)\), g_lab\(vec3\(1\.0, 1\.0, 1\.0\)\), g_seg\(x, 0\.0, 1\.0\)\)\), 1\.0\);$/);
+    // a gradient of numbers is a float variable
+    assert.match(main('k: gradient(x: 0, 1, 0); fill: k'), /float g_1 = mix\(mix\(0\.0, 1\.0, /);
+    assert.match(shader('fill: gradient(x: #000, #fff)'), /vec3 g_lab\(vec3 c\)/);
+    assert.doesNotMatch(shader('fill: gradient(x: 0, 1)'), /g_lab/);
 });
 
 test('match() in a value chooses between expressions, colors included', () => {
@@ -1006,15 +1007,15 @@ test('texture blocks: the last of a name wins, only at the top level', () => {
     assert.deepEqual(messages, ['texture goes top-level']);
 });
 
-test('box() and segment() are floats a fill or shape can read', () => {
+test('rect() and segment() are floats a fill or shape can read', () => {
     let warned = [];
-    let { fragment: out } = draw('d: box(pos, .3); e: segment(pos, vec2(0), vec2(.3, .3)); shape: box(du, dv, .2); fill: hsl(d + e, .5, .5);', extra, m => warned.push(m));
+    let { fragment: out } = draw('d: rect(pos, .6); e: segment(pos, vec2(0), vec2(.3, .3)); shape: rect(du, dv, .4); fill: hsl(d + e, .5, .5);', extra, m => warned.push(m));
     assert.deepEqual(warned, []);
-    assert.match(out, /float g_1 = box\(pos, \.3\);/);
+    assert.match(out, /float g_1 = rect\(pos, \.6\);/);
     assert.match(out, /float g_2 = segment\(pos, vec2\(0\.0\), vec2\(\.3, \.3\)\);/);
-    assert.match(out, /g_dist = box\(vec2\(du, dv\), \.2\);/);
-    assert.match(out, /float box\(vec2 p, vec2 b\)/);
-    assert.match(out, /float box\(vec2 p, float b\)/);
+    assert.match(out, /g_dist = rect\(vec2\(du, dv\), \.4\);/);
+    assert.match(out, /float rect\(vec2 p, vec2 size\)/);
+    assert.match(out, /float rect\(vec2 p, float size\)/);
     assert.match(out, /float segment\(vec2 p, vec2 a, vec2 b\)/);
 });
 
@@ -1124,4 +1125,19 @@ test('a place only inside repeat is a variable of the body', () => {
     assert.match(d.fragment, /float g_3 = 2\.0;\s*g_1 = \(g_1 \+ g_3\);/);
     assert.deepEqual(warnings('grid: 4; repeat(3) { place: 2; } fill: place'), ['unknown place']);
     assert.deepEqual(warnings('marks: 4; repeat(3) { place: pos; }'), ['place in repeat()']);
+});
+
+test('angle, circle, rect, stroke, union, intersect and subtract', () => {
+    let s = shader('d: subtract(union(circle(pos, .2), rect(pos - .2, .3, .1), .05), intersect(circle(pos, .1, 6), circle(du, dv, .3))); fill: red, shape(d); fill: #000, stroke(d, 2px); fill: angle(1, 2)');
+    assert.match(s, /g_subtract\(g_union\(circle\(pos, \.2\), rect\(\(pos - \.2\), \.3, \.1\), \.05\), g_intersect\(circle\(pos, \.1, 6\.0\), circle\(vec2\(du, dv\), \.3\)\)\)/);
+    assert.match(s, /g_stroke\(g_\d+, \(2\.0 \* px\)\)/);
+    assert.match(s, /angle\(vec2\(1\.0, 2\.0\)\)/);
+    for (let sig of ['float angle(vec2 p)', 'float circle(vec2 p, float r, float n)', 'float g_union(float a, float b, float k)', 'float g_stroke(float d, float w)']) {
+        assert.ok(s.includes(sig), sig);
+    }
+    assert.doesNotMatch(shader('fill: red'), /float circle|g_stroke|g_union|float rect/);
+});
+
+test('smin() is a smooth union', () => {
+    assert.equal(color('fill: smin(x, y, .1)'), color('fill: union(x, y, .1)'));
 });

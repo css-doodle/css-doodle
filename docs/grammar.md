@@ -597,7 +597,7 @@ A number directly followed by a name, a call or `(` multiplies (`2t`,
 `2sin(t)`, `2(t + 1)`). Other values side by side, `2 t`, `r -2` or
 `(a)(b)`, do not multiply and are reported. The power binds before the product
 and a sign, as in §8. Inside call parentheses a space separates
-arguments like a comma (`hsl(h .75 .65)`), except in `ramp()` stops.
+arguments like a comma (`hsl(h .75 .65)`), except in `gradient()` stops.
 A name directly before `(` is a call; `k (0)` is two values.
 
 **`$name`** inserts the text of the cell's custom property `--name`
@@ -705,6 +705,6 @@ once per component.
   statements without a colon, a `stop` outside a `repeat`, and what an
   expression cannot place:
   values side by side, `?:`, a trailing operator. An undeclared name
-  reads 0, in `@scene` too. `ramp()`, `shape()` and GLSL
+  reads 0, in `@scene` too. `gradient()`, `shape()`, `stroke()` and GLSL
   derivatives inside a `match` block or a `repeat` with stops are
   reported.

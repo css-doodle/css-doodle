@@ -22,15 +22,117 @@ const MASKS = {
 
 const CELL_INDEX = glsl`
     float dx = x - (X + 1.0) * 0.5;
-    float dy = y - (Y + 1.0) * 0.5;
+    float dy = (Y + 1.0) * 0.5 - y;
     float du = fract(uv.x * X) - 0.5;
-    float dv = fract((1.0 - uv.y) * Y) - 0.5;
+    float dv = 0.5 - fract((1.0 - uv.y) * Y);
 `;
+
+const WORDS = [
+    [/\bangle\(/, glsl`
+    float angle(vec2 p) {
+        return atan(p.y, p.x);
+    }`],
+    [/\bcircle\(/, glsl`
+    float circle(vec2 p, float r) {
+        return length(p) - r;
+    }
+    float circle(vec2 p, float r, float n) {
+        float an = PI / max(floor(n), 3.0);
+        vec2 acs = vec2(cos(an), sin(an));
+        float bn = mod(atan(p.x, p.y), 2.0 * an) - an;
+        p = length(p) * vec2(cos(bn), abs(sin(bn))) - r * acs;
+        p.y += clamp(-p.y, 0.0, r * acs.y);
+        return length(p) * sign(p.x);
+    }
+    float circle(vec2 p, vec2 rn) {
+        return circle(p, rn.x, rn.y);
+    }`],
+    [/\brect\(/, glsl`
+    float rect(vec2 p, vec2 size) {
+        vec2 d = abs(p) - 0.5 * size;
+        return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    }
+    float rect(vec2 p, float size) {
+        return rect(p, vec2(size));
+    }
+    float rect(vec2 p, float w, float h) {
+        return rect(p, vec2(w, h));
+    }`],
+    [/\bg_(smin|union|intersect|subtract)\(/, glsl`
+    float g_smin(float a, float b, float k, float sa, float sb) {
+        a *= sa;
+        b *= sb;
+        k = max(k, 1e-6);
+        float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+        return sa * (mix(b, a, h) - k * h * (1.0 - h));
+    }
+    float g_union(float a, float b, float k) {
+        return g_smin(a, b, k, 1.0, 1.0);
+    }
+    float g_intersect(float a, float b, float k) {
+        return g_smin(a, b, k, -1.0, -1.0);
+    }
+    float g_subtract(float a, float b, float k) {
+        return g_smin(a, b, k, -1.0, 1.0);
+    }
+    float g_union(float a, float b) {
+        return min(a, b);
+    }
+    float g_intersect(float a, float b) {
+        return max(a, b);
+    }
+    float g_subtract(float a, float b) {
+        return max(a, -b);
+    }`],
+    [/\bg_seg\(/, glsl`
+    float g_seg(float v, float a, float b) {
+        float w = min(fwidth(v), fwidth(fract(v + 0.5)));
+        return clamp((v - a) / max(b - a, w + 1e-5), 0.0, 1.0);
+    }`],
+    [/\bg_stroke\(/, glsl`
+    float g_stroke(float d, float w) {
+        float res = min(u_resolution.x, u_resolution.y);
+        float e = abs(d) / max(length(vec2(dFdx(d), dFdy(d))), 1e-6);
+        float h = 0.5 * max(w * res, 1.0);
+        return clamp(h - e + 0.5, 0.0, 1.0) * (w > 0.0 ? min(w * res, 1.0) : 1.0);
+    }
+    float g_stroke(float d) {
+        return g_stroke(d, 0.0);
+    }`],
+    [/\bg_over\(/, glsl`
+    vec4 g_over(vec4 s, vec4 d) {
+        float a = mix(d.a, 1.0, s.a);
+        return d.a > 0.0 ? vec4(mix(d.rgb * d.a, s.rgb, s.a) / a, a) : s;
+    }`],
+    [/\bg_lab\(/, glsl`
+    vec3 g_lab(vec3 c) {
+        c = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+        c = c * mat3(.41222, .53633, .051446, .2119, .6807, .1074, .088302, .28172, .62998);
+        c = sign(c) * pow(abs(c), vec3(1.0 / 3.0));
+        return c * mat3(.21045, .79362, -.004072, 1.978, -2.4286, .45059, .025904, .78277, -.80868);
+    }
+    vec3 g_rgb(vec3 c) {
+        c = c * mat3(1.0, .39634, .2158, 1.0, -.10556, -.063854, 1.0, -.089484, -1.2915);
+        c = clamp((c * c * c) * mat3(4.0767, -3.3077, .23097, -1.2684, 2.6098, -.34132, -.0041961, -.70342, 1.7076), 0.0, 1.0);
+        return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(.0031308, c));
+    }
+    vec4 g_lab(vec4 c) {
+        return vec4(g_lab(c.rgb), c.a);
+    }
+    vec4 g_rgb(vec4 c) {
+        return vec4(g_rgb(c.rgb), c.a);
+    }`],
+];
+
+export const words = code => WORDS.map(([test, src]) => test.test(code) ? src : '').join('');
 
 const SHAPE = glsl`
     float g_shape(float d, float size) {
         float r = 0.5 * size;
         return 1.0 - smoothstep(r - max(fwidth(d), 1e-5), r, d);
+    }
+    float g_shape(float d) {
+        return g_shape(d, 0.0);
     }
 `;
 
@@ -45,7 +147,7 @@ export const HELPERS = glsl`
         return int(mod(floor(k + 0.5) - 1.0, float(n)) + 0.5);
     }
     vec3 g_hue(float h) {
-        return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+        return clamp(abs(mod(h * (3.0 / PI) + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
     }
     ${SHAPE}
 
@@ -104,16 +206,6 @@ export const HELPERS = glsl`
         float c = cos(a), s = sin(a);
         return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
     }
-    float smin(float a, float b, float k) {
-        k = max(k, 1e-6);
-        float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-        return mix(b, a, h) - k * h * (1.0 - h);
-    }
-    float ngon(vec2 p, float n) {
-        float seg = 2.0 * PI / max(n, 3.0);
-        float a = atan(p.y, p.x);
-        return cos(a - seg * floor(0.5 + a / seg)) * length(p);
-    }
     float escape(vec2 z, vec2 c) {
         for (int k = 0; k < 96; k++) {
             z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
@@ -144,13 +236,6 @@ export const HELPERS = glsl`
         return float((i & 1) * 8 + (Y & 1) * 4 + (i & 2) + ((Y >> 1) & 1)) / 16.0;
     }
 
-    float box(vec2 p, vec2 b) {
-        vec2 d = abs(p) - b;
-        return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-    }
-    float box(vec2 p, float b) {
-        return box(p, vec2(b));
-    }
     float segment(vec2 p, vec2 a, vec2 b) {
         vec2 pa = p - a, ba = b - a;
         float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
@@ -164,13 +249,6 @@ export const HELPERS = glsl`
     }
     float arc(vec2 p, vec2 ra, float b) {
         return arc(p, ra.x, ra.y, b);
-    }
-`;
-
-const OVER = glsl`
-    vec4 g_over(vec4 s, vec4 d) {
-        float a = mix(d.a, 1.0, s.a);
-        return d.a > 0.0 ? vec4(mix(d.rgb * d.a, s.rgb, s.a) / a, a) : s;
     }
 `;
 
@@ -313,7 +391,7 @@ function generateShape(value, scope, ctx) {
     let kind = Object.keys(MASKS).indexOf(value) + 1;
     if (ctx.marks && !kind) ctx.warn('named shapes only');
     let d = ctx.marks ? kind && float(kind) : MASKS[value] || asFloat(value, scope, ctx, 'shape');
-    return d ? `g_dist = ${d};\ng_masked = true;\n` : '';
+    return d ? `g_dist = ${d};\ng_masked = true;\ng_sized = ${!!kind};\n` : '';
 }
 
 function generateSize(value, scope, ctx) {
@@ -394,7 +472,7 @@ function generateMatch(arms, scope, ctx, opts) {
 }
 
 // code reading the slope between neighbouring pixels
-export const DERIVATIVES = /\b(fwidth|dFdx|dFdy|g_shape)\(/;
+export const DERIVATIVES = /\b(fwidth|dFdx|dFdy|g_shape|g_stroke|g_seg)\(/;
 
 function checkDerivatives(code, where, ctx, opts) {
     if (!opts.branched && DERIVATIVES.test(code)) {
@@ -449,7 +527,7 @@ function generateShader(grid, body, marks, textures) {
     let head = glsl`
     precision highp int;
     const float PI = 3.1415926535897932;
-    ${HELPERS}${/\bg_over\(/.test(body) ? OVER : ''}${usesPx ? 'uniform float u_px;' : ''}${usesMouse ? 'uniform vec2 u_mouse;' : ''}
+    ${HELPERS}${words(body)}${usesPx ? 'uniform float u_px;' : ''}${usesMouse ? 'uniform vec2 u_mouse;' : ''}
     `;
     let dims = `float X = ${float(grid.x)}, Y = ${float(grid.y)}, I = X * Y, g_res = min(u_resolution.x, u_resolution.y);`;
     let run = glsl`
@@ -458,7 +536,7 @@ function generateShader(grid, body, marks, textures) {
         ${CELL_INDEX}
         vec4 g_color = vec4(0.0);
         float size = ${marks ? 'min(u_resolution.x / X, u_resolution.y / Y) / g_res' : '1.0'};
-        ${masked ? glsl`float g_dist = 0.0;\nbool g_masked = false;` : ''}
+        ${masked ? glsl`float g_dist = 0.0;\nbool g_masked = false, g_sized = true;` : ''}
         ${body}
     `;
     if (!marks) return { fragment: glsl`
@@ -470,7 +548,7 @@ function generateShader(grid, body, marks, textures) {
         float x = floor(uv.x * X) + 1.0;
         float y = floor((1.0 - uv.y) * Y) + 1.0;
         ${run}
-        ${masked ? glsl`float g_mask = g_shape(g_dist, size);\nif (g_masked) g_color.a *= g_mask;` : ''}
+        ${masked ? glsl`float g_mask = g_shape(g_dist, g_sized ? size : 0.0);\nif (g_masked) g_color.a *= g_mask;` : ''}
         FragColor = g_color;
     }
   ` };

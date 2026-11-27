@@ -105,7 +105,7 @@ function readValue(iter) {
     return value;
 }
 
-const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\bpick\\([^:;{}]*?(?<![\\w.])${name}\\s*:`).test(code);
+const reads = (code, name) => new RegExp(`(?<![a-zA-Z_]\\w*|\\.)${name}\\b(?!\\s*:)|\\b(?:pick|gradient)\\([^:;{}]*?(?<![a-zA-Z_]\\w*|\\.)${name}\\s*:`).test(code);
 
 // a name is used when the language made it, as a user function's `f_1_k`
 // or a match block's `match_1_`, or when code reads it but as its own target

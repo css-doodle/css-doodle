@@ -3,7 +3,7 @@ import { textOf, itemsOf } from '../parser/tokenizer.js';
 import { compile as parse, float } from './glsl-math-transformer.js';
 import { outline } from './shapes.js';
 import { bounds } from './polygon.js';
-import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue } from './pattern.js';
+import { HELPERS, DERIVATIVES, NAME, cssColor, colorReader, compileValue, words } from './pattern.js';
 import { reads, used } from '../parser/parse-body.js';
 import { glsl } from '../lib/tagged-template.js';
 
@@ -38,13 +38,6 @@ const SCENE_HELPERS = glsl`
     vec3 g_rotate(vec3 p, vec3 k, float a) {
         k = normalize(k);
         return mix(k * dot(k, p), p, cos(a)) - cross(k, p) * sin(a);
-    }
-    float g_smin(float a, float b, float k, float sa, float sb) {
-        a *= sa;
-        b *= sb;
-        k = max(k, 1e-6);
-        float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-        return sa * (mix(b, a, h) - k * h * (1.0 - h));
     }
     float g_box(vec3 p, vec3 b) {
         vec3 d = abs(p) - b;
@@ -571,7 +564,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     ball = lathe ? [0, mid[1], 0, Math.hypot(Math.max(x1, -x0), half[1])] : [...mid, 0, Math.hypot(...half, depth / 2)];
                     // the outline's box is never farther than the outline, so the walk runs only where it may count
                     if (plain && dist && !fit && cap) {
-                        let box = `box(${q} - vec2(${mid.map(v => float(+v.toFixed(6)))}), vec2(${half.map(v => float(+(v + 1e-5).toFixed(6)))}))`;
+                        let box = `rect(${q} - vec2(${mid.map(v => float(+v.toFixed(6)))}), vec2(${half.map(v => float(+(2 * v + 2e-5).toFixed(6)))}))`;
                         return skip(mark, r, lathe ? box : glsl`max(${box}, abs(${p}.z) - ${depth} * 0.5)`, cap, d);
                     }
                 }
@@ -622,14 +615,17 @@ export default function drawScene(code, extra, report = () => {}) {
         return { out, result, base: +angles[1] || 0, loose };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
-    let usesTime = /(?<![\w.])t\b/.test([full.out, full.result, fit.out, turn, tilt, depth, zoom, shadow, wide, eye, look, ambient, ...lights.flat()].join('\n'));
-    let slopes = DERIVATIVES.test([full.out, full.result, ambient, ...lights.flat()].join('\n'));
+    let drawn = [full.out, full.result, ambient, ...lights.flat()].join('\n');
+    let usesTime = /(?<![\w.])t\b/.test([drawn, fit.out, turn, tilt, depth, zoom, shadow, wide, eye, look].join('\n'));
+    let slopes = DERIVATIVES.test(drawn);
+    let emitted = [drawn, fit.out, fit.result, bare.out, bare.result].join('\n');
+    if (/\bg_stroke\(/.test(emitted)) warn('unknown stroke');
     let common = glsl`
     const float PI = 3.1415926535897932;
     float t;
     vec3 normal = vec3(0.0, 0.0, 1.0);
     float light = 1.0;
-    ${HELPERS}
+    ${HELPERS}${words(emitted)}
     ${SCENE_HELPERS}
     ${[...arrays].map(([array, v]) => `const ${array.match(/^\w+/)} ${v}[] = ${array};`).join('\n')}
     `;

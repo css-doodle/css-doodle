@@ -583,10 +583,10 @@ test('a match block sets its rows where its test holds, the values before it els
 test('an outline walks only where its box could change the parts before it', () => {
     let outline = 'points: 0 0, .2 0, .2 .4';
     let { dist, body } = scene(`box { size: .3 } lathe { ${outline} }`);
-    assert.match(dist, /float (g_\d+) = box\((g_\d+) - vec2\(0\.1,0\.2\), vec2\(0\.10001,0\.20001\)\);\nif \(\1 < (g_\d+)\) \{[^]*\1 = g_\d+ \* sqrt\(g_\d+\);\n\}\n\3 = min\(\3, \1\);/);
+    assert.match(dist, /float (g_\d+) = rect\((g_\d+) - vec2\(0\.1,0\.2\), vec2\(0\.20002,0\.40002\)\);\nif \(\1 < (g_\d+)\) \{[^]*\1 = g_\d+ \* sqrt\(g_\d+\);\n\}\n\3 = min\(\3, \1\);/);
     assert.doesNotMatch(body, /if \(g_\d+ < /);
     // a polygon's box also has its depth, and a scale divides the value it must reach
-    assert.match(scene(`box { size: .3 } polygon { ${outline}; depth: .2; scale: 2 }`).dist, /max\(box\([^;]*, abs\(g_\d+\.z\) - \.2 \* 0\.5\);\nif \(g_\d+ < g_\d+ \/ min\(abs\(/);
+    assert.match(scene(`box { size: .3 } polygon { ${outline}; depth: .2; scale: 2 }`).dist, /max\(rect\([^;]*, abs\(g_\d+\.z\) - \.2 \* 0\.5\);\nif \(g_\d+ < g_\d+ \/ min\(abs\(/);
     // nothing before it, a blend or a grow changes any value, so the outline is walked everywhere
     for (let code of [`lathe { ${outline} } box`, `union { smooth: .1; box; lathe { ${outline} } }`, `box; lathe { ${outline}; grow: .1 }`]) {
         assert.doesNotMatch(scene(code).dist, /if \(g_\d+ < /, code);
@@ -618,7 +618,7 @@ test('a group or copies whose ball lies past the parts before them are skipped',
 test('a miss past its edge is transparent, unless the colors read a slope', () => {
     assert.match(scene('sphere').fragment, /if \(g_near >= 1\.1\) \{\s*FragColor = vec4\(0\.0\);\s*return;/);
     assert.doesNotMatch(scene('sphere { fill: vec3(fwidth(p.x)) }').fragment, /g_near >= 1\.1/);
-    assert.doesNotMatch(scene('fill: vec3(ramp(light, #000000 .2, #ffffff .8)); sphere').fragment, /g_near >= 1\.1/);
+    assert.doesNotMatch(scene('fill: vec3(gradient(light: #000000 .2, #ffffff .8)); sphere').fragment, /g_near >= 1\.1/);
 });
 
 test('unknown shapes are reported', () => {
@@ -677,4 +677,12 @@ test('#id rows need no ; before a block, and the count may come first', () => {
 test('hsl() without percentages is the shader function, not a CSS color', () => {
     let { body } = scene('sphere { fill: hsl(.6, .8, .5) }');
     assert.ok(/hsl\(/.test(body), body);
+});
+
+test('the 2D words of @paint join distances here too, but stroke() is for @paint', () => {
+    let { fragment, warnings } = scene('sdf { d: union(length(p) - .3, circle(p.xy, .2, 6), .05) }');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /float g_union\(float a, float b, float k\)/);
+    assert.match(fragment, /float circle\(vec2 p, float r, float n\)/);
+    assert.deepEqual(scene('sdf { d: stroke(length(p) - .3, .1) }').warnings, ['unknown stroke']);
 });
