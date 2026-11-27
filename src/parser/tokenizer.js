@@ -249,12 +249,10 @@ function scan(source, options = {}) {
         }
         else if (isSpaceCode(curr)) {
             let end = i + 1;
-            let hasLineBreak = curr === 10;
             while (end < len) {
                 let c = input.charCodeAt(end);
                 if (!isSpaceCode(c)) break;
                 if (c === 10) {
-                    hasLineBreak = true;
                     row++;
                     lineStart = end + 1;
                 }
@@ -265,13 +263,8 @@ function scan(source, options = {}) {
                 if (quote) {
                     tokens.push(new Token('Space', input.slice(i, end), pos, index));
                 }
-                else if (!ignoreSpacingAround(lastToken.value, input[end])) {
-                    let value = (options.preserveLineBreak && hasLineBreak) ? '\n' : ' ';
-                    if (lastToken.isSpace()) {
-                        if (value === '\n') lastToken.value = '\n';
-                    } else {
-                        tokens.push(new Token('Space', value, pos, index));
-                    }
+                else if (!lastToken.isSpace() && !ignoreSpacingAround(lastToken.value, input[end])) {
+                    tokens.push(new Token('Space', ' ', pos, index));
                 }
             }
             i = end;

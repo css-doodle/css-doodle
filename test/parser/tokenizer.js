@@ -308,15 +308,10 @@ test('block comments are dropped and separate tokens like a space', () => {
     ]);
 });
 
-test('line breaks and inline comments under the shader options', () => {
-    assert.deepEqual(tokens('a \nb', { preserveLineBreak: true }), [
+test('inline comments under ignoreInlineComment', () => {
+    assert.deepEqual(tokens('a // hi\nb', { ignoreInlineComment: true }), [
         ['Word', 'a'],
-        ['Space', '\n'],
-        ['Word', 'b'],
-    ]);
-    assert.deepEqual(tokens('a // hi\nb', { preserveLineBreak: true, ignoreInlineComment: true }), [
-        ['Word', 'a'],
-        ['Space', '\n'],
+        ['Space', ' '],
         ['Word', 'b'],
     ]);
 });

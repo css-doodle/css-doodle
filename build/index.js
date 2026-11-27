@@ -49,7 +49,7 @@ const INTERNAL_PROPS = [
     'shaderRenders', 'observers', 'gridSize',
     // Internal parser, AST, SVG, shader & calc properties (bundle-only)
     'headIndex', 'findSpareDefs', 'ignoreInlineComment', 'lineCommentsIn',
-    'preserveLineBreak', 'contextVariable', 'readStatement', 'readBlocks',
+    'contextVariable', 'readStatement', 'readBlocks',
     'readTail', 'rawValue', 'noSpace', 'hasTransition',
     'getRgbaColor', 'getVariable', 'signSensitive', 'branched', 'readonly',
     'declared', 'disposed', 'onLost', 'fname', 'fallback', 'segments',

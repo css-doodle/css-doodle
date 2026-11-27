@@ -55,7 +55,7 @@ export declare namespace tokenizer {
         isWord(): boolean;
     }
 
-    function scan(source: unknown, options?: { preserveLineBreak?: boolean; ignoreInlineComment?: boolean; lineCommentsIn?: RegExp }): Token[];
+    function scan(source: unknown, options?: { ignoreInlineComment?: boolean; lineCommentsIn?: RegExp }): Token[];
     function iterator<T>(input: T[]): { curr(n?: number): T | undefined; next(): T | undefined };
     function textOf(tokens: Token[]): string;
     function itemsOf(tokens: Token[], keepEmpty?: boolean): Token[][];
