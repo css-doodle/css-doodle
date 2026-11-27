@@ -138,9 +138,13 @@ export default function expandFunctions(source, ctx, svg, chain = []) {
     }
     let text = rest + source.slice(from);
     if (!hasEntries(defs) && !(tokens.length && /@svg\(/i.test(text))) return source;
+    let names = [];
+    for (let name in defs) names.push(name);
+    CALLS.set(defs, new RegExp(`(${names.join('|')})[\\w.%$@-]*\\(`));
     return expandCalls(text, defs, ctx, chain);
 }
 
+const CALLS = new WeakMap();
 const MAX_EXPANSION = 1e6;
 
 const CSS = 0, BODY = 1, EXPR = 2;
@@ -166,6 +170,7 @@ function paintBodyAt(tokens, i) {
 }
 
 function expandCalls(text, defs, ctx, chain, mode = CSS, hoist, math) {
+    if (!CALLS.get(defs).test(text) && !/@svg/i.test(text)) return text;
     let paint = mode !== CSS, tokens = tokensOf(text, paint);
     let out = '', from = 0, quote = false, maths = [];
     let start = 0, head = 0, pending = mode === BODY ? [] : hoist, depth = 0, blocks = [];

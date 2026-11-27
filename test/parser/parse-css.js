@@ -761,6 +761,7 @@ test('an @svg() body defines user functions of its own, at any statement', () =>
     assert.deepEqual(
         ast(`--c(): red; --k(): 2; a: @svg(rect { fill: $c() }); b: @svg(--c(): blue; rect { fill: $c(); x: $k() });`),
         ast(`a: @svg(rect { fill: red }); b: @svg(rect { fill: blue; x: 2 });`));
+    assert.deepEqual(ast(`--k(): 2; a: @svg(--c(): blue; rect { fill: $c() });`), ast(`a: @svg(rect { fill: blue });`));
     assert.deepEqual(
         ast(`a: @svg(circle { --f(x): $x * 2 } rect { x: $f(1) });`),
         ast(`a: @svg(circle { } rect { x: 1 * 2 });`));
@@ -922,6 +923,7 @@ test('in math a bare user function chains as a built-in does, rightmost first, a
     assert.deepEqual(
         ast(`${defs} a: $(h.h(3) + abs.h(x) + h.abs(x) + k-h.sin(1) + 2h.h(1) + 2five.h(1)); @match(h.h(i) > 2) { color: red }`),
         ast(`${defs} a: $(h(h(3)) + abs(h(x)) + h(abs(x)) + k-h(sin(1)) + 2h(h(1)) + 2five(h(1))); @match(h(h(i)) > 2) { color: red }`));
+    assert.deepEqual(ast(`${defs} a: $(h.abs(x));`), ast(`${defs} a: $(h(abs(x)));`));
     // without one it stays
     assert.deepEqual(ast(`${defs} a: $(cos.sin(1) + h.h);`), ast(`a: $(cos.sin(1) + h.h);`));
     // a number after the name is its first argument, as after $h, unless a built-in has the whole name
