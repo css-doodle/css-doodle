@@ -198,9 +198,6 @@ export const HELPERS = glsl`
     vec3 hsl(float h, float s, float l) {
         return l + s * (g_hue(h) - 0.5) * (1.0 - abs(2.0 * l - 1.0));
     }
-    vec3 hsv(float h, float s, float v) {
-        return v * mix(vec3(1.0), g_hue(h), s);
-    }
 
     vec2 rotate(vec2 p, float a) {
         float c = cos(a), s = sin(a);
@@ -220,15 +217,6 @@ export const HELPERS = glsl`
         return escape(vec2(0.0), c);
     }
 
-    float spiral(vec2 d) {
-        float r = max(abs(d.x), abs(d.y));
-        float n = (2.0 * r - 1.0); n = n * n;
-        float p = 2.0 * r;
-        if (d.x == r && d.y > -r) return n + (d.y + r);
-        if (d.y == r) return n + p + (r - d.x);
-        if (d.x == -r) return n + 2.0 * p + (r - d.y);
-        return n + 3.0 * p + (r + d.x);
-    }
     float dither(vec2 f) {
         int X = int(mod(f.x, 4.0));
         int Y = int(mod(f.y, 4.0));

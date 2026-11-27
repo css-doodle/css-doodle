@@ -473,14 +473,14 @@ was last. A `@paint` that reads it draws again as the pointer moves.
 
 **Functions.** GLSL, plus `pick(k: …)`, `gradient(t, stop, …)`,
 `random(p [, k])`, `noise(p)`, `fbm(p)`, `voronoi(p)`, `hsl(h, s, l)`,
-`hsv(h, s, v)`, `rotate(p, a)`, `angle(p)`, `circle(p, r [, n])`,
-`rect(p, size)`, `segment(p, a, b)`, `arc(p, r, a, b)`,
-`union(a, b [, k])`, `intersect(a, b [, k])`, `subtract(a, b [, k])`,
-`stroke(d [, w])`, `escape([z,] c)`, `spiral(p)` and `dither(p)`. A
-point is one `vec2` or two floats: `fbm(p)`, `fbm(x, y)`.
+`rotate(p, a)`, `angle(p)`, `circle(p, r [, n])`, `rect(p, size)`,
+`segment(p, a, b)`, `arc(p, r, a, b)`, `union(a, b [, k])`,
+`intersect(a, b [, k])`, `subtract(a, b [, k])`, `stroke(d [, w])`,
+`escape([z,] c)` and `dither(p)`. A point is one `vec2` or two floats:
+`fbm(p)`, `fbm(x, y)`.
 
-- `hsl(h, s, l)` and `hsv(h, s, v)` take saturation and lightness from
-  0 to 1 and the hue as an angle, in radians or with `deg` and `turn`:
+- `hsl(h, s, l)` takes saturation and lightness from 0 to 1 and the hue
+  as an angle, in radians or with `deg` and `turn`:
   `hsl(180deg, 1, .5)` is cyan. With `%`, as in `hsl(180 100% 50%)`, it
   is the CSS color.
 - `rotate(p, a)` is the point `p` turned `a` radians counterclockwise, a

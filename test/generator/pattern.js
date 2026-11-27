@@ -354,7 +354,7 @@ test('an empty value ends at the closing brace of its block', () => {
 });
 
 test('a variable is declared once, typed by its value, and read by name', () => {
-    assert.match(main('c: hsv(i/I, 1, 1); fill: c'), /vec3 g_1 = hsv\(\(i \/ I\), 1\.0, 1\.0\);\s*g_color = vec4\(g_1, 1\.0\);/);
+    assert.match(main('c: hsl(i/I, 1, .5); fill: c'), /vec3 g_1 = hsl\(\(i \/ I\), 1\.0, \.5\);\s*g_color = vec4\(g_1, 1\.0\);/);
     assert.equal(color('p: 2; fill: hsl(.16p, .75, .65)'), 'g_color = vec4(hsl((.16 * g_1), .75, .65), 1.0);');
     // however often it is read, its value is computed once
     let s = main('n: fbm(uv * 8); fill: n, n * n, sqrt(n)');
@@ -364,7 +364,7 @@ test('a variable is declared once, typed by its value, and read by name', () => 
 
 test('declarations are read in source order', () => {
     let messages = [];
-    draw('fill: c; c: hsv(i/I, 1, 1)', extra, m => messages.push(m));
+    draw('fill: c; c: hsl(i/I, 1, .5)', extra, m => messages.push(m));
     assert.deepEqual(messages, ['unknown c']);
     // a second declaration of a name assigns to it
     assert.match(main('a: 1; fill: a; a: 2; fill: a'), /float g_1 = 1\.0;\s*g_color = vec4\(vec3\(g_1\), 1\.0\);\s*g_1 = 2\.0;/);
@@ -480,7 +480,7 @@ test('a variable may hold a CSS color or a channel list', () => {
     assert.deepEqual(messages, ['c is vec3']);
 });
 
-test('CSS color functions stay static; unitless hsl()/hsv() mean the shader helpers', () => {
+test('CSS color functions stay static; unitless hsl() means the shader helper', () => {
     assert.equal(color('fill: hsla(210, 50%, 50%, 0.5)'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
     assert.equal(color('fill: hsl(120, 50%, 50%)'), 'g_color = vec4(vec3(1.0, 0.0, 0.0), 1.0);');
     assert.equal(color('fill: hsl(x/X, 0.5, 0.5)'), 'g_color = vec4(hsl((x / X), 0.5, 0.5), 1.0);');
@@ -594,7 +594,6 @@ test('rand/noise/hsl built-ins are declared in the prelude', () => {
         'float noise(vec2 p)',
         'float noise(float n)',
         'vec3 hsl(float h, float s, float l)',
-        'vec3 hsv(float h, float s, float v)',
     ]) {
         assert.ok(s.includes(sig), 'missing prelude helper: ' + sig);
     }
@@ -622,7 +621,6 @@ test('escape() and the math/geometry built-ins are available', () => {
         'float escape(vec2 z, vec2 c)',
         'vec2 rotate(vec2 p, float a)',
         'float dither(vec2 f)',
-        'float spiral(vec2 d)',
     ]) {
         assert.ok(s.includes(sig), 'missing prelude helper: ' + sig);
     }
@@ -637,7 +635,6 @@ test('a point argument may be one vec2 or two floats', () => {
         'float voronoi(vec2 p)',
         'float escape(vec2 z, vec2 c)',
         'float escape(vec2 c)',
-        'float spiral(vec2 d)',
         'float dither(vec2 f)',
     ]) {
         assert.ok(s.includes(sig), 'missing vec2 form: ' + sig);

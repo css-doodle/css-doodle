@@ -43,9 +43,9 @@ const VEC_COMPARE = {
 
 const CALL_TYPES = { __proto__: null };
 for (const [type, names] of Object.entries({
-    float: 'rand noise fbm voronoi segment arc g_shape escape spiral dither length distance dot determinant angle circle rect g_stroke g_union g_intersect g_subtract',
+    float: 'rand noise fbm voronoi segment arc g_shape escape dither length distance dot determinant angle circle rect g_stroke g_union g_intersect g_subtract',
     vec2: 'rotate',
-    vec3: 'hsl hsv',
+    vec3: 'hsl',
     vec4: 'texture',
     bool: 'any all',
     bvec: 'isnan isinf lessThan lessThanEqual greaterThan greaterThanEqual equal notEqual',
@@ -53,7 +53,7 @@ for (const [type, names] of Object.entries({
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
-const POINTS = new Set('rand noise fbm voronoi rotate escape spiral dither segment arc length angle circle rect'.split(' '));
+const POINTS = new Set('rand noise fbm voronoi rotate escape dither segment arc length angle circle rect'.split(' '));
 
 const CALLS = { __proto__: null, random: 'rand', rot: 'rotate', ramp: 'gradient', shape: 'g_shape', stroke: 'g_stroke', smin: 'g_union', union: 'g_union', intersect: 'g_intersect', subtract: 'g_subtract' };
 
