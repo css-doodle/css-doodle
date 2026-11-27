@@ -127,7 +127,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 return { width: parseFloat(width), height: parseFloat(height) };
             }
         }
-        return element.getBoundingClientRect();
+        return { width: element.offsetWidth, height: element.offsetHeight };
     };
 
     let generation = host._generation, content = target.type === 'content';

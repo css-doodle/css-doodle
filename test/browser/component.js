@@ -591,6 +591,16 @@ describe('component', { concurrency: 4 }, () => {
         assert.deepEqual(await el.evaluate(el => el.warnings), []);
     }));
 
+    test('a turned cell draws its shader at its own size, not its turned bounding box', () => chrome.withPage(async page => {
+        let el = await mount(page, '@grid: 1 / 120px 200px; rotate: 3deg; @content: @paint(fill: #f00);');
+        await settle(page, el);
+        let size = await el.evaluate(el => {
+            let { width, height } = el.shadowRoot.querySelector('canvas');
+            return [width, height];
+        });
+        assert.deepEqual(size, [120, 200]);
+    }));
+
     test('animated shaders of more sizes than the browser has contexts share surfaces, and none is lost', () => chrome.withPage(async page => {
         // u_time keeps each one animated, so it holds on to its surface
         await stripes(page);
