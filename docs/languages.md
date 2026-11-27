@@ -121,7 +121,7 @@ model as an image.
 
 |            | `@shape`                                                                 | `@scene`                                                                 |
 |------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `lathe { points }` or `lathe { body }`, `plane`, `sdf { d }` |
+| Shapes     | the presets, `circle`, `square`, `star 6 .3`, `heart`, …; `shape` with `r`, `x`, `y`, `t` and `points`; `polygon { points: x y, … }`; a body in parentheses | `sphere { r }`, `ellipsoid { r: x y z }`, `box { size }`, `cylinder { r; height }`, `cone { r: r1 r2; height }`, `torus { r: R r }`, `capsule { from; to; r }`, `polygon { points; depth }` or `polygon { body; depth }`, `lathe { points }` or `lathe { body }`, `plane`, `sdf { d }`; a body in parentheses, the union of its shapes |
 | Steps      | `move: x y`, `rotate`, `scale: x [y]`, `mirror`, `grow`, `frame`         | the same in 3D, `rotate: [axis] angle`, and `repeat`, `twist`            |
 | Attributes | `round`, `smooth`, `fill-rule`, `unit`, `direction`, `seed`, `turn`      | `round` on `box`, `cylinder` and `polygon`, `smooth`, `fill`, `shine`    |
 | Groups     | `union`, `subtract`, `intersect`, `exclude`                              | `union`, `subtract`, `intersect`                                         |
@@ -318,8 +318,11 @@ camera), so `1 - normal.z` is bright at the edges.
 `polygon`, while `grow` makes any shape bigger. `repeat: x y z`
 repeats it that far apart along each axis (0 for none), and
 `twist: a` turns it `a` degrees per unit up `y`. `sdf { d: … }` takes
-a distance written in `p`. `polygon` takes `points`, or a `@shape`
-body as its outline, holes and all: `polygon { heart; depth: .2 }`.
+a distance written in `p`; far from the shape it should still grow as
+the distance does, since the scene's bounds are found from it, and one
+that does not can cut off the other shapes. `polygon` takes `points`,
+or a `@shape` body as its outline, holes and all:
+`polygon { heart; depth: .2 }`.
 Rows inside the body move the outline in 2D and the polygon's own rows
 move it in 3D, except `points: n`, which resamples the outline.
 `lathe` turns the right half of the same outline, where `x` is 0 or

@@ -424,6 +424,9 @@ Each caller provides its own context:
   name; the `@match` function inside `@m` or `@M` also sees `n`, `nx`,
   `ny` and `N`. `@random(ratio)` defaults to `.5`; below `1` it is a
   per-cell probability, from `1` up a count of distinct cells.
+- **`@up(…)`** reads its arguments one step out, in the `@m` around
+  this one or the doodle around a nested `@doodle`:
+  `@m3(@m2(@up.n))` is `1,1,2,2,3,3`.
 - **`@shape`** sees the shape commands, unrounded.
 
 | Name       | Value                                |
