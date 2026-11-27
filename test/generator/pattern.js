@@ -692,8 +692,10 @@ test('repeat uses a zero-based named index and checks the stop conditions after 
     assert.match(main('a: 0; b: 0; repeat(3, a > 1, b > 1) { a: a + 1; b: b + 1 }'), /if \(\(g_1 > 1\.0\) && \(g_2 > 1\.0\)\) break;/);
 });
 
-test('k*a-b counts from a to b, up or down', () => {
+test('k*n counts from 1 to n, k*a-b from a to b, up or down', () => {
+    assert.match(main('s: 0; k*1000 { s: s + k }'), /for \(float g_2 = 1\.0; g_2 < 1001\.0; g_2\+\+\)/);
     assert.match(main('s: 0; k*1-1000 { s: s + k }'), /for \(float g_2 = 1\.0; g_2 < 1001\.0; g_2\+\+\)/);
+    assert.match(main('n: 0; s: 0; k*n { s: s + k }'), /for \(float g_3 = 1\.0; g_3 > 1\.0; g_3--\)/);
     assert.match(main('s: 0; k*1000-1 { s: s + k }'), /for \(float g_2 = 1000\.0; g_2 > 0\.0; g_2--\)/);
     assert.match(main('n: 8; s: 0; k*n-1 { s: s + k }'), /for \(float g_3 = 8\.0; g_3 > 0\.0; g_3--\)/);
     let messages = [];
@@ -706,7 +708,7 @@ test('stop ends the loop where it is written', () => {
     const bare = code => main(code).replace(/\s+/g, '');
     assert.equal(
         bare('z: 0; s: 0; n*96 { z: z * z + uv.x; s: s + 1; stop: z > 4 } fill: s'),
-        bare('z: 0; s: 0; repeat(96 as n, z > 4) { z: z * z + uv.x; s: s + 1 } fill: s'));
+        bare('z: 0; s: 0; repeat(1-96 as n, z > 4) { z: z * z + uv.x; s: s + 1 } fill: s'));
     assert.match(main('n: 0; b: 0; k*100 { n: n + 1; b: b + 2; stop: n < 30 and b > 30 }'),
         /g_2 = \(g_2 \+ 2\.0\);\s*if \(\(\(g_1 < 30\.0\) && \(g_2 > 30\.0\)\)\) break;\s*\}/);
     // first, it checks before the step

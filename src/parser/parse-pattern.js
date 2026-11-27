@@ -27,7 +27,7 @@ function readMatchBlocks(iter, head) {
     }
     let match = readMatch(iter, head, pattern);
     if (match) return [match];
-    let loops = loopHeads(head).map(([word, count]) => ({ type: 'block', name: 'repeat', args: [`${count} as ${word}`] }));
+    let loops = loopHeads(head).map(([word, count]) => ({ type: 'block', name: 'repeat', args: [`${count} as ${word}`], from: 1 }));
     if (loops.length) {
         loops.reduce((a, b) => (a.value = [b], b));
         parseBody(iter, loops.at(-1), pattern);

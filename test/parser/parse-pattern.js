@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import parsePattern from '../../src/parser/parse-pattern.js';
 
 const block = (name, args = [], value = []) => ({ type: 'block', name, args, value });
+const loop = (args, value) => ({ ...block('repeat', args, value), from: 1 });
 const statement = (name, value) => ({ type: 'statement', name, value });
 const match = (test, value = []) => ({ type: 'block', name: 'match', arms: [{ type: 'arm', test, value }] });
 
@@ -98,11 +99,11 @@ test('repeat headers and nested repeats use the existing block grammar', () => {
     ]);
 });
 
-test('k*n {} is repeat(n as k) {}, but an arm test inside match {}', () => {
+test('k*n {} is a repeat counting from 1, but an arm test inside match {}', () => {
     assert.deepEqual(parsePattern('j*4 { k * n { a: j*k } }'), [
-        block('repeat', ['4 as j'], [block('repeat', ['n as k'], [statement('a', 'j*k')])]),
+        loop(['4 as j'], [loop(['n as k'], [statement('a', 'j*k')])]),
     ]);
-    assert.deepEqual(parsePattern('k*1-n {} k*1000-1 {}'), [block('repeat', ['1-n as k']), block('repeat', ['1000-1 as k'])]);
+    assert.deepEqual(parsePattern('k*1-n {} k*1000-1 {}'), [loop(['1-n as k']), loop(['1000-1 as k'])]);
     assert.deepEqual(parsePattern('match { k*2 {} }').at(0).arms, [{ type: 'arm', test: 'k*2', value: [] }]);
 });
 
@@ -113,6 +114,6 @@ test('loop heads side by side nest, the first outermost', () => {
     assert.deepEqual(parsePattern('i*2j*3 {}'), [{ type: 'text', value: 'i*2j*3 {}' }]);
     assert.deepEqual(parsePattern('k*1 - 4 {}'), [{ type: 'text', value: 'k*1 - 4 {}' }]);
     // a name glues words, digits and `_`, as a user function's own loop names do
-    assert.deepEqual(parsePattern('f_1_k*3 k2 * n {}'), [{ type: 'block', name: 'repeat', args: ['3 as f_1_k'], value: [{ type: 'block', name: 'repeat', args: ['n as k2'], value: [] }] }]);
+    assert.deepEqual(parsePattern('f_1_k*3 k2 * n {}'), [loop(['3 as f_1_k'], [loop(['n as k2'])])]);
     assert.deepEqual(parsePattern('match { i*2 j*3 {} }').at(0).arms, [{ type: 'arm', test: 'i*2 j*3', value: [] }]);
 });

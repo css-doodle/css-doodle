@@ -380,21 +380,21 @@ holds, or a last `else { … }` arm when none does. Blocks nest, each
 with its own scope. In a value, `match(t1, v1, t2, v2, …, else)` gives
 the value after the first test that holds.
 
-**`k*n { … }`** runs its body `n` times, with `k` counting from
-zero, unlike `i` and `n` elsewhere. `n` is a whole number, or a name
+**`k*n { … }`** runs its body `n` times, with `k` counting from 1
+to `n`, like `i` and `n` elsewhere. `n` is a whole number, or a name
 declared as one and never changed: `n: 72; k*n { y: k / n; }`.
-`k*1-n { … }` counts `k` from 1 to `n`, or down with `k*n-1`.
+`k*0-9 { … }` counts `k` from 0 to 9, or down with `k*9-0`.
 Heads side by side nest, the first outermost: `i*3 j*3 { … }` is
 `i*3 { j*3 { … } }`.
 `stop: test` ends the innermost loop at the line where it is written,
 once the test holds: last in the body it checks after each step, and
 inside a `match` block only where the block runs. Tests join with
 `and` and `or`: `stop: n > 30 and b > 30`. `repeat(n as k, stop …)`
-is the older form, which checks its stops after the body and ends
-once all of them hold. Counts over 1024, nested products over 65536
-and invalid counts skip the block. `shape`, `size`, `grid` and
-`marks` are not allowed inside it, and a `fill` inside it paints over
-the one from the step before.
+is the older form: `k` counts from 0, and it checks its stops after
+the body and ends once all of them hold. Counts over 1024, nested
+products over 65536 and invalid counts skip the block. `shape`,
+`size`, `grid` and `marks` are not allowed inside it, and a `fill`
+inside it paints over the one from the step before.
 
 **Output.** `fill` is a CSS color, an expression, or a list whose
 channels add up to three or four (`x / X, y / Y, .5`, `red, .5`). A
@@ -427,7 +427,7 @@ Later cells paint over earlier ones, in the order of `i`.
     u: sin(c + v) + sin(c * turn / 235 + w);
     v: cos(c + v) + cos(c * turn / 235 + w);
     w: u + .47t;
-    stop: k >= x - 1;
+    stop: k >= x;
   }
   place: .22vec2(u, -v);
   size: 2px;

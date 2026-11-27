@@ -410,7 +410,7 @@ const stopsIn = tokens => tokens.some(t => t.type === 'statement' ? t.name === '
 function generateRepeat(token, scope, ctx, opts) {
     let [head = '', ...stops] = token.args;
     let m = head.match(/^(?:(\w+)-)?(\w+)(?:\s+as\s+(\S+))?$/);
-    let [a, b] = m ? [m[1] || '0', m[2]].map(v => /^\d+$/.test(v) ? Number(v) : ctx.counts.get(scope.ids[v])) : [];
+    let [a, b] = m ? [m[1] || token.from || 0, m[2]].map(v => /^\d+$/.test(v) ? Number(v) : ctx.counts.get(scope.ids[v])) : [];
     let down = b < a;
     let times = m && (m[1] ? Math.abs(b - a) + 1 : b);
     let work = (opts.work || 1) * times;
