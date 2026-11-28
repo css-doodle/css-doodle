@@ -166,8 +166,8 @@ export default function drawScene(code, extra, report = () => {}) {
 
     let turn, tilt, depth, zoom, shadow, wide, eye, look, lights, ambient, self, shiny;
     let arrays = new Map();
-    let build = (dist, warn, fit) => {
-        let counter = 0, sites = 0, key = '0.0', cap, fill, gloss, cut, loose, ball, sym;
+    let build = (dist, warn, fit, drop = fit) => {
+        let counter = 0, sites = 0, key = '0.0', cap, fill, gloss, cut, held, open, loose, ball, sym;
         let types = { __proto__: null, p: 'vec3', normal: 'vec3', light: 'float' };
         let names = { __proto__: null, t: 't', n: '1.0', N: '1.0', nx: '1.0', ny: '1.0' };
         let unknown = colorReader(extra, name => warn(`unknown ${name}`));
@@ -411,10 +411,11 @@ export default function drawScene(code, extra, report = () => {}) {
             let r = next();
             ball = [0, 0, 0, Infinity];
             if (GROUPS[node.name]) {
-                let k = first(row(node, 'smooth'), p), a, outerCut = cut, name = node.name, balls = [], all = isFinite(+k) && 7;
+                let k = first(row(node, 'smooth'), p), a, outerCut = cut, outerHeld = held, name = node.name, balls = [], all = isFinite(+k) && 7;
                 cut ||= name === 'intersect';
                 loose ||= cut;
                 for (let child of node.children) {
+                    held = outerHeld || cut || name === 'subtract' && !!a;
                     let bound = k !== '0.0' ? null : !a || name === 'intersect' ? cap : name === 'union' ? below(a) : `-${a}${W}`, mark = out.length;
                     let b = within(bound, () => generate(child, p));
                     if (!fit && bound && (child.count || child.children.length > 1) && ball.every(isFinite) && !DERIVATIVES.test(out.slice(mark))) {
@@ -427,6 +428,7 @@ export default function drawScene(code, extra, report = () => {}) {
                     a ??= b;
                 }
                 cut = outerCut;
+                held = outerHeld;
                 declare(r, a);
                 ball = name === 'union' ? enclose(balls, k) : balls[0] || ball;
                 sym = all;
@@ -465,7 +467,7 @@ export default function drawScene(code, extra, report = () => {}) {
                 [a, b] = [get('from'), get('to')];
                 d = glsl`g_capsule(${p}, ${vec3(a)}, ${vec3(b)}, vec2(${r1 ||= '0.1'}, ${r2 ||= r1}))`;
                 ball = enclose([[...xyz(a, 0), +r1], [...xyz(b, 0), +r2]]);
-            } else if (name === 'plane') d = `${p}.y`;
+            } else if (name === 'plane') d = drop && !held ? (open = true, '1e5') : `${p}.y`;
             else if (name === 'sdf') {
                 let value = textOf(row(node, 'd')), start = sites;
                 let { type, code } = compile(value || '1e5', p);
@@ -558,7 +560,7 @@ export default function drawScene(code, extra, report = () => {}) {
         }
 
         let result = generate(root, 'p');
-        if (dist) return { out, result, loose };
+        if (dist) return { out, result, loose, open };
         let used = out, size = arrays.size;
         for (let def of tree.unused) generate(def, 'p');
         out = used;
@@ -595,6 +597,7 @@ export default function drawScene(code, extra, report = () => {}) {
         return { out, result, base: +angles[1] || 0, loose };
     };
     let full = build(false, warn), bare = build(true, () => {}), fit = build(true, () => {}, true);
+    let walk = fit.loose && fit.open ? build(true, () => {}, false, true) : bare;
     let drawn = [full.out, full.result, ambient, ...lights.flat()].join('\n');
     let usesTime = /(?<![\w.])t\b/.test([drawn, fit.out, turn, tilt, depth, zoom, shadow, wide, eye, look].join('\n'));
     let slopes = DERIVATIVES.test(drawn);
@@ -632,8 +635,8 @@ export default function drawScene(code, extra, report = () => {}) {
     }
     ${fit.loose ? glsl`
         float g_dist(vec3 p) {
-            ${bare.out}
-            return ${bare.result};
+            ${walk.out}
+            return ${walk.result};
         }
         float g_walk(vec3 e) {
             vec3 q = e * 50.0;
@@ -720,6 +723,7 @@ export default function drawScene(code, extra, report = () => {}) {
         ` : ''}
     }
     `;
+    let box = fit.open ? 'false' : 'g_b';
     let blocked = shadow ? ' * mix(1.0, g_shadow(g_h + n * g_e, g_l, 2.0 * g_s, g_e), g_sh)' : '';
     let fragment = glsl`
     precision highp int;
@@ -780,8 +784,8 @@ export default function drawScene(code, extra, report = () => {}) {
         ` : ''}
         vec3 g_a = (g_lo - 0.02 * g_k - g_o) / (g_r + 1e-9), g_c = (g_hi + 0.02 * g_k - g_o) / (g_r + 1e-9);
         vec3 g_in = min(g_a, g_c), g_out = max(g_a, g_c);
-        float g_t = g_b ? max(max(max(g_in.x, g_in.y), g_in.z), 0.0) : 0.0;
-        float g_far = g_b ? min(min(g_out.x, g_out.y), g_out.z) : g_z0 + 4.0 * g_k;
+        float g_t = ${box} ? max(max(max(g_in.x, g_in.y), g_in.z), 0.0) : 0.0;
+        float g_far = ${box} ? min(min(g_out.x, g_out.y), g_out.z) : g_z0 + 4.0 * g_k;
         if (g_t > g_far) {
             FragColor = vec4(0.0);
             return;

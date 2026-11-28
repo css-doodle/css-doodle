@@ -461,6 +461,18 @@ test('the fit walks onto the surface of an sdf or an intersect, whose far line m
     assert.doesNotMatch(scene('box { size: .2 } sphere { r: .1 }').vertex, /g_walk|g_dist/);
 });
 
+test('the fit leaves out a plane that adds to the model, and the march then has no box', () => {
+    let fit = code => scene(code).vertex.match(/float g_fit[^]*?return/)[0];
+    assert.match(fit('plane { move: 0 -.5 0 } sphere'), /= 1e5;/);
+    assert.match(scene('plane { move: 0 -.5 0 } sphere').fragment, /float g_t = false \?/);
+    assert.match(scene('sphere').fragment, /float g_t = g_b \?/);
+    // the walk onto the surface leaves it out too
+    assert.match(scene('plane { move: 0 -.5 0 } intersect { box; sphere { r: .6 } }').vertex, /float g_dist[^]*= 1e5;[^]*float g_walk/);
+    // inside an intersect or cutting a subtract it bounds the model
+    assert.match(fit('intersect { sphere; plane }'), /= p\.y;/);
+    assert.match(fit('subtract { box; plane }'), /= p\.y;/);
+});
+
 test('a part\'s variables read p after its own commands, which read them before', () => {
     let { body } = scene('sdf { q: p; k: .2; d: length(q) - k; move: k 0 0 }');
     // q is read again from the moved point; k, which doesn't read p, is not
