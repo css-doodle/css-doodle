@@ -289,6 +289,9 @@ test('a // comment is dropped from a @shape, @plot, @tile or @svg body', () => {
     let rules = parseCss('background: @svg(a { href: //a.b/c } image { href: url(//a.b/c.png) } // note\n); color: red;');
     assert.deepEqual(rules.map(r => r.property), ['background', 'color']);
     assert.equal(rules[0].value[0][0].arguments[0].values[0].value, 'a { href: //a.b/c } image { href: url(//a.b/c.png) }');
+    // a body with copies is written out again from the parsed svg
+    rules = parseCss('background: @svg(\n  // two dots: a, b\n  circle*2 { r: 1 }\n); color: red;');
+    assert.doesNotMatch(JSON.stringify(rules[0].value), /dots/);
 });
 
 test('a // line outside those bodies is reported, since it eats the next statement', () => {

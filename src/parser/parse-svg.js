@@ -263,7 +263,7 @@ function skipHeadSVG(block) {
 }
 
 function parse(source, root) {
-    let iter = Object.assign(iterator(scan(source)), { source, blocks: 0 });
+    let iter = Object.assign(iterator(scan(source, { ignoreInlineComment: true })), { source, blocks: 0 });
     let tokens = parseBody(iter, root || makeBlock('svg'), svg);
     return root ? tokens : skipHeadSVG(tokens);
 }
