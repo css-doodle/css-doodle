@@ -683,7 +683,7 @@ class Rules {
         let composed = this.getComposedValue(token.value, cell, env, {}, selector, prop);
         let { extra, value } = composed;
 
-        if (RE_PLACE.test(prop) && /^(polygon|ellipse)\(/.test(value)) {
+        if (RE_PLACE.test(prop) && /^(polygon|ellipse|shape)\(/.test(value)) {
             value = composed.origin ?? '';
         }
 

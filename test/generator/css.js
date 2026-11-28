@@ -293,6 +293,12 @@ test('@tile in clip-path brings its own transform-origin', () => {
     tiles.forEach((t, i) => assert.ok(t.endsWith(`transform-origin:${seeds[i]};`), t));
 });
 
+test('@place puts a cell at the center of its @tile piece, rounded or not', () => {
+    let place = code => cells(code, '1x6').match(/left:[^;]+;[^;]+;top:[^;]+/g);
+    assert.equal(place('@place: @tile.voronoi(points: 6);').length, 6);
+    assert.deepEqual(place('@place: @tile.voronoi(points: 6; round: .3);'), place('@place: @tile.voronoi(points: 6);'));
+});
+
 test('@tile takes its aspect from the size @grid gives the doodle, when the cells cover it', () => {
     let tiles = code => cells(code, '30x1').match(/clip-path:[^;]+/g).join();
     let wide = tiles('@grid: 30x1 / 900px 600px; clip-path: @tile.hex();');
