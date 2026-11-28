@@ -525,6 +525,17 @@ test('shape(d, size) is the mask of the shape and size statements, shape(d) the 
     assert.equal(transform('shape(d, .5)', { type: true }), 'float');
 });
 
+test('a scalar where a componentwise call needs a vector is widened', () => {
+    const types = { c: 'vec3' };
+    assert.equal(transform('mix(0, c, x)', { types }), 'mix(vec3(0.0), c, x)');
+    assert.equal(transform('mix(c, 0, x)', { types }), 'mix(c, vec3(0.0), x)');
+    assert.equal(transform('max(.2, c)', { types }), 'max(vec3(.2), c)');
+    assert.equal(transform('step(c, x)', { types }), 'step(c, vec3(x))');
+    // where GLSL takes a float, it stays one
+    assert.equal(transform('clamp(c, 0, 1)', { types }), 'clamp(c, 0.0, 1.0)');
+    assert.equal(transform('refract(c, c, .5)', { types }), 'refract(c, c, .5)');
+});
+
 test('a minus before a negative operand is not a decrement', () => {
     assert.equal(transform('-(-x)'), '- -x');
     assert.equal(transform('- -x'), '- -x');

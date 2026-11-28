@@ -51,6 +51,8 @@ for (const [type, names] of Object.entries({
     for (const name of names.split(' ')) CALL_TYPES[name] = type;
 }
 
+const SCALAR_ARGS = { __proto__: null, mix: '2', clamp: '12', min: '1', max: '1', mod: '1', step: '0', smoothstep: '01', refract: '2' };
+
 const POINTS = new Set('rand noise fbm voronoi rotate escape dither segment arc length angle circle rect'.split(' '));
 
 const CALLS = { __proto__: null, random: 'rand', rot: 'rotate', ramp: 'gradient', shape: 'g_shape', stroke: 'g_stroke', smin: 'g_union', union: 'g_union', intersect: 'g_intersect', subtract: 'g_subtract' };
@@ -279,7 +281,8 @@ export function compile(code, { types = { __proto__: null }, names, unknown, war
                 return cast(out, res, exp);
             }
             if (n.val === 'gradient') return cast(gradient(a, res), res, exp);
-            let args = a.map(v => gen(v, res[0] === 'b' ? null : 'float'));
+            const wide = /^vec/.test(res) && !CALL_TYPES[n.val] && n.val !== res;
+            let args = a.map((v, i) => gen(v, res[0] === 'b' ? null : wide && !isVector(infer(v)) && !SCALAR_ARGS[n.val]?.includes(i) ? res : 'float'));
             if (POINTS.has(n.val) && a.length > 1 && !isVector(infer(a[0]))) {
                 args = args.flatMap((v, i) => i % 2 ? [] : i + 1 < args.length ? `vec2(${v}, ${args[i + 1]})` : v);
             }
