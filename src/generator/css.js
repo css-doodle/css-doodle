@@ -760,6 +760,7 @@ class Rules {
                 isSpecialSelector: name === 'grid' || isSpecialSelector(selector),
                 place: this.hasPlace,
                 grid: cell.grid,
+                count: cell.count,
                 maxGrid: env.maxGrid,
                 extra,
                 rules: this

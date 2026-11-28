@@ -190,6 +190,11 @@ test('place: no point hides the cell', () => {
     assert.equal(property.place('', {}), 'display:none;');
 });
 
+test('place: a list of points puts each cell on its own, hiding cells past the end', () => {
+    assert.equal(property.place('10% 20%, 50% 60%', { count: 2 }), placed('50%', '60%'));
+    assert.equal(property.place('10% 20%, 50% 60%', { count: 3 }), 'display:none;');
+});
+
 test('place: a point with an angle rotates the cell', () => {
     assert.equal(property.place('10% 20%', { extra: 45 }), placed('10%', '20%', 'unsafe center', 'rotate:45deg;'));
 });

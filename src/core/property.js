@@ -103,7 +103,9 @@ Property.size = (value, { isSpecialSelector, place, grid }) => {
 
 export const placeShared = 'width:var(--_cell-width, 25%);height:var(--_cell-height, 25%);';
 
-Property.place = (value, { extra }) => {
+Property.place = (value, { extra, count }) => {
+    let points = parseValueGroup(value, { noSpace: true });
+    if (points.length > 1) value = points[count - 1];
     if (isEmpty(value)) return 'display:none;';
     let [left, top, safe] = resolvePlace(value);
     return `position:absolute;left:${left};right:calc(100% - ${left});top:${top};bottom:calc(100% - ${top});`

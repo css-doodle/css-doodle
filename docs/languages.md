@@ -257,7 +257,7 @@ commands. Here `points` counts what comes out, not the corners.
 
 | Command         | Kinds                                   | Value                                                          |
 |-----------------|-----------------------------------------|----------------------------------------------------------------|
-| `points`        | all                                     | at most this many pieces, or points for `delaunay`; a `@plot` variant returns its points as one list |
+| `points`        | all                                     | at most this many pieces, or points for `delaunay`; a `@plot` variant returns its points as one list, which `@place` reads one point per cell |
 | `seed`          | all                                     | the seed, the doodle's by default                              |
 | `aspect`        | all                                     | the element's width over its height, `2` or `16 / 9`           |
 | `gap`           | all but scatter                         | space between pieces, in percent of the element                |

@@ -669,7 +669,8 @@ completes a border the same way, and gives a lone color a `1px` width.
 on their axis and `center` as `50%`; the remaining values fill x, then
 y, both `50%` by default. A `@tile` piece is read as its center. A
 `safe` keyword sets `place-self` to `center`; overflow is `unsafe`
-otherwise.
+otherwise. A list of points, `x y, x y, …`, puts the nth cell on the
+nth point and hides the cells past its end.
 
 ### Others
 

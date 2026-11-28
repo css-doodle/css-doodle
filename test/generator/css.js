@@ -1823,6 +1823,10 @@ test('a shape body kept in a variable joins a group with $name', () => {
     // @plot spreads the cells over the joined outline
     let places = [...cells('@place: @plot(union { circle { scale: .5; move: -.4 0 } circle { scale: .5; move: .4 0 } });', '1x6').matchAll(/left:([\d.]+)%;[^}]*top:([\d.]+)%/g)];
     assert.equal(new Set(places.map(m => m[1] + ' ' + m[2])).size, 6);
+    // points: gives the list, and each cell takes its own point from it
+    let listed = cells('@place: @plot.hex(heart; points: 4);', '1x6');
+    assert.equal(new Set(listed.match(/left:[\d.]+%;[^}]*?top:[\d.]+%/g)).size, 4);
+    assert.equal(listed.match(/display:none/g).length, 2);
 });
 
 test('@svg-polygon draws contours as subpaths of one path', () => {
