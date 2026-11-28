@@ -144,7 +144,7 @@ async function shaderToImage(host, { source, cell, id, arg, target, compiled, na
                 el.replaceChildren(view);
                 return view;
             });
-            let out = live && views[0].getContext('bitmaprenderer');
+            let out = live && width * height * devicePixelRatio ** 2 > 3e6 && views[0].getContext('bitmaprenderer');
             present = () => {
                 let { canvas } = drawing;
                 for (let view of views) {
