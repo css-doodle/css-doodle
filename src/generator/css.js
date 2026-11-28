@@ -447,10 +447,12 @@ class Rules {
         this.scanTokens(this.tokens);
         if (this.hasTile) {
             let size = tokens.find(token => token.type === 'rule' && token.property === '@size');
+            let place = tokens.find(token => token.type === 'rule' && RE_PLACE.test(token.property));
             let extra = [];
-            if (!tokens.some(token => token.type === 'rule' && RE_PLACE.test(token.property))) extra.push(defaultRule('@place', 'center'));
+            if (!place) extra.push(defaultRule('@place', 'center'));
             if (!size) extra.push(defaultRule('@size', '100%'));
             this.cover = !size || size.rawValue() === '100%';
+            this.onPiece = this.cover && place?.value.some(v => usesTile(v) || usesTile(v, true));
             if (extra.length) {
                 this.hasPlace = true;
                 this.tokens = extra.concat(this.tokens);
@@ -733,10 +735,18 @@ class Rules {
             this.bgSized.add(cell);
         }
 
+        let origin = prop === 'clip-path' && composed.origin;
+        if (origin && this.onPiece) {
+            let [ox, oy] = origin.split(' ').map(parseFloat), at = value.indexOf(' at ') + 1;
+            value = value.slice(0, at) + value.slice(at).replace(/(-?[\d.]+)% (-?[\d.]+)%/g,
+                (_, x, y) => tidyNumber(x - ox + 50) + '% ' + tidyNumber(y - oy + 50) + '%');
+            origin = '';
+        }
+
         let rule = /^--\d/.test(prop) ? '' : `${prop}:${value};`;
 
-        if (composed.origin && prop === 'clip-path') {
-            rule += `transform-origin:${composed.origin};`;
+        if (origin) {
+            rule += `transform-origin:${origin};`;
         }
 
         if (flags.size && this.hasPlace && !isSpecialSelector(selector)) {

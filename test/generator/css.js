@@ -299,6 +299,29 @@ test('@place puts a cell at the center of its @tile piece, rounded or not', () =
     assert.deepEqual(place('@place: @tile.voronoi(points: 6; round: .3);'), place('@place: @tile.voronoi(points: 6);'));
 });
 
+test('a clip-path piece stays where it is when @place puts its cell at the piece center', () => {
+    let pairs = text => [...text.matchAll(/(-?[\d.]+)% (-?[\d.]+)%/g)].map(m => [+m[1], +m[2]]);
+    let plain = cells('clip-path: @tile.voronoi(points: 6);', '1x6');
+    let origins = pairs(plain.match(/transform-origin:[^;]+/g).join());
+    let plainClips = plain.match(/clip-path:[^;]+/g);
+    for (let place of ['@place: @tile.voronoi(points: 6);', '@place: @tile.xy;', '@size: 100%; @place: @tile.voronoi(points: 6; round: .1);']) {
+        let sheet = cells(`clip-path: @tile.voronoi(points: 6); ${place}`, '1x6');
+        assert.doesNotMatch(sheet, /transform-origin/, place);
+        sheet.match(/clip-path:[^;]+/g).forEach((clip, i) => {
+            let [ox, oy] = origins[i];
+            pairs(clip).forEach(([x, y], k) => {
+                let [px, py] = pairs(plainClips[i])[k];
+                assert.ok(Math.abs(x + ox - 50 - px) < 1e-9 && Math.abs(y + oy - 50 - py) < 1e-9, place);
+            });
+        });
+    }
+    // a circle piece moves its center, not its radii
+    let circle = cells('@place: @tile.circle(points: 3); clip-path: @tile.circle(points: 3);', '1x3');
+    assert.deepEqual(circle.match(/at [^)]+/g), ['at 50% 50%', 'at 50% 50%', 'at 50% 50%']);
+    // a smaller cell keeps the piece as written
+    assert.match(cells('@size: 20%; @place: @tile.voronoi(points: 6); clip-path: @tile.voronoi(points: 6);', '1x6'), /transform-origin/);
+});
+
 test('@tile takes its aspect from the size @grid gives the doodle, when the cells cover it', () => {
     let tiles = code => cells(code, '30x1').match(/clip-path:[^;]+/g).join();
     let wide = tiles('@grid: 30x1 / 900px 600px; clip-path: @tile.hex();');
